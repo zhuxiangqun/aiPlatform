@@ -1,0 +1,140 @@
+# AI Platform - 生产环境配置
+
+# 继承默认配置
+_base_: default.yaml
+
+# 数据库配置（生产环境）
+database:
+  type: postgres
+  host: ${DB_HOST}
+  port: ${DB_PORT:5432}
+  name: ${DB_NAME:ai_platform}
+  user: ${DB_USER}
+  password: ${DB_PASSWORD}
+  
+  pool:
+    min_size: 10
+    max_size: 50
+    max_overflow: 20
+    pool_timeout: 30
+    recycle: 3600
+  
+  ssl:
+    enabled: true
+    cert_path: ${DB_SSL_CERT}
+  
+  lazy_init: false
+
+# LLM配置（生产环境）
+llm:
+  provider: ${LLM_PROVIDER:openai}
+  model: ${LLM_MODEL:gpt-4}
+  api_key: ${LLM_API_KEY}
+  
+  rate_limit:
+    max_concurrent: 20
+    tokens_per_minute: 200000
+    models:
+      gpt-4:
+        tokens_per_minute: 100000
+        requests_per_minute: 500
+  
+  retry:
+    max_attempts: 5
+    backoff_factor: 3
+  
+  fallback:
+    enabled: true
+    fallback_chain:
+      - gpt-4-turbo
+      - gpt-3.5-turbo
+
+# 向量存储配置（生产环境）
+vector:
+  type: milvus
+  host: ${VECTOR_HOST}
+  port: ${VECTOR_PORT:19530}
+  dimension: 1536
+  
+  index:
+    type: HNSW
+    params:
+      m: 16
+      ef_construction: 256
+  
+  lazy_init: false
+
+# 缓存配置（生产环境）
+cache:
+  type: redis
+  host: ${REDIS_HOST}
+  port: ${REDIS_PORT:6379}
+  password: ${REDIS_PASSWORD}
+  db: 0
+  
+  pool:
+    max_connections: 100
+    retry_on_timeout: true
+  
+  default_ttl: 7200
+  max_entries: 100000
+  key_prefix: "ai-platform-prod:"
+  
+  lazy_init: false
+
+# 消息队列配置（生产环境）
+messaging:
+  backend: ${MESSAGING_BACKEND:kafka}
+  
+  hosts:
+    - ${KAFKA_BROKER_1}
+    - ${KAFKA_BROKER_2}
+    - ${KAFKA_BROKER_3}
+  
+  topic_prefix: "aiplat-prod"
+  client_id: "aiplat-prod-client"
+  
+  kafka:
+    consumer_group: "aiplat-prod-consumer"
+    auto_offset_reset: "latest"
+    enable_auto_commit: true
+    session_timeout_ms: 10000
+    heartbeat_interval_ms: 3000
+  
+  # 备用 RabbitMQ 配置（高可用）
+  # rabbitmq:
+  #   username: ${RABBITMQ_USER}
+  #   password: ${RABBITMQ_PASSWORD}
+  #   vhost: /
+  #   exchange_type: topic
+  #   durable: true
+
+# 日志配置（生产环境）
+logging:
+  level: ${LOG_LEVEL:INFO}
+  format: json
+  
+  output:
+    - console
+    - file
+  
+  file:
+    path: /var/log/ai-platform/infra-prod.log
+    max_size: 500MB
+    backup_count: 20
+
+# 监控配置（生产环境）
+monitoring:
+  enabled: true
+  port: ${MONITORING_PORT:9090}
+  
+  metrics:
+    prefix: ai_platform_infra_prod
+    labels:
+      env: production
+      service: infra
+  
+  health_check:
+    enabled: true
+    path: /health
+    interval: 30

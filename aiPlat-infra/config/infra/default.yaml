@@ -1,0 +1,292 @@
+# AI Platform - 默认配置文件
+
+# 数据库配置
+database:
+  type: postgres
+  host: localhost
+  port: 5432
+  name: ai_platform
+  user: ${DB_USER}
+  password: ${DB_PASSWORD}
+  
+  # 连接池配置
+  pool:
+    min_size: 5
+    max_size: 20
+    max_overflow: 10
+    pool_timeout: 30
+    recycle: 3600
+  
+  # SSL配置
+  ssl:
+    enabled: false
+    cert_path: null
+  
+  # 延迟初始化
+  lazy_init: true
+
+# LLM配置
+llm:
+  provider: openai
+  model: gpt-4
+  api_key_env: OPENAI_API_KEY
+  timeout: 30
+  max_retries: 3
+  
+  # 限流配置
+  rate_limit:
+    max_concurrent: 10
+    tokens_per_minute: 100000
+    models:
+      gpt-4:
+        tokens_per_minute: 50000
+        requests_per_minute: 100
+  
+  # 模型参数
+  default_params:
+    temperature: 0.7
+    max_tokens: 2000
+  
+  # 重试配置
+  retry:
+    max_attempts: 3
+    backoff_factor: 2
+  
+  # 降级配置
+  fallback:
+    enabled: true
+    fallback_chain:
+      - gpt-4-turbo
+      - gpt-3.5-turbo
+
+# 向量存储配置
+vector:
+  type: milvus
+  host: localhost
+  port: 19530
+  dimension: 1536
+  
+  index:
+    type: HNSW
+    params:
+      m: 16
+      ef_construction: 256
+  
+  lazy_init: true
+
+# 缓存配置
+cache:
+  type: redis
+  host: localhost
+  port: 6379
+  password: ${REDIS_PASSWORD}
+  db: 0
+  
+  pool:
+    max_connections: 50
+    retry_on_timeout: true
+  
+  default_ttl: 3600
+  max_entries: 10000
+  key_prefix: "ai-platform:"
+  
+  lazy_init: true
+
+# 日志配置
+logging:
+  level: ${LOG_LEVEL:INFO}
+  format: json
+  
+  output:
+    - console
+    - file
+  
+  file:
+    path: /var/log/ai-platform/infra.log
+    max_size: 100MB
+    backup_count: 10
+
+# 监控配置
+monitoring:
+  enabled: true
+  port: 9090
+  
+  metrics:
+    prefix: ai_platform_infra
+    labels:
+      env: development
+      service: infra
+  
+  health_check:
+    enabled: true
+    path: /health
+    interval: 30
+
+# 网络配置
+network:
+  service_discovery:
+    enabled: true
+    type: dns
+  
+  load_balancer:
+    strategy: round_robin
+  
+  network_policy:
+    enabled: false
+
+# 算力配置
+compute:
+  enabled: true
+  
+  gpu:
+    enabled: true
+    default_type: nvidia
+  
+  scheduler:
+    strategy: fifo
+  
+  quota:
+    enabled: true
+
+# 内存配置
+memory:
+  enabled: true
+  
+  pool:
+    max_size: 8GB
+  
+  oom_protection:
+    enabled: true
+    threshold: 0.9
+
+# 消息队列配置
+messaging:
+  backend: redis
+  
+  # Redis 配置（轻量级，适合小规模）
+  hosts:
+    - localhost:6379
+  
+  topic_prefix: "aiplat"
+  client_id: "aiplat-client"
+  
+  redis:
+    db: 0
+    password: ${REDIS_PASSWORD}
+    pool_size: 10
+  
+  # Kafka 配置（高吞吐量）
+  # kafka:
+  #   consumer_group: "aiplat-consumer"
+  #   auto_offset_reset: "latest"
+  #   enable_auto_commit: true
+  #   session_timeout_ms: 10000
+  #   heartbeat_interval_ms: 3000
+  
+  # RabbitMQ 配置（可靠性高）
+  # rabbitmq:
+  #   username: guest
+  #   password: guest
+  #   vhost: /
+  #   exchange_type: topic
+  #   durable: true
+
+# MCP配置
+mcp:
+  enabled: true
+  
+  servers: {}
+  
+  timeout: 30
+  
+  retry:
+    max_attempts: 3
+
+# 模型配置
+models:
+  # DeepSeek 模型（主LLM）
+  - name: deepseek-reasoner
+    provider: deepseek
+    type: chat
+    display_name: DeepSeek Reasoner
+    api_key_env: DEEPSEEK_API_KEY
+    base_url: https://api.deepseek.com
+    enabled: true
+    description: "DeepSeek 推理模型，适合复杂推理任务"
+    tags:
+      - deepseek
+      - chat
+      - reasoning
+    capabilities:
+      - chat
+      - reasoning
+    
+  - name: deepseek-chat
+    provider: deepseek
+    type: chat
+    display_name: DeepSeek Chat
+    api_key_env: DEEPSEEK_API_KEY
+    base_url: https://api.deepseek.com
+    enabled: true
+    description: "DeepSeek 对话模型，快速响应"
+    tags:
+      - deepseek
+      - chat
+    capabilities:
+      - chat
+
+  # 本地 Embedding 模型
+  - name: all-mpnet-base-v2
+    provider: local-embedding
+    type: embedding
+    display_name: All-MPNet Base v2
+    enabled: true
+    description: "本地 Embedding 模型，768维，免费无需API"
+    tags:
+      - local
+      - embedding
+      - huggingface
+    capabilities:
+      - embedding
+
+  # OpenAI 模型（可选）
+  - name: gpt-4
+    provider: openai
+    type: chat
+    display_name: GPT-4
+    api_key_env: OPENAI_API_KEY
+    enabled: false
+    description: "OpenAI GPT-4 大型语言模型"
+    tags:
+      - openai
+      - chat
+    capabilities:
+      - chat
+      - function_call
+  
+  - name: text-embedding-ada-002
+    provider: openai
+    type: embedding
+    display_name: Ada Embeddings
+    api_key_env: OPENAI_API_KEY
+    enabled: false
+    description: "OpenAI 文本嵌入模型"
+    tags:
+      - openai
+      - embedding
+    capabilities:
+      - embedding
+
+# Ollama 配置
+ollama:
+  endpoint: http://localhost:11434
+  auto_scan: true
+
+# 本地 Embedding 模型配置
+local_embedding:
+  enabled: true
+  models:
+    - name: all-mpnet-base-v2
+      path: sentence-transformers/all-mpnet-base-v2
+      dimension: 768
+      enabled: true

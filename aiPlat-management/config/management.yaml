@@ -1,0 +1,150 @@
+# AI Platform Management 系统配置
+
+management:
+  # 各层管理接口地址
+  layers:
+    infra:
+      endpoint: "http://localhost:8001"
+      # 是否启用
+      enabled: true
+      # 超时时间（秒）
+      timeout: 30
+      
+    core:
+      endpoint: "http://localhost:8002"
+      enabled: true
+      timeout: 30
+      
+    platform:
+      endpoint: "http://localhost:8003"
+      enabled: true
+      timeout: 30
+      
+    app:
+      endpoint: "http://localhost:8004"
+      enabled: true
+      timeout: 30
+
+  # 监控配置
+  monitoring:
+    # 采集间隔（秒）
+    interval: 60
+    
+    # 时序数据库类型
+    storage: "influxdb"
+    
+    # InfluxDB 配置
+    influxdb:
+      url: "http://localhost:8086"
+      database: "aiplatform"
+      username: "admin"
+      password: "password"
+      
+    # Prometheus 配置（可选）
+    prometheus:
+      enabled: true
+      port: 9090
+
+  # 告警配置
+  alerting:
+    # 告警规则文件
+    rules_file: "config/alert_rules.yaml"
+    
+    # 通知渠道
+    notifiers:
+      - type: "email"
+        config:
+          smtp_host: "smtp.example.com"
+          smtp_port: 587
+          smtp_user: "noreply@example.com"
+          smtp_password: "${SMTP_PASSWORD}"
+          recipients:
+            - "admin@example.com"
+            - "ops@example.com"
+            
+      - type: "webhook"
+        config:
+          url: "https://hooks.slack.com/services/xxx"
+          method: "POST"
+          
+      - type: "sms"
+        config:
+          provider: "twilio"
+          account_sid: "${TWILIO_ACCOUNT_SID}"
+          auth_token: "${TWILIO_AUTH_TOKEN}"
+          from_number: "+1234567890"
+          to_numbers:
+            - "+1987654321"
+
+  # Dashboard 配置
+  dashboard:
+    # 刷新间隔（秒）
+    refresh_interval: 10
+    
+    # 历史数据保留（天）
+    retention_days: 30
+    
+    # 图表配置
+    charts:
+      - name: "资源使用率"
+        type: "gauge"
+        metrics: ["cpu_usage", "memory_usage", "disk_usage"]
+        
+      - name: "请求趋势"
+        type: "line"
+        metrics: ["requests_per_second", "response_time"]
+        
+      - name: "错误率"
+        type: "bar"
+        metrics: ["error_rate", "failed_requests"]
+
+  # 诊断配置
+  diagnostics:
+    # 健康检查间隔（秒）
+    health_check_interval: 60
+    
+    # 链路追踪配置
+    tracing:
+      enabled: true
+      backend: "jaeger"
+      jaeger:
+        agent_host: "localhost"
+        agent_port: 6831
+        
+    # 日志配置
+    logging:
+      level: "INFO"
+      format: "json"
+      output: "stdout"
+
+  # 配置管理
+  config_management:
+    # 配置存储
+    storage: "database"
+    
+    # 版本保留数量
+    max_versions: 50
+    
+    # 审计日志
+    audit_enabled: true
+
+# 服务器配置
+server:
+  host: "0.0.0.0"
+  port: 8000
+  
+  # API 配置
+  api:
+    prefix: "/api"
+    cors:
+      enabled: true
+      origins:
+        - "http://localhost:3000"
+        - "http://localhost:5173"
+        - "https://aiplatform.example.com"
+        
+  # Web UI 配置
+  web:
+    enabled: true
+    static_dir: "static"
+    template_dir: "templates"

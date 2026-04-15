@@ -1,0 +1,11 @@
+.alerts {
+  padding: 0;
+}
+
+.alerts .ant-card {
+  margin-bottom: 16px;
+}
+
+.alerts .ant-table-wrapper {
+  margin-top: 16px;
+}

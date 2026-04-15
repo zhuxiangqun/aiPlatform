@@ -1,0 +1,80 @@
+# AI Platform - 开发环境配置
+
+# 继承默认配置
+_base_: default.yaml
+
+# 数据库配置（开发环境）
+database:
+  type: postgres
+  host: localhost
+  port: 5432
+  name: ai_platform_dev
+  user: ${DB_USER:postgres}
+  password: ${DB_PASSWORD:postgres}
+  
+  pool:
+    min_size: 2
+    max_size: 10
+
+# LLM配置（开发环境）
+llm:
+  provider: openai
+  model: gpt-4
+  api_key: ${OPENAI_API_KEY}
+  
+  rate_limit:
+    max_concurrent: 5
+    tokens_per_minute: 50000
+
+# 向量存储配置（开发环境）
+vector:
+  type: faiss
+  dimension: 1536
+  
+  lazy_init: true
+
+# 缓存配置（开发环境）
+cache:
+  type: memory
+  
+  default_ttl: 3600
+  max_entries: 1000
+
+# 消息队列配置（开发环境）
+messaging:
+  backend: redis
+  
+  hosts:
+    - localhost:6379
+  
+  topic_prefix: "aiplat-dev"
+  client_id: "aiplat-dev-client"
+  
+  redis:
+    db: 0
+    password: null
+    pool_size: 5
+
+# 日志配置（开发环境）
+logging:
+  level: DEBUG
+  format: text
+  
+  output:
+    - console
+  
+  file:
+    path: ./logs/infra-dev.log
+    max_size: 50MB
+    backup_count: 5
+
+# 监控配置（开发环境）
+monitoring:
+  enabled: true
+  port: 9090
+  
+  metrics:
+    prefix: ai_platform_infra_dev
+    labels:
+      env: development
+      service: infra

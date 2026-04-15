@@ -1,0 +1,150 @@
+# AI Platform - 测试环境配置
+
+# 继承默认配置
+_base_: default.yaml
+
+# 数据库配置（测试环境 - 内存数据库）
+database:
+  type: sqlite
+  name: ":memory:"
+  
+  pool:
+    min_size: 1
+    max_size: 5
+  
+  lazy_init: false
+
+# LLM配置（测试环境 - Mock）
+llm:
+  provider: mock
+  model: mock-model
+  
+  api_key: mock-api-key
+  
+  rate_limit:
+    max_concurrent: 100
+    tokens_per_minute: 1000000
+  
+  default_params:
+    temperature: 0.7
+    max_tokens: 100
+  
+  retry:
+    max_attempts: 1
+  
+  fallback:
+    enabled: false
+
+# 向量存储配置（测试环境 - 内存）
+vector:
+  type: faiss
+  dimension: 128
+  
+  index:
+    type: Flat
+  
+  lazy_init: false
+
+# 缓存配置（测试环境 - 内存）
+cache:
+  type: memory
+  
+  default_ttl: 60
+  max_entries: 100
+  
+  lazy_init: false
+
+# 消息队列配置（测试环境 - 内存）
+messaging:
+  backend: memory
+  
+  topic_prefix: "test"
+  client_id: "test-client"
+  
+  lazy_init: false
+
+# 日志配置（测试环境）
+logging:
+  level: WARNING
+  format: text
+  
+  output:
+    - console
+  
+  file: null
+
+# 监控配置（测试环境）
+monitoring:
+  enabled: false
+  
+  health_check:
+    enabled: false
+
+# 网络配置（测试环境）
+network:
+  service_discovery:
+    enabled: false
+  
+  network_policy:
+    enabled: false
+
+# 计算配置（测试环境）
+compute:
+  enabled: false
+  
+  gpu:
+    enabled: false
+
+# 内存配置（测试环境）
+memory:
+  enabled: true
+  
+  pool:
+    max_size: 100MB
+  
+  oom_protection:
+    enabled: false
+
+# 存储配置（测试环境）
+storage:
+  type: memory
+  
+  lazy_init: false
+
+# HTTP配置（测试环境）
+http:
+  timeout: 5
+  
+  retry:
+    max_attempts: 1
+  
+  pool:
+    max_connections: 10
+
+# MCP配置（测试环境）
+mcp:
+  enabled: false
+
+# 测试专用配置
+test:
+  # 测试隔离
+  isolation:
+    enabled: true
+    cleanup_after_test: true
+  
+  # 测试数据
+  fixtures:
+    auto_load: true
+    auto_cleanup: true
+  
+  # Mock配置
+  mock:
+    llm_responses: true
+    network_calls: true
+    external_services: true
+  
+  # 超时配置（测试应该快速失败）
+  timeout:
+    unit_test: 1
+    integration_test: 30
+    e2e_test: 60

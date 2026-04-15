@@ -1,0 +1,108 @@
+#!/bin/bash
+
+# aiPlat-platform 三层+前端 启动脚本
+# 启动顺序: aiPlat-core (8002) → aiPlat-infra (8001) → aiPlat-management (8000) → frontend (5173)
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$SCRIPT_DIR"
+
+echo "============================================================"
+echo "  aiPlat-platform - 启动服务"
+echo "============================================================"
+echo ""
+echo "Python: $(python3 --version 2>&1 | awk '{print $2}')"
+echo ""
+
+# ===== Step 1: aiPlat-core =====
+echo "============================================================"
+echo "  Step 1/4: 启动 aiPlat-core (端口 8002)"
+echo "============================================================"
+
+cd "$PROJECT_ROOT/aiPlat-core/core"
+PYTHONPATH="$PROJECT_ROOT/aiPlat-core" nohup python3 -m uvicorn server:app --host 0.0.0.0 --port 8002 > /tmp/aiplat-core.log 2>&1 &
+CORE_PID=$!
+echo "PID: $CORE_PID"
+
+sleep 3
+for i in 1 2 3 4 5; do
+    curl -s http://localhost:8002/api/core/health >/dev/null 2>&1 && echo "✓ aiPlat-core 启动成功 (8002)" && break
+    echo "等待... ($i/5)"
+    sleep 1
+done
+
+# ===== Step 2: aiPlat-infra =====
+echo ""
+echo "============================================================"
+echo "  Step 2/4: 启动 aiPlat-infra (端口 8001)"
+echo "============================================================"
+
+cd "$PROJECT_ROOT/aiPlat-infra"
+PYTHONPATH="$PROJECT_ROOT/aiPlat-infra" nohup python3 -m uvicorn infra.management.api.main:create_app --host 0.0.0.0 --port 8001 --factory > /tmp/aiplat-infra.log 2>&1 &
+INFRA_PID=$!
+echo "PID: $INFRA_PID"
+
+sleep 3
+for i in 1 2 3 4 5; do
+    curl -s http://localhost:8001/api/infra/health >/dev/null 2>&1 && echo "✓ aiPlat-infra 启动成功 (8001)" && break
+    echo "等待... ($i/5)"
+    sleep 1
+done
+
+# ===== Step 3: aiPlat-management =====
+echo ""
+echo "============================================================"
+echo "  Step 3/4: 启动 aiPlat-management (端口 8000)"
+echo "============================================================"
+
+cd "$PROJECT_ROOT/aiPlat-management"
+nohup python3 -m uvicorn management.server:create_app --host 0.0.0.0 --port 8000 --factory > /tmp/aiplat-management.log 2>&1 &
+MGMT_PID=$!
+echo "PID: $MGMT_PID"
+
+sleep 3
+for i in 1 2 3 4 5; do
+    curl -s http://localhost:8000/api/dashboard/status >/dev/null 2>&1 && echo "✓ aiPlat-management 启动成功 (8000)" && break
+    echo "等待... ($i/5)"
+    sleep 1
+done
+
+# ===== Step 4: Frontend =====
+echo ""
+echo "============================================================"
+echo "  Step 4/4: 启动前端 (端口 5173)"
+echo "============================================================"
+
+cd "$PROJECT_ROOT/aiPlat-management/frontend"
+
+# Build if dist doesn't exist
+if [ ! -d "dist" ]; then
+    echo "正在构建前端..."
+    npx vite build 2>&1 | tail -3
+fi
+
+nohup python3 "$PROJECT_ROOT/aiPlat-management/frontend/proxy_server.py" > /tmp/aiplat-frontend.log 2>&1 &
+FRONTEND_PID=$!
+echo "PID: $FRONTEND_PID"
+
+sleep 2
+for i in 1 2 3 4 5; do
+    curl -s http://localhost:5173/ >/dev/null 2>&1 && echo "✓ 前端启动成功 (5173)" && break
+    echo "等待... ($i/5)"
+    sleep 1
+done
+
+# 保存 PID
+echo -e "$CORE_PID\n$INFRA_PID\n$MGMT_PID\n$FRONTEND_PID" > /tmp/aiplat.pids
+
+echo ""
+echo "============================================================"
+echo "  ✓ 启动完成"
+echo "============================================================"
+echo ""
+echo "服务:"
+echo "  - core:        http://localhost:8002"
+echo "  - infra:       http://localhost:8001"
+echo "  - management:  http://localhost:8000"
+echo "  - 前端:        http://localhost:5173"
+echo ""
+echo "停止: ./stop.sh"

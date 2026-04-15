@@ -1,0 +1,318 @@
+/**
+ * AI Platform Design Tokens - Dark Theme
+ * 
+ * Theme: Black Background / White Text
+ * Reference: GitHub Dark, Tokyo Night style
+ */
+
+:root {
+  /* ============================================
+   * COLORS - Primary
+   * ============================================ */
+  --color-primary: #3B82F6;
+  --color-primary-hover: #2563EB;
+  --color-primary-active: #1D4ED8;
+  --color-primary-light: #1C2128;
+  --color-primary-border: #388BFD33;
+
+  /* ============================================
+   * COLORS - Status
+   * ============================================ */
+  --color-success: #10B981;
+  --color-success-hover: #059669;
+  --color-success-active: #047857;
+  --color-success-light: #0D1117;
+  --color-success-border: #23863633;
+
+  --color-warning: #F59E0B;
+  --color-warning-hover: #D97706;
+  --color-warning-active: #B45309;
+  --color-warning-light: #0D1117;
+  --color-warning-border: #9E6A0333;
+
+  --color-error: #EF4444;
+  --color-error-hover: #DC2626;
+  --color-error-active: #B91C1C;
+  --color-error-light: #0D1117;
+  --color-error-border: #F8514966;
+
+  --color-info: #3B82F6;
+  --color-info-hover: #2563EB;
+  --color-info-active: #1D4ED8;
+  --color-info-light: #0D1117;
+
+  /* ============================================
+   * COLORS - Neutral (Gray Scale - Dark Theme)
+   * ============================================ */
+  --color-gray-50: #161B22;
+  --color-gray-100: #1C2128;
+  --color-gray-200: #22272E;
+  --color-gray-300: #30363D;
+  --color-gray-400: #484F58;
+  --color-gray-500: #6E7681;
+  --color-gray-600: #8B949E;
+  --color-gray-700: #B1BAC4;
+  --color-gray-800: #C9D1D9;
+  --color-gray-900: #E6EDF3;
+
+  /* ============================================
+   * COLORS - Backgrounds (Dark Theme)
+   * ============================================ */
+  --color-bg-primary: #0D1117;
+  --color-bg-secondary: #161B22;
+  --color-bg-tertiary: #1C2128;
+  --color-bg-layout: #0D1117;
+  --color-bg-overlay: rgba(0, 0, 0, 0.75);
+  --color-bg-hover: #1C2128;
+  --color-bg-active: #1C2128;
+
+  /* ============================================
+   * COLORS - Text (Dark Theme)
+   * ============================================ */
+  --color-text-primary: #E6EDF3;
+  --color-text-secondary: #8B949E;
+  --color-text-tertiary: #6E7681;
+  --color-text-disabled: #484F58;
+  --color-text-inverse: #0D1117;
+  --color-text-placeholder: #6E7681;
+  --color-text-link: #3B82F6;
+
+  /* ============================================
+   * COLORS - Borders (Dark Theme)
+   * ============================================ */
+  --color-border: #30363D;
+  --color-border-hover: #484F58;
+  --color-border-active: #3B82F6;
+  --color-border-focus: rgba(59, 130, 246, 0.15);
+  --color-border-light: #21262D;
+
+  /* ============================================
+   * TYPOGRAPHY - Font Family
+   * ============================================ */
+  --font-sans: 'Geist Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+
+  /* ============================================
+   * TYPOGRAPHY - Font Size
+   * ============================================ */
+  --font-size-xs: 12px;
+  --font-size-sm: 13px;
+  --font-size-base: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 18px;
+  --font-size-2xl: 20px;
+  --font-size-3xl: 24px;
+  --font-size-4xl: 30px;
+
+  /* ============================================
+   * TYPOGRAPHY - Line Height
+   * ============================================ */
+  --line-height-xs: 16px;
+  --line-height-sm: 20px;
+  --line-height-base: 22px;
+  --line-height-lg: 24px;
+  --line-height-xl: 28px;
+  --line-height-2xl: 28px;
+  --line-height-3xl: 32px;
+  --line-height-4xl: 36px;
+
+  /* ============================================
+   * TYPOGRAPHY - Font Weight
+   * ============================================ */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* ============================================
+   * TYPOGRAPHY - Letter Spacing
+   * ============================================ */
+  --tracking-tight: -0.025em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.025em;
+
+  /* ============================================
+   * SPACING
+   * ============================================ */
+  --spacing-0: 0px;
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+  --spacing-10: 40px;
+  --spacing-12: 48px;
+
+  /* ============================================
+   * BORDER RADIUS
+   * ============================================ */
+  --radius-none: 0px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-full: 9999px;
+
+  /* ============================================
+   * SHADOWS (Dark Theme - Lighter shadows)
+   * ============================================ */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+
+  /* ============================================
+   * LAYOUT
+   * ============================================ */
+  --layout-header-height: 60px;
+  --layout-sider-width: 240px;
+  --layout-sider-collapsed-width: 64px;
+  --layout-content-padding: 32px;
+
+  /* ============================================
+   * Z-INDEX
+   * ============================================ */
+  --z-base: 0;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-fixed: 300;
+  --z-modal-backdrop: 400;
+  --z-modal: 500;
+  --z-popover: 600;
+  --z-tooltip: 700;
+  --z-notification: 800;
+
+  /* ============================================
+   * ANIMATION
+   * ============================================ */
+  --duration-fast: 100ms;
+  --duration-normal: 150ms;
+  --duration-slow: 200ms;
+  --duration-slower: 300ms;
+
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ============================================
+   * LEGACY TOKENS (for backward compatibility)
+   * ============================================ */
+  --color-primary-old: var(--color-primary);
+  --color-success-old: var(--color-success);
+  --color-warning-old: var(--color-warning);
+  --color-error-old: var(--color-error);
+  --color-text-primary-old: var(--color-text-primary);
+  --color-text-secondary-old: var(--color-text-secondary);
+  --color-bg-primary-old: var(--color-bg-primary);
+  --color-bg-secondary-old: var(--color-bg-secondary);
+  --color-bg-layout-old: var(--color-bg-layout);
+  --color-bg-header-old: var(--color-bg-primary);
+  --color-bg-sider-old: var(--color-bg-primary);
+  --color-border-old: var(--color-border);
+  --font-family-old: var(--font-sans);
+  --font-size-old-xs: var(--font-size-xs);
+  --font-size-old-sm: var(--font-size-sm);
+  --font-size-old-base: var(--font-size-base);
+  --font-size-old-lg: var(--font-size-lg);
+  --font-size-old-xl: var(--font-size-xl);
+  --font-size-old-2xl: var(--font-size-2xl);
+  --font-size-old-3xl: var(--font-size-3xl);
+  --font-weight-old-normal: var(--font-weight-normal);
+  --font-weight-old-medium: var(--font-weight-medium);
+  --font-weight-old-semibold: var(--font-weight-semibold);
+  --font-weight-old-bold: var(--font-weight-bold);
+  --spacing-old-xs: var(--spacing-1);
+  --spacing-old-sm: var(--spacing-2);
+  --spacing-old-md: var(--spacing-3);
+  --spacing-old-base: var(--spacing-4);
+  --spacing-old-lg: var(--spacing-6);
+  --spacing-old-xl: var(--spacing-8);
+  --spacing-old-2xl: var(--spacing-12);
+  --radius-old-sm: var(--radius-sm);
+  --radius-old-base: var(--radius-md);
+  --radius-old-lg: var(--radius-lg);
+  --radius-old-xl: var(--radius-xl);
+  --layout-sider-width-old: var(--layout-sider-width);
+  --layout-header-height-old: var(--layout-header-height);
+  --layout-content-padding-old: var(--layout-content-padding);
+  --shadow-old-sm: var(--shadow-xs);
+  --shadow-old-base: var(--shadow-sm);
+  --shadow-old-md: var(--shadow-md);
+  --shadow-old-lg: var(--shadow-lg);
+}
+
+/* ============================================
+ * GLOBAL STYLES - Dark Theme
+ * ============================================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-layout);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg-layout);
+}
+
+code,
+pre,
+kbd,
+samp {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+code {
+  background: var(--color-gray-200);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+}
+
+/* ============================================
+ * FOCUS STATES
+ * ============================================ */
+
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* ============================================
+ * SCROLLBAR - Dark Theme
+ * ============================================ */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-gray-100);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-gray-400);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-gray-500);
+}

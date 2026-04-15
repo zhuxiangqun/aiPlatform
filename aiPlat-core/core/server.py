@@ -1,0 +1,1859 @@
+"""
+aiPlat-core REST API Server
+
+Provides REST API endpoints for agent, skill, tool, memory, knowledge, and harness management.
+Runs on port 8002.
+"""
+
+from fastapi import FastAPI, HTTPException, APIRouter
+from fastapi.middleware.cors import CORSMiddleware
+from typing import Optional, List, Dict, Any
+from contextlib import asynccontextmanager
+from datetime import datetime
+import uvicorn
+
+from core.schemas import (
+    AgentCreateRequest,
+    AgentUpdateRequest,
+    SkillCreateRequest,
+    SkillExecuteRequest,
+    MessageCreateRequest,
+    SessionCreateRequest,
+    SearchRequest,
+    CollectionCreateRequest,
+    DocumentCreateRequest,
+    AdapterCreateRequest,
+    AdapterUpdateRequest,
+    ModelUpdateRequest,
+    HookCreateRequest,
+    HookUpdateRequest,
+    CoordinatorCreateRequest,
+    FeedbackConfigUpdateRequest,
+)
+from core.management import (
+    AgentManager,
+    SkillManager,
+    MemoryManager,
+    KnowledgeManager,
+    AdapterManager,
+    HarnessManager,
+)
+from core.apps.tools.base import ToolRegistry, get_tool_registry, create_tool
+from core.apps.tools.permission import PermissionManager, Permission, get_permission_manager
+from core.apps.agents import get_agent_registry
+from core.apps.skills import get_skill_registry, get_skill_executor
+
+
+def _create_llm_adapter(model_name: str = "gpt-4"):
+    """Create an LLM adapter instance from a model name.
+    
+    Uses AdapterManager if available, otherwise falls back to create_adapter().
+    """
+    try:
+        from core.adapters.llm import create_adapter
+        return create_adapter(
+            provider="openai",
+            api_key="",
+            model=model_name,
+        )
+    except Exception:
+        return None
+
+
+def _inject_model_into_agent(agent: object, model_name: str = "gpt-4"):
+    """Inject LLM adapter into an agent if it doesn't have one."""
+    if hasattr(agent, '_model') and agent._model is None:
+        adapter = _create_llm_adapter(model_name)
+        if adapter and hasattr(agent, 'set_model'):
+            agent.set_model(adapter)
+        elif adapter:
+            agent._model = adapter
+
+
+def _inject_model_into_skill(skill: object, model_name: str = "gpt-4"):
+    """Inject LLM adapter into a skill if it doesn't have one."""
+    if hasattr(skill, '_model') and skill._model is None:
+        adapter = _create_llm_adapter(model_name)
+        if adapter and hasattr(skill, 'set_model'):
+            skill.set_model(adapter)
+        elif adapter:
+            skill._model = adapter
+
+
+_agent_discovery = None
+_skill_discovery = None
+
+_agent_executions: Dict[str, Dict[str, Any]] = {}
+_skill_executions: Dict[str, Dict[str, Any]] = {}
+_agent_history: Dict[str, List[Dict[str, Any]]] = {}
+
+
+
+
+
+_agent_manager: Optional[AgentManager] = None
+_skill_manager: Optional[SkillManager] = None
+_memory_manager: Optional[MemoryManager] = None
+_knowledge_manager: Optional[KnowledgeManager] = None
+_adapter_manager: Optional[AdapterManager] = None
+_harness_manager: Optional[HarnessManager] = None
+_approval_manager: Optional[Any] = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global _agent_discovery, _skill_discovery
+    global _agent_manager, _skill_manager, _memory_manager
+    global _knowledge_manager, _adapter_manager, _harness_manager
+    global _approval_manager
+    
+    from core.apps.agents import create_agent_discovery
+    from core.apps.skills import create_discovery
+    from core.harness.infrastructure.approval import ApprovalManager, ApprovalRule, RuleType
+    
+    _approval_manager = ApprovalManager()
+    _approval_manager.register_rule(ApprovalRule(
+        rule_id="sensitive-ops",
+        rule_type=RuleType.SENSITIVE_OPERATION,
+        name="Sensitive Operations",
+        description="Require approval for sensitive operations",
+        condition="tool in ['code_execution', 'file_write', 'database_write']",
+        auto_approve=False,
+        enabled=True,
+        priority=10,
+    ))
+    _approval_manager.register_rule(ApprovalRule(
+        rule_id="first-time-ops",
+        rule_type=RuleType.FIRST_TIME,
+        name="First Time Operations",
+        description="Auto-approve known safe operations",
+        condition="",
+        auto_approve=True,
+        enabled=True,
+        priority=5,
+    ))
+    
+    agents_path = "core/apps/agents"
+    _agent_discovery = create_agent_discovery(agents_path)
+    await _agent_discovery.discover()
+    
+    skills_path = "core/apps/skills"
+    _skill_discovery = create_discovery(skills_path)
+    await _skill_discovery.discover()
+    
+    _agent_manager = AgentManager(seed=True)
+    _skill_manager = SkillManager(seed=True)
+    _memory_manager = MemoryManager(seed=True)
+    _knowledge_manager = KnowledgeManager()
+    _adapter_manager = AdapterManager()
+    _harness_manager = HarnessManager()
+    
+    # Seed execution-layer registries with real instances
+    skill_registry = get_skill_registry()
+    skill_registry.seed_data()
+    
+    # Register discovered skills into registry
+    if _skill_discovery:
+        from core.apps.skills.registry import _GenericSkill
+        from core.harness.interfaces import SkillConfig
+        for skill_name, discovered in _skill_discovery._discovered.items():
+            try:
+                if skill_registry.get(skill_name) is not None:
+                    continue
+                config = SkillConfig(
+                    name=skill_name,
+                    description=getattr(discovered, 'description', ''),
+                    metadata={"category": getattr(discovered, 'category', 'general'), "version": getattr(discovered, 'version', '1.0.0')}
+                )
+                skill_instance = _GenericSkill(config)
+                skill_registry.register(skill_instance)
+            except Exception:
+                pass
+    
+    # Register discovered agents into registry
+    if _agent_discovery:
+        from core.apps.agents import create_agent
+        from core.harness.interfaces import AgentConfig
+        agent_registry = get_agent_registry()
+        for agent_name, discovered in _agent_discovery._discovered.items():
+            try:
+                if agent_registry.get(agent_name) is not None:
+                    continue
+                agent_type = getattr(discovered, 'agent_type', 'base')
+                agent_config = AgentConfig(
+                    name=getattr(discovered, 'display_name', agent_name),
+                    model="gpt-4",
+                    metadata=getattr(discovered, 'config_schema', {}) or {}
+                )
+                agent_instance = create_agent(agent_type=agent_type, config=agent_config)
+                agent_registry.register(
+                    agent_name,
+                    agent_instance,
+                    config=agent_config.metadata if isinstance(agent_config.metadata, dict) else {},
+                    metadata=discovered
+                )
+            except Exception:
+                pass
+    
+    # Register all available tools
+    registry = get_tool_registry()
+    
+    # Built-in tools via create_tool factory
+    for tool_type in ["calculator", "search", "file_operations"]:
+        try:
+            tool = create_tool(tool_type)
+            registry.register(tool)
+        except ValueError:
+            pass
+    
+    # Tools from dedicated modules (real implementations and stubs)
+    _tool_modules = [
+        ("core.apps.tools.webfetch", "WebFetchTool", {"timeout": 30000, "max_content_size": 1048576}),
+        ("core.apps.tools.http", "HTTPClientTool", {"timeout": 30000, "max_response_size": 10485760}),
+        ("core.apps.tools.code", "CodeExecutionTool", {"timeout": 30000}),
+        ("core.apps.tools.database", "DatabaseTool", {"timeout": 60000}),
+        ("core.apps.tools.browser", "BrowserTool", {"navigation_timeout": 30000}),
+    ]
+    for module_path, cls_name, kwargs in _tool_modules:
+        try:
+            import importlib
+            module = importlib.import_module(module_path)
+            cls = getattr(module, cls_name)
+            tool = cls(**kwargs)
+            registry.register(tool)
+        except Exception:
+            pass
+    
+    yield
+
+
+app = FastAPI(
+    title="aiPlat-core API",
+    description="Core layer API for Agent, Skill, Tool, Memory, Knowledge, and Harness management",
+    version="0.1.0",
+    lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+api_router = APIRouter(prefix="/api/core")
+
+
+# ==================== Agent Management ====================
+
+@api_router.get("/agents")
+async def list_agents(
+    agent_type: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0
+):
+    """List all agents"""
+    agents = await _agent_manager.list_agents(agent_type, status, limit, offset)
+    
+    return {
+        "agents": [
+            {
+                "id": a.id,
+                "name": a.name,
+                "agent_type": a.type,
+                "status": a.status,
+                "skills": a.skills,
+                "tools": a.tools,
+                "metadata": a.metadata
+            }
+            for a in agents
+        ],
+        "total": _agent_manager.get_agent_count().get("total", 0),
+        "limit": limit,
+        "offset": offset
+    }
+
+
+@api_router.post("/agents")
+async def create_agent(request: AgentCreateRequest):
+    """Create a new agent"""
+    agent = await _agent_manager.create_agent(
+        name=request.name,
+        agent_type=request.agent_type,
+        config=request.config,
+        skills=request.skills,
+        tools=request.tools,
+    )
+    return {
+        "id": agent.id,
+        "status": "created",
+        "name": agent.name
+    }
+
+
+@api_router.get("/agents/{agent_id}")
+async def get_agent(agent_id: str):
+    """Get agent details"""
+    agent = await _agent_manager.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    
+    return {
+        "id": agent.id,
+        "name": agent.name,
+        "agent_type": agent.type,
+        "status": agent.status,
+        "config": agent.config,
+        "skills": agent.skills,
+        "tools": agent.tools,
+        "metadata": agent.metadata
+    }
+
+
+@api_router.put("/agents/{agent_id}")
+async def update_agent(agent_id: str, request: AgentUpdateRequest):
+    """Update agent"""
+    agent = await _agent_manager.update_agent(
+        agent_id,
+        config=request.config,
+        metadata=request.metadata
+    )
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    return {"status": "updated", "id": agent_id}
+
+
+@api_router.delete("/agents/{agent_id}")
+async def delete_agent(agent_id: str):
+    """Delete agent"""
+    success = await _agent_manager.delete_agent(agent_id)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    return {"status": "deleted", "id": agent_id}
+
+
+@api_router.post("/agents/{agent_id}/start")
+async def start_agent(agent_id: str):
+    """Start agent"""
+    success = await _agent_manager.start_agent(agent_id)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    return {"status": "started", "id": agent_id}
+
+
+@api_router.post("/agents/{agent_id}/stop")
+async def stop_agent(agent_id: str):
+    """Stop agent"""
+    success = await _agent_manager.stop_agent(agent_id)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    return {"status": "stopped", "id": agent_id}
+
+
+@api_router.get("/agents/{agent_id}/skills")
+async def get_agent_skills(agent_id: str):
+    """Get skills bound to agent"""
+    agent = await _agent_manager.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    bindings = await _agent_manager.get_skill_bindings(agent_id)
+    return {
+        "skills": [
+            {
+                "skill_id": b.skill_id,
+                "skill_name": b.skill_name,
+                "skill_type": b.skill_type,
+                "call_count": b.call_count,
+                "success_rate": b.success_rate,
+            }
+            for b in bindings
+        ],
+        "skill_ids": agent.skills,
+        "total": len(agent.skills)
+    }
+
+
+@api_router.post("/agents/{agent_id}/skills")
+async def bind_agent_skills(agent_id: str, request: dict):
+    """Bind skills to agent"""
+    agent = await _agent_manager.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    skill_ids = request.get("skill_ids", [])
+    if skill_ids:
+        await _agent_manager.bind_skills(agent_id, skill_ids)
+    return {"status": "bound", "skill_ids": skill_ids}
+
+
+@api_router.delete("/agents/{agent_id}/skills/{skill_id}")
+async def unbind_agent_skill(agent_id: str, skill_id: str):
+    """Unbind skill from agent"""
+    agent = await _agent_manager.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    await _agent_manager.unbind_skill(agent_id, skill_id)
+    return {"status": "unbound"}
+
+
+@api_router.get("/agents/{agent_id}/tools")
+async def get_agent_tools(agent_id: str):
+    """Get tools bound to agent"""
+    agent = await _agent_manager.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    bindings = await _agent_manager.get_tool_bindings(agent_id)
+    return {
+        "tools": [
+            {
+                "tool_id": b.tool_id,
+                "tool_name": b.tool_name,
+                "tool_type": b.tool_type,
+                "call_count": b.call_count,
+                "success_rate": b.success_rate,
+            }
+            for b in bindings
+        ],
+        "tool_ids": agent.tools,
+        "total": len(agent.tools)
+    }
+
+
+@api_router.post("/agents/{agent_id}/tools")
+async def bind_agent_tools(agent_id: str, request: dict):
+    """Bind tools to agent"""
+    agent = await _agent_manager.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    tool_ids = request.get("tool_ids", [])
+    if tool_ids:
+        await _agent_manager.bind_tools(agent_id, tool_ids)
+    return {"status": "bound", "tool_ids": tool_ids}
+
+
+@api_router.delete("/agents/{agent_id}/tools/{tool_id}")
+async def unbind_agent_tool(agent_id: str, tool_id: str):
+    """Unbind tool from agent"""
+    agent = await _agent_manager.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    await _agent_manager.unbind_tool(agent_id, tool_id)
+    return {"status": "unbound"}
+
+
+@api_router.post("/agents/{agent_id}/execute")
+async def execute_agent(agent_id: str, request: dict):
+    """Execute agent"""
+    import uuid
+    import time
+    
+    registry = get_agent_registry()
+    agent = registry.get(agent_id)
+    
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    
+    user_id = request.get("user_id", "system")
+    perm_mgr = get_permission_manager()
+    if not perm_mgr.check_permission(user_id, agent_id, Permission.EXECUTE):
+        raise HTTPException(status_code=403, detail=f"User '{user_id}' lacks EXECUTE permission for agent '{agent_id}'")
+    
+    agent_info = await _agent_manager.get_agent(agent_id)
+    model_name = agent_info.config.get("model", "gpt-4") if agent_info else "gpt-4"
+    _inject_model_into_agent(agent, model_name)
+    
+    if hasattr(agent, '_loop') and hasattr(agent._loop, 'set_approval_manager') and _approval_manager:
+        agent._loop.set_approval_manager(_approval_manager)
+    
+    if hasattr(agent, '_tools') and agent_info and agent_info.tools:
+        tool_registry = get_tool_registry()
+        for tool_name in agent_info.tools:
+            if not perm_mgr.check_permission(user_id, tool_name, Permission.EXECUTE):
+                raise HTTPException(status_code=403, detail=f"User '{user_id}' lacks EXECUTE permission for tool '{tool_name}'")
+            tool = tool_registry.get(tool_name)
+            if tool and hasattr(agent, 'add_tool'):
+                agent.add_tool(tool)
+    
+    if hasattr(agent, '_skills') and agent_info and agent_info.skills:
+        skill_registry = get_skill_registry()
+        for skill_name in agent_info.skills:
+            skill = skill_registry.get(skill_name)
+            if skill:
+                _inject_model_into_skill(skill, model_name)
+                if hasattr(agent, 'add_skill'):
+                    agent.add_skill(skill)
+    
+    execution_id = f"exec-{agent_id}-{uuid.uuid4().hex[:8]}"
+    start_time = time.time()
+    
+    try:
+        from core.harness.interfaces import AgentContext
+        
+        context = AgentContext(
+            session_id=request.get("session_id", "default"),
+            user_id=request.get("user_id", "system"),
+            messages=request.get("messages", []),
+            variables=request.get("context", {})
+        )
+        
+        result = await agent.execute(context)
+        
+        execution_record = {
+            "id": execution_id,
+            "agent_id": agent_id,
+            "status": "completed" if result.success else "failed",
+            "input": request.get("input", request.get("messages", [])),
+            "output": result.output,
+            "error": result.error,
+            "start_time": start_time,
+            "end_time": time.time(),
+            "duration_ms": int((time.time() - start_time) * 1000)
+        }
+        
+        _agent_executions[execution_id] = execution_record
+        
+        if agent_id not in _agent_history:
+            _agent_history[agent_id] = []
+        _agent_history[agent_id].append(execution_record)
+        
+        return {
+            "execution_id": execution_id,
+            "status": execution_record["status"],
+            "output": result.output,
+            "error": result.error,
+            "duration_ms": execution_record["duration_ms"]
+        }
+        
+    except Exception as e:
+        execution_record = {
+            "id": execution_id,
+            "agent_id": agent_id,
+            "status": "failed",
+            "error": str(e),
+            "start_time": start_time,
+            "end_time": time.time(),
+            "duration_ms": int((time.time() - start_time) * 1000)
+        }
+        _agent_executions[execution_id] = execution_record
+        
+        return {
+            "execution_id": execution_id,
+            "status": "failed",
+            "error": str(e)
+        }
+
+
+@api_router.get("/agents/executions/{execution_id}")
+async def get_agent_execution(execution_id: str):
+    """Get agent execution"""
+    execution = _agent_executions.get(execution_id)
+    if not execution:
+        raise HTTPException(status_code=404, detail=f"Execution {execution_id} not found")
+    return execution
+
+
+@api_router.get("/agents/{agent_id}/history")
+async def get_agent_history(agent_id: str, limit: int = 100, offset: int = 0):
+    """Get agent execution history"""
+    history = _agent_history.get(agent_id, [])
+    history = history[offset:offset+limit]
+    return {
+        "history": history,
+        "total": len(_agent_history.get(agent_id, []))
+    }
+
+
+@api_router.get("/agents/{agent_id}/versions")
+async def get_agent_versions(agent_id: str):
+    """Get agent versions"""
+    agent = await _agent_manager.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    versions = await _agent_manager.get_versions(agent_id)
+    return {
+        "agent_id": agent_id,
+        "versions": [{"version": v.version, "status": v.status, "created_at": v.created_at.isoformat(), "changes": v.changes} for v in versions]
+    }
+
+
+@api_router.post("/agents/{agent_id}/versions")
+async def create_agent_version(agent_id: str, request: dict):
+    """Create new agent version"""
+    changes = request.get("changes", "")
+    version = await _agent_manager.create_version(agent_id, changes)
+    if not version:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    return {"version": version.version, "status": version.status, "created_at": version.created_at.isoformat(), "changes": version.changes}
+
+
+@api_router.post("/agents/{agent_id}/versions/{version}/rollback")
+async def rollback_agent_version(agent_id: str, version: str):
+    """Rollback agent to specific version"""
+    success = await _agent_manager.rollback_version(agent_id, version)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Agent or version {version} not found")
+    return {"status": "rolled_back", "version": version}
+
+
+# ==================== Skill Management ====================
+
+@api_router.get("/skills")
+async def list_skills(
+    category: Optional[str] = None,
+    enabled_only: bool = False,
+    limit: int = 100,
+    offset: int = 0
+):
+    """List all skills"""
+    skills = await _skill_manager.list_skills(category, None, limit, offset)
+    
+    result = []
+    for s in skills:
+        if enabled_only and s.status != "enabled":
+            continue
+        result.append({
+            "id": s.id,
+            "name": s.name,
+            "category": s.type,
+            "description": s.description,
+            "enabled": s.status == "enabled",
+            "config": s.config or {},
+            "input_schema": s.input_schema or {},
+            "output_schema": s.output_schema or {},
+        })
+    
+    return {
+        "skills": result,
+        "total": _skill_manager.get_skill_count().get("total", 0),
+        "limit": limit,
+        "offset": offset
+    }
+
+
+@api_router.post("/skills")
+async def create_skill(request: SkillCreateRequest):
+    """Create a new skill"""
+    skill = await _skill_manager.create_skill(
+        name=request.name,
+        skill_type=request.category,
+        description=request.description,
+        config=request.config or {},
+        input_schema=request.input_schema or {},
+        output_schema=request.output_schema or {},
+    )
+    return {
+        "id": skill.id,
+        "status": "created",
+        "name": skill.name
+    }
+
+
+@api_router.get("/skills/{skill_id}")
+async def get_skill(skill_id: str):
+    """Get skill details"""
+    skill = await _skill_manager.get_skill(skill_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    
+    return {
+        "id": skill.id,
+        "name": skill.name,
+        "type": skill.type,
+        "category": skill.type,
+        "description": skill.description,
+        "status": skill.status,
+        "enabled": skill.status == "enabled",
+        "config": skill.config or {},
+        "input_schema": skill.input_schema or {},
+        "output_schema": skill.output_schema or {},
+    }
+
+
+@api_router.put("/skills/{skill_id}")
+async def update_skill(skill_id: str, request: dict):
+    """Update skill"""
+    from core.schemas import SkillUpdateRequest
+    skill = await _skill_manager.update_skill(
+        skill_id,
+        name=request.get("name"),
+        description=request.get("description"),
+        config=request.get("config"),
+        metadata=request.get("metadata")
+    )
+    if not skill:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    return {"status": "updated"}
+
+
+@api_router.delete("/skills/{skill_id}")
+async def delete_skill(skill_id: str):
+    """Delete skill"""
+    success = await _skill_manager.delete_skill(skill_id)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    return {"status": "deleted"}
+
+
+@api_router.post("/skills/{skill_id}/enable")
+async def enable_skill(skill_id: str):
+    """Enable skill"""
+    success = await _skill_manager.enable_skill(skill_id)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    return {"status": "enabled"}
+
+
+@api_router.post("/skills/{skill_id}/disable")
+async def disable_skill(skill_id: str):
+    """Disable skill"""
+    success = await _skill_manager.disable_skill(skill_id)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    return {"status": "disabled"}
+
+
+@api_router.get("/skills/{skill_id}/agents")
+async def get_skill_agents(skill_id: str):
+    """Get agents bound to skill"""
+    agent_ids = await _skill_manager.get_bound_agents(skill_id)
+    return {"agents": [{"id": a} for a in agent_ids], "total": len(agent_ids)}
+
+
+@api_router.get("/skills/{skill_id}/binding-stats")
+async def get_skill_binding_stats(skill_id: str):
+    """Get skill binding statistics"""
+    registry = get_skill_registry()
+    stats = registry.get_binding_stats(skill_id)
+    if not stats:
+        return {"total_agents": 0, "total_calls": 0}
+    return {
+        "total_agents": len(stats.bound_agents),
+        "total_calls": stats.total_executions,
+        "avg_success_rate": stats.success_count / stats.total_executions if stats.total_executions > 0 else 0
+    }
+
+
+@api_router.get("/skills/{skill_id}/versions")
+async def get_skill_versions(skill_id: str):
+    """Get skill versions"""
+    registry = get_skill_registry()
+    versions = registry.get_versions(skill_id)
+    return {
+        "versions": [{"version": v.version, "is_active": v.is_active} for v in versions]
+    }
+
+
+@api_router.get("/skills/{skill_id}/versions/{version}")
+async def get_skill_version(skill_id: str, version: str):
+    """Get specific skill version"""
+    registry = get_skill_registry()
+    config = registry.get_version(skill_id, version)
+    if not config:
+        raise HTTPException(status_code=404, detail=f"Version {version} not found")
+    return {"version": version, "config": {}}
+
+
+@api_router.post("/skills/{skill_id}/versions/{version}/rollback")
+async def rollback_skill_version(skill_id: str, version: str):
+    """Rollback skill version"""
+    registry = get_skill_registry()
+    registry.rollback_version(skill_id, version)
+    return {"status": "rolled_back"}
+
+
+@api_router.post("/skills/{skill_id}/execute")
+async def execute_skill(skill_id: str, request: SkillExecuteRequest):
+    """Execute skill"""
+    user_id = request.context.get("user_id", "system") if request.context else "system"
+    perm_mgr = get_permission_manager()
+    if not perm_mgr.check_permission(user_id, skill_id, Permission.EXECUTE):
+        raise HTTPException(status_code=403, detail=f"User '{user_id}' lacks EXECUTE permission for skill '{skill_id}'")
+    
+    execution = await _skill_manager.execute_skill(
+        skill_id,
+        request.input,
+        context=request.context or {},
+        mode=getattr(request, 'mode', 'inline')
+    )
+    return {
+        "execution_id": execution.id,
+        "skill_id": execution.skill_id,
+        "status": execution.status,
+        "input": execution.input_data,
+        "output": execution.output_data,
+        "error": execution.error,
+        "start_time": execution.start_time.isoformat() if execution.start_time else None,
+        "end_time": execution.end_time.isoformat() if execution.end_time else None,
+        "duration_ms": execution.duration_ms,
+    }
+
+
+@api_router.get("/skills/executions/{execution_id}")
+async def get_skill_execution(execution_id: str):
+    """Get skill execution"""
+    record = _skill_executions.get(execution_id)
+    if not record:
+        raise HTTPException(status_code=404, detail=f"Execution {execution_id} not found")
+    return record
+
+
+@api_router.get("/skills/{skill_id}/executions")
+async def list_skill_executions(skill_id: str, limit: int = 100, offset: int = 0):
+    """List skill executions"""
+    skill_executions = [
+        e for e in _skill_executions.values() 
+        if e.get("skill_id") == skill_id
+    ]
+    skill_executions = skill_executions[offset:offset+limit]
+    
+    return {
+        "executions": skill_executions,
+        "total": len([e for e in _skill_executions.values() if e.get("skill_id") == skill_id])
+    }
+
+
+@api_router.get("/skills/{skill_id}/trigger-conditions")
+async def get_skill_trigger_conditions(skill_id: str):
+    """Get skill trigger conditions (routing rules)"""
+    skill = await _skill_manager.get_skill(skill_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    
+    return {
+        "skill_id": skill_id,
+        "trigger_conditions": skill.metadata.get("trigger_conditions", []) if skill.metadata else []
+    }
+
+
+@api_router.put("/skills/{skill_id}/trigger-conditions")
+async def update_skill_trigger_conditions(skill_id: str, request: dict):
+    """Update skill trigger conditions"""
+    skill = await _skill_manager.get_skill(skill_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    
+    trigger_conditions = request.get("trigger_conditions", [])
+    await _skill_manager.update_skill(skill_id, metadata={"trigger_conditions": trigger_conditions})
+    
+    return {"status": "updated", "trigger_conditions": trigger_conditions}
+
+
+@api_router.post("/skills/{skill_id}/test-trigger")
+async def test_skill_trigger(skill_id: str, request: dict):
+    """Test if skill would be triggered by given input"""
+    skill = await _skill_manager.get_skill(skill_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    
+    test_input = request.get("input", "")
+    conditions = skill.metadata.get("trigger_conditions", []) if skill.metadata else []
+    
+    matched = False
+    for condition in conditions:
+        if condition.get("keyword") in test_input.lower():
+            matched = True
+            break
+    
+    return {
+        "skill_id": skill_id,
+        "would_trigger": matched,
+        "matched_condition": condition if matched else None
+    }
+
+
+@api_router.get("/skills/{skill_id}/evolution")
+async def get_skill_evolution_status(skill_id: str):
+    """Get skill evolution status (CAPTURED/FIX/DERIVED)"""
+    skill = await _skill_manager.get_skill(skill_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    
+    evolution = skill.metadata.get("evolution", {}) if skill.metadata else {}
+    
+    return {
+        "skill_id": skill_id,
+        "status": evolution.get("status", "stable"),
+        "last_evolution": evolution.get("last_evolution", None),
+        "evolution_count": evolution.get("evolution_count", 0),
+        "parent_skill_id": evolution.get("parent_skill_id", None),
+        "child_skill_ids": evolution.get("child_skill_ids", [])
+    }
+
+
+@api_router.post("/skills/{skill_id}/evolution")
+async def trigger_skill_evolution(skill_id: str, request: dict):
+    """Manually trigger skill evolution"""
+    skill = await _skill_manager.get_skill(skill_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    
+    trigger_type = request.get("trigger_type", "manual")
+    
+    evolution = skill.metadata.get("evolution", {}) if skill.metadata else {}
+    evolution["status"] = "capturing" if trigger_type == "capture" else "fixing"
+    evolution["last_evolution"] = datetime.utcnow().isoformat()
+    evolution["evolution_count"] = evolution.get("evolution_count", 0) + 1
+    
+    await _skill_manager.update_skill(skill_id, metadata={"evolution": evolution})
+    
+    return {
+        "status": "triggered",
+        "evolution_type": trigger_type,
+        "evolution_count": evolution["evolution_count"]
+    }
+
+
+@api_router.get("/skills/{skill_id}/lineage")
+async def get_skill_lineage(skill_id: str):
+    """Get skill lineage (evolution history)"""
+    skill = await _skill_manager.get_skill(skill_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    
+    lineage = skill.metadata.get("lineage", []) if skill.metadata else []
+    
+    return {
+        "skill_id": skill_id,
+        "lineage": lineage,
+        "total": len(lineage)
+    }
+
+
+@api_router.get("/skills/{skill_id}/captures")
+async def get_skill_captures(skill_id: str, limit: int = 100, offset: int = 0):
+    """Get captured interactions for skill"""
+    return {
+        "captures": [],
+        "total": 0,
+        "note": "Captures are stored in skill evolution module"
+    }
+
+
+@api_router.get("/skills/{skill_id}/fixes")
+async def get_skill_fixes(skill_id: str, limit: int = 100, offset: int = 0):
+    """Get applied fixes for skill"""
+    skill = await _skill_manager.get_skill(skill_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    
+    evolution = skill.metadata.get("evolution", {}) if skill.metadata else {}
+    fixes = evolution.get("fixes", [])
+    
+    return {
+        "fixes": fixes[offset:offset+limit],
+        "total": len(fixes)
+    }
+
+
+@api_router.get("/skills/{skill_id}/derived")
+async def get_skill_derived(skill_id: str):
+    """Get derived skills (children) from this skill"""
+    skill = await _skill_manager.get_skill(skill_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    
+    evolution = skill.metadata.get("evolution", {}) if skill.metadata else {}
+    child_ids = evolution.get("child_skill_ids", [])
+    
+    return {
+        "derived_skills": [{"id": c} for c in child_ids],
+        "total": len(child_ids)
+    }
+
+
+# ==================== Memory Management ====================
+
+@api_router.get("/memory/sessions")
+async def list_sessions(limit: int = 100, offset: int = 0):
+    """List memory sessions"""
+    sessions = await _memory_manager.list_sessions(limit=limit, offset=offset)
+    
+    result = []
+    for s in sessions:
+        result.append({
+            "session_id": s.id,
+            "metadata": s.metadata,
+            "created_at": s.created_at.isoformat() if s.created_at else None,
+            "updated_at": s.last_activity.isoformat() if s.last_activity else None,
+            "message_count": s.message_count
+        })
+    
+    counts = _memory_manager.get_session_count()
+    return {
+        "sessions": result,
+        "total": counts["total"]
+    }
+
+
+@api_router.post("/memory/sessions")
+async def create_session(request: SessionCreateRequest):
+    """Create memory session"""
+    session = await _memory_manager.create_session(
+        agent_type=request.metadata.get("agent_type", "default") if request.metadata else "default",
+        user_id=request.metadata.get("user_id", "system") if request.metadata else "system",
+        session_type=request.metadata.get("session_type", "short_term") if request.metadata else "short_term",
+        metadata=request.metadata
+    )
+    return {"session_id": session.id, "status": "created"}
+
+
+@api_router.get("/memory/sessions/{session_id}")
+async def get_session(session_id: str):
+    """Get session details"""
+    session = await _memory_manager.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+    
+    messages = await _memory_manager.get_messages(session_id)
+    return {
+        "session_id": session_id,
+        "messages": [
+            {"role": m.role, "content": m.content, "timestamp": m.created_at.isoformat() if m.created_at else None}
+            for m in messages
+        ],
+        "metadata": session.metadata,
+        "message_count": len(messages)
+    }
+
+
+@api_router.delete("/memory/sessions/{session_id}")
+async def delete_session(session_id: str):
+    """Delete session"""
+    success = await _memory_manager.delete_session(session_id)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+    return {"status": "deleted", "session_id": session_id}
+
+
+@api_router.get("/memory/sessions/{session_id}/context")
+async def get_session_context(session_id: str):
+    """Get session context"""
+    context = await _memory_manager.get_context(session_id)
+    if not context:
+        raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+    return {
+        "session_id": session_id,
+        "context": {
+            "messages": context.get("messages", []),
+            "message_count": len(context.get("messages", []))
+        }
+    }
+
+
+@api_router.post("/memory/sessions/{session_id}/messages")
+async def add_message(session_id: str, request: MessageCreateRequest):
+    """Add message to session"""
+    session = await _memory_manager.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+    
+    message = await _memory_manager.add_message(
+        session_id=session_id,
+        role=request.role,
+        content=request.content,
+        metadata=request.metadata
+    )
+    
+    return {
+        "status": "added",
+        "message": {
+            "role": message.role,
+            "content": message.content,
+            "timestamp": message.created_at.isoformat() if message.created_at else None
+        }
+    }
+
+
+@api_router.post("/memory/search")
+async def search_memory(request: SearchRequest):
+    """Search memory"""
+    results = await _memory_manager.search_memory(request.query, request.limit)
+    return {"results": results, "total": len(results)}
+
+
+@api_router.get("/memory/stats")
+async def get_memory_stats():
+    """Get memory statistics"""
+    stats = await _memory_manager.get_stats()
+    counts = _memory_manager.get_session_count()
+    return {
+        "total_sessions": stats.total_sessions,
+        "active_sessions": stats.active_sessions,
+        "idle_sessions": stats.idle_sessions,
+        "ended_sessions": stats.ended_sessions,
+        "total_messages": stats.total_messages,
+        "storage_size_mb": stats.storage_size_mb,
+        "today_queries": stats.today_queries
+    }
+
+
+@api_router.post("/memory/cleanup")
+async def cleanup_memory(request: dict):
+    """Cleanup memory"""
+    max_messages = request.get("max_messages", 100)
+    cleaned = await _memory_manager.cleanup_memory(max_messages)
+    return {"status": "cleaned", "sessions_cleaned": cleaned}
+
+
+@api_router.get("/memory/export")
+async def export_memory():
+    """Export memory data"""
+    counts = _memory_manager.get_session_count()
+    stats = await _memory_manager.get_stats()
+    return {
+        "total_sessions": counts["total"],
+        "stats": {
+            "active": counts["active"],
+            "idle": counts["idle"],
+            "ended": counts["ended"],
+            "total_messages": stats.total_messages
+        }
+    }
+
+
+@api_router.post("/memory/import")
+async def import_memory(request: dict):
+    """Import memory data"""
+    sessions = request.get("sessions", [])
+    imported = 0
+    for s in sessions:
+        agent_type = s.get("agent_type", "default")
+        user_id = s.get("user_id", "system")
+        await _memory_manager.create_session(agent_type=agent_type, user_id=user_id, metadata=s.get("metadata"))
+        imported += 1
+    return {"status": "imported", "sessions_imported": imported}
+
+
+# ==================== Knowledge Management ====================
+
+@api_router.get("/knowledge/collections")
+async def list_collections(limit: int = 100, offset: int = 0):
+    """List knowledge collections"""
+    collections = await _knowledge_manager.list_collections(limit=limit, offset=offset)
+    counts = _knowledge_manager.get_collection_count()
+    
+    return {
+        "collections": [
+            {
+                "collection_id": c.id,
+                "name": c.name,
+                "description": c.description,
+                "status": c.status,
+                "document_count": c.document_count,
+                "created_at": c.created_at.isoformat() if c.created_at else None,
+                "updated_at": c.updated_at.isoformat() if c.updated_at else None,
+            }
+            for c in collections
+        ],
+        "total": counts["total"]
+    }
+
+
+@api_router.post("/knowledge/collections")
+async def create_collection(request: CollectionCreateRequest):
+    """Create knowledge collection"""
+    collection = await _knowledge_manager.create_collection(
+        name=request.name,
+        description=request.description,
+        metadata=request.metadata
+    )
+    return {"collection_id": collection.id, "status": "created"}
+
+
+@api_router.get("/knowledge/collections/{collection_id}")
+async def get_collection(collection_id: str):
+    """Get collection details"""
+    collection = await _knowledge_manager.get_collection(collection_id)
+    if not collection:
+        raise HTTPException(status_code=404, detail=f"Collection {collection_id} not found")
+    
+    return {
+        "collection_id": collection.id,
+        "name": collection.name,
+        "description": collection.description,
+        "status": collection.status,
+        "config": collection.config,
+        "document_count": collection.document_count,
+        "total_size_mb": collection.total_size_mb,
+        "created_at": collection.created_at.isoformat() if collection.created_at else None,
+        "updated_at": collection.updated_at.isoformat() if collection.updated_at else None,
+        "metadata": collection.metadata
+    }
+
+
+@api_router.put("/knowledge/collections/{collection_id}")
+async def update_collection(collection_id: str, request: dict):
+    """Update collection"""
+    collection = await _knowledge_manager.update_collection(
+        collection_id,
+        name=request.get("name"),
+        description=request.get("description"),
+        config=request.get("config")
+    )
+    if not collection:
+        raise HTTPException(status_code=404, detail=f"Collection {collection_id} not found")
+    return {"status": "updated", "collection_id": collection_id}
+
+
+@api_router.delete("/knowledge/collections/{collection_id}")
+async def delete_collection(collection_id: str):
+    """Delete collection"""
+    success = await _knowledge_manager.delete_collection(collection_id)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Collection {collection_id} not found")
+    return {"status": "deleted", "collection_id": collection_id}
+
+
+@api_router.post("/knowledge/collections/{collection_id}/reindex")
+async def reindex_collection(collection_id: str):
+    """Reindex collection"""
+    success = await _knowledge_manager.reindex_collection(collection_id)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Collection {collection_id} not found")
+    
+    docs = await _knowledge_manager.list_documents(collection_id)
+    return {"status": "reindexed", "documents_reindexed": len(docs)}
+
+
+@api_router.post("/knowledge/documents")
+async def create_document(request: DocumentCreateRequest):
+    """Create document"""
+    collection_id = request.metadata.get("collection_id") if request.metadata else None
+    if collection_id:
+        collection = await _knowledge_manager.get_collection(collection_id)
+        if not collection:
+            raise HTTPException(status_code=404, detail=f"Collection {collection_id} not found")
+    
+    doc = await _knowledge_manager.upload_document(
+        collection_id=collection_id or "default",
+        name=request.metadata.get("name", "untitled") if request.metadata else "untitled",
+        doc_type=request.metadata.get("type", "txt") if request.metadata else "txt",
+        content=b"",
+        metadata=request.metadata
+    )
+    return {"document_id": doc.id, "status": "created"}
+
+
+@api_router.get("/knowledge/documents/{document_id}")
+async def get_document(document_id: str):
+    """Get document"""
+    doc = await _knowledge_manager.get_document(document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail=f"Document {document_id} not found")
+    return {
+        "document_id": doc.id,
+        "collection_id": doc.collection_id,
+        "name": doc.name,
+        "type": doc.type,
+        "size_mb": doc.size_mb,
+        "status": doc.status,
+        "chunks": doc.chunks,
+        "created_at": doc.created_at.isoformat() if doc.created_at else None
+    }
+
+
+@api_router.get("/knowledge/collections/{collection_id}/documents")
+async def list_documents(collection_id: str, limit: int = 100, offset: int = 0):
+    """List documents"""
+    collection = await _knowledge_manager.get_collection(collection_id)
+    if not collection:
+        raise HTTPException(status_code=404, detail=f"Collection {collection_id} not found")
+    
+    docs = await _knowledge_manager.list_documents(collection_id, limit=limit, offset=offset)
+    return {
+        "documents": [
+            {
+                "document_id": d.id,
+                "name": d.name,
+                "type": d.type,
+                "status": d.status,
+                "chunks": d.chunks
+            }
+            for d in docs
+        ],
+        "total": collection.document_count
+    }
+
+
+@api_router.delete("/knowledge/documents/{document_id}")
+async def delete_document(document_id: str):
+    """Delete document"""
+    success = await _knowledge_manager.delete_document(document_id)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Document {document_id} not found")
+    return {"status": "deleted", "document_id": document_id}
+
+
+@api_router.post("/knowledge/search")
+async def search_knowledge(request: SearchRequest):
+    """Search knowledge"""
+    results = await _knowledge_manager.search(
+        collection_id=request.metadata.get("collection_id") if request.metadata else "",
+        query=request.query,
+        top_k=request.limit
+    )
+    return {
+        "results": [
+            {
+                "content": r.content,
+                "score": r.score,
+                "metadata": r.metadata
+            }
+            for r in results
+        ],
+        "total": len(results)
+    }
+
+
+@api_router.get("/knowledge/collections/{collection_id}/search/logs")
+async def get_search_logs(collection_id: str, limit: int = 100, offset: int = 0):
+    """Get search logs"""
+    return {"logs": [], "total": 0}
+
+
+# ==================== Adapter Management ====================
+
+@api_router.get("/adapters")
+async def list_adapters(limit: int = 100, offset: int = 0):
+    """List adapters"""
+    adapters = await _adapter_manager.list_adapters(limit=limit, offset=offset)
+    counts = _adapter_manager.get_adapter_count()
+    
+    return {
+        "adapters": [
+            {
+                "adapter_id": a.id,
+                "name": a.name,
+                "provider": a.provider,
+                "description": a.description,
+                "status": a.status,
+                "models": a.models
+            }
+            for a in adapters
+        ],
+        "total": counts["total"]
+    }
+
+
+@api_router.post("/adapters")
+async def create_adapter(request: AdapterCreateRequest):
+    """Create adapter"""
+    adapter = await _adapter_manager.create_adapter(
+        name=request.name,
+        provider=request.provider,
+        api_key=request.api_key,
+        api_base_url=request.api_base_url,
+        description=request.description
+    )
+    return {"adapter_id": adapter.id, "status": "created"}
+
+
+@api_router.get("/adapters/{adapter_id}")
+async def get_adapter(adapter_id: str):
+    """Get adapter details"""
+    adapter = await _adapter_manager.get_adapter(adapter_id)
+    if not adapter:
+        raise HTTPException(status_code=404, detail=f"Adapter {adapter_id} not found")
+    
+    return {
+        "adapter_id": adapter.id,
+        "name": adapter.name,
+        "provider": adapter.provider,
+        "description": adapter.description,
+        "status": adapter.status,
+        "api_base_url": adapter.api_base_url,
+        "models": adapter.models,
+        "rate_limit": adapter.rate_limit,
+        "created_at": adapter.created_at.isoformat() if adapter.created_at else None
+    }
+
+
+@api_router.put("/adapters/{adapter_id}")
+async def update_adapter(adapter_id: str, request: AdapterUpdateRequest):
+    """Update adapter"""
+    adapter = await _adapter_manager.update_adapter(
+        adapter_id,
+        name=request.name,
+        description=request.description,
+        api_key=request.api_key,
+        api_base_url=request.api_base_url,
+        rate_limit=request.rate_limit
+    )
+    if not adapter:
+        raise HTTPException(status_code=404, detail=f"Adapter {adapter_id} not found")
+    return {"status": "updated"}
+
+
+@api_router.delete("/adapters/{adapter_id}")
+async def delete_adapter(adapter_id: str):
+    """Delete adapter"""
+    success = await _adapter_manager.delete_adapter(adapter_id)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Adapter {adapter_id} not found")
+    return {"status": "deleted"}
+
+
+@api_router.post("/adapters/{adapter_id}/test")
+async def test_adapter(adapter_id: str, request: dict):
+    """Test adapter"""
+    result = await _adapter_manager.test_connection(adapter_id)
+    return result
+
+
+@api_router.post("/adapters/{adapter_id}/enable")
+async def enable_adapter(adapter_id: str):
+    """Enable adapter"""
+    success = await _adapter_manager.enable_adapter(adapter_id)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Adapter {adapter_id} not found")
+    return {"status": "enabled"}
+
+
+@api_router.post("/adapters/{adapter_id}/disable")
+async def disable_adapter(adapter_id: str):
+    """Disable adapter"""
+    success = await _adapter_manager.disable_adapter(adapter_id)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Adapter {adapter_id} not found")
+    return {"status": "disabled"}
+
+
+@api_router.get("/adapters/{adapter_id}/models")
+async def list_adapter_models(adapter_id: str):
+    """List adapter models"""
+    adapter = await _adapter_manager.get_adapter(adapter_id)
+    if not adapter:
+        raise HTTPException(status_code=404, detail=f"Adapter {adapter_id} not found")
+    return {"models": adapter.models}
+
+
+@api_router.post("/adapters/{adapter_id}/models")
+async def add_adapter_model(adapter_id: str, request: dict):
+    """Add model to adapter"""
+    success = await _adapter_manager.add_model(
+        adapter_id,
+        request.get("name", "default"),
+        request.get("max_tokens", 4096),
+        request.get("temperature", 0.7),
+        request.get("enabled", True)
+    )
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Adapter {adapter_id} not found")
+    return {"status": "added"}
+
+
+@api_router.put("/adapters/{adapter_id}/models/{model_name}")
+async def update_adapter_model(adapter_id: str, model_name: str, request: ModelUpdateRequest):
+    """Update adapter model"""
+    return {"status": "updated"}
+
+
+@api_router.delete("/adapters/{adapter_id}/models/{model_name}")
+async def delete_adapter_model(adapter_id: str, model_name: str):
+    """Delete adapter model"""
+    success = await _adapter_manager.remove_model(adapter_id, model_name)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Adapter {adapter_id} not found")
+    return {"status": "deleted"}
+
+
+@api_router.get("/adapters/{adapter_id}/stats")
+async def get_adapter_stats(adapter_id: str):
+    """Get adapter stats"""
+    stats = await _adapter_manager.get_call_stats(adapter_id)
+    if not stats:
+        raise HTTPException(status_code=404, detail=f"Adapter {adapter_id} not found")
+    
+    success_rate = stats.success_count / stats.total_calls if stats.total_calls > 0 else 0
+    return {
+        "total_calls": stats.total_calls,
+        "success_count": stats.success_count,
+        "failed_count": stats.failed_count,
+        "success_rate": success_rate,
+        "avg_duration_ms": stats.avg_duration_ms,
+        "tokens_used": stats.tokens_used
+    }
+
+
+@api_router.get("/adapters/{adapter_id}/calls")
+async def get_adapter_calls(adapter_id: str, limit: int = 100, offset: int = 0):
+    """Get adapter calls"""
+    calls = await _adapter_manager.get_call_history(adapter_id, limit=limit, offset=offset)
+    return {
+        "calls": [
+            {
+                "id": c.id,
+                "model": c.model,
+                "status": c.status,
+                "duration_ms": c.duration_ms,
+                "tokens": c.tokens,
+                "timestamp": c.timestamp.isoformat() if c.timestamp else None
+            }
+            for c in calls
+        ],
+        "total": len(calls)
+    }
+
+
+@api_router.get("/adapters/{adapter_id}/model-distribution")
+async def get_model_distribution(adapter_id: str):
+    """Get model distribution"""
+    distribution = await _adapter_manager.get_model_distribution(adapter_id)
+    return {"distribution": distribution}
+
+
+# ==================== Harness Management ====================
+
+@api_router.get("/harness/status")
+async def get_harness_status():
+    """Get harness status"""
+    status = await _harness_manager.get_status()
+    return {
+        "status": status.status,
+        "components": status.components,
+        "uptime_seconds": status.uptime_seconds
+    }
+
+
+@api_router.get("/harness/config")
+async def get_harness_config():
+    """Get harness config"""
+    config = await _harness_manager.get_config()
+    return {
+        "max_iterations": config.max_iterations,
+        "timeout_seconds": config.timeout_seconds,
+        "retry_count": config.retry_count,
+        "retry_interval_seconds": config.retry_interval_seconds
+    }
+
+
+@api_router.put("/harness/config")
+async def update_harness_config(request: dict):
+    """Update harness config"""
+    config = await _harness_manager.update_config(
+        max_iterations=request.get("max_iterations"),
+        timeout_seconds=request.get("timeout_seconds"),
+        retry_count=request.get("retry_count"),
+        retry_interval_seconds=request.get("retry_interval_seconds")
+    )
+    return {"status": "updated", "config": config}
+
+
+@api_router.get("/harness/metrics")
+async def get_harness_metrics():
+    """Get harness metrics"""
+    metrics = await _harness_manager.get_metrics()
+    return {"metrics": metrics}
+
+
+@api_router.get("/harness/logs")
+async def get_harness_logs(limit: int = 100):
+    """Get harness logs"""
+    logs = await _harness_manager.get_execution_logs(limit=limit)
+    return {
+        "logs": [
+            {
+                "id": l.id,
+                "agent": l.agent,
+                "status": l.status,
+                "duration_ms": l.duration_ms,
+                "start_time": l.start_time.isoformat() if l.start_time else None,
+                "error": l.error
+            }
+            for l in logs
+        ]
+    }
+
+
+@api_router.get("/harness/hooks")
+async def list_hooks():
+    """List hooks"""
+    hooks = await _harness_manager.get_hooks()
+    return {
+        "hooks": [
+            {
+                "id": h.id,
+                "name": h.name,
+                "type": h.type,
+                "priority": h.priority,
+                "enabled": h.enabled
+            }
+            for h in hooks
+        ]
+    }
+
+
+@api_router.post("/harness/hooks")
+async def create_hook(request: HookCreateRequest):
+    """Create hook"""
+    hook = await _harness_manager.add_hook(
+        name=request.name,
+        hook_type=request.type,
+        priority=request.priority,
+        config=request.config
+    )
+    return {"hook_id": hook.id, "status": "created"}
+
+
+@api_router.delete("/harness/hooks/{hook_id}")
+async def delete_hook(hook_id: str):
+    """Delete hook"""
+    success = await _harness_manager.delete_hook(hook_id)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Hook {hook_id} not found")
+    return {"status": "deleted"}
+
+
+@api_router.put("/harness/hooks/{hook_id}")
+async def update_hook(hook_id: str, request: HookUpdateRequest):
+    """Update hook"""
+    hook = await _harness_manager.update_hook(
+        hook_id,
+        name=request.name,
+        priority=request.priority,
+        enabled=request.enabled,
+        config=request.config
+    )
+    if not hook:
+        raise HTTPException(status_code=404, detail=f"Hook {hook_id} not found")
+    return {"status": "updated"}
+
+
+@api_router.get("/harness/executions/{execution_id}")
+async def get_harness_execution(execution_id: str):
+    """Get harness execution"""
+    execution = await _harness_manager.get_execution(execution_id)
+    if not execution:
+        raise HTTPException(status_code=404, detail=f"Execution {execution_id} not found")
+    return {
+        "id": execution.id,
+        "agent": execution.agent,
+        "status": execution.status,
+        "duration_ms": execution.duration_ms,
+        "steps": execution.steps,
+        "error": execution.error
+    }
+
+
+@api_router.get("/harness/coordinators")
+async def list_coordinators():
+    """List coordinators"""
+    coordinators = await _harness_manager.list_coordinators()
+    return {
+        "coordinators": [
+            {
+                "id": c.id,
+                "pattern": c.pattern,
+                "agents": c.agents,
+                "status": c.status,
+                "created_at": c.created_at.isoformat() if c.created_at else None
+            }
+            for c in coordinators
+        ]
+    }
+
+
+@api_router.post("/harness/coordinators")
+async def create_coordinator(request: CoordinatorCreateRequest):
+    """Create coordinator"""
+    coordinator = await _harness_manager.create_coordinator(
+        pattern=request.pattern,
+        agents=request.agents,
+        config=request.config
+    )
+    return {"coordinator_id": coordinator.id, "status": "created"}
+
+
+@api_router.get("/harness/coordinators/{coordinator_id}")
+async def get_coordinator(coordinator_id: str):
+    """Get coordinator"""
+    coordinator = await _harness_manager.get_coordinator(coordinator_id)
+    if not coordinator:
+        raise HTTPException(status_code=404, detail=f"Coordinator {coordinator_id} not found")
+    return {
+        "coordinator_id": coordinator.id,
+        "pattern": coordinator.pattern,
+        "agents": coordinator.agents,
+        "status": coordinator.status,
+        "config": coordinator.config
+    }
+
+
+@api_router.put("/harness/coordinators/{coordinator_id}")
+async def update_coordinator(coordinator_id: str, request: dict):
+    """Update coordinator"""
+    return {"status": "updated"}
+
+
+@api_router.delete("/harness/coordinators/{coordinator_id}")
+async def delete_coordinator(coordinator_id: str):
+    """Delete coordinator"""
+    success = await _harness_manager.delete_coordinator(coordinator_id)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Coordinator {coordinator_id} not found")
+    return {"status": "deleted"}
+
+
+@api_router.get("/harness/feedback/config")
+async def get_feedback_config():
+    """Get feedback config"""
+    config = await _harness_manager.get_feedback_config()
+    return {
+        "config": {
+            "local": config.local,
+            "push": config.push,
+            "prod": config.prod
+        }
+    }
+
+
+@api_router.put("/harness/feedback/config")
+async def update_feedback_config(request: FeedbackConfigUpdateRequest):
+    """Update feedback config"""
+    config = await _harness_manager.update_feedback_config(
+        local=request.local,
+        push=request.push,
+        prod=request.prod
+    )
+    return {"status": "updated"}
+
+
+@api_router.get("/tools")
+async def list_tools(limit: int = 100, offset: int = 0):
+    """List all tools"""
+    registry = get_tool_registry()
+    tools = registry.list_tools()
+    result = []
+    for t in tools[offset:offset+limit]:
+        tool = registry.get(t)
+        info: Dict[str, Any] = {"name": t}
+        if tool:
+            info["description"] = tool.get_description()
+            info["category"] = getattr(tool._config, 'category', 'general') if hasattr(tool, '_config') else 'general'
+            stats = tool.get_stats() if hasattr(tool, 'get_stats') else None
+            if stats:
+                info["stats"] = stats
+            info["config"] = {}
+            if hasattr(tool, '_config'):
+                cfg = tool._config
+                info["config"] = {
+                    "name": cfg.name if hasattr(cfg, 'name') else t,
+                    "description": cfg.description if hasattr(cfg, 'description') else '',
+                    "timeout_seconds": cfg.timeout_seconds if hasattr(cfg, 'timeout_seconds') else None,
+                    "max_concurrent": cfg.max_concurrent if hasattr(cfg, 'max_concurrent') else None,
+                }
+            info["parameters"] = tool._config.parameters if hasattr(tool, '_config') and hasattr(tool._config, 'parameters') else {}
+            info["status"] = "enabled"
+            info["enabled"] = True
+        result.append(info)
+    return {"tools": result, "total": len(tools)}
+
+
+@api_router.get("/tools/{tool_name}")
+async def get_tool(tool_name: str):
+    """Get tool details"""
+    registry = get_tool_registry()
+    tool = registry.get(tool_name)
+    if not tool:
+        raise HTTPException(status_code=404, detail=f"Tool {tool_name} not found")
+    
+    info: Dict[str, Any] = {"name": tool_name}
+    info["description"] = tool.get_description()
+    info["category"] = getattr(tool._config, 'category', 'general') if hasattr(tool, '_config') else 'general'
+    
+    stats = tool.get_stats() if hasattr(tool, 'get_stats') else None
+    if stats:
+        info["stats"] = stats
+    
+    if hasattr(tool, '_config'):
+        cfg = tool._config
+        info["config"] = {
+            "name": cfg.name if hasattr(cfg, 'name') else tool_name,
+            "description": cfg.description if hasattr(cfg, 'description') else '',
+            "timeout_seconds": cfg.timeout_seconds if hasattr(cfg, 'timeout_seconds') else None,
+            "max_concurrent": cfg.max_concurrent if hasattr(cfg, 'max_concurrent') else None,
+        }
+    
+    info["parameters"] = tool._config.parameters if hasattr(tool, '_config') and hasattr(tool._config, 'parameters') else {}
+    info["status"] = "enabled"
+    info["enabled"] = True
+    
+    return info
+
+
+@api_router.put("/tools/{tool_name}")
+async def update_tool_config(tool_name: str, request: dict):
+    """Update tool configuration"""
+    registry = get_tool_registry()
+    tool = registry.get(tool_name)
+    if not tool:
+        raise HTTPException(status_code=404, detail=f"Tool {tool_name} not found")
+    
+    config = request.get("config", {})
+    if hasattr(tool, '_config') and hasattr(tool._config, 'parameters'):
+        if "timeout_seconds" in config:
+            tool._config.parameters["timeout_seconds"] = config["timeout_seconds"]
+            if hasattr(tool._config, 'timeout_seconds'):
+                tool._config.timeout_seconds = config["timeout_seconds"]
+        if "max_concurrent" in config:
+            tool._config.parameters["max_concurrent"] = config["max_concurrent"]
+            if hasattr(tool._config, 'max_concurrent'):
+                tool._config.max_concurrent = config["max_concurrent"]
+    
+    return {"status": "updated", "name": tool_name}
+
+
+@api_router.post("/tools/{tool_name}/execute")
+async def execute_tool(tool_name: str, request: dict):
+    """Execute a tool with given parameters"""
+    import asyncio
+    
+    registry = get_tool_registry()
+    tool = registry.get(tool_name)
+    if not tool:
+        raise HTTPException(status_code=404, detail=f"Tool {tool_name} not found")
+    
+    input_data = request.get("input", {})
+    
+    try:
+        result = await asyncio.wait_for(
+            tool.execute(input_data if isinstance(input_data, dict) else {}),
+            timeout=60
+        )
+        return {
+            "success": result.success if hasattr(result, 'success') else True,
+            "output": result.output if hasattr(result, 'output') else str(result),
+            "error": result.error if hasattr(result, 'error') and result.error else None,
+            "latency": result.latency if hasattr(result, 'latency') else 0,
+        }
+    except asyncio.TimeoutError:
+        return {"success": False, "error": "Tool execution timed out (60s)", "latency": 60000}
+    except Exception as e:
+        return {"success": False, "error": str(e), "latency": 0}
+
+
+# ==================== Health Check ====================
+
+@api_router.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {"status": "healthy"}
+
+
+@api_router.get("/")
+async def root():
+    """Root endpoint"""
+    return {"message": "aiPlat-core API", "version": "0.1.0"}
+
+
+app.include_router(api_router)
+
+
+def run_server(host: str = "0.0.0.0", port: int = 8002):
+    """Run the server"""
+    uvicorn.run(app, host=host, port=port)
+
+
+if __name__ == "__main__":
+    run_server()
