@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Callable
 import asyncio
+import os
 
 from ..interfaces.loop import (
     ILoop,
@@ -18,6 +19,8 @@ from ..interfaces.loop import (
 )
 from ..infrastructure.hooks import HookManager, HookPhase, HookContext
 from .tool_calling import parse_action_call, parse_tool_call
+from ..syscalls import sys_llm_generate, sys_skill_call, sys_tool_call
+from ..assembly import PromptAssembler
 
 
 class BaseLoop(ILoop):
@@ -96,11 +99,18 @@ class BaseLoop(ILoop):
             await self._trigger_hook(HookPhase.STOP, {"state": self._current_state, "reason": stop_reason})
             await self._trigger_hook(HookPhase.SESSION_END, {"state": self._current_state, "reason": stop_reason})
             
+            error = None
+            if self._current_state.current == LoopStateEnum.PAUSED:
+                error = self._current_state.context.get("error") or "paused"
+            elif self._current_state.current == LoopStateEnum.ERROR:
+                error = self._current_state.context.get("error") or "error"
+
             return LoopResult(
                 success=self._current_state.current == LoopStateEnum.FINISHED,
                 final_state=self._current_state,
                 output=self._current_state.context.get("output"),
-                metadata={"steps": self._current_state.step_count}
+                error=error,
+                metadata={"steps": self._current_state.step_count, "stop_reason": stop_reason}
             )
             
         except Exception as e:
@@ -240,6 +250,10 @@ class ReActLoop(BaseLoop):
     
     def _approval_check(self, tool_name: str, context: Dict[str, Any]) -> None:
         """Check tool approval via ApprovalManager. Raises if denied."""
+        # Phase 3+: approval is migrating into sys_tool (PolicyGate). When enabled,
+        # avoid double-approval here to keep behavior stable.
+        if os.getenv("AIPLAT_SYSCALL_ENFORCE_APPROVAL", "false").lower() in ("1", "true", "yes", "y"):
+            return
         if not self._approval_manager:
             return
         try:
@@ -285,17 +299,27 @@ class ReActLoop(BaseLoop):
             "state": state.current.value
         })
 
-        await self._trigger_hook(HookPhase.PRE_REASONING, state.context)
-        state.current = LoopStateEnum.REASONING
-        reasoning = await self._reason(state)
-        state.context["reasoning"] = reasoning
-        await self._trigger_hook(HookPhase.POST_REASONING, state.context)
+        # Resume semantics: if kernel is resuming from a paused state, we may skip reasoning
+        # and re-run the previous action after approval is granted.
+        if state.metadata.pop("resume_skip_reason", False):
+            reasoning = state.context.get("reasoning", "")
+        else:
+            await self._trigger_hook(HookPhase.PRE_REASONING, state.context)
+            state.current = LoopStateEnum.REASONING
+            reasoning = await self._reason(state)
+            state.context["reasoning"] = reasoning
+            await self._trigger_hook(HookPhase.POST_REASONING, state.context)
 
         state.current = LoopStateEnum.ACTING
         await self._trigger_hook(HookPhase.PRE_ACT, state.context)
         action_result = await self._act(state)
         state.context["action_result"] = action_result
         await self._trigger_hook(HookPhase.POST_ACT, state.context)
+
+        # If a syscall requested pause (approval_required / policy_denied), stop here.
+        if state.metadata.get("pause_requested"):
+            state.current = LoopStateEnum.PAUSED
+            return state
 
         state.current = LoopStateEnum.OBSERVING
         await self._trigger_hook(HookPhase.PRE_OBSERVE, state.context)
@@ -323,7 +347,15 @@ class ReActLoop(BaseLoop):
             for t in self._tools
         ]) if self._tools else "No tools available"
 
-        prompt = f"""Task: {task}
+        if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y"):
+            prompt = PromptAssembler().build_react_reasoning_messages(
+                task=task,
+                history=history,
+                tools_desc=tools_desc,
+                observation=state.context.get("observation", "None"),
+            )
+        else:
+            prompt = f"""Task: {task}
 
 History:
 {history}
@@ -354,7 +386,11 @@ If finished, respond with:
 DONE: final_answer
 """
         try:
-            response = await self._model.generate([{"role": "user", "content": prompt}])
+            trace_ctx = {
+                "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
+                "run_id": state.context.get("_run_id") or state.context.get("run_id"),
+            }
+            response = await sys_llm_generate(self._model, prompt, trace_context=trace_ctx)
             return response.content
         except Exception as e:
             return f"Model error: {e}"
@@ -385,7 +421,17 @@ DONE: final_answer
                             user_id=state.context.get("user_id", "system"),
                             variables=skill_args,
                         )
-                        result = await skill.execute(skill_context, skill_args)
+                        result = await sys_skill_call(
+                            skill,
+                            skill_args,
+                            context=skill_context,
+                            user_id=skill_context.user_id,
+                            session_id=skill_context.session_id,
+                            trace_context={
+                                "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
+                                "run_id": state.context.get("_run_id") or state.context.get("run_id"),
+                            },
+                        )
                         result_output = result.output if hasattr(result, 'output') else str(result)
                     except Exception as e:
                         result_output = f"Skill error: {e}"
@@ -412,9 +458,42 @@ DONE: final_answer
                 self._approval_check(tool_name, state.context)
                 await self._trigger_hook(HookPhase.PRE_TOOL_USE, {"tool_name": tool_name, "tool_args": tool_args, "format": parsed.format})
                 try:
-                    result = await tool.execute(tool_args)
-                    result_output = result.output if hasattr(result, 'output') else str(result)
-                    ok = bool(getattr(result, "success", True))
+                    # If we are resuming an approval-required tool call, attach the approval_request_id
+                    # so PolicyGate can validate and allow execution.
+                    approval_meta = state.context.get("approval") if isinstance(state.context.get("approval"), dict) else {}
+                    approval_req_id = approval_meta.get("approval_request_id")
+                    if approval_req_id:
+                        try:
+                            tool_args = dict(tool_args or {})
+                            tool_args["_approval_request_id"] = approval_req_id
+                        except Exception:
+                            pass
+                    result = await sys_tool_call(
+                        tool,
+                        tool_args,
+                        user_id=state.context.get("user_id", "system"),
+                        session_id=state.context.get("session_id", "default"),
+                        trace_context={
+                            "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
+                            "run_id": state.context.get("_run_id") or state.context.get("run_id"),
+                        },
+                    )
+                    # Standardized syscall result handling
+                    if getattr(result, "error", None) == "approval_required":
+                        state.context["error"] = "approval_required"
+                        state.context["approval"] = getattr(result, "metadata", {}) or {}
+                        state.metadata["pause_requested"] = True
+                        result_output = "Approval required"
+                        ok = False
+                    elif getattr(result, "error", None) == "policy_denied":
+                        state.context["error"] = "policy_denied"
+                        state.context["policy"] = getattr(result, "metadata", {}) or {}
+                        state.metadata["pause_requested"] = True
+                        result_output = "Policy denied"
+                        ok = False
+                    else:
+                        result_output = result.output if hasattr(result, 'output') else str(result)
+                        ok = bool(getattr(result, "success", True))
                 except Exception as e:
                     result_output = f"Tool error: {e}"
                     ok = False
@@ -488,18 +567,26 @@ class PlanExecuteLoop(BaseLoop):
         state.current = LoopStateEnum.REASONING
         
         if self._model:
-            prompt = (
-                "请为任务生成可执行的步骤计划。\n"
-                "要求：\n"
-                "1) 普通步骤用自然语言描述即可。\n"
-                "2) 若某一步需要调用工具，请用结构化 JSON 表达（单行）：\n"
-                "   {\"tool\":\"tool_name\",\"args\":{...}}\n"
-                "3) 若某一步需要调用 skill，也必须显式标注（单行）：\n"
-                "   {\"skill\":\"skill_name\",\"args\":{...}}\n"
-                f"\nTask: {state.context.get('task', '')}\n"
-            )
-            response = await self._model.generate(
-                [{"role": "user", "content": prompt}]
+            if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y"):
+                prompt = PromptAssembler().build_plan_execute_plan_messages(task=state.context.get("task", ""))
+            else:
+                prompt = (
+                    "请为任务生成可执行的步骤计划。\n"
+                    "要求：\n"
+                    "1) 普通步骤用自然语言描述即可。\n"
+                    "2) 若某一步需要调用工具，请用结构化 JSON 表达（单行）：\n"
+                    "   {\"tool\":\"tool_name\",\"args\":{...}}\n"
+                    "3) 若某一步需要调用 skill，也必须显式标注（单行）：\n"
+                    "   {\"skill\":\"skill_name\",\"args\":{...}}\n"
+                    f"\nTask: {state.context.get('task', '')}\n"
+                )
+            response = await sys_llm_generate(
+                self._model,
+                prompt,
+                trace_context={
+                    "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
+                    "run_id": state.context.get("_run_id") or state.context.get("run_id"),
+                },
             )
             
             # Parse plan (simplified)
@@ -539,7 +626,16 @@ class PlanExecuteLoop(BaseLoop):
                     if str(tool_name).strip().lower() == str(parsed_action.name).strip().lower():
                         try:
                             await self._trigger_hook(HookPhase.PRE_TOOL_USE, {"tool": tool_name, "tool_args": parsed_action.args, "format": parsed_action.format})
-                            result = await tool.execute(parsed_action.args)
+                            result = await sys_tool_call(
+                                tool,
+                                parsed_action.args,
+                                user_id=state.context.get("user_id", "system"),
+                                session_id=state.context.get("session_id", "default"),
+                                trace_context={
+                                    "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
+                                    "run_id": state.context.get("_run_id") or state.context.get("run_id"),
+                                },
+                            )
                             step_result = result.output if hasattr(result, "output") else str(result)
                             await self._trigger_hook(HookPhase.POST_TOOL_USE, {"tool": tool_name, "result": step_result, "format": parsed_action.format})
                             break
@@ -560,7 +656,17 @@ class PlanExecuteLoop(BaseLoop):
                                 tools=[t.name for t in self._tools if hasattr(t, "name")],
                             )
                             await self._trigger_hook(HookPhase.PRE_SKILL_USE, {"skill": skill_name, "skill_args": parsed_action.args, "format": parsed_action.format})
-                            result = await skill.execute(skill_context, parsed_action.args)
+                            result = await sys_skill_call(
+                                skill,
+                                parsed_action.args,
+                                context=skill_context,
+                                user_id=skill_context.user_id,
+                                session_id=skill_context.session_id,
+                                trace_context={
+                                    "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
+                                    "run_id": state.context.get("_run_id") or state.context.get("run_id"),
+                                },
+                            )
                             step_result = result.output if hasattr(result, "output") else str(result)
                             await self._trigger_hook(HookPhase.POST_SKILL_USE, {"skill": skill_name, "result": step_result, "format": parsed_action.format})
                             break
@@ -570,9 +676,20 @@ class PlanExecuteLoop(BaseLoop):
             # Fall back to model for this step
             if step_result is None and self._model:
                 try:
-                    prompt = f"Execute this step: {action}\nContext: {state.context.get('task', '')}"
-                    response = await self._model.generate(
-                        [{"role": "user", "content": prompt}]
+                    if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y"):
+                        prompt = PromptAssembler().build_plan_execute_step_messages(
+                            action=action,
+                            task=state.context.get("task", ""),
+                        )
+                    else:
+                        prompt = f"Execute this step: {action}\nContext: {state.context.get('task', '')}"
+                    response = await sys_llm_generate(
+                        self._model,
+                        prompt,
+                        trace_context={
+                            "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
+                            "run_id": state.context.get("_run_id") or state.context.get("run_id"),
+                        },
                     )
                     step_result = response.content
                 except Exception as e:

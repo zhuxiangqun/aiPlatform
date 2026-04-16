@@ -14,6 +14,8 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 import sse_starlette
 
+from core.harness.syscalls.tool import sys_tool_call
+
 from .types import (
     JSONRPCRequest,
     JSONRPCResponse,
@@ -191,12 +193,17 @@ class MCPServer:
                 try:
                     # Assume tool has execute method
                     if hasattr(tool, 'execute'):
-                        result_obj = await tool.execute(arguments)
+                        result_obj = await sys_tool_call(
+                            tool,
+                            arguments if isinstance(arguments, dict) else {},
+                            user_id="system",
+                            session_id="mcp",
+                        )
                         result = {
                             "content": [
                                 {
                                     "type": "text",
-                                    "text": str(result_obj.output) if hasattr(result_obj, 'output') else str(result_obj)
+                                    "text": str(getattr(result_obj, "output", None) or getattr(result_obj, "error", None) or result_obj)
                                 }
                             ]
                         }

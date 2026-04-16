@@ -7,7 +7,10 @@ Provides base node classes and common node implementations.
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, List, Optional, TypedDict
 import asyncio
+import os
 from ...tool_calling import parse_action_call
+from ....syscalls import sys_llm_generate, sys_tool_call
+from ....assembly import PromptAssembler
 
 
 class AgentState(TypedDict, total=False):
@@ -87,7 +90,7 @@ class ReasonNode(BaseNode):
         
         # Get response from model
         if self._model:
-            response = await self._model.generate(prompt)
+            response = await sys_llm_generate(self._model, prompt)
             reasoning = response.content
         else:
             reasoning = "No model available"
@@ -95,12 +98,19 @@ class ReasonNode(BaseNode):
         step_count = int(state.get("step_count", 0) or 0) + 1
         return {"reasoning": reasoning, "step_count": step_count}
 
-    def _build_prompt(self, state: AgentState) -> str:
+    def _build_prompt(self, state: AgentState):
         """Build reasoning prompt from state"""
         messages = state.get("messages") or []
         history = "\n".join([f"{msg.get('role', 'user')}: {msg.get('content', '')}" for msg in messages[-5:]])
-        
-        prompt = f"""Current state:
+        if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y"):
+            return PromptAssembler().build_langgraph_reason_messages(
+                history=history,
+                reasoning=str(state.get("reasoning", "") or ""),
+                action=str(state.get("action", "") or ""),
+                observation=str(state.get("observation", "") or ""),
+            )
+
+        return f"""Current state:
 - History: {history}
 - Reasoning: {state.get('reasoning','')}
 - Action: {state.get('action','')}
@@ -118,7 +128,6 @@ ACTION: tool_name: {{json_or_text}}
 
 If finished, respond with: DONE
 """
-        return prompt
 
 
 class ActNode(BaseNode):
@@ -155,7 +164,13 @@ class ActNode(BaseNode):
             tool = self._get_tool(action)
             if tool:
                 try:
-                    result = await tool.execute(tool_args)
+                    ctx = state.get("context") or {}
+                    result = await sys_tool_call(
+                        tool,
+                        tool_args,
+                        user_id=str(ctx.get("user_id", "system")),
+                        session_id=str(ctx.get("session_id", "default")),
+                    )
                     action_result = str(result.output or result.error or "Success")
                 except Exception as e:
                     action_result = f"Error: {str(e)}"
@@ -209,9 +224,12 @@ class ObserveNode(BaseNode):
         
         # If model available, use it to process observation
         if self._model and observation:
-            prompt = f"Observation: {observation}\nWhat does this mean for the next step?"
+            if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y"):
+                prompt = PromptAssembler().build_langgraph_observe_messages(observation=str(observation))
+            else:
+                prompt = f"Observation: {observation}\nWhat does this mean for the next step?"
             try:
-                response = await self._model.generate(prompt)
+                response = await sys_llm_generate(self._model, prompt)
                 # Could add processed observation to state
             except Exception:
                 pass
@@ -242,10 +260,19 @@ class ToolNode(BaseNode):
         params = context.get("tool_params", {}) if isinstance(context, dict) else {}
         
         try:
-            result = await self._tool.execute(params)
+            result = await sys_tool_call(
+                self._tool,
+                params if isinstance(params, dict) else {},
+                user_id=str(context.get("user_id", "system")) if isinstance(context, dict) else "system",
+                session_id=str(context.get("session_id", "default")) if isinstance(context, dict) else "default",
+                trace_context={
+                    "trace_id": (state.get("metadata") or {}).get("trace_id") if isinstance(state.get("metadata"), dict) else None,
+                    "run_id": (state.get("metadata") or {}).get("graph_run_id") if isinstance(state.get("metadata"), dict) else None,
+                },
+            )
             return {
-                "tool_result": result.output,
-                "tool_error": result.error,
+                "tool_result": getattr(result, "output", None),
+                "tool_error": getattr(result, "error", None),
             }
         except Exception as e:
             return {

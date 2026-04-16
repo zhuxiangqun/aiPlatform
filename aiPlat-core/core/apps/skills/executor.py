@@ -16,6 +16,7 @@ from .base import BaseSkill
 from .registry import get_skill_registry, SkillRegistry
 from ...harness.interfaces import SkillContext, SkillResult
 from ...apps.tools.base import get_tool_registry
+from ...harness.syscalls import sys_skill_call
 
 
 @dataclass
@@ -129,7 +130,13 @@ class SkillExecutor:
                 return SkillResult(success=False, error="Parameter validation failed")
 
             result = await asyncio.wait_for(
-                skill.execute(context, params),
+                sys_skill_call(
+                    skill,
+                    params,
+                    context=context,
+                    user_id=context.user_id,
+                    session_id=context.session_id,
+                ),
                 timeout=effective_timeout
             )
 

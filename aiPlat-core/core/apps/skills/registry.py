@@ -55,8 +55,6 @@ class SkillRegistry:
         Creates real BaseSkill subclass instances for skills that have them,
         and GenericSkill instances for skills that don't.
         """
-        from ...adapters.llm import create_adapter
-        
         builtin_skills = [
             ("text_generation", "文本生成", "generation", "根据提示生成各类文本内容", True),
             ("code_generation", "代码生成", "generation", "根据需求描述生成代码", False),
@@ -308,9 +306,11 @@ class _GenericSkill(BaseSkill):
                 prompt += f"\nInput: {params}"
         
         try:
-            response = await self._model.generate([
+            from ...harness.syscalls.llm import sys_llm_generate
+
+            response = await sys_llm_generate(self._model, [
                 {"role": "system", "content": f"You are a {self._config.description}."},
-                {"role": "user", "content": prompt}
+                {"role": "user", "content": prompt},
             ])
             return SkillResult(
                 success=True,

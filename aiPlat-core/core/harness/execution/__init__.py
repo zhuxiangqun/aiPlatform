@@ -68,6 +68,9 @@ from .executor import (
     create_unified_executor,
 )
 
+# Phase 5: EngineRouter (minimal)
+from .router import EngineRouter
+
 __all__ = [
     # Loop
     "BaseLoop",
@@ -126,4 +129,7 @@ __all__ = [
     "ExecutionResponse",
     "UnifiedExecutor",
     "create_unified_executor",
+
+    # Phase 5
+    "EngineRouter",
 ]

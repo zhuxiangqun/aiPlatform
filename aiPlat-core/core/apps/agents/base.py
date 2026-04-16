@@ -81,16 +81,48 @@ class BaseAgent(IAgent):
         
         try:
             # Prepare initial state
-            from ...harness.interfaces import LoopState
-            state = LoopState(
-                context={
-                    "task": context.messages[-1].get("content", "") if context.messages else "",
-                    "session_id": context.session_id,
-                    "user_id": context.user_id,
-                    **context.variables
-                },
-                step_count=0
-            )
+            from ...harness.interfaces import LoopState, LoopStateEnum
+
+            resume_snapshot = None
+            try:
+                if isinstance(context.variables, dict):
+                    resume_snapshot = context.variables.get("_resume_loop_state")
+            except Exception:
+                resume_snapshot = None
+
+            if isinstance(resume_snapshot, dict):
+                # Resume from a paused loop state snapshot (Phase 3.5).
+                try:
+                    cur = str(resume_snapshot.get("current", "paused"))
+                    current_enum = LoopStateEnum(cur) if cur in [e.value for e in LoopStateEnum] else LoopStateEnum.PAUSED
+                except Exception:
+                    current_enum = LoopStateEnum.PAUSED
+
+                state = LoopState(
+                    current=current_enum,
+                    step_count=int(resume_snapshot.get("step_count", 0) or 0),
+                    used_tokens=int(resume_snapshot.get("used_tokens", 0) or 0),
+                    max_tokens=int(resume_snapshot.get("max_tokens", 8192) or 8192),
+                    budget_remaining=float(resume_snapshot.get("budget_remaining", 1.0) or 1.0),
+                    context=resume_snapshot.get("context") or {},
+                    history=resume_snapshot.get("history") or [],
+                    metadata=resume_snapshot.get("metadata") or {},
+                )
+                # Switch to "resume" mode: skip reasoning once and re-run act.
+                state.current = LoopStateEnum.ACTING
+                state.metadata = dict(state.metadata or {})
+                state.metadata.pop("pause_requested", None)
+                state.metadata["resume_skip_reason"] = True
+            else:
+                state = LoopState(
+                    context={
+                        "task": context.messages[-1].get("content", "") if context.messages else "",
+                        "session_id": context.session_id,
+                        "user_id": context.user_id,
+                        **context.variables
+                    },
+                    step_count=0
+                )
             
             # Inject model, skills, and tools into the loop before running
             if self._loop:
@@ -120,6 +152,20 @@ class BaseAgent(IAgent):
                     self._loop.set_skills(resolved_skills)
                 
                 result = await self._loop.run(state, LoopConfig())
+
+                # Include a minimal loop checkpoint snapshot when paused (for resume).
+                loop_snapshot = None
+                if result.final_state and getattr(result.final_state, "current", None) and result.final_state.current.value == "paused":
+                    try:
+                        from dataclasses import asdict
+                        loop_snapshot = asdict(result.final_state)
+                        # normalize enum
+                        try:
+                            loop_snapshot["current"] = result.final_state.current.value
+                        except Exception:
+                            pass
+                    except Exception:
+                        loop_snapshot = None
                 
                 return AgentResult(
                     success=result.success,
@@ -128,6 +174,12 @@ class BaseAgent(IAgent):
                     metadata={
                         "steps": result.final_state.step_count if result.final_state else 0,
                         "loop_type": type(self._loop).__name__,
+                        "loop_state": result.final_state.current.value if result.final_state else None,
+                        "stop_reason": (result.metadata or {}).get("stop_reason"),
+                        # Approval / policy info (if paused by sys_tool)
+                        "approval": (result.final_state.context or {}).get("approval") if result.final_state else None,
+                        "policy": (result.final_state.context or {}).get("policy") if result.final_state else None,
+                        "loop_state_snapshot": loop_snapshot,
                     },
                     token_usage={"total": result.final_state.used_tokens if result.final_state else 0}
                 )

@@ -47,7 +47,11 @@ class WebFetchTool(BaseTool):
                     }
                 },
                 "required": ["url"]
-            }
+            },
+            metadata={
+                "risk_level": "normal",
+                "risk_weight": 10,
+            },
         )
         super().__init__(config)
         

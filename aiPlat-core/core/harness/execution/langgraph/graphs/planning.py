@@ -26,6 +26,8 @@ except ImportError:
     END = None
 
 from .react import ReActGraph, ReActGraphConfig
+import os
+from ....assembly import PromptAssembler
 
 
 class DecompositionStrategy(Enum):
@@ -196,11 +198,13 @@ TASK_3: 子任务描述 [depends_on: TASK_1]
 - 标注子任务之间的依赖关系
 - 子任务数量不超过 {self._config.max_total_steps} 个
 """
-        
-        result = await self._decomposer.run({
-            "messages": [{"role": "user", "content": prompt}],
-            "context": state.context
-        })
+
+        if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y"):
+            messages = PromptAssembler().assemble(prompt).messages
+        else:
+            messages = [{"role": "user", "content": prompt}]
+
+        result = await self._decomposer.run({"messages": messages, "context": state.context})
         
         output = result.observation if hasattr(result, 'observation') else ""
         subtasks = self._parse_subtasks(output)
@@ -294,10 +298,12 @@ TASK_3: 子任务描述 [depends_on: TASK_1]
                 prompt += f"\n\n参考前序任务结果：{context_str}"
             
             try:
-                result = await self._executor.run({
-                    "messages": [{"role": "user", "content": prompt}],
-                    "context": state.context
-                })
+                messages = (
+                    PromptAssembler().assemble(prompt).messages
+                    if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y")
+                    else [{"role": "user", "content": prompt}]
+                )
+                result = await self._executor.run({"messages": messages, "context": state.context})
                 
                 subtask.result = result.observation if hasattr(result, 'observation') else ""
                 subtask.status = SubTaskStatus.COMPLETED
@@ -347,10 +353,12 @@ TASK_3: 子任务描述 [depends_on: TASK_1]
                 if context_str:
                     prompt += f"\n\n参考前序任务结果：{context_str}"
                 
-                tasks.append(self._executor.run({
-                    "messages": [{"role": "user", "content": prompt}],
-                    "context": state.context
-                }))
+                messages = (
+                    PromptAssembler().assemble(prompt).messages
+                    if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y")
+                    else [{"role": "user", "content": prompt}]
+                )
+                tasks.append(self._executor.run({"messages": messages, "context": state.context}))
             
             exec_results = await asyncio.gather(*tasks, return_exceptions=True)
             
@@ -403,10 +411,12 @@ TASK_3: 子任务描述 [depends_on: TASK_1]
                 if context_str:
                     prompt += f"\n\n参考前序任务结果：{context_str}"
                 
-                tasks.append(self._executor.run({
-                    "messages": [{"role": "user", "content": prompt}],
-                    "context": state.context
-                }))
+                messages = (
+                    PromptAssembler().assemble(prompt).messages
+                    if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y")
+                    else [{"role": "user", "content": prompt}]
+                )
+                tasks.append(self._executor.run({"messages": messages, "context": state.context}))
             
             exec_results = await asyncio.gather(*tasks, return_exceptions=True)
             

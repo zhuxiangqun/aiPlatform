@@ -166,11 +166,9 @@ Please provide a comprehensive answer based on the context above. If the context
     ) -> str:
         if self._model is None:
             return "LLM model not configured. Please provide a valid LLM adapter."
-        
-        response = await self._model.generate(
-            messages=[{"role": "user", "content": prompt}],
-            config=None,
-        )
+        from ...harness.syscalls.llm import sys_llm_generate
+
+        response = await sys_llm_generate(self._model, [{"role": "user", "content": prompt}])
         
         return response.content
     

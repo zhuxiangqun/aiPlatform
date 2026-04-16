@@ -20,6 +20,8 @@ except ImportError:
     END = None
 
 from .react import ReActGraph, ReActGraphConfig
+import os
+from ....assembly import PromptAssembler
 
 
 class EvaluationDimension(Enum):
@@ -249,10 +251,12 @@ Please improve the output to address all the issues mentioned above."""
                 feedback
             )
         
-        result = await self._executor.run({
-            "messages": [{"role": "user", "content": prompt}],
-            "context": state.context
-        })
+        messages = (
+            PromptAssembler().assemble(prompt).messages
+            if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y")
+            else [{"role": "user", "content": prompt}]
+        )
+        result = await self._executor.run({"messages": messages, "context": state.context})
         
         executor_output = result.observation if hasattr(result, 'observation') else ""
         
@@ -325,10 +329,12 @@ Please improve the output to address all the issues mentioned above."""
         
         prompt = self._build_critic_prompt(state.task, state.executor_output, feedback)
         
-        result = await self._critic.run({
-            "messages": [{"role": "user", "content": prompt}],
-            "context": state.context
-        })
+        messages = (
+            PromptAssembler().assemble(prompt).messages
+            if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y")
+            else [{"role": "user", "content": prompt}]
+        )
+        result = await self._critic.run({"messages": messages, "context": state.context})
         
         critic_output = result.observation if hasattr(result, 'observation') else ""
         critic_result = self._parse_critic_result(critic_output)

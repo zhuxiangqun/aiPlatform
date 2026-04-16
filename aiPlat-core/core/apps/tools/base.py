@@ -433,7 +433,11 @@ class FileOperationsTool(BaseTool):
                     }
                 },
                 "required": ["operation", "path"]
-            }
+            },
+            metadata={
+                "risk_level": "sensitive",
+                "risk_weight": 30,
+            },
         )
         super().__init__(config)
 

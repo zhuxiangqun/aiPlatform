@@ -92,8 +92,9 @@ class ConversationalAgent(BaseAgent):
                     success=False,
                     error="No model configured"
                 )
-            
-            response = await self._model.generate(messages)
+            from ...harness.syscalls.llm import sys_llm_generate
+
+            response = await sys_llm_generate(self._model, messages)
             
             # Add response to history
             self._conversation_history.append({

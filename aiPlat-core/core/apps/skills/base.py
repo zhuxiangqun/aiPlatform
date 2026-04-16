@@ -106,9 +106,9 @@ class TextGenerationSkill(BaseSkill):
         prompt = params.get("prompt", "")
         
         try:
-            response = await self._model.generate([
-                {"role": "user", "content": prompt}
-            ])
+            from ...harness.syscalls.llm import sys_llm_generate
+
+            response = await sys_llm_generate(self._model, [{"role": "user", "content": prompt}])
             
             return SkillResult(
                 success=True,
@@ -176,9 +176,9 @@ Only output the code, no explanations.
 """
         
         try:
-            response = await self._model.generate([
-                {"role": "user", "content": prompt}
-            ])
+            from ...harness.syscalls.llm import sys_llm_generate
+
+            response = await sys_llm_generate(self._model, [{"role": "user", "content": prompt}])
             
             return SkillResult(
                 success=True,
@@ -247,9 +247,9 @@ Provide insights and analysis.
 """
         
         try:
-            response = await self._model.generate([
-                {"role": "user", "content": prompt}
-            ])
+            from ...harness.syscalls.llm import sys_llm_generate
+
+            response = await sys_llm_generate(self._model, [{"role": "user", "content": prompt}])
             
             return SkillResult(
                 success=True,

@@ -5,6 +5,7 @@ Main engine for Skill auto-evolution.
 """
 
 import logging
+import os
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 from dataclasses import dataclass
@@ -78,17 +79,44 @@ class EvolutionEngine:
                 trigger=f"{trigger_type.value}: {context.get('reason', '')}",
                 content=context.get("content", "")
             )
-            
+
             # Update last evolution time
             self._last_evolution_time[skill_id] = datetime.utcnow()
-            
+
             logger.info(f"Evolution completed for skill {skill_id}: {new_version.version}")
-            
-            return EvolutionResult(
-                success=True,
-                new_version=new_version
-            )
-            
+
+            # Phase 6.5 (optional): record learning artifact (best-effort; no behavior change).
+            if os.getenv("AIPLAT_RECORD_LEARNING_ARTIFACTS", "false").lower() in ("1", "true", "yes", "y"):
+                try:
+                    from core.learning.pipeline import artifact_from_skill_version
+                    from core.learning.manager import LearningManager
+
+                    artifact = artifact_from_skill_version(
+                        version_obj=new_version,
+                        artifact_version=str(getattr(new_version, "version", "") or ""),
+                        trace_id=context.get("trace_id"),
+                        run_id=context.get("run_id"),
+                        metadata={
+                            "source": "evolution_engine",
+                            "trigger_type": trigger_type.value,
+                            "reason": context.get("reason", ""),
+                        },
+                    )
+                    await LearningManager().create_artifact(
+                        kind=artifact.kind,
+                        target_type=artifact.target_type,
+                        target_id=artifact.target_id,
+                        version=artifact.version,
+                        payload=artifact.payload,
+                        metadata=artifact.metadata,
+                        trace_id=artifact.trace_id,
+                        run_id=artifact.run_id,
+                    )
+                except Exception:
+                    pass
+
+            return EvolutionResult(success=True, new_version=new_version)
+
         except Exception as e:
             logger.error(f"Evolution failed for skill {skill_id}: {e}")
             return EvolutionResult(
@@ -202,7 +230,44 @@ class EvolutionEngine:
                 degradation = (baseline - current) / baseline
                 if degradation > self._config.degradation_threshold:
                     logger.warning(f"Performance degraded for {skill_id}.{metric}: {degradation:.1%}")
+                    # best-effort rollback (existing behavior)
                     await self._lineage.rollback(skill_id, "v-1")
+                    # Phase 6.5 (optional): record rollback intent/outcome
+                    if os.getenv("AIPLAT_RECORD_LEARNING_ARTIFACTS", "false").lower() in ("1", "true", "yes", "y"):
+                        try:
+                            from core.learning.pipeline import artifact_from_skill_rollback
+                            from core.learning.manager import LearningManager
+
+                            latest = await self._lineage.get_latest_version(skill_id)
+                            from_version = latest.version if latest else None
+                            artifact = artifact_from_skill_rollback(
+                                skill_id=skill_id,
+                                from_version=from_version,
+                                to_version="v-1",
+                                artifact_version=f"rollback:{skill_id}:{from_version or 'unknown'}->v-1",
+                                reason=f"metric={metric}, degradation={degradation:.3f}",
+                                trace_id=None,
+                                run_id=None,
+                                metadata={
+                                    "source": "evolution_engine",
+                                    "metric": metric,
+                                    "baseline": baseline,
+                                    "current": current,
+                                    "degradation": degradation,
+                                },
+                            )
+                            await LearningManager().create_artifact(
+                                kind=artifact.kind,
+                                target_type=artifact.target_type,
+                                target_id=artifact.target_id,
+                                version=artifact.version,
+                                payload=artifact.payload,
+                                metadata=artifact.metadata,
+                                trace_id=artifact.trace_id,
+                                run_id=artifact.run_id,
+                            )
+                        except Exception:
+                            pass
                     return True
         
         return False

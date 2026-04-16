@@ -1,0 +1,62 @@
+name: kernel-static-scan
+
+on:
+  pull_request:
+  push:
+    branches: ["main", "master"]
+
+jobs:
+  static-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test dependencies
+        run: pip install -e ".[dev]"
+      - name: Run kernel static scan
+        run: python3 scripts/kernel_static_scan.py
+
+      # Optional: metrics check (only runs if a DB path is provided by CI secrets/env)
+      - name: Kernel metrics (optional)
+        if: ${{ env.AIPLAT_DB_PATH != '' }}
+        env:
+          AIPLAT_DB_PATH: ${{ env.AIPLAT_DB_PATH }}
+        run: python3 scripts/kernel_metrics.py --db "$AIPLAT_DB_PATH" --min-trace-coverage 0.99 --min-span-id-coverage 0.99
+
+      - name: Phase 3/3.5 integration tests
+        run: |
+          pytest -q core/tests/integration/test_phase3_span_coverage.py
+          pytest -q core/tests/integration/test_phase35_approval_resume_span.py
+          pytest -q core/tests/integration/test_phase51_engine_metadata.py
+          pytest -q core/tests/integration/test_phase52_orchestrator_plan.py
+          pytest -q core/tests/integration/test_phase6_learning_artifacts_store.py
+          pytest -q core/tests/integration/test_phase61_learning_cli.py
+          pytest -q core/tests/integration/test_phase62_online_summary_artifact.py
+          pytest -q core/tests/integration/test_phase63_regression_artifact_cli.py
+          pytest -q core/tests/integration/test_phase64_skill_lineage_artifacts_cli.py
+          pytest -q core/tests/integration/test_phase65_evolution_engine_learning_artifacts.py
+          pytest -q core/tests/integration/test_phase66_release_candidate_publish.py
+          pytest -q core/tests/integration/test_phase67_learning_applier_metadata.py
+          pytest -q core/tests/integration/test_phase68_prompt_revision_apply.py
+          pytest -q core/tests/integration/test_phase69_prompt_revision_cli_release_apply.py
+          pytest -q core/tests/integration/test_phase610_prompt_revision_conflict_strict.py
+          pytest -q core/tests/integration/test_phase611_prompt_revision_priority_strict.py
+          pytest -q core/tests/integration/test_phase612_prompt_revision_audit_metadata.py
+          pytest -q core/tests/integration/test_phase613_trace_span_prompt_revision_attrs.py
+          pytest -q core/tests/integration/test_phase614_release_expiry.py
+          pytest -q core/tests/integration/test_phase615_auto_rollback_metrics.py
+          pytest -q core/tests/integration/test_phase616_auto_rollback_regression.py
+          pytest -q core/tests/integration/test_phase617_auto_rollback_regression_prev_candidate.py
+          pytest -q core/tests/integration/test_phase618_auto_rollback_regression_multilevel_baseline.py
+          pytest -q core/tests/integration/test_phase619_regression_report_artifact.py
+          pytest -q core/tests/integration/test_phase620_regression_report_trace_run_link.py
+          pytest -q core/tests/integration/test_phase621_link_regression_report_to_executions.py
+          pytest -q core/tests/integration/test_phase622_link_baseline_executions.py
+          pytest -q core/tests/integration/test_phase623_regression_report_evidence_cap.py
+          pytest -q core/tests/integration/test_phase624_configurable_evidence_cap.py
+          pytest -q core/tests/integration/test_phase625_rollback_approval_gate.py
+          pytest -q core/tests/integration/test_phase626_cleanup_rollback_approvals.py
+          pytest -q core/tests/integration/test_phase627_cleanup_rollback_approvals_pagination_filters.py

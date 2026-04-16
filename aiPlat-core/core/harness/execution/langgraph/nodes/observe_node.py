@@ -8,6 +8,9 @@ from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, field
 
 from .reason_node import BaseNode, AgentState
+from ....syscalls import sys_llm_generate
+import os
+from ....assembly import PromptAssembler
 
 
 class ObserveNode(BaseNode):
@@ -51,14 +54,17 @@ class ObserveNode(BaseNode):
         state: AgentState
     ) -> str:
         """Process observation using model"""
-        prompt = f"""Observation from tool execution: {observation}
+        if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y"):
+            prompt = PromptAssembler().build_langgraph_observe_messages(observation=str(observation))
+        else:
+            prompt = f"""Observation from tool execution: {observation}
 
 Based on this observation, what should I do next?
 - If more work needed, respond with what to do
 - If task complete, respond with DONE
 - If error occurred, respond with ERROR: description
 """
-        response = await self._model.generate(prompt)
+        response = await sys_llm_generate(self._model, prompt)
         return response.content
 
     def should_continue(self, observation: str) -> bool:

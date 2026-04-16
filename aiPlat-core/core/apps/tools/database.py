@@ -60,7 +60,11 @@ class DatabaseTool(BaseTool):
                     }
                 },
                 "required": ["operation", "sql"]
-            }
+            },
+            metadata={
+                "risk_level": "dangerous",
+                "risk_weight": 50,
+            },
         )
         super().__init__(config)
         

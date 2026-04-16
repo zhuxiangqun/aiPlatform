@@ -8,6 +8,7 @@ Based on Harness Engineering principles for iterative development with evaluatio
 from typing import Any, Dict, List, Optional, TypedDict
 from dataclasses import dataclass, field
 from enum import Enum
+import os
 
 try:
     from langgraph.graph import StateGraph, END
@@ -19,6 +20,7 @@ except ImportError:
 
 from .react import ReActGraph, ReActGraphConfig
 from ..nodes import AgentState
+from ....assembly import PromptAssembler
 
 
 class EvaluationDimension(Enum):
@@ -171,10 +173,13 @@ class TriAgentGraph:
 
     async def _planner_wrapper(self, state: TriAgentState) -> Dict[str, Any]:
         """Planner wrapper - creates specification (spec.md)"""
-        result = await self._planner.run({
-            "messages": [{"role": "user", "content": f"Task: {state.task}\nAnalyze and create a detailed specification (spec.md)."}],
-            "context": state.context
-        })
+        prompt = f"Task: {state.task}\nAnalyze and create a detailed specification (spec.md)."
+        messages = (
+            PromptAssembler().assemble(prompt).messages
+            if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y")
+            else [{"role": "user", "content": prompt}]
+        )
+        result = await self._planner.run({"messages": messages, "context": state.context})
         
         spec = result.observation if hasattr(result, 'observation') else ""
         
@@ -186,10 +191,13 @@ class TriAgentGraph:
 
     async def _generator_wrapper(self, state: TriAgentState) -> Dict[str, Any]:
         """Generator wrapper - implements code (sprint-report.md)"""
-        result = await self._generator.run({
-            "messages": [{"role": "user", "content": f"Specification:\n{state.spec}\n\nImplement the code based on this spec."}],
-            "context": state.context
-        })
+        prompt = f"Specification:\n{state.spec}\n\nImplement the code based on this spec."
+        messages = (
+            PromptAssembler().assemble(prompt).messages
+            if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y")
+            else [{"role": "user", "content": prompt}]
+        )
+        result = await self._generator.run({"messages": messages, "context": state.context})
         
         generated = result.observation if hasattr(result, 'observation') else ""
         
@@ -212,11 +220,13 @@ Evaluate the output against these criteria:
 4. Security: No vulnerabilities or permission issues
 
 Respond with APPROVED if all criteria pass, or REJECTED: <reason> with specific feedback."""
-        
-        result = await self._evaluator.run({
-            "messages": [{"role": "user", "content": eval_prompt}],
-            "context": state.context
-        })
+
+        messages = (
+            PromptAssembler().assemble(eval_prompt).messages
+            if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y")
+            else [{"role": "user", "content": eval_prompt}]
+        )
+        result = await self._evaluator.run({"messages": messages, "context": state.context})
         
         evaluation = result.observation if hasattr(result, 'observation') else ""
         approved = "APPROVED" in evaluation.upper()
@@ -315,21 +325,33 @@ Respond with APPROVED if all criteria pass, or REJECTED: <reason> with specific 
         while state.iteration < self._config.max_iterations and not state.approved:
             state.iteration += 1
             
-            plan_result = await self._planner.run({
-                "messages": [{"role": "user", "content": f"Task: {task}\nAnalyze and create spec."}],
-            })
+            plan_prompt = f"Task: {task}\nAnalyze and create spec."
+            plan_messages = (
+                PromptAssembler().assemble(plan_prompt).messages
+                if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y")
+                else [{"role": "user", "content": plan_prompt}]
+            )
+            plan_result = await self._planner.run({"messages": plan_messages})
             state.plan = plan_result.observation if hasattr(plan_result, 'observation') else ""
             state.spec = state.plan
             
-            generator_result = await self._generator.run({
-                "messages": [{"role": "user", "content": f"Spec: {state.spec}\nImplement."}],
-            })
+            gen_prompt = f"Spec: {state.spec}\nImplement."
+            gen_messages = (
+                PromptAssembler().assemble(gen_prompt).messages
+                if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y")
+                else [{"role": "user", "content": gen_prompt}]
+            )
+            generator_result = await self._generator.run({"messages": gen_messages})
             state.generated = generator_result.observation if hasattr(generator_result, 'observation') else ""
             
             generated_result = state.generated
-            evaluator_result = await self._evaluator.run({
-                "messages": [{"role": "user", "content": f"Task: {task}\nResult: {generated_result}\nEvaluate. Respond APPROVED or REJECTED."}],
-            })
+            eval_prompt = f"Task: {task}\nResult: {generated_result}\nEvaluate. Respond APPROVED or REJECTED."
+            eval_messages = (
+                PromptAssembler().assemble(eval_prompt).messages
+                if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y")
+                else [{"role": "user", "content": eval_prompt}]
+            )
+            evaluator_result = await self._evaluator.run({"messages": eval_messages})
             state.evaluation = evaluator_result.observation if hasattr(evaluator_result, 'observation') else ""
             state.approved = "APPROVED" in state.evaluation.upper()
             

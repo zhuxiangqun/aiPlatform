@@ -61,7 +61,11 @@ class BrowserTool(BaseTool):
                     }
                 },
                 "required": ["action"]
-            }
+            },
+            metadata={
+                "risk_level": "sensitive",
+                "risk_weight": 20,
+            },
         )
         super().__init__(config)
         

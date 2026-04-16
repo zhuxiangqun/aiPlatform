@@ -60,7 +60,11 @@ class HTTPClientTool(BaseTool):
                     }
                 },
                 "required": ["url"]
-            }
+            },
+            metadata={
+                "risk_level": "sensitive",
+                "risk_weight": 15,
+            },
         )
         super().__init__(config)
         

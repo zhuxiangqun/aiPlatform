@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 
 from .reason_node import BaseNode, AgentState
 from ...tool_calling import parse_action_call
+from ....syscalls import sys_tool_call
 
 
 class ActNode(BaseNode):
@@ -68,10 +69,17 @@ class ActNode(BaseNode):
     async def _execute_with_retry(self, tool: Any, context: Dict[str, Any]) -> str:
         """Execute tool with retry logic"""
         params = context.get("tool_params", {})
+        user_id = str(context.get("user_id", "system"))
+        session_id = str(context.get("session_id", "default"))
         
         for attempt in range(self._max_retries):
             try:
-                result = await tool.execute(params)
+                result = await sys_tool_call(
+                    tool,
+                    params if isinstance(params, dict) else {},
+                    user_id=user_id,
+                    session_id=session_id,
+                )
                 if result.success:
                     return str(result.output or "Success")
                 else:

@@ -1,0 +1,10 @@
+repos:
+  - repo: local
+    hooks:
+      - id: kernel-static-scan
+        name: kernel static scan (no bypass)
+        entry: python3 scripts/kernel_static_scan.py
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+

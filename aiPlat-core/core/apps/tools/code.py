@@ -57,7 +57,12 @@ class CodeExecutionTool(BaseTool):
                     }
                 },
                 "required": ["language", "code"]
-            }
+            },
+            metadata={
+                # Used by Kernel approval/priority system
+                "risk_level": "dangerous",
+                "risk_weight": 40,
+            },
         )
         super().__init__(config)
         

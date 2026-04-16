@@ -45,6 +45,8 @@ from core.apps.agents import get_agent_registry
 from core.apps.skills import get_skill_registry, get_skill_executor
 from core.services import get_execution_store
 from core.services.trace_service import TraceService, TraceServiceTracer, SpanStatus
+from core.harness.integration import get_harness, KernelRuntime
+from core.harness.kernel.types import ExecutionRequest
 
 
 def _seed_default_permissions(
@@ -112,6 +114,8 @@ _skill_discovery = None
 _agent_executions: Dict[str, Dict[str, Any]] = {}
 _skill_executions: Dict[str, Dict[str, Any]] = {}
 _agent_history: Dict[str, List[Dict[str, Any]]] = {}
+# Phase 3+: paused agent executions (approval_required / policy_denied) used for minimal resume.
+_paused_agent_executions: Dict[str, Dict[str, Any]] = {}
 _execution_store = None
 _trace_service: Optional[TraceService] = None
 
@@ -141,16 +145,19 @@ async def lifespan(app: FastAPI):
     from core.apps.skills import create_discovery
     from core.harness.infrastructure.approval import ApprovalManager, ApprovalRule, RuleType
     
-    _approval_manager = ApprovalManager()
+    _approval_manager = ApprovalManager(execution_store=_execution_store)
     _approval_manager.register_rule(ApprovalRule(
         rule_id="sensitive-ops",
         rule_type=RuleType.SENSITIVE_OPERATION,
         name="Sensitive Operations",
         description="Require approval for sensitive operations",
-        condition="tool in ['code_execution', 'file_write', 'database_write']",
+        # NOTE: ApprovalRule.matches currently checks metadata.sensitive_operations.
+        # Keep condition for future expression evaluation, but set metadata now for correctness.
+        condition="tool in ['code','file_operations','database']",
         auto_approve=False,
         enabled=True,
         priority=10,
+        metadata={"sensitive_operations": ["tool:code", "tool:file_operations", "tool:database"]},
     ))
 
     # ExecutionStore (SQLite) - persistent execution/history
@@ -337,6 +344,20 @@ async def lifespan(app: FastAPI):
             )
         except Exception:
             pass
+
+    # Phase-1: wire application runtime into HarnessIntegration (single entry execute)
+    try:
+        get_harness().attach_runtime(
+            KernelRuntime(
+                agent_manager=_agent_manager,
+                skill_manager=_skill_manager,
+                execution_store=_execution_store,
+                trace_service=_trace_service,
+                approval_manager=_approval_manager,
+            )
+        )
+    except Exception:
+        pass
     
     yield
 
@@ -627,139 +648,275 @@ async def unbind_agent_tool(agent_id: str, tool_id: str):
 @api_router.post("/agents/{agent_id}/execute")
 async def execute_agent(agent_id: str, request: dict):
     """Execute agent"""
-    import uuid
-    import time
-    
-    registry = get_agent_registry()
-    agent = registry.get(agent_id)
-    
-    if not agent:
-        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
-    
-    user_id = request.get("user_id", "system")
-    perm_mgr = get_permission_manager()
-    if not perm_mgr.check_permission(user_id, agent_id, Permission.EXECUTE):
-        raise HTTPException(status_code=403, detail=f"User '{user_id}' lacks EXECUTE permission for agent '{agent_id}'")
-    
-    agent_info = await _agent_manager.get_agent(agent_id)
-    model_name = agent_info.config.get("model", "gpt-4") if agent_info else "gpt-4"
-    _inject_model_into_agent(agent, model_name)
-    
-    if hasattr(agent, '_loop') and hasattr(agent._loop, 'set_approval_manager') and _approval_manager:
-        agent._loop.set_approval_manager(_approval_manager)
-    
-    if hasattr(agent, '_tools') and agent_info and agent_info.tools:
-        tool_registry = get_tool_registry()
-        for tool_name in agent_info.tools:
-            if not perm_mgr.check_permission(user_id, tool_name, Permission.EXECUTE):
-                raise HTTPException(status_code=403, detail=f"User '{user_id}' lacks EXECUTE permission for tool '{tool_name}'")
-            tool = tool_registry.get(tool_name)
-            if tool and hasattr(agent, 'add_tool'):
-                agent.add_tool(tool)
-    
-    if hasattr(agent, '_skills') and agent_info and agent_info.skills:
-        skill_registry = get_skill_registry()
-        for skill_name in agent_info.skills:
-            skill = skill_registry.get(skill_name)
-            if skill:
-                _inject_model_into_skill(skill, model_name)
-                if hasattr(agent, 'add_skill'):
-                    agent.add_skill(skill)
-    
-    execution_id = f"exec-{agent_id}-{uuid.uuid4().hex[:8]}"
-    start_time = time.time()
-    trace_id = None
-    if _trace_service:
-        try:
-            trace = await _trace_service.start_trace(
-                name=f"agent:{agent_id}",
-                attributes={"execution_id": execution_id, "agent_id": agent_id, "user_id": user_id},
-            )
-            trace_id = trace.trace_id
-        except Exception:
-            trace_id = None
-    
+    harness = get_harness()
+    exec_req = ExecutionRequest(
+        kind="agent",
+        target_id=agent_id,
+        payload=request or {},
+        user_id=(request or {}).get("user_id", "system"),
+        session_id=(request or {}).get("session_id", "default"),
+    )
+    result = await harness.execute(exec_req)
+    if not result.ok:
+        raise HTTPException(status_code=result.http_status, detail=result.error or "Execution failed")
+    # Minimal resume semantics: cache paused requests in memory
     try:
-        from core.harness.interfaces import AgentContext
-        
-        context = AgentContext(
-            session_id=request.get("session_id", "default"),
-            user_id=request.get("user_id", "system"),
-            messages=request.get("messages", []),
-            variables=request.get("context", {})
+        payload = result.payload or {}
+        if payload.get("status") in ("approval_required", "policy_denied"):
+            exec_id = payload.get("execution_id")
+            approval_id = (
+                ((payload.get("metadata") or {}).get("approval") or {}).get("approval_request_id")
+                if isinstance(payload.get("metadata"), dict)
+                else None
+            )
+            loop_snapshot = (
+                (payload.get("metadata") or {}).get("loop_state_snapshot")
+                if isinstance(payload.get("metadata"), dict)
+                else None
+            )
+            if exec_id:
+                _paused_agent_executions[exec_id] = {
+                    "agent_id": agent_id,
+                    "request": request or {},
+                    "user_id": (request or {}).get("user_id", "system"),
+                    "session_id": (request or {}).get("session_id", "default"),
+                    "approval_request_id": approval_id,
+                    "loop_state_snapshot": loop_snapshot,
+                    "created_at": datetime.utcnow().isoformat(),
+                }
+                # also expose via legacy in-memory execution lookup
+                _agent_executions[exec_id] = payload
+    except Exception:
+        pass
+    return result.payload
+
+
+@api_router.post("/agents/executions/{execution_id}/resume")
+async def resume_agent_execution(execution_id: str, request: dict):
+    """
+    Minimal resume: re-run the original execution request after approval is granted.
+
+    Notes:
+    - Phase 3 does not checkpoint loop state; resume is implemented as "replay from start".
+    - Requires the paused execution to be present in _paused_agent_executions (in-memory).
+    """
+    paused = _paused_agent_executions.get(execution_id)
+    agent_id = None
+    original_request = None
+    approval_id = None
+
+    if paused:
+        agent_id = paused.get("agent_id")
+        original_request = paused.get("request") or {}
+        approval_id = paused.get("approval_request_id")
+    else:
+        # Fallback: recover from ExecutionStore after server restart
+        if not _execution_store:
+            raise HTTPException(status_code=404, detail="Paused execution not found (no in-memory state and no store)")
+        rec = await _execution_store.get_agent_execution(execution_id)
+        if not rec:
+            raise HTTPException(status_code=404, detail="Paused execution not found (execution not in store)")
+        meta = rec.get("metadata") if isinstance(rec.get("metadata"), dict) else {}
+        kr = (meta or {}).get("kernel_resume") if isinstance(meta, dict) else None
+        if not isinstance(kr, dict):
+            raise HTTPException(status_code=409, detail="Execution found but has no resumable payload")
+        agent_id = rec.get("agent_id")
+        original_request = {
+            "messages": kr.get("messages", []),
+            "context": kr.get("context", {}),
+            "session_id": kr.get("session_id", "default"),
+            "user_id": kr.get("user_id", "system"),
+        }
+        approval_id = ((meta or {}).get("approval") or {}).get("approval_request_id") if isinstance((meta or {}).get("approval"), dict) else None
+
+    if not agent_id or not isinstance(original_request, dict):
+        raise HTTPException(status_code=500, detail="Invalid paused execution record")
+
+    # If there is an approval request, ensure it is resolved/approved
+    if approval_id:
+        if not _approval_manager:
+            raise HTTPException(status_code=503, detail="ApprovalManager not initialized")
+        ar = _approval_manager.get_request(approval_id)
+        if not ar:
+            raise HTTPException(status_code=404, detail=f"Approval request not found: {approval_id}")
+        from core.harness.infrastructure.approval.types import RequestStatus
+        if ar.status not in (RequestStatus.APPROVED, RequestStatus.AUTO_APPROVED):
+            raise HTTPException(status_code=409, detail=f"Approval not granted: status={ar.status.value}")
+
+    # Prefer checkpointed resume when available (Phase 3.5):
+    # If we have a loop snapshot, pass it down and let HarnessIntegration run from that state.
+    loop_snapshot = None
+    try:
+        # try from cached paused entry first
+        loop_snapshot = paused.get("loop_state_snapshot") if paused else None
+        # fallback: read from persisted agent execution record
+        if loop_snapshot is None and _execution_store:
+            rec = await _execution_store.get_agent_execution(execution_id)
+            meta = (rec or {}).get("metadata") if isinstance((rec or {}).get("metadata"), dict) else None
+            loop_snapshot = (meta or {}).get("loop_state_snapshot") if isinstance(meta, dict) else None
+    except Exception:
+        loop_snapshot = None
+
+    harness = get_harness()
+    payload = dict(original_request or {})
+    if loop_snapshot is not None:
+        payload["_resume_loop_state"] = loop_snapshot
+
+    exec_req = ExecutionRequest(
+        kind="agent",
+        target_id=agent_id,
+        payload=payload,
+        user_id=original_request.get("user_id", "system"),
+        session_id=original_request.get("session_id", "default"),
+    )
+    result = await harness.execute(exec_req)
+    if not result.ok:
+        raise HTTPException(status_code=result.http_status, detail=result.error or "Execution failed")
+
+    # On successful resume, optionally drop the paused entry
+    try:
+        if (result.payload or {}).get("status") == "completed":
+            _paused_agent_executions.pop(execution_id, None)
+    except Exception:
+        pass
+
+    payload = result.payload or {}
+    payload["resumed_from_execution_id"] = execution_id
+    payload["approval_request_id"] = approval_id
+    return payload
+
+
+# ==================== Approval Management (Phase 3) ====================
+
+@api_router.get("/approvals/pending")
+async def list_pending_approvals(
+    user_id: Optional[str] = None,
+    order_by: str = "priority_score",
+    order_dir: str = "desc",
+    limit: int = 200,
+    offset: int = 0,
+):
+    """List pending approval requests (in-memory)."""
+    if not _approval_manager:
+        raise HTTPException(status_code=503, detail="ApprovalManager not initialized")
+    # Prefer store-backed listing (survives restarts) and enrich with related counts.
+    if _execution_store:
+        try:
+            res = await _execution_store.list_approval_requests(
+                status="pending",
+                user_id=user_id,
+                include_related_counts=True,
+                order_by=order_by,
+                order_dir=order_dir,
+                limit=limit,
+                offset=offset,
+            )
+            return res
+        except Exception:
+            pass
+
+    items = _approval_manager.get_pending_requests(user_id=user_id)
+    out = []
+    for r in items:
+        out.append(
+            {
+                "request_id": r.request_id,
+                "user_id": r.user_id,
+                "operation": r.operation,
+                "status": r.status.value,
+                "rule_id": r.rule_id,
+                "rule_type": r.rule_type.value if r.rule_type else None,
+                "is_first_time": r.is_first_time,
+                "created_at": r.created_at.isoformat(),
+                "expires_at": r.expires_at.isoformat() if r.expires_at else None,
+                "metadata": r.metadata,
+                "related_counts": {"syscall_events": 0, "agent_executions": 0},
+            }
         )
-        
-        result = await agent.execute(context)
-        
-        execution_record = {
-            "id": execution_id,
-            "agent_id": agent_id,
-            "status": "completed" if result.success else "failed",
-            "input": request.get("input", request.get("messages", [])),
-            "output": result.output,
-            "error": result.error,
-            "start_time": start_time,
-            "end_time": time.time(),
-            "duration_ms": int((time.time() - start_time) * 1000),
-            "trace_id": trace_id,
-        }
-        
-        _agent_executions[execution_id] = execution_record
-        
-        if agent_id not in _agent_history:
-            _agent_history[agent_id] = []
-        _agent_history[agent_id].append(execution_record)
+    return {"items": out, "total": len(out)}
 
-        # Persist (best effort) - SQLite ExecutionStore
-        if _execution_store:
-            try:
-                await _execution_store.upsert_agent_execution(execution_record)
-            except Exception:
-                pass
 
-        if _trace_service and trace_id:
-            try:
-                await _trace_service.end_trace(trace_id, status=SpanStatus.SUCCESS if result.success else SpanStatus.FAILED)
-            except Exception:
-                pass
-        
-        return {
-            "execution_id": execution_id,
-            "status": execution_record["status"],
-            "output": result.output,
-            "error": result.error,
-            "duration_ms": execution_record["duration_ms"]
+@api_router.get("/approvals/{request_id}")
+async def get_approval_request(request_id: str):
+    if not _approval_manager:
+        raise HTTPException(status_code=503, detail="ApprovalManager not initialized")
+    r = _approval_manager.get_request(request_id)
+    if not r:
+        raise HTTPException(status_code=404, detail="Approval request not found")
+    resp = {
+        "request_id": r.request_id,
+        "user_id": r.user_id,
+        "operation": r.operation,
+        "status": r.status.value,
+        "details": r.details,
+        "rule_id": r.rule_id,
+        "rule_type": r.rule_type.value if r.rule_type else None,
+        "is_first_time": r.is_first_time,
+        "created_at": r.created_at.isoformat(),
+        "updated_at": r.updated_at.isoformat(),
+        "expires_at": r.expires_at.isoformat() if r.expires_at else None,
+        "metadata": r.metadata,
+        "result": {
+            "decision": r.result.decision.value,
+            "comments": r.result.comments,
+            "approved_by": r.result.approved_by,
+            "timestamp": r.result.timestamp.isoformat(),
+        } if r.result else None,
+    }
+
+    # Attach audit linkages (best effort)
+    if _execution_store:
+        try:
+            calls = await _execution_store.list_syscall_events(
+                approval_request_id=request_id,
+                limit=200,
+                offset=0,
+            )
+        except Exception:
+            calls = {"items": [], "total": 0}
+        try:
+            execs = await _execution_store.list_agent_executions_by_approval_request_id(
+                request_id, limit=50, offset=0
+            )
+        except Exception:
+            execs = {"items": [], "total": 0}
+
+        resp["related"] = {
+            "agent_executions": execs,
+            "syscall_events": calls,
         }
-        
-    except Exception as e:
-        execution_record = {
-            "id": execution_id,
-            "agent_id": agent_id,
-            "status": "failed",
-            "error": str(e),
-            "start_time": start_time,
-            "end_time": time.time(),
-            "duration_ms": int((time.time() - start_time) * 1000),
-            "trace_id": trace_id,
-        }
-        _agent_executions[execution_id] = execution_record
-        # Persist failure record (best effort)
-        if _execution_store:
-            try:
-                await _execution_store.upsert_agent_execution(execution_record)
-            except Exception:
-                pass
-        if _trace_service and trace_id:
-            try:
-                await _trace_service.end_trace(trace_id, status=SpanStatus.FAILED)
-            except Exception:
-                pass
-        
-        return {
-            "execution_id": execution_id,
-            "status": "failed",
-            "error": str(e)
-        }
+    return resp
+
+
+@api_router.get("/approvals/{request_id}/audit")
+async def get_approval_audit(request_id: str):
+    """Return approval + related syscall events + related agent executions."""
+    approval = await get_approval_request(request_id)
+    return approval
+
+
+@api_router.post("/approvals/{request_id}/approve")
+async def approve_request(request_id: str, request: dict):
+    if not _approval_manager:
+        raise HTTPException(status_code=503, detail="ApprovalManager not initialized")
+    approved_by = (request or {}).get("approved_by", "admin")
+    comments = (request or {}).get("comments", "")
+    updated = await _approval_manager.approve(request_id=request_id, approved_by=approved_by, comments=comments)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Approval request not found")
+    return {"status": updated.status.value, "request_id": updated.request_id}
+
+
+@api_router.post("/approvals/{request_id}/reject")
+async def reject_request(request_id: str, request: dict):
+    if not _approval_manager:
+        raise HTTPException(status_code=503, detail="ApprovalManager not initialized")
+    rejected_by = (request or {}).get("rejected_by", "admin")
+    comments = (request or {}).get("comments", "")
+    updated = await _approval_manager.reject(request_id=request_id, rejected_by=rejected_by, comments=comments)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Approval request not found")
+    return {"status": updated.status.value, "request_id": updated.request_id}
 
 
 @api_router.get("/agents/executions/{execution_id}")
@@ -1021,67 +1178,18 @@ async def get_skill_active_version(skill_id: str):
 async def execute_skill(skill_id: str, request: SkillExecuteRequest):
     """Execute skill"""
     user_id = request.context.get("user_id", "system") if request.context else "system"
-    perm_mgr = get_permission_manager()
-    if not perm_mgr.check_permission(user_id, skill_id, Permission.EXECUTE):
-        raise HTTPException(status_code=403, detail=f"User '{user_id}' lacks EXECUTE permission for skill '{skill_id}'")
-    
-    trace_id = None
-    if _trace_service:
-        try:
-            trace = await _trace_service.start_trace(
-                name=f"skill:{skill_id}",
-                attributes={"skill_id": skill_id, "user_id": user_id},
-            )
-            trace_id = trace.trace_id
-        except Exception:
-            trace_id = None
-
-    execution = await _skill_manager.execute_skill(
-        skill_id,
-        request.input,
-        context=request.context or {},
-        mode=getattr(request, 'mode', 'inline')
+    harness = get_harness()
+    exec_req = ExecutionRequest(
+        kind="skill",
+        target_id=skill_id,
+        payload={"input": request.input, "context": request.context or {}, "mode": getattr(request, "mode", "inline")},
+        user_id=user_id,
+        session_id=(request.context or {}).get("session_id", "default"),
     )
-
-    # Persist execution for query endpoints
-    if _execution_store:
-        try:
-            await _execution_store.upsert_skill_execution(
-                {
-                    "id": execution.id,
-                    "skill_id": execution.skill_id,
-                    "status": execution.status,
-                    "input": execution.input_data,
-                    "output": execution.output_data,
-                    "error": execution.error,
-                    "start_time": execution.start_time.timestamp() if execution.start_time else 0.0,
-                    "end_time": execution.end_time.timestamp() if execution.end_time else 0.0,
-                    "duration_ms": execution.duration_ms or 0,
-                    "user_id": user_id,
-                    "trace_id": trace_id,
-                }
-            )
-        except Exception:
-            pass
-
-    if _trace_service and trace_id:
-        try:
-            await _trace_service.end_trace(trace_id, status=SpanStatus.SUCCESS if execution.status == "completed" else SpanStatus.FAILED)
-        except Exception:
-            pass
-
-    return {
-        "execution_id": execution.id,
-        "skill_id": execution.skill_id,
-        "status": execution.status,
-        "input": execution.input_data,
-        "output": execution.output_data,
-        "error": execution.error,
-        "trace_id": trace_id,
-        "start_time": execution.start_time.isoformat() if execution.start_time else None,
-        "end_time": execution.end_time.isoformat() if execution.end_time else None,
-        "duration_ms": execution.duration_ms,
-    }
+    result = await harness.execute(exec_req)
+    if not result.ok:
+        raise HTTPException(status_code=result.http_status, detail=result.error or "Execution failed")
+    return result.payload
 
 
 @api_router.get("/skills/executions/{execution_id}")
@@ -1369,61 +1477,18 @@ async def execute_compiled_react_graph(request: dict):
       - max_steps: int
       - checkpoint_interval: int
     """
-    if not _execution_store:
-        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
-
-    messages = request.get("messages") or []
-    context = request.get("context") or {}
-    max_steps = int(request.get("max_steps", 10) or 10)
-    checkpoint_interval = int(request.get("checkpoint_interval", 1) or 1)
-
-    class _DefaultModel:
-        async def generate(self, prompt):
-            # Minimal deterministic model for environments without an LLM adapter.
-            return type("R", (), {"content": "DONE"})
-
-    from core.harness.execution.langgraph.compiled_graphs import create_compiled_react_graph
-    from core.harness.execution.langgraph.core import GraphConfig
-
-    import uuid
-
-    graph_run_id = str(uuid.uuid4())
-    trace_id = None
-    if _trace_service:
-        try:
-            t = await _trace_service.start_trace(
-                name=f"graph:{'compiled_react'}",
-                attributes={"graph_name": "compiled_react", "graph_run_id": graph_run_id, "source": "graph"},
-            )
-            trace_id = t.trace_id
-        except Exception:
-            trace_id = None
-
-    graph = create_compiled_react_graph(model=_DefaultModel(), tools=[], max_steps=max_steps)
-    initial_state = {
-        "messages": messages,
-        "context": context,
-        "step_count": 0,
-        "max_steps": max_steps,
-        "metadata": {"graph_run_id": graph_run_id, "trace_id": trace_id},
-    }
-    try:
-        final_state = await graph.execute(
-            initial_state,
-            config=GraphConfig(max_steps=max_steps, enable_checkpoints=True, checkpoint_interval=checkpoint_interval, enable_callbacks=True),
-        )
-    finally:
-        if _trace_service and trace_id:
-            try:
-                await _trace_service.end_trace(trace_id, status=SpanStatus.SUCCESS)
-            except Exception:
-                pass
-            try:
-                _trace_service._context = None  # best-effort reset to avoid cross-request leakage
-            except Exception:
-                pass
-    run_id = (final_state.get("metadata") or {}).get("graph_run_id")
-    return {"run_id": run_id, "final_state": final_state}
+    harness = get_harness()
+    exec_req = ExecutionRequest(
+        kind="graph",
+        target_id="compiled_react",
+        payload=request or {},
+        user_id=(request or {}).get("user_id", "system"),
+        session_id=(request or {}).get("session_id", "default"),
+    )
+    result = await harness.execute(exec_req)
+    if not result.ok:
+        raise HTTPException(status_code=result.http_status, detail=result.error or "Execution failed")
+    return result.payload
 
 
 @api_router.post("/graphs/runs/{run_id}/resume/execute")
@@ -2467,30 +2532,19 @@ async def update_tool_config(tool_name: str, request: dict):
 @api_router.post("/tools/{tool_name}/execute")
 async def execute_tool(tool_name: str, request: dict):
     """Execute a tool with given parameters"""
-    import asyncio
-    
-    registry = get_tool_registry()
-    tool = registry.get(tool_name)
-    if not tool:
-        raise HTTPException(status_code=404, detail=f"Tool {tool_name} not found")
-    
-    input_data = request.get("input", {})
-    
-    try:
-        result = await asyncio.wait_for(
-            tool.execute(input_data if isinstance(input_data, dict) else {}),
-            timeout=60
-        )
-        return {
-            "success": result.success if hasattr(result, 'success') else True,
-            "output": result.output if hasattr(result, 'output') else str(result),
-            "error": result.error if hasattr(result, 'error') and result.error else None,
-            "latency": result.latency if hasattr(result, 'latency') else 0,
-        }
-    except asyncio.TimeoutError:
-        return {"success": False, "error": "Tool execution timed out (60s)", "latency": 60000}
-    except Exception as e:
-        return {"success": False, "error": str(e), "latency": 0}
+    harness = get_harness()
+    exec_req = ExecutionRequest(
+        kind="tool",
+        target_id=tool_name,
+        payload=request or {},
+        user_id=(request or {}).get("user_id", "system"),
+        session_id=(request or {}).get("session_id", "default"),
+    )
+    result = await harness.execute(exec_req)
+    if not result.ok:
+        # keep legacy behavior: return 200 with success=false
+        return {"success": False, "error": result.error or "Execution failed", "latency": 0}
+    return result.payload
 
 
 # ==================== Health Check ====================
