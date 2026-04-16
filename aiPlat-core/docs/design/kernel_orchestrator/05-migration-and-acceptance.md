@@ -410,13 +410,6 @@ python3 scripts/learning_cli.py --db <db_path> cleanup-rollback-approvals --page
 pytest -q core/tests/integration/test_phase627_cleanup_rollback_approvals_pagination_filters.py
 ```
 
-Phase 6.22（可选链接 baseline executions：--link-baseline）：
-- auto-rollback-regression 增加 --link-baseline：除 current window 外，也将 baseline window 的 agent_executions.metadata 回写 regression_report_id。
-- 同时会将回写的 execution_id 列表写回到 regression_report.payload.deltas.evidence.linked_* 字段。
-```bash
-pytest -q core/tests/integration/test_phase622_link_baseline_executions.py
-```
-
 ---
 
 ## 3. 验收指标（建议量化）

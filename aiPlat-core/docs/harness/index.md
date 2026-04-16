@@ -6,8 +6,17 @@
 > **Phase 7 已修复**：
 > - ✅ ReActAgent/PlanExecuteAgent 委托 `super().execute()` → Loop 驱动
 > - ✅ HeartbeatMonitor 通过 `asyncio.ensure_future` 启动
-> - ✅ Coordination 模式接入 MultiAgent（Pipeline/FanOut/ExpertPool/ProducerReviewer/Supervisor）
+> - ✅ Coordination 模式接入 MultiAgent（Pipeline/FanOut/ExpertPool/ProducerReviewer/Supervisor/Hierarchical）
 > - ✅ 三种状态类型统一（AgentState→TypedDict、AgentLifecycleState）
+>
+> **Phase 9 新增模块**（详细设计见 [design/kernel_orchestrator/](./design/kernel_orchestrator/)）：
+> - `kernel/` — 核心执行契约（ExecutionRequest/ExecutionResult）
+> - `syscalls/` — 系统调用层（LLM/Tool/Skill 调用）
+> - `engines/` — 执行引擎抽象（LoopEngine 等）
+> - `gates/` — 门控系统（ContextGate/PolicyGate/ResilienceGate/TraceGate）
+> - `orchestration/` — 编排器（生成执行计划）
+> - `learning/` — 学习工件系统（版本化、可追溯、可回滚）
+> - `assembly/` — 组装器（ContextAssembler/PromptAssembler）
 >
 > **仍需注意（As-Is）**：
 > - `interfaces/` 下 IAgent/ISkill/ITool/ILoop 以 ABC 为主（接口层本身不提供具体实现）；具体实现位于 `core/apps/*` 与 `core/harness/execution/*`。
@@ -41,6 +50,9 @@ Harness 框架由 8 个核心要素组成：
 | **工具系统** | 外部工具集成，扩展 Agent 能力边界 | ✅ 已实现 | `apps/tools/` |
 | **审批系统** | Human-in-the-Loop 审批，关键决策需人工确认 | ✅ 已实现（最小实现） | `infrastructure/approval/` |
 | **钩子系统** | 生命周期钩子和扩展，支持自定义扩展 | ✅ 已实现 | `infrastructure/hooks/` |
+| **核心内核** | 执行契约、系统调用、门控 | ✅ Phase 9 新增 | `kernel/` |
+| **编排系统** | 任务拆解、执行计划生成 | ✅ Phase 9 新增 | `orchestration/` |
+| **学习系统** | 学习工件、版本管理、回滚 | ✅ Phase 9 新增 | `learning/` |
 
 ---
 
@@ -58,17 +70,31 @@ Harness 框架由 8 个核心要素组成：
 │  ├─────────────────────────────────────────────────┤ │
 │  │         execution/ (执行系统)                   │ │
 │  │    Loop, Retry, Policy, LangGraph 编排            │ │
+│  │    engines/ (执行引擎抽象)                       │ │
+│  │    router.py (执行路由)                          │ │
 │  ├───────────┬───────────┬───────────────┐         │
 │  │coordination│observability│feedback_loops│       │
 │  ├───────────┴───────────┴───────────────┤         │
+│  │         kernel/ (核心内核)              │         │
+│  │    syscalls/ (LLM/Tool/Skill 调用)     │         │
+│  │    gates/ (门控: Context/Policy/Trace)  │         │
+│  ├─────────────────────────────────────────────────┤ │
 │  │         infrastructure/ (基础设施)      │         │
-│  │    LangChain 集成、Config、Lifecycle   │         │
+│  │    Approval, Hooks, Lifecycle, Config   │         │
 │  └─────────────────────────────────────────┘       │
+│  ┌─────────────────────────────────────────────────┐ │
+│  │         orchestration/ (编排系统)               │ │
+│  │    orchestrator.py (执行计划生成)                 │ │
+│  ├─────────────────────────────────────────────────┤ │
+│  │         learning/ (学习系统)                     │ │
+│  │    manager.py, pipeline.py (学习工件管理)         │ │
+│  ├─────────────────────────────────────────────────┤ │
+│  │         assembly/ (组装器)                        │ │
+│  │    ContextAssembler, PromptAssembler             │ │
+│  └─────────────────────────────────────────────────┘ │
 ├─────────────────────────────────────────────────────┤
 │                  adapters/ (适配器层)                │
 │                    (LLM 适配器)                      │
-├─────────────────────────────────────────────────────┤
-│                  LangChain (基础工具链)              │
 ├─────────────────────────────────────────────────────┤
 │                  LangGraph (图结构编排)              │
 └─────────────────────────────────────────────────────┘
