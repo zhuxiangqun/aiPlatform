@@ -1,6 +1,7 @@
-# 智能体实现 (Agents)
+# 智能体实现 (Agents)（设计真值：以代码事实为准）
 
-> ⚠️ **实现状态提示**：Phase 7 已修复 Manager↔Registry 断开和 RAGAgent 错误。完整状态参见 [架构实现状态](../ARCHITECTURE_STATUS.md)。
+> ⚠️ **实现状态提示（As-Is vs To-Be）**：本文档以 **当前代码事实（As-Is）** 为准，并对“自我进化/评测”等规划项标注为 **To-Be**。  
+> 完整状态与证据链参见：[架构实现状态](../ARCHITECTURE_STATUS.md)。
 
 > 智能体实现模块提供各类预定义智能体的具体实现，是智能体框架的具体应用。
 
@@ -48,8 +49,8 @@ Agents 模块基于 Harness 构建，提供智能体的具体实现类型。
 
 ## 自我进化能力
 
-> **注意**：本节描述的是 **Agent 参数级别的自我进化**（如温度、top_p 等运行参数调优），与 [Skill 生命周期进化](../skills/lifecycle.md)（CAPTURED/FIX/DERIVED 模式）是不同层面的机制。
-> Agent 进化关注"运行参数优化"，Skill 进化关注"能力定义迭代"。
+> **说明（To-Be）**：本节描述的是 **Agent 参数级别的自我进化**（如温度、top_p 等运行参数调优），当前仓库尚未形成可验收的“自动调参/自动发布”闭环；请将其视为规划项。  
+> 与 [Skill 生命周期进化](../skills/lifecycle.md)（CAPTURED/FIX/DERIVED 模式，当前亦为 To-Be）属于不同层面。
 
 智能体支持根据执行历史自动优化策略：
 
@@ -86,12 +87,20 @@ Agents 模块基于 Harness 构建，提供智能体的具体实现类型。
 ## 相关文档
 
 - [Agent 架构设计](./architecture.md) - 详细架构（类型体系、生命周期、执行模型、配置管理）
-- [Harness 索引](./harness/index.md) - 智能体框架
-- [Harness 执行系统](./harness/execution.md) - Agent 循环执行
-- [Harness 协调系统](./harness/coordination.md) - 多 Agent 协作
+- [Harness 索引](../harness/index.md) - 智能体框架
+- [Harness 执行系统](../harness/execution.md) - Agent 循环执行
+- [Harness 协调系统](../harness/coordination.md) - 多 Agent 协作
 - [Agent 设计模式](../framework/patterns.md) - 6种核心模式
 - [Skill 生命周期](../skills/lifecycle.md) - Skill 进化机制（与 Agent 参数进化互补）
 
 ---
 
 *最后更新: 2026-04-14*
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- Agent 执行委托 Loop：`core/apps/agents/base.py: BaseAgent.execute()`
+- ReAct/PlanExecute 委托：`core/apps/agents/react.py` / `core/apps/agents/plan_execute.py`
+- RAGAgent 修复与实现：`core/apps/agents/rag.py`

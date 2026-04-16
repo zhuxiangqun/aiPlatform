@@ -1,4 +1,6 @@
-# 核心层部署指南
+# 核心层部署指南（As-Is 对齐 + To-Be 示例）
+
+> 说明：本文档包含 To-Be 的平台化部署示例（make/k8s/config 文件），当前仓库未必包含完整部署工件；请以代码与实际部署仓库为准。
 
 > 继承系统级部署指南，针对核心层的特定要求
 
@@ -6,7 +8,7 @@
 
 ## 继承规范
 
-本文档继承 [系统级部署指南](../../docs/guides/DEPLOYMENT.md)，所有系统级规范在本层必须遵守。
+本文档继承系统级部署指南（若存在上层仓库/平台仓库），所有系统级规范在本层必须遵守。
 
 ---
 
@@ -35,19 +37,17 @@
 ## 部署命令
 
 ```bash
-# 开发环境
-make deploy-core ENV=dev
-
-# 生产环境
-kubectl apply -f k8s/core/base/
-kubectl apply -f k8s/core/overlays/prod/
+# To-Be 示例（需以实际部署仓库/CI 为准）
+# make deploy-core ENV=dev
+# kubectl apply -f k8s/core/base/
+# kubectl apply -f k8s/core/overlays/prod/
 ```
 
 ---
 
 ## 配置管理
 
-### Agent 配置
+### Agent 配置（To-Be 示例）
 
 ```yaml
 # config/core/agents.yaml
@@ -63,7 +63,7 @@ agents:
       max_tokens: 4000
 ```
 
-### Skill 配置
+### Skill 配置（To-Be 示例）
 
 ```yaml
 # config/core/skills.yaml
@@ -80,7 +80,7 @@ skills:
 
 ---
 
-## 健康检查
+## 健康检查（To-Be 示例）
 
 ```python
 @router.get("/health/ready")
@@ -105,7 +105,14 @@ async def readiness_check():
 
 ---
 
-## 监控指标
+## 监控指标（To-Be 示例）
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- As-Is 服务入口：`core/server.py`
+- To-Be：部署工件（k8s/make/config）需由 platform/ops 仓库提供并纳入验收
 
 ```python
 # 核心层特有指标
@@ -152,7 +159,7 @@ skill_executions_total = Counter(
 
 ## 相关链接
 
-- [系统级部署指南](../../docs/guides/DEPLOYMENT.md)
+- [系统级部署指南](../../../docs/guides/DEPLOYMENT.md)
 - [core层开发规范](./DEVELOPMENT.md)
 
 ---

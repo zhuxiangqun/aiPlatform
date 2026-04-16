@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, RotateCw } from 'lucide-react';
-import { Table, Button } from '../../../components/ui';
+import { Table, Button, toast } from '../../../components/ui';
 import PageHeader from '../../../components/common/PageHeader';
 import { AlertRuleModal } from '../../../components/infra';
 import { monitoringApi, type AlertRule, type GPUMetrics, type ClusterMetrics } from '../../../services';
@@ -27,7 +27,7 @@ const Monitoring: React.FC = () => {
       setGpuMetrics(gpuData || []);
       setAlertRules(rulesData || []);
     } catch (error) {
-      alert('获取监控数据失败');
+      toast.error('获取监控数据失败');
       console.error('Failed to fetch monitoring data:', error);
       setClusterMetrics(null);
       setGpuMetrics([]);
@@ -68,10 +68,10 @@ const Monitoring: React.FC = () => {
   const handleDeleteRule = async (ruleId: string) => {
     try {
       await monitoringApi.deleteAlertRule(ruleId);
-      alert('规则删除成功');
+      toast.success('规则删除成功');
       fetchData();
     } catch (error) {
-      alert('删除规则失败');
+      toast.error('删除规则失败');
     }
   };
 
@@ -79,14 +79,14 @@ const Monitoring: React.FC = () => {
     try {
       if (enabled) {
         await monitoringApi.disableAlertRule(ruleId);
-        alert('规则已停用');
+        toast.success('规则已停用');
       } else {
         await monitoringApi.enableAlertRule(ruleId);
-        alert('规则已启用');
+        toast.success('规则已启用');
       }
       fetchData();
     } catch (error) {
-      alert('操作失败');
+      toast.error('操作失败');
     }
   };
 

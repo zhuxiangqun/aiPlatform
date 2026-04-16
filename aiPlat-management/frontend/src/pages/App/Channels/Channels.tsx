@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, RotateCw, Trash2, Link, Zap } from 'lucide-react';
-import { Table, Button, Modal, Select } from '../../../components/ui';
+import { Table, Button, Modal, Select, toast } from '../../../components/ui';
 import PageHeader from '../../../components/common/PageHeader';
 import { channelApi } from '../../../services';
 import type { Channel } from '../../../services';
@@ -33,7 +33,7 @@ const Channels: React.FC = () => {
       const res = await channelApi.list({ type: typeFilter || undefined, status: statusFilter || undefined });
       setChannels(res.channels || []);
     } catch {
-      alert('获取渠道列表失败');
+      toast.error('获取渠道列表失败');
       setChannels([]);
     } finally {
       setLoading(false);
@@ -48,11 +48,11 @@ const Channels: React.FC = () => {
     if (!deleteModal.channel) return;
     try {
       await channelApi.delete(deleteModal.channel.id);
-      alert('渠道已删除');
+      toast.success('渠道已删除');
       setDeleteModal({ open: false, channel: null });
       fetchChannels();
     } catch {
-      alert('删除失败');
+      toast.error('删除失败');
     }
   };
 
@@ -60,12 +60,12 @@ const Channels: React.FC = () => {
     try {
       const res = await channelApi.test(channel.id);
       if (res.success) {
-        alert(`渠道 "${channel.name}" 连接正常`);
+        toast.success(`渠道 "${channel.name}" 连接正常`);
       } else {
-        alert(`渠道 "${channel.name}" 连接失败: ${res.message}`);
+        toast.error(`渠道 "${channel.name}" 连接失败`, String(res.message || ''));
       }
     } catch {
-      alert(`渠道 "${channel.name}" 测试请求失败`);
+      toast.error(`渠道 "${channel.name}" 测试请求失败`);
     }
   };
 

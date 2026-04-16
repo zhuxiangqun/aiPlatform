@@ -25,6 +25,7 @@ from .factory import (
     create_otel_logger,
 )
 from .tracing import SimpleTracer, SimpleOTelMetrics, SimpleOTelLogger
+from .otel import OTelTracer, OTelMetricsImpl, OTelLoggerImpl
 
 __all__ = [
     "Tracer",
@@ -50,4 +51,7 @@ __all__ = [
     "SimpleTracer",
     "SimpleOTelMetrics",
     "SimpleOTelLogger",
+    "OTelTracer",
+    "OTelMetricsImpl",
+    "OTelLoggerImpl",
 ]

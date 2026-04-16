@@ -1,7 +1,6 @@
 import React from 'react';
-import { Modal, Form, Input, Select, InputNumber, Switch, message } from 'antd';
 
-const { Option } = Select;
+import { Button, Input, Modal, Select, Switch, toast } from '../ui';
 
 interface AlertRuleModalProps {
   open: boolean;
@@ -29,139 +28,112 @@ const conditionOptions: Record<string, string[]> = {
 };
 
 const AlertRuleModal: React.FC<AlertRuleModalProps> = ({ open, onCancel, onOk, initialValues, mode }) => {
-  const [form] = Form.useForm();
   const [loading, setLoading] = React.useState(false);
-  const [alertType, setAlertType] = React.useState<string>('system');
+  const [type, setType] = React.useState<'system' | 'gpu' | 'service' | 'network'>('system');
+  const [name, setName] = React.useState('');
+  const [condition, setCondition] = React.useState('');
+  const [threshold, setThreshold] = React.useState('80');
+  const [duration, setDuration] = React.useState('60');
+  const [severity, setSeverity] = React.useState<'info' | 'warning' | 'critical'>('warning');
+  const [enabled, setEnabled] = React.useState(true);
 
   React.useEffect(() => {
-    if (open && initialValues) {
-      form.setFieldsValue({
-        name: initialValues.name,
-        type: initialValues.type,
-        condition: initialValues.condition,
-        threshold: initialValues.threshold,
-        duration: initialValues.duration,
-        severity: initialValues.severity,
-        enabled: initialValues.status === 'enabled',
-      });
-      setAlertType(initialValues.type || 'system');
-    } else if (open) {
-      form.resetFields();
-      setAlertType('system');
+    if (!open) return;
+    if (initialValues) {
+      setName(initialValues.name || '');
+      setType((initialValues.type as any) || 'system');
+      setCondition(initialValues.condition || '');
+      setThreshold(initialValues.threshold != null ? String(initialValues.threshold) : '80');
+      setDuration(initialValues.duration != null ? String(initialValues.duration) : '60');
+      setSeverity((initialValues.severity as any) || 'warning');
+      setEnabled(initialValues.enabled ?? (initialValues.status === 'enabled'));
+    } else {
+      setName('');
+      setType('system');
+      setCondition('');
+      setThreshold('80');
+      setDuration('60');
+      setSeverity('warning');
+      setEnabled(true);
     }
-  }, [open, initialValues, form]);
+  }, [open, initialValues]);
 
-  const handleOk = async () => {
+  const submit = async () => {
+    if (!name.trim()) return toast.error('请输入规则名称');
+    if (!condition) return toast.error('请选择条件');
+    setLoading(true);
     try {
-      const values = await form.validateFields();
-      setLoading(true);
-      await onOk(values);
-      form.resetFields();
-      message.success(mode === 'create' ? '告警规则创建成功' : '告警规则更新成功');
-    } catch (error) {
-      if (error instanceof Error) {
-        message.error(error.message);
-      }
+      await onOk({
+        name: name.trim(),
+        type,
+        condition,
+        threshold: Number(threshold),
+        duration: Number(duration),
+        severity,
+        enabled,
+      });
+      toast.success(mode === 'create' ? '告警规则创建成功' : '告警规则更新成功');
+    } catch (e: any) {
+      toast.error(e?.message || '操作失败');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCancel = () => {
-    form.resetFields();
-    onCancel();
-  };
-
-  const handleTypeChange = (type: string) => {
-    setAlertType(type);
-    form.setFieldsValue({ condition: undefined });
-  };
-
   return (
     <Modal
-      title={mode === 'create' ? '创建告警规则' : '编辑告警规则'}
       open={open}
-      onCancel={handleCancel}
-      onOk={handleOk}
-      confirmLoading={loading}
-      destroyOnHidden
-      width={600}
+      onClose={onCancel}
+      title={mode === 'create' ? '创建告警规则' : '编辑告警规则'}
+      width={640}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onCancel} disabled={loading}>取消</Button>
+          <Button variant="primary" onClick={submit} loading={loading}>保存</Button>
+        </>
+      }
     >
-      <Form form={form} layout="vertical">
-        <Form.Item
-          name="name"
-          label="规则名称"
-          rules={[{ required: true, message: '请输入规则名称' }]}
-        >
-          <Input placeholder="例如: cpu-high" disabled={mode === 'edit'} />
-        </Form.Item>
-        <Form.Item
-          name="type"
+      <div className="space-y-4">
+        <Input label="规则名称" value={name} onChange={(e: any) => setName(e.target.value)} placeholder="例如: cpu-high" disabled={mode === 'edit'} />
+        <Select
           label="告警类型"
-          rules={[{ required: true, message: '请选择告警类型' }]}
-          initialValue="system"
-        >
-          <Select placeholder="选择告警类型" onChange={handleTypeChange}>
-            <Option value="system">系统告警</Option>
-            <Option value="gpu">GPU 告警</Option>
-            <Option value="service">服务告警</Option>
-            <Option value="network">网络告警</Option>
-          </Select>
-        </Form.Item>
-        <Form.Item
-          name="condition"
+          value={type}
+          onChange={(v) => { setType(v as any); setCondition(''); }}
+          options={[
+            { value: 'system', label: '系统告警' },
+            { value: 'gpu', label: 'GPU 告警' },
+            { value: 'service', label: '服务告警' },
+            { value: 'network', label: '网络告警' },
+          ]}
+        />
+        <Select
           label="条件"
-          rules={[{ required: true, message: '请选择或输入条件' }]}
-        >
-          <Select placeholder="选择条件">
-            {(conditionOptions[alertType] || []).map((opt) => (
-              <Option key={opt} value={opt}>
-                {opt}
-              </Option>
-            ))}
-          </Select>
-        </Form.Item>
-        <Form.Item
-          name="threshold"
-          label="阈值"
-          rules={[{ required: true, message: '请输入阈值' }]}
-          initialValue={80}
-          tooltip="触发告警的阈值，根据条件类型可能是百分比或具体数值"
-        >
-          <InputNumber min={0} max={100} style={{ width: '100%' }} />
-        </Form.Item>
-        <Form.Item
-          name="duration"
-          label="持续时间"
-          rules={[{ required: true, message: '请输入持续时间' }]}
-          initialValue={300}
-          tooltip="条件持续多久后触发告警，单位：秒"
-        >
-          <InputNumber min={10} max={3600} style={{ width: '100%' }} suffix="秒" />
-        </Form.Item>
-        <Form.Item
-          name="severity"
-          label="严重性"
-          rules={[{ required: true, message: '请选择严重性' }]}
-          initialValue="warning"
-        >
-          <Select placeholder="选择严重性">
-            <Option value="info">信息</Option>
-            <Option value="warning">警告</Option>
-            <Option value="critical">严重</Option>
-          </Select>
-        </Form.Item>
-        <Form.Item
-          name="enabled"
-          label="启用规则"
-          valuePropName="checked"
-          initialValue={true}
-        >
-          <Switch />
-        </Form.Item>
-      </Form>
+          value={condition}
+          onChange={(v) => setCondition(v)}
+          options={(conditionOptions[type] || []).map((x) => ({ value: x, label: x }))}
+        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Input label="阈值" type="number" value={threshold} onChange={(e: any) => setThreshold(e.target.value)} />
+          <Input label="持续时间（秒）" type="number" value={duration} onChange={(e: any) => setDuration(e.target.value)} />
+        </div>
+        <Select
+          label="严重程度"
+          value={severity}
+          onChange={(v) => setSeverity(v as any)}
+          options={[
+            { value: 'info', label: 'info' },
+            { value: 'warning', label: 'warning' },
+            { value: 'critical', label: 'critical' },
+          ]}
+        />
+        <div className="flex items-center gap-3">
+          <div className="text-sm text-gray-300">启用状态</div>
+          <Switch checked={enabled} onChange={setEnabled} size="sm" />
+        </div>
+      </div>
     </Modal>
   );
 };
 
 export default AlertRuleModal;
+

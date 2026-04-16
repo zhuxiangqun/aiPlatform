@@ -1,8 +1,7 @@
-import React from 'react';
-import { Modal, Descriptions, Tag, Tabs, Table, Progress, Button } from 'antd';
+import React, { useMemo } from 'react';
 import { RotateCw } from 'lucide-react';
 
-const { Column } = Table;
+import { Badge, Button, Modal, Table, Tabs } from '../ui';
 
 interface ServiceDetailModalProps {
   open: boolean;
@@ -40,150 +39,105 @@ interface PodData {
   gpu_usage?: number;
 }
 
-const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
-  open,
-  service,
-  onCancel,
-  onRestart,
-  onScale,
-}) => {
+const statusVariant = (s: string) => {
+  if (s === 'Running') return 'success';
+  if (s === 'Pending') return 'warning';
+  if (s === 'Failed') return 'error';
+  return 'default';
+};
+
+const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({ open, service, onCancel, onRestart, onScale }) => {
+  const pods = service?.pods || [];
+
+  const podColumns = useMemo(
+    () => [
+      { key: 'name', title: 'pod', dataIndex: 'name' },
+      { key: 'node', title: 'node', dataIndex: 'node' },
+      { key: 'status', title: 'status', dataIndex: 'status', render: (v: string) => <Badge variant={statusVariant(v) as any}>{v}</Badge> },
+      { key: 'ready', title: 'ready', dataIndex: 'ready' },
+      { key: 'restarts', title: 'restarts', dataIndex: 'restarts', align: 'right' as const },
+    ],
+    []
+  );
+
   if (!service) return null;
-
-  const getStatusTag = (status: string) => {
-    switch (status) {
-      case 'Running':
-        return <Tag color="green">运行中</Tag>;
-      case 'Pending':
-        return <Tag color="orange">等待中</Tag>;
-      case 'Failed':
-        return <Tag color="red">失败</Tag>;
-      case 'Unknown':
-        return <Tag color="default">未知</Tag>;
-      default:
-        return <Tag>{status}</Tag>;
-    }
-  };
-
-  const getTypeTag = (type: string) => {
-    const colors: Record<string, string> = {
-      LLM: 'blue',
-      Embed: 'green',
-      Vector: 'purple',
-      Cache: 'orange',
-      DB: 'cyan',
-    };
-    return <Tag color={colors[type] || 'default'}>{type}</Tag>;
-  };
 
   return (
     <Modal
-      title={`服务详情: ${service.name}`}
       open={open}
-      onCancel={onCancel}
-      width={900}
-      footer={[
-        <Button key="cancel" onClick={onCancel}>
-          关闭
-        </Button>,
-        <Button key="scale" onClick={onScale}>
-          扩缩容
-        </Button>,
-        <Button key="restart" icon={<RotateCw size={16} />} onClick={onRestart}>
-          重启服务
-        </Button>,
-      ]}
+      onClose={onCancel}
+      title={`服务详情: ${service.name}`}
+      width={980}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onCancel}>关闭</Button>
+          <Button variant="secondary" onClick={onScale}>扩缩容</Button>
+          <Button variant="primary" onClick={onRestart} icon={<RotateCw size={16} />}>重启服务</Button>
+        </>
+      }
     >
       <Tabs
-        defaultActiveKey="overview"
-        items={[
+        tabs={[
           {
             key: 'overview',
             label: '概览',
             children: (
-              <>
-                <Descriptions bordered column={2} size="small">
-                  <Descriptions.Item label="服务名称">{service.name}</Descriptions.Item>
-                  <Descriptions.Item label="命名空间">{service.namespace}</Descriptions.Item>
-                  <Descriptions.Item label="类型">{getTypeTag(service.type)}</Descriptions.Item>
-                  <Descriptions.Item label="状态">{getStatusTag(service.status)}</Descriptions.Item>
-                  <Descriptions.Item label="镜像">
-                    {service.image}
-                    {service.imageTag && <Tag style={{ marginLeft: 8 }}>{service.imageTag}</Tag>}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="副本数">
-                    {service.ready_replicas} / {service.replicas}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="GPU 类型">{service.gpu_type}</Descriptions.Item>
-                  <Descriptions.Item label="GPU 数量">{service.gpu_count}</Descriptions.Item>
-                  <Descriptions.Item label="创建时间" span={2}>
-                    {service.created_at || '-'}
-                  </Descriptions.Item>
-                </Descriptions>
-
-                <div style={{ marginTop: 16 }}>
-                  <div style={{ marginBottom: 8, fontWeight: 500 }}>副本状态</div>
-                  <Progress
-                    percent={Math.round((service.ready_replicas / service.replicas) * 100)}
-                    status={service.ready_replicas === service.replicas ? 'success' : 'normal'}
-                    format={() => `${service.ready_replicas}/${service.replicas}`}
-                  />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="p-3 bg-dark-bg rounded-lg border border-dark-border">
+                  <div className="text-xs text-gray-500">服务名称</div>
+                  <div className="text-sm text-gray-100">{service.name}</div>
                 </div>
-              </>
+                <div className="p-3 bg-dark-bg rounded-lg border border-dark-border">
+                  <div className="text-xs text-gray-500">命名空间</div>
+                  <div className="text-sm text-gray-100">{service.namespace}</div>
+                </div>
+                <div className="p-3 bg-dark-bg rounded-lg border border-dark-border">
+                  <div className="text-xs text-gray-500">类型</div>
+                  <div className="text-sm text-gray-100">{service.type}</div>
+                </div>
+                <div className="p-3 bg-dark-bg rounded-lg border border-dark-border">
+                  <div className="text-xs text-gray-500">状态</div>
+                  <div className="text-sm text-gray-100">
+                    <Badge variant={statusVariant(service.status) as any}>{service.status}</Badge>
+                  </div>
+                </div>
+                <div className="p-3 bg-dark-bg rounded-lg border border-dark-border md:col-span-2">
+                  <div className="text-xs text-gray-500">镜像</div>
+                  <div className="text-sm text-gray-100 break-all">
+                    {service.image}:{service.imageTag || 'latest'}
+                  </div>
+                </div>
+                <div className="p-3 bg-dark-bg rounded-lg border border-dark-border">
+                  <div className="text-xs text-gray-500">副本数</div>
+                  <div className="text-sm text-gray-100">
+                    {service.ready_replicas} / {service.replicas}
+                  </div>
+                </div>
+                <div className="p-3 bg-dark-bg rounded-lg border border-dark-border">
+                  <div className="text-xs text-gray-500">GPU</div>
+                  <div className="text-sm text-gray-100">
+                    {service.gpu_count} × {service.gpu_type}
+                  </div>
+                </div>
+                <div className="p-3 bg-dark-bg rounded-lg border border-dark-border md:col-span-2">
+                  <div className="text-xs text-gray-500">创建时间</div>
+                  <div className="text-sm text-gray-100">{service.created_at || '-'}</div>
+                </div>
+              </div>
             ),
           },
           {
             key: 'pods',
-            label: 'Pod 实例',
-            children: (
-              <Table
-                dataSource={service.pods || []}
-                rowKey="name"
-                size="small"
-                pagination={false}
-              >
-                <Column title="Pod 名称" dataIndex="name" key="name" />
-                <Column title="节点" dataIndex="node" key="node" />
-                <Column
-                  title="状态"
-                  dataIndex="status"
-                  key="status"
-                  render={(status: string) => getStatusTag(status)}
-                />
-                <Column title="就绪" dataIndex="ready" key="ready" />
-                <Column title="重启次数" dataIndex="restarts" key="restarts" />
-                <Column
-                  title="CPU"
-                  dataIndex="cpu_usage"
-                  key="cpu_usage"
-                  render={(val: number) => val ? `${val.toFixed(1)}%` : '-'}
-                />
-                <Column
-                  title="内存"
-                  dataIndex="memory_usage"
-                  key="memory_usage"
-                  render={(val: number) => val ? `${(val / 1024 / 1024).toFixed(1)}Mi` : '-'}
-                />
-                <Column
-                  title="GPU"
-                  dataIndex="gpu_usage"
-                  key="gpu_usage"
-                  render={(val: number) => val ? `${val.toFixed(1)}%` : '-'}
-                />
-              </Table>
-            ),
+            label: `Pods (${pods.length})`,
+            children: <Table columns={podColumns as any} data={pods} rowKey="name" />,
           },
           {
             key: 'config',
-            label: '配置',
+            label: 'Config',
             children: (
-              <Descriptions bordered column={1} size="small">
-                {service.config && Object.entries(service.config).map(([key, value]) => (
-                  <Descriptions.Item key={key} label={key}>
-                    {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                  </Descriptions.Item>
-                ))}
-                {!service.config && <Descriptions.Item label="配置">暂无配置信息</Descriptions.Item>}
-              </Descriptions>
+              <pre className="text-xs text-gray-200 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
+                {JSON.stringify(service.config || {}, null, 2)}
+              </pre>
             ),
           },
         ]}
@@ -193,3 +147,4 @@ const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
 };
 
 export default ServiceDetailModal;
+

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, RotateCw, Network, Settings, Trash2, Laptop } from 'lucide-react';
-import { Table, Button, Modal, Select } from '../../../components/ui';
+import { Table, Button, Modal, Select, toast } from '../../../components/ui';
 import PageHeader from '../../../components/common/PageHeader';
 import AddModelModal from '../../../components/infra/AddModelModal';
 import { modelApi, type Model, type Provider } from '../../../services';
@@ -39,7 +39,7 @@ const Models: React.FC = () => {
       setModels(modelsRes.models || []);
       setProviders(providersRes.providers || []);
     } catch (error) {
-      alert('获取模型列表失败');
+      toast.error('获取模型列表失败');
       console.error('Failed to fetch models:', error);
     } finally {
       setLoading(false);
@@ -54,14 +54,14 @@ const Models: React.FC = () => {
     try {
       if (enabled) {
         await modelApi.enable(model.id);
-        alert(`模型 ${model.name} 已启用`);
+        toast.success(`模型 ${model.name} 已启用`);
       } else {
         await modelApi.disable(model.id);
-        alert(`模型 ${model.name} 已禁用`);
+        toast.success(`模型 ${model.name} 已禁用`);
       }
       fetchModels();
     } catch (error) {
-      alert('操作失败');
+      toast.error('操作失败');
     }
   };
 
@@ -69,11 +69,11 @@ const Models: React.FC = () => {
     if (!deleteModal.model) return;
     try {
       await modelApi.delete(deleteModal.model.id);
-      alert('模型已删除');
+      toast.success('模型已删除');
       setDeleteModal({ open: false, model: null });
       fetchModels();
     } catch (error) {
-      alert('删除失败');
+      toast.error('删除失败');
     }
   };
 
@@ -81,22 +81,22 @@ const Models: React.FC = () => {
     try {
       const result = await modelApi.testConnectivity(model.id);
       if (result.success) {
-        alert('连通性测试通过');
+        toast.success('连通性测试通过');
       } else {
-        alert(`连通性测试失败: ${result.error}`);
+        toast.error('连通性测试失败', String(result.error || ''));
       }
     } catch (error) {
-      alert('测试失败');
+      toast.error('测试失败');
     }
   };
 
   const handleScanLocal = async () => {
     try {
       const result = await modelApi.scanLocal();
-      alert(`发现 ${result.total} 个本地模型`);
+      toast.success(`发现 ${result.total} 个本地模型`);
       fetchModels();
     } catch (error) {
-      alert('扫描失败，请确保 Ollama 正在运行');
+      toast.error('扫描失败，请确保 Ollama 正在运行');
     }
   };
 

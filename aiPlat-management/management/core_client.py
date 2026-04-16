@@ -14,6 +14,7 @@ class CoreAPIClientConfig:
     """Configuration for Core API client."""
     base_url: str = "http://localhost:8002"
     timeout: float = 30.0
+    transport: Optional[httpx.BaseTransport] = None
 
 
 class CoreAPIClient:
@@ -26,7 +27,8 @@ class CoreAPIClient:
     async def __aenter__(self):
         self._client = httpx.AsyncClient(
             base_url=self.config.base_url,
-            timeout=self.config.timeout
+            timeout=self.config.timeout,
+            transport=self.config.transport,
         )
         return self
     
@@ -39,12 +41,68 @@ class CoreAPIClient:
         if not self._client:
             self._client = httpx.AsyncClient(
                 base_url=self.config.base_url,
-                timeout=self.config.timeout
+                timeout=self.config.timeout,
+                transport=self.config.transport,
             )
         
         response = await self._client.request(method, path, **kwargs)
         response.raise_for_status()
         return response.json()
+
+    # ===== Trace / Persistence (ExecutionStore) =====
+
+    async def list_traces(self, limit: int = 100, offset: int = 0, status: Optional[str] = None) -> Dict[str, Any]:
+        params: Dict[str, Any] = {"limit": limit, "offset": offset}
+        if status:
+            params["status"] = status
+        return await self._request("GET", "/api/core/traces", params=params)
+
+    async def get_trace(self, trace_id: str) -> Dict[str, Any]:
+        return await self._request("GET", f"/api/core/traces/{trace_id}")
+
+    async def get_trace_by_execution(self, execution_id: str) -> Dict[str, Any]:
+        return await self._request("GET", f"/api/core/executions/{execution_id}/trace")
+
+    async def list_executions_by_trace(self, trace_id: str, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        params: Dict[str, Any] = {"limit": limit, "offset": offset}
+        return await self._request("GET", f"/api/core/traces/{trace_id}/executions", params=params)
+
+    # ===== Graph runs / checkpoints (ExecutionStore) =====
+
+    async def list_graph_runs(
+        self,
+        limit: int = 100,
+        offset: int = 0,
+        graph_name: Optional[str] = None,
+        status: Optional[str] = None,
+        trace_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        params: Dict[str, Any] = {"limit": limit, "offset": offset}
+        if graph_name:
+            params["graph_name"] = graph_name
+        if status:
+            params["status"] = status
+        if trace_id:
+            params["trace_id"] = trace_id
+        return await self._request("GET", "/api/core/graphs/runs", params=params)
+
+    async def get_graph_run(self, run_id: str) -> Dict[str, Any]:
+        return await self._request("GET", f"/api/core/graphs/runs/{run_id}")
+
+    async def list_graph_checkpoints(self, run_id: str, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        params: Dict[str, Any] = {"limit": limit, "offset": offset}
+        return await self._request("GET", f"/api/core/graphs/runs/{run_id}/checkpoints", params=params)
+
+    async def get_graph_checkpoint(self, run_id: str, checkpoint_id: str) -> Dict[str, Any]:
+        return await self._request("GET", f"/api/core/graphs/runs/{run_id}/checkpoints/{checkpoint_id}")
+
+    async def resume_graph_run(self, run_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Create a new run from checkpoint (restore/resume)."""
+        return await self._request("POST", f"/api/core/graphs/runs/{run_id}/resume", json=payload)
+
+    async def resume_and_execute_graph_run(self, run_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Resume from checkpoint and continue executing (closes the loop)."""
+        return await self._request("POST", f"/api/core/graphs/runs/{run_id}/resume/execute", json=payload)
     
     # ===== Agent Management =====
     

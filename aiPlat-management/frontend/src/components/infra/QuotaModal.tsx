@@ -1,7 +1,5 @@
 import React from 'react';
-import { Modal, Form, InputNumber, Input, Select, message } from 'antd';
-
-const { Option } = Select;
+import { Button, Input, Modal, Select, toast } from '../ui';
 
 interface QuotaModalProps {
   open: boolean;
@@ -18,76 +16,70 @@ interface QuotaFormValues {
 }
 
 const QuotaModal: React.FC<QuotaModalProps> = ({ open, onCancel, onOk, initialValues, mode }) => {
-  const [form] = Form.useForm();
   const [loading, setLoading] = React.useState(false);
+  const [name, setName] = React.useState('');
+  const [team, setTeam] = React.useState('');
+  const [gpuQuota, setGpuQuota] = React.useState('1');
 
   React.useEffect(() => {
     if (open && initialValues) {
-      form.setFieldsValue(initialValues);
+      setName(initialValues.name || '');
+      setTeam(initialValues.team || '');
+      setGpuQuota(initialValues.gpuQuota != null ? String(initialValues.gpuQuota) : '1');
     } else if (open) {
-      form.resetFields();
+      setName('');
+      setTeam('');
+      setGpuQuota('1');
     }
-  }, [open, initialValues, form]);
+  }, [open, initialValues]);
 
   const handleOk = async () => {
     try {
-      const values = await form.validateFields();
+      if (!name.trim()) return toast.error('请输入配额名称');
+      if (!team) return toast.error('请选择团队或用户');
       setLoading(true);
-      await onOk(values);
-      form.resetFields();
-      message.success(mode === 'create' ? '配额创建成功' : '配额更新成功');
+      await onOk({ name: name.trim(), team, gpuQuota: Number(gpuQuota || 0) });
+      toast.success(mode === 'create' ? '配额创建成功' : '配额更新成功');
     } catch (error) {
-      if (error instanceof Error) {
-        message.error(error.message);
-      }
+      if (error instanceof Error) toast.error(error.message);
     } finally {
       setLoading(false);
     }
   };
 
   const handleCancel = () => {
-    form.resetFields();
     onCancel();
   };
 
   return (
     <Modal
-      title={mode === 'create' ? '创建资源配额' : '编辑资源配额'}
       open={open}
-      onCancel={handleCancel}
-      onOk={handleOk}
-      confirmLoading={loading}
-      destroyOnHidden
+      onClose={handleCancel}
+      title={mode === 'create' ? '创建资源配额' : '编辑资源配额'}
+      width={560}
+      footer={
+        <>
+          <Button variant="secondary" onClick={handleCancel} disabled={loading}>取消</Button>
+          <Button variant="primary" onClick={handleOk} loading={loading}>保存</Button>
+        </>
+      }
     >
-      <Form form={form} layout="vertical">
-        <Form.Item
-          name="name"
-          label="配额名称"
-          rules={[{ required: true, message: '请输入配额名称' }]}
-        >
-          <Input placeholder="例如: prod-team" disabled={mode === 'edit'} />
-        </Form.Item>
-        <Form.Item
-          name="team"
+      <div className="space-y-4">
+        <Input label="配额名称" value={name} onChange={(e: any) => setName(e.target.value)} placeholder="例如: prod-team" disabled={mode === 'edit'} />
+        <Select
           label="团队/用户"
-          rules={[{ required: true, message: '请选择团队或用户' }]}
-        >
-          <Select placeholder="选择团队或用户">
-            <Option value="prod-team">生产团队</Option>
-            <Option value="dev-team">开发团队</Option>
-            <Option value="research">研究中心</Option>
-            <Option value="ml-team">算法团队</Option>
-          </Select>
-        </Form.Item>
-        <Form.Item
-          name="gpuQuota"
-          label="GPU 配额"
-          rules={[{ required: true, message: '请输入 GPU 配额' }]}
-          initialValue={1}
-        >
-          <InputNumber min={1} max={64} style={{ width: '100%' }} suffix="卡" />
-        </Form.Item>
-      </Form>
+          value={team}
+          onChange={(v) => setTeam(v)}
+          placeholder="选择团队或用户"
+          options={[
+            { value: 'prod-team', label: '生产团队' },
+            { value: 'dev-team', label: '开发团队' },
+            { value: 'research', label: '研究中心' },
+            { value: 'ml-team', label: '算法团队' },
+          ]}
+        />
+        <Input label="GPU 配额（卡）" type="number" min={1} max={64} value={gpuQuota} onChange={(e: any) => setGpuQuota(e.target.value)} />
+      </div>
     </Modal>
   );
 };

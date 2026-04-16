@@ -1,4 +1,6 @@
-# aiPlat-core 架构师指南
+# aiPlat-core 架构师指南（As-Is 对齐 + To-Be 边界）
+
+> 说明：本文档包含平台化边界（CoreFacade/platform 层等）的 To-Be 设定；As-Is 以当前仓库 `core/server.py` 为主要服务入口。统一口径参见 [`ARCHITECTURE_STATUS.md`](../../ARCHITECTURE_STATUS.md)。
 
 > 本文档为架构师提供 aiPlat-core 核心层的架构设计指导，帮助架构师理解核心层的设计理念、技术选型和模块边界。
 
@@ -6,7 +8,9 @@
 
 ## 概述
 
-aiPlat-core 是 AI 中台系统的核心层，位于四层架构的第二层（Layer 1）。本层不关心如何暴露（HTTP/CLI）也不关心如何存储（数据库/文件），专注于封装 AI 核心能力和业务逻辑。
+aiPlat-core 是 AI 中台系统的核心层，位于四层架构的第二层（Layer 1）。  
+**To-Be**：本层不关心如何暴露（HTTP/CLI）也不关心如何存储（数据库/文件），专注于封装 AI 核心能力和业务逻辑。  
+**As-Is**：当前仓库已包含 HTTP/API 入口（`core/server.py`），属于“平台化前”的落地形态。
 
 **核心定位**：
 
@@ -19,7 +23,7 @@ aiPlat-core 是 AI 中台系统的核心层，位于四层架构的第二层（L
 
 **依赖关系**：
 
-- 向上：依赖 aiPlat-platform（通过 CoreFacade）
+- 向上：To-Be 通过 aiPlat-platform（CoreFacade/SDK）暴露
 - 向下：依赖 aiPlat-infra（通过工厂接口）
 - 不依赖：app 层
 
@@ -52,8 +56,15 @@ skills ← harness, tools, models
 memory ← services
 knowledge ← services, models
 tools ← services
-services ← aiPlat-infra
-models ← aiPlat-infra
+services ← aiPlat-infra（可选；当前仓库存在 core/infra 双栈并存）
+models ← aiPlat-infra（可选；当前仓库存在 core 内 ModelService/Adapters）
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- As-Is 服务入口：`core/server.py`
+- Harness/Agents/Skills/Tools：`core/harness/*`、`core/apps/*`
 ```
 
 ---

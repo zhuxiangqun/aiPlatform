@@ -1,4 +1,6 @@
-# 向量存储模块
+# 向量存储模块（设计真值：以代码事实为准）
+
+> 说明：向量存储模块的 As-Is 能力以 `infra/vector/*` 代码与测试为准；多后端适配（Milvus/Chroma/FAISS 等）若未闭环需标注为 To-Be。
 
 > 提供向量数据库抽象，支持多种向量后端（Milvus/FAISS/Pinecone/Chroma）
 
@@ -432,3 +434,9 @@ infra/vector/
 ---
 
 *最后更新: 2026-04-11*
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- 代码入口：`infra/vector/*`

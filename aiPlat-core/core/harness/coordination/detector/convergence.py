@@ -7,7 +7,7 @@ Detects when multi-agent results have converged.
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, List, Dict
-import numpy as np
+# NOTE: numpy is intentionally not used here. Avoid importing heavy optional deps.
 
 
 @dataclass

@@ -1,4 +1,7 @@
-# Core Services 模块
+# Core Services 模块（设计真值：以代码事实为准）
+
+> 说明：Services 为 core 内的基础服务实现（Prompt/Model/Trace/Context/File）。其中“分布式追踪/成本治理”等属于 To-Be 能力，当前以本地内存态实现为主。  
+> 统一口径参见：[架构实现状态](../ARCHITECTURE_STATUS.md)。
 
 > 提供 aiPlat-core 的核心基础服务
 
@@ -531,5 +534,15 @@ class CustomModelService(ModelService):
 ---
 
 *最后更新: 2026-04-14*
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- PromptService：`core/services/prompt_service.py`
+- ModelService：`core/services/model_service.py`
+- TraceService：`core/services/trace_service.py`
+- ContextService：`core/services/context_service.py`
+- FileService：`core/services/file_service.py`
 **版本**: v1.1
 **维护团队**: AI Platform Team

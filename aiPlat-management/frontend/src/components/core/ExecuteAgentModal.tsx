@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Modal, Input, message } from 'antd';
 import { agentApi, type Agent } from '../../services';
+import { Button, Modal, Textarea, notify, toast } from '../ui';
 
 interface ExecuteAgentModalProps {
   open: boolean;
@@ -25,11 +25,19 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
     setLoading(true);
     try {
       const result = await agentApi.execute(agent.id, { input: parsedInput });
-      message.success(`执行完成: ${result.status}`);
+      toast.success('执行完成', String((result as any)?.status || 'ok'));
+      if ((result as any)?.execution_id) {
+        notify.success(
+          `Agent 执行完成：${agent.name}`,
+          `execution_id: ${(result as any).execution_id}`,
+          `/diagnostics/links?execution_id=${encodeURIComponent(String((result as any).execution_id))}`
+        );
+      }
       onClose();
       setInput('');
     } catch (error) {
-      message.error('执行失败');
+      toast.error('执行失败');
+      notify.error(`Agent 执行失败：${agent.name}`);
     } finally {
       setLoading(false);
     }
@@ -37,26 +45,24 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
 
   return (
     <Modal
-      title={`执行Agent: ${agent?.name || ''}`}
       open={open}
-      onOk={handleExecute}
-      onCancel={() => { onClose(); setInput(''); }}
-      okText="执行"
-      cancelText="取消"
-      confirmLoading={loading}
-      destroyOnHidden
+      onClose={() => { onClose(); setInput(''); }}
+      title={`执行 Agent: ${agent?.name || ''}`}
+      width={640}
+      footer={
+        <>
+          <Button variant="secondary" onClick={() => { onClose(); setInput(''); }} disabled={loading}>取消</Button>
+          <Button variant="primary" onClick={handleExecute} loading={loading}>执行</Button>
+        </>
+      }
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div>
-          <label>输入 (JSON或文本)</label>
-          <Input.TextArea
-            rows={6}
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            placeholder='输入JSON或文本'
-          />
-        </div>
-      </div>
+      <Textarea
+        label="输入（JSON 或文本）"
+        rows={8}
+        value={input}
+        onChange={(e: any) => setInput(e.target.value)}
+        placeholder="输入 JSON 或文本"
+      />
     </Modal>
   );
 };

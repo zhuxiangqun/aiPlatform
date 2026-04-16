@@ -1,4 +1,6 @@
-# AI Platform 基础设施层 - 测试快速开始指南
+# AI Platform 基础设施层 - 测试快速开始指南（As-Is 对齐）
+
+> 说明：本文档提供快速运行测试的 As-Is 命令集合；涉及 docker/compose/CI 的部分若不在本仓库，请视为 To-Be 或外部 ops 仓库内容。
 
 > 5分钟快速上手测试
 
@@ -480,4 +482,10 @@ python infra/tests/test_database/run_all_integration_tests.py
 ---
 
 *最后更新: 2026-04-11  
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- infra tests：`infra/tests/*`
 **文档版本**: v1.0

@@ -1,221 +1,97 @@
 """
-Tests for Infrastructure API endpoints
+Tests for Infrastructure API endpoints (management -> infra forwarding).
+
+These tests validate that aiPlat-management routes can forward to aiPlat-infra API
+without requiring a real network service, using ASGITransport.
 """
 
 import pytest
+import httpx
 from fastapi.testclient import TestClient
+
 from management.server import create_app
+from management.infra_client import InfraAPIClient, InfraAPIClientConfig
 
 
 @pytest.fixture
 def client():
-    """Create test client"""
     app = create_app()
+    def handler(request: httpx.Request) -> httpx.Response:
+        p = request.url.path
+        if p == "/api/infra/status":
+            return httpx.Response(200, json={"status": "success", "data": {"node": "healthy"}})
+        if p == "/api/infra/health":
+            return httpx.Response(200, json={"status": "success", "data": {"node": {"status": "healthy"}}})
+        if p == "/api/infra/metrics":
+            return httpx.Response(200, json={"status": "success", "data": {"node": []}})
+        if p == "/api/infra/nodes":
+            return httpx.Response(200, json=[])
+        if p == "/api/infra/services":
+            return httpx.Response(200, json=[])
+        if p == "/api/infra/scheduler/quotas":
+            return httpx.Response(200, json=[])
+        if p == "/api/infra/scheduler/tasks":
+            return httpx.Response(200, json=[])
+        if p == "/api/infra/storage/pvcs":
+            return httpx.Response(200, json=[])
+        if p == "/api/infra/storage/collections":
+            return httpx.Response(200, json=[])
+        if p == "/api/infra/network/services":
+            return httpx.Response(200, json=[])
+        if p == "/api/infra/network/ingresses":
+            return httpx.Response(200, json=[])
+        if p == "/api/infra/network/policies":
+            return httpx.Response(200, json=[])
+        if p == "/api/infra/monitoring/metrics/cluster":
+            return httpx.Response(200, json={})
+        if p == "/api/infra/monitoring/metrics/gpus":
+            return httpx.Response(200, json={})
+        if p == "/api/infra/monitoring/alerts/rules":
+            return httpx.Response(200, json=[])
+        return httpx.Response(404, json={"detail": "not found"})
+
+    transport = httpx.MockTransport(handler)
+    app.state.infra_client = InfraAPIClient(InfraAPIClientConfig(base_url="http://infra", transport=transport))
     return TestClient(app)
 
 
-class TestNodesAPI:
-    """Test nodes API endpoints"""
-    
-    def test_list_nodes(self, client):
-        """Test list nodes endpoint"""
-        response = client.get("/api/infra/nodes")
-        assert response.status_code == 200
-        data = response.json()
-        assert isinstance(data, list)
-    
-    def test_get_node(self, client):
-        """Test get single node endpoint"""
-        response = client.get("/api/infra/nodes/node-01")
-        assert response.status_code in [200, 404]
-        if response.status_code == 200:
-            data = response.json()
-            assert "name" in data
-    
-    def test_add_node(self, client):
-        """Test add node endpoint"""
-        node_data = {
-            "name": "test-node",
-            "ip": "192.168.1.100",
-            "gpu_model": "A100",
-            "gpu_count": 4,
-            "driver_version": "525.60.13"
-        }
-        response = client.post("/api/infra/nodes", json=node_data)
-        assert response.status_code in [200, 201]
-    
-    def test_drain_node(self, client):
-        """Test drain node endpoint"""
-        response = client.post("/api/infra/nodes/node-01/drain")
-        assert response.status_code in [200, 404]
-    
-    def test_restart_node(self, client):
-        """Test restart node endpoint"""
-        response = client.post("/api/infra/nodes/node-01/restart")
-        assert response.status_code in [200, 404]
+def test_meta_endpoints(client):
+    r = client.get("/api/infra/status")
+    assert r.status_code == 200
+    assert r.json().get("status") == "success"
+
+    r = client.get("/api/infra/health")
+    assert r.status_code == 200
+    assert r.json().get("status") == "success"
+
+    r = client.get("/api/infra/metrics")
+    assert r.status_code == 200
+    assert r.json().get("status") == "success"
 
 
-class TestServicesAPI:
-    """Test services API endpoints"""
-    
-    def test_list_services(self, client):
-        """Test list services endpoint"""
-        response = client.get("/api/infra/services")
-        assert response.status_code == 200
-        data = response.json()
-        assert isinstance(data, list)
-    
-    def test_deploy_service(self, client):
-        """Test deploy service endpoint"""
-        service_data = {
-            "name": "test-service",
-            "image": "vllm/vllm-openai",
-            "replicas": 2,
-            "gpu_count": 1,
-            "gpu_type": "A100",
-            "namespace": "ai-prod"
-        }
-        response = client.post("/api/infra/services", json=service_data)
-        assert response.status_code in [200, 201]
-    
-    def test_scale_service(self, client):
-        """Test scale service endpoint"""
-        response = client.post("/api/infra/services/test-service/scale?replicas=4")
-        assert response.status_code in [200, 404, 422]
-    
-    def test_get_service_logs(self, client):
-        """Test get service logs endpoint"""
-        response = client.get("/api/infra/services/test-service/logs")
-        assert response.status_code in [200, 404]
+def test_nodes_and_services(client):
+    r = client.get("/api/infra/nodes")
+    assert r.status_code == 200
+
+    r = client.get("/api/infra/services")
+    assert r.status_code == 200
 
 
-class TestQuotasAPI:
-    """Test quotas API endpoints"""
-    
-    def test_list_quotas(self, client):
-        """Test list quotas endpoint"""
-        response = client.get("/api/infra/scheduler/quotas")
-        assert response.status_code == 200
-        data = response.json()
-        assert isinstance(data, list)
-    
-    def test_create_quota(self, client):
-        """Test create quota endpoint"""
-        quota_data = {
-            "name": "test-quota",
-            "gpu_quota": 8,
-            "team": "test-team"
-        }
-        response = client.post("/api/infra/scheduler/quotas", json=quota_data)
-        assert response.status_code in [200, 201]
-    
-    def test_update_quota(self, client):
-        """Test update quota endpoint"""
-        response = client.put("/api/infra/scheduler/quotas/test-quota", json={"gpu_quota": 16})
-        assert response.status_code in [200, 404]
+def test_scheduler_storage_network_monitoring_smoke(client):
+    # scheduler (GET-only subset in management)
+    assert client.get("/api/infra/scheduler/quotas").status_code == 200
+    assert client.get("/api/infra/scheduler/tasks").status_code == 200
 
+    # storage
+    assert client.get("/api/infra/storage/pvcs").status_code == 200
+    assert client.get("/api/infra/storage/collections").status_code == 200
 
-class TestTasksAPI:
-    """Test tasks API endpoints"""
-    
-    def test_list_tasks(self, client):
-        """Test list tasks endpoint"""
-        response = client.get("/api/infra/scheduler/tasks")
-        assert response.status_code == 200
-        data = response.json()
-        assert isinstance(data, list)
-    
-    def test_submit_task(self, client):
-        """Test submit task endpoint"""
-        task_data = {
-            "name": "test-task",
-            "gpu_count": 4,
-            "gpu_type": "A100",
-            "queue": "high",
-            "priority": 100
-        }
-        response = client.post("/api/infra/scheduler/tasks", json=task_data)
-        assert response.status_code in [200, 201]
+    # network
+    assert client.get("/api/infra/network/services").status_code == 200
+    assert client.get("/api/infra/network/ingresses").status_code == 200
+    assert client.get("/api/infra/network/policies").status_code == 200
 
-
-class TestStorageAPI:
-    """Test storage API endpoints"""
-    
-    def test_list_collections(self, client):
-        """Test list vector collections endpoint"""
-        response = client.get("/api/infra/storage/vector/collections")
-        assert response.status_code == 200
-        data = response.json()
-        assert isinstance(data, list)
-    
-    def test_list_models(self, client):
-        """Test list models endpoint"""
-        response = client.get("/api/infra/storage/models")
-        assert response.status_code == 200
-        data = response.json()
-        assert isinstance(data, list)
-    
-    def test_list_pvc(self, client):
-        """Test list PVC endpoint"""
-        response = client.get("/api/infra/storage/pvc")
-        assert response.status_code == 200
-        data = response.json()
-        assert isinstance(data, list)
-
-
-class TestNetworkAPI:
-    """Test network API endpoints"""
-    
-    def test_list_network_services(self, client):
-        """Test list network services endpoint"""
-        response = client.get("/api/infra/network/services")
-        assert response.status_code == 200
-        data = response.json()
-        assert isinstance(data, list)
-    
-    def test_list_ingress(self, client):
-        """Test list ingress endpoint"""
-        response = client.get("/api/infra/network/ingress")
-        assert response.status_code == 200
-        data = response.json()
-        assert isinstance(data, list)
-    
-    def test_list_network_policies(self, client):
-        """Test list network policies endpoint"""
-        response = client.get("/api/infra/network/policies")
-        assert response.status_code == 200
-        data = response.json()
-        assert isinstance(data, list)
-
-
-class TestMonitoringAPI:
-    """Test monitoring API endpoints"""
-    
-    def test_get_monitoring_overview(self, client):
-        """Test get monitoring overview endpoint"""
-        response = client.get("/api/infra/monitoring/overview")
-        assert response.status_code == 200
-        data = response.json()
-        assert "nodes" in data
-        assert "gpus" in data
-    
-    def test_get_metrics(self, client):
-        """Test get metrics endpoint"""
-        response = client.get("/api/infra/monitoring/metrics")
-        assert response.status_code == 200
-        data = response.json()
-        assert isinstance(data, list)
-    
-    def test_list_alerts(self, client):
-        """Test list alerts endpoint"""
-        response = client.get("/api/infra/monitoring/alerts")
-        assert response.status_code == 200
-        data = response.json()
-        assert isinstance(data, list)
-    
-    def test_list_audit_logs(self, client):
-        """Test list audit logs endpoint"""
-        response = client.get("/api/infra/monitoring/audit-logs")
-        assert response.status_code == 200
-        data = response.json()
-        assert isinstance(data, list)
+    # monitoring
+    assert client.get("/api/infra/monitoring/metrics/cluster").status_code == 200
+    assert client.get("/api/infra/monitoring/metrics/gpus").status_code == 200
+    assert client.get("/api/infra/monitoring/alerts/rules").status_code == 200

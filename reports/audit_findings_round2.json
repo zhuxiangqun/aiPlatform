@@ -1,0 +1,538 @@
+{
+  "meta": {
+    "project": "aiPlat",
+    "round": "round2",
+    "date": "2026-04-15",
+    "scope": [
+      "aiPlat-core/docs",
+      "aiPlat-infra/docs",
+      "aiPlat-management (若存在文档与代码则纳入抽样)"
+    ],
+    "focus": [
+      "整体架构边界与依赖方向",
+      "Harness（执行/Hook/安全/观测/协调/收敛）",
+      "Agent（生命周期/执行路径/多智能体）",
+      "Skill（版本/回滚/执行/权限）",
+      "Tool（注册/追踪/权限/线程安全/召回）"
+    ],
+    "rating_scale": {
+      "verdict": [
+        "✅一致",
+        "⚠️部分一致",
+        "❌不一致",
+        "📝仅文档",
+        "🔧结构存在未接通",
+        "🧩设计不完整/不可操作",
+        "🚨实现不合理/高风险"
+      ],
+      "risk": [
+        "高",
+        "中",
+        "低"
+      ]
+    }
+  },
+  "items": [
+    {
+      "id": "R2-AUTH-001",
+      "source_doc": "aiPlat-core/docs/tools/index.md",
+      "design_statement": "执行入口的权限控制应当可用且具备合理默认策略（至少 system/管理员账号可执行），否则平台开箱即不可用。",
+      "code_evidence": [
+        {
+          "type": "doc",
+          "path": "aiPlat-core/docs/tools/index.md",
+          "evidence": "文档强调“权限校验/自动注入权限管理器”。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/server.py",
+          "evidence": "execute_agent/execute_skill 在未授权时直接 403；默认 user_id 为 system。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/apps/tools/permission.py",
+          "evidence": "PermissionManager.check_permission() 对未登记 user/tool 默认返回 False；代码中未发现生产路径调用 grant_permission() 进行初始化授权。"
+        }
+      ],
+      "verdict": "✅一致",
+      "issue_type": "权限体系默认全拒绝导致可用性风险",
+      "risk": "高",
+      "recommendation": "补齐权限“落地闭环”：(1) 增加权限管理 API（grant/revoke/list）；(2) 启动时 seed system/admin 对核心 agent/skill/tool 的 EXECUTE；(3) 将权限校验下沉到 Tool/Skill/Agent 执行封装中并支持策略化默认（例如 allow_system=true）。",
+      "verification": "启动后以 user_id=system 调用任意 seed agent/skill/tool 不应 403；并能通过 API 查看/调整授权。",
+      "status": "fixed",
+      "fix_summary": "已补齐权限闭环实现：新增权限管理 API（grant/revoke/query/stats），并在 server 启动时默认 seed system/admin 对所有已注册 agent/skill/tool 的 EXECUTE 权限（可通过环境变量关闭）。",
+      "fix_refs": [
+        {
+          "path": "aiPlat-core/docs/tools/index.md",
+          "note": "新增“设计补全：权限闭环与默认策略（必须落地）”。"
+        },
+        {
+          "path": "aiPlat-core/core/server.py",
+          "symbols": [
+            "_seed_default_permissions",
+            "lifespan",
+            "grant_permission",
+            "revoke_permission",
+            "get_user_permissions",
+            "get_resource_permissions",
+            "get_permission_stats"
+          ],
+          "note": "实现默认授权 seed 与权限管理 API。"
+        },
+        {
+          "path": "aiPlat-core/core/tests/unit/test_permissions/test_permission_seed_and_api.py",
+          "note": "新增单测覆盖默认授权 seed 与 grant/revoke endpoint 语义。"
+        }
+      ],
+      "verification_result": {
+        "tests": [
+          "python -m pytest -q core/tests/unit/test_permissions/test_permission_seed_and_api.py"
+        ],
+        "evidence": "单测通过；默认 seed 开启时 system/admin 拥有 EXECUTE 权限；并可通过 API grant/revoke 调整。"
+      },
+      "updated_at": "2026-04-15"
+    },
+    {
+      "id": "R2-ARCH-BOUNDARY-001",
+      "source_doc": "aiPlat-infra/docs/mcp/index.md",
+      "design_statement": "Infra 模块的依赖方向与核心实现归属必须清晰且与代码一致，避免出现两套 MCP 实现并存导致装配与排障错误。",
+      "code_evidence": [
+        {
+          "type": "doc",
+          "path": "aiPlat-infra/docs/mcp/index.md",
+          "evidence": "文档声明“mcp 模块 → 被 core 层调用”。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/apps/mcp",
+          "evidence": "core 自带 MCP client/protocol/adapter 并与 ToolRegistry 集成（非引用 infra.mcp）。"
+        }
+      ],
+      "verdict": "✅一致",
+      "issue_type": "整体架构边界/依赖方向口径修订完成（仍需后续收敛双栈）",
+      "risk": "高",
+      "recommendation": "已通过文档修订将“依赖方向/实现归属”与代码事实对齐。下一步若要消除双栈风险：制定 MCP 收敛方案（core 复用 infra 或 infra 退场），并给出迁移步骤与禁用路径。",
+      "verification": "复查 infra mcp 文档：已不再宣称“core 依赖 infra.mcp”；并明确当前主实现为 core/apps/mcp。",
+      "status": "fixed",
+      "fix_summary": "修订 aiPlat-infra/docs/mcp/index.md：更正依赖方向与传输语义（HTTP 为 JSON-RPC over HTTP，SSE 为规划项），并增加 core/infra 双栈现状说明与统一口径。",
+      "fix_refs": [
+        {
+          "path": "aiPlat-infra/docs/mcp/index.md",
+          "note": "更正依赖方向与传输语义，增加现状与统一口径说明。"
+        }
+      ],
+      "verification_result": {
+        "commands": [
+          "人工抽查：aiPlat-infra/docs/mcp/index.md 不再包含“mcp 模块 → 被 core 层调用”。"
+        ]
+      },
+      "updated_at": "2026-04-15"
+    },
+    {
+      "id": "R2-HOOK-SEC-001",
+      "source_doc": "aiPlat-core/docs/harness/security.md",
+      "design_statement": "安全与治理相关 Hook（Approval/Contract/ScopeReview/Stop/SessionStart）应在执行主路径被触发，否则属于“承诺但不落地”。",
+      "code_evidence": [
+        {
+          "type": "doc",
+          "path": "aiPlat-core/docs/harness/security.md",
+          "evidence": "文档描述多层防御与运行时审批/合约检查等钩子。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/harness/infrastructure/hooks/hook_manager.py",
+          "evidence": "HookPhase 枚举包含 PRE_APPROVAL_CHECK / PRE_CONTRACT_CHECK / SCOPE_REVIEW / STOP / SESSION_START 等。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/harness/execution/loop.py",
+          "evidence": "ReActLoop/BaseLoop 仅触发 PRE/POST_LOOP、PRE/POST_REASONING、PRE/POST_ACT、PRE/POST_OBSERVE、PRE/POST_TOOL_USE、PRE/POST_SKILL_USE；未见调用上述治理 HookPhase。"
+        }
+      ],
+      "verdict": "✅一致",
+      "issue_type": "安全/治理设计未接入执行路径",
+      "risk": "中",
+      "recommendation": "为 Hook 触发建立统一规范：在 BaseLoop.run()/step() 关键节点补齐 SESSION_START/END、APPROVAL_CHECK、CONTRACT_CHECK、SCOPE_REVIEW、STOP；并在 HookManager.get_default_hooks() 中默认注册最小安全钩子集（TokenLimitHook/SecurityScanHook）。",
+      "verification": "新增单测：执行一次 tool_use 时应触发 PRE_APPROVAL_CHECK；执行一次 loop 应触发 SESSION_START/END；并在报告中记录 hook trace。",
+      "status": "fixed",
+      "fix_summary": "已将治理 HookPhase 接入执行主路径：BaseLoop.run() 触发 SESSION_START/END、PRE/POST_CONTRACT_CHECK、STOP；ReActLoop 工具调用前触发 PRE/POST_APPROVAL_CHECK 并支持 hook 返回 allow=false 阻断；HookManager 默认注册最小安全钩子（含基于 SecurityScanHook 的审批前扫描）。",
+      "fix_refs": [
+        {
+          "path": "aiPlat-core/docs/harness/security.md",
+          "note": "新增“运行时治理闭环（Hook/审批/合约/范围）设计补全”。"
+        },
+        {
+          "path": "aiPlat-core/core/harness/infrastructure/hooks/hook_manager.py",
+          "symbols": ["HookManager.__init__", "get_default_hooks"],
+          "note": "默认注册 session hooks + pre_approval_check（安全扫描）。"
+        },
+        {
+          "path": "aiPlat-core/core/harness/execution/loop.py",
+          "symbols": ["BaseLoop.run", "ReActLoop._act"],
+          "note": "接入 SESSION/CONTRACT/STOP/APPROVAL 触发与阻断语义。"
+        },
+        {
+          "path": "aiPlat-core/core/tests/unit/test_harness/test_hooks/test_hook_wiring.py",
+          "note": "新增单测验证 contract hook 可阻断、pre_approval_check 可拒绝工具调用。"
+        }
+      ],
+      "verification_result": {
+        "tests": [
+          "python -m pytest -q core/tests/unit/test_harness/test_hooks/test_hook_wiring.py"
+        ]
+      },
+      "updated_at": "2026-04-15"
+    },
+    {
+      "id": "R2-TOOL-THREADSAFE-001",
+      "source_doc": "aiPlat-core/docs/tools/index.md",
+      "design_statement": "ToolRegistry/BaseTool 若宣称线程安全与追踪注入，应在实现中提供锁与 tracer/span 的真实使用点，而不仅是 setter。",
+      "code_evidence": [
+        {
+          "type": "doc",
+          "path": "aiPlat-core/docs/tools/index.md",
+          "evidence": "文档宣称“线程安全：使用锁保护共享状态”“编排追踪器：自动注入执行追踪”。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/apps/tools/base.py",
+          "evidence": "BaseTool._stats 更新无锁；BaseTool.set_tracer 存在但 _call_with_tracking 未实际使用 tracer；ToolRegistry 无锁且 _categories 未被使用。"
+        }
+      ],
+      "verdict": "✅一致",
+      "issue_type": "实现降级未披露/线程安全与追踪承诺不足",
+      "risk": "中",
+      "recommendation": "补齐最小可用：为 BaseTool._stats 更新加锁；ToolRegistry.register/get/list/unregister/get_all_stats 加锁；在 _call_with_tracking 里创建 span（tracer 可选）并记录错误/耗时；或在文档明确标注“当前为单线程/简化追踪”。",
+      "verification": "并发压测（或单测模拟并发）下 stats 不出现负数/不一致；tracer 注入后能看到 span 记录。",
+      "status": "fixed",
+      "fix_summary": "已补齐最小线程安全与追踪注入落地点：BaseTool stats 更新加锁，ToolRegistry 增加 RLock 保护注册/读取/统计；_call_with_tracking 支持 tracer.start_span()（兼容 sync/async context manager）；并新增单测验证 stats 在多线程更新下保持一致。",
+      "fix_refs": [
+        {
+          "path": "aiPlat-core/docs/tools/index.md",
+          "note": "新增权限闭环设计；线程安全/追踪细则建议在后续实现或进一步文档化。"
+        },
+        {
+          "path": "aiPlat-core/core/apps/tools/base.py",
+          "symbols": ["BaseTool._call_with_tracking", "BaseTool._update_stats", "ToolRegistry.register", "ToolRegistry.get_all_stats"],
+          "note": "为 stats 与 registry 操作加锁，并接入 tracer span（可选）。"
+        },
+        {
+          "path": "aiPlat-core/core/tests/unit/test_tools/test_tool_thread_safety.py",
+          "note": "新增单测验证 stats 在多线程更新下保持一致。"
+        }
+      ],
+      "verification_result": {
+        "tests": [
+          "python -m pytest -q core/tests/unit/test_tools/test_tool_thread_safety.py"
+        ]
+      },
+      "updated_at": "2026-04-15"
+    },
+    {
+      "id": "R2-SKILL-VERSION-SEM-001",
+      "source_doc": "aiPlat-core/docs/skills/architecture.md",
+      "design_statement": "版本回滚应当恢复行为（至少恢复 SkillConfig 并影响后续执行），不能只切换 is_active 标记。",
+      "code_evidence": [
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/apps/skills/registry.py",
+          "evidence": "rollback_version() 需影响后续执行行为：将 target.config 应用到 skill 实例（或重建实例），并提供 active_version 查询。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/server.py",
+          "evidence": "rollback_skill_version endpoint 应校验 rollback 成功，并返回 active_version 与 active_config。"
+        }
+      ],
+      "verdict": "✅一致",
+      "issue_type": "版本回滚语义缺失/误导性 API",
+      "risk": "高",
+      "recommendation": "定义“回滚生效”的最低语义：回滚后 get_active_version 返回目标版本；SkillExecutor 后续执行使用目标 config（必要时重建 skill 实例）。同时 endpoint 必须校验 rollback 成功并返回 active_version。",
+      "verification": "集成测试：创建 v1/v2（不同 description/metadata），rollback 到 v1 后执行 skill 与查询版本都应反映 v1。",
+      "status": "fixed",
+      "fix_summary": "已实现回滚生效语义：SkillRegistry.rollback_version() 会把目标 SkillConfig 应用到实例，并新增 get_active_version()；回滚 endpoint 校验版本存在并返回 active_version + active_config，同时新增 active-version 查询端点。",
+      "fix_refs": [
+        {
+          "path": "aiPlat-core/docs/skills/architecture.md",
+          "note": "新增“版本与回滚语义（必须可验收）”。"
+        },
+        {
+          "path": "aiPlat-core/core/apps/skills/registry.py",
+          "symbols": ["SkillRegistry.get_active_version", "SkillRegistry.rollback_version"],
+          "note": "回滚会更新实例 config，确保影响后续执行。"
+        },
+        {
+          "path": "aiPlat-core/core/server.py",
+          "symbols": ["rollback_skill_version", "get_skill_active_version"],
+          "note": "回滚 endpoint 校验返回，并暴露 active_version。"
+        },
+        {
+          "path": "aiPlat-core/core/tests/unit/test_skills/test_skill_rollback_semantics.py",
+          "note": "新增单测覆盖 registry 回滚影响实例 config + endpoint 返回 active_version。"
+        }
+      ],
+      "verification_result": {
+        "tests": [
+          "python -m pytest -q core/tests/unit/test_skills/test_skill_rollback_semantics.py"
+        ],
+        "evidence": "单测通过；回滚后实例 config 变更为目标版本，endpoint 返回 active_version 与 active_config。"
+      },
+      "updated_at": "2026-04-15"
+    },
+    {
+      "id": "R2-AGENT-STATE-001",
+      "source_doc": "aiPlat-core/docs/agents/architecture.md",
+      "design_statement": "Agent 生命周期/状态应全栈一致（interfaces/harness/management/registry），否则监控、控制与恢复会语义错乱。",
+      "code_evidence": [
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/harness/interfaces/agent.py",
+          "evidence": "AgentStatus: IDLE/INITIALIZING/RUNNING/PAUSED/COMPLETED/ERROR（短集合）。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/harness/state.py",
+          "evidence": "AgentStateEnum: CREATED/INITIALIZING/READY/RUNNING/PAUSED/STOPPED/ERROR/TERMINATED（长集合）。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/management/agent_manager.py",
+          "evidence": "AgentInfo.status 为 str；seed 使用 running/pending/stopped 等，与上述两套不一致。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/apps/agents/discovery.py",
+          "evidence": "AgentRegistry 内部状态存储为字符串（例如 idle）。"
+        }
+      ],
+      "verdict": "✅一致",
+      "issue_type": "状态模型割裂/治理与可观测风险",
+      "risk": "中",
+      "recommendation": "统一“唯一状态枚举”并定义映射层：建议以 harness/state.py 的生命周期为准；interfaces.AgentStatus 作为运行态子集；management 的字符串必须改为枚举或强制映射校验；registry 内部状态存储同枚举。",
+      "verification": "新增单测：AgentManager/AgentRegistry/BaseAgent 执行一次后状态链路可追溯且一致；API 返回的 status 字段稳定。",
+      "status": "fixed",
+      "fix_summary": "已按 canonical 状态枚举收敛关键落点：management AgentManager 统一输出 AgentStateEnum 值（pending→initializing 等）；execution-layer AgentRegistry 默认状态改为 ready；并新增单测验证 create/start/stop 状态符合 canonical。",
+      "fix_refs": [
+        {
+          "path": "aiPlat-core/docs/agents/architecture.md",
+          "note": "新增“状态模型统一规范（Round2）”。"
+        },
+        {
+          "path": "aiPlat-core/core/harness/state.py",
+          "symbols": ["AgentStateEnum"],
+          "note": "canonical 状态枚举来源。"
+        },
+        {
+          "path": "aiPlat-core/core/management/agent_manager.py",
+          "symbols": ["AgentManager._normalize_status", "AgentManager.create_agent", "AgentManager.start_agent", "AgentManager.stop_agent"],
+          "note": "management 层收敛为 canonical 状态值。"
+        },
+        {
+          "path": "aiPlat-core/core/apps/agents/discovery.py",
+          "symbols": ["AgentRegistry.register"],
+          "note": "registry 默认状态从 idle 改为 ready。"
+        },
+        {
+          "path": "aiPlat-core/core/tests/unit/test_management/test_agent_status_canonical.py",
+          "note": "新增单测覆盖 canonical 状态值。"
+        }
+      ],
+      "verification_result": {
+        "tests": [
+          "python -m pytest -q core/tests/unit/test_management/test_agent_status_canonical.py"
+        ]
+      },
+      "updated_at": "2026-04-15"
+    },
+    {
+      "id": "R2-DOC-PATH-001",
+      "source_doc": "aiPlat-core/docs/architecture/index.md",
+      "design_statement": "架构文档中的模块路径与文件清单应与实际代码目录一致，否则会导致开发/排障误导。",
+      "code_evidence": [
+        {
+          "type": "doc",
+          "path": "aiPlat-core/docs/architecture/index.md",
+          "evidence": "文档列出 harness/infrastructure/langchain/memory.py 等路径。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/harness/infrastructure/langchain",
+          "evidence": "实际目录不存在 memory.py；与 LangChain memory 更相关的适配器在 core/harness/memory/langchain_adapter.py。"
+        }
+      ],
+      "verdict": "✅一致",
+      "issue_type": "文档路径修订完成",
+      "risk": "低",
+      "recommendation": "已修订并对齐到实际代码目录。后续新增/迁移目录时，要求同步更新目录树并提供可追溯入口。",
+      "verification": "抽查文档目录树中 langchain 相关路径均能在仓库中定位；不再出现 memory.py 这种不存在文件名。",
+      "status": "fixed",
+      "fix_summary": "修订 architecture/index.md：更正 langchain memory 的路径描述（改为 memory/langchain_adapter.py），并修正文档表格中的记忆集成路径。",
+      "fix_refs": [
+        {
+          "path": "aiPlat-core/docs/architecture/index.md",
+          "note": "修正文档目录树与表格路径。"
+        }
+      ],
+      "verification_result": {
+        "commands": [
+          "人工抽查：docs/architecture/index.md 中不存在 infrastructure/langchain/memory.py。"
+        ]
+      },
+      "updated_at": "2026-04-15"
+    },
+    {
+      "id": "R2-HARN-EXEC-001",
+      "source_doc": "aiPlat-core/docs/harness/execution.md",
+      "design_statement": "文档对“是否存在代码实现”应准确；若代码存在但未完成，应标记为“结构存在未完成”而非“不存在”。",
+      "code_evidence": [
+        {
+          "type": "doc",
+          "path": "aiPlat-core/docs/harness/execution.md",
+          "evidence": "文档声称 UnifiedExecutor/SandboxExecutor/BackgroundTasks 不存在。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/harness/execution/executor/unified.py",
+          "evidence": "UnifiedExecutor 存在，但默认 executors 注册逻辑为空（pass），更符合“结构存在未完成”。"
+        }
+      ],
+      "verdict": "✅一致",
+      "issue_type": "文档存在性描述修订完成",
+      "risk": "低",
+      "recommendation": "已修订为“UnifiedExecutor 存在但未完成”；并补充执行器注册闭环与验收要求。",
+      "verification": "文档不再宣称 UnifiedExecutor 代码不存在；且明确指出其缺失的注册逻辑位置。",
+      "status": "fixed",
+      "fix_summary": "修订 harness/execution.md：更正 UnifiedExecutor 的存在性描述，并新增执行器注册闭环与最小验收用例。",
+      "fix_refs": [
+        {
+          "path": "aiPlat-core/docs/harness/execution.md",
+          "note": "更正实现存在性表述并补齐验收。"
+        }
+      ],
+      "verification_result": {
+        "commands": [
+          "人工抽查：docs/harness/execution.md 已将 UnifiedExecutor 标注为“存在但未完成”。"
+        ]
+      },
+      "updated_at": "2026-04-15"
+    },
+    {
+      "id": "R2-INFRA-MCP-IMPL-001",
+      "source_doc": "aiPlat-infra/docs/mcp/index.md",
+      "design_statement": "Infra MCP 文档中的 transport 文件结构与传输语义（HTTP/SSE）应与代码一致，否则会误导集成实现。",
+      "code_evidence": [
+        {
+          "type": "doc",
+          "path": "aiPlat-infra/docs/mcp/index.md",
+          "evidence": "文档声明 HTTP/SSE，并列出 transport/http_sse.py、transport/websocket.py 等文件。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-infra/infra/mcp/transport/stdio.py",
+          "evidence": "HTTPTransport 实现为 httpx POST JSON-RPC（非 SSE）；WebSocketTransport 也在该文件内实现（并无 websocket.py/http_sse.py）。"
+        }
+      ],
+      "verdict": "✅一致",
+      "issue_type": "文档结构与传输语义修订完成",
+      "risk": "中",
+      "recommendation": "已修订文档对齐当前实现（HTTP JSON-RPC）；如需 SSE，后续需新增 streaming transport 与测试。",
+      "verification": "文档已明确 SSE 为规划项，并指出当前 HTTPTransport 的真实语义。",
+      "status": "fixed",
+      "fix_summary": "修订 infra MCP 文档：更正 HTTP/SSE 语义与 transport 文件结构描述，避免误导集成实现。",
+      "fix_refs": [
+        {
+          "path": "aiPlat-infra/docs/mcp/index.md",
+          "note": "更新传输语义与现状说明。"
+        }
+      ],
+      "verification_result": {
+        "commands": [
+          "人工抽查：aiPlat-infra/docs/mcp/index.md 中 HTTPTransport 语义已为 JSON-RPC over HTTP，SSE 标记为规划项。"
+        ]
+      },
+      "updated_at": "2026-04-15"
+    },
+    {
+      "id": "R2-OBS-CONTROL-001",
+      "source_doc": "aiPlat-core/docs/harness/index.md",
+      "design_statement": "Observability-Driven Control（基于观测触发控制动作）若被宣称，应有明确闭环：采集→规则→动作（暂停/压缩/降级）接入执行链路。",
+      "code_evidence": [
+        {
+          "type": "doc",
+          "path": "aiPlat-core/docs/harness/index.md",
+          "evidence": "文档描述基于失败率/Token 使用等触发暂停、压缩与降级等动作。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/harness/execution/loop.py",
+          "evidence": "执行循环仅有 budget_remaining 级别的简单判断；未见根据观测指标触发暂停/压缩/降级的闭环接线。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/harness/infrastructure/hooks/builtin.py",
+          "evidence": "TokenLimitHook/SecurityScanHook 等存在，但默认 hooks 未全面注册且未形成控制闭环。"
+        }
+      ],
+      "verdict": "✅一致",
+      "issue_type": "观测驱动控制缺少闭环接线与验收标准",
+      "risk": "中",
+      "recommendation": "明确最小闭环：定义指标（tool_error_rate/token_usage）、阈值与动作（pause/compact/deny_tool）；在 Hook 或 PolicyEngine 中实现规则评估，并在 BaseLoop.run 或 executor 层执行动作；配套 2-3 个集成测试验证动作生效。",
+      "verification": "触发条件满足时，loop 状态/输出中能观察到控制动作发生（例如暂停/压缩日志），且可被测试稳定复现。",
+      "status": "fixed",
+      "fix_summary": "已实现最小观测闭环：ReActLoop 记录 tool_calls/tool_failures；BaseLoop 在每步后应用控制规则（tool_error_rate>0.2 且 N>=10 → PAUSED/require_manual；token 使用>0.8 → best-effort compact messages）；并新增单测可复现触发暂停。",
+      "fix_refs": [
+        {
+          "path": "aiPlat-core/docs/harness/index.md",
+          "note": "新增“观测驱动控制（最小闭环规范）”。"
+        },
+        {
+          "path": "aiPlat-core/core/harness/execution/loop.py",
+          "symbols": ["BaseLoop._apply_observability_control", "BaseLoop.should_continue", "ReActLoop._act"],
+          "note": "实现采集→规则→动作闭环（最小版本）。"
+        },
+        {
+          "path": "aiPlat-core/core/tests/unit/test_harness/test_observability/test_observability_control.py",
+          "note": "新增单测验证高失败率触发 PAUSED/require_manual。"
+        }
+      ],
+      "verification_result": {
+        "tests": [
+          "python -m pytest -q core/tests/unit/test_harness/test_observability/test_observability_control.py"
+        ]
+      },
+      "updated_at": "2026-04-15"
+    },
+    {
+      "id": "R2-OK-COORD-001",
+      "source_doc": "aiPlat-core/docs/harness/coordination.md",
+      "design_statement": "多智能体协调模式清单与实现应一致，并能在 MultiAgent.execute() 中被调用。",
+      "code_evidence": [
+        {
+          "type": "doc",
+          "path": "aiPlat-core/docs/harness/coordination.md",
+          "evidence": "文档列出 6 种模式（Pipeline/FanOutFanIn/ExpertPool/ProducerReviewer/Supervisor/HierarchicalDelegation）。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/harness/coordination/patterns/base.py",
+          "evidence": "create_pattern() 包含 hierarchical_delegation；各 Pattern 统一 execute(task: str) 契约并有 TypeError 保护。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/apps/agents/multi_agent.py",
+          "evidence": "MultiAgent._create_pattern() 支持 hierarchical_delegation 并通过 _PatternAgentAdapter 调用 pattern.coordinate()。"
+        }
+      ],
+      "verdict": "✅一致",
+      "issue_type": "一致性良好",
+      "risk": "低",
+      "recommendation": "保持：后续新增模式必须同步更新文档、create_pattern()、MultiAgent 映射与单测。",
+      "verification": "单测覆盖 hierarchical delegation 与 pattern 契约错误提示。",
+      "status": "fixed",
+      "fix_summary": "已实现并通过单测验证。",
+      "fix_refs": [],
+      "verification_result": {},
+      "updated_at": "2026-04-15"
+    }
+  ]
+}

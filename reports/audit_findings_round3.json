@@ -1,0 +1,168 @@
+{
+  "meta": {
+    "project": "aiPlat",
+    "round": "round3",
+    "date": "2026-04-16",
+    "scope": [
+      "aiPlat-core/docs",
+      "aiPlat-infra/docs",
+      "aiPlat-core/core"
+    ],
+    "purpose": "在 Round2 设计补丁与代码实施完成后进行再复审：验证关键设计声明是否仍与实现一致，并识别剩余不合理/可改进点（非阻断）。"
+  },
+  "items": [
+    {
+      "id": "R3-VERIFY-AUTH-001",
+      "source_doc": "aiPlat-core/docs/tools/index.md",
+      "design_statement": "权限体系需具备默认可用策略与授权闭环（默认策略可配置）。",
+      "code_evidence": [
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/server.py",
+          "evidence": "存在权限管理 API（/permissions/*）；启动时默认 seed system/admin EXECUTE 权限，且可用 AIPLAT_SEED_DEFAULT_PERMISSIONS 关闭。"
+        }
+      ],
+      "verdict": "✅一致",
+      "issue_type": "回归验证通过",
+      "risk": "低",
+      "recommendation": "建议在部署文档中明确默认 seed 的安全含义，并在生产环境通过环境变量关闭或缩小默认授权范围。",
+      "verification": "单测：core/tests/unit/test_permissions/test_permission_seed_and_api.py",
+      "status": "fixed",
+      "updated_at": "2026-04-16"
+    },
+    {
+      "id": "R3-VERIFY-SKILL-RB-001",
+      "source_doc": "aiPlat-core/docs/skills/architecture.md",
+      "design_statement": "回滚必须影响后续执行行为，且 API 应校验与返回 active_version。",
+      "code_evidence": [
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/apps/skills/registry.py",
+          "evidence": "rollback_version 会将目标 SkillConfig 应用到实例并提供 get_active_version。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/server.py",
+          "evidence": "rollback endpoint 校验版本存在并返回 active_version/active_config；新增 /active-version 查询。"
+        }
+      ],
+      "verdict": "✅一致",
+      "issue_type": "回归验证通过",
+      "risk": "低",
+      "recommendation": "后续可将“按版本多实例”作为可选策略加入（用于不可重入 skill）。",
+      "verification": "单测：core/tests/unit/test_skills/test_skill_rollback_semantics.py",
+      "status": "fixed",
+      "updated_at": "2026-04-16"
+    },
+    {
+      "id": "R3-VERIFY-HOOK-001",
+      "source_doc": "aiPlat-core/docs/harness/security.md",
+      "design_statement": "治理 HookPhase（SESSION/CONTRACT/APPROVAL/STOP）应在执行主路径触发并可阻断。",
+      "code_evidence": [
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/harness/execution/loop.py",
+          "evidence": "BaseLoop.run 触发 SESSION_START/END、PRE/POST_CONTRACT_CHECK、STOP；ReActLoop 工具执行前后触发 PRE/POST_APPROVAL_CHECK 并支持 allow=false 阻断。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/harness/infrastructure/hooks/hook_manager.py",
+          "evidence": "HookManager 默认注册 session hooks 与 pre_approval_check（基于 SecurityScanHook）。"
+        }
+      ],
+      "verdict": "✅一致",
+      "issue_type": "回归验证通过",
+      "risk": "低",
+      "recommendation": "建议将 Hook 的阻断返回结构（allow/action/reason/metadata）进一步统一并在类型层面固化。",
+      "verification": "单测：core/tests/unit/test_harness/test_hooks/test_hook_wiring.py",
+      "status": "fixed",
+      "updated_at": "2026-04-16"
+    },
+    {
+      "id": "R3-VERIFY-OBS-001",
+      "source_doc": "aiPlat-core/docs/harness/index.md",
+      "design_statement": "观测驱动控制需具备最小闭环（采集→规则→动作）与可复现验收。",
+      "code_evidence": [
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/harness/execution/loop.py",
+          "evidence": "ReActLoop 记录 tool_calls/tool_failures；BaseLoop 每步后执行最小控制规则（失败率触发 PAUSED/require_manual，token 高占用压缩 messages）。"
+        }
+      ],
+      "verdict": "✅一致",
+      "issue_type": "回归验证通过（最小实现）",
+      "risk": "低",
+      "recommendation": "当前 compaction 为 best-effort（仅截断 messages），后续建议抽象为可插拔策略并记录 compaction 前后统计。",
+      "verification": "单测：core/tests/unit/test_harness/test_observability/test_observability_control.py",
+      "status": "fixed",
+      "updated_at": "2026-04-16"
+    },
+    {
+      "id": "R3-VERIFY-TOOL-THREADSAFE-001",
+      "source_doc": "aiPlat-core/docs/tools/index.md",
+      "design_statement": "若宣称线程安全/追踪注入，应在实现中提供锁与 tracer/span 的真实使用点。",
+      "code_evidence": [
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/apps/tools/base.py",
+          "evidence": "BaseTool stats 更新加锁；ToolRegistry 使用 RLock；_call_with_tracking 支持可选 tracer.start_span。"
+        }
+      ],
+      "verdict": "✅一致",
+      "issue_type": "回归验证通过",
+      "risk": "低",
+      "recommendation": "如后续采用多进程 worker，需要补充跨进程统计聚合策略。",
+      "verification": "单测：core/tests/unit/test_tools/test_tool_thread_safety.py",
+      "status": "fixed",
+      "updated_at": "2026-04-16"
+    },
+    {
+      "id": "R3-VERIFY-AGENT-STATE-001",
+      "source_doc": "aiPlat-core/docs/agents/architecture.md",
+      "design_statement": "Agent 状态模型需收敛为 canonical，并在 management/registry 等层保持一致。",
+      "code_evidence": [
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/harness/state.py",
+          "evidence": "AgentStateEnum 作为 canonical。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/management/agent_manager.py",
+          "evidence": "status 使用 canonical（create/start/stop/seed 数据均已规范化；_normalize_status 兼容历史值）。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/apps/agents/discovery.py",
+          "evidence": "AgentRegistry.register 默认状态为 ready（canonical）。"
+        }
+      ],
+      "verdict": "✅一致",
+      "issue_type": "回归验证通过",
+      "risk": "低",
+      "recommendation": "建议进一步统一 server API 对外 status 字段的枚举约束（例如 pydantic enum）。",
+      "verification": "单测：core/tests/unit/test_management/test_agent_status_canonical.py",
+      "status": "fixed",
+      "updated_at": "2026-04-16"
+    },
+    {
+      "id": "R3-IMPROVE-SEC-001",
+      "source_doc": "aiPlat-core/docs/harness/security.md",
+      "design_statement": "默认安全基线应尽可能覆盖高风险入口，并可配置扩展规则。",
+      "code_evidence": [
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/harness/infrastructure/hooks/hook_manager.py",
+          "evidence": "默认 pre_approval_check 支持通过环境变量配置扫描工具白/黑名单，并会把扫描结果写入 state.context.audit_events。"
+        }
+      ],
+      "verdict": "✅一致",
+      "issue_type": "改进项已落地",
+      "risk": "低",
+      "recommendation": "已实现：支持扫描工具 allowlist/denylist 与审计事件输出。后续如需更强策略，可扩展为可插拔规则与集中审计落盘。",
+      "verification": "单测：core/tests/unit/test_harness/test_hooks/test_security_scan_config.py",
+      "status": "fixed",
+      "updated_at": "2026-04-16"
+    }
+  ]
+}

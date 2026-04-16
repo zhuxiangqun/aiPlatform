@@ -4,6 +4,13 @@
 
 ---
 
+## 0. 文档说明（设计为准）
+
+本文件描述的是 **aiPlat-management 的目标设计（To‑Be）**，其约束对实现具有“规范性”。  
+当前仓库中的实现可能仍处于原型阶段；实现现状请参见：
+
+- `docs/IMPLEMENTATION_STATUS.md`
+
 ## 一、架构层级
 
 ```
@@ -65,7 +72,7 @@
 **不应包含：**
 - 业务逻辑实现
 - 直接操作 Manager 类
-- 数据库/存储操作
+- 与业务强耦合的数据存储操作（management 自身可拥有“管理面元数据”存储，例如告警规则、配置版本、审计日志；但不得替代业务层状态存储）
 
 ### 2.2 aiPlat-infra 层（基础设施业务层）
 
@@ -79,6 +86,9 @@
 ---
 
 ## 三、数据流向
+
+> 关键要求：management 作为统一入口，应通过 **HTTP 调用**各层管理 API 获取 status/metrics/health/diagnostics，并做聚合与标准化输出。  
+> management 不应在自身进程内进行“本机探测”作为权威数据源（避免与 infra 业务逻辑边界混淆）。
 
 ```
 ┌─────────────┐│
@@ -119,10 +129,11 @@
 aiPlat-management/
 ├── management/
 │   ├── api/
-│   │   ├── dashboard.py      # Dashboard API (✓ 正确)
-│   │   ├── alerting.py       # 告警 API (✓ 正确)
-│   │   ├── diagnostics.py    # 诊断 API (✓ 正确)
-│   │   └── infra.py         # Infra API (✓ 正确 - HTTP 转发)
+│   │   ├── dashboard.py      # Dashboard API（目标：通过适配器聚合各层 API 数据）
+│   │   ├── alerting.py       # 告警 API（目标：规则/历史/通知的统一入口）
+│   │   ├── diagnostics.py    # 诊断 API（目标：聚合各层诊断结果）
+│   │   ├── infra.py          # Infra API（HTTP 转发到 infra 层）
+│   │   └── core.py           # Core API（HTTP 转发到 core 层）
 │   ├── dashboard/
 │   │   └── infra_adapter.py  # Dashboard 适配器
 │   ├── monitoring/           # 监控采集
@@ -257,6 +268,12 @@ async def list_new_feature_items():
     manager = get_infra_manager().get("new_feature")
     return await manager.list_items()
 ```
+
+### 8.2 在 aiPlat-management 层增加聚合展示（推荐方式）
+
+1) **先在目标业务层增加管理 API**（infra/core/platform/app）。  
+2) management 通过 `httpx` client 调用目标层 API，并在 adapter/aggregator 中做聚合与标准化。  
+3) **避免**：在 management 内部新增“真实业务探测/治理逻辑”，以免破坏管理平面与业务平面的边界。
 
 **在 aiPlat-management 层：**
 

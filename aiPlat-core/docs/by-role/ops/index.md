@@ -1,4 +1,7 @@
-# 🚀 核心层运维指南
+# 🚀 核心层运维指南（To-Be 为主，As-Is 以代码事实为准）
+
+> 说明：本文档多数内容为平台化部署/运维的 To-Be 示例（PostgreSQL/Redis/K8s 等）。当前仓库是否包含对应部署工件需以实际 ops 仓库为准。  
+> As-Is：核心服务入口参见 `core/server.py`。统一口径参见 [`ARCHITECTURE_STATUS.md`](../../ARCHITECTURE_STATUS.md)。
 
 > aiPlat-core - 部署运维与监控配置
 
@@ -21,8 +24,8 @@
 | 组件 | 版本要求 | 用途 | 备注 |
 |------|----------|------|------|
 | Python | 3.10+ | 运行环境 | 必须 |
-| PostgreSQL | 13+ | 数据库 | 必须 |
-| Redis | 6+ | 缓存/编排状态 | 必须 |
+| PostgreSQL | 13+ | 数据库 | To-Be |
+| Redis | 6+ | 缓存/编排状态 | To-Be |
 | Milvus | 2.0+ | 向量数据库 | 可选 |
 
 ---
@@ -42,11 +45,16 @@
 # 安装依赖
 pip install -e .
 
-# 初始化数据库
-make db-migrate
+# To-Be：初始化数据库/迁移（当前仓库未必提供）
+# make db-migrate
 
-# 启动服务
-python -m core --config config/core/local.yaml
+# As-Is：以 `core/server.py` 为主要入口（uvicorn 启动方式与配置以实际部署为准）
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- 服务入口：`core/server.py`
 ```
 
 ---

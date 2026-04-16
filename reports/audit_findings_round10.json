@@ -1,0 +1,55 @@
+{
+  "meta": {
+    "project": "aiPlat",
+    "round": "round10",
+    "date": "2026-04-16",
+    "scope": [
+      "aiPlat-core/core/services/execution_store.py",
+      "aiPlat-core/core/services/trace_service.py",
+      "aiPlat-core/core/server.py",
+      "aiPlat-core/core/tests/unit/test_persistence/test_execution_store_trace.py",
+      "aiPlat-core/core/tests/integration/test_trace_api.py",
+      "aiPlat-core/docs/ARCHITECTURE_STATUS.md"
+    ],
+    "purpose": "落实 P2-TRACESTORE：将 TraceService trace/span/event 持久化到 ExecutionStore（schema v3），并提供最小查询 API（traces + graph runs/checkpoints），形成可回溯与可审计的数据面。"
+  },
+  "items": [
+    {
+      "id": "CORE-TRACESTORE-001",
+      "design_statement": "Trace/Span/Event 必须具备可持久化与可查询能力；与 ExecutionStore/GraphRuns 统一落库，提供按 trace_id/run_id 的回溯接口，并支持分页浏览。",
+      "code_evidence": [
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/services/execution_store.py",
+          "evidence": "schema v3：新增 traces/spans 表（attributes/events JSON），并提供 upsert_trace/upsert_span/get_trace/list_traces；同时补齐 get_graph_run。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/services/trace_service.py",
+          "evidence": "TraceService 支持可选 ExecutionStore 后端：trace/span/event/attribute 更新均 best-effort upsert；新增 TraceServiceTracer 适配 BaseTool.start_span() 形式。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/server.py",
+          "evidence": "新增 /api/core/traces 与 /api/core/graphs/runs/{run_id}（含 checkpoints）查询 API，并在 lifespan 中 wiring TraceServiceTracer 到 tool registry。"
+        },
+        {
+          "type": "test",
+          "path": "aiPlat-core/core/tests/unit/test_persistence/test_execution_store_trace.py",
+          "evidence": "覆盖 trace/span/events 的持久化 roundtrip 与 list_traces。"
+        },
+        {
+          "type": "test",
+          "path": "aiPlat-core/core/tests/integration/test_trace_api.py",
+          "evidence": "通过 TestClient 启动 app，写入 SQLite 后验证 /traces 与 /traces/{id} API 可读。"
+        }
+      ],
+      "verdict": "✅一致",
+      "risk": "中",
+      "status": "fixed",
+      "verification": "pytest -q core/tests/unit/test_persistence/test_execution_store_trace.py core/tests/integration/test_trace_api.py",
+      "updated_at": "2026-04-16"
+    }
+  ]
+}
+

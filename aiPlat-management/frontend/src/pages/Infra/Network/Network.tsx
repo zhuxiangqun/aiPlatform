@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, RotateCw } from 'lucide-react';
-import { Table, Button } from '../../../components/ui';
+import { Table, Button, toast } from '../../../components/ui';
 import PageHeader from '../../../components/common/PageHeader';
 import { IngressModal } from '../../../components/infra';
 import { networkApi, type ServiceEndpoint, type Ingress, type NetworkPolicy } from '../../../services';
@@ -27,7 +27,7 @@ const Network: React.FC = () => {
       setIngresses(ingressesData || []);
       setPolicies(policiesData || []);
     } catch (error) {
-      alert('获取网络数据失败');
+      toast.error('获取网络数据失败');
       console.error('Failed to fetch network data:', error);
       setServices([]);
       setIngresses([]);
@@ -68,10 +68,10 @@ const Network: React.FC = () => {
   const handleDeleteIngress = async (ingressName: string) => {
     try {
       await networkApi.deleteIngress(ingressName);
-      alert('Ingress 删除成功');
+      toast.success('Ingress 删除成功');
       fetchData();
     } catch (error) {
-      alert('删除 Ingress 失败');
+      toast.error('删除 Ingress 失败');
     }
   };
 

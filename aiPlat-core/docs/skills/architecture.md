@@ -1,11 +1,13 @@
-# Skill 架构设计
+# Skill 架构设计（设计真值：以代码事实为准）
 
-> ⚠️ **实现状态提示**：本文档描述了设计目标，部分功能尚未实现。完整实现状态参见 [架构实现状态](../ARCHITECTURE_STATUS.md)。
+> ⚠️ **实现状态提示（As-Is vs To-Be）**：本文档以 **当前代码事实（As-Is）** 为准，并对“进化引擎/市场化”类能力标注为 **To-Be**。  
+> 完整实现状态参见 [架构实现状态](../ARCHITECTURE_STATUS.md)。
 >
-> - ✅ 已实现：SkillManager CRUD、SkillExecutor inline 模式、Manager↔Registry 桥接、Discovery→Registry 注册、SkillContext.tools 注入
-> - ✅ 修复：SkillRegistry.seed_data() 创建真实 BaseSkill 实例（含 _GenericSkill）
-> - 🔧 结构存在但未接通：PermissionManager（未被执行路径调用）
-> - ❌ 未实现：版本管理 API、Skill 进化引擎、Fork 模式
+> - ✅ 已实现：SkillManager CRUD、SkillExecutor inline/fork 模式、Manager↔Registry 桥接、Discovery→Registry 注册、SkillContext.tools 注入
+> - ✅ 已实现：版本查询 API（/skills/{id}/versions/{version} 返回真实 config）
+> - ✅ 已实现：版本回滚语义闭环（回滚会影响后续执行配置；`/active-version` 可查询；rollback API 校验与返回 active_version/active_config）
+> - ✅ 已实现：PermissionManager 已接入执行入口，且具备默认 seed 策略与授权 API 闭环
+> - ❌ 未实现：Skill 进化引擎（CAPTURED/FIX/DERIVED 等）
 
 > Skill 的核心架构设计，包括注册发现、执行模型、版本管理与Agent Skill模式改进
 
@@ -121,6 +123,53 @@ class SkillRegistry:
     def get_binding_stats(self, name: str) -> SkillBindingStats:
         """获取绑定统计"""
 ```
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- Registry 版本/回滚语义：`core/apps/skills/registry.py`（`rollback_version()` / `get_active_version()`）
+- API：`core/server.py`（`/skills/{id}/active-version`、rollback endpoint 返回 active_version/active_config）
+- 单测：`core/tests/unit/test_skills/test_skill_rollback_semantics.py`
+
+---
+
+## 设计补全（Round2）：版本与回滚语义（必须可验收）
+
+> 目标：避免“回滚 API 成功但行为不变”的误导性实现，保证审计与回滚具备工程意义。
+
+### 1) 核心语义定义
+
+**术语**：
+- `SkillVersion`：版本条目（version + SkillConfig + created_at）
+- `active_version`：当前生效版本（用于后续执行）
+
+**最低语义（必须满足）**：
+1. 回滚后，`GET /skills/{id}/versions/{version}` 返回的 config 与创建时一致（已实现）
+2. 回滚后，系统必须能明确回答“当前 active_version 是谁”（建议新增 `GET /skills/{id}/active-version` 或在 skill info 中返回）
+3. 回滚后，**下一次执行**必须使用目标版本对应的配置/行为（必要时重建 skill 实例或刷新其 config）
+
+### 2) 推荐实现策略（两种择一）
+
+| 策略 | 描述 | 优点 | 风险 |
+|---|---|---|---|
+| A. 单实例切配置 | skill 实例保持单例，回滚时更新其 config 并触发 reload | 简单、资源少 | 需要保证 skill 对 config 变更可重入 |
+| B. 按版本多实例 | registry 内维护 name→(version→instance)，active 指针切换 | 语义最清晰 | 占用更多资源、需管理生命周期 |
+
+### 3) API 契约要求
+
+`POST /skills/{id}/rollback`（或现有 endpoint）必须：
+- 若 version 不存在：返回 404
+- 若 rollback 成功：返回 `active_version` 与 `active_config` 摘要
+
+### 4) 验收标准（必须有集成测试）
+
+最小闭环用例：
+1. 创建 v1（description=A）与 v2（description=B）
+2. 执行 skill，记录其读取的 description（或通过 config 查询）
+3. rollback 到 v1
+4. 再执行 skill，必须观察到 config/行为回到 v1
+
 
 ### 3.2 SkillExecutor
 

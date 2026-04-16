@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, RotateCw } from 'lucide-react';
-import { Table, Button } from '../../../components/ui';
+import { Table, Button, toast } from '../../../components/ui';
 import PageHeader from '../../../components/common/PageHeader';
 import { PVCModal, CollectionModal } from '../../../components/infra';
 import { storageApi, modelApi, type VectorCollection, type PVC } from '../../../services';
@@ -37,7 +37,7 @@ const Storage: React.FC = () => {
       setPVCs(pvcsData || []);
       setModelCount(modelsData?.models?.length || 0);
     } catch (error) {
-      alert('获取存储数据失败');
+      toast.error('获取存储数据失败');
       console.error('Failed to fetch storage data:', error);
       setCollections([]);
       setPVCs([]);
@@ -84,10 +84,10 @@ const Storage: React.FC = () => {
   const handleDeletePVC = async (pvcName: string) => {
     try {
       await storageApi.deletePVC(pvcName);
-      alert('PVC 删除成功');
+      toast.success('PVC 删除成功');
       fetchData();
     } catch (error) {
-      alert('删除 PVC 失败');
+      toast.error('删除 PVC 失败');
     }
   };
 
@@ -108,10 +108,10 @@ const Storage: React.FC = () => {
   const handleDeleteCollection = async (name: string) => {
     try {
       await storageApi.deleteCollection(name);
-      alert('Collection 删除成功');
+      toast.success('Collection 删除成功');
       fetchData();
     } catch (error) {
-      alert('删除 Collection 失败');
+      toast.error('删除 Collection 失败');
     }
   };
 

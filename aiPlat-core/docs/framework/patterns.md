@@ -1,6 +1,8 @@
-# Agent 设计模式
+# Agent 设计模式（设计真值：以代码事实为准）
 
-> ⚠️ **实现状态提示**：Phase 7 后大部分模式已接线。6 种模式中 ReAct/Planning/Multi-Agent 已通过 Loop 驱动；5 种协调模式（Pipeline/FanOut/ExpertPool/ProducerReviewer/Supervisor）已接入 MultiAgent。HITL 审批系统仍未接入 Hook。完整状态参见 [架构实现状态](../ARCHITECTURE_STATUS.md)。
+> ⚠️ **实现状态提示（As-Is）**：Phase 7 后大部分模式已接线。6 种模式中 ReAct/Planning/Multi-Agent 已通过 Loop 驱动；协调模式已包含 6 种（含 HierarchicalDelegation），并可接入 MultiAgent。  
+> ✅ HITL（审批）已通过 ApprovalManager + HookPhase（PRE/POST_APPROVAL_CHECK）接入工具调用链路。  
+> 完整状态参见 [架构实现状态](../ARCHITECTURE_STATUS.md)。
 
 > 基于 Claude Code、OpenDev 等行业实践总结的 6 种核心 Agent 设计模式
 

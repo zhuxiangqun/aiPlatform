@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, field
 
 from .reason_node import BaseNode, AgentState
+from ...tool_calling import parse_action_call
 
 
 class ActNode(BaseNode):
@@ -32,13 +33,24 @@ class ActNode(BaseNode):
         """Execute action"""
         action_result = ""
         
-        # Parse action from reasoning
-        action = self._parse_action(state.reasoning)
+        # Parse action call (tool/skill). LangGraph ActNode 仅执行 tool。
+        parsed = parse_action_call(state.reasoning or "")
+        if parsed and parsed.kind == "skill":
+            action = None
+            tool_args = {}
+        else:
+            action = parsed.name if parsed else self._parse_action(state.reasoning or "")
+            tool_args = parsed.args if parsed else state.context.get("tool_params", {})
         
         if action and self._tools:
             # Find and execute tool with retry
             tool = self._get_tool(action)
             if tool:
+                # Put parsed tool args into context for downstream nodes (best effort)
+                try:
+                    state.context["tool_params"] = tool_args
+                except Exception:
+                    pass
                 action_result = await self._execute_with_retry(tool, state.context)
             else:
                 action_result = f"Tool not found: {action}"

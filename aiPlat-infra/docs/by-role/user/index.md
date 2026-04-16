@@ -1,4 +1,6 @@
-# aiPlat-infra 用户指南
+# aiPlat-infra 用户指南（To-Be 为主，As-Is 以代码事实为准）
+
+> 说明：本文档面向“配置/管理基础设施服务”的用户，包含较多脚本与部署相关示例；As-Is 请以 infra 实际提供的配置加载与 tests 为准。
 
 > 本文档面向配置和管理基础设施服务的运维人员和开发者，提供服务配置、连接管理和健康检查指南。
 
@@ -27,7 +29,7 @@
 **检查所有基础设施服务状态**：
 ```bash
 # 通过本地脚本检查
-./scripts/health-check.sh
+./scripts/health-check.sh  # To-Be：若 scripts 不在本仓库，请以实际 ops 仓库为准
 
 # 预期输出
 [OK] Database: healthy
@@ -717,3 +719,10 @@ cp config/config.prod.yaml config/config.yaml
 ---
 
 *最后更新: 2026-04-10*
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- 配置模型与默认值：`infra/*/schemas.py`（按模块）
+- infra tests：`infra/tests/*`

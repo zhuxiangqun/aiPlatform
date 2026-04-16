@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Modal, Form, Input, Select, Spin, message } from 'antd';
+import React, { useEffect, useMemo, useState } from 'react';
 import { skillApi } from '../../services';
 import type { Skill } from '../../services';
+import { Button, Input, Modal, Select, Textarea, toast } from '../ui';
 
 const SKILL_CATEGORIES = [
   { value: 'general', label: '通用技能' },
@@ -25,105 +25,107 @@ interface EditSkillModalProps {
 }
 
 const EditSkillModal: React.FC<EditSkillModalProps> = ({ open, skill, onClose, onSuccess }) => {
-  const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
+  const [name, setName] = useState('');
+  const [category, setCategory] = useState('general');
+  const [description, setDescription] = useState('');
+  const [configText, setConfigText] = useState('');
 
   useEffect(() => {
     if (open && skill) {
-      form.resetFields();
       setFetching(true);
       skillApi.get(skill.id).then((detail) => {
         const data = detail as any;
         const category = data.category || data.type || skill.category || 'general';
         const config = data.config || skill.config;
-        form.setFieldsValue({
-          name: data.name || skill.name,
-          category,
-          description: data.description || skill.description || '',
-          config: config && Object.keys(config).length > 0 ? JSON.stringify(config, null, 2) : '',
-        });
+        setName(data.name || skill.name || '');
+        setCategory(category);
+        setDescription(data.description || skill.description || '');
+        setConfigText(config && Object.keys(config).length > 0 ? JSON.stringify(config, null, 2) : '');
       }).catch(() => {
         const config = skill.config;
-        form.setFieldsValue({
-          name: skill.name,
-          category: skill.category || 'general',
-          description: skill.description || '',
-          config: config && Object.keys(config).length > 0 ? JSON.stringify(config, null, 2) : '',
-        });
+        setName(skill.name || '');
+        setCategory(skill.category || 'general');
+        setDescription(skill.description || '');
+        setConfigText(config && Object.keys(config).length > 0 ? JSON.stringify(config, null, 2) : '');
       }).finally(() => {
         setFetching(false);
       });
     }
-  }, [open, skill, form]);
+  }, [open, skill]);
 
   const handleSubmit = async () => {
     if (!skill) return;
     try {
-      const values = await form.validateFields();
+      if (!name.trim()) {
+        toast.error('请输入 Skill 名称');
+        return;
+      }
+      if (!category) {
+        toast.error('请选择分类');
+        return;
+      }
       setLoading(true);
 
       let config: Record<string, unknown> | undefined;
-      if (values.config?.trim()) {
+      if (configText?.trim()) {
         try {
-          config = JSON.parse(values.config);
+          config = JSON.parse(configText);
         } catch {
-          message.error('配置JSON格式错误，请检查');
+          toast.error('配置 JSON 格式错误，请检查');
           setLoading(false);
           return;
         }
       }
 
       await skillApi.update(skill.id, {
-        name: values.name,
-        category: values.category,
-        description: values.description || '',
+        name: name.trim(),
+        category,
+        description: description || '',
         ...(config ? { config } : {}),
       });
-      message.success(`Skill "${values.name}" 更新成功`);
+      toast.success(`Skill "${name.trim()}" 更新成功`);
       onSuccess();
       onClose();
     } catch (error: any) {
       if (error.message) {
-        message.error('更新失败');
+        toast.error('更新失败', String(error.message || ''));
       }
     } finally {
       setLoading(false);
     }
   };
 
+  const categoryOptions = useMemo(() => SKILL_CATEGORIES, []);
+
   return (
     <Modal
-      title="编辑 Skill"
       open={open}
-      onOk={handleSubmit}
-      onCancel={onClose}
-      okText="保存"
-      cancelText="取消"
-      confirmLoading={loading}
-      destroyOnHidden
-      width={640}
+      onClose={onClose}
+      title="编辑 Skill"
+      width={720}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={loading}>
+            取消
+          </Button>
+          <Button variant="primary" onClick={handleSubmit} loading={loading} disabled={fetching}>
+            保存
+          </Button>
+        </>
+      }
     >
-      <Spin spinning={fetching} tip="加载中...">
-        <Form form={form} layout="vertical">
-          <Form.Item
-            name="name"
-            label="名称"
-            rules={[{ required: true, message: '请输入Skill名称' }]}
-          >
-            <Input placeholder="例如：Python代码审查助手" />
-          </Form.Item>
-          <Form.Item name="category" label="分类" rules={[{ required: true, message: '请选择分类' }]}>
-            <Select options={SKILL_CATEGORIES} />
-          </Form.Item>
-          <Form.Item name="description" label="描述">
-            <Input.TextArea rows={3} placeholder="描述此技能的用途和使用场景" />
-          </Form.Item>
-          <Form.Item name="config" label="配置 (JSON)" extra="可选，配置超时时间、并发数、重试次数等参数">
-            <Input.TextArea rows={6} placeholder='{"timeout_seconds": 60, "max_concurrent": 10, "retry_count": 3}' />
-          </Form.Item>
-        </Form>
-      </Spin>
+      {fetching ? (
+        <div className="text-sm text-gray-500">加载中...</div>
+      ) : (
+        <div className="space-y-4">
+          <Input label="名称" value={name} onChange={(e: any) => setName(e.target.value)} placeholder="例如：Python代码审查助手" />
+          <Select value={category} onChange={(v) => setCategory(v)} options={categoryOptions} label="分类" />
+          <Textarea label="描述" value={description} onChange={(e: any) => setDescription(e.target.value)} rows={3} placeholder="描述此技能的用途和使用场景" />
+          <Textarea label="配置 (JSON)" value={configText} onChange={(e: any) => setConfigText(e.target.value)} rows={8} placeholder='{"timeout_seconds": 60, "max_concurrent": 10, "retry_count": 3}' />
+        </div>
+      )}
     </Modal>
   );
 };

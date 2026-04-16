@@ -136,6 +136,11 @@ class CallbackManager:
     def on_checkpoint(self, handler: CallbackHandler):
         self._registry.register(CallbackEvent.CHECKPOINT, handler)
         return self
+
+    def register_global(self, handler: CallbackHandler):
+        """Register handler for all events (用于进程级持久化/审计接线)."""
+        self._registry.register_global(handler)
+        return self
     
     async def trigger(self, context: CallbackContext):
         if not self._enabled:

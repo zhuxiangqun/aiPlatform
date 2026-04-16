@@ -1,4 +1,8 @@
-# Skill 文件格式演进设计
+# Skill 文件格式演进设计（As-Is 对齐 + To-Be 演进）
+
+> 本文档包含两部分：  
+> - **As-Is（当前实现）**：SKILL.md 解析/发现/加载等能力在 `core/apps/skills/discovery.py` 已存在，但尚未形成“目录化技能→路由→执行”的端到端闭环。  
+> - **To-Be（目标演进）**：向 OpenClaw/Claude Code 兼容格式演进（trigger_keywords/category/manifest 等）。
 
 > 基于 OpenClaw/Claude Code 实践，增强 Skill 系统能力
 
@@ -8,25 +12,26 @@
 
 ## 一、现状分析
 
-### 1.1 已实现功能
+### 1.1 已实现功能（As-Is）
 
 | 组件 | 位置 | 状态 |
 |------|------|------|
-| SKILL.md 解析 | `discovery.py:SKILLMD_parser` | ✅ 已实现 |
-| YAML frontmatter | `FRONT_MATTER_PATTERN` | ✅ 已实现 |
-| references/ 加载 | `SkillLoader.load_reference` | ✅ 已实现 |
+| SKILL.md 解析 | `core/apps/skills/discovery.py: SKILLMD_parser` | ✅ 已实现 |
+| YAML frontmatter | `SKILLMD_parser.FRONT_MATTER_PATTERN` | ✅ 已实现 |
+| references/ 按需加载 | `SkillLoader.load_reference` | ✅ 已实现 |
 | scripts/ 加载 | `SkillLoader.load_script` | ✅ 已实现 |
-| 目录发现 | `server.py:lifespan` | ✅ 已实现 |
+| scripts/ 执行 | `core/apps/skills/script_runner.py: ScriptRunner` | ✅ 已实现（sandboxed） |
+| 目录发现 | `SkillDiscovery.discover()` | ✅ 已实现（但需明确扫描目录与注册策略） |
 
-### 1.2 缺失功能
+### 1.2 缺失/未闭环功能（As-Is）
 
 | 优先级 | 功能 | 当前状态 |
 |--------|------|----------|
-| P0 | trigger_keywords | ❌ 缺失 |
-| P1 | Category 分类 | 只有 `general` |
-| P1 | Script 执行 | 仅读取，未运行 |
-| P2 | 执行模式 (inline/fork) | ❌ 缺失 |
-| P2 | SkillManifest 数据结构 | ❌ 缺失 |
+| P0 | trigger_keywords 路由闭环 | ⚠️ parser/数据结构存在，但尚未接入 Harness/Agent 的“技能选择”主路径 |
+| P1 | Category 分类闭环 | ⚠️ 字段存在（types/discovery），但全链路使用不完善 |
+| P1 | Script 执行编排 | ⚠️ ScriptRunner 已实现，但“Skill 调用脚本”的标准入口尚需统一（避免散落） |
+| P1 | 执行模式 (inline/fork) | ✅ SkillExecutor 已支持（`mode` 参数），但未与 SKILL.md 的 `execution_mode` 字段形成自动接线 |
+| P1 | SkillManifest 数据结构 | ✅ `core/apps/skills/types.py` 已存在（需补齐与注册/执行的契约与验收） |
 
 ---
 
@@ -149,6 +154,15 @@ skills/
 
 #### 目标
 添加用户意图匹配能力，通过关键词触发 Skill。
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- SKILL.md parser/loader/matcher：`core/apps/skills/discovery.py`
+- SkillManifest 等类型：`core/apps/skills/types.py`
+- ScriptRunner：`core/apps/skills/script_runner.py`
+- SkillExecutor（inline/fork）：`core/apps/skills/executor.py`
 
 #### 修改文件
 - `core/apps/skills/discovery.py` - DiscoveredSkill 添加字段

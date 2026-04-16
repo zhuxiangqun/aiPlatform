@@ -1,6 +1,9 @@
-# 多智能体协调 (Coordination)
+# 多智能体协调 (Coordination)（设计真值：以代码事实为准）
 
-> ⚠️ **实现状态提示**：Phase 7 已将 5 种协调模式接入 MultiAgent.execute()。ConvergenceDetector 存在但未接入执行路径。完整状态参见 [架构实现状态](../ARCHITECTURE_STATUS.md)。
+> ✅ **实现状态提示（As-Is）**：Phase 7 已将 **6 种**协调模式接入（通过 patterns + agent adapter），并已将 `ConvergenceDetector` 接入 LangGraph `MultiAgentGraph` 的收敛评估路径。完整状态参见 [架构实现状态](../ARCHITECTURE_STATUS.md)。
+>
+> ⚠️ **仍需注意（As-Is）**：
+> - `MultiAgent` 在执行上仍存在“pattern 路径 + fallback 路径”两套实现（语义可能漂移）；设计文档需明确该降级策略与验收标准。
 
 > 多智能体系统的协作模式——让多个 Agent 高效协同工作。
 
@@ -25,7 +28,15 @@
 
 ## 协作模式
 
-> **实现说明**：所有6种协作模式在 `coordination/patterns/base.py` 中合并实现，通过工厂函数 `create_pattern()` 创建。
+> **实现说明**：所有 6 种协作模式在 `coordination/patterns/base.py` 中实现，通过工厂函数 `create_pattern()` 创建；Pattern 约定 `agent.execute(task: str)`，真实 Agent（`execute(AgentContext)`）需先经适配器包装。
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- 协作模式实现与注册：`core/harness/coordination/patterns/base.py`（`create_pattern()` / `HierarchicalDelegationPattern`）
+- MultiAgent 接入 patterns + fallback：`core/apps/agents/multi_agent.py`（`_pattern.coordinate()` / `_execute_parallel()`）
+- ConvergenceDetector（LangGraph 路径）：`core/harness/execution/langgraph/graphs/multi_agent.py`（`_evaluate_convergence()`）
 
 ### 1. Pipeline（流水线）
 

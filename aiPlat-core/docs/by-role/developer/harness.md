@@ -1,4 +1,6 @@
-# Harness 开发指南
+# Harness 开发指南（设计真值：以代码事实为准）
+
+> 说明：本文档的目录结构清单若与代码不一致，以代码事实为准。统一口径参见 [`ARCHITECTURE_STATUS.md`](../../ARCHITECTURE_STATUS.md)。
 
 > 本文档为开发者提供 Harness 模块的开发指导，包括代码实现、API 使用、配置参数等。
 
@@ -19,15 +21,13 @@ harness/
 ├── heartbeat_monitor.py          # 心跳监控
 ├── integration.py                 # HarnessIntegration 统一入口
 │
-├── interfaces/                    # 接口定义层
+├── interfaces/                    # 接口定义层（子集）
 │   ├── agent.py                   # IAgent, AgentConfig, AgentResult
 │   ├── tool.py                    # ITool, ToolConfig, ToolResult
 │   ├── skill.py                   # ISkill, SkillConfig, SkillResult
 │   ├── loop.py                    # ILoop, LoopState, LoopResult
 │   ├── coordinator.py             # ICoordinator
-│   ├── context.py                  # IContext
-│   ├── router.py                   # IRouter
-│   └── adapter.py                  # IAdapter
+│   └── (To-Be)                     # IContext/IRouter/IAdapter 如需使用，应补齐实现与接线
 │
 ├── execution/                      # 执行系统
 │   ├── loop.py                     # 执行循环 (ReAct Loop)
@@ -179,7 +179,7 @@ from core.harness.execution import ReActLoop, create_loop
 loop = create_loop("react", agent=my_agent)
 
 # 执行
-result = await loop.execute(context)
+result = await loop.run(context)  # As-Is：Loop 接口为 run()/step()
 ```
 
 ### LangGraph 编排
@@ -385,3 +385,11 @@ await evolution.on_error_threshold(error_rate=0.1, threshold=0.05)
 ---
 
 *最后更新: 2025-01-14*
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- HarnessIntegration：`core/harness/integration.py`
+- Loop-first：`core/harness/execution/loop.py`
+- LangGraph：`core/harness/execution/langgraph/*`

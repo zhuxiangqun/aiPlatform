@@ -1,4 +1,6 @@
-# 📚 Network 模块文档
+# 📚 Network 模块文档（设计真值：以代码事实为准）
+
+> 说明：网络相关能力以 `infra/network/*` 代码与测试为准；更高层的网关/ServiceMesh 等通常属于 To-Be 或外部基础设施。
 
 > 网络资源管理 - 基础设施层
 
@@ -287,3 +289,9 @@ class MyBackendDiscovery(ServiceDiscovery):
 ---
 
 *最后更新: 2026-04-11*
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- 代码入口：`infra/network/*`

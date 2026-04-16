@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, List, Dict, Any
 from contextlib import asynccontextmanager
 from datetime import datetime
+import os
 import uvicorn
 
 from core.schemas import (
@@ -42,6 +43,31 @@ from core.apps.tools.base import ToolRegistry, get_tool_registry, create_tool
 from core.apps.tools.permission import PermissionManager, Permission, get_permission_manager
 from core.apps.agents import get_agent_registry
 from core.apps.skills import get_skill_registry, get_skill_executor
+from core.services import get_execution_store
+from core.services.trace_service import TraceService, TraceServiceTracer, SpanStatus
+
+
+def _seed_default_permissions(
+    perm_mgr: PermissionManager,
+    tool_names: List[str],
+    skill_names: List[str],
+    agent_names: List[str],
+    users: Optional[List[str]] = None,
+) -> None:
+    """Seed default permissions for built-in resources.
+
+    Policy (default):
+    - system/admin get EXECUTE on all currently registered tools/skills/agents
+    - others remain deny-by-default
+    """
+    users = users or ["system", "admin"]
+    for user_id in users:
+        for name in tool_names:
+            perm_mgr.grant_permission(user_id, name, Permission.EXECUTE, granted_by="bootstrap")
+        for name in skill_names:
+            perm_mgr.grant_permission(user_id, name, Permission.EXECUTE, granted_by="bootstrap")
+        for name in agent_names:
+            perm_mgr.grant_permission(user_id, name, Permission.EXECUTE, granted_by="bootstrap")
 
 
 def _create_llm_adapter(model_name: str = "gpt-4"):
@@ -86,6 +112,8 @@ _skill_discovery = None
 _agent_executions: Dict[str, Dict[str, Any]] = {}
 _skill_executions: Dict[str, Dict[str, Any]] = {}
 _agent_history: Dict[str, List[Dict[str, Any]]] = {}
+_execution_store = None
+_trace_service: Optional[TraceService] = None
 
 
 
@@ -106,6 +134,8 @@ async def lifespan(app: FastAPI):
     global _agent_manager, _skill_manager, _memory_manager
     global _knowledge_manager, _adapter_manager, _harness_manager
     global _approval_manager
+    global _execution_store
+    global _trace_service
     
     from core.apps.agents import create_agent_discovery
     from core.apps.skills import create_discovery
@@ -122,6 +152,63 @@ async def lifespan(app: FastAPI):
         enabled=True,
         priority=10,
     ))
+
+    # ExecutionStore (SQLite) - persistent execution/history
+    _execution_store = get_execution_store()
+    await _execution_store.init()
+
+    # TraceService (optional persistence) + tool tracer wiring
+    try:
+        _trace_service = TraceService(execution_store=_execution_store)
+        # inject tracer into tool registry (so BaseTool wrapper can create spans)
+        try:
+            registry = get_tool_registry()
+            if hasattr(registry, "set_tracer"):
+                registry.set_tracer(TraceServiceTracer(_trace_service))
+        except Exception:
+            pass
+    except Exception:
+        _trace_service = None
+
+    # Persist LangGraph checkpoints/traces (best-effort) via callback manager
+    try:
+        from core.harness.execution.langgraph.callbacks import CallbackManager, CallbackEvent
+
+        cb = CallbackManager.get_instance()
+
+        async def _persist_graph_events(ctx):  # type: ignore[no-redef]
+            try:
+                store = _execution_store
+                if not store:
+                    return
+                state = ctx.state if isinstance(getattr(ctx, "state", None), dict) else {}
+                meta = state.get("metadata") if isinstance(state.get("metadata"), dict) else {}
+                run_id = meta.get("graph_run_id")
+                if not run_id:
+                    return
+
+                if ctx.event == CallbackEvent.GRAPH_START:
+                    await store.start_graph_run(
+                        graph_name=ctx.graph_name,
+                        run_id=run_id,
+                        initial_state=state,
+                        parent_run_id=meta.get("parent_run_id"),
+                        resumed_from_checkpoint_id=meta.get("resumed_from_checkpoint_id"),
+                    )
+                elif ctx.event == CallbackEvent.CHECKPOINT:
+                    ckpt_id = (ctx.metadata or {}).get("checkpoint_id")
+                    step = int(state.get("step_count", 0) or 0)
+                    await store.add_graph_checkpoint(run_id=run_id, step=step, state=state, checkpoint_id=ckpt_id)
+                elif ctx.event == CallbackEvent.GRAPH_END:
+                    await store.finish_graph_run(run_id=run_id, status="completed", final_state=state, summary=state.get("metadata", {}).get("trace", {}))
+                elif ctx.event == CallbackEvent.GRAPH_ERROR:
+                    await store.finish_graph_run(run_id=run_id, status="failed", final_state=state, summary={"error": str(getattr(ctx, "error", "") or "")})
+            except Exception:
+                return
+
+        cb.register_global(_persist_graph_events)
+    except Exception:
+        pass
     _approval_manager.register_rule(ApprovalRule(
         rule_id="first-time-ops",
         rule_type=RuleType.FIRST_TIME,
@@ -197,6 +284,13 @@ async def lifespan(app: FastAPI):
     
     # Register all available tools
     registry = get_tool_registry()
+    # Inject permission manager to tools (so BaseTool wrapper can enforce when user_id is provided)
+    try:
+        perm_mgr = get_permission_manager()
+        if hasattr(registry, "set_permission_manager"):
+            registry.set_permission_manager(perm_mgr)
+    except Exception:
+        perm_mgr = None
     
     # Built-in tools via create_tool factory
     for tool_type in ["calculator", "search", "file_operations"]:
@@ -223,6 +317,26 @@ async def lifespan(app: FastAPI):
             registry.register(tool)
         except Exception:
             pass
+
+    # Seed default permissions so the system is usable out-of-the-box.
+    # Can be disabled by setting AIPLAT_SEED_DEFAULT_PERMISSIONS=false
+    seed_enabled = os.getenv("AIPLAT_SEED_DEFAULT_PERMISSIONS", "true").lower() in ("1", "true", "yes", "y")
+    if seed_enabled:
+        try:
+            perm_mgr = perm_mgr or get_permission_manager()
+            tool_names = registry.list_tools()
+            skill_names = skill_registry.list_skills()
+            agent_registry = get_agent_registry()
+            agent_names = agent_registry.list_all()
+            _seed_default_permissions(
+                perm_mgr=perm_mgr,
+                tool_names=tool_names,
+                skill_names=skill_names,
+                agent_names=agent_names,
+                users=os.getenv("AIPLAT_DEFAULT_PERMISSION_USERS", "system,admin").split(","),
+            )
+        except Exception:
+            pass
     
     yield
 
@@ -243,6 +357,74 @@ app.add_middleware(
 )
 
 api_router = APIRouter(prefix="/api/core")
+
+
+# ==================== Permission Management ====================
+
+@api_router.get("/permissions/stats")
+async def get_permission_stats():
+    """Get permission statistics"""
+    perm_mgr = get_permission_manager()
+    return perm_mgr.get_stats()
+
+
+@api_router.get("/permissions/users/{user_id}")
+async def get_user_permissions(user_id: str):
+    """Get all permissions for a user (resource_id -> permissions)."""
+    perm_mgr = get_permission_manager()
+    tools = perm_mgr.get_user_tools(user_id)
+    return {
+        "user_id": user_id,
+        "permissions": {k: [p.value for p in v] for k, v in tools.items()},
+    }
+
+
+@api_router.get("/permissions/resources/{resource_id}")
+async def get_resource_permissions(resource_id: str):
+    """Get all users who have permissions on a resource."""
+    perm_mgr = get_permission_manager()
+    users = perm_mgr.get_tool_users(resource_id)
+    return {
+        "resource_id": resource_id,
+        "users": {k: [p.value for p in v] for k, v in users.items()},
+    }
+
+
+@api_router.post("/permissions/grant")
+async def grant_permission(request: Dict[str, Any]):
+    """Grant permission to a user for a resource (tool/skill/agent)."""
+    user_id = request.get("user_id")
+    resource_id = request.get("resource_id") or request.get("tool_name")
+    permission = request.get("permission", "execute")
+    granted_by = request.get("granted_by")
+    if not user_id or not resource_id:
+        raise HTTPException(status_code=400, detail="user_id and resource_id are required")
+    try:
+        perm_enum = Permission(permission)
+    except Exception:
+        raise HTTPException(status_code=400, detail=f"Invalid permission: {permission}")
+    perm_mgr = get_permission_manager()
+    perm_mgr.grant_permission(user_id, resource_id, perm_enum, granted_by=granted_by)
+    return {"status": "granted", "user_id": user_id, "resource_id": resource_id, "permission": perm_enum.value}
+
+
+@api_router.post("/permissions/revoke")
+async def revoke_permission(request: Dict[str, Any]):
+    """Revoke permission from a user for a resource (tool/skill/agent)."""
+    user_id = request.get("user_id")
+    resource_id = request.get("resource_id") or request.get("tool_name")
+    permission = request.get("permission")
+    if not user_id or not resource_id:
+        raise HTTPException(status_code=400, detail="user_id and resource_id are required")
+    perm_enum = None
+    if permission is not None:
+        try:
+            perm_enum = Permission(permission)
+        except Exception:
+            raise HTTPException(status_code=400, detail=f"Invalid permission: {permission}")
+    perm_mgr = get_permission_manager()
+    perm_mgr.revoke_permission(user_id, resource_id, perm_enum)
+    return {"status": "revoked", "user_id": user_id, "resource_id": resource_id, "permission": perm_enum.value if perm_enum else None}
 
 
 # ==================== Agent Management ====================
@@ -486,6 +668,16 @@ async def execute_agent(agent_id: str, request: dict):
     
     execution_id = f"exec-{agent_id}-{uuid.uuid4().hex[:8]}"
     start_time = time.time()
+    trace_id = None
+    if _trace_service:
+        try:
+            trace = await _trace_service.start_trace(
+                name=f"agent:{agent_id}",
+                attributes={"execution_id": execution_id, "agent_id": agent_id, "user_id": user_id},
+            )
+            trace_id = trace.trace_id
+        except Exception:
+            trace_id = None
     
     try:
         from core.harness.interfaces import AgentContext
@@ -508,7 +700,8 @@ async def execute_agent(agent_id: str, request: dict):
             "error": result.error,
             "start_time": start_time,
             "end_time": time.time(),
-            "duration_ms": int((time.time() - start_time) * 1000)
+            "duration_ms": int((time.time() - start_time) * 1000),
+            "trace_id": trace_id,
         }
         
         _agent_executions[execution_id] = execution_record
@@ -516,6 +709,19 @@ async def execute_agent(agent_id: str, request: dict):
         if agent_id not in _agent_history:
             _agent_history[agent_id] = []
         _agent_history[agent_id].append(execution_record)
+
+        # Persist (best effort) - SQLite ExecutionStore
+        if _execution_store:
+            try:
+                await _execution_store.upsert_agent_execution(execution_record)
+            except Exception:
+                pass
+
+        if _trace_service and trace_id:
+            try:
+                await _trace_service.end_trace(trace_id, status=SpanStatus.SUCCESS if result.success else SpanStatus.FAILED)
+            except Exception:
+                pass
         
         return {
             "execution_id": execution_id,
@@ -533,9 +739,21 @@ async def execute_agent(agent_id: str, request: dict):
             "error": str(e),
             "start_time": start_time,
             "end_time": time.time(),
-            "duration_ms": int((time.time() - start_time) * 1000)
+            "duration_ms": int((time.time() - start_time) * 1000),
+            "trace_id": trace_id,
         }
         _agent_executions[execution_id] = execution_record
+        # Persist failure record (best effort)
+        if _execution_store:
+            try:
+                await _execution_store.upsert_agent_execution(execution_record)
+            except Exception:
+                pass
+        if _trace_service and trace_id:
+            try:
+                await _trace_service.end_trace(trace_id, status=SpanStatus.FAILED)
+            except Exception:
+                pass
         
         return {
             "execution_id": execution_id,
@@ -547,7 +765,9 @@ async def execute_agent(agent_id: str, request: dict):
 @api_router.get("/agents/executions/{execution_id}")
 async def get_agent_execution(execution_id: str):
     """Get agent execution"""
-    execution = _agent_executions.get(execution_id)
+    execution = await _execution_store.get_agent_execution(execution_id) if _execution_store else None
+    if not execution:
+        execution = _agent_executions.get(execution_id)
     if not execution:
         raise HTTPException(status_code=404, detail=f"Execution {execution_id} not found")
     return execution
@@ -556,12 +776,13 @@ async def get_agent_execution(execution_id: str):
 @api_router.get("/agents/{agent_id}/history")
 async def get_agent_history(agent_id: str, limit: int = 100, offset: int = 0):
     """Get agent execution history"""
+    if _execution_store:
+        history, total = await _execution_store.list_agent_history(agent_id, limit=limit, offset=offset)
+        return {"history": history, "total": total}
+
     history = _agent_history.get(agent_id, [])
-    history = history[offset:offset+limit]
-    return {
-        "history": history,
-        "total": len(_agent_history.get(agent_id, []))
-    }
+    history = history[offset:offset + limit]
+    return {"history": history, "total": len(_agent_history.get(agent_id, []))}
 
 
 @api_router.get("/agents/{agent_id}/versions")
@@ -751,15 +972,49 @@ async def get_skill_version(skill_id: str, version: str):
     config = registry.get_version(skill_id, version)
     if not config:
         raise HTTPException(status_code=404, detail=f"Version {version} not found")
-    return {"version": version, "config": {}}
+    # Return real config for auditability & rollback verification
+    try:
+        from dataclasses import asdict, is_dataclass
+        cfg_dict = asdict(config) if is_dataclass(config) else dict(config)  # type: ignore[arg-type]
+    except Exception:
+        cfg_dict = {
+            "name": getattr(config, "name", ""),
+            "description": getattr(config, "description", ""),
+            "input_schema": getattr(config, "input_schema", {}) or {},
+            "output_schema": getattr(config, "output_schema", {}) or {},
+            "timeout": getattr(config, "timeout", None),
+            "metadata": getattr(config, "metadata", {}) or {},
+        }
+    return {"version": version, "config": cfg_dict}
 
 
 @api_router.post("/skills/{skill_id}/versions/{version}/rollback")
 async def rollback_skill_version(skill_id: str, version: str):
     """Rollback skill version"""
     registry = get_skill_registry()
-    registry.rollback_version(skill_id, version)
-    return {"status": "rolled_back"}
+    ok = registry.rollback_version(skill_id, version)
+    if not ok:
+        raise HTTPException(status_code=404, detail=f"Version {version} not found")
+    active_version = registry.get_active_version(skill_id) if hasattr(registry, "get_active_version") else version
+    active_config = registry.get_version(skill_id, active_version) if active_version else None
+    cfg = None
+    if active_config is not None:
+        try:
+            from dataclasses import asdict, is_dataclass
+            cfg = asdict(active_config) if is_dataclass(active_config) else dict(active_config)  # type: ignore[arg-type]
+        except Exception:
+            cfg = {"name": getattr(active_config, "name", ""), "metadata": getattr(active_config, "metadata", {}) or {}}
+    return {"status": "rolled_back", "active_version": active_version, "active_config": cfg}
+
+
+@api_router.get("/skills/{skill_id}/active-version")
+async def get_skill_active_version(skill_id: str):
+    """Get currently active version for a skill."""
+    registry = get_skill_registry()
+    if not registry.get(skill_id):
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    active_version = registry.get_active_version(skill_id) if hasattr(registry, "get_active_version") else None
+    return {"skill_id": skill_id, "active_version": active_version}
 
 
 @api_router.post("/skills/{skill_id}/execute")
@@ -770,12 +1025,51 @@ async def execute_skill(skill_id: str, request: SkillExecuteRequest):
     if not perm_mgr.check_permission(user_id, skill_id, Permission.EXECUTE):
         raise HTTPException(status_code=403, detail=f"User '{user_id}' lacks EXECUTE permission for skill '{skill_id}'")
     
+    trace_id = None
+    if _trace_service:
+        try:
+            trace = await _trace_service.start_trace(
+                name=f"skill:{skill_id}",
+                attributes={"skill_id": skill_id, "user_id": user_id},
+            )
+            trace_id = trace.trace_id
+        except Exception:
+            trace_id = None
+
     execution = await _skill_manager.execute_skill(
         skill_id,
         request.input,
         context=request.context or {},
         mode=getattr(request, 'mode', 'inline')
     )
+
+    # Persist execution for query endpoints
+    if _execution_store:
+        try:
+            await _execution_store.upsert_skill_execution(
+                {
+                    "id": execution.id,
+                    "skill_id": execution.skill_id,
+                    "status": execution.status,
+                    "input": execution.input_data,
+                    "output": execution.output_data,
+                    "error": execution.error,
+                    "start_time": execution.start_time.timestamp() if execution.start_time else 0.0,
+                    "end_time": execution.end_time.timestamp() if execution.end_time else 0.0,
+                    "duration_ms": execution.duration_ms or 0,
+                    "user_id": user_id,
+                    "trace_id": trace_id,
+                }
+            )
+        except Exception:
+            pass
+
+    if _trace_service and trace_id:
+        try:
+            await _trace_service.end_trace(trace_id, status=SpanStatus.SUCCESS if execution.status == "completed" else SpanStatus.FAILED)
+        except Exception:
+            pass
+
     return {
         "execution_id": execution.id,
         "skill_id": execution.skill_id,
@@ -783,6 +1077,7 @@ async def execute_skill(skill_id: str, request: SkillExecuteRequest):
         "input": execution.input_data,
         "output": execution.output_data,
         "error": execution.error,
+        "trace_id": trace_id,
         "start_time": execution.start_time.isoformat() if execution.start_time else None,
         "end_time": execution.end_time.isoformat() if execution.end_time else None,
         "duration_ms": execution.duration_ms,
@@ -792,25 +1087,69 @@ async def execute_skill(skill_id: str, request: SkillExecuteRequest):
 @api_router.get("/skills/executions/{execution_id}")
 async def get_skill_execution(execution_id: str):
     """Get skill execution"""
-    record = _skill_executions.get(execution_id)
+    record = await _execution_store.get_skill_execution(execution_id) if _execution_store else None
     if not record:
+        record = _skill_executions.get(execution_id)
+    if not record:
+        # fallback to in-memory SkillManager store if present
+        try:
+            exec_ = await _skill_manager.get_execution(execution_id)  # type: ignore[union-attr]
+            if exec_:
+                return {
+                    "execution_id": exec_.id,
+                    "skill_id": exec_.skill_id,
+                    "status": exec_.status,
+                    "input": exec_.input_data,
+                    "output": exec_.output_data,
+                    "error": exec_.error,
+                    "start_time": exec_.start_time.isoformat() if exec_.start_time else None,
+                    "end_time": exec_.end_time.isoformat() if exec_.end_time else None,
+                    "duration_ms": exec_.duration_ms,
+                }
+        except Exception:
+            pass
         raise HTTPException(status_code=404, detail=f"Execution {execution_id} not found")
-    return record
+
+    # normalize payload shape for API stability
+    return {
+        "execution_id": record["id"],
+        "skill_id": record["skill_id"],
+        "status": record["status"],
+        "input": record.get("input"),
+        "output": record.get("output"),
+        "error": record.get("error"),
+        "trace_id": record.get("trace_id"),
+        "start_time": datetime.utcfromtimestamp(record["start_time"]).isoformat() if record.get("start_time") else None,
+        "end_time": datetime.utcfromtimestamp(record["end_time"]).isoformat() if record.get("end_time") else None,
+        "duration_ms": record.get("duration_ms"),
+    }
 
 
 @api_router.get("/skills/{skill_id}/executions")
 async def list_skill_executions(skill_id: str, limit: int = 100, offset: int = 0):
     """List skill executions"""
-    skill_executions = [
-        e for e in _skill_executions.values() 
-        if e.get("skill_id") == skill_id
-    ]
-    skill_executions = skill_executions[offset:offset+limit]
-    
-    return {
-        "executions": skill_executions,
-        "total": len([e for e in _skill_executions.values() if e.get("skill_id") == skill_id])
-    }
+    if _execution_store:
+        items, total = await _execution_store.list_skill_executions(skill_id, limit=limit, offset=offset)
+        executions = [
+            {
+                "execution_id": r["id"],
+                "skill_id": r["skill_id"],
+                "status": r["status"],
+                "input": r.get("input"),
+                "output": r.get("output"),
+                "error": r.get("error"),
+                "trace_id": r.get("trace_id"),
+                "start_time": datetime.utcfromtimestamp(r["start_time"]).isoformat() if r.get("start_time") else None,
+                "end_time": datetime.utcfromtimestamp(r["end_time"]).isoformat() if r.get("end_time") else None,
+                "duration_ms": r.get("duration_ms"),
+            }
+            for r in items
+        ]
+        return {"executions": executions, "total": total}
+
+    skill_executions = [e for e in _skill_executions.values() if e.get("skill_id") == skill_id]
+    skill_executions = skill_executions[offset : offset + limit]
+    return {"executions": skill_executions, "total": len([e for e in _skill_executions.values() if e.get("skill_id") == skill_id])}
 
 
 @api_router.get("/skills/{skill_id}/trigger-conditions")
@@ -860,6 +1199,327 @@ async def test_skill_trigger(skill_id: str, request: dict):
         "would_trigger": matched,
         "matched_condition": condition if matched else None
     }
+
+
+# ==================== Trace / Graph Persistence ====================
+
+@api_router.get("/traces")
+async def list_traces(limit: int = 100, offset: int = 0, status: Optional[str] = None):
+    """List persisted traces (requires ExecutionStore)."""
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    items, total = await _execution_store.list_traces(limit=limit, offset=offset, status=status)
+    traces = [
+        {
+            **t,
+            "start_time": datetime.utcfromtimestamp(t["start_time"]).isoformat() if t.get("start_time") else None,
+            "end_time": datetime.utcfromtimestamp(t["end_time"]).isoformat() if t.get("end_time") else None,
+        }
+        for t in items
+    ]
+    return {"traces": traces, "total": total, "limit": limit, "offset": offset}
+
+
+@api_router.get("/traces/{trace_id}")
+async def get_trace(trace_id: str):
+    """Get a persisted trace with spans."""
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    trace = await _execution_store.get_trace(trace_id, include_spans=True)
+    if not trace:
+        raise HTTPException(status_code=404, detail=f"Trace {trace_id} not found")
+    trace["start_time"] = datetime.utcfromtimestamp(trace["start_time"]).isoformat() if trace.get("start_time") else None
+    trace["end_time"] = datetime.utcfromtimestamp(trace["end_time"]).isoformat() if trace.get("end_time") else None
+    for s in trace.get("spans", []) or []:
+        s["start_time"] = datetime.utcfromtimestamp(s["start_time"]).isoformat() if s.get("start_time") else None
+        s["end_time"] = datetime.utcfromtimestamp(s["end_time"]).isoformat() if s.get("end_time") else None
+    return trace
+
+
+@api_router.get("/executions/{execution_id}/trace")
+async def get_trace_by_execution(execution_id: str):
+    """Get trace (with spans) by execution_id (agent/skill)."""
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    trace_id = await _execution_store.get_trace_id_by_execution_id(execution_id)
+    if not trace_id:
+        raise HTTPException(status_code=404, detail=f"Trace not found for execution {execution_id}")
+    trace = await _execution_store.get_trace(trace_id, include_spans=True)
+    if not trace:
+        raise HTTPException(status_code=404, detail=f"Trace {trace_id} not found")
+    trace["start_time"] = datetime.utcfromtimestamp(trace["start_time"]).isoformat() if trace.get("start_time") else None
+    trace["end_time"] = datetime.utcfromtimestamp(trace["end_time"]).isoformat() if trace.get("end_time") else None
+    return trace
+
+
+@api_router.get("/traces/{trace_id}/executions")
+async def list_executions_by_trace(trace_id: str, limit: int = 100, offset: int = 0):
+    """List agent/skill executions linked to a trace_id."""
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    items = await _execution_store.list_executions_by_trace_id(trace_id, limit=limit, offset=offset)
+    return {"trace_id": trace_id, "items": items, "limit": limit, "offset": offset}
+
+
+@api_router.get("/graphs/runs/{run_id}")
+async def get_graph_run(run_id: str):
+    """Get a persisted LangGraph run (requires ExecutionStore)."""
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    run = await _execution_store.get_graph_run(run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail=f"Graph run {run_id} not found")
+    run["start_time"] = datetime.utcfromtimestamp(run["start_time"]).isoformat() if run.get("start_time") else None
+    run["end_time"] = datetime.utcfromtimestamp(run["end_time"]).isoformat() if run.get("end_time") else None
+    return run
+
+
+@api_router.get("/graphs/runs")
+async def list_graph_runs(
+    limit: int = 100,
+    offset: int = 0,
+    graph_name: Optional[str] = None,
+    status: Optional[str] = None,
+    trace_id: Optional[str] = None,
+):
+    """List persisted graph runs (requires ExecutionStore)."""
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    result = await _execution_store.list_graph_runs(limit=limit, offset=offset, graph_name=graph_name, status=status, trace_id=trace_id)
+    items = result.get("items", [])
+    for r in items:
+        r["start_time"] = datetime.utcfromtimestamp(r["start_time"]).isoformat() if r.get("start_time") else None
+        r["end_time"] = datetime.utcfromtimestamp(r["end_time"]).isoformat() if r.get("end_time") else None
+    return {"runs": items, "total": result.get("total", 0), "limit": limit, "offset": offset}
+
+
+@api_router.get("/graphs/runs/{run_id}/checkpoints")
+async def list_graph_checkpoints(run_id: str, limit: int = 100, offset: int = 0):
+    """List persisted checkpoints for a run."""
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    checkpoints = await _execution_store.list_graph_checkpoints(run_id, limit=limit, offset=offset)
+    for c in checkpoints:
+        c["created_at"] = datetime.utcfromtimestamp(c["created_at"]).isoformat() if c.get("created_at") else None
+    return {"run_id": run_id, "checkpoints": checkpoints, "limit": limit, "offset": offset}
+
+
+@api_router.get("/graphs/runs/{run_id}/checkpoints/{checkpoint_id}")
+async def get_graph_checkpoint(run_id: str, checkpoint_id: str):
+    """Get a persisted checkpoint by id."""
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    ckpt = await _execution_store.get_graph_checkpoint(checkpoint_id)
+    if not ckpt or ckpt.get("run_id") != run_id:
+        raise HTTPException(status_code=404, detail=f"Checkpoint {checkpoint_id} not found")
+    ckpt["created_at"] = datetime.utcfromtimestamp(ckpt["created_at"]).isoformat() if ckpt.get("created_at") else None
+    return ckpt
+
+
+@api_router.post("/graphs/runs/{run_id}/resume")
+async def resume_graph_run(run_id: str, request: dict):
+    """
+    Create a new run from a checkpoint state (restore/resume semantics).
+    request:
+      - checkpoint_id (optional)
+      - step (optional)
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+
+    user_id = request.get("user_id", "system")
+    if user_id != "system":
+        perm_mgr = get_permission_manager()
+        parent = await _execution_store.get_graph_run(run_id)
+        graph_name = parent.get("graph_name") if parent else None
+        resource_id = f"graph:{graph_name}" if graph_name else f"graph_run:{run_id}"
+        if not perm_mgr.check_permission(user_id, resource_id, Permission.EXECUTE):
+            raise HTTPException(status_code=403, detail=f"User '{user_id}' lacks EXECUTE permission for '{resource_id}'")
+
+    checkpoint_id = request.get("checkpoint_id")
+    step = request.get("step")
+
+    ckpt = None
+    if checkpoint_id:
+        ckpt = await _execution_store.get_graph_checkpoint(checkpoint_id)
+    elif step is not None:
+        ckpt = await _execution_store.get_graph_checkpoint_by_step(run_id, int(step))
+    else:
+        ckpt = await _execution_store.get_latest_graph_checkpoint(run_id)
+
+    if not ckpt:
+        raise HTTPException(status_code=404, detail="Checkpoint not found")
+    if ckpt.get("run_id") != run_id:
+        raise HTTPException(status_code=400, detail="Checkpoint does not belong to run_id")
+
+    resumed = await _execution_store.resume_graph_run(parent_run_id=run_id, checkpoint_id=ckpt["checkpoint_id"])
+    if not resumed:
+        raise HTTPException(status_code=500, detail="Failed to resume graph run")
+    return resumed
+
+
+@api_router.post("/graphs/compiled/react/execute")
+async def execute_compiled_react_graph(request: dict):
+    """
+    Execute internal CompiledGraph-based ReAct workflow (checkpoint/callback enabled).
+
+    request:
+      - messages: [{role, content}]
+      - context: dict
+      - max_steps: int
+      - checkpoint_interval: int
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+
+    messages = request.get("messages") or []
+    context = request.get("context") or {}
+    max_steps = int(request.get("max_steps", 10) or 10)
+    checkpoint_interval = int(request.get("checkpoint_interval", 1) or 1)
+
+    class _DefaultModel:
+        async def generate(self, prompt):
+            # Minimal deterministic model for environments without an LLM adapter.
+            return type("R", (), {"content": "DONE"})
+
+    from core.harness.execution.langgraph.compiled_graphs import create_compiled_react_graph
+    from core.harness.execution.langgraph.core import GraphConfig
+
+    import uuid
+
+    graph_run_id = str(uuid.uuid4())
+    trace_id = None
+    if _trace_service:
+        try:
+            t = await _trace_service.start_trace(
+                name=f"graph:{'compiled_react'}",
+                attributes={"graph_name": "compiled_react", "graph_run_id": graph_run_id, "source": "graph"},
+            )
+            trace_id = t.trace_id
+        except Exception:
+            trace_id = None
+
+    graph = create_compiled_react_graph(model=_DefaultModel(), tools=[], max_steps=max_steps)
+    initial_state = {
+        "messages": messages,
+        "context": context,
+        "step_count": 0,
+        "max_steps": max_steps,
+        "metadata": {"graph_run_id": graph_run_id, "trace_id": trace_id},
+    }
+    try:
+        final_state = await graph.execute(
+            initial_state,
+            config=GraphConfig(max_steps=max_steps, enable_checkpoints=True, checkpoint_interval=checkpoint_interval, enable_callbacks=True),
+        )
+    finally:
+        if _trace_service and trace_id:
+            try:
+                await _trace_service.end_trace(trace_id, status=SpanStatus.SUCCESS)
+            except Exception:
+                pass
+            try:
+                _trace_service._context = None  # best-effort reset to avoid cross-request leakage
+            except Exception:
+                pass
+    run_id = (final_state.get("metadata") or {}).get("graph_run_id")
+    return {"run_id": run_id, "final_state": final_state}
+
+
+@api_router.post("/graphs/runs/{run_id}/resume/execute")
+async def resume_and_execute_compiled_graph(run_id: str, request: dict):
+    """
+    Resume from a checkpoint and continue executing using CompiledGraph-based ReAct workflow.
+    This endpoint closes the loop: resume -> execute -> persist.
+
+    request:
+      - checkpoint_id (optional)
+      - step (optional)
+      - max_steps (optional)
+      - checkpoint_interval (optional)
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+
+    user_id = request.get("user_id", "system")
+    if user_id != "system":
+        perm_mgr = get_permission_manager()
+        parent = await _execution_store.get_graph_run(run_id)
+        graph_name = parent.get("graph_name") if parent else None
+        resource_id = f"graph:{graph_name}" if graph_name else f"graph_run:{run_id}"
+        if not perm_mgr.check_permission(user_id, resource_id, Permission.EXECUTE):
+            raise HTTPException(status_code=403, detail=f"User '{user_id}' lacks EXECUTE permission for '{resource_id}'")
+
+    checkpoint_id = request.get("checkpoint_id")
+    step = request.get("step")
+    max_steps = int(request.get("max_steps", 10) or 10)
+    checkpoint_interval = int(request.get("checkpoint_interval", 1) or 1)
+
+    ckpt = None
+    if checkpoint_id:
+        ckpt = await _execution_store.get_graph_checkpoint(checkpoint_id)
+    elif step is not None:
+        ckpt = await _execution_store.get_graph_checkpoint_by_step(run_id, int(step))
+    else:
+        ckpt = await _execution_store.get_latest_graph_checkpoint(run_id)
+
+    if not ckpt:
+        raise HTTPException(status_code=404, detail="Checkpoint not found")
+    if ckpt.get("run_id") != run_id:
+        raise HTTPException(status_code=400, detail="Checkpoint does not belong to run_id")
+
+    resumed = await _execution_store.resume_graph_run(parent_run_id=run_id, checkpoint_id=ckpt["checkpoint_id"])
+    if not resumed:
+        raise HTTPException(status_code=500, detail="Failed to resume graph run")
+
+    restored_state = resumed.get("state") if isinstance(resumed.get("state"), dict) else {}
+    # ensure max_steps override
+    restored_state["max_steps"] = max_steps
+
+    class _DefaultModel:
+        async def generate(self, prompt):
+            return type("R", (), {"content": "DONE"})
+
+    from core.harness.execution.langgraph.compiled_graphs import create_compiled_react_graph
+    from core.harness.execution.langgraph.core import GraphConfig
+
+    import uuid  # noqa: F401  (kept for symmetry; graph_run_id may be generated in other flows)
+
+    # attach trace_id for correlation: run_id -> trace_id, and tool spans -> trace_id
+    trace_id = None
+    if _trace_service:
+        try:
+            t = await _trace_service.start_trace(
+                name=f"graph:{resumed.get('graph_name') or 'compiled_react'}",
+                attributes={"graph_name": resumed.get("graph_name") or "compiled_react", "graph_run_id": resumed.get("run_id"), "parent_run_id": run_id, "source": "graph"},
+            )
+            trace_id = t.trace_id
+        except Exception:
+            trace_id = None
+    try:
+        meta = restored_state.get("metadata") if isinstance(restored_state.get("metadata"), dict) else {}
+        meta["trace_id"] = trace_id
+        restored_state["metadata"] = meta
+    except Exception:
+        pass
+
+    graph = create_compiled_react_graph(model=_DefaultModel(), tools=[], max_steps=max_steps, graph_name=resumed.get("graph_name") or "compiled_react")
+    try:
+        final_state = await graph.execute(
+            restored_state,
+            config=GraphConfig(max_steps=max_steps, enable_checkpoints=True, checkpoint_interval=checkpoint_interval, enable_callbacks=True),
+        )
+    finally:
+        if _trace_service and trace_id:
+            try:
+                await _trace_service.end_trace(trace_id, status=SpanStatus.SUCCESS)
+            except Exception:
+                pass
+            try:
+                _trace_service._context = None
+            except Exception:
+                pass
+    return {"parent_run_id": run_id, "run_id": resumed.get("run_id"), "checkpoint_id": resumed.get("checkpoint_id"), "final_state": final_state}
 
 
 @api_router.get("/skills/{skill_id}/evolution")

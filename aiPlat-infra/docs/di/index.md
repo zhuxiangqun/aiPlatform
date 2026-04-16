@@ -1,4 +1,7 @@
-# 依赖注入模块
+# 依赖注入模块（设计真值：以代码事实为准）
+
+> 说明：本文档描述 infra 内置 DI 容器的 As-Is 实现与可配置项。  
+> 关键断言需可追溯（代码入口/测试/命令），并与全仓口径保持一致。
 
 > 提供轻量级依赖注入容器，用于 infra 层内部模块之间的依赖管理
 
@@ -111,7 +114,7 @@ def create_container(
 **使用示例**：
 
 ```python
-from infra.di import create_container, di_scope
+from infra.di import create_container
 
 # 创建容器
 container = create_container()
@@ -126,7 +129,7 @@ db = container.resolve(IDatabaseClient)
 llm = container.resolve(ILLMClient)
 
 # 使用作用域
-with di_scope("request") as scope:
+with container.scope("request") as scope:
     db = scope.resolve(IDatabaseClient)
     # 请求结束时自动清理
 ```
@@ -145,6 +148,7 @@ class DIContainerConfig:
     strict_mode: bool = False
     default_singleton: bool = True
     default_lazy: bool = True
+    interceptors: List[str] = field(default_factory=list)
 ```
 
 ### ServiceDescriptor
@@ -205,7 +209,7 @@ db = container.resolve(IDatabaseClient)
 ### 自动注入
 
 ```python
-from infra.di import injectable, inject
+from infra.di import injectable
 
 # 定义服务
 @injectable
@@ -301,6 +305,17 @@ container.register(
     lifetime=CustomLifetime.THREAD_LOCAL
 )
 ```
+
+> 说明（As-Is）：当前仓库已提供 `@injectable` 与 scan_packages 自动注册；`inject` 装饰器若需要，应作为 To-Be 补齐实现与测试（避免文档宣称超前）。
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- DIContainerConfig（含 interceptors）：`infra/di/schemas.py`
+- scan_packages 导入 + @injectable 自动注册：`infra/di/container.py`、`infra/di/auto.py`
+- 拦截器链与 Proxy：`infra/di/interceptors.py`
+- 单测：`infra/tests/unit/test_di_scan_and_interceptors.py`
 
 ### 添加新的作用域
 

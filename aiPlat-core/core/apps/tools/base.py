@@ -6,9 +6,11 @@ Provides base Tool class implementing ITool interface.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Awaitable
 import asyncio
 import time
+import threading
+from contextlib import asynccontextmanager
 
 from ...harness.interfaces import (
     ITool,
@@ -37,6 +39,9 @@ class BaseTool(ITool):
 
     def __init__(self, config: ToolConfig):
         self._config = config
+        self._permission_manager = None
+        self._tracer = None
+        self._stats_lock = threading.Lock()
         self._stats = {
             "call_count": 0,
             "success_count": 0,
@@ -49,6 +54,14 @@ class BaseTool(ITool):
         """Execute tool - to be implemented by subclass"""
         raise NotImplementedError("Subclass must implement execute")
 
+    def set_permission_manager(self, permission_manager: Any) -> None:
+        """Inject permission manager (optional)."""
+        self._permission_manager = permission_manager
+
+    def set_tracer(self, tracer: Any) -> None:
+        """Inject tracer (optional)."""
+        self._tracer = tracer
+
     def validate_params(self, params: Dict[str, Any]) -> bool:
         """Validate parameters"""
         # Check required parameters
@@ -59,6 +72,77 @@ class BaseTool(ITool):
                 return False
         
         return True
+
+    async def _call_with_tracking(
+        self,
+        params: Dict[str, Any],
+        handler: Callable[[], Awaitable[ToolResult]],
+        timeout: Optional[float] = None,
+    ) -> ToolResult:
+        """Unified execution wrapper: validate → (optional) permission → timeout/exception → stats."""
+        start_time = time.time()
+
+        @asynccontextmanager
+        async def _span():
+            if self._tracer is None or not hasattr(self._tracer, "start_span"):
+                yield None
+                return
+            try:
+                span_obj = self._tracer.start_span(f"tool.{self.get_name()}")
+                if hasattr(span_obj, "__aenter__"):
+                    async with span_obj as s:
+                        yield s
+                elif hasattr(span_obj, "__enter__"):
+                    with span_obj as s:
+                        yield s
+                else:
+                    yield span_obj
+            except Exception:
+                yield None
+
+        if not self.validate_params(params):
+            latency = time.time() - start_time
+            self._update_stats(False, latency)
+            return ToolResult(success=False, error="Invalid params", latency=latency)
+
+        # Optional permission check: only enforced when user_id is provided.
+        user_id = params.get("user_id") or params.get("_user_id")
+        if self._permission_manager is not None and user_id is not None:
+            try:
+                from .permission import Permission
+
+                if not self._permission_manager.check_permission(user_id, self.get_name(), Permission.EXECUTE):
+                    latency = time.time() - start_time
+                    self._update_stats(False, latency)
+                    return ToolResult(
+                        success=False,
+                        error=f"User '{user_id}' lacks EXECUTE permission for tool '{self.get_name()}'",
+                        latency=latency,
+                    )
+            except Exception as e:
+                latency = time.time() - start_time
+                self._update_stats(False, latency)
+                return ToolResult(success=False, error=str(e), latency=latency)
+
+        effective_timeout = timeout
+        try:
+            async with _span():
+                if effective_timeout is not None:
+                    result = await asyncio.wait_for(handler(), timeout=effective_timeout)
+                else:
+                    result = await handler()
+            latency = time.time() - start_time
+            self._update_stats(result.success, latency)
+            result.latency = latency
+            return result
+        except asyncio.TimeoutError:
+            latency = time.time() - start_time
+            self._update_stats(False, latency)
+            return ToolResult(success=False, error="Timeout", latency=latency)
+        except Exception as e:
+            latency = time.time() - start_time
+            self._update_stats(False, latency)
+            return ToolResult(success=False, error=str(e), latency=latency)
 
     def get_schema(self) -> ToolSchema:
         """Get tool schema"""
@@ -79,29 +163,32 @@ class BaseTool(ITool):
 
     def get_stats(self) -> Dict[str, Any]:
         """Get tool statistics"""
-        return self._stats.copy()
+        with self._stats_lock:
+            return self._stats.copy()
 
     def reset_stats(self) -> None:
         """Reset statistics"""
-        self._stats = {
-            "call_count": 0,
-            "success_count": 0,
-            "error_count": 0,
-            "total_latency": 0.0,
-            "avg_latency": 0.0
-        }
+        with self._stats_lock:
+            self._stats = {
+                "call_count": 0,
+                "success_count": 0,
+                "error_count": 0,
+                "total_latency": 0.0,
+                "avg_latency": 0.0
+            }
 
     def _update_stats(self, success: bool, latency: float) -> None:
         """Update statistics"""
-        self._stats["call_count"] += 1
-        
-        if success:
-            self._stats["success_count"] += 1
-        else:
-            self._stats["error_count"] += 1
-        
-        self._stats["total_latency"] += latency
-        self._stats["avg_latency"] = self._stats["total_latency"] / self._stats["call_count"]
+        with self._stats_lock:
+            self._stats["call_count"] += 1
+            
+            if success:
+                self._stats["success_count"] += 1
+            else:
+                self._stats["error_count"] += 1
+            
+            self._stats["total_latency"] += latency
+            self._stats["avg_latency"] = self._stats["total_latency"] / self._stats["call_count"]
 
 
 class CalculatorTool(BaseTool):
@@ -129,13 +216,11 @@ class CalculatorTool(BaseTool):
         super().__init__(config)
 
     async def execute(self, params: Dict[str, Any]) -> ToolResult:
-        """Execute calculation"""
-        start_time = time.time()
-        
-        try:
+        """Execute calculation (wrapped)."""
+
+        async def handler() -> ToolResult:
             expression = params.get("expression", "")
-            
-            # Safe evaluation
+
             allowed_names = {
                 "abs": abs,
                 "max": max,
@@ -143,35 +228,19 @@ class CalculatorTool(BaseTool):
                 "pow": pow,
                 "round": round,
                 "sqrt": lambda x: x ** 0.5,
-                "sin": lambda x: __import__('math').sin(x),
-                "cos": lambda x: __import__('math').cos(x),
-                "tan": lambda x: __import__('math').tan(x),
-                "log": lambda x: __import__('math').log(x),
-                "log10": lambda x: __import__('math').log10(x),
-                "pi": __import__('math').pi,
-                "e": __import__('math').e,
+                "sin": lambda x: __import__("math").sin(x),
+                "cos": lambda x: __import__("math").cos(x),
+                "tan": lambda x: __import__("math").tan(x),
+                "log": lambda x: __import__("math").log(x),
+                "log10": lambda x: __import__("math").log10(x),
+                "pi": __import__("math").pi,
+                "e": __import__("math").e,
             }
-            
+
             result = eval(expression, {"__builtins__": {}}, allowed_names)
-            
-            latency = time.time() - start_time
-            self._update_stats(True, latency)
-            
-            return ToolResult(
-                success=True,
-                output=str(result),
-                latency=latency
-            )
-            
-        except Exception as e:
-            latency = time.time() - start_time
-            self._update_stats(False, latency)
-            
-            return ToolResult(
-                success=False,
-                error=str(e),
-                latency=latency
-            )
+            return ToolResult(success=True, output=str(result))
+
+        return await self._call_with_tracking(params, handler, timeout=10)
 
 
 class SearchTool(BaseTool):
@@ -419,28 +488,56 @@ class ToolRegistry:
     def __init__(self):
         self._tools: Dict[str, BaseTool] = {}
         self._categories: Dict[str, List[str]] = {}
+        self._permission_manager: Any = None
+        self._tracer: Any = None
+        self._lock = threading.RLock()
+
+    def set_permission_manager(self, permission_manager: Any) -> None:
+        """Set permission manager and inject into all registered tools."""
+        with self._lock:
+            self._permission_manager = permission_manager
+            for tool in self._tools.values():
+                if hasattr(tool, "set_permission_manager"):
+                    tool.set_permission_manager(permission_manager)
+
+    def set_tracer(self, tracer: Any) -> None:
+        """Set tracer and inject into all registered tools."""
+        with self._lock:
+            self._tracer = tracer
+            for tool in self._tools.values():
+                if hasattr(tool, "set_tracer"):
+                    tool.set_tracer(tracer)
 
     def register(self, tool: BaseTool) -> None:
         """Register a tool"""
-        name = tool.get_name()
-        self._tools[name] = tool
+        with self._lock:
+            name = tool.get_name()
+            if self._permission_manager is not None and hasattr(tool, "set_permission_manager"):
+                tool.set_permission_manager(self._permission_manager)
+            if self._tracer is not None and hasattr(tool, "set_tracer"):
+                tool.set_tracer(self._tracer)
+            self._tools[name] = tool
 
     def get(self, name: str) -> Optional[BaseTool]:
         """Get tool by name"""
-        return self._tools.get(name)
+        with self._lock:
+            return self._tools.get(name)
 
     def list_tools(self, category: Optional[str] = None) -> List[str]:
         """List tools"""
-        return list(self._tools.keys())
+        with self._lock:
+            return list(self._tools.keys())
 
     def unregister(self, name: str) -> None:
         """Unregister a tool"""
-        if name in self._tools:
-            del self._tools[name]
+        with self._lock:
+            if name in self._tools:
+                del self._tools[name]
 
     def get_all_stats(self) -> Dict[str, Dict[str, Any]]:
         """Get statistics for all tools"""
-        return {name: tool.get_stats() for name, tool in self._tools.items()}
+        with self._lock:
+            return {name: tool.get_stats() for name, tool in self._tools.items()}
 
 
 # Global registry

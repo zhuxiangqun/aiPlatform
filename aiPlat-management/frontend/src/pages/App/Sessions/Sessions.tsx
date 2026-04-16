@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { RotateCw, MessageCircle, Square } from 'lucide-react';
-import { Table, Button, Modal, Select } from '../../../components/ui';
+import { Table, Button, Modal, Select, toast } from '../../../components/ui';
 import PageHeader from '../../../components/common/PageHeader';
 import { appSessionApi } from '../../../services';
 import type { AppSession } from '../../../services';
@@ -33,7 +33,7 @@ const Sessions: React.FC = () => {
       const res = await appSessionApi.list({ status: statusFilter || undefined, channel: channelFilter || undefined });
       setSessions(res.sessions || []);
     } catch {
-      alert('获取会话列表失败');
+      toast.error('获取会话列表失败');
       setSessions([]);
     } finally {
       setLoading(false);
@@ -48,11 +48,11 @@ const Sessions: React.FC = () => {
     if (!endModal.session) return;
     try {
       await appSessionApi.end(endModal.session.id);
-      alert('会话已结束');
+      toast.success('会话已结束');
       setEndModal({ open: false, session: null });
       fetchSessions();
     } catch {
-      alert('结束会话失败');
+      toast.error('结束会话失败');
     }
   };
 

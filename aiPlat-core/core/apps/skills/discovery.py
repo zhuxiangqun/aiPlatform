@@ -307,11 +307,16 @@ class SkillMatcher:
         input_lower = user_input.lower()
         
         for skill in skills:
-            if not skill.trigger_keywords:
+            # 优先使用显式 trigger_conditions（路由表）；若未配置，再退化到 trigger_keywords（兼容历史）
+            conditions = list(skill.trigger_conditions or [])
+            keywords = list(skill.trigger_keywords or [])
+
+            candidates = conditions if conditions else keywords
+            if not candidates:
                 continue
-            
-            for keyword in skill.trigger_keywords:
-                if keyword.lower() in input_lower:
+
+            for token in candidates:
+                if str(token).lower() in input_lower:
                     results.append(skill)
                     break
         

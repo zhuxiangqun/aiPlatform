@@ -1,4 +1,4 @@
-# 应用层 (Apps)
+# 应用层 (Apps)（设计真值：以代码事实为准）
 
 > 应用层包含 Agent、Skill、Tool 的具体实现，基于 Harness 操作系统层构建。
 
@@ -10,10 +10,10 @@
 
 ---
 
-## 目录结构
+## 目录结构（As-Is）
 
 ```
-apps/
+core/apps/
 ├── agents/                         # Agent 实现
 │   ├── base.py                   # Agent 基类
 │   ├── react.py                  # ReAct Agent
@@ -95,6 +95,14 @@ apps/
 - 适用于代码审查、内容润色、方案优化
 
 > 详细设计模式见 [Agent 设计模式](../framework/patterns.md)
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- Agents：`core/apps/agents/*`
+- Skills：`core/apps/skills/*`
+- Tools：`core/apps/tools/*`
 
 ### Planning Agent
 

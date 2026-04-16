@@ -1,6 +1,12 @@
-# Agent 安全审计
+# Agent 安全审计（设计真值：以代码事实为准）
 
-> 基于 Agent Audit 实践的部署前安全扫描机制
+> 本文档区分 **As-Is（当前实现）** 与 **To-Be（目标演进）**。  
+> 统一口径与可追溯规则参见：[架构实现状态](../ARCHITECTURE_STATUS.md)。
+
+## 实现状态提示（As-Is vs To-Be）
+
+- **As-Is（当前实现）**：Harness 默认在 `pre_approval_check` 阶段启用最小安全扫描（`SecurityScanHook`），并支持用环境变量配置扫描工具白/黑名单；扫描结果会写入 `state.context.audit_events[]`。
+- **To-Be（目标演进）**：接入更完整的“部署前/CI 安全扫描”（如 agent-audit/规则集/策略门禁），并将扫描/审批/策略决策统一事件化并可回放。
 
 ---
 
@@ -116,7 +122,7 @@ cursor.execute(query)
 
 ---
 
-## 五、扫描工具集成
+## 五、扫描工具集成（To-Be 为主）
 
 ### 5.1 快速开始
 
@@ -133,6 +139,17 @@ agent-audit scan . --severity high
 # CI 集成
 agent-audit scan . --fail-on high
 ```
+
+> 说明：以上属于 To-Be 的 CI/部署前扫描集成示例，当前仓库运行时默认实现以 `SecurityScanHook`（审批前扫描）为主。
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- 默认 hook 注册与 pre_approval_check 扫描：`core/harness/infrastructure/hooks/hook_manager.py`
+- SecurityScanHook 规则实现：`core/harness/infrastructure/hooks/builtin.py`
+- 扫描配置项与审计事件写入：`core/harness/infrastructure/hooks/hook_manager.py`
+- 单测：`core/tests/unit/test_harness/test_hooks/test_security_scan_config.py`
 
 ### 5.2 CI/CD 集成示例
 
@@ -205,6 +222,62 @@ blocked_commands:
   - "git push --force"
   - "DROP TABLE"
 ```
+
+---
+
+## 设计补全（Round2）：运行时治理闭环（Hook/审批/合约/范围）
+
+> 背景：安全文档不仅要描述“有哪些 HookPhase”，还必须定义它们在执行主路径中的触发点、是否可阻断、以及验收方式，否则属于“承诺但不可验证”。
+
+### 1) 必触发 HookPhase（最低集）
+
+| HookPhase | 触发位置（建议） | 是否可阻断 | 说明 |
+|---|---|---|---|
+| SESSION_START / SESSION_END | BaseLoop.run() 开始/结束 | 否 | 会话级追踪与审计边界 |
+| PRE_APPROVAL_CHECK / POST_APPROVAL_CHECK | PRE_TOOL_USE 之前/之后 | 是 | HITL/审批策略的统一入口 |
+| PRE_CONTRACT_CHECK / POST_CONTRACT_CHECK | 每轮 step 前后 | 是 | Sprint Contract/范围合约校验 |
+| SCOPE_REVIEW | 合约失败或超范围时触发 | 是 | 触发降级/请求确认/停止 |
+| STOP | 达到停止条件（max_steps、异常、循环） | 是 | 强制最终验证/审计封存 |
+
+### 2) Hook 输出契约（阻断语义）
+
+建议 Hook 的执行结果具备统一结构：
+- `allow: bool`（是否允许继续）
+- `action: Optional[str]`（deny/pause/compact/require_manual 等）
+- `reason: str`（阻断原因/建议）
+- `metadata: dict`（审计证据）
+
+并规定：
+- 一旦某 Hook 返回 `allow=False`，Loop 必须立即停止并返回可解释错误（同时触发 STOP/SESSION_END）。
+
+### 3) 默认启用策略（最小安全基线）
+
+默认启用（建议）：
+- TokenLimitHook（资源耗尽保护）
+- SecurityScanHook（基本危险模式扫描）
+- ApprovalManager（对高风险工具触发人工审批）
+
+默认关闭（需显式配置开启）：
+- 深度静态扫描、外部 agent-audit 集成（取决于 CI 环境与依赖）
+
+### 3.1) 安全扫描的可配置范围（实现落地）
+
+默认的 `pre_approval_check` 会对工具输入进行敏感信息扫描，并支持通过环境变量调整“扫描哪些工具”：
+
+- `AIPLAT_SECURITY_SCAN_TOOLS`：默认扫描工具集合（逗号分隔，默认 `write,edit`）
+- `AIPLAT_SECURITY_SCAN_TOOL_ALLOWLIST`：扫描白名单（非空时仅扫描白名单内工具）
+- `AIPLAT_SECURITY_SCAN_TOOL_DENYLIST`：扫描黑名单（从默认/白名单中排除）
+
+同时会在执行上下文中追加审计事件：
+- `state.context.audit_events[]`：记录 `security_scan` 事件（是否扫描、是否阻断、findings）
+
+### 4) 验收标准（必须可自动化）
+
+最小验收用例（单测/集成测试）：
+1. 触发一次工具调用：必须出现 PRE_APPROVAL_CHECK → PRE_TOOL_USE → POST_TOOL_USE → POST_APPROVAL_CHECK 的 trace（或事件记录）
+2. 合约失败（例如 scope 超出）：必须触发 SCOPE_REVIEW 并阻断执行
+3. 达到 max_steps：必须触发 STOP 并返回明确的停止原因
+
 
 ---
 

@@ -1,7 +1,5 @@
 import React from 'react';
-import { Modal, Form, Input, Select, InputNumber, message } from 'antd';
-
-const { Option } = Select;
+import { Button, Input, Modal, Select, toast } from '../ui';
 
 interface PVCModalProps {
   open: boolean;
@@ -28,113 +26,106 @@ interface PVCFormValues {
 }
 
 const PVCModal: React.FC<PVCModalProps> = ({ open, onCancel, onOk, initialValues, mode }) => {
-  const [form] = Form.useForm();
   const [loading, setLoading] = React.useState(false);
+  const [name, setName] = React.useState('');
+  const [namespace, setNamespace] = React.useState('ai-prod');
+  const [size, setSize] = React.useState('10');
+  const [storageClass, setStorageClass] = React.useState('standard');
+  const [accessMode, setAccessMode] = React.useState<'ReadWriteOnce' | 'ReadWriteMany' | 'ReadOnlyMany'>('ReadWriteOnce');
 
   React.useEffect(() => {
     if (open && initialValues) {
-      form.setFieldsValue({
-        name: initialValues.name,
-        namespace: initialValues.namespace,
-        size: initialValues.size,
-        storageClass: initialValues.storageClass,
-        accessMode: initialValues.accessMode,
-      });
+      setName(initialValues.name || '');
+      setNamespace((initialValues.namespace as any) || 'ai-prod');
+      setSize(initialValues.size != null ? String(initialValues.size) : '10');
+      setStorageClass((initialValues.storageClass as any) || 'standard');
+      setAccessMode((initialValues.accessMode as any) || 'ReadWriteOnce');
     } else if (open) {
-      form.resetFields();
+      setName('');
+      setNamespace('ai-prod');
+      setSize('10');
+      setStorageClass('standard');
+      setAccessMode('ReadWriteOnce');
     }
-  }, [open, initialValues, form]);
+  }, [open, initialValues]);
 
   const handleOk = async () => {
     try {
-      const values = await form.validateFields();
+      if (!name.trim()) return toast.error('请输入 PVC 名称');
+      if (!namespace) return toast.error('请选择命名空间');
+      if (!size) return toast.error('请输入存储大小');
       setLoading(true);
       await onOk({
-        ...values,
-        size: values.size,
+        name: name.trim(),
+        namespace,
+        size: Number(size),
+        storageClass,
+        accessMode,
       });
-      form.resetFields();
-      message.success(mode === 'create' ? 'PVC 创建成功' : 'PVC 扩容成功');
+      toast.success(mode === 'create' ? 'PVC 创建成功' : 'PVC 扩容成功');
     } catch (error) {
-      if (error instanceof Error) {
-        message.error(error.message);
-      }
+      if (error instanceof Error) toast.error(error.message);
     } finally {
       setLoading(false);
     }
   };
 
   const handleCancel = () => {
-    form.resetFields();
     onCancel();
   };
 
   return (
     <Modal
-      title={mode === 'create' ? '创建 PVC' : '扩容 PVC'}
       open={open}
-      onCancel={handleCancel}
-      onOk={handleOk}
-      confirmLoading={loading}
-      destroyOnHidden
+      onClose={handleCancel}
+      title={mode === 'create' ? '创建 PVC' : '扩容 PVC'}
+      width={560}
+      footer={
+        <>
+          <Button variant="secondary" onClick={handleCancel} disabled={loading}>取消</Button>
+          <Button variant="primary" onClick={handleOk} loading={loading}>保存</Button>
+        </>
+      }
     >
-      <Form form={form} layout="vertical">
-        <Form.Item
-          name="name"
-          label="PVC 名称"
-          rules={[{ required: true, message: '请输入 PVC 名称' }]}
-        >
-          <Input placeholder="例如: model-cache" disabled={mode === 'expand'} />
-        </Form.Item>
-        <Form.Item
-          name="namespace"
+      <div className="space-y-4">
+        <Input label="PVC 名称" value={name} onChange={(e: any) => setName(e.target.value)} placeholder="例如: model-cache" disabled={mode === 'expand'} />
+        <Select
           label="命名空间"
-          rules={[{ required: true, message: '请选择命名空间' }]}
-          initialValue="ai-prod"
-        >
-          <Select placeholder="选择命名空间" disabled={mode === 'expand'}>
-            <Option value="ai-prod">ai-prod</Option>
-            <Option value="ai-dev">ai-dev</Option>
-            <Option value="default">default</Option>
-          </Select>
-        </Form.Item>
-        <Form.Item
-          name="size"
-          label="存储大小"
-          rules={[{ required: true, message: '请输入存储大小' }]}
-          initialValue={10}
-        >
-          <InputNumber min={1} max={10000} style={{ width: '100%' }} suffix="GB" />
-        </Form.Item>
+          value={namespace}
+          onChange={(v) => setNamespace(v)}
+          options={[
+            { value: 'ai-prod', label: 'ai-prod' },
+            { value: 'ai-dev', label: 'ai-dev' },
+            { value: 'default', label: 'default' },
+          ]}
+          disabled={mode === 'expand'}
+        />
+        <Input label="存储大小（GB）" type="number" min={1} max={10000} value={size} onChange={(e: any) => setSize(e.target.value)} />
         {mode === 'create' && (
           <>
-            <Form.Item
-              name="storageClass"
+            <Select
               label="存储类"
-              rules={[{ required: true, message: '请选择存储类' }]}
-              initialValue="standard"
-            >
-              <Select placeholder="选择存储类">
-                <Option value="standard">standard</Option>
-                <Option value="fast">fast (SSD)</Option>
-                <Option value="slow">slow (HDD)</Option>
-              </Select>
-            </Form.Item>
-            <Form.Item
-              name="accessMode"
+              value={storageClass}
+              onChange={(v) => setStorageClass(v)}
+              options={[
+                { value: 'standard', label: 'standard' },
+                { value: 'fast', label: 'fast (SSD)' },
+                { value: 'slow', label: 'slow (HDD)' },
+              ]}
+            />
+            <Select
               label="访问模式"
-              rules={[{ required: true, message: '请选择访问模式' }]}
-              initialValue="ReadWriteOnce"
-            >
-              <Select placeholder="选择访问模式">
-                <Option value="ReadWriteOnce">ReadWriteOnce (单节点读写)</Option>
-                <Option value="ReadWriteMany">ReadWriteMany (多节点读写)</Option>
-                <Option value="ReadOnlyMany">ReadOnlyMany (多节点只读)</Option>
-              </Select>
-            </Form.Item>
+              value={accessMode}
+              onChange={(v) => setAccessMode(v as any)}
+              options={[
+                { value: 'ReadWriteOnce', label: 'ReadWriteOnce' },
+                { value: 'ReadWriteMany', label: 'ReadWriteMany' },
+                { value: 'ReadOnlyMany', label: 'ReadOnlyMany' },
+              ]}
+            />
           </>
         )}
-      </Form>
+      </div>
     </Modal>
   );
 };

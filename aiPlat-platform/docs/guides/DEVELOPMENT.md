@@ -6,7 +6,7 @@
 
 ## 继承规范
 
-本文档继承 [系统级开发规范](../../docs/guides/DEVELOPMENT.md)，所有系统级规范在本层必须遵守。
+本文档继承 [系统级开发规范](../../../docs/guides/DEVELOPMENT.md)，所有系统级规范在本层必须遵守。
 
 ---
 
@@ -109,7 +109,7 @@ async def get_current_user(token: str = Depends(security)) -> User:
 
 ## 测试规范
 
-详细测试规范见：[系统级测试指南](../../docs/TESTING_GUIDE.md)
+详细测试规范见：[系统级测试指南](../../../docs/TESTING_GUIDE.md)
 
 | 测试类型 | 覆盖率要求 |
 |----------|-----------|
@@ -120,8 +120,8 @@ async def get_current_user(token: str = Depends(security)) -> User:
 
 ## 相关链接
 
-- [系统级开发规范](../../docs/guides/DEVELOPMENT.md)
-- [系统级测试指南](../../docs/TESTING_GUIDE.md)
+- [系统级开发规范](../../../docs/guides/DEVELOPMENT.md)
+- [系统级测试指南](../../../docs/TESTING_GUIDE.md)
 - [platform层部署指南](./DEPLOYMENT.md)
 
 ---

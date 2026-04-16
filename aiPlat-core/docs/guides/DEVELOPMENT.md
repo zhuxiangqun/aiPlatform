@@ -1,4 +1,6 @@
-# 核心层开发规范
+# 核心层开发规范（设计真值：以代码事实为准）
+
+> 说明：本文档用于约束 core 层的工程实践。涉及“已实现/已接线”的描述，以代码事实为准，并遵循 [`ARCHITECTURE_STATUS.md`](../ARCHITECTURE_STATUS.md) 的可追溯断言规则。
 
 > 继承系统级开发规范，针对核心层的特定要求
 
@@ -6,7 +8,7 @@
 
 ## 继承规范
 
-本文档继承 [系统级开发规范](../../docs/guides/DEVELOPMENT.md)，所有系统级规范在本层必须遵守。
+本文档继承系统级开发规范（若存在上层仓库/平台仓库），所有系统级规范在本层必须遵守。
 
 ---
 
@@ -37,10 +39,10 @@ aiPlat-core (Layer 1)
 
 ## 核心接口
 
-### CoreFacade（唯一对外入口）
+### CoreFacade（唯一对外入口｜To-Be）
 
 ```python
-# core/facades/core_facade.py
+# To-Be：平台层通常会以 Facade 方式暴露 core 能力
 from typing import Any
 
 class CoreFacade:
@@ -75,6 +77,15 @@ class CoreFacade:
         """执行 Skill"""
         ...
 ```
+
+> As-Is：当前仓库的 HTTP/API 入口主要在 `core/server.py`，并未以 CoreFacade 形式对外提供。
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- API/启动入口：`core/server.py`
+- 依赖边界（core 不依赖 platform/app）：可通过 import-linter（To-Be）或代码 review 约束
 
 ---
 
@@ -149,7 +160,7 @@ jobs:
 
 ## 测试规范
 
-详细测试规范见：[系统级测试指南](../../docs/TESTING_GUIDE.md)
+详细测试规范见：[系统级测试指南](../../../docs/TESTING_GUIDE.md)
 
 | 测试类型 | 覆盖率要求 |
 |----------|-----------|
@@ -160,8 +171,8 @@ jobs:
 
 ## 相关链接
 
-- [系统级开发规范](../../docs/guides/DEVELOPMENT.md)
-- [系统级测试指南](../../docs/TESTING_GUIDE.md)
+- [系统级开发规范](../../../docs/guides/DEVELOPMENT.md)
+- [系统级测试指南](../../../docs/TESTING_GUIDE.md)
 - [core层部署指南](./DEPLOYMENT.md)
 
 ---

@@ -193,7 +193,6 @@ aiPlat-management/
 查看完整文档：
 
 - [主文档](docs/index.md) - Management 系统总览
-- [Dashboard](docs/dashboard/index.md) - Dashboard 模块
-- [Monitoring](docs/monitoring/index.md) - Monitoring 模块
-- [Alerting](docs/alerting/index.md) - Alerting 模块
-- [Diagnostics](docs/diagnostics/index.md) - Diagnostics 模块
+- [实现状态](docs/IMPLEMENTATION_STATUS.md) - As-Is vs To-Be 对照（请优先参考）
+- [架构边界](docs/architecture-boundary.md) - 管理平面与业务平面边界
+- [总览模块（目标态说明）](docs/overview.md) - Dashboard/总览设计

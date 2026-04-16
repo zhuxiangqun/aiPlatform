@@ -1,4 +1,6 @@
-# aiPlat-core 框架层 - 测试指南
+# aiPlat-core 框架层 - 测试指南（设计真值：以代码事实为准）
+
+> 说明：本文档用于指导测试实践。若“模块清单/文件路径”与代码不一致，以代码事实为准并在本文修订。
 
 > 确保框架核心功能正确性的最佳实践
 
@@ -52,11 +54,11 @@ async def test_memory_store():
 
 ### P1 - 核心模块（最高优先级）
 
-这些模块是框架的基础，必须优先测试：
+这些模块是框架的基础，必须优先测试（As-Is）：
 
 - `harness/integration.py` - 统一入口
 - `harness/execution/` - 执行系统
-  - `engine.py` - 执行引擎
+  - `loop.py` - Loop-first 执行主路径
   - `langgraph/core.py` - LangGraph 编排
   - `langgraph/callbacks.py` - 回调系统
 - `harness/memory/` - 记忆系统
@@ -82,7 +84,7 @@ async def test_memory_store():
 这些模块提供支持功能：
 
 - `harness/observability/` - 观察系统
-- `harness/feedback_loops/` - 反馈循环
+- `harness/feedback_loops/` - 反馈循环（结构存在，接线程度以 ARCHITECTURE_STATUS 为准）
 - `harness/infrastructure/` - 基础设施
 
 ---
@@ -551,5 +553,13 @@ aiPlat-core/tests/
 ---
 
 *最后更新: 2026-04-14*
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- 单测目录：`core/tests/unit/*`
+- Harness Loop：`core/harness/execution/loop.py`
+- LangGraph：`core/harness/execution/langgraph/*`
 **负责人**: AI Platform Team
 **状态**: 活跃文档

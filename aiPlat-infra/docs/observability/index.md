@@ -1,4 +1,6 @@
-# 可观测性模块
+# 可观测性模块（设计真值：以代码事实为准）
+
+> 说明：本文档描述 infra 的 observability（Tracing/Metrics/Logging）能力。As-Is 已提供 `provider` 选择：`otel`（OpenTelemetry SDK）与 `simple`（内存桩实现），并支持 OTLP 导出与 in_memory 导出（测试）。
 
 > 提供分布式追踪、OpenTelemetry 指标收集能力
 
@@ -36,6 +38,7 @@
 ```yaml
 observability:
   enabled: true
+  provider: otel                  # otel, simple
   
   # 追踪配置
   tracing:
@@ -169,6 +172,18 @@ logger.info("Request processed",
             trace_id=span.context.trace_id,
             duration_ms=150)
 ```
+
+> 说明（As-Is）：logger 的 OTLP logs 导出在不同运行环境下差异较大，当前实现以 Python logging + trace 上下文增强为主，若需要 OTLP logs 全链路导出可作为 To-Be 扩展。
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- 配置模型（provider）：`infra/observability/schemas.py`
+- 工厂选择器：`infra/observability/factory.py`
+- OTel SDK 实现：`infra/observability/otel.py`
+- Simple* 内存实现：`infra/observability/tracing.py`
+- 单测：`infra/tests/unit/test_observability_otel_provider.py`
 
 ---
 

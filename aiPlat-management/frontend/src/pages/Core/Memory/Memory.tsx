@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, RotateCw, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Table, Button, Modal } from '../../../components/ui';
+import { Table, Button, Modal, toast } from '../../../components/ui';
 import { CreateSessionModal, SessionDetailModal, SearchMemoryModal } from '../../../components/core';
 import { useMemoryStore } from '../../../stores';
 import type { MemorySession } from '../../../services';
@@ -22,7 +22,7 @@ const Memory: React.FC = () => {
       await getDetail(sessionId);
       setDetailModalOpen(true);
     } catch {
-      alert('获取详情失败');
+      toast.error('获取详情失败');
     }
   };
 
@@ -30,10 +30,10 @@ const Memory: React.FC = () => {
     if (!deleteConfirm.sessionId) return;
     try {
       await deleteSession(deleteConfirm.sessionId);
-      alert('会话已删除');
+      toast.success('会话已删除');
       setDeleteConfirm({ open: false, sessionId: null });
     } catch {
-      alert('删除失败');
+      toast.error('删除失败');
     }
   };
 

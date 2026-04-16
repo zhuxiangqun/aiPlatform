@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Modal, Form, InputNumber, Spin, message } from 'antd';
+import React, { useEffect, useState } from 'react';
 import { toolApi } from '../../services';
+import { Button, Input, Modal, toast } from '../ui';
 
 interface EditToolConfigModalProps {
   open: boolean;
@@ -10,50 +10,45 @@ interface EditToolConfigModalProps {
 }
 
 const EditToolConfigModal: React.FC<EditToolConfigModalProps> = ({ open, tool, onClose, onSuccess }) => {
-  const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
+  const [timeoutSeconds, setTimeoutSeconds] = useState<string>('');
+  const [maxConcurrent, setMaxConcurrent] = useState<string>('');
 
   useEffect(() => {
     if (open && tool) {
-      form.resetFields();
       setFetching(true);
       toolApi.get(tool.name).then((detail) => {
         const data = detail as any;
         const cfg = data.config || {};
-        form.setFieldsValue({
-          timeout_seconds: cfg.timeout_seconds ?? null,
-          max_concurrent: cfg.max_concurrent ?? null,
-        });
+        setTimeoutSeconds(cfg.timeout_seconds != null ? String(cfg.timeout_seconds) : '');
+        setMaxConcurrent(cfg.max_concurrent != null ? String(cfg.max_concurrent) : '');
       }).catch(() => {
         const cfg = tool.config || {};
-        form.setFieldsValue({
-          timeout_seconds: cfg.timeout_seconds ?? null,
-          max_concurrent: cfg.max_concurrent ?? null,
-        });
+        setTimeoutSeconds(cfg.timeout_seconds != null ? String(cfg.timeout_seconds) : '');
+        setMaxConcurrent(cfg.max_concurrent != null ? String(cfg.max_concurrent) : '');
       }).finally(() => {
         setFetching(false);
       });
     }
-  }, [open, tool, form]);
+  }, [open, tool]);
 
   const handleSubmit = async () => {
     if (!tool) return;
     try {
-      const values = await form.validateFields();
       setLoading(true);
 
       const config: Record<string, unknown> = {};
-      if (values.timeout_seconds != null) config.timeout_seconds = values.timeout_seconds;
-      if (values.max_concurrent != null) config.max_concurrent = values.max_concurrent;
+      if (timeoutSeconds.trim()) config.timeout_seconds = Number(timeoutSeconds);
+      if (maxConcurrent.trim()) config.max_concurrent = Number(maxConcurrent);
 
       await toolApi.updateConfig(tool.name, config);
-      message.success(`Tool "${tool.name}" 配置更新成功`);
+      toast.success(`Tool "${tool.name}" 配置更新成功`);
       onSuccess();
       onClose();
     } catch (error: any) {
       if (error.message) {
-        message.error('更新失败');
+        toast.error('更新失败', String(error.message || ''));
       }
     } finally {
       setLoading(false);
@@ -62,26 +57,48 @@ const EditToolConfigModal: React.FC<EditToolConfigModalProps> = ({ open, tool, o
 
   return (
     <Modal
-      title={`编辑配置: ${tool?.name || ''}`}
       open={open}
-      onOk={handleSubmit}
-      onCancel={onClose}
-      okText="保存"
-      cancelText="取消"
-      confirmLoading={loading}
-      destroyOnHidden
-      width={480}
+      onClose={onClose}
+      title={`编辑配置: ${tool?.name || ''}`}
+      width={520}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={loading}>
+            取消
+          </Button>
+          <Button variant="primary" onClick={handleSubmit} loading={loading} disabled={fetching}>
+            保存
+          </Button>
+        </>
+      }
     >
-      <Spin spinning={fetching} tip="加载中...">
-        <Form form={form} layout="vertical">
-          <Form.Item name="timeout_seconds" label="超时时间（秒）" extra="Tool 执行的最大等待时间">
-            <InputNumber className="w-full" min={1} max={600} placeholder="默认 60" />
-          </Form.Item>
-          <Form.Item name="max_concurrent" label="最大并发数" extra="同时执行的最大任务数">
-            <InputNumber className="w-full" min={1} max={100} placeholder="默认 10" />
-          </Form.Item>
-        </Form>
-      </Spin>
+      {fetching ? (
+        <div className="text-sm text-gray-500">加载中...</div>
+      ) : (
+        <div className="space-y-4">
+          <Input
+            label="超时时间（秒）"
+            placeholder="默认 60"
+            type="number"
+            min={1}
+            max={600}
+            value={timeoutSeconds}
+            onChange={(e: any) => setTimeoutSeconds(e.target.value)}
+          />
+          <Input
+            label="最大并发数"
+            placeholder="默认 10"
+            type="number"
+            min={1}
+            max={100}
+            value={maxConcurrent}
+            onChange={(e: any) => setMaxConcurrent(e.target.value)}
+          />
+          <div className="text-xs text-gray-500">
+            timeout_seconds：Tool 执行最大等待时间；max_concurrent：同时执行的最大任务数
+          </div>
+        </div>
+      )}
     </Modal>
   );
 };

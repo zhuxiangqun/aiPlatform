@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, RotateCw } from 'lucide-react';
-import { Table, Button } from '../../../components/ui';
+import { Table, Button, toast } from '../../../components/ui';
 import PageHeader from '../../../components/common/PageHeader';
 import { serviceApi, type Service } from '../../../services';
 
@@ -15,7 +15,7 @@ const Services: React.FC = () => {
       const response = await serviceApi.list();
       setServices(response?.services || []);
     } catch (error) {
-      alert('获取服务列表失败');
+      toast.error('获取服务列表失败');
       console.error('Failed to fetch services:', error);
       setServices([]);
     } finally {
@@ -28,20 +28,20 @@ const Services: React.FC = () => {
   }, []);
 
   const handleDeploy = () => {
-    alert('部署服务功能开发中');
+    toast.info('部署服务功能开发中');
   };
 
   const handleScale = async (serviceName: string) => {
-    alert(`扩缩容功能开发中: ${serviceName}`);
+    toast.info(`扩缩容功能开发中: ${serviceName}`);
   };
 
   const handleViewLogs = async (serviceName: string) => {
     try {
       const logs = await serviceApi.getLogs(serviceName, 100);
       console.log('Logs:', logs);
-      alert('日志功能开发中');
+      toast.info('日志功能开发中');
     } catch (error) {
-      alert('获取日志失败');
+      toast.error('获取日志失败');
     }
   };
 

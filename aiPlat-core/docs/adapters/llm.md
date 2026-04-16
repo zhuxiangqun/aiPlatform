@@ -1,4 +1,4 @@
-# 适配器层 (Adapters)
+# 适配器层 (Adapters)（设计真值：以代码事实为准）
 
 > 提供外部服务的适配能力，包括 LLM 适配器等。
 
@@ -15,7 +15,7 @@
 ### LLM 适配器
 
 ```
-adapters/
+core/adapters/
 └── llm/
     ├── base.py                    # 适配器基类
     ├── openai_adapter.py          # OpenAI 适配器
@@ -94,9 +94,15 @@ adapters/
 
 ## 相关文档
 
-- [Harness 索引](./harness/index.md) - Harness 完整定义
-- [基础设施文档](./harness/infrastructure.md) - LangChain 集成
+- [Harness 索引](../harness/index.md) - Harness 完整定义
+- [基础设施文档](../harness/infrastructure.md) - LangChain 集成
 
 ---
 
 *最后更新: 2026-04-14*
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- LLM adapters：`core/adapters/llm/*`

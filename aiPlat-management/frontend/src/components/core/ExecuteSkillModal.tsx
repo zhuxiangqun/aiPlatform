@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Modal, Form, Input, message } from 'antd';
+
+import { Button, Modal, Textarea, notify, toast } from '../ui';
 
 interface ExecuteSkillModalProps {
   open: boolean;
@@ -8,32 +9,39 @@ interface ExecuteSkillModalProps {
 }
 
 const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onClose }) => {
-  const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ status: string; output?: unknown; error?: string; duration_ms?: number } | null>(null);
+  const [inputText, setInputText] = useState('');
 
   const handleExecute = async () => {
     if (!skill) return;
     try {
-      const values = await form.validateFields();
       setLoading(true);
       setResult(null);
 
-      let input: Record<string, unknown> = {};
-      if (values.input?.trim()) {
+      let payload: Record<string, unknown> = {};
+      if (inputText.trim()) {
         try {
-          input = JSON.parse(values.input);
+          payload = JSON.parse(inputText);
         } catch {
-          input = { message: values.input };
+          payload = { message: inputText };
         }
       }
 
       const { skillApi } = await import('../../services');
-      const res = await skillApi.execute(skill.id, { input });
+      const res = await skillApi.execute(skill.id, { input: payload });
       setResult(res as any);
-      message.success(res.status === 'completed' || res.status === 'success' ? '执行成功' : `状态: ${res.status}`);
+      toast.success(res.status === 'completed' || res.status === 'success' ? '执行成功' : `状态: ${res.status}`);
+      if ((res as any)?.execution_id) {
+        notify.success(
+          `Skill 执行完成：${skill.name}`,
+          `execution_id: ${(res as any).execution_id}`,
+          `/diagnostics/links?execution_id=${encodeURIComponent(String((res as any).execution_id))}`
+        );
+      }
     } catch (error: any) {
-      message.error('执行失败');
+      toast.error('执行失败');
+      notify.error(`Skill 执行失败：${skill?.name || ''}`, String(error?.message || ''));
       setResult({ status: 'error', error: error.message || 'Unknown error' });
     } finally {
       setLoading(false);
@@ -42,27 +50,34 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
 
   const handleClose = () => {
     setResult(null);
-    form.resetFields();
+    setInputText('');
     onClose();
   };
 
   return (
     <Modal
-      title={`执行Skill: ${skill?.name || ''}`}
       open={open}
-      onOk={handleExecute}
-      onCancel={handleClose}
-      okText="执行"
-      cancelText="关闭"
-      confirmLoading={loading}
-      destroyOnHidden
+      onClose={handleClose}
+      title={`执行 Skill: ${skill?.name || ''}`}
       width={640}
+      footer={
+        <>
+          <Button variant="secondary" onClick={handleClose} disabled={loading}>
+            关闭
+          </Button>
+          <Button variant="primary" onClick={handleExecute} loading={loading}>
+            执行
+          </Button>
+        </>
+      }
     >
-      <Form form={form} layout="vertical">
-        <Form.Item name="input" label="输入参数" extra="支持 JSON 格式或纯文本">
-          <Input.TextArea rows={4} placeholder='{"query": "搜索关键词"} 或直接输入文本' />
-        </Form.Item>
-      </Form>
+      <Textarea
+        label="输入参数"
+        rows={4}
+        value={inputText}
+        onChange={(e: any) => setInputText(e.target.value)}
+        placeholder='{"query": "搜索关键词"} 或直接输入文本'
+      />
 
       {result && (
         <div className="mt-4 p-4 rounded-lg border border-dark-border bg-dark-bg">

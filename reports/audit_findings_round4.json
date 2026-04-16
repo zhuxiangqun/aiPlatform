@@ -1,0 +1,64 @@
+{
+  "meta": {
+    "project": "aiPlat",
+    "round": "round4",
+    "date": "2026-04-16",
+    "scope": ["aiPlat-infra/infra/di", "aiPlat-infra/infra/observability"],
+    "purpose": "收敛并彻底闭环 infra 层遗留项（DI 配置接线、OTel SDK 接入），并提供可复现的单测证据。"
+  },
+  "items": [
+    {
+      "id": "INFRA-DI-001",
+      "design_statement": "DI 容器需读取配置并接线 scan_packages 与 interceptors，使“配置/框架存在”的能力实际生效。",
+      "code_evidence": [
+        {
+          "type": "code",
+          "path": "aiPlat-infra/infra/di/container.py",
+          "evidence": "DIContainerImpl.__init__ 会 bootstrap：build interceptors → scan_packages 导入模块 → 注册 @injectable 收集到的服务，并对 resolve 结果进行 Proxy 包装。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-infra/infra/di/auto.py",
+          "evidence": "提供 @injectable 与 list_injectables，用于扫描导入后自动注册。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-infra/infra/di/interceptors.py",
+          "evidence": "InterceptorChain 修正为标准 around 语义，并提供 Proxy 将拦截器应用于方法调用。"
+        }
+      ],
+      "verdict": "✅一致",
+      "risk": "中",
+      "status": "fixed",
+      "verification": "pytest -q infra/tests/unit/test_di_scan_and_interceptors.py",
+      "updated_at": "2026-04-16"
+    },
+    {
+      "id": "INFRA-OBS-001",
+      "design_statement": "observability 工厂需接入 opentelemetry-sdk，并提供可配置的 exporter/endpoint 以对齐文档中的 OTLP 导出能力。",
+      "code_evidence": [
+        {
+          "type": "code",
+          "path": "aiPlat-infra/infra/observability/otel.py",
+          "evidence": "新增 OTel SDK 实现：trace 使用 TracerProvider + OTLPSpanExporter（默认）/InMemorySpanExporter（测试），metrics 使用 MeterProvider + OTLPMetricExporter（启用时）。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-infra/infra/observability/factory.py",
+          "evidence": "按 ObservabilityConfig.provider 选择 Simple* 或 OTel* 实现（provider=otel）。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-infra/pyproject.toml",
+          "evidence": "已加入 opentelemetry-api/opentelemetry-sdk/opentelemetry-exporter-otlp-proto-grpc 依赖。"
+        }
+      ],
+      "verdict": "✅一致",
+      "risk": "中",
+      "status": "fixed",
+      "verification": "pytest -q infra/tests/unit/test_observability_otel_provider.py",
+      "updated_at": "2026-04-16"
+    }
+  ]
+}
+

@@ -1,4 +1,12 @@
-# 日志模块
+# 日志模块（设计真值：以代码事实为准）
+
+> 说明：logging 模块用于业务日志/调试信息；与 observability（OTel）与 monitoring（指标/告警）分工明确。实现以 infra 代码事实为准。
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- 代码入口：`infra/logging/*`
 
 > 提供轻量级结构化日志能力
 

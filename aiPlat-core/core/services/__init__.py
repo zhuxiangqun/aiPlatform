@@ -20,6 +20,7 @@ from .context_service import (
     ContextFile,
 )
 from .file_service import FileService
+from .execution_store import ExecutionStore, ExecutionStoreConfig, get_execution_store
 
 __all__ = [
     "PromptService",
@@ -36,4 +37,7 @@ __all__ = [
     "FileType",
     "ContextFile",
     "FileService",
+    "ExecutionStore",
+    "ExecutionStoreConfig",
+    "get_execution_store",
 ]

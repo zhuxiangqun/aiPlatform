@@ -41,9 +41,11 @@ Workbench 模块在整个 AI Platform 架构中承担以下核心职责：
                              │
                              ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                  Agent Runtime                             │
+│             Core Runtime（aiPlat-core）                     │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+> 说明：此处的 “Core Runtime” 指 **aiPlat-core（Layer 1）** 的执行引擎（Harness/编排/Agents/Skills）；Workbench 只通过 platform API 调用，不承载执行逻辑。
 
 ---
 
@@ -247,7 +249,7 @@ Password: ${WORKBENCH_PASSWORD}
 
 ## 八、相关文档
 
-- [management 管理平面](../management/index.md)
+- [management 管理平面](../../../aiPlat-management/docs/index.md)
 - [runtime 运行时文档](../runtime/index.md)
 - [cli CLI 模块](../cli/index.md)
-- [management 管理平面 - Layer 3 应用层](../management/layer3_app/index.md)
+- [management 管理平面 - Layer 3 应用层](../../../aiPlat-management/docs/app/index.md)

@@ -1,6 +1,8 @@
-# 反馈循环系统 (Feedback Loops)
+# 反馈循环系统 (Feedback Loops)（As-Is 对齐 + To-Be 规划）
 
-> AGENTS.md 告诉 Agent 怎么做，Hooks 确保 Agent 真的做了。
+> **As-Is**：Harness 已具备 HookPhase 接线与阻断语义（session/contract/approval/stop），并内置最小安全扫描与审批规则。  
+> **To-Be**：本文档中 “Ralph Wiggum Loop / 三层反馈 / 两振出局” 属于规划型机制，需要与统一事件模型、评测回归与策略引擎结合后落地。  
+> 统一口径参见：[架构实现状态](../ARCHITECTURE_STATUS.md)。
 
 ---
 
@@ -216,3 +218,11 @@ fi
 ---
 
 *最后更新: 2026-04-14*
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- HookPhase 接线：`core/harness/execution/loop.py: BaseLoop.run()`
+- HookManager 默认 hooks：`core/harness/infrastructure/hooks/hook_manager.py`
+- 审批前扫描（security_scan）：`core/harness/infrastructure/hooks/builtin.py`

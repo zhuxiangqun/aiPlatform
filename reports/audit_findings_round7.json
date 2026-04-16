@@ -1,0 +1,49 @@
+{
+  "meta": {
+    "project": "aiPlat",
+    "round": "round7",
+    "date": "2026-04-16",
+    "scope": [
+      "aiPlat-core/core/harness/execution/tool_calling.py",
+      "aiPlat-core/core/harness/execution/loop.py",
+      "aiPlat-core/core/harness/execution/langgraph/nodes/*",
+      "aiPlat-core/core/tests/unit/test_harness/test_execution/test_tool_calling.py",
+      "aiPlat-core/docs/ARCHITECTURE_STATUS.md"
+    ],
+    "purpose": "落实 P1-TOOLCALL：收敛工具调用到“结构化优先、ACTION 兜底”的统一解析口径，并同时覆盖 Loop-first 与 LangGraph 子系统，避免文档与实现出现双口径。"
+  },
+  "items": [
+    {
+      "id": "CORE-TOOLCALL-001",
+      "design_statement": "工具调用必须使用稳定可解析的结构化格式；系统需兼容旧 ACTION 文本，但应优先解析 JSON / function-call 风格（name/arguments），并在 Loop 与 LangGraph 两条路径保持一致。",
+      "code_evidence": [
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/harness/execution/tool_calling.py",
+          "evidence": "新增 parse_tool_call：优先 fenced/内嵌 JSON（支持 tool/args、tool_name/tool_args、name/arguments 及 arguments JSON 字符串），并用括号平衡截取避免尾随解释导致解析失败；ACTION 格式作为兜底。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/harness/execution/loop.py",
+          "evidence": "ReActLoop._act 改为调用 parse_tool_call，并把 tool_call（tool/args/format）写入 state.context，hook 事件携带 format 字段。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/harness/execution/langgraph/nodes/act_node.py",
+          "evidence": "LangGraph ActNode 执行前先 parse_tool_call，将 args 写入 state.context['tool_params']，并用同一参数执行工具。"
+        },
+        {
+          "type": "test",
+          "path": "aiPlat-core/core/tests/unit/test_harness/test_execution/test_tool_calling.py",
+          "evidence": "覆盖结构化 JSON、OpenAI style（name/arguments）、ACTION fallback，并验证 ReActLoop 可执行结构化工具调用。"
+        }
+      ],
+      "verdict": "✅一致",
+      "risk": "中",
+      "status": "fixed",
+      "verification": "pytest -q core/tests/unit/test_harness/test_execution/test_tool_calling.py",
+      "updated_at": "2026-04-16"
+    }
+  ]
+}
+

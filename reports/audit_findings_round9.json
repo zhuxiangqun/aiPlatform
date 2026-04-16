@@ -1,0 +1,49 @@
+{
+  "meta": {
+    "project": "aiPlat",
+    "round": "round9",
+    "date": "2026-04-16",
+    "scope": [
+      "aiPlat-core/core/services/execution_store.py",
+      "aiPlat-core/core/harness/execution/langgraph/core.py",
+      "aiPlat-core/core/server.py",
+      "aiPlat-core/core/tests/unit/test_persistence/test_execution_store_ext.py",
+      "aiPlat-core/docs/ARCHITECTURE_STATUS.md"
+    ],
+    "purpose": "扩展 ExecutionStore：引入 schema 迁移与 retention 清理策略，并将 LangGraph checkpoint 通过 callbacks best-effort 落库，形成可运维的审计/回溯基础。"
+  },
+  "items": [
+    {
+      "id": "CORE-EXECSTORE-EXT-001",
+      "design_statement": "ExecutionStore 必须具备 schema_version/迁移机制与可配置的清理策略；Graph checkpoint/trace 需要最小持久化能力与接线，保证可回溯与可运维。",
+      "code_evidence": [
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/services/execution_store.py",
+          "evidence": "引入 aiplat_meta(schema_version) + schema_migrations 并实现 v1/v2 迁移；新增 prune(retention_days/max_rows_per_entity) 与 env 配置；新增 graph_runs/graph_checkpoints 表与 start_graph_run/finish_graph_run/add_graph_checkpoint/list_graph_checkpoints API。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/harness/execution/langgraph/core.py",
+          "evidence": "CompiledGraph.execute 在 GraphConfig.enable_callbacks 下触发 graph/node/checkpoint 回调，并注入 graph_run_id 到 state.metadata，便于持久化关联。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/server.py",
+          "evidence": "lifespan 注册 LangGraph CallbackManager 全局 handler，将 GRAPH_START/CHECKPOINT/GRAPH_END best-effort 落库到 ExecutionStore。"
+        },
+        {
+          "type": "test",
+          "path": "aiPlat-core/core/tests/unit/test_persistence/test_execution_store_ext.py",
+          "evidence": "覆盖 schema_version=当前版本、legacy db 升级、retention 天数清理、graph checkpoint roundtrip。"
+        }
+      ],
+      "verdict": "✅一致",
+      "risk": "中",
+      "status": "fixed",
+      "verification": "pytest -q core/tests/unit/test_persistence/test_execution_store_ext.py",
+      "updated_at": "2026-04-16"
+    }
+  ]
+}
+

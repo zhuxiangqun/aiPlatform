@@ -1,4 +1,6 @@
-# 基础设施层开发规范
+# 基础设施层开发规范（设计真值：以代码事实为准）
+
+> 说明：本文档用于约束 infra 层工程实践。若引用“系统级规范”不在本仓库，请视为 To-Be 或外部依赖文档。
 
 > 继承系统级开发规范，针对基础设施层的特定要求
 
@@ -17,7 +19,7 @@
 
 ## 继承规范
 
-本文档继承 [系统级开发规范](../../../docs/guides/DEVELOPMENT.md)，所有系统级规范在本层必须遵守：
+本文档可继承系统级开发规范（若存在上层仓库/平台仓库），所有系统级规范在本层必须遵守：
 
 - **代码规范**：Python 类型注解、命名规范
 - **提交规范**：Conventional Commits
@@ -50,6 +52,14 @@ aiPlat-infra (Layer 0)
 - ✅ Python 标准库
 - ✅ 第三方库（asyncpg, redis, pydantic 等）
 - ✅ 内部工具模块（logger, utils）
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- infra 源码根：`infra/*`
+- DI：`infra/di/*`
+- Observability：`infra/observability/*`
 
 ---
 

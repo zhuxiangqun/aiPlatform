@@ -6,8 +6,30 @@ Provides coordination patterns for multi-agent collaboration.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 import asyncio
+import re
+
+
+_PATTERN_AGENT_CONTRACT_ERROR = (
+    "Agent passed to coordination pattern must implement execute(task: str). "
+    "For real agents (execute(AgentContext)), wrap them with MultiAgent _PatternAgentAdapter."
+)
+
+
+async def _safe_execute(agent: Any, task: str, agent_index: int) -> Tuple[bool, Any, Optional[str]]:
+    """
+    Execute a pattern agent with a string task.
+    Returns: (ok, output_or_exception, error_message)
+    """
+    try:
+        result = await agent.execute(task)
+        output = result.output if hasattr(result, "output") else result
+        return True, output, None
+    except TypeError as e:
+        return False, None, f"Agent {agent_index} failed: {str(e)}; {_PATTERN_AGENT_CONTRACT_ERROR}"
+    except Exception as e:
+        return False, None, f"Agent {agent_index} failed: {str(e)}"
 
 
 @dataclass
@@ -31,6 +53,11 @@ class CoordinationResult:
 class ICoordinationPattern(ABC):
     """
     Coordination pattern interface
+
+    Contract:
+    - context.agents elements MUST implement: `await execute(task: str) -> Any`.
+    - If you have a "real" agent that expects `execute(AgentContext)`, you must wrap it with an adapter
+      (see MultiAgent._PatternAgentAdapter) before passing to the pattern.
     """
 
     @abstractmethod
@@ -58,19 +85,14 @@ class PipelinePattern(ICoordinationPattern):
         errors = []
         
         for i, agent in enumerate(context.agents):
-            try:
-                result = await agent.execute(context.task)
-                
-                if hasattr(result, 'output'):
-                    outputs.append(result.output)
-                    # Pass output to next agent
-                    if i < len(context.agents) - 1:
-                        context.task = str(result.output)
-                else:
-                    outputs.append(result)
-                    
-            except Exception as e:
-                errors.append(f"Agent {i} failed: {str(e)}")
+            ok, output, err = await _safe_execute(agent, context.task, i)
+            if not ok:
+                errors.append(err or f"Agent {i} failed")
+                continue
+            outputs.append(output)
+            # Pass output to next agent
+            if i < len(context.agents) - 1:
+                context.task = str(output)
         
         return CoordinationResult(
             success=len(errors) == 0,
@@ -92,8 +114,13 @@ class FanOutFanInPattern(ICoordinationPattern):
     ) -> CoordinationResult:
         """Execute fan-out fan-in coordination"""
         # Fan-out: execute all agents in parallel
-        tasks = [agent.execute(context.task) for agent in context.agents]
-        
+        async def _run(i: int, agent: Any, task: str):
+            ok, output, err = await _safe_execute(agent, task, i)
+            if not ok:
+                return RuntimeError(err or f"Agent {i} failed")
+            return output
+
+        tasks = [_run(i, agent, context.task) for i, agent in enumerate(context.agents)]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         
         # Fan-in: aggregate results
@@ -104,7 +131,7 @@ class FanOutFanInPattern(ICoordinationPattern):
             if isinstance(result, Exception):
                 errors.append(f"Agent {i} failed: {str(result)}")
             else:
-                outputs.append(result.output if hasattr(result, 'output') else result)
+                outputs.append(result)
         
         # Aggregate (simple concatenation)
         aggregated = "\n---\n".join([
@@ -152,11 +179,16 @@ class ExpertPoolPattern(ICoordinationPattern):
         if not matched_experts:
             matched_experts = context.agents
         
-        # Execute with matched experts
-        tasks = [agent.execute(context.task) for agent in matched_experts]
+        async def _run(i: int, agent: Any, task: str):
+            ok, output, err = await _safe_execute(agent, task, i)
+            if not ok:
+                return RuntimeError(err or f"Agent {i} failed")
+            return output
+
+        tasks = [_run(i, agent, context.task) for i, agent in enumerate(matched_experts)]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         
-        outputs = [r.output if hasattr(r, 'output') else str(r) for r in results if not isinstance(r, Exception)]
+        outputs = [str(r) for r in results if not isinstance(r, Exception)]
         errors = [str(r) for r in results if isinstance(r, Exception)]
         
         return CoordinationResult(
@@ -196,8 +228,10 @@ class ProducerReviewerPattern(ICoordinationPattern):
         for iteration in range(self._max_iterations):
             # Producer creates
             try:
-                producer_result = await producer.execute(current_output)
-                current_output = producer_result.output if hasattr(producer_result, 'output') else str(producer_result)
+                ok, output, err = await _safe_execute(producer, current_output, 0)
+                if not ok:
+                    raise RuntimeError(err)
+                current_output = str(output)
             except Exception as e:
                 return CoordinationResult(
                     success=False,
@@ -208,8 +242,10 @@ class ProducerReviewerPattern(ICoordinationPattern):
             # Reviewer evaluates
             try:
                 review_prompt = f"Review this output:\n{current_output}\n\nIs it correct? Respond YES or NO with feedback."
-                review_result = await reviewer.execute(review_prompt)
-                review_content = review_result.output if hasattr(review_result, 'output') else str(review_result)
+                ok, output, err = await _safe_execute(reviewer, review_prompt, 1)
+                if not ok:
+                    raise RuntimeError(err)
+                review_content = str(output)
             except Exception as e:
                 return CoordinationResult(
                     success=False,
@@ -276,8 +312,10 @@ Delegate subtasks to appropriate workers.
 """
         
         try:
-            supervisor_result = await self._supervisor.execute(delegation_prompt)
-            delegation = supervisor_result.output if hasattr(supervisor_result, 'output') else str(supervisor_result)
+            ok, output, err = await _safe_execute(self._supervisor, delegation_prompt, 0)
+            if not ok:
+                raise RuntimeError(err)
+            delegation = str(output)
         except Exception as e:
             return CoordinationResult(
                 success=False,
@@ -285,10 +323,16 @@ Delegate subtasks to appropriate workers.
             )
         
         # Execute delegated tasks in parallel
-        tasks = [worker.execute(delegation) for worker in self._workers]
+        async def _run(i: int, worker: Any, task: str):
+            ok, output, err = await _safe_execute(worker, task, i + 1)
+            if not ok:
+                return RuntimeError(err or f"Worker {i+1} failed")
+            return output
+
+        tasks = [_run(i, worker, delegation) for i, worker in enumerate(self._workers)]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         
-        outputs = [r.output if hasattr(r, 'output') else str(r) for r in results if not isinstance(r, Exception)]
+        outputs = [str(r) for r in results if not isinstance(r, Exception)]
         errors = [str(r) for r in results if isinstance(r, Exception)]
         
         # Supervisor aggregates
@@ -299,8 +343,10 @@ Provide final answer.
 """
         
         try:
-            final_result = await self._supervisor.execute(aggregation_prompt)
-            final_output = final_result.output if hasattr(final_result, 'output') else str(final_result)
+            ok, output, err = await _safe_execute(self._supervisor, aggregation_prompt, 0)
+            if not ok:
+                raise RuntimeError(err)
+            final_output = str(output)
         except Exception as e:
             final_output = "\n".join(outputs)
         
@@ -308,6 +354,87 @@ Provide final answer.
             success=len(errors) < len(self._workers),
             outputs=[final_output],
             errors=errors
+        )
+
+
+class HierarchicalDelegationPattern(ICoordinationPattern):
+    """
+    Hierarchical Delegation Pattern
+    
+    A simple depth-limited hierarchical decomposition:
+    - root agent processes the top-level task and may emit subtasks
+    - subtasks are dispatched to remaining agents (round-robin)
+    - each subtask output can be further decomposed until depth_limit/max_nodes
+    """
+
+    def __init__(self, depth_limit: int = 3, max_nodes: int = 20):
+        self._depth_limit = depth_limit
+        self._max_nodes = max_nodes
+
+    def _decompose(self, text: str) -> List[str]:
+        lines = [ln.strip() for ln in (text or "").splitlines() if ln.strip()]
+        tasks: List[str] = []
+        for ln in lines:
+            m = re.match(r"^(\d+[\).\]]|[-*])\s+(.*)$", ln)
+            if m:
+                tasks.append(m.group(2).strip())
+        # fallback: split by "；" or ";"
+        if not tasks and (";" in (text or "") or "；" in (text or "")):
+            parts = re.split(r"[;；]\s*", text)
+            tasks = [p.strip() for p in parts if p.strip()]
+        return tasks[: self._max_nodes]
+
+    async def coordinate(self, context: CoordinationContext) -> CoordinationResult:
+        if not context.agents:
+            return CoordinationResult(success=False, errors=["Need at least 1 agent"])
+
+        depth_limit = int(context.metadata.get("depth_limit", self._depth_limit))
+        max_nodes = int(context.metadata.get("max_nodes", self._max_nodes))
+
+        root = context.agents[0]
+        workers = context.agents[1:] or [root]
+
+        outputs: List[Any] = []
+        errors: List[str] = []
+
+        ok, root_output, err = await _safe_execute(root, context.task, 0)
+        if not ok:
+            return CoordinationResult(success=False, outputs=[], errors=[err or "Root agent failed"])
+
+        outputs.append(root_output)
+
+        queue: List[Tuple[str, int]] = [(t, 1) for t in self._decompose(str(root_output))]
+        node_count = 1
+        worker_idx = 0
+
+        while queue and node_count < max_nodes:
+            task, depth = queue.pop(0)
+            if depth > depth_limit:
+                continue
+
+            agent = workers[worker_idx % len(workers)]
+            worker_idx += 1
+
+            ok, out, err = await _safe_execute(agent, task, worker_idx)
+            if not ok:
+                errors.append(err or f"Agent failed at depth {depth}")
+                node_count += 1
+                continue
+
+            outputs.append(out)
+            node_count += 1
+
+            if depth < depth_limit:
+                for st in self._decompose(str(out)):
+                    if node_count + len(queue) >= max_nodes:
+                        break
+                    queue.append((st, depth + 1))
+
+        return CoordinationResult(
+            success=len(errors) == 0,
+            outputs=outputs,
+            errors=errors,
+            metadata={"depth_limit": depth_limit, "max_nodes": max_nodes, "nodes_executed": node_count},
         )
 
 
@@ -319,6 +446,7 @@ def create_pattern(pattern_type: str) -> ICoordinationPattern:
         "expert_pool": ExpertPoolPattern,
         "producer_reviewer": ProducerReviewerPattern,
         "supervisor": SupervisorPattern,
+        "hierarchical_delegation": HierarchicalDelegationPattern,
     }
     
     if pattern_type not in patterns:

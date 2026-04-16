@@ -1,0 +1,43 @@
+{
+  "meta": {
+    "project": "aiPlat",
+    "round": "round6",
+    "date": "2026-04-16",
+    "scope": ["aiPlat-core/core/server.py", "aiPlat-core/core/services/execution_store.py", "aiPlat-core/core/tests/**"],
+    "purpose": "落实 P0-EXECSTORE：用 SQLite ExecutionStore 替代 server 进程内执行历史存储，保证服务重启后仍可查询 execution_id 与 history，并修复 skill 执行查询端点未写入的问题。"
+  },
+  "items": [
+    {
+      "id": "CORE-EXECSTORE-001",
+      "design_statement": "server 层必须持久化 agent/skill 的执行记录（execution_id、status、input/output、时间、error），并提供可复现的查询接口；不得依赖仅进程内 dict 作为唯一事实源。",
+      "code_evidence": [
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/services/execution_store.py",
+          "evidence": "新增 ExecutionStore（SQLite），包含 agent_executions/skill_executions 两张表，并提供 upsert/get/list 方法；通过 AIPLAT_EXECUTION_DB_PATH 配置 db_path。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/server.py",
+          "evidence": "lifespan 初始化 ExecutionStore；agent/skill 执行 best-effort 落库；查询端点优先读 SQLite 并保留内存回退。"
+        },
+        {
+          "type": "test",
+          "path": "aiPlat-core/core/tests/unit/test_persistence/test_execution_store.py",
+          "evidence": "覆盖 ExecutionStore 的 agent/skill roundtrip（upsert→get→list）。"
+        },
+        {
+          "type": "test",
+          "path": "aiPlat-core/core/tests/integration/test_execution_store_api.py",
+          "evidence": "通过 TestClient 启动 app，直接写入 SQLite 后验证 API 读取 SQLite 数据。"
+        }
+      ],
+      "verdict": "✅一致",
+      "risk": "中",
+      "status": "fixed",
+      "verification": "pytest -q core/tests/unit/test_persistence/test_execution_store.py && pytest -q core/tests/integration/test_execution_store_api.py",
+      "updated_at": "2026-04-16"
+    }
+  ]
+}
+

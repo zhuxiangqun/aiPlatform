@@ -1,7 +1,6 @@
 import React from 'react';
-import { Modal, Form, Input, Select, InputNumber, Switch, message } from 'antd';
 
-const { Option } = Select;
+import { Button, Input, Modal, Select, Switch, toast } from '../ui';
 
 interface PolicyModalProps {
   open: boolean;
@@ -20,122 +19,99 @@ interface PolicyFormValues {
 }
 
 const PolicyModal: React.FC<PolicyModalProps> = ({ open, onCancel, onOk, initialValues, mode }) => {
-  const [form] = Form.useForm();
   const [loading, setLoading] = React.useState(false);
+  const [name, setName] = React.useState('');
+  const [type, setType] = React.useState<'default' | 'high-priority' | 'batch'>('default');
+  const [priority, setPriority] = React.useState('50');
   const [nodeSelectorStr, setNodeSelectorStr] = React.useState('');
+  const [enabled, setEnabled] = React.useState(true);
 
   React.useEffect(() => {
-    if (open && initialValues) {
-      form.setFieldsValue({
-        name: initialValues.name,
-        type: initialValues.type,
-        priority: initialValues.priority,
-        enabled: initialValues.status === 'enabled',
-      });
+    if (!open) return;
+    if (initialValues) {
+      setName(initialValues.name || '');
+      setType((initialValues.type as any) || 'default');
+      setPriority(initialValues.priority != null ? String(initialValues.priority) : '50');
+      setEnabled(initialValues.enabled ?? (initialValues.status === 'enabled'));
       if (initialValues.nodeSelector) {
         setNodeSelectorStr(
           Object.entries(initialValues.nodeSelector)
             .map(([k, v]) => `${k}=${v}`)
             .join(',')
         );
+      } else {
+        setNodeSelectorStr('');
       }
-    } else if (open) {
-      form.resetFields();
+    } else {
+      setName('');
+      setType('default');
+      setPriority('50');
       setNodeSelectorStr('');
+      setEnabled(true);
     }
-  }, [open, initialValues, form]);
+  }, [open, initialValues]);
 
-  const handleOk = async () => {
-    try {
-      const values = await form.validateFields();
-      const nodeSelector: Record<string, string> = {};
-      if (nodeSelectorStr) {
-        nodeSelectorStr.split(',').forEach((pair) => {
-          const [key, value] = pair.split('=');
-          if (key && value) {
-            nodeSelector[key.trim()] = value.trim();
-          }
-        });
-      }
-      setLoading(true);
-      await onOk({
-        ...values,
-        nodeSelector,
+  const submit = async () => {
+    if (!name.trim()) return toast.error('请输入策略名称');
+    const nodeSelector: Record<string, string> = {};
+    if (nodeSelectorStr.trim()) {
+      nodeSelectorStr.split(',').forEach((pair) => {
+        const [k, v] = pair.split('=');
+        if (k && v) nodeSelector[k.trim()] = v.trim();
       });
-      form.resetFields();
-      setNodeSelectorStr('');
-      message.success(mode === 'create' ? '策略创建成功' : '策略更新成功');
-    } catch (error) {
-      if (error instanceof Error) {
-        message.error(error.message);
-      }
+    }
+    setLoading(true);
+    try {
+      await onOk({
+        name: name.trim(),
+        type,
+        priority: Number(priority),
+        nodeSelector,
+        enabled,
+      });
+      toast.success(mode === 'create' ? '策略创建成功' : '策略更新成功');
+    } catch (e: any) {
+      toast.error(e?.message || '操作失败');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCancel = () => {
-    form.resetFields();
-    setNodeSelectorStr('');
-    onCancel();
-  };
-
   return (
     <Modal
-      title={mode === 'create' ? '创建调度策略' : '编辑调度策略'}
       open={open}
-      onCancel={handleCancel}
-      onOk={handleOk}
-      confirmLoading={loading}
-      destroyOnHidden
+      onClose={onCancel}
+      title={mode === 'create' ? '创建调度策略' : '编辑调度策略'}
+      width={640}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onCancel} disabled={loading}>取消</Button>
+          <Button variant="primary" onClick={submit} loading={loading}>保存</Button>
+        </>
+      }
     >
-      <Form form={form} layout="vertical">
-        <Form.Item
-          name="name"
-          label="策略名称"
-          rules={[{ required: true, message: '请输入策略名称' }]}
-        >
-          <Input placeholder="例如: gpu-intensive" disabled={mode === 'edit'} />
-        </Form.Item>
-        <Form.Item
-          name="type"
+      <div className="space-y-4">
+        <Input label="策略名称" value={name} onChange={(e: any) => setName(e.target.value)} placeholder="例如: gpu-intensive" disabled={mode === 'edit'} />
+        <Select
           label="策略类型"
-          rules={[{ required: true, message: '请选择策略类型' }]}
-          initialValue="default"
-        >
-          <Select placeholder="选择策略类型">
-            <Option value="default">默认策略</Option>
-            <Option value="high-priority">高优先级</Option>
-            <Option value="batch">批处理</Option>
-          </Select>
-        </Form.Item>
-        <Form.Item
-          name="priority"
-          label="优先级"
-          rules={[{ required: true, message: '请输入优先级' }]}
-          initialValue={50}
-          tooltip="数值越高优先级越高，范围 0-100"
-        >
-          <InputNumber min={0} max={100} style={{ width: '100%' }} />
-        </Form.Item>
-        <Form.Item label="节点选择器" tooltip="格式: key1=value1,key2=value2">
-          <Input
-            placeholder="例如: gpu-type=a100,zone=cn-east"
-            value={nodeSelectorStr}
-            onChange={(e) => setNodeSelectorStr(e.target.value)}
-          />
-        </Form.Item>
-        <Form.Item
-          name="enabled"
-          label="启用策略"
-          valuePropName="checked"
-          initialValue={true}
-        >
-          <Switch />
-        </Form.Item>
-      </Form>
+          value={type}
+          onChange={(v) => setType(v as any)}
+          options={[
+            { value: 'default', label: '默认策略' },
+            { value: 'high-priority', label: '高优先级' },
+            { value: 'batch', label: '批处理' },
+          ]}
+        />
+        <Input label="优先级（0-100）" type="number" min={0} max={100} value={priority} onChange={(e: any) => setPriority(e.target.value)} />
+        <Input label="节点选择器（key=value,key=value）" value={nodeSelectorStr} onChange={(e: any) => setNodeSelectorStr(e.target.value)} placeholder="例如: gpu-type=a100,zone=cn-east" />
+        <div className="flex items-center gap-3">
+          <div className="text-sm text-gray-300">启用策略</div>
+          <Switch checked={enabled} onChange={setEnabled} size="sm" />
+        </div>
+      </div>
     </Modal>
   );
 };
 
 export default PolicyModal;
+

@@ -9,11 +9,12 @@ Provides:
 - Trace query and analysis
 """
 
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 import uuid
+import time
 
 
 class SpanStatus(Enum):
@@ -143,10 +144,12 @@ class TraceService:
     - Export to observability backends
     """
     
-    def __init__(self):
+    def __init__(self, execution_store: Optional[Any] = None):
         self._traces: Dict[str, Trace] = {}
         self._spans: Dict[str, Span] = {}
         self._context: Optional[TraceContext] = None
+        # Optional persistence backend (ExecutionStore)
+        self._store = execution_store
     
     async def start_trace(self, name: str, attributes: Optional[Dict[str, Any]] = None) -> Trace:
         """
@@ -169,6 +172,22 @@ class TraceService:
         
         self._traces[trace_id] = trace
         self._context = TraceContext(trace_id)
+
+        if self._store is not None:
+            try:
+                await self._store.upsert_trace(
+                    {
+                        "trace_id": trace_id,
+                        "name": name,
+                        "status": trace.status.value,
+                        "start_time": trace.start_time.timestamp(),
+                        "end_time": None,
+                        "duration_ms": None,
+                        "attributes": trace.attributes,
+                    }
+                )
+            except Exception:
+                pass
         
         return trace
     
@@ -190,6 +209,22 @@ class TraceService:
         trace.end_time = datetime.utcnow()
         trace.duration_ms = (trace.end_time - trace.start_time).total_seconds() * 1000
         trace.status = status
+
+        if self._store is not None:
+            try:
+                await self._store.upsert_trace(
+                    {
+                        "trace_id": trace.trace_id,
+                        "name": trace.name,
+                        "status": trace.status.value,
+                        "start_time": trace.start_time.timestamp(),
+                        "end_time": trace.end_time.timestamp() if trace.end_time else None,
+                        "duration_ms": trace.duration_ms,
+                        "attributes": trace.attributes,
+                    }
+                )
+            except Exception:
+                pass
         
         return trace
     
@@ -231,6 +266,25 @@ class TraceService:
         
         if not trace.root_span_id:
             trace.root_span_id = span_id
+
+        if self._store is not None:
+            try:
+                await self._store.upsert_span(
+                    {
+                        "span_id": span.span_id,
+                        "trace_id": span.trace_id,
+                        "parent_span_id": span.parent_span_id,
+                        "name": span.name,
+                        "status": span.status.value,
+                        "start_time": span.start_time.timestamp(),
+                        "end_time": None,
+                        "duration_ms": None,
+                        "attributes": span.attributes,
+                        "events": span.events,
+                    }
+                )
+            except Exception:
+                pass
         
         return span
     
@@ -250,6 +304,25 @@ class TraceService:
             return None
         
         span.end(status)
+
+        if self._store is not None:
+            try:
+                await self._store.upsert_span(
+                    {
+                        "span_id": span.span_id,
+                        "trace_id": span.trace_id,
+                        "parent_span_id": span.parent_span_id,
+                        "name": span.name,
+                        "status": span.status.value,
+                        "start_time": span.start_time.timestamp(),
+                        "end_time": span.end_time.timestamp() if span.end_time else None,
+                        "duration_ms": span.duration_ms,
+                        "attributes": span.attributes,
+                        "events": span.events,
+                    }
+                )
+            except Exception:
+                pass
         
         return span
     
@@ -275,6 +348,24 @@ class TraceService:
             return False
         
         span.add_event(event_name, attributes)
+        if self._store is not None:
+            try:
+                await self._store.upsert_span(
+                    {
+                        "span_id": span.span_id,
+                        "trace_id": span.trace_id,
+                        "parent_span_id": span.parent_span_id,
+                        "name": span.name,
+                        "status": span.status.value,
+                        "start_time": span.start_time.timestamp(),
+                        "end_time": span.end_time.timestamp() if span.end_time else None,
+                        "duration_ms": span.duration_ms,
+                        "attributes": span.attributes,
+                        "events": span.events,
+                    }
+                )
+            except Exception:
+                pass
         return True
     
     async def set_span_attribute(self, span_id: str, key: str, value: Any) -> bool:
@@ -294,7 +385,76 @@ class TraceService:
             return False
         
         span.set_attribute(key, value)
+        if self._store is not None:
+            try:
+                await self._store.upsert_span(
+                    {
+                        "span_id": span.span_id,
+                        "trace_id": span.trace_id,
+                        "parent_span_id": span.parent_span_id,
+                        "name": span.name,
+                        "status": span.status.value,
+                        "start_time": span.start_time.timestamp(),
+                        "end_time": span.end_time.timestamp() if span.end_time else None,
+                        "duration_ms": span.duration_ms,
+                        "attributes": span.attributes,
+                        "events": span.events,
+                    }
+                )
+            except Exception:
+                pass
         return True
+
+    async def get_trace_persisted(self, trace_id: str) -> Optional[Dict[str, Any]]:
+        """Fetch trace from persistence backend (if configured)."""
+        if self._store is None:
+            return None
+        try:
+            return await self._store.get_trace(trace_id, include_spans=True)
+        except Exception:
+            return None
+
+
+class _AsyncSpanContext:
+    def __init__(self, tracer: "TraceServiceTracer", name: str, attributes: Optional[Dict[str, Any]] = None):
+        self._tracer = tracer
+        self._name = name
+        self._attributes = attributes or {}
+        self._trace_id: Optional[str] = None
+        self._span_id: Optional[str] = None
+
+    async def __aenter__(self):
+        # Ensure there is an active trace
+        svc = self._tracer._service
+        if svc._context is None or not svc._context.trace_id:
+            trace = await svc.start_trace(name=self._tracer._default_trace_name, attributes={"source": "tool"})
+            self._trace_id = trace.trace_id
+        else:
+            self._trace_id = svc._context.trace_id
+
+        span = await svc.start_span(trace_id=self._trace_id, name=self._name, attributes=self._attributes)
+        self._span_id = span.span_id
+        return span
+
+    async def __aexit__(self, exc_type, exc, tb):
+        svc = self._tracer._service
+        if self._span_id:
+            await svc.end_span(self._span_id, status=SpanStatus.FAILED if exc else SpanStatus.SUCCESS)
+        return False
+
+
+class TraceServiceTracer:
+    """
+    适配 BaseTool._call_with_tracking 所需的 tracer 接口：
+    - tracer.start_span(name) -> async context manager
+    """
+
+    def __init__(self, trace_service: TraceService, default_trace_name: str = "tool"):
+        self._service = trace_service
+        self._default_trace_name = default_trace_name
+
+    def start_span(self, name: str, attributes: Optional[Dict[str, Any]] = None) -> _AsyncSpanContext:
+        return _AsyncSpanContext(self, name=name, attributes=attributes)
     
     async def get_trace(self, trace_id: str) -> Optional[Trace]:
         """

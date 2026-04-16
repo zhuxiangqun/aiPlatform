@@ -1,4 +1,6 @@
-# AI Platform 基础设施层 - Testcontainers集成测试完成报告
+# AI Platform 基础设施层 - Testcontainers集成测试完成报告（历史报告｜As-Is 结果记录）
+
+> 说明：本文为 2026-04-11 的实施与结果快照；当前能力以最新 `infra/tests/*` 与实际 CI 运行结果为准。
 
 ## 🎯 项目概述
 

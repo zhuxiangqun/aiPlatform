@@ -6,6 +6,9 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Callable, Optional
 from enum import Enum
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class HookPhase(Enum):
@@ -110,6 +113,12 @@ class HookManager(IHookManager):
     
     def __init__(self):
         self._hooks: Dict[HookPhase, List[Hook]] = {phase: [] for phase in HookPhase}
+        # Register default hooks
+        try:
+            for hook in get_default_hooks().values():
+                self.register(hook)
+        except Exception:
+            pass
     
     def register(self, hook: Hook) -> None:
         """Register a hook"""
@@ -133,7 +142,8 @@ class HookManager(IHookManager):
                 result = await hook(context)
                 results.append(result)
             except Exception as e:
-                print(f"Hook {hook.name} failed: {e}")
+                # 生产环境可观测：保留堆栈信息
+                logger.exception("Hook %s failed (phase=%s)", hook.name, phase.value)
         
         return results
     
@@ -170,7 +180,7 @@ def get_default_hooks() -> Dict[str, Hook]:
     
     # Post-loop hook
     async def post_loop_hook(context: HookContext):
-        print(f"Loop completed: {context.state}")
+        logger.info("Loop completed: %s", context.state)
     
     hooks["post_loop"] = create_hook(
         name="post_loop",
@@ -181,7 +191,7 @@ def get_default_hooks() -> Dict[str, Hook]:
     
     # Pre-tool-use hook
     async def pre_tool_use_hook(context: HookContext):
-        print(f"Tool call: {context.metadata.get('tool_name')}")
+        logger.info("Tool call: %s", context.metadata.get("tool_name"))
     
     hooks["pre_tool_use"] = create_hook(
         name="pre_tool_use",
@@ -189,5 +199,94 @@ def get_default_hooks() -> Dict[str, Hook]:
         phase=HookPhase.PRE_TOOL_USE,
         priority=50
     )
+
+    # Session hooks (lightweight defaults)
+    async def session_start_hook(context: HookContext):
+        context.state = context.state or {}
+        context.state.setdefault("session_started", True)
+
+    hooks["session_start"] = create_hook(
+        name="session_start",
+        callback=session_start_hook,
+        phase=HookPhase.SESSION_START,
+        priority=100,
+    )
+
+    async def session_end_hook(context: HookContext):
+        return {"ended": True, "reason": context.state.get("reason")}
+
+    hooks["session_end"] = create_hook(
+        name="session_end",
+        callback=session_end_hook,
+        phase=HookPhase.SESSION_END,
+        priority=100,
+    )
+
+    # Approval check hook (baseline secret scan on write/edit tools).
+    try:
+        from .builtin import SecurityScanHook
+
+        scanner = SecurityScanHook(scan_on_write=True)
+
+        async def approval_scan_hook(context: HookContext):
+            meta = context.state or {}
+            tool_name = meta.get("tool_name") or meta.get("tool")
+            tool_args = meta.get("tool_args") or {}
+            # Tool scan allow/deny list (comma-separated, case-insensitive)
+            # - If allowlist is set: only scan tools in allowlist
+            # - Otherwise: scan default set (write, edit)
+            # - If denylist is set: exclude tools in denylist
+            import os
+
+            def _parse_list(v: str) -> List[str]:
+                return [x.strip().lower() for x in (v or "").split(",") if x.strip()]
+
+            allowlist = _parse_list(os.getenv("AIPLAT_SECURITY_SCAN_TOOL_ALLOWLIST", ""))
+            denylist = set(_parse_list(os.getenv("AIPLAT_SECURITY_SCAN_TOOL_DENYLIST", "")))
+            default_scan = set(_parse_list(os.getenv("AIPLAT_SECURITY_SCAN_TOOLS", "write,edit")))
+
+            name_norm = str(tool_name or "").strip().lower()
+            should_scan = (name_norm in allowlist) if allowlist else (name_norm in default_scan)
+            if name_norm in denylist:
+                should_scan = False
+
+            findings: List[Dict[str, Any]] = []
+            if should_scan:
+                findings = scanner.scan_tool_input(
+                    "Write" if name_norm == "write" else ("Edit" if name_norm == "edit" else str(tool_name)),
+                    tool_args if isinstance(tool_args, dict) else {},
+                )
+
+            # Write audit event into the execution context when provided
+            exec_ctx = meta.get("context")
+            if isinstance(exec_ctx, dict):
+                events = exec_ctx.setdefault("audit_events", [])
+                if isinstance(events, list):
+                    events.append(
+                        {
+                            "event": "security_scan",
+                            "tool_name": str(tool_name),
+                            "scanned": should_scan,
+                            "blocked": bool(findings),
+                            "findings": findings,
+                        }
+                    )
+            if findings:
+                return {
+                    "allow": False,
+                    "action": "deny",
+                    "reason": f"Security scan blocked potential secrets: {findings[0].get('type')}",
+                    "metadata": {"findings": findings},
+                }
+            return {"allow": True}
+
+        hooks["pre_approval_check"] = create_hook(
+            name="pre_approval_check",
+            callback=approval_scan_hook,
+            phase=HookPhase.PRE_APPROVAL_CHECK,
+            priority=80,
+        )
+    except Exception:
+        pass
     
     return hooks

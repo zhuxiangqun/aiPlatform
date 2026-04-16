@@ -17,6 +17,7 @@ except ImportError:
 
 from .react import ReActGraph, ReActGraphConfig
 from ....interfaces.coordinator import CoordinationConfig
+from ....coordination.detector.convergence import create_detector
 
 
 @dataclass
@@ -51,8 +52,15 @@ class MultiAgentGraph:
         self._config = config or MultiAgentConfig()
         self._agents: List[ReActGraph] = []
         self._graph = None
+        self._detector = None
         
         self._create_agents()
+        # Convergence detector: exact when threshold ~= 1.0, otherwise similarity.
+        try:
+            detector_type = "exact" if self._config.convergence_threshold >= 0.999 else "similarity"
+            self._detector = create_detector(detector_type, threshold=self._config.convergence_threshold)
+        except Exception:
+            self._detector = None
         
         if LANGGRAPH_AVAILABLE:
             self._build_graph()
@@ -82,6 +90,7 @@ class MultiAgentGraph:
         workflow.set_entry_point("distribute")
         workflow.add_edge("distribute", "execute")
         workflow.add_edge("execute", "aggregate")
+        workflow.add_edge("aggregate", "evaluate")
         workflow.add_conditional_edges(
             "evaluate",
             self._should_continue,
@@ -95,8 +104,8 @@ class MultiAgentGraph:
 
     async def _distribute_task(self, state: MultiAgentState) -> Dict[str, Any]:
         """Distribute task to agents"""
-        state.current_round += 1
-        return {"current_round": state.current_round}
+        current_round = state.get("current_round", 0) + 1
+        return {"current_round": current_round}
 
     async def _execute_agents(self, state: MultiAgentState) -> Dict[str, Any]:
         """Execute all agents"""
@@ -104,8 +113,8 @@ class MultiAgentGraph:
         
         for i, agent in enumerate(self._agents):
             result = await agent.run({
-                "messages": [{"role": "user", "content": state.task}],
-                "context": {"round": state.current_round}
+                "messages": [{"role": "user", "content": state.get("task", "")}],
+                "context": {"round": state.get("current_round", 0)}
             })
             results.append({
                 "agent_id": i,
@@ -117,47 +126,59 @@ class MultiAgentGraph:
 
     async def _aggregate_results(self, state: MultiAgentState) -> Dict[str, Any]:
         """Aggregate results from agents"""
-        if not state.agent_results:
+        if not state.get("agent_results"):
             return {}
         
         # Simple aggregation: concatenate observations
         aggregated = "\n---".join([
             r.get("result", "")
-            for r in state.agent_results
+            for r in state.get("agent_results", [])
         ])
         
         return {"context": {"aggregated": aggregated}}
 
     async def _evaluate_convergence(self, state: MultiAgentState) -> Dict[str, Any]:
         """Evaluate convergence of agent results"""
-        if len(state.agent_results) < 2:
+        if len(state.get("agent_results", [])) < 2:
             return {"converged": False}
         
-        # Simple convergence check: compare observations
-        results = [r.get("result", "") for r in state.agent_results]
-        
-        # Check similarity (simplified)
-        if len(set(results)) == 1:
-            return {
-                "converged": True,
-                "final_result": results[0]
-            }
+        results = [r.get("result", "") for r in state.get("agent_results", [])]
+
+        if self._detector is not None:
+            conv = self._detector.detect(results)
+            if conv.converged:
+                return {
+                    "converged": True,
+                    "final_result": results[0],
+                    "context": {
+                        **(state.get("context") or {}),
+                        "convergence": {
+                            "method": conv.method,
+                            "similarity_score": conv.similarity_score,
+                            **(conv.details or {}),
+                        },
+                    },
+                }
+        else:
+            # Fallback: exact match
+            if len(set(results)) == 1:
+                return {"converged": True, "final_result": results[0]}
         
         # Check if max rounds reached
-        if state.current_round >= self._config.max_rounds:
+        if state.get("current_round", 0) >= self._config.max_rounds:
             return {
                 "converged": True,
-                "final_result": state.agent_results[0].get("result", "")
+                "final_result": state.get("agent_results", [{}])[0].get("result", "")
             }
         
         return {"converged": False}
 
     def _should_continue(self, state: MultiAgentState) -> str:
         """Determine if continue or finish"""
-        if state.converged:
+        if state.get("converged"):
             return "finish"
         
-        if state.current_round >= self._config.max_rounds:
+        if state.get("current_round", 0) >= self._config.max_rounds:
             return "finish"
         
         return "continue"
@@ -172,7 +193,13 @@ class MultiAgentGraph:
         Returns:
             MultiAgentState: Final state
         """
-        initial_state = MultiAgentState(task=task)
+        initial_state = MultiAgentState(
+            task=task,
+            agent_results=[],
+            current_round=0,
+            converged=False,
+            context={},
+        )
         
         if LANGGRAPH_AVAILABLE and self._graph:
             result = await self._graph.ainvoke(initial_state)
@@ -183,10 +210,10 @@ class MultiAgentGraph:
 
     async def _run_fallback(self, task: str) -> MultiAgentState:
         """Fallback execution without LangGraph"""
-        state = MultiAgentState(task=task)
+        state: MultiAgentState = MultiAgentState(task=task, agent_results=[], current_round=0, converged=False, context={})
         
-        while state.current_round < self._config.max_rounds and not state.converged:
-            state.current_round += 1
+        while state.get("current_round", 0) < self._config.max_rounds and not state.get("converged"):
+            state["current_round"] = state.get("current_round", 0) + 1
             
             # Execute all agents
             results = []
@@ -199,16 +226,32 @@ class MultiAgentGraph:
                     "result": result.observation if hasattr(result, 'observation') else str(result)
                 })
             
-            state.agent_results = results
+            state["agent_results"] = results
             
             # Evaluate convergence
-            if len(set([r.get("result", "") for r in results])) == 1:
-                state.converged = True
-                state.final_result = results[0].get("result", "")
-                break
+            if self._detector is not None:
+                conv = self._detector.detect([r.get("result", "") for r in results])
+                if conv.converged:
+                    state["converged"] = True
+                    state["final_result"] = results[0].get("result", "")
+                    state["context"] = {
+                        **(state.get("context") or {}),
+                        "convergence": {
+                            "method": conv.method,
+                            "similarity_score": conv.similarity_score,
+                            **(conv.details or {}),
+                        },
+                    }
+                    break
+            else:
+                if len(set([r.get("result", "") for r in results])) == 1:
+                    state["converged"] = True
+                    state["final_result"] = results[0].get("result", "")
+                    break
         
-        if not state.final_result:
-            state.final_result = state.agent_results[0].get("result", "") if state.agent_results else ""
+        if not state.get("final_result"):
+            ar = state.get("agent_results") or []
+            state["final_result"] = ar[0].get("result", "") if ar else ""
         
         return state
 

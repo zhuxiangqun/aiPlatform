@@ -4,15 +4,24 @@
 
 ---
 
+## 0. 文档说明（设计正确 vs 实现现状）
+
+本 README 的“模块能力描述”用于表达 **management 的目标设计（To‑Be）**。  
+当前仓库实现可能仍处于原型阶段，已实现与未实现项请以：
+
+- `docs/IMPLEMENTATION_STATUS.md`
+
+为准。
+
 ## 📖 概述
 
 aiPlat-management 是 AI Platform 的**独立管理系统**，横切四层业务架构，提供：
 
-- **Dashboard（总览）**：四层健康状态总览、实时监控、拓扑可视化
+- **Dashboard（总览）**：四层健康状态总览、拓扑可视化与关键指标聚合
 - **Monitoring（监控）**：指标采集、时序存储、监控图表、性能分析
-- **Alerting（告警）**：告警规则、多渠道通知、告警历史
-- **Diagnostics（诊断）**：健康检查、链路追踪、日志聚合、问题诊断
-- **Config（配置）**：配置管理、版本控制、热更新、回滚
+- **Alerting（告警）**：告警规则、多渠道通知、告警历史与处理闭环
+- **Diagnostics（诊断）**：健康检查、链路追踪、日志聚合与问题诊断
+- **Config（配置）**：配置管理、版本控制、发布、回滚与审计
 
 ---
 
@@ -84,7 +93,7 @@ management:
   # 监控配置
   monitoring:
     interval: 60  # 采集间隔（秒）
-    storage: "influxdb"
+    storage: "influxdb"  # 目标态：InfluxDB/Prometheus 等时序后端（As-Is 可能未接入）
   
   # 告警配置
   alerting:
@@ -147,7 +156,7 @@ print(status["overall_status"])  # "healthy", "degraded", "unhealthy"
 
 ### Monitoring（监控）
 
-负责采集各层监控指标。
+负责采集各层监控指标（目标态：采集 → 时序存储 → 查询/图表闭环）。
 
 **代码模块**：
 - `management/monitoring/collector.py` - 采集器基类
@@ -172,7 +181,7 @@ for metric in metrics:
 
 ### Alerting（告警）
 
-负责告警规则管理和通知。
+负责告警规则管理和通知（目标态：规则持久化、告警历史、通知通道、去重/抑制策略）。
 
 **代码模块**：
 - `management/alerting/rules.py` - 告警规则引擎
@@ -203,7 +212,7 @@ alerts = await engine.evaluate(metrics)
 
 ### Diagnostics（诊断）
 
-负责健康检查和故障诊断。
+负责健康检查和故障诊断（目标态：诊断逻辑在各层；management 聚合与标准化输出，并提供 trace/logs 入口）。
 
 **代码模块**：
 - `management/diagnostics/health.py` - 健康检查基类

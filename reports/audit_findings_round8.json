@@ -1,0 +1,49 @@
+{
+  "meta": {
+    "project": "aiPlat",
+    "round": "round8",
+    "date": "2026-04-16",
+    "scope": [
+      "aiPlat-core/core/harness/execution/tool_calling.py",
+      "aiPlat-core/core/harness/execution/loop.py",
+      "aiPlat-core/core/apps/skills/discovery.py",
+      "aiPlat-core/core/tests/unit/test_harness/test_execution/test_tool_calling.py",
+      "aiPlat-core/docs/ARCHITECTURE_STATUS.md"
+    ],
+    "purpose": "落实 P1-ROUTING：消除 Skill/Tool 基于 substring 的隐式路由误触发，收敛为“显式路由优先”（结构化 JSON / 显式 SKILL/ACTION 标记）。"
+  },
+  "items": [
+    {
+      "id": "CORE-ROUTING-001",
+      "design_statement": "Skill/Tool 的选择必须显式且可审计；不得仅凭自然语言包含某个名称就触发执行。PlanExecute/Loop/LangGraph 等执行路径应遵循同一套“显式路由优先”规则。",
+      "code_evidence": [
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/harness/execution/tool_calling.py",
+          "evidence": "新增 parse_action_call：支持显式 skill 调用（{\"skill\":...,\"args\":...} 或 SKILL: ...），并在 tool calling 基础上统一返回 kind/name/args。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/harness/execution/loop.py",
+          "evidence": "ReActLoop._act 移除 substring skill fallback；PlanExecuteLoop 仅在 action 内存在显式 JSON（tool/skill）时执行，避免 tool_name/skill_name substring 命中。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/apps/skills/discovery.py",
+          "evidence": "SkillMatcher.match 优先使用显式 trigger_conditions 作为候选（仅当未配置时回退 trigger_keywords），降低“隐式关键词”误触发范围。"
+        },
+        {
+          "type": "test",
+          "path": "aiPlat-core/core/tests/unit/test_harness/test_execution/test_tool_calling.py",
+          "evidence": "新增回归：ReActLoop 不会因 reasoning 中包含 skill 名称而误触发；只有显式 {\"skill\":...} 时才执行。"
+        }
+      ],
+      "verdict": "✅一致",
+      "risk": "中",
+      "status": "fixed",
+      "verification": "pytest -q core/tests/unit/test_harness/test_execution/test_tool_calling.py",
+      "updated_at": "2026-04-16"
+    }
+  ]
+}
+

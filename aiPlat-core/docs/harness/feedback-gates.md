@@ -1,6 +1,8 @@
-# 反馈闭环增强
+# 反馈闭环增强（As-Is 对齐 + To-Be 规划）
 
-> 构建可插拔的质量门禁系统，实现验证驱动的 Agent 执行闭环
+> 本文档描述“质量门禁/验证驱动闭环”的目标设计，其中多数为 To-Be。  
+> **As-Is**：已存在 ApprovalManager、ContractManager，以及 feedback_loops 模块（LocalFeedback/EvolutionEngine 等），但并非都已接入主执行链路。  
+> 统一口径参见：[架构实现状态](../ARCHITECTURE_STATUS.md)。
 
 ---
 
@@ -16,10 +18,10 @@
 
 | 能力 | 实现位置 | 状态 |
 |------|---------|------|
-| ApprovalManager | harness/infrastructure/approval/ | ✅ 审批门禁 |
-| SprintContractManager | harness/contract/ | ✅ 契约验证 |
-| EvolutionEngine | harness/feedback_loops/ | ✅ 自动适应 |
-| LocalFeedbackLoop | harness/feedback_loops/ | ✅ 运行时反馈 |
+| ApprovalManager | `core/harness/infrastructure/approval/` | ✅ 已接线（工具调用前审批 gate） |
+| SprintContractManager | `core/harness/contract/` | ✅ 已接线（PRE/POST_CONTRACT_CHECK） |
+| EvolutionEngine | `core/harness/feedback_loops/` | 🔧 结构存在（未形成默认闭环接线与验收） |
+| LocalFeedbackLoop | `core/harness/feedback_loops/` | 🔧 结构存在（未形成默认闭环接线与验收） |
 
 ### 新增能力
 
@@ -411,3 +413,12 @@ commands:
 ---
 
 *最后更新: 2026-04-14*
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- ApprovalManager：`core/harness/infrastructure/approval/manager.py`
+- ContractManager：`core/harness/contract/manager.py`
+- Loop 接线（contract/approval）：`core/harness/execution/loop.py`
+- Feedback loops（local/push/prod/evolution）：`core/harness/feedback_loops/*`

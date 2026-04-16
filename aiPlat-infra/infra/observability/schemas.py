@@ -38,6 +38,8 @@ class ResourceConfig:
 @dataclass
 class ObservabilityConfig:
     enabled: bool = True
+    # Provider: "otel" uses opentelemetry-sdk; "simple" uses in-memory Simple* implementation
+    provider: str = "otel"
     tracing: Optional[TracingConfig] = None
     metrics: Optional[MetricsConfig] = None
     logging: Optional[LoggingConfig] = None

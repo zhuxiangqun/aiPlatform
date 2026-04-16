@@ -1,6 +1,7 @@
-# Harness 智能体框架
+# Harness 智能体框架（设计真值：以代码事实为准）
 
-> ⚠️ **实现状态提示**：本文档表格中的 ✅ 标记表示代码文件存在，不代表功能可用。多个核心子系统存在桥接缺失或关键 Bug。完整实现状态参见 [架构实现状态](../ARCHITECTURE_STATUS.md)。
+> ⚠️ **实现状态提示（As-Is vs To-Be）**：本文档以 **当前代码事实（As-Is）** 为准进行描述，并明确标注 **To-Be（规划项）**。  
+> 状态口径与可追溯规则参见：[架构实现状态](../ARCHITECTURE_STATUS.md)。
 >
 > **Phase 7 已修复**：
 > - ✅ ReActAgent/PlanExecuteAgent 委托 `super().execute()` → Loop 驱动
@@ -8,8 +9,8 @@
 > - ✅ Coordination 模式接入 MultiAgent（Pipeline/FanOut/ExpertPool/ProducerReviewer/Supervisor）
 > - ✅ 三种状态类型统一（AgentState→TypedDict、AgentLifecycleState）
 >
-> **仍需注意**：
-> - IAgent/ISkill/IAdapter 接口零实现（纯 ABC）
+> **仍需注意（As-Is）**：
+> - `interfaces/` 下 IAgent/ISkill/ITool/ILoop 以 ABC 为主（接口层本身不提供具体实现）；具体实现位于 `core/apps/*` 与 `core/harness/execution/*`。
 > - LangGraph StateGraph 已修复但依赖 langgraph 包
 
 > 提供 Agent 的完整生命周期管理，包括心跳监控、健康分数计算、状态追踪等核心能力
@@ -38,7 +39,7 @@ Harness 框架由 8 个核心要素组成：
 | **记忆系统** | 上下文和历史管理，维护执行过程中的状态 | ✅ 已实现 | `memory/` |
 | **知识系统** | 知识库和检索，支持 RAG 等场景 | ✅ 已实现 | `knowledge/` |
 | **工具系统** | 外部工具集成，扩展 Agent 能力边界 | ✅ 已实现 | `apps/tools/` |
-| **审批系统** | Human-in-the-Loop 审批，关键决策需人工确认 | ✅ 已实现 | `infrastructure/approval/` |
+| **审批系统** | Human-in-the-Loop 审批，关键决策需人工确认 | ✅ 已实现（最小实现） | `infrastructure/approval/` |
 | **钩子系统** | 生命周期钩子和扩展，支持自定义扩展 | ✅ 已实现 | `infrastructure/hooks/` |
 
 ---
@@ -83,9 +84,10 @@ Harness 框架由 8 个核心要素组成：
 - 长任务链中的"静默失败"问题
 - 20步任务，单步95%成功率，整体仅36%
 
-**实现**：
-- ReAct 执行循环：Reasoning → Acting → Observing
-- Ralph Loop：更严格的验证模式
+**实现（As-Is）**：
+- ReAct 执行循环：Reasoning → Acting → Observing（主路径：`execution/loop.py`）
+- Plan-Execute：规划 + 顺序执行（主路径：`execution/loop.py`）
+- “Ralph Loop/更严格验证模式”若存在，仅作为 To-Be 概念；需以代码实现为准标注状态（避免写成已实现）。
 
 **Hook 拦截点**：
 
@@ -156,7 +158,7 @@ Harness 框架由 8 个核心要素组成：
                         反馈闭环
 ```
 
-**控制规则示例**：
+**控制规则示例（As-Is 最小闭环）**：
 
 | 观测条件 | 触发动作 | 优先级 |
 |---------|---------|--------|
@@ -164,6 +166,54 @@ Harness 框架由 8 个核心要素组成：
 | 工具调用失败率 > 20% | 暂停 Agent，请求确认 | P0 |
 | Agent 循环 > 10 轮 | 触发 Stop Hook 强制验证 | P1 |
 | 连续 3 次相同工具失败 | 标记工具为不可用 | P1 |
+
+---
+
+## 设计补全（Round2）：观测驱动控制（最小闭环规范）
+
+> 目标：把“观测驱动控制”从概念描述落到可实现、可验收、可运维的闭环。
+
+### 1) 最小闭环定义
+
+**采集（Observability）** → **规则评估（Policy）** → **动作执行（Control Action）** → **可观测输出（Events/Logs/Metrics）**
+
+### 2) 指标定义（必须明确来源）
+
+| 指标 | 定义 | 建议采集点 |
+|---|---|---|
+| tool_error_rate | 最近 N 次工具调用失败率 | ToolResult + HookPhase.POST_TOOL_USE |
+| token_budget_used_ratio | 已用 token / 总预算 | LoopState.used_tokens / LoopConfig.max_tokens |
+| loop_rounds | 当前 loop 轮数 | LoopState.step_count |
+
+### 3) 规则与动作（最低可用集）
+
+| 条件 | 动作 | 级别 | 备注 |
+|---|---|---|---|
+| tool_error_rate > 0.2（N>=10） | pause + require_manual | P0 | 输出“为何暂停/需要确认” |
+| token_budget_used_ratio > 0.8 | compact_context | P1 | 调用 Memory/Context 压缩策略 |
+| loop_rounds > max_steps | stop | P1 | 触发 STOP Hook 并写审计 |
+
+### 4) 接线位置（单一真相）
+
+建议接线顺序：
+1. Loop/Graph 产出观测事件（POST_* hooks）
+2. PolicyEngine 评估规则（可配置）
+3. BaseLoop/Executor 执行动作（pause/compact/stop/deny_tool）
+
+### 5) 验收标准（必须可复现）
+
+1. 构造工具连续失败：达到阈值后，loop 必须暂停并返回 require_manual 语义
+2. 构造 token 超预算：必须触发 compact_context，并在事件中记录压缩前后长度变化
+3. 构造循环超限：必须触发 stop，并输出 stop reason
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- Loop 主执行链路：`core/harness/execution/loop.py`（`BaseLoop.run()` / `ReActLoop._act()`）
+- HookPhase 接线与阻断语义：`core/harness/infrastructure/hooks/hook_manager.py`
+- ApprovalManager（最小规则集）：`core/server.py`（lifespan 中注册 approval rules）
+
 
 ### 5. 自我进化机制
 
@@ -424,69 +474,7 @@ Harness 设计演进
 - 不通过 → 反馈给 Generator → 重新实现 → 再次评估
 - 最大循环次数：3次，超过则升级处理
 
-### 9.6 Format Affinity（格式亲和性）
-
-> **核心理念**：模型对特定输出格式有偏好，高格式亲和性意味着更好的执行效果。
-
-**格式亲和性维度**：
-
-| 维度 | 说明 | 影响 |
-|------|------|------|
-| **结构亲和性** | 对特定输出结构的偏好 | JSON > Markdown > 纯文本 |
-| **风格亲和性** | 对语言风格的偏好 | 简洁 > 冗长、正式 > 口语 |
-| **长度亲和性** | 对输出长度的偏好 | 适中对齐模型上下文窗口 |
-| **示例亲和性** | 对 Few-shot 示例的响应 | 有示例 > 无示例 |
-
-**格式优化策略**：
-
-| 策略 | 说明 | 适用场景 |
-|------|------|----------|
-| **格式锁定** | 固定输出格式，减少变化 | 稳定性要求高的任务 |
-| **格式渐进** | 从简单到复杂递进 | 复杂任务，分步处理 |
-| **格式反馈** | 根据执行结果调整格式 | 需要优化的任务 |
-| **格式模板** | 提供标准化模板 | 批量任务，保持一致 |
-
-**在 Harness 中的实现**：
-- ModelService 分析模型的格式偏好
-- PromptService 自动适配最佳格式
-- 格式亲和性纳入轨迹评估指标
-- 支持格式配置的动态调整
-
-### 9.7 Value Decay Curve（价值衰减曲线）
-
-> **核心理念**：不同类型的反馈随着时间推移价值衰减速度不同，需要区别对待。
-
-**价值衰减速率**：
-
-```
-价值
-│
-│  Format Affinity (格式亲和性)
-│  ╲
-│   ╲________ 衰减最快
-│    ╲
-│     ╲  Capability Complement (能力互补)
-│      ╲________ 衰减中等
-│       ╲
-│        ╲   Feedback Quality (反馈质量)
-│         ╲________ 衰减最慢
-│          ╲
-│           ╲___________________________ 时间
-```
-
-| 反馈类型 | 衰减速率 | 原因 | 应用策略 |
-|---------|---------|------|----------|
-| **Format Affinity** | 最快 | 模型对格式敏感，格式变化导致参考价值下降 | 及时转换为通用格式 |
-| **Capability Complement** | 中等 | 能力边界随模型升级变化 | 定期更新能力映射 |
-| **Feedback Quality** | 最慢 | 核心反馈原则长期有效 | 长期积累，形成知识库 |
-
-**在 Harness 中的实现**：
-- 轨迹数据标注价值衰减类型
-- 自动触发格式转换（将 Format Affinity 转为通用格式）
-- 定期评估能力映射的有效性
-- 反馈质量数据进入长期知识库
-
-### 9.8 Build to Delete（设计目标）
+### 9.6 Build to Delete（设计目标）
 
 > **核心理念**：随着模型能力提升，Harness 应逐步"瘦身"，删除不必要的约束。
 

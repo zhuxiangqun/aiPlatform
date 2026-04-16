@@ -1,4 +1,6 @@
-# 数据库模块
+# 数据库模块（设计真值：以代码事实为准）
+
+> 说明：数据库模块的 As-Is 能力以 `infra/database/*` 代码与测试为准；文档中的多后端/ORM/迁移等若未实现需标注为 To-Be。
 
 > 提供数据库抽象层，支持多种数据库后端（PostgreSQL/MySQL/MongoDB）
 
@@ -495,3 +497,9 @@ infra/database/
 ---
 
 *最后更新: 2026-04-11*
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- 代码入口：`infra/database/*`

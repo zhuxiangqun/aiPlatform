@@ -1,1 +1,2 @@
-"""测试包"""
+"""infra tests package."""
+

@@ -7,6 +7,7 @@ Provides base node classes and common node implementations.
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, List, Optional, TypedDict
 import asyncio
+from ...tool_calling import parse_action_call
 
 
 class AgentState(TypedDict, total=False):
@@ -91,25 +92,30 @@ class ReasonNode(BaseNode):
         else:
             reasoning = "No model available"
         
-        return {
-            "reasoning": reasoning,
-            "step_count": state.step_count + 1,
-        }
+        step_count = int(state.get("step_count", 0) or 0) + 1
+        return {"reasoning": reasoning, "step_count": step_count}
 
     def _build_prompt(self, state: AgentState) -> str:
         """Build reasoning prompt from state"""
-        history = "\n".join([
-            f"{msg.get('role', 'user')}: {msg.get('content', '')}"
-            for msg in state.messages[-5:]
-        ])
+        messages = state.get("messages") or []
+        history = "\n".join([f"{msg.get('role', 'user')}: {msg.get('content', '')}" for msg in messages[-5:]])
         
         prompt = f"""Current state:
 - History: {history}
-- Reasoning: {state.reasoning}
-- Action: {state.action}
-- Observation: {state.observation}
+- Reasoning: {state.get('reasoning','')}
+- Action: {state.get('action','')}
+- Observation: {state.get('observation','')}
 
-What should I do next? If using a tool, respond with: ACTION: tool_name
+What should I do next?
+
+优先使用结构化工具调用（推荐）：
+```json
+{{"tool":"tool_name","args":{{...}}}}
+```
+
+兼容旧格式：
+ACTION: tool_name: {{json_or_text}}
+
 If finished, respond with: DONE
 """
         return prompt
@@ -135,15 +141,21 @@ class ActNode(BaseNode):
         """Execute action"""
         action_result = ""
         
-        # Parse action from reasoning
-        action = self._parse_action(state.reasoning)
+        reasoning = state.get("reasoning", "") or ""
+        parsed = parse_action_call(reasoning)
+        if parsed and parsed.kind == "skill":
+            action = None
+            tool_args = {}
+        else:
+            action = parsed.name if parsed else self._parse_action(reasoning)
+            tool_args = parsed.args if parsed else {}
         
         if action and self._tools:
             # Find and execute tool
             tool = self._get_tool(action)
             if tool:
                 try:
-                    result = await tool.execute({})
+                    result = await tool.execute(tool_args)
                     action_result = str(result.output or result.error or "Success")
                 except Exception as e:
                     action_result = f"Error: {str(e)}"
@@ -193,7 +205,7 @@ class ObserveNode(BaseNode):
 
     async def execute(self, state: AgentState) -> Dict[str, Any]:
         """Execute observation"""
-        observation = state.observation
+        observation = state.get("observation", "")
         
         # If model available, use it to process observation
         if self._model and observation:
@@ -226,7 +238,8 @@ class ToolNode(BaseNode):
     async def execute(self, state: AgentState) -> Dict[str, Any]:
         """Execute tool"""
         # Extract parameters from state context
-        params = state.context.get("tool_params", {})
+        context = state.get("context") or {}
+        params = context.get("tool_params", {}) if isinstance(context, dict) else {}
         
         try:
             result = await self._tool.execute(params)

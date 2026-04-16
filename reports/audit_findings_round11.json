@@ -1,0 +1,55 @@
+{
+  "meta": {
+    "project": "aiPlat",
+    "round": "round11",
+    "date": "2026-04-16",
+    "scope": [
+      "aiPlat-core/core/services/execution_store.py",
+      "aiPlat-core/core/harness/execution/langgraph/core.py",
+      "aiPlat-core/core/server.py",
+      "aiPlat-core/core/tests/unit/test_harness/test_execution/test_langgraph_resume.py",
+      "aiPlat-core/core/tests/integration/test_graph_resume_api.py",
+      "aiPlat-core/docs/ARCHITECTURE_STATUS.md"
+    ],
+    "purpose": "落实 P2-RESUME：提供 graph checkpoint 的 restore/resume 语义，并打通 execution_id 与 trace_id 关联，形成可恢复与可审计的闭环。"
+  },
+  "items": [
+    {
+      "id": "CORE-RESUME-001",
+      "design_statement": "Checkpoint 必须可用于恢复执行（包含 current_node 等恢复点，并支持从该点继续）；同时 execution_id 必须能关联到 trace_id 以实现跨层审计与回溯。",
+      "code_evidence": [
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/harness/execution/langgraph/core.py",
+          "evidence": "CompiledGraph.execute 在 state 中写入 current_node，并在 initial_state 已包含 current_node 时从该节点继续；同时允许恢复执行时覆盖 max_steps。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/services/execution_store.py",
+          "evidence": "schema v4：graph_runs 增加 parent_run_id/resumed_from_checkpoint_id；agent_executions/skill_executions 增加 trace_id；新增 get_graph_checkpoint/get_latest_graph_checkpoint/resume_graph_run 等辅助方法。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/server.py",
+          "evidence": "新增 GET checkpoint 与 POST resume API；execute_agent/execute_skill 创建 Trace 并将 trace_id 回写到 execution_record（并落库）。"
+        },
+        {
+          "type": "test",
+          "path": "aiPlat-core/core/tests/unit/test_harness/test_execution/test_langgraph_resume.py",
+          "evidence": "验证 CompiledGraph 可从 current_node 继续执行。"
+        },
+        {
+          "type": "test",
+          "path": "aiPlat-core/core/tests/integration/test_graph_resume_api.py",
+          "evidence": "验证 /graphs/runs/{run_id}/resume 会创建新 run，并携带 parent_run_id/resumed_from_checkpoint_id。"
+        }
+      ],
+      "verdict": "✅一致",
+      "risk": "中",
+      "status": "fixed",
+      "verification": "pytest -q core/tests/unit/test_harness/test_execution/test_langgraph_resume.py core/tests/integration/test_graph_resume_api.py",
+      "updated_at": "2026-04-16"
+    }
+  ]
+}
+

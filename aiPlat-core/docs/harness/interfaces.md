@@ -1,4 +1,7 @@
-# 接口定义 (Interfaces)
+# 接口定义 (Interfaces)（设计真值：以代码事实为准）
+
+> **As-Is**：`core/harness/interfaces/*` 以 ABC/数据结构定义为主；具体实现位于 `core/apps/*` 与 `core/harness/execution/*`。  
+> 统一口径与可追溯规则参见：[架构实现状态](../ARCHITECTURE_STATUS.md)。
 
 > Harness 操作系统层的接口定义，统一规范各模块的实现。
 
@@ -118,6 +121,14 @@
 - **元数据**：获取适配器名称、版本、能力
 - **适配**：将数据转换为目标格式
 - **恢复**：将适配后的数据恢复为原格式
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- 接口层：`core/harness/interfaces/*`
+- Loop 实现：`core/harness/execution/loop.py`
+- Tool/Skill/Agent 实现：`core/apps/tools/*` / `core/apps/skills/*` / `core/apps/agents/*`
 
 ---
 

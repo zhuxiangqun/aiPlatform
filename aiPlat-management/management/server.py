@@ -15,6 +15,8 @@ from management.monitoring import InfraMetricsCollector, CoreMetricsCollector, P
 from management.diagnostics import InfraHealthChecker, CoreHealthChecker, PlatformHealthChecker, AppHealthChecker
 from management.alerting import AlertEngine
 from management.config import ConfigManager
+from management.infra_client import InfraAPIClient, InfraAPIClientConfig
+from management.core_client import CoreAPIClient, CoreAPIClientConfig
 
 
 def load_config() -> Dict[str, Any]:
@@ -106,6 +108,8 @@ def create_app() -> FastAPI:
     # 存储到应用状态
     app.state.config = config
     app.state.aggregator = aggregator
+    # Single source of truth for mutable runtime state
+    app.state.active_alerts = {}
     app.state.collectors = {
         "infra": InfraMetricsCollector(),
         "core": CoreMetricsCollector(),
@@ -113,13 +117,25 @@ def create_app() -> FastAPI:
         "app": AppMetricsCollector(),
     }
     app.state.health_checkers = {
-        "infra": InfraHealthChecker(),
-        "core": CoreHealthChecker(),
-        "platform": PlatformHealthChecker(),
-        "app": AppHealthChecker(),
+        "infra": InfraHealthChecker(endpoint=layers_config.get("infra", {}).get("endpoint")),
+        "core": CoreHealthChecker(endpoint=layers_config.get("core", {}).get("endpoint")),
+        "platform": PlatformHealthChecker(endpoint=layers_config.get("platform", {}).get("endpoint")),
+        "app": AppHealthChecker(endpoint=layers_config.get("app", {}).get("endpoint")),
     }
     app.state.alert_engine = AlertEngine()
     app.state.config_manager = ConfigManager()
+
+    # HTTP clients (configured by management.yaml)
+    infra_ep = layers_config.get("infra", {}).get("endpoint", "http://localhost:8001")
+    core_ep = layers_config.get("core", {}).get("endpoint", "http://localhost:8002")
+    app.state.infra_client = InfraAPIClient(InfraAPIClientConfig(base_url=infra_ep, timeout=30.0))
+    app.state.core_client = CoreAPIClient(CoreAPIClientConfig(base_url=core_ep, timeout=30.0))
+    # Backward compatibility: keep module-level singletons aligned if present
+    try:
+        from management.api import core as _core_api
+        _core_api._core_client = app.state.core_client
+    except Exception:
+        pass
     
     # 健康检查端点
     @app.get("/health")

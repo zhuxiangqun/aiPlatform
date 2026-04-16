@@ -2,18 +2,10 @@
 Dashboard API
 """
 
-from fastapi import APIRouter
-from ..dashboard import DashboardAggregator, InfraAdapter, CoreAdapter, PlatformAdapter, AppAdapter
+from fastapi import APIRouter, Request, HTTPException
 
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
-
-# 创建聚合器
-aggregator = DashboardAggregator()
-aggregator.register_adapter("infra", InfraAdapter())
-aggregator.register_adapter("core", CoreAdapter())
-aggregator.register_adapter("platform", PlatformAdapter())
-aggregator.register_adapter("app", AppAdapter())
 
 
 @router.get("")
@@ -44,23 +36,23 @@ async def dashboard_root():
 
 
 @router.get("/status")
-async def get_status():
+async def get_status(request: Request):
     """获取各层状态"""
-    status = await aggregator.aggregate()
+    status = await request.app.state.aggregator.aggregate()
     return status
 
 
 @router.get("/health")
-async def get_health():
+async def get_health(request: Request):
     """获取健康检查结果"""
-    health = await aggregator.get_health()
+    health = await request.app.state.aggregator.get_health()
     return health
 
 
 @router.get("/metrics")
-async def get_metrics():
+async def get_metrics(request: Request):
     """获取所有层级指标"""
-    metrics = await aggregator.get_metrics()
+    metrics = await request.app.state.aggregator.get_metrics()
     return metrics
 
 
@@ -68,27 +60,30 @@ async def get_metrics():
 
 @router.get("/config")
 @router.get("/config/")
-async def get_all_configs():
+async def get_all_configs(request: Request):
     """获取所有组件配置"""
-    infra_adapter = aggregator.adapters.get("infra")
-    if infra_adapter:
-        return await infra_adapter.get_all_configs()
-    return {}
+    client = getattr(request.app.state, "infra_client", None)
+    if not client:
+        raise HTTPException(status_code=503, detail="Infra client not initialized")
+    payload = await client.list_managers()
+    if isinstance(payload, dict) and payload.get("status") == "success":
+        return {"managers": payload.get("data", [])}
+    return payload
 
 
 @router.get("/config/{component}")
-async def get_component_config(component: str):
+async def get_component_config(component: str, request: Request):
     """获取指定组件配置"""
-    infra_adapter = aggregator.adapters.get("infra")
-    if infra_adapter:
-        return await infra_adapter.get_config(component)
-    return {}
+    client = getattr(request.app.state, "infra_client", None)
+    if not client:
+        raise HTTPException(status_code=503, detail="Infra client not initialized")
+    return await client.get_manager_config(component)
 
 
 @router.put("/config/{component}")
-async def update_component_config(component: str, config: dict):
+async def update_component_config(component: str, config: dict, request: Request):
     """更新指定组件配置"""
-    infra_adapter = aggregator.adapters.get("infra")
-    if infra_adapter:
-        return await infra_adapter.update_config(component, config)
-    return {"error": "Component not found"}
+    client = getattr(request.app.state, "infra_client", None)
+    if not client:
+        raise HTTPException(status_code=503, detail="Infra client not initialized")
+    return await client.update_manager_config(component, config)

@@ -20,6 +20,7 @@ DI Module - 依赖注入容器
 
 from .container import DIContainer, DIContainerImpl
 from .factory import create_container
+from .auto import injectable
 from .schemas import (
     DIContainerConfig,
     ServiceDescriptor,
@@ -33,4 +34,5 @@ __all__ = [
     "DIContainerConfig",
     "ServiceDescriptor",
     "Lifetime",
+    "injectable",
 ]

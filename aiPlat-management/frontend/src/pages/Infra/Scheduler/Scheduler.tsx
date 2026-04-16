@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, RotateCw } from 'lucide-react';
-import { Table, Button } from '../../../components/ui';
+import { Table, Button, toast } from '../../../components/ui';
 import PageHeader from '../../../components/common/PageHeader';
 import { QuotaModal, PolicyModal } from '../../../components/infra';
 import { schedulerApi, type Quota, type Task, type Policy } from '../../../services';
@@ -43,7 +43,7 @@ const Scheduler: React.FC = () => {
       setTasks(tasksData || []);
       setPolicies(policiesData || []);
     } catch (error) {
-      alert('获取调度数据失败');
+      toast.error('获取调度数据失败');
       console.error('Failed to fetch scheduler data:', error);
       setQuotas([]);
       setTasks([]);
@@ -84,10 +84,10 @@ const Scheduler: React.FC = () => {
   const handleDeleteQuota = async (quotaId: string) => {
     try {
       await schedulerApi.deleteQuota(quotaId);
-      alert('配额删除成功');
+      toast.success('配额删除成功');
       fetchData();
     } catch (error) {
-      alert('删除配额失败');
+      toast.error('删除配额失败');
     }
   };
 
@@ -118,10 +118,10 @@ const Scheduler: React.FC = () => {
   const handleDeletePolicy = async (policyId: string) => {
     try {
       await schedulerApi.deletePolicy(policyId);
-      alert('策略删除成功');
+      toast.success('策略删除成功');
       fetchData();
     } catch (error) {
-      alert('删除策略失败');
+      toast.error('删除策略失败');
     }
   };
 
@@ -222,10 +222,10 @@ const Scheduler: React.FC = () => {
             onClick={async () => {
               try {
                 await schedulerApi.cancelTask(record.id);
-                alert('任务已取消');
+                toast.success('任务已取消');
                 fetchData();
               } catch (error) {
-                alert('取消任务失败');
+                toast.error('取消任务失败');
               }
             }}
           >

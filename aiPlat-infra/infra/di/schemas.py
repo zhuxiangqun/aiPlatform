@@ -35,6 +35,9 @@ class DIContainerConfig:
     strict_mode: bool = False
     default_singleton: bool = True
     default_lazy: bool = True
+    # Interceptors (ordered by list order; names are case-insensitive)
+    # Supported built-ins: logging, timing, caching, metrics, error_handling
+    interceptors: List[str] = field(default_factory=list)
 
 
 @dataclass

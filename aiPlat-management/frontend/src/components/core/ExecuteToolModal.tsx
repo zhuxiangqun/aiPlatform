@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Modal, Form, Input, InputNumber, Select, message } from 'antd';
+import React, { useMemo, useState } from 'react';
+import { Button, Input, Modal, Select, Textarea, toast } from '../ui';
 
 interface ParameterProperty {
   type?: string;
@@ -19,9 +19,9 @@ interface ExecuteToolModalProps {
 }
 
 const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose }) => {
-  const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ output?: unknown; error?: string; success?: boolean; latency?: number } | null>(null);
+  const [params, setParams] = useState<Record<string, any>>({});
 
   const paramSchema = tool?.parameters as any;
   const requiredFields: string[] = paramSchema?.required || [];
@@ -38,17 +38,40 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
   const handleExecute = async () => {
     if (!tool) return;
     try {
-      const values = await form.validateFields();
       setLoading(true);
       setResult(null);
 
+      // 简单校验 required
+      for (const f of requiredFields) {
+        const v = params[f];
+        if (v === undefined || v === null || v === '') {
+          toast.error(`请输入 ${f}`);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // 对 object/array 字段做 JSON 解析（若是字符串）
+      const normalized: Record<string, any> = { ...params };
+      for (const [k, spec] of Object.entries(properties) as any) {
+        const t = (spec as any)?.type;
+        if ((t === 'object' || t === 'array') && typeof normalized[k] === 'string' && normalized[k].trim()) {
+          try {
+            normalized[k] = JSON.parse(normalized[k]);
+          } catch {
+            toast.error(`参数 ${k} 不是合法 JSON`);
+            setLoading(false);
+            return;
+          }
+        }
+      }
+
       const { toolApi } = await import('../../services');
-      const res = await toolApi.execute(tool.name, values);
+      const res = await toolApi.execute(tool.name, normalized);
       setResult(res as any);
-      message.success(res.success !== false ? '执行成功' : '执行完成');
+      toast.success(res.success !== false ? '执行成功' : '执行完成');
     } catch (error: any) {
-      if (error.errorFields) return;
-      message.error('执行失败');
+      toast.error('执行失败');
       setResult({ error: error.message || 'Unknown error', success: false });
     } finally {
       setLoading(false);
@@ -57,7 +80,7 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
 
   const handleClose = () => {
     setResult(null);
-    form.resetFields();
+    setParams({});
     onClose();
   };
 
@@ -67,74 +90,92 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
 
     if (fieldType === 'integer' || fieldType === 'number') {
       return (
-        <Form.Item
-          key={name}
-          name={name}
-          label={name}
-          required={isRequired}
-          rules={isRequired ? [{ required: true, message: `请输入${name}` }] : undefined}
-          initialValue={spec.default as number | undefined}
-        >
-          <InputNumber
-            className="w-full"
-            placeholder={spec.description || `输入${name}`}
+        <div key={name} className="space-y-1">
+          <div className="text-sm font-medium text-gray-300">
+            {name}{isRequired ? <span className="text-error"> *</span> : null}
+          </div>
+          <Input
+            type="number"
+            value={params[name] ?? (spec.default as any) ?? ''}
+            onChange={(e: any) => setParams((p) => ({ ...p, [name]: e.target.value === '' ? '' : Number(e.target.value) }))}
+            placeholder={spec.description || `输入 ${name}`}
           />
-        </Form.Item>
+          {spec.description && <div className="text-xs text-gray-500">{spec.description}</div>}
+        </div>
       );
     }
 
     if (spec.enum && spec.enum.length > 0) {
       return (
-        <Form.Item
-          key={name}
-          name={name}
-          label={name}
-          required={isRequired}
-          rules={isRequired ? [{ required: true, message: `请选择${name}` }] : undefined}
-          initialValue={spec.default as string | undefined}
-        >
+        <div key={name} className="space-y-1">
+          <div className="text-sm font-medium text-gray-300">
+            {name}{isRequired ? <span className="text-error"> *</span> : null}
+          </div>
           <Select
-            placeholder={spec.description || `选择${name}`}
+            value={params[name] ?? (spec.default as any) ?? ''}
+            onChange={(v) => setParams((p) => ({ ...p, [name]: v }))}
             options={spec.enum.map((v) => ({ value: v, label: v }))}
+            placeholder={spec.description || `选择 ${name}`}
           />
-        </Form.Item>
+          {spec.description && <div className="text-xs text-gray-500">{spec.description}</div>}
+        </div>
+      );
+    }
+
+    // object / array: 用 JSON 输入
+    if (fieldType === 'object' || fieldType === 'array') {
+      return (
+        <div key={name} className="space-y-1">
+          <div className="text-sm font-medium text-gray-300">
+            {name}{isRequired ? <span className="text-error"> *</span> : null}
+          </div>
+          <Textarea
+            rows={4}
+            value={params[name] ?? (spec.default ? JSON.stringify(spec.default, null, 2) : '')}
+            onChange={(e: any) => setParams((p) => ({ ...p, [name]: e.target.value }))}
+            placeholder={spec.description || `输入 ${name}（JSON）`}
+          />
+          {spec.description && <div className="text-xs text-gray-500">{spec.description}</div>}
+        </div>
       );
     }
 
     return (
-      <Form.Item
-        key={name}
-        name={name}
-        label={name}
-        required={isRequired}
-        rules={isRequired ? [{ required: true, message: `请输入${name}` }] : undefined}
-        initialValue={spec.default as string | undefined}
-      >
-        <Input placeholder={spec.description || `输入${name}`} />
-      </Form.Item>
+      <div key={name} className="space-y-1">
+        <div className="text-sm font-medium text-gray-300">
+          {name}{isRequired ? <span className="text-error"> *</span> : null}
+        </div>
+        <Input
+          value={params[name] ?? (spec.default as any) ?? ''}
+          onChange={(e: any) => setParams((p) => ({ ...p, [name]: e.target.value }))}
+          placeholder={spec.description || `输入 ${name}`}
+        />
+        {spec.description && <div className="text-xs text-gray-500">{spec.description}</div>}
+      </div>
     );
   };
 
   return (
     <Modal
-      title={`执行Tool: ${tool?.name || ''}`}
       open={open}
-      onOk={handleExecute}
-      onCancel={handleClose}
-      okText="执行"
-      cancelText="关闭"
-      confirmLoading={loading}
-      destroyOnHidden
-      width={640}
+      onClose={handleClose}
+      title={`执行 Tool: ${tool?.name || ''}`}
+      width={720}
+      footer={
+        <>
+          <Button variant="secondary" onClick={handleClose} disabled={loading}>关闭</Button>
+          <Button variant="primary" onClick={handleExecute} loading={loading}>执行</Button>
+        </>
+      }
     >
       {tool?.description && (
         <div className="mb-4 text-sm text-gray-400">{tool.description}</div>
       )}
 
       {sortedFields.length > 0 ? (
-        <Form form={form} layout="vertical">
+        <div className="space-y-4">
           {sortedFields.map(([name, spec]) => renderField(name, spec as ParameterProperty))}
-        </Form>
+        </div>
       ) : (
         <div className="py-4 text-center text-gray-400 text-sm">
           此 Tool 无需参数，直接点击"执行"即可

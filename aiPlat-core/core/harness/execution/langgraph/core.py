@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 import asyncio
+import uuid
 
 
 class GraphState(TypedDict, total=False):
@@ -192,9 +193,29 @@ class CompiledGraph:
         trace = ExecutionTrace(self.name)
         state = initial_state.copy()
         state.setdefault("step_count", 0)
-        state.setdefault("max_steps", config.max_steps)
+        # 允许恢复执行时更新 max_steps
+        state["max_steps"] = config.max_steps
+        state.setdefault("metadata", {})
+        # Graph run id for checkpoint persistence / audit correlation
+        state["metadata"].setdefault("graph_run_id", str(uuid.uuid4()))
+
+        callback_mgr = None
+        if config.enable_callbacks:
+            try:
+                from .callbacks import CallbackManager
+
+                callback_mgr = CallbackManager.get_instance()
+            except Exception:
+                callback_mgr = None
+
+        if callback_mgr:
+            try:
+                await callback_mgr.trigger_graph_start(self.name, dict(state))
+            except Exception:
+                pass
         
-        current_node = self._entry_point
+        # 恢复语义：若 state 已包含 current_node（来自 checkpoint state），则从该节点继续
+        current_node = state.get("current_node") or self._entry_point
         
         while current_node and state["step_count"] < state["max_steps"]:
             if current_node not in self._nodes:
@@ -203,6 +224,13 @@ class CompiledGraph:
             node_func = self._nodes[current_node]
             
             try:
+                # 将当前节点写入 state（使 checkpoint state 可用于恢复）
+                state["current_node"] = current_node
+                if callback_mgr:
+                    try:
+                        await callback_mgr.trigger_node_start(self.name, current_node, dict(state))
+                    except Exception:
+                        pass
                 if asyncio.iscoroutinefunction(node_func):
                     result = await node_func(state)
                 else:
@@ -210,12 +238,27 @@ class CompiledGraph:
                 
                 if not isinstance(result, NodeResult):
                     result = NodeResult(success=True, output=result)
+
+                if callback_mgr:
+                    try:
+                        await callback_mgr.trigger_node_end(self.name, current_node, dict(state), result)
+                    except Exception:
+                        pass
                 
                 trace.record_node(current_node, result)
                 state["step_count"] += 1
                 
                 if config.enable_checkpoints and state["step_count"] % config.checkpoint_interval == 0:
                     trace.record_checkpoint(state)
+                    if callback_mgr:
+                        try:
+                            await callback_mgr.trigger_checkpoint(
+                                graph_name=self.name,
+                                state=dict(state),
+                                checkpoint_id=str(uuid.uuid4()),
+                            )
+                        except Exception:
+                            pass
                 
                 if not result.should_continue:
                     break
@@ -231,6 +274,7 @@ class CompiledGraph:
                     current_node = next_nodes[0] if len(next_nodes) == 1 else None
                 else:
                     current_node = None
+                state["current_node"] = current_node
                 
                 if current_node in self._end_points:
                     break
@@ -238,6 +282,12 @@ class CompiledGraph:
             except Exception as e:
                 result = NodeResult(success=False, output=None, error=str(e))
                 trace.record_node(current_node, result)
+                if callback_mgr:
+                    try:
+                        await callback_mgr.trigger_node_error(self.name, current_node, e, dict(state))
+                        await callback_mgr.trigger_graph_error(self.name, e, dict(state))
+                    except Exception:
+                        pass
                 state.setdefault("errors", []).append({
                     "node": current_node,
                     "error": str(e),
@@ -246,7 +296,13 @@ class CompiledGraph:
                 break
         
         trace.finalize()
+        state.setdefault("metadata", {})
         state["metadata"]["trace"] = trace.to_dict()
+        if callback_mgr:
+            try:
+                await callback_mgr.trigger_graph_end(self.name, dict(state))
+            except Exception:
+                pass
         return state
     
     def get_nodes(self) -> List[str]:

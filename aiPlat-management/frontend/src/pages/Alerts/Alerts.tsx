@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { RotateCw, AlertTriangle, CheckCircle } from 'lucide-react';
-import { Table, Button, Modal } from '../../components/ui';
+import { Table, Button, Modal, toast } from '../../components/ui';
 import PageHeader from '../../components/common/PageHeader';
 import { alertingApi } from '../../services';
 
@@ -48,7 +48,7 @@ const Alerts: React.FC = () => {
       setRules((rulesData as any).rules || []);
     } catch (error) {
       console.error('Failed to fetch alerts:', error);
-      alert('获取告警数据失败');
+      toast.error('获取告警数据失败');
     } finally {
       setLoading(false);
     }
@@ -59,12 +59,12 @@ const Alerts: React.FC = () => {
   }, []);
 
   const handleAcknowledge = (_alertId: string) => {
-    alert('告警已确认');
+    toast.success('告警已确认');
     fetchData();
   };
 
   const handleToggleRule = (_ruleId: string, enabled: boolean) => {
-    alert(enabled ? '规则已停用' : '规则已启用');
+    toast.success(enabled ? '规则已停用' : '规则已启用');
     fetchData();
   };
 

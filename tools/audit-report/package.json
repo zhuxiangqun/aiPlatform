@@ -1,0 +1,14 @@
+{
+  "name": "aiplat-audit-report",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Generate aiPlat design-doc vs code audit report (docx) from reports/audit_findings.json",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "docx": "^8.5.0"
+  },
+  "scripts": {
+    "audit:docx": "node generate.js"
+  }
+}
+

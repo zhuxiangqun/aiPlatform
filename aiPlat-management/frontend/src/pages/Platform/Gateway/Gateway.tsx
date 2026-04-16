@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, RotateCcw, Trash2, Globe, Zap } from 'lucide-react';
-import { Table, Button, Modal, Switch } from '../../../components/ui';
+import { Table, Button, Modal, Switch, toast } from '../../../components/ui';
 import PageHeader from '../../../components/common/PageHeader';
 import { gatewayApi } from '../../../services';
 import type { GatewayRoute } from '../../../services';
@@ -25,7 +25,7 @@ const Gateway: React.FC = () => {
       const res = await gatewayApi.list();
       setRoutes(res.routes || []);
     } catch {
-      alert('获取路由列表失败');
+      toast.error('获取路由列表失败');
       setRoutes([]);
     } finally {
       setLoading(false);
@@ -39,10 +39,10 @@ const Gateway: React.FC = () => {
   const handleToggle = async (route: GatewayRoute) => {
     try {
       await gatewayApi.update(route.id, { enabled: !route.enabled });
-      alert(`路由 "${route.name}" 已${route.enabled ? '禁用' : '启用'}`);
+      toast.success(`路由 "${route.name}" 已${route.enabled ? '禁用' : '启用'}`);
       fetchRoutes();
     } catch {
-      alert('操作失败');
+      toast.error('操作失败');
     }
   };
 
@@ -50,11 +50,11 @@ const Gateway: React.FC = () => {
     if (!deleteModal.route) return;
     try {
       await gatewayApi.delete(deleteModal.route.id);
-      alert('路由已删除');
+      toast.success('路由已删除');
       setDeleteModal({ open: false, route: null });
       fetchRoutes();
     } catch {
-      alert('删除失败');
+      toast.error('删除失败');
     }
   };
 

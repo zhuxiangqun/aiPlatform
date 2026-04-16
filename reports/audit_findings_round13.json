@@ -1,0 +1,50 @@
+{
+  "meta": {
+    "project": "aiPlat",
+    "round": "round13",
+    "date": "2026-04-16",
+    "scope": [
+      "aiPlat-core/core/harness/execution/langgraph/graphs/react.py",
+      "aiPlat-core/core/services/execution_store.py",
+      "aiPlat-core/core/server.py",
+      "aiPlat-core/core/harness/execution/langgraph/callbacks.py",
+      "aiPlat-core/core/tests/integration/test_execution_trace_link_api.py",
+      "aiPlat-core/docs/ARCHITECTURE_STATUS.md"
+    ],
+    "purpose": "完成 Round12 后遗留的 3 项 To‑Be：将闭环推广到 ReActGraph/LangGraphExecutor、补齐 execution↔trace 联查、强化 resume 幂等与权限校验。"
+  },
+  "items": [
+    {
+      "id": "CORE-CLOSELOOP-001",
+      "design_statement": "系统应提供端到端闭环：图执行具备 checkpoints/callbacks/落库；execution_id 与 trace_id 可互相定位；resume 支持幂等与权限约束。",
+      "code_evidence": [
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/harness/execution/langgraph/graphs/react.py",
+          "evidence": "ReActGraph.run 默认切换为内部 CompiledGraph 引擎（GraphConfig enable_checkpoints/callbacks），从而让 LangGraphExecutor/UnifiedExecutor 走同一闭环口径。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/services/execution_store.py",
+          "evidence": "resume_graph_run 增加幂等返回；init() best-effort 创建唯一索引 idx_graph_runs_resume_unique；新增 get_trace_id_by_execution_id / list_executions_by_trace_id 联查方法。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/server.py",
+          "evidence": "新增 /executions/{execution_id}/trace 与 /traces/{trace_id}/executions；resume/resume_execute 增加基于 graph:{graph_name} 的权限校验（非 system 用户）。"
+        }
+      ],
+      "tests": [
+        {
+          "path": "aiPlat-core/core/tests/integration/test_execution_trace_link_api.py",
+          "command": "pytest -q core/tests/integration/test_execution_trace_link_api.py"
+        }
+      ],
+      "verdict": "✅一致",
+      "risk": "中",
+      "status": "fixed",
+      "updated_at": "2026-04-16"
+    }
+  ]
+}
+

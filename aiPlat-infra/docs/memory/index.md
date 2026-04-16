@@ -1,4 +1,6 @@
-# 📚 Memory 模块文档
+# 📚 Memory 模块文档（设计真值：以代码事实为准）
+
+> 说明：memory（infra）侧是“资源/缓存/显存”等基础设施抽象，与 core/harness 的“对话记忆/语义记忆”概念不同。As-Is 以 `infra/memory/*` 代码与测试为准。
 
 > 内存资源管理 - 基础设施层
 
@@ -306,3 +308,9 @@ class MyBackendMemoryManager(MemoryManager):
 ---
 
 *最后更新: 2026-04-11*
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- 代码入口：`infra/memory/*`

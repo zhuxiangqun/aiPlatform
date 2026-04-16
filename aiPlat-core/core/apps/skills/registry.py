@@ -132,6 +132,14 @@ class SkillRegistry:
         """Get all versions of a skill"""
         return self._versions.get(name, [])
 
+    def get_active_version(self, name: str) -> Optional[str]:
+        """Get currently active version for a skill."""
+        versions = self._versions.get(name, [])
+        for v in versions:
+            if v.is_active:
+                return v.version
+        return versions[-1].version if versions else None
+
     def rollback_version(self, name: str, version: str) -> bool:
         """Rollback skill to a specific version"""
         with self._lock:
@@ -147,7 +155,11 @@ class SkillRegistry:
                 v.is_active = (v.version == version)
             skill = self._skills.get(name)
             if skill:
-                # Re-register with target config
+                # Apply target config to the skill instance so rollback affects subsequent execution.
+                try:
+                    setattr(skill, "_config", target.config)
+                except Exception:
+                    pass
                 self._skills[name] = skill
             return True
 

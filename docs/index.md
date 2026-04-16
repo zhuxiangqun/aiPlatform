@@ -40,7 +40,7 @@
 
 | 层级 | 文档 | 核心模块 | 测试状态 |
 |------|------|---------|---------|
-| **Layer 3** | [aiPlat-app](../aiPlat-app/docs/index.md) | Gateway, CLI, Workbench | - |
+| **Layer 3** | [aiPlat-app](../aiPlat-app/docs/index.md) | Message Gateway, CLI, Workbench | - |
 | **Layer 2** | [aiPlat-platform](../aiPlat-platform/docs/index.md) | API, Auth, Tenants, Billing | - |
 | **Layer 1** | [aiPlat-core](../aiPlat-core/docs/index.md) | Harness, Agents, Skills, Memory | - |
 | **Layer 0** | [aiPlat-infra](../aiPlat-infra/docs/index.md) | Database, LLM, Vector, Config | ✅ [测试文档](../aiPlat-infra/docs/testing/index.md) |
@@ -52,6 +52,7 @@
 ## 设计规范
 
 - [系统级 UI 设计规范](UI_DESIGN.md) - 统一整个系统的前端设计语言和编程标准
+- [UI 实现状态](UI_IMPLEMENTATION_STATUS.md) - 记录 As‑Is/进度/差异，避免污染设计规范
 - [系统级测试指南](TESTING_GUIDE.md) - 测试策略、分层测试方法、跨层测试规范
 
 ### 功能增强设计
@@ -84,21 +85,21 @@
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                  aiPlat-app (Layer 3)                      │
-│         应用层 - Gateway, CLI, Workbench, Services         │
+│   应用层 - Message Gateway, CLI, Workbench, App Services   │
 │                  [文档](../aiPlat-app/docs/index.md)        │
 └────────────────────┬───────────────────────────────────────┘
                        │ 依赖
                        ↓
 ┌─────────────────────────────────────────────────────────────┐
 │              aiPlat-platform (Layer 2)                      │
-│       平台服务层 - API, Auth, Tenants, Gateway, Billing     │
+│   平台服务层 - API, Auth, Tenants, API Gateway, Billing     │
 │                [文档](../aiPlat-platform/docs/index.md)      │
 └────────────────────┬───────────────────────────────────────┘
                        │ 依赖
                        ↓
 ┌─────────────────────────────────────────────────────────────┐
 │               aiPlat-core (Layer 1)                         │
-│     AI 中台核心 - Harness, Orchestration, Agents, Skills   │
+│ AI 中台核心 - Core Runtime (Harness/Orchestration/Agents)  │
 │                  [文档](../aiPlat-core/docs/index.md)        │
 └────────────────────┬───────────────────────────────────────┘
                        │ 依赖

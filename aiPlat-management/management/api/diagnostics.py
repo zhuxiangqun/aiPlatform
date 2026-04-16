@@ -2,30 +2,49 @@
 Diagnostics API
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from typing import Dict, Any, Optional
-
-from management.diagnostics import (
-    InfraHealthChecker,
-    CoreHealthChecker,
-    PlatformHealthChecker,
-    AppHealthChecker,
-)
-
 
 router = APIRouter(prefix="/diagnostics", tags=["diagnostics"])
 
-# 创建健康检查器
-health_checkers = {
-    "infra": InfraHealthChecker(),
-    "core": CoreHealthChecker(),
-    "platform": PlatformHealthChecker(),
-    "app": AppHealthChecker(),
-}
+
+def _links_summary(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """将 links 聚合结果压缩为面板友好的摘要信息。"""
+    resolved = payload.get("resolved") if isinstance(payload.get("resolved"), dict) else {}
+    trace = payload.get("trace") if isinstance(payload.get("trace"), dict) else None
+    executions = payload.get("executions") if isinstance(payload.get("executions"), dict) else None
+    graph_runs = payload.get("graph_runs") if isinstance(payload.get("graph_runs"), dict) else None
+    run = payload.get("run") if isinstance(payload.get("run"), dict) else None
+    lineage = payload.get("lineage") if isinstance(payload.get("lineage"), list) else []
+
+    agent_execs = (executions.get("items", {}).get("agent_executions") if executions else None) or []
+    skill_execs = (executions.get("items", {}).get("skill_executions") if executions else None) or []
+    runs = (graph_runs.get("runs") if graph_runs else None) or []
+
+    return {
+        "trace_id": resolved.get("trace_id"),
+        "run_id": resolved.get("run_id"),
+        "trace_status": trace.get("status") if trace else None,
+        "execution_counts": {
+            "agents": len(agent_execs),
+            "skills": len(skill_execs),
+            "total": len(agent_execs) + len(skill_execs),
+        },
+        "graph_run_counts": {
+            "total": int(graph_runs.get("total", 0) if graph_runs else 0),
+            "returned": len(runs),
+        },
+        "lineage_depth": len(lineage),
+        "lineage_root_run_id": (lineage[-1].get("run_id") if lineage and isinstance(lineage[-1], dict) else (run.get("run_id") if run else None)),
+        "actions": {
+            "can_resume": bool(run and run.get("run_id")),
+            "has_trace": bool(resolved.get("trace_id")),
+        },
+    }
 
 
 @router.get("/health/{layer}")
-async def get_layer_health(layer: str) -> Dict[str, Any]:
+async def get_layer_health(layer: str, request: Request) -> Dict[str, Any]:
     """获取指定层级健康状态
     
     Args:
@@ -34,6 +53,7 @@ async def get_layer_health(layer: str) -> Dict[str, Any]:
     Returns:
         健康状态
     """
+    health_checkers = request.app.state.health_checkers
     if layer not in health_checkers:
         raise HTTPException(status_code=404, detail=f"Layer '{layer}' not found")
     
@@ -44,12 +64,13 @@ async def get_layer_health(layer: str) -> Dict[str, Any]:
 
 
 @router.get("/health/all")
-async def get_all_health() -> Dict[str, Dict[str, Any]]:
+async def get_all_health(request: Request) -> Dict[str, Dict[str, Any]]:
     """获取所有层级健康状态
     
     Returns:
         所有层级的健康状态
     """
+    health_checkers = request.app.state.health_checkers
     all_health = {}
     
     for layer, checker in health_checkers.items():
@@ -60,12 +81,13 @@ async def get_all_health() -> Dict[str, Dict[str, Any]]:
 
 
 @router.get("/health")
-async def list_available_checks() -> Dict[str, Any]:
+async def list_available_checks(request: Request) -> Dict[str, Any]:
     """列出可用的健康检查
     
     Returns:
         可用的健康检查列表
     """
+    health_checkers = request.app.state.health_checkers
     return {
         "layers": list(health_checkers.keys()),
         "description": {
@@ -78,7 +100,7 @@ async def list_available_checks() -> Dict[str, Any]:
 
 
 @router.post("/check/{layer}")
-async def run_layer_diagnosis(layer: str) -> Dict[str, Any]:
+async def run_layer_diagnosis(layer: str, request: Request) -> Dict[str, Any]:
     """运行层级诊断
     
     Args:
@@ -87,6 +109,7 @@ async def run_layer_diagnosis(layer: str) -> Dict[str, Any]:
     Returns:
         诊断结果
     """
+    health_checkers = request.app.state.health_checkers
     if layer not in health_checkers:
         raise HTTPException(status_code=404, detail=f"Layer '{layer}' not found")
     
@@ -123,7 +146,14 @@ async def run_layer_diagnosis(layer: str) -> Dict[str, Any]:
 
 
 @router.get("/trace/{layer}")
-async def get_layer_trace(layer: str) -> Dict[str, Any]:
+async def get_layer_trace(
+    layer: str,
+    request: Request,
+    trace_id: Optional[str] = None,
+    execution_id: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> Dict[str, Any]:
     """获取层级链路追踪
     
     Args:
@@ -132,24 +162,49 @@ async def get_layer_trace(layer: str) -> Dict[str, Any]:
     Returns:
         链路追踪数据
     """
+    health_checkers = request.app.state.health_checkers
     if layer not in health_checkers:
         raise HTTPException(status_code=404, detail=f"Layer '{layer}' not found")
-    
-    # TODO: 实现链路追踪
-    return {
-        "layer": layer,
-        "traces": [],
-        "message": "Tracing not implemented yet"
-    }
+
+    # 目前仅对 core 层提供可用闭环：ExecutionStore traces/spans/executions
+    if layer != "core":
+        return {"layer": layer, "supported": False, "message": "Tracing is supported for core layer only (for now)."}
+
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="Core client not initialized")
+
+    # Priority: execution_id -> trace, trace_id -> trace, else list traces
+    if execution_id:
+        trace = await core_client.get_trace_by_execution(execution_id)
+        return {"layer": "core", "supported": True, "trace": trace, "mode": "by_execution_id", "execution_id": execution_id}
+
+    if trace_id:
+        trace = await core_client.get_trace(trace_id)
+        executions = await core_client.list_executions_by_trace(trace_id, limit=limit, offset=offset)
+        return {
+            "layer": "core",
+            "supported": True,
+            "trace": trace,
+            "executions": executions,
+            "mode": "by_trace_id",
+            "trace_id": trace_id,
+            "limit": limit,
+            "offset": offset,
+        }
+
+    traces = await core_client.list_traces(limit=limit, offset=offset)
+    return {"layer": "core", "supported": True, "traces": traces, "mode": "list", "limit": limit, "offset": offset}
 
 
 @router.get("/system")
-async def get_system_overview() -> Dict[str, Any]:
+async def get_system_overview(request: Request) -> Dict[str, Any]:
     """获取系统概览
     
     Returns:
         系统概览
     """
+    health_checkers = request.app.state.health_checkers
     overview = {
         "overall_status": "healthy",
         "layers": {},
@@ -175,3 +230,256 @@ async def get_system_overview() -> Dict[str, Any]:
             overview["overall_status"] = "unhealthy"
     
     return overview
+
+
+@router.get("/graphs/{layer}")
+async def list_layer_graph_runs(
+    layer: str,
+    request: Request,
+    graph_name: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> Dict[str, Any]:
+    """
+    获取图执行列表（管理面聚合入口）。
+
+    目前仅支持 core 层（aiPlat-core ExecutionStore）。
+    """
+    health_checkers = request.app.state.health_checkers
+    if layer not in health_checkers:
+        raise HTTPException(status_code=404, detail=f"Layer '{layer}' not found")
+
+    if layer != "core":
+        return {"layer": layer, "supported": False, "message": "Graph runs are supported for core layer only (for now)."}
+
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="Core client not initialized")
+
+    runs = await core_client.list_graph_runs(limit=limit, offset=offset, graph_name=graph_name, status=status)
+    return {"layer": "core", "supported": True, "runs": runs}
+
+
+@router.get("/graphs/{layer}/{run_id}")
+async def get_layer_graph_run(
+    layer: str,
+    run_id: str,
+    request: Request,
+    include_checkpoints: bool = True,
+    checkpoints_limit: int = 50,
+    checkpoints_offset: int = 0,
+) -> Dict[str, Any]:
+    """
+    获取单次图执行与 checkpoints（管理面聚合入口）。
+    """
+    health_checkers = request.app.state.health_checkers
+    if layer not in health_checkers:
+        raise HTTPException(status_code=404, detail=f"Layer '{layer}' not found")
+
+    if layer != "core":
+        return {"layer": layer, "supported": False, "message": "Graph run details are supported for core layer only (for now)."}
+
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="Core client not initialized")
+
+    run = await core_client.get_graph_run(run_id)
+    if not include_checkpoints:
+        return {"layer": "core", "supported": True, "run": run}
+
+    checkpoints = await core_client.list_graph_checkpoints(run_id, limit=checkpoints_limit, offset=checkpoints_offset)
+    return {
+        "layer": "core",
+        "supported": True,
+        "run": run,
+        "checkpoints": checkpoints,
+        "checkpoints_limit": checkpoints_limit,
+        "checkpoints_offset": checkpoints_offset,
+    }
+
+
+@router.post("/graphs/{layer}/{run_id}/resume")
+async def resume_layer_graph_run(layer: str, run_id: str, request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    从 checkpoint 恢复（仅建档，不继续执行）。
+
+    目前仅支持 core 层，透传到：
+    POST /api/core/graphs/runs/{run_id}/resume
+    """
+    health_checkers = request.app.state.health_checkers
+    if layer not in health_checkers:
+        raise HTTPException(status_code=404, detail=f"Layer '{layer}' not found")
+
+    if layer != "core":
+        return {"layer": layer, "supported": False, "message": "Resume is supported for core layer only (for now)."}
+
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="Core client not initialized")
+
+    payload = body or {}
+    resumed = await core_client.resume_graph_run(run_id, payload)
+    return {"layer": "core", "supported": True, "resumed": resumed}
+
+
+@router.post("/graphs/{layer}/{run_id}/resume/execute")
+async def resume_and_execute_layer_graph_run(layer: str, run_id: str, request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    从 checkpoint 恢复并继续执行（闭环）。
+
+    目前仅支持 core 层，透传到：
+    POST /api/core/graphs/runs/{run_id}/resume/execute
+    """
+    health_checkers = request.app.state.health_checkers
+    if layer not in health_checkers:
+        raise HTTPException(status_code=404, detail=f"Layer '{layer}' not found")
+
+    if layer != "core":
+        return {"layer": layer, "supported": False, "message": "Resume/execute is supported for core layer only (for now)."}
+
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="Core client not initialized")
+
+    payload = body or {}
+    result = await core_client.resume_and_execute_graph_run(run_id, payload)
+    return {"layer": "core", "supported": True, "result": result}
+
+
+@router.get("/links/{layer}")
+async def get_layer_links(
+    layer: str,
+    request: Request,
+    trace_id: Optional[str] = None,
+    execution_id: Optional[str] = None,
+    run_id: Optional[str] = None,
+    graph_run_id: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+    lineage_depth: int = 3,
+    include_spans: bool = False,
+) -> Dict[str, Any]:
+    """
+    联动查询入口（设计正确：management 聚合展示）。
+
+    core 支持：
+    - execution_id -> trace -> executions -> graph_runs(trace_id)（若存在）
+    - trace_id -> trace -> executions -> graph_runs(trace_id)
+    - run_id -> graph_run(trace_id) -> trace -> executions
+    """
+    health_checkers = request.app.state.health_checkers
+    if layer not in health_checkers:
+        raise HTTPException(status_code=404, detail=f"Layer '{layer}' not found")
+    if layer != "core":
+        return {"layer": layer, "supported": False, "message": "Links are supported for core layer only (for now)."}
+
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="Core client not initialized")
+
+    resolved_trace_id = trace_id
+    resolved_run_id = run_id or graph_run_id
+
+    if execution_id:
+        t = await core_client.get_trace_by_execution(execution_id)
+        resolved_trace_id = t.get("trace_id") if isinstance(t, dict) else resolved_trace_id
+
+    run = None
+    lineage = []
+    if resolved_run_id:
+        run = await core_client.get_graph_run(resolved_run_id)
+        # Prefer explicit column trace_id, fallback to metadata.trace_id
+        resolved_trace_id = run.get("trace_id") or ((run.get("initial_state") or {}).get("metadata") or {}).get("trace_id") or resolved_trace_id
+        # lineage chain (best effort)
+        cur = run
+        for _ in range(max(0, int(lineage_depth))):
+            parent = cur.get("parent_run_id") if isinstance(cur, dict) else None
+            if not parent:
+                break
+            try:
+                parent_run = await core_client.get_graph_run(parent)
+                lineage.append(parent_run)
+                cur = parent_run
+            except Exception:
+                break
+
+    trace = None
+    executions = None
+    graph_runs = None
+    if resolved_trace_id:
+        try:
+            trace = await core_client.get_trace(resolved_trace_id)
+            if not include_spans and isinstance(trace, dict) and "spans" in trace:
+                # 默认不返回 spans，避免 payload 过大；需要时由 include_spans=true 打开
+                trace = {**trace}
+                trace.pop("spans", None)
+        except Exception:
+            trace = None
+        try:
+            executions = await core_client.list_executions_by_trace(resolved_trace_id, limit=limit, offset=offset)
+        except Exception:
+            executions = None
+        try:
+            graph_runs = await core_client.list_graph_runs(limit=limit, offset=offset, trace_id=resolved_trace_id)
+        except Exception:
+            graph_runs = None
+
+    return {
+        "layer": "core",
+        "supported": True,
+        "query": {"trace_id": trace_id, "execution_id": execution_id, "run_id": run_id, "graph_run_id": graph_run_id, "include_spans": include_spans},
+        "resolved": {"trace_id": resolved_trace_id, "run_id": resolved_run_id},
+        "trace": trace,
+        "executions": executions,
+        "graph_runs": graph_runs,
+        "run": run,
+        "lineage": lineage,
+        "limit": limit,
+        "offset": offset,
+    }
+
+
+@router.get("/links/{layer}/ui")
+async def get_layer_links_ui(
+    layer: str,
+    request: Request,
+    trace_id: Optional[str] = None,
+    execution_id: Optional[str] = None,
+    run_id: Optional[str] = None,
+    graph_run_id: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+    lineage_depth: int = 3,
+    include_spans: bool = False,
+) -> Dict[str, Any]:
+    """
+    Frontend/UI 友好版本：字段裁剪 + 汇总 + 行为提示。
+    - 仍保持设计原则：management 仅做聚合/转发，不实现业务逻辑。
+    """
+    full = await get_layer_links(  # type: ignore[misc]
+        layer=layer,
+        request=request,
+        trace_id=trace_id,
+        execution_id=execution_id,
+        run_id=run_id,
+        graph_run_id=graph_run_id,
+        limit=limit,
+        offset=offset,
+        lineage_depth=lineage_depth,
+        include_spans=include_spans,
+    )
+    if not full.get("supported"):
+        return full
+
+    return {
+        "layer": full.get("layer"),
+        "supported": True,
+        "summary": _links_summary(full),
+        # minimal payload for UI list rendering
+        "trace": full.get("trace"),
+        "executions": full.get("executions"),
+        "graph_runs": full.get("graph_runs"),
+        "run": full.get("run"),
+        "lineage": full.get("lineage"),
+    }

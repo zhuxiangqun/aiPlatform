@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Modal, Table, Button, Space, Tag, message, Form, Select, Checkbox, Card } from 'antd';
-import { RotateCw, Upload, Undo2, Info } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { RotateCw, Upload, Undo2 } from 'lucide-react';
 
-const { Column } = Table;
+import { Alert, Button, Card, Input, Modal, Select, Table, toast } from '../ui';
 
 interface Driver {
   version: string;
@@ -33,7 +32,7 @@ const DriverManager: React.FC<DriverManagerProps> = ({ visible, onCancel, embedd
       const data = await response.json();
       setDrivers(data.drivers || []);
     } catch (error) {
-      message.error('获取驱动列表失败');
+      toast.error('获取驱动列表失败');
       console.error('Failed to fetch drivers:', error);
     } finally {
       setLoading(false);
@@ -41,233 +40,202 @@ const DriverManager: React.FC<DriverManagerProps> = ({ visible, onCancel, embedd
   };
 
   useEffect(() => {
-    if (visible || embedded) {
-      fetchDrivers();
-    }
+    if (visible || embedded) fetchDrivers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, embedded]);
 
-  const handleUpgrade = async () => {
-    if (!selectedVersion) {
-      message.warning('请输入新版本号');
-      return;
-    }
+  const allNodes = useMemo(() => [...new Set(drivers.flatMap((d) => d.nodes))], [drivers]);
 
+  const submitUpgrade = async () => {
+    if (!selectedVersion.trim()) return toast.warning('请输入新版本号');
     setOperating(true);
     try {
       const response = await fetch('/api/infra/drivers/upgrade', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          version: selectedVersion,
+          version: selectedVersion.trim(),
           nodes: selectedNodes.length > 0 ? selectedNodes : undefined,
         }),
       });
-
       if (response.ok) {
-        message.success('驱动升级任务已启动');
+        toast.success('驱动升级任务已启动');
         setUpgradeModalOpen(false);
         setSelectedVersion('');
         setSelectedNodes([]);
         fetchDrivers();
       } else {
-        message.error('驱动升级失败');
+        toast.error('驱动升级失败');
       }
-    } catch (error) {
-      message.error('驱动升级失败');
     } finally {
       setOperating(false);
     }
   };
 
-  const handleRollback = async () => {
-    if (!selectedVersion) {
-      message.warning('请选择回滚版本');
-      return;
-    }
-
+  const submitRollback = async () => {
+    if (!selectedVersion.trim()) return toast.warning('请选择回滚版本');
     setOperating(true);
     try {
       const response = await fetch('/api/infra/drivers/rollback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          version: selectedVersion,
+          version: selectedVersion.trim(),
           nodes: selectedNodes.length > 0 ? selectedNodes : undefined,
         }),
       });
-
       if (response.ok) {
-        message.success('驱动回滚任务已启动');
+        toast.success('驱动回滚任务已启动');
         setRollbackModalOpen(false);
         setSelectedVersion('');
         setSelectedNodes([]);
         fetchDrivers();
       } else {
-        message.error('驱动回滚失败');
+        toast.error('驱动回滚失败');
       }
-    } catch (error) {
-      message.error('驱动回滚失败');
     } finally {
       setOperating(false);
     }
   };
 
-  const allNodes = [...new Set(drivers.flatMap(d => d.nodes))];
+  const columns = useMemo(
+    () => [
+      { key: 'version', title: '驱动版本', dataIndex: 'version' },
+      { key: 'node_count', title: '节点数量', dataIndex: 'node_count', align: 'right' as const },
+      {
+        key: 'gpu_models',
+        title: 'GPU 型号',
+        dataIndex: 'gpu_models',
+        render: (models: string[]) => (models || []).join(', ') || '-',
+      },
+      {
+        key: 'nodes',
+        title: '节点列表',
+        dataIndex: 'nodes',
+        render: (nodes: string[]) => (nodes || []).slice(0, 6).join(', ') + ((nodes || []).length > 6 ? ` …(+${nodes.length - 6})` : ''),
+      },
+    ],
+    []
+  );
 
   const content = (
-    <>
-      <Space style={{ marginBottom: 16 }}>
-        <Button icon={<RotateCw size={16} />} onClick={fetchDrivers} loading={loading}>
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Button variant="secondary" icon={<RotateCw size={16} />} onClick={fetchDrivers} loading={loading}>
           刷新
         </Button>
-        <Button
-          type="primary"
-          icon={<Upload size={16} />}
-          onClick={() => {
-            setSelectedVersion('');
-            setSelectedNodes([]);
-            setUpgradeModalOpen(true);
-          }}
-        >
+        <Button variant="primary" icon={<Upload size={16} />} onClick={() => setUpgradeModalOpen(true)}>
           升级驱动
         </Button>
-        <Button
-          icon={<Undo2 size={16} />}
-          onClick={() => {
-            setSelectedVersion('');
-            setSelectedNodes([]);
-            setRollbackModalOpen(true);
-          }}
-        >
+        <Button variant="secondary" icon={<Undo2 size={16} />} onClick={() => setRollbackModalOpen(true)}>
           回滚驱动
         </Button>
-      </Space>
+      </div>
 
-      <Card style={{ marginBottom: 16 }}>
-        <Space>
-          <Info style={{ color: '#1890ff' }} />
-          <span>驱动管理功能用于管理和升级 GPU 驱动版本。升级前请确保工作负载已迁移。</span>
-        </Space>
-      </Card>
+      <Alert type="info" title="驱动管理说明">
+        升级/回滚会在后台异步执行，并可能导致节点重启。建议在维护窗口操作。
+      </Alert>
 
-      <Table
-        dataSource={drivers}
-        loading={loading}
-        rowKey="version"
-        pagination={false}
-      >
-        <Column
-          title="驱动版本"
-          dataIndex="version"
-          key="version"
-          render={(version: string) => <Tag color="blue">{version}</Tag>}
-        />
-        <Column
-          title="节点数量"
-          dataIndex="node_count"
-          key="node_count"
-          render={(count: number) => <Tag color={count > 0 ? 'green' : 'default'}>{count}</Tag>}
-        />
-        <Column
-          title="节点列表"
-          dataIndex="nodes"
-          key="nodes"
-          render={(nodes: string[]) => nodes.join(', ') || '-'}
-        />
-        <Column
-          title="GPU 型号"
-          dataIndex="gpu_models"
-          key="gpu_models"
-          render={(models: string[]) => models.join(', ') || '-'}
-        />
-      </Table>
+      <Table columns={columns as any} data={drivers} rowKey="version" loading={loading} />
 
-      {/* 升级弹窗 */}
       <Modal
-        title="升级 GPU 驱动"
         open={upgradeModalOpen}
-        onCancel={() => setUpgradeModalOpen(false)}
-        onOk={handleUpgrade}
-        confirmLoading={operating}
-        okText="开始升级"
+        onClose={() => { setUpgradeModalOpen(false); setSelectedVersion(''); setSelectedNodes([]); }}
+        title="升级驱动"
+        width={560}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => { setUpgradeModalOpen(false); setSelectedVersion(''); setSelectedNodes([]); }}>
+              取消
+            </Button>
+            <Button variant="primary" onClick={submitUpgrade} loading={operating}>
+              确认
+            </Button>
+          </>
+        }
       >
-        <Form layout="vertical">
-          <Form.Item label="新驱动版本" required>
-            <Select
-              placeholder="选择或输入驱动版本"
-              value={selectedVersion}
-              onChange={setSelectedVersion}
-              showSearch
-              allowClear
-              options={[
-                { value: '545.23.08', label: '545.23.08 (Latest)' },
-                { value: '535.154.05', label: '535.154.05 (Stable)' },
-                { value: '535.104.05', label: '535.104.05' },
-                { value: '525.89.02', label: '525.89.02 (Legacy)' },
-              ]}
-            />
-          </Form.Item>
-          <Form.Item label="目标节点">
-            <Checkbox.Group
+        <div className="space-y-4">
+          <Input label="新版本号" value={selectedVersion} onChange={(e: any) => setSelectedVersion(e.target.value)} placeholder="例如: 550.40.07" />
+          <div>
+            <div className="text-sm font-medium text-gray-300 mb-2">指定节点（可选，多选）</div>
+            <select
+              multiple
               value={selectedNodes}
-              onChange={(values) => setSelectedNodes(values as string[])}
-              options={allNodes.map(n => ({ label: n, value: n }))}
-            />
-            <div style={{ color: '#999', fontSize: 12, marginTop: 8 }}>
-              不选择则升级所有节点
-            </div>
-          </Form.Item>
-        </Form>
+              onChange={(e) => setSelectedNodes(Array.from(e.target.selectedOptions).map((o) => o.value))}
+              className="w-full h-28 px-3 py-2 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100"
+            >
+              {allNodes.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+            <div className="text-xs text-gray-500 mt-1">不选择则对所有节点生效</div>
+          </div>
+        </div>
       </Modal>
 
-      {/* 回滚弹窗 */}
       <Modal
-        title="回滚 GPU 驱动"
         open={rollbackModalOpen}
-        onCancel={() => setRollbackModalOpen(false)}
-        onOk={handleRollback}
-        confirmLoading={operating}
-        okText="开始回滚"
+        onClose={() => { setRollbackModalOpen(false); setSelectedVersion(''); setSelectedNodes([]); }}
+        title="回滚驱动"
+        width={560}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => { setRollbackModalOpen(false); setSelectedVersion(''); setSelectedNodes([]); }}>
+              取消
+            </Button>
+            <Button variant="danger" onClick={submitRollback} loading={operating}>
+              确认回滚
+            </Button>
+          </>
+        }
       >
-        <Form layout="vertical">
-          <Form.Item label="回滚到版本" required>
-            <Select
-              placeholder="选择历史版本"
-              value={selectedVersion}
-              onChange={setSelectedVersion}
-              options={drivers.map(d => ({ value: d.version, label: d.version }))}
-            />
-          </Form.Item>
-          <Form.Item label="目标节点">
-            <Checkbox.Group
+        <div className="space-y-4">
+          <Select
+            label="回滚版本"
+            value={selectedVersion}
+            onChange={(v) => setSelectedVersion(v)}
+            options={drivers.map((d) => ({ value: d.version, label: d.version }))}
+            placeholder="选择驱动版本"
+          />
+          <div>
+            <div className="text-sm font-medium text-gray-300 mb-2">指定节点（可选，多选）</div>
+            <select
+              multiple
               value={selectedNodes}
-              onChange={(values) => setSelectedNodes(values as string[])}
-              options={allNodes.map(n => ({ label: n, value: n }))}
-            />
-            <div style={{ color: '#999', fontSize: 12, marginTop: 8 }}>
-              不选择则回滚所有节点
-            </div>
-          </Form.Item>
-        </Form>
+              onChange={(e) => setSelectedNodes(Array.from(e.target.selectedOptions).map((o) => o.value))}
+              className="w-full h-28 px-3 py-2 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100"
+            >
+              {allNodes.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
       </Modal>
-    </>
+    </div>
   );
 
   if (embedded) {
-    return content;
+    return (
+      <Card>
+        <div className="p-2">
+          <div className="text-sm font-semibold text-gray-200 mb-3">驱动管理</div>
+          {content}
+        </div>
+      </Card>
+    );
   }
 
   return (
-    <Modal
-      title="驱动管理"
-      open={visible}
-      onCancel={onCancel}
-      footer={null}
-      width={800}
-    >
+    <Modal open={!!visible} onClose={onCancel || (() => {})} title="驱动管理" width={980} footer={null}>
       {content}
     </Modal>
   );
 };
 
 export default DriverManager;
+

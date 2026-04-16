@@ -1,4 +1,6 @@
-# 👷 架构师指南
+# 👷 架构师指南（设计真值：以代码事实为准）
+
+> 说明：架构边界与依赖方向以 `aiPlat-infra/docs/index.md` 与实际代码为准；本文档为角色化摘要。
 
 > 基础设施层 - 架构设计与依赖管理
 
@@ -38,6 +40,15 @@
 - 所有模块都可以依赖 config 模块
 
 #### 模块依赖规则
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- infra docs 总索引：`aiPlat-infra/docs/index.md`
+- DI：`infra/di/*`
+- Observability：`infra/observability/*`
+- MCP：`infra/mcp/*`
 
 **允许的依赖**：
 - 所有模块都可以依赖 `config` 模块

@@ -6,6 +6,7 @@ timeout control, and execution tracking.
 """
 
 import asyncio
+import os
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -186,22 +187,55 @@ class SkillExecutor:
                     if params:
                         prompt += f"\nInput: {params}"
 
-                from core.apps.agents.conversational import ConversationalAgent
                 from core.adapters.llm import create_adapter
+                from core.apps.agents.conversational import create_conversational_agent
+                from core.harness.interfaces import AgentConfig, AgentContext
 
-                try:
-                    model = create_adapter(provider="openai", api_key="", model="gpt-4o-mini")
-                except Exception:
-                    model = None
+                # Prefer skill-injected model if available; otherwise create from environment.
+                model = getattr(skill, "_model", None)
+                provider = params.get("provider") or os.getenv("LLM_PROVIDER") or "openai"
+                model_name = params.get("model") or os.getenv("LLM_MODEL") or "gpt-4"
+                api_key = None
+                if provider == "openai":
+                    api_key = os.getenv("OPENAI_API_KEY")
+                elif provider == "anthropic":
+                    api_key = os.getenv("ANTHROPIC_API_KEY")
 
-                agent = ConversationalAgent(
-                    name=f"fork-{skill_name}",
-                    model=model,
-                    system=f"You are a specialized skill agent. Your task: {config.description}\n"
-                           f"Execute the skill '{config.name}' with the given parameters."
+                if model is None:
+                    try:
+                        model = create_adapter(provider=provider, api_key=api_key, model=model_name)
+                    except Exception:
+                        model = None
+
+                if model is None:
+                    return type(
+                        "Result",
+                        (),
+                        {
+                            "success": False,
+                            "output": None,
+                            "error": "Fork mode requires a configured LLM adapter (set LLM_PROVIDER/LLM_MODEL and provider API key env).",
+                        },
+                    )()
+
+                system_prompt = (
+                    "你是一个专用技能代理（fork mode）。\n"
+                    f"技能名称：{getattr(config, 'name', skill_name)}\n"
+                    f"技能描述：{getattr(config, 'description', '')}\n"
+                    "你的任务：根据用户给定的参数与输入，严格执行该技能并输出结果。"
                 )
 
-                from core.harness.interfaces import AgentContext
+                agent_config = AgentConfig(
+                    name=f"fork-{skill_name}",
+                    model=model_name,
+                    metadata={"role": "fork-agent", "skill": skill_name},
+                )
+                agent = create_conversational_agent(
+                    config=agent_config,
+                    model=model,
+                    system_prompt=system_prompt,
+                )
+
                 agent_context = AgentContext(
                     session_id=context.session_id if context else "fork",
                     user_id=context.user_id if context else "system",

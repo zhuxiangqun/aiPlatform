@@ -244,7 +244,12 @@ class AgentRegistry:
         """Register an agent instance"""
         self._agents[name] = agent
         self._configs[name] = config
-        self._states[name] = "idle"
+        # Canonical execution-layer default state
+        try:
+            from core.harness.state import AgentStateEnum
+            self._states[name] = AgentStateEnum.READY.value
+        except Exception:
+            self._states[name] = "ready"
         if metadata:
             self._metadata[name] = metadata
     

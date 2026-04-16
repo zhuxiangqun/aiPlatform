@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, RotateCw, Settings } from 'lucide-react';
-import { Table, Button } from '../../../components/ui';
+import { Table, Button, toast } from '../../../components/ui';
 import PageHeader from '../../../components/common/PageHeader';
 import AddNodeModal from '../../../components/infra/AddNodeModal';
 import NodeDetailModal from '../../../components/infra/NodeDetailModal';
@@ -22,7 +22,7 @@ const Nodes: React.FC = () => {
       const response = await nodeApi.list();
       setNodes(response?.nodes || []);
     } catch (error) {
-      alert('获取节点列表失败');
+      toast.error('获取节点列表失败');
       console.error('Failed to fetch nodes:', error);
       setNodes([]);
     } finally {
@@ -37,11 +37,11 @@ const Nodes: React.FC = () => {
   const handleAddNode = async (values: any) => {
     try {
       await nodeApi.add(values);
-      alert('节点添加成功');
+      toast.success('节点添加成功');
       setAddModalOpen(false);
       fetchNodes();
     } catch (error) {
-      alert('节点添加失败');
+      toast.error('节点添加失败');
       console.error('Failed to add node:', error);
     }
   };
@@ -58,11 +58,11 @@ const Nodes: React.FC = () => {
   const handleDrain = async (node: Node) => {
     try {
       await nodeApi.drain(node.name);
-      alert(`节点 ${node.name} 已开始驱逐`);
+      toast.info(`节点 ${node.name} 已开始驱逐`);
       setDetailModalOpen(false);
       fetchNodes();
     } catch (error) {
-      alert('驱逐节点失败');
+      toast.error('驱逐节点失败');
       console.error('Failed to drain node:', error);
     }
   };
@@ -70,11 +70,11 @@ const Nodes: React.FC = () => {
   const handleRestart = async (node: Node) => {
     try {
       await nodeApi.restart(node.name);
-      alert(`节点 ${node.name} 已开始重启`);
+      toast.info(`节点 ${node.name} 已开始重启`);
       setDetailModalOpen(false);
       fetchNodes();
     } catch (error) {
-      alert('重启节点失败');
+      toast.error('重启节点失败');
       console.error('Failed to restart node:', error);
     }
   };

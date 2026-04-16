@@ -11,6 +11,7 @@ from .base import (
     ExpertPoolPattern,
     ProducerReviewerPattern,
     SupervisorPattern,
+    HierarchicalDelegationPattern,
     create_pattern,
 )
 
@@ -23,5 +24,6 @@ __all__ = [
     "ExpertPoolPattern",
     "ProducerReviewerPattern",
     "SupervisorPattern",
+    "HierarchicalDelegationPattern",
     "create_pattern",
 ]

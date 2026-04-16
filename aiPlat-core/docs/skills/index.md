@@ -1,6 +1,7 @@
-# 技能系统 (Skills)
+# 技能系统 (Skills)（设计真值：以代码事实为准）
 
-> ⚠️ **实现状态提示**：SkillManager CRUD 可用，但 SkillRegistry 与 SkillManager 断开（CRUD 创建的 Skill 不在 Registry 中），SkillExecutor 因 Registry 为空无法执行。Skill 进化引擎完全未实现。完整状态参见 [架构实现状态](../ARCHITECTURE_STATUS.md)。
+> ⚠️ **实现状态提示（As-Is vs To-Be）**：Phase 7 已修复 `SkillManager ↔ SkillRegistry` 桥接断裂，`SkillExecutor` 可从 Registry 执行 Skill；Skill “进化引擎（CAPTURED/FIX/DERIVED）”仍为 To-Be。  
+> 完整状态与证据链参见 [架构实现状态](../ARCHITECTURE_STATUS.md)。
 
 > 技能系统定义和管理智能体可执行的能力单元，是智能体完成任务的具体手段。
 
@@ -32,8 +33,11 @@ apps/skills/
 │   ├── TextGeneration       # 文本生成
 │   ├── CodeGeneration       # 代码生成
 │   └── DataAnalysis         # 数据分析
-├── registry.py               # SkillRegistry（注册、版本、绑定统计）
-└── executor.py               # SkillExecutor（执行、超时、跟踪）
+├── registry.py              # SkillRegistry（注册、版本、绑定统计）
+├── executor.py              # SkillExecutor（执行、超时、跟踪；inline/fork）
+├── discovery.py             # SKILL.md 发现/解析、加载器、匹配器（用于目录化技能 To-Be/部分现用）
+├── script_runner.py         # 确定性脚本执行器（sandboxed）
+└── types.py                 # SkillManifest/SandboxConfig 等类型
 ```
 
 > **注意**：当前架构正在向 Agent Skill 模式演进，详见 [Skill 架构设计](./architecture.md#二架构演进从基础到-agent-skill-模式)
@@ -63,9 +67,9 @@ apps/skills/
 
 ---
 
-## Skill Factory 标准化开发流程
+## Skill Factory 标准化开发流程（To-Be）
 
-Skill Factory 提供完整的 AI Skill 标准化开发流程：
+Skill Factory 属于 To-Be 的工程化能力，当前仓库尚未形成可验收闭环：
 
 1. **需求分析**：根据需求定义技能规格
 2. **模板生成**：自动生成 skill.yaml 和 SKILL.md
@@ -84,11 +88,11 @@ Skill Factory 提供完整的 AI Skill 标准化开发流程：
 
 ---
 
-## Skill 自动进化
+## Skill 自动进化（To-Be）
 
 > 未来方向：让 AI 从执行轨迹中自动蒸馏、生成和优化 Skill。
 
-**EvoSkills 概念**：
+**EvoSkills 概念（规划）**：
 
 | 阶段 | 说明 | 状态 |
 |------|------|------|
@@ -136,3 +140,12 @@ Skill Factory 提供完整的 AI Skill 标准化开发流程：
 ---
 
 *最后更新: 2026-04-14*
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- Registry：`core/apps/skills/registry.py`
+- Executor（inline/fork）：`core/apps/skills/executor.py`
+- 目录化技能发现（SKILL.md parser/loader/matcher）：`core/apps/skills/discovery.py`
+- 确定性脚本执行：`core/apps/skills/script_runner.py`

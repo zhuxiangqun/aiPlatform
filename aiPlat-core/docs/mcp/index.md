@@ -1,4 +1,4 @@
-# MCP 协议集成
+# MCP 协议集成（设计真值：以代码事实为准）
 
 > 提供 Model Context Protocol (MCP) 支持，实现与外部工具生态的无缝对接
 
@@ -38,6 +38,10 @@
 |------|------|---------|
 | **stdio** | 标准输入输出通信 | 本地进程（如 `npx @modelcontextprotocol/server-filesystem`） |
 | **SSE** | Server-Sent Events over HTTP | 远程服务（如云端 MCP 服务器） |
+
+> 实现状态提示（As-Is）：
+> - core 内 MCP **Server** 已支持 SSE + JSON-RPC over HTTP（`core/apps/mcp/server.py`）。
+> - core 内 MCP **Client** 当前以 **SSE transport** 为主；STDIO client 的“spawn 进程并握手”仍属于 To-Be（需补齐实现与测试）。
 
 ---
 
@@ -253,6 +257,14 @@ MCP_AUTH_ENABLED=true
 - [工具系统](./tools/index.md) - 基础工具接口
 - [Harness 框架](./harness/index.md) - Agent 运行环境
 - [安全设计](./harness/security.md) - 安全审计
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- MCP Server：`core/apps/mcp/server.py`（`/mcp` SSE 与 JSON-RPC endpoints）
+- MCP Client：`core/apps/mcp/client.py`（SSE handler；STDIO client 仍需补齐 spawn 路径）
+- MCP Tool 适配：`core/apps/mcp/adapter.py`（`MCPToolAdapter` → `BaseTool`）
 
 ---
 

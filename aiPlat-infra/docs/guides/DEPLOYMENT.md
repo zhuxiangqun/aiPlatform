@@ -1,4 +1,6 @@
-# 基础设施层部署指南
+# 基础设施层部署指南（To-Be 为主，As-Is 以代码事实为准）
+
+> 说明：本文档包含 Docker/K8s/数据库/消息队列等基础设施部署的 To-Be 指南；本仓库未必包含对应部署工件（make/k8s 等），请以实际 ops 仓库为准。
 
 > 继承系统级部署指南，针对基础设施层的特定要求
 
@@ -21,7 +23,7 @@
 
 ## 继承规范
 
-本文档继承 [系统级部署指南](../../../docs/guides/DEPLOYMENT.md)，所有系统级规范在本层必须遵守：
+本文档可继承系统级部署指南（若存在上层仓库/平台仓库），所有系统级规范在本层必须遵守：
 
 - **环境管理**：dev / test / staging / prod
 - **配置管理**：环境变量优先，敏感信息存 Vault
@@ -114,10 +116,16 @@
 
 ```bash
 # 开发环境 - Docker Compose
-make docker-up-infra
+make docker-up-infra  # To-Be：需实际提供对应 Makefile/compose
 
 # 生产环境 - Kubernetes
 kubectl apply -f k8s/infra/base/
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- infra 可运行能力以代码与测试为准：`infra/tests/*`
 kubectl apply -f k8s/infra/overlays/prod/
 ```
 

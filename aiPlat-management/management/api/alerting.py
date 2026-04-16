@@ -2,23 +2,17 @@
 Alerting API
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from typing import Dict, Any, List, Optional
 from pydantic import BaseModel
 
-from management.alerting import AlertEngine, AlertRule
+from management.alerting import AlertRule
 
 
 router = APIRouter(prefix="/alerting", tags=["alerting"])
 
 # 别名路由 - 支持 /api/alerts 和 /api/alerting/alerts 两种路径
 alias_router = APIRouter(prefix="/alerts", tags=["alerts"])
-
-# 创建告警引擎
-alert_engine = AlertEngine()
-
-# 活跃告警存储
-active_alerts: Dict[str, Any] = {}
 
 
 class AlertRuleCreate(BaseModel):
@@ -33,7 +27,7 @@ class AlertRuleCreate(BaseModel):
 
 
 @router.get("/alerts")
-async def get_alerts(severity: Optional[str] = None) -> Dict[str, Any]:
+async def get_alerts(request: Request, severity: Optional[str] = None) -> Dict[str, Any]:
     """获取告警列表
     
     Args:
@@ -42,6 +36,7 @@ async def get_alerts(severity: Optional[str] = None) -> Dict[str, Any]:
     Returns:
         告警列表
     """
+    active_alerts: Dict[str, Any] = request.app.state.active_alerts
     alerts_list = list(active_alerts.values())
     
     if severity:
@@ -54,7 +49,7 @@ async def get_alerts(severity: Optional[str] = None) -> Dict[str, Any]:
 
 
 @router.post("/alerts/{alert_id}/acknowledge")
-async def acknowledge_alert(alert_id: str) -> Dict[str, Any]:
+async def acknowledge_alert(alert_id: str, request: Request) -> Dict[str, Any]:
     """确认告警
     
     Args:
@@ -63,6 +58,7 @@ async def acknowledge_alert(alert_id: str) -> Dict[str, Any]:
     Returns:
         操作结果
     """
+    active_alerts: Dict[str, Any] = request.app.state.active_alerts
     if alert_id not in active_alerts:
         raise HTTPException(status_code=404, detail=f"Alert '{alert_id}' not found")
     
@@ -72,7 +68,7 @@ async def acknowledge_alert(alert_id: str) -> Dict[str, Any]:
 
 
 @router.post("/alerts/{alert_id}/resolve")
-async def resolve_alert(alert_id: str) -> Dict[str, Any]:
+async def resolve_alert(alert_id: str, request: Request) -> Dict[str, Any]:
     """解决告警
     
     Args:
@@ -81,6 +77,7 @@ async def resolve_alert(alert_id: str) -> Dict[str, Any]:
     Returns:
         操作结果
     """
+    active_alerts: Dict[str, Any] = request.app.state.active_alerts
     if alert_id not in active_alerts:
         raise HTTPException(status_code=404, detail=f"Alert '{alert_id}' not found")
     
@@ -90,12 +87,13 @@ async def resolve_alert(alert_id: str) -> Dict[str, Any]:
 
 
 @router.get("/rules")
-async def get_alert_rules() -> Dict[str, Any]:
+async def get_alert_rules(request: Request) -> Dict[str, Any]:
     """获取告警规则列表
     
     Returns:
         告警规则列表
     """
+    alert_engine = request.app.state.alert_engine
     rules = [
         {
             "name": rule.name,
@@ -117,7 +115,7 @@ async def get_alert_rules() -> Dict[str, Any]:
 
 
 @router.post("/rules")
-async def create_alert_rule(rule: AlertRuleCreate) -> Dict[str, Any]:
+async def create_alert_rule(rule: AlertRuleCreate, request: Request) -> Dict[str, Any]:
     """创建告警规则
     
     Args:
@@ -126,6 +124,7 @@ async def create_alert_rule(rule: AlertRuleCreate) -> Dict[str, Any]:
     Returns:
         创建结果
     """
+    alert_engine = request.app.state.alert_engine
     new_rule = AlertRule(
         name=rule.name,
         layer=rule.layer,
@@ -154,7 +153,7 @@ async def create_alert_rule(rule: AlertRuleCreate) -> Dict[str, Any]:
 
 
 @router.delete("/rules/{rule_name}")
-async def delete_alert_rule(rule_name: str) -> Dict[str, Any]:
+async def delete_alert_rule(rule_name: str, request: Request) -> Dict[str, Any]:
     """删除告警规则
     
     Args:
@@ -163,7 +162,7 @@ async def delete_alert_rule(rule_name: str) -> Dict[str, Any]:
     Returns:
         删除结果
     """
-    alert_engine.remove_rule(rule_name)
+    request.app.state.alert_engine.remove_rule(rule_name)
     
     return {"status": "success", "message": f"Alert rule '{rule_name}' deleted"}
 
@@ -171,18 +170,18 @@ async def delete_alert_rule(rule_name: str) -> Dict[str, Any]:
 # ===== 别名路由 - 支持 /api/alerts =====
 
 @alias_router.get("")
-async def get_alerts_alias(severity: Optional[str] = None) -> Dict[str, Any]:
+async def get_alerts_alias(request: Request, severity: Optional[str] = None) -> Dict[str, Any]:
     """获取告警列表（别名路由）"""
-    return await get_alerts(severity)
+    return await get_alerts(request, severity)
 
 
 @alias_router.post("/{alert_id}/acknowledge")
-async def acknowledge_alert_alias(alert_id: str) -> Dict[str, Any]:
+async def acknowledge_alert_alias(alert_id: str, request: Request) -> Dict[str, Any]:
     """确认告警（别名路由）"""
-    return await acknowledge_alert(alert_id)
+    return await acknowledge_alert(alert_id, request)
 
 
 @alias_router.post("/{alert_id}/resolve")
-async def resolve_alert_alias(alert_id: str) -> Dict[str, Any]:
+async def resolve_alert_alias(alert_id: str, request: Request) -> Dict[str, Any]:
     """解决告警（别名路由）"""
-    return await resolve_alert(alert_id)
+    return await resolve_alert(alert_id, request)

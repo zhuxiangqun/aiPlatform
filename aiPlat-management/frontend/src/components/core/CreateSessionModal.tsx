@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, Button, Input } from '../ui';
+import { Modal, Button, Input, toast } from '../ui';
 import { memoryApi } from '../../services';
 
 interface CreateSessionModalProps {
@@ -19,12 +19,12 @@ const CreateSessionModal: React.FC<CreateSessionModalProps> = ({ open, onClose, 
         session_id: sessionId || undefined,
         metadata: {},
       });
-      alert('会话创建成功');
+      toast.success('会话创建成功');
       onSuccess();
       onClose();
       setSessionId('');
     } catch {
-      alert('创建失败');
+      toast.error('创建失败');
     } finally {
       setLoading(false);
     }

@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "aiPlatform Audit Findings Schema",
+  "type": "object",
+  "required": ["meta", "items"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "properties": {
+        "project": { "type": "string" },
+        "scope": { "type": "array", "items": { "type": "string" } },
+        "focus": { "type": "array", "items": { "type": "string" } },
+        "rating_scale": { "type": "object" }
+      },
+      "additionalProperties": true
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "source_doc", "design_statement", "verdict", "issue_type", "risk"],
+        "properties": {
+          "id": { "type": "string" },
+          "source_doc": { "type": "string" },
+          "design_statement": { "type": "string" },
+          "code_evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": { "type": "string" },
+                "path": { "type": "string" },
+                "evidence": { "type": "string" }
+              },
+              "required": ["type", "path", "evidence"],
+              "additionalProperties": true
+            }
+          },
+          "verdict": { "type": "string" },
+          "issue_type": { "type": "string" },
+          "risk": { "type": "string" },
+          "recommendation": { "type": "string" },
+          "verification": { "type": "string" },
+
+          "status": {
+            "type": "string",
+            "enum": ["open", "in_progress", "fixed", "wontfix", "invalid", "deferred"]
+          },
+          "fix_summary": { "type": "string" },
+          "fix_refs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["path"],
+              "properties": {
+                "path": { "type": "string" },
+                "symbols": { "type": "array", "items": { "type": "string" } },
+                "note": { "type": "string" }
+              },
+              "additionalProperties": true
+            }
+          },
+          "verification_result": {
+            "type": "object",
+            "properties": {
+              "tests": { "type": "array", "items": { "type": "string" } },
+              "commands": { "type": "array", "items": { "type": "string" } },
+              "evidence": { "type": "string" }
+            },
+            "additionalProperties": true
+          },
+          "updated_at": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}
+

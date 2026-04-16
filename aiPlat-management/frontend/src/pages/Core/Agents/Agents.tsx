@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, RotateCw, PlayCircle, PauseCircle, Trash2, Zap, Pencil } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Table, Select, Button, Modal } from '../../../components/ui';
+import { Table, Select, Button, Modal, toast } from '../../../components/ui';
 import { AddAgentModal, EditAgentModal, ExecuteAgentModal, AgentDetailModal } from '../../../components/core';
 import { useAgentStore } from '../../../stores';
 import type { Agent } from '../../../services';
@@ -38,18 +38,18 @@ const Agents: React.FC = () => {
   const handleStart = async (agent: Agent) => {
     try {
       await startAgent(agent.id);
-      alert(`Agent "${agent.name}" 已启动`);
+      toast.success(`Agent "${agent.name}" 已启动`);
     } catch {
-      alert('启动失败');
+      toast.error('启动失败');
     }
   };
 
   const handleStop = async (agent: Agent) => {
     try {
       await stopAgent(agent.id);
-      alert(`Agent "${agent.name}" 已停止`);
+      toast.success(`Agent "${agent.name}" 已停止`);
     } catch {
-      alert('停止失败');
+      toast.error('停止失败');
     }
   };
 
@@ -57,10 +57,10 @@ const Agents: React.FC = () => {
     if (!deleteConfirm.agent) return;
     try {
       await deleteAgent(deleteConfirm.agent.id);
-      alert('Agent已删除');
+      toast.success('Agent已删除');
       setDeleteConfirm({ open: false, agent: null });
     } catch {
-      alert('删除失败');
+      toast.error('删除失败');
     }
   };
 

@@ -7,6 +7,9 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Callable
 from enum import Enum
 import asyncio
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class LifecyclePhase(Enum):
@@ -136,7 +139,7 @@ class LifecycleManager(ILifecycleManager):
             try:
                 await hook(context)
             except Exception as e:
-                print(f"Hook {hook.name} failed: {e}")
+                logger.exception("Lifecycle hook %s failed (phase=%s)", hook.name, phase.value)
 
 
 class ComponentLifecycle:

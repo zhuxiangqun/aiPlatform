@@ -237,6 +237,6 @@ aiplat config reset
 
 ## 八、相关文档
 
-- [management 管理平面 - Layer 3 应用层](../management/layer3_app/index.md)
+- [management 管理平面 - Layer 3 应用层](../../../aiPlat-management/docs/app/index.md)
 - [runtime 运行时文档](../runtime/index.md)
-- [management 管理平面 - Layer 3 应用层](../management/layer3_app/index.md)
+- [management 管理平面 - Layer 3 应用层](../../../aiPlat-management/docs/app/index.md)

@@ -1,6 +1,8 @@
-# Skill 生命周期管理
+# Skill 生命周期管理（To-Be 规划为主）
 
-> ❌ **实现状态：本文档描述的进化引擎（CAPTURED/FIX/DERIVED）完全未实现。** 代码中不存在任何自动进化、版本回滚、触发检测或退化检测的实现。本文档仅作为设计参考，不代表当前系统能力。完整实现状态参见 [架构实现状态](../ARCHITECTURE_STATUS.md)。
+> ❌ **实现状态（As-Is）**：本文档描述的进化引擎（CAPTURED/FIX/DERIVED）尚未实现（自动进化、触发检测、退化检测均未形成闭环）。  
+> ✅ **已实现但不属于“进化引擎”**：Skill 版本管理与回滚语义（active_version 查询、回滚影响后续执行配置）已落地。  
+> 本文档主要作为 To-Be 设计参考；完整实现状态参见 [架构实现状态](../ARCHITECTURE_STATUS.md)。
 
 > 基于 OpenSpace 实践的 Skill 自动进化机制
 
@@ -354,3 +356,10 @@ LLM 最终筛选
 ---
 
 *最后更新: 2026-04-14*
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- Skill 版本/回滚：`core/apps/skills/registry.py`
+- Skill 执行（inline/fork）：`core/apps/skills/executor.py`

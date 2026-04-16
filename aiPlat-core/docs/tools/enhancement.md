@@ -1,4 +1,4 @@
-# 工具系统增强
+# 工具系统增强（As-Is 对齐 + To-Be 规划）
 
 > 扩展工具类型与增强权限控制，构建更强大的 Agent 执行能力
 
@@ -12,13 +12,15 @@
 
 ## 核心概念
 
-### 当前系统能力
+### 当前系统能力（As-Is）
 
 | 工具类型 | 状态 | 说明 |
 |---------|------|------|
 | CalculatorTool | ✅ | 数学计算 |
-| SearchTool | ✅ | Web 搜索（占位实现） |
-| FileOperationsTool | ✅ | 文件操作（占位实现） |
+| SearchTool | ✅ | Web 搜索（实现以代码为准） |
+| WebFetchTool | ✅ | 网页抓取（实际已注册） |
+| HTTPClientTool | ✅ | HTTP API 调用（实际已注册） |
+| FileOperationsTool | ⚠️ | 文件操作（若存在实现，需以启动注册与单测为准） |
 | PermissionManager | ✅ | 用户-工具权限映射 |
 | ToolRecaller | ✅ | 混合召回（Token+RAG） |
 
@@ -31,6 +33,16 @@
 | **DatabaseTool** | SQL 执行 | P1 |
 | **CodeExecutionTool** | 代码执行沙箱 | P1 |
 | **WebFetchTool** | 网页抓取 | P1 |
+
+> 说明：以上“新增工具能力”章节属于 To-Be 规划；当前仓库中 `HTTPClientTool/WebFetchTool` 已落地，其它如 Browser/Database/CodeExecution 是否存在以代码与测试为准。
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- 已落地工具：`core/server.py`（lifespan 注册 WebFetchTool/HTTPClientTool）
+- Tool 基类封装：`core/apps/tools/base.py`
+- 权限管理：`core/apps/tools/permission.py`
 
 ---
 

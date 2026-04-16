@@ -1,4 +1,6 @@
-# AI Platform 基础设施层 - 完整测试体系指南
+# AI Platform 基础设施层 - 完整测试体系指南（设计真值：以代码事实为准）
+
+> 说明：本文档描述 infra 的系统级测试策略。若涉及外部 CI/CD、部署工件或平台层策略，请视为 To-Be 或外部仓库内容；As-Is 以 `infra/tests/*` 与 `docs/testing/reports/*` 的可复现报告为准。
 
 > 系统级测试策略、模块测试指南、集成测试规范
 
@@ -994,6 +996,13 @@ pytest -v -m security
 ---
 
 *最后更新: 2026-04-11  
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- 测试入口：`infra/tests/*`
+- 测试报告：`docs/testing/reports/*`
 **文档版本**: v1.0  
 **维护者**: AI Platform Team
 

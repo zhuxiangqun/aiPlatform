@@ -1,4 +1,6 @@
-# 📚 Compute 模块文档
+# 📚 Compute 模块文档（设计真值：以代码事实为准）
+
+> 说明：算力/执行资源管理能力以 `infra/compute/*` 代码与测试为准；K8s/Docker 适配若未闭环需标注为 To-Be。
 
 > 算力资源管理 - 基础设施层
 
@@ -280,3 +282,9 @@ class MyBackendClient(ComputeManager):
 ---
 
 *最后更新: 2026-04-11*
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- 代码入口：`infra/compute/*`

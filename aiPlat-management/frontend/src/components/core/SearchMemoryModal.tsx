@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, Button } from '../ui';
+import { Modal, Button, toast } from '../ui';
 import { memoryApi, type MemorySearchResult } from '../../services';
 
 interface SearchMemoryModalProps {
@@ -19,7 +19,7 @@ const SearchMemoryModal: React.FC<SearchMemoryModalProps> = ({ open, onClose }) 
       const res = await memoryApi.search(searchQuery);
       setSearchResults(res.results || []);
     } catch {
-      alert('搜索失败');
+      toast.error('搜索失败');
     } finally {
       setLoading(false);
     }

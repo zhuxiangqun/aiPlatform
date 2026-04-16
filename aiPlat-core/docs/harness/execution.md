@@ -1,4 +1,7 @@
-# 执行系统 (Execution)
+# 执行系统 (Execution)（设计真值：以代码事实为准）
+
+> 本文档描述 **As-Is（当前实现）** 与 **To-Be（目标演进）** 的执行系统设计。  
+> 状态口径与可追溯规则参见：[架构实现状态](../ARCHITECTURE_STATUS.md)。
 
 > **Phase 7 已修复**：
 > - ✅ ReActAgent/PlanExecuteAgent 通过 `BaseAgent.execute()` 调用 Loop
@@ -6,8 +9,9 @@
 > - ✅ PRE/POST Hook Bug 修复：`PRE_SKILL_USE` → `POST_SKILL_USE`
 > - ✅ LangGraph StateGraph 可用：AgentState→TypedDict、错误 import 已移除
 >
-> **仍需注意**：
-> - UnifiedExecutor/SandboxExecutor/BackgroundTasks 未实现（文档描述但代码不存在）
+> **仍需注意（As-Is）**：
+> - `UnifiedExecutor` 代码存在，但“默认 executor 注册/选择策略”尚未形成可验收闭环（属于 🔧 结构存在）。
+> - `SandboxExecutor/BackgroundTasks` 属于 To-Be（规划项），需明确接线点与验收测试。
 
 > Agent 的行动通道——控制 Agent 的运行循环、响应方式和重试策略。
 
@@ -47,8 +51,29 @@
 | 执行器 | 说明 | 适用场景 |
 |--------|------|----------|
 | **UnifiedExecutor** | 统一执行器，处理大多数任务 | 常规任务 |
-| **SandboxExecutor** | 沙箱执行器，隔离危险操作 | 代码执行、文件操作 |
-| **BackgroundTasks** | 后台任务处理 | 耗时任务 |
+| **SandboxExecutor** | 沙箱执行器，隔离危险操作 | 代码执行、文件操作（To-Be） |
+| **BackgroundTasks** | 后台任务处理 | 耗时任务（To-Be） |
+
+> **实现状态补充**：
+> - `UnifiedExecutor`：代码存在（`core/harness/execution/executor/unified.py`），但默认 executors 注册逻辑仍需补齐
+> - `SandboxExecutor/BackgroundTasks`：当前为设计占位（To-Be），需明确接线方式与验收
+
+---
+
+## 设计补全（Round2）：执行器与 Hook 的可验收契约
+
+### 1) 执行器注册闭环
+
+必须定义：
+- 默认注册哪些 executor（unified、langgraph、sandbox 等）
+- 选择策略（按 task/tool 风险、按配置、按策略引擎）
+- fallback 条件（langgraph 不可用时降级）
+
+### 2) 必备验收用例
+
+1. 启动后，能通过接口/日志确认默认 executor 已注册（而不是空 pass）
+2. 配置切换 executor 后，实际执行路径发生变化（可被测试验证）
+
 
 ### 4. 重试机制
 
@@ -97,6 +122,14 @@
 |------|---------|---------|
 | 模型表现 | 1-2次尝试解决难题 | 需要执行数百次工具调用 |
 | 检测能力 | 容易衡量 | 榜单上1%分数差异无法捕捉 |
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- Loop-first 执行主路径（As-Is）：`core/harness/execution/loop.py`
+- Agent 委托 Loop 执行：`core/apps/agents/base.py: BaseAgent.execute()`
+- LangGraph 子系统（To-Be 主编排方向/部分现用）：`core/harness/execution/langgraph/*`
 | 失败模式 | 单次推理失败 | 第50步偏离指令、第100次工具调用后失去推理连贯性 |
 
 ### 数学说明

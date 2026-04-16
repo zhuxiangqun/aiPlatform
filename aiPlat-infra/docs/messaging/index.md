@@ -1,4 +1,6 @@
-# Messaging 模块文档
+# Messaging 模块文档（设计真值：以代码事实为准）
+
+> 说明：消息队列抽象的 As-Is 能力以 `infra/messaging/*` 代码与测试为准；文档中的多中间件支持（Kafka/RabbitMQ/Redis）若未闭环需标注为 To-Be。
 
 > 消息队列抽象 - 基础设施层
 
@@ -58,6 +60,12 @@ messaging 模块 → 不依赖任何内部模块
 ### 数据模型
 
 | 模型 | 字段 | 说明 |
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- 代码入口：`infra/messaging/*`
 |------|------|------|
 | `Message` | `id`, `topic`, `body`, `headers`, `timestamp` | 消息结构 |
 | `Topic` | `name`, `partitions`, `retention` | 主题定义 |

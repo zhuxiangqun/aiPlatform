@@ -1,9 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Modal, Form, Input, Select, message, Divider, Typography, Alert } from 'antd';
+import React, { useEffect, useMemo, useState } from 'react';
 import { agentApi } from '../../services';
 import type { Agent } from '../../services';
-
-const { Text } = Typography;
+import { Alert, Button, Input, Modal, Textarea, toast } from '../ui';
 
 interface AgentConfigTemplate {
   name: string;
@@ -73,44 +71,44 @@ interface EditAgentModalProps {
 }
 
 const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, onSuccess }) => {
-  const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [name, setName] = useState('');
+  const [configText, setConfigText] = useState('');
 
   useEffect(() => {
     if (open && agent) {
-      form.resetFields();
-      form.setFieldsValue({
-        name: agent.name,
-        agent_type: agent.agent_type,
-        config: agent.metadata?.config ? JSON.stringify(agent.metadata.config, null, 2) : '',
-      });
+      setName(agent.name || '');
+      setConfigText(agent.metadata?.config ? JSON.stringify(agent.metadata.config, null, 2) : '');
     }
-  }, [open, agent, form]);
+  }, [open, agent]);
 
   const handleSubmit = async () => {
     if (!agent) return;
     try {
-      const values = await form.validateFields();
+      if (!name.trim()) {
+        toast.error('请输入 Agent 名称');
+        return;
+      }
       setLoading(true);
 
       let config: Record<string, unknown> = {};
-      if (values.config?.trim()) {
+      if (configText?.trim()) {
         try {
-          config = JSON.parse(values.config);
+          config = JSON.parse(configText);
         } catch {
-          message.error('配置JSON格式错误，请检查');
+          toast.error('配置 JSON 格式错误，请检查');
           setLoading(false);
           return;
         }
       }
 
       await agentApi.update(agent.id, { config });
-      message.success(`Agent "${agent.name}" 更新成功`);
+      toast.success(`Agent "${agent.name}" 更新成功`);
       onSuccess();
       onClose();
     } catch (error: any) {
       if (error.message) {
-        message.error('更新失败');
+        toast.error('更新失败', String(error.message || ''));
       }
     } finally {
       setLoading(false);
@@ -118,75 +116,49 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
   };
 
   const currentTemplate = agent ? AGENT_TYPE_TEMPLATES[agent.agent_type] : null;
+  const configHint = useMemo(() => `以下是 ${currentTemplate?.name || ''} 的配置示例，可直接复制修改：`, [currentTemplate?.name]);
 
   return (
     <Modal
-      title="编辑Agent"
       open={open}
-      onOk={handleSubmit}
-      onCancel={onClose}
-      okText="保存"
-      cancelText="取消"
-      confirmLoading={loading}
-      destroyOnHidden
-      width={640}
-    >
-      <Form form={form} layout="vertical">
-        <Form.Item
-          name="name"
-          label="名称"
-          rules={[{ required: true, message: '请输入Agent名称' }]}
-        >
-          <Input placeholder="例如：数据分析助手" />
-        </Form.Item>
-        <Form.Item name="agent_type" label="类型">
-          <Select
-            disabled
-            options={[
-              { value: 'base', label: '基础 - 简单对话' },
-              { value: 'react', label: 'ReAct - 推理+行动' },
-              { value: 'plan', label: '规划型 - 任务分解' },
-              { value: 'tool', label: '工具型 - 工具调用' },
-            ]}
-          />
-        </Form.Item>
-      </Form>
-
-      {currentTemplate && (
+      onClose={onClose}
+      title="编辑 Agent"
+      width={720}
+      footer={
         <>
-          <Divider orientation="left" plain style={{ margin: '12px 0 8px' }}>
-            {currentTemplate.name} 配置示例
-          </Divider>
-          <Alert
-            message={currentTemplate.description}
-            type="info"
-            showIcon
-            style={{ marginBottom: 12 }}
-          />
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            以下是 {currentTemplate.name} 的配置示例，可直接复制修改：
-          </Text>
-          <pre style={{
-            background: '#1C2128',
-            border: '1px solid #30363D',
-            borderRadius: 6,
-            padding: 12,
-            fontSize: 12,
-            color: '#E6EDF3',
-            maxHeight: 200,
-            overflow: 'auto',
-            marginTop: 8,
-          }}>
-            {JSON.stringify(currentTemplate.config, null, 2)}
-          </pre>
+          <Button variant="secondary" onClick={onClose} disabled={loading}>
+            取消
+          </Button>
+          <Button variant="primary" onClick={handleSubmit} loading={loading}>
+            保存
+          </Button>
         </>
-      )}
+      }
+    >
+      <div className="space-y-4">
+        <Input label="名称" value={name} onChange={(e: any) => setName(e.target.value)} />
 
-      <Form form={form} layout="vertical" style={{ marginTop: 12 }}>
-        <Form.Item name="config" label="配置 (JSON)" extra="上方展示所选类型的配置示例，请根据需求修改后填入">
-          <Input.TextArea rows={6} placeholder='{"model": "gpt-4", "temperature": 0.7}' />
-        </Form.Item>
-      </Form>
+        <div>
+          <div className="text-sm font-medium text-gray-300 mb-2">类型</div>
+          <div className="text-sm text-gray-100 bg-dark-bg border border-dark-border rounded-lg px-3 h-10 flex items-center">
+            {agent?.agent_type || '-'}
+          </div>
+        </div>
+
+        {currentTemplate && (
+          <Alert type="info" title={currentTemplate.name}>
+            {currentTemplate.description}
+          </Alert>
+        )}
+
+        <Textarea
+          label="配置（JSON）"
+          value={configText}
+          onChange={(e: any) => setConfigText(e.target.value)}
+          rows={10}
+        />
+        {currentTemplate && <div className="text-xs text-gray-500">{configHint}</div>}
+      </div>
     </Modal>
   );
 };

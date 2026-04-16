@@ -1,0 +1,55 @@
+{
+  "meta": {
+    "project": "aiPlat",
+    "round": "round12",
+    "date": "2026-04-16",
+    "scope": [
+      "aiPlat-core/core/harness/execution/langgraph/callbacks.py",
+      "aiPlat-core/core/harness/execution/langgraph/nodes/reason_node.py",
+      "aiPlat-core/core/harness/execution/langgraph/compiled_graphs/*",
+      "aiPlat-core/core/server.py",
+      "aiPlat-core/core/tests/integration/test_compiled_react_resume_execute_api.py",
+      "aiPlat-core/docs/ARCHITECTURE_STATUS.md"
+    ],
+    "purpose": "落实 P2-RESUME-EXEC：修复 callbacks 落库接线失效（register_global 缺失），并提供“resume→execute→落库”的最小闭环执行路径（CompiledGraph-based ReAct + API）。"
+  },
+  "items": [
+    {
+      "id": "CORE-RESUME-EXEC-001",
+      "design_statement": "Checkpoint/Callbacks 必须真正可用：回调落库 handler 必须可注册并生效；resume 不应停留在“只返回 state”，需提供最小的恢复并继续执行闭环（至少在一个参考 graph 上）。",
+      "code_evidence": [
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/harness/execution/langgraph/callbacks.py",
+          "evidence": "新增 CallbackManager.register_global()，使 server lifespan 能注册进程级持久化 handler，确保 GRAPH_START/CHECKPOINT/GRAPH_END 可落库。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/harness/execution/langgraph/nodes/reason_node.py",
+          "evidence": "修复 f-string 花括号示例（{json_or_text}）导致的 NameError：改为 {{json_or_text}}。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/harness/execution/langgraph/compiled_graphs/react.py",
+          "evidence": "新增 CompiledGraph-based ReAct（reason→act→observe），触发 callbacks、支持 checkpoint state 的 current_node 恢复语义。"
+        },
+        {
+          "type": "code",
+          "path": "aiPlat-core/core/server.py",
+          "evidence": "新增 /graphs/compiled/react/execute 与 /graphs/runs/{run_id}/resume/execute，形成 resume→execute→落库 的最小闭环；GRAPH_START 落库时保留 parent/resume 元数据。"
+        },
+        {
+          "type": "test",
+          "path": "aiPlat-core/core/tests/integration/test_compiled_react_resume_execute_api.py",
+          "evidence": "验证 compiled react 可执行并产生 checkpoints；resume/execute 创建新 run 且保留 parent_run_id/resumed_from_checkpoint_id。"
+        }
+      ],
+      "verdict": "✅一致",
+      "risk": "中",
+      "status": "fixed",
+      "verification": "pytest -q core/tests/integration/test_compiled_react_resume_execute_api.py",
+      "updated_at": "2026-04-16"
+    }
+  ]
+}
+

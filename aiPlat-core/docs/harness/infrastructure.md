@@ -1,6 +1,7 @@
-# 基础设施 (Infrastructure)
+# 基础设施 (Infrastructure)（设计真值：以代码事实为准）
 
-> Harness 的基础设施层，提供 LangChain 集成、配置管理、生命周期管理等底层能力。
+> 本文档描述 Harness 的基础设施与集成层。部分内容为 To-Be 规划（如更完整的 LangChain 适配/持久化/生命周期管理），需以代码事实与测试为准。  
+> 统一口径参见：[架构实现状态](../ARCHITECTURE_STATUS.md)。
 
 ---
 
@@ -22,7 +23,7 @@
 harness/infrastructure/
 └── langchain/                      # LangChain 集成
     ├── models.py                   # 模型集成
-    ├── memory.py                   # 记忆集成
+    ├── (无 memory.py)              # 记忆集成当前位于 `core/harness/memory/langchain_adapter.py`
     ├── tools.py                    # 工具集成
     └── prompts.py                  # 提示词集成
 ```
@@ -185,6 +186,12 @@ harness/infrastructure/
 | **apps** | 使用依赖注入获取服务 |
 
 ---
+
+## 证据索引（Evidence Index｜抽样）
+
+- LangChain adapter（记忆）：`core/harness/memory/langchain_adapter.py`
+- HookManager（默认 hooks 注册）：`core/harness/infrastructure/hooks/hook_manager.py`
+- infra 层 DI（生产级 DI 在 infra）：`aiPlat-infra/infra/di/*`
 
 ## 相关文档
 

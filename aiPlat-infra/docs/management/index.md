@@ -1,4 +1,6 @@
-# Management Module - 管理模块完整文档
+# Management Module - 管理模块完整文档（To-Be 为主，As-Is 以代码事实为准）
+
+> 说明：management 通常属于独立管理平面（aiPlat-management）。本仓库若未包含对应实现，请将本文作为 To-Be 参考，并以 `infra/management/*` 代码与测试为准。
 
 > 基础设施层统一管理接口
 
@@ -1028,5 +1030,11 @@ SchedulerManager({
 ---
 
 *最后更新:2026-04-12  
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- 代码入口：`infra/management/*`
 **维护团队**：AI Platform Infrastructure Team  
 **版本**：1.1.0

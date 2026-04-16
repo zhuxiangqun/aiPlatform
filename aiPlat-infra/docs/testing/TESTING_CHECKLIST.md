@@ -1,4 +1,6 @@
-# 测试检查清单
+# 测试检查清单（设计真值：以代码事实为准）
+
+> 说明：本清单为 infra 测试质量基线，适用于 `infra/tests/*` 的单测/集成测试贡献。
 
 > 快速检查测试是否合格
 
@@ -228,4 +230,10 @@ class TestFeatureWithMock:
 ---
 
 *最后更新: 2026-04-11  
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- 测试目录：`infra/tests/*`
 **查看详细**: [TESTING_GUIDE.md](./TESTING_GUIDE.md)

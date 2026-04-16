@@ -8,10 +8,10 @@
 
 **职责**：提供 MCP 协议的底层实现，包括协议解析、连接管理、工具调用。
 
-**依赖方向**：
+**依赖方向（以代码事实为准）**：
 ```
-mcp 模块 → 被 core 层调用
-mcp 模块 → 依赖 http 模块（HTTP/SSE 通信）
+infra.mcp → infra 内部基础设施能力（可选）
+core 层当前自带 MCP 实现（core/apps/mcp），并未直接依赖 infra.mcp
 ```
 
 **与 core 层 tools 模块的关系**：
@@ -37,13 +37,16 @@ MCP（Model Context Protocol）是一种标准化协议，用于 AI 模型与外
 | `prompts/list` | 列出可用提示模板 |
 | `prompts/get` | 获取提示模板 |
 
-### 支持的传输方式
+### 支持的传输方式（设计目标 vs 当前实现）
 
 | 传输方式 | 说明 | 适用场景 |
 |----------|------|----------|
-| STDIO | 标准输入输出 | 本地 MCP Server |
-| HTTP/SSE | HTTP + Server-Sent Events | 远程 MCP Server |
-| WebSocket | 双向实时通信 | 需要双向交互的场景 |
+| STDIO | 标准输入输出 | 本地 MCP Server（已实现 transport） |
+| HTTP（JSON-RPC） | HTTP POST JSON-RPC（已实现 transport） | 远程 MCP Server（非流式） |
+| HTTP/SSE | HTTP + Server-Sent Events（规划项） | 远程 MCP Server（流式） |
+| WebSocket | 双向实时通信（已实现 transport） | 需要双向交互的场景 |
+
+> 备注（As-Is）：当前仓库在 `infra/mcp/transport/stdio.py` 内同时提供 `STDIOTransport/HTTPTransport/WebSocketTransport`；但 **SSE streaming transport 尚未落地**，需新增实现与测试覆盖。
 
 ---
 
@@ -52,6 +55,19 @@ MCP（Model Context Protocol）是一种标准化协议，用于 AI 模型与外
 ### MCPClient 接口
 
 **位置**：`infra/mcp/base.py`
+
+---
+
+## ✅ 现状说明（避免 core/infra 双栈误用）
+
+当前仓库内存在两套 MCP 相关实现：
+- `aiPlat-core/core/apps/mcp/*`：core 内置 MCP 子系统（并与 ToolRegistry 集成）
+- `aiPlat-infra/infra/mcp/*`：infra 层 MCP 基础设施实现（transport/client 等）
+
+**统一口径（本轮文档修订后的设计决策）**：
+1. 短期：core 以 `core/apps/mcp` 为主实现；infra.mcp 仅作为 infra 参考实现/基础设施能力，不作为 core 的直接依赖
+2. 中期：若要收敛为单栈，需制定迁移计划（保留 thin wrapper、统一协议/transport、删除重复实现）
+
 
 **接口定义**：
 

@@ -1,4 +1,6 @@
-# 项目结构
+# 项目结构（设计真值：以代码事实为准）
+
+> 说明：本文件用于描述 `aiPlat-core/core` 的目录结构。若与代码不一致，以代码事实为准并在此修订。
 
 > aiPlat-core 项目完整目录结构（基于 Harness 操作系统架构）
 
@@ -57,16 +59,14 @@ harness/
 ├── heartbeat_monitor.py               # 心跳监控
 ├── integration.py                     # [已实现] HarnessIntegration 统一入口
 │
-├── interfaces/                         # 接口定义层 [已实现]
+├── interfaces/                         # 接口定义层 [已实现（子集）]
 │   ├── __init__.py
 │   ├── agent.py                        # IAgent, AgentConfig, AgentResult
 │   ├── tool.py                         # ITool, ToolConfig, ToolResult
 │   ├── skill.py                        # ISkill, SkillConfig, SkillResult
 │   ├── loop.py                         # ILoop, LoopState, LoopResult
 │   ├── coordinator.py                  # ICoordinator
-│   ├── context.py                      # IContext
-│   ├── router.py                       # IRouter
-│   └── adapter.py                      # IAdapter
+│   └── (To-Be)                         # IContext/IRouter/IAdapter 等若需要，应新增实现并补齐接线与测试
 │
 ├── execution/                          # 执行系统 [已实现]
 │   ├── __init__.py

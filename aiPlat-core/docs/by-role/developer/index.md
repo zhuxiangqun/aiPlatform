@@ -1,4 +1,6 @@
-# 👨‍💻 核心层开发者指南
+# 👨‍💻 核心层开发者指南（As-Is 对齐 + To-Be 示例）
+
+> 说明：本文档包含部分 To-Be 的工程化命令/配置示例（make/config/init_registry 等）。涉及实现状态，以代码事实为准，并遵循 [`ARCHITECTURE_STATUS.md`](../../ARCHITECTURE_STATUS.md) 的可追溯规则。
 
 > aiPlat-core - 开发指南与最佳实践
 
@@ -58,16 +60,16 @@ make typecheck-core
 
 ### 5 分钟跑起来
 
-**步骤一：初始化注册表**
+**步骤一：初始化注册表（To-Be 示例）**
 ```bash
-# 在应用启动时初始化 Agent 和 Skill 注册表
-python -m core.init_registry
+# To-Be：独立 init_registry 命令
+# As-Is：启动 `core/server.py` 时会在 lifespan 中执行 agents/skills discovery 并 seed 默认权限
 ```
 
-**步骤二：注册 Agent**
+**步骤二：注册 Agent（To-Be 示例）**
 ```bash
 # 注册内置 Agent
-python -m core.agents.register_builtins
+# To-Be：显式注册命令
 ```
 
 **步骤三：测试 Agent**
@@ -92,7 +94,7 @@ make test-agent-basic
 | 注册 Agent | 调用 `registry.register(name, agent)` | `core/apps/agents/base.py` |
 | 获取 Agent | 调用 `registry.get(name)` | `core/apps/agents/base.py` |
 | 执行 Agent | 调用 `agent.execute(context)` | `core/apps/agents/base.py` |
-| 创建上下文 | 调用 `AgentContext.create(config)` | `core/harness/interfaces/context.py` |
+| 创建上下文 | 构造 `AgentContext(session_id, user_id, messages, variables, ...)` | `core/harness/interfaces/agent.py` |
 
 **如何添加新的 Agent 类型**：
 
@@ -110,7 +112,7 @@ make test-agent-basic
 - RAG Agent：`core/apps/agents/rag.py`
 - 多 Agent 协作：`core/apps/agents/multi_agent.py`
 - Agent 接口定义：`core/harness/interfaces/agent.py`
-- 上下文接口：`core/harness/interfaces/context.py`
+- 上下文数据结构：`core/harness/interfaces/agent.py: AgentContext`
 - LangGraph 图定义：`core/harness/execution/langgraph/graphs/`
 
 ---
@@ -524,3 +526,11 @@ tests/
 ---
 
 *最后更新: 2026-04-14*
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- 启动时 discovery/seed：`core/server.py`
+- AgentContext：`core/harness/interfaces/agent.py`
+- Agents：`core/apps/agents/*`

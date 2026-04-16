@@ -1,6 +1,8 @@
-# Context 管理与记忆架构
+# Context 管理与记忆架构（As-Is 对齐 + To-Be 规划）
 
-> 基于 OpenDev 实践的 Context 压缩与双记忆架构
+> **As-Is**：当前核心执行链路的上下文控制以“最小闭环”形式存在（例如 token 高占用时对 messages 进行 best-effort 裁剪）。  
+> **To-Be**：本文档中“双记忆/四层记忆/5级压缩”等为规划型设计，需要结合 `ExecutionRun/CheckpointStore` 与检索/存储体系落地。  
+> 统一口径参见：[架构实现状态](../ARCHITECTURE_STATUS.md)。
 
 ---
 
@@ -264,3 +266,10 @@ reminder_message = {
 ---
 
 *最后更新: 2026-04-14*
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- token 高占用 compaction（最小实现）：`core/harness/execution/loop.py: BaseLoop._apply_observability_control()`
+- To-Be：记忆/检索/持久化需结合 `core/harness/execution/langgraph/*` 与后续 CheckpointStore/ExecutionStore 方案

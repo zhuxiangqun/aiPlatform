@@ -1,4 +1,6 @@
-# aiPlat-core 文档索引
+# aiPlat-core 文档索引（设计真值：以代码事实为准）
+
+> ⚠️ 说明：本文档是“导航 + 架构口径摘要”。涉及实现状态时，以 [`ARCHITECTURE_STATUS.md`](./ARCHITECTURE_STATUS.md) 为准，并遵循其可追溯断言规则（代码入口/测试/命令）。
 
 ## 核心概念
 
@@ -53,6 +55,12 @@
 
 > 详细概念说明见 [架构总览](./architecture/index.md)
 
+## Runtime（执行引擎入口）
+
+为避免与 app 层“运行时接入”混淆，core 的 Runtime 入口单独收敛在：
+
+- [Runtime（Core Layer 1）](./runtime/index.md)
+
 ---
 
 ## 概述
@@ -80,10 +88,10 @@ aiPlat-core 位于四层架构的第二层（Layer 1），承上启下：
 - 工具的注册与调度
 - AI 模型的统一封装
 
-本层不负责：
+本层不负责（To-Be 目标边界，当前仓库未必完全拆分）：
 
-- HTTP 服务与 API 网关（由 aiPlat-platform 提供）
-- 用户认证与权限管理（由 aiPlat-platform 提供）
+- HTTP 服务与 API 网关（To-Be：由 aiPlat-platform 提供；As-Is：当前仓库的 API 入口主要在 `core/server.py`）
+- 用户认证与平台级租户管理（To-Be：由 aiPlat-platform 提供；As-Is：core 内已具备权限/审批等最小治理能力）
 - 租户隔离与资源配额（由 aiPlat-platform 提供）
 - 前端界面与用户交互（由 aiPlat-app 提供）
 - 数据库连接池与缓存（由 aiPlat-infra 提供）
@@ -156,8 +164,15 @@ Services (服务层) ✅ 已实现
     ├── trace_service.py    (追踪服务)
     └── context_service.py  (上下文管理)
 
-规划中的模块：
-    └── permissions/  (权限系统) 📋 规划中 - v2.0
+规划中的模块（To-Be）：
+    └── platform-level permissions/tenant/quota（平台控制面）
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- API 入口与生命周期初始化：`core/server.py`
+- 现状真值与修复决策：`docs/ARCHITECTURE_STATUS.md`
 ```
 
 **相关文档**：[框架基础文档](./framework/index.md) - 包含 LangChain/LangGraph/Harness 详细关系及[项目结构](./framework/structure.md)，[架构总览](./architecture/index.md) - 完整层次关系图

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, RotateCw, Trash2, Pencil, Play } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Table, Select, Switch, Button, Modal } from '../../../components/ui';
+import { Table, Select, Switch, Button, Modal, toast } from '../../../components/ui';
 import { AddSkillModal, EditSkillModal, ExecuteSkillModal } from '../../../components/core';
 import { useSkillStore } from '../../../stores';
 import type { Skill } from '../../../services';
@@ -38,9 +38,9 @@ const Skills: React.FC = () => {
   const handleToggle = async (skill: Skill) => {
     try {
       await toggleSkill(skill.id, !skill.enabled);
-      alert(skill.enabled ? `Skill "${skill.name}" 已禁用` : `Skill "${skill.name}" 已启用`);
+      toast.success(skill.enabled ? `Skill "${skill.name}" 已禁用` : `Skill "${skill.name}" 已启用`);
     } catch {
-      alert('操作失败');
+      toast.error('操作失败');
     }
   };
 
@@ -48,10 +48,10 @@ const Skills: React.FC = () => {
     if (!deleteConfirm.skill) return;
     try {
       await deleteSkill(deleteConfirm.skill.id);
-      alert('Skill已删除');
+      toast.success('Skill已删除');
       setDeleteConfirm({ open: false, skill: null });
     } catch {
-      alert('删除失败');
+      toast.error('删除失败');
     }
   };
 

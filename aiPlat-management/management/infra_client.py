@@ -7,6 +7,7 @@ HTTP client for calling aiPlat-infra layer API.
 import httpx
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
+from typing import Optional as _Optional
 
 
 @dataclass
@@ -14,6 +15,7 @@ class InfraAPIClientConfig:
     """Configuration for Infra API client."""
     base_url: str = "http://localhost:8001"
     timeout: float = 30.0
+    transport: _Optional[httpx.BaseTransport] = None
 
 
 class InfraAPIClient:
@@ -26,7 +28,8 @@ class InfraAPIClient:
     async def __aenter__(self):
         self._client = httpx.AsyncClient(
             base_url=self.config.base_url,
-            timeout=self.config.timeout
+            timeout=self.config.timeout,
+            transport=self.config.transport,
         )
         return self
     
@@ -39,7 +42,8 @@ class InfraAPIClient:
         if not self._client:
             self._client = httpx.AsyncClient(
                 base_url=self.config.base_url,
-                timeout=self.config.timeout
+                timeout=self.config.timeout,
+                transport=self.config.transport,
             )
         
         response = await self._client.request(method, path, **kwargs)
@@ -63,6 +67,20 @@ class InfraAPIClient:
     async def diagnose(self) -> Dict[str, Any]:
         """Diagnose infrastructure."""
         return await self._request("GET", "/api/infra/diagnose")
+
+    # ===== Managers (config/status/metrics) =====
+
+    async def list_managers(self) -> Dict[str, Any]:
+        """List all registered managers (infra internal modules)."""
+        return await self._request("GET", "/api/infra/managers")
+
+    async def get_manager_config(self, name: str) -> Dict[str, Any]:
+        """Get specific manager configuration."""
+        return await self._request("GET", f"/api/infra/managers/{name}/config")
+
+    async def update_manager_config(self, name: str, config: Dict[str, Any]) -> Dict[str, Any]:
+        """Update specific manager configuration."""
+        return await self._request("PUT", f"/api/infra/managers/{name}/config", json={"config": config})
     
     # ===== Node Management =====
     

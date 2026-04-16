@@ -35,6 +35,12 @@ const PlatformAuth = lazy(() => import('./pages/Platform/Auth/Auth'));
 const PlatformTenant = lazy(() => import('./pages/Platform/Tenant/Tenant'));
 const AppChannels = lazy(() => import('./pages/App/Channels/Channels'));
 const AppSessions = lazy(() => import('./pages/App/Sessions/Sessions'));
+const DiagnosticsHome = lazy(() => import('./pages/Diagnostics/Diagnostics'));
+const DiagnosticsTraces = lazy(() => import('./pages/Diagnostics/Traces/Traces'));
+const DiagnosticsTraceDetail = lazy(() => import('./pages/Diagnostics/Traces/TraceDetail'));
+const DiagnosticsGraphs = lazy(() => import('./pages/Diagnostics/Graphs/Graphs'));
+const DiagnosticsGraphRunDetail = lazy(() => import('./pages/Diagnostics/Graphs/GraphRunDetail'));
+const DiagnosticsLinks = lazy(() => import('./pages/Diagnostics/Links/Links'));
 
 const router = createBrowserRouter([
   {
@@ -60,6 +66,12 @@ const router = createBrowserRouter([
       { path: 'platform/tenant', element: withSuspense(PlatformTenant) },
       { path: 'app/channels', element: withSuspense(AppChannels) },
       { path: 'app/sessions', element: withSuspense(AppSessions) },
+      { path: 'diagnostics', element: withSuspense(DiagnosticsHome) },
+      { path: 'diagnostics/traces', element: withSuspense(DiagnosticsTraces) },
+      { path: 'diagnostics/traces/:traceId', element: withSuspense(DiagnosticsTraceDetail) },
+      { path: 'diagnostics/graphs', element: withSuspense(DiagnosticsGraphs) },
+      { path: 'diagnostics/graphs/:runId', element: withSuspense(DiagnosticsGraphRunDetail) },
+      { path: 'diagnostics/links', element: withSuspense(DiagnosticsLinks) },
     ],
   },
 ]);

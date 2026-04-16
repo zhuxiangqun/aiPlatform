@@ -1,4 +1,12 @@
-# 工具系统模块
+# 工具系统模块（设计真值：以代码事实为准）
+
+> 本文档以 **As-Is（当前实现）** 为准，并对“增强/规划项”明确标注为 **To-Be**。  
+> 状态口径与可追溯规则参见：[架构实现状态](../ARCHITECTURE_STATUS.md)。
+
+## 实现状态提示（As-Is）
+
+- ✅ 已具备统一工具执行封装（校验/权限/超时/统计/可选 tracing）与最小线程安全（stats + registry 加锁）
+- ⚠️ 部分工具类型在文档中出现但仅为占位/桩实现；以 `core/server.py` 启动时实际注册的 tools 为准
 
 > 提供外部工具的注册、发现、调用和统计能力，支持编排追踪、调用统计、权限校验等特性
 
@@ -218,6 +226,60 @@ apps/tools/
 2. 注册工具：使用 tool_registry.register()
 3. 调用工具：调用 execute 方法，自动追踪和统计
 4. 查看统计：使用 get_stats() 获取调用次数、成功率、平均延迟
+
+---
+
+## 设计补全（Round2）：权限闭环与默认策略（必须落地）
+
+> 背景：仅有 `check_permission()` 不足以构成可用的权限体系；需要补齐“默认策略 + 授权入口 + 审计/验收”闭环。
+
+### 1) 默认策略（Default Policy）
+
+为保证平台**开箱可用**且可控，统一默认策略如下：
+
+- `user_id=system`（或 `admin`）拥有对 **seed agent/skill/tool** 的 `EXECUTE` 最小权限集
+- 其他用户默认拒绝（deny-by-default），必须通过授权接口授予
+
+> 说明：如果产品定位要求“严格默认拒绝”，也必须提供初始化脚本或管理 API，否则执行端点会出现“开箱即 403”。
+
+### 2) 授权管理 API（闭环入口）
+
+必须提供（或等价能力）：
+
+| API | 方法 | 说明 |
+|---|---|---|
+| `/permissions/grant` | POST | 授予 user 对 tool/skill/agent 的某权限 |
+| `/permissions/revoke` | POST | 撤销权限（单个或全部） |
+| `/permissions/users/{user_id}` | GET | 查询用户的授权集合 |
+| `/permissions/tools/{tool_name}` | GET | 查询拥有该工具权限的用户列表 |
+
+数据模型建议统一为：`subject_id` + `resource_type(agent/skill/tool)` + `resource_id` + `permission(READ/WRITE/EXECUTE)`
+
+### 3) 权限检查位置（Single Source of Truth）
+
+为了避免重复/遗漏，推荐优先级：
+
+1. **入口层（server.py）**：对外执行 API 必须校验（Agent/Skill 执行）
+2. **执行封装层（可选）**：BaseTool/BaseSkill/BaseAgent 的统一 wrapper 可进行二次校验（防止内部绕过）
+
+### 4) 验收标准（必须有测试）
+
+最小验收用例（集成测试或可执行命令）：
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- Tool 基类封装与 stats 加锁：`core/apps/tools/base.py: BaseTool._call_with_tracking()` / `_update_stats()`
+- ToolRegistry 加锁与注入：`core/apps/tools/base.py: ToolRegistry.register()/get_all_stats()`
+- 权限管理：`core/apps/tools/permission.py`
+- 默认权限 seed + 授权 API：`core/server.py`（`_seed_default_permissions` 与 `/permissions/*` endpoints）
+
+1. `system` 调用任意 seed skill/agent/tool **不应返回 403**
+2. 普通用户默认调用返回 403
+3. 调用 `/permissions/grant` 后普通用户可执行，并能通过查询接口看到授权
+4. 撤销后再次执行应返回 403
+
 
 ### 使用混合召回
 

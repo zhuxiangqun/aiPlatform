@@ -1,6 +1,12 @@
-# 架构总览
+# 架构总览（设计真值：以代码事实为准）
 
-> 完整展示 LangChain → LangGraph → Harness → Apps 的层次关系和集成方式
+> 本文档描述 **As-Is（当前实现）** 与 **To-Be（目标演进）** 的整体架构关系。  
+> 所有关键断言需满足可追溯规则，统一口径参见：[`ARCHITECTURE_STATUS.md`](../ARCHITECTURE_STATUS.md)。
+
+## 实现状态提示（As-Is vs To-Be）
+
+- **As-Is（当前实现）**：核心执行主路径以 **Harness Loop（ReActLoop/PlanExecuteLoop）** 为主；LangGraph 子系统已存在并用于部分图执行/收敛评估，但尚未作为唯一主路径统一收敛。
+- **To-Be（目标演进）**：逐步收敛为 **Graph-first（LangGraph StateGraph）** 作为主编排，Loop 作为图节点策略之一，并具备可持久化 checkpoint 与 replay/resume 语义。
 
 ---
 
@@ -149,7 +155,7 @@ harness/
 └── infrastructure/
     └── langchain/          ← LangChain 集成位置
         ├── models.py       ← ChatOpenAI, ChatAnthropic
-        ├── memory.py       ← ConversationMemory
+        ├── (无 memory.py)  ← 记忆适配见 harness/memory/langchain_adapter.py
         ├── tools.py        ← FunctionTool
         └── prompts.py      ← PromptTemplate
 ```
@@ -200,7 +206,8 @@ harness/
 │  │   │     └──────────────── Cycle ────────────────────────┘ │ │   │
 │  │   └─────────────────────────────────────────────────────────┘ │   │
 │  │                                                               │   │
-│  │   Loop.execute() ──▶ LangGraph.run() ──▶ State              │   │
+│  │   As-Is：Loop.run()/Graph.run() 并存（Loop-first）            │   │
+│  │   To-Be：Graph-first（Loop 作为节点策略）                     │   │
 │  └───────────────────────────────────────────────────────────────┘   │
 │  ┌───────────────────────────────────────────────────────────────┐   │
 │  │  infrastructure/ (基础设施层)                                 │   │
@@ -237,6 +244,14 @@ harness/
 │   │    Node     │   │    Edge     │   │   State    │              │
 │   └─────────────┘   └─────────────┘   └─────────────┘              │
 └─────────────────────────────────────────────────────────────────────┘
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- Harness Loop 主路径：`core/harness/execution/loop.py`（`BaseLoop.run()` / `ReActLoop`）
+- LangGraph 子系统入口：`core/harness/execution/langgraph/core.py` / `callbacks.py` / `graphs/*`
+- 现状真值与修复决策：`docs/ARCHITECTURE_STATUS.md`（“决策 2/3/4”）
 ```
 
 ---
@@ -302,7 +317,7 @@ LangChain 提供基础能力，LangGraph 实现图编排，Harness 在 execution
 | **模型调用** | `infrastructure/langchain/models.py` | LangChain 封装 |
 | **图编排** | `execution/langgraph/` | LangGraph 图结构 |
 | **工具集成** | `infrastructure/langchain/tools.py` | LangChain Tool |
-| **记忆集成** | `infrastructure/langchain/memory.py` | LangChain Memory |
+| **记忆集成** | `memory/langchain_adapter.py` | LangChain Memory Adapter |
 | **接口定义** | `interfaces/` | Harness 统一接口 |
 | **适配器** | `adapters/llm/` | 外部 LLM 接入 |
 

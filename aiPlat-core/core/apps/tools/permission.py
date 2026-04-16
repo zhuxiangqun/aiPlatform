@@ -47,9 +47,6 @@ class PermissionManager:
     ) -> None:
         """Grant a permission to a user for a tool"""
         with self._lock:
-            key = f"{user_id}:{tool_name}"
-            if key not in self._permissions:
-                self._permissions[key] = {}
             if user_id not in self._permissions:
                 self._permissions[user_id] = {}
             if tool_name not in self._permissions[user_id]:

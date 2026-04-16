@@ -1,4 +1,8 @@
-# 观察系统 (Observability)
+# 观察系统 (Observability)（设计真值：以代码事实为准）
+
+> **As-Is**：Harness 内存在事件定义与事件总线雏形（EventType/EventBus），并在部分执行链路写入最小观测字段（如 `tool_calls/tool_failures`、`audit_events`）。  
+> **To-Be**：统一事件模型落盘、与 OTel/指标后端贯通（详见 `aiPlat-infra/infra/observability/*`）。  
+> 统一口径参见：[架构实现状态](../ARCHITECTURE_STATUS.md)。
 
 > Agent 的眼睛——感知环境与任务状态，完整记录执行轨迹，采集性能与质量指标。
 
@@ -274,3 +278,12 @@
 ---
 
 *最后更新: 2026-04-14*
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- 事件定义与事件总线：`core/harness/observability/events/__init__.py`
+- Loop 最小观测控制：`core/harness/execution/loop.py: BaseLoop._apply_observability_control()`
+- 审计事件写入（security_scan）：`core/harness/infrastructure/hooks/hook_manager.py`
+- infra OTel 实现：`aiPlat-infra/infra/observability/*`

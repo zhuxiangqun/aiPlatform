@@ -95,7 +95,65 @@ export const alertingApi = {
 // Diagnostics API
 export const diagnosticsApi = {
   getHealth: async (layer: string) => {
-    return apiClient.get(`/diagnostics/health/${layer}`);
+    return apiClient.get<any>(`/diagnostics/health/${layer}`);
+  },
+
+  // ===== Observability (core only for now) =====
+
+  listTraces: async (params: { limit?: number; offset?: number; status?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (params.limit != null) q.set('limit', String(params.limit));
+    if (params.offset != null) q.set('offset', String(params.offset));
+    if (params.status) q.set('status', params.status);
+    const qs = q.toString();
+    return apiClient.get<any>(`/diagnostics/trace/core${qs ? `?${qs}` : ''}`);
+  },
+
+  getTrace: async (traceId: string, params: { limit?: number; offset?: number } = {}) => {
+    const q = new URLSearchParams({ trace_id: traceId });
+    if (params.limit != null) q.set('limit', String(params.limit));
+    if (params.offset != null) q.set('offset', String(params.offset));
+    return apiClient.get<any>(`/diagnostics/trace/core?${q.toString()}`);
+  },
+
+  getTraceByExecution: async (executionId: string) => {
+    const q = new URLSearchParams({ execution_id: executionId });
+    return apiClient.get<any>(`/diagnostics/trace/core?${q.toString()}`);
+  },
+
+  listGraphRuns: async (params: { limit?: number; offset?: number; graph_name?: string; status?: string; trace_id?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (params.limit != null) q.set('limit', String(params.limit));
+    if (params.offset != null) q.set('offset', String(params.offset));
+    if (params.graph_name) q.set('graph_name', params.graph_name);
+    if (params.status) q.set('status', params.status);
+    if (params.trace_id) q.set('trace_id', params.trace_id);
+    const qs = q.toString();
+    return apiClient.get<any>(`/diagnostics/graphs/core${qs ? `?${qs}` : ''}`);
+  },
+
+  getGraphRun: async (runId: string, includeCheckpoints: boolean = true) => {
+    const q = new URLSearchParams();
+    q.set('include_checkpoints', includeCheckpoints ? 'true' : 'false');
+    return apiClient.get<any>(`/diagnostics/graphs/core/${runId}?${q.toString()}`);
+  },
+
+  resumeGraphRun: async (runId: string, payload: Record<string, unknown>) => {
+    return apiClient.post<any>(`/diagnostics/graphs/core/${runId}/resume`, payload);
+  },
+
+  resumeExecuteGraphRun: async (runId: string, payload: Record<string, unknown>) => {
+    return apiClient.post<any>(`/diagnostics/graphs/core/${runId}/resume/execute`, payload);
+  },
+
+  linksUi: async (params: { trace_id?: string; execution_id?: string; graph_run_id?: string; include_spans?: boolean } = {}) => {
+    const q = new URLSearchParams();
+    if (params.trace_id) q.set('trace_id', params.trace_id);
+    if (params.execution_id) q.set('execution_id', params.execution_id);
+    if (params.graph_run_id) q.set('graph_run_id', params.graph_run_id);
+    if (params.include_spans) q.set('include_spans', 'true');
+    const qs = q.toString();
+    return apiClient.get<any>(`/diagnostics/links/core/ui${qs ? `?${qs}` : ''}`);
   },
 };
 

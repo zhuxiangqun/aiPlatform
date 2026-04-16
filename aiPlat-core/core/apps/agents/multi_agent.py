@@ -25,6 +25,7 @@ from ...harness.coordination.patterns import (
     ExpertPoolPattern,
     ProducerReviewerPattern,
     SupervisorPattern,
+    HierarchicalDelegationPattern,
     CoordinationContext,
     CoordinationResult as PatternResult,
 )
@@ -35,7 +36,7 @@ from ...adapters.llm import ILLMAdapter
 class MultiAgentConfig:
     """Multi-agent configuration"""
     num_agents: int = 3
-    coordination_pattern: str = "parallel"  # parallel, sequential, hierarchical, pipeline, expert_pool, producer_reviewer, supervisor
+    coordination_pattern: str = "parallel"  # parallel, sequential, pipeline, fan_out_fan_in, expert_pool, producer_reviewer, supervisor, hierarchical_delegation
     convergence_threshold: float = 0.8
     max_rounds: int = 5
     allow_specialization: bool = True
@@ -122,6 +123,7 @@ class MultiAgent(ConfigurableAgent):
             "expert_pool": ExpertPoolPattern,
             "producer_reviewer": ProducerReviewerPattern,
             "supervisor": SupervisorPattern,
+            "hierarchical_delegation": HierarchicalDelegationPattern,
         }
         
         pattern_cls = pattern_map.get(pattern_type, FanOutFanInPattern)

@@ -1,4 +1,7 @@
-# aiPlat-core 用户指南
+# aiPlat-core 用户指南（To-Be 为主，As-Is 以代码事实为准）
+
+> 说明：本文档假设存在 platform 层的统一 API 网关、鉴权与 WebSocket 流式接口；这些在当前仓库可能属于 To-Be。  
+> As-Is：核心 API 入口以 `core/server.py` 为准。统一口径参见 [`ARCHITECTURE_STATUS.md`](../../ARCHITECTURE_STATUS.md)。
 
 > 本文档面向使用 Core API 的开发者，提供核心组件的使用方法和配置示例。
 
@@ -19,7 +22,7 @@
 
 在使用 Core API 之前，确保：
 - 已完成系统部署（参考 [运维指南](./ops/index.md)）
-- 已获取 API 访问令牌
+- 已获取 API 访问令牌（To-Be：由 platform/auth 提供）
 - 已确认服务状态为健康
 
 ### 验证服务状态
@@ -27,7 +30,7 @@
 **检查 Core 服务健康状态**：
 ```bash
 # 通过 Platform HTTP API 检查
-curl http://localhost:8000/api/v1/health/core
+curl http://localhost:8000/health
 
 # 预期输出
 {"status": "healthy", "components": ["agent", "skill", "memory", "knowledge", "tool"]}
@@ -69,7 +72,7 @@ agent:
 
 3. **提交创建请求**：
 ```bash
-curl -X POST http://localhost:8000/api/v1/core/agents \
+curl -X POST http://localhost:8000/agents \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d @agent-config.yaml
@@ -80,7 +83,7 @@ curl -X POST http://localhost:8000/api/v1/core/agents \
 
 **单次执行**：
 ```bash
-curl -X POST http://localhost:8000/api/v1/core/agents/agent_001/execute \
+curl -X POST http://localhost:8000/agents/agent_001/execute \
   -H "Authorization: Bearer <token>" \
   -d '{"input": "查找 Python 异步编程最佳实践"}'
 # 返回: {"execution_id": "exec_001", "status": "completed", "output": "..."}
@@ -543,3 +546,10 @@ agent:
 ---
 
 *最后更新: 2026-04-14*
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- As-Is API 入口：`core/server.py`
+- Agents/Skills/Tools endpoints：`core/server.py`

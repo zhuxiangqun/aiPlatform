@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # aiPlat-management 启动脚本
-# 需要先启动 aiPlat-infra 层，再启动 aiPlat-management 层
+# 建议启动顺序：aiPlat-infra -> aiPlat-core -> aiPlat-management（可选前端）
 
 echo "============================================================"
 echo "  aiPlat-platform - 启动服务"
@@ -28,7 +28,7 @@ echo ""
 
 # ===== Step 1: 启动 aiPlat-infra 层 =====
 echo "============================================================"
-echo "  Step 1/2: 启动 aiPlat-infra (基础设施层)"
+echo "  Step 1/3: 启动 aiPlat-infra (基础设施层)"
 echo "============================================================"
 echo ""
 
@@ -65,10 +65,51 @@ for i in {1..10}; do
     sleep 1
 done
 
-# ===== Step 2: 启动 aiPlat-management 层 =====
+# ===== Step 2: 启动 aiPlat-core 层（可选但推荐）=====
 echo ""
 echo "============================================================"
-echo "  Step 2/2: 启动 aiPlat-management (管理系统层)"
+echo "  Step 2/3: 启动 aiPlat-core (核心层)"
+echo "============================================================"
+echo ""
+
+if [ -d "$PROJECT_ROOT/aiPlat-core" ]; then
+    echo "正在安装 aiPlat-core 依赖..."
+    cd "$PROJECT_ROOT/aiPlat-core"
+    pip install -e . 2>&1 | grep -E "(Successfully|ERROR|error)" || {
+        echo "警告: aiPlat-core 安装可能有问题，继续..."
+    }
+
+    echo ""
+    echo "启动 aiPlat-core API 服务 (端口 8002)..."
+    nohup python3 -m uvicorn core.server:app --host 0.0.0.0 --port 8002 > /tmp/aiplat-core.log 2>&1 &
+    CORE_PID=$!
+    echo "aiPlat-core PID: $CORE_PID"
+
+    echo "等待 aiPlat-core 启动..."
+    sleep 3
+
+    if ! kill -0 $CORE_PID 2>/dev/null; then
+        echo "警告: aiPlat-core 启动失败（management 仍可启动，但 traces/graphs 等功能将不可用）"
+        cat /tmp/aiplat-core.log
+    else
+        for i in {1..10}; do
+            if curl -s http://localhost:8002/api/core/health > /dev/null 2>&1; then
+                echo "aiPlat-core 已启动: http://localhost:8002"
+                break
+            fi
+            echo "等待 aiPlat-core 就绪... ($i/10)"
+            sleep 1
+        done
+        echo "$CORE_PID" > /tmp/aiplat-core.pid
+    fi
+else
+    echo "未发现 aiPlat-core 目录，跳过启动 core（traces/graphs 等功能将不可用）"
+fi
+
+# ===== Step 3: 启动 aiPlat-management 层 =====
+echo ""
+echo "============================================================"
+echo "  Step 3/3: 启动 aiPlat-management (管理系统层)"
 echo "============================================================"
 echo ""
 
@@ -127,7 +168,7 @@ if [ -d "frontend" ] && [ -f "frontend/package.json" ]; then
     cd ..
     
     echo "前端 PID: $FRONTEND_PID"
-    echo "$FRONTEND_PID" >> /tmp/aiplat-management.pid
+    echo "$FRONTEND_PID" > /tmp/aiplat-frontend.pid
     
     echo ""
     echo "============================================================"
@@ -136,11 +177,13 @@ if [ -d "frontend" ] && [ -f "frontend/package.json" ]; then
     echo ""
     echo "服务地址:"
     echo "  - aiPlat-infra:      http://localhost:8001"
+    echo "  - aiPlat-core:       http://localhost:8002"
     echo "  - aiPlat-management: http://localhost:8000"
     echo "  - Frontend:          http://localhost:5173"
     echo ""
     echo "查看日志:"
     echo "  - infra日志:      tail -f /tmp/aiplat-infra.log"
+    echo "  - core日志:       tail -f /tmp/aiplat-core.log"
     echo "  - management日志: tail -f /tmp/aiplat-management.log"
     echo "  - frontend日志:   tail -f /tmp/aiplat-frontend.log"
     echo ""
@@ -152,10 +195,12 @@ else
     echo ""
     echo "服务地址:"
     echo "  - aiPlat-infra:      http://localhost:8001"
+    echo "  - aiPlat-core:       http://localhost:8002"
     echo "  - aiPlat-management: http://localhost:8000"
     echo ""
     echo "查看日志:"
     echo "  - infra日志:      tail -f /tmp/aiplat-infra.log"
+    echo "  - core日志:       tail -f /tmp/aiplat-core.log"
     echo "  - management日志: tail -f /tmp/aiplat-management.log"
     echo ""
     echo "停止服务: ./stop.sh"

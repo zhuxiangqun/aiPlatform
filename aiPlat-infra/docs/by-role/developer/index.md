@@ -1,4 +1,6 @@
-# 👨‍💻 基础设施层开发者指南
+# 👨‍💻 基础设施层开发者指南（As-Is 对齐 + To-Be 示例）
+
+> 说明：本文档中的 make/docker/config 示例可能依赖外部 ops 仓库；As-Is 以当前 infra 代码与 tests 为准。
 
 > aiPlat-infra - 开发指南与最佳实践
 
@@ -28,8 +30,8 @@
 
 **启动依赖服务**：
 ```bash
-# 启动 PostgreSQL、Redis、Milvus
-make docker-up-infra
+# To-Be：启动 PostgreSQL、Redis、Milvus（需提供 compose/make）
+# make docker-up-infra
 
 # 等待服务就绪
 make docker-wait
@@ -61,8 +63,8 @@ make test-db
 # 测试 Redis 连接
 make test-redis
 
-# 测试向量存储
-make test-vector
+# 测试向量存储（To-Be）
+# make test-vector
 
 # 测试 LLM 连接
 make test-llm

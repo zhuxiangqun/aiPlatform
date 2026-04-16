@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, RotateCcw, Trash2, Lock, Unlock, User } from 'lucide-react';
-import { Table, Button, Modal, Select } from '../../../components/ui';
+import { Table, Button, Modal, Select, toast } from '../../../components/ui';
 import PageHeader from '../../../components/common/PageHeader';
 import { authApi } from '../../../services';
 import type { AuthUser } from '../../../services';
@@ -32,7 +32,7 @@ const Auth: React.FC = () => {
       const res = await authApi.list({ role: roleFilter || undefined, status: statusFilter || undefined });
       setUsers(res.users || []);
     } catch {
-      alert('获取用户列表失败');
+      toast.error('获取用户列表失败');
       setUsers([]);
     } finally {
       setLoading(false);
@@ -47,11 +47,11 @@ const Auth: React.FC = () => {
     if (!deleteModal.user) return;
     try {
       await authApi.delete(deleteModal.user.id);
-      alert('用户已删除');
+      toast.success('用户已删除');
       setDeleteModal({ open: false, user: null });
       fetchUsers();
     } catch {
-      alert('删除失败');
+      toast.error('删除失败');
     }
   };
 
@@ -59,10 +59,10 @@ const Auth: React.FC = () => {
     const newStatus = user.status === 'locked' ? 'active' : 'locked';
     try {
       await authApi.update(user.id, { status: newStatus });
-      alert(`用户 "${user.username}" 已${newStatus === 'locked' ? '锁定' : '解锁'}`);
+      toast.success(`用户 "${user.username}" 已${newStatus === 'locked' ? '锁定' : '解锁'}`);
       fetchUsers();
     } catch {
-      alert('操作失败');
+      toast.error('操作失败');
     }
   };
 

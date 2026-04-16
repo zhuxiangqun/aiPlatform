@@ -1,4 +1,7 @@
-# 记忆系统 (Memory)
+# 记忆系统 (Memory)（设计真值：以代码事实为准）
+
+> 说明：本文档描述 Harness 的 Memory 子系统（`core/harness/memory/*`）。  
+> 统一口径参见：[架构实现状态](../ARCHITECTURE_STATUS.md)。
 
 > 记忆系统负责智能体的短期记忆和长期记忆管理，支持上下文保持和经验积累。
 
@@ -138,10 +141,18 @@ harness/memory/
 
 ## 相关文档
 
-- [Harness 索引](./harness/index.md) - 智能体框架
-- [Context 管理](./harness/context.md) - 上下文压缩与双记忆架构
-- [渐进式披露](./harness/progressive-disclosure.md) - 记忆加载策略
+- [Harness 索引](../harness/index.md) - 智能体框架
+- [Context 管理](../harness/context.md) - 上下文压缩与双记忆架构
+- [渐进式披露](../harness/progressive-disclosure.md) - 记忆加载策略
 
 ---
 
 *最后更新: 2026-04-14*
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- Memory 模块：`core/harness/memory/*`
+- MemoryManager：`core/harness/memory/manager.py`
+- Compression：`core/harness/memory/compression.py`

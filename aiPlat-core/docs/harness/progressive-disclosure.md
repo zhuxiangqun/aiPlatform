@@ -1,6 +1,8 @@
-# 渐进式披露机制
+# 渐进式披露机制（As-Is 对齐 + To-Be 规划）
 
-> 实现按需加载上下文与条件触发，构建高效的记忆调度系统
+> **As-Is**：当前仓库具备最小上下文裁剪（token 高占用时保留末 2 条 messages）与 skills 发现/加载的部分能力，但未形成“复杂度分析→披露策略→统一加载器”的端到端闭环。  
+> **To-Be**：本文档主体为规划设计，需要结合统一事件模型、Checkpoint/ExecutionStore 与评测回归落地。  
+> 统一口径参见：[架构实现状态](../ARCHITECTURE_STATUS.md)。
 
 ---
 
@@ -16,10 +18,10 @@
 
 | 能力 | 实现位置 | 状态 |
 |------|---------|------|
-| Context 5级压缩 | services/context_service.py | ✅ 已实现 |
-| 四层记忆划分 | docs/harness/context.md | ✅ 已实现 |
-| Skill 按需加载 | apps/skills/discovery.py | ✅ 已实现 |
-| references 按需加载 | apps/skills/loader.py | ✅ 部分实现 |
+| Context 压缩（最小实现） | `core/harness/execution/loop.py` | ⚠️ best-effort 裁剪 messages（非完整 5 级压缩） |
+| 四层记忆划分 | `docs/harness/context.md` | 📝 文档设计（To-Be） |
+| Skill 发现/加载 | `core/apps/skills/discovery.py` | ⚠️ 发现/加载存在，但未接入统一披露策略 |
+| references/scripts 按需加载 | `core/apps/skills/discovery.py` | ⚠️ loader 存在，但“条件触发/策略化加载”未闭环 |
 
 ### 新增能力
 
@@ -389,3 +391,11 @@ progressive_disclosure:
 ---
 
 *最后更新: 2026-04-14*
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- token 高占用裁剪（最小实现）：`core/harness/execution/loop.py: BaseLoop._apply_observability_control()`
+- skills 发现/加载：`core/apps/skills/discovery.py`
+- To-Be：需补齐 ContextLoader/Policy/Analyzer 的实现与测试

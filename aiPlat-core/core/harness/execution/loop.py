@@ -17,6 +17,7 @@ from ..interfaces.loop import (
     LoopResult,
 )
 from ..infrastructure.hooks import HookManager, HookPhase, HookContext
+from .tool_calling import parse_action_call, parse_tool_call
 
 
 class BaseLoop(ILoop):
@@ -41,22 +42,59 @@ class BaseLoop(ILoop):
         """Run execution loop"""
         self._current_state = state
         self._config = config
-        
-        # Pre-loop hook
+        stop_reason = None
+
+        # Session start + pre-loop hooks
+        await self._trigger_hook(HookPhase.SESSION_START, {"state": state, "config": config})
         await self._trigger_hook(HookPhase.PRE_LOOP, {"state": state})
         
         try:
             while self.should_continue(self._current_state):
+                # Contract check (optional hooks may block)
+                contract_results = await self._trigger_hook(
+                    HookPhase.PRE_CONTRACT_CHECK,
+                    {"state": self._current_state, "config": config},
+                )
+                deny = _extract_deny(contract_results)
+                if deny:
+                    await self._trigger_hook(HookPhase.SCOPE_REVIEW, {"reason": deny.get("reason", "contract denied")})
+                    raise RuntimeError(deny.get("reason", "contract denied"))
+
                 # Execute step
                 self._current_state = await self.step(self._current_state)
+
+                await self._trigger_hook(
+                    HookPhase.POST_CONTRACT_CHECK,
+                    {"state": self._current_state, "config": config},
+                )
+
+                # Observability-driven control (minimal closed-loop)
+                self._apply_observability_control(self._current_state, config)
+                if self._current_state.current == LoopStateEnum.PAUSED:
+                    stop_reason = "paused"
+                    break
                 
                 # Check for errors
                 if self._current_state.current == LoopStateEnum.ERROR:
                     if config.stop_on_error:
                         break
             
+            # Determine stop reason
+            if self._current_state.current == LoopStateEnum.FINISHED:
+                stop_reason = "finished"
+            elif self._current_state.current == LoopStateEnum.ERROR:
+                stop_reason = "error"
+            elif self._current_state.step_count >= self._config.max_steps:
+                stop_reason = "max_steps"
+            elif self._current_state.budget_remaining <= 0:
+                stop_reason = "budget_exhausted"
+            else:
+                stop_reason = "stopped"
+
             # Post-loop hook
             await self._trigger_hook(HookPhase.POST_LOOP, {"state": self._current_state})
+            await self._trigger_hook(HookPhase.STOP, {"state": self._current_state, "reason": stop_reason})
+            await self._trigger_hook(HookPhase.SESSION_END, {"state": self._current_state, "reason": stop_reason})
             
             return LoopResult(
                 success=self._current_state.current == LoopStateEnum.FINISHED,
@@ -67,6 +105,12 @@ class BaseLoop(ILoop):
             
         except Exception as e:
             self._current_state.current = LoopStateEnum.ERROR
+            stop_reason = stop_reason or "exception"
+            try:
+                await self._trigger_hook(HookPhase.STOP, {"state": self._current_state, "reason": stop_reason, "error": str(e)})
+                await self._trigger_hook(HookPhase.SESSION_END, {"state": self._current_state, "reason": stop_reason, "error": str(e)})
+            except Exception:
+                pass
             return LoopResult(
                 success=False,
                 final_state=self._current_state,
@@ -85,10 +129,38 @@ class BaseLoop(ILoop):
             return False
         
         # Check state
-        if state.current in [LoopStateEnum.FINISHED, LoopStateEnum.ERROR]:
+        if state.current in [LoopStateEnum.FINISHED, LoopStateEnum.ERROR, LoopStateEnum.PAUSED]:
             return False
         
         return True
+
+    def _apply_observability_control(self, state: LoopState, config: LoopConfig) -> None:
+        """
+        Minimal observability-driven control:
+        - If tool_error_rate > 0.2 and tool_calls >= 10 -> pause + require manual
+        - If token usage ratio > 0.8 -> compact messages (keep last 2)
+        """
+        # 1) tool error rate based pause
+        tool_calls = int(state.metadata.get("tool_calls", 0) or 0)
+        tool_failures = int(state.metadata.get("tool_failures", 0) or 0)
+        if tool_calls >= 10:
+            rate = tool_failures / max(1, tool_calls)
+            if rate > 0.2:
+                state.current = LoopStateEnum.PAUSED
+                state.metadata["control_action"] = "require_manual"
+                state.metadata["tool_error_rate"] = rate
+                state.context["observation"] = f"Paused: tool_error_rate={rate:.2f} exceeds threshold"
+                return
+
+        # 2) token budget based compaction (best-effort)
+        max_tokens = float(getattr(config, "max_tokens", state.max_tokens) or state.max_tokens)
+        used_tokens = float(getattr(state, "used_tokens", 0) or 0)
+        if max_tokens > 0 and (used_tokens / max_tokens) > 0.8:
+            msgs = state.context.get("messages")
+            if isinstance(msgs, list) and len(msgs) > 2:
+                state.context["messages"] = msgs[-2:]
+                state.metadata["control_action"] = "compact_context"
+                state.metadata["compacted_messages"] = True
 
     async def step(self, state: LoopState) -> LoopState:
         """Execute single step - to be implemented by subclass"""
@@ -110,10 +182,18 @@ class BaseLoop(ILoop):
         self._current_state = LoopState()
         self._current_node = "init"
 
-    async def _trigger_hook(self, phase: HookPhase, data: Dict[str, Any]) -> None:
-        """Trigger hooks for a phase"""
+    async def _trigger_hook(self, phase: HookPhase, data: Dict[str, Any]) -> List[Any]:
+        """Trigger hooks for a phase and return hook results."""
         context = HookContext(phase=phase, state=data)
-        await self._hook_manager.trigger(phase, context)
+        return await self._hook_manager.trigger(phase, context)
+
+
+def _extract_deny(results: List[Any]) -> Optional[Dict[str, Any]]:
+    """Extract first deny dict from hook results."""
+    for r in results or []:
+        if isinstance(r, dict) and r.get("allow") is False:
+            return r
+    return None
 
 
 class ReActLoop(BaseLoop):
@@ -253,8 +333,22 @@ Available tools:
 
 Observation: {state.context.get('observation', 'None')}
 
-Think about what to do next. If using a tool, respond with:
+Think about what to do next. If using a tool/skill, respond with:
+1) 优先（结构化）：
+```json
+{{"tool":"tool_name","args":{{...}}}}
+```
+
+Skill（必须显式标注，避免误触发）：
+```json
+{{"skill":"skill_name","args":{{...}}}}
+```
+
+2) 兼容旧格式（tool）：
 ACTION: tool_name: argument
+
+兼容旧格式（skill）：
+SKILL: skill_name: argument
 
 If finished, respond with:
 DONE: final_answer
@@ -268,55 +362,69 @@ DONE: final_answer
     async def _act(self, state: LoopState) -> str:
         """Acting phase - execute tool or skill."""
         reasoning = state.context.get("reasoning", "")
-        if "ACTION:" not in reasoning.upper():
+        parsed = parse_action_call(reasoning)
+        if not parsed:
             return "No action to execute"
 
-        try:
-            parts = reasoning.upper().split("ACTION:")[1].strip()
-            if ":" in parts:
-                tool_name = parts.split(":", 1)[0].strip()
-                tool_args_str = parts.split(":", 1)[1].strip()
-                try:
-                    import json
-                    tool_args = json.loads(tool_args_str)
-                except Exception:
-                    tool_args = {"input": tool_args_str}
-            else:
-                tool_name = parts.strip()
-                tool_args = {}
-        except Exception:
-            return "Failed to parse action"
-
-        for tool in self._tools:
-            if getattr(tool, 'name', '') == tool_name:
-                self._approval_check(tool_name, state.context)
-                await self._trigger_hook(HookPhase.PRE_TOOL_USE, {"tool": tool_name})
-                try:
-                    result = await tool.execute(tool_args)
-                    result_output = result.output if hasattr(result, 'output') else str(result)
-                except Exception as e:
-                    result_output = f"Tool error: {e}"
-                await self._trigger_hook(HookPhase.POST_TOOL_USE, {"tool": tool_name, "result": result_output})
-                return str(result_output)
-
-        if self._skills:
+        if parsed.kind == "skill":
+            skill_name = parsed.name
+            skill_args = parsed.args
+            state.context["skill_call"] = {"skill": skill_name, "args": skill_args, "format": parsed.format}
             for skill in self._skills:
-                skill_name = getattr(skill, 'name', '') or getattr(skill, '_config', {}).name if hasattr(getattr(skill, '_config', None), 'name') else ''
-                if skill_name and skill_name in reasoning.lower():
+                name = ""
+                if hasattr(skill, "name"):
+                    name = str(getattr(skill, "name", "") or "")
+                elif hasattr(skill, "_config") and getattr(skill, "_config", None) is not None:
+                    name = str(getattr(skill._config, "name", "") or "")
+                if name.strip().lower() == skill_name.strip().lower():
                     from ..interfaces import SkillContext
-                    await self._trigger_hook(HookPhase.PRE_SKILL_USE, {"skill": skill_name})
+                    await self._trigger_hook(HookPhase.PRE_SKILL_USE, {"skill": skill_name, "skill_args": skill_args, "format": parsed.format})
                     try:
                         skill_context = SkillContext(
                             session_id=state.context.get("session_id", "default"),
                             user_id=state.context.get("user_id", "system"),
-                            variables=tool_args,
+                            variables=skill_args,
                         )
-                        result = await skill.execute(skill_context, tool_args)
+                        result = await skill.execute(skill_context, skill_args)
                         result_output = result.output if hasattr(result, 'output') else str(result)
                     except Exception as e:
                         result_output = f"Skill error: {e}"
-                    await self._trigger_hook(HookPhase.POST_SKILL_USE, {"skill": skill_name, "result": result_output})
+                    await self._trigger_hook(HookPhase.POST_SKILL_USE, {"skill": skill_name, "result": result_output, "format": parsed.format})
                     return str(result_output)
+            return f"Skill not found: {skill_name}"
+
+        tool_name = parsed.name
+        tool_args = parsed.args
+        state.context["tool_call"] = {"tool": tool_name, "args": tool_args, "format": parsed.format}
+
+        for tool in self._tools:
+            if str(getattr(tool, 'name', '')).strip().lower() == str(tool_name).strip().lower():
+                # Approval hooks (may block)
+                approval_results = await self._trigger_hook(
+                    HookPhase.PRE_APPROVAL_CHECK,
+                    {"tool_name": tool_name, "tool_args": tool_args, "context": state.context},
+                )
+                deny = _extract_deny(approval_results)
+                if deny:
+                    await self._trigger_hook(HookPhase.POST_APPROVAL_CHECK, {"tool_name": tool_name, "allowed": False, "reason": deny.get("reason")})
+                    return f"Denied: {deny.get('reason', 'approval denied')}"
+
+                self._approval_check(tool_name, state.context)
+                await self._trigger_hook(HookPhase.PRE_TOOL_USE, {"tool_name": tool_name, "tool_args": tool_args, "format": parsed.format})
+                try:
+                    result = await tool.execute(tool_args)
+                    result_output = result.output if hasattr(result, 'output') else str(result)
+                    ok = bool(getattr(result, "success", True))
+                except Exception as e:
+                    result_output = f"Tool error: {e}"
+                    ok = False
+                # Record tool stats for observability-driven control
+                state.metadata["tool_calls"] = int(state.metadata.get("tool_calls", 0) or 0) + 1
+                if not ok:
+                    state.metadata["tool_failures"] = int(state.metadata.get("tool_failures", 0) or 0) + 1
+                await self._trigger_hook(HookPhase.POST_TOOL_USE, {"tool_name": tool_name, "result": result_output, "format": parsed.format})
+                await self._trigger_hook(HookPhase.POST_APPROVAL_CHECK, {"tool_name": tool_name, "allowed": True})
+                return str(result_output)
 
         return f"Tool not found: {tool_name}"
 
@@ -380,7 +488,16 @@ class PlanExecuteLoop(BaseLoop):
         state.current = LoopStateEnum.REASONING
         
         if self._model:
-            prompt = f"Task: {state.context.get('task', '')}\nCreate a step-by-step plan."
+            prompt = (
+                "请为任务生成可执行的步骤计划。\n"
+                "要求：\n"
+                "1) 普通步骤用自然语言描述即可。\n"
+                "2) 若某一步需要调用工具，请用结构化 JSON 表达（单行）：\n"
+                "   {\"tool\":\"tool_name\",\"args\":{...}}\n"
+                "3) 若某一步需要调用 skill，也必须显式标注（单行）：\n"
+                "   {\"skill\":\"skill_name\",\"args\":{...}}\n"
+                f"\nTask: {state.context.get('task', '')}\n"
+            )
             response = await self._model.generate(
                 [{"role": "user", "content": prompt}]
             )
@@ -414,40 +531,38 @@ class PlanExecuteLoop(BaseLoop):
             
             step_result = None
             
-            # Try to execute with a tool
-            tool_executed = False
-            if self._tools:
+            # Execute only when explicitly routed (avoid substring accidental dispatch)
+            parsed_action = parse_action_call(action)
+            if parsed_action and parsed_action.kind == "tool" and self._tools:
                 for tool in self._tools:
-                    tool_name = getattr(tool, 'name', '')
-                    if tool_name and tool_name.lower() in action.lower():
+                    tool_name = getattr(tool, "name", "")
+                    if str(tool_name).strip().lower() == str(parsed_action.name).strip().lower():
                         try:
-                            await self._trigger_hook(HookPhase.PRE_TOOL_USE, {"tool": tool_name})
-                            result = await tool.execute(state.context)
-                            step_result = result.output if hasattr(result, 'output') else str(result)
-                            await self._trigger_hook(HookPhase.POST_TOOL_USE, {"tool": tool_name, "result": result})
-                            tool_executed = True
+                            await self._trigger_hook(HookPhase.PRE_TOOL_USE, {"tool": tool_name, "tool_args": parsed_action.args, "format": parsed_action.format})
+                            result = await tool.execute(parsed_action.args)
+                            step_result = result.output if hasattr(result, "output") else str(result)
+                            await self._trigger_hook(HookPhase.POST_TOOL_USE, {"tool": tool_name, "result": step_result, "format": parsed_action.format})
                             break
                         except Exception as e:
                             step_result = f"Tool error ({tool_name}): {e}"
-            
-            # Try to execute with a skill
-            if not tool_executed and self._skills:
+
+            if step_result is None and parsed_action and parsed_action.kind == "skill" and self._skills:
                 for skill in self._skills:
-                    skill_name = getattr(skill, '_config', None)
-                    skill_name = skill_name.name if skill_name else getattr(skill, 'name', '')
-                    if skill_name and skill_name.lower() in action.lower():
+                    skill_name = getattr(skill, "_config", None)
+                    skill_name = skill_name.name if skill_name else getattr(skill, "name", "")
+                    if str(skill_name).strip().lower() == str(parsed_action.name).strip().lower():
                         try:
                             from ...harness.interfaces import SkillContext
                             skill_context = SkillContext(
                                 session_id=state.context.get("session_id", "loop"),
                                 user_id=state.context.get("user_id", "system"),
-                                variables={"prompt": action},
-                                tools=[t.name for t in self._tools if hasattr(t, 'name')],
+                                variables=parsed_action.args,
+                                tools=[t.name for t in self._tools if hasattr(t, "name")],
                             )
-                            await self._trigger_hook(HookPhase.PRE_SKILL_USE, {"skill": skill_name})
-                            result = await skill.execute(skill_context, {"prompt": action})
-                            step_result = result.output if hasattr(result, 'output') else str(result)
-                            await self._trigger_hook(HookPhase.POST_SKILL_USE, {"skill": skill_name, "result": result})
+                            await self._trigger_hook(HookPhase.PRE_SKILL_USE, {"skill": skill_name, "skill_args": parsed_action.args, "format": parsed_action.format})
+                            result = await skill.execute(skill_context, parsed_action.args)
+                            step_result = result.output if hasattr(result, "output") else str(result)
+                            await self._trigger_hook(HookPhase.POST_SKILL_USE, {"skill": skill_name, "result": step_result, "format": parsed_action.format})
                             break
                         except Exception as e:
                             step_result = f"Skill error ({skill_name}): {e}"

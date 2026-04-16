@@ -1,0 +1,79 @@
+{
+  "meta": {
+    "project": "aiPlat",
+    "round": "round5",
+    "date": "2026-04-16",
+    "scope": ["aiPlat-core/docs/**", "aiPlat-infra/docs/**", "reports/**"],
+    "purpose": "全量修订项目文档（包含仓库根目录 /reports）以对齐代码事实：统一可追溯断言规则、明确 As-Is/To-Be 边界、补齐证据索引、修复文档路径/存在性错误，并消除跨 repo 口径矛盾。"
+  },
+  "items": [
+    {
+      "id": "DOC-GOV-001",
+      "design_statement": "全仓设计文档必须可追溯：每条关键断言需提供代码入口/测试或命令；必须显式区分 As-Is（代码事实）与 To-Be（规划项），并提供 Evidence Index。",
+      "code_evidence": [
+        {
+          "type": "doc",
+          "path": "aiPlat-core/docs/ARCHITECTURE_STATUS.md",
+          "evidence": "新增“适用于全仓 docs”的可追溯断言规则，并补充 As-Is/To-Be 写作规范与 Evidence Index 模板。"
+        }
+      ],
+      "verdict": "✅一致",
+      "risk": "低",
+      "status": "fixed",
+      "verification": "python3 - <<'PY'\nimport glob\nfor root in ['aiPlat-core/docs','aiPlat-infra/docs','reports']:\n  for fp in glob.glob(root+'/**/*.md', recursive=True):\n    t=open(fp,'r',encoding='utf-8').read()\n    assert ('设计真值' in t) or ('As-Is' in t) or ('To-Be' in t) or ('历史报告' in t), fp\nprint('ok')\nPY",
+      "updated_at": "2026-04-16"
+    },
+    {
+      "id": "DOC-CORE-001",
+      "design_statement": "核心能力层（aiPlat-core/docs）设计文档必须与当前实现一致：修复错误的目录树/文件路径、消除不准确断言（例如 Loop vs Graph、Hook/Approval 接线、MCP/skill 执行形态），并补齐 Evidence Index。",
+      "code_evidence": [
+        {
+          "type": "doc",
+          "path": "aiPlat-core/docs/architecture/index.md",
+          "evidence": "新增 As-Is/To-Be 说明并补 Evidence Index；明确 Loop-first 与 Graph-first 目标演进。"
+        },
+        {
+          "type": "doc",
+          "path": "aiPlat-core/docs/harness/*.md",
+          "evidence": "统一加入 As-Is/To-Be 提示、修正执行/观测/feedback 等文档中“规划项写成已实现”的表述，并补齐证据索引。"
+        },
+        {
+          "type": "doc",
+          "path": "aiPlat-core/docs/framework/*.md",
+          "evidence": "修正框架依赖关系口径（LangGraph/LangChain 关系、Loop-first 主路径），并对目录树中不存在的接口文件做 To-Be 标注。"
+        }
+      ],
+      "verdict": "✅一致",
+      "risk": "低",
+      "status": "fixed",
+      "verification": "人工复核 + 关键入口抽样（e.g. core/server.py, core/harness/execution/loop.py, core/apps/*）",
+      "updated_at": "2026-04-16"
+    },
+    {
+      "id": "DOC-INFRA-001",
+      "design_statement": "基础设施层（aiPlat-infra/docs）文档需统一设计真值口径：为各模块补齐 As-Is/To-Be 提示与 Evidence Index，修复测试文档错误引用，并将测试报告标记为“历史快照”。",
+      "code_evidence": [
+        {
+          "type": "doc",
+          "path": "aiPlat-infra/docs/*/index.md",
+          "evidence": "为 DI/observability/logging/monitoring/config/mcp 以及资源模块等补齐“设计真值”说明与证据索引。"
+        },
+        {
+          "type": "doc",
+          "path": "aiPlat-infra/docs/testing/README.md",
+          "evidence": "修复错误引用 SYSTEM_TESTING_GUIDE.md，改为 INFRA_DETAILED_TESTING_GUIDE.md，并添加 As-Is 说明。"
+        },
+        {
+          "type": "doc",
+          "path": "aiPlat-infra/docs/testing/reports/*.md",
+          "evidence": "统一标注为历史报告快照（不作为当前能力唯一依据）。"
+        }
+      ],
+      "verdict": "✅一致",
+      "risk": "低",
+      "status": "fixed",
+      "verification": "同 DOC-GOV-001 的扫描脚本 + 抽样对照 infra/* 源码目录",
+      "updated_at": "2026-04-16"
+    }
+  ]
+}

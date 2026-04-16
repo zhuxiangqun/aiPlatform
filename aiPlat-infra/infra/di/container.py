@@ -11,6 +11,20 @@ from .schemas import Lifetime, ServiceDescriptor, DIContainerConfig
 from .base import DIContainer, IScope
 
 import warnings
+import importlib
+import pkgutil
+import logging
+
+from .interceptors import (
+    InterceptorChain,
+    LoggingInterceptor,
+    TimingInterceptor,
+    CachingInterceptor,
+    MetricsInterceptor,
+    ErrorHandlingInterceptor,
+    Proxy,
+)
+from .auto import list_injectables
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
@@ -50,7 +64,7 @@ class ScopeImpl(IScope):
         if desc and desc.lifetime == Lifetime.SCOPED:
             self._instances[service] = instance
 
-        return instance
+        return self._container._wrap(instance)
 
     def close(self) -> None:
         """关闭作用域，清理资源"""
@@ -80,6 +94,82 @@ class DIContainerImpl(DIContainer):
         self._services: Dict[Type, ServiceDescriptor] = {}
         self._singletons: Dict[Type, Any] = {}
         self._scopes: Dict[str, ScopeImpl] = {}
+        self._logger = logging.getLogger("infra.di")
+        self._interceptor_chain: Optional[InterceptorChain] = None
+        self._interceptors: Dict[str, Any] = {}
+
+        self._bootstrap_from_config()
+
+    def _bootstrap_from_config(self) -> None:
+        """Bootstrap container: scan_packages + build interceptors + auto-register injectables."""
+        self._build_interceptors()
+        self._scan_packages()
+        self._register_injectables()
+
+    def _build_interceptors(self) -> None:
+        names = [str(n).strip().lower() for n in (self._config.interceptors or []) if str(n).strip()]
+        if not names:
+            self._interceptor_chain = None
+            self._interceptors = {}
+            return
+        chain = InterceptorChain()
+        for n in names:
+            if n == "logging":
+                inst = LoggingInterceptor(logger=self._logger)
+            elif n == "timing":
+                inst = TimingInterceptor()
+            elif n == "caching":
+                inst = CachingInterceptor()
+            elif n == "metrics":
+                inst = MetricsInterceptor()
+            elif n in ("error_handling", "error", "errors"):
+                inst = ErrorHandlingInterceptor(logger=self._logger)
+            else:
+                continue
+            chain.add(inst)
+            self._interceptors[n] = inst
+        self._interceptor_chain = chain
+
+    def get_interceptor(self, name: str) -> Optional[Any]:
+        return self._interceptors.get((name or "").strip().lower())
+
+    def _scan_packages(self) -> None:
+        """Import configured packages and their submodules to trigger @injectable registrations."""
+        for pkg_name in self._config.scan_packages or []:
+            pkg_name = str(pkg_name).strip()
+            if not pkg_name:
+                continue
+            try:
+                pkg = importlib.import_module(pkg_name)
+            except Exception as e:
+                self._logger.warning(f"DI scan import failed for {pkg_name}: {e}")
+                continue
+            try:
+                if hasattr(pkg, "__path__"):
+                    for _, modname, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + "."):
+                        try:
+                            importlib.import_module(modname)
+                        except Exception:
+                            continue
+            except Exception:
+                continue
+
+    def _register_injectables(self) -> None:
+        """Register injectable specs collected during module import."""
+        for spec in list_injectables():
+            try:
+                self.register(spec.service, spec.implementation, lifetime=spec.lifetime)
+            except Exception:
+                continue
+
+    def _wrap(self, instance: Any) -> Any:
+        """Wrap instance with interceptors if enabled."""
+        if self._interceptor_chain is None:
+            return instance
+        try:
+            return Proxy(instance, self._interceptor_chain)
+        except Exception:
+            return instance
 
     def register(
         self,
@@ -131,7 +221,7 @@ class DIContainerImpl(DIContainer):
         if desc and desc.lifetime == Lifetime.SINGLETON:
             self._singletons[service] = instance
 
-        return instance
+        return self._wrap(instance)
 
     def resolve_all(self, service: Type) -> List[Any]:
         """解析所有实现"""
@@ -139,7 +229,7 @@ class DIContainerImpl(DIContainer):
         for desc in self._services.values():
             if desc.service == service:
                 impl = self._create_instance(desc.implementation)
-                implementations.append(impl)
+                implementations.append(self._wrap(impl))
         return implementations
 
     def _create_instance(self, implementation: Type) -> Any:
@@ -179,6 +269,12 @@ class DIContainerImpl(DIContainer):
         except Exception as e:
             _log.warning(f"Failed to create instance {implementation.__name__}: {e}")
             return implementation()
+
+    def clear(self) -> None:
+        """Clear container registrations and caches."""
+        self._services.clear()
+        self._singletons.clear()
+        self._scopes.clear()
 
     def create_scope(self, scope_name: str) -> IScope:
         """创建作用域"""

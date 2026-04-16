@@ -1,4 +1,7 @@
-# 知识管理 (Knowledge)
+# 知识管理 (Knowledge)（设计真值：以代码事实为准）
+
+> 说明：本文档描述 Harness 的 Knowledge 子系统（`core/harness/knowledge/*`）。
+> 统一口径参见：[架构实现状态](../ARCHITECTURE_STATUS.md)。
 
 > 知识管理模块负责知识库的构建、维护和查询，支持检索增强生成（RAG）等场景。
 
@@ -115,9 +118,17 @@ harness/knowledge/
 
 ## 相关文档
 
-- [Harness 索引](./harness/index.md) - 智能体框架
-- [RAG Agent](../apps/agents/rag.py) - 检索增强生成
+- [Harness 索引](../harness/index.md) - 智能体框架
+- [RAG Agent（代码）](../../core/apps/agents/rag.py) - 检索增强生成
 
 ---
 
 *最后更新: 2026-04-14*
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- Knowledge 模块：`core/harness/knowledge/*`
+- Retriever：`core/harness/knowledge/retriever.py`
+- Indexer：`core/harness/knowledge/indexer.py`

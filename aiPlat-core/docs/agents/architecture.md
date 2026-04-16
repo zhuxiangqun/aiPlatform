@@ -1,17 +1,18 @@
-# Agent 架构设计
+# Agent 架构设计（设计真值：以代码事实为准）
 
-> ⚠️ **实现状态提示**：本文档描述了设计目标。Phase 7 已修复大部分偏离，完整状态参见 [架构实现状态](../ARCHITECTURE_STATUS.md)。
+> ⚠️ **实现状态提示（As-Is vs To-Be）**：本文档以 **当前代码事实（As-Is）** 为准，并对尚未形成闭环的能力标注为 **To-Be**。  
+> 完整状态与证据链参见 [架构实现状态](../ARCHITECTURE_STATUS.md)。
 >
-> **Phase 7 已修复**：
+> **Phase 7 已修复（As-Is）**：
 > - ✅ ReActAgent/PlanExecuteAgent 委托 `super().execute()` → Loop 驱动执行
 > - ✅ HeartbeatMonitor 通过 `asyncio.ensure_future` 启动
-> - ✅ 三种状态类型已统一（TypedDict + AgentLifecycleState 重命名）
+> - ✅ 状态模型已按 canonical（`AgentStateEnum`）收敛关键落点（management/registry 默认值与映射）
 > - ✅ Manager↔Registry 通过 `_bridge_to_registry()` 桥接
 > - ✅ RAGAgent import 修复 + _model 属性修复
 >
-> **仍需注意**：
+> **仍需注意（As-Is）**：
 > - ConversationalAgent 保留 execute() override（对话模式不需要 Loop，直接调 model）
-> - Skill 版本管理、Fork 模式仍为仅文档
+> - Skill 版本回滚语义与 fork 执行模式已落地在执行层，但“技能目录化/manifest 化”仍属于 To-Be（详见 skills 文档）
 
 > Agent 的核心架构设计，包括类型体系、生命周期、配置管理与执行模型
 
@@ -76,6 +77,39 @@ CREATED → INITIALIZING → READY → RUNNING → PAUSED → STOPPED
 | **TERMINATED** | 终止 | 完全清理 |
 
 > 状态详细定义、心跳监控、健康分数计算等见 [Harness 执行系统](./harness/execution.md)
+
+---
+
+## 设计补全（Round2）：状态模型统一规范（必须收敛）
+
+> 背景：状态模型若在 interfaces/harness/management/registry 多套并存，会导致监控、控制、恢复、前端展示出现语义错乱。
+
+### 1) 单一真相（Canonical State）
+
+**唯一标准生命周期枚举**建议以 Harness 生命周期为准（示例）：
+`CREATED → INITIALIZING → READY → RUNNING → PAUSED → STOPPED → TERMINATED`（异常：ERROR）
+
+### 2) 各层映射规则（必须定义并校验）
+
+| 层 | 当前形态（示例） | 目标 | 要求 |
+|---|---|---|---|
+| interfaces | AgentStatus（短集合） | 作为运行态子集 | 必须能映射到 Canonical |
+| harness | AgentLifecycleState/AgentStateEnum | Canonical | 唯一真相来源 |
+| management | AgentInfo.status:str | 改为枚举或强制映射 | API 返回必须稳定 |
+| registry | 内部状态字符串 | 改为 Canonical | 禁止任意字符串 |
+
+### 3) API 契约（对外稳定字段）
+
+对外接口建议统一返回：
+- `status`（canonical）
+- `status_reason`（可选）
+- `last_transition_at`（可选）
+
+### 4) 验收标准（必须有测试）
+
+1. Agent 创建→初始化→执行→完成 的链路中，状态变化可追溯且单一一致
+2. management API 返回的 status 只来自 canonical 集合
+
 
 ---
 
@@ -185,6 +219,15 @@ Agent 可以绑定两类能力：
 ```python
 GET /api/core/agents/{agent_id}/skills
 ```
+
+---
+
+## 证据索引（Evidence Index｜抽样）
+
+- Agent 执行委托 Loop：`core/apps/agents/base.py: BaseAgent.execute()`
+- ReAct/PlanExecute 委托：`core/apps/agents/react.py` / `core/apps/agents/plan_execute.py`
+- management 状态规范化：`core/management/agent_manager.py`（`AgentStateEnum` / `_normalize_status()`）
+- registry 默认状态：`core/apps/agents/discovery.py`（默认 `ready`）
 
 ---
 

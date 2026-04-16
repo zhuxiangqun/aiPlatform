@@ -9,6 +9,8 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime
 import uuid
 
+from core.harness.state import AgentStateEnum
+
 
 @dataclass
 class AgentInfo:
@@ -16,7 +18,8 @@ class AgentInfo:
     id: str
     name: str
     type: str# ReAct, RAG, Plan, Conversational, Tool-Using, Multi-Agent
-    status: str  # running, stopped, error, pending
+    # Canonical status values (see core.harness.state.AgentStateEnum)
+    status: str
     config: Dict[str, Any]
     skills: List[str]
     tools: List[str]
@@ -88,19 +91,35 @@ class AgentManager:
         self._versions: Dict[str, List[AgentVersion]] = {}
         if seed:
             self._seed_data()
+
+    def _normalize_status(self, status: str) -> str:
+        """Normalize legacy status strings to canonical AgentStateEnum values."""
+        s = (status or "").strip().lower()
+        mapping = {
+            "pending": AgentStateEnum.INITIALIZING.value,
+            "initializing": AgentStateEnum.INITIALIZING.value,
+            "ready": AgentStateEnum.READY.value,
+            "idle": AgentStateEnum.READY.value,
+            "running": AgentStateEnum.RUNNING.value,
+            "paused": AgentStateEnum.PAUSED.value,
+            "stopped": AgentStateEnum.STOPPED.value,
+            "error": AgentStateEnum.ERROR.value,
+            "terminated": AgentStateEnum.TERMINATED.value,
+        }
+        return mapping.get(s, AgentStateEnum.READY.value)
     
     def _seed_data(self):
         now = datetime.utcnow()
         demo_agents = [
-            ("react_agent", "ReAct助手", "react", "running", {"model": "gpt-4", "temperature": 0.7}, ["task_planning", "information_search"], ["search"]),
-            ("rag_agent", "RAG问答引擎", "rag", "running", {"model": "gpt-4", "temperature": 0.3}, ["knowledge_retrieval", "summarization"], ["search"]),
-            ("plan_agent", "任务规划器", "plan", "pending", {"model": "gpt-4", "temperature": 0.5}, ["task_planning", "task_decomposition"], []),
-            ("tool_agent", "工具调用器", "tool", "running", {"model": "gpt-3.5-turbo", "temperature": 0.2}, ["api_calling"], ["search", "calculator"]),
-            ("conversational_agent", "对话代理", "conversational", "stopped", {"model": "gpt-3.5-turbo", "temperature": 0.8}, ["chitchat"], []),
+            ("react_agent", "ReAct助手", "react", AgentStateEnum.RUNNING.value, {"model": "gpt-4", "temperature": 0.7}, ["task_planning", "information_search"], ["search"]),
+            ("rag_agent", "RAG问答引擎", "rag", AgentStateEnum.RUNNING.value, {"model": "gpt-4", "temperature": 0.3}, ["knowledge_retrieval", "summarization"], ["search"]),
+            ("plan_agent", "任务规划器", "plan", AgentStateEnum.INITIALIZING.value, {"model": "gpt-4", "temperature": 0.5}, ["task_planning", "task_decomposition"], []),
+            ("tool_agent", "工具调用器", "tool", AgentStateEnum.RUNNING.value, {"model": "gpt-3.5-turbo", "temperature": 0.2}, ["api_calling"], ["search", "calculator"]),
+            ("conversational_agent", "对话代理", "conversational", AgentStateEnum.STOPPED.value, {"model": "gpt-3.5-turbo", "temperature": 0.8}, ["chitchat"], []),
         ]
         for agent_id, name, agent_type, status, config, skills, tools in demo_agents:
             self._agents[agent_id] = AgentInfo(
-                id=agent_id, name=name, type=agent_type, status=status,
+                id=agent_id, name=name, type=agent_type, status=self._normalize_status(status),
                 config=config, skills=skills, tools=tools,
                 memory_config={"type": "short_term", "recall_count": 5},
                 created_at=now, updated_at=now, metadata={"version": "1.0.0"}
@@ -134,7 +153,7 @@ class AgentManager:
             id=agent_id,
             name=name,
             type=agent_type,
-            status="pending",
+            status=AgentStateEnum.INITIALIZING.value,
             config=config,
             skills=skills or [],
             tools=tools or [],
@@ -253,7 +272,7 @@ class AgentManager:
         agent = self._agents.get(agent_id)
         if not agent:
             return False
-        agent.status = "running"
+        agent.status = AgentStateEnum.RUNNING.value
         agent.updated_at = datetime.utcnow()
         return True
     
@@ -262,7 +281,7 @@ class AgentManager:
         agent = self._agents.get(agent_id)
         if not agent:
             return False
-        agent.status = "stopped"
+        agent.status = AgentStateEnum.STOPPED.value
         agent.updated_at = datetime.utcnow()
         return True
     

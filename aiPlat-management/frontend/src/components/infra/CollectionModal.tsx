@@ -1,7 +1,6 @@
 import React from 'react';
-import { Modal, Form, Input, InputNumber, Select, message } from 'antd';
 
-const { Option } = Select;
+import { Button, Input, Modal, Select, toast } from '../ui';
 
 interface CollectionModalProps {
   open: boolean;
@@ -16,70 +15,61 @@ interface CollectionFormValues {
 }
 
 const CollectionModal: React.FC<CollectionModalProps> = ({ open, onCancel, onOk }) => {
-  const [form] = Form.useForm();
   const [loading, setLoading] = React.useState(false);
+  const [name, setName] = React.useState('');
+  const [dimension, setDimension] = React.useState('768');
+  const [metricType, setMetricType] = React.useState<'Cosine' | 'Euclidean' | 'InnerProduct'>('Cosine');
 
-  const handleOk = async () => {
+  React.useEffect(() => {
+    if (!open) return;
+    setName('');
+    setDimension('768');
+    setMetricType('Cosine');
+  }, [open]);
+
+  const submit = async () => {
+    if (!name.trim()) return toast.error('请输入 Collection 名称');
+    setLoading(true);
     try {
-      const values = await form.validateFields();
-      setLoading(true);
-      await onOk(values);
-      form.resetFields();
-      message.success('Collection 创建成功');
-    } catch (error) {
-      if (error instanceof Error) {
-        message.error(error.message);
-      }
+      await onOk({ name: name.trim(), dimension: Number(dimension), metricType });
+      toast.success('Collection 创建成功');
+    } catch (e: any) {
+      toast.error(e?.message || '创建失败');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCancel = () => {
-    form.resetFields();
-    onCancel();
-  };
-
   return (
     <Modal
-      title="创建向量 Collection"
       open={open}
-      onCancel={handleCancel}
-      onOk={handleOk}
-      confirmLoading={loading}
-      destroyOnHidden
+      onClose={onCancel}
+      title="创建向量 Collection"
+      width={560}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onCancel} disabled={loading}>取消</Button>
+          <Button variant="primary" onClick={submit} loading={loading}>创建</Button>
+        </>
+      }
     >
-      <Form form={form} layout="vertical">
-        <Form.Item
-          name="name"
-          label="Collection 名称"
-          rules={[{ required: true, message: '请输入 Collection 名称' }]}
-        >
-          <Input placeholder="例如: docs-emb" />
-        </Form.Item>
-        <Form.Item
-          name="dimension"
-          label="向量维度"
-          rules={[{ required: true, message: '请输入向量维度' }]}
-          initialValue={768}
-        >
-          <InputNumber min={1} max={65536} style={{ width: '100%' }} />
-        </Form.Item>
-        <Form.Item
-          name="metricType"
+      <div className="space-y-4">
+        <Input label="Collection 名称" value={name} onChange={(e: any) => setName(e.target.value)} placeholder="例如: docs-emb" />
+        <Input label="向量维度" type="number" min={1} max={65536} value={dimension} onChange={(e: any) => setDimension(e.target.value)} />
+        <Select
           label="度量类型"
-          rules={[{ required: true, message: '请选择度量类型' }]}
-          initialValue="Cosine"
-        >
-          <Select placeholder="选择度量类型">
-            <Option value="Cosine">Cosine (余弦相似度)</Option>
-            <Option value="Euclidean">Euclidean (欧氏距离)</Option>
-            <Option value="InnerProduct">InnerProduct (内积)</Option>
-          </Select>
-        </Form.Item>
-      </Form>
+          value={metricType}
+          onChange={(v) => setMetricType(v as any)}
+          options={[
+            { value: 'Cosine', label: 'Cosine (余弦相似度)' },
+            { value: 'Euclidean', label: 'Euclidean (欧氏距离)' },
+            { value: 'InnerProduct', label: 'InnerProduct (内积)' },
+          ]}
+        />
+      </div>
     </Modal>
   );
 };
 
 export default CollectionModal;
+

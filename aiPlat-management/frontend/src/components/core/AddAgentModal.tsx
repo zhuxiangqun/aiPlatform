@@ -1,8 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Modal, Form, Input, Select, message, Divider, Typography, Alert } from 'antd';
+import React, { useEffect, useMemo, useState } from 'react';
 import { agentApi, skillApi, toolApi } from '../../services';
-
-const { Text } = Typography;
+import { Alert, Button, Input, Modal, Textarea, toast } from '../ui';
 
 interface AgentConfigTemplate {
   name: string;
@@ -71,19 +69,25 @@ interface AddAgentModalProps {
 }
 
 const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess }) => {
-  const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [selectedType, setSelectedType] = useState<string>('base');
-  const [skillOptions, setSkillOptions] = useState<{ value: string; label: string }[]>([]);
-  const [toolOptions, setToolOptions] = useState<{ value: string; label: string }[]>([]);
+  const [name, setName] = useState('');
+  const [skills, setSkills] = useState<string[]>([]);
+  const [tools, setTools] = useState<string[]>([]);
+  const [configText, setConfigText] = useState('');
+  const [skillOptions, setSkillOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [toolOptions, setToolOptions] = useState<Array<{ value: string; label: string }>>([]);
 
   useEffect(() => {
     if (open) {
-      form.resetFields();
       setSelectedType('base');
+      setName('');
+      setSkills([]);
+      setTools([]);
+      setConfigText(JSON.stringify(AGENT_TYPE_TEMPLATES.base.config, null, 2));
       fetchOptions();
     }
-  }, [open, form]);
+  }, [open]);
 
   const fetchOptions = async () => {
     try {
@@ -103,39 +107,42 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
     setSelectedType(type);
     const template = AGENT_TYPE_TEMPLATES[type];
     if (template) {
-      form.setFieldsValue({ config: JSON.stringify(template.config, null, 2) });
+      setConfigText(JSON.stringify(template.config, null, 2));
     }
   };
 
   const handleSubmit = async () => {
     try {
-      const values = await form.validateFields();
+      if (!name.trim()) {
+        toast.error('请输入 Agent 名称');
+        return;
+      }
       setLoading(true);
 
       let config: Record<string, unknown> = {};
-      if (values.config?.trim()) {
+      if (configText?.trim()) {
         try {
-          config = JSON.parse(values.config);
+          config = JSON.parse(configText);
         } catch {
-          message.error('配置JSON格式错误，请检查');
+          toast.error('配置 JSON 格式错误，请检查');
           setLoading(false);
           return;
         }
       }
 
       await agentApi.create({
-        name: values.name,
-        agent_type: values.agent_type || 'base',
+        name: name.trim(),
+        agent_type: selectedType || 'base',
         config,
-        skills: values.skills || [],
-        tools: values.tools || [],
+        skills,
+        tools,
       });
-      message.success(`Agent "${values.name}" 创建成功`);
+      toast.success(`Agent "${name.trim()}" 创建成功`);
       onSuccess();
       onClose();
     } catch (error: any) {
       if (error.message) {
-        message.error('创建失败');
+        toast.error('创建失败', String(error.message || ''));
       }
     } finally {
       setLoading(false);
@@ -143,90 +150,92 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
   };
 
   const template = AGENT_TYPE_TEMPLATES[selectedType];
+  const configHint = useMemo(() => `以下是 ${template?.name || ''} 的配置示例，可直接复制修改：`, [template?.name]);
 
   return (
     <Modal
-      title="创建Agent"
       open={open}
-      onOk={handleSubmit}
-      onCancel={onClose}
-      okText="创建"
-      cancelText="取消"
-      confirmLoading={loading}
-      destroyOnHidden
-      width={640}
-    >
-      <Form form={form} layout="vertical" initialValues={{ agent_type: 'base' }}>
-        <Form.Item
-          name="name"
-          label="名称"
-          rules={[{ required: true, message: '请输入Agent名称' }]}
-        >
-          <Input placeholder="例如：数据分析助手" />
-        </Form.Item>
-        <Form.Item name="agent_type" label="类型">
-          <Select onChange={handleTypeChange}
-            options={[
-              { value: 'base', label: '基础 - 简单对话' },
-              { value: 'react', label: 'ReAct - 推理+行动' },
-              { value: 'plan', label: '规划型 - 任务分解' },
-              { value: 'tool', label: '工具型 - 工具调用' },
-            ]}
-          />
-        </Form.Item>
-        <Form.Item name="skills" label="绑定技能">
-          <Select
-            mode="multiple"
-            placeholder="选择要绑定的技能"
-            options={skillOptions}
-            allowClear
-          />
-        </Form.Item>
-        <Form.Item name="tools" label="绑定工具">
-          <Select
-            mode="multiple"
-            placeholder="选择要绑定的工具"
-            options={toolOptions}
-            allowClear
-          />
-        </Form.Item>
-      </Form>
-
-      {template && (
+      onClose={onClose}
+      title="创建 Agent"
+      width={720}
+      footer={
         <>
-          <Divider orientation="left" plain style={{ margin: '12px 0 8px' }}>
-            {template.name} 配置示例
-          </Divider>
-          <Alert
-            message={template.description}
-            type="info"
-            showIcon
-            style={{ marginBottom: 12 }}
-          />
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            以下是 {template.name} 的配置示例，可直接复制修改：
-          </Text>
-          <pre style={{
-            background: '#1C2128',
-            border: '1px solid #30363D',
-            borderRadius: 6,
-            padding: 12,
-            fontSize: 12,
-            color: '#E6EDF3',
-            maxHeight: 200,
-            overflow: 'auto',
-            marginTop: 8,
-          }}>
-            {JSON.stringify(template.config, null, 2)}
-          </pre>
+          <Button variant="secondary" onClick={onClose} disabled={loading}>
+            取消
+          </Button>
+          <Button variant="primary" onClick={handleSubmit} loading={loading}>
+            创建
+          </Button>
         </>
-      )}
+      }
+    >
+      <div className="space-y-4">
+        <Input label="名称" value={name} onChange={(e: any) => setName(e.target.value)} placeholder="例如：数据分析助手" />
 
-      <Form form={form} layout="vertical" style={{ marginTop: 12 }}>
-        <Form.Item name="config" label="配置 (JSON)" extra="上方展示所选类型的配置示例，请根据需求修改后填入">
-          <Input.TextArea rows={6} placeholder='{"model": "gpt-4", "temperature": 0.7}' />
-        </Form.Item>
-      </Form>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <div className="text-sm font-medium text-gray-300 mb-2">类型</div>
+            <select
+              value={selectedType}
+              onChange={(e) => handleTypeChange(e.target.value)}
+              className="w-full h-10 px-3 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100"
+            >
+              <option value="base">基础 - 简单对话</option>
+              <option value="react">ReAct - 推理+行动</option>
+              <option value="plan">规划型 - 任务分解</option>
+              <option value="tool">工具型 - 工具调用</option>
+            </select>
+          </div>
+
+          <div>
+            <div className="text-sm font-medium text-gray-300 mb-2">绑定技能（多选）</div>
+            <select
+              multiple
+              value={skills}
+              onChange={(e) => setSkills(Array.from(e.target.selectedOptions).map((o) => o.value))}
+              className="w-full h-28 px-3 py-2 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100"
+            >
+              {skillOptions.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            <div className="text-xs text-gray-500 mt-1">按住 Ctrl/Cmd 可多选</div>
+          </div>
+        </div>
+
+        <div>
+          <div className="text-sm font-medium text-gray-300 mb-2">绑定工具（多选）</div>
+          <select
+            multiple
+            value={tools}
+            onChange={(e) => setTools(Array.from(e.target.selectedOptions).map((o) => o.value))}
+            className="w-full h-28 px-3 py-2 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100"
+          >
+            {toolOptions.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {template && (
+          <Alert type="info" title={template.name}>
+            {template.description}
+          </Alert>
+        )}
+
+        <Textarea
+          label="配置（JSON）"
+          value={configText}
+          onChange={(e: any) => setConfigText(e.target.value)}
+          placeholder='{"model":"gpt-4","temperature":0.7}'
+          rows={10}
+        />
+        <div className="text-xs text-gray-500">{configHint}</div>
+      </div>
     </Modal>
   );
 };

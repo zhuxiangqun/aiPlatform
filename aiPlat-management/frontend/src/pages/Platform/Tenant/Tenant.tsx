@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, RotateCcw, Trash2, Users, PauseCircle, PlayCircle } from 'lucide-react';
-import { Table, Button, Modal, Select } from '../../../components/ui';
+import { Table, Button, Modal, Select, toast } from '../../../components/ui';
 import PageHeader from '../../../components/common/PageHeader';
 import { tenantApi } from '../../../services';
 import type { TenantInfo } from '../../../services';
@@ -24,7 +24,7 @@ const Tenant: React.FC = () => {
       const res = await tenantApi.list({ status: statusFilter || undefined });
       setTenants(res.tenants || []);
     } catch {
-      alert('获取租户列表失败');
+      toast.error('获取租户列表失败');
       setTenants([]);
     } finally {
       setLoading(false);
@@ -39,11 +39,11 @@ const Tenant: React.FC = () => {
     if (!deleteModal.tenant) return;
     try {
       await tenantApi.delete(deleteModal.tenant.id);
-      alert('租户已删除');
+      toast.success('租户已删除');
       setDeleteModal({ open: false, tenant: null });
       fetchTenants();
     } catch {
-      alert('删除失败');
+      toast.error('删除失败');
     }
   };
 
@@ -51,14 +51,14 @@ const Tenant: React.FC = () => {
     try {
       if (tenant.status === 'suspended') {
         await tenantApi.resume(tenant.id);
-        alert(`租户 "${tenant.name}" 已恢复`);
+        toast.success(`租户 "${tenant.name}" 已恢复`);
       } else {
         await tenantApi.suspend(tenant.id);
-        alert(`租户 "${tenant.name}" 已暂停`);
+        toast.success(`租户 "${tenant.name}" 已暂停`);
       }
       fetchTenants();
     } catch {
-      alert('操作失败');
+      toast.error('操作失败');
     }
   };
 

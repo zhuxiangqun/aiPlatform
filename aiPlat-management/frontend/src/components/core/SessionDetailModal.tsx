@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, Button } from '../ui';
+import { Modal, Button, toast } from '../ui';
 import { memoryApi, type MemorySessionDetail } from '../../services';
 
 interface SessionDetailModalProps {
@@ -27,9 +27,9 @@ const SessionDetailModal: React.FC<SessionDetailModalProps> = ({ open, session, 
       const detail = await memoryApi.getSession(currentSession.session_id);
       setCurrentSession(detail);
       setMessageInput('');
-      alert('消息已添加');
+      toast.success('消息已添加');
     } catch {
-      alert('添加失败');
+      toast.error('添加失败');
     }
   };
 

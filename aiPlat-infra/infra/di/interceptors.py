@@ -10,7 +10,7 @@ DI Interceptors - 拦截器
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable
+from typing import Any, Callable, Optional, Dict, List
 
 
 class Interceptor(ABC):
@@ -38,16 +38,39 @@ class Invocation:
     """
 
     def __init__(
-        self, method: Callable, instance: Any, args: tuple = (), kwargs: dict = None
+        self,
+        method: Callable,
+        instance: Any = None,
+        args: tuple = (),
+        kwargs: Optional[dict] = None,
+        chain: Optional["InterceptorChain"] = None,
+        index: int = 0,
     ):
         self._method = method
         self._instance = instance
         self._args = args
         self._kwargs = kwargs or {}
+        self._chain = chain
+        self._index = index
 
     def proceed(self) -> Any:
-        """执行原方法"""
-        return self._method(self._instance, *self._args, **self._kwargs)
+        """Proceed to next interceptor or execute original method."""
+        if self._chain is not None and self._index < len(self._chain._interceptors):
+            interceptor = self._chain._interceptors[self._index]
+            next_inv = Invocation(
+                method=self._method,
+                instance=self._instance,
+                args=self._args,
+                kwargs=self._kwargs,
+                chain=self._chain,
+                index=self._index + 1,
+            )
+            return interceptor.intercept(next_inv)
+        # If method is bound, call directly; otherwise pass instance as first arg.
+        try:
+            return self._method(*self._args, **self._kwargs)
+        except TypeError:
+            return self._method(self._instance, *self._args, **self._kwargs)
 
     @property
     def method(self) -> Callable:
@@ -62,26 +85,18 @@ class InterceptorChain:
     """拦截器链"""
 
     def __init__(self):
-        self._interceptors = []
+        self._interceptors: List[Interceptor] = []
 
     def add(self, interceptor: Interceptor) -> None:
         self._interceptors.append(interceptor)
 
     def invoke(self, invocation: Invocation) -> Any:
-        """执行拦截器链"""
+        """执行拦截器链（标准 around 语义）"""
         if not self._interceptors:
             return invocation.proceed()
-
-        # 简单的链式调用
-        result = invocation.proceed()
-        for interceptor in self._interceptors:
-            result = interceptor.intercept(
-                Invocation(
-                    lambda: result,  # 模拟方法
-                    invocation.instance,
-                )
-            )
-        return result
+        invocation._chain = self
+        invocation._index = 0
+        return invocation.proceed()
 
 
 class LoggingInterceptor(Interceptor):
@@ -134,3 +149,57 @@ class CachingInterceptor(Interceptor):
         result = invocation.proceed()
         self._cache[key] = result
         return result
+
+
+class MetricsInterceptor(Interceptor):
+    """简单指标拦截器：统计方法调用次数"""
+
+    def __init__(self):
+        self._counts: Dict[str, int] = {}
+
+    def intercept(self, invocation: Invocation) -> Any:
+        method_name = getattr(invocation.method, "__name__", "unknown")
+        self._counts[method_name] = self._counts.get(method_name, 0) + 1
+        return invocation.proceed()
+
+    def get_count(self, method_name: str) -> int:
+        return self._counts.get(method_name, 0)
+
+
+class ErrorHandlingInterceptor(Interceptor):
+    """错误处理拦截器：记录异常并抛出"""
+
+    def __init__(self, logger=None):
+        self._logger = logger
+
+    def intercept(self, invocation: Invocation) -> Any:
+        try:
+            return invocation.proceed()
+        except Exception as e:
+            if self._logger:
+                self._logger.exception(f"DI intercepted error: {e}")
+            raise
+
+
+class Proxy:
+    """Dynamic proxy that applies interceptor chain to method calls."""
+
+    def __init__(self, target: Any, chain: InterceptorChain):
+        self.__dict__["_target"] = target
+        self.__dict__["_chain"] = chain
+
+    def __getattr__(self, item: str) -> Any:
+        target = self.__dict__["_target"]
+        attr = getattr(target, item)
+        if not callable(attr):
+            return attr
+
+        def _wrapped(*args, **kwargs):
+            inv = Invocation(method=attr, instance=target, args=args, kwargs=kwargs)
+            return self.__dict__["_chain"].invoke(inv)
+
+        _wrapped.__name__ = getattr(attr, "__name__", item)
+        return _wrapped
+
+    def __setattr__(self, key: str, value: Any) -> None:
+        setattr(self.__dict__["_target"], key, value)

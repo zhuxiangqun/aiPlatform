@@ -6,7 +6,7 @@
 
 ## 继承规范
 
-本文档继承 [系统级部署指南](../../docs/guides/DEPLOYMENT.md)，所有系统级规范在本层必须遵守。
+本文档继承 [系统级部署指南](../../../docs/guides/DEPLOYMENT.md)，所有系统级规范在本层必须遵守。
 
 ---
 
@@ -160,7 +160,7 @@ auth_requests_total = Counter(
 
 ## 相关链接
 
-- [系统级部署指南](../../docs/guides/DEPLOYMENT.md)
+- [系统级部署指南](../../../docs/guides/DEPLOYMENT.md)
 - [platform层开发规范](./DEVELOPMENT.md)
 
 ---
