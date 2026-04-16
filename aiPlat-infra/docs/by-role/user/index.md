@@ -20,7 +20,7 @@
 ### 前提条件
 
 在配置基础设施服务之前，确保：
-- 已完成基础设施部署（参考 [运维指南](./ops/index.md)）
+- 已完成基础设施部署（参考 [运维指南](../ops/index.md)）
 - 已确认各服务容器/进程正在运行
 - 已获取必要的访问凭证（用户名、密码、API Key 等）
 
@@ -711,10 +711,10 @@ cp config/config.prod.yaml config/config.yaml
 
 ## 相关链接
 
-- [← 返回基础设施层文档](../index.md)
-- [架构师指南](./architect/index.md) - 基础设施层架构设计
-- [开发者指南](./developer/index.md) - 基础设施层开发指南
-- [运维指南](./ops/index.md) - 基础设施层部署运维
+- [← 返回基础设施层文档](../../index.md)
+- [架构师指南](../architect/index.md) - 基础设施层架构设计
+- [开发者指南](../developer/index.md) - 基础设施层开发指南
+- [运维指南](../ops/index.md) - 基础设施层部署运维
 
 ---
 

@@ -387,7 +387,7 @@ class CustomMetricsCollector(MetricsCollector):
 ### 添加新的健康检查
 
 ```python
-from infra.monitoring.health import HealthChecker
+from infra.monitoring import HealthChecker
 
 class CustomHealthCheck(HealthChecker):
     """自定义健康检查"""

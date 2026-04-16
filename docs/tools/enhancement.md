@@ -323,19 +323,10 @@ Go → gofmt
 ### 5. 模块结构
 
 ```
-core/apps/tools/
-├── hooks/
-│   ├── __init__.py
-│   ├── registry.py      # Hook 注册表
-│   ├── executor.py      # Hook 执行器
-│   ├── builtin/         # 内置 Hook
-│   │   ├── __init__.py
-│   │   ├── auto_adapt.py
-│   │   ├── context_tracker.py
-│   │   ├── pre_commit.py
-│   │   ├── security_scan.py
-│   │   └── format_code.py
-│   └── types.py         # Hook 类型定义
+core/harness/infrastructure/hooks/
+├── __init__.py
+├── hook_manager.py      # HookManager / HookPhase / HookContext / create_hook / get_default_hooks
+└── builtin.py           # 内置 Hook 实现（AutoAdapt/ContextTracker/SecurityScan/...）
 ```
 
 ### 6. 核心组件
@@ -411,30 +402,32 @@ subagent_config = SubagentConfig(
 ### 1. 注册 Hook
 
 ```python
-from core.apps.tools.hooks import HookRegistry, HookConfig
+from core.harness.infrastructure.hooks import HookManager, HookPhase, HookContext, create_hook
 
-registry = HookRegistry()
+hook_manager = HookManager()
 
-config = HookConfig(
-    name="my-hook",
-    event="PostToolUse",
-    condition={"tool_name": ["Bash"]},
-    script="scripts/my-hook.py",
-    priority=50
+async def my_hook(ctx: HookContext):
+    # 这里只是示意：ctx.metadata 里包含 tool_name 等上下文信息（以实际实现为准）
+    if ctx.metadata.get("tool_name") == "Bash":
+        return {"ok": True}
+
+hook_manager.register(
+    create_hook(
+        name="my-hook",
+        callback=my_hook,
+        phase=HookPhase.POST_TOOL_USE,
+        priority=50,
+    )
 )
-registry.register(config)
 ```
 
 ### 2. 启用内置 Hook
 
 ```python
-from core.apps.tools.hooks.builtin import enable_all_builtin_hooks
+from core.harness.infrastructure.hooks import HookManager
 
-# 启用所有内置 Hook
-await enable_all_builtin_hooks()
-
-# 或只启用特定 Hook
-await enable_builtin_hook("security-scan")
+# HookManager 默认会装载一组系统默认 hooks（见 get_default_hooks()）
+hook_manager = HookManager()
 ```
 
 ### 3. 查看 Hook 状态

@@ -278,7 +278,7 @@ aiPlat-core 使用 LCEL（LangChain Expression Language）构建调用链：
 | **Tool-Using Agent** | 工具为主 | 需要频繁调用外部工具 | 见 [Agent 设计模式](./patterns.md) |
 | **RAG Agent** | 检索+生成 | 需要知识库支持的回答 | - |
 | **Multi-Agent** | 协作模式 | 复杂任务，需要多角色 | 见 [Agent 设计模式](./patterns.md) |
-| **TriAgent** | Planner-Generator-Evaluator | 需要评估验证的复杂任务 | 见 [Harness TriAgent](./harness/index.md) |
+| **TriAgent** | Planner-Generator-Evaluator | 需要评估验证的复杂任务 | 见 [Harness TriAgent](../harness/index.md) |
 | **Reflection Agent** | 自我审视+修正 | 代码审查、内容润色 | 见 [Agent 设计模式](./patterns.md) |
 | **Planning Agent** | 任务分解+执行 | 自动化流程、报告生成 | 见 [Agent 设计模式](./patterns.md) |
 
@@ -354,7 +354,7 @@ Agent 执行流程：
 
 **Harness Engineering 最佳实践**：
 
-参考 [Harness 文档](./harness/index.md) 了解以下核心原则：
+参考 [Harness 文档](../harness/index.md) 了解以下核心原则：
 
 | 概念 | 说明 |
 |------|------|
@@ -484,9 +484,9 @@ Response
 
 - [项目结构](./structure.md) - 完整目录结构
 - [架构总览](../architecture/index.md) - 完整层次关系图
-- [Harness 架构文档](./harness/index.md) - 智能体框架
+- [Harness 架构文档](../harness/index.md) - 智能体框架
 - [Agent 设计模式](./patterns.md) - 6种核心设计模式
-- [开发者指南](./by-role/developer/index.md) - 框架使用（含代码示例）
+- [开发者指南](../by-role/developer/index.md) - 框架使用（含代码示例）
 
 ---
 

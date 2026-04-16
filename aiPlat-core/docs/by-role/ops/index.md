@@ -689,9 +689,9 @@ psql -h localhost -U ai_platform ai_platform_db < core_backup_20260409.sql
 
 ## 🔗 相关链接
 
-- [← 返回核心层文档](../index.md)
-- [架构师指南 →](./architect/index.md)
-- [开发者指南 →](./developer/index.md)
+- [← 返回核心层文档](../../index.md)
+- [架构师指南 →](../architect/index.md)
+- [开发者指南 →](../developer/index.md)
 
 ---
 

@@ -143,7 +143,7 @@ make dev
 
 ### 基础设施层开发
 
-**详细文档**：[aiPlat-infra/docs/by-role/developer/index.md](../../aiPlat-infra/docs/by-role/developer/index.md)
+**详细文档**：[aiPlat-infra/docs/by-role/developer/index.md](../../../aiPlat-infra/docs/by-role/developer/index.md)
 
 **该文档包含**：
 - 数据库客户端的使用方法
@@ -179,7 +179,7 @@ make dev
 
 ### 核心层开发
 
-**详细文档**：[aiPlat-core/docs/by-role/developer/index.md](../../aiPlat-core/docs/by-role/developer/index.md)
+**详细文档**：[aiPlat-core/docs/by-role/developer/index.md](../../../aiPlat-core/docs/by-role/developer/index.md)
 
 **该文档包含**：
 - Agent的生命周期管理
@@ -216,7 +216,7 @@ make dev
 
 ### 平台层开发
 
-**详细文档**：[aiPlat-platform/docs/by-role/developer/index.md](../../aiPlat-platform/docs/by-role/developer/index.md)
+**详细文档**：[aiPlat-platform/docs/by-role/developer/index.md](../../../aiPlat-platform/docs/by-role/developer/index.md)
 
 **该文档包含**：
 - API 路由的定义和实现
@@ -253,7 +253,7 @@ make dev
 
 ### 应用层开发
 
-**详细文档**：[aiPlat-app/docs/by-role/developer/index.md](../../aiPlat-app/docs/by-role/developer/index.md)
+**详细文档**：[aiPlat-app/docs/by-role/developer/index.md](../../../aiPlat-app/docs/by-role/developer/index.md)
 
 **该文档包含**：
 - 前端项目的启动和配置
@@ -307,11 +307,11 @@ make dev
 
 | 模块 | 文档 |
 |------|------|
-| Dashboard | [UI 设计](../../aiPlat-management/docs/dashboard/ui-design.md) |
-| Monitoring | [UI 设计](../../aiPlat-management/docs/monitoring/ui-design.md) |
-| Alerting | [UI 设计](../../aiPlat-management/docs/alerting/ui-design.md) |
-| Diagnostics | [UI 设计](../../aiPlat-management/docs/diagnostics/ui-design.md) |
-| Config | [UI 设计](../../aiPlat-management/docs/config/ui-design.md)
+| Dashboard | [系统级 UI 设计规范](../../UI_DESIGN.md) |
+| Monitoring | [系统级 UI 设计规范](../../UI_DESIGN.md) |
+| Alerting | [系统级 UI 设计规范](../../UI_DESIGN.md) |
+| Diagnostics | [系统级 UI 设计规范](../../UI_DESIGN.md) |
+| Config | [系统级 UI 设计规范](../../UI_DESIGN.md)
 
 ---
 
@@ -631,7 +631,7 @@ make logs-error
 
 ## 🔗 相关链接
 
-- [← 返回主文档](../index.md)
+- [← 返回主文档](../../index.md)
 - [架构师指南 →](../architect/index.md)
 - [运维指南 →](../ops/index.md)
 

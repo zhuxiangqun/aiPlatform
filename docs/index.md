@@ -66,7 +66,7 @@
 | 多层记忆架构 | [harness/memory.md](harness/memory.md) | ✅ | Working/Episodic/Semantic 三层记忆 |
 | Subagent 架构 | [agents/subagent.md](agents/subagent.md) | ✅ | 派生子 Agent、权限隔离、协调调度 |
 | Skill 动态进化 | [skills/evolution.md](skills/evolution.md) | ✅ | 自动捕获、修复、衍生 |
-| Skill 文件格式 | [skills/file-format.md](skills/file-format.md) | ✅ | OpenClaw 兼容、trigger_keywords、Category 分类、Script 执行器 |
+| Skill 文件格式 | [aiPlat-core 技能文件格式](../aiPlat-core/docs/skills/file-format.md) | ✅ | OpenClaw 兼容、trigger_keywords、Category 分类、Script 执行器 |
 
 **各层测试指南**：
 | 层级 | 测试指南 | 状态 |

@@ -192,9 +192,9 @@ core/apps/
 
 ## 相关文档
 
-- [Harness 索引](./harness/index.md) - Harness 完整定义
-- [Harness 接口文档](./harness/interfaces.md) - 接口定义
-- [执行系统文档](./harness/execution.md) - 执行循环
+- [Harness 索引](../harness/index.md) - Harness 完整定义
+- [Harness 接口文档](../harness/interfaces.md) - 接口定义
+- [执行系统文档](../harness/execution.md) - 执行循环
 
 ---
 

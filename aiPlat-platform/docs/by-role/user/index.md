@@ -597,31 +597,30 @@ pip install aiplat-platform-sdk
 
 **使用示例**：
 ```python
-from aiplat_platform import PlatformClient
+# 伪代码：当前仓库未提供 platform Python SDK 包（仅有文档与接口契约）。
+# 如需客户端：建议基于 platform 的 OpenAPI/REST 契约生成，或直接用 requests/httpx 封装。
+import httpx
 
 # 创建客户端
-client = PlatformClient(
-    api_url="https://api.example.com",
-    token="your-access-token"
+client = httpx.AsyncClient(
+    base_url="https://api.example.com",
+    headers={"Authorization": "Bearer your-access-token"},
 )
 
 # 执行 Agent
-result = client.agents.execute(
-    agent_id="my-agent",
-    input="你好，请介绍一下你自己"
+resp = await client.post(
+    "/api/v1/agents/my-agent/execute",
+    json={"input": "你好，请介绍一下你自己"},
 )
-
-print(result.output)
+print(resp.json())
 
 # 查询知识库
-results = client.knowledge.query(
-    knowledge_id="my-knowledge",
-    query="公司的报销流程是什么？",
-    top_k=5
+resp = await client.post(
+    "/api/v1/knowledge/my-knowledge/query",
+    json={"query": "公司的报销流程是什么？", "top_k": 5},
 )
-
-for result in results:
-    print(result.content, result.score)
+for item in resp.json().get("items", []):
+    print(item.get("content"), item.get("score"))
 ```
 
 ### JavaScript SDK
@@ -752,9 +751,9 @@ curl -X GET https://api.example.com/api/v1/executions/exec-123 \
 
 ## 🔗 相关链接
 
-- [← 返回平台层文档](../index.md)
-- [开发者指南](./developer/index.md)
-- [API 参考文档](../api/index.md)
+- [← 返回平台层文档](../../index.md)
+- [开发者指南](../developer/index.md)
+- [API 参考文档](../../api/index.md)
 
 ---
 

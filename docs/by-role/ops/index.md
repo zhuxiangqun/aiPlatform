@@ -774,7 +774,7 @@ redis-cli CONFIG GET maxmemory
 
 ### 基础设施层运维
 
-**详细文档**：[aiPlat-infra/docs/by-role/ops/index.md](../../aiPlat-infra/docs/by-role/ops/index.md)
+**详细文档**：[aiPlat-infra/docs/by-role/ops/index.md](../../../aiPlat-infra/docs/by-role/ops/index.md)
 
 **运维要点**：
 - 数据库监控和优化
@@ -798,7 +798,7 @@ make milvus-status
 
 ### 核心层运维
 
-**详细文档**：[aiPlat-core/docs/by-role/ops/index.md](../../aiPlat-core/docs/by-role/ops/index.md)
+**详细文档**：[aiPlat-core/docs/by-role/ops/index.md](../../../aiPlat-core/docs/by-role/ops/index.md)
 
 **运维要点**：
 - Agent 和 Skill 管理
@@ -821,7 +821,7 @@ systemctl restart ai-platform-core
 
 ### 平台层运维
 
-**详细文档**：[aiPlat-platform/docs/by-role/ops/index.md](../../aiPlat-platform/docs/by-role/ops/index.md)
+**详细文档**：[aiPlat-platform/docs/by-role/ops/index.md](../../../aiPlat-platform/docs/by-role/ops/index.md)
 
 **运维要点**：
 - API 服务监控
@@ -844,7 +844,7 @@ systemctl restart ai-platform-platform
 
 ### 应用层运维
 
-**详细文档**：[aiPlat-app/docs/by-role/ops/index.md](../../aiPlat-app/docs/by-role/ops/index.md)
+**详细文档**：[aiPlat-app/docs/by-role/ops/index.md](../../../aiPlat-app/docs/by-role/ops/index.md)
 
 **运维要点**：
 - Gateway 服务管理
@@ -867,7 +867,7 @@ systemctl restart ai-platform-app
 
 ## 🔗 相关链接
 
-- [← 返回主文档](../index.md)
+- [← 返回主文档](../../index.md)
 - [架构师指南 →](../architect/index.md)
 - [开发者指南 →](../developer/index.md)
 

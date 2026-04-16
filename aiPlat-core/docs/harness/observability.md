@@ -273,7 +273,7 @@
 - [执行系统](./execution.md) - Agent 循环执行
 - [反馈循环](./feedback-loops.md) - 三层反馈机制
 
-> **代码示例**：观察系统的代码示例请参考 [开发者指南](./by-role/developer/index.md)
+> **代码示例**：观察系统的代码示例请参考 [开发者指南](../by-role/developer/index.md)
 
 ---
 

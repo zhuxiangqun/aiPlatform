@@ -270,7 +270,7 @@ aiPlat-infra/
 
 ### database - 数据库
 
-**详细文档**：[database 模块文档](../database/index.md)
+**详细文档**：[database 模块文档](../../database/index.md)
 
 **操作路径**：
 
@@ -313,7 +313,7 @@ pool:
 
 ### llm - LLM 客户端
 
-**详细文档**：[llm 模块文档](../llm/index.md)
+**详细文档**：[llm 模块文档](../../llm/index.md)
 
 **操作路径**：
 
@@ -367,7 +367,7 @@ retry:
 
 ### vector - 向量数据库
 
-**详细文档**：[vector 模块文档](../vector/index.md)
+**详细文档**：[vector 模块文档](../../vector/index.md)
 
 **操作路径**：
 
@@ -409,7 +409,7 @@ metric_type: L2
 
 ### config - 配置管理
 
-**详细文档**：[config 模块文档](../config/index.md)
+**详细文档**：[config 模块文档](../../config/index.md)
 
 **操作路径**：
 
@@ -435,7 +435,7 @@ metric_type: L2
 
 ### logging - 日志系统
 
-**详细文档**：[logging 模块文档](../logging/index.md)
+**详细文档**：[logging 模块文档](../../logging/index.md)
 
 **操作路径**：
 
@@ -461,7 +461,7 @@ metric_type: L2
 
 ### compute - 算力管理
 
-**详细文档**：[compute 模块文档](../compute/index.md)
+**详细文档**：[compute 模块文档](../../compute/index.md)
 
 **操作路径**：
 
@@ -494,7 +494,7 @@ default_quota:
 
 ### memory - 内存管理
 
-**详细文档**：[memory 模块文档](../memory/index.md)
+**详细文档**：[memory 模块文档](../../memory/index.md)
 
 **操作路径**：
 
@@ -529,7 +529,7 @@ vram:
 
 ### network - 网络管理
 
-**详细文档**：[network 模块文档](../network/index.md)
+**详细文档**：[network 模块文档](../../network/index.md)
 
 **操作路径**：
 
@@ -563,7 +563,7 @@ health_check:
 
 ### mcp - MCP 协议
 
-**详细文档**：[mcp 模块文档](../mcp/index.md)
+**详细文档**：[mcp 模块文档](../../mcp/index.md)
 
 **操作路径**：
 
@@ -798,9 +798,9 @@ tests/
 
 ## 📖 相关链接
 
-- [← 返回 infra 主文档](../index.md)
-- [架构师指南 →](../by-role/architect/index.md)
-- [运维指南 →](../by-role/ops/index.md)
+- [← 返回 infra 主文档](../../index.md)
+- [架构师指南 →](../architect/index.md)
+- [运维指南 →](../ops/index.md)
 
 ---
 

@@ -407,7 +407,7 @@ LLM 调用与普通数据库调用不同，需要特殊优化：
 
 ### 基础设施层架构
 
-**详细文档**：[aiPlat-infra/docs/by-role/architect/index.md](../../aiPlat-infra/docs/by-role/architect/index.md)
+**详细文档**：[aiPlat-infra/docs/by-role/architect/index.md](../../../aiPlat-infra/docs/by-role/architect/index.md)
 
 **该文档包含**：
 - 数据库、LLM、向量存储的接口定义
@@ -425,7 +425,7 @@ LLM 调用与普通数据库调用不同，需要特殊优化：
 
 ### 核心层架构
 
-**详细文档**：[aiPlat-core/docs/by-role/architect/index.md](../../aiPlat-core/docs/by-role/architect/index.md)
+**详细文档**：[aiPlat-core/docs/by-role/architect/index.md](../../../aiPlat-core/docs/by-role/architect/index.md)
 
 **该文档包含**：
 - Harness 8大要素的详细设计
@@ -443,7 +443,7 @@ LLM 调用与普通数据库调用不同，需要特殊优化：
 
 ### 平台层架构
 
-**详细文档**：[aiPlat-platform/docs/by-role/architect/index.md](../../aiPlat-platform/docs/by-role/architect/index.md)
+**详细文档**：[aiPlat-platform/docs/by-role/architect/index.md](../../../aiPlat-platform/docs/by-role/architect/index.md)
 
 **该文档包含**：
 - API Gateway 的路由和限流设计
@@ -462,7 +462,7 @@ LLM 调用与普通数据库调用不同，需要特殊优化：
 
 ### 应用层架构
 
-**详细文档**：[aiPlat-app/docs/by-role/architect/index.md](../../aiPlat-app/docs/by-role/architect/index.md)
+**详细文档**：[aiPlat-app/docs/by-role/architect/index.md](../../../aiPlat-app/docs/by-role/architect/index.md)
 
 **该文档包含**：
 - 前端技术选型依据（React/Vue）
@@ -530,7 +530,7 @@ LLM 调用与普通数据库调用不同，需要特殊优化：
 
 ## 🔗 相关链接
 
-- [← 返回主文档](../index.md)
+- [← 返回主文档](../../index.md)
 - [开发者指南 →](../developer/index.md)
 - [运维指南 →](../ops/index.md)
 

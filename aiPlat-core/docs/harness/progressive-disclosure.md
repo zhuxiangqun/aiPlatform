@@ -385,8 +385,8 @@ progressive_disclosure:
 ## 相关文档
 
 - [Context 管理](./context.md) - 现有 Context 机制
-- [Skill 生命周期](./skills/lifecycle.md) - Skill 进化机制
-- [工具系统](./tools/index.md) - 工具接口
+- [Skill 生命周期](../skills/lifecycle.md) - Skill 进化机制
+- [工具系统](../tools/index.md) - 工具接口
 
 ---
 

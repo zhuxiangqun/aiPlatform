@@ -377,10 +377,10 @@ await evolution.on_error_threshold(error_rate=0.1, threshold=0.05)
 
 ## 相关文档
 
-- [Harness 索引](../harness/index.md) - Harness 完整定义
-- [执行系统](../harness/execution.md) - Agent 循环执行
-- [协调系统](../harness/coordination.md) - 多 Agent 协作
-- [观察系统](../harness/observability.md) - 状态监控
+- [Harness 索引](../../harness/index.md) - Harness 完整定义
+- [执行系统](../../harness/execution.md) - Agent 循环执行
+- [协调系统](../../harness/coordination.md) - 多 Agent 协作
+- [观察系统](../../harness/observability.md) - 状态监控
 
 ---
 

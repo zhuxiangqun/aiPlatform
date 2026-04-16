@@ -247,7 +247,9 @@ infra/network/
 1. **创建实现文件**：`infra/network/discovery/my_backend.py`
 2. **实现接口**：
 ```python
-from infra.network.discovery.base import ServiceDiscovery
+#
+# 伪代码：ServiceDiscovery 接口（To-Be，当前仓库未提供 discovery 子模块实现）
+# from infra.network.discovery.base import ServiceDiscovery
 
 class MyBackendDiscovery(ServiceDiscovery):
     async def register(self, service: Service) -> str:
@@ -281,8 +283,8 @@ class MyBackendDiscovery(ServiceDiscovery):
 ## 🔗 相关链接
 
 - **上级**：[← 返回 infra 索引](../index.md)
-- **算力管理**：[→ compute](compute/index.md)
-- **内存管理**：[→ memory](memory/index.md)
+- **算力管理**：[→ compute](../compute/index.md)
+- **内存管理**：[→ memory](../memory/index.md)
 - **Consul 文档**：https://www.consul.io/docs
 - **Kubernetes Service**：https://kubernetes.io/docs/concepts/services-networking/
 

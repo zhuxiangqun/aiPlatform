@@ -496,9 +496,9 @@ Human-in-the-Loop (HITL) 将人工介入引入 Agent 决策闭环，关键节点
 
 ## 九、相关文档
 
-- [Skill 生命周期](./skills/lifecycle.md) - Skill 的进化与管理
-- [Context 管理](./harness/context.md) - 上下文压缩与记忆架构
-- [Harness 基础设施](./harness/index.md) - 运行时系统设计
+- [Skill 生命周期](../skills/lifecycle.md) - Skill 的进化与管理
+- [Context 管理](../harness/context.md) - 上下文压缩与记忆架构
+- [Harness 基础设施](../harness/index.md) - 运行时系统设计
 
 ---
 

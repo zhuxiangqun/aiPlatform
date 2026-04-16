@@ -343,21 +343,16 @@ aiPlat-infra/
 # tests/unit/test_database.py
 import pytest
 from infra.database.postgres import PostgresClient
-from infra.database.config import PostgresConfig
+from infra.database.schemas import DatabaseConfig
 
 def test_postgres_config_validation():
     """测试配置验证"""
-    # 有效配置
-    config = PostgresConfig(host="localhost", database="test")
-    assert config.port == 5432  # 默认值
-    
-    # 无效配置
-    with pytest.raises(ValueError):
-        PostgresConfig(host="")  # 空主机名
+    config = DatabaseConfig(type="postgres", host="localhost", name="test")
+    assert config.port == 5432  # 默认值（schemas.py）
 
 def test_postgres_client_build_query():
     """测试查询构建"""
-    client = PostgresClient(PostgresConfig(host="localhost", database="test"))
+    client = PostgresClient(DatabaseConfig(type="postgres", host="localhost", name="test"))
     query, params = client._build_query(
         "SELECT * FROM users WHERE id = :id",
         {"id": 1}
@@ -373,7 +368,7 @@ def test_postgres_client_build_query():
 import pytest
 from testcontainers.postgres import PostgresContainer
 from infra.database.postgres import PostgresClient
-from infra.database.config import PostgresConfig
+from infra.database.schemas import DatabaseConfig
 
 @pytest.fixture
 async def postgres_container():
@@ -386,10 +381,11 @@ async def postgres_container():
 @pytest.fixture
 async def db_client(postgres_container):
     """创建数据库客户端"""
-    config = PostgresConfig(
+    config = DatabaseConfig(
+        type="postgres",
         host=postgres_container.get_container_host_ip(),
         port=postgres_container.get_exposed_port(5432),
-        database=postgres_container.POSTGRES_DB,
+        name=postgres_container.POSTGRES_DB,
         user=postgres_container.POSTGRES_USER,
         password=postgres_container.POSTGRES_PASSWORD
     )

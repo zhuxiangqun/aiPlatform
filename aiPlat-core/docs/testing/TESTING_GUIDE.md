@@ -445,7 +445,7 @@ class Test{Interface}Implementations:
 
 import pytest
 from harness.integration import HarnessIntegration
-from harness.config import HarnessConfig
+from core.harness import HarnessConfig
 
 
 @pytest.mark.integration

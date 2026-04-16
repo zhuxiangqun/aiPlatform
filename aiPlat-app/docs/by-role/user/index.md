@@ -1277,9 +1277,9 @@ aiplat --version
 
 ## 🔗 相关链接
 
-- [← 返回应用层文档](../index.md)
-- [平台层用户指南](../../aiPlat-platform/docs/by-role/user/index.md)
-- [开发者指南](./developer/index.md)
+- [← 返回应用层文档](../../index.md)
+- [平台层用户指南](../../../../aiPlat-platform/docs/by-role/user/index.md)
+- [开发者指南](../developer/index.md)
 
 ---
 

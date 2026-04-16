@@ -102,7 +102,7 @@ open http://localhost:8000/docs
 
 ### api - API 服务
 
-**详细文档**：[api 模块文档](../api/index.md)
+**详细文档**：[api 模块文档](../../api/index.md)
 
 **操作路径**：
 
@@ -138,7 +138,7 @@ open http://localhost:8000/docs
 
 ### auth - 认证授权
 
-**详细文档**：[auth 模块文档](../auth/index.md)
+**详细文档**：[auth 模块文档](../../auth/index.md)
 
 **操作路径**：
 
@@ -167,7 +167,7 @@ open http://localhost:8000/docs
 
 ### tenants - 租户管理
 
-**详细文档**：[tenants 模块文档](../tenants/index.md)
+**详细文档**：[tenants 模块文档](../../tenants/index.md)
 
 **操作路径**：
 
@@ -192,7 +192,7 @@ open http://localhost:8000/docs
 
 ### gateway - 服务网关
 
-**详细文档**：[gateway 模块文档](../gateway/index.md)
+**详细文档**：[gateway 模块文档](../../gateway/index.md)
 
 **操作路径**：
 
@@ -221,7 +221,7 @@ open http://localhost:8000/docs
 
 ### messaging - 消息服务
 
-**详细文档**：[messaging 模块文档](../messaging/index.md)
+**详细文档**：[messaging 模块文档](../../messaging/index.md)
 
 **操作路径**：
 
@@ -246,7 +246,7 @@ open http://localhost:8000/docs
 
 ### deployment - 部署服务
 
-**详细文档**：[deployment 模块文档](../deployment/index.md)
+**详细文档**：[deployment 模块文档](../../deployment/index.md)
 
 **操作路径**：
 
@@ -270,7 +270,7 @@ open http://localhost:8000/docs
 
 ### registry - 服务注册
 
-**详细文档**：[registry 模块文档](../registry/index.md)
+**详细文档**：[registry 模块文档](../../registry/index.md)
 
 **操作路径**：
 
@@ -289,7 +289,7 @@ open http://localhost:8000/docs
 
 ### billing - 计费服务
 
-**详细文档**：[billing 模块文档](../billing/index.md)
+**详细文档**：[billing 模块文档](../../billing/index.md)
 
 **操作路径**：
 
@@ -309,7 +309,7 @@ open http://localhost:8000/docs
 
 ### governance - 治理服务
 
-**详细文档**：[governance 模块文档](../governance/index.md)
+**详细文档**：[governance 模块文档](../../governance/index.md)
 
 **操作路径**：
 
@@ -492,9 +492,9 @@ tests/
 
 ## 📖 相关链接
 
-- [← 返回平台层文档](../index.md)
-- [架构师指南 →](../by-role/architect/index.md)
-- [运维指南 →](../by-role/ops/index.md)
+- [← 返回平台层文档](../../index.md)
+- [架构师指南 →](../architect/index.md)
+- [运维指南 →](../ops/index.md)
 
 ---
 

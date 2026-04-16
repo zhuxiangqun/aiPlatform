@@ -1153,8 +1153,8 @@ systemctl restart nginx
 
 ## 🔗 相关链接
 
-- [← 返回应用层文档](../index.md)
-- [架构师指南 →](./architect/index.md)
+- [← 返回应用层文档](../../index.md)
+- [架构师指南 →](../architect/index.md)
 - [开发者指南 →](../developer/index.md)
 
 ---

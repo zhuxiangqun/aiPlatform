@@ -274,7 +274,7 @@ aiplat skill list
 
 ### channels - 消息通道
 
-**详细文档**：[channels 模块文档](../channels/index.md)
+**详细文档**：[channels 模块文档](../../channels/index.md)
 
 **操作路径**：
 
@@ -294,7 +294,7 @@ aiplat skill list
 
 ### cli - 命令行工具
 
-**详细文档**：[cli 模块文档](../cli/index.md)
+**详细文档**：[cli 模块文档](../../cli/index.md)
 
 **操作路径**：
 
@@ -341,7 +341,7 @@ aiplat
 
 ### workbench - 工作台
 
-**详细文档**：[workbench 模块文档](../workbench/index.md)
+**详细文档**：[workbench 模块文档](../../workbench/index.md)
 
 **操作路径**：
 
@@ -376,7 +376,7 @@ aiplat
 
 ### services - 应用服务
 
-**详细文档**：[services 模块文档](../services/index.md)
+**详细文档**：[services 模块文档](../../services/index.md)
 
 **操作路径**：
 
@@ -410,35 +410,13 @@ services/
 
 ---
 
-### client - REST API SDK
+### client - REST API SDK（说明）
 
-**详细文档**：[client 模块文档](../client/index.md)
+当前仓库未提供独立的 app 层 Python SDK（`app/client/*`）实现。
 
-**操作路径**：
-
-| 任务 | 操作路径 | 参考文件位置 |
-|------|----------|-------------|
-| 创建客户端 | 调用 `REST API(config)` | `app/client/platform_client.py` |
-| 执行 Agent | 调用 `client.execute_agent(name, input)` | `app/client/platform_client.py` |
-| 注册 Skill | 调用 `client.register_skill(name, skill)` | `app/client/platform_client.py` |
-| 查询知识库 | 调用 `client.search_knowledge(query, top_k)` | `app/client/platform_client.py` |
-
-**REST API 方法**：
-
-| 方法 | 说明 |
-|------|------|
-| `execute_agent` | 执行 Agent |
-| `register_agent` | 注册 Agent |
-| `list_agents` | 列出所有 Agent |
-| `execute_skill` | 执行 Skill |
-| `register_skill` | 注册 Skill |
-| `list_skills` | 列出所有 Skill |
-| `search_knowledge` | 搜索知识库 |
-| `upload_document` | 上传文档 |
-
-**相关文件位置**：
-- SDK 实现：`app/client/platform_client.py`
-- 配置：`config/app/client.yaml`
+建议：
+- Web UI/工作台：通过 `services`（前端 API 层）调用 platform API
+- CLI/脚本：直接通过 HTTP（或后续从 OpenAPI 生成客户端）调用 platform API
 
 ---
 
@@ -600,9 +578,9 @@ tests/
 
 ## 📖 相关链接
 
-- [← 返回应用层文档](../index.md)
-- [架构师指南 →](../by-role/architect/index.md)
-- [运维指南 →](../by-role/ops/index.md)
+- [← 返回应用层文档](../../index.md)
+- [架构师指南 →](../architect/index.md)
+- [运维指南 →](../ops/index.md)
 
 ---
 

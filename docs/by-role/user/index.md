@@ -1035,9 +1035,9 @@ curl http://localhost:8000/api/v1/version
 
 ## 🔗 相关链接
 
-- [← 返回主文档](../index.md)
-- [开发者指南](./developer/index.md) - API 详细文档
-- [架构师指南](./architect/index.md) - 系统架构说明
+- [← 返回主文档](../../index.md)
+- [开发者指南](../developer/index.md) - API 详细文档
+- [架构师指南](../architect/index.md) - 系统架构说明
 
 ---
 

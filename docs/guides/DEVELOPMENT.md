@@ -90,9 +90,11 @@ import pytest
 from pydantic import BaseModel
 
 # 3. 本项目内部模块（按层级）
-from aiPlat_infra import DatabaseClient
-from aiPlat_core import Agent
-from aiPlat_platform import APIRouter
+from infra.database import DatabaseClient
+from core.apps.agents.base import BaseAgent
+
+# 4. 平台层 API 框架（当前仓库内以 FastAPI 示例为准）
+from fastapi import APIRouter
 ```
 
 **禁止的模式**：
@@ -644,7 +646,7 @@ PATCH: 向后兼容的问题修正
 所有层的前端开发应遵循系统级 UI 设计规范：
 
 - [系统级 UI 设计规范](../UI_DESIGN.md) - 统一的颜色、排版、组件、交互模式
-- [模块级 UI 设计参考](../aiPlat-management/docs/dashboard/ui-design.md) - Dashboard 模块示例
+- [系统级 UI 设计规范](../UI_DESIGN.md) - UI 规范与组件风格约定
 
 ---
 

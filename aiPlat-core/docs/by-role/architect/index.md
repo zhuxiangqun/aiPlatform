@@ -397,8 +397,8 @@ models ← aiPlat-infra（可选；当前仓库存在 core 内 ModelService/Adap
 
 ## 相关链接
 
-- [核心层文档](../index.md) - 返回核心层文档
-- [开发者指南](./developer/index.md) - 开发规范和最佳实践
+- [核心层文档](../../index.md) - 返回核心层文档
+- [开发者指南](../developer/index.md) - 开发规范和最佳实践
 
 ---
 

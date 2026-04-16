@@ -442,11 +442,11 @@ class PermissionManager:
 
 | 模块 | 关系 | 引用 |
 |------|------|------|
-| **Harness** | 使用执行循环 | [Harness 框架](./harness/index.md) |
-| **Tools** | Skill 可调用工具 | [工具系统](./tools/index.md) |
-| **Models** | Skill 使用模型 | [LLM 适配器](./adapters/llm.md) |
-| **Memory** | 使用上下文 | [记忆系统](./memory/index.md) |
-| **Agent** | Agent 调用 Skill | [Agent 架构](./agents/architecture.md) |
+| **Harness** | 使用执行循环 | [Harness 框架](../harness/index.md) |
+| **Tools** | Skill 可调用工具 | [工具系统](../tools/index.md) |
+| **Models** | Skill 使用模型 | [LLM 适配器](../adapters/llm.md) |
+| **Memory** | 使用上下文 | [记忆系统](../memory/index.md) |
+| **Agent** | Agent 调用 Skill | [Agent 架构](../agents/architecture.md) |
 
 ---
 
@@ -454,9 +454,9 @@ class PermissionManager:
 
 - [Skill 概述](./index.md) - Skill 模块定位与类型
 - [Skill 生命周期](./lifecycle.md) - Skill 进化机制 (CAPTURED/FIX/DERIVED)
-- [Agent 架构](./agents/architecture.md) - Agent 架构设计
-- [工具系统](./tools/index.md) - 工具定义与权限
-- [Harness 框架](./harness/index.md) - 基础设施层
+- [Agent 架构](../agents/architecture.md) - Agent 架构设计
+- [工具系统](../tools/index.md) - 工具定义与权限
+- [Harness 框架](../harness/index.md) - 基础设施层
 
 ---
 

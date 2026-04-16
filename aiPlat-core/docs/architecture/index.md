@@ -325,10 +325,10 @@ LangChain 提供基础能力，LangGraph 实现图编排，Harness 在 execution
 
 ## 六、文档导航
 
-- [项目结构](./framework/structure.md) - 完整目录结构
-- [框架基础](./framework/index.md) - LangChain/LangGraph/Harness 关系
-- [执行系统](./harness/execution.md) - 包含 LangGraph 集成
-- [基础设施](./harness/infrastructure.md) - 包含 LangChain 集成
+- [项目结构](../framework/structure.md) - 完整目录结构
+- [框架基础](../framework/index.md) - LangChain/LangGraph/Harness 关系
+- [执行系统](../harness/execution.md) - 包含 LangGraph 集成
+- [基础设施](../harness/infrastructure.md) - 包含 LangChain 集成
 
 ---
 

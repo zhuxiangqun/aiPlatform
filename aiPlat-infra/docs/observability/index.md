@@ -379,20 +379,24 @@ async def http_client_request(url: str, method: str):
 ### 添加新的导出器
 
 ```python
-from infra.observability.exporters.base import Exporter
+from infra.observability.base import SpanExporter, Span
 
-class CustomExporter(Exporter):
+class CustomExporter(SpanExporter):
     """自定义导出器"""
     
     def __init__(self, endpoint: str):
         self.endpoint = endpoint
     
-    def export(self, spans: List[Span]):
+    def export(self, spans: List[Span]) -> None:
         """导出 spans 到自定义后端"""
         requests.post(
             self.endpoint,
             json=[self._serialize_span(s) for s in spans]
         )
+
+    def shutdown(self) -> None:
+        """Exporter shutdown hook"""
+        return None
     
     def _serialize_span(self, span: Span) -> dict:
         return {

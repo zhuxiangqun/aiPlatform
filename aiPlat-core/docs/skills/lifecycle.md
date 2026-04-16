@@ -350,8 +350,8 @@ LLM 最终筛选
 ## 八、相关文档
 
 - [Agent 设计模式](../framework/patterns.md) - 6种核心模式
-- [Context 管理](./harness/context.md) - 上下文与记忆
-- [Harness 基础设施](./harness/index.md) - 运行时系统
+- [Context 管理](../harness/context.md) - 上下文与记忆
+- [Harness 基础设施](../harness/index.md) - 运行时系统
 
 ---
 

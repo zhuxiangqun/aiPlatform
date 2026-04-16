@@ -301,7 +301,7 @@ class MyBackendMemoryManager(MemoryManager):
 ## 🔗 相关链接
 
 - **上级**：[← 返回 infra 索引](../index.md)
-- **算力管理**：[→ compute](compute/index.md)
+- **算力管理**：[→ compute](../compute/index.md)
 - **CUDA 文档**：https://docs.nvidia.com/cuda/
 - **Kubernetes 内存管理**：https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 

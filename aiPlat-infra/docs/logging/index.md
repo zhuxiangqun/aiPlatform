@@ -335,7 +335,7 @@ logger.info("User login",
 **文件**：`infra/logging/outputs/syslog.py`
 
 ```python
-from infra.logging.outputs.base import LogOutput
+from infra.logging import LogOutput
 
 class SyslogOutput(LogOutput):
     """Syslog 输出"""
@@ -358,7 +358,7 @@ class SyslogOutput(LogOutput):
 **文件**：`infra/logging/formatters/custom.py`
 
 ```python
-from infra.logging.formatter import Formatter
+from infra.logging import Formatter
 from infra.logging.schemas import LogRecord
 
 class CustomFormatter(Formatter):

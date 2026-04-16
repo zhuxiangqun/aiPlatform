@@ -681,7 +681,7 @@ class ConsulSource(ConfigSource):
 
 ```python
 from infra.config.sources import FileSource, EnvSource
-from infra.config.sources.consul import ConsulSource
+from infra.config.sources.consul_source import ConsulSource
 
 def create_config_loader(config: ConfigLoaderConfig) -> ConfigLoader:
     """创建配置加载器"""

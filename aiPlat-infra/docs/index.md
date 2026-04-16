@@ -1228,7 +1228,7 @@ diagnosis = await manager.diagnose()
 ### 详细文档
 
 - **管理模块文档**：[management/index.md](management/index.md)
-- **Management 系统**：[aiPlat-management 文档](../aiPlat-management/docs/index.md)
+- **Management 系统**：[aiPlat-management 文档](../../aiPlat-management/docs/index.md)
 
 ---
 
@@ -1240,9 +1240,9 @@ diagnosis = await manager.diagnose()
 
 ### 同级文档
 - [infra (当前位置)](index.md)
-- [core →](../aiPlat-core/docs/index.md)
-- [platform →](../aiPlat-platform/docs/index.md)
-- [app →](../aiPlat-app/docs/index.md)
-- [management →](../aiPlat-management/docs/index.md) ---
+- [core →](../../aiPlat-core/docs/index.md)
+- [platform →](../../aiPlat-platform/docs/index.md)
+- [app →](../../aiPlat-app/docs/index.md)
+- [management →](../../aiPlat-management/docs/index.md) ---
 
 *最后更新: 2026-04-10*

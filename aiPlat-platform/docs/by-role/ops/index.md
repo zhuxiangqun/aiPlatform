@@ -709,9 +709,9 @@ systemctl start redis
 
 ## 🔗 相关链接
 
-- [← 返回平台层文档](../index.md)
-- [架构师指南 →](./architect/index.md)
-- [开发者指南 →](./developer/index.md)
+- [← 返回平台层文档](../../index.md)
+- [架构师指南 →](../architect/index.md)
+- [开发者指南 →](../developer/index.md)
 
 ---
 

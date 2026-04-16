@@ -21,7 +21,7 @@
 ### 前提条件
 
 在使用 Core API 之前，确保：
-- 已完成系统部署（参考 [运维指南](./ops/index.md)）
+- 已完成系统部署（参考 [运维指南](../ops/index.md)）
 - 已获取 API 访问令牌（To-Be：由 platform/auth 提供）
 - 已确认服务状态为健康
 
@@ -538,10 +538,10 @@ agent:
 
 ## 相关链接
 
-- [← 返回核心层文档](../index.md)
-- [架构师指南](./architect/index.md) - 核心层架构设计
-- [开发者指南](./developer/index.md) - 核心层开发指南
-- [运维指南](./ops/index.md) - 核心层运维指南
+- [← 返回核心层文档](../../index.md)
+- [架构师指南](../architect/index.md) - 核心层架构设计
+- [开发者指南](../developer/index.md) - 核心层开发指南
+- [运维指南](../ops/index.md) - 核心层运维指南
 
 ---
 

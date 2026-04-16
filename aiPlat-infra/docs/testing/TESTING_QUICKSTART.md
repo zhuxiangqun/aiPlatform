@@ -343,11 +343,11 @@ sudo pytest infra/tests/ -v
 ### 快速导航
 
 - 🏃 **快速开始**: 本文档
-- 📖 **详细指南**: [SYSTEM_TESTING_GUIDE.md](./SYSTEM_TESTING_GUIDE.md)
+- 📖 **详细指南**: [TESTING_GUIDE.md](./TESTING_GUIDE.md)
 - ✅ **最佳实践**: [TESTING_GUIDE.md](./TESTING_GUIDE.md)
 - 📋 **检查清单**: [TESTING_CHECKLIST.md](./TESTING_CHECKLIST.md)
-- 📊 **集成测试报告**: [INTEGRATION_TEST_REPORT.md](../infra/tests/test_database/INTEGRATION_TEST_REPORT.md)
-- 🎉 **完成总结**: [TESTCONTAINERS_FINAL_REPORT.md](../TESTCONTAINERS_FINAL_REPORT.md)
+- 📊 **集成测试摘要**: [INTEGRATION_TESTS_SUMMARY.md](./reports/INTEGRATION_TESTS_SUMMARY.md)
+- 🎉 **完成总结**: [TESTCONTAINERS_FINAL_REPORT.md](./reports/TESTCONTAINERS_FINAL_REPORT.md)
 
 ### 文档结构
 
@@ -355,7 +355,7 @@ sudo pytest infra/tests/ -v
 aiPlat-infra/
 ├── docs/
 │   ├── TESTING_QUICKSTART.md      ← 本文档（快速开始）
-│   ├── SYSTEM_TESTING_GUIDE.md    ← 系统测试指南（详细）
+│   ├── TESTING_GUIDE.md           ← 测试指南（详细）
 │   ├── TESTING_GUIDE.md           ← 测试最佳实践
 │   └── TESTING_CHECKLIST.md       ← 测试检查清单
 │
@@ -363,7 +363,7 @@ aiPlat-infra/
 │   ├── test_database/
 │   │   ├── test_client.py          ← 单元测试
 │   │   ├── test_postgres_integration.py ← 集成测试
-│   │   └── INTEGRATION_TEST_REPORT.md ← 测试报告
+│   │   └── INTEGRATION_TESTS_SUMMARY.md ← 集成测试摘要
 │   │
 │   ├── test_messaging/
 │   │   ├── test_messaging.py        ← 单元测试
@@ -454,13 +454,13 @@ TOTAL     1250    150   85%
 ### 文档资源
 
 1. **测试文档**: `docs/TESTING_GUIDE.md`
-2. **系统测试指南**: `docs/SYSTEM_TESTING_GUIDE.md`
+2. **测试指南（详细）**: `docs/testing/TESTING_GUIDE.md`
 3. **检查清单**: `docs/TESTING_CHECKLIST.md`
-4. **集成测试报告**: `infra/tests/test_database/INTEGRATION_TEST_REPORT.md`
+4. **集成测试摘要**: `docs/testing/reports/INTEGRATION_TESTS_SUMMARY.md`
 
 ### 常见问题
 
-- 查看故障排查章节: `docs/SYSTEM_TESTING_GUIDE.md#故障排查`
+- 查看故障排查章节: `docs/testing/TESTING_GUIDE.md#故障排查`
 - 查看最佳实践: `docs/TESTING_GUIDE.md`
 - 查看示例代码: `infra/tests/test_database/test_*.py`
 

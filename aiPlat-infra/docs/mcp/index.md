@@ -178,7 +178,7 @@ mcp:
 ```python
 # 1. 创建 MCP 客户端
 from infra.mcp import create_mcp_client
-from infra.mcp.config import MCPConfig
+from infra.mcp.schemas import MCPConfig
 
 config = MCPConfig(
     type="stdio",
@@ -291,7 +291,7 @@ class Transport(ABC):
 ## 🔗 相关链接
 
 - **上级**：[← 返回 infra 索引](../index.md)
-- **core tools 模块**：[→ aiPlat-core/tools](../aiPlat-core/docs/tools/index.md)
+- **core tools 模块**：[→ aiPlat-core/tools](../../../aiPlat-core/docs/tools/index.md)
 - **MCP 协议规范**：https://spec.modelcontextprotocol.io
 
 ---

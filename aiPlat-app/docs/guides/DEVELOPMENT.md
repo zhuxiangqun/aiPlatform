@@ -80,7 +80,11 @@ if __name__ == '__main__':
 
 ```python
 # app/gateway/telegram.py
-from aiPlat_platform import APIClient
+from typing import Protocol, Any
+
+# 说明：当前仓库未提供独立的 platform Python SDK 包；此处用 Protocol 表达“平台 API 客户端能力”。
+class APIClient(Protocol):
+    async def execute_agent(self, agent_id: str, input: Any) -> Any: ...
 
 class TelegramGateway:
     """Telegram 消息网关"""

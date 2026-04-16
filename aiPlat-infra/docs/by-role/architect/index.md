@@ -368,7 +368,7 @@ class DatabaseClient(ABC):
 
 ## 📖 相关链接
 
-- [← 返回 infra 主文档](../index.md)
+- [← 返回 infra 主文档](../../index.md)
 - [开发者指南 →](../developer/index.md)
 - [运维指南 →](../ops/index.md)
 

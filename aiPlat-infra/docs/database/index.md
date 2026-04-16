@@ -429,9 +429,8 @@ def create_database_client(config: DatabaseConfig) -> DatabaseClient:
     elif config.type == "mongodb":
         from infra.database.mongodb import MongoClient
         return MongoClient(config)
-    elif config.type == "oracle":  # 添加新分支
-        from infra.database.oracle import OracleClient
-        return OracleClient(config)
+    elif config.type == "oracle":  # 扩展示例（当前仓库未实现）
+        raise NotImplementedError("oracle is not implemented in this repository")
     else:
         raise ValueError(f"Unknown database type: {config.type}")
 ```
@@ -491,8 +490,8 @@ infra/database/
 ## 🔗 相关链接
 
 - [← 返回 infra 文档索引](../index.md)
-- [→ 配置管理模块](config/index.md)
-- [→ 缓存模块](cache/index.md)
+- [→ 配置管理模块](../config/index.md)
+- [→ 缓存模块](../cache/index.md)
 
 ---
 

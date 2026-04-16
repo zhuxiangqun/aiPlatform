@@ -341,9 +341,9 @@ permissions:
 
 ## 相关文档
 
-- [工具系统](./tools/index.md) - 基础工具接口
-- [安全设计](./harness/security.md) - 安全审计
-- [权限管理](./harness/security.md#权限控制)
+- [工具系统](./index.md) - 基础工具接口
+- [安全设计](../harness/security.md) - 安全审计
+- [权限管理](../harness/security.md#权限控制)
 
 ---
 

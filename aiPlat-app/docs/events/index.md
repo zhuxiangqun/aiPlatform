@@ -282,10 +282,12 @@ emit_sync(event)
 ### 7.1 创建事件总线
 
 ```python
-from aiPlat_app.events import EventBus, Event, EventType
+# 伪代码：当前仓库未提供 app 层 Python 的 EventBus 实现。
+# 如果需要落地实现，请以平台对外契约（platform API）与 management 的可观测性链路为准。
+from typing import Any, Dict
 
 # 创建事件总线
-event_bus = EventBus(max_queue_size=1000)
+event_bus = ...  # EventBus(max_queue_size=1000)
 ```
 
 ### 7.2 启动和停止

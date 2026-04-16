@@ -275,7 +275,7 @@ class MyBackendClient(ComputeManager):
 ## 🔗 相关链接
 
 - **上级**：[← 返回 infra 索引](../index.md)
-- **内存管理**：[→ memory](memory/index.md)
+- **内存管理**：[→ memory](../memory/index.md)
 - **Kubernetes 文档**：https://kubernetes.io/docs/
 - **GPU 调度**：[→ NVIDIA Device Plugins](https://github.com/NVIDIA/k8s-device-plugin)
 

@@ -327,10 +327,11 @@ def get_stats(self) -> dict:
 ### 8.1 创建 Telegram 通道
 
 ```python
-from aiPlat_app.channels import TelegramAdapter
+# 伪代码：当前仓库未提供 app 层 Python 的 TelegramAdapter 实现（channels 仅文档层定义）。
+from typing import Any, Dict
 
 # 创建通道
-telegram = TelegramAdapter(config={
+telegram = ...  # TelegramAdapter(config={
     "bot_token": "your-bot-token",
     "allowed_users": ["user123"]
 })

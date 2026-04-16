@@ -254,9 +254,9 @@ MCP_AUTH_ENABLED=true
 
 ## 相关文档
 
-- [工具系统](./tools/index.md) - 基础工具接口
-- [Harness 框架](./harness/index.md) - Agent 运行环境
-- [安全设计](./harness/security.md) - 安全审计
+- [工具系统](../tools/index.md) - 基础工具接口
+- [Harness 框架](../harness/index.md) - Agent 运行环境
+- [安全设计](../harness/security.md) - 安全审计
 
 ---
 

@@ -84,7 +84,7 @@ make test-agent-basic
 
 ### harness - 智能体框架
 
-**详细文档**：[harness 模块文档](../harness/index.md)
+**详细文档**：[harness 模块文档](../../harness/index.md)
 
 **操作路径**：
 
@@ -119,7 +119,7 @@ make test-agent-basic
 
 ### orchestration - 编排引擎
 
-**详细文档**：[harness 模块文档](../harness/index.md)
+**详细文档**：[harness 模块文档](../../harness/index.md)
 
 **操作路径**：
 
@@ -150,7 +150,7 @@ make test-agent-basic
 
 ### agents - 智能体实现
 
-**详细文档**：[harness 模块文档](../harness/index.md)
+**详细文档**：[harness 模块文档](../../harness/index.md)
 
 **内置 Agent 类型**：
 
@@ -177,7 +177,7 @@ make test-agent-basic
 
 ### skills - 技能系统
 
-**详细文档**：[harness 模块文档](../harness/index.md)
+**详细文档**：[harness 模块文档](../../harness/index.md)
 
 **操作路径**：
 
@@ -208,7 +208,7 @@ make test-agent-basic
 
 ### memory - 记忆系统
 
-**详细文档**：[harness 模块文档](../harness/index.md)
+**详细文档**：[harness 模块文档](../../harness/index.md)
 
 **操作路径**：
 
@@ -238,7 +238,7 @@ make test-agent-basic
 
 ### knowledge - 知识管理
 
-**详细文档**：[harness 模块文档](../harness/index.md)
+**详细文档**：[harness 模块文档](../../harness/index.md)
 
 **操作路径**：
 
@@ -293,7 +293,7 @@ make test-agent-basic
 
 ### services - 核心服务
 
-**详细文档**：[harness 模块文档](../harness/index.md)
+**详细文档**：[harness 模块文档](../../harness/index.md)
 
 **操作路径**：
 
@@ -316,7 +316,7 @@ make test-agent-basic
 
 ### models - 模型封装
 
-**详细文档**：[harness 模块文档](../harness/index.md)
+**详细文档**：[harness 模块文档](../../harness/index.md)
 
 **操作路径**：
 
@@ -519,9 +519,9 @@ tests/
 
 ## 📖 相关链接
 
-- [← 返回核心层文档](../index.md)
-- [架构师指南 →](../by-role/architect/index.md)
-- [运维指南 →](../by-role/ops/index.md)
+- [← 返回核心层文档](../../index.md)
+- [架构师指南 →](../architect/index.md)
+- [运维指南 →](../ops/index.md)
 
 ---
 
