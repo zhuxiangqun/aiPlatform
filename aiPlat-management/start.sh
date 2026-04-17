@@ -12,8 +12,16 @@ echo ""
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
+# Prefer project venv if present (avoid conda/base hijacking)
+PY="$PROJECT_ROOT/.venv/bin/python"
+PIP="$PROJECT_ROOT/.venv/bin/pip"
+if [ ! -x "$PY" ]; then
+  PY="$(command -v python3)"
+  PIP="$(command -v pip3 || command -v pip)"
+fi
+
 # 检查 Python 版本
-PYTHON_VERSION=$(python3 --version 2>&1 | awk '{print $2}')
+PYTHON_VERSION=$($PY --version 2>&1 | awk '{print $2}')
 MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
 MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
 
@@ -34,13 +42,13 @@ echo ""
 
 echo "正在安装 aiPlat-infra 依赖..."
 cd "$PROJECT_ROOT/aiPlat-infra"
-pip install -e . 2>&1 | grep -E "(Successfully|ERROR|error)" || {
+$PIP install -e . 2>&1 | grep -E "(Successfully|ERROR|error)" || {
     echo "警告: aiPlat-infra 安装可能有问题，继续..."
 }
 
 echo ""
 echo "启动 aiPlat-infra API 服务 (端口 8001)..."
-nohup python3 -m infra.management.api.run_server --host 0.0.0.0 --port 8001 > /tmp/aiplat-infra.log 2>&1 &
+nohup "$PY" -m infra.management.api.run_server --host 0.0.0.0 --port 8001 > /tmp/aiplat-infra.log 2>&1 &
 INFRA_PID=$!
 echo "aiPlat-infra PID: $INFRA_PID"
 
@@ -75,7 +83,7 @@ echo ""
 if [ -d "$PROJECT_ROOT/aiPlat-core" ]; then
     echo "正在安装 aiPlat-core 依赖..."
     cd "$PROJECT_ROOT/aiPlat-core"
-    pip install -e . 2>&1 | grep -E "(Successfully|ERROR|error)" || {
+    $PIP install -e . 2>&1 | grep -E "(Successfully|ERROR|error)" || {
         echo "警告: aiPlat-core 安装可能有问题，继续..."
     }
 
@@ -85,7 +93,7 @@ if [ -d "$PROJECT_ROOT/aiPlat-core" ]; then
     export AIPLAT_EXECUTION_DB_PATH="${AIPLAT_EXECUTION_DB_PATH:-$PROJECT_ROOT/aiPlat-core/core/data/aiplat_executions.sqlite3}"
     mkdir -p "$(dirname "$AIPLAT_EXECUTION_DB_PATH")"
     echo "Execution DB: $AIPLAT_EXECUTION_DB_PATH"
-    nohup python3 -m uvicorn core.server:app --host 0.0.0.0 --port 8002 > /tmp/aiplat-core.log 2>&1 &
+    nohup "$PY" -m uvicorn core.server:app --host 0.0.0.0 --port 8002 > /tmp/aiplat-core.log 2>&1 &
     CORE_PID=$!
     echo "aiPlat-core PID: $CORE_PID"
 
@@ -119,13 +127,13 @@ echo ""
 
 echo "正在安装 aiPlat-management 依赖..."
 cd "$SCRIPT_DIR"
-pip install -e .[dev] 2>&1 | grep -E "(Successfully|ERROR|error)" || {
+$PIP install -e .[dev] 2>&1 | grep -E "(Successfully|ERROR|error)" || {
     echo "警告: aiPlat-management 安装可能有问题，继续..."
 }
 
 echo ""
 echo "启动 aiPlat-management API 服务 (端口 8000)..."
-nohup python3 -m uvicorn management.server:create_app --host 0.0.0.0 --port 8000 --factory > /tmp/aiplat-management.log 2>&1 &
+nohup "$PY" -m uvicorn management.server:create_app --host 0.0.0.0 --port 8000 --factory > /tmp/aiplat-management.log 2>&1 &
 MGMT_PID=$!
 echo "aiPlat-management PID: $MGMT_PID"
 

@@ -6,11 +6,18 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$SCRIPT_DIR"
 
+PY="$PROJECT_ROOT/.venv/bin/python"
+PIP="$PROJECT_ROOT/.venv/bin/pip"
+if [ ! -x "$PY" ]; then
+  PY="$(command -v python3)"
+  PIP="$(command -v pip3 || command -v pip)"
+fi
+
 echo "============================================================"
 echo "  aiPlat-platform - 启动服务"
 echo "============================================================"
 echo ""
-echo "Python: $(python3 --version 2>&1 | awk '{print $2}')"
+echo "Python: $($PY --version 2>&1 | awk '{print $2}')"
 echo ""
 
 # ===== Step 1: aiPlat-core =====
@@ -23,7 +30,7 @@ cd "$PROJECT_ROOT/aiPlat-core/core"
 export AIPLAT_EXECUTION_DB_PATH="${AIPLAT_EXECUTION_DB_PATH:-$PROJECT_ROOT/aiPlat-core/core/data/aiplat_executions.sqlite3}"
 mkdir -p "$(dirname "$AIPLAT_EXECUTION_DB_PATH")"
 echo "Execution DB: $AIPLAT_EXECUTION_DB_PATH"
-PYTHONPATH="$PROJECT_ROOT/aiPlat-core" nohup python3 -m uvicorn server:app --host 0.0.0.0 --port 8002 > /tmp/aiplat-core.log 2>&1 &
+PYTHONPATH="$PROJECT_ROOT/aiPlat-core" nohup "$PY" -m uvicorn server:app --host 0.0.0.0 --port 8002 > /tmp/aiplat-core.log 2>&1 &
 CORE_PID=$!
 echo "PID: $CORE_PID"
 
@@ -41,7 +48,7 @@ echo "  Step 2/4: 启动 aiPlat-infra (端口 8001)"
 echo "============================================================"
 
 cd "$PROJECT_ROOT/aiPlat-infra"
-PYTHONPATH="$PROJECT_ROOT/aiPlat-infra" nohup python3 -m uvicorn infra.management.api.main:create_app --host 0.0.0.0 --port 8001 --factory > /tmp/aiplat-infra.log 2>&1 &
+PYTHONPATH="$PROJECT_ROOT/aiPlat-infra" nohup "$PY" -m uvicorn infra.management.api.main:create_app --host 0.0.0.0 --port 8001 --factory > /tmp/aiplat-infra.log 2>&1 &
 INFRA_PID=$!
 echo "PID: $INFRA_PID"
 
@@ -59,7 +66,7 @@ echo "  Step 3/4: 启动 aiPlat-management (端口 8000)"
 echo "============================================================"
 
 cd "$PROJECT_ROOT/aiPlat-management"
-nohup python3 -m uvicorn management.server:create_app --host 0.0.0.0 --port 8000 --factory > /tmp/aiplat-management.log 2>&1 &
+nohup "$PY" -m uvicorn management.server:create_app --host 0.0.0.0 --port 8000 --factory > /tmp/aiplat-management.log 2>&1 &
 MGMT_PID=$!
 echo "PID: $MGMT_PID"
 
@@ -84,7 +91,7 @@ if [ ! -d "dist" ]; then
     npx vite build 2>&1 | tail -3
 fi
 
-nohup python3 "$PROJECT_ROOT/aiPlat-management/frontend/proxy_server.py" > /tmp/aiplat-frontend.log 2>&1 &
+nohup "$PY" "$PROJECT_ROOT/aiPlat-management/frontend/proxy_server.py" > /tmp/aiplat-frontend.log 2>&1 &
 FRONTEND_PID=$!
 echo "PID: $FRONTEND_PID"
 

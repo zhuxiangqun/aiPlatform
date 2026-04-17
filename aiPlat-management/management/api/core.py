@@ -522,7 +522,7 @@ async def list_workspace_skills(
 
 
 @router.post("/workspace/skills")
-async def create_workspace_skill(payload: Dict[str, Any]):
+async def create_workspace_skill(payload: dict):
     try:
         client = get_core_client()
         return await client.create_workspace_skill(payload)
@@ -540,7 +540,7 @@ async def get_workspace_skill(skill_id: str):
 
 
 @router.put("/workspace/skills/{skill_id}")
-async def update_workspace_skill(skill_id: str, payload: Dict[str, Any]):
+async def update_workspace_skill(skill_id: str, payload: dict):
     try:
         client = get_core_client()
         return await client.update_workspace_skill(skill_id, payload)
@@ -549,7 +549,7 @@ async def update_workspace_skill(skill_id: str, payload: Dict[str, Any]):
 
 
 @router.post("/workspace/skills/{skill_id}/execute")
-async def execute_workspace_skill(skill_id: str, payload: Dict[str, Any]):
+async def execute_workspace_skill(skill_id: str, payload: dict):
     try:
         client = get_core_client()
         return await client.execute_workspace_skill(skill_id, payload)
@@ -608,7 +608,7 @@ async def list_workspace_agents(
 
 
 @router.post("/workspace/agents")
-async def create_workspace_agent(payload: Dict[str, Any]):
+async def create_workspace_agent(payload: dict):
     try:
         client = get_core_client()
         return await client.create_workspace_agent(payload)
@@ -626,7 +626,7 @@ async def get_workspace_agent(agent_id: str):
 
 
 @router.put("/workspace/agents/{agent_id}")
-async def update_workspace_agent(agent_id: str, payload: Dict[str, Any]):
+async def update_workspace_agent(agent_id: str, payload: dict):
     try:
         client = get_core_client()
         return await client.update_workspace_agent(agent_id, payload)
@@ -644,7 +644,7 @@ async def delete_workspace_agent(agent_id: str):
 
 
 @router.post("/workspace/agents/{agent_id}/execute")
-async def execute_workspace_agent(agent_id: str, payload: Dict[str, Any]):
+async def execute_workspace_agent(agent_id: str, payload: dict):
     try:
         client = get_core_client()
         return await client.execute_workspace_agent(agent_id, payload)
@@ -662,7 +662,7 @@ async def get_workspace_agent_skills(agent_id: str):
 
 
 @router.post("/workspace/agents/{agent_id}/skills")
-async def bind_workspace_agent_skills(agent_id: str, payload: Dict[str, Any]):
+async def bind_workspace_agent_skills(agent_id: str, payload: dict):
     try:
         client = get_core_client()
         skill_ids = list(payload.get("skill_ids") or [])
@@ -690,7 +690,7 @@ async def get_workspace_agent_tools(agent_id: str):
 
 
 @router.post("/workspace/agents/{agent_id}/tools")
-async def bind_workspace_agent_tools(agent_id: str, payload: Dict[str, Any]):
+async def bind_workspace_agent_tools(agent_id: str, payload: dict):
     try:
         client = get_core_client()
         tool_ids = list(payload.get("tool_ids") or [])
@@ -727,7 +727,7 @@ async def get_workspace_agent_versions(agent_id: str):
 
 
 @router.post("/workspace/agents/{agent_id}/versions")
-async def create_workspace_agent_version(agent_id: str, payload: Dict[str, Any]):
+async def create_workspace_agent_version(agent_id: str, payload: dict):
     try:
         client = get_core_client()
         return await client.create_workspace_agent_version(agent_id, str((payload or {}).get("changes", "")))
