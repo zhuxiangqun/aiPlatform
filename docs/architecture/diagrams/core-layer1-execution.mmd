@@ -1,0 +1,36 @@
+sequenceDiagram
+  participant Caller as Caller (UI/Service)
+  participant API as aiPlat-core API
+  participant AM as AgentManager
+  participant H as Harness/Runtime
+  participant A as Agent Impl
+  participant SR as SkillRegistry
+  participant SE as SkillExecutor
+  participant TR as Tool Router
+  participant MCP as MCP Adapter
+  participant ES as ExecutionStore
+
+  Caller->>API: POST /agents/{id}/execute OR /workspace/agents/{id}/execute
+  API->>AM: get_agent(id)
+  AM-->>API: agent(config + bindings)
+  API->>H: execute(kind=agent, target_id=id, payload)
+  H->>ES: create execution record (start)
+  H->>A: run loop / execute()
+
+  alt needs skill
+    A->>SR: resolve active version / bindings
+    A->>SE: execute(skill_id, input, context)
+    SE->>ES: append skill step
+  end
+
+  alt needs tool
+    A->>TR: call tool(tool_id, args)
+    TR->>MCP: invoke(server/tool, args)
+    MCP-->>TR: tool result
+    TR->>ES: append tool audit
+  end
+
+  A-->>H: final output
+  H->>ES: mark completed (end)
+  H-->>API: execution result
+  API-->>Caller: response

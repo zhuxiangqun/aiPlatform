@@ -1,0 +1,35 @@
+flowchart TB
+  U[Clients] -->|HTTP| API[Core API Server]
+
+  API --> AM[AgentManager]
+  API --> SM[SkillManager]
+  API --> MM[McpManager]
+  API --> H[Harness / Runtime]
+
+  AM --> AR[Agent Registry]
+  SM --> SR[SkillRegistry]
+  MM --> MC[MCP Registry]
+
+  H --> AE[Agent Executors]
+  H --> SE[SkillExecutor]
+  H --> TR[Tool Router]
+
+  TR --> MCP[MCP Adapter / Client]
+  MCP --> EXT[External Systems]
+
+  H --> ES[ExecutionStore]
+  AE --> ES
+  SE --> ES
+  TR --> ES
+
+  subgraph FS[Filesystem Assets]
+    ENG[engine assets]
+    WKS[workspace assets]
+  end
+
+  ENG --> AM
+  ENG --> SM
+  ENG --> MM
+  WKS --> AM
+  WKS --> SM
+  WKS --> MM
