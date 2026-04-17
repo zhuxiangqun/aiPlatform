@@ -6,6 +6,7 @@ Provides automatic skill discovery by scanning directories and parsing SKILL.md 
 
 import importlib.util
 import importlib.abc
+import os
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
@@ -36,6 +37,8 @@ class DiscoveredSkill:
     trigger_keywords: List[str] = field(default_factory=list)
     execution_mode: str = "inline"
     author: str = ""
+    # L2: SOP markdown body (SKILL.md without YAML frontmatter)
+    sop_markdown: str = ""
 
 
 class SKILLMD_parser:
@@ -55,28 +58,35 @@ class SKILLMD_parser:
         
         # Extract YAML from front matter or code block
         yaml_content = None
+        sop_markdown = ""
         
         # Try front matter format (--- ... ---)
         if content.startswith('---'):
             lines = content.split('\n')
             yaml_lines = []
             in_front_matter = False
+            end_idx = None
             for i, line in enumerate(lines):
                 if line.strip() == '---':
                     if not in_front_matter:
                         in_front_matter = True
                         continue
                     else:
+                        end_idx = i
                         break
                 if in_front_matter:
                     yaml_lines.append(line)
             yaml_content = '\n'.join(yaml_lines)
+            if end_idx is not None:
+                sop_markdown = '\n'.join(lines[end_idx + 1:]).lstrip()
         
         if not yaml_content:
             # Try yaml code block format (```yaml ... ```)
             match = SKILLMD_parser.YAML_BLOCK_PATTERN.search(content)
             if match:
                 yaml_content = match.group(1)
+                # Best-effort SOP: remove the yaml block from content
+                sop_markdown = SKILLMD_parser.YAML_BLOCK_PATTERN.sub("", content).strip()
         
         if not yaml_content:
             # Try to find any YAML-like content
@@ -91,6 +101,7 @@ class SKILLMD_parser:
                     if line.strip() == '```' or (line.strip() and not line.startswith(' ') and not line.startswith('\t')) and len(yaml_lines) > 2:
                         break
             yaml_content = '\n'.join(yaml_lines)
+            sop_markdown = content
         
         if not yaml_content:
             return None
@@ -117,6 +128,7 @@ class SKILLMD_parser:
                 trigger_keywords=data.get('trigger_keywords', []),
                 execution_mode=data.get('execution_mode', 'inline'),
                 author=data.get('author', ''),
+                sop_markdown=sop_markdown or "",
             )
         except yaml.YAMLError:
             return None
@@ -333,8 +345,37 @@ class SkillMatcher:
 
 
 def create_discovery(base_path: str) -> SkillDiscovery:
-    """Factory function to create skill discovery"""
+    """
+    Factory function to create skill discovery.
+
+    Supports multi-path by allowing `base_path` to be a pathsep-separated string:
+      - "pathA:pathB" on Linux/macOS
+      - "pathA;pathB" on Windows
+    Later paths override earlier ones when skill names collide.
+    """
+    if isinstance(base_path, str) and (os.pathsep in base_path):
+        parts = [p.strip() for p in base_path.split(os.pathsep) if p.strip()]
+        if len(parts) > 1:
+            return MultiSkillDiscovery(parts)
     return SkillDiscovery(base_path)
+
+
+class MultiSkillDiscovery(SkillDiscovery):
+    """Merge multiple SkillDiscovery instances with override semantics (later wins)."""
+
+    def __init__(self, base_paths: List[str]):
+        self.base_paths = [Path(p) for p in base_paths]
+        self._parser = SKILLMD_parser()
+        self._discovered: Dict[str, DiscoveredSkill] = {}
+
+    async def discover(self) -> Dict[str, DiscoveredSkill]:
+        self._discovered = {}
+        # earlier loaded first; later overrides
+        for bp in self.base_paths:
+            d = SkillDiscovery(str(bp))
+            found = await d.discover()
+            self._discovered.update(found or {})
+        return self._discovered
 
 
 def create_loader(discovery: SkillDiscovery) -> SkillLoader:

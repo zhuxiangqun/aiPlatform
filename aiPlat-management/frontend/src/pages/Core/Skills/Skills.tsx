@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, RotateCw, Trash2, Pencil, Play } from 'lucide-react';
+import { Copy, Info, Plus, RotateCw, RotateCcw, Trash2, Pencil, Play } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Table, Select, Switch, Button, Modal, toast } from '../../../components/ui';
+import { Badge, Table, Select, Switch, Button, Modal, toast } from '../../../components/ui';
 import { AddSkillModal, EditSkillModal, ExecuteSkillModal } from '../../../components/core';
 import { useSkillStore } from '../../../stores';
 import type { Skill } from '../../../services';
@@ -21,15 +21,17 @@ const categoryConfig: Record<string, { color: string; text: string }> = {
 };
 
 const Skills: React.FC = () => {
-  const { skills, loading, fetchSkills, toggleSkill, deleteSkill } = useSkillStore();
+  const { skills, loading, fetchSkills, toggleSkill, deleteSkill, restoreSkill } = useSkillStore();
   const [categoryFilter, setCategoryFilter] = useState<string | undefined>();
   const [enabledOnly, setEnabledOnly] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>('');
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [executeModalOpen, setExecuteModalOpen] = useState(false);
   const [editSkill, setEditSkill] = useState<Skill | null>(null);
   const [executeSkill, setExecuteSkill] = useState<Skill | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; skill: Skill | null }>({ open: false, skill: null });
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; skill: Skill | null; hard: boolean }>({ open: false, skill: null, hard: false });
+  const [detailModal, setDetailModal] = useState<{ open: boolean; skill: Skill | null }>({ open: false, skill: null });
 
   useEffect(() => {
     fetchSkills();
@@ -37,6 +39,10 @@ const Skills: React.FC = () => {
 
   const handleToggle = async (skill: Skill) => {
     try {
+      if ((skill.status || '').toLowerCase() === 'deprecated') {
+        toast.error('已弃用的 Skill 不能直接切换开关（可先“恢复”再启用）');
+        return;
+      }
       await toggleSkill(skill.id, !skill.enabled);
       toast.success(skill.enabled ? `Skill "${skill.name}" 已禁用` : `Skill "${skill.name}" 已启用`);
     } catch {
@@ -47,17 +53,40 @@ const Skills: React.FC = () => {
   const handleDelete = async () => {
     if (!deleteConfirm.skill) return;
     try {
-      await deleteSkill(deleteConfirm.skill.id);
-      toast.success('Skill已删除');
-      setDeleteConfirm({ open: false, skill: null });
+      await deleteSkill(deleteConfirm.skill.id, { delete_files: deleteConfirm.hard });
+      toast.success(deleteConfirm.hard ? 'Skill已彻底删除' : 'Skill已弃用（deprecated）');
+      setDeleteConfirm({ open: false, skill: null, hard: false });
     } catch {
       toast.error('删除失败');
+    }
+  };
+
+  const handleRestore = async (skill: Skill) => {
+    try {
+      await restoreSkill(skill.id);
+      toast.success(`Skill "${skill.name}" 已恢复`);
+    } catch {
+      toast.error('恢复失败');
+    }
+  };
+
+  const copyText = async (text: string) => {
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('已复制');
+    } catch {
+      toast.error('复制失败');
     }
   };
 
   const filteredSkills = skills.filter(s => {
     if (categoryFilter && s.category !== categoryFilter) return false;
     if (enabledOnly && !s.enabled) return false;
+    if (statusFilter) {
+      const st = (s.status || (s.enabled ? 'enabled' : 'disabled')).toLowerCase();
+      if (st !== statusFilter) return false;
+    }
     return true;
   });
 
@@ -66,7 +95,15 @@ const Skills: React.FC = () => {
       title: '名称',
       dataIndex: 'name',
       key: 'name',
-      render: (name: string) => <span className="font-medium text-gray-100">{name}</span>,
+      render: (name: string, record: Skill) => (
+        <button
+          className="font-medium text-gray-100 text-left hover:underline"
+          onClick={() => setDetailModal({ open: true, skill: record })}
+          title="查看详情"
+        >
+          {name}
+        </button>
+      ),
     },
     {
       title: '描述',
@@ -90,16 +127,23 @@ const Skills: React.FC = () => {
     },
     {
       title: '状态',
-      dataIndex: 'enabled',
-      key: 'enabled',
-      width: 100,
+      key: 'status',
+      width: 170,
       align: 'center' as const,
-      render: (enabled: boolean, record: Skill) => (
-        <Switch
-          checked={enabled}
-          onChange={() => handleToggle(record)}
-        />
-      ),
+      render: (_: unknown, record: Skill) => {
+        const st = (record.status || (record.enabled ? 'enabled' : 'disabled')).toLowerCase();
+        const badgeVariant = st === 'enabled' ? 'success' : st === 'disabled' ? 'warning' : st === 'deprecated' ? 'error' : 'default';
+        return (
+          <div className="flex items-center justify-center gap-2">
+            <Badge variant={badgeVariant as any}>{st}</Badge>
+            <Switch
+              checked={record.enabled}
+              disabled={st === 'deprecated'}
+              onChange={() => handleToggle(record)}
+            />
+          </div>
+        );
+      },
     },
     {
       title: 'ID',
@@ -113,13 +157,28 @@ const Skills: React.FC = () => {
     {
       title: '操作',
       key: 'actions',
-      width: 140,
+      width: 180,
       align: 'center' as const,
       render: (_: unknown, record: Skill) => (
         <div className="flex items-center justify-center gap-1">
           <button
-            onClick={() => { setExecuteSkill(record); setExecuteModalOpen(true); }}
-            className="p-1.5 rounded-lg text-success hover:bg-success-light transition-colors"
+            onClick={() => setDetailModal({ open: true, skill: record })}
+            className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors"
+            title="详情"
+          >
+            <Info className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => {
+              if ((record.status || '').toLowerCase() === 'deprecated') return;
+              setExecuteSkill(record);
+              setExecuteModalOpen(true);
+            }}
+            className={`p-1.5 rounded-lg transition-colors ${
+              (record.status || '').toLowerCase() === 'deprecated'
+                ? 'text-gray-600 cursor-not-allowed'
+                : 'text-success hover:bg-success-light'
+            }`}
             title="执行"
           >
             <Play className="w-4 h-4" />
@@ -131,10 +190,26 @@ const Skills: React.FC = () => {
           >
             <Pencil className="w-4 h-4" />
           </button>
+          {((record.status || '').toLowerCase() === 'deprecated') && (
+            <button
+              onClick={() => handleRestore(record)}
+              className="p-1.5 rounded-lg text-success hover:bg-success-light transition-colors"
+              title="恢复"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+          )}
           <button
-            onClick={() => setDeleteConfirm({ open: true, skill: record })}
+            onClick={() => setDeleteConfirm({ open: true, skill: record, hard: false })}
+            className="p-1.5 rounded-lg text-amber-300 hover:bg-dark-hover transition-colors"
+            title="弃用（soft delete）"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setDeleteConfirm({ open: true, skill: record, hard: true })}
             className="p-1.5 rounded-lg text-error hover:bg-error-light transition-colors"
-            title="删除"
+            title="彻底删除（hard delete）"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -157,6 +232,16 @@ const Skills: React.FC = () => {
             onChange={(v) => setCategoryFilter(v || undefined)}
             options={Object.entries(categoryConfig).map(([k, v]) => ({ value: k, label: v.text }))}
             placeholder="分类筛选"
+          />
+          <Select
+            value={statusFilter || undefined}
+            onChange={(v) => setStatusFilter(v || '')}
+            options={[
+              { value: 'enabled', label: 'enabled' },
+              { value: 'disabled', label: 'disabled' },
+              { value: 'deprecated', label: 'deprecated' },
+            ]}
+            placeholder="状态筛选"
           />
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-500">仅启用</span>
@@ -197,22 +282,89 @@ const Skills: React.FC = () => {
       {/* Delete Confirmation Modal */}
       <Modal
         open={deleteConfirm.open}
-        onClose={() => setDeleteConfirm({ open: false, skill: null })}
-        title="确认删除"
+        onClose={() => setDeleteConfirm({ open: false, skill: null, hard: false })}
+        title={deleteConfirm.hard ? '确认彻底删除' : '确认弃用'}
         footer={
           <>
-            <Button onClick={() => setDeleteConfirm({ open: false, skill: null })}>
+            <Button onClick={() => setDeleteConfirm({ open: false, skill: null, hard: false })}>
               取消
             </Button>
-            <Button variant="danger" onClick={handleDelete}>
-              确认删除
+            <Button variant={deleteConfirm.hard ? 'danger' : 'secondary'} onClick={handleDelete}>
+              {deleteConfirm.hard ? '彻底删除' : '弃用'}
             </Button>
           </>
         }
       >
         <p className="text-gray-400">
-          确定要删除Skill "{deleteConfirm.skill?.name}" 吗？此操作不可撤销，请谨慎操作。
+          {deleteConfirm.hard
+            ? `确定要彻底删除 Skill "${deleteConfirm.skill?.name}" 吗？将删除磁盘目录与 SKILL.md，且不可恢复。`
+            : `确定要弃用 Skill "${deleteConfirm.skill?.name}" 吗？将标记为 deprecated 并保留目录与 SOP，可后续恢复或硬删除。`}
         </p>
+      </Modal>
+
+      {/* Detail Modal */}
+      <Modal
+        open={detailModal.open}
+        onClose={() => setDetailModal({ open: false, skill: null })}
+        title={`Skill 详情：${detailModal.skill?.name || ''}`}
+        width={820}
+        footer={<Button onClick={() => setDetailModal({ open: false, skill: null })}>关闭</Button>}
+      >
+        <div className="space-y-3 text-sm text-gray-300">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <div className="text-xs text-gray-500">skill_id</div>
+              <div className="flex items-center justify-between gap-2">
+                <code className="text-xs bg-dark-hover px-1.5 py-0.5 rounded break-all">{String(detailModal.skill?.id || '-')}</code>
+                {detailModal.skill?.id && (
+                  <Button variant="ghost" icon={<Copy className="w-4 h-4" />} onClick={() => copyText(String(detailModal.skill?.id || ''))}>
+                    复制
+                  </Button>
+                )}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-500">status</div>
+              <div>{detailModal.skill?.status || (detailModal.skill?.enabled ? 'enabled' : 'disabled')}</div>
+            </div>
+          </div>
+
+          <div>
+            <div className="text-xs text-gray-500">filesystem.skill_dir</div>
+            <div className="flex items-center justify-between gap-2">
+              <code className="text-xs bg-dark-hover px-1.5 py-0.5 rounded break-all">
+                {String((detailModal.skill as any)?.metadata?.filesystem?.skill_dir || '-')}
+              </code>
+              {((detailModal.skill as any)?.metadata?.filesystem?.skill_dir) && (
+                <Button
+                  variant="ghost"
+                  icon={<Copy className="w-4 h-4" />}
+                  onClick={() => copyText(String((detailModal.skill as any)?.metadata?.filesystem?.skill_dir))}
+                >
+                  复制
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <div className="text-xs text-gray-500">filesystem.skill_md</div>
+            <div className="flex items-center justify-between gap-2">
+              <code className="text-xs bg-dark-hover px-1.5 py-0.5 rounded break-all">
+                {String((detailModal.skill as any)?.metadata?.filesystem?.skill_md || '-')}
+              </code>
+              {((detailModal.skill as any)?.metadata?.filesystem?.skill_md) && (
+                <Button
+                  variant="ghost"
+                  icon={<Copy className="w-4 h-4" />}
+                  onClick={() => copyText(String((detailModal.skill as any)?.metadata?.filesystem?.skill_md))}
+                >
+                  复制
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
       </Modal>
 
       <AddSkillModal

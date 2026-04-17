@@ -91,6 +91,251 @@ export const agentApi = {
   },
 };
 
+export const workspaceAgentApi = {
+  list: async (params?: { agent_type?: string; status?: string; limit?: number; offset?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.agent_type) query.set('type', params.agent_type);
+    if (params?.status) query.set('status', params.status);
+    if (params?.limit) query.set('limit', String(params.limit));
+    if (params?.offset) query.set('offset', String(params.offset));
+    const qs = query.toString();
+    return apiClient.get<AgentListResponse>(`/core/workspace/agents${qs ? '?' + qs : ''}`);
+  },
+
+  create: async (data: { name: string; agent_type: string; config?: Record<string, unknown>; skills?: string[]; tools?: string[] }) => {
+    return apiClient.post<{ id: string; status: string; name: string }>('/core/workspace/agents', data);
+  },
+
+  delete: async (agentId: string) => {
+    return apiClient.delete<{ status: string; id: string }>(`/core/workspace/agents/${agentId}`);
+  },
+
+  start: async (agentId: string) => {
+    return apiClient.post<{ status: string; id: string }>(`/core/workspace/agents/${agentId}/start`);
+  },
+
+  stop: async (agentId: string) => {
+    return apiClient.post<{ status: string; id: string }>(`/core/workspace/agents/${agentId}/stop`);
+  },
+
+  get: async (agentId: string) => {
+    return apiClient.get<Agent>(`/core/workspace/agents/${agentId}`);
+  },
+
+  update: async (agentId: string, data: { config?: Record<string, unknown>; metadata?: Record<string, unknown> }) => {
+    return apiClient.put<{ status: string; id: string }>(`/core/workspace/agents/${agentId}`, data);
+  },
+
+  execute: async (agentId: string, data: { messages?: unknown[]; input?: unknown; context?: Record<string, unknown> }) => {
+    return apiClient.post<{ execution_id: string; status: string; output?: unknown; error?: string }>(`/core/workspace/agents/${agentId}/execute`, data);
+  },
+
+  getSkills: async (agentId: string) => {
+    return apiClient.get<{ skills: { skill_id: string; skill_name: string; skill_type: string; call_count: number; success_rate: number }[]; skill_ids: string[]; total: number }>(`/core/workspace/agents/${agentId}/skills`);
+  },
+
+  bindSkills: async (agentId: string, skillIds: string[]) => {
+    return apiClient.post<{ status: string; skill_ids: string[] }>(`/core/workspace/agents/${agentId}/skills`, { skill_ids: skillIds });
+  },
+
+  unbindSkill: async (agentId: string, skillId: string) => {
+    return apiClient.delete<{ status: string }>(`/core/workspace/agents/${agentId}/skills/${skillId}`);
+  },
+
+  getTools: async (agentId: string) => {
+    return apiClient.get<{ tools: { tool_id: string; tool_name: string; tool_type: string; call_count: number; success_rate: number }[]; tool_ids: string[]; total: number }>(`/core/workspace/agents/${agentId}/tools`);
+  },
+
+  bindTools: async (agentId: string, toolIds: string[]) => {
+    return apiClient.post<{ status: string; tool_ids: string[] }>(`/core/workspace/agents/${agentId}/tools`, { tool_ids: toolIds });
+  },
+
+  unbindTool: async (agentId: string, toolId: string) => {
+    return apiClient.delete<{ status: string }>(`/core/workspace/agents/${agentId}/tools/${toolId}`);
+  },
+
+  getHistory: async (agentId: string, params?: { limit?: number; offset?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.limit) query.set('limit', String(params.limit));
+    if (params?.offset) query.set('offset', String(params.offset));
+    const qs = query.toString();
+    return apiClient.get<{ history: any[]; total: number }>(`/core/workspace/agents/${agentId}/history${qs ? '?' + qs : ''}`);
+  },
+
+  getVersions: async (agentId: string) => {
+    return apiClient.get<{ agent_id: string; versions: { version: string; status: string; created_at: string; changes: string }[] }>(`/core/workspace/agents/${agentId}/versions`);
+  },
+
+  createVersion: async (agentId: string, changes: string) => {
+    return apiClient.post<{ version: string; status: string; created_at: string; changes: string }>(`/core/workspace/agents/${agentId}/versions`, { changes });
+  },
+
+  rollbackVersion: async (agentId: string, version: string) => {
+    return apiClient.post<{ status: string; version: string }>(`/core/workspace/agents/${agentId}/versions/${version}/rollback`, {});
+  },
+};
+
+// ==================== Learning / Releases / Approvals (Phase 6) ====================
+
+export interface LearningArtifact {
+  artifact_id: string;
+  kind: string;
+  target_type: string;
+  target_id: string;
+  version: string;
+  status: string;
+  trace_id?: string | null;
+  run_id?: string | null;
+  payload: Record<string, unknown>;
+  metadata: Record<string, unknown>;
+  created_at?: number | string;
+}
+
+export interface LearningArtifactListResponse {
+  items: LearningArtifact[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export const learningApi = {
+  listArtifacts: async (params: {
+    target_type?: string;
+    target_id?: string;
+    kind?: string;
+    status?: string;
+    trace_id?: string;
+    run_id?: string;
+    limit?: number;
+    offset?: number;
+  } = {}) => {
+    const q = new URLSearchParams();
+    if (params.target_type) q.set('target_type', params.target_type);
+    if (params.target_id) q.set('target_id', params.target_id);
+    if (params.kind) q.set('kind', params.kind);
+    if (params.status) q.set('status', params.status);
+    if (params.trace_id) q.set('trace_id', params.trace_id);
+    if (params.run_id) q.set('run_id', params.run_id);
+    if (params.limit != null) q.set('limit', String(params.limit));
+    if (params.offset != null) q.set('offset', String(params.offset));
+    const qs = q.toString();
+    return apiClient.get<LearningArtifactListResponse>(`/core/learning/artifacts${qs ? `?${qs}` : ''}`);
+  },
+
+  getArtifact: async (artifactId: string) => {
+    return apiClient.get<LearningArtifact>(`/core/learning/artifacts/${artifactId}`);
+  },
+
+  setArtifactStatus: async (artifactId: string, status: string, metadata_update: Record<string, unknown> = {}) => {
+    return apiClient.post<{ status: string; artifact_id: string; new_status: string }>(`/core/learning/artifacts/${artifactId}/status`, {
+      status,
+      metadata_update,
+    });
+  },
+
+  publishCandidate: async (candidateId: string, payload: Record<string, unknown>) => {
+    return apiClient.post<any>(`/core/learning/releases/${candidateId}/publish`, payload);
+  },
+
+  rollbackCandidate: async (candidateId: string, payload: Record<string, unknown>) => {
+    return apiClient.post<any>(`/core/learning/releases/${candidateId}/rollback`, payload);
+  },
+
+  expireReleases: async (payload: Record<string, unknown> = {}) => {
+    return apiClient.post<any>(`/core/learning/releases/expire`, payload);
+  },
+
+  autoRollbackRegression: async (payload: Record<string, unknown>) => {
+    return apiClient.post<any>(`/core/learning/auto-rollback/regression`, payload);
+  },
+
+  cleanupRollbackApprovals: async (payload: Record<string, unknown> = {}) => {
+    return apiClient.post<any>(`/core/learning/approvals/cleanup-rollback-approvals`, payload);
+  },
+};
+
+export interface ApprovalRequestSummary {
+  request_id: string;
+  user_id: string;
+  operation: string;
+  status: string;
+  rule_id?: string | null;
+  rule_type?: string | null;
+  created_at?: string;
+  expires_at?: string | null;
+  metadata?: Record<string, unknown>;
+  related_counts?: Record<string, unknown>;
+}
+
+export const approvalsApi = {
+  listPending: async (params: { user_id?: string; limit?: number; offset?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.user_id) q.set('user_id', params.user_id);
+    if (params.limit != null) q.set('limit', String(params.limit));
+    if (params.offset != null) q.set('offset', String(params.offset));
+    q.set('order_by', 'created_at');
+    q.set('order_dir', 'asc');
+    return apiClient.get<{ items: ApprovalRequestSummary[]; total: number }>(`/core/approvals/pending?${q.toString()}`);
+  },
+
+  get: async (requestId: string) => {
+    return apiClient.get<any>(`/core/approvals/${requestId}`);
+  },
+
+  approve: async (requestId: string, approved_by: string, comments: string = '') => {
+    return apiClient.post<any>(`/core/approvals/${requestId}/approve`, { approved_by, comments });
+  },
+
+  reject: async (requestId: string, rejected_by: string, comments: string = '') => {
+    return apiClient.post<any>(`/core/approvals/${requestId}/reject`, { rejected_by, comments });
+  },
+};
+
+// ==================== MCP API ====================
+
+export interface McpServer {
+  name: string;
+  enabled: boolean;
+  transport?: string;
+  url?: string;
+  command?: string;
+  args?: string[];
+  allowed_tools?: string[];
+  metadata?: Record<string, unknown>;
+}
+
+export interface McpServerListResponse {
+  servers: McpServer[];
+}
+
+export const mcpApi = {
+  listServers: async () => {
+    return apiClient.get<McpServerListResponse>('/core/mcp/servers');
+  },
+
+  enableServer: async (serverName: string) => {
+    return apiClient.post<{ status: string }>(`/core/mcp/servers/${serverName}/enable`, {});
+  },
+
+  disableServer: async (serverName: string) => {
+    return apiClient.post<{ status: string }>(`/core/mcp/servers/${serverName}/disable`, {});
+  },
+};
+
+export const workspaceMcpApi = {
+  listServers: async () => {
+    return apiClient.get<McpServerListResponse>('/core/workspace/mcp/servers');
+  },
+
+  enableServer: async (serverName: string) => {
+    return apiClient.post<{ status: string }>(`/core/workspace/mcp/servers/${serverName}/enable`, {});
+  },
+
+  disableServer: async (serverName: string) => {
+    return apiClient.post<{ status: string }>(`/core/workspace/mcp/servers/${serverName}/disable`, {});
+  },
+};
+
 // ==================== Skill API ====================
 
 export interface Skill {
@@ -104,6 +349,7 @@ export interface Skill {
   output_schema?: Record<string, unknown>;
   type?: string;
   status?: string;
+  metadata?: Record<string, unknown>;
 }
 
 export interface SkillDetail {
@@ -117,6 +363,7 @@ export interface SkillDetail {
   config?: Record<string, unknown>;
   input_schema?: Record<string, unknown>;
   output_schema?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface SkillListResponse {
@@ -127,9 +374,10 @@ export interface SkillListResponse {
 }
 
 export const skillApi = {
-  list: async (params?: { category?: string; enabled_only?: boolean; limit?: number; offset?: number }) => {
+  list: async (params?: { category?: string; status?: string; enabled_only?: boolean; limit?: number; offset?: number }) => {
     const query = new URLSearchParams();
     if (params?.category) query.set('category', params.category);
+    if (params?.status) query.set('status', params.status);
     if (params?.enabled_only) query.set('enabled_only', 'true');
     if (params?.limit) query.set('limit', String(params.limit));
     if (params?.offset) query.set('offset', String(params.offset));
@@ -149,8 +397,9 @@ export const skillApi = {
     return apiClient.put<{ status: string }>(`/core/skills/${skillId}`, data);
   },
 
-  delete: async (skillId: string) => {
-    return apiClient.delete<{ status: string }>(`/core/skills/${skillId}`);
+  delete: async (skillId: string, params?: { delete_files?: boolean }) => {
+    const qs = params?.delete_files ? '?delete_files=true' : '';
+    return apiClient.delete<{ status: string }>(`/core/skills/${skillId}${qs}`);
   },
 
   enable: async (skillId: string) => {
@@ -161,8 +410,80 @@ export const skillApi = {
     return apiClient.post<{ status: string }>(`/core/skills/${skillId}/disable`);
   },
 
+  restore: async (skillId: string) => {
+    return apiClient.post<{ status: string }>(`/core/skills/${skillId}/restore`);
+  },
+
   execute: async (skillId: string, data: { input?: Record<string, unknown>; context?: Record<string, unknown> }) => {
     return apiClient.post<{ execution_id: string; status: string; output?: unknown; error?: string; duration_ms?: number }>(`/core/skills/${skillId}/execute`, data);
+  },
+};
+
+export const workspaceSkillApi = {
+  list: async (params?: { category?: string; status?: string; enabled_only?: boolean; limit?: number; offset?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.category) query.set('category', params.category);
+    if (params?.status) query.set('status', params.status);
+    if (params?.enabled_only) query.set('enabled_only', 'true');
+    if (params?.limit) query.set('limit', String(params.limit));
+    if (params?.offset) query.set('offset', String(params.offset));
+    const qs = query.toString();
+    return apiClient.get<SkillListResponse>(`/core/workspace/skills${qs ? '?' + qs : ''}`);
+  },
+
+  create: async (data: { name: string; category: string; description: string }) => {
+    return apiClient.post<{ id: string; status: string }>(`/core/workspace/skills`, data);
+  },
+
+  get: async (skillId: string) => {
+    return apiClient.get<SkillDetail>(`/core/workspace/skills/${skillId}`);
+  },
+
+  update: async (skillId: string, data: Record<string, unknown>) => {
+    return apiClient.put<{ status: string; id: string }>(`/core/workspace/skills/${skillId}`, data);
+  },
+
+  enable: async (skillId: string) => {
+    return apiClient.post<{ status: string }>(`/core/workspace/skills/${skillId}/enable`);
+  },
+
+  disable: async (skillId: string) => {
+    return apiClient.post<{ status: string }>(`/core/workspace/skills/${skillId}/disable`);
+  },
+
+  restore: async (skillId: string) => {
+    return apiClient.post<{ status: string }>(`/core/workspace/skills/${skillId}/restore`);
+  },
+
+  delete: async (skillId: string, opts?: { delete_files?: boolean }) => {
+    const query = new URLSearchParams();
+    if (opts?.delete_files) query.set('delete_files', 'true');
+    const qs = query.toString();
+    return apiClient.delete<{ status: string }>(`/core/workspace/skills/${skillId}${qs ? '?' + qs : ''}`);
+  },
+
+  execute: async (skillId: string, data: { input?: Record<string, unknown>; context?: Record<string, unknown> }) => {
+    return apiClient.post<{ execution_id: string; status: string; output?: unknown; error?: string; duration_ms?: number }>(`/core/workspace/skills/${skillId}/execute`, data);
+  },
+
+  listExecutions: async (skillId: string, params?: { limit?: number; offset?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.limit) query.set('limit', String(params.limit));
+    if (params?.offset) query.set('offset', String(params.offset));
+    const qs = query.toString();
+    return apiClient.get<{ executions: any[]; total: number }>(`/core/workspace/skills/${skillId}/executions${qs ? '?' + qs : ''}`);
+  },
+
+  getVersions: async (skillId: string) => {
+    return apiClient.get<{ versions: { version: string; is_active: boolean }[] }>(`/core/workspace/skills/${skillId}/versions`);
+  },
+
+  getActiveVersion: async (skillId: string) => {
+    return apiClient.get<{ skill_id: string; active_version: string | null }>(`/core/workspace/skills/${skillId}/active-version`);
+  },
+
+  rollbackVersion: async (skillId: string, version: string) => {
+    return apiClient.post<{ status: string; active_version: string | null }>(`/core/workspace/skills/${skillId}/versions/${version}/rollback`, {});
   },
 };
 

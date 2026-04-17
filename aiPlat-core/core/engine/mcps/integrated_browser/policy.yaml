@@ -1,0 +1,7 @@
+allowed_tools:
+  - browser_navigate
+  - browser_snapshot
+  - browser_click
+  - browser_type
+  - browser_scroll
+

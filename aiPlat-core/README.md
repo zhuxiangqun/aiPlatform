@@ -48,6 +48,20 @@ Pre-built agent types: ReAct, Plan-and-Execute, RAG, etc.
 - Depends on: `aiPlat-infra` (Layer 0)
 - Used by: `aiPlat-platform` (Layer 2)
 
+## Engine vs Workspace (directory-based assets)
+
+Directory-based **Agents / Skills / MCP configs** are split into two scopes:
+
+- **Engine (core-only, used by Core capability layer)**  
+  `aiPlat-core/core/engine/{agents,skills,mcps}`
+
+- **Workspace (user-facing app library, editable / deletable)**  
+  `~/.aiplat/{agents,skills,mcps}`
+
+Notes:
+- Execution is always controlled by the Core runtime (Harness); this split only changes **where definitions/configs are loaded from** and **who can manage them**.
+- Workspace is not allowed to override engine ids/names (strict separation).
+
 ## Installation
 
 ```bash

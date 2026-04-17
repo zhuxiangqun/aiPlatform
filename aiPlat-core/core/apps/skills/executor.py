@@ -225,10 +225,21 @@ class SkillExecutor:
                         },
                     )()
 
+                sop_text = ""
+                try:
+                    meta = getattr(config, "metadata", None) or {}
+                    if isinstance(meta, dict):
+                        sop_text = meta.get("sop_markdown", "") or ""
+                except Exception:
+                    sop_text = ""
+
+                sop_block = f"技能SOP（必须遵循）：\n{sop_text}\n" if sop_text else ""
+
                 system_prompt = (
                     "你是一个专用技能代理（fork mode）。\n"
                     f"技能名称：{getattr(config, 'name', skill_name)}\n"
                     f"技能描述：{getattr(config, 'description', '')}\n"
+                    f"{sop_block}"
                     "你的任务：根据用户给定的参数与输入，严格执行该技能并输出结果。"
                 )
 
@@ -237,17 +248,17 @@ class SkillExecutor:
                     model=model_name,
                     metadata={"role": "fork-agent", "skill": skill_name},
                 )
-                agent = create_conversational_agent(
-                    config=agent_config,
-                    model=model,
-                    system_prompt=system_prompt,
-                )
+                # Use ReAct agent so fork mode can also orchestrate tools when provided.
+                from core.apps.agents.react import create_react_agent
+                agent = create_react_agent(config=agent_config, model=model)
 
+                task = system_prompt + "\n\n用户输入：\n" + prompt
                 agent_context = AgentContext(
                     session_id=context.session_id if context else "fork",
                     user_id=context.user_id if context else "system",
-                    messages=[{"role": "user", "content": prompt}],
-                    variables=params,
+                    messages=[{"role": "user", "content": task}],
+                    variables={"messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}], **(params or {})},
+                    tools=list(getattr(context, "tools", []) or []) if context else [],
                 )
 
                 return await agent.execute(agent_context)

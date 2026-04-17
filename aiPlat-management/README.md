@@ -64,6 +64,21 @@ aiPlat-management 是 AI Platform 的**独立管理系统**，横切四层业务
 
 ---
 
+## 🔒 Core（Layer 1）管理：Engine vs Workspace
+
+为了让“核心能力层稳定可控”与“对外能力可定制可管理”同时成立，management 在 Core（Layer 1）上将目录化资源分成两套 scope：
+
+| scope | 说明 | 前端入口 | API（management 转发） | 默认目录 |
+|------|------|----------|------------------------|----------|
+| **engine** | 核心能力层内部使用（内置、不可覆盖） | 侧边栏「核心能力层」 | `/api/core/skills`、`/api/core/agents`、`/api/core/mcp/servers` | `aiPlat-core/core/engine/{skills,agents,mcps}` |
+| **workspace** | 对外应用库（可编辑可删除） | 侧边栏「应用库」 | `/api/core/workspace/*` | `~/.aiplat/{skills,agents,mcps}` |
+
+说明：
+- **执行流程始终由 core 引擎控制**（Harness/Runtime）；scope 仅影响“内容来源/权限边界/管理入口”。
+- **禁止覆盖**：workspace 不允许创建与 engine 同名（同 id）的资源。
+
+---
+
 ## 🚀 快速开始
 
 ### 安装

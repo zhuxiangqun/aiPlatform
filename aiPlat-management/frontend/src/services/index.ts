@@ -13,7 +13,7 @@ export { monitoringApi } from './monitoringApi';
 export { modelApi } from './modelApi';
 
 // 核心能力层 API
-export { agentApi, skillApi, memoryApi, knowledgeApi, harnessApi, toolApi } from './coreApi';
+export { agentApi, skillApi, memoryApi, knowledgeApi, harnessApi, toolApi, learningApi, approvalsApi } from './coreApi';
 
 // Legacy monitoring API (for layer metrics)
 export { monitoringApi as layerMonitoringApi } from './apiClient';
@@ -28,7 +28,23 @@ export type { GPUMetrics, NodeMetrics, AlertRule, Alert, AuditLog, ClusterMetric
 export type { Model, ModelConfig, ModelStats, Provider, AddModelRequest, ModelListResponse } from './modelApi';
 
 // Types - Core
-export type { Agent, AgentListResponse, Skill, SkillDetail, SkillListResponse, ToolInfo, ToolListResponse, MemorySession, MemoryMessage, MemorySessionDetail, MemorySearchResult, SessionListResponse } from './coreApi';
+export type {
+  Agent,
+  AgentListResponse,
+  Skill,
+  SkillDetail,
+  SkillListResponse,
+  ToolInfo,
+  ToolListResponse,
+  MemorySession,
+  MemoryMessage,
+  MemorySessionDetail,
+  MemorySearchResult,
+  SessionListResponse,
+  LearningArtifact,
+  LearningArtifactListResponse,
+  ApprovalRequestSummary,
+} from './coreApi';
 
 // 平台服务层 & 应用接入层 API
 export { gatewayApi, authApi, tenantApi, channelApi, appSessionApi } from './platformAppApi';

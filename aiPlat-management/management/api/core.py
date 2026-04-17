@@ -225,19 +225,170 @@ async def get_agent_history(
         raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
 
 
+# ==================== Learning / Release Management (Phase 6) ====================
+
+
+@router.get("/learning/artifacts")
+async def list_learning_artifacts(
+    target_type: Optional[str] = None,
+    target_id: Optional[str] = None,
+    kind: Optional[str] = None,
+    status: Optional[str] = None,
+    trace_id: Optional[str] = None,
+    run_id: Optional[str] = None,
+    limit: int = Query(50, ge=1, le=2000),
+    offset: int = Query(0, ge=0),
+):
+    try:
+        client = get_core_client()
+        return await client.list_learning_artifacts(
+            target_type=target_type,
+            target_id=target_id,
+            kind=kind,
+            status=status,
+            trace_id=trace_id,
+            run_id=run_id,
+            limit=limit,
+            offset=offset,
+        )
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/learning/artifacts/{artifact_id}")
+async def get_learning_artifact(artifact_id: str):
+    try:
+        client = get_core_client()
+        return await client.get_learning_artifact(artifact_id)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/learning/artifacts/{artifact_id}/status")
+async def set_learning_artifact_status(artifact_id: str, body: dict):
+    try:
+        client = get_core_client()
+        return await client.set_learning_artifact_status(
+            artifact_id,
+            status=str((body or {}).get("status") or ""),
+            metadata_update=(body or {}).get("metadata_update") if isinstance((body or {}).get("metadata_update"), dict) else {},
+        )
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/learning/releases/{candidate_id}/publish")
+async def publish_release_candidate(candidate_id: str, body: dict):
+    try:
+        client = get_core_client()
+        return await client.publish_release_candidate(candidate_id, body or {})
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/learning/releases/{candidate_id}/rollback")
+async def rollback_release_candidate(candidate_id: str, body: dict):
+    try:
+        client = get_core_client()
+        return await client.rollback_release_candidate(candidate_id, body or {})
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/learning/releases/expire")
+async def expire_releases(body: dict):
+    try:
+        client = get_core_client()
+        return await client.expire_releases(body or {})
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/learning/auto-rollback/regression")
+async def auto_rollback_regression(body: dict):
+    try:
+        client = get_core_client()
+        return await client.auto_rollback_regression(body or {})
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/learning/approvals/cleanup-rollback-approvals")
+async def cleanup_rollback_approvals(body: dict):
+    try:
+        client = get_core_client()
+        return await client.cleanup_rollback_approvals(body or {})
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+# ==================== Approvals ====================
+
+
+@router.get("/approvals/pending")
+async def list_pending_approvals(
+    user_id: Optional[str] = None,
+    order_by: str = "priority_score",
+    order_dir: str = "desc",
+    limit: int = Query(200, ge=1, le=2000),
+    offset: int = Query(0, ge=0),
+):
+    try:
+        client = get_core_client()
+        return await client.list_pending_approvals(user_id=user_id, order_by=order_by, order_dir=order_dir, limit=limit, offset=offset)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/approvals/{request_id}")
+async def get_approval_request(request_id: str):
+    try:
+        client = get_core_client()
+        return await client.get_approval_request(request_id)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/approvals/{request_id}/approve")
+async def approve_approval_request(request_id: str, body: dict):
+    try:
+        client = get_core_client()
+        return await client.approve_request(
+            request_id,
+            approved_by=str((body or {}).get("approved_by") or "admin"),
+            comments=str((body or {}).get("comments") or ""),
+        )
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/approvals/{request_id}/reject")
+async def reject_approval_request(request_id: str, body: dict):
+    try:
+        client = get_core_client()
+        return await client.reject_request(
+            request_id,
+            rejected_by=str((body or {}).get("rejected_by") or "admin"),
+            comments=str((body or {}).get("comments") or ""),
+        )
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
 # ==================== Skill Management ====================
 
 @router.get("/skills")
 async def list_skills(
-    skill_type: Optional[str] = None,
+    category: Optional[str] = None,
     status: Optional[str] = None,
+    enabled_only: bool = False,
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0)
 ):
     """List all skills."""
     try:
         client = get_core_client()
-        result = await client.list_skills(skill_type, status, limit, offset)
+        result = await client.list_skills(category=category, status=status, enabled_only=enabled_only, limit=limit, offset=offset)
         return result
     except httpx.HTTPError as e:
         raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
@@ -277,11 +428,11 @@ async def update_skill(skill_id: str, updates: dict):
 
 
 @router.delete("/skills/{skill_id}")
-async def delete_skill(skill_id: str):
-    """Delete skill."""
+async def delete_skill(skill_id: str, delete_files: bool = False):
+    """Delete skill (default soft delete; delete_files=true for hard delete)."""
     try:
         client = get_core_client()
-        result = await client.delete_skill(skill_id)
+        result = await client.delete_skill(skill_id, delete_files=delete_files)
         return result
     except httpx.HTTPError as e:
         raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
@@ -305,6 +456,353 @@ async def disable_skill(skill_id: str):
         client = get_core_client()
         result = await client.disable_skill(skill_id)
         return result
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/skills/{skill_id}/restore")
+async def restore_skill(skill_id: str):
+    """Restore a deprecated skill."""
+    try:
+        client = get_core_client()
+        return await client.restore_skill(skill_id)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+# ==================== MCP Management ====================
+
+
+@router.get("/mcp/servers")
+async def list_mcp_servers():
+    """List MCP servers (filesystem-backed)."""
+    try:
+        client = get_core_client()
+        return await client.list_mcp_servers()
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/mcp/servers/{server_name}/enable")
+async def enable_mcp_server(server_name: str):
+    """Enable MCP server."""
+    try:
+        client = get_core_client()
+        return await client.enable_mcp_server(server_name)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/mcp/servers/{server_name}/disable")
+async def disable_mcp_server(server_name: str):
+    """Disable MCP server."""
+    try:
+        client = get_core_client()
+        return await client.disable_mcp_server(server_name)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+# ==================== Workspace (user-facing) ====================
+
+
+@router.get("/workspace/skills")
+async def list_workspace_skills(
+    category: Optional[str] = None,
+    status: Optional[str] = None,
+    enabled_only: bool = False,
+    limit: int = 100,
+    offset: int = 0,
+):
+    try:
+        client = get_core_client()
+        return await client.list_workspace_skills(category, status, enabled_only=enabled_only, limit=limit, offset=offset)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/workspace/skills")
+async def create_workspace_skill(payload: Dict[str, Any]):
+    try:
+        client = get_core_client()
+        return await client.create_workspace_skill(payload)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/workspace/skills/{skill_id}")
+async def get_workspace_skill(skill_id: str):
+    try:
+        client = get_core_client()
+        return await client.get_workspace_skill(skill_id)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.put("/workspace/skills/{skill_id}")
+async def update_workspace_skill(skill_id: str, payload: Dict[str, Any]):
+    try:
+        client = get_core_client()
+        return await client.update_workspace_skill(skill_id, payload)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/workspace/skills/{skill_id}/execute")
+async def execute_workspace_skill(skill_id: str, payload: Dict[str, Any]):
+    try:
+        client = get_core_client()
+        return await client.execute_workspace_skill(skill_id, payload)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/workspace/skills/{skill_id}/enable")
+async def enable_workspace_skill(skill_id: str):
+    try:
+        client = get_core_client()
+        return await client.enable_workspace_skill(skill_id)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/workspace/skills/{skill_id}/disable")
+async def disable_workspace_skill(skill_id: str):
+    try:
+        client = get_core_client()
+        return await client.disable_workspace_skill(skill_id)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/workspace/skills/{skill_id}/restore")
+async def restore_workspace_skill(skill_id: str):
+    try:
+        client = get_core_client()
+        return await client.restore_workspace_skill(skill_id)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.delete("/workspace/skills/{skill_id}")
+async def delete_workspace_skill(skill_id: str, delete_files: bool = False):
+    try:
+        client = get_core_client()
+        return await client.delete_workspace_skill(skill_id, delete_files=delete_files)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/workspace/agents")
+async def list_workspace_agents(
+    type: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
+):
+    try:
+        client = get_core_client()
+        return await client.list_workspace_agents(type, status, limit=limit, offset=offset)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/workspace/agents")
+async def create_workspace_agent(payload: Dict[str, Any]):
+    try:
+        client = get_core_client()
+        return await client.create_workspace_agent(payload)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/workspace/agents/{agent_id}")
+async def get_workspace_agent(agent_id: str):
+    try:
+        client = get_core_client()
+        return await client.get_workspace_agent(agent_id)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.put("/workspace/agents/{agent_id}")
+async def update_workspace_agent(agent_id: str, payload: Dict[str, Any]):
+    try:
+        client = get_core_client()
+        return await client.update_workspace_agent(agent_id, payload)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.delete("/workspace/agents/{agent_id}")
+async def delete_workspace_agent(agent_id: str):
+    try:
+        client = get_core_client()
+        return await client.delete_workspace_agent(agent_id)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/workspace/agents/{agent_id}/execute")
+async def execute_workspace_agent(agent_id: str, payload: Dict[str, Any]):
+    try:
+        client = get_core_client()
+        return await client.execute_workspace_agent(agent_id, payload)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/workspace/agents/{agent_id}/skills")
+async def get_workspace_agent_skills(agent_id: str):
+    try:
+        client = get_core_client()
+        return await client.get_workspace_agent_skills(agent_id)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/workspace/agents/{agent_id}/skills")
+async def bind_workspace_agent_skills(agent_id: str, payload: Dict[str, Any]):
+    try:
+        client = get_core_client()
+        skill_ids = list(payload.get("skill_ids") or [])
+        return await client.bind_workspace_agent_skills(agent_id, skill_ids)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.delete("/workspace/agents/{agent_id}/skills/{skill_id}")
+async def unbind_workspace_agent_skill(agent_id: str, skill_id: str):
+    try:
+        client = get_core_client()
+        return await client.unbind_workspace_agent_skill(agent_id, skill_id)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/workspace/agents/{agent_id}/tools")
+async def get_workspace_agent_tools(agent_id: str):
+    try:
+        client = get_core_client()
+        return await client.get_workspace_agent_tools(agent_id)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/workspace/agents/{agent_id}/tools")
+async def bind_workspace_agent_tools(agent_id: str, payload: Dict[str, Any]):
+    try:
+        client = get_core_client()
+        tool_ids = list(payload.get("tool_ids") or [])
+        return await client.bind_workspace_agent_tools(agent_id, tool_ids)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.delete("/workspace/agents/{agent_id}/tools/{tool_id}")
+async def unbind_workspace_agent_tool(agent_id: str, tool_id: str):
+    try:
+        client = get_core_client()
+        return await client.unbind_workspace_agent_tool(agent_id, tool_id)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/workspace/agents/{agent_id}/history")
+async def get_workspace_agent_history(agent_id: str, limit: int = 100, offset: int = 0):
+    try:
+        client = get_core_client()
+        return await client.get_workspace_agent_history(agent_id, limit=limit, offset=offset)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/workspace/agents/{agent_id}/versions")
+async def get_workspace_agent_versions(agent_id: str):
+    try:
+        client = get_core_client()
+        return await client.get_workspace_agent_versions(agent_id)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/workspace/agents/{agent_id}/versions")
+async def create_workspace_agent_version(agent_id: str, payload: Dict[str, Any]):
+    try:
+        client = get_core_client()
+        return await client.create_workspace_agent_version(agent_id, str((payload or {}).get("changes", "")))
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/workspace/agents/{agent_id}/versions/{version}/rollback")
+async def rollback_workspace_agent_version(agent_id: str, version: str):
+    try:
+        client = get_core_client()
+        return await client.rollback_workspace_agent_version(agent_id, version)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/workspace/skills/{skill_id}/executions")
+async def list_workspace_skill_executions(skill_id: str, limit: int = 100, offset: int = 0):
+    try:
+        client = get_core_client()
+        return await client.list_workspace_skill_executions(skill_id, limit=limit, offset=offset)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/workspace/skills/{skill_id}/versions")
+async def get_workspace_skill_versions(skill_id: str):
+    try:
+        client = get_core_client()
+        return await client.get_workspace_skill_versions(skill_id)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/workspace/skills/{skill_id}/active-version")
+async def get_workspace_skill_active_version(skill_id: str):
+    try:
+        client = get_core_client()
+        return await client.get_workspace_skill_active_version(skill_id)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/workspace/skills/{skill_id}/versions/{version}/rollback")
+async def rollback_workspace_skill_version(skill_id: str, version: str):
+    try:
+        client = get_core_client()
+        return await client.rollback_workspace_skill_version(skill_id, version)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/workspace/mcp/servers")
+async def list_workspace_mcp_servers():
+    try:
+        client = get_core_client()
+        return await client.list_workspace_mcp_servers()
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/workspace/mcp/servers/{server_name}/enable")
+async def enable_workspace_mcp_server(server_name: str):
+    try:
+        client = get_core_client()
+        return await client.enable_workspace_mcp_server(server_name)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/workspace/mcp/servers/{server_name}/disable")
+async def disable_workspace_mcp_server(server_name: str):
+    try:
+        client = get_core_client()
+        return await client.disable_workspace_mcp_server(server_name)
     except httpx.HTTPError as e:
         raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
 

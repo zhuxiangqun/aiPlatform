@@ -218,8 +218,36 @@ class AgentLoader:
 
 
 def create_agent_discovery(base_path: str) -> AgentDiscovery:
-    """Factory function to create agent discovery"""
+    """
+    Factory function to create agent discovery.
+
+    Supports multi-path by allowing `base_path` to be a pathsep-separated string:
+      - "pathA:pathB" on Linux/macOS
+      - "pathA;pathB" on Windows
+    Later paths override earlier ones when agent names collide.
+    """
+    if isinstance(base_path, str) and (os.pathsep in base_path):
+        parts = [p.strip() for p in base_path.split(os.pathsep) if p.strip()]
+        if len(parts) > 1:
+            return MultiAgentDiscovery(parts)
     return AgentDiscovery(base_path)
+
+
+class MultiAgentDiscovery(AgentDiscovery):
+    """Merge multiple AgentDiscovery instances with override semantics (later wins)."""
+
+    def __init__(self, base_paths: List[str]):
+        self.base_paths = [Path(p) for p in base_paths]
+        self._parser = AGENTMD_PARSER()
+        self._discovered: Dict[str, DiscoveredAgent] = {}
+
+    async def discover(self) -> Dict[str, DiscoveredAgent]:
+        self._discovered = {}
+        for bp in self.base_paths:
+            d = AgentDiscovery(str(bp))
+            found = await d.discover()
+            self._discovered.update(found or {})
+        return self._discovered
 
 
 def create_agent_loader(discovery: AgentDiscovery) -> AgentLoader:

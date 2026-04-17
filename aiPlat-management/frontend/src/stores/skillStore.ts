@@ -10,7 +10,8 @@ interface SkillState {
   setEnabledOnly: (enabled: boolean) => void;
   fetchSkills: () => Promise<void>;
   toggleSkill: (id: string, enable: boolean) => Promise<void>;
-  deleteSkill: (id: string) => Promise<void>;
+  deleteSkill: (id: string, opts?: { delete_files?: boolean }) => Promise<void>;
+  restoreSkill: (id: string) => Promise<void>;
   createSkill: (data: { name: string; description: string; category?: string }) => Promise<void>;
 }
 
@@ -52,8 +53,13 @@ export const useSkillStore = create<SkillState>((set, get) => ({
     await get().fetchSkills();
   },
 
-  deleteSkill: async (id) => {
-    await skillApi.delete(id);
+  deleteSkill: async (id, opts) => {
+    await skillApi.delete(id, opts);
+    await get().fetchSkills();
+  },
+
+  restoreSkill: async (id) => {
+    await skillApi.restore(id);
     await get().fetchSkills();
   },
 

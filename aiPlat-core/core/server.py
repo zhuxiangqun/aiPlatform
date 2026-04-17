@@ -110,6 +110,10 @@ def _inject_model_into_skill(skill: object, model_name: str = "gpt-4"):
 
 _agent_discovery = None
 _skill_discovery = None
+_mcp_manager = None
+_workspace_agent_manager = None
+_workspace_skill_manager = None
+_workspace_mcp_manager = None
 
 _agent_executions: Dict[str, Dict[str, Any]] = {}
 _skill_executions: Dict[str, Dict[str, Any]] = {}
@@ -227,16 +231,50 @@ async def lifespan(app: FastAPI):
         priority=5,
     ))
     
-    agents_path = "core/apps/agents"
+    # Engine agents (AGENT.md): core/engine/agents
+    try:
+        from pathlib import Path
+        import os
+        engine_agents = str(Path(__file__).resolve().parent / "engine" / "agents")
+        agents_path = os.environ.get("AIPLAT_ENGINE_AGENTS_PATH") or engine_agents
+    except Exception:
+        agents_path = "agents"
+
     _agent_discovery = create_agent_discovery(agents_path)
     await _agent_discovery.discover()
     
-    skills_path = "core/apps/skills"
+    # Engine skills (SKILL.md): core/engine/skills
+    try:
+        from pathlib import Path
+        import os
+        engine_skills = str(Path(__file__).resolve().parent / "engine" / "skills")
+        skills_path = os.environ.get("AIPLAT_ENGINE_SKILLS_PATH") or engine_skills
+    except Exception:
+        skills_path = "skills"
+
     _skill_discovery = create_discovery(skills_path)
     await _skill_discovery.discover()
     
-    _agent_manager = AgentManager(seed=True)
-    _skill_manager = SkillManager(seed=True)
+    # Engine managers (core-only)
+    _agent_manager = AgentManager(seed=False, scope="engine")
+    _skill_manager = SkillManager(seed=False, scope="engine")
+    try:
+        from core.management.mcp_manager import MCPManager
+        global _mcp_manager
+        _mcp_manager = MCPManager(scope="engine")
+    except Exception:
+        _mcp_manager = None
+
+    # Workspace managers (user-facing). Strictly separated: no override of engine ids.
+    try:
+        global _workspace_agent_manager, _workspace_skill_manager, _workspace_mcp_manager
+        _workspace_agent_manager = AgentManager(seed=False, scope="workspace", reserved_ids=set(_agent_manager.get_agent_ids()))
+        _workspace_skill_manager = SkillManager(seed=False, scope="workspace", reserved_ids=set(_skill_manager.get_skill_ids()))
+        _workspace_mcp_manager = MCPManager(scope="workspace", reserved_names=set(_mcp_manager.get_server_names()) if _mcp_manager else set())
+    except Exception:
+        _workspace_agent_manager = None
+        _workspace_skill_manager = None
+        _workspace_mcp_manager = None
     _memory_manager = MemoryManager(seed=True)
     _knowledge_manager = KnowledgeManager()
     _adapter_manager = AdapterManager()
@@ -553,6 +591,291 @@ async def stop_agent(agent_id: str):
     if not success:
         raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
     return {"status": "stopped", "id": agent_id}
+
+
+# ==================== Workspace Agent Management ====================
+
+
+@api_router.get("/workspace/agents")
+async def list_workspace_agents(
+    agent_type: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
+):
+    if not _workspace_agent_manager:
+        return {"agents": [], "total": 0, "limit": limit, "offset": offset}
+    agents = await _workspace_agent_manager.list_agents(agent_type, status, limit, offset)
+    return {
+        "agents": [
+            {
+                "id": a.id,
+                "name": a.name,
+                "agent_type": a.type,
+                "status": a.status,
+                "skills": a.skills,
+                "tools": a.tools,
+                "metadata": a.metadata,
+            }
+            for a in agents
+        ],
+        "total": _workspace_agent_manager.get_agent_count().get("total", 0),
+        "limit": limit,
+        "offset": offset,
+    }
+
+
+@api_router.post("/workspace/agents")
+async def create_workspace_agent(request: AgentCreateRequest):
+    if not _workspace_agent_manager:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    try:
+        agent = await _workspace_agent_manager.create_agent(
+            name=request.name,
+            agent_type=request.agent_type,
+            config=request.config,
+            skills=request.skills,
+            tools=request.tools,
+        )
+        return {"id": agent.id, "status": "created", "name": agent.name}
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+
+@api_router.get("/workspace/agents/{agent_id}")
+async def get_workspace_agent(agent_id: str):
+    if not _workspace_agent_manager:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    agent = await _workspace_agent_manager.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    return {
+        "id": agent.id,
+        "name": agent.name,
+        "agent_type": agent.type,
+        "status": agent.status,
+        "config": agent.config,
+        "skills": agent.skills,
+        "tools": agent.tools,
+        "metadata": agent.metadata,
+    }
+
+
+@api_router.delete("/workspace/agents/{agent_id}")
+async def delete_workspace_agent(agent_id: str):
+    if not _workspace_agent_manager:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    ok = await _workspace_agent_manager.delete_agent(agent_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    return {"status": "deleted", "id": agent_id}
+
+
+@api_router.post("/workspace/agents/{agent_id}/start")
+async def start_workspace_agent(agent_id: str):
+    if not _workspace_agent_manager:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    ok = await _workspace_agent_manager.start_agent(agent_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    return {"status": "started", "id": agent_id}
+
+
+@api_router.post("/workspace/agents/{agent_id}/stop")
+async def stop_workspace_agent(agent_id: str):
+    if not _workspace_agent_manager:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    ok = await _workspace_agent_manager.stop_agent(agent_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    return {"status": "stopped", "id": agent_id}
+
+
+@api_router.put("/workspace/agents/{agent_id}")
+async def update_workspace_agent(agent_id: str, request: AgentUpdateRequest):
+    """Update workspace agent."""
+    if not _workspace_agent_manager:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    agent = await _workspace_agent_manager.update_agent(agent_id, config=request.config, metadata=request.metadata)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    return {"status": "updated", "id": agent_id}
+
+
+@api_router.get("/workspace/agents/{agent_id}/skills")
+async def get_workspace_agent_skills(agent_id: str):
+    """Get skills bound to workspace agent."""
+    if not _workspace_agent_manager:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    agent = await _workspace_agent_manager.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    bindings = await _workspace_agent_manager.get_skill_bindings(agent_id)
+    return {
+        "skills": [
+            {
+                "skill_id": b.skill_id,
+                "skill_name": b.skill_name,
+                "skill_type": b.skill_type,
+                "call_count": b.call_count,
+                "success_rate": b.success_rate,
+            }
+            for b in bindings
+        ],
+        "skill_ids": agent.skills,
+        "total": len(agent.skills),
+    }
+
+
+@api_router.post("/workspace/agents/{agent_id}/skills")
+async def bind_workspace_agent_skills(agent_id: str, request: dict):
+    """Bind skills to workspace agent."""
+    if not _workspace_agent_manager:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    agent = await _workspace_agent_manager.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    skill_ids = request.get("skill_ids", [])
+    if skill_ids:
+        await _workspace_agent_manager.bind_skills(agent_id, skill_ids)
+    return {"status": "bound", "skill_ids": skill_ids}
+
+
+@api_router.delete("/workspace/agents/{agent_id}/skills/{skill_id}")
+async def unbind_workspace_agent_skill(agent_id: str, skill_id: str):
+    """Unbind skill from workspace agent."""
+    if not _workspace_agent_manager:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    agent = await _workspace_agent_manager.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    await _workspace_agent_manager.unbind_skill(agent_id, skill_id)
+    return {"status": "unbound"}
+
+
+@api_router.get("/workspace/agents/{agent_id}/tools")
+async def get_workspace_agent_tools(agent_id: str):
+    """Get tools bound to workspace agent."""
+    if not _workspace_agent_manager:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    agent = await _workspace_agent_manager.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    bindings = await _workspace_agent_manager.get_tool_bindings(agent_id)
+    return {
+        "tools": [
+            {
+                "tool_id": b.tool_id,
+                "tool_name": b.tool_name,
+                "tool_type": b.tool_type,
+                "call_count": b.call_count,
+                "success_rate": b.success_rate,
+            }
+            for b in bindings
+        ],
+        "tool_ids": agent.tools,
+        "total": len(agent.tools),
+    }
+
+
+@api_router.post("/workspace/agents/{agent_id}/tools")
+async def bind_workspace_agent_tools(agent_id: str, request: dict):
+    """Bind tools to workspace agent."""
+    if not _workspace_agent_manager:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    agent = await _workspace_agent_manager.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    tool_ids = request.get("tool_ids", [])
+    if tool_ids:
+        await _workspace_agent_manager.bind_tools(agent_id, tool_ids)
+    return {"status": "bound", "tool_ids": tool_ids}
+
+
+@api_router.delete("/workspace/agents/{agent_id}/tools/{tool_id}")
+async def unbind_workspace_agent_tool(agent_id: str, tool_id: str):
+    """Unbind tool from workspace agent."""
+    if not _workspace_agent_manager:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    agent = await _workspace_agent_manager.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    await _workspace_agent_manager.unbind_tool(agent_id, tool_id)
+    return {"status": "unbound"}
+
+
+@api_router.post("/workspace/agents/{agent_id}/execute")
+async def execute_workspace_agent(agent_id: str, request: dict):
+    """Execute workspace agent."""
+    if not _workspace_agent_manager:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    agent = await _workspace_agent_manager.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    harness = get_harness()
+    exec_req = ExecutionRequest(
+        kind="agent",
+        target_id=agent_id,
+        payload=request or {},
+        user_id=(request or {}).get("user_id", "system"),
+        session_id=(request or {}).get("session_id", "default"),
+    )
+    result = await harness.execute(exec_req)
+    if not result.ok:
+        raise HTTPException(status_code=result.http_status, detail=result.error or "Execution failed")
+    return result.payload
+
+
+@api_router.get("/workspace/agents/{agent_id}/history")
+async def get_workspace_agent_history(agent_id: str, limit: int = 100, offset: int = 0):
+    """Get workspace agent execution history."""
+    if _execution_store:
+        history, total = await _execution_store.list_agent_history(agent_id, limit=limit, offset=offset)
+        return {"history": history, "total": total}
+    history = _agent_history.get(agent_id, [])
+    history = history[offset:offset + limit]
+    return {"history": history, "total": len(_agent_history.get(agent_id, []))}
+
+
+@api_router.get("/workspace/agents/{agent_id}/versions")
+async def get_workspace_agent_versions(agent_id: str):
+    """Get workspace agent versions."""
+    if not _workspace_agent_manager:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    agent = await _workspace_agent_manager.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    versions = await _workspace_agent_manager.get_versions(agent_id)
+    return {
+        "agent_id": agent_id,
+        "versions": [
+            {"version": v.version, "status": v.status, "created_at": v.created_at.isoformat(), "changes": v.changes}
+            for v in versions
+        ],
+    }
+
+
+@api_router.post("/workspace/agents/{agent_id}/versions")
+async def create_workspace_agent_version(agent_id: str, request: dict):
+    """Create new workspace agent version."""
+    if not _workspace_agent_manager:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    changes = (request or {}).get("changes", "")
+    version = await _workspace_agent_manager.create_version(agent_id, changes)
+    if not version:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    return {"version": version.version, "status": version.status, "created_at": version.created_at.isoformat(), "changes": version.changes}
+
+
+@api_router.post("/workspace/agents/{agent_id}/versions/{version}/rollback")
+async def rollback_workspace_agent_version(agent_id: str, version: str):
+    """Rollback workspace agent to specific version."""
+    if not _workspace_agent_manager:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    ok = await _workspace_agent_manager.rollback_version(agent_id, version)
+    if not ok:
+        raise HTTPException(status_code=404, detail=f"Agent or version {version} not found")
+    return {"status": "rolled_back", "version": version}
 
 
 @api_router.get("/agents/{agent_id}/skills")
@@ -919,6 +1242,275 @@ async def reject_request(request_id: str, request: dict):
     return {"status": updated.status.value, "request_id": updated.request_id}
 
 
+# ==================== Learning / Release Management (Phase 6) ====================
+
+
+@api_router.get("/learning/artifacts")
+async def list_learning_artifacts(
+    target_type: Optional[str] = None,
+    target_id: Optional[str] = None,
+    kind: Optional[str] = None,
+    status: Optional[str] = None,
+    trace_id: Optional[str] = None,
+    run_id: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+):
+    """List learning_artifacts stored in ExecutionStore."""
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    res = await _execution_store.list_learning_artifacts(
+        target_type=target_type,
+        target_id=target_id,
+        kind=kind,
+        status=status,
+        trace_id=trace_id,
+        run_id=run_id,
+        limit=limit,
+        offset=offset,
+    )
+    return res
+
+
+@api_router.get("/learning/artifacts/{artifact_id}")
+async def get_learning_artifact(artifact_id: str):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    art = await _execution_store.get_learning_artifact(artifact_id)
+    if not art:
+        raise HTTPException(status_code=404, detail="artifact_not_found")
+    return art
+
+
+@api_router.post("/learning/artifacts/{artifact_id}/status")
+async def set_learning_artifact_status(artifact_id: str, request: dict):
+    """Update artifact status + merge metadata (status transitions only)."""
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    from core.learning.manager import LearningManager
+
+    status = (request or {}).get("status")
+    if not isinstance(status, str) or not status:
+        raise HTTPException(status_code=400, detail="missing_status")
+    metadata_update = (request or {}).get("metadata_update") if isinstance((request or {}).get("metadata_update"), dict) else {}
+    mgr = LearningManager(execution_store=_execution_store)
+    await mgr.set_artifact_status(artifact_id=artifact_id, status=status, metadata_update=metadata_update)
+    return {"status": "ok", "artifact_id": artifact_id, "new_status": status}
+
+
+@api_router.post("/learning/releases/{candidate_id}/publish")
+async def publish_release_candidate(candidate_id: str, request: dict):
+    """
+    Publish a release_candidate (status transitions only).
+
+    Supports optional approval gate using existing ApprovalManager.
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    from core.learning.manager import LearningManager
+    from core.learning.release import require_publish_approval, is_approved
+    from core.harness.infrastructure.approval.manager import ApprovalManager
+
+    mgr = LearningManager(execution_store=_execution_store)
+    approval_mgr = _approval_manager or ApprovalManager(execution_store=_execution_store)
+
+    cand = await _execution_store.get_learning_artifact(candidate_id)
+    if not cand:
+        raise HTTPException(status_code=404, detail="candidate_not_found")
+    if cand.get("kind") != "release_candidate":
+        raise HTTPException(status_code=400, detail="not_a_release_candidate")
+
+    user_id = (request or {}).get("user_id") or "system"
+    require_approval = bool((request or {}).get("require_approval", False))
+    approval_request_id = (request or {}).get("approval_request_id")
+    details = (request or {}).get("details") or ""
+
+    if require_approval:
+        if not approval_request_id:
+            req_id = await require_publish_approval(
+                approval_manager=approval_mgr,
+                user_id=user_id,
+                candidate_id=candidate_id,
+                details=details,
+            )
+            return {"status": "approval_required", "approval_request_id": req_id}
+        if not is_approved(approval_mgr, approval_request_id):
+            raise HTTPException(status_code=409, detail="not_approved")
+
+    now = __import__("time").time()
+    meta_update = {"published_via": "core_api", "approval_request_id": approval_request_id, "published_at": now}
+    expires_at = (request or {}).get("expires_at")
+    ttl_seconds = (request or {}).get("ttl_seconds")
+    if expires_at is not None:
+        try:
+            meta_update["expires_at"] = float(expires_at)
+        except Exception:
+            pass
+    if ttl_seconds is not None:
+        try:
+            ttl = float(ttl_seconds)
+            meta_update["ttl_seconds"] = ttl
+            if "expires_at" not in meta_update:
+                meta_update["expires_at"] = now + ttl
+        except Exception:
+            pass
+
+    await mgr.set_artifact_status(artifact_id=candidate_id, status="published", metadata_update=meta_update)
+    ids = (cand.get("payload") or {}).get("artifact_ids") if isinstance(cand.get("payload"), dict) else []
+    if isinstance(ids, list):
+        for aid in ids:
+            if isinstance(aid, str) and aid:
+                await mgr.set_artifact_status(artifact_id=aid, status="published", metadata_update={"published_by_candidate": candidate_id})
+    return {"status": "published", "candidate_id": candidate_id, "approval_request_id": approval_request_id}
+
+
+@api_router.post("/learning/releases/{candidate_id}/rollback")
+async def rollback_release_candidate(candidate_id: str, request: dict):
+    """
+    Rollback a release_candidate (status transitions only).
+
+    Supports optional approval gate (learning:rollback_release).
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    from core.learning.manager import LearningManager
+    from core.learning.release import require_rollback_approval, is_approved
+    from core.harness.infrastructure.approval.manager import ApprovalManager
+
+    mgr = LearningManager(execution_store=_execution_store)
+    approval_mgr = _approval_manager or ApprovalManager(execution_store=_execution_store)
+
+    cand = await _execution_store.get_learning_artifact(candidate_id)
+    if not cand:
+        raise HTTPException(status_code=404, detail="candidate_not_found")
+    if cand.get("kind") != "release_candidate":
+        raise HTTPException(status_code=400, detail="not_a_release_candidate")
+
+    user_id = (request or {}).get("user_id") or "system"
+    require_approval = bool((request or {}).get("require_approval", False))
+    approval_request_id = (request or {}).get("approval_request_id")
+    reason = (request or {}).get("reason") or ""
+
+    if require_approval:
+        if not approval_request_id:
+            req_id = await require_rollback_approval(
+                approval_manager=approval_mgr,
+                user_id=user_id,
+                candidate_id=candidate_id,
+                regression_report_id=None,
+                details=reason or "manual_rollback",
+            )
+            return {"status": "approval_required", "approval_request_id": req_id}
+        if not is_approved(approval_mgr, approval_request_id):
+            raise HTTPException(status_code=409, detail="not_approved")
+
+    await mgr.set_artifact_status(
+        artifact_id=candidate_id,
+        status="rolled_back",
+        metadata_update={"rolled_back_via": "core_api", "reason": reason, "approval_request_id": approval_request_id},
+    )
+    ids = (cand.get("payload") or {}).get("artifact_ids") if isinstance(cand.get("payload"), dict) else []
+    if isinstance(ids, list):
+        for aid in ids:
+            if isinstance(aid, str) and aid:
+                await mgr.set_artifact_status(artifact_id=aid, status="rolled_back", metadata_update={"rolled_back_by_candidate": candidate_id})
+
+    return {"status": "rolled_back", "candidate_id": candidate_id, "approval_request_id": approval_request_id}
+
+
+@api_router.post("/learning/releases/expire")
+async def expire_releases(request: dict):
+    """Expire published release candidates based on metadata.expires_at (offline status transitions only)."""
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    from core.learning.manager import LearningManager
+
+    mgr = LearningManager(execution_store=_execution_store)
+    now = float((request or {}).get("now") or __import__("time").time())
+    dry_run = bool((request or {}).get("dry_run", False))
+    target_type = (request or {}).get("target_type")
+    target_id = (request or {}).get("target_id")
+
+    res = await _execution_store.list_learning_artifacts(target_type=target_type, target_id=target_id, kind="release_candidate", status="published", limit=2000, offset=0)
+    items = res.get("items") or []
+    rolled_back = []
+    kept = []
+    for cand in items:
+        meta = cand.get("metadata") if isinstance(cand.get("metadata"), dict) else {}
+        exp = meta.get("expires_at")
+        try:
+            exp_ts = float(exp) if exp is not None else None
+        except Exception:
+            exp_ts = None
+        if exp_ts is None or exp_ts > now:
+            kept.append(cand.get("artifact_id"))
+            continue
+        cid = cand.get("artifact_id")
+        if not isinstance(cid, str) or not cid:
+            continue
+        if dry_run:
+            rolled_back.append(cid)
+            continue
+        await mgr.set_artifact_status(artifact_id=cid, status="rolled_back", metadata_update={"rolled_back_via": "expire_releases", "rolled_back_at": now})
+        rolled_back.append(cid)
+
+    return {"now": now, "dry_run": dry_run, "rolled_back": rolled_back, "kept": kept}
+
+
+@api_router.post("/learning/auto-rollback/regression")
+async def api_auto_rollback_regression(request: dict):
+    """HTTP wrapper for auto-rollback-regression (offline) used by management plane."""
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    if not _approval_manager:
+        raise HTTPException(status_code=503, detail="ApprovalManager not initialized")
+    from core.learning.autorollback import auto_rollback_regression
+
+    agent_id = (request or {}).get("agent_id")
+    if not isinstance(agent_id, str) or not agent_id:
+        raise HTTPException(status_code=400, detail="missing_agent_id")
+
+    return await auto_rollback_regression(
+        store=_execution_store,
+        approval_manager=_approval_manager,
+        agent_id=agent_id,
+        candidate_id=(request or {}).get("candidate_id"),
+        baseline_candidate_id=(request or {}).get("baseline_candidate_id"),
+        current_window=int((request or {}).get("current_window", 50) or 50),
+        baseline_window=int((request or {}).get("baseline_window", 50) or 50),
+        min_samples=int((request or {}).get("min_samples", 10) or 10),
+        error_rate_delta_threshold=float((request or {}).get("error_rate_delta_threshold", 0.1) or 0.1),
+        avg_duration_delta_threshold=(float((request or {}).get("avg_duration_delta_threshold")) if (request or {}).get("avg_duration_delta_threshold") is not None else None),
+        link_baseline=bool((request or {}).get("link_baseline", False)),
+        max_linked_evidence=int((request or {}).get("max_linked_evidence", 200) or 200),
+        require_approval=bool((request or {}).get("require_approval", False)),
+        approval_request_id=(request or {}).get("approval_request_id"),
+        user_id=(request or {}).get("user_id") or "system",
+        dry_run=bool((request or {}).get("dry_run", False)),
+        now=(float((request or {}).get("now")) if (request or {}).get("now") is not None else None),
+    )
+
+
+@api_router.post("/learning/approvals/cleanup-rollback-approvals")
+async def api_cleanup_rollback_approvals(request: dict):
+    """HTTP wrapper for cleanup-rollback-approvals."""
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    if not _approval_manager:
+        raise HTTPException(status_code=503, detail="ApprovalManager not initialized")
+    from core.learning.autorollback import cleanup_rollback_approvals
+
+    return await cleanup_rollback_approvals(
+        store=_execution_store,
+        approval_manager=_approval_manager,
+        now=(float((request or {}).get("now")) if (request or {}).get("now") is not None else None),
+        dry_run=bool((request or {}).get("dry_run", False)),
+        user_id=(request or {}).get("user_id"),
+        candidate_id=(request or {}).get("candidate_id"),
+        page_size=int((request or {}).get("page_size", 500) or 500),
+    )
+
+
 @api_router.get("/agents/executions/{execution_id}")
 async def get_agent_execution(execution_id: str):
     """Get agent execution"""
@@ -980,11 +1572,13 @@ async def rollback_agent_version(agent_id: str, version: str):
 async def list_skills(
     category: Optional[str] = None,
     enabled_only: bool = False,
+    status: Optional[str] = None,
     limit: int = 100,
     offset: int = 0
 ):
     """List all skills"""
-    skills = await _skill_manager.list_skills(category, None, limit, offset)
+    # SkillManager.list_skills signature: (skill_type, status, limit, offset)
+    skills = await _skill_manager.list_skills(category, status, limit, offset)
     
     result = []
     for s in skills:
@@ -995,10 +1589,12 @@ async def list_skills(
             "name": s.name,
             "category": s.type,
             "description": s.description,
+            "status": s.status,
             "enabled": s.status == "enabled",
             "config": s.config or {},
             "input_schema": s.input_schema or {},
             "output_schema": s.output_schema or {},
+            "metadata": s.metadata or {},
         })
     
     return {
@@ -1045,6 +1641,7 @@ async def get_skill(skill_id: str):
         "config": skill.config or {},
         "input_schema": skill.input_schema or {},
         "output_schema": skill.output_schema or {},
+        "metadata": skill.metadata or {},
     }
 
 
@@ -1065,12 +1662,12 @@ async def update_skill(skill_id: str, request: dict):
 
 
 @api_router.delete("/skills/{skill_id}")
-async def delete_skill(skill_id: str):
-    """Delete skill"""
-    success = await _skill_manager.delete_skill(skill_id)
+async def delete_skill(skill_id: str, delete_files: bool = False):
+    """Delete skill (default: soft delete; delete_files=true for hard delete)."""
+    success = await _skill_manager.delete_skill(skill_id, delete_files=delete_files)
     if not success:
         raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
-    return {"status": "deleted"}
+    return {"status": "deleted" if delete_files else "deprecated"}
 
 
 @api_router.post("/skills/{skill_id}/enable")
@@ -1078,7 +1675,7 @@ async def enable_skill(skill_id: str):
     """Enable skill"""
     success = await _skill_manager.enable_skill(skill_id)
     if not success:
-        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+        raise HTTPException(status_code=400, detail=f"Skill {skill_id} cannot be enabled (maybe deprecated; use restore)")
     return {"status": "enabled"}
 
 
@@ -1091,11 +1688,361 @@ async def disable_skill(skill_id: str):
     return {"status": "disabled"}
 
 
+@api_router.post("/skills/{skill_id}/restore")
+async def restore_skill(skill_id: str):
+    """Restore a deprecated skill (status -> enabled)."""
+    success = await _skill_manager.restore_skill(skill_id)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    return {"status": "enabled"}
+
+
+# ==================== Workspace Skill Management ====================
+
+
+@api_router.get("/workspace/skills")
+async def list_workspace_skills(
+    category: Optional[str] = None,
+    enabled_only: bool = False,
+    status: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
+):
+    """List workspace skills (~/.aiplat/skills)."""
+    if not _workspace_skill_manager:
+        return {"skills": [], "total": 0, "limit": limit, "offset": offset}
+    skills = await _workspace_skill_manager.list_skills(category, status, limit, offset)
+    result = []
+    for s in skills:
+        if enabled_only and s.status != "enabled":
+            continue
+        result.append(
+            {
+                "id": s.id,
+                "name": s.name,
+                "category": s.type,
+                "description": s.description,
+                "status": s.status,
+                "enabled": s.status == "enabled",
+                "config": s.config or {},
+                "input_schema": s.input_schema or {},
+                "output_schema": s.output_schema or {},
+                "metadata": s.metadata or {},
+            }
+        )
+    return {
+        "skills": result,
+        "total": _workspace_skill_manager.get_skill_count().get("total", 0),
+        "limit": limit,
+        "offset": offset,
+    }
+
+
+@api_router.post("/workspace/skills")
+async def create_workspace_skill(request: SkillCreateRequest):
+    """Create a new workspace skill."""
+    if not _workspace_skill_manager:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    try:
+        skill = await _workspace_skill_manager.create_skill(
+            name=request.name,
+            skill_type=request.category,
+            description=request.description,
+            config=request.config or {},
+            input_schema=request.input_schema or {},
+            output_schema=request.output_schema or {},
+        )
+        return {"id": skill.id, "status": "created", "name": skill.name}
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+
+@api_router.get("/workspace/skills/{skill_id}")
+async def get_workspace_skill(skill_id: str):
+    if not _workspace_skill_manager:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    skill = await _workspace_skill_manager.get_skill(skill_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    return {
+        "id": skill.id,
+        "name": skill.name,
+        "type": skill.type,
+        "category": skill.type,
+        "description": skill.description,
+        "status": skill.status,
+        "enabled": skill.status == "enabled",
+        "config": skill.config or {},
+        "input_schema": skill.input_schema or {},
+        "output_schema": skill.output_schema or {},
+        "metadata": skill.metadata or {},
+    }
+
+
+@api_router.put("/workspace/skills/{skill_id}")
+async def update_workspace_skill(skill_id: str, request: dict):
+    if not _workspace_skill_manager:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    from core.schemas import SkillUpdateRequest
+
+    r = SkillUpdateRequest(**(request or {}))
+    skill = await _workspace_skill_manager.update_skill(skill_id, r.model_dump(exclude_unset=True))
+    if not skill:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    return {"status": "updated", "id": skill_id}
+
+
+@api_router.delete("/workspace/skills/{skill_id}")
+async def delete_workspace_skill(skill_id: str, delete_files: bool = False):
+    if not _workspace_skill_manager:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    ok = await _workspace_skill_manager.delete_skill(skill_id, delete_files=delete_files)
+    if not ok:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    return {"status": "deleted", "id": skill_id, "delete_files": delete_files}
+
+
+@api_router.post("/workspace/skills/{skill_id}/enable")
+async def enable_workspace_skill(skill_id: str):
+    if not _workspace_skill_manager:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    ok = await _workspace_skill_manager.enable_skill(skill_id)
+    if not ok:
+        raise HTTPException(status_code=400, detail=f"Skill {skill_id} cannot be enabled (maybe deprecated; use restore)")
+    return {"status": "enabled"}
+
+
+@api_router.post("/workspace/skills/{skill_id}/disable")
+async def disable_workspace_skill(skill_id: str):
+    if not _workspace_skill_manager:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    ok = await _workspace_skill_manager.disable_skill(skill_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    return {"status": "disabled"}
+
+
+@api_router.post("/workspace/skills/{skill_id}/restore")
+async def restore_workspace_skill(skill_id: str):
+    if not _workspace_skill_manager:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    ok = await _workspace_skill_manager.restore_skill(skill_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    return {"status": "enabled"}
+
+
+@api_router.post("/workspace/skills/{skill_id}/execute")
+async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest):
+    """Execute workspace skill."""
+    if not _workspace_skill_manager:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    skill = await _workspace_skill_manager.get_skill(skill_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    user_id = request.context.get("user_id", "system") if request.context else "system"
+    harness = get_harness()
+    exec_req = ExecutionRequest(
+        kind="skill",
+        target_id=skill_id,
+        payload={"input": request.input, "context": request.context or {}, "mode": getattr(request, "mode", "inline")},
+        user_id=user_id,
+        session_id=(request.context or {}).get("session_id", "default"),
+    )
+    result = await harness.execute(exec_req)
+    if not result.ok:
+        raise HTTPException(status_code=result.http_status, detail=result.error or "Execution failed")
+    return result.payload
+
+
+@api_router.get("/workspace/skills/{skill_id}/agents")
+async def get_workspace_skill_agents(skill_id: str):
+    """Get agents bound to workspace skill."""
+    if not _workspace_skill_manager:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    agent_ids = await _workspace_skill_manager.get_bound_agents(skill_id)
+    return {"agents": [{"id": a} for a in agent_ids], "total": len(agent_ids)}
+
+
+@api_router.get("/workspace/skills/{skill_id}/executions")
+async def list_workspace_skill_executions(skill_id: str, limit: int = 100, offset: int = 0):
+    """List workspace skill executions."""
+    if not _workspace_skill_manager:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    skill = await _workspace_skill_manager.get_skill(skill_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    # Reuse global execution store; workspace and engine ids are collision-free.
+    return await list_skill_executions(skill_id, limit=limit, offset=offset)
+
+
+@api_router.get("/workspace/skills/{skill_id}/versions")
+async def get_workspace_skill_versions(skill_id: str):
+    """Get versions for a workspace skill."""
+    if not _workspace_skill_manager:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    skill = await _workspace_skill_manager.get_skill(skill_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    registry = get_skill_registry()
+    versions = registry.get_versions(skill_id)
+    return {"versions": [{"version": v.version, "is_active": v.is_active} for v in versions]}
+
+
+@api_router.get("/workspace/skills/{skill_id}/versions/{version}")
+async def get_workspace_skill_version(skill_id: str, version: str):
+    """Get specific version config for workspace skill."""
+    if not _workspace_skill_manager:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    skill = await _workspace_skill_manager.get_skill(skill_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    registry = get_skill_registry()
+    config = registry.get_version(skill_id, version)
+    if not config:
+        raise HTTPException(status_code=404, detail=f"Version {version} not found")
+    try:
+        from dataclasses import asdict, is_dataclass
+        cfg_dict = asdict(config) if is_dataclass(config) else dict(config)  # type: ignore[arg-type]
+    except Exception:
+        cfg_dict = {
+            "name": getattr(config, "name", ""),
+            "description": getattr(config, "description", ""),
+            "input_schema": getattr(config, "input_schema", {}) or {},
+            "output_schema": getattr(config, "output_schema", {}) or {},
+            "timeout": getattr(config, "timeout", None),
+            "metadata": getattr(config, "metadata", {}) or {},
+        }
+    return {"version": version, "config": cfg_dict}
+
+
+@api_router.post("/workspace/skills/{skill_id}/versions/{version}/rollback")
+async def rollback_workspace_skill_version(skill_id: str, version: str):
+    """Rollback workspace skill to a specific version."""
+    if not _workspace_skill_manager:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    skill = await _workspace_skill_manager.get_skill(skill_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    registry = get_skill_registry()
+    ok = registry.rollback_version(skill_id, version)
+    if not ok:
+        raise HTTPException(status_code=404, detail=f"Version {version} not found")
+    active_version = registry.get_active_version(skill_id) if hasattr(registry, "get_active_version") else version
+    return {"status": "rolled_back", "active_version": active_version}
+
+
+@api_router.get("/workspace/skills/{skill_id}/active-version")
+async def get_workspace_skill_active_version(skill_id: str):
+    """Get currently active version for a workspace skill."""
+    if not _workspace_skill_manager:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    skill = await _workspace_skill_manager.get_skill(skill_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    registry = get_skill_registry()
+    active_version = registry.get_active_version(skill_id) if hasattr(registry, "get_active_version") else None
+    return {"skill_id": skill_id, "active_version": active_version}
+
+
 @api_router.get("/skills/{skill_id}/agents")
 async def get_skill_agents(skill_id: str):
     """Get agents bound to skill"""
     agent_ids = await _skill_manager.get_bound_agents(skill_id)
     return {"agents": [{"id": a} for a in agent_ids], "total": len(agent_ids)}
+
+
+# ---------------------------
+# MCP (directory-based config)
+# ---------------------------
+
+@api_router.get("/mcp/servers")
+async def list_mcp_servers():
+    """List MCP servers configured via filesystem (mcps/<server>/server.yaml)."""
+    if not _mcp_manager:
+        return {"servers": []}
+    return {
+        "servers": [
+            {
+                "name": s.name,
+                "enabled": s.enabled,
+                "transport": s.transport,
+                "url": s.url,
+                "command": s.command,
+                "args": s.args,
+                "allowed_tools": s.allowed_tools,
+                "metadata": s.metadata,
+            }
+            for s in _mcp_manager.list_servers()
+        ]
+    }
+
+
+@api_router.post("/mcp/servers/{server_name}/enable")
+async def enable_mcp_server(server_name: str):
+    """Enable an MCP server in filesystem config."""
+    if not _mcp_manager:
+        raise HTTPException(status_code=503, detail="MCP manager not available")
+    ok = _mcp_manager.set_enabled(server_name, True)
+    if not ok:
+        raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
+    return {"status": "enabled"}
+
+
+@api_router.post("/mcp/servers/{server_name}/disable")
+async def disable_mcp_server(server_name: str):
+    """Disable an MCP server in filesystem config."""
+    if not _mcp_manager:
+        raise HTTPException(status_code=503, detail="MCP manager not available")
+    ok = _mcp_manager.set_enabled(server_name, False)
+    if not ok:
+        raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
+    return {"status": "disabled"}
+
+
+# ==================== Workspace (user-facing) Resources ====================
+
+
+@api_router.get("/workspace/mcp/servers")
+async def list_workspace_mcp_servers():
+    """List workspace MCP servers (~/.aiplat/mcps)."""
+    if not _workspace_mcp_manager:
+        return {"servers": []}
+    return {
+        "servers": [
+            {
+                "name": s.name,
+                "enabled": s.enabled,
+                "transport": s.transport,
+                "url": s.url,
+                "command": s.command,
+                "args": s.args,
+                "allowed_tools": s.allowed_tools,
+                "metadata": s.metadata,
+            }
+            for s in _workspace_mcp_manager.list_servers()
+        ]
+    }
+
+
+@api_router.post("/workspace/mcp/servers/{server_name}/enable")
+async def enable_workspace_mcp_server(server_name: str):
+    if not _workspace_mcp_manager:
+        raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
+    ok = _workspace_mcp_manager.set_enabled(server_name, True)
+    if not ok:
+        raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
+    return {"status": "enabled"}
+
+
+@api_router.post("/workspace/mcp/servers/{server_name}/disable")
+async def disable_workspace_mcp_server(server_name: str):
+    if not _workspace_mcp_manager:
+        raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
+    ok = _workspace_mcp_manager.set_enabled(server_name, False)
+    if not ok:
+        raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
+    return {"status": "disabled"}
 
 
 @api_router.get("/skills/{skill_id}/binding-stats")

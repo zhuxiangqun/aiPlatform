@@ -8,6 +8,10 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any
 from datetime import datetime
 import uuid
+import os
+from pathlib import Path
+
+import yaml
 
 from core.harness.state import AgentStateEnum
 
@@ -82,15 +86,133 @@ class AgentManager:
     - Agent statistics
     """
     
-    def __init__(self, seed: bool = True):
+    def __init__(
+        self,
+        seed: bool = True,
+        *,
+        scope: str = "engine",
+        reserved_ids: Optional[set] = None,
+    ):
         self._agents: Dict[str, AgentInfo] = {}
         self._stats: Dict[str, AgentStats] = {}
         self._skill_bindings: Dict[str, List[SkillBinding]] = {}
         self._tool_bindings: Dict[str, List[ToolBinding]] = {}
         self._execution_history: Dict[str, List[Dict]] = {}
         self._versions: Dict[str, List[AgentVersion]] = {}
+        self._scope = scope  # "engine" | "workspace"
+        self._reserved_ids = reserved_ids or set()
         if seed:
             self._seed_data()
+        else:
+            self._load_directory_agents()
+
+    def _resolve_agents_paths(self) -> List[Path]:
+        """Resolve all agents paths in increasing priority order (low -> high)."""
+        repo_root = Path(__file__).resolve().parents[2]  # aiPlat-core/
+        engine_default = repo_root / "core" / "engine" / "agents"
+        workspace_default = Path.home() / ".aiplat" / "agents"
+
+        scope = (self._scope or "engine").strip().lower()
+        if scope not in {"engine", "workspace"}:
+            scope = "engine"
+
+        paths_env = os.environ.get(f"AIPLAT_{scope.upper()}_AGENTS_PATHS")
+        if paths_env:
+            parts = [p.strip() for p in paths_env.split(os.pathsep) if p.strip()]
+            out = [Path(p).expanduser() for p in parts]
+            return [p.resolve() for p in out]
+
+        single = os.environ.get(f"AIPLAT_{scope.upper()}_AGENTS_PATH")
+        if single:
+            return [Path(single).expanduser().resolve()]
+
+        return [engine_default.resolve()] if scope == "engine" else [workspace_default.resolve()]
+
+    def _resolve_agents_base_path(self) -> Path:
+        """Primary write target for directory-based agents (highest priority path)."""
+        paths = self._resolve_agents_paths()
+        return paths[-1] if paths else (Path(__file__).resolve().parents[2] / "agents")
+
+    def _load_directory_agents(self) -> None:
+        """Load directory-based agents from filesystem into management plane."""
+        try:
+            now = datetime.utcnow()
+            # low -> high, high overrides
+            for base_dir in self._resolve_agents_paths():
+                if not base_dir.exists():
+                    continue
+                for item in base_dir.iterdir():
+                    if not item.is_dir():
+                        continue
+                    if item.name.startswith(".") or item.name in ["__pycache__"]:
+                        continue
+                    agent_md = item / "AGENT.md"
+                    if not agent_md.exists():
+                        continue
+
+                    raw = agent_md.read_text(encoding="utf-8")
+                    fm = None
+                    if raw.startswith("---"):
+                        # naive split
+                        parts = raw.split("---", 2)
+                        if len(parts) > 1:
+                            try:
+                                fm = yaml.safe_load(parts[1]) or {}
+                            except Exception:
+                                fm = {}
+                    if not isinstance(fm, dict):
+                        fm = {}
+
+                    agent_id = str(fm.get("name") or item.name)
+                    display_name = str(fm.get("display_name") or agent_id)
+                    description = str(fm.get("description") or "")
+                    agent_type = str(fm.get("agent_type") or "react")
+                    version = str(fm.get("version") or "1.0.0")
+                    status = str(fm.get("status") or AgentStateEnum.READY.value)
+                    status = self._normalize_status(status)
+
+                    required_skills = fm.get("required_skills") or []
+                    required_tools = fm.get("required_tools") or []
+                    if not isinstance(required_skills, list):
+                        required_skills = []
+                    if not isinstance(required_tools, list):
+                        required_tools = []
+
+                    config = fm.get("config") or {}
+                    if not isinstance(config, dict):
+                        config = {}
+
+                    metadata = dict(fm)
+                    metadata.setdefault("filesystem", {})
+                    if isinstance(metadata["filesystem"], dict):
+                        metadata["filesystem"]["agent_dir"] = str(item)
+                        metadata["filesystem"]["agent_md"] = str(agent_md)
+                        metadata["filesystem"]["source"] = str(base_dir)
+
+                    self._agents[agent_id] = AgentInfo(
+                        id=agent_id,
+                        name=display_name,
+                        type=agent_type,
+                        status=status,
+                        config=config,
+                        skills=list(required_skills),
+                        tools=list(required_tools),
+                        memory_config=metadata.get("memory_config") or {"type": "short_term", "recall_count": 5},
+                        created_at=now,
+                        updated_at=now,
+                        version=version,
+                        metadata=metadata,
+                    )
+                    self._stats.setdefault(agent_id, AgentStats())
+                    self._skill_bindings.setdefault(agent_id, [])
+                    self._tool_bindings.setdefault(agent_id, [])
+                    self._execution_history.setdefault(agent_id, [])
+                    self._versions.setdefault(agent_id, [AgentVersion(version=version, status="current", created_at=now, changes="Loaded from filesystem")])
+
+            for agent_id, agent_info in self._agents.items():
+                self._bridge_to_registry(agent_info)
+        except Exception:
+            return
 
     def _normalize_status(self, status: str) -> str:
         """Normalize legacy status strings to canonical AgentStateEnum values."""
@@ -147,6 +269,8 @@ class AgentManager:
     ) -> AgentInfo:
         """Create a new agent"""
         agent_id = name.lower().replace(" ", "_").replace("-", "_")
+        if self._reserved_ids and agent_id in self._reserved_ids:
+            raise ValueError(f"Agent id '{agent_id}' is reserved by engine scope and cannot be created in workspace.")
         now = datetime.utcnow()
         
         agent = AgentInfo(
@@ -173,6 +297,51 @@ class AgentManager:
         ]
         
         self._bridge_to_registry(agent)
+
+        # Materialize directory-based agent on filesystem (AGENT.md + skeleton).
+        try:
+            base_dir = self._resolve_agents_base_path()
+            agent_dir = base_dir / agent_id
+            agent_dir.mkdir(parents=True, exist_ok=True)
+            agent_md_path = agent_dir / "AGENT.md"
+            if not agent_md_path.exists():
+                manifest = {
+                    "name": agent_id,
+                    "display_name": name,
+                    "description": metadata.get("description") if isinstance(metadata, dict) else "",
+                    "agent_type": agent_type,
+                    "version": "1.0.0",
+                    "status": agent.status,
+                    "required_skills": skills or [],
+                    "required_tools": tools or [],
+                    "config": config or {},
+                }
+                header = yaml.safe_dump(manifest, sort_keys=False, allow_unicode=True).strip()
+                body = f"""
+
+# {name}
+
+## 目标
+说明该 Agent 的职责边界与适用场景。
+
+## 工作流程（SOP）
+1. 第一步……
+2. 第二步……
+3. 第三步……
+
+## 权限与工具
+- required_tools：{tools or []}
+- required_skills：{skills or []}
+"""
+                agent_md_path.write_text(f"---\n{header}\n---\n{body.lstrip()}", encoding="utf-8")
+
+            if isinstance(agent.metadata, dict):
+                agent.metadata.setdefault("filesystem", {})
+                if isinstance(agent.metadata["filesystem"], dict):
+                    agent.metadata["filesystem"]["agent_dir"] = str(agent_dir)
+                    agent.metadata["filesystem"]["agent_md"] = str(agent_md_path)
+        except Exception:
+            pass
         
         return agent
     
@@ -225,6 +394,10 @@ class AgentManager:
             agents = [a for a in agents if a.status == status]
         
         return agents[offset:offset + limit]
+
+    def get_agent_ids(self) -> List[str]:
+        """Get all agent ids currently loaded."""
+        return list(self._agents.keys())
     
     async def update_agent(
         self,

@@ -67,6 +67,85 @@ class CoreAPIClient:
         params: Dict[str, Any] = {"limit": limit, "offset": offset}
         return await self._request("GET", f"/api/core/traces/{trace_id}/executions", params=params)
 
+    # ===== Learning / Release Management (Phase 6) =====
+
+    async def list_learning_artifacts(
+        self,
+        *,
+        target_type: Optional[str] = None,
+        target_id: Optional[str] = None,
+        kind: Optional[str] = None,
+        status: Optional[str] = None,
+        trace_id: Optional[str] = None,
+        run_id: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Dict[str, Any]:
+        params: Dict[str, Any] = {"limit": limit, "offset": offset}
+        if target_type:
+            params["target_type"] = target_type
+        if target_id:
+            params["target_id"] = target_id
+        if kind:
+            params["kind"] = kind
+        if status:
+            params["status"] = status
+        if trace_id:
+            params["trace_id"] = trace_id
+        if run_id:
+            params["run_id"] = run_id
+        return await self._request("GET", "/api/core/learning/artifacts", params=params)
+
+    async def get_learning_artifact(self, artifact_id: str) -> Dict[str, Any]:
+        return await self._request("GET", f"/api/core/learning/artifacts/{artifact_id}")
+
+    async def set_learning_artifact_status(self, artifact_id: str, *, status: str, metadata_update: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        return await self._request(
+            "POST",
+            f"/api/core/learning/artifacts/{artifact_id}/status",
+            json={"status": status, "metadata_update": metadata_update or {}},
+        )
+
+    async def publish_release_candidate(self, candidate_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/learning/releases/{candidate_id}/publish", json=payload)
+
+    async def rollback_release_candidate(self, candidate_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/learning/releases/{candidate_id}/rollback", json=payload)
+
+    async def expire_releases(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", "/api/core/learning/releases/expire", json=payload)
+
+    async def auto_rollback_regression(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", "/api/core/learning/auto-rollback/regression", json=payload)
+
+    async def cleanup_rollback_approvals(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", "/api/core/learning/approvals/cleanup-rollback-approvals", json=payload)
+
+    # ===== Approvals (reuse core approvals API) =====
+
+    async def list_pending_approvals(
+        self,
+        *,
+        user_id: Optional[str] = None,
+        order_by: str = "priority_score",
+        order_dir: str = "desc",
+        limit: int = 200,
+        offset: int = 0,
+    ) -> Dict[str, Any]:
+        params: Dict[str, Any] = {"order_by": order_by, "order_dir": order_dir, "limit": limit, "offset": offset}
+        if user_id:
+            params["user_id"] = user_id
+        return await self._request("GET", "/api/core/approvals/pending", params=params)
+
+    async def get_approval_request(self, request_id: str) -> Dict[str, Any]:
+        return await self._request("GET", f"/api/core/approvals/{request_id}")
+
+    async def approve_request(self, request_id: str, approved_by: str, comments: str = "") -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/approvals/{request_id}/approve", json={"approved_by": approved_by, "comments": comments})
+
+    async def reject_request(self, request_id: str, rejected_by: str, comments: str = "") -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/approvals/{request_id}/reject", json={"rejected_by": rejected_by, "comments": comments})
+
     # ===== Graph runs / checkpoints (ExecutionStore) =====
 
     async def list_graph_runs(
@@ -179,15 +258,22 @@ class CoreAPIClient:
     
     # ===== Skill Management =====
     
-    async def list_skills(self, skill_type: Optional[str] = None,
-                          status: Optional[str] = None,
-                          limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+    async def list_skills(
+        self,
+        category: Optional[str] = None,
+        status: Optional[str] = None,
+        enabled_only: bool = False,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> Dict[str, Any]:
         """List all skills."""
-        params = {"limit": limit, "offset": offset}
-        if skill_type:
-            params["skill_type"] = skill_type
+        params: Dict[str, Any] = {"limit": limit, "offset": offset}
+        if category:
+            params["category"] = category
         if status:
             params["status"] = status
+        if enabled_only:
+            params["enabled_only"] = "true"
         return await self._request("GET", "/api/core/skills", params=params)
     
     async def get_skill(self, skill_id: str) -> Dict[str, Any]:
@@ -202,9 +288,143 @@ class CoreAPIClient:
         """Update skill."""
         return await self._request("PUT", f"/api/core/skills/{skill_id}", json=updates)
     
-    async def delete_skill(self, skill_id: str) -> Dict[str, Any]:
-        """Delete skill."""
-        return await self._request("DELETE", f"/api/core/skills/{skill_id}")
+    async def delete_skill(self, skill_id: str, *, delete_files: bool = False) -> Dict[str, Any]:
+        """Delete skill (default soft delete; delete_files=true for hard delete)."""
+        params: Dict[str, Any] = {}
+        if delete_files:
+            params["delete_files"] = "true"
+        return await self._request("DELETE", f"/api/core/skills/{skill_id}", params=params)
+
+    async def restore_skill(self, skill_id: str) -> Dict[str, Any]:
+        """Restore a deprecated skill."""
+        return await self._request("POST", f"/api/core/skills/{skill_id}/restore")
+
+    # ===== MCP Management =====
+
+    async def list_mcp_servers(self) -> Dict[str, Any]:
+        """List MCP servers (filesystem-backed)."""
+        return await self._request("GET", "/api/core/mcp/servers")
+
+    async def enable_mcp_server(self, server_name: str) -> Dict[str, Any]:
+        """Enable MCP server."""
+        return await self._request("POST", f"/api/core/mcp/servers/{server_name}/enable")
+
+    async def disable_mcp_server(self, server_name: str) -> Dict[str, Any]:
+        """Disable MCP server."""
+        return await self._request("POST", f"/api/core/mcp/servers/{server_name}/disable")
+
+    # ===== Workspace (user-facing) =====
+
+    async def list_workspace_agents(self, agent_type: Optional[str] = None, status: Optional[str] = None, *, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        params: Dict[str, Any] = {"limit": str(limit), "offset": str(offset)}
+        if agent_type:
+            params["type"] = agent_type
+        if status:
+            params["status"] = status
+        return await self._request("GET", "/api/core/workspace/agents", params=params)
+
+    async def create_workspace_agent(self, agent: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", "/api/core/workspace/agents", json=agent)
+
+    async def get_workspace_agent(self, agent_id: str) -> Dict[str, Any]:
+        return await self._request("GET", f"/api/core/workspace/agents/{agent_id}")
+
+    async def update_workspace_agent(self, agent_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("PUT", f"/api/core/workspace/agents/{agent_id}", json=payload)
+
+    async def delete_workspace_agent(self, agent_id: str) -> Dict[str, Any]:
+        return await self._request("DELETE", f"/api/core/workspace/agents/{agent_id}")
+
+    async def execute_workspace_agent(self, agent_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/workspace/agents/{agent_id}/execute", json=payload)
+
+    async def get_workspace_agent_skills(self, agent_id: str) -> Dict[str, Any]:
+        return await self._request("GET", f"/api/core/workspace/agents/{agent_id}/skills")
+
+    async def bind_workspace_agent_skills(self, agent_id: str, skill_ids: List[str]) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/workspace/agents/{agent_id}/skills", json={"skill_ids": skill_ids})
+
+    async def unbind_workspace_agent_skill(self, agent_id: str, skill_id: str) -> Dict[str, Any]:
+        return await self._request("DELETE", f"/api/core/workspace/agents/{agent_id}/skills/{skill_id}")
+
+    async def get_workspace_agent_tools(self, agent_id: str) -> Dict[str, Any]:
+        return await self._request("GET", f"/api/core/workspace/agents/{agent_id}/tools")
+
+    async def bind_workspace_agent_tools(self, agent_id: str, tool_ids: List[str]) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/workspace/agents/{agent_id}/tools", json={"tool_ids": tool_ids})
+
+    async def unbind_workspace_agent_tool(self, agent_id: str, tool_id: str) -> Dict[str, Any]:
+        return await self._request("DELETE", f"/api/core/workspace/agents/{agent_id}/tools/{tool_id}")
+
+    async def get_workspace_agent_history(self, agent_id: str, *, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        return await self._request("GET", f"/api/core/workspace/agents/{agent_id}/history", params={"limit": limit, "offset": offset})
+
+    async def get_workspace_agent_versions(self, agent_id: str) -> Dict[str, Any]:
+        return await self._request("GET", f"/api/core/workspace/agents/{agent_id}/versions")
+
+    async def create_workspace_agent_version(self, agent_id: str, changes: str = "") -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/workspace/agents/{agent_id}/versions", json={"changes": changes})
+
+    async def rollback_workspace_agent_version(self, agent_id: str, version: str) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/workspace/agents/{agent_id}/versions/{version}/rollback")
+
+    async def list_workspace_skills(self, category: Optional[str] = None, status: Optional[str] = None, *, enabled_only: bool = False, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        params: Dict[str, Any] = {"limit": str(limit), "offset": str(offset)}
+        if category:
+            params["category"] = category
+        if status:
+            params["status"] = status
+        if enabled_only:
+            params["enabled_only"] = "true"
+        return await self._request("GET", "/api/core/workspace/skills", params=params)
+
+    async def create_workspace_skill(self, skill: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", "/api/core/workspace/skills", json=skill)
+
+    async def get_workspace_skill(self, skill_id: str) -> Dict[str, Any]:
+        return await self._request("GET", f"/api/core/workspace/skills/{skill_id}")
+
+    async def update_workspace_skill(self, skill_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("PUT", f"/api/core/workspace/skills/{skill_id}", json=payload)
+
+    async def execute_workspace_skill(self, skill_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/workspace/skills/{skill_id}/execute", json=payload)
+
+    async def list_workspace_skill_executions(self, skill_id: str, *, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        return await self._request("GET", f"/api/core/workspace/skills/{skill_id}/executions", params={"limit": limit, "offset": offset})
+
+    async def get_workspace_skill_versions(self, skill_id: str) -> Dict[str, Any]:
+        return await self._request("GET", f"/api/core/workspace/skills/{skill_id}/versions")
+
+    async def get_workspace_skill_active_version(self, skill_id: str) -> Dict[str, Any]:
+        return await self._request("GET", f"/api/core/workspace/skills/{skill_id}/active-version")
+
+    async def rollback_workspace_skill_version(self, skill_id: str, version: str) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/workspace/skills/{skill_id}/versions/{version}/rollback")
+
+    async def enable_workspace_skill(self, skill_id: str) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/workspace/skills/{skill_id}/enable")
+
+    async def disable_workspace_skill(self, skill_id: str) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/workspace/skills/{skill_id}/disable")
+
+    async def restore_workspace_skill(self, skill_id: str) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/workspace/skills/{skill_id}/restore")
+
+    async def delete_workspace_skill(self, skill_id: str, *, delete_files: bool = False) -> Dict[str, Any]:
+        params: Dict[str, Any] = {}
+        if delete_files:
+            params["delete_files"] = "true"
+        return await self._request("DELETE", f"/api/core/workspace/skills/{skill_id}", params=params)
+
+    async def list_workspace_mcp_servers(self) -> Dict[str, Any]:
+        return await self._request("GET", "/api/core/workspace/mcp/servers")
+
+    async def enable_workspace_mcp_server(self, server_name: str) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/workspace/mcp/servers/{server_name}/enable")
+
+    async def disable_workspace_mcp_server(self, server_name: str) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/workspace/mcp/servers/{server_name}/disable")
     
     async def enable_skill(self, skill_id: str) -> Dict[str, Any]:
         """Enable skill."""

@@ -110,6 +110,20 @@ await server.start(host="0.0.0.0", port=8080)
 
 ## 配置
 
+### 0. 目录化配置（engine vs workspace）
+
+MCP server 的“启用/禁用/策略”推荐以文件系统为真值来源，并按 scope 分离：
+
+- **引擎内置（engine，仅核心能力层使用）**  
+  `aiPlat-core/core/engine/mcps/<server>/{server.yaml,policy.yaml}`
+
+- **应用库（workspace，对外/用户可用）**  
+  `~/.aiplat/mcps/<server>/{server.yaml,policy.yaml}`
+
+管理面对应两套入口（避免混用）：
+- engine：`GET/POST /api/core/mcp/servers*`
+- workspace：`GET/POST /api/core/workspace/mcp/servers*`
+
 ### 服务器配置 (MCP Server)
 
 ```python

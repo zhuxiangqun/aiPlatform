@@ -81,6 +81,10 @@ if [ -d "$PROJECT_ROOT/aiPlat-core" ]; then
 
     echo ""
     echo "启动 aiPlat-core API 服务 (端口 8002)..."
+    # 确保 ExecutionStore 的 DB 路径稳定（用于 learning_artifacts / approvals 等管理功能）
+    export AIPLAT_EXECUTION_DB_PATH="${AIPLAT_EXECUTION_DB_PATH:-$PROJECT_ROOT/aiPlat-core/core/data/aiplat_executions.sqlite3}"
+    mkdir -p "$(dirname "$AIPLAT_EXECUTION_DB_PATH")"
+    echo "Execution DB: $AIPLAT_EXECUTION_DB_PATH"
     nohup python3 -m uvicorn core.server:app --host 0.0.0.0 --port 8002 > /tmp/aiplat-core.log 2>&1 &
     CORE_PID=$!
     echo "aiPlat-core PID: $CORE_PID"

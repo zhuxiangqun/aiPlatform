@@ -13,6 +13,16 @@ Skills 模块为 Agent 提供可复用的技能能力单元。
 
 **代码位置**：`core/apps/skills/`
 
+**目录化技能（SKILL.md）位置（engine vs workspace）**：
+- engine 默认：`aiPlat-core/core/engine/skills/`
+- workspace 默认：`~/.aiplat/skills/`
+
+可覆盖（按 scope 分开配置）：
+- `AIPLAT_ENGINE_SKILLS_PATH` / `AIPLAT_ENGINE_SKILLS_PATHS`
+- `AIPLAT_WORKSPACE_SKILLS_PATH` / `AIPLAT_WORKSPACE_SKILLS_PATHS`
+
+> `core/apps/skills/` 是 **技能系统引擎代码**（parser/registry/executor 等），不是目录化技能的存放位置。
+
 **核心能力**：
 - 技能定义与注册
 - 技能发现与匹配

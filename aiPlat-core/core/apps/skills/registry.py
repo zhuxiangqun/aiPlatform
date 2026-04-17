@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 from datetime import datetime
 
 from .base import BaseSkill, SkillMetadata, TextGenerationSkill, CodeGenerationSkill, DataAnalysisSkill, create_skill
-from ...harness.interfaces import SkillConfig
+from ...harness.interfaces import SkillConfig, SkillResult
 
 
 @dataclass
@@ -306,17 +306,74 @@ class _GenericSkill(BaseSkill):
                 prompt += f"\nInput: {params}"
         
         try:
+            sop = ""
+            try:
+                sop = (self._config.metadata or {}).get("sop_markdown", "") if hasattr(self._config, "metadata") else ""
+            except Exception:
+                sop = ""
+
+            allowed_tools = []
+            try:
+                # Prefer runtime context.tools, fallback to config metadata.tools.
+                if context and getattr(context, "tools", None):
+                    allowed_tools = list(getattr(context, "tools") or [])
+                else:
+                    allowed_tools = list((self._config.metadata or {}).get("tools", []) if hasattr(self._config, "metadata") else [])
+                allowed_tools = [str(t) for t in allowed_tools if str(t).strip()]
+            except Exception:
+                allowed_tools = []
+
+            system_parts = [
+                "你是一个可复用技能（Skill）执行器。",
+                f"技能名称：{self._config.name}",
+                f"技能描述：{self._config.description}",
+            ]
+            if sop:
+                system_parts.append("下面是该技能的SOP（必须严格遵循）：")
+                system_parts.append(sop)
+
+            # If tools are available, run as a tool-capable ReAct agent (SkillTool-like orchestration).
+            if allowed_tools:
+                from ...apps.agents.react import create_react_agent
+                from ...harness.interfaces import AgentConfig, AgentContext
+
+                agent = create_react_agent(
+                    config=AgentConfig(
+                        name=f"skill-inline-{self._config.name}",
+                        model=str(getattr(self._model, "model", None) or "gpt-4"),
+                        metadata={"role": "skill-agent", "skill": self._config.name},
+                    ),
+                    model=self._model,
+                )
+
+                task = "\n".join(system_parts) + "\n\n用户输入：\n" + prompt
+                msgs = [{"role": "system", "content": "\n".join(system_parts)}, {"role": "user", "content": prompt}]
+                agent_ctx = AgentContext(
+                    session_id=getattr(context, "session_id", "skill"),
+                    user_id=getattr(context, "user_id", "system"),
+                    messages=[{"role": "user", "content": task}],
+                    variables={"messages": msgs, **(getattr(context, "variables", {}) or {})},
+                    tools=allowed_tools,
+                )
+                result = await agent.execute(agent_ctx)
+                return SkillResult(
+                    success=bool(result.success),
+                    output={"text": result.output},
+                    error=result.error,
+                    metadata={"skill": self._config.name, "agent": result.metadata, "tools": allowed_tools},
+                )
+
+            # Fallback: plain LLM generation (no tools)
             from ...harness.syscalls.llm import sys_llm_generate
 
-            response = await sys_llm_generate(self._model, [
-                {"role": "system", "content": f"You are a {self._config.description}."},
-                {"role": "user", "content": prompt},
-            ])
-            return SkillResult(
-                success=True,
-                output={"text": response.content},
-                metadata={"model": response.model, "skill": self._config.name}
+            response = await sys_llm_generate(
+                self._model,
+                [
+                    {"role": "system", "content": "\n".join(system_parts)},
+                    {"role": "user", "content": prompt},
+                ],
             )
+            return SkillResult(success=True, output={"text": response.content}, metadata={"model": response.model, "skill": self._config.name})
         except Exception as e:
             return SkillResult(success=False, error=str(e))
 

@@ -209,6 +209,21 @@ cd aiPlat-management
 
 ---
 
+## 六点五、Core（Layer 1）中的 scope 分离（engine vs workspace）
+
+为避免“核心能力层运维”与“对外应用库管理”混用，management 对 core 的转发接口分为两套命名空间：
+
+| scope | 说明 | Management API（转发） |
+|------|------|-------------------------|
+| **engine** | 核心能力层（内置、稳定、不可覆盖） | `/api/core/skills`、`/api/core/agents`、`/api/core/mcp/servers` |
+| **workspace** | 对外应用库（可编辑可删除） | `/api/core/workspace/skills`、`/api/core/workspace/agents`、`/api/core/workspace/mcp/servers` |
+
+备注：
+- 执行控制权始终由 core 的 Harness/Runtime 控制；scope 仅影响“内容来源与权限边界”。
+- workspace 不允许创建与 engine 同名（同 id）的资源（禁止覆盖）。
+
+---
+
 ## 七、依赖关系
 
 ### 7.1 Python 包依赖

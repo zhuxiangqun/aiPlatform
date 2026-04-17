@@ -212,6 +212,10 @@
 
 ## 三、API 端点
 
+> 本章 API 以“scope 分离”为准：  
+> - **核心能力层（engine）**：`/api/core/agents/*`（management 侧转发；前端菜单为“核心能力层”→ Agent管理）  
+> - **对外应用库（workspace）**：`/api/core/workspace/agents/*`（management 侧转发；前端菜单为“应用库”→ Agent库）
+
 ### 3.1 Agent 管理
 
 ```python
@@ -225,6 +229,10 @@ Response: {
   "stopped": 6,
   "error": 1
 }
+
+# 获取 Workspace Agent 列表（对外应用库）
+GET /api/core/workspace/agents
+Query: ?type=react&status=running&limit=100&offset=0
 
 # 创建 Agent
 POST /api/core/agents
@@ -246,6 +254,16 @@ Body: {
 Response: {
   "id": "agent-001",
   "status": "created"
+}
+
+# 创建 Workspace Agent（对外应用库）
+POST /api/core/workspace/agents
+Body: {
+  "agent_type": "react",
+  "name": "my-app-agent",
+  "config": { "model": "gpt-4", "temperature": 0.7 },
+  "skills": ["text_generation"],
+  "tools": ["web_search"]
 }
 
 # 获取 Agent 详情
@@ -282,7 +300,7 @@ POST /api/core/agents/{agent_id}/start
 POST /api/core/agents/{agent_id}/stop
 ```
 
-### 3.2 Agent 执行
+### 3.2 Agent 执行（engine / workspace）
 
 ```python
 # 执行 Agent
@@ -299,8 +317,16 @@ Response: {
   "status": "running"
 }
 
+# 执行 Workspace Agent
+POST /api/core/workspace/agents/{agent_id}/execute
+Body: {
+  "input": {"message": "查询今日天气"},
+  "context": {"user_id": "user-001", "session_id": "session-001"}
+}
+
 # 获取执行历史
 GET /api/core/agents/{agent_id}/history?limit=100&offset=0
+GET /api/core/workspace/agents/{agent_id}/history?limit=100&offset=0
 Response: {
   "history": [
     {
@@ -329,6 +355,11 @@ Response: {
 ### 3.3 Agent 技能管理
 
 ```python
+# Workspace 端点（对外应用库）
+GET /api/core/workspace/agents/{agent_id}/skills
+POST /api/core/workspace/agents/{agent_id}/skills
+DELETE /api/core/workspace/agents/{agent_id}/skills/{skill_id}
+
 # 获取 Agent 绑定的技能
 GET /api/core/agents/{agent_id}/skills
 Response: {
@@ -361,6 +392,11 @@ DELETE /api/core/agents/{agent_id}/skills/{skill_id}
 ### 3.4 Agent 工具管理
 
 ```python
+# Workspace 端点（对外应用库）
+GET /api/core/workspace/agents/{agent_id}/tools
+POST /api/core/workspace/agents/{agent_id}/tools
+DELETE /api/core/workspace/agents/{agent_id}/tools/{tool_id}
+
 # 获取 Agent 绑定的工具
 GET /api/core/agents/{agent_id}/tools
 
@@ -372,6 +408,14 @@ Body: {
 
 # 解绑工具
 DELETE /api/core/agents/{agent_id}/tools/{tool_id}
+```
+
+### 3.5 Agent 版本管理（workspace）
+
+```python
+GET  /api/core/workspace/agents/{agent_id}/versions
+POST /api/core/workspace/agents/{agent_id}/versions                 # Body: {"changes": "变更说明"}
+POST /api/core/workspace/agents/{agent_id}/versions/{version}/rollback
 ```
 
 ---

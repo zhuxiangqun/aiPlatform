@@ -13,6 +13,9 @@ import {
   Brain,
   HardDrive,
   Shield,
+  ShieldCheck,
+  FileText,
+  Layers,
   Users,
   MessageSquare,
   ChevronLeft,
@@ -24,6 +27,8 @@ import {
   ChevronDown,
   Wrench,
   Activity,
+  Plug,
+  Package,
   type LucideIcon,
 } from 'lucide-react';
 import { NotificationBellButton, NotificationProvider, ToastProvider } from '../ui';
@@ -59,7 +64,17 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
     { key: '/core/agents', icon: Bot, label: 'Agent管理' },
     { key: '/core/skills', icon: Sparkles, label: 'Skill管理' },
     { key: '/core/tools', icon: Wrench, label: 'Tool管理' },
+    { key: '/core/mcp', icon: Plug, label: 'MCP管理' },
     { key: '/core/memory', icon: Brain, label: 'Memory管理' },
+    { key: '/core/learning/artifacts', icon: FileText, label: 'Learning产物' },
+    { key: '/core/learning/releases', icon: Layers, label: 'Release候选' },
+    { key: '/core/approvals', icon: ShieldCheck, label: '审批中心' },
+  ]},
+  { divider: true },
+  { group: 'workspace', label: '应用库', items: [
+    { key: '/workspace/agents', icon: Package, label: 'Agent库' },
+    { key: '/workspace/skills', icon: Package, label: 'Skill库' },
+    { key: '/workspace/mcp', icon: Package, label: 'MCP库' },
   ]},
   { divider: true },
   { group: 'platform', label: '平台服务层', items: [

@@ -43,6 +43,19 @@
 
 ---
 
+## 0. Engine vs Workspace（对外应用库分离）
+
+为使“核心能力层稳定可控”且“对外能力可定制可管理”，管理系统将目录化的 Agent / Skill / MCP 分成两套 scope：
+
+| scope | 面向对象 | 默认目录 | 管理入口（前端） | API（management） |
+|------|----------|----------|------------------|-------------------|
+| **engine** | 核心能力层内部使用 | `aiPlat-core/core/engine/{skills,agents,mcps}` | `/core/*` | `/api/core/skills`、`/api/core/agents`、`/api/core/mcp/servers` |
+| **workspace** | 对外/用户/应用库 | `~/.aiplat/{skills,agents,mcps}` | `/workspace/*` | `/api/core/workspace/*` |
+
+说明：
+- **执行控制权始终在 core 引擎**（Harness/Runtime），分离仅影响“内容来源与权限边界”。
+- **禁止覆盖**：workspace 不允许创建与 engine 同名（同 id）的内容。
+
 ## 二、功能模块
 
 ### 2.1 执行引擎管理

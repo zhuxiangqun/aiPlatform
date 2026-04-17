@@ -63,6 +63,44 @@
 
 ---
 
+## Engine vs Workspace（目录与管理边界）
+
+为保证“核心引擎稳定性”与“对外应用可定制”两者兼得，目录化的 Agent / Skill / MCP 配置按 **scope** 严格分离：
+
+### 目录结构
+
+- **引擎内置（engine，仅核心能力层使用）**
+  - `aiPlat-core/core/engine/agents/<agent_id>/AGENT.md`
+  - `aiPlat-core/core/engine/skills/<skill_id>/SKILL.md`
+  - `aiPlat-core/core/engine/mcps/<server>/{server.yaml,policy.yaml}`
+
+- **应用库（workspace，对外/用户可用）**
+  - `~/.aiplat/agents/<agent_id>/AGENT.md`
+  - `~/.aiplat/skills/<skill_id>/SKILL.md`
+  - `~/.aiplat/mcps/<server>/{server.yaml,policy.yaml}`
+
+### 关键规则（强约束）
+
+1. **执行控制权不变**：无论来自 engine 还是 workspace，执行都由 core 的 Harness/Runtime 统一控制（工具调用、审批、审计等）。
+2. **禁止覆盖**：workspace 不能创建/更新与 engine 同名（同 id）的 agent/skill/mcp（严格 namespace 隔离）。
+3. **权限与生命周期**：
+   - engine：通常只读/受控更新（不允许硬删除）
+   - workspace：可创建/编辑/删除（面向用户公开使用）
+
+### 环境变量（可选覆盖）
+
+按 scope 分开配置：
+
+- Skills：
+  - `AIPLAT_ENGINE_SKILLS_PATH` / `AIPLAT_ENGINE_SKILLS_PATHS`
+  - `AIPLAT_WORKSPACE_SKILLS_PATH` / `AIPLAT_WORKSPACE_SKILLS_PATHS`
+- Agents：
+  - `AIPLAT_ENGINE_AGENTS_PATH` / `AIPLAT_ENGINE_AGENTS_PATHS`
+  - `AIPLAT_WORKSPACE_AGENTS_PATH` / `AIPLAT_WORKSPACE_AGENTS_PATHS`
+- MCPs：
+  - `AIPLAT_ENGINE_MCPS_PATH` / `AIPLAT_ENGINE_MCPS_PATHS`
+  - `AIPLAT_WORKSPACE_MCPS_PATH` / `AIPLAT_WORKSPACE_MCPS_PATHS`
+
 ## 概述
 
 aiPlat-core 是 AI 中台的核心层，负责 AI 能力的核心实现。本层提供智能体编排、技能管理、记忆系统、知识管理等核心 AI 能力，是整个平台的技术核心。

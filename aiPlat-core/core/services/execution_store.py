@@ -1847,6 +1847,8 @@ class ExecutionStore:
         *,
         target_type: Optional[str] = None,
         target_id: Optional[str] = None,
+        kind: Optional[str] = None,
+        status: Optional[str] = None,
         trace_id: Optional[str] = None,
         run_id: Optional[str] = None,
         limit: int = 50,
@@ -1867,6 +1869,12 @@ class ExecutionStore:
                 if target_id:
                     clauses.append("target_id=?")
                     params.append(target_id)
+                if kind:
+                    clauses.append("kind=?")
+                    params.append(kind)
+                if status:
+                    clauses.append("status=?")
+                    params.append(status)
                 if trace_id:
                     clauses.append("trace_id=?")
                     params.append(trace_id)

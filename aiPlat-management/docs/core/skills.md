@@ -210,6 +210,10 @@
 
 ## 三、API 端点
 
+> 本章 API 以“scope 分离”为准：  
+> - **核心能力层（engine）**：`/api/core/skills/*`（management 侧透传为前端 `/core/skills/*`）  
+> - **对外应用库（workspace）**：`/api/core/workspace/skills/*`（management 侧透传为前端 `/core/workspace/skills/*`）
+
 ### 3.1 Skill 注册管理
 
 ```python
@@ -221,6 +225,16 @@ Response: {
   "total": 50,
   "enabled": 45,
   "disabled": 5
+}
+
+# 获取 Workspace Skill 列表（对外应用库）
+GET /api/core/workspace/skills
+Query: ?category=generation&status=enabled&limit=100&offset=0
+Response: {
+  "skills": [...],
+  "total": 50,
+  "limit": 100,
+  "offset": 0
 }
 
 # 注册 Skill
@@ -358,6 +372,50 @@ Response: {
     "agent-003": 567
   }
 }
+
+# 注册 Workspace Skill（对外应用库）
+POST /api/core/workspace/skills
+Body: {
+  "name": "文案生成",
+  "category": "generation",
+  "description": "根据提示生成各类文本内容"
+}
+```
+
+### 3.2 Skill 执行（engine / workspace）
+
+```python
+# 执行 engine Skill
+POST /api/core/skills/{skill_id}/execute
+Body: { "input": {...}, "context": {...} }
+
+# 执行 workspace Skill
+POST /api/core/workspace/skills/{skill_id}/execute
+Body: { "input": {...}, "context": {...} }
+```
+
+### 3.3 Skill 版本与回滚（engine / workspace）
+
+```python
+# 版本列表
+GET /api/core/skills/{skill_id}/versions
+GET /api/core/workspace/skills/{skill_id}/versions
+
+# Active version
+GET /api/core/skills/{skill_id}/active-version
+GET /api/core/workspace/skills/{skill_id}/active-version
+
+# 回滚到指定版本
+POST /api/core/skills/{skill_id}/versions/{version}/rollback
+POST /api/core/workspace/skills/{skill_id}/versions/{version}/rollback
+```
+
+### 3.4 执行历史（engine / workspace）
+
+```python
+# Skill 执行历史
+GET /api/core/skills/{skill_id}/executions
+GET /api/core/workspace/skills/{skill_id}/executions
 ```
 
 **注意**：Skill 与 Agent 的绑定关系在 Agent 管理中维护（参见 [智能体管理](agents.md)），此 API 仅用于查询。

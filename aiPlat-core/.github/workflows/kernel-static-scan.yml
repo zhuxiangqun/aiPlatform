@@ -60,3 +60,4 @@ jobs:
           pytest -q core/tests/integration/test_phase625_rollback_approval_gate.py
           pytest -q core/tests/integration/test_phase626_cleanup_rollback_approvals.py
           pytest -q core/tests/integration/test_phase627_cleanup_rollback_approvals_pagination_filters.py
+          pytest -q core/tests/integration/test_learning_api_phase6.py

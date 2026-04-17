@@ -29,7 +29,15 @@ const InfraMonitoring = lazy(() => import('./pages/Infra/Monitoring/Monitoring')
 const CoreAgents = lazy(() => import('./pages/Core/Agents/Agents'));
 const CoreSkills = lazy(() => import('./pages/Core/Skills/Skills'));
 const CoreTools = lazy(() => import('./pages/Core/Tools/Tools'));
+const CoreMCP = lazy(() => import('./pages/Core/MCP/MCP'));
 const CoreMemory = lazy(() => import('./pages/Core/Memory/Memory'));
+const WorkspaceAgents = lazy(() => import('./pages/Workspace/Agents/Agents'));
+const WorkspaceSkills = lazy(() => import('./pages/Workspace/Skills/Skills'));
+const WorkspaceMCP = lazy(() => import('./pages/Workspace/MCP/MCP'));
+const CoreLearningArtifacts = lazy(() => import('./pages/Core/Learning/Artifacts'));
+const CoreLearningArtifactDetail = lazy(() => import('./pages/Core/Learning/Artifacts/ArtifactDetail'));
+const CoreApprovals = lazy(() => import('./pages/Core/Learning/Approvals'));
+const CoreReleases = lazy(() => import('./pages/Core/Learning/Releases'));
 const PlatformGateway = lazy(() => import('./pages/Platform/Gateway/Gateway'));
 const PlatformAuth = lazy(() => import('./pages/Platform/Auth/Auth'));
 const PlatformTenant = lazy(() => import('./pages/Platform/Tenant/Tenant'));
@@ -60,7 +68,15 @@ const router = createBrowserRouter([
       { path: 'core/agents', element: withSuspense(CoreAgents) },
       { path: 'core/skills', element: withSuspense(CoreSkills) },
       { path: 'core/tools', element: withSuspense(CoreTools) },
+      { path: 'core/mcp', element: withSuspense(CoreMCP) },
       { path: 'core/memory', element: withSuspense(CoreMemory) },
+      { path: 'workspace/agents', element: withSuspense(WorkspaceAgents) },
+      { path: 'workspace/skills', element: withSuspense(WorkspaceSkills) },
+      { path: 'workspace/mcp', element: withSuspense(WorkspaceMCP) },
+      { path: 'core/learning/artifacts', element: withSuspense(CoreLearningArtifacts) },
+      { path: 'core/learning/artifacts/:artifactId', element: withSuspense(CoreLearningArtifactDetail) },
+      { path: 'core/learning/releases', element: withSuspense(CoreReleases) },
+      { path: 'core/approvals', element: withSuspense(CoreApprovals) },
       { path: 'platform/gateway', element: withSuspense(PlatformGateway) },
       { path: 'platform/auth', element: withSuspense(PlatformAuth) },
       { path: 'platform/tenant', element: withSuspense(PlatformTenant) },

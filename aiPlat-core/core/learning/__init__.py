@@ -27,6 +27,8 @@ from .pipeline import (
     artifact_from_prompt_revision,
     artifact_from_regression_decision,
 )
+
+from .autorollback import auto_rollback_regression, cleanup_rollback_approvals
 from .release import build_release_candidate
 from .apply import LearningApplier, ActiveRelease
 
@@ -45,6 +47,8 @@ __all__ = [
     "artifact_from_skill_rollback",
     "artifact_from_prompt_revision",
     "artifact_from_regression_decision",
+    "auto_rollback_regression",
+    "cleanup_rollback_approvals",
     "build_release_candidate",
     "LearningApplier",
     "ActiveRelease",

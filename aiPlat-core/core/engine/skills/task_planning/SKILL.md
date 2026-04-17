@@ -1,0 +1,24 @@
+---
+name: task_planning
+display_name: 任务规划
+description: 将目标拆解为可执行计划（引擎内置）。
+category: execution
+version: 1.0.0
+status: enabled
+protected: true
+execution_mode: inline
+input_schema:
+  goal:
+    type: string
+    required: true
+output_schema:
+  plan:
+    type: string
+---
+
+# 任务规划（Engine）
+
+## SOP
+1. 明确目标/范围/验收标准/截止时间。
+2. 分阶段拆解步骤并标注依赖与风险。
+3. 每阶段给出验证方式与回滚建议。

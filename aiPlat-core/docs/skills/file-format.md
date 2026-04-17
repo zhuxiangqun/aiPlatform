@@ -23,6 +23,16 @@
 | scripts/ 执行 | `core/apps/skills/script_runner.py: ScriptRunner` | ✅ 已实现（sandboxed） |
 | 目录发现 | `SkillDiscovery.discover()` | ✅ 已实现（但需明确扫描目录与注册策略） |
 
+> **扫描目录约定（As-Is）**：HTTP Server 启动时按 scope 扫描目录化技能：  
+> - engine 默认：`aiPlat-core/core/engine/skills/`  
+> - workspace 默认：`~/.aiplat/skills/`  
+>
+> 可覆盖（按 scope 分开配置）：  
+> - `AIPLAT_ENGINE_SKILLS_PATH` / `AIPLAT_ENGINE_SKILLS_PATHS`  
+> - `AIPLAT_WORKSPACE_SKILLS_PATH` / `AIPLAT_WORKSPACE_SKILLS_PATHS`  
+>
+> 目录化技能应放在对应目录下，每个技能一个子目录，子目录内必须包含 `SKILL.md`。
+
 ### 1.2 缺失/未闭环功能（As-Is）
 
 | 优先级 | 功能 | 当前状态 |
