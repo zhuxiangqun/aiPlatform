@@ -312,19 +312,19 @@ class ModelManager:
             return None
         return self._providers.get(model.provider)
     
-    async def get_status(self) -> str:
+    async def get_status(self) -> Status:
         """获取状态"""
         available_count = sum(1 for m in self._models.values() if m.status == ModelStatus.AVAILABLE)
         total_count = len(self._models)
         
         if total_count == 0:
-            return "unknown"
+            return Status.UNKNOWN
         elif available_count == total_count:
-            return "healthy"
+            return Status.HEALTHY
         elif available_count > 0:
-            return "degraded"
+            return Status.DEGRADED
         else:
-            return "unhealthy"
+            return Status.UNHEALTHY
     
     async def health_check(self) -> HealthStatus:
         """健康检查"""

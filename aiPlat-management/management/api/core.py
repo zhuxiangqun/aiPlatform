@@ -10,7 +10,7 @@ Architecture:
 """
 
 from fastapi import APIRouter, HTTPException, Query
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 import httpx
 
 from ..core_client import CoreAPIClient, CoreAPIClientConfig
