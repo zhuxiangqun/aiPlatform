@@ -430,6 +430,21 @@ class FileOperationsTool(BaseTool):
                     "content": {
                         "type": "string",
                         "description": "Content for write operation"
+                    },
+                    "recursive": {
+                        "type": "boolean",
+                        "description": "For list operation: whether to walk recursively",
+                        "default": False
+                    },
+                    "max_entries": {
+                        "type": "integer",
+                        "description": "For list operation: max number of returned entries",
+                        "default": 2000
+                    },
+                    "max_bytes": {
+                        "type": "integer",
+                        "description": "For read/write: max bytes allowed",
+                        "default": 200000
                     }
                 },
                 "required": ["operation", "path"]
@@ -444,42 +459,116 @@ class FileOperationsTool(BaseTool):
     async def execute(self, params: Dict[str, Any]) -> ToolResult:
         """Execute file operation"""
         start_time = time.time()
-        
+
         try:
-            operation = params.get("operation")
-            path = params.get("path")
-            content = params.get("content", "")
-            
-            # Placeholder - in production would use actual file system
-            result = f"Operation {operation} on {path}"
-            
+            import os
+            from pathlib import Path
+
+            operation = (params.get("operation") or "").strip().lower()
+            raw_path = str(params.get("path") or "").strip()
+            content = str(params.get("content") or "")
+            recursive = bool(params.get("recursive", False))
+            max_entries = int(params.get("max_entries", 2000) or 2000)
+            max_bytes = int(params.get("max_bytes", 200000) or 200000)  # 200KB
+
+            if not raw_path:
+                raise ValueError("path is required")
+
+            # ---- Allowlist roots (required for safety) ----
+            roots_raw = os.environ.get("AIPLAT_FILE_OPERATIONS_ALLOWED_ROOTS", "").strip()
+            if not roots_raw:
+                raise PermissionError("file_operations is disabled: AIPLAT_FILE_OPERATIONS_ALLOWED_ROOTS is empty")
+
+            roots: list[str] = []
+            for chunk in roots_raw.split(os.pathsep):
+                for p in chunk.split(","):
+                    if p.strip():
+                        roots.append(p.strip())
+
+            # Resolve and enforce within allowed roots
+            target = Path(raw_path).expanduser()
+            if not target.is_absolute():
+                raise PermissionError("path must be absolute")
+            try:
+                target_resolved = Path(os.path.realpath(str(target)))
+            except Exception:
+                target_resolved = target
+
+            allowed = False
+            for r in roots:
+                rp = Path(os.path.realpath(str(Path(r).expanduser())))
+                # allow exact root or subpath
+                if str(target_resolved) == str(rp) or str(target_resolved).startswith(str(rp) + os.sep):
+                    allowed = True
+                    break
+            if not allowed:
+                raise PermissionError("path is not under allowed roots")
+
+            def _list_dir(p: Path) -> list[str]:
+                out: list[str] = []
+                if not p.exists():
+                    return out
+                if not p.is_dir():
+                    return [str(p)]
+                if recursive:
+                    for root, dirs, files in os.walk(str(p)):
+                        # best-effort: skip very large walks
+                        for d in dirs:
+                            out.append(os.path.join(root, d) + os.sep)
+                            if len(out) >= max_entries:
+                                return out
+                        for f in files:
+                            out.append(os.path.join(root, f))
+                            if len(out) >= max_entries:
+                                return out
+                else:
+                    for x in sorted(p.iterdir(), key=lambda t: t.name):
+                        out.append(str(x) + (os.sep if x.is_dir() else ""))
+                        if len(out) >= max_entries:
+                            break
+                return out
+
             if operation == "list":
-                result = ["file1.txt", "file2.txt", "dir1/"]
+                result = _list_dir(target_resolved)
             elif operation == "read":
-                result = f"Content of {path}"
+                if target_resolved.is_dir():
+                    raise ValueError("path is a directory; use operation=list")
+                if not target_resolved.exists():
+                    raise FileNotFoundError("file not found")
+                # limit file size
+                size = target_resolved.stat().st_size
+                if size > max_bytes:
+                    raise ValueError(f"file too large (> {max_bytes} bytes)")
+                result = target_resolved.read_text(encoding="utf-8", errors="replace")
             elif operation == "write":
-                result = f"Wrote to {path}"
+                if os.environ.get("AIPLAT_FILE_OPERATIONS_ALLOW_WRITE", "false").lower() not in {"1", "true", "yes", "y"}:
+                    raise PermissionError("write is disabled by policy (set AIPLAT_FILE_OPERATIONS_ALLOW_WRITE=true)")
+                if target_resolved.is_dir():
+                    raise ValueError("cannot write to a directory path")
+                # ensure parent exists
+                target_resolved.parent.mkdir(parents=True, exist_ok=True)
+                if len(content.encode("utf-8", errors="ignore")) > max_bytes:
+                    raise ValueError(f"content too large (> {max_bytes} bytes)")
+                target_resolved.write_text(content, encoding="utf-8")
+                result = "ok"
             elif operation == "delete":
-                result = f"Deleted {path}"
-            
+                if os.environ.get("AIPLAT_FILE_OPERATIONS_ALLOW_DELETE", "false").lower() not in {"1", "true", "yes", "y"}:
+                    raise PermissionError("delete is disabled by policy (set AIPLAT_FILE_OPERATIONS_ALLOW_DELETE=true)")
+                if target_resolved.is_dir():
+                    raise ValueError("refuse to delete directories")
+                if target_resolved.exists():
+                    target_resolved.unlink()
+                result = "ok"
+            else:
+                raise ValueError("Invalid operation (read|write|list|delete)")
+
             latency = time.time() - start_time
             self._update_stats(True, latency)
-            
-            return ToolResult(
-                success=True,
-                output=result,
-                latency=latency
-            )
-            
+            return ToolResult(success=True, output=result, latency=latency)
         except Exception as e:
             latency = time.time() - start_time
             self._update_stats(False, latency)
-            
-            return ToolResult(
-                success=False,
-                error=str(e),
-                latency=latency
-            )
+            return ToolResult(success=False, error=str(e), latency=latency)
 
 
 class ToolRegistry:
