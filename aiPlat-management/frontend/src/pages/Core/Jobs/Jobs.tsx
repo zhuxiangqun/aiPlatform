@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Plus, RotateCw, PlayCircle, PauseCircle, Trash2, Clock, ExternalLink, Copy } from 'lucide-react';
 import PageHeader from '../../../components/common/PageHeader';
 import { Button, Modal, Input, Textarea, toast, Table } from '../../../components/ui';
-import { jobApi, type Job, type JobRun } from '../../../services';
+import { jobApi, agentApi, skillApi, toolApi, type Job, type JobRun } from '../../../services';
 
 const shortId = (id: string) => (id && id.length > 12 ? `${id.slice(0, 6)}…${id.slice(-4)}` : id);
 
@@ -40,6 +40,44 @@ const Jobs: React.FC = () => {
   const [payloadText, setPayloadText] = useState('{\n  "input": {}\n}');
   const [optionsText, setOptionsText] = useState('{\n  "toolset": "workspace_default"\n}');
   const [deliveryText, setDeliveryText] = useState('');
+  const [targetSuggestions, setTargetSuggestions] = useState<{ value: string; label: string }[]>([]);
+  const [targetsLoading, setTargetsLoading] = useState(false);
+
+  const loadTargets = async (k: 'agent' | 'skill' | 'tool' | 'graph') => {
+    // graph 暂不提供可选列表（后续可做：列出内置 graph_name）
+    if (k === 'graph') {
+      setTargetSuggestions([]);
+      return;
+    }
+    setTargetsLoading(true);
+    try {
+      if (k === 'agent') {
+        const res = await agentApi.list({ limit: 200, offset: 0 });
+        const opts = (res.agents || []).map((a) => ({ value: a.id, label: `${a.name} (${a.id})` }));
+        setTargetSuggestions(opts);
+      } else if (k === 'skill') {
+        const res = await skillApi.list({ limit: 200, offset: 0 });
+        const opts = (res.skills || []).map((s) => ({ value: s.id, label: `${s.name} (${s.id})` }));
+        setTargetSuggestions(opts);
+      } else if (k === 'tool') {
+        const res = await toolApi.list({ limit: 200, offset: 0 });
+        const opts = (res.tools || []).map((t) => ({ value: t.name, label: `${t.name}${t.category ? ` (${t.category})` : ''}` }));
+        setTargetSuggestions(opts);
+      }
+    } catch (e: any) {
+      setTargetSuggestions([]);
+      toast.error('加载 target 列表失败', String(e?.message || ''));
+    } finally {
+      setTargetsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (createOpen || editOpen) {
+      loadTargets(kind);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [createOpen, editOpen, kind]);
 
   const setToolsetQuick = (toolset: 'safe_readonly' | 'workspace_default' | 'full') => {
     try {
@@ -413,7 +451,23 @@ const Jobs: React.FC = () => {
                 <option value="graph">graph</option>
               </select>
             </div>
-            <Input label="target_id" value={targetId} onChange={(e: any) => setTargetId(e.target.value)} />
+            <div>
+              <Input
+                label={`target_id${targetsLoading ? '（加载中...）' : ''}`}
+                value={targetId}
+                list="job-target-datalist"
+                onChange={(e: any) => setTargetId(e.target.value)}
+                placeholder={kind === 'tool' ? '例如：calculator' : '例如：<id>'}
+              />
+              <datalist id="job-target-datalist">
+                {targetSuggestions.map((x) => (
+                  <option key={x.value} value={x.value}>
+                    {x.label}
+                  </option>
+                ))}
+              </datalist>
+              <div className="text-xs text-gray-500 mt-1">提示：可手动输入，也可从浏览器下拉建议中选择</div>
+            </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input label="cron（5段）" value={cron} onChange={(e: any) => setCron(e.target.value)} />
@@ -488,6 +542,22 @@ const Jobs: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input label="user_id" value={userId} onChange={(e: any) => setUserId(e.target.value)} />
             <Input label="session_id" value={sessionId} onChange={(e: any) => setSessionId(e.target.value)} />
+          </div>
+          <div>
+            <Input
+              label={`target_id${targetsLoading ? '（加载中...）' : ''}`}
+              value={targetId}
+              list="job-target-datalist-edit"
+              onChange={(e: any) => setTargetId(e.target.value)}
+            />
+            <datalist id="job-target-datalist-edit">
+              {targetSuggestions.map((x) => (
+                <option key={x.value} value={x.value}>
+                  {x.label}
+                </option>
+              ))}
+            </datalist>
+            <div className="text-xs text-gray-500 mt-1">提示：可手动输入，也可从浏览器下拉建议中选择</div>
           </div>
           <Textarea label="payload（JSON）" rows={8} value={payloadText} onChange={(e: any) => setPayloadText(e.target.value)} />
           <Textarea label="options（JSON，可选）" rows={6} value={optionsText} onChange={(e: any) => setOptionsText(e.target.value)} />
