@@ -1001,3 +1001,54 @@ export const harnessApi = {
     return apiClient.get<{ metrics: Record<string, unknown> }>('/core/harness/metrics');
   },
 };
+
+// ==================== Runs API (Platform execution contract) ====================
+
+export interface RunSummary {
+  run_id: string;
+  kind?: string;
+  target_type?: string;
+  target_id?: string;
+  trace_id?: string | null;
+  status?: string;
+  start_time?: number | null;
+  end_time?: number | null;
+  error_code?: string | null;
+  error_message?: string | null;
+  error?: { code?: string; message?: string } | null;
+  user_id?: string | null;
+  session_id?: string | null;
+}
+
+export interface RunEvent {
+  seq: number;
+  type: string;
+  created_at?: number;
+  trace_id?: string | null;
+  tenant_id?: string | null;
+  payload?: Record<string, unknown>;
+}
+
+export const runApi = {
+  get: async (runId: string) => {
+    return apiClient.get<RunSummary>(`/core/runs/${encodeURIComponent(runId)}`);
+  },
+  listEvents: async (runId: string, params: { after_seq?: number; limit?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.after_seq != null) q.set('after_seq', String(params.after_seq));
+    if (params.limit != null) q.set('limit', String(params.limit));
+    const qs = q.toString();
+    return apiClient.get<{ items: RunEvent[]; after_seq: number; last_seq: number }>(
+      `/core/runs/${encodeURIComponent(runId)}/events${qs ? `?${qs}` : ''}`
+    );
+  },
+  wait: async (runId: string, params: { timeout_ms?: number; after_seq?: number } = {}) => {
+    return apiClient.post<{ run: RunSummary; events: RunEvent[]; after_seq: number; last_seq: number; done: boolean }>(
+      `/core/runs/${encodeURIComponent(runId)}/wait`,
+      {
+        timeout_ms: params.timeout_ms ?? 30000,
+        after_seq: params.after_seq ?? 0,
+      }
+    );
+  },
+};
