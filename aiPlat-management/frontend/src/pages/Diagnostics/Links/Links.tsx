@@ -153,8 +153,11 @@ const Links: React.FC = () => {
         title: 'error',
         dataIndex: 'error',
         render: (val: any, row: any) => {
-          const detailMsg = row?.metadata?.error_detail?.message;
-          const text = typeof detailMsg === 'string' && detailMsg ? detailMsg : (typeof val === 'string' ? val : '');
+          const detail = row?.metadata?.error_detail;
+          const detailCode = typeof detail?.code === 'string' ? detail.code : (typeof row?.error_code === 'string' ? row.error_code : '');
+          const detailMsg = typeof detail?.message === 'string' ? detail.message : '';
+          const text0 = detailMsg || (typeof val === 'string' ? val : '');
+          const text = detailCode ? `[${detailCode}] ${text0}` : text0;
           if (!text) return <span className="text-xs text-gray-500">-</span>;
           const short = text.length > 80 ? `${text.slice(0, 77)}...` : text;
           const isFailed = String(row?.status || '').toLowerCase().includes('fail');

@@ -127,7 +127,9 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
 
               {(result.error || result.error_detail?.message) && (
                 <div className="text-xs text-red-300 mb-2">
-                  失败原因：{String(result.error_detail?.message || result.error)}
+                  失败原因：
+                  {result.error_detail?.code ? `[${String(result.error_detail.code)}] ` : ''}
+                  {String(result.error_detail?.message || result.error)}
                 </div>
               )}
 

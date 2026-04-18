@@ -156,7 +156,12 @@ class HarnessIntegration:
             return await self._execute_tool(request)
         if request.kind == "graph":
             return await self._execute_graph(request)
-        return ExecutionResult(ok=False, error=f"Unsupported kind: {request.kind}", http_status=400)
+        return ExecutionResult(
+            ok=False,
+            error=f"Unsupported kind: {request.kind}",
+            error_detail=self._error_detail("UNSUPPORTED_KIND", f"Unsupported kind: {request.kind}"),
+            http_status=400,
+        )
 
     # -----------------------------
     # Roadmap-0: error normalization
@@ -166,6 +171,25 @@ class HarnessIntegration:
         if isinstance(extra, dict) and extra:
             d["extra"] = extra
         return d
+
+    def _fail(
+        self,
+        *,
+        code: str,
+        message: str,
+        http_status: int,
+        trace_id: Optional[str] = None,
+        run_id: Optional[str] = None,
+    ) -> "ExecutionResult":
+        """Create a standardized failure ExecutionResult (Roadmap-0)."""
+        return ExecutionResult(
+            ok=False,
+            error=message,
+            error_detail=self._error_detail(code, message),
+            http_status=http_status,
+            trace_id=trace_id,
+            run_id=run_id,
+        )
 
     def _normalize_error(
         self,
@@ -220,20 +244,20 @@ class HarnessIntegration:
 
         runtime = self._runtime
         if runtime is None or runtime.agent_manager is None:
-            return ExecutionResult(ok=False, error="Kernel runtime not initialized", http_status=503)
+            return self._fail(code="NOT_INITIALIZED", message="Kernel runtime not initialized", http_status=503)
 
         agent_id = req.target_id
         registry = get_agent_registry()
         agent = registry.get(agent_id)
         if not agent:
-            return ExecutionResult(ok=False, error=f"Agent {agent_id} not found", http_status=404)
+            return self._fail(code="NOT_FOUND", message=f"Agent {agent_id} not found", http_status=404)
 
         user_id = req.user_id or (req.payload.get("user_id") if isinstance(req.payload, dict) else None) or "system"
         perm_mgr = get_permission_manager()
         if not perm_mgr.check_permission(user_id, agent_id, Permission.EXECUTE):
-            return ExecutionResult(
-                ok=False,
-                error=f"User '{user_id}' lacks EXECUTE permission for agent '{agent_id}'",
+            return self._fail(
+                code="PERMISSION_DENIED",
+                message=f"User '{user_id}' lacks EXECUTE permission for agent '{agent_id}'",
                 http_status=403,
             )
 
@@ -262,9 +286,9 @@ class HarnessIntegration:
             tool_registry = get_tool_registry()
             for tool_name in agent_info.tools:
                 if not perm_mgr.check_permission(user_id, tool_name, Permission.EXECUTE):
-                    return ExecutionResult(
-                        ok=False,
-                        error=f"User '{user_id}' lacks EXECUTE permission for tool '{tool_name}'",
+                    return self._fail(
+                        code="PERMISSION_DENIED",
+                        message=f"User '{user_id}' lacks EXECUTE permission for tool '{tool_name}'",
                         http_status=403,
                     )
                 tool = tool_registry.get(tool_name)
@@ -649,6 +673,11 @@ class HarnessIntegration:
                 },
                 trace_id=trace_id,
                 run_id=execution_id,
+                error_detail=self._normalize_error(
+                    error=result.error,
+                    metadata=meta,
+                    fallback_message=str(result.error or "执行失败"),
+                ),
             )
         except Exception as e:
             if runtime.execution_store:
@@ -675,7 +704,7 @@ class HarnessIntegration:
                     await runtime.trace_service.end_trace(trace_id, status=SpanStatus.FAILED)
                 except Exception:
                     pass
-            return ExecutionResult(ok=False, error=str(e), http_status=500, trace_id=trace_id, run_id=execution_id)
+            return self._fail(code="EXCEPTION", message=str(e), http_status=500, trace_id=trace_id, run_id=execution_id)
 
     async def _execute_skill(self, req: "ExecutionRequest") -> "ExecutionResult":
         from core.apps.tools.permission import get_permission_manager, Permission
@@ -683,16 +712,16 @@ class HarnessIntegration:
 
         runtime = self._runtime
         if runtime is None or runtime.skill_manager is None:
-            return ExecutionResult(ok=False, error="Kernel runtime not initialized", http_status=503)
+            return self._fail(code="NOT_INITIALIZED", message="Kernel runtime not initialized", http_status=503)
 
         skill_id = req.target_id
         user_id = req.user_id or (req.payload.get("context", {}) or {}).get("user_id", "system")
 
         perm_mgr = get_permission_manager()
         if not perm_mgr.check_permission(user_id, skill_id, Permission.EXECUTE):
-            return ExecutionResult(
-                ok=False,
-                error=f"User '{user_id}' lacks EXECUTE permission for skill '{skill_id}'",
+            return self._fail(
+                code="PERMISSION_DENIED",
+                message=f"User '{user_id}' lacks EXECUTE permission for skill '{skill_id}'",
                 http_status=403,
             )
 
@@ -760,7 +789,7 @@ class HarnessIntegration:
                 mode=payload.get("mode", "inline"),
             )
         except Exception as e:
-            return ExecutionResult(ok=False, error=str(e), http_status=500, trace_id=trace_id)
+            return self._fail(code="EXCEPTION", message=str(e), http_status=500, trace_id=trace_id)
         finally:
             if workspace_token is not None:
                 try:
@@ -839,6 +868,11 @@ class HarnessIntegration:
             },
             trace_id=trace_id,
             run_id=execution.id,
+            error_detail=self._normalize_error(
+                error=execution.error,
+                metadata={"skill_id": execution.skill_id, "status": execution.status},
+                fallback_message=str(execution.error or "执行失败"),
+            ),
         )
 
     async def _execute_tool(self, req: "ExecutionRequest") -> "ExecutionResult":
@@ -849,7 +883,7 @@ class HarnessIntegration:
         registry = get_tool_registry()
         tool = registry.get(req.target_id)
         if not tool:
-            return ExecutionResult(ok=False, error=f"Tool {req.target_id} not found", http_status=404)
+            return self._fail(code="NOT_FOUND", message=f"Tool {req.target_id} not found", http_status=404)
 
         payload = req.payload or {}
         input_data = payload.get("input", {}) if isinstance(payload, dict) else {}
@@ -938,11 +972,16 @@ class HarnessIntegration:
                 },
                 trace_id=trace_id,
                 run_id=run_id,
+                error_detail=self._normalize_error(
+                    error=getattr(result, "error", None) or None,
+                    metadata=getattr(result, "metadata", {}) or {},
+                    fallback_message=str(getattr(result, "error", None) or "执行失败"),
+                ),
             )
         except asyncio.TimeoutError:
-            return ExecutionResult(ok=False, error="Tool execution timed out (60s)", http_status=504)
+            return self._fail(code="TIMEOUT", message="Tool execution timed out (60s)", http_status=504, trace_id=trace_id, run_id=run_id)
         except Exception as e:
-            return ExecutionResult(ok=False, error=str(e), http_status=500)
+            return self._fail(code="EXCEPTION", message=str(e), http_status=500, trace_id=trace_id, run_id=run_id)
         finally:
             if runtime and runtime.trace_service and trace_id:
                 try:
@@ -965,7 +1004,7 @@ class HarnessIntegration:
 
         runtime = self._runtime
         if runtime is None or runtime.execution_store is None:
-            return ExecutionResult(ok=False, error="ExecutionStore not initialized", http_status=503)
+            return self._fail(code="NOT_INITIALIZED", message="ExecutionStore not initialized", http_status=503)
 
         payload = req.payload or {}
         messages = payload.get("messages") or []

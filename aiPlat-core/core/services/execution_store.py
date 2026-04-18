@@ -43,7 +43,7 @@ class ExecutionStoreConfig:
 
 
 class ExecutionStore:
-    CURRENT_SCHEMA_VERSION = 16
+    CURRENT_SCHEMA_VERSION = 17
 
     def __init__(self, config: ExecutionStoreConfig):
         self._config = config
@@ -590,6 +590,27 @@ class ExecutionStore:
                         conn.execute("CREATE INDEX IF NOT EXISTS idx_spi_scope_time ON skill_pack_installs(scope, installed_at DESC);")
                         _set_version(16)
                         current = 16
+
+                    # ---- Migration v17: error_code columns for executions (Roadmap-0 hardening) ----
+                    if current < 17:
+                        try:
+                            conn.execute("ALTER TABLE agent_executions ADD COLUMN error_code TEXT;")
+                        except Exception:
+                            pass
+                        try:
+                            conn.execute("ALTER TABLE skill_executions ADD COLUMN error_code TEXT;")
+                        except Exception:
+                            pass
+                        try:
+                            conn.execute("CREATE INDEX IF NOT EXISTS idx_agent_exec_error_code ON agent_executions(error_code);")
+                        except Exception:
+                            pass
+                        try:
+                            conn.execute("CREATE INDEX IF NOT EXISTS idx_skill_exec_error_code ON skill_executions(error_code);")
+                        except Exception:
+                            pass
+                        _set_version(17)
+                        current = 17
 
                     # If legacy db exists with tables but without meta, upgrade meta to current
                     if current < self.CURRENT_SCHEMA_VERSION:
@@ -1401,6 +1422,8 @@ class ExecutionStore:
                         "duration_ms": r["duration_ms"],
                         "trace_id": r["trace_id"],
                         "error": r["error"],
+                        "error_code": r["error_code"] if "error_code" in r.keys() else None,
+                        "metadata": _json_loads(r["metadata_json"]) if "metadata_json" in r.keys() else None,
                     }
                     for r in agent_rows
                 ]
@@ -1415,6 +1438,8 @@ class ExecutionStore:
                         "trace_id": r["trace_id"],
                         "user_id": r["user_id"],
                         "error": r["error"],
+                        "error_code": r["error_code"] if "error_code" in r.keys() else None,
+                        "metadata": _json_loads(r["metadata_json"]) if "metadata_json" in r.keys() else None,
                     }
                     for r in skill_rows
                 ]
@@ -1804,6 +1829,15 @@ class ExecutionStore:
         await self.init()
         db_path = self._config.db_path
 
+        meta = record.get("metadata") or {}
+        error_code = record.get("error_code")
+        if not error_code:
+            try:
+                if isinstance(meta, dict) and isinstance(meta.get("error_detail"), dict):
+                    error_code = meta.get("error_detail", {}).get("code")
+            except Exception:
+                error_code = None
+
         payload = (
             record.get("id"),
             record.get("agent_id"),
@@ -1811,11 +1845,12 @@ class ExecutionStore:
             _json_dumps(record.get("input")),
             _json_dumps(record.get("output")),
             record.get("error"),
+            error_code,
             float(record.get("start_time") or 0.0),
             float(record.get("end_time") or 0.0),
             int(record.get("duration_ms") or 0),
             record.get("trace_id"),
-            _json_dumps(record.get("metadata") or {}),
+            _json_dumps(meta),
             record.get("approval_request_id"),
             time.time(),
         )
@@ -1826,14 +1861,15 @@ class ExecutionStore:
                 conn.execute(
                     """
                     INSERT INTO agent_executions
-                      (id, agent_id, status, input_json, output_json, error, start_time, end_time, duration_ms, trace_id, metadata_json, approval_request_id, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                      (id, agent_id, status, input_json, output_json, error, error_code, start_time, end_time, duration_ms, trace_id, metadata_json, approval_request_id, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(id) DO UPDATE SET
                       agent_id=excluded.agent_id,
                       status=excluded.status,
                       input_json=excluded.input_json,
                       output_json=excluded.output_json,
                       error=excluded.error,
+                      error_code=excluded.error_code,
                       start_time=excluded.start_time,
                       end_time=excluded.end_time,
                       duration_ms=excluded.duration_ms,
@@ -1870,6 +1906,7 @@ class ExecutionStore:
                     "input": _json_loads(row["input_json"]),
                     "output": _json_loads(row["output_json"]),
                     "error": row["error"],
+                    "error_code": row["error_code"] if "error_code" in row.keys() else None,
                     "start_time": row["start_time"],
                     "end_time": row["end_time"],
                     "duration_ms": row["duration_ms"],
@@ -1921,6 +1958,7 @@ class ExecutionStore:
                             "input": _json_loads(row["input_json"]),
                             "output": _json_loads(row["output_json"]),
                             "error": row["error"],
+                            "error_code": row["error_code"] if "error_code" in row.keys() else None,
                             "start_time": row["start_time"],
                             "end_time": row["end_time"],
                             "duration_ms": row["duration_ms"],
@@ -2129,6 +2167,7 @@ class ExecutionStore:
                             "input": _json_loads(row["input_json"]),
                             "output": _json_loads(row["output_json"]),
                             "error": row["error"],
+                            "error_code": row["error_code"] if "error_code" in row.keys() else None,
                             "start_time": row["start_time"],
                             "end_time": row["end_time"],
                             "duration_ms": row["duration_ms"],
@@ -2149,6 +2188,15 @@ class ExecutionStore:
         await self.init()
         db_path = self._config.db_path
 
+        meta = record.get("metadata") or {}
+        error_code = record.get("error_code")
+        if not error_code:
+            try:
+                if isinstance(meta, dict) and isinstance(meta.get("error_detail"), dict):
+                    error_code = meta.get("error_detail", {}).get("code")
+            except Exception:
+                error_code = None
+
         payload = (
             record.get("id"),
             record.get("skill_id"),
@@ -2156,12 +2204,13 @@ class ExecutionStore:
             _json_dumps(record.get("input")),
             _json_dumps(record.get("output")),
             record.get("error"),
+            error_code,
             float(record.get("start_time") or 0.0),
             float(record.get("end_time") or 0.0),
             int(record.get("duration_ms") or 0),
             record.get("user_id"),
             record.get("trace_id"),
-            _json_dumps(record.get("metadata") or {}),
+            _json_dumps(meta),
             time.time(),
         )
 
@@ -2171,14 +2220,15 @@ class ExecutionStore:
                 conn.execute(
                     """
                     INSERT INTO skill_executions
-                      (id, skill_id, status, input_json, output_json, error, start_time, end_time, duration_ms, user_id, trace_id, metadata_json, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                      (id, skill_id, status, input_json, output_json, error, error_code, start_time, end_time, duration_ms, user_id, trace_id, metadata_json, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(id) DO UPDATE SET
                       skill_id=excluded.skill_id,
                       status=excluded.status,
                       input_json=excluded.input_json,
                       output_json=excluded.output_json,
                       error=excluded.error,
+                      error_code=excluded.error_code,
                       start_time=excluded.start_time,
                       end_time=excluded.end_time,
                       duration_ms=excluded.duration_ms,
@@ -2215,6 +2265,7 @@ class ExecutionStore:
                     "input": _json_loads(row["input_json"]),
                     "output": _json_loads(row["output_json"]),
                     "error": row["error"],
+                    "error_code": row["error_code"] if "error_code" in row.keys() else None,
                     "start_time": row["start_time"],
                     "end_time": row["end_time"],
                     "duration_ms": row["duration_ms"],
@@ -2258,6 +2309,7 @@ class ExecutionStore:
                             "input": _json_loads(row["input_json"]),
                             "output": _json_loads(row["output_json"]),
                             "error": row["error"],
+                            "error_code": row["error_code"] if "error_code" in row.keys() else None,
                             "start_time": row["start_time"],
                             "end_time": row["end_time"],
                             "duration_ms": row["duration_ms"],

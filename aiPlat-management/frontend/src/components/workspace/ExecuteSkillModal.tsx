@@ -177,7 +177,10 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
             </pre>
           )}
           {(result.error || (result as any)?.error_detail?.message) && !result.output && (
-            <div className="text-xs text-red-300 mt-2">{String((result as any)?.error_detail?.message || result.error)}</div>
+            <div className="text-xs text-red-300 mt-2">
+              {(result as any)?.error_detail?.code ? `[${String((result as any).error_detail.code)}] ` : ''}
+              {String((result as any)?.error_detail?.message || result.error)}
+            </div>
           )}
 
           {(result as any)?.execution_id && (

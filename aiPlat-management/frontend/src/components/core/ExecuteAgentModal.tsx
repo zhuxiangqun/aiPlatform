@@ -11,7 +11,7 @@ interface ExecuteAgentModalProps {
 const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onClose }) => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ status: string; execution_id?: string; output?: unknown; error?: string } | null>(null);
+  const [result, setResult] = useState<{ status: string; execution_id?: string; output?: unknown; error?: string; error_detail?: any } | null>(null);
 
   const handleExecute = async () => {
     if (!agent) return;
@@ -28,7 +28,7 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
       const result = await agentApi.execute(agent.id, { input: parsedInput });
       const status = String((result as any)?.status || 'ok');
       const execution_id = (result as any)?.execution_id ? String((result as any).execution_id) : undefined;
-      setResult({ status, execution_id, output: (result as any)?.output, error: (result as any)?.error });
+      setResult({ status, execution_id, output: (result as any)?.output, error: (result as any)?.error, error_detail: (result as any)?.error_detail });
       toast.success(status === 'success' || status === 'completed' ? '执行成功' : `状态: ${status}`);
     } catch (e: any) {
       const msg = String(e?.message || e?.detail || '执行失败');
@@ -73,8 +73,12 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
             </span>
           </div>
 
-          {result.error && (
-            <div className="text-xs text-red-300 mb-2">失败原因：{result.error}</div>
+          {(result.error || result.error_detail) && (
+            <div className="text-xs text-red-300 mb-2">
+              失败原因：
+              {result.error_detail?.code ? `[${String(result.error_detail.code)}] ` : ''}
+              {String(result.error_detail?.message || result.error || '')}
+            </div>
           )}
 
           {result.output !== undefined && result.output !== null && (
