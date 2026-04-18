@@ -159,8 +159,10 @@ const Skills: React.FC = () => {
       key: 'actions',
       width: 180,
       align: 'center' as const,
-      render: (_: unknown, record: Skill) => (
-        <div className="flex items-center justify-center gap-1">
+      render: (_: unknown, record: Skill) => {
+        const isProtected = Boolean((record as any)?.metadata?.protected === true || (record as any)?.protected === true);
+        return (
+          <div className="flex items-center justify-center gap-1">
           <button
             onClick={() => setDetailModal({ open: true, skill: record })}
             className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors"
@@ -183,13 +185,15 @@ const Skills: React.FC = () => {
           >
             <Play className="w-4 h-4" />
           </button>
-          <button
-            onClick={() => { setEditSkill(record); setEditModalOpen(true); }}
-            className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors"
-            title="编辑"
-          >
-            <Pencil className="w-4 h-4" />
-          </button>
+          {!isProtected && (
+            <button
+              onClick={() => { setEditSkill(record); setEditModalOpen(true); }}
+              className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors"
+              title="编辑"
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
+          )}
           {((record.status || '').toLowerCase() === 'deprecated') && (
             <button
               onClick={() => handleRestore(record)}
@@ -199,22 +203,27 @@ const Skills: React.FC = () => {
               <RotateCcw className="w-4 h-4" />
             </button>
           )}
-          <button
-            onClick={() => setDeleteConfirm({ open: true, skill: record, hard: false })}
-            className="p-1.5 rounded-lg text-amber-300 hover:bg-dark-hover transition-colors"
-            title="弃用（soft delete）"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setDeleteConfirm({ open: true, skill: record, hard: true })}
-            className="p-1.5 rounded-lg text-error hover:bg-error-light transition-colors"
-            title="彻底删除（hard delete）"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+          {!isProtected && (
+            <>
+              <button
+                onClick={() => setDeleteConfirm({ open: true, skill: record, hard: false })}
+                className="p-1.5 rounded-lg text-amber-300 hover:bg-dark-hover transition-colors"
+                title="弃用（soft delete）"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setDeleteConfirm({ open: true, skill: record, hard: true })}
+                className="p-1.5 rounded-lg text-error hover:bg-error-light transition-colors"
+                title="彻底删除（hard delete）"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </>
+          )}
         </div>
-      ),
+        );
+      },
     },
   ];
 

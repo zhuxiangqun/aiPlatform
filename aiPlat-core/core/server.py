@@ -11,6 +11,7 @@ from typing import Optional, List, Dict, Any
 from contextlib import asynccontextmanager
 from datetime import datetime
 import os
+import shutil
 import uvicorn
 
 from core.schemas import (
@@ -264,6 +265,28 @@ async def lifespan(app: FastAPI):
         _mcp_manager = MCPManager(scope="engine")
     except Exception:
         _mcp_manager = None
+
+    # Workspace seeds (user-facing). Best-effort materialization into ~/.aiplat (do NOT overwrite).
+    # This ensures "workspace skills" can exist out-of-the-box while keeping engine minimal and stable.
+    try:
+        from pathlib import Path
+
+        seeds_dir = Path(__file__).resolve().parent / "workspace_seeds" / "skills"
+        workspace_dir = Path.home() / ".aiplat" / "skills"
+        if seeds_dir.exists():
+            workspace_dir.mkdir(parents=True, exist_ok=True)
+            for item in seeds_dir.iterdir():
+                if not item.is_dir():
+                    continue
+                dst = workspace_dir / item.name
+                if dst.exists():
+                    continue
+                try:
+                    shutil.copytree(item, dst)
+                except Exception:
+                    pass
+    except Exception:
+        pass
 
     # Workspace managers (user-facing). Strictly separated: no override of engine ids.
     try:
@@ -1649,13 +1672,16 @@ async def get_skill(skill_id: str):
 async def update_skill(skill_id: str, request: dict):
     """Update skill"""
     from core.schemas import SkillUpdateRequest
-    skill = await _skill_manager.update_skill(
-        skill_id,
-        name=request.get("name"),
-        description=request.get("description"),
-        config=request.get("config"),
-        metadata=request.get("metadata")
-    )
+    try:
+        skill = await _skill_manager.update_skill(
+            skill_id,
+            name=request.get("name"),
+            description=request.get("description"),
+            config=request.get("config"),
+            metadata=request.get("metadata")
+        )
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     if not skill:
         raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
     return {"status": "updated"}
@@ -1664,7 +1690,10 @@ async def update_skill(skill_id: str, request: dict):
 @api_router.delete("/skills/{skill_id}")
 async def delete_skill(skill_id: str, delete_files: bool = False):
     """Delete skill (default: soft delete; delete_files=true for hard delete)."""
-    success = await _skill_manager.delete_skill(skill_id, delete_files=delete_files)
+    try:
+        success = await _skill_manager.delete_skill(skill_id, delete_files=delete_files)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     if not success:
         raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
     return {"status": "deleted" if delete_files else "deprecated"}

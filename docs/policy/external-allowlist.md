@@ -54,16 +54,24 @@
 |---|---:|:---:|:---:|:---:|---|
 | `translation` | L0 | ✅ | ✅ | ✅ | 翻译（低风险） |
 | `summarization` | L0 | ✅ | ✅ | ✅ | 总结（低风险） |
-| `chitchat` | L0 | ✅ | ✅ | ✅ | 闲聊/引导（可选） |
 | `knowledge_retrieval` | L1 | ✅ | ✅ | ✅ | 检索增强（建议加审计） |
-| `information_search` | L1 | ✅ | ✅ | ⚠️ | prod 建议只走受控数据源，避免公网抓取 |
-| `data_analysis` | L1 | ✅ | ✅ | ✅ | 前提：数据来源合规（脱敏） |
 | `task_planning` | L0 | ✅ | ✅ | ✅ | 规划（不含执行） |
 | `task_decomposition` | L0 | ✅ | ✅ | ✅ | 分解（不含执行） |
 | `text_generation` | L0 | ✅ | ✅ | ✅ | 文本生成（内容安全另行约束） |
-| `code_review` | L1 | ✅ | ✅ | ✅ | 代码审查（注意不泄露私有仓库） |
-| `code_generation` | L1 | ✅ | ✅ | ⚠️ | prod 需配套代码安全策略 |
-| `api_calling` | L2 | ✅ | ✅ | ❌ | 会触发外部 API 调用，prod 默认禁用或需强审批 |
+
+### 3.1.1 Workspace 默认技能（seeds）
+
+> 下列能力不再作为 engine 内置能力对外暴露，而是以 **workspace seeds** 形式提供默认模板：  
+> core 启动时会将其（若不存在）materialize 到 `~/.aiplat/skills/*`，由应用库自行启用/配置，并按环境走白名单/审批。
+
+| workspace skill_id | 风险级别 | dev | staging | prod | 默认状态 | 备注 |
+|---|---:|:---:|:---:|:---:|:---:|---|
+| `chitchat` | L0 | ✅ | ✅ | ✅ | enabled | 闲聊/引导（对外体验能力） |
+| `data_analysis` | L1 | ✅ | ✅ | ✅ | enabled | 数据需合规（建议脱敏） |
+| `code_review` | L1 | ✅ | ✅ | ✅ | enabled | 注意代码/日志脱敏与权限隔离 |
+| `information_search` | L1 | ✅ | ✅ | ⚠️ | disabled | prod 建议只走受控数据源 |
+| `code_generation` | L1 | ✅ | ✅ | ⚠️ | disabled | prod 需配套代码安全策略 |
+| `api_calling` | L2 | ✅ | ✅ | ❌ | disabled | 外部 API 调用，prod 默认禁用或强审批 |
 
 ### 3.2 Engine Agents（核心能力层内置 Agent）
 
@@ -97,4 +105,3 @@
    - 回滚方案
    - 影响面（哪些 workspace app / agent 会受影响）
 2. prod 白名单调整建议走评审与灰度。
-

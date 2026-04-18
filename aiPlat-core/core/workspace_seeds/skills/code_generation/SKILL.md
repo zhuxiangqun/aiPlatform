@@ -1,11 +1,11 @@
 ---
 name: code_generation
 display_name: 代码生成
-description: 根据需求生成代码。引擎内置（engine）：仅核心能力层默认可用；对外（workspace）需白名单/审批后方可调用。
+description: 根据需求生成代码。应用库默认技能（workspace）：对外可用；生产环境建议白名单/审批后方可调用。
 category: generation
 version: 1.0.0
 status: disabled
-protected: true
+protected: false
 execution_mode: inline
 input_schema:
   requirements:
@@ -22,11 +22,12 @@ output_schema:
     type: string
 ---
 
-# 代码生成（Engine）
+# 代码生成（Workspace）
 
-> 默认禁用：引擎层按需启用。
+> 默认禁用：对外生成代码通常需要适配团队规范（lint/test/依赖/框架），建议在应用库封装后启用并配合审计。
 
 ## SOP
 1. 明确输入输出、边界条件、错误处理与测试策略。
 2. 生成可运行的最小实现（MVP），提供运行命令与文件结构。
 3. 再补充可维护性（类型/注释/测试）。
+

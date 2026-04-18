@@ -498,6 +498,12 @@ class SkillManager:
         skill = self._skills.get(skill_id)
         if not skill:
             return None
+
+        # Engine skills marked as protected are core capabilities and should not be edited via API.
+        # Use versions/rollback and enable/disable instead.
+        if (self._scope or "engine").strip().lower() == "engine":
+            if isinstance(getattr(skill, "metadata", None), dict) and skill.metadata.get("protected") is True:
+                raise PermissionError("Protected engine skill cannot be edited")
         
         if name:
             skill.name = name
@@ -663,6 +669,10 @@ class SkillManager:
         skill = self._skills.get(skill_id)
         if not skill:
             return False
+
+        if (self._scope or "engine").strip().lower() == "engine":
+            if isinstance(getattr(skill, "metadata", None), dict) and skill.metadata.get("protected") is True:
+                raise PermissionError("Protected engine skill cannot be deleted")
 
         now_iso = datetime.utcnow().isoformat()
 
