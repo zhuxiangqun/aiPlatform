@@ -667,6 +667,64 @@ export const jobApi = {
   },
 };
 
+// ==================== Gateway Admin API (pairings / tokens) ====================
+
+export interface GatewayPairing {
+  id: string;
+  channel: string;
+  channel_user_id: string;
+  user_id: string;
+  session_id?: string | null;
+  tenant_id?: string | null;
+  metadata?: any;
+  created_at?: number | null;
+  updated_at?: number | null;
+}
+
+export interface GatewayToken {
+  id: string;
+  name: string;
+  tenant_id?: string | null;
+  enabled: boolean | number;
+  created_at?: number | null;
+  metadata?: any;
+}
+
+export const gatewayAdminApi = {
+  listPairings: async (params: { limit?: number; offset?: number; channel?: string; user_id?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (params.limit != null) q.set('limit', String(params.limit));
+    if (params.offset != null) q.set('offset', String(params.offset));
+    if (params.channel) q.set('channel', params.channel);
+    if (params.user_id) q.set('user_id', params.user_id);
+    const qs = q.toString();
+    return apiClient.get<{ items: GatewayPairing[]; total: number; limit: number; offset: number }>(`/core/gateway/pairings${qs ? `?${qs}` : ''}`);
+  },
+  upsertPairing: async (data: { channel: string; channel_user_id: string; user_id: string; session_id?: string; tenant_id?: string; metadata?: any }) => {
+    return apiClient.post<GatewayPairing>(`/core/gateway/pairings`, data);
+  },
+  deletePairing: async (params: { channel: string; channel_user_id: string }) => {
+    const q = new URLSearchParams();
+    q.set('channel', params.channel);
+    q.set('channel_user_id', params.channel_user_id);
+    return apiClient.delete<{ status: string }>(`/core/gateway/pairings?${q.toString()}`);
+  },
+  listTokens: async (params: { limit?: number; offset?: number; enabled?: boolean } = {}) => {
+    const q = new URLSearchParams();
+    if (params.limit != null) q.set('limit', String(params.limit));
+    if (params.offset != null) q.set('offset', String(params.offset));
+    if (params.enabled != null) q.set('enabled', params.enabled ? 'true' : 'false');
+    const qs = q.toString();
+    return apiClient.get<{ items: GatewayToken[]; total: number; limit: number; offset: number }>(`/core/gateway/tokens${qs ? `?${qs}` : ''}`);
+  },
+  createToken: async (data: { name: string; token: string; tenant_id?: string; enabled?: boolean; metadata?: any }) => {
+    return apiClient.post<GatewayToken>(`/core/gateway/tokens`, data);
+  },
+  deleteToken: async (tokenId: string) => {
+    return apiClient.delete<{ status: string; token_id: string }>(`/core/gateway/tokens/${tokenId}`);
+  },
+};
+
 // ==================== Memory API ====================
 
 export interface MemorySession {

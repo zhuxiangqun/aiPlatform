@@ -14,6 +14,7 @@ export { modelApi } from './modelApi';
 
 // 核心能力层 API
 export { agentApi, skillApi, memoryApi, knowledgeApi, harnessApi, toolApi, learningApi, approvalsApi, jobApi, skillPackApi } from './coreApi';
+export { gatewayAdminApi } from './coreApi';
 
 // Legacy monitoring API (for layer metrics)
 export { monitoringApi as layerMonitoringApi } from './apiClient';
@@ -48,6 +49,8 @@ export type {
   Job,
   JobRun,
   JobDeliveryDLQItem,
+  GatewayPairing,
+  GatewayToken,
   SkillPack,
   SkillPackVersion,
   SkillPackInstall,
