@@ -51,6 +51,9 @@ class SkillExecuteRequest(BaseModel):
     input: Dict[str, Any] = Field(default_factory=dict)
     context: Optional[Dict[str, Any]] = None
     mode: str = "inline"
+    # Roadmap-2: runtime governance hints (e.g. toolset).
+    # This is optional and forward-compatible.
+    options: Optional[Dict[str, Any]] = None
 
 
 class MessageCreateRequest(BaseModel):

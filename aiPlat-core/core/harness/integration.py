@@ -616,6 +616,8 @@ class HarnessIntegration:
                         metadata=meta,
                         fallback_message=str(result.error or "执行失败"),
                     ),
+                    "trace_id": trace_id,
+                    "run_id": execution_id,
                     "duration_ms": record["duration_ms"],
                     "metadata": meta,
                 },
@@ -779,6 +781,7 @@ class HarnessIntegration:
                     fallback_message=str(execution.error or "执行失败"),
                 ),
                 "trace_id": trace_id,
+                "run_id": execution.id,
                 "start_time": execution.start_time.isoformat() if execution.start_time else None,
                 "end_time": execution.end_time.isoformat() if execution.end_time else None,
                 "duration_ms": execution.duration_ms,
@@ -856,6 +859,8 @@ class HarnessIntegration:
             return ExecutionResult(
                 ok=True,
                 payload={
+                    "execution_id": run_id,
+                    "status": "completed" if getattr(result, "success", True) else "failed",
                     "success": getattr(result, "success", True),
                     "output": getattr(result, "output", str(result)),
                     "error": getattr(result, "error", None) or None,

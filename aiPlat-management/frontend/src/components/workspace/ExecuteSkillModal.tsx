@@ -11,7 +11,7 @@ interface ExecuteSkillModalProps {
 
 const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onClose }) => {
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ status: string; output?: unknown; error?: string; duration_ms?: number } | null>(null);
+  const [result, setResult] = useState<{ status: string; output?: unknown; error?: string; error_detail?: any; duration_ms?: number } | null>(null);
   const [inputText, setInputText] = useState('');
   const [helpLoading, setHelpLoading] = useState(false);
   const [helpMarkdown, setHelpMarkdown] = useState<string>('');
@@ -176,7 +176,9 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
               {typeof result.output === 'string' ? result.output : JSON.stringify(result.output as object, null, 2)}
             </pre>
           )}
-          {result.error && !result.output && <div className="text-xs text-red-300 mt-2">{result.error}</div>}
+          {(result.error || (result as any)?.error_detail?.message) && !result.output && (
+            <div className="text-xs text-red-300 mt-2">{String((result as any)?.error_detail?.message || result.error)}</div>
+          )}
 
           {(result as any)?.execution_id && (
             <div className="mt-3 flex items-center justify-end">

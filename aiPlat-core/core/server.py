@@ -2114,7 +2114,12 @@ async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest):
     exec_req = ExecutionRequest(
         kind="skill",
         target_id=skill_id,
-        payload={"input": request.input, "context": request.context or {}, "mode": getattr(request, "mode", "inline")},
+        payload={
+            "input": request.input,
+            "context": request.context or {},
+            "mode": getattr(request, "mode", "inline"),
+            "options": getattr(request, "options", None) or None,
+        },
         user_id=user_id,
         session_id=(request.context or {}).get("session_id", "default"),
     )
@@ -2716,7 +2721,12 @@ async def execute_skill(skill_id: str, request: SkillExecuteRequest):
     exec_req = ExecutionRequest(
         kind="skill",
         target_id=skill_id,
-        payload={"input": request.input, "context": request.context or {}, "mode": getattr(request, "mode", "inline")},
+        payload={
+            "input": request.input,
+            "context": request.context or {},
+            "mode": getattr(request, "mode", "inline"),
+            "options": getattr(request, "options", None) or None,
+        },
         user_id=user_id,
         session_id=(request.context or {}).get("session_id", "default"),
     )
