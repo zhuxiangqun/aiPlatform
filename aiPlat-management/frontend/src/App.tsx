@@ -51,6 +51,7 @@ const DiagnosticsTraceDetail = lazy(() => import('./pages/Diagnostics/Traces/Tra
 const DiagnosticsGraphs = lazy(() => import('./pages/Diagnostics/Graphs/Graphs'));
 const DiagnosticsGraphRunDetail = lazy(() => import('./pages/Diagnostics/Graphs/GraphRunDetail'));
 const DiagnosticsLinks = lazy(() => import('./pages/Diagnostics/Links/Links'));
+const DiagnosticsSyscalls = lazy(() => import('./pages/Diagnostics/Syscalls'));
 
 const router = createBrowserRouter([
   {
@@ -92,6 +93,7 @@ const router = createBrowserRouter([
       { path: 'diagnostics/graphs', element: withSuspense(DiagnosticsGraphs) },
       { path: 'diagnostics/graphs/:runId', element: withSuspense(DiagnosticsGraphRunDetail) },
       { path: 'diagnostics/links', element: withSuspense(DiagnosticsLinks) },
+      { path: 'diagnostics/syscalls', element: withSuspense(DiagnosticsSyscalls) },
     ],
   },
 ]);

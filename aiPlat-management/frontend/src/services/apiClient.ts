@@ -155,6 +155,33 @@ export const diagnosticsApi = {
     const qs = q.toString();
     return apiClient.get<any>(`/diagnostics/links/core/ui${qs ? `?${qs}` : ''}`);
   },
+
+  listSyscalls: async (params: {
+    limit?: number;
+    offset?: number;
+    trace_id?: string;
+    run_id?: string;
+    kind?: string;
+    name?: string;
+    status?: string;
+    error_contains?: string;
+    approval_request_id?: string;
+    span_id?: string;
+  } = {}) => {
+    const q = new URLSearchParams();
+    if (params.limit != null) q.set('limit', String(params.limit));
+    if (params.offset != null) q.set('offset', String(params.offset));
+    if (params.trace_id) q.set('trace_id', params.trace_id);
+    if (params.run_id) q.set('run_id', params.run_id);
+    if (params.kind) q.set('kind', params.kind);
+    if (params.name) q.set('name', params.name);
+    if (params.status) q.set('status', params.status);
+    if (params.error_contains) q.set('error_contains', params.error_contains);
+    if (params.approval_request_id) q.set('approval_request_id', params.approval_request_id);
+    if (params.span_id) q.set('span_id', params.span_id);
+    const qs = q.toString();
+    return apiClient.get<any>(`/diagnostics/syscalls/core${qs ? `?${qs}` : ''}`);
+  },
 };
 
 // Monitoring API (legacy - for layer metrics)
