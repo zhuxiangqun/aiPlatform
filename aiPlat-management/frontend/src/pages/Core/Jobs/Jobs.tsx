@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Plus, RotateCw, PlayCircle, PauseCircle, Trash2, Clock, ExternalLink, Copy } from 'lucide-react';
 import PageHeader from '../../../components/common/PageHeader';
 import { Button, Modal, Input, Textarea, toast, Table } from '../../../components/ui';
-import { jobApi, agentApi, skillApi, toolApi, type Job, type JobRun } from '../../../services';
+import { jobApi, agentApi, skillApi, toolApi, type Job, type JobRun, type JobDeliveryDLQItem } from '../../../services';
 
 const shortId = (id: string) => (id && id.length > 12 ? `${id.slice(0, 6)}…${id.slice(-4)}` : id);
 
@@ -31,6 +31,14 @@ const Jobs: React.FC = () => {
   const [runsOffset, setRunsOffset] = useState(0);
   const runsLimit = 50;
   const [highlightRunId, setHighlightRunId] = useState<string | null>(null);
+
+  const [dlqOpen, setDlqOpen] = useState(false);
+  const [dlqLoading, setDlqLoading] = useState(false);
+  const [dlqItems, setDlqItems] = useState<JobDeliveryDLQItem[]>([]);
+  const [dlqTotal, setDlqTotal] = useState(0);
+  const [dlqStatus, setDlqStatus] = useState<'pending' | 'resolved' | ''>('pending');
+  const [dlqOffset, setDlqOffset] = useState(0);
+  const dlqLimit = 50;
 
   // form
   const [name, setName] = useState('');
@@ -161,6 +169,59 @@ const Jobs: React.FC = () => {
   useEffect(() => {
     loadJobs();
   }, []);
+
+  const loadDLQ = async () => {
+    setDlqLoading(true);
+    try {
+      const res = await jobApi.listDLQ({
+        limit: dlqLimit,
+        offset: dlqOffset,
+        status: dlqStatus || undefined,
+        job_id: selectedJob?.id || undefined,
+      });
+      setDlqItems(res.items || []);
+      setDlqTotal(res.total || 0);
+    } catch (e: any) {
+      toast.error('加载 DLQ 失败', String(e?.message || ''));
+      setDlqItems([]);
+      setDlqTotal(0);
+    } finally {
+      setDlqLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (dlqOpen) loadDLQ();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dlqOpen, dlqOffset, dlqStatus, selectedJob?.id]);
+
+  const openDLQ = (job: Job) => {
+    setSelectedJob(job);
+    setDlqOffset(0);
+    setDlqStatus('pending');
+    setDlqOpen(true);
+  };
+
+  const retryDLQ = async (id: string) => {
+    try {
+      const res = await jobApi.retryDLQ(id);
+      if (res?.ok) toast.success('重试成功');
+      else toast.error('重试失败', String(res?.error || ''));
+      await loadDLQ();
+    } catch (e: any) {
+      toast.error('重试失败', String(e?.message || ''));
+    }
+  };
+
+  const deleteDLQ = async (id: string) => {
+    try {
+      await jobApi.deleteDLQ(id);
+      toast.success('已删除 DLQ 记录');
+      await loadDLQ();
+    } catch (e: any) {
+      toast.error('删除失败', String(e?.message || ''));
+    }
+  };
 
   const openCreate = () => {
     resetForm();
@@ -368,6 +429,9 @@ const Jobs: React.FC = () => {
             <Button variant="secondary" onClick={() => openRuns(job)} icon={<Clock size={14} />}>
               runs
             </Button>
+            <Button variant="secondary" onClick={() => openDLQ(job)} icon={<Clock size={14} />}>
+              DLQ
+            </Button>
             <Button variant="secondary" onClick={() => openEdit(job)}>
               编辑
             </Button>
@@ -385,6 +449,49 @@ const Jobs: React.FC = () => {
       },
     ],
     []
+  );
+
+  const dlqColumns = useMemo(
+    () => [
+      {
+        key: 'id',
+        title: 'id',
+        width: 120,
+        render: (_: unknown, r: any) => <code className="text-xs text-gray-400">{shortId(String(r.id || ''))}</code>,
+      },
+      { key: 'status', title: 'status', width: 90, render: (_: unknown, r: any) => <span className="text-gray-300">{String(r.status || '')}</span> },
+      { key: 'attempts', title: 'attempts', width: 90, render: (_: unknown, r: any) => <span className="text-gray-400">{Number(r.attempts || 0)}</span> },
+      { key: 'run_id', title: 'run_id', width: 140, render: (_: unknown, r: any) => <code className="text-xs text-gray-400">{shortId(String(r.run_id || ''))}</code> },
+      { key: 'url', title: 'url', width: 220, render: (_: unknown, r: any) => <span className="text-gray-400">{String(r.url || '-')}</span> },
+      { key: 'error', title: 'error', render: (_: unknown, r: any) => <span className="text-gray-400">{String(r.error || '-')}</span> },
+      {
+        key: 'action',
+        title: '操作',
+        width: 220,
+        align: 'center' as const,
+        render: (_: unknown, r: any) => (
+          <div className="flex items-center justify-center gap-2">
+            <Button size="sm" variant="secondary" onClick={() => retryDLQ(String(r.id))} disabled={dlqLoading || String(r.status) !== 'pending'}>
+              重试
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => deleteDLQ(String(r.id))} disabled={dlqLoading}>
+              删除
+            </Button>
+            {r.run_id ? (
+              <Button
+                size="sm"
+                variant="secondary"
+                icon={<ExternalLink size={14} />}
+                onClick={() => window.open(`/diagnostics/links?execution_id=${encodeURIComponent(String(r.run_id))}`, '_blank', 'noopener,noreferrer')}
+              >
+                Links
+              </Button>
+            ) : null}
+          </div>
+        ),
+      },
+    ],
+    [dlqLoading],
   );
 
   return (
@@ -719,6 +826,53 @@ const Jobs: React.FC = () => {
               ))}
             </div>
           )}
+        </div>
+      </Modal>
+
+      <Modal
+        open={dlqOpen}
+        onClose={() => setDlqOpen(false)}
+        title={`Delivery DLQ: ${selectedJob?.name || ''}`}
+        width={1100}
+        footer={
+          <>
+            <Button variant="secondary" onClick={loadDLQ} loading={dlqLoading}>
+              刷新
+            </Button>
+            <Button variant="secondary" onClick={() => setDlqOpen(false)}>
+              关闭
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-end gap-3">
+            <Input label="job_id" value={selectedJob?.id || ''} onChange={() => {}} disabled />
+            <Input
+              label="status"
+              value={dlqStatus}
+              placeholder="pending/resolved"
+              onChange={(e: any) => {
+                setDlqOffset(0);
+                setDlqStatus((e.target.value || '') as any);
+              }}
+            />
+          </div>
+          <div className="text-xs text-gray-500">提示：该列表展示 webhook delivery 多次失败后的死信记录，可手动重试或删除。</div>
+          <div className="bg-dark-card rounded-xl border border-dark-border overflow-hidden">
+            <Table columns={dlqColumns as any} data={dlqItems} rowKey="id" loading={dlqLoading} emptyText="暂无 DLQ 记录" />
+          </div>
+          <div className="flex items-center justify-between text-sm text-gray-400">
+            <div>total: {dlqTotal}</div>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" onClick={() => setDlqOffset(Math.max(0, dlqOffset - dlqLimit))} disabled={dlqOffset <= 0}>
+                上一页
+              </Button>
+              <Button variant="secondary" onClick={() => setDlqOffset(dlqOffset + dlqLimit)} disabled={dlqOffset + dlqLimit >= dlqTotal}>
+                下一页
+              </Button>
+            </div>
+          </div>
         </div>
       </Modal>
     </div>

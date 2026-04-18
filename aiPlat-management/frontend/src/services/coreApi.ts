@@ -576,6 +576,20 @@ export interface JobRun {
   created_at?: number | null;
 }
 
+export interface JobDeliveryDLQItem {
+  id: string;
+  job_id: string;
+  run_id?: string | null;
+  url?: string | null;
+  delivery?: any;
+  payload?: any;
+  attempts: number;
+  error?: string | null;
+  status: 'pending' | 'resolved' | string;
+  created_at?: number | null;
+  resolved_at?: number | null;
+}
+
 export const jobApi = {
   list: async (params: { limit?: number; offset?: number; enabled?: boolean } = {}) => {
     const q = new URLSearchParams();
@@ -632,6 +646,24 @@ export const jobApi = {
     if (params.offset != null) q.set('offset', String(params.offset));
     const qs = q.toString();
     return apiClient.get<{ items: JobRun[]; total: number; limit: number; offset: number }>(`/core/jobs/${jobId}/runs${qs ? `?${qs}` : ''}`);
+  },
+
+  listDLQ: async (params: { status?: string; job_id?: string; limit?: number; offset?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.limit != null) q.set('limit', String(params.limit));
+    if (params.offset != null) q.set('offset', String(params.offset));
+    if (params.status) q.set('status', params.status);
+    if (params.job_id) q.set('job_id', params.job_id);
+    const qs = q.toString();
+    return apiClient.get<{ items: JobDeliveryDLQItem[]; total: number; limit: number; offset: number }>(`/core/jobs/dlq${qs ? `?${qs}` : ''}`);
+  },
+
+  retryDLQ: async (dlqId: string) => {
+    return apiClient.post<any>(`/core/jobs/dlq/${dlqId}/retry`, {});
+  },
+
+  deleteDLQ: async (dlqId: string) => {
+    return apiClient.delete<{ status: string; dlq_id: string }>(`/core/jobs/dlq/${dlqId}`);
   },
 };
 

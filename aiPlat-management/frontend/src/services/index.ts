@@ -47,6 +47,7 @@ export type {
   ApprovalRequestSummary,
   Job,
   JobRun,
+  JobDeliveryDLQItem,
   SkillPack,
   SkillPackVersion,
   SkillPackInstall,
