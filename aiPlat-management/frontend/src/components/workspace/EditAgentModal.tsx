@@ -42,11 +42,26 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
         agent ? workspaceAgentApi.getSkills(agent.id) : Promise.resolve({ skill_ids: [] as string[] } as any),
         agent ? workspaceAgentApi.getTools(agent.id) : Promise.resolve({ tool_ids: [] as string[] } as any),
       ]);
-      setSkillOptions((skillRes.skills || []).map((s: any) => ({ value: s.id, label: s.name })));
-      setToolOptions((toolRes.tools || []).map((t: any) => ({ value: t.name, label: t.description || t.name })));
+      const baseSkillOptions = (skillRes.skills || []).map((s: any) => ({ value: s.id, label: s.name }));
+      const baseToolOptions = (toolRes.tools || []).map((t: any) => ({ value: t.name, label: t.description || t.name }));
+
+      const selectedSkillIds: string[] = ((agentSkills as any).skill_ids || agent?.skills || []) as string[];
+      const selectedToolIds: string[] = ((agentTools as any).tool_ids || agent?.tools || []) as string[];
+
+      const skillSet = new Set(baseSkillOptions.map((o: any) => o.value));
+      const toolSet = new Set(baseToolOptions.map((o: any) => o.value));
+      const missingSkillOptions = selectedSkillIds
+        .filter((id) => id && !skillSet.has(id))
+        .map((id) => ({ value: id, label: `${id}（未在 Skill 库中找到）` }));
+      const missingToolOptions = selectedToolIds
+        .filter((id) => id && !toolSet.has(id))
+        .map((id) => ({ value: id, label: `${id}（未在 Tool 列表中找到）` }));
+
+      setSkillOptions([...baseSkillOptions, ...missingSkillOptions]);
+      setToolOptions([...baseToolOptions, ...missingToolOptions]);
       if (agent) {
-        setSkills((agentSkills as any).skill_ids || agent.skills || []);
-        setTools((agentTools as any).tool_ids || agent.tools || []);
+        setSkills(selectedSkillIds);
+        setTools(selectedToolIds);
       }
     } catch {
       setSkillOptions([]);

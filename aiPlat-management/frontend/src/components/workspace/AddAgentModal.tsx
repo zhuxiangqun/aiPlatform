@@ -69,8 +69,19 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
         workspaceSkillApi.list({ limit: 200 }),
         toolApi.list({ limit: 200 } as any),
       ]);
-      setSkillOptions((skillRes.skills || []).map((s: any) => ({ value: s.id, label: s.name })));
-      setToolOptions((toolRes.tools || []).map((t: any) => ({ value: t.name, label: t.description || t.name })));
+      const baseSkillOptions = (skillRes.skills || []).map((s: any) => ({ value: s.id, label: s.name }));
+      const baseToolOptions = (toolRes.tools || []).map((t: any) => ({ value: t.name, label: t.description || t.name }));
+      // If user already selected ids not present in options, keep them visible.
+      const skillSet = new Set(baseSkillOptions.map((o: any) => o.value));
+      const toolSet = new Set(baseToolOptions.map((o: any) => o.value));
+      const missingSkillOptions = (skills || [])
+        .filter((id) => id && !skillSet.has(id))
+        .map((id) => ({ value: id, label: `${id}（未在 Skill 库中找到）` }));
+      const missingToolOptions = (tools || [])
+        .filter((id) => id && !toolSet.has(id))
+        .map((id) => ({ value: id, label: `${id}（未在 Tool 列表中找到）` }));
+      setSkillOptions([...baseSkillOptions, ...missingSkillOptions]);
+      setToolOptions([...baseToolOptions, ...missingToolOptions]);
     } catch {
       setSkillOptions([]);
       setToolOptions([]);
