@@ -4065,9 +4065,23 @@ async def execute_tool(tool_name: str, request: dict):
     )
     result = await harness.execute(exec_req)
     if not result.ok:
-        # keep legacy behavior: return 200 with success=false
-        return {"success": False, "error": result.error or "Execution failed", "latency": 0}
-    return result.payload
+        # Keep legacy behavior: return 200 with success=false, but enrich with status + error_detail.
+        msg = result.error or "Execution failed"
+        return {
+            "success": False,
+            "status": "failed",
+            "error": msg,
+            "error_detail": {"code": "EXECUTION_FAILED", "message": msg},
+            "latency": 0,
+            "trace_id": result.trace_id,
+            "run_id": result.run_id,
+        }
+    # Normalize tool execute response to include status for UI consistency.
+    payload = dict(result.payload or {})
+    payload.setdefault("status", "completed" if payload.get("success") else "failed")
+    payload.setdefault("trace_id", result.trace_id)
+    payload.setdefault("run_id", result.run_id)
+    return payload
 
 
 # ==================== Health Check ====================
