@@ -242,6 +242,7 @@ const WorkspaceSkills: React.FC = () => {
   ];
 
   const fs = ((detailModal.skill as any)?.metadata?.filesystem || {}) as any;
+  const sp = ((detailModal.skill as any)?.metadata?.skill_pack || {}) as any;
 
   return (
     <div className="space-y-6">
@@ -350,6 +351,37 @@ const WorkspaceSkills: React.FC = () => {
                 复制
               </Button>
             </div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500">skill_pack</div>
+            {sp?.pack_id ? (
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-gray-300">
+                  <code className="text-xs bg-dark-hover px-1.5 py-0.5 rounded break-all">{String(sp.pack_id)}</code>
+                  <span className="ml-2 text-xs text-gray-400">{sp?.version ? `v${sp.version}` : ''}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(String(sp.pack_id));
+                        toast.success('已复制 pack_id');
+                      } catch {
+                        toast.error('复制失败');
+                      }
+                    }}
+                  >
+                    复制
+                  </Button>
+                  <Button variant="primary" onClick={() => navigate('/core/skill-packs', { state: { openPackId: String(sp.pack_id) } })}>
+                    查看包
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-gray-500">-</div>
+            )}
           </div>
           <div>
             <div className="text-xs text-gray-500">filesystem.skill_md</div>
