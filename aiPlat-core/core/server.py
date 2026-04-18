@@ -1753,6 +1753,110 @@ async def autocapture_learning_suggestion(request: dict):
     return await _execution_store.get_learning_artifact(artifact.artifact_id)
 
 
+@api_router.post("/learning/autocapture/to_prompt_revision")
+async def autocapture_to_prompt_revision(request: dict):
+    """
+    Roadmap-4 (minimal): convert a feedback_summary artifact into a draft prompt_revision,
+    optionally wrapping it into a draft release_candidate.
+
+    Input:
+      {
+        "artifact_id": "auto-xxx",
+        "patch": {"prepend": "...", "append": "..."},   # optional; if absent auto-generated
+        "priority": 0,                                   # optional (metadata)
+        "exclusive_group": "auto",                       # optional (metadata)
+        "create_release_candidate": false,               # optional
+        "summary": "..."                                 # optional (for release_candidate)
+      }
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    import time
+    import uuid
+    from core.learning.types import LearningArtifact, LearningArtifactKind, LearningArtifactStatus
+
+    artifact_id = str((request or {}).get("artifact_id") or "").strip()
+    if not artifact_id:
+        raise HTTPException(status_code=400, detail="artifact_id is required")
+    src = await _execution_store.get_learning_artifact(artifact_id)
+    if not src:
+        raise HTTPException(status_code=404, detail="artifact_not_found")
+    if src.get("kind") != "feedback_summary":
+        raise HTTPException(status_code=400, detail="artifact_kind_must_be_feedback_summary")
+
+    target_type = str(src.get("target_type") or "")
+    target_id = str(src.get("target_id") or "")
+    trace_id = src.get("trace_id")
+    run_id = src.get("run_id")
+    fb = (src.get("payload") or {}).get("feedback") if isinstance(src.get("payload"), dict) else None
+    fb = fb if isinstance(fb, dict) else {}
+
+    patch = (request or {}).get("patch") if isinstance((request or {}).get("patch"), dict) else None
+    if patch is None:
+        # Auto-generate a minimal prepend patch from feedback (deterministic, reviewable).
+        top_failed = fb.get("top_failed_syscalls") if isinstance(fb.get("top_failed_syscalls"), list) else []
+        lines = []
+        reason = fb.get("reason")
+        if isinstance(reason, str) and reason.strip():
+            lines.append(f"【背景】{reason.strip()}")
+        if top_failed:
+            lines.append("【近期失败 syscall Top】")
+            for x in top_failed[:10]:
+                if not isinstance(x, dict):
+                    continue
+                k = x.get("key")
+                c = x.get("count")
+                if k:
+                    lines.append(f"- {k}: {c}")
+        lines.append("【要求】当执行失败时：优先给出可操作的下一步（包括需要的参数、检查点、以及可复现步骤）。")
+        patch = {"prepend": "\n".join(lines)}
+
+    pr_id = f"pr-auto-{uuid.uuid4().hex[:12]}"
+    meta: Dict[str, Any] = {"source": "autocapture", "source_artifact_id": artifact_id}
+    if (request or {}).get("priority") is not None:
+        meta["priority"] = (request or {}).get("priority")
+    if isinstance((request or {}).get("exclusive_group"), str) and (request or {}).get("exclusive_group"):
+        meta["exclusive_group"] = (request or {}).get("exclusive_group")
+
+    pr = LearningArtifact(
+        artifact_id=pr_id,
+        kind=LearningArtifactKind.PROMPT_REVISION,
+        target_type=target_type,
+        target_id=target_id,
+        version=f"auto:{int(time.time())}",
+        status=LearningArtifactStatus.DRAFT,
+        trace_id=str(trace_id) if trace_id else None,
+        run_id=str(run_id) if run_id else None,
+        payload={"patch": patch},
+        metadata=meta,
+    )
+    await _execution_store.upsert_learning_artifact(pr.to_record())
+
+    out: Dict[str, Any] = {"prompt_revision": await _execution_store.get_learning_artifact(pr_id)}
+
+    if bool((request or {}).get("create_release_candidate", False)):
+        rc_id = f"rc-auto-{uuid.uuid4().hex[:12]}"
+        summary = (request or {}).get("summary")
+        if not isinstance(summary, str) or not summary.strip():
+            summary = f"auto from {artifact_id}"
+        rc = LearningArtifact(
+            artifact_id=rc_id,
+            kind=LearningArtifactKind.RELEASE_CANDIDATE,
+            target_type=target_type,
+            target_id=target_id,
+            version=f"auto:{int(time.time())}",
+            status=LearningArtifactStatus.DRAFT,
+            trace_id=str(trace_id) if trace_id else None,
+            run_id=str(run_id) if run_id else None,
+            payload={"artifact_ids": [pr_id], "summary": str(summary)},
+            metadata={"source": "autocapture", "source_artifact_id": artifact_id},
+        )
+        await _execution_store.upsert_learning_artifact(rc.to_record())
+        out["release_candidate"] = await _execution_store.get_learning_artifact(rc_id)
+
+    return out
+
+
 @api_router.post("/learning/releases/{candidate_id}/publish")
 async def publish_release_candidate(candidate_id: str, request: dict):
     """
