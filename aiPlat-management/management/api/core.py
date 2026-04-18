@@ -34,6 +34,42 @@ def get_core_client() -> CoreAPIClient:
     return _core_client
 
 
+# ==================== Runs (Platform Execution Contract) ====================
+
+
+@router.get("/runs/{run_id}")
+async def get_run(run_id: str):
+    try:
+        client = get_core_client()
+        return await client.get_run(run_id)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/runs/{run_id}/events")
+async def list_run_events(
+    run_id: str,
+    after_seq: int = Query(0, ge=0),
+    limit: int = Query(200, ge=1, le=1000),
+):
+    try:
+        client = get_core_client()
+        return await client.list_run_events(run_id, after_seq=after_seq, limit=limit)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/runs/{run_id}/wait")
+async def wait_run(run_id: str, body: dict):
+    try:
+        client = get_core_client()
+        timeout_ms = int((body or {}).get("timeout_ms") or 30000)
+        after_seq = int((body or {}).get("after_seq") or 0)
+        return await client.wait_run(run_id, timeout_ms=timeout_ms, after_seq=after_seq)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
 # ==================== Jobs / Cron (Roadmap-3) ====================
 
 

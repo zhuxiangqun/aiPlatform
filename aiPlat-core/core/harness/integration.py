@@ -10,6 +10,8 @@ import os
 import time
 import uuid
 
+from core.utils.ids import new_prefixed_id
+
 from .interfaces import (
     IAgent,
     ITool,
@@ -317,14 +319,15 @@ class HarnessIntegration:
                     except Exception:
                         pass
 
-        execution_id = f"exec-{agent_id}-{uuid.uuid4().hex[:8]}"
+        # Platform default: run_id should be time-sortable and stable for tracing/log correlation.
+        execution_id = new_prefixed_id("run")
         start_time = time.time()
 
         trace_id = None
         if runtime.trace_service:
             try:
                 # Trace attributes: include request_id and job context when present (best-effort).
-                attrs = {"execution_id": execution_id, "agent_id": agent_id, "user_id": user_id}
+                attrs = {"run_id": execution_id, "agent_id": agent_id, "user_id": user_id}
                 if getattr(req, "request_id", None):
                     attrs["request_id"] = req.request_id
                 try:
@@ -344,6 +347,18 @@ class HarnessIntegration:
                 trace_id = trace.trace_id
             except Exception:
                 trace_id = None
+
+        # Run events (best-effort): start
+        if runtime.execution_store:
+            try:
+                await runtime.execution_store.append_run_event(
+                    run_id=execution_id,
+                    event_type="run_start",
+                    trace_id=trace_id,
+                    payload={"kind": "agent", "agent_id": agent_id, "user_id": user_id, "session_id": req.session_id},
+                )
+            except Exception:
+                pass
 
         try:
             payload = req.payload or {}
@@ -712,6 +727,23 @@ class HarnessIntegration:
                 except Exception:
                     pass
 
+            # Run events (best-effort): end
+            if runtime.execution_store:
+                try:
+                    await runtime.execution_store.append_run_event(
+                        run_id=execution_id,
+                        event_type="run_end",
+                        trace_id=trace_id,
+                        payload={
+                            "kind": "agent",
+                            "agent_id": agent_id,
+                            "status": record["status"],
+                            "error": result.error,
+                        },
+                    )
+                except Exception:
+                    pass
+
             return ExecutionResult(
                 ok=True,
                 payload={
@@ -759,6 +791,15 @@ class HarnessIntegration:
                             "trace_id": trace_id,
                             "metadata": {"exception": str(e)},
                         }
+                    )
+                except Exception:
+                    pass
+                try:
+                    await runtime.execution_store.append_run_event(
+                        run_id=execution_id,
+                        event_type="run_end",
+                        trace_id=trace_id,
+                        payload={"kind": "agent", "agent_id": agent_id, "status": "failed", "error": str(e)},
                     )
                 except Exception:
                     pass
@@ -905,6 +946,15 @@ class HarnessIntegration:
                     )
                 except Exception:
                     pass
+                try:
+                    await runtime.execution_store.append_run_event(
+                        run_id=execution.id,
+                        event_type="run_start",
+                        trace_id=trace_id,
+                        payload={"kind": "skill", "skill_id": execution.skill_id, "user_id": user_id, "session_id": meta2.get("session_id")},
+                    )
+                except Exception:
+                    pass
                 await runtime.execution_store.upsert_skill_execution(
                     {
                         "id": execution.id,
@@ -944,6 +994,15 @@ class HarnessIntegration:
                             trace_id=trace_id,
                             run_id=execution.id,
                         )
+                except Exception:
+                    pass
+                try:
+                    await runtime.execution_store.append_run_event(
+                        run_id=execution.id,
+                        event_type="run_end",
+                        trace_id=trace_id,
+                        payload={"kind": "skill", "skill_id": execution.skill_id, "status": execution.status, "error": execution.error},
+                    )
                 except Exception:
                     pass
             except Exception:
@@ -1055,7 +1114,8 @@ class HarnessIntegration:
 
         # Add a trace for tool execute so syscall spans are linked (best-effort).
         trace_id = None
-        run_id = f"tool-{req.target_id}-{uuid.uuid4().hex[:8]}"
+        # Keep tool executions under the same run_id namespace.
+        run_id = new_prefixed_id("run")
         if runtime and runtime.trace_service:
             try:
                 attrs = {"tool_name": req.target_id, "run_id": run_id, "user_id": req.user_id or "system"}
@@ -1075,6 +1135,18 @@ class HarnessIntegration:
                 trace_id = t.trace_id
             except Exception:
                 trace_id = None
+
+        # Run events (best-effort): start
+        if runtime and runtime.execution_store:
+            try:
+                await runtime.execution_store.append_run_event(
+                    run_id=run_id,
+                    event_type="run_start",
+                    trace_id=trace_id,
+                    payload={"kind": "tool", "tool_name": req.target_id, "user_id": req.user_id or "system", "session_id": req.session_id},
+                )
+            except Exception:
+                pass
 
         try:
             result = await sys_tool_call(
@@ -1106,6 +1178,22 @@ class HarnessIntegration:
                         metadata={"trace_id": trace_id, "run_id": run_id, "tool_name": req.target_id},
                         trace_id=trace_id,
                         run_id=run_id,
+                    )
+                except Exception:
+                    pass
+            # Run events (best-effort): end
+            if runtime and runtime.execution_store:
+                try:
+                    await runtime.execution_store.append_run_event(
+                        run_id=run_id,
+                        event_type="run_end",
+                        trace_id=trace_id,
+                        payload={
+                            "kind": "tool",
+                            "tool_name": req.target_id,
+                            "status": "completed" if getattr(result, "success", True) else "failed",
+                            "error": getattr(result, "error", None),
+                        },
                     )
                 except Exception:
                     pass
@@ -1142,8 +1230,28 @@ class HarnessIntegration:
                 ),
             )
         except asyncio.TimeoutError:
+            if runtime and runtime.execution_store:
+                try:
+                    await runtime.execution_store.append_run_event(
+                        run_id=run_id,
+                        event_type="run_end",
+                        trace_id=trace_id,
+                        payload={"kind": "tool", "tool_name": req.target_id, "status": "timeout", "error": "TIMEOUT"},
+                    )
+                except Exception:
+                    pass
             return self._fail(code="TIMEOUT", message="Tool execution timed out (60s)", http_status=504, trace_id=trace_id, run_id=run_id)
         except Exception as e:
+            if runtime and runtime.execution_store:
+                try:
+                    await runtime.execution_store.append_run_event(
+                        run_id=run_id,
+                        event_type="run_end",
+                        trace_id=trace_id,
+                        payload={"kind": "tool", "tool_name": req.target_id, "status": "failed", "error": str(e)},
+                    )
+                except Exception:
+                    pass
             return self._fail(code="EXCEPTION", message=str(e), http_status=500, trace_id=trace_id, run_id=run_id)
         finally:
             if runtime and runtime.trace_service and trace_id:
@@ -1189,7 +1297,7 @@ class HarnessIntegration:
         from core.harness.execution.langgraph.compiled_graphs import create_compiled_react_graph
         from core.harness.execution.langgraph.core import GraphConfig
 
-        graph_run_id = str(uuid.uuid4())
+        graph_run_id = new_prefixed_id("run")
 
         trace_id = None
         if runtime.trace_service:

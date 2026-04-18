@@ -17,6 +17,7 @@ from .registry import get_skill_registry, SkillRegistry
 from ...harness.interfaces import SkillContext, SkillResult
 from ...apps.tools.base import get_tool_registry
 from ...harness.syscalls import sys_skill_call
+from core.utils.ids import new_prefixed_id
 
 
 @dataclass
@@ -95,7 +96,7 @@ class SkillExecutor:
                 error=f"Skill is disabled: {skill_name}"
             )
 
-        execution_id = str(uuid.uuid4())
+        execution_id = new_prefixed_id("run")
         record = ExecutionRecord(
             execution_id=execution_id,
             skill_name=skill_name,

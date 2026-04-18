@@ -112,6 +112,22 @@ class CoreAPIClient:
             params["kind"] = kind
         return await self._request("GET", "/api/core/syscalls/stats", params=params)
 
+    # ===== Runs (Platform execution contract) =====
+
+    async def get_run(self, run_id: str) -> Dict[str, Any]:
+        return await self._request("GET", f"/api/core/runs/{run_id}")
+
+    async def list_run_events(self, run_id: str, *, after_seq: int = 0, limit: int = 200) -> Dict[str, Any]:
+        params: Dict[str, Any] = {"after_seq": int(after_seq), "limit": int(limit)}
+        return await self._request("GET", f"/api/core/runs/{run_id}/events", params=params)
+
+    async def wait_run(self, run_id: str, *, timeout_ms: int = 30000, after_seq: int = 0) -> Dict[str, Any]:
+        return await self._request(
+            "POST",
+            f"/api/core/runs/{run_id}/wait",
+            json={"timeout_ms": int(timeout_ms), "after_seq": int(after_seq)},
+        )
+
     # ===== Jobs / Cron (Roadmap-3) =====
 
     async def list_jobs(self, *, limit: int = 100, offset: int = 0, enabled: Optional[bool] = None) -> Dict[str, Any]:

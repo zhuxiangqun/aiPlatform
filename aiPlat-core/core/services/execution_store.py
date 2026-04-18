@@ -43,7 +43,7 @@ class ExecutionStoreConfig:
 
 
 class ExecutionStore:
-    CURRENT_SCHEMA_VERSION = 21
+    CURRENT_SCHEMA_VERSION = 22
 
     def __init__(self, config: ExecutionStoreConfig):
         self._config = config
@@ -779,6 +779,51 @@ class ExecutionStore:
                             pass
                         _set_version(21)
                         current = 21
+
+                    # ---- Migration v22: run_events + request_dedup (platform execution contract) ----
+                    if current < 22:
+                        try:
+                            conn.execute(
+                                """
+                                CREATE TABLE IF NOT EXISTS run_events (
+                                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                  run_id TEXT NOT NULL,
+                                  seq INTEGER NOT NULL,
+                                  tenant_id TEXT,
+                                  trace_id TEXT,
+                                  type TEXT NOT NULL,
+                                  payload_json TEXT,
+                                  created_at REAL NOT NULL,
+                                  UNIQUE(run_id, seq)
+                                );
+                                """
+                            )
+                            conn.execute("CREATE INDEX IF NOT EXISTS idx_run_events_run_seq ON run_events(run_id, seq);")
+                            conn.execute(
+                                "CREATE INDEX IF NOT EXISTS idx_run_events_time ON run_events(created_at DESC);"
+                            )
+                        except Exception:
+                            pass
+                        try:
+                            conn.execute(
+                                """
+                                CREATE TABLE IF NOT EXISTS request_dedup (
+                                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                  tenant_id TEXT,
+                                  request_id TEXT NOT NULL,
+                                  run_id TEXT NOT NULL,
+                                  created_at REAL NOT NULL,
+                                  UNIQUE(tenant_id, request_id)
+                                );
+                                """
+                            )
+                            conn.execute(
+                                "CREATE INDEX IF NOT EXISTS idx_request_dedup_request ON request_dedup(request_id, created_at DESC);"
+                            )
+                        except Exception:
+                            pass
+                        _set_version(22)
+                        current = 22
 
                     # If legacy db exists with tables but without meta, upgrade meta to current
                     if current < self.CURRENT_SCHEMA_VERSION:
@@ -1917,6 +1962,214 @@ class ExecutionStore:
                         }
                     )
                 return {"items": items, "total": total}
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
+    # ==================== Runs / Run events (platform contract) ====================
+
+    async def get_run_id_for_request(self, *, request_id: str, tenant_id: Optional[str] = None) -> Optional[str]:
+        """Return existing run_id for a (tenant_id, request_id) pair."""
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Optional[str]:
+            conn = sqlite3.connect(db_path)
+            try:
+                row = conn.execute(
+                    "SELECT run_id FROM request_dedup WHERE request_id=? AND (tenant_id=? OR tenant_id IS NULL OR ? IS NULL) LIMIT 1",
+                    (request_id, tenant_id, tenant_id),
+                ).fetchone()
+                return str(row[0]) if row and row[0] else None
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
+    async def remember_request_run_id(self, *, request_id: str, run_id: str, tenant_id: Optional[str] = None) -> None:
+        """Insert request_id -> run_id mapping (best-effort, idempotent)."""
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> None:
+            conn = sqlite3.connect(db_path)
+            try:
+                conn.execute(
+                    """
+                    INSERT INTO request_dedup(tenant_id, request_id, run_id, created_at)
+                    VALUES(?, ?, ?, ?)
+                    ON CONFLICT(tenant_id, request_id) DO NOTHING;
+                    """,
+                    (tenant_id, request_id, run_id, float(time.time())),
+                )
+                conn.commit()
+            finally:
+                conn.close()
+
+        await anyio.to_thread.run_sync(_sync)
+
+    async def append_run_event(
+        self,
+        *,
+        run_id: str,
+        event_type: str,
+        payload: Optional[Dict[str, Any]] = None,
+        trace_id: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+    ) -> int:
+        """Append an event and return its seq."""
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> int:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                row = conn.execute("SELECT COALESCE(MAX(seq), 0) AS m FROM run_events WHERE run_id=?", (run_id,)).fetchone()
+                next_seq = int(row["m"] if row else 0) + 1
+                conn.execute(
+                    """
+                    INSERT INTO run_events(run_id, seq, tenant_id, trace_id, type, payload_json, created_at)
+                    VALUES(?, ?, ?, ?, ?, ?, ?);
+                    """,
+                    (
+                        run_id,
+                        next_seq,
+                        tenant_id,
+                        trace_id,
+                        str(event_type),
+                        _json_dumps(payload or {}),
+                        float(time.time()),
+                    ),
+                )
+                conn.commit()
+                return next_seq
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
+    async def list_run_events(
+        self,
+        *,
+        run_id: str,
+        after_seq: int = 0,
+        limit: int = 200,
+    ) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                rows = conn.execute(
+                    """
+                    SELECT seq, type, payload_json, trace_id, tenant_id, created_at
+                    FROM run_events
+                    WHERE run_id=? AND seq > ?
+                    ORDER BY seq ASC
+                    LIMIT ?;
+                    """,
+                    (run_id, int(after_seq), int(limit)),
+                ).fetchall()
+                items = []
+                last_seq = int(after_seq)
+                for r in rows:
+                    last_seq = int(r["seq"])
+                    items.append(
+                        {
+                            "seq": int(r["seq"]),
+                            "type": r["type"],
+                            "payload": _json_loads(r["payload_json"]) or {},
+                            "trace_id": r["trace_id"],
+                            "tenant_id": r["tenant_id"],
+                            "created_at": r["created_at"],
+                        }
+                    )
+                return {"items": items, "after_seq": int(after_seq), "last_seq": last_seq}
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
+    async def get_run_summary(self, *, run_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Best-effort unified run view across agent/skill/tool executions.
+        Assumption: execution_id == run_id (post v2).
+        """
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Optional[Dict[str, Any]]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                # agent
+                row = conn.execute("SELECT * FROM agent_executions WHERE id=? LIMIT 1", (run_id,)).fetchone()
+                if row:
+                    meta = _json_loads(row["metadata_json"]) if "metadata_json" in row.keys() else {}
+                    meta = meta or {}
+                    err_obj = meta.get("error_detail") if isinstance(meta.get("error_detail"), dict) else None
+                    return {
+                        "run_id": row["id"],
+                        "kind": "agent",
+                        "target_type": "agent",
+                        "target_id": row["agent_id"],
+                        "trace_id": row["trace_id"],
+                        "status": row["status"],
+                        "start_time": row["start_time"],
+                        "end_time": row["end_time"],
+                        "error_code": row["error_code"],
+                        "error_message": row["error"] if "error" in row.keys() else None,
+                        "error": err_obj or None,
+                        "user_id": meta.get("user_id"),
+                        "session_id": meta.get("session_id") or (meta.get("context") or {}).get("session_id") if isinstance(meta.get("context"), dict) else None,
+                    }
+                # skill
+                row = conn.execute("SELECT * FROM skill_executions WHERE id=? LIMIT 1", (run_id,)).fetchone()
+                if row:
+                    meta = _json_loads(row["metadata_json"]) if "metadata_json" in row.keys() else {}
+                    meta = meta or {}
+                    err_obj = meta.get("error_detail") if isinstance(meta.get("error_detail"), dict) else None
+                    return {
+                        "run_id": row["id"],
+                        "kind": "skill",
+                        "target_type": "skill",
+                        "target_id": row["skill_id"],
+                        "trace_id": row["trace_id"],
+                        "status": row["status"],
+                        "start_time": row["start_time"],
+                        "end_time": row["end_time"],
+                        "error_code": row["error_code"],
+                        "error_message": row["error"] if "error" in row.keys() else None,
+                        "error": err_obj or None,
+                        "user_id": row["user_id"] if "user_id" in row.keys() else meta.get("user_id"),
+                        "session_id": meta.get("session_id") or (meta.get("context") or {}).get("session_id") if isinstance(meta.get("context"), dict) else None,
+                    }
+                # tool
+                row = conn.execute("SELECT * FROM tool_executions WHERE id=? LIMIT 1", (run_id,)).fetchone()
+                if row:
+                    meta = _json_loads(row["metadata_json"]) if "metadata_json" in row.keys() else {}
+                    meta = meta or {}
+                    err_obj = meta.get("error_detail") if isinstance(meta.get("error_detail"), dict) else None
+                    return {
+                        "run_id": row["id"],
+                        "kind": "tool",
+                        "target_type": "tool",
+                        "target_id": row["tool_name"],
+                        "trace_id": row["trace_id"],
+                        "status": row["status"],
+                        "start_time": row["start_time"],
+                        "end_time": row["end_time"],
+                        "error_code": row["error_code"],
+                        "error_message": row["error"] if "error" in row.keys() else None,
+                        "error": err_obj or None,
+                        "user_id": row["user_id"] if "user_id" in row.keys() else meta.get("user_id"),
+                        "session_id": row["session_id"] if "session_id" in row.keys() else (meta.get("context") or {}).get("session_id") if isinstance(meta.get("context"), dict) else None,
+                    }
+                return None
             finally:
                 conn.close()
 

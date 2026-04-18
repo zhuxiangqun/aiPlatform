@@ -11,6 +11,7 @@ from typing import Optional, List, Dict, Any
 from contextlib import asynccontextmanager
 from datetime import datetime
 import asyncio
+import time
 import json
 import os
 import shutil
@@ -1590,6 +1591,67 @@ async def get_syscall_stats(
     if not _execution_store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
     return await _execution_store.get_syscall_event_stats(window_hours=window_hours, top_n=top_n, kind=kind)
+
+
+# ==================== Runs (Platform Execution Contract) ====================
+
+
+@api_router.get("/runs/{run_id}")
+async def get_run(run_id: str):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    run = await _execution_store.get_run_summary(run_id=str(run_id))
+    if not run:
+        raise HTTPException(status_code=404, detail="run_not_found")
+    return run
+
+
+@api_router.get("/runs/{run_id}/events")
+async def list_run_events(run_id: str, after_seq: int = 0, limit: int = 200):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    return await _execution_store.list_run_events(run_id=str(run_id), after_seq=int(after_seq or 0), limit=int(limit or 200))
+
+
+@api_router.post("/runs/{run_id}/wait")
+async def wait_run(run_id: str, request: dict):
+    """
+    Long-poll run events until terminal state or timeout.
+    Body:
+      { "timeout_ms": 30000, "after_seq": 0 }
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    timeout_ms = int((request or {}).get("timeout_ms") or 30000)
+    after_seq = int((request or {}).get("after_seq") or 0)
+    deadline = time.time() + max(1, timeout_ms) / 1000.0
+
+    # quick check
+    run = await _execution_store.get_run_summary(run_id=str(run_id))
+    if not run:
+        raise HTTPException(status_code=404, detail="run_not_found")
+
+    last_seq = after_seq
+    events: list = []
+    done = False
+
+    while time.time() < deadline:
+        batch = await _execution_store.list_run_events(run_id=str(run_id), after_seq=last_seq, limit=200)
+        new_events = batch.get("items") or []
+        if new_events:
+            events.extend(new_events)
+            last_seq = int(batch.get("last_seq") or last_seq)
+            if any(e.get("type") == "run_end" for e in new_events):
+                done = True
+                break
+        # refresh run status (best-effort)
+        run = await _execution_store.get_run_summary(run_id=str(run_id)) or run
+        if str(run.get("status")) in {"completed", "failed", "aborted", "timeout"}:
+            done = True
+            break
+        await asyncio.sleep(0.5)
+
+    return {"run": run, "events": events, "after_seq": after_seq, "last_seq": last_seq, "done": done}
 
 
 @api_router.post("/approvals/{request_id}/approve")
