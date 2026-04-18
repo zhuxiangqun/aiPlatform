@@ -4279,10 +4279,19 @@ async def gateway_execute(request: GatewayExecuteRequest):
     result = await harness.execute(exec_req)
     # Normalize: always include trace_id/run_id.
     resp = dict(result.payload or {})
-    resp.setdefault("ok", bool(result.ok))
-    if not result.ok:
+    # Prefer payload status for ok semantics (agent/skill often return ok=True but status=failed).
+    status = resp.get("status")
+    if isinstance(status, str) and status.lower() == "failed":
+        resp.setdefault("ok", False)
+    else:
+        resp.setdefault("ok", bool(result.ok))
+
+    # Normalize error + error_detail (backward compatible)
+    if resp.get("ok") is False:
         resp.setdefault("status", "failed")
-        resp.setdefault("error", result.error or "Execution failed")
+        resp.setdefault("error", result.error or resp.get("error") or "Execution failed")
+        if "error_detail" not in resp:
+            resp["error_detail"] = getattr(result, "error_detail", None)
     resp.setdefault("trace_id", result.trace_id)
     resp.setdefault("run_id", result.run_id)
     return resp

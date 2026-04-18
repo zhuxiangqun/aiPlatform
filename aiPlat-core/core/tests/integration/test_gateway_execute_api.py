@@ -95,6 +95,8 @@ def test_gateway_execute_reports_error_on_ok_false(tmp_path, monkeypatch):
         assert data["trace_id"] == "trace-bad"
         assert data["run_id"] == "run-bad"
         assert data.get("error")
+        # Backward compatible: may include error_detail
+        assert "error_detail" in data
 
 
 @pytest.mark.integration

@@ -35,7 +35,8 @@ class ExecutionResult:
     ok: bool
     payload: Dict[str, Any] = field(default_factory=dict)
     error: Optional[str] = None
+    # Roadmap-0: normalized error contract (backward compatible; payload may also carry error_detail).
+    error_detail: Optional[Dict[str, Any]] = None
     http_status: int = 200
     trace_id: Optional[str] = None
     run_id: Optional[str] = None
-
