@@ -112,6 +112,53 @@ class CoreAPIClient:
             params["kind"] = kind
         return await self._request("GET", "/api/core/syscalls/stats", params=params)
 
+    # ===== Jobs / Cron (Roadmap-3) =====
+
+    async def list_jobs(self, *, limit: int = 100, offset: int = 0, enabled: Optional[bool] = None) -> Dict[str, Any]:
+        params: Dict[str, Any] = {"limit": limit, "offset": offset}
+        if enabled is not None:
+            params["enabled"] = bool(enabled)
+        return await self._request("GET", "/api/core/jobs", params=params)
+
+    async def create_job(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", "/api/core/jobs", json=data)
+
+    async def get_job(self, job_id: str) -> Dict[str, Any]:
+        return await self._request("GET", f"/api/core/jobs/{job_id}")
+
+    async def update_job(self, job_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("PUT", f"/api/core/jobs/{job_id}", json=data)
+
+    async def delete_job(self, job_id: str) -> Dict[str, Any]:
+        return await self._request("DELETE", f"/api/core/jobs/{job_id}")
+
+    async def enable_job(self, job_id: str) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/jobs/{job_id}/enable", json={})
+
+    async def disable_job(self, job_id: str) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/jobs/{job_id}/disable", json={})
+
+    async def run_job(self, job_id: str) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/jobs/{job_id}/run", json={})
+
+    async def list_job_runs(self, job_id: str, *, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        params: Dict[str, Any] = {"limit": limit, "offset": offset}
+        return await self._request("GET", f"/api/core/jobs/{job_id}/runs", params=params)
+
+    async def list_job_delivery_dlq(self, *, status: Optional[str] = None, job_id: Optional[str] = None, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        params: Dict[str, Any] = {"limit": limit, "offset": offset}
+        if status:
+            params["status"] = status
+        if job_id:
+            params["job_id"] = job_id
+        return await self._request("GET", "/api/core/jobs/dlq", params=params)
+
+    async def retry_job_delivery_dlq(self, dlq_id: str) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/jobs/dlq/{dlq_id}/retry", json={})
+
+    async def delete_job_delivery_dlq(self, dlq_id: str) -> Dict[str, Any]:
+        return await self._request("DELETE", f"/api/core/jobs/dlq/{dlq_id}")
+
     # ===== Learning / Release Management (Phase 6) =====
 
     async def list_learning_artifacts(

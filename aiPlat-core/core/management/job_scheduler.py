@@ -394,16 +394,142 @@ class JobScheduler:
         import aiohttp
 
         last_err: Optional[str] = None
+        last_status: Optional[int] = None
         for attempt in range(retries + 1):
             try:
                 async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout_s)) as sess:
                     async with sess.post(url, json=body, headers=headers) as resp:
                         text = await resp.text()
                         if 200 <= resp.status < 300:
+                            # persist attempt (best-effort)
+                            try:
+                                await self._store.add_job_delivery_attempt(
+                                    job_id=str(job.get("id") or run.get("job_id")),
+                                    run_id=str(run.get("id") or run.get("run_id") or ""),
+                                    attempt=attempt,
+                                    url=str(url),
+                                    status="success",
+                                    response_status=int(resp.status),
+                                    payload=body,
+                                )
+                            except Exception:
+                                pass
                             return {"ok": True, "status": resp.status, "response_text": text[:2000]}
+                        last_status = int(resp.status)
                         last_err = f"HTTP {resp.status}: {text[:2000]}"
             except Exception as e:
                 last_err = str(e)
+                last_status = None
+            # persist failed attempt (best-effort)
+            try:
+                await self._store.add_job_delivery_attempt(
+                    job_id=str(job.get("id") or run.get("job_id")),
+                    run_id=str(run.get("id") or run.get("run_id") or ""),
+                    attempt=attempt,
+                    url=str(url),
+                    status="failed",
+                    response_status=int(last_status) if last_status is not None else None,
+                    error=str(last_err or "delivery_failed"),
+                    payload=body,
+                )
+            except Exception:
+                pass
             if attempt < retries:
                 await asyncio.sleep(backoff * (attempt + 1))
+        # enqueue DLQ item (best-effort)
+        try:
+            await self._store.enqueue_job_delivery_dlq(
+                job_id=str(job.get("id") or run.get("job_id")),
+                run_id=str(run.get("id") or run.get("run_id") or ""),
+                url=str(url),
+                delivery=delivery,
+                payload=body,
+                attempts=int(retries + 1),
+                error=str(last_err or "delivery_failed"),
+            )
+        except Exception:
+            pass
         return {"ok": False, "error": last_err or "delivery_failed"} 
+
+    async def retry_dlq_delivery(self, dlq_id: str) -> Dict[str, Any]:
+        """
+        Retry a delivery from DLQ (webhook only).
+        On success, marks DLQ item as resolved.
+        """
+        item = await self._store.get_job_delivery_dlq_item(dlq_id)
+        if not item:
+            raise ValueError("DLQ item not found")
+        if str(item.get("status")) == "resolved":
+            return {"ok": True, "status": "already_resolved", "dlq_id": dlq_id}
+
+        delivery = item.get("delivery") if isinstance(item.get("delivery"), dict) else {}
+        payload = item.get("payload") if isinstance(item.get("payload"), dict) else {}
+        # Minimal stubs for audit fields
+        job = {"id": item.get("job_id")}
+        run = {"id": item.get("run_id"), "job_id": item.get("job_id"), "run_id": item.get("run_id")}
+        # We want to send the same payload body as stored.
+        url = str(item.get("url") or (delivery or {}).get("url") or "")
+        if not url:
+            raise RuntimeError("DLQ item missing url")
+        # Patch delivery.url if needed
+        try:
+            delivery = dict(delivery or {})
+            delivery["type"] = delivery.get("type") or "webhook"
+            delivery["url"] = url
+        except Exception:
+            delivery = {"type": "webhook", "url": url}
+
+        # Replay using stored payload directly (avoid re-building include list)
+        # We call aiohttp directly to avoid changing _deliver_webhook signature.
+        headers = delivery.get("headers") if isinstance(delivery.get("headers"), dict) else {}
+        timeout_s = float(os.getenv("AIPLAT_JOBS_DELIVERY_TIMEOUT_SECONDS", str(self._cfg.delivery_timeout_seconds)) or "10")
+        import aiohttp
+
+        try:
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout_s)) as sess:
+                async with sess.post(url, json=payload, headers=headers) as resp:
+                    text = await resp.text()
+                    if 200 <= resp.status < 300:
+                        try:
+                            await self._store.add_job_delivery_attempt(
+                                job_id=str(item.get("job_id")),
+                                run_id=str(item.get("run_id") or ""),
+                                attempt=int(item.get("attempts") or 0),
+                                url=str(url),
+                                status="success",
+                                response_status=int(resp.status),
+                                payload=payload,
+                            )
+                        except Exception:
+                            pass
+                        await self._store.mark_job_delivery_dlq_resolved(dlq_id)
+                        return {"ok": True, "status": resp.status, "response_text": text[:2000]}
+                    err = f"HTTP {resp.status}: {text[:2000]}"
+                    try:
+                        await self._store.add_job_delivery_attempt(
+                            job_id=str(item.get("job_id")),
+                            run_id=str(item.get("run_id") or ""),
+                            attempt=int(item.get("attempts") or 0),
+                            url=str(url),
+                            status="failed",
+                            response_status=int(resp.status),
+                            error=err,
+                            payload=payload,
+                        )
+                    except Exception:
+                        pass
+                    return {"ok": False, "error": err}
+        except Exception as e:
+            try:
+                await self._store.add_job_delivery_attempt(
+                    job_id=str(item.get("job_id")),
+                    run_id=str(item.get("run_id") or ""),
+                    attempt=int(item.get("attempts") or 0),
+                    url=str(url),
+                    status="failed",
+                    error=str(e),
+                    payload=payload,
+                )
+            except Exception:
+                pass
+            return {"ok": False, "error": str(e)}

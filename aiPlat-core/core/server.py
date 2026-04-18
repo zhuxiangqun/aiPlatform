@@ -4724,6 +4724,35 @@ async def list_job_runs(job_id: str, limit: int = 100, offset: int = 0):
     return await _execution_store.list_job_runs(job_id=job_id, limit=limit, offset=offset)
 
 
+@api_router.get("/jobs/dlq")
+async def list_job_delivery_dlq(status: Optional[str] = None, job_id: Optional[str] = None, limit: int = 100, offset: int = 0):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    return await _execution_store.list_job_delivery_dlq(status=status, job_id=job_id, limit=limit, offset=offset)
+
+
+@api_router.post("/jobs/dlq/{dlq_id}/retry")
+async def retry_job_delivery_dlq(dlq_id: str):
+    if not _job_scheduler:
+        raise HTTPException(status_code=503, detail="JobScheduler not running")
+    try:
+        return await _job_scheduler.retry_dlq_delivery(dlq_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+
+@api_router.delete("/jobs/dlq/{dlq_id}")
+async def delete_job_delivery_dlq(dlq_id: str):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    ok = await _execution_store.delete_job_delivery_dlq_item(dlq_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="DLQ item not found")
+    return {"status": "deleted", "dlq_id": dlq_id}
+
+
 # ==================== Health Check ====================
 
 @api_router.get("/health")

@@ -34,6 +34,122 @@ def get_core_client() -> CoreAPIClient:
     return _core_client
 
 
+# ==================== Jobs / Cron (Roadmap-3) ====================
+
+
+@router.get("/jobs")
+async def list_jobs(limit: int = Query(100, ge=1, le=1000), offset: int = Query(0, ge=0), enabled: Optional[bool] = None):
+    try:
+        client = get_core_client()
+        return await client.list_jobs(limit=limit, offset=offset, enabled=enabled)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/jobs")
+async def create_job(job: dict):
+    try:
+        client = get_core_client()
+        return await client.create_job(job)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/jobs/{job_id}")
+async def get_job(job_id: str):
+    try:
+        client = get_core_client()
+        return await client.get_job(job_id)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.put("/jobs/{job_id}")
+async def update_job(job_id: str, patch: dict):
+    try:
+        client = get_core_client()
+        return await client.update_job(job_id, patch)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.delete("/jobs/{job_id}")
+async def delete_job(job_id: str):
+    try:
+        client = get_core_client()
+        return await client.delete_job(job_id)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/jobs/{job_id}/enable")
+async def enable_job(job_id: str):
+    try:
+        client = get_core_client()
+        return await client.enable_job(job_id)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/jobs/{job_id}/disable")
+async def disable_job(job_id: str):
+    try:
+        client = get_core_client()
+        return await client.disable_job(job_id)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/jobs/{job_id}/run")
+async def run_job(job_id: str):
+    try:
+        client = get_core_client()
+        return await client.run_job(job_id)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/jobs/{job_id}/runs")
+async def list_job_runs(job_id: str, limit: int = Query(100, ge=1, le=1000), offset: int = Query(0, ge=0)):
+    try:
+        client = get_core_client()
+        return await client.list_job_runs(job_id, limit=limit, offset=offset)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/jobs/dlq")
+async def list_job_dlq(
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    status: Optional[str] = None,
+    job_id: Optional[str] = None,
+):
+    try:
+        client = get_core_client()
+        return await client.list_job_delivery_dlq(status=status, job_id=job_id, limit=limit, offset=offset)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/jobs/dlq/{dlq_id}/retry")
+async def retry_job_dlq(dlq_id: str):
+    try:
+        client = get_core_client()
+        return await client.retry_job_delivery_dlq(dlq_id)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.delete("/jobs/dlq/{dlq_id}")
+async def delete_job_dlq(dlq_id: str):
+    try:
+        client = get_core_client()
+        return await client.delete_job_delivery_dlq(dlq_id)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
 # ==================== Agent Management ====================
 
 @router.get("/agents")
