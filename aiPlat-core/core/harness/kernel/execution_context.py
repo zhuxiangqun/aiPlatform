@@ -60,12 +60,14 @@ class ActiveWorkspaceContext:
     repo_root: Optional[str] = None
     context_file: Optional[str] = None
     project_context: str = ""
+    toolset: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "repo_root": self.repo_root,
             "context_file": self.context_file,
             "project_context": self.project_context,
+            "toolset": self.toolset,
         }
 
 

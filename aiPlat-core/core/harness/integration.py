@@ -277,6 +277,21 @@ class HarnessIntegration:
                     set_active_workspace_context,
                 )
 
+                # Phase R2: toolset selection (best-effort).
+                requested_toolset = None
+                try:
+                    if isinstance(payload, dict):
+                        opts = payload.get("options") if isinstance(payload.get("options"), dict) else {}
+                        ctx0 = payload.get("context") if isinstance(payload.get("context"), dict) else {}
+                        requested_toolset = (
+                            (opts.get("toolset") if isinstance(opts, dict) else None)
+                            or payload.get("toolset")
+                            or ctx0.get("toolset")
+                            or ctx0.get("_toolset")
+                        )
+                except Exception:
+                    requested_toolset = None
+
                 repo_root = None
                 if isinstance(payload, dict):
                     inp = payload.get("input")
@@ -285,9 +300,12 @@ class HarnessIntegration:
                         repo_root = inp.get("directory") or inp.get("repo_root") or inp.get("workspace_root")
                     if not repo_root and isinstance(ctx, dict):
                         repo_root = ctx.get("directory") or ctx.get("repo_root") or ctx.get("workspace_root")
-                if isinstance(repo_root, str) and repo_root.strip():
+                if (isinstance(repo_root, str) and repo_root.strip()) or requested_toolset:
                     workspace_token = set_active_workspace_context(
-                        ActiveWorkspaceContext(repo_root=repo_root.strip())
+                        ActiveWorkspaceContext(
+                            repo_root=repo_root.strip() if isinstance(repo_root, str) and repo_root.strip() else None,
+                            toolset=str(requested_toolset) if requested_toolset else None,
+                        )
                     )
             except Exception:
                 workspace_token = None
@@ -306,6 +324,25 @@ class HarnessIntegration:
                 messages=messages,
                 variables=variables or {},
             )
+            # Phase R2: toolset → context.tools injection (opt-in via env, or explicit toolset).
+            try:
+                if isinstance(payload, dict):
+                    explicit_tools = payload.get("tools")
+                else:
+                    explicit_tools = None
+                enable_toolsets = os.getenv("AIPLAT_ENABLE_TOOLSETS", "false").lower() in ("1", "true", "yes", "y")
+                if isinstance(explicit_tools, list) and explicit_tools:
+                    context.tools = [str(t) for t in explicit_tools if t]
+                elif enable_toolsets or requested_toolset:
+                    from core.harness.tools.toolsets import resolve_toolset
+
+                    policy = resolve_toolset(str(requested_toolset) if requested_toolset else None)
+                    context.tools = sorted(policy.allowed_tools)
+                    # Surface to downstream via variables/metadata for observability.
+                    context.variables.setdefault("_toolset", policy.name)
+                    context.metadata.setdefault("toolset", policy.name)
+            except Exception:
+                pass
             # Propagate trace/run identifiers into agent variables so loops can pass them to syscalls.
             try:
                 if isinstance(context.variables, dict):

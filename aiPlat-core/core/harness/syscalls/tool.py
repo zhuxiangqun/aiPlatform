@@ -17,6 +17,7 @@ from core.harness.infrastructure.gates import PolicyGate, PolicyDecision, TraceG
 from core.harness.kernel.runtime import get_kernel_runtime
 import time
 from core.harness.interfaces import ToolResult
+from core.harness.kernel.execution_context import get_active_workspace_context
 
 
 async def sys_tool_call(
@@ -91,6 +92,48 @@ async def sys_tool_call(
             if "risk_weight" in meta:
                 args.setdefault("_risk_weight", meta.get("risk_weight"))
     except Exception:
+        pass
+
+    # Phase R2: Toolset gate (runtime allowlist). Fail-closed when a toolset is active.
+    try:
+        ws = get_active_workspace_context()
+        active_toolset = getattr(ws, "toolset", None) if ws else None
+        if active_toolset:
+            from core.harness.tools.toolsets import resolve_toolset, is_tool_allowed
+
+            policy = resolve_toolset(str(active_toolset))
+            allowed, reason = is_tool_allowed(policy, tool_name or "<unknown>", args)
+            if not allowed:
+                runtime = get_kernel_runtime()
+                store = getattr(runtime, "execution_store", None) if runtime else None
+                if store is not None:
+                    try:
+                        await store.add_syscall_event(
+                            {
+                                "trace_id": span.trace_id,
+                                "span_id": getattr(span, "span_id", None),
+                                "run_id": (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None,
+                                "kind": "tool",
+                                "name": tool_name or "<unknown>",
+                                "status": "toolset_denied",
+                                "start_time": start_ts,
+                                "end_time": start_ts,
+                                "duration_ms": 0.0,
+                                "args": {"tool_args": args, "toolset": policy.name},
+                                "error": reason or "toolset_denied",
+                            }
+                        )
+                    except Exception:
+                        pass
+                await trace_gate.end(span, success=False)
+                return ToolResult(
+                    success=False,
+                    output=None,
+                    error="toolset_denied",
+                    metadata={"reason": reason, "tool": tool_name, "toolset": policy.name},
+                )
+    except Exception:
+        # Best-effort: do not break existing behavior if toolset gate fails.
         pass
 
     # PolicyGate (permission; approval optional via env flag)
