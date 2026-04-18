@@ -182,6 +182,15 @@ export const diagnosticsApi = {
     const qs = q.toString();
     return apiClient.get<any>(`/diagnostics/syscalls/core${qs ? `?${qs}` : ''}`);
   },
+
+  getSyscallStats: async (params: { window_hours?: number; top_n?: number; kind?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (params.window_hours != null) q.set('window_hours', String(params.window_hours));
+    if (params.top_n != null) q.set('top_n', String(params.top_n));
+    if (params.kind) q.set('kind', params.kind);
+    const qs = q.toString();
+    return apiClient.get<any>(`/diagnostics/syscalls/core/stats${qs ? `?${qs}` : ''}`);
+  },
 };
 
 // Monitoring API (legacy - for layer metrics)
