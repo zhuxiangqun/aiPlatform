@@ -341,6 +341,12 @@ export const workspaceMcpApi = {
     );
   },
 
+  policyCheck: async (serverName: string) => {
+    return apiClient.get<{ env: string; server_name: string; transport: string; ok: boolean; reason?: string; details?: any }>(
+      `/core/workspace/mcp/servers/${serverName}/policy-check`
+    );
+  },
+
   upsertServer: async (payload: McpServer) => {
     return apiClient.post<{ status: string; server?: { name: string; enabled: boolean } }>('/core/workspace/mcp/servers', payload as any);
   },

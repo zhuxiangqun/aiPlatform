@@ -2413,6 +2413,74 @@ async def discover_workspace_mcp_tools(server_name: str, timeout_seconds: int = 
         raise HTTPException(status_code=502, detail=str(e))
 
 
+@api_router.get("/workspace/mcp/servers/{server_name}/policy-check")
+async def check_workspace_mcp_server_policy(server_name: str):
+    """Check whether a workspace MCP server can be enabled/discovered under current policy."""
+    if not _workspace_mcp_manager:
+        raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
+    s = _workspace_mcp_manager.get_server(server_name)
+    if not s:
+        raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
+
+    env = _runtime_env()
+    transport = str(s.transport or "").strip().lower()
+
+    ok, reason = _prod_stdio_policy_check(server_name, transport, s.command, s.args, s.metadata)
+
+    # Provide best-effort detail for admins (do not fail if any parsing errors happen).
+    details: Dict[str, Any] = {"checks": {}, "policy": {}}
+    try:
+        details["checks"]["metadata_prod_allowed"] = bool((s.metadata or {}).get("prod_allowed", False))
+        allowlist_raw = os.environ.get("AIPLAT_PROD_STDIO_MCP_ALLOWLIST", "")
+        allowlist = [x.strip() for x in allowlist_raw.split(",") if x.strip()]
+        details["checks"]["server_in_allowlist"] = server_name in set(allowlist)
+        details["policy"]["AIPLAT_PROD_STDIO_MCP_ALLOWLIST"] = allowlist
+
+        cmd = (s.command or "").strip()
+        details["checks"]["command_present"] = bool(cmd)
+        details["checks"]["command_absolute"] = bool(cmd.startswith("/"))
+
+        prefixes_raw = os.environ.get("AIPLAT_STDIO_ALLOWED_COMMAND_PREFIXES", "")
+        parts: List[str] = []
+        for chunk in prefixes_raw.split(os.pathsep):
+            parts.extend([x.strip() for x in chunk.split(",") if x.strip()])
+        details["policy"]["AIPLAT_STDIO_ALLOWED_COMMAND_PREFIXES"] = parts
+        details["checks"]["command_prefix_ok"] = bool(cmd and any(cmd.startswith((p if p.endswith("/") else p + "/")) or cmd == p for p in parts))
+
+        deny_raw = os.environ.get("AIPLAT_STDIO_DENY_COMMAND_BASENAMES", "bash,sh,zsh")
+        deny = [x.strip() for x in deny_raw.split(",") if x.strip()]
+        details["policy"]["AIPLAT_STDIO_DENY_COMMAND_BASENAMES"] = deny
+        details["checks"]["deny_basename_ok"] = (os.path.basename(cmd).lower() not in {x.lower() for x in deny}) if cmd else True
+
+        details["checks"]["executable_ok"] = bool(cmd and os.path.exists(cmd) and os.access(cmd, os.X_OK))
+
+        a = list(s.args or [])
+        max_args = int(os.environ.get("AIPLAT_STDIO_MAX_ARGS", "32") or 32)
+        max_len = int(os.environ.get("AIPLAT_STDIO_MAX_ARG_LENGTH", "512") or 512)
+        details["policy"]["AIPLAT_STDIO_MAX_ARGS"] = max_args
+        details["policy"]["AIPLAT_STDIO_MAX_ARG_LENGTH"] = max_len
+        details["checks"]["args_count_ok"] = len(a) <= max_args
+        details["checks"]["args_length_ok"] = all(len(str(x)) <= max_len for x in a)
+
+        force_launcher = (os.environ.get("AIPLAT_STDIO_FORCE_LAUNCHER_IN_PROD", "") or "").strip().lower() in {"1", "true", "yes", "on"}
+        launcher = (os.environ.get("AIPLAT_STDIO_PROD_LAUNCHER") or "").strip()
+        details["policy"]["AIPLAT_STDIO_FORCE_LAUNCHER_IN_PROD"] = force_launcher
+        details["policy"]["AIPLAT_STDIO_PROD_LAUNCHER"] = launcher
+        details["checks"]["launcher_required"] = force_launcher
+        details["checks"]["launcher_ok"] = (not force_launcher) or (bool(launcher) and cmd == launcher)
+    except Exception:
+        pass
+
+    return {
+        "env": env,
+        "server_name": server_name,
+        "transport": transport,
+        "ok": bool(ok),
+        "reason": reason,
+        "details": details,
+    }
+
+
 @api_router.post("/workspace/mcp/servers")
 async def upsert_workspace_mcp_server(request: dict):
     """Create or update a workspace MCP server (writes to ~/.aiplat/mcps/<name>/server.yaml + policy.yaml)."""

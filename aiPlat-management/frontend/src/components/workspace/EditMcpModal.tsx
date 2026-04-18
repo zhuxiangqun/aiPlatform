@@ -29,6 +29,7 @@ const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSu
   const [authText, setAuthText] = useState('');
   const [metadataText, setMetadataText] = useState('');
   const [launcherPath, setLauncherPath] = useState('/opt/aiplat/mcp/bin/launch');
+  const [policyModal, setPolicyModal] = useState<{ open: boolean; title: string; content: string }>({ open: false, title: '', content: '' });
 
   useEffect(() => {
     if (!open || !server?.name) return;
@@ -81,6 +82,25 @@ const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSu
       setMetadataText(JSON.stringify(next, null, 2));
     } catch {
       toast.error('metadata JSON 格式错误，无法自动设置 prod_allowed');
+    }
+  };
+
+  const handlePolicyCheck = async () => {
+    if (!server?.name) return;
+    try {
+      const res = await workspaceMcpApi.policyCheck(server.name);
+      const ok = Boolean((res as any).ok);
+      const env = String((res as any).env || '');
+      const transport = String((res as any).transport || '');
+      if (ok) {
+        toast.success(`策略检查通过（env=${env}, transport=${transport}）`);
+        setPolicyModal({ open: true, title: '策略检查：通过', content: JSON.stringify(res, null, 2) });
+      } else {
+        toast.error(`策略检查未通过：${String((res as any).reason || '')}`);
+        setPolicyModal({ open: true, title: '策略检查：未通过', content: JSON.stringify(res, null, 2) });
+      }
+    } catch (e: any) {
+      toast.error('策略检查失败', String(e?.message || ''));
     }
   };
 
@@ -165,6 +185,7 @@ const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSu
   };
 
   return (
+    <>
     <Modal
       open={open}
       onClose={onClose}
@@ -190,6 +211,14 @@ const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSu
           <Alert type={transport === 'stdio' ? 'warning' : 'info'} title="风险提示">
             {riskHint}
           </Alert>
+
+          {transport === 'stdio' && (
+            <div className="flex items-center justify-end">
+              <Button variant="secondary" onClick={handlePolicyCheck} disabled={loading}>
+                prod 放行检查
+              </Button>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select label="Transport" value={transport} onChange={(v) => setTransport(v)} options={TRANSPORTS} />
@@ -236,6 +265,17 @@ const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSu
         </div>
       )}
     </Modal>
+
+    <Modal
+      open={policyModal.open}
+      onClose={() => setPolicyModal({ open: false, title: '', content: '' })}
+      title={policyModal.title}
+      width={860}
+      footer={<Button onClick={() => setPolicyModal({ open: false, title: '', content: '' })}>关闭</Button>}
+    >
+      <pre className="text-xs bg-dark-hover rounded p-2 overflow-auto max-h-[420px]">{policyModal.content}</pre>
+    </Modal>
+    </>
   );
 };
 
