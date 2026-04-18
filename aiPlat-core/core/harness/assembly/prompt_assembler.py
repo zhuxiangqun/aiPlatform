@@ -17,6 +17,10 @@ import hashlib
 import json
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Union
+from pathlib import Path
+import re
+
+from core.harness.kernel.execution_context import get_active_workspace_context
 
 
 Message = Dict[str, Any]
@@ -45,8 +49,30 @@ class PromptAssembler:
         metadata: Optional[Dict[str, Any]] = None,
     ) -> PromptAssemblyResult:
         msgs = self._normalize(prompt)
-        version = self._hash_messages(msgs)
         meta = dict(metadata or {})
+
+        # Phase R1: project context injection (best-effort, gated).
+        # If the execution has an active repo_root, we prepend AGENTS.md/AIPLAT.md
+        # as a system message. This mirrors Hermes-style "project context files".
+        try:
+            if str(meta.get("enable_project_context", "")).lower() in ("0", "false", "no"):
+                raise RuntimeError("project context disabled by metadata")
+            ctx = get_active_workspace_context()
+            if ctx and ctx.repo_root:
+                content, used_path, blocked_reason = self._load_project_context(ctx.repo_root)
+                if blocked_reason:
+                    meta["project_context_blocked"] = blocked_reason
+                if content and used_path:
+                    # Avoid duplication if caller already injected it.
+                    if not (msgs and isinstance(msgs[0], dict) and msgs[0].get("role") == "system" and "# Project Context" in str(msgs[0].get("content", ""))):
+                        msgs = [{"role": "system", "content": f"# Project Context\n\n{content}"}] + msgs
+                    meta["project_context_file"] = used_path
+                    meta["repo_root"] = str(ctx.repo_root)
+                    meta["project_context_sha256"] = hashlib.sha256(content.encode("utf-8")).hexdigest()
+        except Exception:
+            pass
+
+        version = self._hash_messages(msgs)
         meta.setdefault("versioning", "sha256(messages)")
         return PromptAssemblyResult(messages=msgs, prompt_version=version, metadata=meta)
 
@@ -167,3 +193,61 @@ Based on this observation, what should I do next?
     def _hash_messages(self, messages: List[Message]) -> str:
         canonical = json.dumps(messages, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+    # -----------------------------
+    # Project context (Phase R1)
+    # -----------------------------
+    _INJECTION_PATTERNS = [
+        (re.compile(r"ignore\\s+(previous|all|above|prior)\\s+instructions", re.I), "prompt_injection"),
+        (re.compile(r"do\\s+not\\s+tell\\s+the\\s+user", re.I), "deception_hide"),
+        (re.compile(r"system\\s+prompt\\s+override", re.I), "sys_prompt_override"),
+    ]
+    _INVISIBLE_CHARS = {
+        "\u200b", "\u200c", "\u200d", "\u2060", "\ufeff",
+        "\u202a", "\u202b", "\u202c", "\u202d", "\u202e",
+    }
+    _MAX_CONTEXT_CHARS = 20_000
+
+    def _load_project_context(self, repo_root: str) -> tuple[str, Optional[str], Optional[str]]:
+        """
+        Load project context from repo root (best-effort).
+
+        Search order (first hit wins):
+        - AGENTS.md
+        - AIPLAT.md
+        - .aiplat.md
+
+        Returns: (content, used_path, blocked_reason)
+        """
+        root = Path(str(repo_root)).expanduser()
+        candidates = [root / "AGENTS.md", root / "AIPLAT.md", root / ".aiplat.md"]
+        for p in candidates:
+            try:
+                if not p.is_file():
+                    continue
+                text = p.read_text(encoding="utf-8", errors="replace")
+                text = text.strip()
+                if not text:
+                    continue
+                text, blocked = self._scan_project_context(text)
+                if blocked:
+                    return "", str(p), blocked
+                if len(text) > self._MAX_CONTEXT_CHARS:
+                    text = text[: self._MAX_CONTEXT_CHARS] + "\n\n[TRUNCATED]"
+                return text, str(p), None
+            except Exception:
+                continue
+        return "", None, None
+
+    def _scan_project_context(self, content: str) -> tuple[str, Optional[str]]:
+        findings: list[str] = []
+        for ch in self._INVISIBLE_CHARS:
+            if ch in content:
+                findings.append(f"invisible_unicode_U+{ord(ch):04X}")
+        for pat, reason in self._INJECTION_PATTERNS:
+            if pat.search(content):
+                findings.append(reason)
+        if findings:
+            # Block injection-like content: do not feed into LLM.
+            return "", ",".join(findings)
+        return content, None

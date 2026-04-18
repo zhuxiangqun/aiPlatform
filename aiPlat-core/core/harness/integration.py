@@ -269,6 +269,29 @@ class HarnessIntegration:
                     if isinstance(text, str) and text.strip():
                         messages = [{"role": "user", "content": text.strip()}]
 
+            # Phase R1: workspace/repo context for prompt assembly (best-effort).
+            workspace_token = None
+            try:
+                from core.harness.kernel.execution_context import (
+                    ActiveWorkspaceContext,
+                    set_active_workspace_context,
+                )
+
+                repo_root = None
+                if isinstance(payload, dict):
+                    inp = payload.get("input")
+                    ctx = payload.get("context") if isinstance(payload.get("context"), dict) else {}
+                    if isinstance(inp, dict):
+                        repo_root = inp.get("directory") or inp.get("repo_root") or inp.get("workspace_root")
+                    if not repo_root and isinstance(ctx, dict):
+                        repo_root = ctx.get("directory") or ctx.get("repo_root") or ctx.get("workspace_root")
+                if isinstance(repo_root, str) and repo_root.strip():
+                    workspace_token = set_active_workspace_context(
+                        ActiveWorkspaceContext(repo_root=repo_root.strip())
+                    )
+            except Exception:
+                workspace_token = None
+
             # If resuming, pass loop snapshot down via AgentContext.variables
             variables = payload.get("context", {}) if isinstance(payload, dict) else {}
             if isinstance(payload, dict) and "_resume_loop_state" in payload:
@@ -417,6 +440,13 @@ class HarnessIntegration:
                         from core.harness.kernel.execution_context import reset_active_release_context
 
                         reset_active_release_context(token)
+                    except Exception:
+                        pass
+                if workspace_token is not None:
+                    try:
+                        from core.harness.kernel.execution_context import reset_active_workspace_context
+
+                        reset_active_workspace_context(workspace_token)
                     except Exception:
                         pass
 

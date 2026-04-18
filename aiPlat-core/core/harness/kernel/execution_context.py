@@ -47,6 +47,46 @@ def reset_active_release_context(token) -> None:
 def get_active_release_context() -> Optional[ActiveReleaseContext]:
     return _active_release_ctx.get()
 
+@dataclass
+class ActiveWorkspaceContext:
+    """
+    Per-execution workspace context (Phase R1).
+
+    Purpose:
+    - Provide repo/workspace metadata to low-level syscalls (e.g. sys_llm_generate)
+      without having to thread it through every call site.
+    """
+
+    repo_root: Optional[str] = None
+    context_file: Optional[str] = None
+    project_context: str = ""
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "repo_root": self.repo_root,
+            "context_file": self.context_file,
+            "project_context": self.project_context,
+        }
+
+
+_active_workspace_ctx: ContextVar[Optional[ActiveWorkspaceContext]] = ContextVar(
+    "active_workspace_ctx", default=None
+)
+
+
+def set_active_workspace_context(ctx: Optional[ActiveWorkspaceContext]):
+    """Set active workspace context for current async task. Returns a token for reset()."""
+    return _active_workspace_ctx.set(ctx)
+
+
+def reset_active_workspace_context(token) -> None:
+    """Reset to previous value using token returned by set_active_workspace_context()."""
+    _active_workspace_ctx.reset(token)
+
+
+def get_active_workspace_context() -> Optional[ActiveWorkspaceContext]:
+    return _active_workspace_ctx.get()
+
 
 # ---------------------------------------------------------------------------
 # Prompt revision audit (Phase 6.12)
