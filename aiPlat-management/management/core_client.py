@@ -67,6 +67,39 @@ class CoreAPIClient:
         params: Dict[str, Any] = {"limit": limit, "offset": offset}
         return await self._request("GET", f"/api/core/traces/{trace_id}/executions", params=params)
 
+    async def list_syscall_events(
+        self,
+        *,
+        limit: int = 100,
+        offset: int = 0,
+        trace_id: Optional[str] = None,
+        run_id: Optional[str] = None,
+        kind: Optional[str] = None,
+        name: Optional[str] = None,
+        status: Optional[str] = None,
+        error_contains: Optional[str] = None,
+        approval_request_id: Optional[str] = None,
+        span_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        params: Dict[str, Any] = {"limit": limit, "offset": offset}
+        if trace_id:
+            params["trace_id"] = trace_id
+        if run_id:
+            params["run_id"] = run_id
+        if kind:
+            params["kind"] = kind
+        if name:
+            params["name"] = name
+        if status:
+            params["status"] = status
+        if error_contains:
+            params["error_contains"] = error_contains
+        if approval_request_id:
+            params["approval_request_id"] = approval_request_id
+        if span_id:
+            params["span_id"] = span_id
+        return await self._request("GET", "/api/core/syscalls/events", params=params)
+
     # ===== Learning / Release Management (Phase 6) =====
 
     async def list_learning_artifacts(

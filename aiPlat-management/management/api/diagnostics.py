@@ -261,6 +261,48 @@ async def list_layer_graph_runs(
     return {"layer": "core", "supported": True, "runs": runs}
 
 
+@router.get("/syscalls/{layer}")
+async def list_layer_syscalls(
+    layer: str,
+    request: Request,
+    trace_id: Optional[str] = None,
+    run_id: Optional[str] = None,
+    kind: Optional[str] = None,
+    name: Optional[str] = None,
+    status: Optional[str] = None,
+    error_contains: Optional[str] = None,
+    approval_request_id: Optional[str] = None,
+    span_id: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
+) -> Dict[str, Any]:
+    """List syscall events (core layer only for now)."""
+    health_checkers = request.app.state.health_checkers
+    if layer not in health_checkers:
+        raise HTTPException(status_code=404, detail=f"Layer '{layer}' not found")
+
+    if layer != "core":
+        return {"layer": layer, "supported": False, "message": "Syscall events are supported for core layer only (for now)."}
+
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="Core client not initialized")
+
+    items = await core_client.list_syscall_events(
+        limit=limit,
+        offset=offset,
+        trace_id=trace_id,
+        run_id=run_id,
+        kind=kind,
+        name=name,
+        status=status,
+        error_contains=error_contains,
+        approval_request_id=approval_request_id,
+        span_id=span_id,
+    )
+    return {"layer": "core", "supported": True, "syscalls": items, "limit": limit, "offset": offset}
+
+
 @router.get("/graphs/{layer}/{run_id}")
 async def get_layer_graph_run(
     layer: str,

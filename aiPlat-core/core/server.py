@@ -1543,6 +1543,38 @@ async def get_approval_audit(request_id: str):
     return approval
 
 
+# ==================== Syscall Events (Diagnostics) ====================
+
+
+@api_router.get("/syscalls/events")
+async def list_syscall_events(
+    limit: int = 100,
+    offset: int = 0,
+    trace_id: Optional[str] = None,
+    run_id: Optional[str] = None,
+    kind: Optional[str] = None,
+    name: Optional[str] = None,
+    status: Optional[str] = None,
+    error_contains: Optional[str] = None,
+    approval_request_id: Optional[str] = None,
+    span_id: Optional[str] = None,
+):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    return await _execution_store.list_syscall_events(
+        limit=limit,
+        offset=offset,
+        trace_id=trace_id,
+        run_id=run_id,
+        kind=kind,
+        name=name,
+        status=status,
+        error_contains=error_contains,
+        approval_request_id=approval_request_id,
+        span_id=span_id,
+    )
+
+
 @api_router.post("/approvals/{request_id}/approve")
 async def approve_request(request_id: str, request: dict):
     if not _approval_manager:

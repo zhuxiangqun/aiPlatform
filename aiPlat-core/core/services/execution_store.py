@@ -1475,10 +1475,13 @@ class ExecutionStore:
         trace_id: Optional[str] = None,
         run_id: Optional[str] = None,
         kind: Optional[str] = None,
+        name: Optional[str] = None,
+        status: Optional[str] = None,
+        error_contains: Optional[str] = None,
         approval_request_id: Optional[str] = None,
         span_id: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """List syscall events with basic filters."""
+        """List syscall events with basic filters (best-effort; no FTS)."""
         await self.init()
         db_path = self._config.db_path
 
@@ -1500,6 +1503,15 @@ class ExecutionStore:
                 if kind:
                     clauses.append("kind=?")
                     params.append(kind)
+                if status:
+                    clauses.append("status=?")
+                    params.append(status)
+                if name:
+                    clauses.append("name LIKE ?")
+                    params.append(f"%{name}%")
+                if error_contains:
+                    clauses.append("error LIKE ?")
+                    params.append(f"%{error_contains}%")
                 if approval_request_id:
                     clauses.append("approval_request_id=?")
                     params.append(approval_request_id)
