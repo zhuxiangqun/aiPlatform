@@ -4220,6 +4220,51 @@ async def gateway_execute(request: GatewayExecuteRequest):
 
 # ==================== Skill Packs + Long-term Memory (Roadmap-4 minimal) ====================
 
+def _normalize_skill_pack_manifest(manifest: Any) -> Dict[str, Any]:
+    """
+    Validate + normalize Skill Pack manifest (minimal contract).
+
+    Supported manifest.skills forms:
+    - ["skill_id", ...]
+    - [{"id": "...", "display_name": "...", "category": "...", "description": "...", "version": "...", "sop_markdown": "..."}, ...]
+    """
+    if manifest is None:
+        return {}
+    if not isinstance(manifest, dict):
+        raise HTTPException(status_code=400, detail="manifest must be an object")
+
+    out = dict(manifest)
+    skills = out.get("skills")
+    if skills is None:
+        return out
+    if not isinstance(skills, list):
+        raise HTTPException(status_code=400, detail="manifest.skills must be an array")
+
+    norm_skills: List[Dict[str, Any]] = []
+    for it in skills:
+        if isinstance(it, str):
+            sid = it.strip()
+            if not sid:
+                raise HTTPException(status_code=400, detail="manifest.skills contains empty string id")
+            if " " in sid:
+                raise HTTPException(status_code=400, detail=f"invalid skill id (contains spaces): {sid}")
+            norm_skills.append({"id": sid})
+            continue
+        if isinstance(it, dict):
+            sid = str(it.get("id") or it.get("skill_id") or "").strip()
+            if not sid:
+                raise HTTPException(status_code=400, detail="manifest.skills contains an item without id")
+            if " " in sid:
+                raise HTTPException(status_code=400, detail=f"invalid skill id (contains spaces): {sid}")
+            spec = dict(it)
+            spec["id"] = sid
+            norm_skills.append(spec)
+            continue
+        raise HTTPException(status_code=400, detail="manifest.skills items must be string or object")
+
+    out["skills"] = norm_skills
+    return out
+
 
 @api_router.get("/skill-packs")
 async def list_skill_packs(limit: int = 100, offset: int = 0):
@@ -4232,8 +4277,9 @@ async def list_skill_packs(limit: int = 100, offset: int = 0):
 async def create_skill_pack(request: SkillPackCreateRequest):
     if not _execution_store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    manifest = _normalize_skill_pack_manifest(request.manifest)
     return await _execution_store.create_skill_pack(
-        {"name": request.name, "description": request.description, "manifest": request.manifest}
+        {"name": request.name, "description": request.description, "manifest": manifest}
     )
 
 
@@ -4252,6 +4298,8 @@ async def update_skill_pack(pack_id: str, request: SkillPackUpdateRequest):
     if not _execution_store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
     patch = request.model_dump(exclude_unset=True)
+    if "manifest" in patch:
+        patch["manifest"] = _normalize_skill_pack_manifest(patch.get("manifest"))
     updated = await _execution_store.update_skill_pack(pack_id, patch)
     if not updated:
         raise HTTPException(status_code=404, detail="Skill pack not found")
@@ -4273,6 +4321,11 @@ async def publish_skill_pack(pack_id: str, request: SkillPackPublishRequest):
     if not _execution_store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
     try:
+        # Validate manifest before publishing a version snapshot.
+        pack = await _execution_store.get_skill_pack(pack_id)
+        if not pack:
+            raise ValueError("Skill pack not found")
+        _normalize_skill_pack_manifest(pack.get("manifest"))
         return await _execution_store.publish_skill_pack_version(pack_id=pack_id, version=request.version)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -4309,8 +4362,8 @@ async def install_skill_pack(pack_id: str, request: SkillPackInstallRequest):
             if manifest is None:
                 pack = await _execution_store.get_skill_pack(pack_id)
                 manifest = pack.get("manifest") if isinstance(pack, dict) else None
-            manifest = manifest if isinstance(manifest, dict) else {}
-            skills = manifest.get("skills") if isinstance(manifest, dict) else None
+            manifest = _normalize_skill_pack_manifest(manifest if isinstance(manifest, dict) else {})
+            skills = manifest.get("skills") if isinstance(manifest, dict) else []
             if not isinstance(skills, list):
                 skills = []
 
@@ -4319,14 +4372,10 @@ async def install_skill_pack(pack_id: str, request: SkillPackInstallRequest):
             for item in skills:
                 try:
                     # Skill spec: "skill_id" | {id,display_name,category,description,version,sop_markdown}
-                    if isinstance(item, str):
-                        sid = item.strip()
-                        spec = {"id": sid}
-                    elif isinstance(item, dict):
-                        sid = str(item.get("id") or item.get("skill_id") or "").strip()
-                        spec = dict(item)
-                    else:
+                    if not isinstance(item, dict):
                         continue
+                    sid = str(item.get("id") or "").strip()
+                    spec = dict(item)
                     if not sid:
                         continue
                     if not target_mgr:
