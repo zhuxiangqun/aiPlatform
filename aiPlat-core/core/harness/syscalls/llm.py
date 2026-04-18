@@ -82,6 +82,7 @@ async def sys_llm_generate(
 
     # Phase 4 (optional): central prompt assembly + prompt_version for replay/audit.
     prompt_version = None
+    prompt_meta: Dict[str, Any] = {}
     applied_prompt_revision_ids: List[str] = []
     prompt_revision_conflicts: List[Dict[str, Any]] = []
     ignored_prompt_revision_ids: List[str] = []
@@ -123,6 +124,7 @@ async def sys_llm_generate(
             assembled = PromptAssembler().assemble(prepared)
             prepared = assembled.messages
             prompt_version = assembled.prompt_version
+            prompt_meta = assembled.metadata or {}
         except Exception:
             prompt_version = None
     _ar = get_active_release_context()
@@ -141,6 +143,13 @@ async def sys_llm_generate(
                     "applied_prompt_revision_ids": applied_prompt_revision_ids,
                     "ignored_prompt_revision_ids": ignored_prompt_revision_ids,
                     "prompt_revision_conflicts": prompt_revision_conflicts,
+                    # ContextEngine / prompt stats (best-effort)
+                    "context_engine": prompt_meta.get("context_engine") if isinstance(prompt_meta, dict) else None,
+                    "prompt_message_count": prompt_meta.get("prompt_message_count") if isinstance(prompt_meta, dict) else None,
+                    "prompt_estimated_tokens": prompt_meta.get("prompt_estimated_tokens") if isinstance(prompt_meta, dict) else None,
+                    "project_context_file": prompt_meta.get("project_context_file") if isinstance(prompt_meta, dict) else None,
+                    "project_context_sha256": prompt_meta.get("project_context_sha256") if isinstance(prompt_meta, dict) else None,
+                    "project_context_blocked": prompt_meta.get("project_context_blocked") if isinstance(prompt_meta, dict) else None,
                 },
             )
     except Exception:

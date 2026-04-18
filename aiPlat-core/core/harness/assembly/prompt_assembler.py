@@ -61,6 +61,14 @@ class PromptAssembler:
         except Exception:
             pass
 
+        # Roadmap-1 (Phase 1): lightweight prompt stats (no behavior change).
+        try:
+            meta.setdefault("context_engine", "default_v1")
+            meta.setdefault("prompt_message_count", len(msgs))
+            meta.setdefault("prompt_estimated_tokens", self._estimate_tokens(msgs))
+        except Exception:
+            pass
+
         version = self._hash_messages(msgs)
         meta.setdefault("versioning", "sha256(messages)")
         return PromptAssemblyResult(messages=msgs, prompt_version=version, metadata=meta)
@@ -184,3 +192,20 @@ Based on this observation, what should I do next?
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
     # Project context logic moved to ContextEngine (core.harness.context.engine)
+
+    def _estimate_tokens(self, messages: List[Message]) -> int:
+        """
+        Best-effort token estimator.
+        We intentionally avoid model-specific tokenizers at this phase.
+        """
+        total_chars = 0
+        for m in messages or []:
+            try:
+                c = m.get("content", "")
+                if c is None:
+                    continue
+                total_chars += len(str(c))
+            except Exception:
+                continue
+        # heuristic: ~4 chars per token
+        return int(total_chars / 4) + 1
