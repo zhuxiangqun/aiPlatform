@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Badge, Table, Select, Switch, Button, Modal, toast } from '../../../components/ui';
 import { useWorkspaceSkillStore } from '../../../stores';
 import type { Skill } from '../../../services';
+import { workspaceSkillApi } from '../../../services/coreApi';
 import AddSkillModal from '../../../components/workspace/AddSkillModal';
 import EditSkillModal from '../../../components/workspace/EditSkillModal';
 import ExecuteSkillModal from '../../../components/workspace/ExecuteSkillModal';
@@ -47,6 +48,9 @@ const WorkspaceSkills: React.FC = () => {
   const [executeSkill, setExecuteSkill] = useState<Skill | null>(null);
   const [versionsModalOpen, setVersionsModalOpen] = useState(false);
   const [executionsModalOpen, setExecutionsModalOpen] = useState(false);
+  const [skillMdOpen, setSkillMdOpen] = useState(false);
+  const [skillMdLoading, setSkillMdLoading] = useState(false);
+  const [skillMd, setSkillMd] = useState<{ path: string; content: string } | null>(null);
 
   useEffect(() => {
     fetchSkills();
@@ -388,9 +392,30 @@ const WorkspaceSkills: React.FC = () => {
             <div className="flex items-center justify-between gap-2">
               <code className="text-xs bg-dark-hover px-1.5 py-0.5 rounded break-all">{String(fs.skill_md || '-')}</code>
               {fs.skill_md && (
-                <Button variant="ghost" icon={<Copy className="w-4 h-4" />} onClick={() => copyText(String(fs.skill_md))}>
-                  复制
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" icon={<Copy className="w-4 h-4" />} onClick={() => copyText(String(fs.skill_md))}>
+                    复制
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={async () => {
+                      if (!detailModal.skill?.id) return;
+                      setSkillMdOpen(true);
+                      setSkillMdLoading(true);
+                      setSkillMd(null);
+                      try {
+                        const res = await workspaceSkillApi.getSkillMarkdown(String(detailModal.skill.id));
+                        setSkillMd({ path: res.path, content: res.content });
+                      } catch (e: any) {
+                        toast.error('预览失败', String(e?.message || ''));
+                      } finally {
+                        setSkillMdLoading(false);
+                      }
+                    }}
+                  >
+                    预览
+                  </Button>
+                </div>
               )}
             </div>
           </div>
@@ -398,6 +423,23 @@ const WorkspaceSkills: React.FC = () => {
             <div className="text-xs text-gray-500">metadata</div>
             <pre className="text-xs bg-dark-hover rounded p-2 overflow-auto max-h-56">{JSON.stringify(detailModal.skill?.metadata || {}, null, 2)}</pre>
           </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={skillMdOpen}
+        onClose={() => { setSkillMdOpen(false); setSkillMd(null); }}
+        title={`SKILL.md 预览：${detailModal.skill?.id || ''}`}
+        width={980}
+        footer={<Button onClick={() => { setSkillMdOpen(false); setSkillMd(null); }}>关闭</Button>}
+      >
+        <div className="space-y-3 text-sm text-gray-300">
+          <div className="text-xs text-gray-500">path</div>
+          <code className="text-xs bg-dark-hover px-1.5 py-0.5 rounded break-all">{skillMd?.path || '-'}</code>
+          <div className="text-xs text-gray-500">content</div>
+          <pre className="text-xs bg-dark-hover rounded p-3 overflow-auto max-h-[520px]">
+            {skillMdLoading ? '加载中...' : (skillMd?.content || '')}
+          </pre>
         </div>
       </Modal>
 

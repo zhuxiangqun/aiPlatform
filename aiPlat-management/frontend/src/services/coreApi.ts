@@ -514,6 +514,10 @@ export const workspaceSkillApi = {
     );
   },
 
+  getSkillMarkdown: async (skillId: string) => {
+    return apiClient.get<{ skill_id: string; path: string; content: string }>(`/core/workspace/skills/${skillId}/skill-md`);
+  },
+
   listExecutions: async (skillId: string, params?: { limit?: number; offset?: number }) => {
     const query = new URLSearchParams();
     if (params?.limit) query.set('limit', String(params.limit));
