@@ -29,19 +29,11 @@ async def sys_skill_call(
     trace_context: Optional[Dict[str, Any]] = None,
 ) -> Any:
     """Execute a skill call."""
-    if skill is None or not hasattr(skill, "execute"):
-        raise RuntimeError("Skill is not executable")
-
     trace_gate = TraceGate()
     ctx_gate = ContextGate()
     res_gate = ResilienceGate()
 
-    ctx = context or SkillContext(session_id=session_id, user_id=user_id, variables=params or {})
-    prepared_params = ctx_gate.prepare_tool_args(params or {}, context=trace_context or {})
-
-    async def _run():
-        return await skill.execute(ctx, prepared_params)  # type: ignore[misc]
-
+    # Start span early so "fast-fail" (missing skill) is still observable.
     skill_name = str(getattr(skill, "name", None) or getattr(getattr(skill, "_config", None), "name", "") or "")
     span = await trace_gate.start(
         "sys.skill.call",
@@ -51,6 +43,40 @@ async def sys_skill_call(
         },
     )
     start_ts = time.time()
+
+    if skill is None or not hasattr(skill, "execute"):
+        end_ts = time.time()
+        await trace_gate.end(span, success=False)
+        runtime = get_kernel_runtime()
+        store = getattr(runtime, "execution_store", None) if runtime else None
+        if store is not None:
+            try:
+                await store.add_syscall_event(
+                    {
+                        "trace_id": span.trace_id,
+                        "span_id": getattr(span, "span_id", None),
+                        "run_id": (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None,
+                        "kind": "skill",
+                        "name": skill_name or "<unknown>",
+                        "status": "failed",
+                        "start_time": start_ts,
+                        "end_time": end_ts,
+                        "duration_ms": (end_ts - start_ts) * 1000.0,
+                        "args": {"params": params or {}},
+                        "error": "skill_not_executable",
+                    }
+                )
+            except Exception:
+                pass
+        raise RuntimeError("Skill is not executable")
+
+    ctx = context or SkillContext(session_id=session_id, user_id=user_id, variables=params or {})
+    prepared_params = ctx_gate.prepare_tool_args(params or {}, context=trace_context or {})
+
+    async def _run():
+        return await skill.execute(ctx, prepared_params)  # type: ignore[misc]
+
+    # (span already started above)
     try:
         retries = int(os.getenv("AIPLAT_SKILL_RETRIES", "0") or "0")
         result = await res_gate.run(_run, retries=retries, timeout_seconds=timeout_seconds)

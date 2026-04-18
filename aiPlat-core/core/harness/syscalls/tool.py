@@ -34,13 +34,48 @@ async def sys_tool_call(
     Notes:
     - Injects `_user_id` / `_session_id` into args for downstream wrappers.
     """
-    if tool is None or not hasattr(tool, "execute"):
-        raise RuntimeError("Tool is not executable")
-
     policy_gate = PolicyGate()
     trace_gate = TraceGate()
     ctx_gate = ContextGate()
     res_gate = ResilienceGate()
+
+    # Start span early so "fast-fail" (missing tool) is still observable.
+    tool_name = str(getattr(tool, "name", None) or getattr(tool, "get_name", lambda: "")() or "")
+    span = await trace_gate.start(
+        "sys.tool.call",
+        attributes={
+            "tool": tool_name,
+            "user_id": user_id,
+            "trace_id": (trace_context or {}).get("trace_id") if isinstance(trace_context, dict) else None,
+        },
+    )
+    start_ts = time.time()
+
+    if tool is None or not hasattr(tool, "execute"):
+        end_ts = time.time()
+        await trace_gate.end(span, success=False)
+        runtime = get_kernel_runtime()
+        store = getattr(runtime, "execution_store", None) if runtime else None
+        if store is not None:
+            try:
+                await store.add_syscall_event(
+                    {
+                        "trace_id": span.trace_id,
+                        "span_id": getattr(span, "span_id", None),
+                        "run_id": (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None,
+                        "kind": "tool",
+                        "name": tool_name or "<unknown>",
+                        "status": "failed",
+                        "start_time": start_ts,
+                        "end_time": end_ts,
+                        "duration_ms": (end_ts - start_ts) * 1000.0,
+                        "args": {"tool_args": tool_args or {}},
+                        "error": "tool_not_executable",
+                    }
+                )
+            except Exception:
+                pass
+        raise RuntimeError("Tool is not executable")
 
     args = dict(tool_args or {})
     # Provide identity info for permission wrapper + auditing.
@@ -59,16 +94,6 @@ async def sys_tool_call(
         pass
 
     # PolicyGate (permission; approval optional via env flag)
-    tool_name = str(getattr(tool, "name", None) or getattr(tool, "get_name", lambda: "")() or "")
-    span = await trace_gate.start(
-        "sys.tool.call",
-        attributes={
-            "tool": tool_name,
-            "user_id": user_id,
-            "trace_id": (trace_context or {}).get("trace_id") if isinstance(trace_context, dict) else None,
-        },
-    )
-    start_ts = time.time()
     pr = policy_gate.check_tool(user_id=user_id, tool_name=tool_name or "<unknown>", tool_args=args)
     if pr.decision == PolicyDecision.DENY:
         # Standardize as a ToolResult to avoid raising and to make approval/deny states machine-readable.

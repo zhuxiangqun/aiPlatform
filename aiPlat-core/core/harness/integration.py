@@ -257,6 +257,18 @@ class HarnessIntegration:
 
         try:
             payload = req.payload or {}
+            # Normalize inputs: UI may send {input: {...}} without messages.
+            messages = payload.get("messages", []) if isinstance(payload, dict) else []
+            if not messages and isinstance(payload, dict):
+                inp = payload.get("input")
+                if isinstance(inp, str) and inp.strip():
+                    messages = [{"role": "user", "content": inp.strip()}]
+                elif isinstance(inp, dict):
+                    # Best-effort common keys
+                    text = inp.get("message") or inp.get("prompt") or inp.get("task") or inp.get("query")
+                    if isinstance(text, str) and text.strip():
+                        messages = [{"role": "user", "content": text.strip()}]
+
             # If resuming, pass loop snapshot down via AgentContext.variables
             variables = payload.get("context", {}) if isinstance(payload, dict) else {}
             if isinstance(payload, dict) and "_resume_loop_state" in payload:
@@ -268,7 +280,7 @@ class HarnessIntegration:
             context = AgentContext(
                 session_id=payload.get("session_id", req.session_id or "default"),
                 user_id=user_id,
-                messages=payload.get("messages", []),
+                messages=messages,
                 variables=variables or {},
             )
             # Propagate trace/run identifiers into agent variables so loops can pass them to syscalls.
@@ -347,9 +359,48 @@ class HarnessIntegration:
 
             try:
                 if engine is not None:
-                    result = await engine.execute_agent(agent, context)  # type: ignore[attr-defined]
+                    from core.harness.infrastructure.gates import TraceGate
+
+                    exec_span = await TraceGate().start(
+                        "agent.execute",
+                        attributes={
+                            "trace_id": trace_id,
+                            "agent_id": agent_id,
+                            "execution_id": execution_id,
+                        },
+                    )
+                    try:
+                        result = await engine.execute_agent(agent, context)  # type: ignore[attr-defined]
+                    finally:
+                        try:
+                            await TraceGate().end(exec_span, success=bool(getattr(result, "success", False)))  # type: ignore[name-defined]
+                        except Exception:
+                            # If result is not set due to exception, mark failed.
+                            try:
+                                await TraceGate().end(exec_span, success=False)
+                            except Exception:
+                                pass
                 else:
-                    result = await agent.execute(context)  # type: ignore[attr-defined]
+                    from core.harness.infrastructure.gates import TraceGate
+
+                    exec_span = await TraceGate().start(
+                        "agent.execute",
+                        attributes={
+                            "trace_id": trace_id,
+                            "agent_id": agent_id,
+                            "execution_id": execution_id,
+                        },
+                    )
+                    try:
+                        result = await agent.execute(context)  # type: ignore[attr-defined]
+                    finally:
+                        try:
+                            await TraceGate().end(exec_span, success=bool(getattr(result, "success", False)))  # type: ignore[name-defined]
+                        except Exception:
+                            try:
+                                await TraceGate().end(exec_span, success=False)
+                            except Exception:
+                                pass
             finally:
                 # Capture then reset prompt revision audit
                 if audit_token is not None:

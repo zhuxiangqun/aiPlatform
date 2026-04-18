@@ -36,13 +36,47 @@ async def sys_llm_generate(
         prompt: Either a string prompt or chat messages list.
         trace_context: Reserved for future tracing integration.
     """
-    if model is None or not hasattr(model, "generate"):
-        raise RuntimeError("No model available for sys_llm_generate")
-
     # Phase 3: gates (best-effort, fail-open).
     trace_gate = TraceGate()
     ctx_gate = ContextGate()
     res_gate = ResilienceGate()
+
+    # Start span as early as possible so "fast-fail" (e.g. missing model)
+    # still produces an observable span and audit record.
+    span = await trace_gate.start(
+        "sys.llm.generate",
+        attributes={
+            "has_trace_context": bool(trace_context),
+            "trace_id": (trace_context or {}).get("trace_id") if isinstance(trace_context, dict) else None,
+        },
+    )
+    start_ts = time.time()
+
+    if model is None or not hasattr(model, "generate"):
+        end_ts = time.time()
+        await trace_gate.end(span, success=False)
+        runtime = get_kernel_runtime()
+        store = getattr(runtime, "execution_store", None) if runtime else None
+        if store is not None:
+            try:
+                await store.add_syscall_event(
+                    {
+                        "trace_id": span.trace_id,
+                        "span_id": getattr(span, "span_id", None),
+                        "run_id": (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None,
+                        "kind": "llm",
+                        "name": "generate",
+                        "status": "failed",
+                        "start_time": start_ts,
+                        "end_time": end_ts,
+                        "duration_ms": (end_ts - start_ts) * 1000.0,
+                        "args": {"prompt_type": "messages" if isinstance(prompt, list) else "text"},
+                        "error": "no_model",
+                    }
+                )
+            except Exception:
+                pass
+        raise RuntimeError("No model available for sys_llm_generate")
 
     prepared = ctx_gate.prepare_llm_args(prompt, context=trace_context or {})
 
@@ -92,22 +126,25 @@ async def sys_llm_generate(
         except Exception:
             prompt_version = None
     _ar = get_active_release_context()
-    span = await trace_gate.start(
-        "sys.llm.generate",
-        attributes={
-            "has_trace_context": bool(trace_context),
-            "trace_id": (trace_context or {}).get("trace_id") if isinstance(trace_context, dict) else None,
-            "prompt_version": prompt_version,
-            # Phase 6.13: make prompt revision application observable at span level
-            "active_release_candidate_id": _ar.candidate_id if _ar else None,
-            "active_release_version": _ar.version if _ar else None,
-            "applied_prompt_revision_ids": applied_prompt_revision_ids,
-            "ignored_prompt_revision_ids": ignored_prompt_revision_ids,
-            "prompt_revision_conflicts": prompt_revision_conflicts,
-            "prompt_revision_strict": os.getenv("AIPLAT_PROMPT_REVISION_STRICT", "false").lower() in ("1", "true", "yes", "y"),
-        },
-    )
-    start_ts = time.time()
+    # Enrich span attributes after we know prompt_version / release context.
+    try:
+        runtime = get_kernel_runtime()
+        trace_service = getattr(runtime, "trace_service", None) if runtime else None
+        if trace_service and getattr(span, "span_id", None):
+            await trace_service.add_span_event(
+                span.span_id,
+                "llm.prompt.info",
+                attributes={
+                    "prompt_version": prompt_version,
+                    "active_release_candidate_id": _ar.candidate_id if _ar else None,
+                    "active_release_version": _ar.version if _ar else None,
+                    "applied_prompt_revision_ids": applied_prompt_revision_ids,
+                    "ignored_prompt_revision_ids": ignored_prompt_revision_ids,
+                    "prompt_revision_conflicts": prompt_revision_conflicts,
+                },
+            )
+    except Exception:
+        pass
     try:
         async def _call():
             return await model.generate(prepared)  # type: ignore[misc]
