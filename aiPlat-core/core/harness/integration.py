@@ -623,6 +623,37 @@ class HarnessIntegration:
                 trace_id = None
 
         payload = req.payload or {}
+        # Phase R2: apply workspace context for downstream syscalls (toolset gating).
+        workspace_token = None
+        try:
+            from core.harness.kernel.execution_context import ActiveWorkspaceContext, set_active_workspace_context
+
+            requested_toolset = None
+            repo_root = None
+            if isinstance(payload, dict):
+                opts = payload.get("options") if isinstance(payload.get("options"), dict) else {}
+                ctx0 = payload.get("context") if isinstance(payload.get("context"), dict) else {}
+                requested_toolset = (
+                    (opts.get("toolset") if isinstance(opts, dict) else None)
+                    or payload.get("toolset")
+                    or ctx0.get("toolset")
+                    or ctx0.get("_toolset")
+                )
+                inp0 = payload.get("input")
+                if isinstance(inp0, dict):
+                    repo_root = inp0.get("directory") or inp0.get("repo_root") or inp0.get("workspace_root")
+                if not repo_root and isinstance(ctx0, dict):
+                    repo_root = ctx0.get("directory") or ctx0.get("repo_root") or ctx0.get("workspace_root")
+            if requested_toolset or (isinstance(repo_root, str) and repo_root.strip()):
+                workspace_token = set_active_workspace_context(
+                    ActiveWorkspaceContext(
+                        repo_root=repo_root.strip() if isinstance(repo_root, str) and repo_root.strip() else None,
+                        toolset=str(requested_toolset) if requested_toolset else None,
+                    )
+                )
+        except Exception:
+            workspace_token = None
+
         try:
             execution = await runtime.skill_manager.execute_skill(
                 skill_id,
@@ -632,6 +663,14 @@ class HarnessIntegration:
             )
         except Exception as e:
             return ExecutionResult(ok=False, error=str(e), http_status=500, trace_id=trace_id)
+        finally:
+            if workspace_token is not None:
+                try:
+                    from core.harness.kernel.execution_context import reset_active_workspace_context
+
+                    reset_active_workspace_context(workspace_token)
+                except Exception:
+                    pass
 
         # Persist execution (best effort)
         if runtime.execution_store:
@@ -690,12 +729,59 @@ class HarnessIntegration:
         from core.apps.tools import get_tool_registry
         from core.harness.kernel.types import ExecutionResult
 
+        runtime = self._runtime
         registry = get_tool_registry()
         tool = registry.get(req.target_id)
         if not tool:
             return ExecutionResult(ok=False, error=f"Tool {req.target_id} not found", http_status=404)
 
-        input_data = (req.payload or {}).get("input", {})
+        payload = req.payload or {}
+        input_data = payload.get("input", {}) if isinstance(payload, dict) else {}
+
+        # Phase R2: apply workspace context for toolset gating.
+        workspace_token = None
+        requested_toolset = None
+        try:
+            from core.harness.kernel.execution_context import ActiveWorkspaceContext, set_active_workspace_context
+
+            repo_root = None
+            if isinstance(payload, dict):
+                opts = payload.get("options") if isinstance(payload.get("options"), dict) else {}
+                ctx0 = payload.get("context") if isinstance(payload.get("context"), dict) else {}
+                requested_toolset = (
+                    (opts.get("toolset") if isinstance(opts, dict) else None)
+                    or payload.get("toolset")
+                    or ctx0.get("toolset")
+                    or ctx0.get("_toolset")
+                )
+                inp0 = payload.get("input")
+                if isinstance(inp0, dict):
+                    repo_root = inp0.get("directory") or inp0.get("repo_root") or inp0.get("workspace_root")
+                if not repo_root and isinstance(ctx0, dict):
+                    repo_root = ctx0.get("directory") or ctx0.get("repo_root") or ctx0.get("workspace_root")
+            if requested_toolset or (isinstance(repo_root, str) and repo_root.strip()):
+                workspace_token = set_active_workspace_context(
+                    ActiveWorkspaceContext(
+                        repo_root=repo_root.strip() if isinstance(repo_root, str) and repo_root.strip() else None,
+                        toolset=str(requested_toolset) if requested_toolset else None,
+                    )
+                )
+        except Exception:
+            workspace_token = None
+
+        # Add a trace for tool execute so syscall spans are linked (best-effort).
+        trace_id = None
+        run_id = f"tool-{req.target_id}-{uuid.uuid4().hex[:8]}"
+        if runtime and runtime.trace_service:
+            try:
+                t = await runtime.trace_service.start_trace(
+                    name=f"tool:{req.target_id}",
+                    attributes={"tool_name": req.target_id, "run_id": run_id, "user_id": req.user_id or "system"},
+                )
+                trace_id = t.trace_id
+            except Exception:
+                trace_id = None
+
         try:
             result = await sys_tool_call(
                 tool,
@@ -703,6 +789,7 @@ class HarnessIntegration:
                 user_id=req.user_id,
                 session_id=req.session_id,
                 timeout_seconds=60,
+                trace_context={"trace_id": trace_id, "run_id": run_id} if trace_id else None,
             )
             return ExecutionResult(
                 ok=True,
@@ -712,12 +799,32 @@ class HarnessIntegration:
                     "error": getattr(result, "error", None) or None,
                     "latency": getattr(result, "latency", 0),
                     "metadata": getattr(result, "metadata", {}) or {},
+                    "trace_id": trace_id,
+                    "run_id": run_id,
+                    "toolset": str(requested_toolset) if requested_toolset else None,
                 },
+                trace_id=trace_id,
+                run_id=run_id,
             )
         except asyncio.TimeoutError:
             return ExecutionResult(ok=False, error="Tool execution timed out (60s)", http_status=504)
         except Exception as e:
             return ExecutionResult(ok=False, error=str(e), http_status=500)
+        finally:
+            if runtime and runtime.trace_service and trace_id:
+                try:
+                    from core.services.trace_service import SpanStatus
+
+                    await runtime.trace_service.end_trace(trace_id, status=SpanStatus.SUCCESS)
+                except Exception:
+                    pass
+            if workspace_token is not None:
+                try:
+                    from core.harness.kernel.execution_context import reset_active_workspace_context
+
+                    reset_active_workspace_context(workspace_token)
+                except Exception:
+                    pass
 
     async def _execute_graph(self, req: "ExecutionRequest") -> "ExecutionResult":
         # Phase-1: only support compiled_react execution via internal compiled graph.
