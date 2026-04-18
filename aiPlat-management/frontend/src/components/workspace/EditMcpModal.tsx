@@ -16,6 +16,13 @@ const TRANSPORTS = [
   { value: 'stdio', label: 'stdio' },
 ];
 
+const MCP_TEMPLATES = [
+  { value: 'sse_internal', label: 'SSE（内部服务）' },
+  { value: 'http_internal', label: 'HTTP（内部服务）' },
+  { value: 'stdio_launcher_dev', label: 'STDIO + Launcher（dev/staging）' },
+  { value: 'stdio_launcher_prod', label: 'STDIO + Launcher（prod 受控）' },
+];
+
 const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
@@ -29,6 +36,7 @@ const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSu
   const [authText, setAuthText] = useState('');
   const [metadataText, setMetadataText] = useState('');
   const [launcherPath, setLauncherPath] = useState('/opt/aiplat/mcp/bin/launch');
+  const [template, setTemplate] = useState('sse_internal');
   const [policyModal, setPolicyModal] = useState<{ open: boolean; title: string; content: string }>({ open: false, title: '', content: '' });
 
   useEffect(() => {
@@ -73,6 +81,58 @@ const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSu
     setTransport('stdio');
     setCommand(launcherPath);
     setArgsText(JSON.stringify([serverName, '--config', `/etc/aiplat/mcp/${serverName}.yaml`], null, 2));
+  };
+
+  const applyMcpTemplate = () => {
+    const serverName = (server?.name || 'server_name').trim() || 'server_name';
+    const baseMeta = (() => {
+      try {
+        return metadataText.trim() ? JSON.parse(metadataText) : {};
+      } catch {
+        return {};
+      }
+    })();
+
+    if (template === 'sse_internal') {
+      setTransport('sse');
+      setUrl('http://localhost:0/mcp');
+      setCommand('');
+      setArgsText('[]');
+      setAuthText('{\n  "type": "bearer",\n  "token": ""\n}');
+      setAllowedToolsText('');
+      setMetadataText(JSON.stringify({ ...baseMeta, description: baseMeta.description || '内部 SSE MCP Server' }, null, 2));
+      return;
+    }
+    if (template === 'http_internal') {
+      setTransport('http');
+      setUrl('http://localhost:0/mcp');
+      setCommand('');
+      setArgsText('[]');
+      setAuthText('{\n  "type": "bearer",\n  "token": ""\n}');
+      setAllowedToolsText('');
+      setMetadataText(JSON.stringify({ ...baseMeta, description: baseMeta.description || '内部 HTTP MCP Server' }, null, 2));
+      return;
+    }
+    if (template === 'stdio_launcher_dev') {
+      setTransport('stdio');
+      setUrl('');
+      setCommand(launcherPath);
+      setArgsText(JSON.stringify([serverName, '--config', `/etc/aiplat/mcp/${serverName}.yaml`], null, 2));
+      setAuthText('');
+      setAllowedToolsText('');
+      setMetadataText(JSON.stringify({ ...baseMeta, description: baseMeta.description || 'STDIO MCP（dev/staging，launcher）', prod_allowed: false }, null, 2));
+      return;
+    }
+    if (template === 'stdio_launcher_prod') {
+      setTransport('stdio');
+      setUrl('');
+      setCommand(launcherPath);
+      setArgsText(JSON.stringify([serverName, '--config', `/etc/aiplat/mcp/${serverName}.yaml`], null, 2));
+      setAuthText('');
+      setAllowedToolsText('');
+      setMetadataText(JSON.stringify({ ...baseMeta, description: baseMeta.description || 'STDIO MCP（prod 受控，launcher）', prod_allowed: true }, null, 2));
+      return;
+    }
   };
 
   const markProdAllowed = () => {
@@ -211,6 +271,15 @@ const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSu
           <Alert type={transport === 'stdio' ? 'warning' : 'info'} title="风险提示">
             {riskHint}
           </Alert>
+
+          <div className="flex items-end justify-between gap-3">
+            <div className="flex-1">
+              <Select label="模板" value={template} onChange={(v) => setTemplate(v)} options={MCP_TEMPLATES} />
+            </div>
+            <Button variant="secondary" onClick={applyMcpTemplate} disabled={loading}>
+              应用模板
+            </Button>
+          </div>
 
           {transport === 'stdio' && (
             <div className="flex items-center justify-end">

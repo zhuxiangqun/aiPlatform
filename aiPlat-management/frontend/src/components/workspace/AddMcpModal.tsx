@@ -15,6 +15,13 @@ const TRANSPORTS = [
   { value: 'stdio', label: 'stdio' },
 ];
 
+const MCP_TEMPLATES = [
+  { value: 'sse_internal', label: 'SSE（内部服务）' },
+  { value: 'http_internal', label: 'HTTP（内部服务）' },
+  { value: 'stdio_launcher_dev', label: 'STDIO + Launcher（dev/staging）' },
+  { value: 'stdio_launcher_prod', label: 'STDIO + Launcher（prod 受控）' },
+];
+
 const AddMcpModal: React.FC<AddMcpModalProps> = ({ open, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState('');
@@ -27,6 +34,7 @@ const AddMcpModal: React.FC<AddMcpModalProps> = ({ open, onClose, onSuccess }) =
   const [authText, setAuthText] = useState('');
   const [metadataText, setMetadataText] = useState('{\n  "description": ""\n}');
   const [launcherPath, setLauncherPath] = useState('/opt/aiplat/mcp/bin/launch');
+  const [template, setTemplate] = useState('sse_internal');
 
   const hint = useMemo(() => {
     if (transport === 'stdio') return 'stdio 模式通常使用 command + args（例如：node / python / 本地可执行文件）。';
@@ -45,6 +53,59 @@ const AddMcpModal: React.FC<AddMcpModalProps> = ({ open, onClose, onSuccess }) =
     setTransport('stdio');
     setCommand(launcherPath);
     setArgsText(JSON.stringify([serverName, '--config', `/etc/aiplat/mcp/${serverName}.yaml`], null, 2));
+  };
+
+  const applyMcpTemplate = () => {
+    const serverName = (name || 'server_name').trim() || 'server_name';
+    const baseMeta = (() => {
+      try {
+        return metadataText.trim() ? JSON.parse(metadataText) : {};
+      } catch {
+        return {};
+      }
+    })();
+
+    // templates: do NOT auto fill allowed_tools (user will manually click tools/list after create)
+    if (template === 'sse_internal') {
+      setTransport('sse');
+      setUrl('http://localhost:0/mcp');
+      setCommand('');
+      setArgsText('[]');
+      setAuthText('{\n  "type": "bearer",\n  "token": ""\n}');
+      setAllowedToolsText('');
+      setMetadataText(JSON.stringify({ ...baseMeta, description: baseMeta.description || '内部 SSE MCP Server' }, null, 2));
+      return;
+    }
+    if (template === 'http_internal') {
+      setTransport('http');
+      setUrl('http://localhost:0/mcp');
+      setCommand('');
+      setArgsText('[]');
+      setAuthText('{\n  "type": "bearer",\n  "token": ""\n}');
+      setAllowedToolsText('');
+      setMetadataText(JSON.stringify({ ...baseMeta, description: baseMeta.description || '内部 HTTP MCP Server' }, null, 2));
+      return;
+    }
+    if (template === 'stdio_launcher_dev') {
+      setTransport('stdio');
+      setUrl('');
+      setCommand(launcherPath);
+      setArgsText(JSON.stringify([serverName, '--config', `/etc/aiplat/mcp/${serverName}.yaml`], null, 2));
+      setAuthText('');
+      setAllowedToolsText('');
+      setMetadataText(JSON.stringify({ ...baseMeta, description: baseMeta.description || 'STDIO MCP（dev/staging，launcher）', prod_allowed: false }, null, 2));
+      return;
+    }
+    if (template === 'stdio_launcher_prod') {
+      setTransport('stdio');
+      setUrl('');
+      setCommand(launcherPath);
+      setArgsText(JSON.stringify([serverName, '--config', `/etc/aiplat/mcp/${serverName}.yaml`], null, 2));
+      setAuthText('');
+      setAllowedToolsText('');
+      setMetadataText(JSON.stringify({ ...baseMeta, description: baseMeta.description || 'STDIO MCP（prod 受控，launcher）', prod_allowed: true }, null, 2));
+      return;
+    }
   };
 
   const markProdAllowed = () => {
@@ -151,6 +212,15 @@ const AddMcpModal: React.FC<AddMcpModalProps> = ({ open, onClose, onSuccess }) =
         <Alert type={transport === 'stdio' ? 'warning' : 'info'} title="风险提示">
           {riskHint}
         </Alert>
+
+        <div className="flex items-end justify-between gap-3">
+          <div className="flex-1">
+            <Select label="模板" value={template} onChange={(v) => setTemplate(v)} options={MCP_TEMPLATES} />
+          </div>
+          <Button variant="secondary" onClick={applyMcpTemplate} disabled={loading}>
+            应用模板
+          </Button>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Select label="Transport" value={transport} onChange={(v) => setTransport(v)} options={TRANSPORTS} />
