@@ -144,6 +144,25 @@ const Links: React.FC = () => {
       },
       { key: 'type', title: 'type', dataIndex: 'type' },
       { key: 'status', title: 'status', dataIndex: 'status' },
+      {
+        key: 'error',
+        title: 'error',
+        dataIndex: 'error',
+        render: (val: any, row: any) => {
+          const text = typeof val === 'string' ? val : '';
+          if (!text) return <span className="text-xs text-gray-500">-</span>;
+          const short = text.length > 80 ? `${text.slice(0, 77)}...` : text;
+          const isFailed = String(row?.status || '').toLowerCase().includes('fail');
+          return (
+            <span
+              className={`text-xs ${isFailed ? 'text-red-300' : 'text-gray-300'}`}
+              title={text}
+            >
+              {short}
+            </span>
+          );
+        },
+      },
       { key: 'start_time', title: 'start_time', dataIndex: 'start_time' },
       { key: 'duration_ms', title: 'duration_ms', dataIndex: 'duration_ms', align: 'right' as const },
     ],

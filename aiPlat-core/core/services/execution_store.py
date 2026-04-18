@@ -1237,6 +1237,7 @@ class ExecutionStore:
                         "end_time": r["end_time"],
                         "duration_ms": r["duration_ms"],
                         "trace_id": r["trace_id"],
+                        "error": r["error"],
                     }
                     for r in agent_rows
                 ]
@@ -1250,6 +1251,7 @@ class ExecutionStore:
                         "duration_ms": r["duration_ms"],
                         "trace_id": r["trace_id"],
                         "user_id": r["user_id"],
+                        "error": r["error"],
                     }
                     for r in skill_rows
                 ]
