@@ -150,6 +150,68 @@ async def delete_job_dlq(dlq_id: str):
         raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
 
 
+# ==================== Gateway Admin (pairings / tokens) ====================
+
+
+@router.get("/gateway/pairings")
+async def list_gateway_pairings(
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    channel: Optional[str] = None,
+    user_id: Optional[str] = None,
+):
+    try:
+        client = get_core_client()
+        return await client.list_gateway_pairings(channel=channel, user_id=user_id, limit=limit, offset=offset)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/gateway/pairings")
+async def upsert_gateway_pairing(body: dict):
+    try:
+        client = get_core_client()
+        return await client.upsert_gateway_pairing(body)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.delete("/gateway/pairings")
+async def delete_gateway_pairing(channel: str, channel_user_id: str):
+    try:
+        client = get_core_client()
+        return await client.delete_gateway_pairing(channel=channel, channel_user_id=channel_user_id)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/gateway/tokens")
+async def list_gateway_tokens(limit: int = Query(100, ge=1, le=1000), offset: int = Query(0, ge=0), enabled: Optional[bool] = None):
+    try:
+        client = get_core_client()
+        return await client.list_gateway_tokens(enabled=enabled, limit=limit, offset=offset)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/gateway/tokens")
+async def create_gateway_token(body: dict):
+    try:
+        client = get_core_client()
+        return await client.create_gateway_token(body)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.delete("/gateway/tokens/{token_id}")
+async def delete_gateway_token(token_id: str):
+    try:
+        client = get_core_client()
+        return await client.delete_gateway_token(token_id)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
 # ==================== Agent Management ====================
 
 @router.get("/agents")

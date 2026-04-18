@@ -159,6 +159,35 @@ class CoreAPIClient:
     async def delete_job_delivery_dlq(self, dlq_id: str) -> Dict[str, Any]:
         return await self._request("DELETE", f"/api/core/jobs/dlq/{dlq_id}")
 
+    # ===== Gateway Admin (pairings/tokens) =====
+
+    async def list_gateway_pairings(self, *, channel: Optional[str] = None, user_id: Optional[str] = None, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        params: Dict[str, Any] = {"limit": limit, "offset": offset}
+        if channel:
+            params["channel"] = channel
+        if user_id:
+            params["user_id"] = user_id
+        return await self._request("GET", "/api/core/gateway/pairings", params=params)
+
+    async def upsert_gateway_pairing(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", "/api/core/gateway/pairings", json=data)
+
+    async def delete_gateway_pairing(self, *, channel: str, channel_user_id: str) -> Dict[str, Any]:
+        params: Dict[str, Any] = {"channel": channel, "channel_user_id": channel_user_id}
+        return await self._request("DELETE", "/api/core/gateway/pairings", params=params)
+
+    async def list_gateway_tokens(self, *, enabled: Optional[bool] = None, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        params: Dict[str, Any] = {"limit": limit, "offset": offset}
+        if enabled is not None:
+            params["enabled"] = bool(enabled)
+        return await self._request("GET", "/api/core/gateway/tokens", params=params)
+
+    async def create_gateway_token(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", "/api/core/gateway/tokens", json=data)
+
+    async def delete_gateway_token(self, token_id: str) -> Dict[str, Any]:
+        return await self._request("DELETE", f"/api/core/gateway/tokens/{token_id}")
+
     # ===== Learning / Release Management (Phase 6) =====
 
     async def list_learning_artifacts(
