@@ -693,6 +693,119 @@ export const memoryApi = {
   search: async (query: string, limit?: number) => {
     return apiClient.post<{ results: MemorySearchResult[]; total: number }>('/core/memory/search', { query, limit: limit || 10 });
   },
+
+  // Roadmap-4: Long-term memory
+  addLongTerm: async (data: { user_id?: string; key?: string; content: string; metadata?: Record<string, unknown> }) => {
+    return apiClient.post<{ id: string; user_id: string; key?: string | null; content: string; metadata?: Record<string, unknown>; created_at?: number }>(
+      '/core/memory/longterm',
+      data,
+    );
+  },
+
+  searchLongTerm: async (data: { user_id?: string; query: string; limit?: number }) => {
+    return apiClient.post<{ items: LongTermMemoryItem[]; total: number }>('/core/memory/longterm/search', {
+      user_id: data.user_id,
+      query: data.query,
+      limit: data.limit ?? 10,
+    });
+  },
+};
+
+// ==================== Skill Packs API (Roadmap-4) ====================
+
+export interface SkillPack {
+  id: string;
+  name: string;
+  description?: string | null;
+  manifest: Record<string, unknown>;
+  created_at?: number | null;
+  updated_at?: number | null;
+}
+
+export interface SkillPackVersion {
+  id: string;
+  pack_id: string;
+  version: string;
+  manifest: Record<string, unknown>;
+  created_at?: number | null;
+}
+
+export interface SkillPackInstall {
+  id: string;
+  pack_id: string;
+  version?: string | null;
+  scope: string;
+  installed_at?: number | null;
+  metadata?: Record<string, unknown>;
+}
+
+export interface LongTermMemoryItem {
+  id: string;
+  user_id: string;
+  key?: string | null;
+  content: string;
+  metadata?: Record<string, unknown>;
+  created_at?: number | null;
+}
+
+export const skillPackApi = {
+  list: async (params: { limit?: number; offset?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.limit != null) q.set('limit', String(params.limit));
+    if (params.offset != null) q.set('offset', String(params.offset));
+    const qs = q.toString();
+    return apiClient.get<{ items: SkillPack[]; total: number; limit: number; offset: number }>(`/core/skill-packs${qs ? `?${qs}` : ''}`);
+  },
+
+  create: async (data: { name: string; description?: string; manifest?: Record<string, unknown> }) => {
+    return apiClient.post<SkillPack>('/core/skill-packs', data);
+  },
+
+  get: async (packId: string) => {
+    return apiClient.get<SkillPack>(`/core/skill-packs/${packId}`);
+  },
+
+  update: async (packId: string, data: { name?: string; description?: string | null; manifest?: Record<string, unknown> }) => {
+    return apiClient.put<SkillPack>(`/core/skill-packs/${packId}`, data);
+  },
+
+  delete: async (packId: string) => {
+    return apiClient.delete<{ status: string; id: string }>(`/core/skill-packs/${packId}`);
+  },
+
+  publish: async (packId: string, version: string) => {
+    return apiClient.post<SkillPackVersion>(`/core/skill-packs/${packId}/publish`, { version });
+  },
+
+  listVersions: async (packId: string, params: { limit?: number; offset?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.limit != null) q.set('limit', String(params.limit));
+    if (params.offset != null) q.set('offset', String(params.offset));
+    const qs = q.toString();
+    return apiClient.get<{ items: SkillPackVersion[]; total: number; limit: number; offset: number }>(
+      `/core/skill-packs/${packId}/versions${qs ? `?${qs}` : ''}`,
+    );
+  },
+
+  install: async (packId: string, data: { version?: string; scope?: 'engine' | 'workspace'; metadata?: Record<string, unknown> }) => {
+    return apiClient.post<{ install: SkillPackInstall; applied: { skill_id: string; status: string; reason?: string }[] }>(
+      `/core/skill-packs/${packId}/install`,
+      {
+        version: data.version,
+        scope: data.scope || 'workspace',
+        metadata: data.metadata || {},
+      },
+    );
+  },
+
+  listInstalls: async (params: { scope?: string; limit?: number; offset?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.scope) q.set('scope', String(params.scope));
+    if (params.limit != null) q.set('limit', String(params.limit));
+    if (params.offset != null) q.set('offset', String(params.offset));
+    const qs = q.toString();
+    return apiClient.get<{ items: SkillPackInstall[]; total: number; limit: number; offset: number }>(`/core/skill-packs/installs${qs ? `?${qs}` : ''}`);
+  },
 };
 
 // ==================== Knowledge API ====================

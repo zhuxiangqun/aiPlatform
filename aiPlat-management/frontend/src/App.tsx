@@ -32,6 +32,7 @@ const CoreTools = lazy(() => import('./pages/Core/Tools/Tools'));
 const CoreMCP = lazy(() => import('./pages/Core/MCP/MCP'));
 const CoreMemory = lazy(() => import('./pages/Core/Memory/Memory'));
 const CoreJobs = lazy(() => import('./pages/Core/Jobs/Jobs'));
+const CoreSkillPacks = lazy(() => import('./pages/Core/SkillPacks'));
 const WorkspaceAgents = lazy(() => import('./pages/Workspace/Agents/Agents'));
 const WorkspaceSkills = lazy(() => import('./pages/Workspace/Skills/Skills'));
 const WorkspaceMCP = lazy(() => import('./pages/Workspace/MCP/MCP'));
@@ -71,6 +72,7 @@ const router = createBrowserRouter([
       { path: 'core/tools', element: withSuspense(CoreTools) },
       { path: 'core/mcp', element: withSuspense(CoreMCP) },
       { path: 'core/memory', element: withSuspense(CoreMemory) },
+      { path: 'core/skill-packs', element: withSuspense(CoreSkillPacks) },
       { path: 'core/jobs', element: withSuspense(CoreJobs) },
       { path: 'workspace/agents', element: withSuspense(WorkspaceAgents) },
       { path: 'workspace/skills', element: withSuspense(WorkspaceSkills) },

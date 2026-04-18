@@ -13,7 +13,7 @@ export { monitoringApi } from './monitoringApi';
 export { modelApi } from './modelApi';
 
 // 核心能力层 API
-export { agentApi, skillApi, memoryApi, knowledgeApi, harnessApi, toolApi, learningApi, approvalsApi, jobApi } from './coreApi';
+export { agentApi, skillApi, memoryApi, knowledgeApi, harnessApi, toolApi, learningApi, approvalsApi, jobApi, skillPackApi } from './coreApi';
 
 // Legacy monitoring API (for layer metrics)
 export { monitoringApi as layerMonitoringApi } from './apiClient';
@@ -40,12 +40,16 @@ export type {
   MemoryMessage,
   MemorySessionDetail,
   MemorySearchResult,
+  LongTermMemoryItem,
   SessionListResponse,
   LearningArtifact,
   LearningArtifactListResponse,
   ApprovalRequestSummary,
   Job,
   JobRun,
+  SkillPack,
+  SkillPackVersion,
+  SkillPackInstall,
 } from './coreApi';
 
 // 平台服务层 & 应用接入层 API
