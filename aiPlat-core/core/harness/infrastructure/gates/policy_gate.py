@@ -54,7 +54,8 @@ class PolicyGate:
                 reason=f"User '{user_id}' lacks EXECUTE permission for tool '{tool_name}'",
             )
 
-        if not self._enforce_approval:
+        force_approval = bool((tool_args or {}).get("_approval_required")) if isinstance(tool_args, dict) else False
+        if not self._enforce_approval and not force_approval:
             return PolicyResult(decision=PolicyDecision.ALLOW)
 
         runtime = get_kernel_runtime()

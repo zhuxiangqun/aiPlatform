@@ -46,6 +46,7 @@ from core.management import (
     HarnessManager,
 )
 from core.management.job_scheduler import JobScheduler, SchedulerConfig, next_run_from_cron
+from core.apps.mcp.runtime import MCPRuntime
 from core.apps.tools.base import ToolRegistry, get_tool_registry, create_tool
 from core.apps.tools.permission import PermissionManager, Permission, get_permission_manager
 from core.apps.agents import get_agent_registry
@@ -142,6 +143,25 @@ _adapter_manager: Optional[AdapterManager] = None
 _harness_manager: Optional[HarnessManager] = None
 _approval_manager: Optional[Any] = None
 _job_scheduler: Optional[JobScheduler] = None
+_mcp_runtime: Optional[MCPRuntime] = None
+
+
+async def _sync_mcp_runtime() -> None:
+    """Best-effort: sync MCP servers into ToolRegistry runtime."""
+    global _mcp_runtime
+    if _mcp_runtime is None:
+        _mcp_runtime = MCPRuntime()
+    try:
+        servers: Dict[str, Any] = {}
+        if _mcp_manager:
+            for s in _mcp_manager.list_servers():
+                servers[s.name] = s
+        if _workspace_mcp_manager:
+            for s in _workspace_mcp_manager.list_servers():
+                servers[s.name] = s
+        await _mcp_runtime.sync_from_servers(servers=list(servers.values()), tool_registry=get_tool_registry())
+    except Exception:
+        pass
 
 
 @asynccontextmanager
@@ -454,6 +474,13 @@ async def lifespan(app: FastAPI):
             )
         except Exception:
             pass
+
+    # Roadmap-2: wire MCP servers into ToolRegistry (best-effort).
+    # Safe-by-default: prod forbids stdio unless explicitly allowed in policy.
+    try:
+        await _sync_mcp_runtime()
+    except Exception:
+        pass
 
     # Phase-1: wire application runtime into HarnessIntegration (single entry execute)
     try:
@@ -2607,6 +2634,11 @@ async def upsert_workspace_mcp_server(request: dict):
             "success",
             args={"server_name": saved.name, "transport": saved.transport, "command": saved.command, "url": saved.url},
         )
+        # Sync runtime tools (best-effort)
+        try:
+            await _sync_mcp_runtime()
+        except Exception:
+            pass
         return {"status": "upserted", "server": {"name": saved.name, "enabled": saved.enabled}}
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
@@ -2651,6 +2683,10 @@ async def enable_workspace_mcp_server(server_name: str):
         "success",
         args={"server_name": server_name, "transport": str(s.transport or ""), "command": s.command, "args": s.args},
     )
+    try:
+        await _sync_mcp_runtime()
+    except Exception:
+        pass
     return {"status": "enabled"}
 
 
@@ -2662,6 +2698,10 @@ async def disable_workspace_mcp_server(server_name: str):
     if not ok:
         raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
     await _audit_event("mcp_admin", "workspace.mcp.disable", "success", args={"server_name": server_name})
+    try:
+        await _sync_mcp_runtime()
+    except Exception:
+        pass
     return {"status": "disabled"}
 
 

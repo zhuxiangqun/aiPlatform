@@ -101,16 +101,32 @@ class MCPManager:
 
                 # optional policy
                 allowed_tools: List[str] = []
+                policy_meta: Dict[str, Any] = {}
                 policy_yaml = item / "policy.yaml"
                 if policy_yaml.exists():
                     try:
                         pol = yaml.safe_load(policy_yaml.read_text(encoding="utf-8")) or {}
                         if isinstance(pol, dict) and isinstance(pol.get("allowed_tools"), list):
                             allowed_tools = [str(x) for x in pol.get("allowed_tools") if str(x).strip()]
+                        # extended fields (Roadmap-2): risk_level / tool_risk / approval_required / prod_allowed
+                        if isinstance(pol, dict):
+                            if pol.get("risk_level") is not None:
+                                policy_meta["risk_level"] = str(pol.get("risk_level"))
+                            if isinstance(pol.get("tool_risk"), dict):
+                                policy_meta["tool_risk"] = {str(k): str(v) for k, v in (pol.get("tool_risk") or {}).items()}
+                            if pol.get("approval_required") is not None:
+                                policy_meta["approval_required"] = bool(pol.get("approval_required"))
+                            if pol.get("prod_allowed") is not None:
+                                policy_meta["prod_allowed"] = bool(pol.get("prod_allowed"))
                     except Exception:
                         allowed_tools = []
+                        policy_meta = {}
 
                 meta = dict(data.get("metadata") or {}) if isinstance(data.get("metadata"), dict) else {}
+                if policy_meta:
+                    meta.setdefault("policy", {})
+                    if isinstance(meta.get("policy"), dict):
+                        meta["policy"].update(policy_meta)
                 meta.setdefault("filesystem", {})
                 if isinstance(meta["filesystem"], dict):
                     meta["filesystem"]["server_dir"] = str(item)
@@ -163,6 +179,12 @@ class MCPManager:
         }
         server_yaml.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
         pol = {"allowed_tools": info.allowed_tools or []}
+        # persist optional policy extensions if present
+        policy_extra = info.metadata.get("policy") if isinstance(info.metadata, dict) else None
+        if isinstance(policy_extra, dict):
+            for k in ("risk_level", "tool_risk", "approval_required", "prod_allowed"):
+                if k in policy_extra and policy_extra.get(k) is not None:
+                    pol[k] = policy_extra.get(k)
         policy_yaml.write_text(yaml.safe_dump(pol, sort_keys=False, allow_unicode=True), encoding="utf-8")
 
         self.reload()

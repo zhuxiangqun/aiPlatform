@@ -91,6 +91,10 @@ async def sys_tool_call(
                 args.setdefault("_risk_level", meta.get("risk_level"))
             if "risk_weight" in meta:
                 args.setdefault("_risk_weight", meta.get("risk_weight"))
+            if meta.get("sensitive_operations") is not None:
+                args.setdefault("_sensitive_operations", meta.get("sensitive_operations"))
+            if meta.get("approval_required") is True:
+                args.setdefault("_approval_required", True)
     except Exception:
         pass
 
