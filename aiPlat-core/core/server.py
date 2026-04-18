@@ -1863,6 +1863,94 @@ async def autocapture_to_prompt_revision(request: dict):
     return out
 
 
+@api_router.post("/learning/autocapture/to_skill_evolution")
+async def autocapture_to_skill_evolution(request: dict):
+    """
+    Roadmap-4 (minimal): convert a feedback_summary into a draft skill_evolution suggestion artifact.
+
+    Input:
+      {
+        "artifact_id": "auto-xxx",
+        "suggestion": "...",                     # optional; if absent auto-generated
+        "create_release_candidate": false,       # optional
+        "summary": "..."                         # optional (release_candidate summary)
+      }
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    import time
+    import uuid
+    from core.learning.types import LearningArtifact, LearningArtifactKind, LearningArtifactStatus
+
+    artifact_id = str((request or {}).get("artifact_id") or "").strip()
+    if not artifact_id:
+        raise HTTPException(status_code=400, detail="artifact_id is required")
+    src = await _execution_store.get_learning_artifact(artifact_id)
+    if not src:
+        raise HTTPException(status_code=404, detail="artifact_not_found")
+    if src.get("kind") != "feedback_summary":
+        raise HTTPException(status_code=400, detail="artifact_kind_must_be_feedback_summary")
+
+    target_type = str(src.get("target_type") or "")
+    target_id = str(src.get("target_id") or "")
+    trace_id = src.get("trace_id")
+    run_id = src.get("run_id")
+    fb = (src.get("payload") or {}).get("feedback") if isinstance(src.get("payload"), dict) else None
+    fb = fb if isinstance(fb, dict) else {}
+
+    suggestion = (request or {}).get("suggestion")
+    if not isinstance(suggestion, str) or not suggestion.strip():
+        top_failed = fb.get("top_failed_syscalls") if isinstance(fb.get("top_failed_syscalls"), list) else []
+        lines = []
+        if fb.get("reason"):
+            lines.append(f"【来源】{fb.get('reason')}")
+        lines.append("【建议】基于失败 syscall 归因，补充技能 SOP 的前置条件/参数校验/失败分支处理。")
+        if top_failed:
+            lines.append("【失败 syscall Top】")
+            for x in top_failed[:10]:
+                if isinstance(x, dict) and x.get("key"):
+                    lines.append(f"- {x.get('key')}: {x.get('count')}")
+        suggestion = "\n".join(lines)
+
+    se_id = f"se-auto-{uuid.uuid4().hex[:12]}"
+    se = LearningArtifact(
+        artifact_id=se_id,
+        kind=LearningArtifactKind.SKILL_EVOLUTION,
+        target_type=target_type,
+        target_id=target_id,
+        version=f"auto:{int(time.time())}",
+        status=LearningArtifactStatus.DRAFT,
+        trace_id=str(trace_id) if trace_id else None,
+        run_id=str(run_id) if run_id else None,
+        payload={"suggestion": suggestion},
+        metadata={"source": "autocapture", "source_artifact_id": artifact_id},
+    )
+    await _execution_store.upsert_learning_artifact(se.to_record())
+    out: Dict[str, Any] = {"skill_evolution": await _execution_store.get_learning_artifact(se_id)}
+
+    if bool((request or {}).get("create_release_candidate", False)):
+        rc_id = f"rc-auto-{uuid.uuid4().hex[:12]}"
+        summary = (request or {}).get("summary")
+        if not isinstance(summary, str) or not summary.strip():
+            summary = f"auto from {artifact_id}"
+        rc = LearningArtifact(
+            artifact_id=rc_id,
+            kind=LearningArtifactKind.RELEASE_CANDIDATE,
+            target_type=target_type,
+            target_id=target_id,
+            version=f"auto:{int(time.time())}",
+            status=LearningArtifactStatus.DRAFT,
+            trace_id=str(trace_id) if trace_id else None,
+            run_id=str(run_id) if run_id else None,
+            payload={"artifact_ids": [se_id], "summary": str(summary)},
+            metadata={"source": "autocapture", "source_artifact_id": artifact_id},
+        )
+        await _execution_store.upsert_learning_artifact(rc.to_record())
+        out["release_candidate"] = await _execution_store.get_learning_artifact(rc_id)
+
+    return out
+
+
 @api_router.post("/learning/releases/{candidate_id}/publish")
 async def publish_release_candidate(candidate_id: str, request: dict):
     """
@@ -2402,6 +2490,97 @@ async def restore_workspace_skill(skill_id: str):
     if not ok:
         raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
     return {"status": "enabled"}
+
+
+@api_router.get("/workspace/skills/{skill_id}/revisions")
+async def list_workspace_skill_revisions(skill_id: str, limit: int = 50, offset: int = 0):
+    """List revision snapshots for a workspace skill (best-effort)."""
+    if not _workspace_skill_manager:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    skill = await _workspace_skill_manager.get_skill(skill_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    from pathlib import Path
+
+    skill_dir = None
+    try:
+        fs = skill.metadata.get("filesystem") if isinstance(skill.metadata, dict) else None
+        if isinstance(fs, dict) and fs.get("skill_dir"):
+            skill_dir = Path(str(fs.get("skill_dir")))
+    except Exception:
+        skill_dir = None
+    if skill_dir is None:
+        # best effort fallback
+        base = _workspace_skill_manager._resolve_skills_base_path()  # type: ignore[attr-defined]
+        skill_dir = Path(base) / skill_id
+
+    rev_root = skill_dir / ".revisions"
+    if not rev_root.exists():
+        return {"items": [], "total": 0, "limit": limit, "offset": offset}
+    revs = sorted([p.name for p in rev_root.iterdir() if p.is_dir()], reverse=True)
+    total = len(revs)
+    page = revs[offset : offset + limit]
+    return {"items": page, "total": total, "limit": limit, "offset": offset}
+
+
+@api_router.get("/workspace/skills/{skill_id}/files")
+async def list_workspace_skill_files(skill_id: str, dir: str = "references"):
+    """List files under workspace skill directory (references/scripts/assets)."""
+    if not _workspace_skill_manager:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    skill = await _workspace_skill_manager.get_skill(skill_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    from pathlib import Path
+
+    base = _workspace_skill_manager._resolve_skills_base_path()  # type: ignore[attr-defined]
+    skill_dir = Path(base) / skill_id
+    allow = {"references", "scripts", "assets"}
+    if dir not in allow:
+        raise HTTPException(status_code=400, detail=f"dir must be one of {sorted(list(allow))}")
+    root = (skill_dir / dir).resolve()
+    if not root.exists():
+        return {"items": [], "total": 0}
+
+    items = []
+    for p in root.rglob("*"):
+        if not p.is_file():
+            continue
+        try:
+            rel = str(p.relative_to(skill_dir))
+        except Exception:
+            continue
+        st = p.stat()
+        items.append({"path": rel, "size": int(st.st_size), "mtime": float(st.st_mtime)})
+    items.sort(key=lambda x: x["path"])
+    return {"items": items, "total": len(items)}
+
+
+@api_router.get("/workspace/skills/{skill_id}/files/{rel_path:path}")
+async def get_workspace_skill_file(skill_id: str, rel_path: str):
+    """Fetch a workspace skill file content (text only, best-effort)."""
+    if not _workspace_skill_manager:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    from pathlib import Path
+
+    base = _workspace_skill_manager._resolve_skills_base_path()  # type: ignore[attr-defined]
+    skill_dir = (Path(base) / skill_id).resolve()
+    p = (skill_dir / rel_path).resolve()
+    # enforce allowed subpaths
+    allowed_roots = [(skill_dir / "references").resolve(), (skill_dir / "scripts").resolve(), (skill_dir / "assets").resolve(), (skill_dir / ".revisions").resolve()]
+    if not any(str(p).startswith(str(r)) for r in allowed_roots):
+        raise HTTPException(status_code=403, detail="path not allowed")
+    if not p.exists() or not p.is_file():
+        raise HTTPException(status_code=404, detail="file not found")
+    # small text only
+    data = p.read_bytes()
+    if len(data) > 200_000:
+        raise HTTPException(status_code=413, detail="file too large")
+    try:
+        text = data.decode("utf-8")
+    except Exception:
+        raise HTTPException(status_code=415, detail="binary file not supported")
+    return {"path": rel_path, "content": text}
 
 
 @api_router.post("/workspace/skills/{skill_id}/execute")

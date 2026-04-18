@@ -582,6 +582,29 @@ class SkillManager:
         
         skill.updated_at = datetime.utcnow()
 
+        # Record audit trail (best-effort, bounded)
+        try:
+            if isinstance(skill.metadata, dict):
+                audit = skill.metadata.get("audit") if isinstance(skill.metadata.get("audit"), list) else []
+                audit = list(audit)
+                audit.append(
+                    {
+                        "ts": skill.updated_at.isoformat(),
+                        "action": "update_skill",
+                        "fields": {
+                            "name": bool(name),
+                            "description": bool(description),
+                            "input_schema": bool(input_schema),
+                            "output_schema": bool(output_schema),
+                            "config": bool(config),
+                            "metadata": bool(metadata),
+                        },
+                    }
+                )
+                skill.metadata["audit"] = audit[-200:]
+        except Exception:
+            pass
+
         # Best-effort: keep execution-layer registry config in sync
         self._sync_registry_config(skill)
 
@@ -603,6 +626,16 @@ class SkillManager:
                 header = yaml.safe_dump(manifest, sort_keys=False, allow_unicode=True).strip()
                 skill_md_path.write_text(f"---\n{header}\n---\n\n# {skill.name}\n\n## 目标\n（待补充）\n", encoding="utf-8")
             else:
+                # Snapshot revision before mutation
+                try:
+                    rev_dir = skill_dir / ".revisions" / datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+                    rev_dir.mkdir(parents=True, exist_ok=True)
+                    rev_dir.joinpath("SKILL.md").write_text(skill_md_path.read_text(encoding="utf-8"), encoding="utf-8")
+                    # store minimal manifest snapshot too
+                    cfg_snapshot = yaml.safe_dump(self._build_skill_manifest(skill), sort_keys=False, allow_unicode=True).strip()
+                    rev_dir.joinpath("manifest.yaml").write_text(cfg_snapshot + "\n", encoding="utf-8")
+                except Exception:
+                    pass
                 raw = skill_md_path.read_text(encoding="utf-8")
                 fm, body = self._split_front_matter(raw)
                 fm = fm or {}
