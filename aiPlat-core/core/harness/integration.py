@@ -360,10 +360,14 @@ class HarnessIntegration:
                         messages = [{"role": "user", "content": text.strip()}]
 
             # Phase R1: workspace/repo context for prompt assembly (best-effort).
+            # Phase R4: request identity context for session search injection.
             workspace_token = None
+            request_token = None
             try:
                 from core.harness.kernel.execution_context import (
+                    ActiveRequestContext,
                     ActiveWorkspaceContext,
+                    set_active_request_context,
                     set_active_workspace_context,
                 )
 
@@ -397,8 +401,24 @@ class HarnessIntegration:
                             toolset=str(requested_toolset) if requested_toolset else None,
                         )
                     )
+                # Always set request context so prompt assembly can access user/session identity.
+                try:
+                    sess_id = None
+                    if isinstance(payload, dict):
+                        ctx0 = payload.get("context") if isinstance(payload.get("context"), dict) else {}
+                        sess_id = payload.get("session_id") or ctx0.get("session_id")
+                    request_token = set_active_request_context(
+                        ActiveRequestContext(
+                            user_id=str(user_id or "system"),
+                            session_id=str(sess_id or req.session_id or "default"),
+                            channel=str(getattr(req, "channel", None)) if hasattr(req, "channel") else None,
+                        )
+                    )
+                except Exception:
+                    request_token = None
             except Exception:
                 workspace_token = None
+                request_token = None
 
             # If resuming, pass loop snapshot down via AgentContext.variables
             variables = payload.get("context", {}) if isinstance(payload, dict) else {}
@@ -576,6 +596,13 @@ class HarnessIntegration:
                         reset_active_workspace_context(workspace_token)
                     except Exception:
                         pass
+                if request_token is not None:
+                    try:
+                        from core.harness.kernel.execution_context import reset_active_request_context
+
+                        reset_active_request_context(request_token)
+                    except Exception:
+                        pass
 
             # Attach kernel-managed resume payload (Phase 3.5) so resume can work after server restart.
             # Keep it minimal: only what is required to re-run agent execute.
@@ -642,6 +669,37 @@ class HarnessIntegration:
             if runtime.execution_store:
                 try:
                     await runtime.execution_store.upsert_agent_execution(record)
+                except Exception:
+                    pass
+                # Roadmap-4: persist session messages for cross-session search (best-effort).
+                try:
+                    sess_id = str(payload.get("session_id", req.session_id or "default")) if isinstance(payload, dict) else str(req.session_id or "default")
+                    # pick last user message as the "current query"
+                    user_text = None
+                    for m in reversed(messages or []):
+                        if isinstance(m, dict) and m.get("role") == "user":
+                            user_text = m.get("content")
+                            break
+                    if user_text:
+                        await runtime.execution_store.add_memory_message(
+                            session_id=sess_id,
+                            user_id=str(user_id or "system"),
+                            role="user",
+                            content=str(user_text),
+                            metadata={"trace_id": trace_id, "run_id": execution_id, "agent_id": agent_id},
+                            trace_id=trace_id,
+                            run_id=execution_id,
+                        )
+                    if result.output is not None:
+                        await runtime.execution_store.add_memory_message(
+                            session_id=sess_id,
+                            user_id=str(user_id or "system"),
+                            role="assistant",
+                            content=str(result.output),
+                            metadata={"trace_id": trace_id, "run_id": execution_id, "agent_id": agent_id},
+                            trace_id=trace_id,
+                            run_id=execution_id,
+                        )
                 except Exception:
                     pass
             if runtime.trace_service and trace_id:
@@ -752,8 +810,14 @@ class HarnessIntegration:
         payload = req.payload or {}
         # Phase R2: apply workspace context for downstream syscalls (toolset gating).
         workspace_token = None
+        request_token = None
         try:
-            from core.harness.kernel.execution_context import ActiveWorkspaceContext, set_active_workspace_context
+            from core.harness.kernel.execution_context import (
+                ActiveRequestContext,
+                ActiveWorkspaceContext,
+                set_active_request_context,
+                set_active_workspace_context,
+            )
 
             requested_toolset = None
             repo_root = None
@@ -778,8 +842,18 @@ class HarnessIntegration:
                         toolset=str(requested_toolset) if requested_toolset else None,
                     )
                 )
+            # Always set request context for downstream prompt assembly.
+            try:
+                ctx0 = payload.get("context") if isinstance(payload.get("context"), dict) else {}
+                sess_id = payload.get("session_id") or ctx0.get("session_id") or req.session_id
+                request_token = set_active_request_context(
+                    ActiveRequestContext(user_id=str(user_id or "system"), session_id=str(sess_id or "default"))
+                )
+            except Exception:
+                request_token = None
         except Exception:
             workspace_token = None
+            request_token = None
 
         try:
             execution = await runtime.skill_manager.execute_skill(
@@ -796,6 +870,13 @@ class HarnessIntegration:
                     from core.harness.kernel.execution_context import reset_active_workspace_context
 
                     reset_active_workspace_context(workspace_token)
+                except Exception:
+                    pass
+            if request_token is not None:
+                try:
+                    from core.harness.kernel.execution_context import reset_active_request_context
+
+                    reset_active_request_context(request_token)
                 except Exception:
                     pass
 
@@ -833,6 +914,31 @@ class HarnessIntegration:
                         "metadata": meta2,
                     }
                 )
+                # Roadmap-4: persist session messages for cross-session search (best-effort).
+                try:
+                    sess_id = str(meta2.get("session_id") or req.session_id or "default")
+                    if execution.input_data is not None:
+                        await runtime.execution_store.add_memory_message(
+                            session_id=sess_id,
+                            user_id=str(user_id or "system"),
+                            role="user",
+                            content=str(execution.input_data),
+                            metadata={"trace_id": trace_id, "run_id": execution.id, "skill_id": execution.skill_id},
+                            trace_id=trace_id,
+                            run_id=execution.id,
+                        )
+                    if execution.output_data is not None:
+                        await runtime.execution_store.add_memory_message(
+                            session_id=sess_id,
+                            user_id=str(user_id or "system"),
+                            role="assistant",
+                            content=str(execution.output_data),
+                            metadata={"trace_id": trace_id, "run_id": execution.id, "skill_id": execution.skill_id},
+                            trace_id=trace_id,
+                            run_id=execution.id,
+                        )
+                except Exception:
+                    pass
             except Exception:
                 pass
 
@@ -890,9 +996,15 @@ class HarnessIntegration:
 
         # Phase R2: apply workspace context for toolset gating.
         workspace_token = None
+        request_token = None
         requested_toolset = None
         try:
-            from core.harness.kernel.execution_context import ActiveWorkspaceContext, set_active_workspace_context
+            from core.harness.kernel.execution_context import (
+                ActiveRequestContext,
+                ActiveWorkspaceContext,
+                set_active_request_context,
+                set_active_workspace_context,
+            )
 
             repo_root = None
             if isinstance(payload, dict):
@@ -916,8 +1028,18 @@ class HarnessIntegration:
                         toolset=str(requested_toolset) if requested_toolset else None,
                     )
                 )
+            # Always set request context for downstream prompt assembly.
+            try:
+                ctx0 = payload.get("context") if isinstance(payload.get("context"), dict) else {}
+                sess_id = payload.get("session_id") or ctx0.get("session_id") or req.session_id
+                request_token = set_active_request_context(
+                    ActiveRequestContext(user_id=str(req.user_id or "system"), session_id=str(sess_id or "default"))
+                )
+            except Exception:
+                request_token = None
         except Exception:
             workspace_token = None
+            request_token = None
 
         # Add a trace for tool execute so syscall spans are linked (best-effort).
         trace_id = None
@@ -951,6 +1073,30 @@ class HarnessIntegration:
                 timeout_seconds=60,
                 trace_context={"trace_id": trace_id, "run_id": run_id} if trace_id else None,
             )
+            # Roadmap-4: persist session messages for cross-session search (best-effort).
+            if runtime and runtime.execution_store:
+                try:
+                    sess_id = str(req.session_id or "default")
+                    await runtime.execution_store.add_memory_message(
+                        session_id=sess_id,
+                        user_id=str(req.user_id or "system"),
+                        role="user",
+                        content=str(input_data),
+                        metadata={"trace_id": trace_id, "run_id": run_id, "tool_name": req.target_id},
+                        trace_id=trace_id,
+                        run_id=run_id,
+                    )
+                    await runtime.execution_store.add_memory_message(
+                        session_id=sess_id,
+                        user_id=str(req.user_id or "system"),
+                        role="assistant",
+                        content=str(getattr(result, "output", str(result))),
+                        metadata={"trace_id": trace_id, "run_id": run_id, "tool_name": req.target_id},
+                        trace_id=trace_id,
+                        run_id=run_id,
+                    )
+                except Exception:
+                    pass
             return ExecutionResult(
                 ok=True,
                 payload={
@@ -995,6 +1141,13 @@ class HarnessIntegration:
                     from core.harness.kernel.execution_context import reset_active_workspace_context
 
                     reset_active_workspace_context(workspace_token)
+                except Exception:
+                    pass
+            if request_token is not None:
+                try:
+                    from core.harness.kernel.execution_context import reset_active_request_context
+
+                    reset_active_request_context(request_token)
                 except Exception:
                     pass
 

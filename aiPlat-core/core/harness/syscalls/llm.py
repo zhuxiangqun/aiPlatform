@@ -121,7 +121,15 @@ async def sys_llm_generate(
             except Exception:
                 pass
 
-            assembled = PromptAssembler().assemble(prepared)
+            # Provide target identity for prompt caching keys (Roadmap-1).
+            _ctx = get_active_release_context()
+            assembled = PromptAssembler().assemble(
+                prepared,
+                metadata={
+                    "target_type": _ctx.target_type if _ctx else None,
+                    "target_id": _ctx.target_id if _ctx else None,
+                },
+            )
             prepared = assembled.messages
             prompt_version = assembled.prompt_version
             prompt_meta = assembled.metadata or {}
@@ -150,6 +158,13 @@ async def sys_llm_generate(
                     "project_context_file": prompt_meta.get("project_context_file") if isinstance(prompt_meta, dict) else None,
                     "project_context_sha256": prompt_meta.get("project_context_sha256") if isinstance(prompt_meta, dict) else None,
                     "project_context_blocked": prompt_meta.get("project_context_blocked") if isinstance(prompt_meta, dict) else None,
+                    "workspace_context_hash": prompt_meta.get("workspace_context_hash") if isinstance(prompt_meta, dict) else None,
+                    "stable_prompt_version": prompt_meta.get("stable_prompt_version") if isinstance(prompt_meta, dict) else None,
+                    "stable_cache_key": prompt_meta.get("stable_cache_key") if isinstance(prompt_meta, dict) else None,
+                    "stable_cache_hit": prompt_meta.get("stable_cache_hit") if isinstance(prompt_meta, dict) else None,
+                    "stable_system_prompt_chars": prompt_meta.get("stable_system_prompt_chars") if isinstance(prompt_meta, dict) else None,
+                    "ephemeral_overlay_chars": prompt_meta.get("ephemeral_overlay_chars") if isinstance(prompt_meta, dict) else None,
+                    "session_search_hits": prompt_meta.get("session_search_hits") if isinstance(prompt_meta, dict) else None,
                 },
             )
     except Exception:

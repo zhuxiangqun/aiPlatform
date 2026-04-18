@@ -31,6 +31,13 @@ class PromptAssemblyResult:
     messages: List[Message]
     prompt_version: str
     metadata: Dict[str, Any] = field(default_factory=dict)
+    # Roadmap-1: stable vs ephemeral split for caching/debugging
+    stable_system_prompt: str = ""
+    ephemeral_overlay: str = ""
+    stable_prompt_version: str = ""
+    stable_cache_key: Optional[str] = None
+    stable_cache_hit: bool = False
+    workspace_context_hash: Optional[str] = None
 
 
 class PromptAssembler:
@@ -58,6 +65,8 @@ class PromptAssembler:
                 messages=msgs, metadata=meta, repo_root=str(ctx.repo_root) if ctx and ctx.repo_root else None
             )
             msgs, meta = res.messages, res.metadata
+            if getattr(res, "workspace_context_hash", None):
+                meta.setdefault("workspace_context_hash", getattr(res, "workspace_context_hash", None))
         except Exception:
             pass
 
@@ -71,7 +80,42 @@ class PromptAssembler:
 
         version = self._hash_messages(msgs)
         meta.setdefault("versioning", "sha256(messages)")
-        return PromptAssemblyResult(messages=msgs, prompt_version=version, metadata=meta)
+
+        stable_system, overlay = self._split_system_layers(msgs)
+        stable_prompt_version = hashlib.sha256(stable_system.encode("utf-8")).hexdigest() if stable_system else ""
+        w_hash = meta.get("workspace_context_hash")
+        stable_cache_key = self._build_stable_cache_key(meta=meta, prompt_version=version, workspace_context_hash=w_hash)
+        stable_cache_hit = False
+        if stable_cache_key:
+            stable_cache_hit = _STABLE_PROMPT_CACHE.get(stable_cache_key) == stable_system
+            _STABLE_PROMPT_CACHE[stable_cache_key] = stable_system
+            # trim cache
+            if len(_STABLE_PROMPT_CACHE) > 256:
+                try:
+                    # drop arbitrary oldest
+                    for k in list(_STABLE_PROMPT_CACHE.keys())[:64]:
+                        _STABLE_PROMPT_CACHE.pop(k, None)
+                except Exception:
+                    _STABLE_PROMPT_CACHE.clear()
+
+        meta.setdefault("stable_prompt_version", stable_prompt_version)
+        if stable_cache_key:
+            meta.setdefault("stable_cache_key", stable_cache_key)
+            meta.setdefault("stable_cache_hit", bool(stable_cache_hit))
+        meta.setdefault("stable_system_prompt_chars", len(stable_system))
+        meta.setdefault("ephemeral_overlay_chars", len(overlay))
+
+        return PromptAssemblyResult(
+            messages=msgs,
+            prompt_version=version,
+            metadata=meta,
+            stable_system_prompt=stable_system,
+            ephemeral_overlay=overlay,
+            stable_prompt_version=stable_prompt_version,
+            stable_cache_key=stable_cache_key,
+            stable_cache_hit=stable_cache_hit,
+            workspace_context_hash=str(w_hash) if w_hash is not None else None,
+        )
 
     # -----------------------------
     # Phase 4: centralized templates
@@ -191,6 +235,45 @@ Based on this observation, what should I do next?
         canonical = json.dumps(messages, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
+    def _split_system_layers(self, messages: List[Message]) -> tuple[str, str]:
+        """
+        Split messages into:
+        - stable_system_prompt: leading system messages (before first non-system)
+        - ephemeral_overlay: any later system messages (rare; but used by session search injection etc.)
+        """
+        stable_parts: List[str] = []
+        overlay_parts: List[str] = []
+        saw_non_system = False
+        for m in messages or []:
+            if not isinstance(m, dict):
+                continue
+            if m.get("role") == "system":
+                c = str(m.get("content") or "")
+                layer = None
+                try:
+                    layer = (m.get("metadata") or {}).get("layer") if isinstance(m.get("metadata"), dict) else None
+                except Exception:
+                    layer = None
+                if layer == "ephemeral":
+                    overlay_parts.append(c)
+                elif not saw_non_system:
+                    stable_parts.append(c)
+                else:
+                    overlay_parts.append(c)
+            else:
+                saw_non_system = True
+        return "\n\n".join([p for p in stable_parts if p]), "\n\n".join([p for p in overlay_parts if p])
+
+    def _build_stable_cache_key(self, *, meta: Dict[str, Any], prompt_version: str, workspace_context_hash: Any) -> Optional[str]:
+        try:
+            target_type = str(meta.get("target_type") or meta.get("release_target_type") or "").strip() or "unknown"
+            target_id = str(meta.get("target_id") or meta.get("release_target_id") or "").strip() or "unknown"
+            w = str(workspace_context_hash or "")
+            raw = f"{target_type}:{target_id}:{prompt_version}:{w}"
+            return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+        except Exception:
+            return None
+
     # Project context logic moved to ContextEngine (core.harness.context.engine)
 
     def _estimate_tokens(self, messages: List[Message]) -> int:
@@ -209,3 +292,7 @@ Based on this observation, what should I do next?
                 continue
         # heuristic: ~4 chars per token
         return int(total_chars / 4) + 1
+
+
+# Small in-process cache for stable system prompts (Roadmap-1).
+_STABLE_PROMPT_CACHE: Dict[str, str] = {}

@@ -43,7 +43,7 @@ class ExecutionStoreConfig:
 
 
 class ExecutionStore:
-    CURRENT_SCHEMA_VERSION = 17
+    CURRENT_SCHEMA_VERSION = 18
 
     def __init__(self, config: ExecutionStoreConfig):
         self._config = config
@@ -611,6 +611,61 @@ class ExecutionStore:
                             pass
                         _set_version(17)
                         current = 17
+
+                    # ---- Migration v18: persistent session memory + FTS (Roadmap-4 session search) ----
+                    if current < 18:
+                        conn.execute(
+                            """
+                            CREATE TABLE IF NOT EXISTS memory_sessions (
+                              id TEXT PRIMARY KEY,
+                              user_id TEXT NOT NULL,
+                              agent_type TEXT,
+                              session_type TEXT,
+                              status TEXT,
+                              metadata_json TEXT,
+                              message_count INTEGER NOT NULL DEFAULT 0,
+                              created_at REAL NOT NULL,
+                              updated_at REAL NOT NULL
+                            );
+                            """
+                        )
+                        conn.execute("CREATE INDEX IF NOT EXISTS idx_mem_sess_user_time ON memory_sessions(user_id, updated_at DESC);")
+                        conn.execute(
+                            """
+                            CREATE TABLE IF NOT EXISTS memory_messages (
+                              id TEXT PRIMARY KEY,
+                              session_id TEXT NOT NULL,
+                              user_id TEXT NOT NULL,
+                              role TEXT NOT NULL,
+                              content TEXT NOT NULL,
+                              metadata_json TEXT,
+                              trace_id TEXT,
+                              run_id TEXT,
+                              created_at REAL NOT NULL,
+                              FOREIGN KEY(session_id) REFERENCES memory_sessions(id) ON DELETE CASCADE
+                            );
+                            """
+                        )
+                        conn.execute("CREATE INDEX IF NOT EXISTS idx_mem_msg_session_time ON memory_messages(session_id, created_at DESC);")
+                        conn.execute("CREATE INDEX IF NOT EXISTS idx_mem_msg_user_time ON memory_messages(user_id, created_at DESC);")
+                        # Best-effort FTS: not all sqlite builds support fts5.
+                        try:
+                            conn.execute(
+                                """
+                                CREATE VIRTUAL TABLE IF NOT EXISTS memory_messages_fts
+                                USING fts5(
+                                  id UNINDEXED,
+                                  user_id UNINDEXED,
+                                  session_id UNINDEXED,
+                                  role UNINDEXED,
+                                  content
+                                );
+                                """
+                            )
+                        except Exception:
+                            pass
+                        _set_version(18)
+                        current = 18
 
                     # If legacy db exists with tables but without meta, upgrade meta to current
                     if current < self.CURRENT_SCHEMA_VERSION:
@@ -3149,6 +3204,345 @@ class ExecutionStore:
                 }
             )
         return out
+
+    # ------------------------------------------------------------------
+    # Roadmap-4: persistent session memory + cross-session search (FTS)
+    # ------------------------------------------------------------------
+
+    async def create_memory_session(
+        self,
+        *,
+        user_id: str,
+        agent_type: str = "default",
+        session_type: str = "session",
+        metadata: Optional[Dict[str, Any]] = None,
+        session_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            now = time.time()
+            sid = str(session_id) if session_id else f"sess-{uuid.uuid4().hex[:10]}"
+            rec = {
+                "id": sid,
+                "user_id": str(user_id or "system"),
+                "agent_type": str(agent_type or "default"),
+                "session_type": str(session_type or "session"),
+                "status": "active",
+                "metadata_json": _json_dumps(metadata or {}),
+                "message_count": 0,
+                "created_at": now,
+                "updated_at": now,
+            }
+            conn = sqlite3.connect(db_path)
+            try:
+                conn.execute(
+                    """
+                    INSERT INTO memory_sessions(id,user_id,agent_type,session_type,status,metadata_json,message_count,created_at,updated_at)
+                    VALUES(?,?,?,?,?,?,?,?,?)
+                    ON CONFLICT(id) DO UPDATE SET
+                      user_id=excluded.user_id,
+                      agent_type=excluded.agent_type,
+                      session_type=excluded.session_type,
+                      status=excluded.status,
+                      metadata_json=excluded.metadata_json,
+                      updated_at=excluded.updated_at;
+                    """,
+                    (
+                        rec["id"],
+                        rec["user_id"],
+                        rec["agent_type"],
+                        rec["session_type"],
+                        rec["status"],
+                        rec["metadata_json"],
+                        rec["message_count"],
+                        rec["created_at"],
+                        rec["updated_at"],
+                    ),
+                )
+                conn.commit()
+                return rec
+            finally:
+                conn.close()
+
+        row = await anyio.to_thread.run_sync(_sync)
+        return {**row, "metadata": _json_loads(row.get("metadata_json")) or {}}
+
+    async def add_memory_message(
+        self,
+        *,
+        session_id: str,
+        user_id: str,
+        role: str,
+        content: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        trace_id: Optional[str] = None,
+        run_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            now = time.time()
+            mid = f"msg-{uuid.uuid4().hex[:12]}"
+            rec = {
+                "id": mid,
+                "session_id": str(session_id or "default"),
+                "user_id": str(user_id or "system"),
+                "role": str(role or "user"),
+                "content": str(content or ""),
+                "metadata_json": _json_dumps(metadata or {}),
+                "trace_id": str(trace_id) if trace_id else None,
+                "run_id": str(run_id) if run_id else None,
+                "created_at": now,
+            }
+            conn = sqlite3.connect(db_path)
+            try:
+                # Ensure session exists (idempotent).
+                conn.execute(
+                    """
+                    INSERT INTO memory_sessions(id,user_id,agent_type,session_type,status,metadata_json,message_count,created_at,updated_at)
+                    VALUES(?,?,?,?,?,?,?,?,?)
+                    ON CONFLICT(id) DO UPDATE SET updated_at=excluded.updated_at;
+                    """,
+                    (
+                        rec["session_id"],
+                        rec["user_id"],
+                        "default",
+                        "session",
+                        "active",
+                        "{}",
+                        0,
+                        now,
+                        now,
+                    ),
+                )
+                conn.execute(
+                    """
+                    INSERT INTO memory_messages(id,session_id,user_id,role,content,metadata_json,trace_id,run_id,created_at)
+                    VALUES(?,?,?,?,?,?,?,?,?);
+                    """,
+                    (
+                        rec["id"],
+                        rec["session_id"],
+                        rec["user_id"],
+                        rec["role"],
+                        rec["content"],
+                        rec["metadata_json"],
+                        rec["trace_id"],
+                        rec["run_id"],
+                        rec["created_at"],
+                    ),
+                )
+                # best-effort: sync FTS
+                try:
+                    conn.execute(
+                        "INSERT INTO memory_messages_fts(id,user_id,session_id,role,content) VALUES(?,?,?,?,?);",
+                        (rec["id"], rec["user_id"], rec["session_id"], rec["role"], rec["content"]),
+                    )
+                except Exception:
+                    pass
+                conn.execute(
+                    "UPDATE memory_sessions SET message_count = message_count + 1, updated_at = ? WHERE id = ?;",
+                    (now, rec["session_id"]),
+                )
+                conn.commit()
+                return rec
+            finally:
+                conn.close()
+
+        row = await anyio.to_thread.run_sync(_sync)
+        return {**row, "metadata": _json_loads(row.get("metadata_json")) or {}}
+
+    async def list_memory_sessions(self, *, user_id: Optional[str] = None, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                where = ""
+                args: List[Any] = []
+                if user_id:
+                    where = "WHERE user_id = ?"
+                    args.append(str(user_id))
+                total_row = conn.execute(f"SELECT COUNT(1) AS c FROM memory_sessions {where};", args).fetchone()
+                total = int(total_row["c"] if total_row else 0)
+                rows = conn.execute(
+                    f"SELECT * FROM memory_sessions {where} ORDER BY updated_at DESC LIMIT ? OFFSET ?;",
+                    [*args, int(limit), int(offset)],
+                ).fetchall()
+                return {"items": [dict(r) for r in rows], "total": total}
+            finally:
+                conn.close()
+
+        res = await anyio.to_thread.run_sync(_sync)
+        items = []
+        for r in res.get("items") or []:
+            items.append({**r, "metadata": _json_loads(r.get("metadata_json")) or {}})
+        return {"items": items, "total": int(res.get("total") or 0), "limit": int(limit), "offset": int(offset)}
+
+    async def get_memory_session(self, *, session_id: str) -> Optional[Dict[str, Any]]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Optional[Dict[str, Any]]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                row = conn.execute("SELECT * FROM memory_sessions WHERE id = ?;", (str(session_id),)).fetchone()
+                return dict(row) if row else None
+            finally:
+                conn.close()
+
+        row = await anyio.to_thread.run_sync(_sync)
+        if not row:
+            return None
+        return {**row, "metadata": _json_loads(row.get("metadata_json")) or {}}
+
+    async def delete_memory_session(self, *, session_id: str) -> bool:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> bool:
+            conn = sqlite3.connect(db_path)
+            try:
+                cur = conn.execute("DELETE FROM memory_sessions WHERE id = ?;", (str(session_id),))
+                conn.execute("DELETE FROM memory_messages WHERE session_id = ?;", (str(session_id),))
+                try:
+                    conn.execute("DELETE FROM memory_messages_fts WHERE session_id = ?;", (str(session_id),))
+                except Exception:
+                    pass
+                conn.commit()
+                return bool(cur.rowcount)
+            finally:
+                conn.close()
+
+        return bool(await anyio.to_thread.run_sync(_sync))
+
+    async def list_memory_messages(
+        self, *, session_id: str, limit: int = 100, offset: int = 0
+    ) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                total_row = conn.execute(
+                    "SELECT COUNT(1) AS c FROM memory_messages WHERE session_id = ?;", (str(session_id),)
+                ).fetchone()
+                total = int(total_row["c"] if total_row else 0)
+                rows = conn.execute(
+                    """
+                    SELECT * FROM memory_messages
+                    WHERE session_id = ?
+                    ORDER BY created_at ASC
+                    LIMIT ? OFFSET ?;
+                    """,
+                    (str(session_id), int(limit), int(offset)),
+                ).fetchall()
+                return {"items": [dict(r) for r in rows], "total": total}
+            finally:
+                conn.close()
+
+        res = await anyio.to_thread.run_sync(_sync)
+        items = []
+        for r in res.get("items") or []:
+            items.append({**r, "metadata": _json_loads(r.get("metadata_json")) or {}})
+        return {"items": items, "total": int(res.get("total") or 0), "limit": int(limit), "offset": int(offset)}
+
+    async def search_memory_messages(
+        self,
+        *,
+        query: str,
+        user_id: Optional[str] = None,
+        limit: int = 10,
+        offset: int = 0,
+    ) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                uid = str(user_id) if user_id else None
+                q = str(query or "").strip()
+                # Prefer FTS when available; fallback to LIKE.
+                try:
+                    if q:
+                        q_fts = q.replace('"', '""')
+                        where_uid = "AND user_id = ?" if uid else ""
+                        params: List[Any] = [q_fts]
+                        if uid:
+                            params.append(uid)
+                        params.extend([int(limit), int(offset)])
+                        rows = conn.execute(
+                            f"""
+                            SELECT * FROM memory_messages_fts
+                            WHERE memory_messages_fts MATCH ?
+                              {where_uid}
+                            LIMIT ? OFFSET ?;
+                            """,
+                            params,
+                        ).fetchall()
+                        # FTS table already carries content; hydrate minimal fields.
+                        items = []
+                        for r in rows:
+                            items.append(
+                                {
+                                    "id": r["id"],
+                                    "user_id": r["user_id"],
+                                    "session_id": r["session_id"],
+                                    "role": r["role"],
+                                    "content": r["content"][:200],
+                                    "score": 1.0,
+                                }
+                            )
+                        return {"items": items, "total": len(items)}
+                except Exception:
+                    pass
+
+                if not q:
+                    return {"items": [], "total": 0}
+                like = f"%{q}%"
+                where = "WHERE content LIKE ?"
+                params2: List[Any] = [like]
+                if uid:
+                    where += " AND user_id = ?"
+                    params2.append(uid)
+                total_row = conn.execute(f"SELECT COUNT(1) AS c FROM memory_messages {where};", params2).fetchone()
+                total = int(total_row["c"] if total_row else 0)
+                rows = conn.execute(
+                    f"""
+                    SELECT id,user_id,session_id,role,content FROM memory_messages
+                    {where}
+                    ORDER BY created_at DESC
+                    LIMIT ? OFFSET ?;
+                    """,
+                    [*params2, int(limit), int(offset)],
+                ).fetchall()
+                items = []
+                for r in rows:
+                    items.append(
+                        {
+                            "id": r["id"],
+                            "user_id": r["user_id"],
+                            "session_id": r["session_id"],
+                            "role": r["role"],
+                            "content": str(r["content"] or "")[:200],
+                            "score": 1.0,
+                        }
+                    )
+                return {"items": items, "total": total}
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
 
     def _job_row_to_obj(self, row: Dict[str, Any]) -> Dict[str, Any]:
         return {

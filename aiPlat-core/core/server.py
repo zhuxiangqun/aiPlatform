@@ -3382,33 +3382,56 @@ async def get_skill_derived(skill_id: str):
 @api_router.get("/memory/sessions")
 async def list_sessions(limit: int = 100, offset: int = 0):
     """List memory sessions"""
+    if _execution_store:
+        res = await _execution_store.list_memory_sessions(limit=limit, offset=offset)
+        out = []
+        for s in res.get("items") or []:
+            out.append(
+                {
+                    "session_id": s.get("id"),
+                    "metadata": s.get("metadata") or {},
+                    "created_at": s.get("created_at"),
+                    "updated_at": s.get("updated_at"),
+                    "message_count": s.get("message_count") or 0,
+                }
+            )
+        return {"sessions": out, "total": int(res.get("total") or 0)}
+
+    # Fallback to legacy in-memory manager
     sessions = await _memory_manager.list_sessions(limit=limit, offset=offset)
-    
     result = []
     for s in sessions:
-        result.append({
-            "session_id": s.id,
-            "metadata": s.metadata,
-            "created_at": s.created_at.isoformat() if s.created_at else None,
-            "updated_at": s.last_activity.isoformat() if s.last_activity else None,
-            "message_count": s.message_count
-        })
-    
+        result.append(
+            {
+                "session_id": s.id,
+                "metadata": s.metadata,
+                "created_at": s.created_at.isoformat() if s.created_at else None,
+                "updated_at": s.last_activity.isoformat() if s.last_activity else None,
+                "message_count": s.message_count,
+            }
+        )
     counts = _memory_manager.get_session_count()
-    return {
-        "sessions": result,
-        "total": counts["total"]
-    }
+    return {"sessions": result, "total": counts["total"]}
 
 
 @api_router.post("/memory/sessions")
 async def create_session(request: SessionCreateRequest):
     """Create memory session"""
+    meta = request.metadata or {}
+    if _execution_store:
+        session = await _execution_store.create_memory_session(
+            user_id=str(meta.get("user_id", "system")),
+            agent_type=str(meta.get("agent_type", "default")),
+            session_type=str(meta.get("session_type", "session")),
+            metadata=meta,
+        )
+        return {"session_id": session.get("id"), "status": "created"}
+
     session = await _memory_manager.create_session(
-        agent_type=request.metadata.get("agent_type", "default") if request.metadata else "default",
-        user_id=request.metadata.get("user_id", "system") if request.metadata else "system",
-        session_type=request.metadata.get("session_type", "short_term") if request.metadata else "short_term",
-        metadata=request.metadata
+        agent_type=meta.get("agent_type", "default"),
+        user_id=meta.get("user_id", "system"),
+        session_type=meta.get("session_type", "short_term"),
+        metadata=meta,
     )
     return {"session_id": session.id, "status": "created"}
 
@@ -3416,10 +3439,24 @@ async def create_session(request: SessionCreateRequest):
 @api_router.get("/memory/sessions/{session_id}")
 async def get_session(session_id: str):
     """Get session details"""
+    if _execution_store:
+        session = await _execution_store.get_memory_session(session_id=session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+        msgs = await _execution_store.list_memory_messages(session_id=session_id, limit=200, offset=0)
+        return {
+            "session_id": session_id,
+            "messages": [
+                {"role": m.get("role"), "content": m.get("content"), "timestamp": m.get("created_at")}
+                for m in (msgs.get("items") or [])
+            ],
+            "metadata": session.get("metadata") or {},
+            "message_count": int(msgs.get("total") or 0),
+        }
+
     session = await _memory_manager.get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
-    
     messages = await _memory_manager.get_messages(session_id)
     return {
         "session_id": session_id,
@@ -3428,14 +3465,17 @@ async def get_session(session_id: str):
             for m in messages
         ],
         "metadata": session.metadata,
-        "message_count": len(messages)
+        "message_count": len(messages),
     }
 
 
 @api_router.delete("/memory/sessions/{session_id}")
 async def delete_session(session_id: str):
     """Delete session"""
-    success = await _memory_manager.delete_session(session_id)
+    if _execution_store:
+        success = await _execution_store.delete_memory_session(session_id=session_id)
+    else:
+        success = await _memory_manager.delete_session(session_id)
     if not success:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
     return {"status": "deleted", "session_id": session_id}
@@ -3444,45 +3484,59 @@ async def delete_session(session_id: str):
 @api_router.get("/memory/sessions/{session_id}/context")
 async def get_session_context(session_id: str):
     """Get session context"""
+    if _execution_store:
+        session = await _execution_store.get_memory_session(session_id=session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+        msgs = await _execution_store.list_memory_messages(session_id=session_id, limit=200, offset=0)
+        return {
+            "session_id": session_id,
+            "context": {"messages": msgs.get("items") or [], "message_count": int(msgs.get("total") or 0)},
+        }
+
     context = await _memory_manager.get_context(session_id)
     if not context:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
-    return {
-        "session_id": session_id,
-        "context": {
-            "messages": context.get("messages", []),
-            "message_count": len(context.get("messages", []))
-        }
-    }
+    return {"session_id": session_id, "context": {"messages": context.get("messages", []), "message_count": len(context.get("messages", []))}}
 
 
 @api_router.post("/memory/sessions/{session_id}/messages")
 async def add_message(session_id: str, request: MessageCreateRequest):
     """Add message to session"""
+    if _execution_store:
+        session = await _execution_store.get_memory_session(session_id=session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+        msg = await _execution_store.add_memory_message(
+            session_id=session_id,
+            user_id=str(session.get("user_id") or "system"),
+            role=request.role,
+            content=request.content,
+            metadata=None,
+        )
+        return {"status": "added", "message": {"role": msg.get("role"), "content": msg.get("content"), "timestamp": msg.get("created_at")}}
+
     session = await _memory_manager.get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
-    
-    message = await _memory_manager.add_message(
-        session_id=session_id,
-        role=request.role,
-        content=request.content,
-        metadata=request.metadata
-    )
-    
+    message = await _memory_manager.add_message(session_id=session_id, role=request.role, content=request.content, metadata=request.metadata)
     return {
         "status": "added",
         "message": {
             "role": message.role,
             "content": message.content,
-            "timestamp": message.created_at.isoformat() if message.created_at else None
-        }
+            "timestamp": message.created_at.isoformat() if message.created_at else None,
+        },
     }
 
 
 @api_router.post("/memory/search")
 async def search_memory(request: SearchRequest):
     """Search memory"""
+    if _execution_store:
+        res = await _execution_store.search_memory_messages(query=request.query, user_id=None, limit=int(request.limit or 10), offset=0)
+        return {"results": res.get("items") or [], "total": int(res.get("total") or 0)}
+
     results = await _memory_manager.search_memory(request.query, request.limit)
     return {"results": results, "total": len(results)}
 

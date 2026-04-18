@@ -90,6 +90,37 @@ def get_active_workspace_context() -> Optional[ActiveWorkspaceContext]:
     return _active_workspace_ctx.get()
 
 
+@dataclass
+class ActiveRequestContext:
+    """
+    Per-request identity context (Roadmap R4: session search / memory injection).
+    """
+
+    user_id: str = "system"
+    session_id: str = "default"
+    channel: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"user_id": self.user_id, "session_id": self.session_id, "channel": self.channel}
+
+
+_active_request_ctx: ContextVar[Optional[ActiveRequestContext]] = ContextVar("active_request_ctx", default=None)
+
+
+def set_active_request_context(ctx: Optional[ActiveRequestContext]):
+    """Set active request context for current async task. Returns a token for reset()."""
+    return _active_request_ctx.set(ctx)
+
+
+def reset_active_request_context(token) -> None:
+    """Reset to previous value using token returned by set_active_request_context()."""
+    _active_request_ctx.reset(token)
+
+
+def get_active_request_context() -> Optional[ActiveRequestContext]:
+    return _active_request_ctx.get()
+
+
 # ---------------------------------------------------------------------------
 # Prompt revision audit (Phase 6.12)
 # ---------------------------------------------------------------------------
