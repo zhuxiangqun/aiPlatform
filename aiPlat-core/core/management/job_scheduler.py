@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from core.harness.kernel.types import ExecutionRequest
+import os
 
 
 def _parse_cron_field(field: str, *, min_v: int, max_v: int) -> Set[int]:
@@ -114,6 +115,9 @@ def next_run_from_cron(cron: str, *, from_ts: float) -> float:
 class SchedulerConfig:
     poll_interval_seconds: float = 2.0
     batch_size: int = 20
+    delivery_timeout_seconds: float = 10.0
+    delivery_retries: int = 2
+    delivery_backoff_seconds: float = 1.0
 
 
 class JobScheduler:
@@ -208,45 +212,157 @@ class JobScheduler:
             request_id=run_id,
         )
 
+        final_payload: Dict[str, Any] = {}
+        final_ok = False
+        final_error: Optional[str] = None
+        trace_id: Optional[str] = None
+
         try:
             result = await self._harness.execute(exec_req)
             finished = time.time()
             if not getattr(result, "ok", False):
+                final_ok = False
+                final_error = getattr(result, "error", None) or "Execution failed"
+                trace_id = getattr(result, "trace_id", None)
+                final_payload = {"ok": False, "error": getattr(result, "error", None), "payload": getattr(result, "payload", {})}
                 await self._store.finish_job_run(
                     run_id,
                     {
                         "finished_at": finished,
                         "status": "failed",
-                        "error": getattr(result, "error", None) or "Execution failed",
-                        "trace_id": getattr(result, "trace_id", None),
-                        "result": {"ok": False, "error": getattr(result, "error", None), "payload": getattr(result, "payload", {})},
+                        "error": final_error,
+                        "trace_id": trace_id,
+                        "result": final_payload,
                     },
                 )
             else:
                 payload_out = getattr(result, "payload", {}) or {}
                 status = str(payload_out.get("status") or "completed")
+                final_ok = True
+                final_error = payload_out.get("error")
+                trace_id = getattr(result, "trace_id", None) or payload_out.get("trace_id")
+                final_payload = {"ok": True, "payload": payload_out}
                 await self._store.finish_job_run(
                     run_id,
                     {
                         "finished_at": finished,
                         "status": "completed" if status in ("completed", "success") else status,
-                        "error": payload_out.get("error"),
-                        "trace_id": getattr(result, "trace_id", None) or payload_out.get("trace_id"),
-                        "result": {"ok": True, "payload": payload_out},
+                        "error": final_error,
+                        "trace_id": trace_id,
+                        "result": final_payload,
                     },
                 )
         except Exception as e:
             finished = time.time()
+            final_ok = False
+            final_error = str(e)
+            final_payload = {"ok": False, "error": final_error}
             await self._store.finish_job_run(
                 run_id,
                 {
                     "finished_at": finished,
                     "status": "failed",
-                    "error": str(e),
-                    "result": {"ok": False, "error": str(e)},
+                    "error": final_error,
+                    "result": final_payload,
                 },
             )
+
+        # Delivery (best-effort): webhook POST for completion/failure.
+        try:
+            delivery = job.get("delivery") if isinstance(job, dict) else None
+            delivery_result = await self._deliver_webhook(
+                delivery if isinstance(delivery, dict) else {},
+                job=job,
+                run={
+                    "id": run_id,
+                    "job_id": job_id,
+                    "scheduled_for": float(scheduled_for),
+                    "status": "completed" if final_ok else "failed",
+                    "error": final_error,
+                    "trace_id": trace_id,
+                    "run_id": run_id,
+                },
+                result=final_payload,
+            )
+            if delivery_result is not None:
+                # merge into job_run result for auditability
+                try:
+                    await self._store.finish_job_run(
+                        run_id,
+                        {
+                            "result": {
+                                **(final_payload or {}),
+                                "delivery": delivery_result,
+                            }
+                        },
+                    )
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
         # Return latest run
         return await self._store.list_job_runs(job_id=job_id, limit=1, offset=0)
 
+    async def _deliver_webhook(
+        self,
+        delivery: Dict[str, Any],
+        *,
+        job: Dict[str, Any],
+        run: Dict[str, Any],
+        result: Dict[str, Any],
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Webhook delivery (best-effort).
+
+        delivery format:
+        {
+          "type": "webhook",
+          "url": "http://...",
+          "headers": {"Authorization": "..."},
+          "include": ["job","run","result"]   # optional
+        }
+        """
+        if not isinstance(delivery, dict) or not delivery:
+            return None
+        if str(delivery.get("type") or "webhook") != "webhook":
+            return None
+        url = delivery.get("url")
+        if not isinstance(url, str) or not url.strip():
+            return None
+
+        headers = delivery.get("headers") if isinstance(delivery.get("headers"), dict) else {}
+        include = delivery.get("include")
+        if not isinstance(include, list) or not include:
+            include = ["job", "run", "result"]
+
+        body: Dict[str, Any] = {"type": "job_run"}
+        if "job" in include:
+            body["job"] = job
+        if "run" in include:
+            body["run"] = run
+        if "result" in include:
+            body["result"] = result
+
+        # env overrides
+        retries = int(os.getenv("AIPLAT_JOBS_DELIVERY_RETRIES", str(self._cfg.delivery_retries)) or "2")
+        timeout_s = float(os.getenv("AIPLAT_JOBS_DELIVERY_TIMEOUT_SECONDS", str(self._cfg.delivery_timeout_seconds)) or "10")
+        backoff = float(os.getenv("AIPLAT_JOBS_DELIVERY_BACKOFF_SECONDS", str(self._cfg.delivery_backoff_seconds)) or "1")
+
+        # Lazy import (aiohttp is already a dependency in this repo)
+        import aiohttp
+
+        last_err: Optional[str] = None
+        for attempt in range(retries + 1):
+            try:
+                async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout_s)) as sess:
+                    async with sess.post(url, json=body, headers=headers) as resp:
+                        text = await resp.text()
+                        if 200 <= resp.status < 300:
+                            return {"ok": True, "status": resp.status, "response_text": text[:2000]}
+                        last_err = f"HTTP {resp.status}: {text[:2000]}"
+            except Exception as e:
+                last_err = str(e)
+            if attempt < retries:
+                await asyncio.sleep(backoff * (attempt + 1))
+        return {"ok": False, "error": last_err or "delivery_failed"} 
