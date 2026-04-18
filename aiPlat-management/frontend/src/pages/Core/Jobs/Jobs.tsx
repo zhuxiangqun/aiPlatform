@@ -28,6 +28,7 @@ const Jobs: React.FC = () => {
   const [runsTotal, setRunsTotal] = useState(0);
   const [runsOffset, setRunsOffset] = useState(0);
   const runsLimit = 50;
+  const [highlightRunId, setHighlightRunId] = useState<string | null>(null);
 
   // form
   const [name, setName] = useState('');
@@ -162,13 +163,22 @@ const Jobs: React.FC = () => {
 
   const runNow = async (job: Job) => {
     try {
-      await jobApi.runNow(job.id);
+      const res = await jobApi.runNow(job.id);
       toast.success('已触发');
       await loadJobs();
+      // Auto open runs and highlight the latest run if returned
+      const rid = String((res as any)?.id || (res as any)?.run_id || '');
+      setHighlightRunId(rid || null);
+      await openRuns(job);
     } catch (e: any) {
       const msg = String(e?.message || '');
-      if (msg.includes('409')) toast.error('Job 正在运行/被锁占用');
-      else toast.error('触发失败', msg);
+      if (msg.includes('409')) {
+        toast.error('Job 正在运行/被锁占用');
+        setHighlightRunId(null);
+        await openRuns(job);
+      } else {
+        toast.error('触发失败', msg);
+      }
     }
   };
 
@@ -404,7 +414,14 @@ const Jobs: React.FC = () => {
           ) : (
             <div className="space-y-2">
               {runs.map((r) => (
-                <div key={r.id} className="border border-dark-border rounded-lg bg-dark-bg p-3">
+                <div
+                  key={r.id}
+                  className={`border rounded-lg bg-dark-bg p-3 ${
+                    highlightRunId && (String(r.id) === highlightRunId || String(r.run_id) === highlightRunId)
+                      ? 'border-primary'
+                      : 'border-dark-border'
+                  }`}
+                >
                   <div className="flex items-center justify-between gap-3">
                     <div className="text-sm text-gray-200">
                       <span className="font-medium">{r.status}</span>
