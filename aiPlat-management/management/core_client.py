@@ -100,6 +100,18 @@ class CoreAPIClient:
             params["span_id"] = span_id
         return await self._request("GET", "/api/core/syscalls/events", params=params)
 
+    async def get_syscall_stats(
+        self,
+        *,
+        window_hours: int = 24,
+        top_n: int = 10,
+        kind: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        params: Dict[str, Any] = {"window_hours": window_hours, "top_n": top_n}
+        if kind:
+            params["kind"] = kind
+        return await self._request("GET", "/api/core/syscalls/stats", params=params)
+
     # ===== Learning / Release Management (Phase 6) =====
 
     async def list_learning_artifacts(

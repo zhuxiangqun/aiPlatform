@@ -709,6 +709,108 @@ class ExecutionStore:
 
         return await anyio.to_thread.run_sync(_sync)
 
+    async def get_syscall_event_stats(
+        self,
+        *,
+        window_hours: int = 24,
+        top_n: int = 10,
+        kind: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Roadmap-0/2/3 observability: basic aggregated syscall stats (best-effort).
+        """
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                now = time.time()
+                since = now - float(max(int(window_hours), 1)) * 3600.0
+                where = "WHERE created_at >= ?"
+                params: List[Any] = [since]
+                if kind:
+                    where += " AND kind = ?"
+                    params.append(str(kind))
+
+                total_row = conn.execute(f"SELECT COUNT(1) AS c FROM syscall_events {where};", params).fetchone()
+                total = int(total_row["c"] if total_row else 0)
+
+                by_kind = {
+                    r["kind"]: int(r["c"])
+                    for r in conn.execute(
+                        f"SELECT kind, COUNT(1) AS c FROM syscall_events {where} GROUP BY kind;", params
+                    ).fetchall()
+                }
+                by_status = {
+                    r["status"]: int(r["c"])
+                    for r in conn.execute(
+                        f"SELECT status, COUNT(1) AS c FROM syscall_events {where} GROUP BY status;", params
+                    ).fetchall()
+                }
+
+                top_names = [
+                    dict(r)
+                    for r in conn.execute(
+                        f"""
+                        SELECT kind, name, COUNT(1) AS count, AVG(duration_ms) AS avg_ms
+                        FROM syscall_events
+                        {where}
+                        GROUP BY kind, name
+                        ORDER BY count DESC
+                        LIMIT ?;
+                        """,
+                        [*params, int(top_n)],
+                    ).fetchall()
+                ]
+                top_failed = [
+                    dict(r)
+                    for r in conn.execute(
+                        f"""
+                        SELECT kind, name, COUNT(1) AS count
+                        FROM syscall_events
+                        {where} AND status = 'failed'
+                        GROUP BY kind, name
+                        ORDER BY count DESC
+                        LIMIT ?;
+                        """,
+                        [*params, int(top_n)],
+                    ).fetchall()
+                ]
+
+                # Last N hours failure trend (hourly buckets).
+                trend = [
+                    dict(r)
+                    for r in conn.execute(
+                        f"""
+                        SELECT
+                          strftime('%Y-%m-%d %H:00:00', datetime(created_at, 'unixepoch')) AS bucket,
+                          COUNT(1) AS failed
+                        FROM syscall_events
+                        {where} AND status = 'failed'
+                        GROUP BY bucket
+                        ORDER BY bucket ASC;
+                        """,
+                        params,
+                    ).fetchall()
+                ]
+
+                return {
+                    "window_hours": int(window_hours),
+                    "since": since,
+                    "total": total,
+                    "by_kind": by_kind,
+                    "by_status": by_status,
+                    "top_names": top_names,
+                    "top_failed": top_failed,
+                    "failed_trend_hourly": trend,
+                }
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
     async def prune(self, now_ts: Optional[float] = None) -> Dict[str, int]:
         """
         清理历史数据（best-effort）。

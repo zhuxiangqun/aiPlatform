@@ -1575,6 +1575,17 @@ async def list_syscall_events(
     )
 
 
+@api_router.get("/syscalls/stats")
+async def get_syscall_stats(
+    window_hours: int = 24,
+    top_n: int = 10,
+    kind: Optional[str] = None,
+):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    return await _execution_store.get_syscall_event_stats(window_hours=window_hours, top_n=top_n, kind=kind)
+
+
 @api_router.post("/approvals/{request_id}/approve")
 async def approve_request(request_id: str, request: dict):
     if not _approval_manager:

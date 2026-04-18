@@ -303,6 +303,30 @@ async def list_layer_syscalls(
     return {"layer": "core", "supported": True, "syscalls": items, "limit": limit, "offset": offset}
 
 
+@router.get("/syscalls/{layer}/stats")
+async def get_layer_syscall_stats(
+    layer: str,
+    request: Request,
+    window_hours: int = 24,
+    top_n: int = 10,
+    kind: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Aggregated syscall stats (core layer only for now)."""
+    health_checkers = request.app.state.health_checkers
+    if layer not in health_checkers:
+        raise HTTPException(status_code=404, detail=f"Layer '{layer}' not found")
+
+    if layer != "core":
+        return {"layer": layer, "supported": False, "message": "Syscall stats are supported for core layer only (for now)."}
+
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="Core client not initialized")
+
+    stats = await core_client.get_syscall_stats(window_hours=window_hours, top_n=top_n, kind=kind)
+    return {"layer": "core", "supported": True, "stats": stats}
+
+
 @router.get("/graphs/{layer}/{run_id}")
 async def get_layer_graph_run(
     layer: str,
