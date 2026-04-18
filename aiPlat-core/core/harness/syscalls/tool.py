@@ -53,6 +53,21 @@ async def sys_tool_call(
     )
     start_ts = time.time()
     _ar = get_active_release_context()
+    _run_id = (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None
+
+    # Run events (best-effort): tool_start
+    try:
+        runtime = get_kernel_runtime()
+        store = getattr(runtime, "execution_store", None) if runtime else None
+        if store is not None and _run_id:
+            await store.append_run_event(
+                run_id=str(_run_id),
+                event_type="tool_start",
+                trace_id=span.trace_id,
+                payload={"tool": tool_name or "<unknown>", "user_id": user_id, "session_id": session_id},
+            )
+    except Exception:
+        pass
 
     if tool is None or not hasattr(tool, "execute"):
         end_ts = time.time()
@@ -81,6 +96,16 @@ async def sys_tool_call(
                                 "error_code": "TOOL_NOT_EXECUTABLE",
                     }
                 )
+            except Exception:
+                pass
+            try:
+                if _run_id:
+                    await store.append_run_event(
+                        run_id=str(_run_id),
+                        event_type="tool_end",
+                        trace_id=span.trace_id,
+                        payload={"tool": tool_name or "<unknown>", "status": "failed", "error": "TOOL_NOT_EXECUTABLE"},
+                    )
             except Exception:
                 pass
         raise RuntimeError("Tool is not executable")
@@ -142,6 +167,18 @@ async def sys_tool_call(
                     except Exception:
                         pass
                 await trace_gate.end(span, success=False)
+                try:
+                    runtime = get_kernel_runtime()
+                    store = getattr(runtime, "execution_store", None) if runtime else None
+                    if store is not None and _run_id:
+                        await store.append_run_event(
+                            run_id=str(_run_id),
+                            event_type="tool_end",
+                            trace_id=span.trace_id,
+                            payload={"tool": tool_name or "<unknown>", "status": "toolset_denied", "error": reason or "TOOLSET_DENIED"},
+                        )
+                except Exception:
+                    pass
                 return ToolResult(
                     success=False,
                     output=None,
@@ -185,6 +222,18 @@ async def sys_tool_call(
             except Exception:
                 pass
         await trace_gate.end(span, success=False)
+        try:
+            runtime = get_kernel_runtime()
+            store = getattr(runtime, "execution_store", None) if runtime else None
+            if store is not None and _run_id:
+                await store.append_run_event(
+                    run_id=str(_run_id),
+                    event_type="tool_end",
+                    trace_id=span.trace_id,
+                    payload={"tool": tool_name or "<unknown>", "status": "policy_denied", "error": pr.reason or "POLICY_DENIED"},
+                )
+        except Exception:
+            pass
         return ToolResult(
             success=False,
             output=None,
@@ -221,6 +270,23 @@ async def sys_tool_call(
             except Exception:
                 pass
         await trace_gate.end(span, success=False)
+        try:
+            runtime = get_kernel_runtime()
+            store = getattr(runtime, "execution_store", None) if runtime else None
+            if store is not None and _run_id:
+                await store.append_run_event(
+                    run_id=str(_run_id),
+                    event_type="tool_end",
+                    trace_id=span.trace_id,
+                    payload={
+                        "tool": tool_name or "<unknown>",
+                        "status": "approval_required",
+                        "approval_request_id": pr.approval_request_id,
+                        "error": pr.reason or "APPROVAL_REQUIRED",
+                    },
+                )
+        except Exception:
+            pass
         return ToolResult(
             success=False,
             output=None,
@@ -252,6 +318,20 @@ async def sys_tool_call(
                     status = "approval_required"
                 elif getattr(result, "error", None) == "policy_denied":
                     status = "policy_denied"
+                try:
+                    if _run_id:
+                        await store.append_run_event(
+                            run_id=str(_run_id),
+                            event_type="tool_end",
+                            trace_id=span.trace_id,
+                            payload={
+                                "tool": tool_name or "<unknown>",
+                                "status": status,
+                                "error": getattr(result, "error", None),
+                            },
+                        )
+                except Exception:
+                    pass
                 await store.add_syscall_event(
                     {
                         "trace_id": span.trace_id,
@@ -278,6 +358,16 @@ async def sys_tool_call(
         store = getattr(runtime, "execution_store", None) if runtime else None
         if store is not None:
             try:
+                try:
+                    if _run_id:
+                        await store.append_run_event(
+                            run_id=str(_run_id),
+                            event_type="tool_end",
+                            trace_id=span.trace_id,
+                            payload={"tool": tool_name or "<unknown>", "status": "failed", "error": "tool_error"},
+                        )
+                except Exception:
+                    pass
                 await store.add_syscall_event(
                     {
                         "trace_id": span.trace_id,
