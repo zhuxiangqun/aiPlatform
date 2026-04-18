@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Copy, ExternalLink, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Copy, ExternalLink, RefreshCw, Wand2 } from 'lucide-react';
 
 import { Badge, Button, Card, CardContent, CardHeader, Statistic, Tabs, toast } from '../../../../components/ui';
 import { learningApi, type LearningArtifact } from '../../../../services';
@@ -27,6 +27,7 @@ const ArtifactDetail: React.FC = () => {
   const { artifactId } = useParams();
   const [loading, setLoading] = useState(false);
   const [artifact, setArtifact] = useState<LearningArtifact | null>(null);
+  const [genLoading, setGenLoading] = useState(false);
 
   const fetchOne = async () => {
     if (!artifactId) return;
@@ -248,6 +249,24 @@ const ArtifactDetail: React.FC = () => {
     ];
   }, [artifact, decision, kind, meta, navigate, payload, regressionEvidence, releaseArtifactIds, status, target]);
 
+  const generatePromptRevision = async () => {
+    if (!artifactId) return;
+    setGenLoading(true);
+    try {
+      const res = await learningApi.autocaptureToPromptRevision({ artifact_id: artifactId, create_release_candidate: true });
+      const rcId = res?.release_candidate?.artifact_id;
+      const prId = res?.prompt_revision?.artifact_id;
+      toast.success('已生成草案');
+      if (rcId) navigate(`/core/learning/artifacts/${encodeURIComponent(String(rcId))}`);
+      else if (prId) navigate(`/core/learning/artifacts/${encodeURIComponent(String(prId))}`);
+      else await fetchOne();
+    } catch (e: any) {
+      toast.error('生成失败', String(e?.message || ''));
+    } finally {
+      setGenLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
@@ -273,6 +292,11 @@ const ArtifactDetail: React.FC = () => {
           <Button variant="secondary" icon={<RefreshCw size={16} />} onClick={fetchOne} loading={loading}>
             刷新
           </Button>
+          {artifact?.kind === 'feedback_summary' && (
+            <Button variant="primary" icon={<Wand2 size={16} />} onClick={generatePromptRevision} loading={genLoading}>
+              生成 Prompt Revision
+            </Button>
+          )}
           {artifactId && (
             <Button variant="secondary" icon={<Copy size={16} />} onClick={() => copyText(artifactId)}>
               复制 ID
@@ -287,4 +311,3 @@ const ArtifactDetail: React.FC = () => {
 };
 
 export default ArtifactDetail;
-

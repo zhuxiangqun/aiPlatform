@@ -266,6 +266,17 @@ export const learningApi = {
   cleanupRollbackApprovals: async (payload: Record<string, unknown> = {}) => {
     return apiClient.post<any>(`/core/learning/approvals/cleanup-rollback-approvals`, payload);
   },
+
+  autocaptureToPromptRevision: async (payload: {
+    artifact_id: string;
+    patch?: { prepend?: string; append?: string };
+    priority?: number;
+    exclusive_group?: string;
+    create_release_candidate?: boolean;
+    summary?: string;
+  }) => {
+    return apiClient.post<any>(`/core/learning/autocapture/to_prompt_revision`, payload as any);
+  },
 };
 
 export interface ApprovalRequestSummary {
