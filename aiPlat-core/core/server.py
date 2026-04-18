@@ -22,6 +22,8 @@ from core.schemas import (
     AgentUpdateRequest,
     SkillCreateRequest,
     SkillExecuteRequest,
+    JobCreateRequest,
+    JobUpdateRequest,
     MessageCreateRequest,
     SessionCreateRequest,
     SearchRequest,
@@ -43,6 +45,7 @@ from core.management import (
     AdapterManager,
     HarnessManager,
 )
+from core.management.job_scheduler import JobScheduler, SchedulerConfig, next_run_from_cron
 from core.apps.tools.base import ToolRegistry, get_tool_registry, create_tool
 from core.apps.tools.permission import PermissionManager, Permission, get_permission_manager
 from core.apps.agents import get_agent_registry
@@ -138,6 +141,7 @@ _knowledge_manager: Optional[KnowledgeManager] = None
 _adapter_manager: Optional[AdapterManager] = None
 _harness_manager: Optional[HarnessManager] = None
 _approval_manager: Optional[Any] = None
+_job_scheduler: Optional[JobScheduler] = None
 
 
 @asynccontextmanager
@@ -464,8 +468,32 @@ async def lifespan(app: FastAPI):
         )
     except Exception:
         pass
+
+    # Roadmap-3: Jobs/Cron scheduler (default enabled)
+    global _job_scheduler
+    try:
+        enable_jobs = os.getenv("AIPLAT_ENABLE_JOBS", "true").lower() in ("1", "true", "yes", "y")
+        if enable_jobs and _execution_store is not None:
+            _job_scheduler = JobScheduler(
+                execution_store=_execution_store,
+                harness=get_harness(),
+                config=SchedulerConfig(
+                    poll_interval_seconds=float(os.getenv("AIPLAT_JOBS_POLL_SECONDS", "2") or "2"),
+                    batch_size=int(os.getenv("AIPLAT_JOBS_BATCH_SIZE", "20") or "20"),
+                ),
+            )
+            await _job_scheduler.start()
+    except Exception:
+        _job_scheduler = None
     
     yield
+
+    # Shutdown background services
+    try:
+        if _job_scheduler is not None:
+            await _job_scheduler.stop()
+    except Exception:
+        pass
 
 
 app = FastAPI(
@@ -4092,6 +4120,130 @@ async def execute_tool(tool_name: str, request: dict):
     payload.setdefault("trace_id", result.trace_id)
     payload.setdefault("run_id", result.run_id)
     return payload
+
+
+# ==================== Jobs / Cron (Roadmap-3) ====================
+
+
+@api_router.get("/jobs")
+async def list_jobs(limit: int = 100, offset: int = 0, enabled: Optional[bool] = None):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    return await _execution_store.list_jobs(limit=limit, offset=offset, enabled=enabled)
+
+
+@api_router.post("/jobs")
+async def create_job(request: JobCreateRequest):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    now = time.time()
+    try:
+        next_run = next_run_from_cron(request.cron, from_ts=now) if request.enabled else None
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid cron: {e}")
+    job = await _execution_store.create_job(
+        {
+            "name": request.name,
+            "enabled": request.enabled,
+            "cron": request.cron,
+            "timezone": request.timezone,
+            "kind": request.kind,
+            "target_id": request.target_id,
+            "user_id": request.user_id or "system",
+            "session_id": request.session_id or "default",
+            "payload": request.payload or {},
+            "options": request.options or {},
+            "delivery": request.delivery or {},
+            "next_run_at": next_run,
+        }
+    )
+    return job
+
+
+@api_router.get("/jobs/{job_id}")
+async def get_job(job_id: str):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    job = await _execution_store.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job
+
+
+@api_router.put("/jobs/{job_id}")
+async def update_job(job_id: str, request: JobUpdateRequest):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    patch = request.model_dump(exclude_unset=True)
+    # recompute next_run_at if cron/enabled changed
+    try:
+        existing = await _execution_store.get_job(job_id)
+        if not existing:
+            raise HTTPException(status_code=404, detail="Job not found")
+        enabled = bool(patch.get("enabled")) if "enabled" in patch else bool(existing.get("enabled"))
+        cron = str(patch.get("cron") or existing.get("cron") or "* * * * *")
+        if enabled:
+            patch["next_run_at"] = next_run_from_cron(cron, from_ts=time.time())
+        else:
+            patch["next_run_at"] = None
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid cron: {e}")
+
+    updated = await _execution_store.update_job(job_id, patch)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return updated
+
+
+@api_router.delete("/jobs/{job_id}")
+async def delete_job(job_id: str):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    ok = await _execution_store.delete_job(job_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return {"status": "deleted", "job_id": job_id}
+
+
+@api_router.post("/jobs/{job_id}/enable")
+async def enable_job(job_id: str):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    job = await _execution_store.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    next_run = next_run_from_cron(str(job.get("cron") or "* * * * *"), from_ts=time.time())
+    updated = await _execution_store.update_job(job_id, {"enabled": True, "next_run_at": next_run})
+    return updated
+
+
+@api_router.post("/jobs/{job_id}/disable")
+async def disable_job(job_id: str):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    updated = await _execution_store.update_job(job_id, {"enabled": False, "next_run_at": None})
+    if not updated:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return updated
+
+
+@api_router.post("/jobs/{job_id}/run")
+async def run_job_now(job_id: str):
+    if not _job_scheduler:
+        raise HTTPException(status_code=503, detail="JobScheduler not running")
+    try:
+        return await _job_scheduler.run_job_once(job_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@api_router.get("/jobs/{job_id}/runs")
+async def list_job_runs(job_id: str, limit: int = 100, offset: int = 0):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    return await _execution_store.list_job_runs(job_id=job_id, limit=limit, offset=offset)
 
 
 # ==================== Health Check ====================

@@ -43,7 +43,7 @@ class ExecutionStoreConfig:
 
 
 class ExecutionStore:
-    CURRENT_SCHEMA_VERSION = 11
+    CURRENT_SCHEMA_VERSION = 12
 
     def __init__(self, config: ExecutionStoreConfig):
         self._config = config
@@ -427,6 +427,63 @@ class ExecutionStore:
                         )
                         _set_version(11)
                         current = 11
+
+                    # ---- Migration v12: jobs + job_runs (Roadmap-3: Jobs/Cron) ----
+                    if current < 12:
+                        conn.execute(
+                            """
+                            CREATE TABLE IF NOT EXISTS jobs (
+                              id TEXT PRIMARY KEY,
+                              name TEXT NOT NULL,
+                              enabled INTEGER NOT NULL,
+                              cron TEXT NOT NULL,
+                              timezone TEXT,
+                              kind TEXT NOT NULL,           -- agent|skill|tool|graph
+                              target_id TEXT NOT NULL,
+                              user_id TEXT,
+                              session_id TEXT,
+                              payload_json TEXT,
+                              options_json TEXT,
+                              delivery_json TEXT,
+                              last_run_at REAL,
+                              next_run_at REAL,
+                              created_at REAL NOT NULL,
+                              updated_at REAL NOT NULL
+                            );
+                            """
+                        )
+                        conn.execute(
+                            "CREATE INDEX IF NOT EXISTS idx_jobs_next_run ON jobs(enabled, next_run_at);"
+                        )
+                        conn.execute(
+                            "CREATE INDEX IF NOT EXISTS idx_jobs_kind_target ON jobs(kind, target_id);"
+                        )
+                        conn.execute(
+                            """
+                            CREATE TABLE IF NOT EXISTS job_runs (
+                              id TEXT PRIMARY KEY,
+                              job_id TEXT NOT NULL,
+                              scheduled_for REAL,
+                              started_at REAL,
+                              finished_at REAL,
+                              status TEXT NOT NULL,          -- running|completed|failed|cancelled
+                              trace_id TEXT,
+                              run_id TEXT,
+                              error TEXT,
+                              result_json TEXT,
+                              created_at REAL NOT NULL,
+                              FOREIGN KEY(job_id) REFERENCES jobs(id) ON DELETE CASCADE
+                            );
+                            """
+                        )
+                        conn.execute(
+                            "CREATE INDEX IF NOT EXISTS idx_job_runs_job_time ON job_runs(job_id, created_at DESC);"
+                        )
+                        conn.execute(
+                            "CREATE INDEX IF NOT EXISTS idx_job_runs_trace ON job_runs(trace_id, created_at DESC);"
+                        )
+                        _set_version(12)
+                        current = 12
 
                     # If legacy db exists with tables but without meta, upgrade meta to current
                     if current < self.CURRENT_SCHEMA_VERSION:
@@ -2096,6 +2153,355 @@ class ExecutionStore:
                 conn.close()
 
         return await anyio.to_thread.run_sync(_sync)
+
+    # ---------------------------------------------------------------------
+    # Roadmap-3: Jobs/Cron (minimal scheduler persistence)
+    # ---------------------------------------------------------------------
+
+    async def create_job(self, job: Dict[str, Any]) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            now = time.time()
+            payload = {
+                "id": job.get("id") or f"job-{uuid.uuid4().hex[:12]}",
+                "name": str(job.get("name") or ""),
+                "enabled": 1 if bool(job.get("enabled", True)) else 0,
+                "cron": str(job.get("cron") or "* * * * *"),
+                "timezone": job.get("timezone"),
+                "kind": str(job.get("kind") or "agent"),
+                "target_id": str(job.get("target_id") or ""),
+                "user_id": job.get("user_id"),
+                "session_id": job.get("session_id"),
+                "payload_json": _json_dumps(job.get("payload") or {}),
+                "options_json": _json_dumps(job.get("options") or {}),
+                "delivery_json": _json_dumps(job.get("delivery") or {}),
+                "last_run_at": job.get("last_run_at"),
+                "next_run_at": job.get("next_run_at"),
+                "created_at": job.get("created_at") or now,
+                "updated_at": job.get("updated_at") or now,
+            }
+            conn = sqlite3.connect(db_path)
+            try:
+                conn.execute(
+                    """
+                    INSERT INTO jobs(
+                      id,name,enabled,cron,timezone,kind,target_id,user_id,session_id,
+                      payload_json,options_json,delivery_json,last_run_at,next_run_at,created_at,updated_at
+                    ) VALUES(
+                      :id,:name,:enabled,:cron,:timezone,:kind,:target_id,:user_id,:session_id,
+                      :payload_json,:options_json,:delivery_json,:last_run_at,:next_run_at,:created_at,:updated_at
+                    );
+                    """,
+                    payload,
+                )
+                conn.commit()
+                return payload
+            finally:
+                conn.close()
+
+        rec = await anyio.to_thread.run_sync(_sync)
+        return self._job_row_to_obj(rec)
+
+    async def get_job(self, job_id: str) -> Optional[Dict[str, Any]]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Optional[Dict[str, Any]]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                row = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
+                if not row:
+                    return None
+                return dict(row)
+            finally:
+                conn.close()
+
+        row = await anyio.to_thread.run_sync(_sync)
+        return self._job_row_to_obj(row) if row else None
+
+    async def list_jobs(self, *, limit: int = 100, offset: int = 0, enabled: Optional[bool] = None) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                where = ""
+                args: List[Any] = []
+                if enabled is not None:
+                    where = "WHERE enabled = ?"
+                    args.append(1 if enabled else 0)
+
+                total_row = conn.execute(f"SELECT COUNT(1) AS c FROM jobs {where};", args).fetchone()
+                total = int(total_row["c"] if total_row else 0)
+                rows = conn.execute(
+                    f"""
+                    SELECT * FROM jobs
+                    {where}
+                    ORDER BY created_at DESC
+                    LIMIT ? OFFSET ?;
+                    """,
+                    [*args, int(limit), int(offset)],
+                ).fetchall()
+                return {"items": [dict(r) for r in rows], "total": total}
+            finally:
+                conn.close()
+
+        res = await anyio.to_thread.run_sync(_sync)
+        return {
+            "items": [self._job_row_to_obj(r) for r in (res.get("items") or [])],
+            "total": int(res.get("total") or 0),
+            "limit": int(limit),
+            "offset": int(offset),
+        }
+
+    async def update_job(self, job_id: str, patch: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Optional[Dict[str, Any]]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                row = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
+                if not row:
+                    return None
+                cur = dict(row)
+                now = time.time()
+                updated = dict(cur)
+                for k in ("name", "cron", "timezone", "kind", "target_id", "user_id", "session_id", "last_run_at", "next_run_at"):
+                    if k in patch:
+                        updated[k] = patch.get(k)
+                if "enabled" in patch:
+                    updated["enabled"] = 1 if bool(patch.get("enabled")) else 0
+                if "payload" in patch:
+                    updated["payload_json"] = _json_dumps(patch.get("payload") or {})
+                if "options" in patch:
+                    updated["options_json"] = _json_dumps(patch.get("options") or {})
+                if "delivery" in patch:
+                    updated["delivery_json"] = _json_dumps(patch.get("delivery") or {})
+                updated["updated_at"] = now
+
+                conn.execute(
+                    """
+                    UPDATE jobs SET
+                      name=:name,
+                      enabled=:enabled,
+                      cron=:cron,
+                      timezone=:timezone,
+                      kind=:kind,
+                      target_id=:target_id,
+                      user_id=:user_id,
+                      session_id=:session_id,
+                      payload_json=:payload_json,
+                      options_json=:options_json,
+                      delivery_json=:delivery_json,
+                      last_run_at=:last_run_at,
+                      next_run_at=:next_run_at,
+                      updated_at=:updated_at
+                    WHERE id=:id;
+                    """,
+                    {**updated, "id": job_id},
+                )
+                conn.commit()
+                row2 = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
+                return dict(row2) if row2 else None
+            finally:
+                conn.close()
+
+        row = await anyio.to_thread.run_sync(_sync)
+        return self._job_row_to_obj(row) if row else None
+
+    async def delete_job(self, job_id: str) -> bool:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> bool:
+            conn = sqlite3.connect(db_path)
+            try:
+                cur = conn.execute("DELETE FROM jobs WHERE id = ?;", (job_id,))
+                conn.commit()
+                return bool(cur.rowcount)
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
+    async def list_due_jobs(self, *, now_ts: float, limit: int = 20) -> List[Dict[str, Any]]:
+        """List enabled jobs whose next_run_at <= now_ts."""
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> List[Dict[str, Any]]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                rows = conn.execute(
+                    """
+                    SELECT * FROM jobs
+                    WHERE enabled = 1 AND next_run_at IS NOT NULL AND next_run_at <= ?
+                    ORDER BY next_run_at ASC
+                    LIMIT ?;
+                    """,
+                    (float(now_ts), int(limit)),
+                ).fetchall()
+                return [dict(r) for r in rows]
+            finally:
+                conn.close()
+
+        rows = await anyio.to_thread.run_sync(_sync)
+        return [self._job_row_to_obj(r) for r in rows]
+
+    async def create_job_run(self, run: Dict[str, Any]) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            now = time.time()
+            payload = {
+                "id": run.get("id") or f"jobrun-{uuid.uuid4().hex[:12]}",
+                "job_id": str(run.get("job_id") or ""),
+                "scheduled_for": run.get("scheduled_for"),
+                "started_at": run.get("started_at"),
+                "finished_at": run.get("finished_at"),
+                "status": str(run.get("status") or "running"),
+                "trace_id": run.get("trace_id"),
+                "run_id": run.get("run_id"),
+                "error": run.get("error"),
+                "result_json": _json_dumps(run.get("result") or {}),
+                "created_at": run.get("created_at") or now,
+            }
+            conn = sqlite3.connect(db_path)
+            try:
+                conn.execute(
+                    """
+                    INSERT INTO job_runs(
+                      id,job_id,scheduled_for,started_at,finished_at,status,trace_id,run_id,error,result_json,created_at
+                    ) VALUES(
+                      :id,:job_id,:scheduled_for,:started_at,:finished_at,:status,:trace_id,:run_id,:error,:result_json,:created_at
+                    );
+                    """,
+                    payload,
+                )
+                conn.commit()
+                return payload
+            finally:
+                conn.close()
+
+        row = await anyio.to_thread.run_sync(_sync)
+        return self._job_run_row_to_obj(row)
+
+    async def finish_job_run(self, run_id: str, patch: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Optional[Dict[str, Any]]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                row = conn.execute("SELECT * FROM job_runs WHERE id = ?", (run_id,)).fetchone()
+                if not row:
+                    return None
+                cur = dict(row)
+                updated = dict(cur)
+                for k in ("scheduled_for", "started_at", "finished_at", "status", "trace_id", "run_id", "error"):
+                    if k in patch:
+                        updated[k] = patch.get(k)
+                if "result" in patch:
+                    updated["result_json"] = _json_dumps(patch.get("result") or {})
+                conn.execute(
+                    """
+                    UPDATE job_runs SET
+                      scheduled_for=:scheduled_for,
+                      started_at=:started_at,
+                      finished_at=:finished_at,
+                      status=:status,
+                      trace_id=:trace_id,
+                      run_id=:run_id,
+                      error=:error,
+                      result_json=:result_json
+                    WHERE id=:id;
+                    """,
+                    {**updated, "id": run_id},
+                )
+                conn.commit()
+                row2 = conn.execute("SELECT * FROM job_runs WHERE id = ?", (run_id,)).fetchone()
+                return dict(row2) if row2 else None
+            finally:
+                conn.close()
+
+        row = await anyio.to_thread.run_sync(_sync)
+        return self._job_run_row_to_obj(row) if row else None
+
+    async def list_job_runs(self, *, job_id: str, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                total_row = conn.execute("SELECT COUNT(1) AS c FROM job_runs WHERE job_id = ?;", (job_id,)).fetchone()
+                total = int(total_row["c"] if total_row else 0)
+                rows = conn.execute(
+                    """
+                    SELECT * FROM job_runs
+                    WHERE job_id = ?
+                    ORDER BY created_at DESC
+                    LIMIT ? OFFSET ?;
+                    """,
+                    (job_id, int(limit), int(offset)),
+                ).fetchall()
+                return {"items": [dict(r) for r in rows], "total": total}
+            finally:
+                conn.close()
+
+        res = await anyio.to_thread.run_sync(_sync)
+        return {
+            "items": [self._job_run_row_to_obj(r) for r in (res.get("items") or [])],
+            "total": int(res.get("total") or 0),
+            "limit": int(limit),
+            "offset": int(offset),
+        }
+
+    def _job_row_to_obj(self, row: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "id": row.get("id"),
+            "name": row.get("name"),
+            "enabled": bool(int(row.get("enabled") or 0)),
+            "cron": row.get("cron"),
+            "timezone": row.get("timezone"),
+            "kind": row.get("kind"),
+            "target_id": row.get("target_id"),
+            "user_id": row.get("user_id"),
+            "session_id": row.get("session_id"),
+            "payload": _json_loads(row.get("payload_json")) or {},
+            "options": _json_loads(row.get("options_json")) or {},
+            "delivery": _json_loads(row.get("delivery_json")) or {},
+            "last_run_at": row.get("last_run_at"),
+            "next_run_at": row.get("next_run_at"),
+            "created_at": row.get("created_at"),
+            "updated_at": row.get("updated_at"),
+        }
+
+    def _job_run_row_to_obj(self, row: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "id": row.get("id"),
+            "job_id": row.get("job_id"),
+            "scheduled_for": row.get("scheduled_for"),
+            "started_at": row.get("started_at"),
+            "finished_at": row.get("finished_at"),
+            "status": row.get("status"),
+            "trace_id": row.get("trace_id"),
+            "run_id": row.get("run_id"),
+            "error": row.get("error"),
+            "result": _json_loads(row.get("result_json")) or {},
+            "created_at": row.get("created_at"),
+        }
 
 
 _execution_store: Optional[ExecutionStore] = None
