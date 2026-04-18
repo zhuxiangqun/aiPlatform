@@ -27,6 +27,8 @@ from core.schemas import (
     GatewayExecuteRequest,
     SkillPackCreateRequest,
     SkillPackUpdateRequest,
+    SkillPackPublishRequest,
+    SkillPackInstallRequest,
     LongTermMemoryAddRequest,
     LongTermMemorySearchRequest,
     MessageCreateRequest,
@@ -4264,6 +4266,48 @@ async def delete_skill_pack(pack_id: str):
     if not ok:
         raise HTTPException(status_code=404, detail="Skill pack not found")
     return {"status": "deleted", "id": pack_id}
+
+
+@api_router.post("/skill-packs/{pack_id}/publish")
+async def publish_skill_pack(pack_id: str, request: SkillPackPublishRequest):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    try:
+        return await _execution_store.publish_skill_pack_version(pack_id=pack_id, version=request.version)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        # likely UNIQUE(pack_id, version)
+        raise HTTPException(status_code=409, detail=str(e))
+
+
+@api_router.get("/skill-packs/{pack_id}/versions")
+async def list_skill_pack_versions(pack_id: str, limit: int = 100, offset: int = 0):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    return await _execution_store.list_skill_pack_versions(pack_id=pack_id, limit=limit, offset=offset)
+
+
+@api_router.post("/skill-packs/{pack_id}/install")
+async def install_skill_pack(pack_id: str, request: SkillPackInstallRequest):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    try:
+        return await _execution_store.install_skill_pack(
+            pack_id=pack_id,
+            version=request.version,
+            scope=request.scope,
+            metadata=request.metadata or {},
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@api_router.get("/skill-packs/installs")
+async def list_skill_pack_installs(scope: Optional[str] = None, limit: int = 100, offset: int = 0):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    return await _execution_store.list_skill_pack_installs(scope=scope, limit=limit, offset=offset)
 
 
 @api_router.post("/memory/longterm")

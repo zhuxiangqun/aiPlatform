@@ -114,6 +114,16 @@ class SkillPackUpdateRequest(BaseModel):
     manifest: Optional[Dict[str, Any]] = None
 
 
+class SkillPackPublishRequest(BaseModel):
+    version: str
+
+
+class SkillPackInstallRequest(BaseModel):
+    version: Optional[str] = None
+    scope: str = "workspace"  # engine|workspace
+    metadata: Optional[Dict[str, Any]] = None
+
+
 class LongTermMemoryAddRequest(BaseModel):
     user_id: Optional[str] = None
     key: Optional[str] = None

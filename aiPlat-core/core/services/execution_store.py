@@ -43,7 +43,7 @@ class ExecutionStoreConfig:
 
 
 class ExecutionStore:
-    CURRENT_SCHEMA_VERSION = 14
+    CURRENT_SCHEMA_VERSION = 16
 
     def __init__(self, config: ExecutionStoreConfig):
         self._config = config
@@ -537,6 +537,59 @@ class ExecutionStore:
 
                         _set_version(14)
                         current = 14
+
+                    # ---- Migration v15: long_term_memories FTS (Roadmap-4 hardening) ----
+                    if current < 15:
+                        # Optional FTS index for faster search. Best-effort: if SQLite lacks fts5, ignore.
+                        try:
+                            conn.execute(
+                                """
+                                CREATE VIRTUAL TABLE IF NOT EXISTS long_term_memories_fts
+                                USING fts5(
+                                  id UNINDEXED,
+                                  user_id UNINDEXED,
+                                  key,
+                                  content
+                                );
+                                """
+                            )
+                        except Exception:
+                            pass
+                        _set_version(15)
+                        current = 15
+
+                    # ---- Migration v16: skill_pack_versions + installs (Roadmap-4 minimal release/install) ----
+                    if current < 16:
+                        conn.execute(
+                            """
+                            CREATE TABLE IF NOT EXISTS skill_pack_versions (
+                              id TEXT PRIMARY KEY,
+                              pack_id TEXT NOT NULL,
+                              version TEXT NOT NULL,
+                              manifest_json TEXT,
+                              created_at REAL NOT NULL,
+                              UNIQUE(pack_id, version),
+                              FOREIGN KEY(pack_id) REFERENCES skill_packs(id) ON DELETE CASCADE
+                            );
+                            """
+                        )
+                        conn.execute("CREATE INDEX IF NOT EXISTS idx_spv_pack_time ON skill_pack_versions(pack_id, created_at DESC);")
+                        conn.execute(
+                            """
+                            CREATE TABLE IF NOT EXISTS skill_pack_installs (
+                              id TEXT PRIMARY KEY,
+                              pack_id TEXT NOT NULL,
+                              version TEXT,
+                              scope TEXT NOT NULL,      -- engine|workspace
+                              installed_at REAL NOT NULL,
+                              metadata_json TEXT,
+                              FOREIGN KEY(pack_id) REFERENCES skill_packs(id) ON DELETE CASCADE
+                            );
+                            """
+                        )
+                        conn.execute("CREATE INDEX IF NOT EXISTS idx_spi_scope_time ON skill_pack_installs(scope, installed_at DESC);")
+                        _set_version(16)
+                        current = 16
 
                     # If legacy db exists with tables but without meta, upgrade meta to current
                     if current < self.CURRENT_SCHEMA_VERSION:
@@ -2745,6 +2798,164 @@ class ExecutionStore:
 
         return await anyio.to_thread.run_sync(_sync)
 
+    async def publish_skill_pack_version(self, *, pack_id: str, version: str) -> Dict[str, Any]:
+        """
+        Publish an immutable version snapshot for a skill pack.
+        """
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            now = time.time()
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                pack = conn.execute("SELECT * FROM skill_packs WHERE id = ?", (str(pack_id),)).fetchone()
+                if not pack:
+                    raise ValueError("Skill pack not found")
+                rec = {
+                    "id": f"spv-{uuid.uuid4().hex[:12]}",
+                    "pack_id": str(pack_id),
+                    "version": str(version),
+                    "manifest_json": pack["manifest_json"],
+                    "created_at": now,
+                }
+                conn.execute(
+                    "INSERT INTO skill_pack_versions(id,pack_id,version,manifest_json,created_at) VALUES(?,?,?,?,?);",
+                    (rec["id"], rec["pack_id"], rec["version"], rec["manifest_json"], rec["created_at"]),
+                )
+                conn.commit()
+                return rec
+            finally:
+                conn.close()
+
+        row = await anyio.to_thread.run_sync(_sync)
+        return {
+            "id": row["id"],
+            "pack_id": row["pack_id"],
+            "version": row["version"],
+            "manifest": _json_loads(row.get("manifest_json")) or {},
+            "created_at": row.get("created_at"),
+        }
+
+    async def list_skill_pack_versions(self, *, pack_id: str, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                total_row = conn.execute("SELECT COUNT(1) AS c FROM skill_pack_versions WHERE pack_id = ?;", (str(pack_id),)).fetchone()
+                total = int(total_row["c"] if total_row else 0)
+                rows = conn.execute(
+                    "SELECT * FROM skill_pack_versions WHERE pack_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?;",
+                    (str(pack_id), int(limit), int(offset)),
+                ).fetchall()
+                return {"items": [dict(r) for r in rows], "total": total}
+            finally:
+                conn.close()
+
+        res = await anyio.to_thread.run_sync(_sync)
+        items = []
+        for r in res.get("items") or []:
+            items.append(
+                {
+                    "id": r["id"],
+                    "pack_id": r["pack_id"],
+                    "version": r["version"],
+                    "manifest": _json_loads(r.get("manifest_json")) or {},
+                    "created_at": r.get("created_at"),
+                }
+            )
+        return {"items": items, "total": int(res.get("total") or 0), "limit": int(limit), "offset": int(offset)}
+
+    async def install_skill_pack(self, *, pack_id: str, version: Optional[str], scope: str, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            now = time.time()
+            rec = {
+                "id": f"spi-{uuid.uuid4().hex[:12]}",
+                "pack_id": str(pack_id),
+                "version": str(version) if version is not None else None,
+                "scope": str(scope or "workspace"),
+                "installed_at": now,
+                "metadata_json": _json_dumps(metadata or {}),
+            }
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                # ensure pack exists
+                pack = conn.execute("SELECT 1 FROM skill_packs WHERE id = ?", (str(pack_id),)).fetchone()
+                if not pack:
+                    raise ValueError("Skill pack not found")
+                # ensure version exists if provided
+                if rec["version"]:
+                    v = conn.execute(
+                        "SELECT 1 FROM skill_pack_versions WHERE pack_id = ? AND version = ?;",
+                        (str(pack_id), str(rec["version"])),
+                    ).fetchone()
+                    if not v:
+                        raise ValueError("Skill pack version not found")
+                conn.execute(
+                    "INSERT INTO skill_pack_installs(id,pack_id,version,scope,installed_at,metadata_json) VALUES(?,?,?,?,?,?);",
+                    (rec["id"], rec["pack_id"], rec["version"], rec["scope"], rec["installed_at"], rec["metadata_json"]),
+                )
+                conn.commit()
+                return rec
+            finally:
+                conn.close()
+
+        row = await anyio.to_thread.run_sync(_sync)
+        return {
+            "id": row["id"],
+            "pack_id": row["pack_id"],
+            "version": row.get("version"),
+            "scope": row.get("scope"),
+            "installed_at": row.get("installed_at"),
+            "metadata": _json_loads(row.get("metadata_json")) or {},
+        }
+
+    async def list_skill_pack_installs(self, *, scope: Optional[str] = None, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                where = ""
+                args: List[Any] = []
+                if scope:
+                    where = "WHERE scope = ?"
+                    args.append(str(scope))
+                total_row = conn.execute(f"SELECT COUNT(1) AS c FROM skill_pack_installs {where};", args).fetchone()
+                total = int(total_row["c"] if total_row else 0)
+                rows = conn.execute(
+                    f"SELECT * FROM skill_pack_installs {where} ORDER BY installed_at DESC LIMIT ? OFFSET ?;",
+                    [*args, int(limit), int(offset)],
+                ).fetchall()
+                return {"items": [dict(r) for r in rows], "total": total}
+            finally:
+                conn.close()
+
+        res = await anyio.to_thread.run_sync(_sync)
+        items = []
+        for r in res.get("items") or []:
+            items.append(
+                {
+                    "id": r["id"],
+                    "pack_id": r["pack_id"],
+                    "version": r.get("version"),
+                    "scope": r.get("scope"),
+                    "installed_at": r.get("installed_at"),
+                    "metadata": _json_loads(r.get("metadata_json")) or {},
+                }
+            )
+        return {"items": items, "total": int(res.get("total") or 0), "limit": int(limit), "offset": int(offset)}
+
     async def add_long_term_memory(self, *, user_id: str, content: str, key: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         await self.init()
         db_path = self._config.db_path
@@ -2765,6 +2976,14 @@ class ExecutionStore:
                     "INSERT INTO long_term_memories(id,user_id,key,content,metadata_json,created_at) VALUES(?,?,?,?,?,?);",
                     (rec["id"], rec["user_id"], rec["key"], rec["content"], rec["metadata_json"], rec["created_at"]),
                 )
+                # Best-effort: keep FTS in sync if available.
+                try:
+                    conn.execute(
+                        "INSERT INTO long_term_memories_fts(id,user_id,key,content) VALUES(?,?,?,?);",
+                        (rec["id"], rec["user_id"], rec["key"], rec["content"]),
+                    )
+                except Exception:
+                    pass
                 conn.commit()
                 return rec
             finally:
@@ -2788,6 +3007,29 @@ class ExecutionStore:
             conn = sqlite3.connect(db_path)
             conn.row_factory = sqlite3.Row
             try:
+                uid = str(user_id or "system")
+                # Prefer FTS when available; fallback to LIKE.
+                try:
+                    # Basic query escaping for quotes.
+                    q_fts = str(query or "").replace('"', '""').strip()
+                    if q_fts:
+                        rows = conn.execute(
+                            """
+                            SELECT m.* FROM long_term_memories m
+                            JOIN (
+                              SELECT id FROM long_term_memories_fts
+                              WHERE long_term_memories_fts MATCH ?
+                                AND user_id = ?
+                              LIMIT ?
+                            ) f ON f.id = m.id
+                            ORDER BY m.created_at DESC;
+                            """,
+                            (q_fts, uid, int(limit)),
+                        ).fetchall()
+                        return [dict(r) for r in rows]
+                except Exception:
+                    pass
+
                 q = f"%{query}%"
                 rows = conn.execute(
                     """
@@ -2796,7 +3038,7 @@ class ExecutionStore:
                     ORDER BY created_at DESC
                     LIMIT ?;
                     """,
-                    (str(user_id or "system"), q, q, int(limit)),
+                    (uid, q, q, int(limit)),
                 ).fetchall()
                 return [dict(r) for r in rows]
             finally:
