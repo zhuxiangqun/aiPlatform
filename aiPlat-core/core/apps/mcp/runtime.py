@@ -96,6 +96,25 @@ class MCPRuntime:
         # Production safety: forbid stdio unless explicitly allowed.
         transport = str(getattr(s, "transport", "sse") or "sse").lower()
         if self._is_prod() and transport == "stdio" and not self._prod_allowed(s):
+            # Record an audit event (best-effort) so operators can see why tools are missing.
+            try:
+                from core.harness.kernel.runtime import get_kernel_runtime
+
+                rt = get_kernel_runtime()
+                store = getattr(rt, "execution_store", None) if rt else None
+                if store is not None:
+                    await store.add_syscall_event(
+                        {
+                            "kind": "mcp",
+                            "name": str(getattr(s, "name", "")),
+                            "status": "prod_denied",
+                            "error": "prod policy denies stdio MCP server",
+                            "error_code": "PROD_DENIED",
+                            "args": {"transport": "stdio"},
+                        }
+                    )
+            except Exception:
+                pass
             raise RuntimeError("prod policy denies stdio MCP server (set policy.prod_allowed=true to allow)")
 
         cfg = self._to_client_config(s)
