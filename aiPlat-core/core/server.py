@@ -2296,6 +2296,44 @@ async def get_workspace_skill_execution_help(skill_id: str):
     return data
 
 
+@api_router.get("/workspace/skills/{skill_id}/skill-md")
+async def get_workspace_skill_markdown(skill_id: str):
+    """Fetch raw SKILL.md content for a workspace skill (for UI preview)."""
+    if not _workspace_skill_manager:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    skill = await _workspace_skill_manager.get_skill(skill_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    try:
+        from pathlib import Path
+
+        md_path = _workspace_skill_manager._find_skill_md(skill_id)  # type: ignore[attr-defined]
+        if not md_path:
+            raise HTTPException(status_code=404, detail="SKILL.md not found")
+        p = Path(str(md_path)).expanduser().resolve()
+        if not p.exists():
+            raise HTTPException(status_code=404, detail="SKILL.md not found")
+
+        # Security: only allow reading files under workspace skills paths.
+        allowed_roots = []
+        try:
+            for root in _workspace_skill_manager._resolve_skills_paths():  # type: ignore[attr-defined]
+                allowed_roots.append(Path(str(root)).expanduser().resolve())
+        except Exception:
+            allowed_roots = []
+        if allowed_roots and not any(str(p).startswith(str(r) + "/") or str(p) == str(r) for r in allowed_roots):
+            raise HTTPException(status_code=403, detail="SKILL.md path is outside workspace scope")
+
+        text = p.read_text(encoding="utf-8", errors="replace")
+        if len(text) > 200_000:
+            text = text[:200_000] + "\n\n[TRUNCATED]"
+        return {"skill_id": skill_id, "path": str(p), "content": text}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read SKILL.md: {e}")
+
+
 @api_router.get("/skills/{skill_id}/agents")
 async def get_skill_agents(skill_id: str):
     """Get agents bound to skill"""
