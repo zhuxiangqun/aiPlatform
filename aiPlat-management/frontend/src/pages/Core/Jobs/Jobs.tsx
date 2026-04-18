@@ -458,13 +458,22 @@ const Jobs: React.FC = () => {
                         </>
                       )}
                       {r.trace_id ? (
-                        <Button
-                          variant="secondary"
-                          icon={<ExternalLink size={14} />}
-                          onClick={() => window.open(`/diagnostics/links?trace_id=${encodeURIComponent(String(r.trace_id))}`, '_blank', 'noopener,noreferrer')}
-                        >
-                          Links
-                        </Button>
+                        <>
+                          <Button
+                            variant="secondary"
+                            icon={<ExternalLink size={14} />}
+                            onClick={() => window.open(`/diagnostics/links?trace_id=${encodeURIComponent(String(r.trace_id))}`, '_blank', 'noopener,noreferrer')}
+                          >
+                            Links
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            icon={<ExternalLink size={14} />}
+                            onClick={() => window.open(`/diagnostics/traces/${encodeURIComponent(String(r.trace_id))}`, '_blank', 'noopener,noreferrer')}
+                          >
+                            Trace详情
+                          </Button>
+                        </>
                       ) : (
                         <span className="text-xs text-gray-500">无 trace</span>
                       )}
