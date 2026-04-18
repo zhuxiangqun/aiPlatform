@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Copy, Info, Plus, RotateCw, Trash2, Pencil, Play, Layers, Clock } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Badge, Table, Select, Switch, Button, Modal, toast } from '../../../components/ui';
@@ -31,9 +32,11 @@ const SKILL_CATEGORIES = [
 
 const WorkspaceSkills: React.FC = () => {
   const { skills, loading, fetchSkills, toggleSkill, deleteSkill, restoreSkill } = useWorkspaceSkillStore();
+  const location = useLocation() as any;
   const [categoryFilter, setCategoryFilter] = useState<string>('');
   const [enabledOnly, setEnabledOnly] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [filterSkillIds, setFilterSkillIds] = useState<string[] | null>(null);
   const [detailModal, setDetailModal] = useState<{ open: boolean; skill: Skill | null }>({ open: false, skill: null });
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; skill: Skill | null; hard: boolean }>({ open: false, skill: null, hard: false });
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -47,6 +50,19 @@ const WorkspaceSkills: React.FC = () => {
   useEffect(() => {
     fetchSkills();
   }, [fetchSkills]);
+
+  // Skill Pack -> Workspace Skill quick filter (by navigation state)
+  useEffect(() => {
+    try {
+      const ids = location?.state?.filterSkillIds;
+      if (Array.isArray(ids) && ids.length) {
+        setFilterSkillIds(ids.map((x: any) => String(x)).filter((x: string) => x.trim()));
+      }
+    } catch {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location?.key]);
 
   const handleToggle = async (skill: Skill) => {
     try {
@@ -92,6 +108,7 @@ const WorkspaceSkills: React.FC = () => {
   };
 
   const filteredSkills = skills.filter(s => {
+    if (filterSkillIds && filterSkillIds.length && !filterSkillIds.includes(s.id)) return false;
     if (categoryFilter && s.category !== categoryFilter) return false;
     if (enabledOnly && !s.enabled) return false;
     if (statusFilter) {
@@ -217,6 +234,29 @@ const WorkspaceSkills: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      {filterSkillIds && filterSkillIds.length > 0 && (
+        <div className="bg-dark-card border border-dark-border rounded-xl p-3 flex items-center justify-between">
+          <div className="text-sm text-gray-300">
+            当前按 Skill Pack 过滤：<span className="text-gray-100 font-medium">{filterSkillIds.length}</span> 个 skill
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(filterSkillIds.join(','));
+                  toast.success('已复制 skill_ids');
+                } catch {
+                  toast.error('复制失败');
+                }
+              }}
+            >
+              复制 skill_ids
+            </Button>
+            <Button onClick={() => setFilterSkillIds(null)}>清除过滤</Button>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-4">
         <div className="w-44">

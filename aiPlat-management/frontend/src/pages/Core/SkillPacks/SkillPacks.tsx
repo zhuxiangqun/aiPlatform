@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Copy, PackagePlus, RotateCw, Trash2, UploadCloud, Tag, Info } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import PageHeader from '../../../components/common/PageHeader';
 import { Button, Input, Modal, Table, Textarea, toast, Select } from '../../../components/ui';
 import { skillPackApi, type SkillPack, type SkillPackInstall, type SkillPackVersion } from '../../../services';
 
 const SkillPacks: React.FC = () => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [packs, setPacks] = useState<SkillPack[]>([]);
   const [limit] = useState(100);
@@ -151,6 +153,18 @@ const SkillPacks: React.FC = () => {
     } catch (e: any) {
       toast.error('安装失败', String(e?.message || ''));
     }
+  };
+
+  const jumpToWorkspaceSkills = () => {
+    const ids = (installResult?.applied || [])
+      .map((x: any) => String(x?.skill_id || '').trim())
+      .filter((x: string) => Boolean(x));
+    if (!ids.length) {
+      toast.error('没有可跳转的 skill_id');
+      return;
+    }
+    navigate('/workspace/skills', { state: { filterSkillIds: ids } });
+    setInstallOpen(false);
   };
 
   const openVersions = async (pack: SkillPack) => {
@@ -435,6 +449,16 @@ const SkillPacks: React.FC = () => {
             <div className="space-y-2">
               <div className="text-sm text-gray-200">applied</div>
               <pre className="text-xs bg-dark-hover rounded p-2 overflow-auto max-h-60">{JSON.stringify(installResult.applied || [], null, 2)}</pre>
+              <div className="flex items-center justify-end gap-2">
+                <Button
+                  onClick={() => copyText((installResult.applied || []).map((x: any) => x?.skill_id).filter(Boolean).join(','))}
+                >
+                  复制 skill_ids
+                </Button>
+                <Button variant="primary" onClick={jumpToWorkspaceSkills}>
+                  打开应用库 Skill
+                </Button>
+              </div>
             </div>
           )}
           <div className="text-xs text-gray-500">
