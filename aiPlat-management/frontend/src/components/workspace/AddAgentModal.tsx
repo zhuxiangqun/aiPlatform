@@ -85,6 +85,20 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
     return { wantsFs, wantsBrowser, wantsHttp, wantsDb, wantsWeb, wantsWrite };
   };
 
+  const openDisambiguationWizard = () => {
+    const a = detectAmbiguity();
+    setWizOpen(true);
+    setWizMode(a.wantsFs || a.wantsBrowser || a.wantsHttp || a.wantsDb || a.wantsWeb ? 'auto' : 'manual');
+    const src: string[] = [];
+    if (a.wantsFs) src.push('filesystem');
+    if (a.wantsHttp) src.push('http');
+    if (a.wantsDb) src.push('database');
+    if (a.wantsBrowser) src.push('browser');
+    if (a.wantsWeb) src.push('web');
+    setWizSources(src);
+    setWizMayWrite(a.wantsWrite);
+  };
+
   const fetchOptions = async () => {
     try {
       const [skillRes, toolRes, modelRes] = await Promise.all([
@@ -341,6 +355,9 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
             </select>
           </div>
           <div className="flex items-end justify-end">
+            <Button variant="secondary" onClick={openDisambiguationWizard} disabled={loading}>
+              生成向导
+            </Button>
             <Button
               variant="secondary"
               onClick={() => {
@@ -348,16 +365,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
                 // open wizard when content indicates possible auto mode needs
                 const hinted = a.wantsFs || a.wantsBrowser || a.wantsHttp || a.wantsDb || a.wantsWeb || a.wantsWrite;
                 if (hinted) {
-                  setWizOpen(true);
-                  setWizMode(a.wantsFs || a.wantsBrowser || a.wantsHttp || a.wantsDb || a.wantsWeb ? 'auto' : 'manual');
-                  const src: string[] = [];
-                  if (a.wantsFs) src.push('filesystem');
-                  if (a.wantsHttp) src.push('http');
-                  if (a.wantsDb) src.push('database');
-                  if (a.wantsBrowser) src.push('browser');
-                  if (a.wantsWeb) src.push('web');
-                  setWizSources(src);
-                  setWizMayWrite(a.wantsWrite);
+                  openDisambiguationWizard();
                 } else {
                   applySmartGenerate();
                 }
