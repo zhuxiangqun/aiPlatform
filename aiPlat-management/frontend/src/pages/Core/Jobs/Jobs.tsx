@@ -25,6 +25,9 @@ const Jobs: React.FC = () => {
   const [runsOpen, setRunsOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [runs, setRuns] = useState<JobRun[]>([]);
+  const [runsTotal, setRunsTotal] = useState(0);
+  const [runsOffset, setRunsOffset] = useState(0);
+  const runsLimit = 50;
 
   // form
   const [name, setName] = useState('');
@@ -163,7 +166,9 @@ const Jobs: React.FC = () => {
       toast.success('已触发');
       await loadJobs();
     } catch (e: any) {
-      toast.error('触发失败', String(e?.message || ''));
+      const msg = String(e?.message || '');
+      if (msg.includes('409')) toast.error('Job 正在运行/被锁占用');
+      else toast.error('触发失败', msg);
     }
   };
 
@@ -181,12 +186,26 @@ const Jobs: React.FC = () => {
   const openRuns = async (job: Job) => {
     setSelectedJob(job);
     setRunsOpen(true);
+    setRunsOffset(0);
     try {
-      const res = await jobApi.listRuns(job.id, { limit: 50, offset: 0 });
+      const res = await jobApi.listRuns(job.id, { limit: runsLimit, offset: 0 });
       setRuns(res.items || []);
+      setRunsTotal(res.total || 0);
     } catch (e: any) {
       setRuns([]);
+      setRunsTotal(0);
       toast.error('加载运行历史失败', String(e?.message || ''));
+    }
+  };
+
+  const refreshRuns = async () => {
+    if (!selectedJob) return;
+    try {
+      const res = await jobApi.listRuns(selectedJob.id, { limit: runsLimit, offset: runsOffset });
+      setRuns(res.items || []);
+      setRunsTotal(res.total || 0);
+    } catch (e: any) {
+      toast.error('刷新运行历史失败', String(e?.message || ''));
     }
   };
 
@@ -197,7 +216,25 @@ const Jobs: React.FC = () => {
       { key: 'target_id', title: 'target_id', dataIndex: 'target_id', width: 160, render: (v: string) => <code className="text-xs bg-dark-hover px-1.5 py-0.5 rounded">{v}</code> },
       { key: 'cron', title: 'cron', dataIndex: 'cron', width: 140 },
       { key: 'enabled', title: 'enabled', dataIndex: 'enabled', width: 90, render: (v: boolean) => <span className={`text-xs ${v ? 'text-green-300' : 'text-gray-500'}`}>{v ? 'true' : 'false'}</span> },
+      { key: 'last_run_at', title: 'last_run', dataIndex: 'last_run_at', width: 170, render: (v: any) => <span className="text-xs text-gray-300">{fmtTs(v)}</span> },
       { key: 'next_run_at', title: 'next_run', dataIndex: 'next_run_at', width: 170, render: (v: any) => <span className="text-xs text-gray-300">{fmtTs(v)}</span> },
+      {
+        key: 'lock',
+        title: 'lock',
+        width: 170,
+        render: (_: unknown, job: Job) => {
+          const until = (job as any)?.lock_until as number | null | undefined;
+          const owner = (job as any)?.lock_owner as string | null | undefined;
+          const locked = until != null && until * 1000 > Date.now();
+          if (!locked) return <span className="text-xs text-gray-500">-</span>;
+          return (
+            <div className="text-xs">
+              <div className="text-amber-300">locked</div>
+              <div className="text-gray-500" title={String(owner || '')}>{shortId(String(owner || ''))}</div>
+            </div>
+          );
+        },
+      },
       {
         key: 'action',
         title: '操作',
@@ -324,12 +361,44 @@ const Jobs: React.FC = () => {
         title={`运行历史: ${selectedJob?.name || ''}`}
         width={980}
         footer={
-          <Button variant="secondary" onClick={() => setRunsOpen(false)}>
-            关闭
-          </Button>
+          <>
+            <Button variant="secondary" onClick={refreshRuns} disabled={!selectedJob}>
+              刷新
+            </Button>
+            <Button variant="secondary" onClick={() => setRunsOpen(false)}>
+              关闭
+            </Button>
+          </>
         }
       >
         <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs text-gray-500">
+            <div>total: {runsTotal}</div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                disabled={runsOffset <= 0}
+                onClick={() => {
+                  const next = Math.max(0, runsOffset - runsLimit);
+                  setRunsOffset(next);
+                  setTimeout(refreshRuns, 0);
+                }}
+              >
+                上一页
+              </Button>
+              <Button
+                variant="secondary"
+                disabled={runsOffset + runsLimit >= runsTotal}
+                onClick={() => {
+                  const next = runsOffset + runsLimit;
+                  setRunsOffset(next);
+                  setTimeout(refreshRuns, 0);
+                }}
+              >
+                下一页
+              </Button>
+            </div>
+          </div>
           {runs.length === 0 ? (
             <div className="text-sm text-gray-500">暂无运行记录</div>
           ) : (
@@ -377,4 +446,3 @@ const Jobs: React.FC = () => {
 };
 
 export default Jobs;
-
