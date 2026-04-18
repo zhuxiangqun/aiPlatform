@@ -467,7 +467,7 @@ export const workspaceSkillApi = {
     return apiClient.get<SkillListResponse>(`/core/workspace/skills${qs ? '?' + qs : ''}`);
   },
 
-  create: async (data: { name: string; category: string; description: string; input_schema?: Record<string, unknown>; output_schema?: Record<string, unknown>; config?: Record<string, unknown> }) => {
+  create: async (data: { name: string; category: string; description: string; input_schema?: Record<string, unknown>; output_schema?: Record<string, unknown>; config?: Record<string, unknown>; template?: string; sop?: string }) => {
     return apiClient.post<{ id: string; status: string }>(`/core/workspace/skills`, data);
   },
 

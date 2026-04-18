@@ -2005,6 +2005,7 @@ async def create_workspace_skill(request: SkillCreateRequest):
             config=request.config or {},
             input_schema=request.input_schema or {},
             output_schema=request.output_schema or {},
+            metadata={"template": request.template, "sop": request.sop},
         )
         return {"id": skill.id, "status": "created", "name": skill.name}
     except ValueError as e:

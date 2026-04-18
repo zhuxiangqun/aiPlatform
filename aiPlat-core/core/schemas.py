@@ -34,6 +34,8 @@ class SkillCreateRequest(BaseModel):
     input_schema: Dict[str, Any] = Field(default_factory=dict)
     output_schema: Dict[str, Any] = Field(default_factory=dict)
     config: Dict[str, Any] = Field(default_factory=dict)
+    template: Optional[str] = None
+    sop: Optional[str] = None
 
 
 class SkillUpdateRequest(BaseModel):

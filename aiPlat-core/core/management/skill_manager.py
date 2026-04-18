@@ -230,6 +230,64 @@ class SkillManager:
         metadata: Optional[Dict[str, Any]] = None
     ) -> SkillInfo:
         """Create a new skill"""
+        # -------------------- Template support (workspace) --------------------
+        # We keep this best-effort and backwards compatible: if template metadata exists and
+        # caller passed empty schema/config, we fill defaults.
+        template_name = None
+        sop_override = None
+        if isinstance(metadata, dict):
+            template_name = metadata.get("template") or None
+            sop_override = metadata.get("sop") or None
+
+        def _tmpl_for(name_or_category: str) -> Dict[str, Any]:
+            n = (name_or_category or "").strip().lower()
+            # minimal templates by category
+            if n in {"retrieval"}:
+                return {
+                    "input_schema": {"query": {"type": "string", "required": True, "description": "检索问题/关键词"}, "top_k": {"type": "integer", "required": False, "description": "召回数量（默认 5）"}, "filters": {"type": "object", "required": False, "description": "过滤条件"}},
+                    "output_schema": {"passages": {"type": "array", "required": True, "description": "召回片段（含文本与元信息）"}},
+                    "config": {"timeout_seconds": 60, "max_concurrent": 10, "retry_count": 2},
+                    "sop": "1. 解析 query 与 filters，确定数据域/权限。\n2. 执行召回（top_k）。\n3. 输出 passages（带元信息），供上游引用证据。",
+                }
+            if n in {"analysis"}:
+                return {
+                    "input_schema": {"input": {"type": "string", "required": True, "description": "待分析内容"}, "constraints": {"type": "object", "required": False, "description": "约束（口径/指标/维度）"}},
+                    "output_schema": {"summary": {"type": "string", "required": True, "description": "结论摘要"}, "details": {"type": "string", "required": False, "description": "分析细节"}},
+                    "config": {"timeout_seconds": 120, "max_concurrent": 10, "retry_count": 1},
+                    "sop": "1. 明确分析目标与口径。\n2. 提取关键信息与假设。\n3. 给出结论与可验证依据，必要时输出步骤/推导。",
+                }
+            if n in {"generation"}:
+                return {
+                    "input_schema": {"prompt": {"type": "string", "required": True, "description": "生成指令/要点"}, "style": {"type": "string", "required": False, "description": "风格/语气"}, "format": {"type": "string", "required": False, "description": "输出格式要求"}},
+                    "output_schema": {"text": {"type": "string", "required": True, "description": "生成文本"}},
+                    "config": {"timeout_seconds": 60, "max_concurrent": 10, "retry_count": 1},
+                    "sop": "1. 复述目标与输出格式。\n2. 按要求生成。\n3. 自检（完整性/一致性/敏感信息）。",
+                }
+            if n in {"execution"}:
+                return {
+                    "input_schema": {"action": {"type": "string", "required": True, "description": "要执行的动作（业务语义）"}, "params": {"type": "object", "required": False, "description": "动作参数"}, "dry_run": {"type": "boolean", "required": False, "description": "是否仅生成执行计划（默认 true）"}},
+                    "output_schema": {"plan": {"type": "object", "required": False, "description": "工具调用计划（推荐：tool_name + arguments）"}, "result": {"type": "string", "required": False, "description": "执行结果/说明"}},
+                    "config": {"timeout_seconds": 120, "max_concurrent": 5, "retry_count": 0},
+                    "sop": "1. 校验输入与权限边界。\n2. 生成工具调用计划（plan）。\n3. 若允许执行，交由 Agent 调用 MCP 工具；否则输出计划与下一步。",
+                }
+            # fallback
+            return {
+                "input_schema": {"input": {"type": "string", "required": True}},
+                "output_schema": {"output": {"type": "string", "required": True}},
+                "config": {"timeout_seconds": 60, "max_concurrent": 10, "retry_count": 1},
+                "sop": "1. 明确目标。\n2. 执行。\n3. 输出结果与下一步。",
+            }
+
+        tmpl = _tmpl_for(template_name or skill_type or "general")
+        if not input_schema:
+            input_schema = tmpl.get("input_schema") or {}
+        if not output_schema:
+            output_schema = tmpl.get("output_schema") or {}
+        if not config:
+            config = tmpl.get("config") or {}
+        if not sop_override:
+            sop_override = tmpl.get("sop") or None
+
         skill_id = name.lower().replace(" ", "_").replace("-", "_")
         if self._reserved_ids and skill_id in self._reserved_ids:
             raise ValueError(f"Skill id '{skill_id}' is reserved by engine scope and cannot be created in workspace.")
@@ -305,6 +363,11 @@ class SkillManager:
                 }
 
                 header = yaml.safe_dump(manifest, sort_keys=False, allow_unicode=True).strip()
+                sop_body = ""
+                if isinstance(sop_override, str) and sop_override.strip():
+                    # normalize: ensure numbered list format looks ok
+                    sop_body = sop_override.strip().rstrip()
+                default_sop = "1. 第一步……\n2. 第二步……\n3. 第三步……"
                 body = f"""
 
 # {name}
@@ -321,9 +384,7 @@ class SkillManager:
 - 输出位置与命名规则（如适用）
 
 ## 工作流程（SOP）
-1. 第一步……
-2. 第二步……
-3. 第三步……
+{sop_body or default_sop}
 
 ## 质量要求（Checklist）
 - [ ] 覆盖所有输入范围与边界情况
