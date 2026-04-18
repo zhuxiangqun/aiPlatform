@@ -1,8 +1,0 @@
-name: integrated_browser
-enabled: true
-transport: sse
-url: http://localhost:0/mcp
-metadata:
-  description: 引擎内置示例 MCP server 配置（按部署环境修改）
-  protected: true
-

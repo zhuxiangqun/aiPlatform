@@ -412,6 +412,11 @@ class AgentManager:
         agent = self._agents.get(agent_id)
         if not agent:
             return None
+
+        # Engine agents marked as protected are core capabilities and should not be edited via API.
+        if (self._scope or "engine").strip().lower() == "engine":
+            if isinstance(getattr(agent, "metadata", None), dict) and agent.metadata.get("protected") is True:
+                raise PermissionError("Protected engine agent cannot be edited")
         
         if config:
             agent.config.update(config)
@@ -425,6 +430,43 @@ class AgentManager:
             agent.metadata.update(metadata)
         
         agent.updated_at = datetime.utcnow()
+
+        # Best-effort: persist updates back to directory-based AGENT.md (keep body unchanged).
+        try:
+            base_dir = self._resolve_agents_base_path()
+            agent_dir = base_dir / agent.id
+            agent_dir.mkdir(parents=True, exist_ok=True)
+            agent_md_path = agent_dir / "AGENT.md"
+            if agent_md_path.exists():
+                raw = agent_md_path.read_text(encoding="utf-8")
+                fm = None
+                body = raw
+                if raw.startswith("---"):
+                    parts = raw.split("---", 2)
+                    if len(parts) >= 3:
+                        try:
+                            fm = yaml.safe_load(parts[1]) or {}
+                        except Exception:
+                            fm = {}
+                        body = parts[2]
+                if not isinstance(fm, dict):
+                    fm = {}
+                fm.update({
+                    "name": agent.id,
+                    "display_name": agent.name,
+                    "description": str((agent.metadata or {}).get("description") or fm.get("description") or ""),
+                    "agent_type": agent.type,
+                    "version": agent.version,
+                    "status": agent.status,
+                    "required_skills": agent.skills or [],
+                    "required_tools": agent.tools or [],
+                    "config": agent.config or {},
+                    "protected": (agent.metadata or {}).get("protected", fm.get("protected", False)),
+                })
+                header = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True).strip()
+                agent_md_path.write_text(f"---\n{header}\n---\n{body.lstrip()}", encoding="utf-8")
+        except Exception:
+            pass
         
         return agent
     
@@ -432,6 +474,11 @@ class AgentManager:
         """Delete agent"""
         if agent_id not in self._agents:
             return False
+
+        agent = self._agents.get(agent_id)
+        if (self._scope or "engine").strip().lower() == "engine":
+            if isinstance(getattr(agent, "metadata", None), dict) and agent.metadata.get("protected") is True:
+                raise PermissionError("Protected engine agent cannot be deleted")
         
         del self._agents[agent_id]
         del self._stats[agent_id]

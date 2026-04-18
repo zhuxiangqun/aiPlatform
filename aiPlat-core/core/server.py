@@ -288,6 +288,48 @@ async def lifespan(app: FastAPI):
     except Exception:
         pass
 
+    # Workspace agent seeds (user-facing). Best-effort materialization into ~/.aiplat/agents (do NOT overwrite).
+    try:
+        from pathlib import Path
+
+        seeds_dir = Path(__file__).resolve().parent / "workspace_seeds" / "agents"
+        workspace_dir = Path.home() / ".aiplat" / "agents"
+        if seeds_dir.exists():
+            workspace_dir.mkdir(parents=True, exist_ok=True)
+            for item in seeds_dir.iterdir():
+                if not item.is_dir():
+                    continue
+                dst = workspace_dir / item.name
+                if dst.exists():
+                    continue
+                try:
+                    shutil.copytree(item, dst)
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
+    # Workspace MCP seeds (user-facing). Best-effort materialization into ~/.aiplat/mcps (do NOT overwrite).
+    try:
+        from pathlib import Path
+
+        seeds_dir = Path(__file__).resolve().parent / "workspace_seeds" / "mcps"
+        workspace_dir = Path.home() / ".aiplat" / "mcps"
+        if seeds_dir.exists():
+            workspace_dir.mkdir(parents=True, exist_ok=True)
+            for item in seeds_dir.iterdir():
+                if not item.is_dir():
+                    continue
+                dst = workspace_dir / item.name
+                if dst.exists():
+                    continue
+                try:
+                    shutil.copytree(item, dst)
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
     # Workspace managers (user-facing). Strictly separated: no override of engine ids.
     try:
         global _workspace_agent_manager, _workspace_skill_manager, _workspace_mcp_manager
@@ -579,11 +621,14 @@ async def get_agent(agent_id: str):
 @api_router.put("/agents/{agent_id}")
 async def update_agent(agent_id: str, request: AgentUpdateRequest):
     """Update agent"""
-    agent = await _agent_manager.update_agent(
-        agent_id,
-        config=request.config,
-        metadata=request.metadata
-    )
+    try:
+        agent = await _agent_manager.update_agent(
+            agent_id,
+            config=request.config,
+            metadata=request.metadata
+        )
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     if not agent:
         raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
     return {"status": "updated", "id": agent_id}
@@ -592,7 +637,10 @@ async def update_agent(agent_id: str, request: AgentUpdateRequest):
 @api_router.delete("/agents/{agent_id}")
 async def delete_agent(agent_id: str):
     """Delete agent"""
-    success = await _agent_manager.delete_agent(agent_id)
+    try:
+        success = await _agent_manager.delete_agent(agent_id)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     if not success:
         raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
     return {"status": "deleted", "id": agent_id}
@@ -3432,6 +3480,9 @@ async def list_tools(limit: int = 100, offset: int = 0):
         if tool:
             info["description"] = tool.get_description()
             info["category"] = getattr(tool._config, 'category', 'general') if hasattr(tool, '_config') else 'general'
+            # Tools are code-defined engine capabilities; do not edit via UI/API.
+            info["protected"] = True
+            info["scope"] = "engine"
             stats = tool.get_stats() if hasattr(tool, 'get_stats') else None
             if stats:
                 info["stats"] = stats
@@ -3462,6 +3513,8 @@ async def get_tool(tool_name: str):
     info: Dict[str, Any] = {"name": tool_name}
     info["description"] = tool.get_description()
     info["category"] = getattr(tool._config, 'category', 'general') if hasattr(tool, '_config') else 'general'
+    info["protected"] = True
+    info["scope"] = "engine"
     
     stats = tool.get_stats() if hasattr(tool, 'get_stats') else None
     if stats:
@@ -3486,23 +3539,7 @@ async def get_tool(tool_name: str):
 @api_router.put("/tools/{tool_name}")
 async def update_tool_config(tool_name: str, request: dict):
     """Update tool configuration"""
-    registry = get_tool_registry()
-    tool = registry.get(tool_name)
-    if not tool:
-        raise HTTPException(status_code=404, detail=f"Tool {tool_name} not found")
-    
-    config = request.get("config", {})
-    if hasattr(tool, '_config') and hasattr(tool._config, 'parameters'):
-        if "timeout_seconds" in config:
-            tool._config.parameters["timeout_seconds"] = config["timeout_seconds"]
-            if hasattr(tool._config, 'timeout_seconds'):
-                tool._config.timeout_seconds = config["timeout_seconds"]
-        if "max_concurrent" in config:
-            tool._config.parameters["max_concurrent"] = config["max_concurrent"]
-            if hasattr(tool._config, 'max_concurrent'):
-                tool._config.max_concurrent = config["max_concurrent"]
-    
-    return {"status": "updated", "name": tool_name}
+    raise HTTPException(status_code=403, detail="Tools are engine-defined and cannot be edited via API. Use configuration files/feature flags instead.")
 
 
 @api_router.post("/tools/{tool_name}/execute")

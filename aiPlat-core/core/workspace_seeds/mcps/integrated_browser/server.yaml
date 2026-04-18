@@ -1,0 +1,8 @@
+name: integrated_browser
+enabled: false
+transport: sse
+url: http://localhost:0/mcp
+metadata:
+  description: 应用库默认 MCP server（workspace seeds）。默认禁用，建议按环境配置并配合白名单/审批后启用。
+  protected: false
+

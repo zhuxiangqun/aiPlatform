@@ -100,7 +100,9 @@ const Tools: React.FC = () => {
       key: 'actions',
       width: 160,
       align: 'center' as const,
-      render: (_: unknown, record: ToolInfo) => (
+      render: (_: unknown, record: ToolInfo) => {
+        const isProtected = Boolean((record as any)?.protected === true);
+        return (
         <div className="flex items-center justify-center gap-1">
           <button
             onClick={() => { setExecuteTool(record); setExecuteOpen(true); }}
@@ -109,13 +111,15 @@ const Tools: React.FC = () => {
           >
             <Play className="w-4 h-4" />
           </button>
-          <button
-            onClick={() => { setEditTool(record); setEditOpen(true); }}
-            className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors"
-            title="编辑配置"
-          >
-            <Settings className="w-4 h-4" />
-          </button>
+          {!isProtected && (
+            <button
+              onClick={() => { setEditTool(record); setEditOpen(true); }}
+              className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors"
+              title="编辑配置"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
+          )}
           <button
             onClick={() => { setDetailTool(record); setDetailOpen(true); }}
             className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors"
@@ -124,7 +128,8 @@ const Tools: React.FC = () => {
             <Wrench className="w-4 h-4" />
           </button>
         </div>
-      ),
+        );
+      },
     },
   ];
 

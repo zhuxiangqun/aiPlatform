@@ -1,7 +1,7 @@
 ---
 name: react_agent
 display_name: ReAct助手
-description: 通用 ReAct Agent（引擎内置）。
+description: 通用 ReAct Agent。引擎内置（engine）：仅核心能力层默认可用；对外（workspace）需白名单/审批后方可调用。
 agent_type: react
 version: 1.0.0
 status: ready

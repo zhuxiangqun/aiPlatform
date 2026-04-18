@@ -77,17 +77,29 @@
 
 | engine agent_id | 风险级别 | dev | staging | prod | 备注 |
 |---|---:|:---:|:---:|:---:|---|
-| `conversational_agent` | L0 | ✅ | ✅ | ✅ | 对话型（低风险） |
-| `rag_agent` | L1 | ✅ | ✅ | ✅ | 依赖知识库合规与权限 |
 | `react_agent` | L2 | ✅ | ✅ | ❌ | 具备工具编排倾向，prod 默认不对外 |
-| `plan_agent` | L1 | ✅ | ✅ | ⚠️ | prod 可用但建议仅“规划输出”，不自动执行 |
-| `tool_agent` | L2 | ✅ | ✅ | ❌ | 工具优先，prod 默认不对外 |
+| `react_agent` | L2 | ✅ | ✅ | ❌ | 作为核心能力层内置最小 Agent（engine） |
+
+### 3.2.1 Workspace 默认 Agents（seeds）
+
+| workspace agent_id | 风险级别 | dev | staging | prod | 默认状态 | 备注 |
+|---|---:|:---:|:---:|:---:|:---:|---|
+| `conversational_agent` | L0 | ✅ | ✅ | ✅ | ready | 对话型（低风险） |
+| `rag_agent` | L1 | ✅ | ✅ | ✅ | ready | 依赖知识库合规与权限 |
+| `plan_agent` | L1 | ✅ | ✅ | ⚠️ | ready | prod 建议仅“规划输出”，不自动执行 |
+| `tool_agent` | L2 | ✅ | ✅ | ❌ | ready | 工具优先，prod 默认禁用或强审批 |
 
 ### 3.3 Engine MCP Servers（核心能力层内置 MCP）
 
 | engine mcp server | 风险级别 | dev | staging | prod | 备注 |
 |---|---:|:---:|:---:|:---:|---|
-| `integrated_browser` | L2 | ✅ | ✅ | ❌ | 浏览器自动化：强建议审批+审计，prod 默认禁用 |
+| （无） | - | - | - | - | MCP 默认由 workspace 管理（更符合对外交付与策略门控） |
+
+### 3.3.1 Workspace 默认 MCP Servers（seeds）
+
+| workspace mcp server | 风险级别 | dev | staging | prod | 默认状态 | 备注 |
+|---|---:|:---:|:---:|:---:|:---:|---|
+| `integrated_browser` | L2 | ✅ | ✅ | ❌ | disabled | 浏览器自动化：强建议审批+审计，prod 默认禁用 |
 
 ## 4. 推荐的对外暴露方式（实现建议）
 

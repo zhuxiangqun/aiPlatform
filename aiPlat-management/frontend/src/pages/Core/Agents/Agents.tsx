@@ -123,15 +123,19 @@ const Agents: React.FC = () => {
       key: 'actions',
       width: 160,
       align: 'center' as const,
-      render: (_: unknown, record: Agent) => (
+      render: (_: unknown, record: Agent) => {
+        const isProtected = Boolean((record as any)?.metadata?.protected === true || (record as any)?.protected === true);
+        return (
         <div className="flex items-center justify-center gap-1">
-          <button
-            onClick={() => { setSelectedAgent(record); setEditModalOpen(true); }}
-            className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors"
-            title="编辑"
-          >
-            <Pencil className="w-4 h-4" />
-          </button>
+          {!isProtected && (
+            <button
+              onClick={() => { setSelectedAgent(record); setEditModalOpen(true); }}
+              className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors"
+              title="编辑"
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
+          )}
           <button
             onClick={() => handleStart(record)}
             className="p-1.5 rounded-lg text-success hover:bg-success-light transition-colors"
@@ -153,15 +157,18 @@ const Agents: React.FC = () => {
           >
             <Zap className="w-4 h-4" />
           </button>
-          <button
-            onClick={() => setDeleteConfirm({ open: true, agent: record })}
-            className="p-1.5 rounded-lg text-error hover:bg-error-light transition-colors"
-            title="删除"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+          {!isProtected && (
+            <button
+              onClick={() => setDeleteConfirm({ open: true, agent: record })}
+              className="p-1.5 rounded-lg text-error hover:bg-error-light transition-colors"
+              title="删除"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
         </div>
-      ),
+        );
+      },
     },
   ];
 

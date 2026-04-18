@@ -577,6 +577,8 @@ export interface ToolInfo {
   name: string;
   description?: string;
   category?: string;
+  scope?: 'engine' | 'workspace';
+  protected?: boolean;
   status?: string;
   enabled?: boolean;
   config?: Record<string, unknown>;
