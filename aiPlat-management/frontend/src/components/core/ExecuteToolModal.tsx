@@ -20,7 +20,7 @@ interface ExecuteToolModalProps {
 
 const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose }) => {
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ output?: unknown; error?: string; success?: boolean; latency?: number } | null>(null);
+  const [result, setResult] = useState<{ output?: unknown; error?: any; error_message?: string; error_detail?: any; success?: boolean; latency?: number } | null>(null);
   const [params, setParams] = useState<Record<string, any>>({});
 
   const paramSchema = tool?.parameters as any;
@@ -118,6 +118,23 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
     setResult(null);
     setParams({});
     onClose();
+  };
+
+  const renderError = () => {
+    if (!result) return null;
+    const errObj = (result as any).error_detail || (typeof (result as any).error === 'object' ? (result as any).error : null);
+    const errMsg =
+      (result as any).error_message ||
+      (typeof (result as any).error === 'string' ? (result as any).error : '') ||
+      (errObj?.message ? String(errObj.message) : '');
+    const errCode = errObj?.code ? String(errObj.code) : '';
+    if (!errMsg && !errCode) return null;
+    return (
+      <div className="text-xs text-red-300 mt-2">
+        {errCode ? `[${errCode}] ` : ''}
+        {errMsg}
+      </div>
+    );
   };
 
   const renderField = (name: string, spec: ParameterProperty) => {
@@ -236,9 +253,7 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
                   {typeof result.output === 'string' ? result.output : JSON.stringify(result.output as object, null, 2)}
                 </pre>
               )}
-              {result.error && !result.output && (
-                <div className="text-xs text-red-300">{result.error}</div>
-              )}
+              {!result.output && renderError()}
             </div>
           )}
         </div>

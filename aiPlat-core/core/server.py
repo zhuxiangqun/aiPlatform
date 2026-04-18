@@ -4490,12 +4490,34 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request)
     else:
         resp.setdefault("ok", bool(result.ok))
 
-    # Normalize error + error_detail (backward compatible)
+    # Normalize error contract:
+    # - `error` is structured {code,message}
+    # - `error_message` is legacy string
+    # - keep `error_detail` as backward compatible alias
     if resp.get("ok") is False:
         resp.setdefault("status", "failed")
-        resp.setdefault("error", result.error or resp.get("error") or "Execution failed")
+        # bring forward error_detail if present
         if "error_detail" not in resp:
             resp["error_detail"] = getattr(result, "error_detail", None)
+        # If payload still used legacy string error, move it to error_message.
+        if isinstance(resp.get("error"), str):
+            resp.setdefault("error_message", resp.get("error"))
+            resp["error"] = resp.get("error_detail") or {"code": "EXECUTION_FAILED", "message": str(resp.get("error_message") or "Execution failed")}
+        else:
+            # If error already structured, still populate error_message for convenience.
+            if "error_message" not in resp:
+                try:
+                    resp["error_message"] = str((resp.get("error") or {}).get("message") or result.error or "")
+                except Exception:
+                    resp["error_message"] = result.error or ""
+        # If error is still missing (e.g., payload had no error field), fill it.
+        if not isinstance(resp.get("error"), dict):
+            resp["error"] = resp.get("error_detail") or {
+                "code": "EXECUTION_FAILED",
+                "message": str(resp.get("error_message") or result.error or "Execution failed"),
+            }
+        # Ensure alias
+        resp.setdefault("error_detail", resp.get("error"))
     resp.setdefault("trace_id", result.trace_id)
     resp.setdefault("run_id", result.run_id)
     return resp

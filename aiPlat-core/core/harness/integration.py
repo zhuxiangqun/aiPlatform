@@ -718,7 +718,14 @@ class HarnessIntegration:
                     "execution_id": execution_id,
                     "status": record["status"],
                     "output": result.output,
-                    "error": result.error,
+                    # Roadmap-0 contract: error object is `error`, legacy string is `error_message`.
+                    "error": self._normalize_error(
+                        error=result.error,
+                        metadata=meta,
+                        fallback_message=str(result.error or "执行失败"),
+                    ),
+                    "error_message": result.error,
+                    # Backward compatible alias
                     "error_detail": self._normalize_error(
                         error=result.error,
                         metadata=meta,
@@ -960,7 +967,12 @@ class HarnessIntegration:
                 "status": execution.status,
                 "input": execution.input_data,
                 "output": execution.output_data,
-                "error": execution.error,
+                "error": self._normalize_error(
+                    error=execution.error,
+                    metadata={"skill_id": execution.skill_id, "status": execution.status},
+                    fallback_message=str(execution.error or "执行失败"),
+                ),
+                "error_message": execution.error,
                 "error_detail": self._normalize_error(
                     error=execution.error,
                     metadata={"skill_id": execution.skill_id, "status": execution.status},
@@ -1104,7 +1116,12 @@ class HarnessIntegration:
                     "status": "completed" if getattr(result, "success", True) else "failed",
                     "success": getattr(result, "success", True),
                     "output": getattr(result, "output", str(result)),
-                    "error": getattr(result, "error", None) or None,
+                    "error": self._normalize_error(
+                        error=getattr(result, "error", None) or None,
+                        metadata=getattr(result, "metadata", {}) or {},
+                        fallback_message=str(getattr(result, "error", None) or "执行失败"),
+                    ),
+                    "error_message": getattr(result, "error", None) or None,
                     "error_detail": self._normalize_error(
                         error=getattr(result, "error", None) or None,
                         metadata=getattr(result, "metadata", {}) or {},

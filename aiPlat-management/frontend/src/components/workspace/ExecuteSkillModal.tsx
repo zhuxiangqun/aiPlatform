@@ -11,7 +11,7 @@ interface ExecuteSkillModalProps {
 
 const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onClose }) => {
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ status: string; output?: unknown; error?: string; error_detail?: any; duration_ms?: number } | null>(null);
+  const [result, setResult] = useState<{ status: string; output?: unknown; error?: any; error_message?: string; error_detail?: any; duration_ms?: number } | null>(null);
   const [inputText, setInputText] = useState('');
   const [helpLoading, setHelpLoading] = useState(false);
   const [helpMarkdown, setHelpMarkdown] = useState<string>('');
@@ -176,10 +176,18 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
               {typeof result.output === 'string' ? result.output : JSON.stringify(result.output as object, null, 2)}
             </pre>
           )}
-          {(result.error || (result as any)?.error_detail?.message) && !result.output && (
+          {(((result as any).error || (result as any).error_message || (result as any)?.error_detail?.message) && !result.output) && (
             <div className="text-xs text-red-300 mt-2">
-              {(result as any)?.error_detail?.code ? `[${String((result as any).error_detail.code)}] ` : ''}
-              {String((result as any)?.error_detail?.message || result.error)}
+              {(() => {
+                const errObj =
+                  (result as any).error_detail || (typeof (result as any).error === 'object' ? (result as any).error : null);
+                const errMsg =
+                  (result as any).error_message ||
+                  (typeof (result as any).error === 'string' ? (result as any).error : '') ||
+                  (errObj?.message ? String(errObj.message) : '');
+                const errCode = errObj?.code ? String(errObj.code) : '';
+                return `${errCode ? `[${errCode}] ` : ''}${errMsg}`;
+              })()}
             </div>
           )}
 
