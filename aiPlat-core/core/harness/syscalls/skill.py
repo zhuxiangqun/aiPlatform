@@ -16,6 +16,7 @@ from ..interfaces import SkillContext
 from core.harness.infrastructure.gates import TraceGate, ContextGate, ResilienceGate
 from core.harness.kernel.runtime import get_kernel_runtime
 import time
+from core.harness.kernel.execution_context import get_active_release_context
 
 
 async def sys_skill_call(
@@ -43,6 +44,7 @@ async def sys_skill_call(
         },
     )
     start_ts = time.time()
+    _ar = get_active_release_context()
 
     if skill is None or not hasattr(skill, "execute"):
         end_ts = time.time()
@@ -59,11 +61,16 @@ async def sys_skill_call(
                         "kind": "skill",
                         "name": skill_name or "<unknown>",
                         "status": "failed",
+                        "target_type": _ar.target_type if _ar else None,
+                        "target_id": _ar.target_id if _ar else None,
+                        "user_id": user_id,
+                        "session_id": session_id,
                         "start_time": start_ts,
                         "end_time": end_ts,
                         "duration_ms": (end_ts - start_ts) * 1000.0,
                         "args": {"params": params or {}},
                         "error": "skill_not_executable",
+                        "error_code": "SKILL_NOT_EXECUTABLE",
                     }
                 )
             except Exception:
@@ -94,11 +101,16 @@ async def sys_skill_call(
                         "kind": "skill",
                         "name": skill_name or "<unknown>",
                         "status": "success" if bool(getattr(result, "success", True)) else "failed",
+                        "target_type": _ar.target_type if _ar else None,
+                        "target_id": _ar.target_id if _ar else None,
+                        "user_id": user_id,
+                        "session_id": session_id,
                         "start_time": start_ts,
                         "end_time": end_ts,
                         "duration_ms": (end_ts - start_ts) * 1000.0,
                         "args": {"params": prepared_params},
                         "result": {"output": getattr(result, "output", None), "error": getattr(result, "error", None)},
+                        "error_code": "SKILL_FAILED" if not bool(getattr(result, "success", True)) else None,
                     }
                 )
             except Exception:
@@ -119,11 +131,16 @@ async def sys_skill_call(
                         "kind": "skill",
                         "name": skill_name or "<unknown>",
                         "status": "failed",
+                        "target_type": _ar.target_type if _ar else None,
+                        "target_id": _ar.target_id if _ar else None,
+                        "user_id": user_id,
+                        "session_id": session_id,
                         "start_time": start_ts,
                         "end_time": end_ts,
                         "duration_ms": (end_ts - start_ts) * 1000.0,
                         "args": {"params": prepared_params},
                         "error": "skill_error",
+                        "error_code": "SKILL_ERROR",
                     }
                 )
             except Exception:

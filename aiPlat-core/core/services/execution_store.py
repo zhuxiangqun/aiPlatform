@@ -43,7 +43,7 @@ class ExecutionStoreConfig:
 
 
 class ExecutionStore:
-    CURRENT_SCHEMA_VERSION = 20
+    CURRENT_SCHEMA_VERSION = 21
 
     def __init__(self, config: ExecutionStoreConfig):
         self._config = config
@@ -748,6 +748,38 @@ class ExecutionStore:
                         _set_version(20)
                         current = 20
 
+                    # ---- Migration v21: syscall_events dimensions (Roadmap-0/Roadmap-2) ----
+                    if current < 21:
+                        # Extend syscall_events for better aggregation/search:
+                        # - error_code: normalized machine code
+                        # - target_type/target_id: link to agent/skill/tool when known
+                        # - user_id/session_id: link to identity (best-effort)
+                        for stmt in [
+                            "ALTER TABLE syscall_events ADD COLUMN error_code TEXT;",
+                            "ALTER TABLE syscall_events ADD COLUMN target_type TEXT;",
+                            "ALTER TABLE syscall_events ADD COLUMN target_id TEXT;",
+                            "ALTER TABLE syscall_events ADD COLUMN user_id TEXT;",
+                            "ALTER TABLE syscall_events ADD COLUMN session_id TEXT;",
+                        ]:
+                            try:
+                                conn.execute(stmt)
+                            except Exception:
+                                pass
+                        try:
+                            conn.execute(
+                                "CREATE INDEX IF NOT EXISTS idx_syscall_events_error_code ON syscall_events(error_code, created_at DESC);"
+                            )
+                            conn.execute(
+                                "CREATE INDEX IF NOT EXISTS idx_syscall_events_target ON syscall_events(target_type, target_id, created_at DESC);"
+                            )
+                            conn.execute(
+                                "CREATE INDEX IF NOT EXISTS idx_syscall_events_user_sess ON syscall_events(user_id, session_id, created_at DESC);"
+                            )
+                        except Exception:
+                            pass
+                        _set_version(21)
+                        current = 21
+
                     # If legacy db exists with tables but without meta, upgrade meta to current
                     if current < self.CURRENT_SCHEMA_VERSION:
                         _set_version(self.CURRENT_SCHEMA_VERSION)
@@ -860,6 +892,35 @@ class ExecutionStore:
                     ).fetchall()
                 ]
 
+                top_error_codes = [
+                    dict(r)
+                    for r in conn.execute(
+                        f"""
+                        SELECT error_code, COUNT(1) AS count
+                        FROM syscall_events
+                        {where} AND error_code IS NOT NULL AND error_code != ''
+                        GROUP BY error_code
+                        ORDER BY count DESC
+                        LIMIT ?;
+                        """,
+                        [*params, int(top_n)],
+                    ).fetchall()
+                ]
+                top_failed_error_codes = [
+                    dict(r)
+                    for r in conn.execute(
+                        f"""
+                        SELECT error_code, COUNT(1) AS count
+                        FROM syscall_events
+                        {where} AND status = 'failed' AND error_code IS NOT NULL AND error_code != ''
+                        GROUP BY error_code
+                        ORDER BY count DESC
+                        LIMIT ?;
+                        """,
+                        [*params, int(top_n)],
+                    ).fetchall()
+                ]
+
                 # Last N hours failure trend (hourly buckets).
                 trend = [
                     dict(r)
@@ -885,6 +946,8 @@ class ExecutionStore:
                     "by_status": by_status,
                     "top_names": top_names,
                     "top_failed": top_failed,
+                    "top_error_codes": top_error_codes,
+                    "top_failed_error_codes": top_failed_error_codes,
                     "failed_trend_hourly": trend,
                 }
             finally:
@@ -1694,6 +1757,23 @@ class ExecutionStore:
         await self.init()
         db_path = self._config.db_path
 
+        # Best-effort normalize error_code for aggregation.
+        error_code = event.get("error_code")
+        if not error_code:
+            try:
+                # Prefer structured error object.
+                err_obj = event.get("error") if isinstance(event.get("error"), dict) else None
+                if isinstance(err_obj, dict) and err_obj.get("code"):
+                    error_code = err_obj.get("code")
+                else:
+                    err_str = event.get("error")
+                    if isinstance(err_str, str) and err_str.strip():
+                        # Map common cases; fallback to uppercase token.
+                        m = err_str.strip().upper().replace(" ", "_")
+                        error_code = m[:64]
+            except Exception:
+                error_code = None
+
         payload = (
             event.get("id") or str(uuid.uuid4()),
             event.get("trace_id"),
@@ -1707,7 +1787,12 @@ class ExecutionStore:
             event.get("duration_ms"),
             _json_dumps(event.get("args") or {}),
             _json_dumps(event.get("result") or {}),
-            event.get("error"),
+            event.get("error") if isinstance(event.get("error"), str) else _json_dumps(event.get("error") or None),
+            error_code,
+            event.get("target_type"),
+            event.get("target_id"),
+            event.get("user_id"),
+            event.get("session_id"),
             event.get("approval_request_id"),
             float(event.get("created_at") or time.time()),
         )
@@ -1719,9 +1804,10 @@ class ExecutionStore:
                     """
                     INSERT INTO syscall_events(
                       id, trace_id, span_id, run_id, kind, name, status, start_time, end_time, duration_ms,
-                      args_json, result_json, error, approval_request_id, created_at
+                      args_json, result_json, error, error_code, target_type, target_id, user_id, session_id,
+                      approval_request_id, created_at
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
                     """,
                     payload,
                 )
@@ -1741,6 +1827,9 @@ class ExecutionStore:
         name: Optional[str] = None,
         status: Optional[str] = None,
         error_contains: Optional[str] = None,
+        error_code: Optional[str] = None,
+        target_type: Optional[str] = None,
+        target_id: Optional[str] = None,
         approval_request_id: Optional[str] = None,
         span_id: Optional[str] = None,
     ) -> Dict[str, Any]:
@@ -1775,6 +1864,15 @@ class ExecutionStore:
                 if error_contains:
                     clauses.append("error LIKE ?")
                     params.append(f"%{error_contains}%")
+                if error_code:
+                    clauses.append("error_code=?")
+                    params.append(error_code)
+                if target_type:
+                    clauses.append("target_type=?")
+                    params.append(target_type)
+                if target_id:
+                    clauses.append("target_id=?")
+                    params.append(target_id)
                 if approval_request_id:
                     clauses.append("approval_request_id=?")
                     params.append(approval_request_id)
@@ -1809,6 +1907,11 @@ class ExecutionStore:
                             "args": _json_loads(r["args_json"]) or {},
                             "result": _json_loads(r["result_json"]) or {},
                             "error": r["error"],
+                            "error_code": r["error_code"] if "error_code" in r.keys() else None,
+                            "target_type": r["target_type"] if "target_type" in r.keys() else None,
+                            "target_id": r["target_id"] if "target_id" in r.keys() else None,
+                            "user_id": r["user_id"] if "user_id" in r.keys() else None,
+                            "session_id": r["session_id"] if "session_id" in r.keys() else None,
                             "approval_request_id": r["approval_request_id"] if "approval_request_id" in r.keys() else None,
                             "created_at": r["created_at"],
                         }

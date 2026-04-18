@@ -18,6 +18,7 @@ from core.harness.kernel.runtime import get_kernel_runtime
 import time
 from core.harness.interfaces import ToolResult
 from core.harness.kernel.execution_context import get_active_workspace_context
+from core.harness.kernel.execution_context import get_active_release_context
 
 
 async def sys_tool_call(
@@ -51,6 +52,7 @@ async def sys_tool_call(
         },
     )
     start_ts = time.time()
+    _ar = get_active_release_context()
 
     if tool is None or not hasattr(tool, "execute"):
         end_ts = time.time()
@@ -67,11 +69,16 @@ async def sys_tool_call(
                         "kind": "tool",
                         "name": tool_name or "<unknown>",
                         "status": "failed",
+                                "target_type": _ar.target_type if _ar else None,
+                                "target_id": _ar.target_id if _ar else None,
+                                "user_id": user_id,
+                                "session_id": session_id,
                         "start_time": start_ts,
                         "end_time": end_ts,
                         "duration_ms": (end_ts - start_ts) * 1000.0,
                         "args": {"tool_args": tool_args or {}},
                         "error": "tool_not_executable",
+                                "error_code": "TOOL_NOT_EXECUTABLE",
                     }
                 )
             except Exception:
@@ -120,11 +127,16 @@ async def sys_tool_call(
                                 "kind": "tool",
                                 "name": tool_name or "<unknown>",
                                 "status": "toolset_denied",
+                                "target_type": _ar.target_type if _ar else None,
+                                "target_id": _ar.target_id if _ar else None,
+                                "user_id": user_id,
+                                "session_id": session_id,
                                 "start_time": start_ts,
                                 "end_time": start_ts,
                                 "duration_ms": 0.0,
                                 "args": {"tool_args": args, "toolset": policy.name},
                                 "error": reason or "toolset_denied",
+                                "error_code": "TOOLSET_DENIED",
                             }
                         )
                     except Exception:
@@ -157,11 +169,16 @@ async def sys_tool_call(
                         "kind": "tool",
                         "name": tool_name or "<unknown>",
                         "status": "policy_denied",
+                        "target_type": _ar.target_type if _ar else None,
+                        "target_id": _ar.target_id if _ar else None,
+                        "user_id": user_id,
+                        "session_id": session_id,
                         "start_time": start_ts,
                         "end_time": start_ts,
                         "duration_ms": 0.0,
                         "args": {"tool_args": args},
                         "error": pr.reason or "policy_denied",
+                        "error_code": "POLICY_DENIED",
                         "approval_request_id": pr.approval_request_id,
                     }
                 )
@@ -187,12 +204,17 @@ async def sys_tool_call(
                         "kind": "tool",
                         "name": tool_name or "<unknown>",
                         "status": "approval_required",
+                        "target_type": _ar.target_type if _ar else None,
+                        "target_id": _ar.target_id if _ar else None,
+                        "user_id": user_id,
+                        "session_id": session_id,
                         "start_time": start_ts,
                         "end_time": start_ts,
                         "duration_ms": 0.0,
                         "args": {"tool_args": args},
                         "result": {"approval_request_id": pr.approval_request_id},
                         "error": pr.reason or "approval_required",
+                        "error_code": "APPROVAL_REQUIRED",
                         "approval_request_id": pr.approval_request_id,
                     }
                 )

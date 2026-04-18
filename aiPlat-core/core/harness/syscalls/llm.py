@@ -51,6 +51,7 @@ async def sys_llm_generate(
         },
     )
     start_ts = time.time()
+    _ar = get_active_release_context()
 
     if model is None or not hasattr(model, "generate"):
         end_ts = time.time()
@@ -67,11 +68,14 @@ async def sys_llm_generate(
                         "kind": "llm",
                         "name": "generate",
                         "status": "failed",
+                        "target_type": _ar.target_type if _ar else None,
+                        "target_id": _ar.target_id if _ar else None,
                         "start_time": start_ts,
                         "end_time": end_ts,
                         "duration_ms": (end_ts - start_ts) * 1000.0,
                         "args": {"prompt_type": "messages" if isinstance(prompt, list) else "text"},
                         "error": "no_model",
+                        "error_code": "NO_MODEL",
                     }
                 )
             except Exception:
@@ -191,6 +195,8 @@ async def sys_llm_generate(
                         "kind": "llm",
                         "name": "generate",
                         "status": "success",
+                        "target_type": _ar.target_type if _ar else None,
+                        "target_id": _ar.target_id if _ar else None,
                         "start_time": start_ts,
                         "end_time": end_ts,
                         "duration_ms": (end_ts - start_ts) * 1000.0,
@@ -222,11 +228,14 @@ async def sys_llm_generate(
                         "kind": "llm",
                         "name": "generate",
                         "status": "failed",
+                        "target_type": _ar.target_type if _ar else None,
+                        "target_id": _ar.target_id if _ar else None,
                         "start_time": start_ts,
                         "end_time": end_ts,
                         "duration_ms": (end_ts - start_ts) * 1000.0,
                         "args": {"prompt_type": "messages" if isinstance(prepared, list) else "text"},
                         "error": "llm_error",
+                        "error_code": "LLM_ERROR",
                         "result": {
                             "prompt_version": prompt_version,
                             "applied_prompt_revision_ids": applied_prompt_revision_ids,
