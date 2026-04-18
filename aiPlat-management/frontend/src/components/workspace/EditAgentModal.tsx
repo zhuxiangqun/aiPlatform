@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { workspaceAgentApi, workspaceSkillApi } from '../../services/coreApi';
-import { toolApi } from '../../services';
+import { modelApi, toolApi, type Model } from '../../services';
 import type { Agent } from '../../services';
 import { Alert, Button, Input, Modal, Textarea, toast } from '../ui';
 
@@ -23,6 +23,8 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
   const [sopLoading, setSopLoading] = useState(false);
   const [skillOptions, setSkillOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [toolOptions, setToolOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [modelOptions, setModelOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [selectedModel, setSelectedModel] = useState<string>('');
 
   useEffect(() => {
     if (open && agent) {
@@ -35,6 +37,13 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       setSopText('');
       fetchOptions();
       fetchSop();
+      // init selectedModel from config if possible
+      try {
+        const cfg = (agent as any)?.config || {};
+        if (cfg?.model) setSelectedModel(String(cfg.model));
+      } catch {
+        // ignore
+      }
     }
   }, [open, agent]);
 
@@ -81,10 +90,60 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
         setSkills(selectedSkillIds);
         setTools(selectedToolIds);
       }
+
+      // models from infra layer
+      try {
+        const modelRes = await modelApi.list({ enabled: true, status: 'available' });
+        const models = ((modelRes as any).models || []) as Model[];
+        const modelOpts = models.map((m) => ({ value: m.name, label: m.displayName || m.name }));
+        setModelOptions(modelOpts);
+        if (!selectedModel) {
+          const prefer = models.find((m) => (m.displayName || '').toLowerCase().includes('deepseek') && (m.displayName || '').toLowerCase().includes('reasoner'))
+            || models.find((m) => (m.name || '').toLowerCase().includes('deepseek') && (m.name || '').toLowerCase().includes('reasoner'));
+          const fallback = prefer?.name || models[0]?.name || '';
+          if (fallback) setSelectedModel(fallback);
+        }
+      } catch {
+        setModelOptions([]);
+      }
     } catch {
       setSkillOptions([]);
       setToolOptions([]);
+      setModelOptions([]);
     }
+  };
+
+  const applySmartGenerate = () => {
+    const nm = name.trim() || agent?.name || 'Agent';
+    const desc = description.trim();
+    const modelName = selectedModel || 'DeepSeek Reasoner';
+
+    const sys = [
+      `你是“${nm}”。`,
+      desc ? `职责与边界：${desc}` : '',
+      '请先澄清目标与约束，再给出结构化输出。',
+      '输出要求：给出结论、依据（如有）、以及下一步建议。',
+      '如果缺少上下文，请提出需要的材料（文件/接口/数据范围）。',
+    ].filter(Boolean).join('\n');
+
+    const sop = [
+      '1. 澄清问题与范围（目标/输入/约束/权限）。',
+      '2. 结合已绑定技能/工具执行必要的检索或动作。',
+      '3. 组织答案：结论 → 依据/引用 → 建议/下一步。',
+      '4. 自检：一致性、可执行性、风险与不确定性提示。',
+    ].join('\n');
+
+    try {
+      const cfg: any = configText?.trim() ? JSON.parse(configText) : {};
+      cfg.model = modelName;
+      if (cfg.temperature === undefined) cfg.temperature = 0.1;
+      if (cfg.max_tokens === undefined) cfg.max_tokens = 4096;
+      cfg.system_prompt = sys;
+      setConfigText(JSON.stringify(cfg, null, 2));
+    } catch {
+      setConfigText(JSON.stringify({ model: modelName, temperature: 0.1, max_tokens: 4096, system_prompt: sys }, null, 2));
+    }
+    if (!sopText.trim()) setSopText(sop);
   };
 
   const handleSubmit = async () => {
@@ -186,6 +245,39 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       <div className="space-y-4">
         <Input label="名称（显示名）" value={name} onChange={(e: any) => setName(e.target.value)} />
         <Input label="描述（可选）" value={description} onChange={(e: any) => setDescription(e.target.value)} />
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <div className="text-sm font-medium text-gray-300 mb-2">模型（来自基础设施模型库）</div>
+            <select
+              value={selectedModel}
+              onChange={(e) => {
+                const v = e.target.value;
+                setSelectedModel(v);
+                try {
+                  const cfg = configText?.trim() ? JSON.parse(configText) : {};
+                  cfg.model = v;
+                  setConfigText(JSON.stringify(cfg, null, 2));
+                } catch {
+                  setConfigText(JSON.stringify({ model: v, temperature: 0.1 }, null, 2));
+                }
+              }}
+              className="w-full h-10 px-3 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100"
+            >
+              {modelOptions.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-end justify-end">
+            <Button variant="secondary" onClick={applySmartGenerate} disabled={loading}>
+              智能生成（根据名称/描述）
+            </Button>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <div className="text-sm font-medium text-gray-300 mb-2">绑定技能（多选）</div>

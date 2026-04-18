@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { workspaceAgentApi, workspaceSkillApi } from '../../services/coreApi';
-import { toolApi } from '../../services';
+import { modelApi, toolApi, type Model } from '../../services';
 import { Alert, Button, Input, Modal, Textarea, toast } from '../ui';
 
 interface AgentConfigTemplate {
@@ -50,6 +50,8 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
   const [sopText, setSopText] = useState('');
   const [skillOptions, setSkillOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [toolOptions, setToolOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [modelOptions, setModelOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [selectedModel, setSelectedModel] = useState<string>('');
 
   useEffect(() => {
     if (open) {
@@ -67,9 +69,10 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
 
   const fetchOptions = async () => {
     try {
-      const [skillRes, toolRes] = await Promise.all([
+      const [skillRes, toolRes, modelRes] = await Promise.all([
         workspaceSkillApi.list({ limit: 200 }),
         toolApi.list({ limit: 200 } as any),
+        modelApi.list({ enabled: true, status: 'available' }),
       ]);
       const baseSkillOptions = (skillRes.skills || []).map((s: any) => ({ value: s.id, label: s.name }));
       const baseToolOptions = (toolRes.tools || []).map((t: any) => ({ value: t.name, label: t.description || t.name }));
@@ -84,16 +87,89 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
         .map((id) => ({ value: id, label: `${id}（未在 Tool 列表中找到）` }));
       setSkillOptions([...baseSkillOptions, ...missingSkillOptions]);
       setToolOptions([...baseToolOptions, ...missingToolOptions]);
+
+      const models = ((modelRes as any).models || []) as Model[];
+      const modelOpts = models.map((m) => ({ value: m.name, label: m.displayName || m.name }));
+      setModelOptions(modelOpts);
+      // default: DeepSeek Reasoner if available, else keep existing, else first model
+      const prefer = models.find((m) => (m.displayName || '').toLowerCase().includes('deepseek') && (m.displayName || '').toLowerCase().includes('reasoner'))
+        || models.find((m) => (m.name || '').toLowerCase().includes('deepseek') && (m.name || '').toLowerCase().includes('reasoner'));
+      const fallback = prefer?.name || selectedModel || models[0]?.name || '';
+      if (fallback) {
+        setSelectedModel(fallback);
+        // best-effort sync to configText
+        try {
+          const cfg = configText?.trim() ? JSON.parse(configText) : {};
+          cfg.model = fallback;
+          setConfigText(JSON.stringify(cfg, null, 2));
+        } catch {
+          setConfigText(JSON.stringify({ model: fallback, temperature: 0.3 }, null, 2));
+        }
+      }
     } catch {
       setSkillOptions([]);
       setToolOptions([]);
+      setModelOptions([]);
     }
+  };
+
+  const applySmartGenerate = () => {
+    const nm = name.trim() || '新建Agent';
+    const desc = description.trim();
+    const agentType = selectedType;
+    const modelName = selectedModel || 'DeepSeek Reasoner';
+
+    const base = AGENT_TYPE_TEMPLATES[agentType]?.config || {};
+    const temp =
+      agentType === 'react' ? 0.1 :
+        agentType === 'plan' ? 0.1 :
+          agentType === 'tool' ? 0.0 :
+            0.3;
+
+    const sys = [
+      `你是“${nm}”。`,
+      desc ? `职责与边界：${desc}` : '',
+      '请先澄清目标与约束，再给出结构化输出。',
+      '输出要求：给出结论、依据（如有）、以及下一步建议。',
+      '如果缺少上下文，请提出需要的材料（文件/接口/数据范围）。',
+    ].filter(Boolean).join('\n');
+
+    const sop = [
+      '1. 澄清问题与范围（目标/输入/约束/权限）。',
+      agentType === 'rag' || desc.includes('知识') || desc.includes('检索')
+        ? '2. 调用 knowledge_retrieval 检索证据（必要时设置 filters/top_k）。'
+        : '2. 如需外部信息，先列出需要的数据源与证据。',
+      '3. 组织答案：结论 → 依据/引用 → 建议/下一步。',
+      '4. 自检：一致性、可执行性、风险与不确定性提示。',
+    ].join('\n');
+
+    const cfg: any = { ...base, model: modelName, temperature: temp };
+    if (!cfg.max_tokens) cfg.max_tokens = 4096;
+    cfg.system_prompt = sys;
+
+    // recommended skills by keywords (only set if empty to avoid overriding)
+    const recSkills = new Set<string>(skills || []);
+    const text = `${nm} ${desc}`.toLowerCase();
+    if (recSkills.size === 0) {
+      if (text.includes('代码') || text.includes('review') || text.includes('审查')) recSkills.add('code_review');
+      if (text.includes('知识') || text.includes('检索') || text.includes('rag')) recSkills.add('knowledge_retrieval');
+      if (text.includes('总结') || text.includes('摘要')) recSkills.add('summarization');
+      if (text.includes('接口') || text.includes('api') || text.includes('工单') || text.includes('crm')) recSkills.add('api_calling');
+    }
+
+    setConfigText(JSON.stringify(cfg, null, 2));
+    if (!sopText.trim()) setSopText(sop);
+    if (skills.length === 0 && recSkills.size > 0) setSkills(Array.from(recSkills));
   };
 
   const handleTypeChange = (type: string) => {
     setSelectedType(type);
     const template = AGENT_TYPE_TEMPLATES[type];
-    if (template) setConfigText(JSON.stringify(template.config, null, 2));
+    if (template) {
+      const next: any = { ...(template.config || {}) };
+      if (selectedModel) next.model = selectedModel;
+      setConfigText(JSON.stringify(next, null, 2));
+    }
   };
 
   const handleSubmit = async () => {
@@ -176,6 +252,38 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
       <div className="space-y-4">
         <Input label="名称" value={name} onChange={(e: any) => setName(e.target.value)} placeholder="例如：数据分析助手" />
         <Input label="描述（可选）" value={description} onChange={(e: any) => setDescription(e.target.value)} placeholder="这个 Agent 的职责边界与适用场景" />
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <div className="text-sm font-medium text-gray-300 mb-2">模型（来自基础设施模型库）</div>
+            <select
+              value={selectedModel}
+              onChange={(e) => {
+                const v = e.target.value;
+                setSelectedModel(v);
+                try {
+                  const cfg = configText?.trim() ? JSON.parse(configText) : {};
+                  cfg.model = v;
+                  setConfigText(JSON.stringify(cfg, null, 2));
+                } catch {
+                  setConfigText(JSON.stringify({ model: v, temperature: 0.3 }, null, 2));
+                }
+              }}
+              className="w-full h-10 px-3 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100"
+            >
+              {modelOptions.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-end justify-end">
+            <Button variant="secondary" onClick={applySmartGenerate} disabled={loading}>
+              智能生成（根据名称/描述）
+            </Button>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
