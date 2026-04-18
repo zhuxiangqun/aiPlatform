@@ -445,6 +445,10 @@ class FileOperationsTool(BaseTool):
                         "type": "integer",
                         "description": "For read/write: max bytes allowed",
                         "default": 200000
+                    },
+                    "expected_mtime": {
+                        "type": "number",
+                        "description": "For write/delete: optional optimistic concurrency control; refuse if current mtime differs"
                     }
                 },
                 "required": ["operation", "path"]
@@ -455,6 +459,10 @@ class FileOperationsTool(BaseTool):
             },
         )
         super().__init__(config)
+        # Dedup cache for reads: {(path, mtime, max_bytes): content}
+        self._read_cache: Dict[str, str] = {}
+        self._read_cache_order: list[str] = []
+        self._read_cache_max = 64
 
     async def execute(self, params: Dict[str, Any]) -> ToolResult:
         """Execute file operation"""
@@ -462,7 +470,9 @@ class FileOperationsTool(BaseTool):
 
         try:
             import os
+            import stat
             from pathlib import Path
+            import hashlib
 
             operation = (params.get("operation") or "").strip().lower()
             raw_path = str(params.get("path") or "").strip()
@@ -470,6 +480,7 @@ class FileOperationsTool(BaseTool):
             recursive = bool(params.get("recursive", False))
             max_entries = int(params.get("max_entries", 2000) or 2000)
             max_bytes = int(params.get("max_bytes", 200000) or 200000)  # 200KB
+            expected_mtime = params.get("expected_mtime", None)
 
             if not raw_path:
                 raise ValueError("path is required")
@@ -504,6 +515,39 @@ class FileOperationsTool(BaseTool):
             if not allowed:
                 raise PermissionError("path is not under allowed roots")
 
+            # ---- Extra denylist safety (even inside allowed roots) ----
+            deny_segments_raw = os.environ.get(
+                "AIPLAT_FILE_OPERATIONS_DENYLIST_SEGMENTS",
+                ".ssh,.git,.env,.venv,node_modules,__pycache__,id_rsa,id_ed25519,secrets",
+            )
+            deny_segments = {s.strip() for s in deny_segments_raw.split(",") if s.strip()}
+            parts = {p for p in target_resolved.parts if p}
+            if deny_segments and (parts & deny_segments):
+                raise PermissionError("path contains denied segment")
+
+            # Disallow special files (devices, sockets, fifos). Symlinks are resolved by realpath above.
+            def _ensure_regular_file(p: Path) -> None:
+                try:
+                    st = p.stat()
+                except Exception:
+                    return
+                if not stat.S_ISREG(st.st_mode):
+                    raise PermissionError("refuse to operate on non-regular file")
+
+            def _looks_binary(p: Path) -> bool:
+                try:
+                    with p.open("rb") as f:
+                        chunk = f.read(4096)
+                    if b"\x00" in chunk:
+                        return True
+                    # Heuristic: many non-text bytes
+                    if not chunk:
+                        return False
+                    bad = sum(1 for b in chunk if b < 9 or (b > 13 and b < 32))
+                    return (bad / max(len(chunk), 1)) > 0.2
+                except Exception:
+                    return False
+
             def _list_dir(p: Path) -> list[str]:
                 out: list[str] = []
                 if not p.exists():
@@ -535,11 +579,36 @@ class FileOperationsTool(BaseTool):
                     raise ValueError("path is a directory; use operation=list")
                 if not target_resolved.exists():
                     raise FileNotFoundError("file not found")
+                _ensure_regular_file(target_resolved)
                 # limit file size
                 size = target_resolved.stat().st_size
                 if size > max_bytes:
                     raise ValueError(f"file too large (> {max_bytes} bytes)")
-                result = target_resolved.read_text(encoding="utf-8", errors="replace")
+                # binary detection
+                if _looks_binary(target_resolved) and os.environ.get("AIPLAT_FILE_OPERATIONS_ALLOW_BINARY_READ", "false").lower() not in {
+                    "1",
+                    "true",
+                    "yes",
+                    "y",
+                }:
+                    raise PermissionError("refuse to read binary file (set AIPLAT_FILE_OPERATIONS_ALLOW_BINARY_READ=true to override)")
+
+                mtime = target_resolved.stat().st_mtime
+                cache_key = f"{str(target_resolved)}|{mtime}|{max_bytes}"
+                cache_hit = cache_key in self._read_cache
+                if cache_hit:
+                    result = self._read_cache[cache_key]
+                else:
+                    result = target_resolved.read_text(encoding="utf-8", errors="replace")
+                    # cache (best-effort)
+                    try:
+                        self._read_cache[cache_key] = result
+                        self._read_cache_order.append(cache_key)
+                        if len(self._read_cache_order) > self._read_cache_max:
+                            old = self._read_cache_order.pop(0)
+                            self._read_cache.pop(old, None)
+                    except Exception:
+                        pass
             elif operation == "write":
                 if os.environ.get("AIPLAT_FILE_OPERATIONS_ALLOW_WRITE", "false").lower() not in {"1", "true", "yes", "y"}:
                     raise PermissionError("write is disabled by policy (set AIPLAT_FILE_OPERATIONS_ALLOW_WRITE=true)")
@@ -547,6 +616,14 @@ class FileOperationsTool(BaseTool):
                     raise ValueError("cannot write to a directory path")
                 # ensure parent exists
                 target_resolved.parent.mkdir(parents=True, exist_ok=True)
+                # optimistic concurrency check (best-effort)
+                if expected_mtime is not None and target_resolved.exists():
+                    try:
+                        cur_mtime = float(target_resolved.stat().st_mtime)
+                        if abs(cur_mtime - float(expected_mtime)) > 1e-6:
+                            raise PermissionError("mtime mismatch (file changed since last read)")
+                    except Exception:
+                        raise
                 if len(content.encode("utf-8", errors="ignore")) > max_bytes:
                     raise ValueError(f"content too large (> {max_bytes} bytes)")
                 target_resolved.write_text(content, encoding="utf-8")
@@ -556,7 +633,15 @@ class FileOperationsTool(BaseTool):
                     raise PermissionError("delete is disabled by policy (set AIPLAT_FILE_OPERATIONS_ALLOW_DELETE=true)")
                 if target_resolved.is_dir():
                     raise ValueError("refuse to delete directories")
+                if expected_mtime is not None and target_resolved.exists():
+                    try:
+                        cur_mtime = float(target_resolved.stat().st_mtime)
+                        if abs(cur_mtime - float(expected_mtime)) > 1e-6:
+                            raise PermissionError("mtime mismatch (file changed since last read)")
+                    except Exception:
+                        raise
                 if target_resolved.exists():
+                    _ensure_regular_file(target_resolved)
                     target_resolved.unlink()
                 result = "ok"
             else:
@@ -564,7 +649,19 @@ class FileOperationsTool(BaseTool):
 
             latency = time.time() - start_time
             self._update_stats(True, latency)
-            return ToolResult(success=True, output=result, latency=latency)
+            # best-effort metadata
+            md: Dict[str, Any] = {"operation": operation, "path": str(target_resolved)}
+            try:
+                if operation in {"read", "write"} and target_resolved.exists() and target_resolved.is_file():
+                    st = target_resolved.stat()
+                    md["size"] = int(st.st_size)
+                    md["mtime"] = float(st.st_mtime)
+                if operation == "read" and isinstance(result, str):
+                    md["sha256"] = hashlib.sha256(result.encode("utf-8", errors="ignore")).hexdigest()
+                    md["cache_hit"] = bool(locals().get("cache_hit", False))
+            except Exception:
+                pass
+            return ToolResult(success=True, output=result, latency=latency, metadata=md)
         except Exception as e:
             latency = time.time() - start_time
             self._update_stats(False, latency)
