@@ -588,6 +588,18 @@ class HarnessIntegration:
                 "metadata": meta,
                 "approval_request_id": approval_req_id,
             }
+            # Roadmap-0: persist structured error info into metadata for later UI/analytics.
+            try:
+                meta.setdefault(
+                    "error_detail",
+                    self._normalize_error(
+                        error=result.error,
+                        metadata=meta,
+                        fallback_message=str(result.error or "执行失败"),
+                    ),
+                )
+            except Exception:
+                pass
             # Persist (best effort)
             if runtime.execution_store:
                 try:
@@ -734,6 +746,21 @@ class HarnessIntegration:
         # Persist execution (best effort)
         if runtime.execution_store:
             try:
+                meta2 = {
+                    "mode": payload.get("mode", "inline"),
+                    "session_id": (payload.get("context") or {}).get("session_id", req.session_id),
+                }
+                try:
+                    meta2.setdefault(
+                        "error_detail",
+                        self._normalize_error(
+                            error=execution.error,
+                            metadata={"skill_id": execution.skill_id, "status": execution.status},
+                            fallback_message=str(execution.error or "执行失败"),
+                        ),
+                    )
+                except Exception:
+                    pass
                 await runtime.execution_store.upsert_skill_execution(
                     {
                         "id": execution.id,
@@ -747,10 +774,7 @@ class HarnessIntegration:
                         "duration_ms": execution.duration_ms or 0,
                         "user_id": user_id,
                         "trace_id": trace_id,
-                        "metadata": {
-                            "mode": payload.get("mode", "inline"),
-                            "session_id": (payload.get("context") or {}).get("session_id", req.session_id),
-                        },
+                        "metadata": meta2,
                     }
                 )
             except Exception:

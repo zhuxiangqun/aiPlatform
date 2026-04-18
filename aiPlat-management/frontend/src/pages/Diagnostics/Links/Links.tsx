@@ -94,8 +94,12 @@ const Links: React.FC = () => {
   const lineage = Array.isArray(data?.lineage) ? data.lineage : [];
 
   const runs = Array.isArray(graphRuns?.runs) ? graphRuns.runs : [];
-  const agentExecs = Array.isArray(executions?.items?.agent_executions) ? executions.items.agent_executions : [];
-  const skillExecs = Array.isArray(executions?.items?.skill_executions) ? executions.items.skill_executions : [];
+  const agentExecs = Array.isArray(executions?.items?.agent_executions)
+    ? executions.items.agent_executions.map((x: any) => ({ ...x, type: x.type || 'agent' }))
+    : [];
+  const skillExecs = Array.isArray(executions?.items?.skill_executions)
+    ? executions.items.skill_executions.map((x: any) => ({ ...x, type: x.type || 'skill' }))
+    : [];
 
   const highlightId = value;
   const highlightMode = mode;
@@ -149,7 +153,8 @@ const Links: React.FC = () => {
         title: 'error',
         dataIndex: 'error',
         render: (val: any, row: any) => {
-          const text = typeof val === 'string' ? val : '';
+          const detailMsg = row?.metadata?.error_detail?.message;
+          const text = typeof detailMsg === 'string' && detailMsg ? detailMsg : (typeof val === 'string' ? val : '');
           if (!text) return <span className="text-xs text-gray-500">-</span>;
           const short = text.length > 80 ? `${text.slice(0, 77)}...` : text;
           const isFailed = String(row?.status || '').toLowerCase().includes('fail');
