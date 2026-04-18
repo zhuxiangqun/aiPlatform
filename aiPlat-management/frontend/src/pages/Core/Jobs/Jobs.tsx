@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, RotateCw, PlayCircle, PauseCircle, Trash2, Clock, ExternalLink } from 'lucide-react';
+import { Plus, RotateCw, PlayCircle, PauseCircle, Trash2, Clock, ExternalLink, Copy } from 'lucide-react';
 import PageHeader from '../../../components/common/PageHeader';
 import { Button, Modal, Input, Textarea, toast, Table } from '../../../components/ui';
 import { jobApi, type Job, type JobRun } from '../../../services';
@@ -426,8 +426,37 @@ const Jobs: React.FC = () => {
                     <div className="text-sm text-gray-200">
                       <span className="font-medium">{r.status}</span>
                       <span className="text-xs text-gray-500 ml-2">run_id: {shortId(String(r.run_id || r.id))}</span>
+                      <Button
+                        variant="ghost"
+                        icon={<Copy size={14} />}
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(String(r.run_id || r.id));
+                            toast.success('已复制 run_id');
+                          } catch {
+                            toast.error('复制失败');
+                          }
+                        }}
+                      />
                     </div>
                     <div className="flex items-center gap-2">
+                      {r.trace_id && (
+                        <>
+                          <span className="text-xs text-gray-500">trace_id: {shortId(String(r.trace_id))}</span>
+                          <Button
+                            variant="ghost"
+                            icon={<Copy size={14} />}
+                            onClick={async () => {
+                              try {
+                                await navigator.clipboard.writeText(String(r.trace_id));
+                                toast.success('已复制 trace_id');
+                              } catch {
+                                toast.error('复制失败');
+                              }
+                            }}
+                          />
+                        </>
+                      )}
                       {r.trace_id ? (
                         <Button
                           variant="secondary"
