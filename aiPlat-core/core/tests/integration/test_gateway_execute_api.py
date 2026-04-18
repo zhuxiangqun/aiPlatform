@@ -54,3 +54,75 @@ def test_gateway_execute_injects_channel_context(tmp_path, monkeypatch):
         assert echoed["context"]["source"] == "gateway"
         assert echoed["context"]["channel"] == "slack"
 
+
+@pytest.mark.integration
+def test_gateway_execute_reports_error_on_ok_false(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("AIPLAT_EXECUTION_DB_PATH", str(tmp_path / "exec.sqlite3"))
+
+    import core.server as server
+
+    importlib.reload(server)
+
+    class DummyHarness:
+        async def execute(self, req):
+            return SimpleNamespace(
+                ok=False,
+                payload={"details": "bad input"},
+                trace_id="trace-bad",
+                run_id="run-bad",
+                error="bad input",
+            )
+
+    monkeypatch.setattr(server, "get_harness", lambda: DummyHarness(), raising=True)
+
+    with TestClient(server.app) as client:
+        r = client.post(
+            "/api/core/gateway/execute",
+            json={
+                "channel": "web",
+                "kind": "skill",
+                "target_id": "skill_1",
+                "user_id": "u1",
+                "session_id": "s1",
+                "payload": {"input": {"x": 1}, "context": {}},
+            },
+        )
+        # API currently returns 200 with ok=false payload
+        assert r.status_code == 200, r.text
+        data = r.json()
+        assert data["ok"] is False
+        assert data["trace_id"] == "trace-bad"
+        assert data["run_id"] == "run-bad"
+        assert data.get("error")
+
+
+@pytest.mark.integration
+def test_gateway_execute_returns_500_on_exception(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("AIPLAT_EXECUTION_DB_PATH", str(tmp_path / "exec.sqlite3"))
+
+    import core.server as server
+
+    importlib.reload(server)
+
+    class DummyHarness:
+        async def execute(self, req):
+            raise RuntimeError("boom")
+
+    monkeypatch.setattr(server, "get_harness", lambda: DummyHarness(), raising=True)
+
+    # In TestClient, server exceptions are re-raised by default; disable to assert 500.
+    with TestClient(server.app, raise_server_exceptions=False) as client:
+        r = client.post(
+            "/api/core/gateway/execute",
+            json={
+                "channel": "web",
+                "kind": "skill",
+                "target_id": "skill_1",
+                "user_id": "u1",
+                "session_id": "s1",
+                "payload": {"input": {"x": 1}, "context": {}},
+            },
+        )
+        assert r.status_code == 500, r.text
