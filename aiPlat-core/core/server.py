@@ -4293,12 +4293,73 @@ async def install_skill_pack(pack_id: str, request: SkillPackInstallRequest):
     if not _execution_store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
     try:
-        return await _execution_store.install_skill_pack(
+        install = await _execution_store.install_skill_pack(
             pack_id=pack_id,
             version=request.version,
             scope=request.scope,
             metadata=request.metadata or {},
         )
+        # Apply install (best-effort): materialize/enable skills declared by manifest.
+        applied: List[Dict[str, Any]] = []
+        try:
+            manifest = None
+            if request.version:
+                vrec = await _execution_store.get_skill_pack_version(pack_id=pack_id, version=request.version)
+                manifest = vrec.get("manifest") if isinstance(vrec, dict) else None
+            if manifest is None:
+                pack = await _execution_store.get_skill_pack(pack_id)
+                manifest = pack.get("manifest") if isinstance(pack, dict) else None
+            manifest = manifest if isinstance(manifest, dict) else {}
+            skills = manifest.get("skills") if isinstance(manifest, dict) else None
+            if not isinstance(skills, list):
+                skills = []
+
+            scope = str(request.scope or "workspace")
+            target_mgr = _workspace_skill_manager if scope == "workspace" else _skill_manager
+            for item in skills:
+                try:
+                    # Skill spec: "skill_id" | {id,display_name,category,description,version,sop_markdown}
+                    if isinstance(item, str):
+                        sid = item.strip()
+                        spec = {"id": sid}
+                    elif isinstance(item, dict):
+                        sid = str(item.get("id") or item.get("skill_id") or "").strip()
+                        spec = dict(item)
+                    else:
+                        continue
+                    if not sid:
+                        continue
+                    if not target_mgr:
+                        applied.append({"skill_id": sid, "status": "skipped", "reason": "skill_manager_unavailable"})
+                        continue
+
+                    if scope == "workspace":
+                        # Import into workspace (explicit id) so it becomes executable.
+                        try:
+                            await target_mgr.import_skill_from_pack(
+                                skill_id=sid,
+                                display_name=spec.get("display_name") or spec.get("name"),
+                                category=spec.get("category") or "general",
+                                description=spec.get("description") or "",
+                                version=spec.get("version") or "1.0.0",
+                                sop_markdown=spec.get("sop_markdown") or spec.get("sop") or "",
+                                pack_metadata={"pack_id": pack_id, "version": request.version, "scope": scope},
+                            )
+                        except Exception as e:
+                            applied.append({"skill_id": sid, "status": "skipped", "reason": str(e)})
+                            continue
+
+                    # Enable/restore
+                    ok = await target_mgr.enable_skill(sid)
+                    if not ok:
+                        ok = await target_mgr.restore_skill(sid)
+                    applied.append({"skill_id": sid, "status": "enabled" if ok else "skipped"})
+                except Exception as e:
+                    applied.append({"skill_id": str(item), "status": "skipped", "reason": str(e)})
+        except Exception:
+            applied = applied or []
+
+        return {"install": install, "applied": applied}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 

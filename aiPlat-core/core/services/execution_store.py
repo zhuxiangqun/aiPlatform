@@ -2870,6 +2870,33 @@ class ExecutionStore:
             )
         return {"items": items, "total": int(res.get("total") or 0), "limit": int(limit), "offset": int(offset)}
 
+    async def get_skill_pack_version(self, *, pack_id: str, version: str) -> Optional[Dict[str, Any]]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Optional[Dict[str, Any]]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                row = conn.execute(
+                    "SELECT * FROM skill_pack_versions WHERE pack_id = ? AND version = ?;",
+                    (str(pack_id), str(version)),
+                ).fetchone()
+                return dict(row) if row else None
+            finally:
+                conn.close()
+
+        row = await anyio.to_thread.run_sync(_sync)
+        if not row:
+            return None
+        return {
+            "id": row["id"],
+            "pack_id": row["pack_id"],
+            "version": row["version"],
+            "manifest": _json_loads(row.get("manifest_json")) or {},
+            "created_at": row.get("created_at"),
+        }
+
     async def install_skill_pack(self, *, pack_id: str, version: Optional[str], scope: str, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         await self.init()
         db_path = self._config.db_path

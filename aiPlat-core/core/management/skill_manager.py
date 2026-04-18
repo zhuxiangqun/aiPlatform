@@ -1018,9 +1018,11 @@ class SkillManager:
             duration_ms=0.0
         )
         
-        self._executions[skill_id].append(execution)
+        # Best-effort: allow executing skills even if they weren't loaded into this manager's
+        # in-memory index (e.g. workspace skills registered into SkillRegistry).
+        self._executions.setdefault(skill_id, []).append(execution)
         
-        stats = self._stats.get(skill_id, SkillStats())
+        stats = self._stats.setdefault(skill_id, SkillStats())
         stats.total_calls += 1
         
         try:
@@ -1070,6 +1072,117 @@ class SkillManager:
         
         updated = await self.get_execution(execution_id)
         return updated if updated else execution
+
+    # ---------------------------------------------------------------------
+    # Roadmap-4: Skill Pack install applies (workspace scope)
+    # ---------------------------------------------------------------------
+
+    async def import_skill_from_pack(
+        self,
+        *,
+        skill_id: str,
+        display_name: Optional[str] = None,
+        category: str = "general",
+        description: str = "",
+        version: str = "1.0.0",
+        sop_markdown: str = "",
+        pack_metadata: Optional[Dict[str, Any]] = None,
+    ) -> SkillInfo:
+        """
+        Create/update a directory-based workspace skill using an explicit id.
+
+        This is intended for Skill Pack installation where the pack defines stable ids.
+        Engine scope is forbidden.
+        """
+        if (self._scope or "engine").strip().lower() != "workspace":
+            raise PermissionError("import_skill_from_pack is only allowed in workspace scope")
+        if self._reserved_ids and skill_id in self._reserved_ids:
+            raise ValueError(f"Skill id '{skill_id}' is reserved by engine scope and cannot be created in workspace.")
+
+        now = datetime.utcnow()
+        skill = self._skills.get(skill_id)
+        if not skill:
+            skill = SkillInfo(
+                id=str(skill_id),
+                name=str(display_name or skill_id),
+                type=str(category or "general"),
+                description=str(description or ""),
+                status="enabled",
+                input_schema={},
+                output_schema={},
+                config={"version": str(version or "1.0.0")},
+                dependencies=[],
+                version=str(version or "1.0.0"),
+                created_at=now,
+                updated_at=now,
+                created_by="skill_pack",
+                metadata={},
+            )
+            self._skills[skill_id] = skill
+        else:
+            # Update fields (best-effort)
+            if display_name:
+                skill.name = str(display_name)
+            if category:
+                skill.type = str(category)
+            if description:
+                skill.description = str(description)
+            if version:
+                skill.version = str(version)
+                skill.config = dict(skill.config or {})
+                skill.config["version"] = str(version)
+            skill.updated_at = now
+
+        # Metadata for provenance/audit
+        if isinstance(skill.metadata, dict) and isinstance(pack_metadata, dict):
+            skill.metadata.setdefault("skill_pack", {})
+            if isinstance(skill.metadata.get("skill_pack"), dict):
+                skill.metadata["skill_pack"].update(pack_metadata)
+
+        # Ensure tracking dicts
+        self._stats.setdefault(skill_id, SkillStats())
+        self._executions.setdefault(skill_id, [])
+        self._versions.setdefault(skill_id, [SkillVersion(version=str(skill.version or "1.0.0"), status="current", created_at=now, changes="Imported from skill pack")])
+        self._bound_agents.setdefault(skill_id, [])
+
+        # Materialize SKILL.md with SOP body (overwrite body only when provided)
+        try:
+            base_dir = self._resolve_skills_base_path()
+            skill_dir = base_dir / skill.id
+            skill_dir.mkdir(parents=True, exist_ok=True)
+            (skill_dir / "references").mkdir(exist_ok=True)
+            (skill_dir / "scripts").mkdir(exist_ok=True)
+            (skill_dir / "assets").mkdir(exist_ok=True)
+            skill_md_path = skill_dir / "SKILL.md"
+
+            fm = self._build_skill_manifest(skill)
+            if isinstance(pack_metadata, dict) and pack_metadata:
+                fm.setdefault("skill_pack", pack_metadata)
+            header = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True).strip()
+
+            if skill_md_path.exists() and not sop_markdown:
+                # Preserve existing SOP body
+                raw = skill_md_path.read_text(encoding="utf-8")
+                _old_fm, old_body = self._split_front_matter(raw)
+                body = old_body.lstrip()
+            else:
+                body = (sop_markdown or "").strip()
+                if not body:
+                    body = f"# {skill.name}\n\n（待补充 SOP）\n"
+                body = body + ("\n" if not body.endswith("\n") else "")
+
+            skill_md_path.write_text(f"---\n{header}\n---\n\n{body}", encoding="utf-8")
+            if isinstance(skill.metadata, dict):
+                skill.metadata.setdefault("filesystem", {})
+                if isinstance(skill.metadata["filesystem"], dict):
+                    skill.metadata["filesystem"]["skill_dir"] = str(skill_dir)
+                    skill.metadata["filesystem"]["skill_md"] = str(skill_md_path)
+        except Exception:
+            pass
+
+        # Bridge to execution registry after materialization
+        self._bridge_to_registry(skill)
+        return skill
     
     async def complete_execution(
         self,
