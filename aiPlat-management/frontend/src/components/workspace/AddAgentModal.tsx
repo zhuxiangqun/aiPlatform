@@ -47,6 +47,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
   const [tools, setTools] = useState<string[]>([]);
   const [configText, setConfigText] = useState('');
   const [memoryConfigText, setMemoryConfigText] = useState('{\n  "type": "short_term",\n  "recall_count": 5\n}');
+  const [sopText, setSopText] = useState('');
   const [skillOptions, setSkillOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [toolOptions, setToolOptions] = useState<Array<{ value: string; label: string }>>([]);
 
@@ -59,6 +60,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
       setTools([]);
       setConfigText(JSON.stringify(AGENT_TYPE_TEMPLATES.base.config, null, 2));
       setMemoryConfigText('{\n  "type": "short_term",\n  "recall_count": 5\n}');
+      setSopText('');
       fetchOptions();
     }
   }, [open]);
@@ -126,7 +128,21 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
       const metadata: Record<string, unknown> = {};
       if (description.trim()) metadata.description = description.trim();
 
-      await workspaceAgentApi.create({ name: name.trim(), agent_type: selectedType, config, skills, tools, memory_config, metadata });
+      const created = await workspaceAgentApi.create({ name: name.trim(), agent_type: selectedType, config, skills, tools, memory_config, metadata });
+      const agentId = String((created as any).id || '');
+      // SOP is optional; best-effort write after create.
+      if (agentId && sopText.trim()) {
+        try {
+          await workspaceAgentApi.updateSop(agentId, sopText);
+          try {
+            await workspaceAgentApi.createVersion(agentId, 'Initial SOP');
+          } catch {
+            // ignore
+          }
+        } catch {
+          // ignore SOP failures; agent is created successfully
+        }
+      }
       toast.success('创建成功');
       onSuccess();
       onClose();
@@ -218,6 +234,13 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
 
         <Textarea label="配置（JSON）" value={configText} onChange={(e: any) => setConfigText(e.target.value)} rows={10} />
         <Textarea label="memory_config（JSON，可选）" value={memoryConfigText} onChange={(e: any) => setMemoryConfigText(e.target.value)} rows={6} />
+        <Textarea
+          label="SOP（Markdown，可选）"
+          value={sopText}
+          onChange={(e: any) => setSopText(e.target.value)}
+          rows={10}
+          placeholder={'例如：\n1. 澄清问题与范围。\n2. 调用 knowledge_retrieval 检索证据。\n3. 综合生成答案并引用证据。'}
+        />
         <div className="text-xs text-gray-500">{configHint}</div>
       </div>
     </Modal>
