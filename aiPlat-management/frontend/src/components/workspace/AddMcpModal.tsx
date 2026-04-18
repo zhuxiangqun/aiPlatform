@@ -35,6 +35,11 @@ const AddMcpModal: React.FC<AddMcpModalProps> = ({ open, onClose, onSuccess }) =
   const [metadataText, setMetadataText] = useState('{\n  "description": ""\n}');
   const [launcherPath, setLauncherPath] = useState('/opt/aiplat/mcp/bin/launch');
   const [template, setTemplate] = useState('sse_internal');
+  const [wizOpen, setWizOpen] = useState(false);
+  const [wizTransport, setWizTransport] = useState<'sse' | 'http' | 'stdio'>('sse');
+  const [wizIsProd, setWizIsProd] = useState(false);
+  const [wizNeedAuth, setWizNeedAuth] = useState(true);
+  const [genWarnings, setGenWarnings] = useState<string[]>([]);
 
   const hint = useMemo(() => {
     if (transport === 'stdio') return 'stdio 模式通常使用 command + args（例如：node / python / 本地可执行文件）。';
@@ -106,6 +111,80 @@ const AddMcpModal: React.FC<AddMcpModalProps> = ({ open, onClose, onSuccess }) =
       setMetadataText(JSON.stringify({ ...baseMeta, description: baseMeta.description || 'STDIO MCP（prod 受控，launcher）', prod_allowed: true }, null, 2));
       return;
     }
+  };
+
+  const openWizard = () => {
+    setWizOpen(true);
+    setWizTransport((transport as any) || 'sse');
+    const meta = (() => {
+      try {
+        return metadataText.trim() ? JSON.parse(metadataText) : {};
+      } catch {
+        return {};
+      }
+    })();
+    setWizIsProd(Boolean((meta as any)?.prod_allowed));
+    setWizNeedAuth(Boolean(url) || transport === 'sse' || transport === 'http');
+  };
+
+  const applyWizardGenerate = () => {
+    // choose template by transport + prod
+    if (wizTransport === 'stdio') setTemplate(wizIsProd ? 'stdio_launcher_prod' : 'stdio_launcher_dev');
+    else if (wizTransport === 'http') setTemplate('http_internal');
+    else setTemplate('sse_internal');
+
+    // apply selected template
+    // note: setTemplate is async; rely on wizTransport/wizIsProd logic directly for values
+    const serverName = (name || 'server_name').trim() || 'server_name';
+    const baseMeta = (() => {
+      try {
+        return metadataText.trim() ? JSON.parse(metadataText) : {};
+      } catch {
+        return {};
+      }
+    })();
+
+    if (wizTransport === 'stdio') {
+      setTransport('stdio');
+      setUrl('');
+      setCommand(launcherPath);
+      setArgsText(JSON.stringify([serverName, '--config', `/etc/aiplat/mcp/${serverName}.yaml`], null, 2));
+      setAllowedToolsText('');
+      setAuthText('');
+      setMetadataText(
+        JSON.stringify(
+          { ...baseMeta, description: baseMeta.description || `STDIO MCP（${wizIsProd ? 'prod 受控' : 'dev/staging'}，launcher）`, prod_allowed: wizIsProd },
+          null,
+          2
+        )
+      );
+    } else if (wizTransport === 'http') {
+      setTransport('http');
+      setUrl('http://localhost:0/mcp');
+      setCommand('');
+      setArgsText('[]');
+      setAllowedToolsText('');
+      setAuthText(wizNeedAuth ? '{\n  "type": "bearer",\n  "token": ""\n}' : '');
+      setMetadataText(JSON.stringify({ ...baseMeta, description: baseMeta.description || '内部 HTTP MCP Server' }, null, 2));
+    } else {
+      setTransport('sse');
+      setUrl('http://localhost:0/mcp');
+      setCommand('');
+      setArgsText('[]');
+      setAllowedToolsText('');
+      setAuthText(wizNeedAuth ? '{\n  "type": "bearer",\n  "token": ""\n}' : '');
+      setMetadataText(JSON.stringify({ ...baseMeta, description: baseMeta.description || '内部 SSE MCP Server' }, null, 2));
+    }
+
+    const warns: string[] = [];
+    if (wizTransport === 'stdio' && wizIsProd) {
+      warns.push('STDIO prod 受控：需要 metadata.prod_allowed=true 且 prod 放行策略环境变量已配置（allowlist/command prefixes/可选 launcher 强制）。');
+      warns.push('allowed_tools 不会自动填充：创建后请点击“发现工具（tools/list）”并再启用。');
+    }
+    if ((wizTransport === 'http' || wizTransport === 'sse') && !wizNeedAuth) {
+      warns.push('HTTP/SSE 未启用鉴权：请确认该 MCP Server 仅在内网可信环境使用。');
+    }
+    setGenWarnings(warns);
   };
 
   const markProdAllowed = () => {
@@ -190,6 +269,7 @@ const AddMcpModal: React.FC<AddMcpModalProps> = ({ open, onClose, onSuccess }) =
   };
 
   return (
+    <>
     <Modal
       open={open}
       onClose={onClose}
@@ -219,6 +299,9 @@ const AddMcpModal: React.FC<AddMcpModalProps> = ({ open, onClose, onSuccess }) =
           </div>
           <Button variant="secondary" onClick={applyMcpTemplate} disabled={loading}>
             应用模板
+          </Button>
+          <Button variant="secondary" onClick={openWizard} disabled={loading}>
+            生成向导
           </Button>
         </div>
 
@@ -257,9 +340,83 @@ const AddMcpModal: React.FC<AddMcpModalProps> = ({ open, onClose, onSuccess }) =
         <Textarea label="auth（JSON，可选）" rows={4} value={authText} onChange={(e: any) => setAuthText(e.target.value)} placeholder='{"type":"bearer","token":"..."}' />
         <Textarea label="metadata（JSON，可选）" rows={5} value={metadataText} onChange={(e: any) => setMetadataText(e.target.value)} />
 
+        {genWarnings.length > 0 && (
+          <Alert type="warning" title="生成提示">
+            <ul className="list-disc pl-5 space-y-1">
+              {genWarnings.map((w, i) => (
+                <li key={i}>{w}</li>
+              ))}
+            </ul>
+          </Alert>
+        )}
+
         <div className="text-xs text-gray-500">{hint}</div>
       </div>
     </Modal>
+
+    <Modal
+      open={wizOpen}
+      onClose={() => setWizOpen(false)}
+      title="MCP 生成向导"
+      width={760}
+      footer={
+        <>
+          <Button variant="secondary" onClick={() => setWizOpen(false)} disabled={loading}>
+            取消
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => {
+              applyWizardGenerate();
+              setWizOpen(false);
+            }}
+            disabled={loading}
+          >
+            生成
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <Alert type="info" title="说明">
+          通过向导明确 transport 与 prod 约束，避免 stdio/prod 放行配置歧义。allowed_tools 仍需你手动点击 tools/list 发现填充。
+        </Alert>
+
+        <div>
+          <div className="text-sm font-medium text-gray-300 mb-2">Transport</div>
+          <select
+            value={wizTransport}
+            onChange={(e) => setWizTransport(e.target.value as any)}
+            className="w-full h-10 px-3 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100"
+          >
+            <option value="sse">sse</option>
+            <option value="http">http</option>
+            <option value="stdio">stdio</option>
+          </select>
+        </div>
+
+        {wizTransport === 'stdio' && (
+          <div>
+            <div className="text-sm font-medium text-gray-300 mb-2">是否用于 prod？</div>
+            <label className="flex items-center gap-2 text-sm text-gray-200">
+              <input type="checkbox" checked={wizIsProd} onChange={() => setWizIsProd(!wizIsProd)} />
+              是（将套用 prod 受控 launcher，并设置 metadata.prod_allowed=true）
+            </label>
+          </div>
+        )}
+
+        {(wizTransport === 'http' || wizTransport === 'sse') && (
+          <div>
+            <div className="text-sm font-medium text-gray-300 mb-2">是否需要鉴权？</div>
+            <label className="flex items-center gap-2 text-sm text-gray-200">
+              <input type="checkbox" checked={wizNeedAuth} onChange={() => setWizNeedAuth(!wizNeedAuth)} />
+              需要（将预填 bearer token auth）
+            </label>
+          </div>
+        )}
+      </div>
+    </Modal>
+    </>
   );
 };
 
