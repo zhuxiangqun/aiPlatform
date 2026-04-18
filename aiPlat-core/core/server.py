@@ -18,6 +18,8 @@ import shutil
 import uvicorn
 import aiohttp
 
+from core.utils.ids import new_prefixed_id
+
 from core.schemas import (
     AgentCreateRequest,
     AgentUpdateRequest,
@@ -4832,15 +4834,67 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request)
             except Exception:
                 pass
 
+    # Platform contract: idempotency key from platform (recommended).
+    # - If present and already mapped, return the existing run summary.
+    # - If present and new, reserve a run_id and persist mapping BEFORE execution.
+    request_id = (
+        http_request.headers.get("x-aiplat-request-id")
+        or http_request.headers.get("X-AiPlat-Request-Id")
+        or http_request.headers.get("X-AIPLAT-REQUEST-ID")
+    )
+    request_id = str(request_id).strip() if isinstance(request_id, str) else None
+    if not request_id:
+        request_id = new_prefixed_id("req")
+
+    reserved_run_id = None
+    if _execution_store and request_id:
+        try:
+            existing_run_id = await _execution_store.get_run_id_for_request(
+                request_id=request_id, tenant_id=str(resolved_tenant) if resolved_tenant else None
+            )
+        except Exception:
+            existing_run_id = None
+        if existing_run_id:
+            run = await _execution_store.get_run_summary(run_id=str(existing_run_id))
+            return {
+                "ok": True,
+                "status": "deduped",
+                "request_id": request_id,
+                "run_id": str(existing_run_id),
+                "trace_id": (run or {}).get("trace_id"),
+                "run": run,
+            }
+        # Reserve a run_id so upstream retries can dedupe immediately.
+        reserved_run_id = new_prefixed_id("run")
+        try:
+            await _execution_store.remember_request_run_id(
+                request_id=request_id,
+                run_id=reserved_run_id,
+                tenant_id=str(resolved_tenant) if resolved_tenant else None,
+            )
+        except Exception:
+            pass
+
     exec_req = ExecutionRequest(
         kind=str(request.kind) if request.kind else "agent",  # type: ignore[arg-type]
         target_id=str(request.target_id),
         payload=payload,
         user_id=str(resolved_user or "system"),
         session_id=str(resolved_session or "default"),
-        request_id=f"gw-{uuid.uuid4().hex[:12]}",
+        request_id=request_id,
+        run_id=reserved_run_id,
     )
     result = await harness.execute(exec_req)
+    # Best-effort ensure request_id mapping exists even if reservation was skipped.
+    if _execution_store and request_id and result.run_id:
+        try:
+            await _execution_store.remember_request_run_id(
+                request_id=request_id,
+                run_id=str(result.run_id),
+                tenant_id=str(resolved_tenant) if resolved_tenant else None,
+            )
+        except Exception:
+            pass
     # Normalize: always include trace_id/run_id.
     resp = dict(result.payload or {})
     # Prefer payload status for ok semantics (agent/skill often return ok=True but status=failed).

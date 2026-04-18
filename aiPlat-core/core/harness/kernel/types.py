@@ -26,6 +26,8 @@ class ExecutionRequest:
     user_id: str = "system"
     session_id: str = "default"
     request_id: Optional[str] = None
+    # Platform contract: caller may supply an externally reserved run_id (e.g. for idempotency).
+    run_id: Optional[str] = None
 
 
 @dataclass

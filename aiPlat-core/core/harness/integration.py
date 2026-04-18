@@ -320,7 +320,7 @@ class HarnessIntegration:
                         pass
 
         # Platform default: run_id should be time-sortable and stable for tracing/log correlation.
-        execution_id = new_prefixed_id("run")
+        execution_id = str(getattr(req, "run_id", None) or "") or new_prefixed_id("run")
         start_time = time.time()
 
         trace_id = None
@@ -1115,7 +1115,7 @@ class HarnessIntegration:
         # Add a trace for tool execute so syscall spans are linked (best-effort).
         trace_id = None
         # Keep tool executions under the same run_id namespace.
-        run_id = new_prefixed_id("run")
+        run_id = str(getattr(req, "run_id", None) or "") or new_prefixed_id("run")
         if runtime and runtime.trace_service:
             try:
                 attrs = {"tool_name": req.target_id, "run_id": run_id, "user_id": req.user_id or "system"}
