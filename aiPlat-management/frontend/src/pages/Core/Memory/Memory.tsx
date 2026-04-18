@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, RotateCw, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Table, Button, Modal, toast } from '../../../components/ui';
-import { CreateSessionModal, SessionDetailModal, SearchMemoryModal } from '../../../components/core';
+import { CreateSessionModal, SessionDetailModal, SearchMemoryModal, LongTermMemoryModal } from '../../../components/core';
 import { useMemoryStore } from '../../../stores';
 import type { MemorySession } from '../../../services';
 
@@ -11,6 +11,7 @@ const Memory: React.FC = () => {
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
+  const [longTermOpen, setLongTermOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; sessionId: string | null }>({ open: false, sessionId: null });
 
   useEffect(() => {
@@ -92,6 +93,9 @@ const Memory: React.FC = () => {
           >
             搜索
           </Button>
+          <Button onClick={() => setLongTermOpen(true)}>
+            长期记忆
+          </Button>
           <Button
             icon={<RotateCw className="w-4 h-4" />}
             onClick={fetchSessions}
@@ -160,6 +164,11 @@ const Memory: React.FC = () => {
       <SearchMemoryModal
         open={searchModalOpen}
         onClose={() => { setSearchModalOpen(false); clearSearchResults(); }}
+      />
+
+      <LongTermMemoryModal
+        open={longTermOpen}
+        onClose={() => setLongTermOpen(false)}
       />
     </div>
   );

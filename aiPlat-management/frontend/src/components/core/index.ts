@@ -11,3 +11,4 @@ export { default as EditToolConfigModal } from './EditToolConfigModal';
 export { default as CreateSessionModal } from './CreateSessionModal';
 export { default as SessionDetailModal } from './SessionDetailModal';
 export { default as SearchMemoryModal } from './SearchMemoryModal';
+export { default as LongTermMemoryModal } from './LongTermMemoryModal';

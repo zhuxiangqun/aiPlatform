@@ -55,6 +55,38 @@ const MCP: React.FC = () => {
       render: (v: string) => <span className="text-gray-400">{v || '-'}</span>,
     },
     {
+      title: 'risk_level',
+      key: 'risk_level',
+      width: 120,
+      render: (_: unknown, record: McpServer) => {
+        const pol: any = (record as any)?.metadata?.policy || {};
+        const v = pol?.risk_level;
+        return <span className="text-gray-400">{v || '-'}</span>;
+      },
+    },
+    {
+      title: 'approval',
+      key: 'approval',
+      width: 120,
+      align: 'center' as const,
+      render: (_: unknown, record: McpServer) => {
+        const pol: any = (record as any)?.metadata?.policy || {};
+        const v = pol?.approval_required;
+        return <span className="text-gray-400">{v === true ? 'required' : v === false ? 'no' : '-'}</span>;
+      },
+    },
+    {
+      title: 'prod_allowed',
+      key: 'prod_allowed',
+      width: 120,
+      align: 'center' as const,
+      render: (_: unknown, record: McpServer) => {
+        const pol: any = (record as any)?.metadata?.policy || {};
+        const v = pol?.prod_allowed;
+        return <span className="text-gray-400">{v === true ? 'true' : v === false ? 'false' : '-'}</span>;
+      },
+    },
+    {
       title: '状态',
       key: 'enabled',
       width: 160,
@@ -76,6 +108,18 @@ const MCP: React.FC = () => {
       ),
     },
     {
+      title: 'tool_risk',
+      key: 'tool_risk',
+      width: 120,
+      align: 'center' as const,
+      render: (_: unknown, record: McpServer) => {
+        const pol: any = (record as any)?.metadata?.policy || {};
+        const tr = pol?.tool_risk;
+        const count = tr && typeof tr === 'object' ? Object.keys(tr).length : 0;
+        return <span className="text-gray-400">{count || '-'}</span>;
+      },
+    },
+    {
       title: '操作',
       key: 'actions',
       width: 90,
@@ -94,6 +138,7 @@ const MCP: React.FC = () => {
 
   const server = detailModal.server as any;
   const fs = server?.metadata?.filesystem || {};
+  const pol = server?.metadata?.policy || {};
 
   return (
     <div className="space-y-6">
@@ -165,6 +210,25 @@ const MCP: React.FC = () => {
             <div className="text-gray-400 break-all">{(detailModal.server?.allowed_tools || []).join(', ') || '-'}</div>
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="p-3 bg-dark-bg rounded-lg">
+              <div className="text-xs text-gray-400 mb-1">policy.risk_level</div>
+              <div className="text-sm text-gray-200">{String(pol?.risk_level ?? '-')}</div>
+            </div>
+            <div className="p-3 bg-dark-bg rounded-lg">
+              <div className="text-xs text-gray-400 mb-1">policy.approval_required</div>
+              <div className="text-sm text-gray-200">{pol?.approval_required === true ? 'true' : pol?.approval_required === false ? 'false' : '-'}</div>
+            </div>
+            <div className="p-3 bg-dark-bg rounded-lg">
+              <div className="text-xs text-gray-400 mb-1">policy.prod_allowed</div>
+              <div className="text-sm text-gray-200">{pol?.prod_allowed === true ? 'true' : pol?.prod_allowed === false ? 'false' : '-'}</div>
+            </div>
+            <div className="p-3 bg-dark-bg rounded-lg">
+              <div className="text-xs text-gray-400 mb-1">policy.tool_risk</div>
+              <pre className="text-xs bg-dark-hover rounded p-2 overflow-auto max-h-40">{JSON.stringify(pol?.tool_risk || {}, null, 2)}</pre>
+            </div>
+          </div>
+
           <div>
             <div className="text-xs text-gray-500">filesystem.server_dir</div>
             <div className="flex items-center justify-between gap-2">
@@ -210,4 +274,3 @@ const MCP: React.FC = () => {
 };
 
 export default MCP;
-
