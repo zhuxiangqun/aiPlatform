@@ -1666,6 +1666,93 @@ async def set_learning_artifact_status(artifact_id: str, request: dict):
     return {"status": "ok", "artifact_id": artifact_id, "new_status": status}
 
 
+@api_router.post("/learning/autocapture")
+async def autocapture_learning_suggestion(request: dict):
+    """
+    Roadmap-4 (minimal): create a reviewable learning artifact from one execution.
+
+    Input:
+      {
+        "target_type": "agent|skill",
+        "target_id": "...",
+        "run_id": "...",          # optional
+        "trace_id": "...",        # optional
+        "reason": "optional human note"
+      }
+    Output: created LearningArtifact record.
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    import time
+    import uuid
+    from core.learning.pipeline import summarize_syscall_events
+    from core.learning.types import LearningArtifact, LearningArtifactKind, LearningArtifactStatus
+
+    target_type = str((request or {}).get("target_type") or "").strip()
+    target_id = str((request or {}).get("target_id") or "").strip()
+    trace_id = (request or {}).get("trace_id")
+    run_id = (request or {}).get("run_id")
+    reason = (request or {}).get("reason") or ""
+    if not target_type or not target_id:
+        raise HTTPException(status_code=400, detail="target_type and target_id are required")
+    if not trace_id and not run_id:
+        raise HTTPException(status_code=400, detail="trace_id or run_id is required")
+
+    # Collect syscall events
+    events_res = await _execution_store.list_syscall_events(
+        limit=500,
+        offset=0,
+        trace_id=str(trace_id) if trace_id else None,
+        run_id=str(run_id) if run_id else None,
+    )
+    events = (events_res or {}).get("items") or []
+    summary = summarize_syscall_events(events)
+
+    # Collect execution record (best-effort)
+    exec_rec: Optional[Dict[str, Any]] = None
+    try:
+        if target_type == "agent" and run_id:
+            exec_rec = await _execution_store.get_agent_execution(str(run_id))
+        if target_type == "skill" and run_id:
+            exec_rec = await _execution_store.get_skill_execution(str(run_id))
+    except Exception:
+        exec_rec = None
+
+    # Basic recommendations (best-effort, deterministic)
+    failed = [e for e in events if str(e.get("status") or "").lower() in ("failed", "error")]
+    top_failed = {}
+    for e in failed:
+        k = f"{e.get('kind')}:{e.get('name')}"
+        top_failed[k] = top_failed.get(k, 0) + 1
+    top_failed_list = sorted(top_failed.items(), key=lambda kv: kv[1], reverse=True)[:10]
+
+    feedback = {
+        "reason": str(reason),
+        "execution": exec_rec or {},
+        "syscalls_summary": summary,
+        "top_failed_syscalls": [{"key": k, "count": v} for k, v in top_failed_list],
+        "notes": [
+            "该 artifact 仅用于审核/分析，不会自动改变线上行为。",
+            "如需自动修复/沉淀为技能包，请基于该 artifact 人工生成 prompt_revision/skill_evolution 后再发布。",
+        ],
+    }
+
+    artifact = LearningArtifact(
+        artifact_id=f"auto-{uuid.uuid4().hex[:12]}",
+        kind=LearningArtifactKind.FEEDBACK_SUMMARY,
+        target_type=target_type,
+        target_id=target_id,
+        version=f"auto:{int(time.time())}",
+        status=LearningArtifactStatus.DRAFT,
+        trace_id=str(trace_id) if trace_id else None,
+        run_id=str(run_id) if run_id else None,
+        payload={"feedback": feedback},
+        metadata={"source": "autocapture", "event_count": len(events)},
+    )
+    await _execution_store.upsert_learning_artifact(artifact.to_record())
+    return await _execution_store.get_learning_artifact(artifact.artifact_id)
+
+
 @api_router.post("/learning/releases/{candidate_id}/publish")
 async def publish_release_candidate(candidate_id: str, request: dict):
     """
