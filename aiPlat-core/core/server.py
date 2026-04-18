@@ -4414,6 +4414,59 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request)
     return resp
 
 
+@api_router.post("/gateway/webhook/message")
+async def gateway_webhook_message(http_request: Request, body: Dict[str, Any]):
+    """
+    Minimal webhook adapter (Roadmap-3):
+    - Accept a generic incoming message event
+    - Convert to GatewayExecuteRequest
+    - Reuse /gateway/execute so pairing/auth/toolset/tracing stay consistent
+
+    Request body (minimal):
+    {
+      "channel": "slack|webchat|api|...",
+      "channel_user_id": "U123",
+      "text": "hello",
+      "kind": "agent|skill|tool",
+      "target_id": "...",
+      "user_id": "...",        # optional (otherwise pairing)
+      "session_id": "...",     # optional (otherwise pairing/default)
+      "payload": {...},        # optional (if absent, derived from text)
+      "options": {...},        # optional
+      "context": {...}         # optional extra context
+    }
+    """
+    payload = body.get("payload") if isinstance(body.get("payload"), dict) else None
+    if payload is None:
+        payload = {"input": {"message": body.get("text") or "", "text": body.get("text") or ""}}
+    # merge additional context
+    try:
+        ctx = payload.get("context") if isinstance(payload.get("context"), dict) else {}
+        ctx = dict(ctx) if isinstance(ctx, dict) else {}
+        extra_ctx = body.get("context") if isinstance(body.get("context"), dict) else {}
+        ctx.update(extra_ctx or {})
+        if body.get("channel_user_id"):
+            ctx.setdefault("channel_user_id", body.get("channel_user_id"))
+        payload["context"] = ctx
+    except Exception:
+        pass
+
+    req = GatewayExecuteRequest(
+        channel=str(body.get("channel") or "webhook"),
+        kind=str(body.get("kind") or "agent"),
+        target_id=str(body.get("target_id") or ""),
+        user_id=str(body.get("user_id")) if body.get("user_id") else None,
+        session_id=str(body.get("session_id")) if body.get("session_id") else None,
+        channel_user_id=str(body.get("channel_user_id")) if body.get("channel_user_id") else None,
+        tenant_id=str(body.get("tenant_id")) if body.get("tenant_id") else None,
+        payload=payload,
+        options=body.get("options") if isinstance(body.get("options"), dict) else None,
+    )
+    if not req.target_id:
+        raise HTTPException(status_code=400, detail="target_id is required")
+    return await gateway_execute(req, http_request)
+
+
 def _require_gateway_admin(http_request: Request) -> None:
     """
     Optional admin guard for gateway management endpoints.
