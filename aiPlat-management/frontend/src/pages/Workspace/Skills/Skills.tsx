@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Copy, Info, Plus, RotateCw, Trash2, Pencil, Play, Layers, Clock } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Badge, Table, Select, Switch, Button, Modal, Input, toast } from '../../../components/ui';
+import { Badge, Table, Select, Switch, Button, Modal, toast } from '../../../components/ui';
 import { useWorkspaceSkillStore } from '../../../stores';
 import type { Skill } from '../../../services';
+import AddSkillModal from '../../../components/workspace/AddSkillModal';
 import EditSkillModal from '../../../components/workspace/EditSkillModal';
 import ExecuteSkillModal from '../../../components/workspace/ExecuteSkillModal';
 import SkillVersionsModal from '../../../components/workspace/SkillVersionsModal';
@@ -29,7 +30,7 @@ const SKILL_CATEGORIES = [
 ];
 
 const WorkspaceSkills: React.FC = () => {
-  const { skills, loading, fetchSkills, toggleSkill, deleteSkill, restoreSkill, createSkill } = useWorkspaceSkillStore();
+  const { skills, loading, fetchSkills, toggleSkill, deleteSkill, restoreSkill } = useWorkspaceSkillStore();
   const [categoryFilter, setCategoryFilter] = useState<string>('');
   const [enabledOnly, setEnabledOnly] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -42,10 +43,6 @@ const WorkspaceSkills: React.FC = () => {
   const [executeSkill, setExecuteSkill] = useState<Skill | null>(null);
   const [versionsModalOpen, setVersionsModalOpen] = useState(false);
   const [executionsModalOpen, setExecutionsModalOpen] = useState(false);
-
-  const [newName, setNewName] = useState('');
-  const [newCategory, setNewCategory] = useState('general');
-  const [newDesc, setNewDesc] = useState('');
 
   useEffect(() => {
     fetchSkills();
@@ -337,51 +334,11 @@ const WorkspaceSkills: React.FC = () => {
         </div>
       </Modal>
 
-      <Modal
+      <AddSkillModal
         open={addModalOpen}
         onClose={() => setAddModalOpen(false)}
-        title="创建应用库 Skill"
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setAddModalOpen(false)}>
-              取消
-            </Button>
-            <Button
-              variant="primary"
-              onClick={async () => {
-                if (!newName.trim()) return;
-                try {
-                  await createSkill({ name: newName.trim(), description: newDesc, category: newCategory });
-                  toast.success('已创建');
-                  setAddModalOpen(false);
-                  setNewName('');
-                  setNewDesc('');
-                  setNewCategory('general');
-                } catch {
-                  toast.error('创建失败（可能与引擎 Skill 同名被保留）');
-                }
-              }}
-            >
-              创建
-            </Button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">名称</label>
-            <Input value={newName} onChange={(e: any) => setNewName(e.target.value)} placeholder="例如：我的客服助手" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">分类</label>
-            <Select value={newCategory} onChange={(v: string) => setNewCategory(v)} options={SKILL_CATEGORIES.filter(x => x.value)} />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">描述</label>
-            <Input value={newDesc} onChange={(e: any) => setNewDesc(e.target.value)} placeholder="描述用途" />
-          </div>
-        </div>
-      </Modal>
+        onSuccess={fetchSkills}
+      />
     </div>
   );
 };
