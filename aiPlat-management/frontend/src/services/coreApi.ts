@@ -102,7 +102,7 @@ export const workspaceAgentApi = {
     return apiClient.get<AgentListResponse>(`/core/workspace/agents${qs ? '?' + qs : ''}`);
   },
 
-  create: async (data: { name: string; agent_type: string; config?: Record<string, unknown>; skills?: string[]; tools?: string[] }) => {
+  create: async (data: { name: string; agent_type: string; config?: Record<string, unknown>; skills?: string[]; tools?: string[]; memory_config?: Record<string, unknown>; metadata?: Record<string, unknown> }) => {
     return apiClient.post<{ id: string; status: string; name: string }>('/core/workspace/agents', data);
   },
 
@@ -122,7 +122,7 @@ export const workspaceAgentApi = {
     return apiClient.get<Agent>(`/core/workspace/agents/${agentId}`);
   },
 
-  update: async (agentId: string, data: { config?: Record<string, unknown>; metadata?: Record<string, unknown> }) => {
+  update: async (agentId: string, data: { name?: string; config?: Record<string, unknown>; skills?: string[]; tools?: string[]; memory_config?: Record<string, unknown>; metadata?: Record<string, unknown> }) => {
     return apiClient.put<{ status: string; id: string }>(`/core/workspace/agents/${agentId}`, data);
   },
 

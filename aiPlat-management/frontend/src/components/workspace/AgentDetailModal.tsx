@@ -52,6 +52,9 @@ const AgentDetailModal: React.FC<AgentDetailModalProps> = ({ open, agent, onClos
   const tools = detail?.tools || agent.tools || [];
   const config = detail?.config || {};
   const configStr = config && Object.keys(config).length > 0 ? JSON.stringify(config, null, 2) : null;
+  const memoryConfig = (detail as any)?.memory_config || (agent as any)?.memory_config || null;
+  const memoryConfigStr = memoryConfig ? JSON.stringify(memoryConfig, null, 2) : null;
+  const description = String((detail as any)?.metadata?.description || (agent as any)?.metadata?.description || '');
 
   return (
     <Modal open={open} onClose={onClose} title={agent.name} width={700} footer={<Button onClick={onClose}>关闭</Button>}>
@@ -114,6 +117,22 @@ const AgentDetailModal: React.FC<AgentDetailModalProps> = ({ open, agent, onClos
               </pre>
             </div>
           )}
+
+          {description && (
+            <div>
+              <div className="text-sm text-gray-400 mb-1 font-medium">描述</div>
+              <div className="text-sm text-gray-300 whitespace-pre-wrap">{description}</div>
+            </div>
+          )}
+
+          {memoryConfigStr && (
+            <div>
+              <div className="text-sm text-gray-400 mb-1 font-medium">memory_config</div>
+              <pre className="bg-dark-bg border border-dark-border rounded-lg p-3 text-xs text-gray-300 overflow-auto" style={{ maxHeight: 200 }}>
+                {memoryConfigStr}
+              </pre>
+            </div>
+          )}
         </div>
       )}
     </Modal>
@@ -121,4 +140,3 @@ const AgentDetailModal: React.FC<AgentDetailModalProps> = ({ open, agent, onClos
 };
 
 export default AgentDetailModal;
-

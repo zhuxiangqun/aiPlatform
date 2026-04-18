@@ -591,6 +591,8 @@ async def create_agent(request: AgentCreateRequest):
         config=request.config,
         skills=request.skills,
         tools=request.tools,
+        memory_config=request.memory_config,
+        metadata=request.metadata,
     )
     return {
         "id": agent.id,
@@ -624,7 +626,11 @@ async def update_agent(agent_id: str, request: AgentUpdateRequest):
     try:
         agent = await _agent_manager.update_agent(
             agent_id,
+            name=request.name,
             config=request.config,
+            skills=request.skills,
+            tools=request.tools,
+            memory_config=request.memory_config,
             metadata=request.metadata
         )
     except PermissionError as e:
@@ -707,6 +713,8 @@ async def create_workspace_agent(request: AgentCreateRequest):
             config=request.config,
             skills=request.skills,
             tools=request.tools,
+            memory_config=request.memory_config,
+            metadata=request.metadata,
         )
         return {"id": agent.id, "status": "created", "name": agent.name}
     except ValueError as e:
@@ -767,7 +775,15 @@ async def update_workspace_agent(agent_id: str, request: AgentUpdateRequest):
     """Update workspace agent."""
     if not _workspace_agent_manager:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
-    agent = await _workspace_agent_manager.update_agent(agent_id, config=request.config, metadata=request.metadata)
+    agent = await _workspace_agent_manager.update_agent(
+        agent_id,
+        name=request.name,
+        config=request.config,
+        skills=request.skills,
+        tools=request.tools,
+        memory_config=request.memory_config,
+        metadata=request.metadata,
+    )
     if not agent:
         raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
     return {"status": "updated", "id": agent_id}

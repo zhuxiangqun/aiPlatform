@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Copy, Info, Plus, RotateCw, RotateCcw, Trash2, Pencil, Play } from 'lucide-react';
+import { Copy, Info, RotateCw, RotateCcw, Trash2, Pencil, Play } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Badge, Table, Select, Switch, Button, Modal, toast } from '../../../components/ui';
-import { AddSkillModal, EditSkillModal, ExecuteSkillModal } from '../../../components/core';
+import { EditSkillModal, ExecuteSkillModal } from '../../../components/core';
 import { useSkillStore } from '../../../stores';
 import type { Skill } from '../../../services';
 
@@ -25,7 +25,6 @@ const Skills: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState<string | undefined>();
   const [enabledOnly, setEnabledOnly] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('');
-  const [addModalOpen, setAddModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [executeModalOpen, setExecuteModalOpen] = useState(false);
   const [editSkill, setEditSkill] = useState<Skill | null>(null);
@@ -263,13 +262,6 @@ const Skills: React.FC = () => {
           >
             刷新
           </Button>
-          <Button
-            variant="primary"
-            icon={<Plus className="w-4 h-4" />}
-            onClick={() => setAddModalOpen(true)}
-          >
-            创建Skill
-          </Button>
         </div>
       </div>
 
@@ -375,12 +367,6 @@ const Skills: React.FC = () => {
           </div>
         </div>
       </Modal>
-
-      <AddSkillModal
-        open={addModalOpen}
-        onClose={() => setAddModalOpen(false)}
-        onSuccess={fetchSkills}
-      />
 
       <EditSkillModal
         open={editModalOpen}

@@ -42,9 +42,11 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
   const [loading, setLoading] = useState(false);
   const [selectedType, setSelectedType] = useState<string>('base');
   const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
   const [skills, setSkills] = useState<string[]>([]);
   const [tools, setTools] = useState<string[]>([]);
   const [configText, setConfigText] = useState('');
+  const [memoryConfigText, setMemoryConfigText] = useState('{\n  "type": "short_term",\n  "recall_count": 5\n}');
   const [skillOptions, setSkillOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [toolOptions, setToolOptions] = useState<Array<{ value: string; label: string }>>([]);
 
@@ -52,9 +54,11 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
     if (open) {
       setSelectedType('base');
       setName('');
+      setDescription('');
       setSkills([]);
       setTools([]);
       setConfigText(JSON.stringify(AGENT_TYPE_TEMPLATES.base.config, null, 2));
+      setMemoryConfigText('{\n  "type": "short_term",\n  "recall_count": 5\n}');
       fetchOptions();
     }
   }, [open]);
@@ -96,7 +100,22 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
           return;
         }
       }
-      await workspaceAgentApi.create({ name: name.trim(), agent_type: selectedType, config, skills, tools });
+
+      let memory_config: Record<string, unknown> | undefined;
+      if (memoryConfigText?.trim()) {
+        try {
+          memory_config = JSON.parse(memoryConfigText);
+        } catch {
+          toast.error('memory_config JSON 格式错误，请检查');
+          setLoading(false);
+          return;
+        }
+      }
+
+      const metadata: Record<string, unknown> = {};
+      if (description.trim()) metadata.description = description.trim();
+
+      await workspaceAgentApi.create({ name: name.trim(), agent_type: selectedType, config, skills, tools, memory_config, metadata });
       toast.success('创建成功');
       onSuccess();
       onClose();
@@ -129,6 +148,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
     >
       <div className="space-y-4">
         <Input label="名称" value={name} onChange={(e: any) => setName(e.target.value)} placeholder="例如：数据分析助手" />
+        <Input label="描述（可选）" value={description} onChange={(e: any) => setDescription(e.target.value)} placeholder="这个 Agent 的职责边界与适用场景" />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -186,6 +206,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
         )}
 
         <Textarea label="配置（JSON）" value={configText} onChange={(e: any) => setConfigText(e.target.value)} rows={10} />
+        <Textarea label="memory_config（JSON，可选）" value={memoryConfigText} onChange={(e: any) => setMemoryConfigText(e.target.value)} rows={6} />
         <div className="text-xs text-gray-500">{configHint}</div>
       </div>
     </Modal>

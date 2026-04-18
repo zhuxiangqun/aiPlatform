@@ -402,6 +402,7 @@ class AgentManager:
     async def update_agent(
         self,
         agent_id: str,
+        name: Optional[str] = None,
         config: Optional[Dict[str, Any]] = None,
         skills: Optional[List[str]] = None,
         tools: Optional[List[str]] = None,
@@ -418,6 +419,8 @@ class AgentManager:
             if isinstance(getattr(agent, "metadata", None), dict) and agent.metadata.get("protected") is True:
                 raise PermissionError("Protected engine agent cannot be edited")
         
+        if name:
+            agent.name = name
         if config:
             agent.config.update(config)
         if skills is not None:

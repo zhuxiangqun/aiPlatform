@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, RotateCw, PlayCircle, PauseCircle, Trash2, Zap, Pencil } from 'lucide-react';
+import { RotateCw, PlayCircle, PauseCircle, Trash2, Zap, Pencil } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Table, Select, Button, Modal, toast } from '../../../components/ui';
-import { AddAgentModal, EditAgentModal, ExecuteAgentModal, AgentDetailModal } from '../../../components/core';
+import { EditAgentModal, ExecuteAgentModal, AgentDetailModal } from '../../../components/core';
 import { useAgentStore } from '../../../stores';
 import type { Agent } from '../../../services';
 
@@ -24,7 +24,6 @@ const Agents: React.FC = () => {
   const { agents, loading, fetchAgents, startAgent, stopAgent, deleteAgent } = useAgentStore();
   const [typeFilter, setTypeFilter] = useState<string | undefined>();
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
-  const [addModalOpen, setAddModalOpen] = useState(false);
   const [executeModalOpen, setExecuteModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -215,13 +214,6 @@ const Agents: React.FC = () => {
           >
             刷新
           </Button>
-          <Button
-            variant="primary"
-            icon={<Plus className="w-4 h-4" />}
-            onClick={() => setAddModalOpen(true)}
-          >
-            创建Agent
-          </Button>
         </div>
       </div>
 
@@ -260,12 +252,6 @@ const Agents: React.FC = () => {
           确定要删除Agent "{deleteConfirm.agent?.name}" 吗？此操作不可撤销，请谨慎操作。
         </p>
       </Modal>
-
-      <AddAgentModal
-        open={addModalOpen}
-        onClose={() => setAddModalOpen(false)}
-        onSuccess={fetchAgents}
-      />
 
       <EditAgentModal
         open={editModalOpen}
