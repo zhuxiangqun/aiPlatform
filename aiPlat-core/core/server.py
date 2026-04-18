@@ -901,6 +901,20 @@ async def update_workspace_agent_sop(agent_id: str, request: dict):
     return {"status": "updated", "id": agent_id}
 
 
+@api_router.get("/workspace/agents/{agent_id}/execution-help")
+async def get_workspace_agent_execution_help(agent_id: str):
+    """Get execution input help/examples for agent."""
+    if not _workspace_agent_manager:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    agent = await _workspace_agent_manager.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    data = await _workspace_agent_manager.get_agent_execution_help(agent_id)  # type: ignore[attr-defined]
+    if not data:
+        raise HTTPException(status_code=404, detail="Execution help not found")
+    return data
+
+
 @api_router.delete("/workspace/agents/{agent_id}")
 async def delete_workspace_agent(agent_id: str):
     if not _workspace_agent_manager:

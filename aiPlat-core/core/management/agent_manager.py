@@ -6,6 +6,7 @@ Provides CRUD operations for agents and skill/tool bindings.
 
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any
+import json
 from datetime import datetime
 import uuid
 import os
@@ -563,6 +564,116 @@ class AgentManager:
         agent = self._agents.get(agent_id)
         if not agent:
             return False
+
+    async def get_agent_execution_help(self, agent_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get execution input help/examples/schema for an agent.
+        Priority:
+        1) AGENT.md frontmatter fields:
+           - execution_help (markdown string)
+           - execution_examples (list of {title, content})
+           - execution_input_schema (object)
+        2) Generate defaults based on bound skills/tools.
+        """
+        agent = self._agents.get(agent_id)
+        if not agent:
+            return None
+        info = self._read_agent_md(agent_id)
+        fm = (info or {}).get("frontmatter") if isinstance(info, dict) else {}
+        if not isinstance(fm, dict):
+            fm = {}
+
+        help_md = fm.get("execution_help")
+        examples = fm.get("execution_examples")
+        schema = fm.get("execution_input_schema")
+
+        # normalize examples
+        norm_examples: list[dict] = []
+        if isinstance(examples, list):
+            for e in examples:
+                if isinstance(e, dict) and e.get("title") and e.get("content") is not None:
+                    norm_examples.append({"title": str(e["title"]), "content": str(e["content"])})
+
+        if isinstance(help_md, str) and help_md.strip():
+            return {
+                "agent_id": agent_id,
+                "help_markdown": help_md.strip(),
+                "examples": norm_examples,
+                "input_schema": schema if isinstance(schema, dict) else None,
+            }
+
+        # -------------------- default help generation --------------------
+        skill_ids = list(getattr(agent, "skills", []) or [])
+        tool_ids = list(getattr(agent, "tools", []) or [])
+
+        has_file_ops = "file_operations" in tool_ids
+        has_code_review = "code_review" in skill_ids
+
+        default_help = (
+            "### 如何填写输入\n"
+            "- 你可以输入 **文本** 或 **JSON**。\n"
+            "- 如果输入不是合法 JSON，系统会自动封装为：`{\"message\": \"...\"}`。\n"
+            "\n"
+            "### 常见输入字段（推荐 JSON）\n"
+            "- `message`：文本任务描述（最通用）\n"
+            "- `directory`：要分析的目录（绝对路径）\n"
+            "- `exclude`：忽略目录/文件（数组）\n"
+            "- `diff`：PR diff（字符串）\n"
+            "- `language`：语言/框架\n"
+            "\n"
+            "### 目录自动分析的前置条件\n"
+            f"- 当前 Agent {'已' if has_file_ops else '未'}绑定 `file_operations` 工具。\n"
+            "- 服务器需配置 `AIPLAT_FILE_OPERATIONS_ALLOWED_ROOTS` 允许读取的根目录（白名单）。\n"
+        )
+
+        if not norm_examples:
+            if has_code_review:
+                norm_examples = [
+                    {
+                        "title": "代码片段审查（文本）",
+                        "content": "请审查下面代码，输出高/中/低问题清单 + 修改建议 + 安全风险 + 测试建议。\n\n语言/框架：<填写>\n代码：\n<粘贴代码>",
+                    },
+                    {
+                        "title": "PR diff 审查（JSON）",
+                        "content": json.dumps(
+                            {
+                                "task": "code_review",
+                                "language": "<填写>",
+                                "diff": "<粘贴 diff>",
+                                "output": {"format": "markdown", "severity_levels": ["high", "medium", "low"]},
+                            },
+                            ensure_ascii=False,
+                            indent=2,
+                        ),
+                    },
+                    {
+                        "title": "目录审查（JSON，需要 file_operations）",
+                        "content": json.dumps(
+                            {
+                                "task": "codebase_review",
+                                "directory": "/abs/path/to/repo",
+                                "exclude": ["node_modules", "dist", "build", ".git", ".venv"],
+                                "language": "<填写>",
+                                "strategy": {"max_files": 30, "read_max_bytes": 200000},
+                                "output": {"format": "markdown", "severity_levels": ["high", "medium", "low"]},
+                            },
+                            ensure_ascii=False,
+                            indent=2,
+                        ),
+                    },
+                ]
+            else:
+                norm_examples = [
+                    {"title": "通用任务（文本）", "content": "请完成以下任务：\n<描述你的需求>"},
+                    {"title": "通用任务（JSON）", "content": json.dumps({"message": "请完成以下任务：<描述你的需求>"}, ensure_ascii=False, indent=2)},
+                ]
+
+        return {
+            "agent_id": agent_id,
+            "help_markdown": default_help,
+            "examples": norm_examples,
+            "input_schema": schema if isinstance(schema, dict) else None,
+        }
         # protect engine scope agents
         if (self._scope or "engine").strip().lower() == "engine":
             if isinstance(getattr(agent, "metadata", None), dict) and agent.metadata.get("protected") is True:

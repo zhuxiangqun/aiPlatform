@@ -134,6 +134,12 @@ export const workspaceAgentApi = {
     return apiClient.put<{ status: string; id: string }>(`/core/workspace/agents/${agentId}/sop`, { sop });
   },
 
+  getExecutionHelp: async (agentId: string) => {
+    return apiClient.get<{ agent_id: string; help_markdown: string; examples: Array<{ title: string; content: string }>; input_schema?: Record<string, unknown> | null }>(
+      `/core/workspace/agents/${agentId}/execution-help`
+    );
+  },
+
   execute: async (agentId: string, data: { messages?: unknown[]; input?: unknown; context?: Record<string, unknown> }) => {
     return apiClient.post<{ execution_id: string; status: string; output?: unknown; error?: string }>(`/core/workspace/agents/${agentId}/execute`, data);
   },
