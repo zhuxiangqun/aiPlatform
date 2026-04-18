@@ -1,6 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Bell, Check, Trash2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 
 import { Drawer } from './Drawer';
 import { Button } from './Button';
@@ -57,7 +56,6 @@ const badgeClassFor = (variant: NotificationVariant) => {
 };
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [items, setItems] = useState<NotificationItem[]>([]);
 
@@ -169,11 +167,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                             if (!link) return;
                             markRead(n.id);
                             close();
-                            if (link.startsWith('http')) {
-                              window.location.href = link;
-                            } else {
-                              navigate(link);
-                            }
+                            // Open in a new tab by default to avoid disrupting current workflow.
+                            const url = link.startsWith('http')
+                              ? link
+                              : `${window.location.origin}${link.startsWith('/') ? link : `/${link}`}`;
+                            window.open(url, '_blank', 'noopener,noreferrer');
                           }}
                         >
                           打开详情

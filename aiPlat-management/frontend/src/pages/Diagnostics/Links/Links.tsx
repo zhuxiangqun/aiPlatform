@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Copy, ExternalLink, Search } from 'lucide-react';
+import { ArrowLeft, Copy, ExternalLink, Search } from 'lucide-react';
 
 import { Badge, Button, Card, CardContent, CardHeader, Input, Select, Table, Tabs } from '../../../components/ui';
 import { diagnosticsApi } from '../../../services';
@@ -153,8 +153,17 @@ const Links: React.FC = () => {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-200">Links</h1>
-        <p className="text-sm text-gray-500 mt-1">输入任意 ID 联动查询（trace / executions / graph runs / lineage）</p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-200">Links</h1>
+            <p className="text-sm text-gray-500 mt-1">输入任意 ID 联动查询（trace / executions / graph runs / lineage）</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" icon={<ArrowLeft size={16} />} onClick={() => navigate(-1)}>
+              返回上一页
+            </Button>
+          </div>
+        </div>
       </div>
 
       <Card>
