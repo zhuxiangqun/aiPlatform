@@ -227,6 +227,24 @@ async def sys_tool_call(
                 )
             except Exception:
                 pass
+            try:
+                # Audit (best-effort)
+                await store.add_audit_log(
+                    action="tool_policy_denied" if getattr(pr, "policy_version", None) else "tool_permission_denied",
+                    status="denied",
+                    tenant_id=getattr(pr, "tenant_id", None) or args.get("_tenant_id"),
+                    actor_id=user_id,
+                    resource_type="tool",
+                    resource_id=tool_name or "<unknown>",
+                    run_id=str(_run_id) if _run_id else None,
+                    trace_id=span.trace_id,
+                    detail={
+                        "reason": pr.reason,
+                        "policy_version": getattr(pr, "policy_version", None),
+                    },
+                )
+            except Exception:
+                pass
         await trace_gate.end(span, success=False)
         try:
             runtime = get_kernel_runtime()
@@ -244,7 +262,13 @@ async def sys_tool_call(
             success=False,
             output=None,
             error="policy_denied",
-            metadata={"reason": pr.reason, "tool": tool_name, "user_id": user_id},
+            metadata={
+                "reason": pr.reason,
+                "tool": tool_name,
+                "user_id": user_id,
+                "tenant_id": getattr(pr, "tenant_id", None) or args.get("_tenant_id"),
+                "policy_version": getattr(pr, "policy_version", None),
+            },
         )
     if pr.decision == PolicyDecision.APPROVAL_REQUIRED:
         runtime = get_kernel_runtime()
@@ -275,6 +299,24 @@ async def sys_tool_call(
                 )
             except Exception:
                 pass
+            try:
+                await store.add_audit_log(
+                    action="tool_policy_approval_required" if getattr(pr, "policy_version", None) else "tool_approval_required",
+                    status="approval_required",
+                    tenant_id=getattr(pr, "tenant_id", None) or args.get("_tenant_id"),
+                    actor_id=user_id,
+                    resource_type="tool",
+                    resource_id=tool_name or "<unknown>",
+                    run_id=str(_run_id) if _run_id else None,
+                    trace_id=span.trace_id,
+                    detail={
+                        "reason": pr.reason,
+                        "approval_request_id": pr.approval_request_id,
+                        "policy_version": getattr(pr, "policy_version", None),
+                    },
+                )
+            except Exception:
+                pass
         await trace_gate.end(span, success=False)
         try:
             runtime = get_kernel_runtime()
@@ -302,6 +344,8 @@ async def sys_tool_call(
                 "approval_request_id": pr.approval_request_id,
                 "tool": tool_name,
                 "user_id": user_id,
+                "tenant_id": getattr(pr, "tenant_id", None) or args.get("_tenant_id"),
+                "policy_version": getattr(pr, "policy_version", None),
             },
         )
 

@@ -35,6 +35,8 @@ class PolicyResult:
     decision: PolicyDecision
     reason: Optional[str] = None
     approval_request_id: Optional[str] = None
+    tenant_id: Optional[str] = None
+    policy_version: Optional[int] = None
 
 
 class PolicyGate:
@@ -61,6 +63,7 @@ class PolicyGate:
         deny_by_policy = False
         require_approval_by_policy = False
         policy_reason = None
+        policy_version: Optional[int] = None
         if tenant_id:
             try:
                 runtime = get_kernel_runtime()
@@ -75,6 +78,10 @@ class PolicyGate:
                     finally:
                         conn.close()
                     if row and row[0]:
+                        try:
+                            policy_version = int(row[1]) if row[1] is not None else None
+                        except Exception:
+                            policy_version = None
                         policy = json.loads(row[0]) if isinstance(row[0], str) else {}
                         tool_policy = policy.get("tool_policy") if isinstance(policy, dict) else None
                         if isinstance(tool_policy, dict):
@@ -86,7 +93,7 @@ class PolicyGate:
                             )
                             if tool_name in deny_tools:
                                 deny_by_policy = True
-                                policy_reason = f"Denied by tenant policy (tenant_id={tenant_id})"
+                                policy_reason = f"Denied by tenant policy (tenant_id={tenant_id}, version={policy_version})"
                             if tool_name in approval_tools:
                                 require_approval_by_policy = True
             except Exception:
@@ -94,7 +101,12 @@ class PolicyGate:
                 pass
 
         if deny_by_policy:
-            return PolicyResult(decision=PolicyDecision.DENY, reason=policy_reason or "Denied by tenant policy")
+            return PolicyResult(
+                decision=PolicyDecision.DENY,
+                reason=policy_reason or "Denied by tenant policy",
+                tenant_id=str(tenant_id),
+                policy_version=policy_version,
+            )
 
         force_approval = bool((tool_args or {}).get("_approval_required")) if isinstance(tool_args, dict) else False
         if require_approval_by_policy:
@@ -106,6 +118,14 @@ class PolicyGate:
         runtime = get_kernel_runtime()
         approval_mgr = getattr(runtime, "approval_manager", None) if runtime else None
         if not approval_mgr:
+            # If approval is being enforced (explicitly or via tenant policy), fail-closed.
+            if force_approval:
+                return PolicyResult(
+                    decision=PolicyDecision.APPROVAL_REQUIRED,
+                    reason=f"Tool '{tool_name}' requires approval (approval manager not initialized)",
+                    tenant_id=str(tenant_id) if tenant_id else None,
+                    policy_version=policy_version,
+                )
             return PolicyResult(decision=PolicyDecision.ALLOW)
 
         # If caller provides an approval_request_id, honor it (resume semantics).
