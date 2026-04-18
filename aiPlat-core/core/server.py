@@ -532,6 +532,8 @@ def _prod_stdio_policy_check(
        - deny risky interpreter basenames in prod (configurable)
        - command exists and is executable (best-effort)
        - args count/length sanity (avoid abuse)
+    5) optional hardening (recommended):
+       - force launcher in prod (AIPLAT_STDIO_FORCE_LAUNCHER_IN_PROD=true)
     """
     if _runtime_env() != "prod":
         return True, ""
@@ -552,6 +554,17 @@ def _prod_stdio_policy_check(
     cmd = str(command).strip()
     if not cmd.startswith("/"):
         return False, "stdio command must be an absolute path"
+
+    # optional: force a single controlled launcher in prod
+    force_launcher = (os.environ.get("AIPLAT_STDIO_FORCE_LAUNCHER_IN_PROD", "") or "").strip().lower() in {"1", "true", "yes", "on"}
+    if force_launcher:
+        launcher = (os.environ.get("AIPLAT_STDIO_PROD_LAUNCHER") or "").strip()
+        if not launcher:
+            return False, "AIPLAT_STDIO_FORCE_LAUNCHER_IN_PROD is true but AIPLAT_STDIO_PROD_LAUNCHER is empty"
+        if not launcher.startswith("/"):
+            return False, "AIPLAT_STDIO_PROD_LAUNCHER must be an absolute path"
+        if cmd != launcher:
+            return False, "command must equal AIPLAT_STDIO_PROD_LAUNCHER when launcher enforcement is enabled"
 
     # deny risky basenames (configurable; defaults to common shells)
     deny_raw = os.environ.get("AIPLAT_STDIO_DENY_COMMAND_BASENAMES", "bash,sh,zsh")
