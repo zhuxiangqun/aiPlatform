@@ -158,6 +158,58 @@ class HarnessIntegration:
             return await self._execute_graph(request)
         return ExecutionResult(ok=False, error=f"Unsupported kind: {request.kind}", http_status=400)
 
+    # -----------------------------
+    # Roadmap-0: error normalization
+    # -----------------------------
+    def _error_detail(self, code: str, message: str, *, extra: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        d: Dict[str, Any] = {"code": code, "message": message}
+        if isinstance(extra, dict) and extra:
+            d["extra"] = extra
+        return d
+
+    def _normalize_error(
+        self,
+        *,
+        error: Optional[str],
+        metadata: Optional[Dict[str, Any]] = None,
+        fallback_message: str = "Execution failed",
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Normalize internal error strings into a stable {code,message} object.
+
+        Backward compatible:
+        - Callers still receive the legacy `error: str | null`
+        - New field is exposed as `error_detail`
+        """
+        if not error:
+            return None
+        meta = metadata or {}
+        err = str(error)
+
+        # Prefer human-readable reason when available (toolset/policy denials).
+        reason = None
+        try:
+            if isinstance(meta.get("reason"), str):
+                reason = meta.get("reason")
+            if isinstance(meta.get("policy"), dict) and isinstance(meta["policy"].get("reason"), str):
+                reason = meta["policy"].get("reason")
+        except Exception:
+            reason = None
+
+        if err == "toolset_denied":
+            return self._error_detail("TOOLSET_DENIED", reason or fallback_message, extra={"error": err})
+        if err == "policy_denied":
+            return self._error_detail("POLICY_DENIED", reason or fallback_message, extra={"error": err})
+        if err == "approval_required":
+            return self._error_detail("APPROVAL_REQUIRED", reason or "需要审批", extra={"error": err})
+
+        if "timeout" in err.lower():
+            return self._error_detail("TIMEOUT", err, extra={"error": err})
+        if "no model" in err.lower() or ("model" in err.lower() and "available" in err.lower()):
+            return self._error_detail("NO_MODEL", err, extra={"error": err})
+
+        return self._error_detail("EXCEPTION", err or fallback_message, extra={"error": err})
+
     async def _execute_agent(self, req: "ExecutionRequest") -> "ExecutionResult":
         from core.apps.agents import get_agent_registry
         from core.apps.skills import get_skill_registry
@@ -559,6 +611,11 @@ class HarnessIntegration:
                     "status": record["status"],
                     "output": result.output,
                     "error": result.error,
+                    "error_detail": self._normalize_error(
+                        error=result.error,
+                        metadata=meta,
+                        fallback_message=str(result.error or "执行失败"),
+                    ),
                     "duration_ms": record["duration_ms"],
                     "metadata": meta,
                 },
@@ -716,6 +773,11 @@ class HarnessIntegration:
                 "input": execution.input_data,
                 "output": execution.output_data,
                 "error": execution.error,
+                "error_detail": self._normalize_error(
+                    error=execution.error,
+                    metadata={"skill_id": execution.skill_id, "status": execution.status},
+                    fallback_message=str(execution.error or "执行失败"),
+                ),
                 "trace_id": trace_id,
                 "start_time": execution.start_time.isoformat() if execution.start_time else None,
                 "end_time": execution.end_time.isoformat() if execution.end_time else None,
@@ -797,6 +859,11 @@ class HarnessIntegration:
                     "success": getattr(result, "success", True),
                     "output": getattr(result, "output", str(result)),
                     "error": getattr(result, "error", None) or None,
+                    "error_detail": self._normalize_error(
+                        error=getattr(result, "error", None) or None,
+                        metadata=getattr(result, "metadata", {}) or {},
+                        fallback_message=str(getattr(result, "error", None) or "执行失败"),
+                    ),
                     "latency": getattr(result, "latency", 0),
                     "metadata": getattr(result, "metadata", {}) or {},
                     "trace_id": trace_id,
