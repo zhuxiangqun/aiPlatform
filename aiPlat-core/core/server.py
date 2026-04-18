@@ -2214,6 +2214,20 @@ async def get_workspace_skill_active_version(skill_id: str):
     return {"skill_id": skill_id, "active_version": active_version}
 
 
+@api_router.get("/workspace/skills/{skill_id}/execution-help")
+async def get_workspace_skill_execution_help(skill_id: str):
+    """Get execution input help/examples for a skill."""
+    if not _workspace_skill_manager:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    skill = await _workspace_skill_manager.get_skill(skill_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    data = await _workspace_skill_manager.get_skill_execution_help(skill_id)  # type: ignore[attr-defined]
+    if not data:
+        raise HTTPException(status_code=404, detail="Execution help not found")
+    return data
+
+
 @api_router.get("/skills/{skill_id}/agents")
 async def get_skill_agents(skill_id: str):
     """Get agents bound to skill"""

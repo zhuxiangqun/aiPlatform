@@ -35,6 +35,42 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
     });
   }, [properties, requiredFields]);
 
+  const exampleArgsText = useMemo(() => {
+    const ex: Record<string, any> = {};
+    for (const [k, specAny] of Object.entries(properties) as any) {
+      const spec = specAny as ParameterProperty;
+      const isReq = requiredFields.includes(k);
+      if (!isReq && spec.default === undefined) continue;
+      const t = (spec.type || 'string').toLowerCase();
+      if (spec.default !== undefined) ex[k] = spec.default;
+      else if (t === 'integer' || t === 'number') ex[k] = 0;
+      else if (t === 'boolean') ex[k] = false;
+      else if (t === 'array') ex[k] = [];
+      else if (t === 'object') ex[k] = {};
+      else ex[k] = `<填写 ${k}>`;
+    }
+    // ensure required fields exist
+    for (const k of requiredFields) {
+      if (ex[k] !== undefined) continue;
+      const spec = (properties as any)?.[k] as ParameterProperty | undefined;
+      const t = (spec?.type || 'string').toLowerCase();
+      if (t === 'integer' || t === 'number') ex[k] = 0;
+      else if (t === 'boolean') ex[k] = false;
+      else if (t === 'array') ex[k] = [];
+      else if (t === 'object') ex[k] = {};
+      else ex[k] = `<填写 ${k}>`;
+    }
+    return JSON.stringify(ex, null, 2);
+  }, [properties, requiredFields]);
+
+  const troubleshooting = useMemo(() => {
+    return `### 常见问题排查（尤其是 MCP 工具）
+- 404 / Not Found：工具未注册或未放行（MCP：allowed_tools 未包含该 tool_name；或 server 未启用）
+- 401/403：鉴权失败或权限不足（检查 token/auth 与策略）
+- stdio 工具失败：prod 需通过放行策略（allowlist/command prefixes/launcher），并确保目标可执行文件存在
+- 参数错误：对 object/array 参数请传合法 JSON（本页会自动解析字符串 JSON）`;
+  }, []);
+
   const handleExecute = async () => {
     if (!tool) return;
     try {
@@ -160,7 +196,7 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
       open={open}
       onClose={handleClose}
       title={`执行 Tool: ${tool?.name || ''}`}
-      width={720}
+      width={1100}
       footer={
         <>
           <Button variant="secondary" onClick={handleClose} disabled={loading}>关闭</Button>
@@ -168,41 +204,76 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
         </>
       }
     >
-      {tool?.description && (
-        <div className="mb-4 text-sm text-gray-400">{tool.description}</div>
-      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          {tool?.description && (
+            <div className="mb-4 text-sm text-gray-400">{tool.description}</div>
+          )}
 
-      {sortedFields.length > 0 ? (
-        <div className="space-y-4">
-          {sortedFields.map(([name, spec]) => renderField(name, spec as ParameterProperty))}
-        </div>
-      ) : (
-        <div className="py-4 text-center text-gray-400 text-sm">
-          此 Tool 无需参数，直接点击"执行"即可
-        </div>
-      )}
+          {sortedFields.length > 0 ? (
+            <div className="space-y-4">
+              {sortedFields.map(([name, spec]) => renderField(name, spec as ParameterProperty))}
+            </div>
+          ) : (
+            <div className="py-4 text-center text-gray-400 text-sm">
+              此 Tool 无需参数，直接点击"执行"即可
+            </div>
+          )}
 
-      {result && (
-        <div className="mt-4 p-4 rounded-lg border border-dark-border bg-dark-bg">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-100">执行结果</span>
-            <span className={`text-xs px-2 py-0.5 rounded ${result.success !== false ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'}`}>
-              {result.success !== false ? '成功' : '失败'}
-            </span>
+          {result && (
+            <div className="mt-4 p-4 rounded-lg border border-dark-border bg-dark-bg">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-100">执行结果</span>
+                <span className={`text-xs px-2 py-0.5 rounded ${result.success !== false ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'}`}>
+                  {result.success !== false ? '成功' : '失败'}
+                </span>
+              </div>
+              {result.latency != null && (
+                <div className="text-xs text-gray-400 mb-2">耗时: {result.latency.toFixed(1)}ms</div>
+              )}
+              {result.output !== undefined && result.output !== null && (
+                <pre className="text-xs text-gray-300 overflow-auto max-h-60 bg-dark-card border border-dark-border rounded-lg p-3">
+                  {typeof result.output === 'string' ? result.output : JSON.stringify(result.output as object, null, 2)}
+                </pre>
+              )}
+              {result.error && !result.output && (
+                <div className="text-xs text-red-300">{result.error}</div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="border border-dark-border rounded-lg bg-dark-card p-3">
+          <div className="text-sm font-medium text-gray-200 mb-2">使用说明 / 示例</div>
+          <div className="text-xs text-gray-300 whitespace-pre-wrap leading-relaxed mb-3">{troubleshooting}</div>
+
+          <div className="text-xs font-medium text-gray-300 mb-2">参数 Schema（只读）</div>
+          <pre className="text-xs text-gray-300 overflow-auto max-h-40 bg-dark-bg border border-dark-border rounded-lg p-3">
+            {tool?.parameters ? JSON.stringify(tool.parameters as object, null, 2) : '{}'}
+          </pre>
+
+          <div className="mt-3 flex items-center justify-between">
+            <div className="text-xs font-medium text-gray-300">调用参数示例（JSON）</div>
+            <Button
+              variant="secondary"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(exampleArgsText);
+                  toast.success('已复制');
+                } catch {
+                  toast.error('复制失败');
+                }
+              }}
+              disabled={loading}
+            >
+              复制示例
+            </Button>
           </div>
-          {result.latency != null && (
-            <div className="text-xs text-gray-400 mb-2">耗时: {result.latency.toFixed(1)}ms</div>
-          )}
-          {result.output !== undefined && result.output !== null && (
-            <pre className="text-xs text-gray-300 overflow-auto max-h-60 bg-dark-card border border-dark-border rounded-lg p-3">
-              {typeof result.output === 'string' ? result.output : JSON.stringify(result.output as object, null, 2)}
-            </pre>
-          )}
-          {result.error && !result.output && (
-            <div className="text-xs text-red-300">{result.error}</div>
-          )}
+          <pre className="mt-2 text-xs text-gray-300 overflow-auto max-h-40 bg-dark-bg border border-dark-border rounded-lg p-3">
+            {exampleArgsText}
+          </pre>
         </div>
-      )}
+      </div>
     </Modal>
   );
 };

@@ -22,6 +22,23 @@ const MCP_TEMPLATES = [
   { value: 'stdio_launcher_prod', label: 'STDIO + Launcher（prod 受控）' },
 ];
 
+const MCP_HELP = `### 如何创建 MCP Server
+**目标：** 把一组 MCP tools 安全地接入平台，并用 allowed_tools 做最小白名单。
+
+#### transport 怎么选
+- **sse/http（推荐优先）**：远程服务型 MCP，风险更可控。填写 \`url\`，建议配置 \`auth\`。
+- **stdio（高风险）**：等同于在 core 机器上启动本机进程。prod 必须走放行策略（白名单/前缀/launcher）。
+
+#### allowed_tools 怎么填
+- 新建后先保持 enabled=false
+- 进入编辑页点击“发现工具（tools/list）”获取工具列表
+- 只把你确实需要的工具加入 allowed_tools
+
+#### 常见问题排查
+- 404 / Not Found：服务未更新或路由未转发；或 MCP server 未启用/未被加载
+- tools/call 失败：常见是 auth/token 不对、allowed_tools 未放行
+- stdio prod：若 policy-check 不通过，需要配置 allowlist/command prefixes（以及可选统一 launcher 强制）`;
+
 const AddMcpModal: React.FC<AddMcpModalProps> = ({ open, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState('');
@@ -274,7 +291,7 @@ const AddMcpModal: React.FC<AddMcpModalProps> = ({ open, onClose, onSuccess }) =
       open={open}
       onClose={onClose}
       title="新增应用库 MCP Server"
-      width={820}
+      width={1080}
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={loading}>
@@ -286,71 +303,101 @@ const AddMcpModal: React.FC<AddMcpModalProps> = ({ open, onClose, onSuccess }) =
         </>
       }
     >
-      <div className="space-y-4">
-        <Input label="名称" value={name} onChange={(e: any) => setName(e.target.value)} placeholder="例如：integrated_browser" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-4">
+          <Input label="名称" value={name} onChange={(e: any) => setName(e.target.value)} placeholder="例如：integrated_browser" />
 
-        <Alert type={transport === 'stdio' ? 'warning' : 'info'} title="风险提示">
-          {riskHint}
-        </Alert>
+          <Alert type={transport === 'stdio' ? 'warning' : 'info'} title="风险提示">
+            {riskHint}
+          </Alert>
 
-        <div className="flex items-end justify-between gap-3">
-          <div className="flex-1">
-            <Select label="模板" value={template} onChange={(v) => setTemplate(v)} options={MCP_TEMPLATES} />
-          </div>
-          <Button variant="secondary" onClick={applyMcpTemplate} disabled={loading}>
-            应用模板
-          </Button>
-          <Button variant="primary" onClick={openWizard} disabled={loading}>
-            生成向导（推荐）
-          </Button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Select label="Transport" value={transport} onChange={(v) => setTransport(v)} options={TRANSPORTS} />
-          <div className="flex items-center justify-between gap-3 pt-6">
-            <div className="text-sm text-gray-300">enabled</div>
-            <Switch checked={enabled} onChange={() => setEnabled(!enabled)} />
-          </div>
-        </div>
-
-        <Input label="url（sse/http）" value={url} onChange={(e: any) => setUrl(e.target.value)} placeholder="http://localhost:0/mcp" />
-        {transport === 'stdio' && (
           <div className="flex items-end justify-between gap-3">
-            <Input
-              label="prod launcher（可选）"
-              value={launcherPath}
-              onChange={(e: any) => setLauncherPath(e.target.value)}
-              placeholder="/opt/aiplat/mcp/bin/launch"
-            />
-            <div className="flex gap-2 pb-1">
-              <Button variant="secondary" onClick={applyLauncherTemplate} disabled={loading}>
-                应用 launcher 模板
+            <div className="flex-1">
+              <Select label="模板" value={template} onChange={(v) => setTemplate(v)} options={MCP_TEMPLATES} />
+            </div>
+            <Button variant="secondary" onClick={applyMcpTemplate} disabled={loading}>
+              应用模板
+            </Button>
+            <Button variant="primary" onClick={openWizard} disabled={loading}>
+              生成向导（推荐）
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Select label="Transport" value={transport} onChange={(v) => setTransport(v)} options={TRANSPORTS} />
+            <div className="flex items-center justify-between gap-3 pt-6">
+              <div className="text-sm text-gray-300">enabled</div>
+              <Switch checked={enabled} onChange={() => setEnabled(!enabled)} />
+            </div>
+          </div>
+
+          <Input label="url（sse/http）" value={url} onChange={(e: any) => setUrl(e.target.value)} placeholder="http://localhost:0/mcp" />
+          {transport === 'stdio' && (
+            <div className="flex items-end justify-between gap-3">
+              <Input
+                label="prod launcher（可选）"
+                value={launcherPath}
+                onChange={(e: any) => setLauncherPath(e.target.value)}
+                placeholder="/opt/aiplat/mcp/bin/launch"
+              />
+              <div className="flex gap-2 pb-1">
+                <Button variant="secondary" onClick={applyLauncherTemplate} disabled={loading}>
+                  应用 launcher 模板
+                </Button>
+                <Button variant="secondary" onClick={markProdAllowed} disabled={loading}>
+                  metadata.prod_allowed=true
+                </Button>
+              </div>
+            </div>
+          )}
+          <Input label="command（stdio）" value={command} onChange={(e: any) => setCommand(e.target.value)} placeholder="例如：node /usr/local/bin/mcp-server.js" />
+          <Textarea label="args（JSON 数组）" rows={3} value={argsText} onChange={(e: any) => setArgsText(e.target.value)} />
+
+          <Textarea label="allowed_tools（每行一个）" rows={5} value={allowedToolsText} onChange={(e: any) => setAllowedToolsText(e.target.value)} placeholder="browser_navigate\nbrowser_snapshot" />
+
+          <Textarea label="auth（JSON，可选）" rows={4} value={authText} onChange={(e: any) => setAuthText(e.target.value)} placeholder='{"type":"bearer","token":"..."}' />
+          <Textarea label="metadata（JSON，可选）" rows={5} value={metadataText} onChange={(e: any) => setMetadataText(e.target.value)} />
+
+          {genWarnings.length > 0 && (
+            <Alert type="warning" title="生成提示">
+              <ul className="list-disc pl-5 space-y-1">
+                {genWarnings.map((w, i) => (
+                  <li key={i}>{w}</li>
+                ))}
+              </ul>
+            </Alert>
+          )}
+
+          <div className="text-xs text-gray-500">{hint}</div>
+        </div>
+
+        <div className="border border-dark-border rounded-lg bg-dark-card p-3">
+          <div className="text-sm font-medium text-gray-200 mb-2">使用说明 / 示例</div>
+          <div className="text-xs text-gray-300 whitespace-pre-wrap leading-relaxed">{MCP_HELP}</div>
+          <div className="mt-3 space-y-2">
+            <div className="text-xs font-medium text-gray-300">常用片段（复制）</div>
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  try { await navigator.clipboard.writeText('{\n  \"type\": \"bearer\",\n  \"token\": \"\"\n}'); toast.success('已复制'); } catch { toast.error('复制失败'); }
+                }}
+                disabled={loading}
+              >
+                复制 bearer auth
               </Button>
-              <Button variant="secondary" onClick={markProdAllowed} disabled={loading}>
-                metadata.prod_allowed=true
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  try { await navigator.clipboard.writeText('browser_navigate\nbrowser_snapshot'); toast.success('已复制'); } catch { toast.error('复制失败'); }
+                }}
+                disabled={loading}
+              >
+                复制 allowed_tools 示例
               </Button>
             </div>
           </div>
-        )}
-        <Input label="command（stdio）" value={command} onChange={(e: any) => setCommand(e.target.value)} placeholder="例如：node /usr/local/bin/mcp-server.js" />
-        <Textarea label="args（JSON 数组）" rows={3} value={argsText} onChange={(e: any) => setArgsText(e.target.value)} />
-
-        <Textarea label="allowed_tools（每行一个）" rows={5} value={allowedToolsText} onChange={(e: any) => setAllowedToolsText(e.target.value)} placeholder="browser_navigate\nbrowser_snapshot" />
-
-        <Textarea label="auth（JSON，可选）" rows={4} value={authText} onChange={(e: any) => setAuthText(e.target.value)} placeholder='{"type":"bearer","token":"..."}' />
-        <Textarea label="metadata（JSON，可选）" rows={5} value={metadataText} onChange={(e: any) => setMetadataText(e.target.value)} />
-
-        {genWarnings.length > 0 && (
-          <Alert type="warning" title="生成提示">
-            <ul className="list-disc pl-5 space-y-1">
-              {genWarnings.map((w, i) => (
-                <li key={i}>{w}</li>
-              ))}
-            </ul>
-          </Alert>
-        )}
-
-        <div className="text-xs text-gray-500">{hint}</div>
+        </div>
       </div>
     </Modal>
 

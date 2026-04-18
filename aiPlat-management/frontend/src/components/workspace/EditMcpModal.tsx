@@ -23,6 +23,21 @@ const MCP_TEMPLATES = [
   { value: 'stdio_launcher_prod', label: 'STDIO + Launcher（prod 受控）' },
 ];
 
+const MCP_HELP = `### 如何配置 MCP Server
+**transport 选择：**
+- **sse/http（推荐）**：填写 url；建议配置鉴权 auth；通过 allowed_tools 控制最小权限。
+- **stdio（高风险）**：启动本机进程。prod 必须通过放行策略（allowlist/command prefixes/可选统一 launcher）。
+
+**allowed_tools：**
+- 建议先 enabled=false
+- 点击“发现工具（tools/list）”获取工具列表
+- 只保留必要工具，避免全量放行
+
+**常见排查：**
+- tools/list 失败：url/command 不正确或鉴权失败
+- tools/call 失败：allowed_tools 未放行、token 过期、server 未启用
+- stdio prod：先点“prod 放行检查”确认策略通过`;
+
 const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
@@ -250,7 +265,7 @@ const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSu
       open={open}
       onClose={onClose}
       title={`编辑应用库 MCP：${server?.name || ''}`}
-      width={820}
+      width={1080}
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={loading}>
@@ -265,6 +280,7 @@ const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSu
       {fetching ? (
         <div className="text-sm text-gray-500">加载中...</div>
       ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-4">
           <Input label="名称（只读）" value={server?.name || ''} onChange={() => {}} disabled />
 
@@ -331,6 +347,34 @@ const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSu
           <Textarea label="metadata（JSON，可选）" rows={5} value={metadataText} onChange={(e: any) => setMetadataText(e.target.value)} />
 
           <div className="text-xs text-gray-500">{hint}</div>
+        </div>
+        <div className="border border-dark-border rounded-lg bg-dark-card p-3">
+          <div className="text-sm font-medium text-gray-200 mb-2">使用说明 / 示例</div>
+          <div className="text-xs text-gray-300 whitespace-pre-wrap leading-relaxed">{MCP_HELP}</div>
+          <div className="mt-3 space-y-2">
+            <div className="text-xs font-medium text-gray-300">常用片段（复制）</div>
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  try { await navigator.clipboard.writeText('{\n  \"type\": \"bearer\",\n  \"token\": \"\"\n}'); toast.success('已复制'); } catch { toast.error('复制失败'); }
+                }}
+                disabled={loading}
+              >
+                复制 bearer auth
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  try { await navigator.clipboard.writeText('browser_navigate\nbrowser_snapshot'); toast.success('已复制'); } catch { toast.error('复制失败'); }
+                }}
+                disabled={loading}
+              >
+                复制 allowed_tools 示例
+              </Button>
+            </div>
+          </div>
+        </div>
         </div>
       )}
     </Modal>

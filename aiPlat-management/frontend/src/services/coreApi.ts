@@ -508,6 +508,12 @@ export const workspaceSkillApi = {
     return apiClient.post<{ execution_id: string; status: string; output?: unknown; error?: string; duration_ms?: number }>(`/core/workspace/skills/${skillId}/execute`, data);
   },
 
+  getExecutionHelp: async (skillId: string) => {
+    return apiClient.get<{ skill_id: string; help_markdown: string; examples: Array<{ title: string; content: string }>; input_schema?: Record<string, unknown> | null }>(
+      `/core/workspace/skills/${skillId}/execution-help`
+    );
+  },
+
   listExecutions: async (skillId: string, params?: { limit?: number; offset?: number }) => {
     const query = new URLSearchParams();
     if (params?.limit) query.set('limit', String(params.limit));

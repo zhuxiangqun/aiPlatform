@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import { Button, Modal, Textarea, notify, toast } from '../ui';
 import { workspaceSkillApi } from '../../services/coreApi';
@@ -13,6 +13,27 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ status: string; output?: unknown; error?: string; duration_ms?: number } | null>(null);
   const [inputText, setInputText] = useState('');
+  const [helpLoading, setHelpLoading] = useState(false);
+  const [helpMarkdown, setHelpMarkdown] = useState<string>('');
+  const [examples, setExamples] = useState<Array<{ title: string; content: string }>>([]);
+
+  useEffect(() => {
+    const load = async () => {
+      if (!open || !skill) return;
+      setHelpLoading(true);
+      try {
+        const res = await workspaceSkillApi.getExecutionHelp(skill.id);
+        setHelpMarkdown(String((res as any)?.help_markdown || ''));
+        setExamples(((res as any)?.examples || []) as any);
+      } catch {
+        setHelpMarkdown('');
+        setExamples([]);
+      } finally {
+        setHelpLoading(false);
+      }
+    };
+    load();
+  }, [open, skill?.id]);
 
   const handleExecute = async () => {
     if (!skill) return;
@@ -59,7 +80,7 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
       open={open}
       onClose={handleClose}
       title={`执行 Skill: ${skill?.name || ''}`}
-      width={640}
+      width={980}
       footer={
         <>
           <Button variant="secondary" onClick={handleClose} disabled={loading}>
@@ -71,13 +92,66 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
         </>
       }
     >
-      <Textarea
-        label="输入参数"
-        rows={4}
-        value={inputText}
-        onChange={(e: any) => setInputText(e.target.value)}
-        placeholder='{"query": "搜索关键词"} 或直接输入文本'
-      />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <Textarea
+            label="输入（JSON 或文本）"
+            rows={12}
+            value={inputText}
+            onChange={(e: any) => setInputText(e.target.value)}
+            placeholder='{"query": "搜索关键词"} 或直接输入文本'
+          />
+          <div className="text-xs text-gray-500 mt-2">
+            提示：如果输入不是合法 JSON，会自动封装为 {"{ \"message\": \"...\" }"} 传给 Skill。
+          </div>
+        </div>
+        <div className="border border-dark-border rounded-lg bg-dark-card p-3">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-sm font-medium text-gray-200">使用说明 / 示例</div>
+            <div className="text-xs text-gray-500">{helpLoading ? '加载中...' : ''}</div>
+          </div>
+
+          {helpMarkdown ? (
+            <div className="text-xs text-gray-300 whitespace-pre-wrap leading-relaxed mb-3">
+              {helpMarkdown}
+            </div>
+          ) : (
+            <div className="text-xs text-gray-500 mb-3">暂无说明。</div>
+          )}
+
+          {examples.length > 0 && (
+            <div className="space-y-2">
+              <div className="text-xs font-medium text-gray-300">一键填入示例</div>
+              <div className="flex flex-col gap-2">
+                {examples.map((ex, idx) => (
+                  <div key={idx} className="flex items-center justify-between gap-2">
+                    <div className="text-xs text-gray-300 truncate">{ex.title}</div>
+                    <div className="flex gap-2">
+                      <Button variant="secondary" onClick={() => setInputText(ex.content)} disabled={loading}>
+                        填入
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(ex.content);
+                            toast.success('已复制');
+                          } catch {
+                            toast.error('复制失败');
+                          }
+                        }}
+                        disabled={loading}
+                      >
+                        复制
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
       {result && (
         <div className="mt-4 p-4 rounded-lg border border-dark-border bg-dark-bg">
@@ -101,4 +175,3 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
 };
 
 export default ExecuteSkillModal;
-

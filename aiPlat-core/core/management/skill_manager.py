@@ -10,6 +10,7 @@ from datetime import datetime
 import uuid
 import os
 from pathlib import Path
+import json
 
 import yaml
 import re
@@ -883,6 +884,115 @@ class SkillManager:
                     skill.metadata["filesystem"]["skill_md"] = str(skill_md_path)
         except Exception:
             return
+
+    async def get_skill_execution_help(self, skill_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get execution input help/examples/schema for a skill.
+        Priority:
+        1) SKILL.md frontmatter:
+           - execution_help (markdown string)
+           - execution_examples (list of {title, content})
+           - execution_input_schema (object)
+        2) Generate defaults based on skill category + input_schema.
+        """
+        skill = self._skills.get(skill_id)
+        if not skill:
+            return None
+
+        md_path = self._find_skill_md(skill_id)
+        fm: dict = {}
+        if md_path and md_path.exists():
+            try:
+                raw = md_path.read_text(encoding="utf-8")
+                _fm, _body = self._split_front_matter(raw)
+                if isinstance(_fm, dict):
+                    fm = _fm
+            except Exception:
+                fm = {}
+
+        help_md = fm.get("execution_help")
+        examples = fm.get("execution_examples")
+        schema = fm.get("execution_input_schema")
+
+        norm_examples: list[dict] = []
+        if isinstance(examples, list):
+            for e in examples:
+                if isinstance(e, dict) and e.get("title") and e.get("content") is not None:
+                    norm_examples.append({"title": str(e["title"]), "content": str(e["content"])})
+
+        if isinstance(help_md, str) and help_md.strip():
+            return {
+                "skill_id": skill_id,
+                "help_markdown": help_md.strip(),
+                "examples": norm_examples,
+                "input_schema": schema if isinstance(schema, dict) else None,
+            }
+
+        # -------------------- default help generation --------------------
+        category = str(getattr(skill, "type", "") or "general")
+        input_schema = getattr(skill, "input_schema", {}) or {}
+
+        # provide a short, stable contract for UI users
+        fields = []
+        if isinstance(input_schema, dict) and input_schema:
+            for k, v in input_schema.items():
+                if isinstance(v, dict):
+                    desc = v.get("description") or ""
+                    req = v.get("required")
+                    fields.append(f"- `{k}`：{desc}{'（必填）' if req else ''}".rstrip())
+                else:
+                    fields.append(f"- `{k}`")
+        fields_md = "\n".join(fields) if fields else "- `message`：文本任务描述（最通用）"
+
+        default_help = (
+            "### 如何填写输入\n"
+            "- 你可以输入 **文本** 或 **JSON**。\n"
+            "- 如果输入不是合法 JSON，系统会自动封装为：`{\"message\": \"...\"}`。\n"
+            "\n"
+            "### 推荐输入字段\n"
+            f"{fields_md}\n"
+            "\n"
+            "### 输出说明\n"
+            "- 返回值将显示在下方“执行结果”区域；如有 execution_id 可到诊断页查看链路。\n"
+        )
+
+        if not norm_examples:
+            if category in {"retrieval"}:
+                norm_examples = [
+                    {
+                        "title": "检索（JSON）",
+                        "content": json.dumps({"query": "请填写你的检索问题", "top_k": 5, "filters": {}}, ensure_ascii=False, indent=2),
+                    },
+                    {"title": "检索（文本）", "content": "请检索：<你的问题>"},
+                ]
+            elif category in {"generation"}:
+                norm_examples = [
+                    {"title": "生成（文本）", "content": "请生成：<你要生成的内容>（请说明风格/长度/格式）"},
+                    {
+                        "title": "生成（JSON）",
+                        "content": json.dumps({"prompt": "写一段产品介绍", "style": "专业", "format": "markdown"}, ensure_ascii=False, indent=2),
+                    },
+                ]
+            elif category in {"execution"}:
+                norm_examples = [
+                    {
+                        "title": "执行计划（JSON）",
+                        "content": json.dumps({"action": "请填写要执行的动作", "params": {}, "dry_run": True}, ensure_ascii=False, indent=2),
+                    },
+                    {"title": "执行（文本）", "content": "请执行以下动作：<动作描述>（如涉及写入请先 dry_run 并二次确认）"},
+                ]
+            else:
+                norm_examples = [
+                    {"title": "通用（文本）", "content": "请完成以下任务：\n<描述你的需求>"},
+                    {"title": "通用（JSON）", "content": json.dumps({"message": "请完成以下任务：<描述你的需求>"}, ensure_ascii=False, indent=2)},
+                ]
+
+        return {
+            "skill_id": skill_id,
+            "help_markdown": default_help,
+            "examples": norm_examples,
+            "input_schema": schema if isinstance(schema, dict) else None,
+        }
     
     async def execute_skill(
         self,
