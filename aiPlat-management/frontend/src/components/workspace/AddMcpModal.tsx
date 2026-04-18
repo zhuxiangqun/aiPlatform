@@ -300,8 +300,8 @@ const AddMcpModal: React.FC<AddMcpModalProps> = ({ open, onClose, onSuccess }) =
           <Button variant="secondary" onClick={applyMcpTemplate} disabled={loading}>
             应用模板
           </Button>
-          <Button variant="secondary" onClick={openWizard} disabled={loading}>
-            生成向导
+          <Button variant="primary" onClick={openWizard} disabled={loading}>
+            生成向导（推荐）
           </Button>
         </div>
 

@@ -355,8 +355,8 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
             </select>
           </div>
           <div className="flex items-end justify-end">
-            <Button variant="secondary" onClick={openDisambiguationWizard} disabled={loading}>
-              生成向导
+            <Button variant="primary" onClick={openDisambiguationWizard} disabled={loading}>
+              生成向导（推荐）
             </Button>
             <Button
               variant="secondary"
@@ -372,7 +372,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
               }}
               disabled={loading}
             >
-              智能生成（根据名称/描述）
+              快速生成
             </Button>
           </div>
         </div>

@@ -276,8 +276,8 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
           <Button variant="secondary" onClick={() => applyTemplate(category)} disabled={loading}>
             应用模板
           </Button>
-          <Button variant="secondary" onClick={openWizard} disabled={loading}>
-            生成向导
+          <Button variant="primary" onClick={openWizard} disabled={loading}>
+            生成向导（推荐）
           </Button>
         </div>
         <Input label="描述" value={description} onChange={(e: any) => setDescription(e.target.value)} placeholder="描述用途" />
