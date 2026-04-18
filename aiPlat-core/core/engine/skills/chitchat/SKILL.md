@@ -1,7 +1,7 @@
 ---
 name: chitchat
 display_name: 闲聊
-description: 日常闲聊与简单问答（引擎内置）。
+description: 日常闲聊与简单问答。引擎内置（engine）：仅核心能力层默认可用；对外（workspace）需白名单/审批后方可调用。
 category: generation
 version: 1.0.0
 status: enabled

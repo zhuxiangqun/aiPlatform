@@ -1,7 +1,7 @@
 ---
 name: summarization
 display_name: 内容摘要
-description: 将长文本压缩为结构化摘要（引擎内置）。
+description: 将长文本压缩为结构化摘要。引擎内置（engine）：仅核心能力层默认可用；对外（workspace）需白名单/审批后方可调用。
 category: transformation
 version: 1.0.0
 status: enabled

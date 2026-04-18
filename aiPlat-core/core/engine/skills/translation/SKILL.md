@@ -1,7 +1,7 @@
 ---
 name: translation
 display_name: 多语言翻译
-description: 多语言翻译，保持术语一致与语气一致（引擎内置）。
+description: 多语言翻译，保持术语一致与语气一致。引擎内置（engine）：仅核心能力层默认可用；对外（workspace）需白名单/审批后方可调用。
 category: transformation
 version: 1.0.0
 status: enabled

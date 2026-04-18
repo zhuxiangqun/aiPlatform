@@ -1,7 +1,7 @@
 ---
 name: api_calling
 display_name: API调用
-description: 按接口文档调用 API 并处理鉴权与错误（引擎内置）。
+description: 按接口文档调用 API 并处理鉴权与错误。引擎内置（engine）：仅核心能力层默认可用；对外（workspace）需白名单/审批后方可调用。
 category: execution
 version: 1.0.0
 status: enabled

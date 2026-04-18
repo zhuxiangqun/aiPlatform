@@ -1,7 +1,7 @@
 ---
 name: data_analysis
 display_name: 数据分析
-description: 分析结构化/半结构化数据并给出洞察（引擎内置）。
+description: 分析结构化/半结构化数据并给出洞察。引擎内置（engine）：仅核心能力层默认可用；对外（workspace）需白名单/审批后方可调用。
 category: analysis
 version: 1.0.0
 status: enabled

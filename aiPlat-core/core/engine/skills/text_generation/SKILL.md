@@ -1,7 +1,7 @@
 ---
 name: text_generation
 display_name: 文本生成
-description: 根据提示生成各类文本内容（引擎内置，可在引擎层使用）。
+description: 根据提示生成各类文本内容。引擎内置（engine）：仅核心能力层默认可用；对外（workspace）需白名单/审批后方可调用。
 category: generation
 version: 1.0.0
 status: enabled
