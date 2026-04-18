@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Plus, RotateCw, PlayCircle, PauseCircle, Trash2, Clock, ExternalLink, Copy } from 'lucide-react';
 import PageHeader from '../../../components/common/PageHeader';
@@ -17,6 +18,7 @@ const fmtTs = (ts?: number | null) => {
 };
 
 const Jobs: React.FC = () => {
+  const location = useLocation();
   const [loading, setLoading] = useState(false);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [total, setTotal] = useState(0);
@@ -295,6 +297,29 @@ const Jobs: React.FC = () => {
       toast.error('加载运行历史失败', String(e?.message || ''));
     }
   };
+
+  // Deep link support: /core/jobs?job_id=...&run_id=...
+  useEffect(() => {
+    const qs = new URLSearchParams(location.search || '');
+    const jobId = qs.get('job_id');
+    const runId = qs.get('run_id');
+    if (!jobId) return;
+    let mounted = true;
+    (async () => {
+      try {
+        const job = await jobApi.get(jobId);
+        if (!mounted) return;
+        setHighlightRunId(runId || null);
+        await openRuns(job);
+      } catch (e: any) {
+        if (mounted) toast.error('打开 Job 失败', String(e?.message || ''));
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search]);
 
   const refreshRuns = async () => {
     if (!selectedJob) return;

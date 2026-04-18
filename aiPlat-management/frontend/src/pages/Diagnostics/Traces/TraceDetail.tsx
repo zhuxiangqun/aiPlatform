@@ -43,6 +43,9 @@ const TraceDetail: React.FC = () => {
 
   const trace = data?.trace || data?.result?.trace || data?.traces || data;
   const spans: any[] = Array.isArray(trace?.spans) ? trace.spans : [];
+  const attrs = trace?.attributes || {};
+  const jobId = attrs?.job_id;
+  const jobRunId = attrs?.job_run_id;
 
   const spanColumns = useMemo(
     () => [
@@ -103,6 +106,13 @@ const TraceDetail: React.FC = () => {
           >
             复制 ID
           </Button>
+          {jobId && (
+            <Link
+              to={`/core/jobs?job_id=${encodeURIComponent(String(jobId))}${jobRunId ? `&run_id=${encodeURIComponent(String(jobRunId))}` : ''}`}
+            >
+              <Button variant="secondary">打开 Job</Button>
+            </Link>
+          )}
           <Link to={`/diagnostics/links?trace_id=${encodeURIComponent(traceId || '')}`}>
             <Button variant="primary" icon={<Share2 size={16} />}>
               打开 Links
@@ -169,6 +179,22 @@ const TraceDetail: React.FC = () => {
                             </Link>
                           </div>
                         </div>
+                        {jobId && (
+                          <div className="p-3 bg-dark-bg rounded-lg">
+                            <div className="text-xs text-gray-400 mb-1">job</div>
+                            <div className="space-y-2">
+                              <div className="text-xs text-gray-200 break-all">job_id: {String(jobId)}</div>
+                              {jobRunId && <div className="text-xs text-gray-200 break-all">job_run_id: {String(jobRunId)}</div>}
+                              <div>
+                                <Link
+                                  to={`/core/jobs?job_id=${encodeURIComponent(String(jobId))}${jobRunId ? `&run_id=${encodeURIComponent(String(jobRunId))}` : ''}`}
+                                >
+                                  <Button variant="secondary">打开 Job</Button>
+                                </Link>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       <div>
