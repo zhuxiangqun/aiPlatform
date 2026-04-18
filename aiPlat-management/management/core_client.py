@@ -242,6 +242,9 @@ class CoreAPIClient:
     async def cleanup_rollback_approvals(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         return await self._request("POST", "/api/core/learning/approvals/cleanup-rollback-approvals", json=payload)
 
+    async def autocapture_to_prompt_revision(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", "/api/core/learning/autocapture/to_prompt_revision", json=payload)
+
     # ===== Approvals (reuse core approvals API) =====
 
     async def list_pending_approvals(

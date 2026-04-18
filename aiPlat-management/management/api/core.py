@@ -500,6 +500,15 @@ async def cleanup_rollback_approvals(body: dict):
         raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
 
 
+@router.post("/learning/autocapture/to_prompt_revision")
+async def autocapture_to_prompt_revision(body: dict):
+    try:
+        client = get_core_client()
+        return await client.autocapture_to_prompt_revision(body or {})
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
 # ==================== Approvals ====================
 
 
