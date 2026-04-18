@@ -15,6 +15,7 @@ This initial version only handles "project context files" (AGENTS.md / AIPLAT.md
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -49,9 +50,17 @@ class ContextEngine:
 
 class DefaultContextEngine(ContextEngine):
     _INJECTION_PATTERNS = [
-        (re.compile(r"ignore\\s+(previous|all|above|prior)\\s+instructions", re.I), "prompt_injection"),
-        (re.compile(r"do\\s+not\\s+tell\\s+the\\s+user", re.I), "deception_hide"),
-        (re.compile(r"system\\s+prompt\\s+override", re.I), "sys_prompt_override"),
+        (re.compile(r"ignore\s+(previous|all|above|prior)\s+instructions", re.I), "prompt_injection"),
+        (re.compile(r"do\s+not\s+tell\s+the\s+user", re.I), "deception_hide"),
+        (re.compile(r"system\s+prompt\s+override", re.I), "sys_prompt_override"),
+        # common exfil / jailbreak wording
+        (re.compile(r"(exfiltrate|leak|steal)\\s+(secrets?|keys?|tokens?)", re.I), "exfiltration_attempt"),
+        (re.compile(r"(upload|send)\\s+.*(to|into)\\s+https?://", re.I), "url_exfiltration"),
+        (re.compile(r"BEGIN\\s+PRIVATE\\s+KEY", re.I), "embedded_private_key"),
+        (re.compile(r"api[_-]?key\\s*[:=]", re.I), "secret_mention"),
+        # encoding/obfuscation hints
+        (re.compile(r"base64\\s*[:=]|-----BEGIN", re.I), "encoding_or_pem"),
+        (re.compile(r"\\b[a-f0-9]{32,}\\b", re.I), "suspicious_hex_blob"),
     ]
     _INVISIBLE_CHARS = {
         "\u200b",
@@ -80,9 +89,12 @@ class DefaultContextEngine(ContextEngine):
         # - session search injection
         # - deterministic compaction
         if str(meta.get("enable_project_context", "")).lower() not in ("0", "false", "no") and repo_root:
-            content, used_path, blocked_reason = self._load_project_context(repo_root)
-            if blocked_reason:
-                meta["project_context_blocked"] = blocked_reason
+            content, used_path, decision = self._load_project_context(repo_root)
+            if isinstance(decision, dict) and decision.get("action") in {"block", "approval_required"}:
+                meta["project_context_blocked"] = ",".join(decision.get("findings") or []) if decision.get("findings") else decision.get("action")
+                meta["project_context_block_policy"] = decision.get("action")
+                if decision.get("approval_request_id"):
+                    meta["project_context_approval_request_id"] = decision.get("approval_request_id")
                 meta["project_context_file"] = used_path
                 meta["repo_root"] = str(repo_root)
             elif content and used_path:
@@ -103,6 +115,10 @@ class DefaultContextEngine(ContextEngine):
                 meta["project_context_file"] = used_path
                 meta["repo_root"] = str(repo_root)
                 meta["project_context_sha256"] = hashlib.sha256(content.encode("utf-8")).hexdigest()
+                if isinstance(decision, dict) and decision.get("action") == "warn":
+                    meta["project_context_warn"] = decision.get("findings") or []
+                if isinstance(decision, dict) and decision.get("action") == "truncate":
+                    meta["project_context_truncated"] = True
 
         # Roadmap-4 (P0): optional session search injection (cross-session memory).
         session_sha = None
@@ -313,7 +329,7 @@ class DefaultContextEngine(ContextEngine):
             "context_compacted": bool(metadata.get("context_compacted")),
         }
 
-    def _load_project_context(self, repo_root: str) -> Tuple[str, Optional[str], Optional[str]]:
+    def _load_project_context(self, repo_root: str) -> Tuple[str, Optional[str], Dict[str, Any]]:
         """
         Load project context from repo root (best-effort).
 
@@ -322,7 +338,7 @@ class DefaultContextEngine(ContextEngine):
         - AIPLAT.md
         - .aiplat.md
 
-        Returns: (content, used_path, blocked_reason)
+        Returns: (content, used_path, decision)
         """
         root = Path(str(repo_root)).expanduser()
         candidates = [root / "AGENTS.md", root / "AIPLAT.md", root / ".aiplat.md"]
@@ -340,9 +356,9 @@ class DefaultContextEngine(ContextEngine):
                 text = p.read_text(encoding="utf-8", errors="replace").strip()
                 if not text:
                     continue
-                text, blocked = self._scan_project_context(text)
-                if blocked:
-                    return "", str(p), blocked
+                text, decision = self._scan_project_context(text, path=str(p), repo_root=str(root))
+                if decision.get("action") in {"block", "approval_required"}:
+                    return "", str(p), decision
                 if len(text) > self._MAX_CONTEXT_CHARS:
                     text = text[: self._MAX_CONTEXT_CHARS] + "\n\n[TRUNCATED]"
 
@@ -354,20 +370,152 @@ class DefaultContextEngine(ContextEngine):
                         self._cache.pop(oldest, None)
                     except Exception:
                         self._cache = dict(list(self._cache.items())[-self._cache_max :])
-                return text, str(p), None
+                return text, str(p), decision
             except Exception:
                 continue
-        return "", None, None
+        return "", None, {"action": "none", "findings": []}
 
-    def _scan_project_context(self, content: str) -> Tuple[str, Optional[str]]:
+    def _scan_project_context(self, content: str, *, path: str, repo_root: str) -> Tuple[str, Dict[str, Any]]:
+        """
+        Scan project context file for injection-like content.
+        Policy via env AIPLAT_PROJECT_CONTEXT_POLICY:
+          - block (default): drop content
+          - warn: keep content but record findings
+          - truncate: redact suspicious patterns, keep rest
+          - approval_required: create approval request (best-effort) and drop content
+        """
+        policy = os.getenv("AIPLAT_PROJECT_CONTEXT_POLICY", "block").strip().lower() or "block"
+        if policy not in {"block", "warn", "truncate", "approval_required"}:
+            policy = "block"
+
         findings: List[str] = []
         for ch in self._INVISIBLE_CHARS:
             if ch in content:
                 findings.append(f"invisible_unicode_U+{ord(ch):04X}")
+        matched_patterns: List[Tuple[re.Pattern, str]] = []
         for pat, reason in self._INJECTION_PATTERNS:
-            if pat.search(content):
-                findings.append(reason)
-        if findings:
-            # Block injection-like content: do not feed into LLM.
-            return "", ",".join(findings)
-        return content, None
+            try:
+                if pat.search(content):
+                    findings.append(reason)
+                    matched_patterns.append((pat, reason))
+            except Exception:
+                continue
+
+        decision: Dict[str, Any] = {"action": "none", "findings": findings, "policy": policy, "path": path}
+        if not findings:
+            return content, decision
+
+        # audit event (best-effort)
+        try:
+            from core.harness.kernel.runtime import get_kernel_runtime
+            from core.harness.kernel.execution_context import get_active_release_context
+
+            rt = get_kernel_runtime()
+            store = getattr(rt, "execution_store", None) if rt else None
+            ar = get_active_release_context()
+            if store is not None:
+                store_evt: Dict[str, Any] = {
+                    "kind": "context",
+                    "name": "project_context_scan",
+                    "status": policy if policy != "approval_required" else "approval_required",
+                    "error": ",".join(findings),
+                    "error_code": "CONTEXT_INJECTION",
+                    "args": {"path": path, "repo_root": repo_root, "findings": findings},
+                    "target_type": ar.target_type if ar else None,
+                    "target_id": ar.target_id if ar else None,
+                }
+                # ContextEngine is sync; insert directly to sqlite (best-effort) to avoid awaiting.
+                try:
+                    import sqlite3
+                    import uuid
+                    import time
+
+                    db_path = getattr(getattr(store, "_config", None), "db_path", None)
+                    if db_path:
+                        conn = sqlite3.connect(str(db_path))
+                        try:
+                            conn.execute(
+                                """
+                                INSERT INTO syscall_events(
+                                  id, trace_id, span_id, run_id, kind, name, status, start_time, end_time, duration_ms,
+                                  args_json, result_json, error, error_code, target_type, target_id, user_id, session_id,
+                                  approval_request_id, created_at
+                                ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);
+                                """,
+                                (
+                                    str(uuid.uuid4()),
+                                    None,
+                                    None,
+                                    None,
+                                    store_evt.get("kind"),
+                                    store_evt.get("name"),
+                                    store_evt.get("status"),
+                                    None,
+                                    None,
+                                    None,
+                                    json.dumps(store_evt.get("args") or {}, ensure_ascii=False),
+                                    json.dumps(store_evt.get("result") or {}, ensure_ascii=False),
+                                    store_evt.get("error"),
+                                    store_evt.get("error_code"),
+                                    store_evt.get("target_type"),
+                                    store_evt.get("target_id"),
+                                    store_evt.get("user_id"),
+                                    store_evt.get("session_id"),
+                                    store_evt.get("approval_request_id"),
+                                    float(time.time()),
+                                ),
+                            )
+                            conn.commit()
+                        finally:
+                            conn.close()
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        if policy == "warn":
+            decision["action"] = "warn"
+            return content, decision
+
+        if policy == "truncate":
+            # Redact suspicious patterns line-by-line.
+            redacted = content
+            for pat, _reason in matched_patterns:
+                try:
+                    redacted = pat.sub("[REDACTED]", redacted)
+                except Exception:
+                    pass
+            decision["action"] = "truncate"
+            return redacted, decision
+
+        if policy == "approval_required":
+            decision["action"] = "approval_required"
+            # Create approval request (best effort).
+            try:
+                from core.harness.infrastructure.approval.manager import ApprovalManager, ApprovalContext
+                from core.harness.kernel.runtime import get_kernel_runtime
+
+                rt = get_kernel_runtime()
+                store = getattr(rt, "execution_store", None) if rt else None
+                mgr = getattr(rt, "approval_manager", None) if rt else None
+                if mgr is None and store is not None:
+                    mgr = ApprovalManager(execution_store=store)
+                if mgr is not None:
+                    ctx = ApprovalContext(
+                        user_id="system",
+                        operation="project_context_injection",
+                        details=f"Project context blocked; findings={findings}; path={path}",
+                        amount=None,
+                        batch_size=None,
+                        is_first_time=True,
+                        metadata={"repo_root": repo_root, "path": path, "findings": findings},
+                    )
+                    req = mgr.create_request(ctx)  # type: ignore[arg-type]
+                    decision["approval_request_id"] = getattr(req, "request_id", None) if req else None
+            except Exception:
+                pass
+            return "", decision
+
+        # default: block
+        decision["action"] = "block"
+        return "", decision
