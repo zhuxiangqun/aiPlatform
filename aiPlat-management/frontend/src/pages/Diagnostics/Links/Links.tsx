@@ -45,7 +45,8 @@ const Links: React.FC = () => {
   const guessMode = (input: string): Mode => {
     const v = input.trim();
     if (!v) return 'trace_id';
-    if (v.startsWith('exec-') || v.startsWith('execution_')) return 'execution_id';
+    // aiPlat v2: run_id is used as execution_id (time-sortable ULID)
+    if (v.startsWith('run_') || v.startsWith('exec-') || v.startsWith('execution_')) return 'execution_id';
     // assume UUID-like => trace_id by default
     if (/^[0-9a-fA-F-]{32,}$/.test(v)) return 'trace_id';
     // fallback: graph_run_id
