@@ -22,6 +22,8 @@ class ToolsetPolicy:
     description: str
     # Explicit allowlist of tool names.
     allowed_tools: Set[str] = field(default_factory=set)
+    # Allowed tool name prefixes (for dynamic tools like mcp.<server>.*).
+    allowed_prefixes: Set[str] = field(default_factory=set)
     # Per-tool restrictions (best-effort; enforced in sys_tool_call).
     file_operations_allowed_ops: Optional[Set[str]] = None
 
@@ -58,6 +60,29 @@ DEFAULT_TOOLSETS: Dict[str, ToolsetPolicy] = {
         },
         file_operations_allowed_ops={"read", "list", "write", "delete"},
     ),
+    # Capability packs (Roadmap-2) - more explicit UX-friendly names.
+    "write_repo": ToolsetPolicy(
+        name="write_repo",
+        description="仓库写入工具集：允许 file_operations 写/删（适用于生成补丁、批量改动）",
+        allowed_tools={"file_operations", "calculator"},
+        file_operations_allowed_ops={"read", "list", "write", "delete"},
+    ),
+    "web": ToolsetPolicy(
+        name="web",
+        description="网络信息工具集：允许 webfetch/search（不含 browser 自动化）",
+        allowed_tools={"webfetch", "search", "calculator"},
+    ),
+    "browser": ToolsetPolicy(
+        name="browser",
+        description="浏览器自动化工具集（高风险）：允许 browser/http（如启用）",
+        allowed_tools={"browser", "http", "webfetch", "search", "calculator"},
+    ),
+    "mcp_readonly": ToolsetPolicy(
+        name="mcp_readonly",
+        description="MCP 只读工具集：允许 mcp.* 动态工具（受 allowed_tools 及审批策略约束）",
+        allowed_prefixes={"mcp."},
+        allowed_tools={"calculator"},
+    ),
 }
 
 
@@ -81,7 +106,9 @@ def should_apply_toolset(name: Optional[str]) -> bool:
 def is_tool_allowed(policy: ToolsetPolicy, tool_name: str, tool_args: Optional[Dict[str, Any]] = None) -> tuple[bool, Optional[str]]:
     """Return (allowed, reason)."""
     if tool_name not in policy.allowed_tools:
-        return False, f"Tool '{tool_name}' is not allowed in toolset '{policy.name}'"
+        # allow prefixes (for dynamic tools)
+        if not any(tool_name.startswith(pfx) for pfx in (policy.allowed_prefixes or set())):
+            return False, f"Tool '{tool_name}' is not allowed in toolset '{policy.name}'"
 
     if tool_name == "file_operations" and policy.file_operations_allowed_ops is not None:
         op = None
@@ -94,4 +121,3 @@ def is_tool_allowed(policy: ToolsetPolicy, tool_name: str, tool_args: Optional[D
             )
 
     return True, None
-

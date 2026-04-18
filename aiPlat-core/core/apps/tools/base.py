@@ -54,6 +54,18 @@ class BaseTool(ITool):
         """Execute tool - to be implemented by subclass"""
         raise NotImplementedError("Subclass must implement execute")
 
+    # -----------------------------
+    # Roadmap-2: availability checks
+    # -----------------------------
+    def check_available(self) -> tuple[bool, Optional[str]]:
+        """
+        Best-effort availability check for operational readiness.
+
+        Returns:
+          (available, reason_if_unavailable)
+        """
+        return True, None
+
     def set_permission_manager(self, permission_manager: Any) -> None:
         """Inject permission manager (optional)."""
         self._permission_manager = permission_manager
@@ -717,6 +729,19 @@ class ToolRegistry:
         """List tools"""
         with self._lock:
             return list(self._tools.keys())
+
+    def get_availability(self, name: str) -> Dict[str, Any]:
+        """Return availability info (best-effort)."""
+        tool = self.get(name)
+        if not tool:
+            return {"available": False, "reason": "not_found"}
+        try:
+            if hasattr(tool, "check_available"):
+                ok, reason = tool.check_available()  # type: ignore[misc]
+                return {"available": bool(ok), "reason": reason}
+        except Exception as e:
+            return {"available": False, "reason": str(e)}
+        return {"available": True, "reason": None}
 
     def unregister(self, name: str) -> None:
         """Unregister a tool"""

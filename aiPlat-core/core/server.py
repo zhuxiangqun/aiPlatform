@@ -4397,7 +4397,7 @@ async def update_feedback_config(request: FeedbackConfigUpdateRequest):
 
 
 @api_router.get("/tools")
-async def list_tools(limit: int = 100, offset: int = 0):
+async def list_tools(limit: int = 100, offset: int = 0, available_only: bool = False):
     """List all tools"""
     registry = get_tool_registry()
     tools = registry.list_tools()
@@ -4406,6 +4406,11 @@ async def list_tools(limit: int = 100, offset: int = 0):
         tool = registry.get(t)
         info: Dict[str, Any] = {"name": t}
         if tool:
+            avail = registry.get_availability(t) if hasattr(registry, "get_availability") else {"available": True, "reason": None}
+            info["available"] = bool(avail.get("available"))
+            info["unavailable_reason"] = avail.get("reason")
+            if available_only and not info["available"]:
+                continue
             info["description"] = tool.get_description()
             info["category"] = getattr(tool._config, 'category', 'general') if hasattr(tool, '_config') else 'general'
             # Tools are code-defined engine capabilities; do not edit via UI/API.
@@ -4424,7 +4429,7 @@ async def list_tools(limit: int = 100, offset: int = 0):
                     "max_concurrent": cfg.max_concurrent if hasattr(cfg, 'max_concurrent') else None,
                 }
             info["parameters"] = tool._config.parameters if hasattr(tool, '_config') and hasattr(tool._config, 'parameters') else {}
-            info["status"] = "enabled"
+            info["status"] = "enabled" if info.get("available", True) else "unavailable"
             info["enabled"] = True
         result.append(info)
     return {"tools": result, "total": len(tools)}
@@ -4440,6 +4445,10 @@ async def get_tool(tool_name: str):
     
     info: Dict[str, Any] = {"name": tool_name}
     info["description"] = tool.get_description()
+    if hasattr(registry, "get_availability"):
+        avail = registry.get_availability(tool_name)
+        info["available"] = bool(avail.get("available"))
+        info["unavailable_reason"] = avail.get("reason")
     info["category"] = getattr(tool._config, 'category', 'general') if hasattr(tool, '_config') else 'general'
     info["protected"] = True
     info["scope"] = "engine"
