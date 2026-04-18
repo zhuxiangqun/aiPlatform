@@ -53,6 +53,7 @@ const DiagnosticsGraphRunDetail = lazy(() => import('./pages/Diagnostics/Graphs/
 const DiagnosticsLinks = lazy(() => import('./pages/Diagnostics/Links/Links'));
 const DiagnosticsRuns = lazy(() => import('./pages/Diagnostics/Runs/Runs'));
 const DiagnosticsAudit = lazy(() => import('./pages/Diagnostics/Audit/Audit'));
+const DiagnosticsPolicies = lazy(() => import('./pages/Diagnostics/Policies/Policies'));
 const DiagnosticsSyscalls = lazy(() => import('./pages/Diagnostics/Syscalls'));
 
 const router = createBrowserRouter([
@@ -97,6 +98,7 @@ const router = createBrowserRouter([
       { path: 'diagnostics/links', element: withSuspense(DiagnosticsLinks) },
       { path: 'diagnostics/runs', element: withSuspense(DiagnosticsRuns) },
       { path: 'diagnostics/audit', element: withSuspense(DiagnosticsAudit) },
+      { path: 'diagnostics/policies', element: withSuspense(DiagnosticsPolicies) },
       { path: 'diagnostics/syscalls', element: withSuspense(DiagnosticsSyscalls) },
     ],
   },

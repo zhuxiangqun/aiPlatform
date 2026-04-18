@@ -1649,6 +1649,61 @@ async def list_audit_logs(
     )
 
 
+# ==================== Tenant Policies (policy-as-code) ====================
+
+
+@api_router.get("/policies/tenants")
+async def list_tenant_policies(limit: int = 100, offset: int = 0):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    return await _execution_store.list_tenant_policies(limit=limit, offset=offset)
+
+
+@api_router.get("/policies/tenants/{tenant_id}")
+async def get_tenant_policy(tenant_id: str):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    item = await _execution_store.get_tenant_policy(tenant_id=str(tenant_id))
+    if not item:
+        raise HTTPException(status_code=404, detail="tenant_policy_not_found")
+    return item
+
+
+@api_router.put("/policies/tenants/{tenant_id}")
+async def upsert_tenant_policy(tenant_id: str, request: dict):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    policy = (request or {}).get("policy")
+    if not isinstance(policy, dict):
+        raise HTTPException(status_code=400, detail="policy must be an object")
+    version = (request or {}).get("version")
+    if version is not None:
+        try:
+            version = int(version)
+        except Exception:
+            raise HTTPException(status_code=400, detail="invalid version")
+    try:
+        saved = await _execution_store.upsert_tenant_policy(tenant_id=str(tenant_id), policy=policy, version=version)
+    except ValueError as e:
+        if str(e) == "version_conflict":
+            raise HTTPException(status_code=409, detail="version_conflict")
+        raise
+    # Audit (best-effort)
+    try:
+        await _execution_store.add_audit_log(
+            action="tenant_policy_upsert",
+            status="ok",
+            tenant_id=str(tenant_id),
+            actor_id=str((request or {}).get("actor_id") or "admin"),
+            resource_type="tenant_policy",
+            resource_id=str(tenant_id),
+            detail={"version": saved.get("version")},
+        )
+    except Exception:
+        pass
+    return saved
+
+
 @api_router.post("/runs/{run_id}/wait")
 async def wait_run(run_id: str, request: dict):
     """

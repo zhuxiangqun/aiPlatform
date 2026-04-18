@@ -1094,3 +1094,28 @@ export const auditApi = {
     return apiClient.get<{ items: AuditLogEntry[]; total: number; limit: number; offset: number }>(`/audit/logs${qs ? `?${qs}` : ''}`);
   },
 };
+
+// ==================== Tenant Policies API (policy-as-code) ====================
+
+export interface TenantPolicy {
+  tenant_id: string;
+  version: number;
+  policy: Record<string, unknown>;
+  updated_at: number;
+}
+
+export const policyApi = {
+  listTenants: async (params: { limit?: number; offset?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.limit != null) q.set('limit', String(params.limit));
+    if (params.offset != null) q.set('offset', String(params.offset));
+    const qs = q.toString();
+    return apiClient.get<{ items: TenantPolicy[]; total: number; limit: number; offset: number }>(`/policies/tenants${qs ? `?${qs}` : ''}`);
+  },
+  getTenant: async (tenantId: string) => {
+    return apiClient.get<TenantPolicy>(`/policies/tenants/${encodeURIComponent(tenantId)}`);
+  },
+  upsertTenant: async (tenantId: string, data: { policy: Record<string, unknown>; version?: number; actor_id?: string }) => {
+    return apiClient.put<TenantPolicy>(`/policies/tenants/${encodeURIComponent(tenantId)}`, data);
+  },
+};
