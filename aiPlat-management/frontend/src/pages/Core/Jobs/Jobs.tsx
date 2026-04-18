@@ -41,26 +41,37 @@ const Jobs: React.FC = () => {
   const [optionsText, setOptionsText] = useState('{\n  "toolset": "workspace_default"\n}');
   const [deliveryText, setDeliveryText] = useState('');
 
+  const setToolsetQuick = (toolset: 'safe_readonly' | 'workspace_default' | 'full') => {
+    try {
+      const cur = optionsText?.trim() ? JSON.parse(optionsText) : {};
+      const next = typeof cur === 'object' && cur ? cur : {};
+      (next as any).toolset = toolset;
+      setOptionsText(JSON.stringify(next, null, 2));
+    } catch {
+      setOptionsText(JSON.stringify({ toolset }, null, 2));
+    }
+  };
+
   const applyTemplate = (tpl: 'tool_calculator' | 'agent_basic' | 'skill_basic' | 'webhook_delivery') => {
     if (tpl === 'tool_calculator') {
       setKind('tool');
       setTargetId('calculator');
       setPayloadText(JSON.stringify({ input: { expression: '1+1' } }, null, 2));
-      setOptionsText(JSON.stringify({ toolset: 'safe_readonly' }, null, 2));
+      setToolsetQuick('safe_readonly');
       return;
     }
     if (tpl === 'agent_basic') {
       setKind('agent');
       setTargetId(selectedJob?.target_id || '');
       setPayloadText(JSON.stringify({ input: { message: '请执行任务并给出结果' } }, null, 2));
-      setOptionsText(JSON.stringify({ toolset: 'workspace_default' }, null, 2));
+      setToolsetQuick('workspace_default');
       return;
     }
     if (tpl === 'skill_basic') {
       setKind('skill');
       setTargetId(selectedJob?.target_id || '');
       setPayloadText(JSON.stringify({ input: {} }, null, 2));
-      setOptionsText(JSON.stringify({ toolset: 'workspace_default' }, null, 2));
+      setToolsetQuick('workspace_default');
       return;
     }
     if (tpl === 'webhook_delivery') {
@@ -366,6 +377,31 @@ const Jobs: React.FC = () => {
               Webhook delivery
             </Button>
           </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="text-xs text-gray-500 mr-1">快捷设置：</div>
+            <Button variant="secondary" onClick={() => setCron('*/1 * * * *')}>
+              cron: 每分钟
+            </Button>
+            <Button variant="secondary" onClick={() => setCron('*/5 * * * *')}>
+              cron: 每5分钟
+            </Button>
+            <Button variant="secondary" onClick={() => setCron('0 * * * *')}>
+              cron: 每小时
+            </Button>
+            <Button variant="secondary" onClick={() => setCron('0 2 * * *')}>
+              cron: 每天2点
+            </Button>
+            <span className="mx-1 text-gray-700">|</span>
+            <Button variant="secondary" onClick={() => setToolsetQuick('safe_readonly')}>
+              toolset: safe_readonly
+            </Button>
+            <Button variant="secondary" onClick={() => setToolsetQuick('workspace_default')}>
+              toolset: workspace_default
+            </Button>
+            <Button variant="secondary" onClick={() => setToolsetQuick('full')}>
+              toolset: full
+            </Button>
+          </div>
           <Input label="名称" value={name} onChange={(e: any) => setName(e.target.value)} />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -420,6 +456,31 @@ const Jobs: React.FC = () => {
             </Button>
             <Button variant="secondary" onClick={() => applyTemplate('webhook_delivery')}>
               Webhook delivery
+            </Button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="text-xs text-gray-500 mr-1">快捷设置：</div>
+            <Button variant="secondary" onClick={() => setCron('*/1 * * * *')}>
+              cron: 每分钟
+            </Button>
+            <Button variant="secondary" onClick={() => setCron('*/5 * * * *')}>
+              cron: 每5分钟
+            </Button>
+            <Button variant="secondary" onClick={() => setCron('0 * * * *')}>
+              cron: 每小时
+            </Button>
+            <Button variant="secondary" onClick={() => setCron('0 2 * * *')}>
+              cron: 每天2点
+            </Button>
+            <span className="mx-1 text-gray-700">|</span>
+            <Button variant="secondary" onClick={() => setToolsetQuick('safe_readonly')}>
+              toolset: safe_readonly
+            </Button>
+            <Button variant="secondary" onClick={() => setToolsetQuick('workspace_default')}>
+              toolset: workspace_default
+            </Button>
+            <Button variant="secondary" onClick={() => setToolsetQuick('full')}>
+              toolset: full
             </Button>
           </div>
           <Input label="名称" value={name} onChange={(e: any) => setName(e.target.value)} />
