@@ -397,6 +397,28 @@ const Gateway: React.FC = () => {
         </motion.div>
       </div>
 
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-dark-card rounded-xl border border-dark-border p-4">
+        <div className="text-sm font-semibold text-gray-200 mb-2">Slack 接入（最小适配）</div>
+        <div className="text-xs text-gray-400 space-y-1">
+          <div>
+            Slash Command：<code className="text-gray-300">POST /api/core/gateway/slack/command</code>（application/x-www-form-urlencoded）
+          </div>
+          <div>
+            Events API：<code className="text-gray-300">POST /api/core/gateway/slack/events</code>（url_verification / event_callback）
+          </div>
+          <div>
+            建议配置环境变量：
+            <code className="text-gray-300 ml-1">AIPLAT_SLACK_SIGNING_SECRET</code>（开启签名校验）、
+            <code className="text-gray-300 ml-1">AIPLAT_SLACK_DEFAULT_TARGET_ID</code>、
+            <code className="text-gray-300 ml-1">AIPLAT_SLACK_DEFAULT_KIND</code>
+          </div>
+          <div>
+            Pairing：用上方 <b>Gateway Pairings</b> 维护 <code className="text-gray-300">channel=slack</code> + <code className="text-gray-300">channel_user_id=Uxxx</code> → user_id/session_id，
+            这样 Slack 请求无需直接暴露内部 user_id/session_id。
+          </div>
+        </div>
+      </motion.div>
+
       <Modal
         open={deleteModal.open}
         onClose={() => setDeleteModal({ open: false, route: null })}
