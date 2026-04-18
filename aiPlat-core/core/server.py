@@ -4934,6 +4934,7 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request)
         resp.setdefault("error_detail", resp.get("error"))
     resp.setdefault("trace_id", result.trace_id)
     resp.setdefault("run_id", result.run_id)
+    resp.setdefault("request_id", request_id)
     return resp
 
 
