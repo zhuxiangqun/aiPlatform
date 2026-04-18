@@ -300,6 +300,7 @@ export interface McpServer {
   url?: string;
   command?: string;
   args?: string[];
+  auth?: Record<string, unknown>;
   allowed_tools?: string[];
   metadata?: Record<string, unknown>;
 }
@@ -325,6 +326,18 @@ export const mcpApi = {
 export const workspaceMcpApi = {
   listServers: async () => {
     return apiClient.get<McpServerListResponse>('/core/workspace/mcp/servers');
+  },
+
+  getServer: async (serverName: string) => {
+    return apiClient.get<McpServer>(`/core/workspace/mcp/servers/${serverName}`);
+  },
+
+  upsertServer: async (payload: McpServer) => {
+    return apiClient.post<{ status: string; server?: { name: string; enabled: boolean } }>('/core/workspace/mcp/servers', payload as any);
+  },
+
+  updateServer: async (serverName: string, payload: Partial<McpServer>) => {
+    return apiClient.put<{ status: string; server?: { name: string; enabled: boolean } }>(`/core/workspace/mcp/servers/${serverName}`, payload as any);
   },
 
   enableServer: async (serverName: string) => {

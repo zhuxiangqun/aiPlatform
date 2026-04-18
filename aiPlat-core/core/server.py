@@ -2047,6 +2047,7 @@ async def list_mcp_servers():
                 "url": s.url,
                 "command": s.command,
                 "args": s.args,
+                "auth": s.auth,
                 "allowed_tools": s.allowed_tools,
                 "metadata": s.metadata,
             }
@@ -2094,12 +2095,70 @@ async def list_workspace_mcp_servers():
                 "url": s.url,
                 "command": s.command,
                 "args": s.args,
+                "auth": s.auth,
                 "allowed_tools": s.allowed_tools,
                 "metadata": s.metadata,
             }
             for s in _workspace_mcp_manager.list_servers()
         ]
     }
+
+@api_router.get("/workspace/mcp/servers/{server_name}")
+async def get_workspace_mcp_server(server_name: str):
+    """Get workspace MCP server details."""
+    if not _workspace_mcp_manager:
+        raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
+    s = _workspace_mcp_manager.get_server(server_name)
+    if not s:
+        raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
+    return {
+        "name": s.name,
+        "enabled": s.enabled,
+        "transport": s.transport,
+        "url": s.url,
+        "command": s.command,
+        "args": s.args,
+        "auth": s.auth,
+        "allowed_tools": s.allowed_tools,
+        "metadata": s.metadata,
+    }
+
+
+@api_router.post("/workspace/mcp/servers")
+async def upsert_workspace_mcp_server(request: dict):
+    """Create or update a workspace MCP server (writes to ~/.aiplat/mcps/<name>/server.yaml + policy.yaml)."""
+    if not _workspace_mcp_manager:
+        raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
+    try:
+        from core.management.mcp_manager import MCPServerInfo
+
+        name = str((request or {}).get("name") or "").strip()
+        if not name:
+            raise HTTPException(status_code=400, detail="Missing required field: name")
+        info = MCPServerInfo(
+            name=name,
+            enabled=bool((request or {}).get("enabled", True)),
+            transport=str((request or {}).get("transport") or "sse"),
+            url=(request or {}).get("url"),
+            command=(request or {}).get("command"),
+            args=list((request or {}).get("args") or []),
+            auth=(request or {}).get("auth") if isinstance((request or {}).get("auth"), dict) else None,
+            allowed_tools=[str(x) for x in ((request or {}).get("allowed_tools") or [])],
+            metadata=(request or {}).get("metadata") if isinstance((request or {}).get("metadata"), dict) else {},
+        )
+        saved = _workspace_mcp_manager.upsert_server(info)
+        return {"status": "upserted", "server": {"name": saved.name, "enabled": saved.enabled}}
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+
+@api_router.put("/workspace/mcp/servers/{server_name}")
+async def update_workspace_mcp_server(server_name: str, request: dict):
+    """Update workspace MCP server (upsert semantics)."""
+    payload = dict(request or {})
+    payload["name"] = server_name
+    return await upsert_workspace_mcp_server(payload)
+
 
 
 @api_router.post("/workspace/mcp/servers/{server_name}/enable")
@@ -2109,7 +2168,6 @@ async def enable_workspace_mcp_server(server_name: str):
     ok = _workspace_mcp_manager.set_enabled(server_name, True)
     if not ok:
         raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
-    return {"status": "enabled"}
 
 
 @api_router.post("/workspace/mcp/servers/{server_name}/disable")

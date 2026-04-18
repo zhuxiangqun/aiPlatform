@@ -1,13 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { Copy, Info, RotateCw } from 'lucide-react';
+import { Copy, Info, Pencil, Plus, RotateCw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Badge, Table, Switch, Button, Modal, toast } from '../../../components/ui';
 import { useWorkspaceMcpStore } from '../../../stores';
 import type { McpServer } from '../../../services/coreApi';
+import AddMcpModal from '../../../components/workspace/AddMcpModal';
+import EditMcpModal from '../../../components/workspace/EditMcpModal';
 
 const WorkspaceMCP: React.FC = () => {
   const { servers, loading, fetchServers, setServerEnabled } = useWorkspaceMcpStore();
   const [detailModal, setDetailModal] = useState<{ open: boolean; server: McpServer | null }>({ open: false, server: null });
+  const [addOpen, setAddOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editServer, setEditServer] = useState<McpServer | null>(null);
 
   useEffect(() => {
     fetchServers();
@@ -66,12 +71,25 @@ const WorkspaceMCP: React.FC = () => {
     {
       title: '操作',
       key: 'actions',
-      width: 90,
+      width: 120,
       align: 'center' as const,
       render: (_: unknown, record: McpServer) => (
-        <button onClick={() => setDetailModal({ open: true, server: record })} className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors" title="详情">
-          <Info className="w-4 h-4" />
-        </button>
+        <div className="flex items-center justify-center gap-1">
+          <button
+            onClick={() => setDetailModal({ open: true, server: record })}
+            className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors"
+            title="详情"
+          >
+            <Info className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => { setEditServer(record); setEditOpen(true); }}
+            className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors"
+            title="编辑"
+          >
+            <Pencil className="w-4 h-4" />
+          </button>
+        </div>
       ),
     },
   ];
@@ -87,6 +105,9 @@ const WorkspaceMCP: React.FC = () => {
           <p className="text-sm text-gray-500 mt-1">来自 ~/.aiplat/mcps（可编辑）</p>
         </div>
         <div className="flex items-center gap-3">
+          <Button variant="primary" icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>
+            新增
+          </Button>
           <Button icon={<RotateCw className="w-4 h-4" />} onClick={fetchServers} loading={loading}>
             刷新
           </Button>
@@ -122,9 +143,21 @@ const WorkspaceMCP: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      <AddMcpModal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onSuccess={fetchServers}
+      />
+
+      <EditMcpModal
+        open={editOpen}
+        server={editServer}
+        onClose={() => setEditOpen(false)}
+        onSuccess={fetchServers}
+      />
     </div>
   );
 };
 
 export default WorkspaceMCP;
-
