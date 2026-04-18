@@ -4576,6 +4576,154 @@ async def gateway_webhook_message(http_request: Request, body: Dict[str, Any]):
     return await gateway_execute(req, http_request)
 
 
+def _verify_slack_signature(http_request: Request, raw_body: bytes) -> None:
+    """
+    Optional Slack request verification.
+    Enable by setting env AIPLAT_SLACK_SIGNING_SECRET.
+    """
+    secret = os.getenv("AIPLAT_SLACK_SIGNING_SECRET")
+    if not secret:
+        return
+    import hmac
+    import hashlib
+    import time as _time
+
+    ts = http_request.headers.get("x-slack-request-timestamp") or http_request.headers.get("X-Slack-Request-Timestamp")
+    sig = http_request.headers.get("x-slack-signature") or http_request.headers.get("X-Slack-Signature")
+    if not ts or not sig:
+        raise HTTPException(status_code=401, detail="missing slack signature headers")
+    try:
+        ts_i = int(ts)
+    except Exception:
+        raise HTTPException(status_code=401, detail="invalid slack timestamp")
+    # prevent replay
+    if abs(int(_time.time()) - ts_i) > 60 * 5:
+        raise HTTPException(status_code=401, detail="stale slack request")
+    base = f"v0:{ts}:{raw_body.decode('utf-8')}".encode("utf-8")
+    expected = "v0=" + hmac.new(secret.encode("utf-8"), base, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected, sig):
+        raise HTTPException(status_code=403, detail="invalid slack signature")
+
+
+async def _post_slack_response(response_url: str, text: str) -> None:
+    import aiohttp
+
+    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=8)) as sess:
+        async with sess.post(response_url, json={"text": text}) as resp:
+            await resp.text()
+
+
+@api_router.post("/gateway/slack/command")
+async def gateway_slack_command(http_request: Request):
+    """
+    Slack slash command adapter (minimal).
+    - Accept x-www-form-urlencoded payload
+    - (optional) verify signature
+    - Execute via gateway_execute (pairing/auth/toolset enforced)
+    - (optional) post final response to response_url
+    """
+    import urllib.parse
+
+    raw = await http_request.body()
+    _verify_slack_signature(http_request, raw)
+    form = urllib.parse.parse_qs(raw.decode("utf-8"), keep_blank_values=True)
+
+    def _one(k: str) -> Optional[str]:
+        v = form.get(k)
+        if not v:
+            return None
+        return str(v[0])
+
+    user_id = _one("user_id")
+    text = _one("text") or ""
+    response_url = _one("response_url")
+    team_id = _one("team_id")
+    channel_id = _one("channel_id")
+
+    target_id = os.getenv("AIPLAT_SLACK_DEFAULT_TARGET_ID", "agent_1")
+    kind = os.getenv("AIPLAT_SLACK_DEFAULT_KIND", "agent")
+
+    req = GatewayExecuteRequest(
+        channel="slack",
+        kind=kind,
+        target_id=target_id,
+        channel_user_id=user_id,
+        payload={
+            "input": {"message": text, "text": text},
+            "context": {"source": "slack_command", "slack": {"team_id": team_id, "channel_id": channel_id}},
+        },
+    )
+    resp = await gateway_execute(req, http_request)
+
+    # If slack provides response_url, send the final answer there (best-effort)
+    if response_url:
+        try:
+            out = resp.get("output")
+            if resp.get("ok") is False:
+                err = resp.get("error") if isinstance(resp.get("error"), dict) else None
+                err_msg = resp.get("error_message") or (err.get("message") if err else None) or "执行失败"
+                err_code = (err.get("code") if err else None) or (resp.get("error_detail") or {}).get("code")
+                text_out = f"{f'[{err_code}] ' if err_code else ''}{err_msg}"
+            else:
+                if isinstance(out, str):
+                    text_out = out
+                else:
+                    import json as _json
+
+                    text_out = _json.dumps(out, ensure_ascii=False) if out is not None else "ok"
+            await _post_slack_response(response_url, text_out[:3500])
+        except Exception:
+            pass
+
+    # Respond quickly to Slack (ack)
+    return {"ok": True, "trace_id": resp.get("trace_id"), "run_id": resp.get("run_id")}
+
+
+@api_router.post("/gateway/slack/events")
+async def gateway_slack_events(http_request: Request, body: Dict[str, Any]):
+    """
+    Slack Events API adapter (minimal):
+    - url_verification -> return challenge
+    - event_callback(message/app_mention) -> fire-and-forget execute via gateway_execute (no reply)
+    """
+    raw = await http_request.body()
+    _verify_slack_signature(http_request, raw)
+
+    if body.get("type") == "url_verification":
+        return {"challenge": body.get("challenge")}
+
+    if body.get("type") == "event_callback":
+        event = body.get("event") if isinstance(body.get("event"), dict) else {}
+        # ignore bot messages
+        if event.get("bot_id"):
+            return {"ok": True}
+        user_id = event.get("user")
+        text = event.get("text") or ""
+        team_id = body.get("team_id")
+        channel_id = event.get("channel")
+
+        target_id = os.getenv("AIPLAT_SLACK_DEFAULT_TARGET_ID", "agent_1")
+        kind = os.getenv("AIPLAT_SLACK_DEFAULT_KIND", "agent")
+        req = GatewayExecuteRequest(
+            channel="slack",
+            kind=kind,
+            target_id=target_id,
+            channel_user_id=str(user_id) if user_id else None,
+            payload={
+                "input": {"message": text, "text": text},
+                "context": {"source": "slack_event", "slack": {"team_id": team_id, "channel_id": channel_id, "event": event}},
+            },
+        )
+        # best-effort (no external reply in minimal version)
+        try:
+            await gateway_execute(req, http_request)
+        except Exception:
+            pass
+        return {"ok": True}
+
+    return {"ok": True}
+
+
 def _require_gateway_admin(http_request: Request) -> None:
     """
     Optional admin guard for gateway management endpoints.
