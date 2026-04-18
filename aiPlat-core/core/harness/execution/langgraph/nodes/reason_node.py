@@ -170,6 +170,11 @@ class ActNode(BaseNode):
                         tool_args,
                         user_id=str(ctx.get("user_id", "system")),
                         session_id=str(ctx.get("session_id", "default")),
+                        trace_context={
+                            "trace_id": ctx.get("_trace_id") or ctx.get("trace_id"),
+                            "run_id": ctx.get("_run_id") or ctx.get("run_id"),
+                            "tenant_id": ctx.get("tenant_id"),
+                        },
                     )
                     action_result = str(result.output or result.error or "Success")
                 except Exception as e:
@@ -268,6 +273,7 @@ class ToolNode(BaseNode):
                 trace_context={
                     "trace_id": (state.get("metadata") or {}).get("trace_id") if isinstance(state.get("metadata"), dict) else None,
                     "run_id": (state.get("metadata") or {}).get("graph_run_id") if isinstance(state.get("metadata"), dict) else None,
+                    "tenant_id": context.get("tenant_id") if isinstance(context, dict) else None,
                 },
             )
             return {

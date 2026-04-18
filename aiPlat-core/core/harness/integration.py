@@ -1149,13 +1149,19 @@ class HarnessIntegration:
                 pass
 
         try:
+            tenant_id = None
+            try:
+                ctx0 = payload.get("context") if isinstance(payload.get("context"), dict) else {}
+                tenant_id = ctx0.get("tenant_id") if isinstance(ctx0, dict) else None
+            except Exception:
+                tenant_id = None
             result = await sys_tool_call(
                 tool,
                 input_data if isinstance(input_data, dict) else {},
                 user_id=req.user_id,
                 session_id=req.session_id,
                 timeout_seconds=60,
-                trace_context={"trace_id": trace_id, "run_id": run_id} if trace_id else None,
+                trace_context={"trace_id": trace_id, "run_id": run_id, "tenant_id": tenant_id} if trace_id else {"run_id": run_id, "tenant_id": tenant_id},
             )
             # Roadmap-4: persist session messages for cross-session search (best-effort).
             if runtime and runtime.execution_store:

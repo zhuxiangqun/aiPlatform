@@ -4906,8 +4906,18 @@ _execution_store: Optional[ExecutionStore] = None
 def get_execution_store(db_path: Optional[str] = None) -> ExecutionStore:
     """Process-wide singleton."""
     global _execution_store
+    desired_path = db_path or os.environ.get("AIPLAT_EXECUTION_DB_PATH", "data/aiplat_executions.sqlite3")
+    # If caller/env changes db_path within the same process (common in tests),
+    # re-create the singleton so it points at the correct database.
+    if _execution_store is not None:
+        try:
+            if str(getattr(getattr(_execution_store, "_config", None), "db_path", "")) != str(desired_path):
+                _execution_store = None
+        except Exception:
+            _execution_store = None
+
     if _execution_store is None:
-        db_path = db_path or os.environ.get("AIPLAT_EXECUTION_DB_PATH", "data/aiplat_executions.sqlite3")
+        db_path = desired_path
         def _int_env(name: str) -> Optional[int]:
             v = os.environ.get(name)
             if v is None or str(v).strip() == "":

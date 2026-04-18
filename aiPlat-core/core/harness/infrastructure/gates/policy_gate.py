@@ -17,6 +17,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, Optional
 import os
+import sqlite3
+import json
 
 from core.apps.tools.permission import get_permission_manager, Permission
 from core.harness.kernel.runtime import get_kernel_runtime
@@ -54,7 +56,50 @@ class PolicyGate:
                 reason=f"User '{user_id}' lacks EXECUTE permission for tool '{tool_name}'",
             )
 
+        # Tenant policy (policy-as-code): deny/approval_required tool lists.
+        tenant_id = (tool_args or {}).get("_tenant_id") if isinstance(tool_args, dict) else None
+        deny_by_policy = False
+        require_approval_by_policy = False
+        policy_reason = None
+        if tenant_id:
+            try:
+                runtime = get_kernel_runtime()
+                store = getattr(runtime, "execution_store", None) if runtime else None
+                db_path = getattr(getattr(store, "_config", None), "db_path", None)
+                if db_path:
+                    conn = sqlite3.connect(str(db_path))
+                    try:
+                        row = conn.execute(
+                            "SELECT policy_json, version FROM tenant_policies WHERE tenant_id=? LIMIT 1", (str(tenant_id),)
+                        ).fetchone()
+                    finally:
+                        conn.close()
+                    if row and row[0]:
+                        policy = json.loads(row[0]) if isinstance(row[0], str) else {}
+                        tool_policy = policy.get("tool_policy") if isinstance(policy, dict) else None
+                        if isinstance(tool_policy, dict):
+                            deny_tools = tool_policy.get("deny_tools") if isinstance(tool_policy.get("deny_tools"), list) else []
+                            approval_tools = (
+                                tool_policy.get("approval_required_tools")
+                                if isinstance(tool_policy.get("approval_required_tools"), list)
+                                else []
+                            )
+                            if tool_name in deny_tools:
+                                deny_by_policy = True
+                                policy_reason = f"Denied by tenant policy (tenant_id={tenant_id})"
+                            if tool_name in approval_tools:
+                                require_approval_by_policy = True
+            except Exception:
+                # Fail-open for compatibility.
+                pass
+
+        if deny_by_policy:
+            return PolicyResult(decision=PolicyDecision.DENY, reason=policy_reason or "Denied by tenant policy")
+
         force_approval = bool((tool_args or {}).get("_approval_required")) if isinstance(tool_args, dict) else False
+        if require_approval_by_policy:
+            force_approval = True
+
         if not self._enforce_approval and not force_approval:
             return PolicyResult(decision=PolicyDecision.ALLOW)
 

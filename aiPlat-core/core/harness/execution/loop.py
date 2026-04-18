@@ -476,6 +476,7 @@ DONE: final_answer
                         trace_context={
                             "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
                             "run_id": state.context.get("_run_id") or state.context.get("run_id"),
+                            "tenant_id": state.context.get("tenant_id"),
                         },
                     )
                     # Standardized syscall result handling

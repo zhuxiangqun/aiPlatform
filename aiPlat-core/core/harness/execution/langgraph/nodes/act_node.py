@@ -79,6 +79,11 @@ class ActNode(BaseNode):
                     params if isinstance(params, dict) else {},
                     user_id=user_id,
                     session_id=session_id,
+                    trace_context={
+                        "trace_id": context.get("_trace_id") or context.get("trace_id"),
+                        "run_id": context.get("_run_id") or context.get("run_id"),
+                        "tenant_id": context.get("tenant_id"),
+                    },
                 )
                 if result.success:
                     return str(result.output or "Success")

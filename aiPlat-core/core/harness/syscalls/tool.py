@@ -111,6 +111,12 @@ async def sys_tool_call(
         raise RuntimeError("Tool is not executable")
 
     args = dict(tool_args or {})
+    # Tenant propagation for policy-as-code (best-effort).
+    try:
+        if isinstance(trace_context, dict) and trace_context.get("tenant_id") and "_tenant_id" not in args:
+            args["_tenant_id"] = trace_context.get("tenant_id")
+    except Exception:
+        pass
     # Provide identity info for permission wrapper + auditing.
     args.setdefault("_user_id", user_id)
     args.setdefault("_session_id", session_id)

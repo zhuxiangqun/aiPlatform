@@ -4891,6 +4891,8 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request)
         ctx = dict(ctx) if isinstance(ctx, dict) else {}
         ctx.setdefault("source", "gateway")
         ctx.setdefault("channel", request.channel)
+        if request.tenant_id:
+            ctx.setdefault("tenant_id", str(request.tenant_id))
         # preserve external identity if present
         if request.channel_user_id:
             ctx.setdefault("channel_user_id", request.channel_user_id)
