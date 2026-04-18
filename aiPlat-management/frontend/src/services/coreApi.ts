@@ -126,6 +126,14 @@ export const workspaceAgentApi = {
     return apiClient.put<{ status: string; id: string }>(`/core/workspace/agents/${agentId}`, data);
   },
 
+  getSop: async (agentId: string) => {
+    return apiClient.get<{ agent_id: string; agent_md?: string; sop: string }>(`/core/workspace/agents/${agentId}/sop`);
+  },
+
+  updateSop: async (agentId: string, sop: string) => {
+    return apiClient.put<{ status: string; id: string }>(`/core/workspace/agents/${agentId}/sop`, { sop });
+  },
+
   execute: async (agentId: string, data: { messages?: unknown[]; input?: unknown; context?: Record<string, unknown> }) => {
     return apiClient.post<{ execution_id: string; status: string; output?: unknown; error?: string }>(`/core/workspace/agents/${agentId}/execute`, data);
   },

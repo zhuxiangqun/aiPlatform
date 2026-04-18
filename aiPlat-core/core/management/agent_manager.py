@@ -472,6 +472,118 @@ class AgentManager:
             pass
         
         return agent
+
+    # ==================== SOP (AGENT.md body section) ====================
+
+    def _read_agent_md(self, agent_id: str) -> Optional[Dict[str, Any]]:
+        """Best-effort read AGENT.md and split into frontmatter/body."""
+        agent = self._agents.get(agent_id)
+        if not agent or not isinstance(getattr(agent, "metadata", None), dict):
+            return None
+        fs = (agent.metadata or {}).get("filesystem") if isinstance(agent.metadata, dict) else None
+        agent_md = None
+        if isinstance(fs, dict):
+            agent_md = fs.get("agent_md")
+        if not agent_md:
+            # fallback to expected path
+            try:
+                base_dir = self._resolve_agents_base_path()
+                agent_md = str((base_dir / agent.id / "AGENT.md"))
+            except Exception:
+                agent_md = None
+        if not agent_md:
+            return None
+        try:
+            from pathlib import Path
+            p = Path(agent_md)
+            if not p.exists():
+                return None
+            raw = p.read_text(encoding="utf-8")
+            fm = {}
+            body = raw
+            if raw.startswith("---"):
+                parts = raw.split("---", 2)
+                if len(parts) >= 3:
+                    try:
+                        fm = yaml.safe_load(parts[1]) or {}
+                    except Exception:
+                        fm = {}
+                    body = parts[2]
+            if not isinstance(fm, dict):
+                fm = {}
+            return {"path": str(p), "raw": raw, "frontmatter": fm, "body": body}
+        except Exception:
+            return None
+
+    @staticmethod
+    def _extract_sop_from_body(body: str) -> str:
+        """Extract the '## SOP' section content from markdown body."""
+        import re
+        text = body or ""
+        m = re.search(r"(?m)^##\\s+SOP\\s*$", text)
+        if not m:
+            return ""
+        start = m.end()
+        rest = text[start:]
+        # find next H2 section
+        m2 = re.search(r"(?m)^##\\s+[^\\n]+\\s*$", rest)
+        sop = rest[: m2.start()] if m2 else rest
+        return sop.strip("\n").strip()
+
+    @staticmethod
+    def _replace_sop_in_body(body: str, sop_markdown: str) -> str:
+        """Replace or insert the '## SOP' section content."""
+        import re
+        text = body or ""
+        sop_markdown = (sop_markdown or "").strip("\n").rstrip() + "\n"
+        header = "## SOP\n"
+        m = re.search(r"(?m)^##\\s+SOP\\s*$", text)
+        if not m:
+            # append new SOP section at end
+            sep = "" if text.endswith("\n") or text == "" else "\n"
+            return f"{text}{sep}\n{header}{sop_markdown}"
+        start = m.end()
+        rest = text[start:]
+        m2 = re.search(r"(?m)^##\\s+[^\\n]+\\s*$", rest)
+        before = text[:start]
+        after = rest[m2.start():] if m2 else ""
+        # keep one blank line between header and content
+        return f"{before}\n{sop_markdown}{after.lstrip()}"
+
+    async def get_agent_sop(self, agent_id: str) -> Optional[Dict[str, Any]]:
+        """Get SOP markdown for agent (workspace-friendly)."""
+        info = self._read_agent_md(agent_id)
+        if not info:
+            return None
+        sop = self._extract_sop_from_body(str(info.get("body") or ""))
+        return {"agent_id": agent_id, "agent_md": info.get("path"), "sop": sop}
+
+    async def update_agent_sop(self, agent_id: str, sop_markdown: str) -> bool:
+        """Update SOP section in AGENT.md (best-effort)."""
+        agent = self._agents.get(agent_id)
+        if not agent:
+            return False
+        # protect engine scope agents
+        if (self._scope or "engine").strip().lower() == "engine":
+            if isinstance(getattr(agent, "metadata", None), dict) and agent.metadata.get("protected") is True:
+                raise PermissionError("Protected engine agent cannot be edited")
+
+        info = self._read_agent_md(agent_id)
+        if not info:
+            return False
+        try:
+            from pathlib import Path
+            p = Path(str(info.get("path")))
+            raw = str(info.get("raw") or "")
+            fm = info.get("frontmatter") or {}
+            body = str(info.get("body") or "")
+            new_body = self._replace_sop_in_body(body, sop_markdown)
+            header = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True).strip()
+            p.write_text(f"---\n{header}\n---\n{new_body.lstrip()}", encoding="utf-8")
+            agent.updated_at = datetime.utcnow()
+            return True
+        except Exception:
+            return False
     
     async def delete_agent(self, agent_id: str) -> bool:
         """Delete agent"""

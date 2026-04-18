@@ -862,8 +862,43 @@ async def get_workspace_agent(agent_id: str):
         "config": agent.config,
         "skills": agent.skills,
         "tools": agent.tools,
+        "memory_config": agent.memory_config,
         "metadata": agent.metadata,
     }
+
+
+@api_router.get("/workspace/agents/{agent_id}/sop")
+async def get_workspace_agent_sop(agent_id: str):
+    """Get agent SOP (markdown) from AGENT.md '## SOP' section."""
+    if not _workspace_agent_manager:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    agent = await _workspace_agent_manager.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    data = await _workspace_agent_manager.get_agent_sop(agent_id)  # type: ignore[attr-defined]
+    if not data:
+        raise HTTPException(status_code=404, detail="SOP not found")
+    return data
+
+
+@api_router.put("/workspace/agents/{agent_id}/sop")
+async def update_workspace_agent_sop(agent_id: str, request: dict):
+    """Update agent SOP section in AGENT.md."""
+    if not _workspace_agent_manager:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    agent = await _workspace_agent_manager.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    sop = (request or {}).get("sop")
+    if sop is None:
+        raise HTTPException(status_code=400, detail="Missing field: sop")
+    try:
+        ok = await _workspace_agent_manager.update_agent_sop(agent_id, str(sop))  # type: ignore[attr-defined]
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    if not ok:
+        raise HTTPException(status_code=500, detail="Failed to update SOP")
+    return {"status": "updated", "id": agent_id}
 
 
 @api_router.delete("/workspace/agents/{agent_id}")

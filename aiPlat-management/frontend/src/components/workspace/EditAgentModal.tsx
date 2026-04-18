@@ -19,6 +19,8 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [memoryConfigText, setMemoryConfigText] = useState('');
+  const [sopText, setSopText] = useState('');
+  const [sopLoading, setSopLoading] = useState(false);
   const [skillOptions, setSkillOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [toolOptions, setToolOptions] = useState<Array<{ value: string; label: string }>>([]);
 
@@ -30,9 +32,25 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       setTools(agent.tools || []);
       setConfigText(agent.metadata?.config ? JSON.stringify(agent.metadata.config, null, 2) : (agent as any)?.config ? JSON.stringify((agent as any).config, null, 2) : '');
       setMemoryConfigText((agent as any)?.memory_config ? JSON.stringify((agent as any).memory_config, null, 2) : '');
+      setSopText('');
       fetchOptions();
+      fetchSop();
     }
   }, [open, agent]);
+
+  const fetchSop = async () => {
+    if (!agent) return;
+    setSopLoading(true);
+    try {
+      const res = await workspaceAgentApi.getSop(agent.id);
+      setSopText(String((res as any).sop || ''));
+    } catch {
+      // SOP might not exist; allow user to create it.
+      setSopText('');
+    } finally {
+      setSopLoading(false);
+    }
+  };
 
   const fetchOptions = async () => {
     try {
@@ -101,6 +119,21 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       else delete (metadata as any).description;
 
       await workspaceAgentApi.update(agent.id, { name: name.trim() || undefined, config, memory_config, metadata });
+
+      // update SOP (best-effort; do not block binding changes)
+      try {
+        if (typeof sopText === 'string') {
+          await workspaceAgentApi.updateSop(agent.id, sopText);
+          // create a version record for auditability (best-effort)
+          try {
+            await workspaceAgentApi.createVersion(agent.id, 'Update SOP');
+          } catch {
+            // ignore
+          }
+        }
+      } catch {
+        // ignore SOP failures; main update succeeded
+      }
 
       // sync bindings by diff
       const curSkillsRes = await workspaceAgentApi.getSkills(agent.id);
@@ -190,6 +223,14 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
 
         <Textarea label="配置（JSON）" value={configText} onChange={(e: any) => setConfigText(e.target.value)} rows={10} />
         <Textarea label="memory_config（JSON，可选）" value={memoryConfigText} onChange={(e: any) => setMemoryConfigText(e.target.value)} rows={6} />
+        <Textarea
+          label="SOP（Markdown，可选）"
+          value={sopText}
+          onChange={(e: any) => setSopText(e.target.value)}
+          rows={10}
+          placeholder={'例如：\n1. 澄清问题与范围。\n2. 调用 knowledge_retrieval 检索证据。\n3. 综合生成答案并引用证据。'}
+        />
+        {sopLoading && <div className="text-xs text-gray-500">SOP 加载中...</div>}
         <Alert type="info" title="说明">
           {configHint} {configHint2}
         </Alert>
