@@ -535,6 +535,102 @@ export const workspaceSkillApi = {
   },
 };
 
+// ==================== Jobs / Cron (Roadmap-3) ====================
+
+export interface Job {
+  id: string;
+  name: string;
+  enabled: boolean;
+  cron: string;
+  timezone?: string | null;
+  kind: 'agent' | 'skill' | 'tool' | 'graph' | string;
+  target_id: string;
+  user_id?: string | null;
+  session_id?: string | null;
+  payload?: Record<string, unknown>;
+  options?: Record<string, unknown>;
+  delivery?: Record<string, unknown>;
+  last_run_at?: number | null;
+  next_run_at?: number | null;
+  lock_until?: number | null;
+  lock_owner?: string | null;
+  created_at?: number | null;
+  updated_at?: number | null;
+}
+
+export interface JobRun {
+  id: string;
+  job_id: string;
+  scheduled_for?: number | null;
+  started_at?: number | null;
+  finished_at?: number | null;
+  status: string;
+  trace_id?: string | null;
+  run_id?: string | null;
+  error?: string | null;
+  result?: any;
+  created_at?: number | null;
+}
+
+export const jobApi = {
+  list: async (params: { limit?: number; offset?: number; enabled?: boolean } = {}) => {
+    const q = new URLSearchParams();
+    if (params.limit != null) q.set('limit', String(params.limit));
+    if (params.offset != null) q.set('offset', String(params.offset));
+    if (params.enabled != null) q.set('enabled', params.enabled ? 'true' : 'false');
+    const qs = q.toString();
+    return apiClient.get<{ items: Job[]; total: number; limit: number; offset: number }>(`/core/jobs${qs ? `?${qs}` : ''}`);
+  },
+
+  create: async (data: {
+    name: string;
+    kind: string;
+    target_id: string;
+    cron: string;
+    enabled?: boolean;
+    timezone?: string | null;
+    user_id?: string | null;
+    session_id?: string | null;
+    payload?: Record<string, unknown>;
+    options?: Record<string, unknown>;
+    delivery?: Record<string, unknown>;
+  }) => {
+    return apiClient.post<Job>(`/core/jobs`, data);
+  },
+
+  get: async (jobId: string) => {
+    return apiClient.get<Job>(`/core/jobs/${jobId}`);
+  },
+
+  update: async (jobId: string, data: Record<string, unknown>) => {
+    return apiClient.put<Job>(`/core/jobs/${jobId}`, data);
+  },
+
+  delete: async (jobId: string) => {
+    return apiClient.delete<{ status: string; job_id: string }>(`/core/jobs/${jobId}`);
+  },
+
+  enable: async (jobId: string) => {
+    return apiClient.post<Job>(`/core/jobs/${jobId}/enable`, {});
+  },
+
+  disable: async (jobId: string) => {
+    return apiClient.post<Job>(`/core/jobs/${jobId}/disable`, {});
+  },
+
+  runNow: async (jobId: string) => {
+    return apiClient.post<any>(`/core/jobs/${jobId}/run`, {});
+  },
+
+  listRuns: async (jobId: string, params: { limit?: number; offset?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.limit != null) q.set('limit', String(params.limit));
+    if (params.offset != null) q.set('offset', String(params.offset));
+    const qs = q.toString();
+    return apiClient.get<{ items: JobRun[]; total: number; limit: number; offset: number }>(`/core/jobs/${jobId}/runs${qs ? `?${qs}` : ''}`);
+  },
+};
+
 // ==================== Memory API ====================
 
 export interface MemorySession {

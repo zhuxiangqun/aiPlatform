@@ -29,6 +29,7 @@ import {
   Activity,
   Plug,
   Package,
+  CalendarClock,
   type LucideIcon,
 } from 'lucide-react';
 import { NotificationBellButton, NotificationProvider, ToastProvider } from '../ui';
@@ -66,6 +67,7 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
     { key: '/core/tools', icon: Wrench, label: 'Tool管理' },
     { key: '/core/mcp', icon: Plug, label: 'MCP管理' },
     { key: '/core/memory', icon: Brain, label: 'Memory管理' },
+    { key: '/core/jobs', icon: CalendarClock, label: 'Jobs/Cron' },
     { key: '/core/learning/artifacts', icon: FileText, label: 'Learning产物' },
     { key: '/core/learning/releases', icon: Layers, label: 'Release候选' },
     { key: '/core/approvals', icon: ShieldCheck, label: '审批中心' },

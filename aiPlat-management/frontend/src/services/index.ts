@@ -13,7 +13,7 @@ export { monitoringApi } from './monitoringApi';
 export { modelApi } from './modelApi';
 
 // 核心能力层 API
-export { agentApi, skillApi, memoryApi, knowledgeApi, harnessApi, toolApi, learningApi, approvalsApi } from './coreApi';
+export { agentApi, skillApi, memoryApi, knowledgeApi, harnessApi, toolApi, learningApi, approvalsApi, jobApi } from './coreApi';
 
 // Legacy monitoring API (for layer metrics)
 export { monitoringApi as layerMonitoringApi } from './apiClient';
@@ -44,6 +44,8 @@ export type {
   LearningArtifact,
   LearningArtifactListResponse,
   ApprovalRequestSummary,
+  Job,
+  JobRun,
 } from './coreApi';
 
 // 平台服务层 & 应用接入层 API
