@@ -43,7 +43,7 @@ class ExecutionStoreConfig:
 
 
 class ExecutionStore:
-    CURRENT_SCHEMA_VERSION = 12
+    CURRENT_SCHEMA_VERSION = 13
 
     def __init__(self, config: ExecutionStoreConfig):
         self._config = config
@@ -484,6 +484,25 @@ class ExecutionStore:
                         )
                         _set_version(12)
                         current = 12
+
+                    # ---- Migration v13: jobs locking fields (Roadmap-3 hardening) ----
+                    if current < 13:
+                        # Best-effort columns for leaderless locking.
+                        # If multiple schedulers are running, they will contend on (lock_until, lock_owner).
+                        try:
+                            conn.execute("ALTER TABLE jobs ADD COLUMN lock_until REAL;")
+                        except Exception:
+                            pass
+                        try:
+                            conn.execute("ALTER TABLE jobs ADD COLUMN lock_owner TEXT;")
+                        except Exception:
+                            pass
+                        try:
+                            conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_lock_until ON jobs(lock_until);")
+                        except Exception:
+                            pass
+                        _set_version(13)
+                        current = 13
 
                     # If legacy db exists with tables but without meta, upgrade meta to current
                     if current < self.CURRENT_SCHEMA_VERSION:
@@ -2343,11 +2362,14 @@ class ExecutionStore:
                 rows = conn.execute(
                     """
                     SELECT * FROM jobs
-                    WHERE enabled = 1 AND next_run_at IS NOT NULL AND next_run_at <= ?
+                    WHERE enabled = 1
+                      AND next_run_at IS NOT NULL
+                      AND next_run_at <= ?
+                      AND (lock_until IS NULL OR lock_until <= ?)
                     ORDER BY next_run_at ASC
                     LIMIT ?;
                     """,
-                    (float(now_ts), int(limit)),
+                    (float(now_ts), float(now_ts), int(limit)),
                 ).fetchall()
                 return [dict(r) for r in rows]
             finally:
@@ -2355,6 +2377,59 @@ class ExecutionStore:
 
         rows = await anyio.to_thread.run_sync(_sync)
         return [self._job_row_to_obj(r) for r in rows]
+
+    async def acquire_job_lock(self, job_id: str, *, owner: str, ttl_seconds: float = 300.0) -> bool:
+        """
+        Leaderless lock:
+        - Acquire succeeds if lock is absent or expired.
+        - Lock auto-expires by lock_until (TTL).
+        """
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> bool:
+            conn = sqlite3.connect(db_path)
+            try:
+                now = time.time()
+                lock_until = now + float(ttl_seconds)
+                cur = conn.execute(
+                    """
+                    UPDATE jobs
+                    SET lock_until = ?, lock_owner = ?, updated_at = ?
+                    WHERE id = ?
+                      AND (lock_until IS NULL OR lock_until <= ?);
+                    """,
+                    (float(lock_until), str(owner), float(now), str(job_id), float(now)),
+                )
+                conn.commit()
+                return bool(cur.rowcount)
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
+    async def release_job_lock(self, job_id: str, *, owner: str) -> None:
+        """Release lock if owned by `owner` (best-effort)."""
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> None:
+            conn = sqlite3.connect(db_path)
+            try:
+                now = time.time()
+                conn.execute(
+                    """
+                    UPDATE jobs
+                    SET lock_until = NULL, lock_owner = NULL, updated_at = ?
+                    WHERE id = ? AND lock_owner = ?;
+                    """,
+                    (float(now), str(job_id), str(owner)),
+                )
+                conn.commit()
+            finally:
+                conn.close()
+
+        await anyio.to_thread.run_sync(_sync)
 
     async def create_job_run(self, run: Dict[str, Any]) -> Dict[str, Any]:
         await self.init()
@@ -2484,6 +2559,8 @@ class ExecutionStore:
             "delivery": _json_loads(row.get("delivery_json")) or {},
             "last_run_at": row.get("last_run_at"),
             "next_run_at": row.get("next_run_at"),
+            "lock_until": row.get("lock_until"),
+            "lock_owner": row.get("lock_owner"),
             "created_at": row.get("created_at"),
             "updated_at": row.get("updated_at"),
         }

@@ -173,6 +173,21 @@ class JobScheduler:
 
         now = time.time()
         run_id = f"jobrun-{uuid.uuid4().hex[:12]}"
+
+        # Acquire lock to prevent duplicate runs (best-effort, leaderless).
+        lock_owner = run_id
+        try:
+            ttl = float(os.getenv("AIPLAT_JOBS_LOCK_TTL_SECONDS", "300") or "300")
+        except Exception:
+            ttl = 300.0
+        try:
+            ok_lock = await self._store.acquire_job_lock(job_id, owner=lock_owner, ttl_seconds=ttl)
+            if not ok_lock:
+                # Another scheduler instance owns it.
+                return {"skipped": True, "reason": "locked", "job_id": job_id}
+        except Exception:
+            # If locking fails unexpectedly, fail-open to preserve functionality.
+            ok_lock = True
         # advance next_run_at early to avoid duplicate pickup
         try:
             next_run = None
@@ -197,6 +212,7 @@ class JobScheduler:
                 "run_id": run_id,
             }
         )
+
 
         payload = dict(job.get("payload") or {})
         options = dict(job.get("options") or {})
@@ -302,7 +318,14 @@ class JobScheduler:
             pass
 
         # Return latest run
-        return await self._store.list_job_runs(job_id=job_id, limit=1, offset=0)
+        try:
+            return await self._store.list_job_runs(job_id=job_id, limit=1, offset=0)
+        finally:
+            # Always release lock when done (best-effort).
+            try:
+                await self._store.release_job_lock(job_id, owner=lock_owner)
+            except Exception:
+                pass
 
     async def _deliver_webhook(
         self,

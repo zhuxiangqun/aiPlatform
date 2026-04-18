@@ -4,6 +4,7 @@
 - `AIPLAT_ENABLE_JOBS=true|false`：是否启用后台调度器（默认 true）
 - `AIPLAT_JOBS_POLL_SECONDS=2`：轮询间隔
 - `AIPLAT_JOBS_BATCH_SIZE=20`：单次拉取 due jobs 数量
+- `AIPLAT_JOBS_LOCK_TTL_SECONDS=300`：同一 job 的“重入锁”TTL（防止多实例调度重复执行）
 - `AIPLAT_JOBS_DELIVERY_TIMEOUT_SECONDS=10`：webhook 投递超时
 - `AIPLAT_JOBS_DELIVERY_RETRIES=2`：webhook 投递重试次数
 - `AIPLAT_JOBS_DELIVERY_BACKOFF_SECONDS=1`：重试退避（线性 backoff）
@@ -51,4 +52,3 @@
 ```
 
 投递结果会写入 `job_run.result.delivery`（best-effort），便于审计与排障。
-
