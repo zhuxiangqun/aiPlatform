@@ -60,5 +60,7 @@ def test_skill_pack_install_materializes_workspace_skill(tmp_path, monkeypatch):
         assert r4.status_code == 200, r4.text
         md = r4.json()
         assert "SKILL.md" in md.get("path", "") or md.get("content", "").startswith("---")
-        assert "skill_pack" in md.get("content", "")
-
+        content = md.get("content", "")
+        assert "skill_pack" in content
+        # Frontmatter should include pack_id provenance
+        assert f"pack_id: {pack['id']}" in content or f"pack_id: \"{pack['id']}\"" in content
