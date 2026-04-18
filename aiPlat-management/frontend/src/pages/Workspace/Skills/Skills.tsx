@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Copy, Info, Plus, RotateCw, Trash2, Pencil, Play, Layers, Clock } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Badge, Table, Select, Switch, Button, Modal, toast } from '../../../components/ui';
@@ -33,6 +33,7 @@ const SKILL_CATEGORIES = [
 const WorkspaceSkills: React.FC = () => {
   const { skills, loading, fetchSkills, toggleSkill, deleteSkill, restoreSkill } = useWorkspaceSkillStore();
   const location = useLocation() as any;
+  const navigate = useNavigate();
   const [categoryFilter, setCategoryFilter] = useState<string>('');
   const [enabledOnly, setEnabledOnly] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -138,6 +139,30 @@ const WorkspaceSkills: React.FC = () => {
       render: (c: string) => {
         const cfg = categoryConfig[c] || { color: 'bg-dark-hover text-gray-300 border-gray-200', text: c };
         return <span className={`inline-flex px-2 py-1 rounded-md text-xs font-medium border ${cfg.color}`}>{cfg.text}</span>;
+      },
+    },
+    {
+      title: '来源',
+      key: 'source',
+      width: 220,
+      render: (_: unknown, record: Skill) => {
+        const sp: any = (record as any)?.metadata?.skill_pack;
+        const packId = sp?.pack_id || sp?.packId || sp?.id;
+        const ver = sp?.version;
+        if (!packId) return <span className="text-gray-500">-</span>;
+        return (
+          <div className="flex items-center gap-2">
+            <code className="text-xs bg-dark-hover px-1.5 py-0.5 rounded">{String(packId).slice(0, 10)}...</code>
+            <span className="text-xs text-gray-400">{ver ? `v${ver}` : ''}</span>
+            <button
+              className="text-xs text-primary hover:underline"
+              onClick={() => navigate('/core/skill-packs', { state: { openPackId: String(packId) } })}
+              title="打开 Skill Pack"
+            >
+              查看包
+            </button>
+          </div>
+        );
       },
     },
     {

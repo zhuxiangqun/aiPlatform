@@ -1,13 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Copy, PackagePlus, RotateCw, Trash2, UploadCloud, Tag, Info } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import PageHeader from '../../../components/common/PageHeader';
 import { Button, Input, Modal, Table, Textarea, toast, Select } from '../../../components/ui';
 import { skillPackApi, type SkillPack, type SkillPackInstall, type SkillPackVersion } from '../../../services';
 
 const SkillPacks: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation() as any;
   const [loading, setLoading] = useState(false);
   const [packs, setPacks] = useState<SkillPack[]>([]);
   const [limit] = useState(100);
@@ -52,6 +53,22 @@ const SkillPacks: React.FC = () => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Support cross-page deep link: /core/skill-packs with state { openPackId }
+  useEffect(() => {
+    const openPackId = location?.state?.openPackId;
+    if (!openPackId) return;
+    (async () => {
+      try {
+        const p = await skillPackApi.get(String(openPackId));
+        setCurrent(p);
+        setDetailOpen(true);
+      } catch (e: any) {
+        toast.error('打开 Skill Pack 失败', String(e?.message || ''));
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location?.key]);
 
   const resetForm = (pack?: SkillPack | null) => {
     setName(pack?.name || '');
