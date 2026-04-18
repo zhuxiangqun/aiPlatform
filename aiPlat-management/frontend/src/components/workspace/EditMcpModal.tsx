@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { workspaceMcpApi } from '../../services/coreApi';
 import type { McpServer } from '../../services/coreApi';
-import { Button, Input, Modal, Select, Switch, Textarea, toast } from '../ui';
+import { Alert, Button, Input, Modal, Select, Switch, Textarea, toast } from '../ui';
 
 interface EditMcpModalProps {
   open: boolean;
@@ -58,6 +58,29 @@ const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSu
     if (transport === 'stdio') return 'stdio 模式通常使用 command + args（例如：node / python / 本地可执行文件）。';
     return 'sse/http 模式通常使用 url（例如：http://localhost:0/mcp）。';
   }, [transport]);
+
+  const riskHint = useMemo(() => {
+    if (transport === 'stdio') {
+      return '高风险（L3）：等同于在 core 所在机器上启动本机进程执行。建议仅 dev/staging 使用；prod 默认禁止启用与工具发现。';
+    }
+    return '中风险（L2）：远程服务型 MCP。建议配置鉴权（auth）并用 allowed_tools 做最小白名单。';
+  }, [transport]);
+
+  const handleDiscover = async () => {
+    if (!server?.name) return;
+    try {
+      const res = await workspaceMcpApi.discoverTools(server.name, { timeout_seconds: 10 });
+      const tools = (res as any).tools || [];
+      if (!tools.length) {
+        toast.error('未发现工具（tools/list 返回为空）');
+        return;
+      }
+      setAllowedToolsText(tools.map((t: any) => t.name).filter(Boolean).join('\n'));
+      toast.success(`已发现 ${tools.length} 个工具，并已填充到 allowed_tools`);
+    } catch (e: any) {
+      toast.error('发现工具失败', String(e?.message || ''));
+    }
+  };
 
   const handleSubmit = async () => {
     if (!server?.name) return;
@@ -146,6 +169,10 @@ const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSu
         <div className="space-y-4">
           <Input label="名称（只读）" value={server?.name || ''} onChange={() => {}} disabled />
 
+          <Alert type={transport === 'stdio' ? 'warning' : 'info'} title="风险提示">
+            {riskHint}
+          </Alert>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select label="Transport" value={transport} onChange={(v) => setTransport(v)} options={TRANSPORTS} />
             <div className="flex items-center justify-between gap-3 pt-6">
@@ -158,7 +185,13 @@ const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSu
           <Input label="command（stdio）" value={command} onChange={(e: any) => setCommand(e.target.value)} placeholder="例如：node /usr/local/bin/mcp-server.js" />
           <Textarea label="args（JSON 数组）" rows={3} value={argsText} onChange={(e: any) => setArgsText(e.target.value)} />
 
-          <Textarea label="allowed_tools（每行一个）" rows={5} value={allowedToolsText} onChange={(e: any) => setAllowedToolsText(e.target.value)} />
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-sm font-medium text-gray-300">allowed_tools（每行一个）</div>
+            <Button variant="secondary" onClick={handleDiscover} disabled={loading}>
+              发现工具（tools/list）
+            </Button>
+          </div>
+          <Textarea rows={5} value={allowedToolsText} onChange={(e: any) => setAllowedToolsText(e.target.value)} />
 
           <Textarea label="auth（JSON，可选）" rows={4} value={authText} onChange={(e: any) => setAuthText(e.target.value)} />
           <Textarea label="metadata（JSON，可选）" rows={5} value={metadataText} onChange={(e: any) => setMetadataText(e.target.value)} />
@@ -171,4 +204,3 @@ const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSu
 };
 
 export default EditMcpModal;
-

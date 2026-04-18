@@ -10,9 +10,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, List, Dict, Any
 from contextlib import asynccontextmanager
 from datetime import datetime
+import asyncio
+import json
 import os
 import shutil
 import uvicorn
+import aiohttp
 
 from core.schemas import (
     AgentCreateRequest,
@@ -481,6 +484,14 @@ app.add_middleware(
 )
 
 api_router = APIRouter(prefix="/api/core")
+
+
+def _runtime_env() -> str:
+    """Runtime environment string for policy gates (dev/staging/prod)."""
+    env = (os.environ.get("AIPLAT_ENV") or os.environ.get("APP_ENV") or os.environ.get("ENV") or "dev").strip().lower()
+    if env in {"production"}:
+        env = "prod"
+    return env
 
 
 # ==================== Permission Management ====================
@@ -2140,6 +2151,129 @@ async def get_workspace_mcp_server(server_name: str):
     }
 
 
+@api_router.get("/workspace/mcp/servers/{server_name}/tools")
+async def discover_workspace_mcp_tools(server_name: str, timeout_seconds: int = 10):
+    """
+    Best-effort tool discovery via MCP protocol (tools/list).
+    - For sse/http: POST JSON-RPC to url
+    - For stdio: spawn process, send JSON-RPC via stdin/stdout (dev/staging recommended)
+    """
+    if not _workspace_mcp_manager:
+        raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
+    s = _workspace_mcp_manager.get_server(server_name)
+    if not s:
+        raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
+
+    transport = str(s.transport or "").strip().lower()
+    env = _runtime_env()
+    if env == "prod" and transport == "stdio":
+        raise HTTPException(status_code=403, detail="stdio MCP tool discovery is not allowed in prod by default")
+
+    async def _jsonrpc_post(url: str, payload: dict) -> dict:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=max(1, int(timeout_seconds)))) as session:
+            async with session.post(url, data=json.dumps(payload), headers={"Content-Type": "application/json"}) as resp:
+                if resp.status != 200:
+                    raise HTTPException(status_code=502, detail=f"MCP server returned HTTP {resp.status}")
+                return await resp.json()
+
+    try:
+        if transport in {"sse", "http"}:
+            if not s.url:
+                raise HTTPException(status_code=400, detail="Missing MCP server url")
+            # best-effort initialize
+            try:
+                await _jsonrpc_post(
+                    s.url,
+                    {
+                        "jsonrpc": "2.0",
+                        "id": 0,
+                        "method": "initialize",
+                        "params": {
+                            "protocolVersion": "2024-11-05",
+                            "capabilities": {"tools": {}},
+                            "clientInfo": {"name": "aiplat-core", "version": "1.0.0"},
+                        },
+                    },
+                )
+            except Exception:
+                pass
+
+            res = await _jsonrpc_post(s.url, {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}})
+            if "error" in res and res["error"]:
+                raise HTTPException(status_code=502, detail=str(res["error"]))
+            tools = (res.get("result") or {}).get("tools") or []
+            norm = [
+                {
+                    "name": t.get("name"),
+                    "description": t.get("description", ""),
+                    "input_schema": t.get("inputSchema", {}) or {},
+                }
+                for t in tools
+                if isinstance(t, dict) and t.get("name")
+            ]
+            return {"tools": norm, "total": len(norm)}
+
+        if transport == "stdio":
+            if not s.command:
+                raise HTTPException(status_code=400, detail="Missing MCP stdio command")
+            proc = await asyncio.create_subprocess_exec(
+                s.command,
+                *(s.args or []),
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            try:
+                # initialize
+                init = {
+                    "jsonrpc": "2.0",
+                    "id": 0,
+                    "method": "initialize",
+                    "params": {
+                        "protocolVersion": "2024-11-05",
+                        "capabilities": {"tools": {}},
+                        "clientInfo": {"name": "aiplat-core", "version": "1.0.0"},
+                    },
+                }
+                proc.stdin.write((json.dumps(init) + "\n").encode("utf-8"))  # type: ignore[union-attr]
+                await proc.stdin.drain()  # type: ignore[union-attr]
+                await asyncio.wait_for(proc.stdout.readline(), timeout=max(1, int(timeout_seconds)))  # type: ignore[union-attr]
+
+                # tools/list
+                req = {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}
+                proc.stdin.write((json.dumps(req) + "\n").encode("utf-8"))  # type: ignore[union-attr]
+                await proc.stdin.drain()  # type: ignore[union-attr]
+                line = await asyncio.wait_for(proc.stdout.readline(), timeout=max(1, int(timeout_seconds)))  # type: ignore[union-attr]
+                if not line:
+                    raise HTTPException(status_code=502, detail="MCP stdio server returned empty response")
+                res = json.loads(line.decode("utf-8"))
+                if res.get("error"):
+                    raise HTTPException(status_code=502, detail=str(res["error"]))
+                tools = (res.get("result") or {}).get("tools") or []
+                norm = [
+                    {
+                        "name": t.get("name"),
+                        "description": t.get("description", ""),
+                        "input_schema": t.get("inputSchema", {}) or {},
+                    }
+                    for t in tools
+                    if isinstance(t, dict) and t.get("name")
+                ]
+                return {"tools": norm, "total": len(norm)}
+            finally:
+                try:
+                    proc.terminate()
+                    await asyncio.wait_for(proc.wait(), timeout=2)
+                except Exception:
+                    pass
+
+        raise HTTPException(status_code=400, detail=f"Unsupported MCP transport: {transport}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+
 @api_router.post("/workspace/mcp/servers")
 async def upsert_workspace_mcp_server(request: dict):
     """Create or update a workspace MCP server (writes to ~/.aiplat/mcps/<name>/server.yaml + policy.yaml)."""
@@ -2181,9 +2315,17 @@ async def update_workspace_mcp_server(server_name: str, request: dict):
 async def enable_workspace_mcp_server(server_name: str):
     if not _workspace_mcp_manager:
         raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
+    # Policy gate: stdio MCP is high risk. Default deny in prod.
+    s = _workspace_mcp_manager.get_server(server_name)
+    if not s:
+        raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
+    env = _runtime_env()
+    if env == "prod" and str(s.transport or "").strip().lower() == "stdio":
+        raise HTTPException(status_code=403, detail="stdio MCP server is not allowed to be enabled in prod by default")
     ok = _workspace_mcp_manager.set_enabled(server_name, True)
     if not ok:
         raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
+    return {"status": "enabled"}
 
 
 @api_router.post("/workspace/mcp/servers/{server_name}/disable")

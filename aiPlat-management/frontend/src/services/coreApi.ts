@@ -332,6 +332,15 @@ export const workspaceMcpApi = {
     return apiClient.get<McpServer>(`/core/workspace/mcp/servers/${serverName}`);
   },
 
+  discoverTools: async (serverName: string, params?: { timeout_seconds?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.timeout_seconds) query.set('timeout_seconds', String(params.timeout_seconds));
+    const qs = query.toString();
+    return apiClient.get<{ tools: { name: string; description?: string; input_schema?: Record<string, unknown> }[]; total: number }>(
+      `/core/workspace/mcp/servers/${serverName}/tools${qs ? '?' + qs : ''}`
+    );
+  },
+
   upsertServer: async (payload: McpServer) => {
     return apiClient.post<{ status: string; server?: { name: string; enabled: boolean } }>('/core/workspace/mcp/servers', payload as any);
   },

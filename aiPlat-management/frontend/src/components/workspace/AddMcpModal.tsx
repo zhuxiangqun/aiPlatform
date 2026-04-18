@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { workspaceMcpApi } from '../../services/coreApi';
 import type { McpServer } from '../../services/coreApi';
-import { Button, Input, Modal, Select, Switch, Textarea, toast } from '../ui';
+import { Alert, Button, Input, Modal, Select, Switch, Textarea, toast } from '../ui';
 
 interface AddMcpModalProps {
   open: boolean;
@@ -30,6 +30,13 @@ const AddMcpModal: React.FC<AddMcpModalProps> = ({ open, onClose, onSuccess }) =
   const hint = useMemo(() => {
     if (transport === 'stdio') return 'stdio 模式通常使用 command + args（例如：node / python / 本地可执行文件）。';
     return 'sse/http 模式通常使用 url（例如：http://localhost:0/mcp）。';
+  }, [transport]);
+
+  const riskHint = useMemo(() => {
+    if (transport === 'stdio') {
+      return '高风险（L3）：等同于在 core 所在机器上启动本机进程执行。建议仅 dev/staging 使用；prod 默认禁止启用与工具发现。';
+    }
+    return '中风险（L2）：远程服务型 MCP。建议配置鉴权（auth）并用 allowed_tools 做最小白名单。';
   }, [transport]);
 
   const handleSubmit = async () => {
@@ -123,6 +130,10 @@ const AddMcpModal: React.FC<AddMcpModalProps> = ({ open, onClose, onSuccess }) =
       <div className="space-y-4">
         <Input label="名称" value={name} onChange={(e: any) => setName(e.target.value)} placeholder="例如：integrated_browser" />
 
+        <Alert type={transport === 'stdio' ? 'warning' : 'info'} title="风险提示">
+          {riskHint}
+        </Alert>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Select label="Transport" value={transport} onChange={(v) => setTransport(v)} options={TRANSPORTS} />
           <div className="flex items-center justify-between gap-3 pt-6">
@@ -147,4 +158,3 @@ const AddMcpModal: React.FC<AddMcpModalProps> = ({ open, onClose, onSuccess }) =
 };
 
 export default AddMcpModal;
-
