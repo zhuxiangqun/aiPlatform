@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { workspaceAgentApi } from '../../services/coreApi';
 import type { Agent } from '../../services';
-import { Button, Modal, Textarea, notify, toast } from '../ui';
+import { Button, Modal, Textarea, toast } from '../ui';
 
 interface ExecuteAgentModalProps {
   open: boolean;
@@ -15,6 +15,7 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
   const [helpLoading, setHelpLoading] = useState(false);
   const [helpMarkdown, setHelpMarkdown] = useState<string>('');
   const [examples, setExamples] = useState<Array<{ title: string; content: string }>>([]);
+  const [result, setResult] = useState<{ status: string; execution_id?: string; output?: unknown; error?: string } | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -47,19 +48,14 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
     setLoading(true);
     try {
       const result = await workspaceAgentApi.execute(agent.id, { input: parsedInput });
-      toast.success('执行完成', String((result as any)?.status || 'ok'));
-      if ((result as any)?.execution_id) {
-        notify.success(
-          `Agent 执行完成：${agent.name}`,
-          `execution_id: ${(result as any).execution_id}`,
-          `/diagnostics/links?execution_id=${encodeURIComponent(String((result as any).execution_id))}`
-        );
-      }
-      onClose();
-      setInput('');
-    } catch {
-      toast.error('执行失败');
-      notify.error(`Agent 执行失败：${agent.name}`);
+      const status = String((result as any)?.status || 'ok');
+      const execution_id = (result as any)?.execution_id ? String((result as any).execution_id) : undefined;
+      setResult({ status, execution_id, output: (result as any)?.output, error: (result as any)?.error });
+      toast.success(status === 'success' || status === 'completed' ? '执行成功' : `状态: ${status}`);
+    } catch (e: any) {
+      const msg = String(e?.message || e?.detail || '执行失败');
+      setResult({ status: 'failed', error: msg });
+      toast.error('执行失败', msg);
     } finally {
       setLoading(false);
     }
@@ -73,7 +69,7 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
       width={980}
       footer={
         <>
-          <Button variant="secondary" onClick={() => { onClose(); setInput(''); }} disabled={loading}>取消</Button>
+          <Button variant="secondary" onClick={() => { onClose(); setInput(''); setResult(null); }} disabled={loading}>关闭</Button>
           <Button variant="primary" onClick={handleExecute} loading={loading}>执行</Button>
         </>
       }
@@ -90,6 +86,65 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
           <div className="text-xs text-gray-500 mt-2">
             提示：如果输入不是合法 JSON，会自动封装为 {"{ \"message\": \"...\" }"} 传给 Agent。
           </div>
+
+          {result && (
+            <div className="mt-4 p-4 rounded-lg border border-dark-border bg-dark-bg">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-100">执行结果（简版）</span>
+                <span
+                  className={`text-xs px-2 py-0.5 rounded ${
+                    result.status === 'completed' || result.status === 'success' ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'
+                  }`}
+                >
+                  {result.status}
+                </span>
+              </div>
+
+              {result.error && (
+                <div className="text-xs text-red-300 mb-2">
+                  失败原因：{result.error}
+                </div>
+              )}
+
+              {result.output !== undefined && result.output !== null && (
+                <pre className="text-xs text-gray-300 overflow-auto max-h-60 bg-dark-card border border-dark-border rounded-lg p-3">
+                  {typeof result.output === 'string' ? result.output : JSON.stringify(result.output as object, null, 2)}
+                </pre>
+              )}
+
+              {result.execution_id && (
+                <div className="mt-3 flex items-center justify-between gap-2">
+                  <div className="text-xs text-gray-400 break-all">execution_id: {result.execution_id}</div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="secondary"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(result.execution_id || '');
+                          toast.success('已复制');
+                        } catch {
+                          toast.error('复制失败');
+                        }
+                      }}
+                      disabled={loading}
+                    >
+                      复制ID
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        const url = `/diagnostics/links?execution_id=${encodeURIComponent(result.execution_id || '')}`;
+                        window.open(url, '_blank', 'noopener,noreferrer');
+                      }}
+                      disabled={loading}
+                    >
+                      查看诊断详情
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <div className="border border-dark-border rounded-lg bg-dark-card p-3">
           <div className="flex items-center justify-between mb-2">

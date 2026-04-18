@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
-import { Button, Modal, Textarea, notify, toast } from '../ui';
+import { Button, Modal, Textarea, toast } from '../ui';
 import { workspaceSkillApi } from '../../services/coreApi';
 
 interface ExecuteSkillModalProps {
@@ -53,16 +53,8 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
       const res = await workspaceSkillApi.execute(skill.id, { input: payload });
       setResult(res as any);
       toast.success((res as any).status === 'completed' || (res as any).status === 'success' ? '执行成功' : `状态: ${(res as any).status}`);
-      if ((res as any)?.execution_id) {
-        notify.success(
-          `Skill 执行完成：${skill.name}`,
-          `execution_id: ${(res as any).execution_id}`,
-          `/diagnostics/links?execution_id=${encodeURIComponent(String((res as any).execution_id))}`
-        );
-      }
     } catch (error: any) {
       toast.error('执行失败');
-      notify.error(`Skill 执行失败：${skill?.name || ''}`, String(error?.message || ''));
       setResult({ status: 'error', error: error.message || 'Unknown error' });
     } finally {
       setLoading(false);
@@ -168,6 +160,21 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
             </pre>
           )}
           {result.error && !result.output && <div className="text-xs text-red-300 mt-2">{result.error}</div>}
+
+          {(result as any)?.execution_id && (
+            <div className="mt-3 flex items-center justify-end">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  const url = `/diagnostics/links?execution_id=${encodeURIComponent(String((result as any).execution_id))}`;
+                  window.open(url, '_blank', 'noopener,noreferrer');
+                }}
+                disabled={loading}
+              >
+                查看诊断详情
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </Modal>

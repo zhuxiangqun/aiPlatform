@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { agentApi, type Agent } from '../../services';
-import { Button, Modal, Textarea, notify, toast } from '../ui';
+import { Button, Modal, Textarea, toast } from '../ui';
 
 interface ExecuteAgentModalProps {
   open: boolean;
@@ -11,6 +11,7 @@ interface ExecuteAgentModalProps {
 const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onClose }) => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<{ status: string; execution_id?: string; output?: unknown; error?: string } | null>(null);
 
   const handleExecute = async () => {
     if (!agent) return;
@@ -25,19 +26,14 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
     setLoading(true);
     try {
       const result = await agentApi.execute(agent.id, { input: parsedInput });
-      toast.success('执行完成', String((result as any)?.status || 'ok'));
-      if ((result as any)?.execution_id) {
-        notify.success(
-          `Agent 执行完成：${agent.name}`,
-          `execution_id: ${(result as any).execution_id}`,
-          `/diagnostics/links?execution_id=${encodeURIComponent(String((result as any).execution_id))}`
-        );
-      }
-      onClose();
-      setInput('');
-    } catch (error) {
-      toast.error('执行失败');
-      notify.error(`Agent 执行失败：${agent.name}`);
+      const status = String((result as any)?.status || 'ok');
+      const execution_id = (result as any)?.execution_id ? String((result as any).execution_id) : undefined;
+      setResult({ status, execution_id, output: (result as any)?.output, error: (result as any)?.error });
+      toast.success(status === 'success' || status === 'completed' ? '执行成功' : `状态: ${status}`);
+    } catch (e: any) {
+      const msg = String(e?.message || e?.detail || '执行失败');
+      setResult({ status: 'failed', error: msg });
+      toast.error('执行失败', msg);
     } finally {
       setLoading(false);
     }
@@ -46,12 +42,12 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
   return (
     <Modal
       open={open}
-      onClose={() => { onClose(); setInput(''); }}
+      onClose={() => { onClose(); setInput(''); setResult(null); }}
       title={`执行 Agent: ${agent?.name || ''}`}
-      width={640}
+      width={820}
       footer={
         <>
-          <Button variant="secondary" onClick={() => { onClose(); setInput(''); }} disabled={loading}>取消</Button>
+          <Button variant="secondary" onClick={() => { onClose(); setInput(''); setResult(null); }} disabled={loading}>关闭</Button>
           <Button variant="primary" onClick={handleExecute} loading={loading}>执行</Button>
         </>
       }
@@ -63,6 +59,47 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
         onChange={(e: any) => setInput(e.target.value)}
         placeholder="输入 JSON 或文本"
       />
+
+      {result && (
+        <div className="mt-4 p-4 rounded-lg border border-dark-border bg-dark-bg">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-gray-100">执行结果（简版）</span>
+            <span
+              className={`text-xs px-2 py-0.5 rounded ${
+                result.status === 'completed' || result.status === 'success' ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'
+              }`}
+            >
+              {result.status}
+            </span>
+          </div>
+
+          {result.error && (
+            <div className="text-xs text-red-300 mb-2">失败原因：{result.error}</div>
+          )}
+
+          {result.output !== undefined && result.output !== null && (
+            <pre className="text-xs text-gray-300 overflow-auto max-h-60 bg-dark-card border border-dark-border rounded-lg p-3">
+              {typeof result.output === 'string' ? result.output : JSON.stringify(result.output as object, null, 2)}
+            </pre>
+          )}
+
+          {result.execution_id && (
+            <div className="mt-3 flex items-center justify-between gap-2">
+              <div className="text-xs text-gray-400 break-all">execution_id: {result.execution_id}</div>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  const url = `/diagnostics/links?execution_id=${encodeURIComponent(result.execution_id || '')}`;
+                  window.open(url, '_blank', 'noopener,noreferrer');
+                }}
+                disabled={loading}
+              >
+                查看诊断详情
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
     </Modal>
   );
 };
