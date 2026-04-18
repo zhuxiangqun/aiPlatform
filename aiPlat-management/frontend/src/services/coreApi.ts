@@ -1052,3 +1052,45 @@ export const runApi = {
     );
   },
 };
+
+// ==================== Audit API (enterprise governance) ====================
+
+export interface AuditLogEntry {
+  id: number;
+  tenant_id?: string | null;
+  actor_id?: string | null;
+  actor_role?: string | null;
+  action: string;
+  resource_type?: string | null;
+  resource_id?: string | null;
+  request_id?: string | null;
+  run_id?: string | null;
+  trace_id?: string | null;
+  status?: string | null;
+  detail?: Record<string, unknown>;
+  created_at: number;
+}
+
+export const auditApi = {
+  listLogs: async (params: {
+    tenant_id?: string;
+    actor_id?: string;
+    action?: string;
+    resource_type?: string;
+    resource_id?: string;
+    request_id?: string;
+    run_id?: string;
+    trace_id?: string;
+    status?: string;
+    limit?: number;
+    offset?: number;
+  } = {}) => {
+    const q = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v == null) return;
+      q.set(k, String(v));
+    });
+    const qs = q.toString();
+    return apiClient.get<{ items: AuditLogEntry[]; total: number; limit: number; offset: number }>(`/audit/logs${qs ? `?${qs}` : ''}`);
+  },
+};

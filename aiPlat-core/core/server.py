@@ -1615,6 +1615,40 @@ async def list_run_events(run_id: str, after_seq: int = 0, limit: int = 200):
     return await _execution_store.list_run_events(run_id=str(run_id), after_seq=int(after_seq or 0), limit=int(limit or 200))
 
 
+# ==================== Audit Logs (enterprise governance) ====================
+
+
+@api_router.get("/audit/logs")
+async def list_audit_logs(
+    tenant_id: Optional[str] = None,
+    actor_id: Optional[str] = None,
+    action: Optional[str] = None,
+    resource_type: Optional[str] = None,
+    resource_id: Optional[str] = None,
+    request_id: Optional[str] = None,
+    run_id: Optional[str] = None,
+    trace_id: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
+):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    return await _execution_store.list_audit_logs(
+        tenant_id=tenant_id,
+        actor_id=actor_id,
+        action=action,
+        resource_type=resource_type,
+        resource_id=resource_id,
+        request_id=request_id,
+        run_id=run_id,
+        trace_id=trace_id,
+        status=status,
+        limit=limit,
+        offset=offset,
+    )
+
+
 @api_router.post("/runs/{run_id}/wait")
 async def wait_run(run_id: str, request: dict):
     """
@@ -1665,6 +1699,18 @@ async def approve_request(request_id: str, request: dict):
     updated = await _approval_manager.approve(request_id=request_id, approved_by=approved_by, comments=comments)
     if not updated:
         raise HTTPException(status_code=404, detail="Approval request not found")
+    if _execution_store:
+        try:
+            await _execution_store.add_audit_log(
+                action="approval_approve",
+                status="ok",
+                actor_id=str(approved_by),
+                resource_type="approval_request",
+                resource_id=str(request_id),
+                detail={"comments": comments},
+            )
+        except Exception:
+            pass
     return {"status": updated.status.value, "request_id": updated.request_id}
 
 
@@ -1677,6 +1723,18 @@ async def reject_request(request_id: str, request: dict):
     updated = await _approval_manager.reject(request_id=request_id, rejected_by=rejected_by, comments=comments)
     if not updated:
         raise HTTPException(status_code=404, detail="Approval request not found")
+    if _execution_store:
+        try:
+            await _execution_store.add_audit_log(
+                action="approval_reject",
+                status="ok",
+                actor_id=str(rejected_by),
+                resource_type="approval_request",
+                resource_id=str(request_id),
+                detail={"comments": comments},
+            )
+        except Exception:
+            pass
     return {"status": updated.status.value, "request_id": updated.request_id}
 
 
@@ -4856,6 +4914,21 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request)
             existing_run_id = None
         if existing_run_id:
             run = await _execution_store.get_run_summary(run_id=str(existing_run_id))
+            try:
+                await _execution_store.add_audit_log(
+                    action="gateway_execute_dedup",
+                    status="ok",
+                    tenant_id=str(resolved_tenant) if resolved_tenant else None,
+                    actor_id=str(resolved_user) if resolved_user else None,
+                    resource_type="run",
+                    resource_id=str(existing_run_id),
+                    request_id=request_id,
+                    run_id=str(existing_run_id),
+                    trace_id=(run or {}).get("trace_id"),
+                    detail={"channel": request.channel, "kind": request.kind, "target_id": request.target_id},
+                )
+            except Exception:
+                pass
             return {
                 "ok": True,
                 "status": "deduped",
@@ -4892,6 +4965,24 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request)
                 request_id=request_id,
                 run_id=str(result.run_id),
                 tenant_id=str(resolved_tenant) if resolved_tenant else None,
+            )
+        except Exception:
+            pass
+
+    # Audit (best-effort)
+    if _execution_store:
+        try:
+            await _execution_store.add_audit_log(
+                action="gateway_execute",
+                status="ok" if result.ok else "failed",
+                tenant_id=str(resolved_tenant) if resolved_tenant else None,
+                actor_id=str(resolved_user) if resolved_user else None,
+                resource_type=str(request.kind or "agent"),
+                resource_id=str(request.target_id),
+                request_id=request_id,
+                run_id=str(result.run_id) if result.run_id else reserved_run_id,
+                trace_id=str(result.trace_id) if result.trace_id else None,
+                detail={"channel": request.channel, "channel_user_id": request.channel_user_id},
             )
         except Exception:
             pass

@@ -43,7 +43,7 @@ class ExecutionStoreConfig:
 
 
 class ExecutionStore:
-    CURRENT_SCHEMA_VERSION = 22
+    CURRENT_SCHEMA_VERSION = 23
 
     def __init__(self, config: ExecutionStoreConfig):
         self._config = config
@@ -824,6 +824,39 @@ class ExecutionStore:
                             pass
                         _set_version(22)
                         current = 22
+
+                    # ---- Migration v23: audit_logs (enterprise governance) ----
+                    if current < 23:
+                        try:
+                            conn.execute(
+                                """
+                                CREATE TABLE IF NOT EXISTS audit_logs (
+                                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                  tenant_id TEXT,
+                                  actor_id TEXT,
+                                  actor_role TEXT,
+                                  action TEXT NOT NULL,
+                                  resource_type TEXT,
+                                  resource_id TEXT,
+                                  request_id TEXT,
+                                  run_id TEXT,
+                                  trace_id TEXT,
+                                  status TEXT,
+                                  detail_json TEXT,
+                                  created_at REAL NOT NULL
+                                );
+                                """
+                            )
+                            conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_logs_time ON audit_logs(created_at DESC);")
+                            conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_logs_tenant_time ON audit_logs(tenant_id, created_at DESC);")
+                            conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_logs_action_time ON audit_logs(action, created_at DESC);")
+                            conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_logs_actor_time ON audit_logs(actor_id, created_at DESC);")
+                            conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_logs_run ON audit_logs(run_id, created_at DESC);")
+                            conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_logs_request ON audit_logs(request_id, created_at DESC);")
+                        except Exception:
+                            pass
+                        _set_version(23)
+                        current = 23
 
                     # If legacy db exists with tables but without meta, upgrade meta to current
                     if current < self.CURRENT_SCHEMA_VERSION:
@@ -2170,6 +2203,147 @@ class ExecutionStore:
                         "session_id": row["session_id"] if "session_id" in row.keys() else (meta.get("context") or {}).get("session_id") if isinstance(meta.get("context"), dict) else None,
                     }
                 return None
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
+    # ==================== Audit Logs (enterprise governance) ====================
+
+    async def add_audit_log(
+        self,
+        *,
+        action: str,
+        status: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+        actor_id: Optional[str] = None,
+        actor_role: Optional[str] = None,
+        resource_type: Optional[str] = None,
+        resource_id: Optional[str] = None,
+        request_id: Optional[str] = None,
+        run_id: Optional[str] = None,
+        trace_id: Optional[str] = None,
+        detail: Optional[Dict[str, Any]] = None,
+        created_at: Optional[float] = None,
+    ) -> None:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> None:
+            conn = sqlite3.connect(db_path)
+            try:
+                conn.execute(
+                    """
+                    INSERT INTO audit_logs(
+                      tenant_id, actor_id, actor_role, action, resource_type, resource_id,
+                      request_id, run_id, trace_id, status, detail_json, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                    """,
+                    (
+                        tenant_id,
+                        actor_id,
+                        actor_role,
+                        str(action),
+                        resource_type,
+                        resource_id,
+                        request_id,
+                        run_id,
+                        trace_id,
+                        status,
+                        _json_dumps(detail or {}),
+                        float(created_at if created_at is not None else time.time()),
+                    ),
+                )
+                conn.commit()
+            finally:
+                conn.close()
+
+        await anyio.to_thread.run_sync(_sync)
+
+    async def list_audit_logs(
+        self,
+        *,
+        tenant_id: Optional[str] = None,
+        actor_id: Optional[str] = None,
+        action: Optional[str] = None,
+        resource_type: Optional[str] = None,
+        resource_id: Optional[str] = None,
+        request_id: Optional[str] = None,
+        run_id: Optional[str] = None,
+        trace_id: Optional[str] = None,
+        status: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                clauses = ["1=1"]
+                params: list = []
+                if tenant_id:
+                    clauses.append("tenant_id=?")
+                    params.append(str(tenant_id))
+                if actor_id:
+                    clauses.append("actor_id=?")
+                    params.append(str(actor_id))
+                if action:
+                    clauses.append("action=?")
+                    params.append(str(action))
+                if resource_type:
+                    clauses.append("resource_type=?")
+                    params.append(str(resource_type))
+                if resource_id:
+                    clauses.append("resource_id=?")
+                    params.append(str(resource_id))
+                if request_id:
+                    clauses.append("request_id=?")
+                    params.append(str(request_id))
+                if run_id:
+                    clauses.append("run_id=?")
+                    params.append(str(run_id))
+                if trace_id:
+                    clauses.append("trace_id=?")
+                    params.append(str(trace_id))
+                if status:
+                    clauses.append("status=?")
+                    params.append(str(status))
+                where = " AND ".join(clauses)
+                total = conn.execute(f"SELECT COUNT(1) FROM audit_logs WHERE {where}", params).fetchone()[0]
+                rows = conn.execute(
+                    f"""
+                    SELECT id, tenant_id, actor_id, actor_role, action, resource_type, resource_id,
+                           request_id, run_id, trace_id, status, detail_json, created_at
+                    FROM audit_logs
+                    WHERE {where}
+                    ORDER BY created_at DESC
+                    LIMIT ? OFFSET ?;
+                    """,
+                    [*params, int(limit), int(offset)],
+                ).fetchall()
+                items = []
+                for r in rows:
+                    items.append(
+                        {
+                            "id": r["id"],
+                            "tenant_id": r["tenant_id"],
+                            "actor_id": r["actor_id"],
+                            "actor_role": r["actor_role"],
+                            "action": r["action"],
+                            "resource_type": r["resource_type"],
+                            "resource_id": r["resource_id"],
+                            "request_id": r["request_id"],
+                            "run_id": r["run_id"],
+                            "trace_id": r["trace_id"],
+                            "status": r["status"],
+                            "detail": _json_loads(r["detail_json"]) or {},
+                            "created_at": r["created_at"],
+                        }
+                    )
+                return {"items": items, "total": int(total), "limit": int(limit), "offset": int(offset)}
             finally:
                 conn.close()
 
