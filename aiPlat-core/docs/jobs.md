@@ -52,3 +52,11 @@
 ```
 
 投递结果会写入 `job_run.result.delivery`（best-effort），便于审计与排障。
+
+### Trace 可追踪字段
+调度执行时会在 `payload.context` 注入：
+- `source=job`
+- `job_id`
+- `job_run_id`
+
+这些字段会进入 trace 的 attributes（best-effort），便于从 Traces/Links 反查对应的 Job 与具体 run。

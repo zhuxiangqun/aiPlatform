@@ -222,6 +222,21 @@ class JobScheduler:
         if options:
             payload.setdefault("options", options)
 
+        # Inject execution context for traceability (best-effort).
+        # This is safe for all kinds:
+        # - agent: loop reads payload["context"]
+        # - skill: server wrapper already uses separate context; but scheduler runs kernel directly
+        # - tool: ignored by tool itself but consumed by gating/tracing hooks
+        try:
+            ctx = payload.get("context") if isinstance(payload.get("context"), dict) else {}
+            ctx = dict(ctx) if isinstance(ctx, dict) else {}
+            ctx.setdefault("source", "job")
+            ctx.setdefault("job_id", job_id)
+            ctx.setdefault("job_run_id", run_id)
+            payload["context"] = ctx
+        except Exception:
+            pass
+
         exec_req = ExecutionRequest(
             kind=kind,  # type: ignore[arg-type]
             target_id=target_id,

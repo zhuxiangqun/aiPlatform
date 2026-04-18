@@ -299,9 +299,23 @@ class HarnessIntegration:
         trace_id = None
         if runtime.trace_service:
             try:
+                # Trace attributes: include request_id and job context when present (best-effort).
+                attrs = {"execution_id": execution_id, "agent_id": agent_id, "user_id": user_id}
+                if getattr(req, "request_id", None):
+                    attrs["request_id"] = req.request_id
+                try:
+                    ctx0 = (req.payload or {}).get("context") if isinstance(req.payload, dict) else None
+                    if isinstance(ctx0, dict) and ctx0:
+                        if ctx0.get("source") == "job":
+                            if ctx0.get("job_id"):
+                                attrs["job_id"] = ctx0.get("job_id")
+                            if ctx0.get("job_run_id"):
+                                attrs["job_run_id"] = ctx0.get("job_run_id")
+                except Exception:
+                    pass
                 trace = await runtime.trace_service.start_trace(
                     name=f"agent:{agent_id}",
-                    attributes={"execution_id": execution_id, "agent_id": agent_id, "user_id": user_id},
+                    attributes=attrs,
                 )
                 trace_id = trace.trace_id
             except Exception:
@@ -685,9 +699,22 @@ class HarnessIntegration:
         trace_id = None
         if runtime.trace_service:
             try:
+                attrs = {"skill_id": skill_id, "user_id": user_id}
+                if getattr(req, "request_id", None):
+                    attrs["request_id"] = req.request_id
+                try:
+                    ctx0 = (req.payload or {}).get("context") if isinstance(req.payload, dict) else None
+                    if isinstance(ctx0, dict) and ctx0:
+                        if ctx0.get("source") == "job":
+                            if ctx0.get("job_id"):
+                                attrs["job_id"] = ctx0.get("job_id")
+                            if ctx0.get("job_run_id"):
+                                attrs["job_run_id"] = ctx0.get("job_run_id")
+                except Exception:
+                    pass
                 trace = await runtime.trace_service.start_trace(
                     name=f"skill:{skill_id}",
-                    attributes={"skill_id": skill_id, "user_id": user_id},
+                    attributes=attrs,
                 )
                 trace_id = trace.trace_id
             except Exception:
@@ -863,10 +890,20 @@ class HarnessIntegration:
         run_id = f"tool-{req.target_id}-{uuid.uuid4().hex[:8]}"
         if runtime and runtime.trace_service:
             try:
-                t = await runtime.trace_service.start_trace(
-                    name=f"tool:{req.target_id}",
-                    attributes={"tool_name": req.target_id, "run_id": run_id, "user_id": req.user_id or "system"},
-                )
+                attrs = {"tool_name": req.target_id, "run_id": run_id, "user_id": req.user_id or "system"}
+                if getattr(req, "request_id", None):
+                    attrs["request_id"] = req.request_id
+                try:
+                    ctx0 = (payload or {}).get("context") if isinstance(payload, dict) else None
+                    if isinstance(ctx0, dict) and ctx0:
+                        if ctx0.get("source") == "job":
+                            if ctx0.get("job_id"):
+                                attrs["job_id"] = ctx0.get("job_id")
+                            if ctx0.get("job_run_id"):
+                                attrs["job_run_id"] = ctx0.get("job_run_id")
+                except Exception:
+                    pass
+                t = await runtime.trace_service.start_trace(name=f"tool:{req.target_id}", attributes=attrs)
                 trace_id = t.trace_id
             except Exception:
                 trace_id = None
