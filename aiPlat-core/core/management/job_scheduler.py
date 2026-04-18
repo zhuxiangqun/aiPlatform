@@ -146,7 +146,10 @@ class JobScheduler:
         job = await self._store.get_job(job_id)
         if not job:
             raise ValueError(f"Job not found: {job_id}")
-        return await self._execute_job(job, scheduled_for=time.time(), force=True)
+        res = await self._execute_job(job, scheduled_for=time.time(), force=True)
+        if isinstance(res, dict) and res.get("skipped") and res.get("reason") == "locked":
+            raise RuntimeError("Job is locked by another scheduler instance")
+        return res
 
     async def _run_loop(self) -> None:
         while not self._stop.is_set():
@@ -317,9 +320,9 @@ class JobScheduler:
         except Exception:
             pass
 
-        # Return latest run
+        # Return the run record (stable id)
         try:
-            return await self._store.list_job_runs(job_id=job_id, limit=1, offset=0)
+            return await self._store.get_job_run(run_id) or {"id": run_id, "job_id": job_id}
         finally:
             # Always release lock when done (best-effort).
             try:

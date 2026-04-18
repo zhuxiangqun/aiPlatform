@@ -4237,6 +4237,18 @@ async def run_job_now(job_id: str):
         return await _job_scheduler.run_job_once(job_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+
+@api_router.get("/jobs/{job_id}/runs/{run_id}")
+async def get_job_run(job_id: str, run_id: str):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    run = await _execution_store.get_job_run(run_id)
+    if not run or str(run.get("job_id")) != str(job_id):
+        raise HTTPException(status_code=404, detail="Job run not found")
+    return run
 
 
 @api_router.get("/jobs/{job_id}/runs")

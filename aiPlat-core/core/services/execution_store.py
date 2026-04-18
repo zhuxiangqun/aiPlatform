@@ -2543,6 +2543,24 @@ class ExecutionStore:
             "offset": int(offset),
         }
 
+    async def get_job_run(self, run_id: str) -> Optional[Dict[str, Any]]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Optional[Dict[str, Any]]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                row = conn.execute("SELECT * FROM job_runs WHERE id = ?", (str(run_id),)).fetchone()
+                if not row:
+                    return None
+                return dict(row)
+            finally:
+                conn.close()
+
+        row = await anyio.to_thread.run_sync(_sync)
+        return self._job_run_row_to_obj(row) if row else None
+
     def _job_row_to_obj(self, row: Dict[str, Any]) -> Dict[str, Any]:
         return {
             "id": row.get("id"),
