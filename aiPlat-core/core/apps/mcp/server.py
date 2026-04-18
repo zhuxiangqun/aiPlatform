@@ -12,7 +12,11 @@ from dataclasses import dataclass
 
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
-import sse_starlette
+try:
+    import sse_starlette  # type: ignore
+except Exception:  # pragma: no cover
+    # Optional dependency: keep core importable even if SSE helper is missing.
+    sse_starlette = None  # type: ignore
 
 from core.harness.syscalls.tool import sys_tool_call
 
@@ -114,27 +118,37 @@ class MCPServer:
         
     async def _handle_sse(self, request: Request):
         """Handle SSE connection"""
+        def _event(data: str) -> Any:
+            # Prefer sse-starlette event helper when available; otherwise emit raw SSE lines.
+            if sse_starlette is not None:
+                return sse_starlette.SSEEvent(data=data)
+            return f"data: {data}\n\n"
+
+        def _comment(line: str) -> Any:
+            if sse_starlette is not None:
+                return sse_starlette.SSEEvent(data=f": {line}")
+            return f": {line}\n\n"
+
         async def event_generator():
             # Send initialize response
-            yield sse_starlette.SSEEvent(
-                data=json.dumps({
-                    "jsonrpc": "2.0",
-                    "id": 0,
-                    "result": {
-                        "protocolVersion": self._state.protocol_version,
-                        "capabilities": {
-                            "tools": True,
-                            "resources": True
+            yield _event(
+                json.dumps(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": 0,
+                        "result": {
+                            "protocolVersion": self._state.protocol_version,
+                            "capabilities": {"tools": True, "resources": True},
+                            "serverInfo": self._state.server_info,
                         },
-                        "serverInfo": self._state.server_info
                     }
-                })
+                )
             )
             
             # Keep connection alive
             while True:
                 await asyncio.sleep(5)
-                yield sse_starlette.SSEEvent(data=": keepalive")
+                yield _comment("keepalive")
                 
         return event_generator()
         
