@@ -34,7 +34,7 @@ const AddMcpModal: React.FC<AddMcpModalProps> = ({ open, onClose, onSuccess }) =
 
   const riskHint = useMemo(() => {
     if (transport === 'stdio') {
-      return '高风险（L3）：等同于在 core 所在机器上启动本机进程执行。建议仅 dev/staging 使用；prod 默认禁止启用与工具发现。';
+      return '高风险（L3）：等同于在 core 所在机器上启动本机进程执行。prod 可通过“服务器白名单 + 命令前缀白名单 + metadata.prod_allowed=true”显式放行。';
     }
     return '中风险（L2）：远程服务型 MCP。建议配置鉴权（auth）并用 allowed_tools 做最小白名单。';
   }, [transport]);

@@ -494,6 +494,46 @@ def _runtime_env() -> str:
     return env
 
 
+def _prod_stdio_policy_ok(server_name: str, transport: str, command: str | None, metadata: Dict[str, Any] | None) -> bool:
+    """
+    Policy: allow stdio MCP in prod only when explicitly allowlisted.
+    Requirements (all must pass):
+    1) server metadata contains prod_allowed=true
+    2) server_name is in AIPLAT_PROD_STDIO_MCP_ALLOWLIST (comma-separated)
+    3) command path is absolute and starts with one of AIPLAT_STDIO_ALLOWED_COMMAND_PREFIXES
+       - prefixes separated by os.pathsep (:) or comma
+    """
+    if _runtime_env() != "prod":
+        return True
+    if (transport or "").strip().lower() != "stdio":
+        return True
+
+    meta = metadata or {}
+    if not bool(meta.get("prod_allowed", False)):
+        return False
+
+    allowlist_raw = os.environ.get("AIPLAT_PROD_STDIO_MCP_ALLOWLIST", "")
+    allowlist = {x.strip() for x in allowlist_raw.split(",") if x.strip()}
+    if not allowlist or server_name not in allowlist:
+        return False
+
+    if not command or not str(command).strip():
+        return False
+    cmd = str(command).strip()
+    if not cmd.startswith("/"):
+        return False
+
+    prefixes_raw = os.environ.get("AIPLAT_STDIO_ALLOWED_COMMAND_PREFIXES", "")
+    # allow both ":" (os.pathsep) and "," separators
+    parts: List[str] = []
+    for chunk in prefixes_raw.split(os.pathsep):
+        parts.extend([x.strip() for x in chunk.split(",") if x.strip()])
+    prefixes = [p if p.endswith("/") else (p + "/") for p in parts]
+    if not prefixes:
+        return False
+    return any(cmd.startswith(p) or cmd == p.rstrip("/") for p in prefixes)
+
+
 # ==================== Permission Management ====================
 
 @api_router.get("/permissions/stats")
@@ -2165,9 +2205,11 @@ async def discover_workspace_mcp_tools(server_name: str, timeout_seconds: int = 
         raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
 
     transport = str(s.transport or "").strip().lower()
-    env = _runtime_env()
-    if env == "prod" and transport == "stdio":
-        raise HTTPException(status_code=403, detail="stdio MCP tool discovery is not allowed in prod by default")
+    if not _prod_stdio_policy_ok(server_name, transport, s.command, s.metadata):
+        raise HTTPException(
+            status_code=403,
+            detail="stdio MCP tool discovery is blocked by prod policy (need metadata.prod_allowed=true, allowlisted server_name, and allowed command prefix)",
+        )
 
     async def _jsonrpc_post(url: str, payload: dict) -> dict:
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=max(1, int(timeout_seconds)))) as session:
@@ -2319,9 +2361,11 @@ async def enable_workspace_mcp_server(server_name: str):
     s = _workspace_mcp_manager.get_server(server_name)
     if not s:
         raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
-    env = _runtime_env()
-    if env == "prod" and str(s.transport or "").strip().lower() == "stdio":
-        raise HTTPException(status_code=403, detail="stdio MCP server is not allowed to be enabled in prod by default")
+    if not _prod_stdio_policy_ok(server_name, str(s.transport or ""), s.command, s.metadata):
+        raise HTTPException(
+            status_code=403,
+            detail="stdio MCP server is blocked by prod policy (need metadata.prod_allowed=true, allowlisted server_name, and allowed command prefix)",
+        )
     ok = _workspace_mcp_manager.set_enabled(server_name, True)
     if not ok:
         raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
