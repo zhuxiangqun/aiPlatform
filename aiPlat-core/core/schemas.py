@@ -87,6 +87,21 @@ class JobUpdateRequest(BaseModel):
     delivery: Optional[Dict[str, Any]] = None
 
 
+# ---------------------------------------------------------------------
+# Roadmap-3: Gateway / Channels (minimal)
+# ---------------------------------------------------------------------
+
+
+class GatewayExecuteRequest(BaseModel):
+    channel: str = "default"
+    kind: str = "agent"  # agent|skill|tool|graph
+    target_id: str
+    user_id: Optional[str] = None
+    session_id: Optional[str] = None
+    payload: Dict[str, Any] = Field(default_factory=dict)
+    options: Optional[Dict[str, Any]] = None
+
+
 class MessageCreateRequest(BaseModel):
     role: str
     content: str

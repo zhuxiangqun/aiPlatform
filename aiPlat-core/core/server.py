@@ -24,6 +24,7 @@ from core.schemas import (
     SkillExecuteRequest,
     JobCreateRequest,
     JobUpdateRequest,
+    GatewayExecuteRequest,
     MessageCreateRequest,
     SessionCreateRequest,
     SearchRequest,
@@ -55,6 +56,7 @@ from core.services import get_execution_store
 from core.services.trace_service import TraceService, TraceServiceTracer, SpanStatus
 from core.harness.integration import get_harness, KernelRuntime
 from core.harness.kernel.types import ExecutionRequest
+import uuid
 
 
 def _seed_default_permissions(
@@ -4160,6 +4162,54 @@ async def execute_tool(tool_name: str, request: dict):
     payload.setdefault("trace_id", result.trace_id)
     payload.setdefault("run_id", result.run_id)
     return payload
+
+
+# ==================== Gateway / Channels (Roadmap-3) ====================
+
+
+@api_router.post("/gateway/execute")
+async def gateway_execute(request: GatewayExecuteRequest):
+    """
+    Unified external entry for multi-channel integrations.
+
+    This endpoint is intentionally thin: it reuses HarnessIntegration.execute()
+    so that toolset / approvals / tracing policies apply consistently.
+    """
+    harness = get_harness()
+    payload = dict(request.payload or {})
+    if request.options is not None:
+        try:
+            payload.setdefault("options", request.options)
+        except Exception:
+            pass
+    # Inject channel context for observability.
+    try:
+        ctx = payload.get("context") if isinstance(payload.get("context"), dict) else {}
+        ctx = dict(ctx) if isinstance(ctx, dict) else {}
+        ctx.setdefault("source", "gateway")
+        ctx.setdefault("channel", request.channel)
+        payload["context"] = ctx
+    except Exception:
+        pass
+
+    exec_req = ExecutionRequest(
+        kind=str(request.kind) if request.kind else "agent",  # type: ignore[arg-type]
+        target_id=str(request.target_id),
+        payload=payload,
+        user_id=request.user_id or "system",
+        session_id=request.session_id or "default",
+        request_id=f"gw-{uuid.uuid4().hex[:12]}",
+    )
+    result = await harness.execute(exec_req)
+    # Normalize: always include trace_id/run_id.
+    resp = dict(result.payload or {})
+    resp.setdefault("ok", bool(result.ok))
+    if not result.ok:
+        resp.setdefault("status", "failed")
+        resp.setdefault("error", result.error or "Execution failed")
+    resp.setdefault("trace_id", result.trace_id)
+    resp.setdefault("run_id", result.run_id)
+    return resp
 
 
 # ==================== Jobs / Cron (Roadmap-3) ====================
