@@ -41,6 +41,45 @@ const Jobs: React.FC = () => {
   const [optionsText, setOptionsText] = useState('{\n  "toolset": "workspace_default"\n}');
   const [deliveryText, setDeliveryText] = useState('');
 
+  const applyTemplate = (tpl: 'tool_calculator' | 'agent_basic' | 'skill_basic' | 'webhook_delivery') => {
+    if (tpl === 'tool_calculator') {
+      setKind('tool');
+      setTargetId('calculator');
+      setPayloadText(JSON.stringify({ input: { expression: '1+1' } }, null, 2));
+      setOptionsText(JSON.stringify({ toolset: 'safe_readonly' }, null, 2));
+      return;
+    }
+    if (tpl === 'agent_basic') {
+      setKind('agent');
+      setTargetId(selectedJob?.target_id || '');
+      setPayloadText(JSON.stringify({ input: { message: '请执行任务并给出结果' } }, null, 2));
+      setOptionsText(JSON.stringify({ toolset: 'workspace_default' }, null, 2));
+      return;
+    }
+    if (tpl === 'skill_basic') {
+      setKind('skill');
+      setTargetId(selectedJob?.target_id || '');
+      setPayloadText(JSON.stringify({ input: {} }, null, 2));
+      setOptionsText(JSON.stringify({ toolset: 'workspace_default' }, null, 2));
+      return;
+    }
+    if (tpl === 'webhook_delivery') {
+      setDeliveryText(
+        JSON.stringify(
+          {
+            type: 'webhook',
+            url: 'https://example.com/hook',
+            headers: { Authorization: 'Bearer <token>' },
+            include: ['job', 'run', 'result'],
+          },
+          null,
+          2
+        )
+      );
+      return;
+    }
+  };
+
   const resetForm = () => {
     setName('');
     setKind('agent');
@@ -312,6 +351,21 @@ const Jobs: React.FC = () => {
         }
       >
         <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="text-xs text-gray-500 mr-1">模板：</div>
+            <Button variant="secondary" onClick={() => applyTemplate('tool_calculator')}>
+              Tool-Calculator
+            </Button>
+            <Button variant="secondary" onClick={() => applyTemplate('agent_basic')}>
+              Agent（基础）
+            </Button>
+            <Button variant="secondary" onClick={() => applyTemplate('skill_basic')}>
+              Skill（基础）
+            </Button>
+            <Button variant="secondary" onClick={() => applyTemplate('webhook_delivery')}>
+              Webhook delivery
+            </Button>
+          </div>
           <Input label="名称" value={name} onChange={(e: any) => setName(e.target.value)} />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -353,6 +407,21 @@ const Jobs: React.FC = () => {
         }
       >
         <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="text-xs text-gray-500 mr-1">模板：</div>
+            <Button variant="secondary" onClick={() => applyTemplate('tool_calculator')}>
+              Tool-Calculator
+            </Button>
+            <Button variant="secondary" onClick={() => applyTemplate('agent_basic')}>
+              Agent（基础）
+            </Button>
+            <Button variant="secondary" onClick={() => applyTemplate('skill_basic')}>
+              Skill（基础）
+            </Button>
+            <Button variant="secondary" onClick={() => applyTemplate('webhook_delivery')}>
+              Webhook delivery
+            </Button>
+          </div>
           <Input label="名称" value={name} onChange={(e: any) => setName(e.target.value)} />
           <Input label="cron（5段）" value={cron} onChange={(e: any) => setCron(e.target.value)} />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
