@@ -26,6 +26,7 @@ const AddMcpModal: React.FC<AddMcpModalProps> = ({ open, onClose, onSuccess }) =
   const [allowedToolsText, setAllowedToolsText] = useState('');
   const [authText, setAuthText] = useState('');
   const [metadataText, setMetadataText] = useState('{\n  "description": ""\n}');
+  const [launcherPath, setLauncherPath] = useState('/opt/aiplat/mcp/bin/launch');
 
   const hint = useMemo(() => {
     if (transport === 'stdio') return 'stdio 模式通常使用 command + args（例如：node / python / 本地可执行文件）。';
@@ -38,6 +39,23 @@ const AddMcpModal: React.FC<AddMcpModalProps> = ({ open, onClose, onSuccess }) =
     }
     return '中风险（L2）：远程服务型 MCP。建议配置鉴权（auth）并用 allowed_tools 做最小白名单。';
   }, [transport]);
+
+  const applyLauncherTemplate = () => {
+    const serverName = (name || 'server_name').trim() || 'server_name';
+    setTransport('stdio');
+    setCommand(launcherPath);
+    setArgsText(JSON.stringify([serverName, '--config', `/etc/aiplat/mcp/${serverName}.yaml`], null, 2));
+  };
+
+  const markProdAllowed = () => {
+    try {
+      const cur = metadataText.trim() ? JSON.parse(metadataText) : {};
+      const next = { ...(cur || {}), prod_allowed: true };
+      setMetadataText(JSON.stringify(next, null, 2));
+    } catch {
+      toast.error('metadata JSON 格式错误，无法自动设置 prod_allowed');
+    }
+  };
 
   const handleSubmit = async () => {
     if (!name.trim()) {
@@ -143,6 +161,24 @@ const AddMcpModal: React.FC<AddMcpModalProps> = ({ open, onClose, onSuccess }) =
         </div>
 
         <Input label="url（sse/http）" value={url} onChange={(e: any) => setUrl(e.target.value)} placeholder="http://localhost:0/mcp" />
+        {transport === 'stdio' && (
+          <div className="flex items-end justify-between gap-3">
+            <Input
+              label="prod launcher（可选）"
+              value={launcherPath}
+              onChange={(e: any) => setLauncherPath(e.target.value)}
+              placeholder="/opt/aiplat/mcp/bin/launch"
+            />
+            <div className="flex gap-2 pb-1">
+              <Button variant="secondary" onClick={applyLauncherTemplate} disabled={loading}>
+                应用 launcher 模板
+              </Button>
+              <Button variant="secondary" onClick={markProdAllowed} disabled={loading}>
+                metadata.prod_allowed=true
+              </Button>
+            </div>
+          </div>
+        )}
         <Input label="command（stdio）" value={command} onChange={(e: any) => setCommand(e.target.value)} placeholder="例如：node /usr/local/bin/mcp-server.js" />
         <Textarea label="args（JSON 数组）" rows={3} value={argsText} onChange={(e: any) => setArgsText(e.target.value)} />
 
