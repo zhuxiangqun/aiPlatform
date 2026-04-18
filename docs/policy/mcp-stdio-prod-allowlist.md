@@ -12,6 +12,10 @@
 2. 环境变量 `AIPLAT_PROD_STDIO_MCP_ALLOWLIST` 包含该 `server_name`（逗号分隔）
 3. `server.yaml` 的 `command` 为绝对路径，且命令路径前缀在 `AIPLAT_STDIO_ALLOWED_COMMAND_PREFIXES` 允许范围内  
    - 该变量支持 `:`（os.pathsep）或 `,` 分隔多个前缀
+4. 加固校验（prod 默认启用）：
+   - 禁止高风险解释器作为入口命令（默认：`bash,sh,zsh`；可用 `AIPLAT_STDIO_DENY_COMMAND_BASENAMES` 覆盖）
+   - 命令必须存在且具备可执行权限（best-effort：`os.path.exists` + `os.access(..., X_OK)`）
+   - 参数数量/长度限制（默认：最多 32 个参数、每个参数最多 512 字符；可通过 `AIPLAT_STDIO_MAX_ARGS` / `AIPLAT_STDIO_MAX_ARG_LENGTH` 调整）
 
 示例：
 
@@ -19,6 +23,9 @@
 export AIPLAT_ENV=prod
 export AIPLAT_PROD_STDIO_MCP_ALLOWLIST="integrated_browser,my_internal_stdio_server"
 export AIPLAT_STDIO_ALLOWED_COMMAND_PREFIXES="/opt/aiplat/mcp/bin:/usr/local/aiplat/mcp/bin"
+export AIPLAT_STDIO_DENY_COMMAND_BASENAMES="bash,sh,zsh"
+export AIPLAT_STDIO_MAX_ARGS="32"
+export AIPLAT_STDIO_MAX_ARG_LENGTH="512"
 ```
 
 server.yaml 示例：
@@ -53,3 +60,11 @@ metadata:
 - 配置审计：记录 enable/disable 以及 tools/call 的审计日志（输入输出摘要）
 - 资源限制：超时、并发、CPU/内存配额（若支持容器/沙箱更佳）
 
+## 5) 已落地的审计
+
+当前已将 MCP 管理动作写入 ExecutionStore 的 `syscall_events`（kind=`mcp_admin`）：
+- workspace.mcp.upsert
+- workspace.mcp.enable / workspace.mcp.disable
+- workspace.mcp.discover_tools
+
+用于后续在 Traces/审计页面统一查询与追踪。

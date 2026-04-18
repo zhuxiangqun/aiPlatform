@@ -494,44 +494,106 @@ def _runtime_env() -> str:
     return env
 
 
-def _prod_stdio_policy_ok(server_name: str, transport: str, command: str | None, metadata: Dict[str, Any] | None) -> bool:
+async def _audit_event(kind: str, name: str, status: str, *, args: Dict[str, Any] | None = None, result: Dict[str, Any] | None = None, error: str | None = None) -> None:
+    """Best-effort append to ExecutionStore syscall_events for auditability."""
+    try:
+        if not _execution_store:
+            return
+        await _execution_store.add_syscall_event(
+            {
+                "kind": kind,
+                "name": name,
+                "status": status,
+                "args": args or {},
+                "result": result or {},
+                "error": error,
+            }
+        )
+    except Exception:
+        return
+
+
+def _prod_stdio_policy_check(
+    server_name: str,
+    transport: str,
+    command: str | None,
+    args: List[str] | None,
+    metadata: Dict[str, Any] | None,
+) -> tuple[bool, str]:
     """
     Policy: allow stdio MCP in prod only when explicitly allowlisted.
-    Requirements (all must pass):
+
+    Requirements (all must pass) when AIPLAT_ENV=prod and transport=stdio:
     1) server metadata contains prod_allowed=true
     2) server_name is in AIPLAT_PROD_STDIO_MCP_ALLOWLIST (comma-separated)
     3) command path is absolute and starts with one of AIPLAT_STDIO_ALLOWED_COMMAND_PREFIXES
        - prefixes separated by os.pathsep (:) or comma
+    4) basic hardening:
+       - deny risky interpreter basenames in prod (configurable)
+       - command exists and is executable (best-effort)
+       - args count/length sanity (avoid abuse)
     """
     if _runtime_env() != "prod":
-        return True
+        return True, ""
     if (transport or "").strip().lower() != "stdio":
-        return True
+        return True, ""
 
     meta = metadata or {}
     if not bool(meta.get("prod_allowed", False)):
-        return False
+        return False, "metadata.prod_allowed is not true"
 
     allowlist_raw = os.environ.get("AIPLAT_PROD_STDIO_MCP_ALLOWLIST", "")
     allowlist = {x.strip() for x in allowlist_raw.split(",") if x.strip()}
     if not allowlist or server_name not in allowlist:
-        return False
+        return False, f"server_name '{server_name}' not in AIPLAT_PROD_STDIO_MCP_ALLOWLIST"
 
     if not command or not str(command).strip():
-        return False
+        return False, "missing stdio command"
     cmd = str(command).strip()
     if not cmd.startswith("/"):
-        return False
+        return False, "stdio command must be an absolute path"
 
+    # deny risky basenames (configurable; defaults to common shells)
+    deny_raw = os.environ.get("AIPLAT_STDIO_DENY_COMMAND_BASENAMES", "bash,sh,zsh")
+    deny = {x.strip().lower() for x in deny_raw.split(",") if x.strip()}
+    base = os.path.basename(cmd).lower()
+    if base in deny:
+        return False, f"command basename '{base}' is denied by policy"
+
+    # command prefix allowlist
     prefixes_raw = os.environ.get("AIPLAT_STDIO_ALLOWED_COMMAND_PREFIXES", "")
-    # allow both ":" (os.pathsep) and "," separators
     parts: List[str] = []
     for chunk in prefixes_raw.split(os.pathsep):
         parts.extend([x.strip() for x in chunk.split(",") if x.strip()])
     prefixes = [p if p.endswith("/") else (p + "/") for p in parts]
     if not prefixes:
-        return False
-    return any(cmd.startswith(p) or cmd == p.rstrip("/") for p in prefixes)
+        return False, "AIPLAT_STDIO_ALLOWED_COMMAND_PREFIXES is empty"
+    if not any(cmd.startswith(p) or cmd == p.rstrip("/") for p in prefixes):
+        return False, "command path not in allowed prefixes"
+
+    # best-effort executable check
+    if not (os.path.exists(cmd) and os.access(cmd, os.X_OK)):
+        return False, "command is not an executable file on this host"
+
+    # args sanity
+    a = list(args or [])
+    max_args = int(os.environ.get("AIPLAT_STDIO_MAX_ARGS", "32") or 32)
+    max_arg_len = int(os.environ.get("AIPLAT_STDIO_MAX_ARG_LENGTH", "512") or 512)
+    if len(a) > max_args:
+        return False, f"too many args (>{max_args})"
+    for one in a:
+        s = str(one)
+        if "\n" in s or "\r" in s or "\x00" in s:
+            return False, "args contain illegal control characters"
+        if len(s) > max_arg_len:
+            return False, f"arg too long (>{max_arg_len})"
+
+    return True, ""
+
+
+def _prod_stdio_policy_ok(server_name: str, transport: str, command: str | None, args: List[str] | None, metadata: Dict[str, Any] | None) -> bool:
+    ok, _ = _prod_stdio_policy_check(server_name, transport, command, args, metadata)
+    return ok
 
 
 # ==================== Permission Management ====================
@@ -2205,10 +2267,18 @@ async def discover_workspace_mcp_tools(server_name: str, timeout_seconds: int = 
         raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
 
     transport = str(s.transport or "").strip().lower()
-    if not _prod_stdio_policy_ok(server_name, transport, s.command, s.metadata):
+    ok, reason = _prod_stdio_policy_check(server_name, transport, s.command, s.args, s.metadata)
+    if not ok:
+        await _audit_event(
+            "mcp_admin",
+            "workspace.mcp.discover_tools",
+            "failed",
+            args={"server_name": server_name, "transport": transport, "command": s.command, "args": s.args},
+            error=reason,
+        )
         raise HTTPException(
             status_code=403,
-            detail="stdio MCP tool discovery is blocked by prod policy (need metadata.prod_allowed=true, allowlisted server_name, and allowed command prefix)",
+            detail=f"stdio MCP tool discovery is blocked by prod policy: {reason}",
         )
 
     async def _jsonrpc_post(url: str, payload: dict) -> dict:
@@ -2253,6 +2323,13 @@ async def discover_workspace_mcp_tools(server_name: str, timeout_seconds: int = 
                 for t in tools
                 if isinstance(t, dict) and t.get("name")
             ]
+            await _audit_event(
+                "mcp_admin",
+                "workspace.mcp.discover_tools",
+                "success",
+                args={"server_name": server_name, "transport": transport},
+                result={"total": len(norm)},
+            )
             return {"tools": norm, "total": len(norm)}
 
         if transport == "stdio":
@@ -2301,6 +2378,13 @@ async def discover_workspace_mcp_tools(server_name: str, timeout_seconds: int = 
                     for t in tools
                     if isinstance(t, dict) and t.get("name")
                 ]
+                await _audit_event(
+                    "mcp_admin",
+                    "workspace.mcp.discover_tools",
+                    "success",
+                    args={"server_name": server_name, "transport": transport},
+                    result={"total": len(norm)},
+                )
                 return {"tools": norm, "total": len(norm)}
             finally:
                 try:
@@ -2339,6 +2423,12 @@ async def upsert_workspace_mcp_server(request: dict):
             metadata=(request or {}).get("metadata") if isinstance((request or {}).get("metadata"), dict) else {},
         )
         saved = _workspace_mcp_manager.upsert_server(info)
+        await _audit_event(
+            "mcp_admin",
+            "workspace.mcp.upsert",
+            "success",
+            args={"server_name": saved.name, "transport": saved.transport, "command": saved.command, "url": saved.url},
+        )
         return {"status": "upserted", "server": {"name": saved.name, "enabled": saved.enabled}}
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
@@ -2361,14 +2451,28 @@ async def enable_workspace_mcp_server(server_name: str):
     s = _workspace_mcp_manager.get_server(server_name)
     if not s:
         raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
-    if not _prod_stdio_policy_ok(server_name, str(s.transport or ""), s.command, s.metadata):
+    ok, reason = _prod_stdio_policy_check(server_name, str(s.transport or ""), s.command, s.args, s.metadata)
+    if not ok:
+        await _audit_event(
+            "mcp_admin",
+            "workspace.mcp.enable",
+            "failed",
+            args={"server_name": server_name, "transport": str(s.transport or ""), "command": s.command, "args": s.args},
+            error=reason,
+        )
         raise HTTPException(
             status_code=403,
-            detail="stdio MCP server is blocked by prod policy (need metadata.prod_allowed=true, allowlisted server_name, and allowed command prefix)",
+            detail=f"stdio MCP server is blocked by prod policy: {reason}",
         )
     ok = _workspace_mcp_manager.set_enabled(server_name, True)
     if not ok:
         raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
+    await _audit_event(
+        "mcp_admin",
+        "workspace.mcp.enable",
+        "success",
+        args={"server_name": server_name, "transport": str(s.transport or ""), "command": s.command, "args": s.args},
+    )
     return {"status": "enabled"}
 
 
@@ -2379,6 +2483,7 @@ async def disable_workspace_mcp_server(server_name: str):
     ok = _workspace_mcp_manager.set_enabled(server_name, False)
     if not ok:
         raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
+    await _audit_event("mcp_admin", "workspace.mcp.disable", "success", args={"server_name": server_name})
     return {"status": "disabled"}
 
 
