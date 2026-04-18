@@ -43,7 +43,7 @@ class ExecutionStoreConfig:
 
 
 class ExecutionStore:
-    CURRENT_SCHEMA_VERSION = 13
+    CURRENT_SCHEMA_VERSION = 14
 
     def __init__(self, config: ExecutionStoreConfig):
         self._config = config
@@ -503,6 +503,40 @@ class ExecutionStore:
                             pass
                         _set_version(13)
                         current = 13
+
+                    # ---- Migration v14: skill_packs + long_term_memories (Roadmap-4 minimal) ----
+                    if current < 14:
+                        conn.execute(
+                            """
+                            CREATE TABLE IF NOT EXISTS skill_packs (
+                              id TEXT PRIMARY KEY,
+                              name TEXT NOT NULL,
+                              description TEXT,
+                              manifest_json TEXT,
+                              created_at REAL NOT NULL,
+                              updated_at REAL NOT NULL
+                            );
+                            """
+                        )
+                        conn.execute("CREATE INDEX IF NOT EXISTS idx_skill_packs_name ON skill_packs(name);")
+
+                        conn.execute(
+                            """
+                            CREATE TABLE IF NOT EXISTS long_term_memories (
+                              id TEXT PRIMARY KEY,
+                              user_id TEXT NOT NULL,
+                              key TEXT,
+                              content TEXT NOT NULL,
+                              metadata_json TEXT,
+                              created_at REAL NOT NULL
+                            );
+                            """
+                        )
+                        conn.execute("CREATE INDEX IF NOT EXISTS idx_ltm_user_time ON long_term_memories(user_id, created_at DESC);")
+                        conn.execute("CREATE INDEX IF NOT EXISTS idx_ltm_key ON long_term_memories(key);")
+
+                        _set_version(14)
+                        current = 14
 
                     # If legacy db exists with tables but without meta, upgrade meta to current
                     if current < self.CURRENT_SCHEMA_VERSION:
@@ -2560,6 +2594,228 @@ class ExecutionStore:
 
         row = await anyio.to_thread.run_sync(_sync)
         return self._job_run_row_to_obj(row) if row else None
+
+    # ---------------------------------------------------------------------
+    # Roadmap-4: Skill Packs + Long-term Memory (minimal)
+    # ---------------------------------------------------------------------
+
+    async def create_skill_pack(self, pack: Dict[str, Any]) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            now = time.time()
+            rec = {
+                "id": pack.get("id") or f"sp-{uuid.uuid4().hex[:12]}",
+                "name": str(pack.get("name") or ""),
+                "description": pack.get("description"),
+                "manifest_json": _json_dumps(pack.get("manifest") or {}),
+                "created_at": now,
+                "updated_at": now,
+            }
+            conn = sqlite3.connect(db_path)
+            try:
+                conn.execute(
+                    "INSERT INTO skill_packs(id,name,description,manifest_json,created_at,updated_at) VALUES(?,?,?,?,?,?);",
+                    (rec["id"], rec["name"], rec["description"], rec["manifest_json"], rec["created_at"], rec["updated_at"]),
+                )
+                conn.commit()
+                return rec
+            finally:
+                conn.close()
+
+        row = await anyio.to_thread.run_sync(_sync)
+        return {
+            "id": row["id"],
+            "name": row["name"],
+            "description": row.get("description"),
+            "manifest": _json_loads(row.get("manifest_json")) or {},
+            "created_at": row.get("created_at"),
+            "updated_at": row.get("updated_at"),
+        }
+
+    async def get_skill_pack(self, pack_id: str) -> Optional[Dict[str, Any]]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Optional[Dict[str, Any]]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                row = conn.execute("SELECT * FROM skill_packs WHERE id = ?", (str(pack_id),)).fetchone()
+                return dict(row) if row else None
+            finally:
+                conn.close()
+
+        row = await anyio.to_thread.run_sync(_sync)
+        if not row:
+            return None
+        return {
+            "id": row["id"],
+            "name": row["name"],
+            "description": row.get("description"),
+            "manifest": _json_loads(row.get("manifest_json")) or {},
+            "created_at": row.get("created_at"),
+            "updated_at": row.get("updated_at"),
+        }
+
+    async def list_skill_packs(self, *, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                total_row = conn.execute("SELECT COUNT(1) AS c FROM skill_packs;").fetchone()
+                total = int(total_row["c"] if total_row else 0)
+                rows = conn.execute(
+                    "SELECT * FROM skill_packs ORDER BY updated_at DESC LIMIT ? OFFSET ?;",
+                    (int(limit), int(offset)),
+                ).fetchall()
+                return {"items": [dict(r) for r in rows], "total": total}
+            finally:
+                conn.close()
+
+        res = await anyio.to_thread.run_sync(_sync)
+        items = []
+        for r in res.get("items") or []:
+            items.append(
+                {
+                    "id": r["id"],
+                    "name": r["name"],
+                    "description": r.get("description"),
+                    "manifest": _json_loads(r.get("manifest_json")) or {},
+                    "created_at": r.get("created_at"),
+                    "updated_at": r.get("updated_at"),
+                }
+            )
+        return {"items": items, "total": int(res.get("total") or 0), "limit": int(limit), "offset": int(offset)}
+
+    async def update_skill_pack(self, pack_id: str, patch: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Optional[Dict[str, Any]]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                row = conn.execute("SELECT * FROM skill_packs WHERE id = ?", (str(pack_id),)).fetchone()
+                if not row:
+                    return None
+                cur = dict(row)
+                now = time.time()
+                name = str(patch.get("name") or cur.get("name") or "")
+                desc = patch.get("description") if "description" in patch else cur.get("description")
+                manifest = _json_dumps(patch.get("manifest") if "manifest" in patch else (_json_loads(cur.get("manifest_json")) or {}))
+                conn.execute(
+                    "UPDATE skill_packs SET name=?, description=?, manifest_json=?, updated_at=? WHERE id=?;",
+                    (name, desc, manifest, float(now), str(pack_id)),
+                )
+                conn.commit()
+                row2 = conn.execute("SELECT * FROM skill_packs WHERE id = ?", (str(pack_id),)).fetchone()
+                return dict(row2) if row2 else None
+            finally:
+                conn.close()
+
+        row = await anyio.to_thread.run_sync(_sync)
+        if not row:
+            return None
+        return {
+            "id": row["id"],
+            "name": row["name"],
+            "description": row.get("description"),
+            "manifest": _json_loads(row.get("manifest_json")) or {},
+            "created_at": row.get("created_at"),
+            "updated_at": row.get("updated_at"),
+        }
+
+    async def delete_skill_pack(self, pack_id: str) -> bool:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> bool:
+            conn = sqlite3.connect(db_path)
+            try:
+                cur = conn.execute("DELETE FROM skill_packs WHERE id = ?;", (str(pack_id),))
+                conn.commit()
+                return bool(cur.rowcount)
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
+    async def add_long_term_memory(self, *, user_id: str, content: str, key: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            now = time.time()
+            rec = {
+                "id": f"ltm-{uuid.uuid4().hex[:12]}",
+                "user_id": str(user_id or "system"),
+                "key": str(key) if key is not None else None,
+                "content": str(content or ""),
+                "metadata_json": _json_dumps(metadata or {}),
+                "created_at": now,
+            }
+            conn = sqlite3.connect(db_path)
+            try:
+                conn.execute(
+                    "INSERT INTO long_term_memories(id,user_id,key,content,metadata_json,created_at) VALUES(?,?,?,?,?,?);",
+                    (rec["id"], rec["user_id"], rec["key"], rec["content"], rec["metadata_json"], rec["created_at"]),
+                )
+                conn.commit()
+                return rec
+            finally:
+                conn.close()
+
+        row = await anyio.to_thread.run_sync(_sync)
+        return {
+            "id": row["id"],
+            "user_id": row["user_id"],
+            "key": row.get("key"),
+            "content": row.get("content"),
+            "metadata": _json_loads(row.get("metadata_json")) or {},
+            "created_at": row.get("created_at"),
+        }
+
+    async def search_long_term_memory(self, *, user_id: str, query: str, limit: int = 10) -> List[Dict[str, Any]]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> List[Dict[str, Any]]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                q = f"%{query}%"
+                rows = conn.execute(
+                    """
+                    SELECT * FROM long_term_memories
+                    WHERE user_id = ? AND (content LIKE ? OR key LIKE ?)
+                    ORDER BY created_at DESC
+                    LIMIT ?;
+                    """,
+                    (str(user_id or "system"), q, q, int(limit)),
+                ).fetchall()
+                return [dict(r) for r in rows]
+            finally:
+                conn.close()
+
+        rows = await anyio.to_thread.run_sync(_sync)
+        out: List[Dict[str, Any]] = []
+        for r in rows:
+            out.append(
+                {
+                    "id": r["id"],
+                    "user_id": r["user_id"],
+                    "key": r.get("key"),
+                    "content": r.get("content"),
+                    "metadata": _json_loads(r.get("metadata_json")) or {},
+                    "created_at": r.get("created_at"),
+                }
+            )
+        return out
 
     def _job_row_to_obj(self, row: Dict[str, Any]) -> Dict[str, Any]:
         return {

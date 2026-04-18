@@ -25,6 +25,10 @@ from core.schemas import (
     JobCreateRequest,
     JobUpdateRequest,
     GatewayExecuteRequest,
+    SkillPackCreateRequest,
+    SkillPackUpdateRequest,
+    LongTermMemoryAddRequest,
+    LongTermMemorySearchRequest,
     MessageCreateRequest,
     SessionCreateRequest,
     SearchRequest,
@@ -4210,6 +4214,80 @@ async def gateway_execute(request: GatewayExecuteRequest):
     resp.setdefault("trace_id", result.trace_id)
     resp.setdefault("run_id", result.run_id)
     return resp
+
+
+# ==================== Skill Packs + Long-term Memory (Roadmap-4 minimal) ====================
+
+
+@api_router.get("/skill-packs")
+async def list_skill_packs(limit: int = 100, offset: int = 0):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    return await _execution_store.list_skill_packs(limit=limit, offset=offset)
+
+
+@api_router.post("/skill-packs")
+async def create_skill_pack(request: SkillPackCreateRequest):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    return await _execution_store.create_skill_pack(
+        {"name": request.name, "description": request.description, "manifest": request.manifest}
+    )
+
+
+@api_router.get("/skill-packs/{pack_id}")
+async def get_skill_pack(pack_id: str):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    pack = await _execution_store.get_skill_pack(pack_id)
+    if not pack:
+        raise HTTPException(status_code=404, detail="Skill pack not found")
+    return pack
+
+
+@api_router.put("/skill-packs/{pack_id}")
+async def update_skill_pack(pack_id: str, request: SkillPackUpdateRequest):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    patch = request.model_dump(exclude_unset=True)
+    updated = await _execution_store.update_skill_pack(pack_id, patch)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Skill pack not found")
+    return updated
+
+
+@api_router.delete("/skill-packs/{pack_id}")
+async def delete_skill_pack(pack_id: str):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    ok = await _execution_store.delete_skill_pack(pack_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Skill pack not found")
+    return {"status": "deleted", "id": pack_id}
+
+
+@api_router.post("/memory/longterm")
+async def add_long_term_memory(request: LongTermMemoryAddRequest):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    return await _execution_store.add_long_term_memory(
+        user_id=request.user_id or "system",
+        key=request.key,
+        content=request.content,
+        metadata=request.metadata or {},
+    )
+
+
+@api_router.post("/memory/longterm/search")
+async def search_long_term_memory(request: LongTermMemorySearchRequest):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    items = await _execution_store.search_long_term_memory(
+        user_id=request.user_id or "system",
+        query=request.query,
+        limit=request.limit,
+    )
+    return {"items": items, "total": len(items)}
 
 
 # ==================== Jobs / Cron (Roadmap-3) ====================

@@ -102,6 +102,31 @@ class GatewayExecuteRequest(BaseModel):
     options: Optional[Dict[str, Any]] = None
 
 
+class SkillPackCreateRequest(BaseModel):
+    name: str
+    description: Optional[str] = None
+    manifest: Dict[str, Any] = Field(default_factory=dict)
+
+
+class SkillPackUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    manifest: Optional[Dict[str, Any]] = None
+
+
+class LongTermMemoryAddRequest(BaseModel):
+    user_id: Optional[str] = None
+    key: Optional[str] = None
+    content: str
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class LongTermMemorySearchRequest(BaseModel):
+    user_id: Optional[str] = None
+    query: str
+    limit: int = 10
+
+
 class MessageCreateRequest(BaseModel):
     role: str
     content: str
