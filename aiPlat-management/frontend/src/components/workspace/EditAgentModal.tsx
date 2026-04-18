@@ -32,6 +32,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
   const [wizMode, setWizMode] = useState<'manual' | 'auto'>('manual');
   const [wizSources, setWizSources] = useState<string[]>([]);
   const [wizMayWrite, setWizMayWrite] = useState(false);
+  const [wizToolset, setWizToolset] = useState<string>('workspace_default');
   const [genWarnings, setGenWarnings] = useState<string[]>([]);
 
   useEffect(() => {
@@ -67,6 +68,28 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
     return { wantsFs, wantsBrowser, wantsHttp, wantsDb, wantsWeb, wantsWrite };
   };
 
+  const recommendToolset = (opts?: { mode?: 'manual' | 'auto'; sources?: string[]; mayWrite?: boolean }) => {
+    const mode = opts?.mode || 'manual';
+    const sources = new Set<string>(opts?.sources || []);
+    const mayWrite = Boolean(opts?.mayWrite);
+
+    // Rules (minimal, predictable):
+    // 1) If the task needs high-risk integrations (http/database/browser) → full
+    // 2) Else if mayWrite → workspace_default (allows file write but avoids extra risky tools)
+    // 3) Else if auto mode with any external sources/filesystem → safe_readonly
+    // 4) Else → workspace_default
+    if (sources.has('http') || sources.has('database') || sources.has('browser')) {
+      return { toolset: 'full', reason: '选择了高风险数据源（HTTP/数据库/浏览器），需要 full 才可能调用相应工具。' };
+    }
+    if (mayWrite) {
+      return { toolset: 'workspace_default', reason: '标记“可能写入/修改”，推荐 workspace_default（允许 file_operations 写/删，但不默认放开 http/browser/code/database）。' };
+    }
+    if (mode === 'auto' && (sources.size > 0 || sources.has('filesystem') || sources.has('web'))) {
+      return { toolset: 'safe_readonly', reason: '自动获取但不需要写入，推荐 safe_readonly（只读 + 低风险工具）。' };
+    }
+    return { toolset: 'workspace_default', reason: '默认推荐 workspace_default。' };
+  };
+
   const openDisambiguationWizard = () => {
     const a = detectAmbiguity();
     setWizOpen(true);
@@ -79,6 +102,12 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
     if (a.wantsWeb) src.push('web');
     setWizSources(src);
     setWizMayWrite(a.wantsWrite);
+    try {
+      const rec = recommendToolset({ mode: a.wantsFs || a.wantsBrowser || a.wantsHttp || a.wantsDb || a.wantsWeb ? 'auto' : 'manual', sources: src, mayWrite: a.wantsWrite });
+      setWizToolset(rec.toolset);
+    } catch {
+      setWizToolset('workspace_default');
+    }
   };
 
   const fetchSop = async () => {
@@ -496,6 +525,12 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
             variant="primary"
             onClick={() => {
               applySmartGenerateWithWiz({ mode: wizMode, sources: wizSources, mayWrite: wizMayWrite });
+              // apply recommended/selected toolset to agent default (stored in metadata.toolset)
+              try {
+                setDefaultToolset(wizToolset || 'workspace_default');
+              } catch {
+                setDefaultToolset('workspace_default');
+              }
               setWizOpen(false);
             }}
             disabled={loading}
@@ -549,6 +584,22 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
             </div>
           </div>
         )}
+
+        <div>
+          <div className="text-sm font-medium text-gray-300 mb-2">推荐 Toolset（运行时工具集）</div>
+          <select
+            value={wizToolset}
+            onChange={(e) => setWizToolset(e.target.value)}
+            className="w-full h-10 px-3 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100"
+          >
+            <option value="safe_readonly">safe_readonly（只读）</option>
+            <option value="workspace_default">workspace_default（默认）</option>
+            <option value="full">full（全量/高风险）</option>
+          </select>
+          <div className="text-xs text-gray-500 mt-1">
+            {recommendToolset({ mode: wizMode, sources: wizSources, mayWrite: wizMayWrite }).reason}
+          </div>
+        </div>
 
         <div>
           <div className="text-sm font-medium text-gray-300 mb-2">是否可能写入/修改外部系统？</div>
