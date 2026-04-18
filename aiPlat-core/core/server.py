@@ -5,7 +5,7 @@ Provides REST API endpoints for agent, skill, tool, memory, knowledge, and harne
 Runs on port 8002.
 """
 
-from fastapi import FastAPI, HTTPException, APIRouter
+from fastapi import FastAPI, HTTPException, APIRouter, Request
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, List, Dict, Any
 from contextlib import asynccontextmanager
@@ -4309,7 +4309,7 @@ async def execute_tool(tool_name: str, request: dict):
 
 
 @api_router.post("/gateway/execute")
-async def gateway_execute(request: GatewayExecuteRequest):
+async def gateway_execute(request: GatewayExecuteRequest, http_request: Request):
     """
     Unified external entry for multi-channel integrations.
 
@@ -4329,16 +4329,68 @@ async def gateway_execute(request: GatewayExecuteRequest):
         ctx = dict(ctx) if isinstance(ctx, dict) else {}
         ctx.setdefault("source", "gateway")
         ctx.setdefault("channel", request.channel)
+        # preserve external identity if present
+        if request.channel_user_id:
+            ctx.setdefault("channel_user_id", request.channel_user_id)
         payload["context"] = ctx
     except Exception:
         pass
+
+    # Optional auth (Roadmap-3): require token when configured.
+    # - Env AIPLAT_GATEWAY_REQUIRE_AUTH=true to enable.
+    # - Accept X-AiPlat-Gateway-Token header and validate against ExecutionStore gateway_tokens
+    #   or env AIPLAT_GATEWAY_TOKEN.
+    if os.getenv("AIPLAT_GATEWAY_REQUIRE_AUTH", "false").lower() in ("1", "true", "yes", "y"):
+        token = http_request.headers.get("x-aiplat-gateway-token") or http_request.headers.get("X-AiPlat-Gateway-Token")
+        if not token:
+            raise HTTPException(status_code=401, detail="missing gateway token")
+        ok = False
+        if os.getenv("AIPLAT_GATEWAY_TOKEN") and token == os.getenv("AIPLAT_GATEWAY_TOKEN"):
+            ok = True
+        elif _execution_store:
+            try:
+                ok = (await _execution_store.validate_gateway_token(token=token)) is not None
+            except Exception:
+                ok = False
+        if not ok:
+            raise HTTPException(status_code=403, detail="invalid gateway token")
+
+    # Pairing resolution: if user_id/session_id not provided, resolve using (channel, channel_user_id).
+    resolved_user = request.user_id
+    resolved_session = request.session_id
+    resolved_tenant = request.tenant_id
+    channel_user_id = (
+        request.channel_user_id
+        or (payload.get("channel_user_id") if isinstance(payload, dict) else None)
+        or (payload.get("sender_id") if isinstance(payload, dict) else None)
+        or ((payload.get("context") or {}).get("channel_user_id") if isinstance(payload.get("context"), dict) else None)
+    )
+    if _execution_store and (not resolved_user or not resolved_session) and channel_user_id:
+        try:
+            pairing = await _execution_store.resolve_gateway_pairing(channel=request.channel, channel_user_id=str(channel_user_id))
+        except Exception:
+            pairing = None
+        if pairing:
+            resolved_user = resolved_user or pairing.get("user_id")
+            resolved_session = resolved_session or pairing.get("session_id")
+            resolved_tenant = resolved_tenant or pairing.get("tenant_id")
+            # enrich context for observability
+            try:
+                ctx = payload.get("context") if isinstance(payload.get("context"), dict) else {}
+                ctx = dict(ctx) if isinstance(ctx, dict) else {}
+                ctx.setdefault("pairing_id", pairing.get("id"))
+                if pairing.get("tenant_id"):
+                    ctx.setdefault("tenant_id", pairing.get("tenant_id"))
+                payload["context"] = ctx
+            except Exception:
+                pass
 
     exec_req = ExecutionRequest(
         kind=str(request.kind) if request.kind else "agent",  # type: ignore[arg-type]
         target_id=str(request.target_id),
         payload=payload,
-        user_id=request.user_id or "system",
-        session_id=request.session_id or "default",
+        user_id=str(resolved_user or "system"),
+        session_id=str(resolved_session or "default"),
         request_id=f"gw-{uuid.uuid4().hex[:12]}",
     )
     result = await harness.execute(exec_req)
@@ -4360,6 +4412,98 @@ async def gateway_execute(request: GatewayExecuteRequest):
     resp.setdefault("trace_id", result.trace_id)
     resp.setdefault("run_id", result.run_id)
     return resp
+
+
+def _require_gateway_admin(http_request: Request) -> None:
+    """
+    Optional admin guard for gateway management endpoints.
+    If AIPLAT_GATEWAY_ADMIN_TOKEN is set, callers must provide X-AiPlat-Admin-Token.
+    """
+    admin = os.environ.get("AIPLAT_GATEWAY_ADMIN_TOKEN")
+    if not admin:
+        return
+    got = http_request.headers.get("x-aiplat-admin-token") or http_request.headers.get("X-AiPlat-Admin-Token")
+    if not got or got != admin:
+        raise HTTPException(status_code=403, detail="admin token required")
+
+
+@api_router.get("/gateway/pairings")
+async def list_gateway_pairings(http_request: Request, channel: Optional[str] = None, user_id: Optional[str] = None, limit: int = 100, offset: int = 0):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    _require_gateway_admin(http_request)
+    return await _execution_store.list_gateway_pairings(channel=channel, user_id=user_id, limit=limit, offset=offset)
+
+
+@api_router.post("/gateway/pairings")
+async def upsert_gateway_pairing(http_request: Request, body: Dict[str, Any]):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    _require_gateway_admin(http_request)
+    channel = str(body.get("channel") or "default")
+    channel_user_id = str(body.get("channel_user_id") or "").strip()
+    user_id = str(body.get("user_id") or "").strip()
+    if not channel_user_id or not user_id:
+        raise HTTPException(status_code=400, detail="channel_user_id and user_id are required")
+    return await _execution_store.upsert_gateway_pairing(
+        channel=channel,
+        channel_user_id=channel_user_id,
+        user_id=user_id,
+        session_id=body.get("session_id"),
+        tenant_id=body.get("tenant_id"),
+        metadata=body.get("metadata") if isinstance(body.get("metadata"), dict) else {},
+    )
+
+
+@api_router.delete("/gateway/pairings")
+async def delete_gateway_pairing(http_request: Request, channel: str, channel_user_id: str):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    _require_gateway_admin(http_request)
+    ok = await _execution_store.delete_gateway_pairing(channel=channel, channel_user_id=channel_user_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="pairing not found")
+    return {"status": "deleted", "channel": channel, "channel_user_id": channel_user_id}
+
+
+@api_router.get("/gateway/tokens")
+async def list_gateway_tokens(http_request: Request, enabled: Optional[bool] = None, limit: int = 100, offset: int = 0):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    _require_gateway_admin(http_request)
+    return await _execution_store.list_gateway_tokens(limit=limit, offset=offset, enabled=enabled)
+
+
+@api_router.post("/gateway/tokens")
+async def create_gateway_token(http_request: Request, body: Dict[str, Any]):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    _require_gateway_admin(http_request)
+    name = str(body.get("name") or "token")
+    token = str(body.get("token") or "")
+    if not token:
+        raise HTTPException(status_code=400, detail="token is required")
+    rec = await _execution_store.create_gateway_token(
+        name=name,
+        token=token,
+        tenant_id=body.get("tenant_id"),
+        enabled=bool(body.get("enabled", True)),
+        metadata=body.get("metadata") if isinstance(body.get("metadata"), dict) else {},
+    )
+    # do not return raw token or sha
+    rec.pop("token_sha256", None)
+    return rec
+
+
+@api_router.delete("/gateway/tokens/{token_id}")
+async def delete_gateway_token(http_request: Request, token_id: str):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    _require_gateway_admin(http_request)
+    ok = await _execution_store.delete_gateway_token(token_id=token_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="token not found")
+    return {"status": "deleted", "token_id": token_id}
 
 
 # ==================== Skill Packs + Long-term Memory (Roadmap-4 minimal) ====================
