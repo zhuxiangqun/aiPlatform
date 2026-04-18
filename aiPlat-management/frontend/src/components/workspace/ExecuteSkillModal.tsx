@@ -16,6 +16,7 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
   const [helpLoading, setHelpLoading] = useState(false);
   const [helpMarkdown, setHelpMarkdown] = useState<string>('');
   const [examples, setExamples] = useState<Array<{ title: string; content: string }>>([]);
+  const [toolset, setToolset] = useState<string>('workspace_default');
 
   useEffect(() => {
     const load = async () => {
@@ -50,7 +51,7 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
         }
       }
 
-      const res = await workspaceSkillApi.execute(skill.id, { input: payload });
+      const res = await workspaceSkillApi.execute(skill.id, { input: payload, options: { toolset } });
       setResult(res as any);
       toast.success((res as any).status === 'completed' || (res as any).status === 'success' ? '执行成功' : `状态: ${(res as any).status}`);
     } catch (error: any) {
@@ -86,6 +87,22 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
     >
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
+          <div className="mb-3">
+            <div className="text-sm font-medium text-gray-300 mb-2">Toolset（运行时工具集）</div>
+            <select
+              value={toolset}
+              onChange={(e) => setToolset(e.target.value)}
+              className="w-full h-10 px-3 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100"
+              disabled={loading}
+            >
+              <option value="safe_readonly">safe_readonly（只读）</option>
+              <option value="workspace_default">workspace_default（默认）</option>
+              <option value="full">full（全量/高风险）</option>
+            </select>
+            <div className="text-xs text-gray-500 mt-1">
+              提示：toolset 在服务端强制生效；不在白名单内的工具调用会被 sys_tool_call 拦截并记录到诊断。
+            </div>
+          </div>
           <Textarea
             label="输入（JSON 或文本）"
             rows={12}

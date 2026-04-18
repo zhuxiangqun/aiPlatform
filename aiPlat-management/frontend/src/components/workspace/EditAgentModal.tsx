@@ -25,6 +25,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
   const [toolOptions, setToolOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [modelOptions, setModelOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [selectedModel, setSelectedModel] = useState<string>('');
+  const [defaultToolset, setDefaultToolset] = useState<string>('workspace_default');
 
   // Disambiguation wizard
   const [wizOpen, setWizOpen] = useState(false);
@@ -37,6 +38,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
     if (open && agent) {
       setName(agent.name || '');
       setDescription(String((agent as any)?.metadata?.description || ''));
+      setDefaultToolset(String((agent as any)?.metadata?.toolset || 'workspace_default'));
       setSkills(agent.skills || []);
       setTools(agent.tools || []);
       setConfigText(agent.metadata?.config ? JSON.stringify(agent.metadata.config, null, 2) : (agent as any)?.config ? JSON.stringify((agent as any).config, null, 2) : '');
@@ -284,6 +286,8 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       const metadata: Record<string, unknown> = { ...(agent.metadata || {}) };
       if (description.trim()) metadata.description = description.trim();
       else delete (metadata as any).description;
+      if (defaultToolset && defaultToolset !== 'workspace_default') metadata.toolset = defaultToolset;
+      else delete (metadata as any).toolset;
 
       await workspaceAgentApi.update(agent.id, { name: name.trim() || undefined, config, memory_config, metadata });
 
@@ -354,6 +358,22 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       <div className="space-y-4">
         <Input label="名称（显示名）" value={name} onChange={(e: any) => setName(e.target.value)} />
         <Input label="描述（可选）" value={description} onChange={(e: any) => setDescription(e.target.value)} />
+
+        <div>
+          <div className="text-sm font-medium text-gray-300 mb-2">默认 Toolset（运行时工具集）</div>
+          <select
+            value={defaultToolset}
+            onChange={(e) => setDefaultToolset(e.target.value)}
+            className="w-full h-10 px-3 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100"
+          >
+            <option value="workspace_default">workspace_default（默认）</option>
+            <option value="safe_readonly">safe_readonly（只读）</option>
+            <option value="full">full（全量/高风险）</option>
+          </select>
+          <div className="text-xs text-gray-500 mt-1">
+            提示：该字段会写入 Agent metadata.toolset；执行弹窗会默认读取它，也可在执行时临时覆盖。
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>

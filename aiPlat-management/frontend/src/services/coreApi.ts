@@ -58,7 +58,7 @@ export const agentApi = {
     return apiClient.post<{ status: string; id: string }>(`/core/agents/${agentId}/stop`);
   },
 
-  execute: async (agentId: string, data: { messages?: unknown[]; input?: unknown; context?: Record<string, unknown> }) => {
+  execute: async (agentId: string, data: { messages?: unknown[]; input?: unknown; context?: Record<string, unknown>; options?: { toolset?: string } }) => {
     return apiClient.post<{ execution_id: string; status: string; output?: unknown; error?: string }>(`/core/agents/${agentId}/execute`, data);
   },
 
@@ -140,7 +140,7 @@ export const workspaceAgentApi = {
     );
   },
 
-  execute: async (agentId: string, data: { messages?: unknown[]; input?: unknown; context?: Record<string, unknown> }) => {
+  execute: async (agentId: string, data: { messages?: unknown[]; input?: unknown; context?: Record<string, unknown>; options?: { toolset?: string } }) => {
     return apiClient.post<{ execution_id: string; status: string; output?: unknown; error?: string }>(`/core/workspace/agents/${agentId}/execute`, data);
   },
 
@@ -456,7 +456,7 @@ export const skillApi = {
     return apiClient.post<{ status: string }>(`/core/skills/${skillId}/restore`);
   },
 
-  execute: async (skillId: string, data: { input?: Record<string, unknown>; context?: Record<string, unknown> }) => {
+  execute: async (skillId: string, data: { input?: Record<string, unknown>; context?: Record<string, unknown>; options?: { toolset?: string } }) => {
     return apiClient.post<{ execution_id: string; status: string; output?: unknown; error?: string; duration_ms?: number }>(`/core/skills/${skillId}/execute`, data);
   },
 };
@@ -504,7 +504,7 @@ export const workspaceSkillApi = {
     return apiClient.delete<{ status: string }>(`/core/workspace/skills/${skillId}${qs ? '?' + qs : ''}`);
   },
 
-  execute: async (skillId: string, data: { input?: Record<string, unknown>; context?: Record<string, unknown> }) => {
+  execute: async (skillId: string, data: { input?: Record<string, unknown>; context?: Record<string, unknown>; options?: { toolset?: string } }) => {
     return apiClient.post<{ execution_id: string; status: string; output?: unknown; error?: string; duration_ms?: number }>(`/core/workspace/skills/${skillId}/execute`, data);
   },
 
