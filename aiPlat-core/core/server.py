@@ -793,8 +793,10 @@ async def _record_changeset(
     name: str,
     target_type: str,
     target_id: str,
+    status: str = "success",
     args: Dict[str, Any] | None = None,
     result: Dict[str, Any] | None = None,
+    error: str | None = None,
     user_id: str = "admin",
     session_id: str | None = None,
     approval_request_id: str | None = None,
@@ -810,9 +812,10 @@ async def _record_changeset(
             {
                 "kind": "changeset",
                 "name": str(name),
-                "status": "success",
+                "status": str(status or "success"),
                 "args": args or {},
                 "result": result or {},
+                "error": str(error) if error else None,
                 "target_type": str(target_type),
                 "target_id": str(target_id),
                 "user_id": str(user_id or "admin"),
@@ -6905,19 +6908,69 @@ async def set_default_llm(request: OnboardingDefaultLLMRequest):
                 details=request.details or f"set default llm to {request.adapter_id}:{request.model}",
                 metadata={"adapter_id": request.adapter_id, "model": request.model},
             )
+            try:
+                await _record_changeset(
+                    name="global_setting_upsert_default_llm",
+                    target_type="global_setting",
+                    target_id="default_llm",
+                    status="approval_required",
+                    args={"adapter_id": request.adapter_id, "model": request.model},
+                    approval_request_id=rid,
+                )
+            except Exception:
+                pass
             return {"status": "approval_required", "approval_request_id": rid}
         if not _is_approval_resolved_approved(request.approval_request_id):
+            try:
+                await _record_changeset(
+                    name="global_setting_upsert_default_llm",
+                    target_type="global_setting",
+                    target_id="default_llm",
+                    status="failed",
+                    args={"adapter_id": request.adapter_id, "model": request.model},
+                    error="not_approved",
+                    approval_request_id=request.approval_request_id,
+                )
+            except Exception:
+                pass
             raise HTTPException(status_code=409, detail="not_approved")
 
     # validate adapter exists
     ad = await _execution_store.get_adapter(request.adapter_id)
     if not ad:
+        try:
+            await _record_changeset(
+                name="global_setting_upsert_default_llm",
+                target_type="global_setting",
+                target_id="default_llm",
+                status="failed",
+                args={"adapter_id": request.adapter_id, "model": request.model},
+                error="adapter_not_found",
+                approval_request_id=request.approval_request_id,
+            )
+        except Exception:
+            pass
         raise HTTPException(status_code=404, detail="adapter_not_found")
 
-    res = await _execution_store.upsert_global_setting(
-        key="default_llm",
-        value={"adapter_id": request.adapter_id, "model": request.model},
-    )
+    try:
+        res = await _execution_store.upsert_global_setting(
+            key="default_llm",
+            value={"adapter_id": request.adapter_id, "model": request.model},
+        )
+    except Exception as e:
+        try:
+            await _record_changeset(
+                name="global_setting_upsert_default_llm",
+                target_type="global_setting",
+                target_id="default_llm",
+                status="failed",
+                args={"adapter_id": request.adapter_id, "model": request.model},
+                error=f"exception:{type(e).__name__}",
+                approval_request_id=request.approval_request_id,
+            )
+        except Exception:
+            pass
+        raise
     try:
         await _record_changeset(
             name="global_setting_upsert_default_llm",
@@ -6945,11 +6998,49 @@ async def init_default_tenant(request: OnboardingInitTenantRequest):
                 details=request.details or f"init tenant {request.tenant_id} (policies={request.init_policies})",
                 metadata={"tenant_id": request.tenant_id, "init_policies": request.init_policies},
             )
+            try:
+                await _record_changeset(
+                    name="tenant_init",
+                    target_type="tenant",
+                    target_id=str(request.tenant_id),
+                    status="approval_required",
+                    args={"tenant_id": str(request.tenant_id), "init_policies": bool(request.init_policies)},
+                    approval_request_id=rid,
+                )
+            except Exception:
+                pass
             return {"status": "approval_required", "approval_request_id": rid}
         if not _is_approval_resolved_approved(request.approval_request_id):
+            try:
+                await _record_changeset(
+                    name="tenant_init",
+                    target_type="tenant",
+                    target_id=str(request.tenant_id),
+                    status="failed",
+                    args={"tenant_id": str(request.tenant_id), "init_policies": bool(request.init_policies)},
+                    error="not_approved",
+                    approval_request_id=request.approval_request_id,
+                )
+            except Exception:
+                pass
             raise HTTPException(status_code=409, detail="not_approved")
 
-    tenant = await _execution_store.upsert_tenant(tenant_id=request.tenant_id, name=request.tenant_name)
+    try:
+        tenant = await _execution_store.upsert_tenant(tenant_id=request.tenant_id, name=request.tenant_name)
+    except Exception as e:
+        try:
+            await _record_changeset(
+                name="tenant_init",
+                target_type="tenant",
+                target_id=str(request.tenant_id),
+                status="failed",
+                args={"tenant_id": str(request.tenant_id), "init_policies": bool(request.init_policies)},
+                error=f"exception:{type(e).__name__}",
+                approval_request_id=request.approval_request_id,
+            )
+        except Exception:
+            pass
+        raise
 
     policy_res = None
     if request.init_policies:
@@ -6960,7 +7051,22 @@ async def init_default_tenant(request: OnboardingInitTenantRequest):
                 "approval_required_tools": ["*"] if bool(request.strict_tool_approval) else [],
             }
         }
-        policy_res = await _execution_store.upsert_tenant_policy(tenant_id=request.tenant_id, policy=baseline_policy)
+        try:
+            policy_res = await _execution_store.upsert_tenant_policy(tenant_id=request.tenant_id, policy=baseline_policy)
+        except Exception as e:
+            try:
+                await _record_changeset(
+                    name="tenant_init",
+                    target_type="tenant",
+                    target_id=str(request.tenant_id),
+                    status="failed",
+                    args={"tenant_id": str(request.tenant_id), "init_policies": True},
+                    error=f"exception:{type(e).__name__}",
+                    approval_request_id=request.approval_request_id,
+                )
+            except Exception:
+                pass
+            raise
 
     try:
         await _record_changeset(
@@ -6993,8 +7099,31 @@ async def set_autosmoke_config(request: OnboardingAutosmokeConfigRequest):
                 details=request.details or f"set autosmoke enabled={request.enabled} enforce={request.enforce}",
                 metadata={"enabled": request.enabled, "enforce": request.enforce, "dedup_seconds": request.dedup_seconds},
             )
+            try:
+                await _record_changeset(
+                    name="global_setting_upsert_autosmoke",
+                    target_type="global_setting",
+                    target_id="autosmoke",
+                    status="approval_required",
+                    args={"enabled": bool(request.enabled), "enforce": bool(request.enforce), "dedup_seconds": request.dedup_seconds},
+                    approval_request_id=rid,
+                )
+            except Exception:
+                pass
             return {"status": "approval_required", "approval_request_id": rid}
         if not _is_approval_resolved_approved(request.approval_request_id):
+            try:
+                await _record_changeset(
+                    name="global_setting_upsert_autosmoke",
+                    target_type="global_setting",
+                    target_id="autosmoke",
+                    status="failed",
+                    args={"enabled": bool(request.enabled), "enforce": bool(request.enforce), "dedup_seconds": request.dedup_seconds},
+                    error="not_approved",
+                    approval_request_id=request.approval_request_id,
+                )
+            except Exception:
+                pass
             raise HTTPException(status_code=409, detail="not_approved")
 
     value: Dict[str, Any] = {"enabled": bool(request.enabled), "enforce": bool(request.enforce)}
@@ -7002,7 +7131,22 @@ async def set_autosmoke_config(request: OnboardingAutosmokeConfigRequest):
         value["webhook_url"] = str(request.webhook_url)
     if request.dedup_seconds is not None:
         value["dedup_seconds"] = int(request.dedup_seconds)
-    res = await _execution_store.upsert_global_setting(key="autosmoke", value=value)
+    try:
+        res = await _execution_store.upsert_global_setting(key="autosmoke", value=value)
+    except Exception as e:
+        try:
+            await _record_changeset(
+                name="global_setting_upsert_autosmoke",
+                target_type="global_setting",
+                target_id="autosmoke",
+                status="failed",
+                args=value,
+                error=f"exception:{type(e).__name__}",
+                approval_request_id=request.approval_request_id,
+            )
+        except Exception:
+            pass
+        raise
     try:
         await _record_changeset(
             name="global_setting_upsert_autosmoke",
@@ -7044,13 +7188,48 @@ async def migrate_secrets(request: OnboardingSecretsMigrateRequest):
                 details=request.details or "migrate adapter api_key to encrypted storage",
                 metadata={},
             )
+            try:
+                await _record_changeset(
+                    name="secrets_migrate",
+                    target_type="adapters",
+                    target_id="api_key",
+                    status="approval_required",
+                    args={},
+                    approval_request_id=rid,
+                )
+            except Exception:
+                pass
             return {"status": "approval_required", "approval_request_id": rid}
         if not _is_approval_resolved_approved(request.approval_request_id):
+            try:
+                await _record_changeset(
+                    name="secrets_migrate",
+                    target_type="adapters",
+                    target_id="api_key",
+                    status="failed",
+                    args={},
+                    error="not_approved",
+                    approval_request_id=request.approval_request_id,
+                )
+            except Exception:
+                pass
             raise HTTPException(status_code=409, detail="not_approved")
 
     try:
         res = await _execution_store.migrate_adapter_secrets_to_encrypted()
     except Exception as e:
+        try:
+            await _record_changeset(
+                name="secrets_migrate",
+                target_type="adapters",
+                target_id="api_key",
+                status="failed",
+                args={},
+                error=f"exception:{type(e).__name__}",
+                approval_request_id=request.approval_request_id,
+            )
+        except Exception:
+            pass
         raise HTTPException(status_code=400, detail=str(e))
     st = await _execution_store.get_adapter_secrets_status()
     try:
@@ -7091,8 +7270,31 @@ async def set_strong_gate(request: OnboardingStrongGateRequest):
                 details=request.details or f"set strong gate enabled={enabled} for tenant={tenant_id}",
                 metadata={"tenant_id": tenant_id, "enabled": enabled},
             )
+            try:
+                await _record_changeset(
+                    name="strong_gate_set",
+                    target_type="tenant_policy",
+                    target_id=str(tenant_id),
+                    status="approval_required",
+                    args={"tenant_id": str(tenant_id), "enabled": bool(enabled)},
+                    approval_request_id=rid,
+                )
+            except Exception:
+                pass
             return {"status": "approval_required", "approval_request_id": rid}
         if not _is_approval_resolved_approved(request.approval_request_id):
+            try:
+                await _record_changeset(
+                    name="strong_gate_set",
+                    target_type="tenant_policy",
+                    target_id=str(tenant_id),
+                    status="failed",
+                    args={"tenant_id": str(tenant_id), "enabled": bool(enabled)},
+                    error="not_approved",
+                    approval_request_id=request.approval_request_id,
+                )
+            except Exception:
+                pass
             raise HTTPException(status_code=409, detail="not_approved")
 
     # ensure tenant exists (best-effort)
@@ -7125,7 +7327,22 @@ async def set_strong_gate(request: OnboardingStrongGateRequest):
     tp["deny_tools"] = deny_tools
     tp["approval_required_tools"] = approval_tools
 
-    saved = await _execution_store.upsert_tenant_policy(tenant_id=tenant_id, policy=policy, version=None)
+    try:
+        saved = await _execution_store.upsert_tenant_policy(tenant_id=tenant_id, policy=policy, version=None)
+    except Exception as e:
+        try:
+            await _record_changeset(
+                name="strong_gate_set",
+                target_type="tenant_policy",
+                target_id=str(tenant_id),
+                status="failed",
+                args={"tenant_id": str(tenant_id), "enabled": bool(enabled)},
+                error=f"exception:{type(e).__name__}",
+                approval_request_id=request.approval_request_id,
+            )
+        except Exception:
+            pass
+        raise
     try:
         await _record_changeset(
             name="strong_gate_set",
@@ -7502,40 +7719,76 @@ async def upsert_prompt_template(request: PromptTemplateUpsertRequest):
                 details=request.details or f"upsert prompt template {request.template_id}",
                 metadata={"template_id": request.template_id, "name": request.name},
             )
+            try:
+                await _record_changeset(
+                    name="prompt_template_upsert",
+                    target_type="prompt_template",
+                    target_id=str(request.template_id),
+                    status="approval_required",
+                    args={"template_id": request.template_id, "name": request.name},
+                    approval_request_id=rid,
+                )
+            except Exception:
+                pass
             return {"status": "approval_required", "approval_request_id": rid}
         if not _is_approval_resolved_approved(request.approval_request_id):
+            try:
+                await _record_changeset(
+                    name="prompt_template_upsert",
+                    target_type="prompt_template",
+                    target_id=str(request.template_id),
+                    status="failed",
+                    args={"template_id": request.template_id, "name": request.name},
+                    error="not_approved",
+                    approval_request_id=request.approval_request_id,
+                )
+            except Exception:
+                pass
             raise HTTPException(status_code=409, detail="not_approved")
 
-    res = await _execution_store.upsert_prompt_template(
-        template_id=request.template_id,
-        name=request.name,
-        template=request.template,
-        metadata=request.metadata or {},
-        increment_version=bool(request.increment_version),
-    )
+    try:
+        res = await _execution_store.upsert_prompt_template(
+            template_id=request.template_id,
+            name=request.name,
+            template=request.template,
+            metadata=request.metadata or {},
+            increment_version=bool(request.increment_version),
+        )
+    except Exception as e:
+        try:
+            await _record_changeset(
+                name="prompt_template_upsert",
+                target_type="prompt_template",
+                target_id=str(request.template_id),
+                status="failed",
+                args={"template_id": request.template_id, "name": request.name},
+                error=f"exception:{type(e).__name__}",
+                approval_request_id=request.approval_request_id,
+            )
+        except Exception:
+            pass
+        raise
+
     # Audit as a "changeset" syscall event (no secret content, hash only)
     try:
         import hashlib
-        await _execution_store.add_syscall_event(
-            {
-                "kind": "changeset",
-                "name": "prompt_template_upsert",
-                "status": "success",
-                "args": {
-                    "template_id": request.template_id,
-                    "name": request.name,
-                    "prev_version": (prev or {}).get("version") if isinstance(prev, dict) else None,
-                },
-                "result": {
-                    "version": res.get("version") if isinstance(res, dict) else None,
-                    "template_sha256": hashlib.sha256(str(request.template).encode("utf-8")).hexdigest(),
-                    "template_len": len(str(request.template)),
-                },
-                "target_type": "prompt_template",
-                "target_id": str(request.template_id),
-                "user_id": "admin",
-                "approval_request_id": request.approval_request_id,
-            }
+
+        await _record_changeset(
+            name="prompt_template_upsert",
+            target_type="prompt_template",
+            target_id=str(request.template_id),
+            status="success",
+            args={
+                "template_id": request.template_id,
+                "name": request.name,
+                "prev_version": (prev or {}).get("version") if isinstance(prev, dict) else None,
+            },
+            result={
+                "version": res.get("version") if isinstance(res, dict) else None,
+                "template_sha256": hashlib.sha256(str(request.template).encode("utf-8")).hexdigest(),
+                "template_len": len(str(request.template)),
+            },
+            approval_request_id=request.approval_request_id,
         )
     except Exception:
         pass
@@ -7558,27 +7811,73 @@ async def rollback_prompt_template(template_id: str, request: PromptTemplateRoll
                 details=request.details or f"rollback prompt template {template_id} to {request.version}",
                 metadata={"template_id": str(template_id), "version": str(request.version)},
             )
+            try:
+                await _record_changeset(
+                    name="prompt_template_rollback",
+                    target_type="prompt_template",
+                    target_id=str(template_id),
+                    status="approval_required",
+                    args={"template_id": str(template_id), "version": str(request.version)},
+                    approval_request_id=rid,
+                )
+            except Exception:
+                pass
             return {"status": "approval_required", "approval_request_id": rid}
         if not _is_approval_resolved_approved(request.approval_request_id):
+            try:
+                await _record_changeset(
+                    name="prompt_template_rollback",
+                    target_type="prompt_template",
+                    target_id=str(template_id),
+                    status="failed",
+                    args={"template_id": str(template_id), "version": str(request.version)},
+                    error="not_approved",
+                    approval_request_id=request.approval_request_id,
+                )
+            except Exception:
+                pass
             raise HTTPException(status_code=409, detail="not_approved")
 
     try:
         tpl = await _execution_store.rollback_prompt_template_version(template_id=str(template_id), version=str(request.version))
     except KeyError:
+        try:
+            await _record_changeset(
+                name="prompt_template_rollback",
+                target_type="prompt_template",
+                target_id=str(template_id),
+                status="failed",
+                args={"template_id": str(template_id), "version": str(request.version)},
+                error="version_not_found",
+                approval_request_id=request.approval_request_id,
+            )
+        except Exception:
+            pass
         raise HTTPException(status_code=404, detail="version_not_found")
+    except Exception as e:
+        try:
+            await _record_changeset(
+                name="prompt_template_rollback",
+                target_type="prompt_template",
+                target_id=str(template_id),
+                status="failed",
+                args={"template_id": str(template_id), "version": str(request.version)},
+                error=f"exception:{type(e).__name__}",
+                approval_request_id=request.approval_request_id,
+            )
+        except Exception:
+            pass
+        raise
+
     try:
-        await _execution_store.add_syscall_event(
-            {
-                "kind": "changeset",
-                "name": "prompt_template_rollback",
-                "status": "success",
-                "args": {"template_id": str(template_id), "version": str(request.version)},
-                "result": {"status": "rolled_back"},
-                "target_type": "prompt_template",
-                "target_id": str(template_id),
-                "user_id": "admin",
-                "approval_request_id": request.approval_request_id,
-            }
+        await _record_changeset(
+            name="prompt_template_rollback",
+            target_type="prompt_template",
+            target_id=str(template_id),
+            status="success",
+            args={"template_id": str(template_id), "version": str(request.version)},
+            result={"status": "rolled_back"},
+            approval_request_id=request.approval_request_id,
         )
     except Exception:
         pass
@@ -7605,8 +7904,31 @@ async def delete_prompt_template(template_id: str, require_approval: bool = True
                 details=details or f"delete prompt template {template_id}",
                 metadata={"template_id": str(template_id)},
             )
+            try:
+                await _record_changeset(
+                    name="prompt_template_delete",
+                    target_type="prompt_template",
+                    target_id=str(template_id),
+                    status="approval_required",
+                    args={},
+                    approval_request_id=rid,
+                )
+            except Exception:
+                pass
             return {"status": "approval_required", "approval_request_id": rid}
         if not _is_approval_resolved_approved(approval_request_id):
+            try:
+                await _record_changeset(
+                    name="prompt_template_delete",
+                    target_type="prompt_template",
+                    target_id=str(template_id),
+                    status="failed",
+                    args={},
+                    error="not_approved",
+                    approval_request_id=approval_request_id,
+                )
+            except Exception:
+                pass
             raise HTTPException(status_code=409, detail="not_approved")
 
     ok = await _execution_store.delete_prompt_template(template_id=str(template_id))
