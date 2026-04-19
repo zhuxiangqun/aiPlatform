@@ -87,6 +87,7 @@ class DefaultContextEngine(ContextEngine):
         status: Dict[str, Any] = {
             "context_engine": "default_v1",
             "project_context": {"enabled": False, "injected": False},
+            "repo_diff": {"enabled": False, "injected": False, "staged_chars": 0, "unstaged_chars": 0},
             "session_search": {"enabled": False, "injected": False, "hits": 0},
             "compaction": {"applied": False},
             "budgets": {"max_context_chars": int(self._MAX_CONTEXT_CHARS)},
@@ -146,6 +147,35 @@ class DefaultContextEngine(ContextEngine):
                 if isinstance(decision, dict) and decision.get("action") == "truncate":
                     meta["project_context_truncated"] = True
                     status["project_context"]["truncated"] = True
+
+        # P0 (Repo-aware): optional git diff injection (ephemeral overlay).
+        # This is disabled by default to avoid perf/safety surprises.
+        if (
+            os.getenv("AIPLAT_ENABLE_REPO_DIFF_CONTEXT", "false").lower() in ("1", "true", "yes", "y")
+            and repo_root
+        ):
+            status["repo_diff"]["enabled"] = True
+            try:
+                diff_text, diff_meta = self._load_repo_diff(repo_root=str(repo_root))
+                if diff_meta:
+                    meta.update(diff_meta)
+                if diff_text:
+                    # Inject as system message (ephemeral overlay) after project context if present.
+                    inject = {
+                        "role": "system",
+                        "content": diff_text,
+                        "metadata": {"layer": "ephemeral", "kind": "repo_diff"},
+                    }
+                    if msgs and msgs[0].get("role") == "system" and "# Project Context" in str(msgs[0].get("content", "")):
+                        msgs = [msgs[0], inject] + msgs[1:]
+                    else:
+                        msgs = [inject] + msgs
+                    status["repo_diff"]["injected"] = True
+                    status["repo_diff"]["chars"] = len(diff_text)
+                    status["repo_diff"]["staged_chars"] = int(meta.get("repo_diff_staged_chars") or 0)
+                    status["repo_diff"]["unstaged_chars"] = int(meta.get("repo_diff_unstaged_chars") or 0)
+            except Exception:
+                status["repo_diff"]["error"] = "failed"
 
         # Roadmap-4 (P0): optional session search injection (cross-session memory).
         session_sha = None
@@ -258,7 +288,13 @@ class DefaultContextEngine(ContextEngine):
         except Exception:
             pass
 
-        fin = self._finalize(msgs, meta, project_sha=meta.get("project_context_sha256"), session_sha=session_sha)
+        fin = self._finalize(
+            msgs,
+            meta,
+            project_sha=meta.get("project_context_sha256"),
+            session_sha=session_sha,
+            diff_sha=meta.get("repo_diff_sha256"),
+        )
         # attach status produced during apply
         fin.status = status
         return fin
@@ -270,13 +306,242 @@ class DefaultContextEngine(ContextEngine):
         *,
         project_sha: Optional[str],
         session_sha: Optional[str],
+        diff_sha: Optional[str] = None,
     ) -> ContextResult:
         # Roadmap-1: provide a stable hash for prompt caching.
         base = f"proj:{project_sha or ''}|sess:{session_sha or ''}"
+        if diff_sha:
+            base += f"|diff:{diff_sha}"
         w_hash = hashlib.sha256(base.encode("utf-8")).hexdigest()
         meta.setdefault("workspace_context_hash", w_hash)
         status = self.get_status(messages=msgs, metadata=meta)
         return ContextResult(messages=msgs, metadata=meta, status=status, workspace_context_hash=w_hash)
+
+    def _load_repo_diff(self, *, repo_root: str) -> Tuple[str, Dict[str, Any]]:
+        """
+        Build an ephemeral repo diff context block.
+        - Uses git diff (staged + unstaged)
+        - Applies injection scan policy via AIPLAT_REPO_DIFF_CONTEXT_POLICY
+        """
+        root = Path(repo_root).expanduser().resolve()
+        if not root.exists() or not root.is_dir():
+            return "", {}
+
+        max_chars = int(os.getenv("AIPLAT_REPO_DIFF_MAX_CHARS", "12000") or "12000")
+        max_chars = max(1000, min(max_chars, 50000))
+        policy = os.getenv("AIPLAT_REPO_DIFF_CONTEXT_POLICY", "warn").strip().lower() or "warn"
+        if policy not in {"block", "warn", "truncate", "approval_required"}:
+            policy = "warn"
+
+        def _git(args: List[str]) -> str:
+            import subprocess
+
+            p = subprocess.run(
+                ["git", *args],
+                cwd=str(root),
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if p.returncode not in (0, 1):  # diff returns 1 when there are changes
+                return ""
+            return (p.stdout or "").strip()
+
+        try:
+            # verify repo
+            import subprocess
+
+            p0 = subprocess.run(
+                ["git", "rev-parse", "--is-inside-work-tree"],
+                cwd=str(root),
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if p0.returncode != 0 or "true" not in (p0.stdout or ""):
+                return "", {}
+        except Exception:
+            return "", {}
+
+        unstaged = _git(["diff", "--no-color", "--no-ext-diff"])
+        staged = _git(["diff", "--staged", "--no-color", "--no-ext-diff"])
+        if not unstaged and not staged:
+            return "", {"repo_diff_enabled": True, "repo_diff_empty": True}
+
+        # truncate before scanning to keep bounded
+        if len(unstaged) > max_chars:
+            unstaged = unstaged[:max_chars] + "\n... [TRUNCATED]"
+        if len(staged) > max_chars:
+            staged = staged[:max_chars] + "\n... [TRUNCATED]"
+
+        combined = "# Repo Diff (Ephemeral)\n\n"
+        if unstaged:
+            combined += "## Unstaged\n\n" + unstaged + "\n\n"
+        if staged:
+            combined += "## Staged\n\n" + staged + "\n"
+        combined = combined.strip()
+
+        combined2, decision = self._scan_repo_diff_context(combined, policy=policy, repo_root=str(root))
+        findings = decision.get("findings") if isinstance(decision, dict) else []
+        meta_policy = decision.get("action") if isinstance(decision, dict) else "none"
+        if meta_policy in {"block", "approval_required"}:
+            return "", {
+                "repo_diff_blocked": True,
+                "repo_diff_block_policy": meta_policy,
+                "repo_diff_findings": findings or [],
+                "repo_diff_approval_request_id": decision.get("approval_request_id") if isinstance(decision, dict) else None,
+            }
+        if meta_policy == "truncate":
+            combined = combined2
+
+        sha = hashlib.sha256(combined.encode("utf-8")).hexdigest()
+        meta = {
+            "repo_root": str(root),
+            "repo_diff_enabled": True,
+            "repo_diff_policy": policy,
+            "repo_diff_policy_applied": meta_policy,
+            "repo_diff_findings": findings or [],
+            "repo_diff_sha256": sha,
+            "repo_diff_staged_chars": len(staged or ""),
+            "repo_diff_unstaged_chars": len(unstaged or ""),
+        }
+        return combined, meta
+
+    def _scan_repo_diff_context(self, content: str, *, policy: str, repo_root: str) -> Tuple[str, Dict[str, Any]]:
+        """
+        Scan repo diff content for injection/exfil patterns and apply policy.
+        Policies: block|warn|truncate|approval_required
+        """
+        if policy not in {"block", "warn", "truncate", "approval_required"}:
+            policy = "warn"
+
+        findings: List[str] = []
+        for ch in self._INVISIBLE_CHARS:
+            if ch in content:
+                findings.append(f"invisible_unicode_U+{ord(ch):04X}")
+        matched_patterns: List[Tuple[re.Pattern, str]] = []
+        for pat, reason in self._INJECTION_PATTERNS:
+            try:
+                if pat.search(content):
+                    findings.append(reason)
+                    matched_patterns.append((pat, reason))
+            except Exception:
+                continue
+
+        decision: Dict[str, Any] = {"action": "none", "findings": findings, "policy": policy, "path": "<repo_diff>"}
+        if not findings:
+            return content, decision
+
+        # audit event (best-effort) - insert directly to sqlite (ContextEngine is sync)
+        try:
+            from core.harness.kernel.runtime import get_kernel_runtime
+            from core.harness.kernel.execution_context import get_active_release_context
+
+            rt = get_kernel_runtime()
+            store = getattr(rt, "execution_store", None) if rt else None
+            ar = get_active_release_context()
+            if store is not None:
+                store_evt: Dict[str, Any] = {
+                    "kind": "context",
+                    "name": "repo_diff_scan",
+                    "status": policy if policy != "approval_required" else "approval_required",
+                    "error": ",".join(findings),
+                    "error_code": "CONTEXT_INJECTION",
+                    "args": {"repo_root": repo_root, "findings": findings},
+                    "target_type": ar.target_type if ar else None,
+                    "target_id": ar.target_id if ar else None,
+                }
+                try:
+                    import sqlite3
+                    import uuid
+                    import time
+
+                    db_path = getattr(getattr(store, "_config", None), "db_path", None)
+                    if db_path:
+                        conn = sqlite3.connect(str(db_path))
+                        try:
+                            conn.execute(
+                                """
+                                INSERT INTO syscall_events(
+                                  id, trace_id, span_id, run_id, kind, name, status, start_time, end_time, duration_ms,
+                                  args_json, result_json, error, error_code, target_type, target_id, user_id, session_id,
+                                  approval_request_id, created_at
+                                ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);
+                                """,
+                                (
+                                    str(uuid.uuid4()),
+                                    None,
+                                    None,
+                                    None,
+                                    store_evt.get("kind"),
+                                    store_evt.get("name"),
+                                    store_evt.get("status"),
+                                    None,
+                                    None,
+                                    None,
+                                    json.dumps(store_evt.get("args") or {}, ensure_ascii=False),
+                                    json.dumps(store_evt.get("result") or {}, ensure_ascii=False),
+                                    store_evt.get("error"),
+                                    store_evt.get("error_code"),
+                                    store_evt.get("target_type"),
+                                    store_evt.get("target_id"),
+                                    store_evt.get("user_id"),
+                                    store_evt.get("session_id"),
+                                    store_evt.get("approval_request_id"),
+                                    float(time.time()),
+                                ),
+                            )
+                            conn.commit()
+                        finally:
+                            conn.close()
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        if policy == "warn":
+            decision["action"] = "warn"
+            return content, decision
+
+        if policy == "truncate":
+            redacted = content
+            for pat, _reason in matched_patterns:
+                try:
+                    redacted = pat.sub("[REDACTED]", redacted)
+                except Exception:
+                    pass
+            decision["action"] = "truncate"
+            return redacted, decision
+
+        if policy == "approval_required":
+            decision["action"] = "approval_required"
+            try:
+                from core.harness.infrastructure.approval.manager import ApprovalManager, ApprovalContext
+                from core.harness.kernel.runtime import get_kernel_runtime
+
+                rt = get_kernel_runtime()
+                store = getattr(rt, "execution_store", None) if rt else None
+                mgr = getattr(rt, "approval_manager", None) if rt else None
+                if mgr is None and store is not None:
+                    mgr = ApprovalManager(execution_store=store)
+                if mgr is not None:
+                    ctx = ApprovalContext(
+                        user_id="system",
+                        operation="repo_diff_injection",
+                        details=f"Repo diff blocked; findings={findings}",
+                        amount=None,
+                        batch_size=None,
+                        is_first_time=True,
+                        metadata={"repo_root": repo_root, "findings": findings},
+                    )
+                    req = mgr.create_request(ctx)  # type: ignore[arg-type]
+                    decision["approval_request_id"] = getattr(req, "request_id", None) if req else None
+            except Exception:
+                pass
+            return "", decision
+
+        decision["action"] = "block"
+        return "", decision
 
     def _extract_last_user_query(self, msgs: List[Message]) -> Optional[str]:
         for m in reversed(msgs or []):
