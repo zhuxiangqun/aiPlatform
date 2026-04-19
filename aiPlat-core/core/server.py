@@ -3051,6 +3051,119 @@ async def evaluate_tenant_tool_policy(tenant_id: str, tool_name: str):
     }
 
 
+@api_router.post("/policies/evaluate")
+async def evaluate_policy_debug(request: dict, http_request: Request):
+    """
+    调试接口：评估 tenant policy + RBAC 对某个“操作”的决策（不产生任何副作用）。
+    Body 示例：
+      {
+        "tenant_id": "t1",
+        "actor_id": "admin",
+        "actor_role": "operator",
+        "kind": "tool",                 # tool | mcp_server
+        "tool_name": "file_operations",
+        "tool_args": {"path": "/tmp"},
+        "server_name": "s1",
+        "transport": "stdio",
+        "server_metadata": {"prod_allowed": true}
+      }
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+
+    kind = str((request or {}).get("kind") or "tool").strip().lower()
+    tenant_id = str((request or {}).get("tenant_id") or "").strip() or None
+    actor_id = str((request or {}).get("actor_id") or "").strip() or (http_request.headers.get("X-AIPLAT-ACTOR-ID") or "admin")
+    actor_role = str((request or {}).get("actor_role") or "").strip() or (http_request.headers.get("X-AIPLAT-ACTOR-ROLE") or "")
+
+    # RBAC (best-effort): normalize to an allow/deny with reason
+    try:
+        from core.security.rbac import check_permission, mode as rbac_mode
+
+        if kind == "tool":
+            rbac = check_permission(actor_role=actor_role, action="execute", resource_type="tool")
+        elif kind == "mcp_server":
+            rbac = check_permission(actor_role=actor_role, action="execute", resource_type="gateway")
+        else:
+            rbac = check_permission(actor_role=actor_role, action="read", resource_type="policy")
+        rbac_out = {"allowed": bool(rbac.allowed), "reason": rbac.reason, "mode": rbac_mode()}
+    except Exception as e:
+        rbac_out = {"allowed": True, "reason": f"rbac_unavailable:{e}", "mode": "unknown"}
+
+    # Policy engine eval
+    try:
+        from core.policy.engine import evaluate_tool, evaluate_mcp_server
+
+        if kind == "tool":
+            tool_name = str((request or {}).get("tool_name") or "").strip()
+            if not tool_name:
+                raise HTTPException(status_code=400, detail="tool_name is required when kind=tool")
+            tool_args = (request or {}).get("tool_args") if isinstance((request or {}).get("tool_args"), dict) else None
+            # inject identity fields (policy gate expects these keys)
+            if isinstance(tool_args, dict):
+                tool_args = dict(tool_args)
+            else:
+                tool_args = {}
+            tool_args.setdefault("_tenant_id", tenant_id)
+            tool_args.setdefault("_actor_role", actor_role)
+            ev = await evaluate_tool(
+                store=_execution_store,
+                tenant_id=tenant_id,
+                actor_id=actor_id,
+                actor_role=actor_role,
+                tool_name=tool_name,
+                tool_args=tool_args,
+            )
+            policy_out = ev.to_dict() if hasattr(ev, "to_dict") else (ev if isinstance(ev, dict) else {"decision": "allow"})
+        elif kind == "mcp_server":
+            server_name = str((request or {}).get("server_name") or "").strip()
+            transport = str((request or {}).get("transport") or "").strip().lower() or "sse"
+            if not server_name:
+                raise HTTPException(status_code=400, detail="server_name is required when kind=mcp_server")
+            server_meta = (request or {}).get("server_metadata") if isinstance((request or {}).get("server_metadata"), dict) else None
+            ev = await evaluate_mcp_server(
+                store=_execution_store,
+                tenant_id=tenant_id,
+                actor_id=actor_id,
+                actor_role=actor_role,
+                server_name=server_name,
+                transport=transport,
+                server_metadata=server_meta,
+            )
+            policy_out = ev.to_dict() if hasattr(ev, "to_dict") else (ev if isinstance(ev, dict) else {"decision": "allow"})
+        else:
+            raise HTTPException(status_code=400, detail="kind must be tool|mcp_server")
+    except HTTPException:
+        raise
+    except Exception as e:
+        # prod 默认严格（fail-closed）
+        decision = "deny" if _runtime_env() == "prod" else "deny"
+        policy_out = {"decision": decision, "reason_code": "EVAL_ERROR", "reason": str(e), "tenant_id": tenant_id}
+
+    # Final decision: RBAC deny > policy deny > approval_required > allow
+    final_decision = "allow"
+    if not bool(rbac_out.get("allowed", True)):
+        final_decision = "deny"
+    else:
+        pd = str((policy_out or {}).get("decision") or "allow").lower()
+        if pd == "deny":
+            final_decision = "deny"
+        elif pd == "approval_required":
+            final_decision = "approval_required"
+
+    return {
+        "kind": kind,
+        "input": {
+            "tenant_id": tenant_id,
+            "actor_id": actor_id,
+            "actor_role": actor_role,
+        },
+        "rbac": rbac_out,
+        "policy": policy_out,
+        "final_decision": final_decision,
+    }
+
+
 @api_router.post("/runs/{run_id}/wait")
 async def wait_run(run_id: str, request: dict):
     """
