@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ExternalLink, RotateCw } from 'lucide-react';
+import { ArrowLeft, Copy, ExternalLink, RotateCw } from 'lucide-react';
 import { Button, Card, CardContent, CardHeader, Input, Table, toast, Badge } from '../../../components/ui';
 import { diagnosticsApi } from '../../../services';
 
@@ -63,6 +63,36 @@ const ChangeControl: React.FC = () => {
     } catch (e: any) {
       toast.error('加载失败', String(e?.message || ''));
       setDetail(null);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const downloadJson = (filename: string, obj: any) => {
+    try {
+      const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      toast.error('导出失败', String(e?.message || e));
+    }
+  };
+
+  const autosmoke = async (cid: string) => {
+    setDetailLoading(true);
+    try {
+      const res = await diagnosticsApi.autosmokeChangeControl(cid);
+      toast.success('已触发 autosmoke');
+      // reload detail to capture new changeset event
+      await loadDetail(cid);
+      return res;
+    } catch (e: any) {
+      toast.error('触发失败', String(e?.message || ''));
+      return null;
     } finally {
       setDetailLoading(false);
     }
@@ -184,6 +214,26 @@ const ChangeControl: React.FC = () => {
           <div className="flex items-center gap-2">
             <Button variant="secondary" onClick={() => loadDetail(changeId)} loading={detailLoading} icon={<RotateCw size={14} />}>
               刷新
+            </Button>
+            <Button variant="primary" onClick={() => autosmoke(changeId)} loading={detailLoading}>
+              触发 autosmoke
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                try {
+                  navigator.clipboard.writeText(String(changeId));
+                  toast.success('已复制 change_id');
+                } catch {
+                  // ignore
+                }
+              }}
+            >
+              <Copy size={14} className="mr-1" />
+              复制 change_id
+            </Button>
+            <Button variant="secondary" onClick={() => downloadJson(`change_${changeId}.json`, detail)}>
+              导出证据包
             </Button>
             {detail?.links?.syscalls_ui ? (
               <a className="text-sm underline text-gray-300 hover:text-white" href={String(detail.links.syscalls_ui)} target="_blank" rel="noreferrer">

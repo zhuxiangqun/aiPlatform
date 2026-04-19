@@ -256,6 +256,9 @@ export const diagnosticsApi = {
     const qs = q.toString();
     return apiClient.get<any>(`/diagnostics/change-control/core/${encodeURIComponent(changeId)}${qs ? `?${qs}` : ''}`);
   },
+  autosmokeChangeControl: async (changeId: string) => {
+    return apiClient.post<any>(`/diagnostics/change-control/core/${encodeURIComponent(changeId)}/autosmoke`, {});
+  },
 };
 
 // Onboarding API
