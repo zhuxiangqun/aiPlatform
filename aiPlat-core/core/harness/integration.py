@@ -396,6 +396,8 @@ class HarnessIntegration:
             return self._error_detail("POLICY_DENIED", reason or fallback_message, extra={"error": err})
         if err == "approval_required":
             return self._error_detail("APPROVAL_REQUIRED", reason or "需要审批", extra={"error": err})
+        if err == "quota_exceeded":
+            return self._error_detail("QUOTA_EXCEEDED", reason or "超出配额", extra={"error": err})
 
         if "timeout" in err.lower():
             return self._error_detail("TIMEOUT", err, extra={"error": err})

@@ -43,7 +43,7 @@ class ExecutionStoreConfig:
 
 
 class ExecutionStore:
-    CURRENT_SCHEMA_VERSION = 34
+    CURRENT_SCHEMA_VERSION = 35
 
     def __init__(self, config: ExecutionStoreConfig):
         self._config = config
@@ -1341,6 +1341,46 @@ class ExecutionStore:
                             pass
                         _set_version(34)
                         current = 34
+
+                    # ---- Migration v35: tenant quotas + usage ledger (PR-12) ----
+                    if current < 35:
+                        try:
+                            conn.execute(
+                                """
+                                CREATE TABLE IF NOT EXISTS tenant_quotas (
+                                  tenant_id TEXT PRIMARY KEY,
+                                  version INTEGER NOT NULL,
+                                  quota_json TEXT,
+                                  updated_at REAL NOT NULL
+                                );
+                                """
+                            )
+                            conn.execute("CREATE INDEX IF NOT EXISTS idx_tenant_quotas_updated ON tenant_quotas(updated_at DESC);")
+                        except Exception:
+                            pass
+                        try:
+                            conn.execute(
+                                """
+                                CREATE TABLE IF NOT EXISTS tenant_usage_ledger (
+                                  tenant_id TEXT,
+                                  day TEXT NOT NULL,           -- YYYY-MM-DD (UTC)
+                                  metric_key TEXT NOT NULL,    -- tool_calls|llm_total_tokens|runs_started|external_access
+                                  value REAL NOT NULL,
+                                  updated_at REAL NOT NULL,
+                                  PRIMARY KEY(tenant_id, day, metric_key)
+                                );
+                                """
+                            )
+                            conn.execute(
+                                "CREATE INDEX IF NOT EXISTS idx_usage_tenant_day ON tenant_usage_ledger(tenant_id, day DESC);"
+                            )
+                            conn.execute(
+                                "CREATE INDEX IF NOT EXISTS idx_usage_metric_day ON tenant_usage_ledger(metric_key, day DESC);"
+                            )
+                        except Exception:
+                            pass
+                        _set_version(35)
+                        current = 35
 
                     # If legacy db exists with tables but without meta, upgrade meta to current
                     if current < self.CURRENT_SCHEMA_VERSION:
@@ -3162,6 +3202,178 @@ class ExecutionStore:
                         }
                     )
                 return {"items": items, "total": int(total), "limit": int(limit), "offset": int(offset)}
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
+    # ==================== Tenant Quotas / Usage Ledger (PR-12) ====================
+
+    async def get_tenant_quota(self, *, tenant_id: str) -> Optional[Dict[str, Any]]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Optional[Dict[str, Any]]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                row = conn.execute(
+                    "SELECT tenant_id, version, quota_json, updated_at FROM tenant_quotas WHERE tenant_id=? LIMIT 1",
+                    (str(tenant_id),),
+                ).fetchone()
+                if not row:
+                    return None
+                return {
+                    "tenant_id": row["tenant_id"],
+                    "version": int(row["version"]),
+                    "quota": _json_loads(row["quota_json"]) or {},
+                    "updated_at": row["updated_at"],
+                }
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
+    async def upsert_tenant_quota(self, *, tenant_id: str, quota: Dict[str, Any], version: Optional[int] = None) -> Dict[str, Any]:
+        """
+        Upsert tenant quota config.
+        If version is provided, treat it as optimistic concurrency: update only when current version matches.
+        """
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                current = conn.execute(
+                    "SELECT version FROM tenant_quotas WHERE tenant_id=? LIMIT 1", (str(tenant_id),)
+                ).fetchone()
+                cur_ver = int(current["version"]) if current else 0
+                if version is not None and current and int(version) != cur_ver:
+                    raise ValueError("version_conflict")
+                next_ver = cur_ver + 1
+                now = float(time.time())
+                conn.execute(
+                    """
+                    INSERT INTO tenant_quotas(tenant_id, version, quota_json, updated_at)
+                    VALUES(?, ?, ?, ?)
+                    ON CONFLICT(tenant_id) DO UPDATE SET
+                      version=excluded.version,
+                      quota_json=excluded.quota_json,
+                      updated_at=excluded.updated_at;
+                    """,
+                    (str(tenant_id), int(next_ver), _json_dumps(quota or {}), now),
+                )
+                conn.commit()
+                return {"tenant_id": str(tenant_id), "version": int(next_ver), "quota": quota or {}, "updated_at": now}
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
+    async def add_tenant_usage(
+        self,
+        *,
+        tenant_id: str,
+        metric_key: str,
+        amount: float,
+        day: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Increment a (tenant, day, metric_key) counter. day defaults to UTC date."""
+        await self.init()
+        db_path = self._config.db_path
+
+        def _utc_day() -> str:
+            return time.strftime("%Y-%m-%d", time.gmtime())
+
+        def _sync() -> Dict[str, Any]:
+            d = str(day or _utc_day())
+            now = float(time.time())
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                conn.execute(
+                    """
+                    INSERT INTO tenant_usage_ledger(tenant_id, day, metric_key, value, updated_at)
+                    VALUES(?, ?, ?, ?, ?)
+                    ON CONFLICT(tenant_id, day, metric_key) DO UPDATE SET
+                      value = tenant_usage_ledger.value + excluded.value,
+                      updated_at = excluded.updated_at;
+                    """,
+                    (str(tenant_id), d, str(metric_key), float(amount), now),
+                )
+                conn.commit()
+                row = conn.execute(
+                    "SELECT tenant_id, day, metric_key, value, updated_at FROM tenant_usage_ledger WHERE tenant_id=? AND day=? AND metric_key=?",
+                    (str(tenant_id), d, str(metric_key)),
+                ).fetchone()
+                return dict(row) if row else {"tenant_id": str(tenant_id), "day": d, "metric_key": str(metric_key), "value": float(amount), "updated_at": now}
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
+    async def get_tenant_usage(
+        self,
+        *,
+        tenant_id: str,
+        day: str,
+        metric_key: str,
+    ) -> float:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> float:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                row = conn.execute(
+                    "SELECT value FROM tenant_usage_ledger WHERE tenant_id=? AND day=? AND metric_key=? LIMIT 1",
+                    (str(tenant_id), str(day), str(metric_key)),
+                ).fetchone()
+                return float(row["value"]) if row and row["value"] is not None else 0.0
+            finally:
+                conn.close()
+
+        return float(await anyio.to_thread.run_sync(_sync))
+
+    async def list_tenant_usage(
+        self,
+        *,
+        tenant_id: str,
+        day_start: Optional[str] = None,
+        day_end: Optional[str] = None,
+        metric_key: Optional[str] = None,
+        limit: int = 500,
+        offset: int = 0,
+    ) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                clauses = ["tenant_id=?"]
+                params: List[Any] = [str(tenant_id)]
+                if day_start:
+                    clauses.append("day >= ?")
+                    params.append(str(day_start))
+                if day_end:
+                    clauses.append("day <= ?")
+                    params.append(str(day_end))
+                if metric_key:
+                    clauses.append("metric_key = ?")
+                    params.append(str(metric_key))
+                where = "WHERE " + " AND ".join(clauses)
+                total_row = conn.execute(f"SELECT COUNT(1) AS c FROM tenant_usage_ledger {where};", tuple(params)).fetchone()
+                total = int(total_row["c"] if total_row else 0)
+                rows = conn.execute(
+                    f"SELECT tenant_id, day, metric_key, value, updated_at FROM tenant_usage_ledger {where} ORDER BY day DESC, metric_key ASC LIMIT ? OFFSET ?;",
+                    tuple(params + [int(limit), int(offset)]),
+                ).fetchall()
+                return {"items": [dict(r) for r in rows], "total": total, "limit": int(limit), "offset": int(offset)}
             finally:
                 conn.close()
 

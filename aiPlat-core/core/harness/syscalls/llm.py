@@ -88,6 +88,70 @@ async def sys_llm_generate(
 
     prepared = ctx_gate.prepare_llm_args(prompt, context=trace_context or {})
 
+    # PR-12: Tenant quotas (best-effort). Block when already over daily budget.
+    try:
+        runtime = get_kernel_runtime()
+        store = getattr(runtime, "execution_store", None) if runtime else None
+        tid = getattr(_pr, "tenant_id", None)
+        if store is not None and tid:
+            quota_item = await store.get_tenant_quota(tenant_id=str(tid))
+            quota = quota_item.get("quota") if isinstance(quota_item, dict) else {}
+            daily = quota.get("daily") if isinstance(quota, dict) and isinstance(quota.get("daily"), dict) else {}
+            lim_tokens = daily.get("llm_total_tokens")
+            if lim_tokens is not None:
+                try:
+                    lim_i = int(lim_tokens)
+                except Exception:
+                    lim_i = None
+                if lim_i is not None:
+                    day = time.strftime("%Y-%m-%d", time.gmtime())
+                    cur = await store.get_tenant_usage(tenant_id=str(tid), day=str(day), metric_key="llm_total_tokens")
+                    if cur >= float(lim_i):
+                        reason = f"tenant quota exceeded: llm_total_tokens {cur}/{lim_i} (day={day})"
+                        try:
+                            await store.add_syscall_event(
+                                {
+                                    "trace_id": span.trace_id,
+                                    "span_id": getattr(span, "span_id", None),
+                                    "run_id": (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None,
+                                    "kind": "llm",
+                                    "name": "generate",
+                                    "status": "quota_exceeded",
+                                    "target_type": _ar.target_type if _ar else None,
+                                    "target_id": _ar.target_id if _ar else None,
+                                    "tenant_id": str(tid),
+                                    "user_id": getattr(_pr, "user_id", None),
+                                    "session_id": getattr(_pr, "session_id", None),
+                                    "start_time": start_ts,
+                                    "end_time": start_ts,
+                                    "duration_ms": 0.0,
+                                    "args": {"prompt_type": "messages" if isinstance(prepared, list) else "text"},
+                                    "error": reason,
+                                    "error_code": "QUOTA_EXCEEDED",
+                                }
+                            )
+                        except Exception:
+                            pass
+                        try:
+                            await store.add_audit_log(
+                                action="llm_quota_exceeded",
+                                status="denied",
+                                tenant_id=str(tid),
+                                actor_id=str(getattr(_pr, "user_id", None) or "system"),
+                                resource_type="llm",
+                                resource_id=str(getattr(getattr(model, "config", None), "model", None) or getattr(model, "model", None) or "default"),
+                                run_id=(trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None,
+                                trace_id=span.trace_id,
+                                detail={"reason": reason, "day": day, "limit": lim_i, "current": cur},
+                            )
+                        except Exception:
+                            pass
+                        await trace_gate.end(span, success=False)
+                        raise RuntimeError("quota_exceeded")
+    except Exception:
+        # fail-open if quota infra fails
+        pass
+
     # Phase 4 (optional): central prompt assembly + prompt_version for replay/audit.
     prompt_version = None
     prompt_meta: Dict[str, Any] = {}
@@ -191,6 +255,21 @@ async def sys_llm_generate(
         store = getattr(runtime, "execution_store", None) if runtime else None
         if store is not None:
             try:
+                # PR-12 usage ledger (best-effort)
+                try:
+                    tid = getattr(_pr, "tenant_id", None)
+                    if tid:
+                        usage = getattr(result, "usage", None)
+                        if isinstance(usage, dict):
+                            total = usage.get("total_tokens")
+                            if total is None:
+                                total = (usage.get("prompt_tokens") or 0) + (usage.get("completion_tokens") or 0)
+                            total_f = float(total or 0)
+                            if total_f > 0:
+                                day = time.strftime("%Y-%m-%d", time.gmtime())
+                                await store.add_tenant_usage(tenant_id=str(tid), metric_key="llm_total_tokens", amount=total_f, day=day)
+                except Exception:
+                    pass
                 await store.add_syscall_event(
                     {
                         "trace_id": span.trace_id,

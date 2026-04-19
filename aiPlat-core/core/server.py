@@ -2630,6 +2630,102 @@ async def list_policy_versions(tenant_id: Optional[str] = None):
     return {"items": out}
 
 
+# ==================== Tenant Quotas / Usage (PR-12) ====================
+
+
+@api_router.get("/quota/snapshot")
+async def get_quota_snapshot(tenant_id: str, http_request: Request):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    deny = await _rbac_guard(
+        http_request=http_request,
+        payload=None,
+        action="quota_read",
+        resource_type="tenant_quota",
+        resource_id=str(tenant_id),
+    )
+    if deny:
+        return deny
+    item = await _execution_store.get_tenant_quota(tenant_id=str(tenant_id))
+    if not item:
+        raise HTTPException(status_code=404, detail="tenant_quota_not_found")
+    return item
+
+
+@api_router.put("/quota/snapshot")
+async def put_quota_snapshot(request: dict, http_request: Request):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    tenant_id = (request or {}).get("tenant_id")
+    quota = (request or {}).get("quota")
+    version = (request or {}).get("version")
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="tenant_id is required")
+    if not isinstance(quota, dict):
+        raise HTTPException(status_code=400, detail="quota must be an object")
+    deny = await _rbac_guard(
+        http_request=http_request,
+        payload=request if isinstance(request, dict) else None,
+        action="quota_upsert",
+        resource_type="tenant_quota",
+        resource_id=str(tenant_id),
+    )
+    if deny:
+        return deny
+    if version is not None:
+        try:
+            version = int(version)
+        except Exception:
+            raise HTTPException(status_code=400, detail="invalid version")
+    saved = await _execution_store.upsert_tenant_quota(tenant_id=str(tenant_id), quota=quota, version=version)
+    try:
+        actor0 = _rbac_actor_from_http(http_request, request if isinstance(request, dict) else None)
+        await _execution_store.add_audit_log(
+            action="tenant_quota_upsert",
+            status="ok",
+            tenant_id=str(tenant_id),
+            actor_id=str(actor0.get("actor_id") or "system"),
+            actor_role=str(actor0.get("actor_role") or "") or None,
+            resource_type="tenant_quota",
+            resource_id=str(tenant_id),
+            detail={"version": saved.get("version")},
+        )
+    except Exception:
+        pass
+    return saved
+
+
+@api_router.get("/quota/usage")
+async def get_quota_usage(
+    http_request: Request,
+    tenant_id: str,
+    day_start: Optional[str] = None,
+    day_end: Optional[str] = None,
+    metric_key: Optional[str] = None,
+    limit: int = 500,
+    offset: int = 0,
+):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    deny = await _rbac_guard(
+        http_request=http_request,
+        payload=None,
+        action="quota_usage_read",
+        resource_type="tenant_quota",
+        resource_id=str(tenant_id),
+    )
+    if deny:
+        return deny
+    return await _execution_store.list_tenant_usage(
+        tenant_id=str(tenant_id),
+        day_start=day_start,
+        day_end=day_end,
+        metric_key=metric_key,
+        limit=limit,
+        offset=offset,
+    )
+
+
 @api_router.get("/policies/tenants/{tenant_id}")
 async def get_tenant_policy(tenant_id: str):
     if not _execution_store:

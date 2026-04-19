@@ -415,6 +415,90 @@ async def sys_tool_call(
             },
         )
 
+    # PR-12: Tenant quotas (best-effort). Block before executing the tool.
+    try:
+        runtime = get_kernel_runtime()
+        store = getattr(runtime, "execution_store", None) if runtime else None
+        tenant_id = args.get("_tenant_id")
+        if store is not None and tenant_id:
+            quota_item = await store.get_tenant_quota(tenant_id=str(tenant_id))
+            quota = quota_item.get("quota") if isinstance(quota_item, dict) else {}
+            daily = quota.get("daily") if isinstance(quota, dict) and isinstance(quota.get("daily"), dict) else {}
+            limit_calls = daily.get("tool_calls")
+            if limit_calls is not None:
+                try:
+                    limit_i = int(limit_calls)
+                except Exception:
+                    limit_i = None
+                if limit_i is not None:
+                    day = time.strftime("%Y-%m-%d", time.gmtime())
+                    cur = await store.get_tenant_usage(tenant_id=str(tenant_id), day=str(day), metric_key="tool_calls")
+                    if cur >= float(limit_i):
+                        reason = f"tenant quota exceeded: tool_calls {cur}/{limit_i} (day={day})"
+                        try:
+                            await store.add_syscall_event(
+                                {
+                                    "trace_id": span.trace_id,
+                                    "span_id": getattr(span, "span_id", None),
+                                    "run_id": (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None,
+                                    "kind": "tool",
+                                    "name": tool_name or "<unknown>",
+                                    "status": "quota_exceeded",
+                                    "target_type": _ar.target_type if _ar else None,
+                                    "target_id": _ar.target_id if _ar else None,
+                                    "tenant_id": str(tenant_id),
+                                    "user_id": user_id,
+                                    "session_id": session_id,
+                                    "start_time": start_ts,
+                                    "end_time": start_ts,
+                                    "duration_ms": 0.0,
+                                    "args": {"tool_args": args},
+                                    "error": reason,
+                                    "error_code": "QUOTA_EXCEEDED",
+                                }
+                            )
+                        except Exception:
+                            pass
+                        try:
+                            if _run_id:
+                                await store.append_run_event(
+                                    run_id=str(_run_id),
+                                    event_type="tool_end",
+                                    trace_id=span.trace_id,
+                                    tenant_id=str(tenant_id),
+                                    payload={"tool": tool_name or "<unknown>", "status": "quota_exceeded", "error": "QUOTA_EXCEEDED"},
+                                )
+                        except Exception:
+                            pass
+                        try:
+                            await store.add_audit_log(
+                                action="tool_quota_exceeded",
+                                status="denied",
+                                tenant_id=str(tenant_id),
+                                actor_id=user_id,
+                                resource_type="tool",
+                                resource_id=tool_name or "<unknown>",
+                                run_id=str(_run_id) if _run_id else None,
+                                trace_id=span.trace_id,
+                                detail={"reason": reason, "day": day, "limit": limit_i, "current": cur},
+                            )
+                        except Exception:
+                            pass
+                        await trace_gate.end(span, success=False)
+                        return ToolResult(
+                            success=False,
+                            output=None,
+                            error="quota_exceeded",
+                            metadata={"reason": reason, "tenant_id": str(tenant_id), "tool": tool_name, "limit": limit_i, "current": cur},
+                        )
+                    # consume 1 call budget pre-execution (counts attempts)
+                    try:
+                        await store.add_tenant_usage(tenant_id=str(tenant_id), metric_key="tool_calls", amount=1.0, day=day)
+                    except Exception:
+                        pass
+    except Exception:
+        pass
+
     prepared_args = ctx_gate.prepare_tool_args(args, context=trace_context or {})
 
     async def _run():
