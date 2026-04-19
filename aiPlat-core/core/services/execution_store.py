@@ -43,7 +43,7 @@ class ExecutionStoreConfig:
 
 
 class ExecutionStore:
-    CURRENT_SCHEMA_VERSION = 37
+    CURRENT_SCHEMA_VERSION = 38
 
     def __init__(self, config: ExecutionStoreConfig):
         self._config = config
@@ -1465,6 +1465,33 @@ class ExecutionStore:
                             pass
                         _set_version(37)
                         current = 37
+
+                    # ---- Migration v38: onboarding evidence runs (P0 onboarding wizard) ----
+                    if current < 38:
+                        try:
+                            conn.execute(
+                                """
+                                CREATE TABLE IF NOT EXISTS onboarding_evidence (
+                                  id TEXT PRIMARY KEY,
+                                  tenant_id TEXT,
+                                  step_key TEXT NOT NULL,
+                                  action TEXT NOT NULL,
+                                  status TEXT NOT NULL,
+                                  input_json TEXT,
+                                  output_json TEXT,
+                                  links_json TEXT,
+                                  approval_request_id TEXT,
+                                  created_at REAL NOT NULL
+                                );
+                                """
+                            )
+                            conn.execute(
+                                "CREATE INDEX IF NOT EXISTS idx_onboarding_evidence_tenant_step_time ON onboarding_evidence(tenant_id, step_key, created_at DESC);"
+                            )
+                        except Exception:
+                            pass
+                        _set_version(38)
+                        current = 38
 
                     # If legacy db exists with tables but without meta, upgrade meta to current
                     if current < self.CURRENT_SCHEMA_VERSION:
@@ -7452,6 +7479,142 @@ class ExecutionStore:
         if not row:
             return None
         return {**row, "manifest": _json_loads(row.get("manifest_json")) or {}, "metadata": _json_loads(row.get("metadata_json")) or {}}
+
+    # ==================== Onboarding Evidence (Wizard) ====================
+
+    async def create_onboarding_evidence(
+        self,
+        *,
+        tenant_id: Optional[str],
+        step_key: str,
+        action: str,
+        status: str,
+        input: Optional[Dict[str, Any]] = None,
+        output: Optional[Dict[str, Any]] = None,
+        links: Optional[Dict[str, Any]] = None,
+        approval_request_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            now = float(time.time())
+            rid = str(uuid.uuid4())
+            rec = {
+                "id": rid,
+                "tenant_id": str(tenant_id or ""),
+                "step_key": str(step_key),
+                "action": str(action),
+                "status": str(status),
+                "input_json": _json_dumps(input or {}),
+                "output_json": _json_dumps(output or {}),
+                "links_json": _json_dumps(links or {}),
+                "approval_request_id": str(approval_request_id) if approval_request_id else None,
+                "created_at": now,
+            }
+            conn = sqlite3.connect(db_path)
+            try:
+                conn.execute(
+                    """
+                    INSERT INTO onboarding_evidence(
+                      id, tenant_id, step_key, action, status, input_json, output_json, links_json, approval_request_id, created_at
+                    ) VALUES(?,?,?,?,?,?,?,?,?,?);
+                    """,
+                    (
+                        rec["id"],
+                        rec["tenant_id"],
+                        rec["step_key"],
+                        rec["action"],
+                        rec["status"],
+                        rec["input_json"],
+                        rec["output_json"],
+                        rec["links_json"],
+                        rec["approval_request_id"],
+                        rec["created_at"],
+                    ),
+                )
+                conn.commit()
+                return rec
+            finally:
+                conn.close()
+
+        row = await anyio.to_thread.run_sync(_sync)
+        return {
+            **row,
+            "input": _json_loads(row.get("input_json")) or {},
+            "output": _json_loads(row.get("output_json")) or {},
+            "links": _json_loads(row.get("links_json")) or {},
+        }
+
+    async def list_onboarding_evidence(
+        self,
+        *,
+        tenant_id: Optional[str],
+        step_key: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                where = "tenant_id=?"
+                args: List[Any] = [str(tenant_id or "")]
+                if step_key:
+                    where += " AND step_key=?"
+                    args.append(str(step_key))
+                total_row = conn.execute(f"SELECT COUNT(1) AS c FROM onboarding_evidence WHERE {where}", tuple(args)).fetchone()
+                total = int(total_row["c"] if total_row else 0)
+                rows = conn.execute(
+                    f"""
+                    SELECT * FROM onboarding_evidence
+                    WHERE {where}
+                    ORDER BY created_at DESC
+                    LIMIT ? OFFSET ?;
+                    """,
+                    tuple(args + [int(limit), int(offset)]),
+                ).fetchall()
+                items = []
+                for r in rows:
+                    d = dict(r)
+                    d["input"] = _json_loads(d.get("input_json")) or {}
+                    d["output"] = _json_loads(d.get("output_json")) or {}
+                    d["links"] = _json_loads(d.get("links_json")) or {}
+                    items.append(d)
+                return {"items": items, "total": total, "limit": int(limit), "offset": int(offset)}
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
+    async def get_onboarding_evidence(self, *, tenant_id: Optional[str], evidence_id: str) -> Optional[Dict[str, Any]]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Optional[Dict[str, Any]]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                row = conn.execute(
+                    "SELECT * FROM onboarding_evidence WHERE tenant_id=? AND id=?",
+                    (str(tenant_id or ""), str(evidence_id)),
+                ).fetchone()
+                return dict(row) if row else None
+            finally:
+                conn.close()
+
+        row = await anyio.to_thread.run_sync(_sync)
+        if not row:
+            return None
+        return {
+            **row,
+            "input": _json_loads(row.get("input_json")) or {},
+            "output": _json_loads(row.get("output_json")) or {},
+            "links": _json_loads(row.get("links_json")) or {},
+        }
 
     async def get_plugin(self, *, tenant_id: Optional[str], plugin_id: str) -> Optional[Dict[str, Any]]:
         await self.init()

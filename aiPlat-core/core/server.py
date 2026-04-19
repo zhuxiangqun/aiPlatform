@@ -9091,6 +9091,70 @@ async def get_core_onboarding_state():
     }
 
 
+@api_router.post("/onboarding/evidence/runs")
+async def create_onboarding_evidence(request: Dict[str, Any], http_request: Request):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    # best-effort tenant from header; default to "default"
+    actor0 = _rbac_actor_from_http(http_request, None)
+    tid = actor0.get("tenant_id") or "default"
+    step_key = str((request or {}).get("step_key") or "")
+    action = str((request or {}).get("action") or "")
+    status = str((request or {}).get("status") or "")
+    if not step_key or not action or not status:
+        raise HTTPException(status_code=400, detail="step_key/action/status required")
+    rec = await _execution_store.create_onboarding_evidence(
+        tenant_id=str(tid),
+        step_key=step_key,
+        action=action,
+        status=status,
+        input=(request or {}).get("input") if isinstance((request or {}).get("input"), dict) else {},
+        output=(request or {}).get("output") if isinstance((request or {}).get("output"), dict) else {},
+        links=(request or {}).get("links") if isinstance((request or {}).get("links"), dict) else {},
+        approval_request_id=(request or {}).get("approval_request_id"),
+    )
+    try:
+        await _execution_store.add_audit_log(
+            action="onboarding_evidence",
+            status=status,
+            tenant_id=str(tid),
+            actor_id=str(actor0.get("actor_id") or "system"),
+            actor_role=str(actor0.get("actor_role") or "") or None,
+            resource_type="onboarding",
+            resource_id=step_key,
+            detail={
+                "evidence_id": rec.get("id"),
+                "step_key": step_key,
+                "action": action,
+                "approval_request_id": (request or {}).get("approval_request_id"),
+            },
+        )
+    except Exception:
+        pass
+    return {"status": "ok", "evidence": rec}
+
+
+@api_router.get("/onboarding/evidence/runs")
+async def list_onboarding_evidence(http_request: Request, step_key: Optional[str] = None, limit: int = 100, offset: int = 0):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    actor0 = _rbac_actor_from_http(http_request, None)
+    tid = actor0.get("tenant_id") or "default"
+    return await _execution_store.list_onboarding_evidence(tenant_id=str(tid), step_key=step_key, limit=limit, offset=offset)
+
+
+@api_router.get("/onboarding/evidence/runs/{evidence_id}")
+async def get_onboarding_evidence(evidence_id: str, http_request: Request):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    actor0 = _rbac_actor_from_http(http_request, None)
+    tid = actor0.get("tenant_id") or "default"
+    row = await _execution_store.get_onboarding_evidence(tenant_id=str(tid), evidence_id=str(evidence_id))
+    if not row:
+        raise HTTPException(status_code=404, detail="not_found")
+    return row
+
+
 @api_router.post("/onboarding/default-llm")
 async def set_default_llm(request: OnboardingDefaultLLMRequest):
     if not _execution_store:
