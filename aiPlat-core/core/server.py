@@ -25,6 +25,7 @@ import uvicorn
 import aiohttp
 
 from core.utils.ids import new_prefixed_id
+from core.security.rbac import check_permission as rbac_check_permission, should_enforce as rbac_should_enforce
 
 from core.schemas import (
     AgentCreateRequest,
@@ -854,6 +855,89 @@ def _inject_http_request_context(payload: Any, http_request: Request, *, entrypo
     except Exception:
         return payload
     return payload
+
+
+def _rbac_actor_from_http(http_request: Request, payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    ctx0 = None
+    try:
+        if isinstance(payload, dict):
+            ctx0 = payload.get("context") if isinstance(payload.get("context"), dict) else {}
+    except Exception:
+        ctx0 = {}
+    ctx0 = ctx0 if isinstance(ctx0, dict) else {}
+
+    actor_id = (
+        (ctx0.get("actor_id") if isinstance(ctx0, dict) else None)
+        or http_request.headers.get("X-AIPLAT-ACTOR-ID")
+        or http_request.headers.get("x-aiplat-actor-id")
+        or (payload.get("user_id") if isinstance(payload, dict) else None)
+    )
+    actor_role = (
+        (ctx0.get("actor_role") if isinstance(ctx0, dict) else None)
+        or http_request.headers.get("X-AIPLAT-ACTOR-ROLE")
+        or http_request.headers.get("x-aiplat-actor-role")
+    )
+    tenant_id = (
+        (ctx0.get("tenant_id") if isinstance(ctx0, dict) else None)
+        or http_request.headers.get("X-AIPLAT-TENANT-ID")
+        or http_request.headers.get("x-aiplat-tenant-id")
+    )
+    return {"actor_id": actor_id, "actor_role": actor_role, "tenant_id": tenant_id}
+
+
+async def _rbac_guard(
+    *,
+    http_request: Request,
+    payload: Optional[Dict[str, Any]],
+    action: str,
+    resource_type: str,
+    resource_id: Optional[str] = None,
+    run_id: Optional[str] = None,
+) -> Optional[JSONResponse]:
+    """
+    返回 JSONResponse 表示拒绝；返回 None 表示允许继续。
+    enforced 模式：直接 403
+    warn 模式：写审计但不阻断
+    """
+    actor = _rbac_actor_from_http(http_request, payload)
+    decision = rbac_check_permission(actor_role=actor.get("actor_role"), action=action, resource_type=resource_type)
+    if decision.allowed:
+        return None
+
+    # audit best-effort
+    if _execution_store:
+        try:
+            await _execution_store.add_audit_log(
+                action=f"rbac_{action}",
+                status="denied" if rbac_should_enforce() else "warn",
+                tenant_id=str(actor.get("tenant_id") or "") or None,
+                actor_id=str(actor.get("actor_id") or "") or None,
+                actor_role=str(actor.get("actor_role") or "") or None,
+                resource_type=str(resource_type),
+                resource_id=str(resource_id) if resource_id else None,
+                run_id=str(run_id) if run_id else None,
+                request_id=http_request.headers.get("X-AIPLAT-REQUEST-ID") or http_request.headers.get("x-aiplat-request-id"),
+                detail={"reason": decision.reason},
+            )
+        except Exception:
+            pass
+
+    if not rbac_should_enforce():
+        return None
+
+    # enforced: block
+    body = {
+        "ok": False,
+        "run_id": str(run_id or new_prefixed_id("run")),
+        "trace_id": None,
+        "status": RunStatus.failed.value,
+        "legacy_status": "forbidden",
+        "output": None,
+        "error": {"code": "FORBIDDEN", "message": "forbidden", "detail": {"reason": decision.reason}},
+        "error_code": "FORBIDDEN",
+        "error_message": "forbidden",
+    }
+    return JSONResponse(status_code=403, content=body)
 
 
 def _normalize_run_status_v2(*, ok: bool, legacy_status: Optional[str], error_code: Optional[str]) -> str:
@@ -1756,6 +1840,9 @@ async def execute_workspace_agent(agent_id: str, request: dict, http_request: Re
         raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
     harness = get_harness()
     payload = _inject_http_request_context(dict(request or {}), http_request, entrypoint="api")
+    deny = await _rbac_guard(http_request=http_request, payload=payload, action="execute", resource_type="agent", resource_id=str(agent_id))
+    if deny:
+        return deny
     ctx0 = payload.get("context") if isinstance(payload.get("context"), dict) else {}
     user_id = payload.get("user_id") or (ctx0.get("actor_id") if isinstance(ctx0, dict) else None) or "system"
     session_id = payload.get("session_id") or (ctx0.get("session_id") if isinstance(ctx0, dict) else None) or "default"
@@ -1918,6 +2005,9 @@ async def execute_agent(agent_id: str, request: dict, http_request: Request):
     """Execute agent"""
     harness = get_harness()
     payload = _inject_http_request_context(dict(request or {}), http_request, entrypoint="api")
+    deny = await _rbac_guard(http_request=http_request, payload=payload, action="execute", resource_type="agent", resource_id=str(agent_id))
+    if deny:
+        return deny
     ctx0 = payload.get("context") if isinstance(payload.get("context"), dict) else {}
     user_id = payload.get("user_id") or (ctx0.get("actor_id") if isinstance(ctx0, dict) else None) or "system"
     session_id = payload.get("session_id") or (ctx0.get("session_id") if isinstance(ctx0, dict) else None) or "default"
@@ -2321,9 +2411,12 @@ async def get_tenant_policy(tenant_id: str):
 
 
 @api_router.put("/policies/tenants/{tenant_id}")
-async def upsert_tenant_policy(tenant_id: str, request: dict):
+async def upsert_tenant_policy(tenant_id: str, request: dict, http_request: Request):
     if not _execution_store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    deny = await _rbac_guard(http_request=http_request, payload=request if isinstance(request, dict) else None, action="policy_upsert", resource_type="tenant_policy", resource_id=str(tenant_id))
+    if deny:
+        return deny
     policy = (request or {}).get("policy")
     if not isinstance(policy, dict):
         raise HTTPException(status_code=400, detail="policy must be an object")
@@ -2483,9 +2576,12 @@ async def wait_run(run_id: str, request: dict):
 
 
 @api_router.post("/approvals/{request_id}/approve")
-async def approve_request(request_id: str, request: dict):
+async def approve_request(request_id: str, request: dict, http_request: Request):
     if not _approval_manager:
         raise HTTPException(status_code=503, detail="ApprovalManager not initialized")
+    deny = await _rbac_guard(http_request=http_request, payload=request if isinstance(request, dict) else None, action="approve", resource_type="approval_request", resource_id=str(request_id))
+    if deny:
+        return deny
     approved_by = (request or {}).get("approved_by", "admin")
     comments = (request or {}).get("comments", "")
     updated = await _approval_manager.approve(request_id=request_id, approved_by=approved_by, comments=comments)
@@ -2507,9 +2603,12 @@ async def approve_request(request_id: str, request: dict):
 
 
 @api_router.post("/approvals/{request_id}/reject")
-async def reject_request(request_id: str, request: dict):
+async def reject_request(request_id: str, request: dict, http_request: Request):
     if not _approval_manager:
         raise HTTPException(status_code=503, detail="ApprovalManager not initialized")
+    deny = await _rbac_guard(http_request=http_request, payload=request if isinstance(request, dict) else None, action="reject", resource_type="approval_request", resource_id=str(request_id))
+    if deny:
+        return deny
     rejected_by = (request or {}).get("rejected_by", "admin")
     comments = (request or {}).get("comments", "")
     updated = await _approval_manager.reject(request_id=request_id, rejected_by=rejected_by, comments=comments)
@@ -4072,6 +4171,10 @@ async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest, h
         ctx_for_user = tmp.get("context") if isinstance(tmp, dict) and isinstance(tmp.get("context"), dict) else ctx_for_user
     except Exception:
         pass
+
+    deny = await _rbac_guard(http_request=http_request, payload={"context": ctx_for_user}, action="execute", resource_type="skill", resource_id=str(skill_id))
+    if deny:
+        return deny
     # Signature gate: unverified workspace skills require approval to execute.
     try:
         opts = request.options if isinstance(getattr(request, "options", None), dict) else {}
@@ -5061,6 +5164,9 @@ async def execute_skill(skill_id: str, request: SkillExecuteRequest, http_reques
         ctx_for_user = tmp.get("context") if isinstance(tmp, dict) and isinstance(tmp.get("context"), dict) else ctx_for_user
     except Exception:
         pass
+    deny = await _rbac_guard(http_request=http_request, payload={"context": ctx_for_user}, action="execute", resource_type="skill", resource_id=str(skill_id))
+    if deny:
+        return deny
     user_id = str(ctx_for_user.get("actor_id") or ctx_for_user.get("user_id") or "system")
     harness = get_harness()
     exec_req = ExecutionRequest(
@@ -6562,6 +6668,9 @@ async def execute_tool(tool_name: str, request: dict, http_request: Request):
     """Execute a tool with given parameters"""
     harness = get_harness()
     payload = _inject_http_request_context(dict(request or {}), http_request, entrypoint="api")
+    deny = await _rbac_guard(http_request=http_request, payload=payload, action="execute", resource_type="tool", resource_id=str(tool_name))
+    if deny:
+        return deny
     ctx0 = payload.get("context") if isinstance(payload.get("context"), dict) else {}
     user_id = payload.get("user_id") or (ctx0.get("actor_id") if isinstance(ctx0, dict) else None) or "system"
     session_id = payload.get("session_id") or (ctx0.get("session_id") if isinstance(ctx0, dict) else None) or "default"
@@ -6626,6 +6735,10 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request)
         payload["context"] = ctx
     except Exception:
         pass
+
+    deny = await _rbac_guard(http_request=http_request, payload=payload, action="execute", resource_type="gateway", resource_id=str(request.target_id))
+    if deny:
+        return deny
 
     # Optional auth (Roadmap-3): require token when configured.
     # - Env AIPLAT_GATEWAY_REQUIRE_AUTH=true to enable.
