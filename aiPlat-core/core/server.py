@@ -2618,6 +2618,94 @@ async def get_change_control(change_id: str, limit: int = 200, offset: int = 0, 
     return out
 
 
+@api_router.post("/change-control/changes/{change_id}/autosmoke")
+async def autosmoke_change_control(change_id: str, http_request: Request):
+    """
+    Trigger autosmoke for targets referenced by a change_id (best-effort).
+    - Extract targets from latest changeset args.targets, or args.gate.targets.
+    - Records a changeset event: change_control.autosmoke (target_type=change, target_id=change_id)
+    """
+    if not _execution_store or not _job_scheduler:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    actor0 = _rbac_actor_from_http(http_request, None)
+    tenant_id = actor0.get("tenant_id") or http_request.headers.get("X-AIPLAT-TENANT-ID", "ops_smoke")
+    actor_id = actor0.get("actor_id") or http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")
+
+    cc = await _execution_store.get_change_control(change_id=str(change_id), limit=50, offset=0, tenant_id=tenant_id)
+    latest = cc.get("latest") if isinstance(cc, dict) else None
+    latest_args = (latest or {}).get("args") if isinstance(latest, dict) else None
+    latest_args = latest_args if isinstance(latest_args, dict) else {}
+
+    targets_raw = latest_args.get("targets")
+    if not isinstance(targets_raw, list):
+        gate = latest_args.get("gate") if isinstance(latest_args.get("gate"), dict) else {}
+        targets_raw = gate.get("targets") if isinstance(gate.get("targets"), list) else []
+
+    targets: list[tuple[str, str]] = []
+    for t in targets_raw or []:
+        if not isinstance(t, dict):
+            continue
+        ttype = str(t.get("type") or "").strip().lower()
+        tid = str(t.get("id") or "").strip()
+        if not ttype or not tid:
+            continue
+        if ttype not in {"agent", "skill", "mcp"}:
+            continue
+        targets.append((ttype, tid))
+    # unique preserve order
+    seen = set()
+    uniq: list[tuple[str, str]] = []
+    for t in targets:
+        if t in seen:
+            continue
+        seen.add(t)
+        uniq.append(t)
+
+    from core.harness.smoke import enqueue_autosmoke
+
+    results: list[Dict[str, Any]] = []
+    for rtype, rid in uniq:
+        try:
+            await _mark_resource_pending_verification(resource_type=rtype, resource_id=rid)
+        except Exception:
+            pass
+
+        async def _on_complete(job_run: Dict[str, Any], *, _rtype=rtype, _rid=rid):
+            await _apply_autosmoke_result_to_verification(resource_type=_rtype, resource_id=_rid, job_run=job_run)
+
+        try:
+            res = await enqueue_autosmoke(
+                execution_store=_execution_store,
+                job_scheduler=_job_scheduler,
+                resource_type=rtype,
+                resource_id=rid,
+                tenant_id=str(tenant_id or "ops_smoke"),
+                actor_id=str(actor_id or "admin"),
+                detail={"op": "change_control_retry", "change_id": str(change_id)},
+                on_complete=_on_complete,
+            )
+            results.append({"type": rtype, "id": rid, **(res or {})})
+        except Exception as e:
+            results.append({"type": rtype, "id": rid, "enqueued": False, "reason": f"error:{e}"})
+
+    try:
+        await _record_changeset(
+            name="change_control.autosmoke",
+            target_type="change",
+            target_id=str(change_id),
+            status="success",
+            args={"targets": [{"type": t[0], "id": t[1]} for t in uniq]},
+            result={"results": results},
+            user_id=str(actor0.get("actor_id") or "admin"),
+            tenant_id=str(tenant_id) if tenant_id else None,
+            session_id=str(actor0.get("session_id") or "") or None,
+        )
+    except Exception:
+        pass
+
+    return {"status": "ok", "change_id": str(change_id), "targets": [{"type": t[0], "id": t[1]} for t in uniq], "results": results}
+
+
 # ==================== Runs (Platform Execution Contract) ====================
 
 
