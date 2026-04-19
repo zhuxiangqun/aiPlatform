@@ -232,11 +232,26 @@ const Doctor: React.FC = () => {
                     key: 'diff',
                     title: 'diff',
                     width: 160,
-                    render: (_: any, r: any) => (
-                      <span className="text-xs text-gray-400">
-                        {String(r?.result?.diff_sha256 || r?.result?.template_sha256 || '').slice(0, 16) || '-'}
-                      </span>
-                    ),
+                    render: (_: any, r: any) => {
+                      const full = String(r?.result?.diff_sha256 || r?.result?.template_sha256 || '');
+                      const short = full ? full.slice(0, 16) : '-';
+                      return (
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-gray-400">{short}</span>
+                          {full && (
+                            <Button
+                              variant="ghost"
+                              icon={<Copy size={14} />}
+                              onClick={(e: any) => {
+                                e?.stopPropagation?.();
+                                navigator.clipboard.writeText(full);
+                              }}
+                              title="复制 diff hash"
+                            />
+                          )}
+                        </div>
+                      );
+                    },
                   },
                   {
                     key: 'target',
