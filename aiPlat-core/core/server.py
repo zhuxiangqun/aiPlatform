@@ -1225,6 +1225,7 @@ async def _record_changeset(
     user_id: str = "admin",
     session_id: str | None = None,
     approval_request_id: str | None = None,
+    tenant_id: str | None = None,
 ) -> None:
     """
     Record a governance "changeset" event (best-effort).
@@ -1246,10 +1247,66 @@ async def _record_changeset(
                 "user_id": str(user_id or "admin"),
                 "session_id": str(session_id) if session_id else None,
                 "approval_request_id": str(approval_request_id) if approval_request_id else None,
+                "tenant_id": str(tenant_id) if tenant_id else None,
             }
         )
     except Exception:
         return
+
+
+def _new_change_id() -> str:
+    return f"chg-{uuid.uuid4().hex[:12]}"
+
+
+def _change_links(change_id: str) -> Dict[str, Any]:
+    try:
+        return {
+            "syscalls_ui": _ui_url(f"/diagnostics/syscalls?kind=changeset&target_type=change&target_id={change_id}"),
+        }
+    except Exception:
+        return {"syscalls_ui": f"/diagnostics/syscalls?kind=changeset&target_type=change&target_id={change_id}"}
+
+
+async def _gate_with_change_control(
+    *,
+    operation: str,
+    targets: list[tuple[str, str]],
+    actor: Dict[str, Any] | None,
+    approval_request_id: str | None = None,
+) -> str:
+    """
+    Wrap _require_targets_verified with a stable change_id and consistent error envelope.
+    """
+    change_id = _new_change_id()
+    actor0 = actor or {}
+    try:
+        await _require_targets_verified(targets)
+        return change_id
+    except HTTPException as e:
+        detail: Dict[str, Any]
+        if isinstance(e.detail, dict):
+            detail = dict(e.detail)
+        else:
+            detail = {"code": "blocked", "message": str(e.detail)}
+        detail.setdefault("code", "blocked")
+        detail.setdefault("message", "blocked by gate")
+        detail["change_id"] = change_id
+        links = dict(detail.get("links") or {}) if isinstance(detail.get("links"), dict) else {}
+        links.update(_change_links(change_id))
+        detail["links"] = links
+        # record blocked change event (best-effort)
+        await _record_changeset(
+            name=f"gate:{operation}",
+            target_type="change",
+            target_id=change_id,
+            status="blocked",
+            args={"operation": operation, "targets": [{"type": t[0], "id": t[1]} for t in targets], "gate": detail},
+            user_id=str(actor0.get("actor_id") or "admin"),
+            session_id=str(actor0.get("session_id") or "") or None,
+            tenant_id=str(actor0.get("tenant_id") or "") or None,
+            approval_request_id=approval_request_id,
+        )
+        raise HTTPException(status_code=e.status_code, detail=detail)
 
 
 def _prod_stdio_policy_check(
@@ -3382,6 +3439,9 @@ async def publish_release_candidate(candidate_id: str, request: dict, http_reque
     if cand.get("kind") != "release_candidate":
         raise HTTPException(status_code=400, detail="not_a_release_candidate")
 
+    actor0 = _rbac_actor_from_http(http_request, request if isinstance(request, dict) else None)
+    change_id = _new_change_id()
+
     # Gate: ensure involved targets are verified before publish (when enforcement enabled).
     try:
         targets: list[tuple[str, str]] = []
@@ -3397,7 +3457,13 @@ async def publish_release_candidate(candidate_id: str, request: dict, http_reque
                     targets.append((str(a.get("target_type")), str(a.get("target_id"))))
         # unique
         uniq = list({(t[0].lower(), t[1]) for t in targets})
-        await _require_targets_verified(uniq)
+        if _autosmoke_enforce():
+            change_id = await _gate_with_change_control(
+                operation="learning.release.publish",
+                targets=uniq,
+                actor=actor0,
+                approval_request_id=str((request or {}).get("approval_request_id") or "").strip() or None,
+            )
     except HTTPException:
         raise
     except Exception:
@@ -3406,7 +3472,6 @@ async def publish_release_candidate(candidate_id: str, request: dict, http_reque
 
     user_id = (request or {}).get("user_id") or "system"
     # PR-10: tenant-aware rollout config (optional)
-    actor0 = _rbac_actor_from_http(http_request, request if isinstance(request, dict) else None)
     tenant_id = actor0.get("tenant_id")
     require_approval = bool((request or {}).get("require_approval", False))
     approval_request_id = (request or {}).get("approval_request_id")
@@ -3420,7 +3485,21 @@ async def publish_release_candidate(candidate_id: str, request: dict, http_reque
                 candidate_id=candidate_id,
                 details=details,
             )
-            return {"status": "approval_required", "approval_request_id": req_id}
+            try:
+                await _record_changeset(
+                    name="learning.release.publish",
+                    target_type="change",
+                    target_id=change_id,
+                    status="approval_required",
+                    args={"candidate_id": candidate_id},
+                    approval_request_id=req_id,
+                    user_id=str(actor0.get("actor_id") or "admin"),
+                    tenant_id=str(actor0.get("tenant_id") or "") or None,
+                    session_id=str(actor0.get("session_id") or "") or None,
+                )
+            except Exception:
+                pass
+            return {"status": "approval_required", "approval_request_id": req_id, "change_id": change_id, "links": _change_links(change_id)}
         if not is_approved(approval_mgr, approval_request_id):
             raise HTTPException(status_code=409, detail="not_approved")
 
@@ -3503,7 +3582,21 @@ async def publish_release_candidate(candidate_id: str, request: dict, http_reque
         except Exception:
             rr = None
 
-    out = {"status": "published", "candidate_id": candidate_id, "approval_request_id": approval_request_id}
+    try:
+        await _record_changeset(
+            name="learning.release.publish",
+            target_type="change",
+            target_id=change_id,
+            status="success",
+            args={"candidate_id": candidate_id, "targets": [{"type": cand.get("target_type"), "id": cand.get("target_id")}]},
+            approval_request_id=str(approval_request_id) if approval_request_id else None,
+            user_id=str(actor0.get("actor_id") or "admin"),
+            tenant_id=str(actor0.get("tenant_id") or "") or None,
+            session_id=str(actor0.get("session_id") or "") or None,
+        )
+    except Exception:
+        pass
+    out = {"status": "published", "candidate_id": candidate_id, "approval_request_id": approval_request_id, "change_id": change_id, "links": _change_links(change_id)}
     if rr is not None:
         out["rollout"] = rr
     return out
@@ -4408,12 +4501,26 @@ async def delete_skill(skill_id: str, delete_files: bool = False):
 @api_router.post("/skills/{skill_id}/enable")
 async def enable_skill(skill_id: str):
     """Enable skill"""
+    change_id = _new_change_id()
     if _autosmoke_enforce():
-        await _require_targets_verified([("skill", str(skill_id))])
+        # will raise structured error with change_id
+        change_id = await _gate_with_change_control(
+            operation="skill.enable",
+            targets=[("skill", str(skill_id))],
+            actor={"actor_id": "admin"},
+        )
     success = await _skill_manager.enable_skill(skill_id)
     if not success:
         raise HTTPException(status_code=400, detail=f"Skill {skill_id} cannot be enabled (maybe deprecated; use restore)")
-    return {"status": "enabled"}
+    await _record_changeset(
+        name="skill.enable",
+        target_type="change",
+        target_id=change_id,
+        status="success",
+        args={"targets": [{"type": "skill", "id": str(skill_id)}]},
+        user_id="admin",
+    )
+    return {"status": "enabled", "change_id": change_id, "links": _change_links(change_id)}
 
 
 @api_router.post("/skills/{skill_id}/disable")
@@ -4861,14 +4968,21 @@ async def delete_workspace_skill(skill_id: str, delete_files: bool = False):
 
 
 @api_router.post("/workspace/skills/{skill_id}/enable")
-async def enable_workspace_skill(skill_id: str, request: Optional[Dict[str, Any]] = None):
+async def enable_workspace_skill(skill_id: str, request: Optional[Dict[str, Any]] = None, http_request: Request = None):
     if not _workspace_skill_manager:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
     req = request or {}
+    actor0 = _rbac_actor_from_http(http_request, req if isinstance(req, dict) else None) if http_request is not None else {"actor_id": "admin"}
+    change_id = _new_change_id()
     approval_request_id = str(req.get("approval_request_id") or "").strip() or None
     details = str(req.get("details") or "").strip()
     if _autosmoke_enforce():
-        await _require_targets_verified([("skill", str(skill_id))])
+        change_id = await _gate_with_change_control(
+            operation="workspace.skill.enable",
+            targets=[("skill", str(skill_id))],
+            actor=actor0,
+            approval_request_id=approval_request_id,
+        )
 
     # Signature gate: unverified workspace skills require approval to enable.
     s = await _workspace_skill_manager.get_skill(skill_id)
@@ -4893,6 +5007,8 @@ async def enable_workspace_skill(skill_id: str, request: Optional[Dict[str, Any]
             "status": "publish_required",
             "candidate_id": pg.get("candidate_id"),
             "releases_url": _ui_url("/core/learning/releases"),
+            "change_id": change_id,
+            "links": _change_links(change_id),
         }
     trusted = await _get_trusted_skill_pubkeys_map()
     try:
@@ -4928,7 +5044,21 @@ async def enable_workspace_skill(skill_id: str, request: Optional[Dict[str, Any]
                 )
             except Exception:
                 pass
-            return {"status": "approval_required", "approval_request_id": rid}
+            try:
+                await _record_changeset(
+                    name="workspace.skill.enable",
+                    target_type="change",
+                    target_id=change_id,
+                    status="approval_required",
+                    args={"targets": [{"type": "skill", "id": str(skill_id)}], "reason": "signature_gate"},
+                    approval_request_id=rid,
+                    user_id=str(actor0.get("actor_id") or "admin"),
+                    tenant_id=str(actor0.get("tenant_id") or "") or None,
+                    session_id=str(actor0.get("session_id") or "") or None,
+                )
+            except Exception:
+                pass
+            return {"status": "approval_required", "approval_request_id": rid, "change_id": change_id, "links": _change_links(change_id)}
         if not _is_approval_resolved_approved(approval_request_id):
             try:
                 await _record_changeset(
@@ -4957,7 +5087,21 @@ async def enable_workspace_skill(skill_id: str, request: Optional[Dict[str, Any]
     ok = await _workspace_skill_manager.enable_skill(skill_id)
     if not ok:
         raise HTTPException(status_code=400, detail=f"Skill {skill_id} cannot be enabled (maybe deprecated; use restore)")
-    return {"status": "enabled", "approval_request_id": approval_request_id}
+    try:
+        await _record_changeset(
+            name="workspace.skill.enable",
+            target_type="change",
+            target_id=change_id,
+            status="success",
+            args={"targets": [{"type": "skill", "id": str(skill_id)}]},
+            approval_request_id=approval_request_id,
+            user_id=str(actor0.get("actor_id") or "admin"),
+            tenant_id=str(actor0.get("tenant_id") or "") or None,
+            session_id=str(actor0.get("session_id") or "") or None,
+        )
+    except Exception:
+        pass
+    return {"status": "enabled", "approval_request_id": approval_request_id, "change_id": change_id, "links": _change_links(change_id)}
 
 
 @api_router.post("/workspace/skills/{skill_id}/disable")
@@ -5420,12 +5564,25 @@ async def enable_mcp_server(server_name: str):
     """Enable an MCP server in filesystem config."""
     if not _mcp_manager:
         raise HTTPException(status_code=503, detail="MCP manager not available")
+    change_id = _new_change_id()
     if _autosmoke_enforce():
-        await _require_targets_verified([("mcp", str(server_name))])
+        change_id = await _gate_with_change_control(
+            operation="mcp.enable",
+            targets=[("mcp", str(server_name))],
+            actor={"actor_id": "admin"},
+        )
     ok = _mcp_manager.set_enabled(server_name, True)
     if not ok:
         raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
-    return {"status": "enabled"}
+    await _record_changeset(
+        name="mcp.enable",
+        target_type="change",
+        target_id=change_id,
+        status="success",
+        args={"targets": [{"type": "mcp", "id": str(server_name)}]},
+        user_id="admin",
+    )
+    return {"status": "enabled", "change_id": change_id, "links": _change_links(change_id)}
 
 
 @api_router.post("/mcp/servers/{server_name}/disable")
@@ -5800,15 +5957,21 @@ async def update_workspace_mcp_server(server_name: str, request: dict, http_requ
 
 
 @api_router.post("/workspace/mcp/servers/{server_name}/enable")
-async def enable_workspace_mcp_server(server_name: str):
+async def enable_workspace_mcp_server(server_name: str, http_request: Request):
     if not _workspace_mcp_manager:
         raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
+    actor0 = _rbac_actor_from_http(http_request, None)
+    change_id = _new_change_id()
     # Policy gate: stdio MCP is high risk. Default deny in prod.
     s = _workspace_mcp_manager.get_server(server_name)
     if not s:
         raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
     if _autosmoke_enforce():
-        await _require_targets_verified([("mcp", str(server_name))])
+        change_id = await _gate_with_change_control(
+            operation="workspace.mcp.enable",
+            targets=[("mcp", str(server_name))],
+            actor=actor0,
+        )
     ok, reason = _prod_stdio_policy_check(server_name, str(s.transport or ""), s.command, s.args, s.metadata)
     if not ok:
         await _audit_event(
@@ -5835,7 +5998,20 @@ async def enable_workspace_mcp_server(server_name: str):
         await _sync_mcp_runtime()
     except Exception:
         pass
-    return {"status": "enabled"}
+    try:
+        await _record_changeset(
+            name="workspace.mcp.enable",
+            target_type="change",
+            target_id=change_id,
+            status="success",
+            args={"targets": [{"type": "mcp", "id": str(server_name)}], "transport": str(s.transport or "")},
+            user_id=str(actor0.get("actor_id") or "admin"),
+            tenant_id=str(actor0.get("tenant_id") or "") or None,
+            session_id=str(actor0.get("session_id") or "") or None,
+        )
+    except Exception:
+        pass
+    return {"status": "enabled", "change_id": change_id, "links": _change_links(change_id)}
 
 
 @api_router.post("/workspace/mcp/servers/{server_name}/disable")
@@ -8487,6 +8663,7 @@ async def delete_skill_pack(pack_id: str):
 async def publish_skill_pack(pack_id: str, request: SkillPackPublishRequest):
     if not _execution_store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    change_id = _new_change_id()
     try:
         # Validate manifest before publishing a version snapshot.
         pack = await _execution_store.get_skill_pack(pack_id)
@@ -8506,12 +8683,29 @@ async def publish_skill_pack(pack_id: str, request: SkillPackPublishRequest):
                     sid = str(it.get("id") or "").strip()
                     if sid:
                         targets.append(("skill", sid))
-            await _require_targets_verified(list({(t[0], t[1]) for t in targets}))
+            if _autosmoke_enforce():
+                change_id = await _gate_with_change_control(
+                    operation="skill_pack.publish",
+                    targets=list({(t[0], t[1]) for t in targets}),
+                    actor={"actor_id": "admin"},
+                )
         except HTTPException:
             raise
         except Exception:
             pass
-        return await _execution_store.publish_skill_pack_version(pack_id=pack_id, version=request.version)
+        res = await _execution_store.publish_skill_pack_version(pack_id=pack_id, version=request.version)
+        try:
+            await _record_changeset(
+                name="skill_pack.publish",
+                target_type="change",
+                target_id=change_id,
+                status="success",
+                args={"pack_id": pack_id, "version": request.version},
+                user_id="admin",
+            )
+        except Exception:
+            pass
+        return {**(res or {}), "change_id": change_id, "links": _change_links(change_id)}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
@@ -8530,6 +8724,7 @@ async def list_skill_pack_versions(pack_id: str, limit: int = 100, offset: int =
 async def install_skill_pack(pack_id: str, request: SkillPackInstallRequest):
     if not _execution_store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    change_id = _new_change_id()
     try:
         # Gate: referenced skills should be verified before install (workspace apply) when enforcement enabled.
         try:
@@ -8550,7 +8745,12 @@ async def install_skill_pack(pack_id: str, request: SkillPackInstallRequest):
                     sid = str(it.get("id") or "").strip()
                     if sid:
                         targets.append(("skill", sid))
-            await _require_targets_verified(list({(t[0], t[1]) for t in targets}))
+            if _autosmoke_enforce():
+                change_id = await _gate_with_change_control(
+                    operation="skill_pack.install",
+                    targets=list({(t[0], t[1]) for t in targets}),
+                    actor={"actor_id": "admin"},
+                )
         except HTTPException:
             raise
         except Exception:
@@ -8617,7 +8817,18 @@ async def install_skill_pack(pack_id: str, request: SkillPackInstallRequest):
         except Exception:
             applied = applied or []
 
-        return {"install": install, "applied": applied}
+        try:
+            await _record_changeset(
+                name="skill_pack.install",
+                target_type="change",
+                target_id=change_id,
+                status="success",
+                args={"pack_id": pack_id, "version": request.version, "scope": request.scope},
+                user_id="admin",
+            )
+        except Exception:
+            pass
+        return {"install": install, "applied": applied, "change_id": change_id, "links": _change_links(change_id)}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
