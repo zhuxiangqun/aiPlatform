@@ -43,7 +43,7 @@ class ExecutionStoreConfig:
 
 
 class ExecutionStore:
-    CURRENT_SCHEMA_VERSION = 35
+    CURRENT_SCHEMA_VERSION = 36
 
     def __init__(self, config: ExecutionStoreConfig):
         self._config = config
@@ -1381,6 +1381,66 @@ class ExecutionStore:
                             pass
                         _set_version(35)
                         current = 35
+
+                    # ---- Migration v36: connector delivery attempts + DLQ (PR-12 connectors) ----
+                    if current < 36:
+                        try:
+                            conn.execute(
+                                """
+                                CREATE TABLE IF NOT EXISTS connector_delivery_attempts (
+                                  id TEXT PRIMARY KEY,
+                                  connector TEXT NOT NULL,     -- slack|feishu|teams|webhook
+                                  tenant_id TEXT,
+                                  run_id TEXT,
+                                  attempt INTEGER NOT NULL,
+                                  url TEXT,
+                                  status TEXT NOT NULL,        -- success|failed
+                                  response_status INTEGER,
+                                  error TEXT,
+                                  payload_json TEXT,
+                                  created_at REAL NOT NULL
+                                );
+                                """
+                            )
+                            conn.execute(
+                                "CREATE INDEX IF NOT EXISTS idx_cda_tenant_time ON connector_delivery_attempts(tenant_id, created_at DESC);"
+                            )
+                            conn.execute(
+                                "CREATE INDEX IF NOT EXISTS idx_cda_run_time ON connector_delivery_attempts(run_id, created_at DESC);"
+                            )
+                        except Exception:
+                            pass
+                        try:
+                            conn.execute(
+                                """
+                                CREATE TABLE IF NOT EXISTS connector_delivery_dlq (
+                                  id TEXT PRIMARY KEY,
+                                  connector TEXT NOT NULL,
+                                  tenant_id TEXT,
+                                  run_id TEXT,
+                                  url TEXT,
+                                  payload_json TEXT,
+                                  attempts INTEGER NOT NULL,
+                                  error TEXT,
+                                  status TEXT NOT NULL,        -- pending|resolved
+                                  created_at REAL NOT NULL,
+                                  resolved_at REAL
+                                );
+                                """
+                            )
+                            conn.execute(
+                                "CREATE INDEX IF NOT EXISTS idx_cdlq_status_time ON connector_delivery_dlq(status, created_at DESC);"
+                            )
+                            conn.execute(
+                                "CREATE INDEX IF NOT EXISTS idx_cdlq_tenant_time ON connector_delivery_dlq(tenant_id, created_at DESC);"
+                            )
+                            conn.execute(
+                                "CREATE INDEX IF NOT EXISTS idx_cdlq_run_time ON connector_delivery_dlq(run_id, created_at DESC);"
+                            )
+                        except Exception:
+                            pass
+                        _set_version(36)
+                        current = 36
 
                     # If legacy db exists with tables but without meta, upgrade meta to current
                     if current < self.CURRENT_SCHEMA_VERSION:
@@ -3378,6 +3438,227 @@ class ExecutionStore:
                 conn.close()
 
         return await anyio.to_thread.run_sync(_sync)
+
+    # ==================== Connector Delivery Attempts / DLQ (PR-12) ====================
+
+    async def add_connector_delivery_attempt(
+        self,
+        *,
+        connector: str,
+        tenant_id: Optional[str],
+        run_id: Optional[str],
+        attempt: int,
+        url: str,
+        status: str,
+        response_status: Optional[int] = None,
+        error: Optional[str] = None,
+        payload: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            now = float(time.time())
+            aid = f"cda-{uuid.uuid4().hex[:12]}"
+            rec = {
+                "id": aid,
+                "connector": str(connector),
+                "tenant_id": str(tenant_id) if tenant_id else None,
+                "run_id": str(run_id) if run_id else None,
+                "attempt": int(attempt),
+                "url": str(url),
+                "status": str(status),
+                "response_status": int(response_status) if response_status is not None else None,
+                "error": str(error) if error else None,
+                "payload_json": _json_dumps(payload or {}),
+                "created_at": now,
+            }
+            conn = sqlite3.connect(db_path)
+            try:
+                conn.execute(
+                    """
+                    INSERT INTO connector_delivery_attempts(
+                      id, connector, tenant_id, run_id, attempt, url, status, response_status, error, payload_json, created_at
+                    ) VALUES(?,?,?,?,?,?,?,?,?,?,?)
+                    """,
+                    (
+                        rec["id"],
+                        rec["connector"],
+                        rec["tenant_id"],
+                        rec["run_id"],
+                        rec["attempt"],
+                        rec["url"],
+                        rec["status"],
+                        rec["response_status"],
+                        rec["error"],
+                        rec["payload_json"],
+                        rec["created_at"],
+                    ),
+                )
+                conn.commit()
+                return rec
+            finally:
+                conn.close()
+
+        row = await anyio.to_thread.run_sync(_sync)
+        return {**row, "payload": _json_loads(row.get("payload_json")) or {}}
+
+    async def enqueue_connector_delivery_dlq(
+        self,
+        *,
+        connector: str,
+        tenant_id: Optional[str],
+        run_id: Optional[str],
+        url: str,
+        payload: Dict[str, Any],
+        attempts: int,
+        error: str,
+    ) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            now = float(time.time())
+            did = f"cdlq-{uuid.uuid4().hex[:12]}"
+            rec = {
+                "id": did,
+                "connector": str(connector),
+                "tenant_id": str(tenant_id) if tenant_id else None,
+                "run_id": str(run_id) if run_id else None,
+                "url": str(url),
+                "payload_json": _json_dumps(payload or {}),
+                "attempts": int(attempts),
+                "error": str(error),
+                "status": "pending",
+                "created_at": now,
+                "resolved_at": None,
+            }
+            conn = sqlite3.connect(db_path)
+            try:
+                conn.execute(
+                    """
+                    INSERT INTO connector_delivery_dlq(
+                      id, connector, tenant_id, run_id, url, payload_json, attempts, error, status, created_at, resolved_at
+                    ) VALUES(?,?,?,?,?,?,?,?,?,?,?)
+                    """,
+                    (
+                        rec["id"],
+                        rec["connector"],
+                        rec["tenant_id"],
+                        rec["run_id"],
+                        rec["url"],
+                        rec["payload_json"],
+                        rec["attempts"],
+                        rec["error"],
+                        rec["status"],
+                        rec["created_at"],
+                        rec["resolved_at"],
+                    ),
+                )
+                conn.commit()
+                return rec
+            finally:
+                conn.close()
+
+        row = await anyio.to_thread.run_sync(_sync)
+        return {**row, "payload": _json_loads(row.get("payload_json")) or {}}
+
+    async def get_connector_delivery_dlq_item(self, dlq_id: str) -> Optional[Dict[str, Any]]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Optional[Dict[str, Any]]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                row = conn.execute("SELECT * FROM connector_delivery_dlq WHERE id=? LIMIT 1", (str(dlq_id),)).fetchone()
+                return dict(row) if row else None
+            finally:
+                conn.close()
+
+        row = await anyio.to_thread.run_sync(_sync)
+        if not row:
+            return None
+        return {**row, "payload": _json_loads(row.get("payload_json")) or {}}
+
+    async def list_connector_delivery_dlq(
+        self,
+        *,
+        status: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+        connector: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                clauses = []
+                params: List[Any] = []
+                if status:
+                    clauses.append("status=?")
+                    params.append(str(status))
+                if tenant_id:
+                    clauses.append("tenant_id=?")
+                    params.append(str(tenant_id))
+                if connector:
+                    clauses.append("connector=?")
+                    params.append(str(connector))
+                where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+                total_row = conn.execute(f"SELECT COUNT(1) AS c FROM connector_delivery_dlq {where};", tuple(params)).fetchone()
+                total = int(total_row["c"] if total_row else 0)
+                rows = conn.execute(
+                    f"SELECT * FROM connector_delivery_dlq {where} ORDER BY created_at DESC LIMIT ? OFFSET ?;",
+                    tuple(params + [int(limit), int(offset)]),
+                ).fetchall()
+                items = []
+                for r in rows:
+                    d = dict(r)
+                    d["payload"] = _json_loads(d.get("payload_json")) or {}
+                    items.append(d)
+                return {"items": items, "total": total, "limit": int(limit), "offset": int(offset)}
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
+    async def resolve_connector_delivery_dlq_item(self, dlq_id: str) -> bool:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> bool:
+            now = float(time.time())
+            conn = sqlite3.connect(db_path)
+            try:
+                cur = conn.execute(
+                    "UPDATE connector_delivery_dlq SET status='resolved', resolved_at=? WHERE id=? AND status='pending';",
+                    (now, str(dlq_id)),
+                )
+                conn.commit()
+                return bool(cur.rowcount)
+            finally:
+                conn.close()
+
+        return bool(await anyio.to_thread.run_sync(_sync))
+
+    async def delete_connector_delivery_dlq_item(self, dlq_id: str) -> bool:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> bool:
+            conn = sqlite3.connect(db_path)
+            try:
+                cur = conn.execute("DELETE FROM connector_delivery_dlq WHERE id=?;", (str(dlq_id),))
+                conn.commit()
+                return bool(cur.rowcount)
+            finally:
+                conn.close()
+
+        return bool(await anyio.to_thread.run_sync(_sync))
 
     # ==================== Approval Requests ====================
 

@@ -8007,7 +8007,24 @@ def _verify_slack_signature(http_request: Request, raw_body: bytes) -> None:
         raise HTTPException(status_code=403, detail="invalid slack signature")
 
 
-async def _post_slack_response(response_url: str, text: str) -> None:
+async def _post_slack_response(response_url: str, text: str, *, tenant_id: Optional[str] = None, run_id: Optional[str] = None) -> None:
+    # PR-12: unified connector delivery + DLQ (best-effort)
+    try:
+        if _execution_store is not None:
+            from core.apps.connectors import ConnectorDelivery
+
+            await ConnectorDelivery(execution_store=_execution_store).post_webhook(
+                connector="slack",
+                url=str(response_url),
+                payload={"text": text},
+                tenant_id=str(tenant_id) if tenant_id else None,
+                run_id=str(run_id) if run_id else None,
+                retries=int(os.getenv("AIPLAT_CONNECTOR_DELIVERY_RETRIES", "1") or "1"),
+            )
+            return
+    except Exception:
+        pass
+    # fallback
     import aiohttp
 
     async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=8)) as sess:
@@ -8073,7 +8090,12 @@ async def gateway_slack_command(http_request: Request):
                     import json as _json
 
                     text_out = _json.dumps(out, ensure_ascii=False) if out is not None else "ok"
-            await _post_slack_response(response_url, text_out[:3500])
+            tid = None
+            try:
+                tid = ((req.payload or {}).get("context") or {}).get("tenant_id") if isinstance((req.payload or {}).get("context"), dict) else None
+            except Exception:
+                tid = None
+            await _post_slack_response(response_url, text_out[:3500], tenant_id=tid, run_id=resp.get("run_id"))
         except Exception:
             pass
 
@@ -8216,6 +8238,66 @@ async def delete_gateway_token(http_request: Request, token_id: str):
     if not ok:
         raise HTTPException(status_code=404, detail="token not found")
     return {"status": "deleted", "token_id": token_id}
+
+
+# ==================== Gateway Delivery DLQ (PR-12 connectors) ====================
+
+
+@api_router.get("/gateway/dlq")
+async def list_gateway_delivery_dlq(
+    http_request: Request,
+    status: Optional[str] = "pending",
+    connector: Optional[str] = None,
+    tenant_id: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
+):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    _require_gateway_admin(http_request)
+    return await _execution_store.list_connector_delivery_dlq(
+        status=status,
+        tenant_id=tenant_id,
+        connector=connector,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@api_router.post("/gateway/dlq/{dlq_id}/retry")
+async def retry_gateway_delivery_dlq(http_request: Request, dlq_id: str):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    _require_gateway_admin(http_request)
+    item = await _execution_store.get_connector_delivery_dlq_item(dlq_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="DLQ item not found")
+    if str(item.get("status")) != "pending":
+        raise HTTPException(status_code=409, detail="DLQ item not pending")
+    from core.apps.connectors import ConnectorDelivery
+
+    out = await ConnectorDelivery(execution_store=_execution_store).post_webhook(
+        connector=str(item.get("connector") or "gateway"),
+        url=str(item.get("url") or ""),
+        payload=item.get("payload") if isinstance(item.get("payload"), dict) else {},
+        tenant_id=item.get("tenant_id"),
+        run_id=item.get("run_id"),
+        retries=0,
+    )
+    if out.get("ok") is True:
+        await _execution_store.resolve_connector_delivery_dlq_item(dlq_id)
+    return {"ok": bool(out.get("ok")), "dlq_id": dlq_id, "result": out}
+
+
+@api_router.delete("/gateway/dlq/{dlq_id}")
+async def delete_gateway_delivery_dlq(http_request: Request, dlq_id: str):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    _require_gateway_admin(http_request)
+    ok = await _execution_store.delete_connector_delivery_dlq_item(dlq_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="DLQ item not found")
+    return {"status": "deleted", "dlq_id": dlq_id}
 
 
 # ==================== Skill Packs + Long-term Memory (Roadmap-4 minimal) ====================
