@@ -91,10 +91,11 @@ class PolicyGate:
                                 if isinstance(tool_policy.get("approval_required_tools"), list)
                                 else []
                             )
-                            if tool_name in deny_tools:
+                            # MVP: support wildcard "*" for strong gate.
+                            if "*" in deny_tools or tool_name in deny_tools:
                                 deny_by_policy = True
                                 policy_reason = f"Denied by tenant policy (tenant_id={tenant_id}, version={policy_version})"
-                            if tool_name in approval_tools:
+                            if "*" in approval_tools or tool_name in approval_tools:
                                 require_approval_by_policy = True
             except Exception:
                 # Fail-open for compatibility.

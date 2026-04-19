@@ -170,6 +170,17 @@ class OnboardingInitTenantRequest(BaseModel):
     tenant_id: str = "default"
     tenant_name: Optional[str] = None
     init_policies: bool = True
+    strict_tool_approval: bool = True  # if true, approval_required_tools=['*']
+    require_approval: bool = True
+    approval_request_id: Optional[str] = None
+    details: Optional[str] = None
+
+
+class OnboardingAutosmokeConfigRequest(BaseModel):
+    enabled: bool = True
+    enforce: bool = True
+    webhook_url: Optional[str] = None
+    dedup_seconds: Optional[int] = None
     require_approval: bool = True
     approval_request_id: Optional[str] = None
     details: Optional[str] = None

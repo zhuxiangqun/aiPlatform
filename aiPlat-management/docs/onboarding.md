@@ -9,9 +9,11 @@
 5. （增强）初始化默认 tenant/policies（需审批）
 6. （增强）密钥存储状态提示（AIPLAT_SECRET_KEY）
 7. （增强）Onboarding 内嵌审批处理（批准/拒绝 + 批准后自动重试）
-10. （增强）提交后自动轮询审批状态（批准后自动生效）
-8. （增强）配置检查（复用 Doctor recommendations）
-9. （增强）轮换 adapter API key（不回显旧 key）
+8. （增强）提交后自动轮询审批状态（批准后自动生效）
+9. （增强）配置检查（复用 Doctor recommendations）
+10. （增强）轮换 adapter API key（不回显旧 key）
+11. （增强）强门禁策略：tenant policy 支持通配符 '*'（所有工具执行需审批）
+12. （增强）autosmoke 配置中心：写入 core global_settings（env 仍可覆盖）
 
 ## 入口
 
@@ -79,6 +81,8 @@
 
 会创建（或更新）`tenant_id=default`，并写入一份最小可用的 tenant policy（PolicyGate 可识别）。
 
+（增强）支持“强门禁”模式：将 `approval_required_tools=['*']` 写入 tenant policy，表示 **所有工具执行都需要审批**（PolicyGate 支持通配符 `*`）。
+
 ## 增强：密钥安全存储（AIPLAT_SECRET_KEY）
 
 当配置了 `AIPLAT_SECRET_KEY`（Fernet key）后，core 会将 adapter 的 `api_key` **加密存储**在 ExecutionStore。
@@ -92,6 +96,18 @@
 ## 增强：配置检查（Doctor）
 
 向导页面会调用 `/api/diagnostics/doctor` 获取 recommendations，并提供“一键复制 env 示例”的快捷按钮（如 Public URL、autosmoke）。
+
+## 增强：autosmoke 配置中心（需审批）
+
+向导提供 autosmoke 配置区，会调用：
+
+- `POST /api/onboarding/autosmoke`
+
+该接口转调 core：
+
+- `POST /api/core/onboarding/autosmoke`
+
+写入 `global_settings(key="autosmoke")`。运行时以 **env 优先生效**，若 env 未设置则回退使用该配置。
 
 ## 常见问题
 

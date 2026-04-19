@@ -45,6 +45,7 @@ const Onboarding: React.FC = () => {
   const [initTenantLoading, setInitTenantLoading] = useState(false);
   const [initTenantResult, setInitTenantResult] = useState<any>(null);
   const [initTenantApprovalId, setInitTenantApprovalId] = useState<string>('');
+  const [strictToolApproval, setStrictToolApproval] = useState(true);
 
   // Enhancements: approvals + doctor + key rotation
   const [pendingApprovals, setPendingApprovals] = useState<any[]>([]);
@@ -54,9 +55,13 @@ const Onboarding: React.FC = () => {
   const [rotateKeyForm, setRotateKeyForm] = useState<{ adapter_id: string; api_key: string }>({ adapter_id: '', api_key: '' });
   const [rotateKeyLoading, setRotateKeyLoading] = useState(false);
   const [rotateKeyResult, setRotateKeyResult] = useState<any>(null);
+  const [autosmokeLoading, setAutosmokeLoading] = useState(false);
+  const [autosmokeResult, setAutosmokeResult] = useState<any>(null);
+  const [autosmokeApprovalId, setAutosmokeApprovalId] = useState<string>('');
+  const [autosmokeForm, setAutosmokeForm] = useState({ enabled: true, enforce: true, webhook_url: '' });
 
   // Auto-poll approvals and auto-apply on approval
-  const [approvalWatch, setApprovalWatch] = useState<Record<string, { op: 'default_llm' | 'init_tenant'; created_at: number }>>({});
+  const [approvalWatch, setApprovalWatch] = useState<Record<string, { op: 'default_llm' | 'init_tenant' | 'autosmoke'; created_at: number }>>({});
   const [approvalWatchLog, setApprovalWatchLog] = useState<Record<string, string>>({});
   const approvalWatchInFlight = useRef<Record<string, boolean>>({});
 
@@ -99,6 +104,16 @@ const Onboarding: React.FC = () => {
         model: prev.model || (adapters?.[0]?.models?.[0]?.name ? String(adapters[0].models[0].name) : ''),
       }));
       setRotateKeyForm((prev) => ({ ...prev, adapter_id: prev.adapter_id || firstAdapterId }));
+      // autosmoke config from core (best-effort)
+      const sm = s?.core_state?.autosmoke;
+      if (sm && typeof sm === 'object') {
+        setAutosmokeForm((p) => ({
+          ...p,
+          enabled: sm.enabled != null ? !!sm.enabled : p.enabled,
+          enforce: sm.enforce != null ? !!sm.enforce : p.enforce,
+          webhook_url: sm.webhook_url != null ? String(sm.webhook_url) : p.webhook_url,
+        }));
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -146,6 +161,9 @@ const Onboarding: React.FC = () => {
             } else if (w.op === 'init_tenant') {
               setInitTenantApprovalId(requestId);
               await submitInitTenant(requestId);
+            } else if (w.op === 'autosmoke') {
+              setAutosmokeApprovalId(requestId);
+              await submitAutosmoke(requestId);
             }
             setApprovalWatch((prev) => {
               const next = { ...(prev || {}) };
@@ -287,6 +305,7 @@ const Onboarding: React.FC = () => {
         tenant_id: 'default',
         tenant_name: 'default',
         init_policies: true,
+        strict_tool_approval: strictToolApproval,
         require_approval: true,
         approval_request_id: approvalIdOverride || initTenantApprovalId || undefined,
       });
@@ -321,6 +340,9 @@ const Onboarding: React.FC = () => {
       } else if (String(op) === 'onboarding:init_tenant') {
         setInitTenantApprovalId(requestId);
         await submitInitTenant(requestId);
+      } else if (String(op) === 'onboarding:autosmoke') {
+        setAutosmokeApprovalId(requestId);
+        await submitAutosmoke(requestId);
       }
     } catch (e) {
       console.error(e);
@@ -348,6 +370,33 @@ const Onboarding: React.FC = () => {
       setRotateKeyResult({ status: 'error', error: e?.message || String(e) });
     } finally {
       setRotateKeyLoading(false);
+    }
+  };
+
+  const submitAutosmoke = async (approvalIdOverride?: string) => {
+    setAutosmokeLoading(true);
+    setAutosmokeResult(null);
+    try {
+      const res = await onboardingApi.setAutosmoke({
+        enabled: autosmokeForm.enabled,
+        enforce: autosmokeForm.enforce,
+        webhook_url: autosmokeForm.webhook_url || undefined,
+        require_approval: true,
+        approval_request_id: approvalIdOverride || autosmokeApprovalId || undefined,
+      });
+      setAutosmokeResult(res);
+      if (res?.status === 'approval_required' && res?.approval_request_id) {
+        const rid = String(res.approval_request_id);
+        setAutosmokeApprovalId(rid);
+        setApprovalWatch((prev) => ({ ...(prev || {}), [rid]: { op: 'autosmoke', created_at: Date.now() } }));
+        setApprovalWatchLog((prev) => ({ ...(prev || {}), [rid]: '等待审批中：pending' }));
+      }
+      await refreshState();
+      await refreshDoctor();
+    } catch (e: any) {
+      setAutosmokeResult({ status: 'error', error: e?.message || String(e) });
+    } finally {
+      setAutosmokeLoading(false);
     }
   };
 
@@ -629,6 +678,10 @@ const Onboarding: React.FC = () => {
             className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
           />
         </div>
+        <label className="flex items-center gap-2 text-sm text-gray-300">
+          <input type="checkbox" checked={strictToolApproval} onChange={(e) => setStrictToolApproval(e.target.checked)} />
+          强门禁：所有工具执行都需审批（approval_required_tools=['*']）
+        </label>
         <button
           disabled={initTenantLoading}
           onClick={initTenant}
@@ -638,6 +691,56 @@ const Onboarding: React.FC = () => {
         </button>
         <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
           {JSON.stringify(initTenantResult || state?.core_state?.tenants || {}, null, 2)}
+        </pre>
+      </div>
+
+      <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-4">
+        <div className="text-gray-200 font-medium">增强：配置 autosmoke（配置中心，需审批）</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <label className="flex items-center gap-2 text-sm text-gray-300">
+            <input
+              type="checkbox"
+              checked={autosmokeForm.enabled}
+              onChange={(e) => setAutosmokeForm((p) => ({ ...p, enabled: e.target.checked }))}
+            />
+            启用 autosmoke
+          </label>
+          <label className="flex items-center gap-2 text-sm text-gray-300">
+            <input
+              type="checkbox"
+              checked={autosmokeForm.enforce}
+              onChange={(e) => setAutosmokeForm((p) => ({ ...p, enforce: e.target.checked }))}
+            />
+            强门禁（未验证则阻止发布/启用）
+          </label>
+          <div className="md:col-span-2">
+            <div className="text-xs text-gray-500 mb-1">Webhook URL（可选）</div>
+            <input
+              value={autosmokeForm.webhook_url}
+              onChange={(e) => setAutosmokeForm((p) => ({ ...p, webhook_url: e.target.value }))}
+              placeholder="https://hooks.slack.com/..."
+              className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <div className="text-xs text-gray-500 mb-1">approval_request_id（可选）</div>
+            <input
+              value={autosmokeApprovalId}
+              onChange={(e) => setAutosmokeApprovalId(e.target.value)}
+              placeholder="例如：apr-xxxx"
+              className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
+            />
+          </div>
+        </div>
+        <button
+          disabled={autosmokeLoading}
+          onClick={() => submitAutosmoke()}
+          className="px-4 py-2 rounded-lg bg-primary text-white text-sm hover:opacity-90 disabled:opacity-60"
+        >
+          {autosmokeLoading ? '提交中…' : '提交审批/生效'}
+        </button>
+        <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
+          {JSON.stringify(autosmokeResult || {}, null, 2)}
         </pre>
       </div>
 

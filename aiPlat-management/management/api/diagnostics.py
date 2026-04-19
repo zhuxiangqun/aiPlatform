@@ -283,11 +283,28 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
     except Exception:
         pass
 
+    # Autosmoke config: env overrides first, otherwise fall back to core global_settings(key="autosmoke")
+    core_autosmoke_cfg: Dict[str, Any] = {}
+    try:
+        core_client = getattr(request.app.state, "core_client", None)
+        if core_client:
+            st = await core_client.get_onboarding_state()
+            if isinstance(st, dict) and isinstance(st.get("autosmoke"), dict):
+                core_autosmoke_cfg = st.get("autosmoke") or {}
+    except Exception:
+        core_autosmoke_cfg = {}
+
+    env_enabled = os.getenv("AIPLAT_AUTOSMOKE_ENABLED")
+    env_enforce = os.getenv("AIPLAT_AUTOSMOKE_ENFORCE")
+    env_dedup = os.getenv("AIPLAT_AUTOSMOKE_DEDUP_SECONDS")
+    env_webhook = os.getenv("AIPLAT_AUTOSMOKE_WEBHOOK_URL")
+
     autosmoke = {
-        "enabled": os.getenv("AIPLAT_AUTOSMOKE_ENABLED"),
-        "enforce": os.getenv("AIPLAT_AUTOSMOKE_ENFORCE"),
-        "dedup_seconds": os.getenv("AIPLAT_AUTOSMOKE_DEDUP_SECONDS"),
-        "webhook_url_set": bool(os.getenv("AIPLAT_AUTOSMOKE_WEBHOOK_URL")),
+        "enabled": env_enabled if env_enabled is not None else core_autosmoke_cfg.get("enabled"),
+        "enforce": env_enforce if env_enforce is not None else core_autosmoke_cfg.get("enforce"),
+        "dedup_seconds": env_dedup if env_dedup is not None else core_autosmoke_cfg.get("dedup_seconds"),
+        "webhook_url_set": bool(env_webhook) or bool(core_autosmoke_cfg.get("webhook_url")),
+        "source": {"env_override": bool(env_enabled or env_enforce or env_dedup or env_webhook), "core_setting": core_autosmoke_cfg},
     }
     links = {
         "onboarding_ui": "/onboarding",

@@ -81,6 +81,14 @@ async def rotate_adapter_key(request: Request, body: Dict[str, Any]) -> Dict[str
     return {"status": "rotated", "adapter_id": adapter_id}
 
 
+@router.post("/autosmoke")
+async def set_autosmoke(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="Core client not initialized")
+    return await core_client.set_autosmoke(body or {})
+
+
 @router.post("/llm-adapter")
 async def configure_llm_adapter(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
     """

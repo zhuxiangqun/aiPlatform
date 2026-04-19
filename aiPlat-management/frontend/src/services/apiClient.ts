@@ -218,6 +218,9 @@ export const onboardingApi = {
   rotateAdapterKey: async (body: Record<string, unknown>) => {
     return apiClient.post<any>('/onboarding/rotate-adapter-key', body);
   },
+  setAutosmoke: async (body: Record<string, unknown>) => {
+    return apiClient.post<any>('/onboarding/autosmoke', body);
+  },
 };
 
 // Monitoring API (legacy - for layer metrics)

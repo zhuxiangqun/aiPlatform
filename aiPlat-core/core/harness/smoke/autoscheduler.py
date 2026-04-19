@@ -21,21 +21,47 @@ def _truthy(v: str) -> bool:
     return (v or "").strip().lower() in {"1", "true", "yes", "y", "on"}
 
 
-def _autosmoke_enabled() -> bool:
-    return _truthy(os.getenv("AIPLAT_AUTOSMOKE_ENABLED", "false"))
-
-
-def _dedup_seconds() -> int:
+async def _autosmoke_enabled(execution_store: Any) -> bool:
+    # Env override first (keeps existing behavior)
+    raw = (os.getenv("AIPLAT_AUTOSMOKE_ENABLED", "") or "").strip()
+    if raw:
+        return _truthy(raw)
+    # Best-effort global_settings(key="autosmoke")
     try:
-        return int(os.getenv("AIPLAT_AUTOSMOKE_DEDUP_SECONDS", "600") or "600")
+        if execution_store is None:
+            return False
+        s = await execution_store.get_global_setting(key="autosmoke")
+        if isinstance(s, dict):
+            v = s.get("value") or {}
+            return bool(v.get("enabled")) is True
     except Exception:
-        return 600
+        pass
+    return False
+
+
+async def _dedup_seconds(execution_store: Any) -> int:
+    try:
+        raw = (os.getenv("AIPLAT_AUTOSMOKE_DEDUP_SECONDS", "") or "").strip()
+        if raw:
+            return int(raw or "600")
+    except Exception:
+        raw = ""
+    # fallback to store
+    try:
+        if execution_store is not None:
+            s = await execution_store.get_global_setting(key="autosmoke")
+            v = (s or {}).get("value") if isinstance(s, dict) else {}
+            if isinstance(v, dict) and v.get("dedup_seconds") is not None:
+                return int(v.get("dedup_seconds"))
+    except Exception:
+        pass
+    return 600
 
 
 def _default_agent_model() -> str:
     return (os.getenv("AIPLAT_AUTOSMOKE_AGENT_MODEL") or os.getenv("AIPLAT_AGENT_MODEL") or "deepseek-reasoner").strip()
 
-def _autosmoke_webhook_delivery() -> Dict[str, Any]:
+async def _autosmoke_webhook_delivery(execution_store: Any) -> Dict[str, Any]:
     """
     Optional alert delivery for autosmoke failures.
 
@@ -44,6 +70,14 @@ def _autosmoke_webhook_delivery() -> Dict[str, Any]:
     - Any generic webhook receiver
     """
     url = (os.getenv("AIPLAT_AUTOSMOKE_WEBHOOK_URL") or "").strip()
+    if not url:
+        try:
+            s = await execution_store.get_global_setting(key="autosmoke") if execution_store is not None else None
+            v = (s or {}).get("value") if isinstance(s, dict) else {}
+            if isinstance(v, dict) and v.get("webhook_url"):
+                url = str(v.get("webhook_url")).strip()
+        except Exception:
+            url = ""
     if not url:
         return {}
     fmt = (os.getenv("AIPLAT_AUTOSMOKE_WEBHOOK_FORMAT") or "json").strip().lower()
@@ -85,7 +119,7 @@ async def enqueue_autosmoke(
     Returns:
       {"enqueued": bool, "job_id": str, "reason": str|None}
     """
-    if not _autosmoke_enabled():
+    if not await _autosmoke_enabled(execution_store):
         return {"enqueued": False, "reason": "disabled"}
     if not execution_store or not job_scheduler:
         return {"enqueued": False, "reason": "not_initialized"}
@@ -110,7 +144,7 @@ async def enqueue_autosmoke(
                 "user_id": actor_id,
                 "session_id": tenant_id,
                 "payload": {},
-                "delivery": _autosmoke_webhook_delivery(),
+                "delivery": await _autosmoke_webhook_delivery(execution_store),
             }
         )
 
@@ -120,7 +154,7 @@ async def enqueue_autosmoke(
         last_run_at = float(job.get("last_run_at")) if job.get("last_run_at") is not None else None
     except Exception:
         last_run_at = None
-    if last_run_at is not None and now - last_run_at < float(_dedup_seconds()):
+    if last_run_at is not None and now - last_run_at < float(await _dedup_seconds(execution_store)):
         return {"enqueued": False, "job_id": job_id, "reason": "dedup"}
 
     payload = {

@@ -41,6 +41,7 @@ from core.schemas import (
     PackageInstallRequest,
     OnboardingDefaultLLMRequest,
     OnboardingInitTenantRequest,
+    OnboardingAutosmokeConfigRequest,
     LongTermMemoryAddRequest,
     LongTermMemorySearchRequest,
     MessageCreateRequest,
@@ -611,7 +612,30 @@ def _runtime_env() -> str:
 
 
 def _autosmoke_enforce() -> bool:
-    return (os.getenv("AIPLAT_AUTOSMOKE_ENFORCE", "false") or "").strip().lower() in {"1", "true", "yes", "y", "on"}
+    # Env override has highest priority.
+    v = (os.getenv("AIPLAT_AUTOSMOKE_ENFORCE", "") or "").strip().lower()
+    if v:
+        return v in {"1", "true", "yes", "y", "on"}
+    # Otherwise, best-effort load from global_settings(key="autosmoke")
+    try:
+        if _execution_store is None:
+            return False
+        db_path = getattr(getattr(_execution_store, "_config", None), "db_path", None)
+        if not db_path:
+            return False
+        import sqlite3, json
+
+        conn = sqlite3.connect(str(db_path))
+        try:
+            row = conn.execute("SELECT value_json FROM global_settings WHERE key='autosmoke' LIMIT 1;").fetchone()
+        finally:
+            conn.close()
+        if not row or not row[0]:
+            return False
+        cfg = json.loads(row[0]) if isinstance(row[0], str) else {}
+        return bool(cfg.get("enforce")) is True
+    except Exception:
+        return False
 
 
 def _is_verified(meta: Dict[str, Any] | None) -> bool:
@@ -6707,6 +6731,7 @@ async def get_core_onboarding_state():
     if not _execution_store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
     default_llm = await _execution_store.get_global_setting(key="default_llm")
+    autosmoke = await _execution_store.get_global_setting(key="autosmoke")
     tenants = await _execution_store.list_tenants(limit=50, offset=0)
     # adapters summary is already available via /adapters
     try:
@@ -6717,6 +6742,7 @@ async def get_core_onboarding_state():
         secrets = {"configured": False}
     return {
         "default_llm": default_llm["value"] if default_llm else None,
+        "autosmoke": autosmoke["value"] if autosmoke else None,
         "tenants": tenants,
         "secrets": secrets,
     }
@@ -6776,12 +6802,38 @@ async def init_default_tenant(request: OnboardingInitTenantRequest):
         baseline_policy = {
             "tool_policy": {
                 "deny_tools": [],
-                "approval_required_tools": [],
+                "approval_required_tools": ["*"] if bool(request.strict_tool_approval) else [],
             }
         }
         policy_res = await _execution_store.upsert_tenant_policy(tenant_id=request.tenant_id, policy=baseline_policy)
 
     return {"status": "initialized", "tenant": tenant, "tenant_policy": policy_res}
+
+
+@api_router.post("/onboarding/autosmoke")
+async def set_autosmoke_config(request: OnboardingAutosmokeConfigRequest):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+
+    if request.require_approval:
+        if not request.approval_request_id:
+            rid = await _require_onboarding_approval(
+                operation="autosmoke",
+                user_id="admin",
+                details=request.details or f"set autosmoke enabled={request.enabled} enforce={request.enforce}",
+                metadata={"enabled": request.enabled, "enforce": request.enforce, "dedup_seconds": request.dedup_seconds},
+            )
+            return {"status": "approval_required", "approval_request_id": rid}
+        if not _is_approval_resolved_approved(request.approval_request_id):
+            raise HTTPException(status_code=409, detail="not_approved")
+
+    value: Dict[str, Any] = {"enabled": bool(request.enabled), "enforce": bool(request.enforce)}
+    if request.webhook_url is not None:
+        value["webhook_url"] = str(request.webhook_url)
+    if request.dedup_seconds is not None:
+        value["dedup_seconds"] = int(request.dedup_seconds)
+    res = await _execution_store.upsert_global_setting(key="autosmoke", value=value)
+    return {"status": "updated", "autosmoke": res}
 
 
 @api_router.post("/memory/longterm")
