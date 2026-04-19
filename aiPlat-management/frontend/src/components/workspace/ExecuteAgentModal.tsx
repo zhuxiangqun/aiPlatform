@@ -67,7 +67,7 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
         error_message: (result as any)?.error_message,
         error_detail: (result as any)?.error_detail,
       });
-      toast.success(status === 'success' || status === 'completed' ? '执行成功' : `状态: ${status}`);
+      toast.success(status === 'completed' ? '执行成功' : `状态: ${status}`);
     } catch (e: any) {
       const msg = String(e?.message || e?.detail || '执行失败');
       setResult({ status: 'failed', error: msg });
@@ -125,7 +125,7 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
                 <span className="text-sm font-medium text-gray-100">执行结果（简版）</span>
                 <span
                   className={`text-xs px-2 py-0.5 rounded ${
-                    result.status === 'completed' || result.status === 'success' ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'
+                    result.status === 'completed' ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'
                   }`}
                 >
                   {result.status}

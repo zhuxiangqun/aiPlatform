@@ -6,6 +6,7 @@ aiPlat-core Pydantic Schemas
 
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
+from enum import Enum
 
 
 class AgentCreateRequest(BaseModel):
@@ -54,6 +55,37 @@ class SkillExecuteRequest(BaseModel):
     # Roadmap-2: runtime governance hints (e.g. toolset).
     # This is optional and forward-compatible.
     options: Optional[Dict[str, Any]] = None
+
+
+# ---------------------------------------------------------------------
+# PR-02: Run Contract v2 (unified run_id + status machine)
+
+
+class RunStatus(str, Enum):
+    accepted = "accepted"
+    running = "running"
+    waiting_approval = "waiting_approval"
+    completed = "completed"
+    failed = "failed"
+    aborted = "aborted"
+    timeout = "timeout"
+
+
+class RunError(BaseModel):
+    code: str
+    message: str
+    detail: Optional[Dict[str, Any]] = None
+
+
+class RunSummary(BaseModel):
+    ok: bool
+    run_id: str
+    trace_id: Optional[str] = None
+    status: RunStatus
+    output: Optional[Any] = None
+    error: Optional[RunError] = None
+    # Keep extra fields for forward/backward compat
+    metadata: Optional[Dict[str, Any]] = None
 
 
 # ---------------------------------------------------------------------

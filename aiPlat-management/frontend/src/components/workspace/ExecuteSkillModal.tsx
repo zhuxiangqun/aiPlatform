@@ -53,22 +53,29 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
 
       const res = await workspaceSkillApi.execute(skill.id, { input: payload, options: { toolset } });
       setResult(res as any);
-      if ((res as any)?.status === 'approval_required' && (res as any)?.approval_request_id) {
-        toast.error(`需要审批：${String((res as any).approval_request_id)}`);
+      const status = String((res as any)?.status || '');
+      const legacyStatus = String((res as any)?.legacy_status || '');
+      const errCode = String((res as any)?.error?.code || '');
+      const approvalId =
+        (res as any)?.approval_request_id || (res as any)?.error?.detail?.approval_request_id || (res as any)?.error_detail?.approval_request_id;
+
+      if ((status === 'waiting_approval' || legacyStatus === 'approval_required' || errCode === 'APPROVAL_REQUIRED') && approvalId) {
+        toast.error(`需要审批：${String(approvalId)}`);
         try {
           window.open('/core/approvals', '_blank', 'noopener,noreferrer');
         } catch {
           // ignore
         }
-      } else if ((res as any)?.status === 'publish_required' && (res as any)?.candidate_id) {
-        toast.error(`需要发布候选：${String((res as any).candidate_id).slice(0, 10)}...`);
+      } else if (legacyStatus === 'publish_required' || errCode === 'PUBLISH_REQUIRED') {
+        const cid = (res as any)?.candidate_id || (res as any)?.error?.detail?.candidate_id;
+        toast.error(`需要发布候选：${String(cid || '').slice(0, 10)}...`);
         try {
           window.open('/core/learning/releases', '_blank', 'noopener,noreferrer');
         } catch {
           // ignore
         }
       } else {
-        toast.success((res as any).status === 'completed' || (res as any).status === 'success' ? '执行成功' : `状态: ${(res as any).status}`);
+        toast.success(status === 'completed' ? '执行成功' : `状态: ${status}`);
       }
     } catch (error: any) {
       toast.error('执行失败');
@@ -182,7 +189,7 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
         <div className="mt-4 p-4 rounded-lg border border-dark-border bg-dark-bg">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-100">执行结果</span>
-            <span className={`text-xs px-2 py-0.5 rounded ${result.status === 'completed' || result.status === 'success' ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'}`}>
+            <span className={`text-xs px-2 py-0.5 rounded ${result.status === 'completed' ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'}`}>
               {result.status}
             </span>
           </div>

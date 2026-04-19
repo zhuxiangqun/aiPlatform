@@ -7,6 +7,7 @@ Runs on port 8002.
 
 from fastapi import FastAPI, HTTPException, APIRouter, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from typing import Optional, List, Dict, Any
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -67,6 +68,7 @@ from core.schemas import (
     HookUpdateRequest,
     CoordinatorCreateRequest,
     FeedbackConfigUpdateRequest,
+    RunStatus,
 )
 from core.management import (
     AgentManager,
@@ -852,6 +854,89 @@ def _inject_http_request_context(payload: Any, http_request: Request, *, entrypo
     except Exception:
         return payload
     return payload
+
+
+def _normalize_run_status_v2(*, ok: bool, legacy_status: Optional[str], error_code: Optional[str]) -> str:
+    s = str(legacy_status or "").lower().strip()
+    c = str(error_code or "").upper().strip()
+    if s in {"accepted"}:
+        return RunStatus.accepted.value
+    if s in {"running"}:
+        return RunStatus.running.value
+    if s in {"approval_required", "waiting_approval"} or c == "APPROVAL_REQUIRED":
+        return RunStatus.waiting_approval.value
+    if s in {"timeout"} or c == "TIMEOUT":
+        return RunStatus.timeout.value
+    if ok:
+        return RunStatus.completed.value
+    if s in {"publish_required", "blocked"} or c == "PUBLISH_REQUIRED":
+        return RunStatus.aborted.value
+    if s in {"aborted"}:
+        return RunStatus.aborted.value
+    return RunStatus.failed.value
+
+
+def _normalize_run_error(*, code: Optional[str], message: Optional[str], detail: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    if not code and not message and not detail:
+        return None
+    return {"code": str(code or "EXECUTION_FAILED"), "message": str(message or "Execution failed"), "detail": detail or None}
+
+
+def _wrap_execution_result_as_run_summary(result: Any) -> Dict[str, Any]:
+    """
+    PR-02: Run Contract v2
+    Return: {ok, run_id, trace_id, status, output, error{code,message,detail}, ...legacy fields...}
+    """
+    payload = dict(getattr(result, "payload", None) or {}) if isinstance(getattr(result, "payload", None), dict) else {}
+    # Determine ok semantics: allow payload override
+    ok0 = bool(getattr(result, "ok", False))
+    if payload.get("ok") is False:
+        ok0 = False
+    legacy_status = payload.get("status")
+    # Run id: prefer ExecutionResult.run_id then payload
+    run_id = (
+        getattr(result, "run_id", None)
+        or payload.get("run_id")
+        or payload.get("execution_id")
+        or payload.get("executionId")
+        or new_prefixed_id("run")
+    )
+    trace_id = getattr(result, "trace_id", None) or payload.get("trace_id")
+
+    # Error normalization
+    err_detail = getattr(result, "error_detail", None) if isinstance(getattr(result, "error_detail", None), dict) else None
+    # payload may already have structured error
+    err_obj = payload.get("error") if isinstance(payload.get("error"), dict) else None
+    err_code = None
+    err_msg = None
+    if isinstance(err_obj, dict):
+        err_code = err_obj.get("code")
+        err_msg = err_obj.get("message")
+        err_detail = err_obj.get("detail") if isinstance(err_obj.get("detail"), dict) else (err_detail or None)
+    else:
+        err_code = payload.get("error_code") or (err_detail or {}).get("code") if isinstance(err_detail, dict) else None
+        err_msg = payload.get("error_message") or (err_detail or {}).get("message") if isinstance(err_detail, dict) else None
+        if not err_msg:
+            err_msg = getattr(result, "error", None)
+    run_status = _normalize_run_status_v2(ok=ok0, legacy_status=legacy_status, error_code=err_code)
+
+    out = dict(payload)
+    out.setdefault("legacy_status", legacy_status)
+    out["ok"] = ok0
+    out["run_id"] = str(run_id)
+    out["trace_id"] = trace_id
+    out["status"] = run_status
+    out["output"] = payload.get("output")
+    if ok0:
+        out["error"] = None
+    else:
+        out["error"] = _normalize_run_error(code=err_code, message=err_msg, detail=err_detail)
+    # Keep old aliases for compatibility
+    if not ok0:
+        out.setdefault("error_detail", out.get("error"))
+        out.setdefault("error_message", (out.get("error") or {}).get("message") if isinstance(out.get("error"), dict) else None)
+        out.setdefault("error_code", (out.get("error") or {}).get("code") if isinstance(out.get("error"), dict) else None)
+    return out
 
 
 async def _require_targets_verified(targets: list[tuple[str, str]]) -> None:
@@ -1682,9 +1767,8 @@ async def execute_workspace_agent(agent_id: str, request: dict, http_request: Re
         session_id=str(session_id),
     )
     result = await harness.execute(exec_req)
-    if not result.ok:
-        raise HTTPException(status_code=result.http_status, detail=result.error or "Execution failed")
-    return result.payload
+    resp = _wrap_execution_result_as_run_summary(result)
+    return JSONResponse(status_code=200 if resp.get("ok") else int(getattr(result, "http_status", 500) or 500), content=resp)
 
 
 @api_router.get("/workspace/agents/{agent_id}/history")
@@ -1846,7 +1930,8 @@ async def execute_agent(agent_id: str, request: dict, http_request: Request):
     )
     result = await harness.execute(exec_req)
     if not result.ok:
-        raise HTTPException(status_code=result.http_status, detail=result.error or "Execution failed")
+        resp = _wrap_execution_result_as_run_summary(result)
+        return JSONResponse(status_code=int(getattr(result, "http_status", 500) or 500), content=resp)
     # Minimal resume semantics: cache paused requests in memory
     try:
         payload = result.payload or {}
@@ -1876,7 +1961,8 @@ async def execute_agent(agent_id: str, request: dict, http_request: Request):
                 _agent_executions[exec_id] = payload
     except Exception:
         pass
-    return result.payload
+    resp = _wrap_execution_result_as_run_summary(result)
+    return JSONResponse(status_code=200 if resp.get("ok") else int(getattr(result, "http_status", 500) or 500), content=resp)
 
 
 @api_router.post("/agents/executions/{execution_id}/resume")
@@ -3909,8 +3995,15 @@ async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest, h
             )
         except Exception:
             pass
+        # PR-02: Run Contract v2 (blocked)
         return {
-            "status": "publish_required",
+            "ok": False,
+            "run_id": new_prefixed_id("run"),
+            "trace_id": None,
+            "status": RunStatus.aborted.value,
+            "legacy_status": "publish_required",
+            "output": None,
+            "error": {"code": "PUBLISH_REQUIRED", "message": "publish_required", "detail": {"candidate_id": pg.get("candidate_id")}},
             "candidate_id": pg.get("candidate_id"),
             "releases_url": _ui_url("/core/learning/releases"),
         }
@@ -3970,7 +4063,21 @@ async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest, h
                 )
             except Exception:
                 pass
-            return {"status": "approval_required", "approval_request_id": rid, "reason": gate.get("reason")}
+            return {
+                "ok": False,
+                "run_id": new_prefixed_id("run"),
+                "trace_id": None,
+                "status": RunStatus.waiting_approval.value,
+                "legacy_status": "approval_required",
+                "output": None,
+                "error": {
+                    "code": "APPROVAL_REQUIRED",
+                    "message": "approval_required",
+                    "detail": {"approval_request_id": rid, "reason": gate.get("reason")},
+                },
+                "approval_request_id": rid,
+                "reason": gate.get("reason"),
+            }
         if not _is_approval_resolved_approved(approval_request_id):
             try:
                 await _record_changeset(
@@ -4011,9 +4118,8 @@ async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest, h
         session_id=str(ctx_for_user.get("session_id") or "default"),
     )
     result = await harness.execute(exec_req)
-    if not result.ok:
-        raise HTTPException(status_code=result.http_status, detail=result.error or "Execution failed")
-    return result.payload
+    resp = _wrap_execution_result_as_run_summary(result)
+    return JSONResponse(status_code=200 if resp.get("ok") else int(getattr(result, "http_status", 500) or 500), content=resp)
 
 
 @api_router.get("/workspace/skills/{skill_id}/agents")
@@ -4913,9 +5019,8 @@ async def execute_skill(skill_id: str, request: SkillExecuteRequest, http_reques
         session_id=str(ctx_for_user.get("session_id") or "default"),
     )
     result = await harness.execute(exec_req)
-    if not result.ok:
-        raise HTTPException(status_code=result.http_status, detail=result.error or "Execution failed")
-    return result.payload
+    resp = _wrap_execution_result_as_run_summary(result)
+    return JSONResponse(status_code=200 if resp.get("ok") else int(getattr(result, "http_status", 500) or 500), content=resp)
 
 
 @api_router.get("/skills/executions/{execution_id}")
@@ -5216,9 +5321,8 @@ async def execute_compiled_react_graph(request: dict, http_request: Request):
         session_id=str(session_id),
     )
     result = await harness.execute(exec_req)
-    if not result.ok:
-        raise HTTPException(status_code=result.http_status, detail=result.error or "Execution failed")
-    return result.payload
+    resp = _wrap_execution_result_as_run_summary(result)
+    return JSONResponse(status_code=200 if resp.get("ok") else int(getattr(result, "http_status", 500) or 500), content=resp)
 
 
 @api_router.post("/graphs/runs/{run_id}/resume/execute")
@@ -6412,24 +6516,9 @@ async def execute_tool(tool_name: str, request: dict, http_request: Request):
         session_id=str(session_id),
     )
     result = await harness.execute(exec_req)
-    if not result.ok:
-        # Keep legacy behavior: return 200 with success=false, but enrich with status + error_detail.
-        msg = result.error or "Execution failed"
-        return {
-            "success": False,
-            "status": "failed",
-            "error": msg,
-            "error_detail": {"code": "EXECUTION_FAILED", "message": msg},
-            "latency": 0,
-            "trace_id": result.trace_id,
-            "run_id": result.run_id,
-        }
-    # Normalize tool execute response to include status for UI consistency.
-    payload = dict(result.payload or {})
-    payload.setdefault("status", "completed" if payload.get("success") else "failed")
-    payload.setdefault("trace_id", result.trace_id)
-    payload.setdefault("run_id", result.run_id)
-    return payload
+    resp = _wrap_execution_result_as_run_summary(result)
+    # Keep legacy behavior: tool execute returns 200 even when failed, but carries {ok:false,error:{...}}.
+    return JSONResponse(status_code=200, content=resp)
 
 
 # ==================== Gateway / Channels (Roadmap-3) ====================
@@ -6578,7 +6667,8 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request)
                 pass
             return {
                 "ok": True,
-                "status": "deduped",
+                "status": RunStatus.completed.value,
+                "legacy_status": "deduped",
                 "request_id": request_id,
                 "run_id": str(existing_run_id),
                 "trace_id": (run or {}).get("trace_id"),
@@ -6673,6 +6763,18 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request)
     resp.setdefault("trace_id", result.trace_id)
     resp.setdefault("run_id", result.run_id)
     resp.setdefault("request_id", request_id)
+    # PR-02: normalize run status machine while preserving legacy status string.
+    try:
+        legacy_status = resp.get("status")
+        err_code = None
+        if isinstance(resp.get("error"), dict):
+            err_code = (resp.get("error") or {}).get("code")
+        err_code = err_code or resp.get("error_code")
+        resp["legacy_status"] = legacy_status
+        resp["status"] = _normalize_run_status_v2(ok=bool(resp.get("ok")), legacy_status=legacy_status, error_code=err_code)
+        resp.setdefault("output", resp.get("output"))
+    except Exception:
+        pass
     return resp
 
 

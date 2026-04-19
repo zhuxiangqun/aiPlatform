@@ -33,7 +33,19 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
       const { skillApi } = await import('../../services');
       const res = await skillApi.execute(skill.id, { input: payload });
       setResult(res as any);
-      toast.success(res.status === 'completed' || res.status === 'success' ? '执行成功' : `状态: ${res.status}`);
+      const st = String((res as any)?.status || '');
+      const approvalId =
+        (res as any)?.approval_request_id || (res as any)?.error?.detail?.approval_request_id || (res as any)?.error_detail?.approval_request_id;
+      if (st === 'waiting_approval' && approvalId) {
+        toast.error(`需要审批：${String(approvalId)}`);
+        try {
+          window.open('/core/approvals', '_blank', 'noopener,noreferrer');
+        } catch {
+          // ignore
+        }
+      } else {
+        toast.success(st === 'completed' ? '执行成功' : `状态: ${st}`);
+      }
 
       if (autoSmoke) {
         try {
@@ -91,7 +103,7 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
         <div className="mt-4 p-4 rounded-lg border border-dark-border bg-dark-bg">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-100">执行结果</span>
-            <span className={`text-xs px-2 py-0.5 rounded ${result.status === 'completed' || result.status === 'success' ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'}`}>
+            <span className={`text-xs px-2 py-0.5 rounded ${result.status === 'completed' ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'}`}>
               {result.status}
             </span>
           </div>
