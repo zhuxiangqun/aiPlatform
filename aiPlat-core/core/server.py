@@ -39,6 +39,7 @@ from core.schemas import (
     SkillPackInstallRequest,
     PackagePublishRequest,
     PackageInstallRequest,
+    PackageUninstallRequest,
     OnboardingDefaultLLMRequest,
     OnboardingInitTenantRequest,
     OnboardingAutosmokeConfigRequest,
@@ -7226,6 +7227,62 @@ async def list_package_installs(scope: Optional[str] = None, limit: int = 100, o
     if not _execution_store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
     return await _execution_store.list_package_installs(scope=scope, limit=limit, offset=offset)
+
+
+@api_router.post("/packages/{pkg_name}/uninstall")
+async def uninstall_package(pkg_name: str, request: PackageUninstallRequest):
+    """
+    Uninstall a registry-installed package from workspace (best-effort, uses filesystem install record).
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    if not _workspace_package_manager:
+        raise HTTPException(status_code=503, detail="Workspace package manager not available")
+
+    # Optional approval
+    if request.require_approval:
+        if not request.approval_request_id:
+            rid = await _require_package_approval(
+                operation="uninstall",
+                user_id="admin",
+                details=request.details or f"uninstall package {pkg_name}",
+                metadata={"package_name": pkg_name},
+            )
+            try:
+                await _record_changeset(
+                    name="package_uninstall",
+                    target_type="package",
+                    target_id=str(pkg_name),
+                    status="approval_required",
+                    args={"package_name": pkg_name, "keep_modified": bool(request.keep_modified)},
+                    approval_request_id=rid,
+                )
+            except Exception:
+                pass
+            return {"status": "approval_required", "approval_request_id": rid}
+        if not _is_approval_resolved_approved(request.approval_request_id):
+            raise HTTPException(status_code=409, detail="not_approved")
+
+    try:
+        res = _workspace_package_manager.uninstall(pkg_name=pkg_name, keep_modified=bool(request.keep_modified))
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    try:
+        await _record_changeset(
+            name="package_uninstall",
+            target_type="package",
+            target_id=str(pkg_name),
+            args={"package_name": pkg_name, "keep_modified": bool(request.keep_modified)},
+            result={"removed": len((res or {}).get("removed") or []), "kept": len((res or {}).get("kept") or [])},
+            approval_request_id=request.approval_request_id,
+        )
+    except Exception:
+        pass
+
+    _reload_workspace_managers()
+    await _sync_mcp_runtime()
+    return {"status": "uninstalled", "result": res, "approval_request_id": request.approval_request_id}
 
 
 # ==================== Onboarding (core) ====================

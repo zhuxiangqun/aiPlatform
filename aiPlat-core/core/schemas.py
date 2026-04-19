@@ -153,6 +153,16 @@ class PackageInstallRequest(BaseModel):
     details: Optional[str] = None
 
 
+class PackageUninstallRequest(BaseModel):
+    package_name: Optional[str] = None  # allow body override; path param is authoritative
+    keep_modified: bool = True
+    metadata: Optional[Dict[str, Any]] = None
+    # Optional approval gate
+    require_approval: bool = False
+    approval_request_id: Optional[str] = None
+    details: Optional[str] = None
+
+
 # ---------------------------------------------------------------------
 # Onboarding (core-side)
 # ---------------------------------------------------------------------
