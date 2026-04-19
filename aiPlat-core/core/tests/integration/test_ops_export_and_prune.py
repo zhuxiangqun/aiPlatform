@@ -148,6 +148,14 @@ def test_ops_export_and_prune(tmp_path, monkeypatch):
         assert la.status_code == 200
         assert b"artifact_id" in la.content
 
+        z = client.get(
+            "/api/core/ops/export/bundle.zip",
+            params={"tenant_id": "t1", "day_start": "2026-01-01", "day_end": "2026-12-31", "run_id": "run_seed", "candidate_id": "cand_1"},
+            headers=headers,
+        )
+        assert z.status_code == 200
+        assert "application/zip" in (z.headers.get("content-type") or "")
+
         # prune should succeed (best-effort)
         p = client.post("/api/core/ops/prune", json={"now_ts": 1e12}, headers=headers)
         assert p.status_code == 200

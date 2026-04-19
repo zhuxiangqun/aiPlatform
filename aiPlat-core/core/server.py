@@ -11110,6 +11110,64 @@ async def export_learning_artifacts_csv(
     return Response(content=data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'})
 
 
+@api_router.get("/ops/export/bundle.zip")
+async def export_ops_bundle_zip(
+    http_request: Request,
+    tenant_id: str,
+    day_start: Optional[str] = None,
+    day_end: Optional[str] = None,
+    run_id: Optional[str] = None,
+    candidate_id: Optional[str] = None,
+):
+    """
+    PR-14+: 打包导出常用运维 CSV 为 zip。
+    注意：仅打包“常用集合”，避免参数爆炸；更复杂的组合可按单文件导出。
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    deny = await _rbac_guard(http_request=http_request, payload=None, action="ops_export", resource_type="ops", resource_id="bundle")
+    if deny:
+        return deny
+
+    import io
+    import zipfile
+
+    from core.apps.ops import OpsExporter
+
+    exp = OpsExporter(execution_store=_execution_store)
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as z:
+        files = []
+        files.append(await exp.export_audit_logs_csv(tenant_id=tenant_id, limit=5000))
+        files.append(await exp.export_syscall_events_csv(tenant_id=tenant_id, limit=5000))
+        files.append(await exp.export_approvals_csv(tenant_id=tenant_id, limit=5000))
+        files.append(
+            await exp.export_tenant_usage_csv(
+                tenant_id=tenant_id, day_start=day_start, day_end=day_end, metric_key=None, limit=5000
+            )
+        )
+        files.append(await exp.export_gateway_dlq_csv(status="pending", tenant_id=tenant_id, connector=None, limit=5000))
+        files.append(await exp.export_connector_attempts_csv(tenant_id=tenant_id, connector=None, run_id=None, status=None, limit=5000))
+        files.append(await exp.export_jobs_dlq_csv(status="pending", job_id=None, limit=5000))
+        if run_id:
+            files.append(await exp.export_run_events_csv(run_id=run_id, limit=5000))
+        if candidate_id:
+            files.append(
+                await exp.export_release_metrics_csv(tenant_id=tenant_id, candidate_id=candidate_id, metric_key=None, limit=5000)
+            )
+        files.append(await exp.export_release_rollouts_csv(tenant_id=tenant_id, target_type=None, target_id=None, limit=5000))
+        for data, fname in files:
+            z.writestr(fname, data)
+
+    content = buf.getvalue()
+    fname = f"ops_bundle_{tenant_id}.zip"
+    return Response(
+        content=content,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename=\"{fname}\"'},
+    )
+
+
 @api_router.get("/")
 async def root():
     """Root endpoint"""
