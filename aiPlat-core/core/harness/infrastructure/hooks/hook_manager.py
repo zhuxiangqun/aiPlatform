@@ -119,6 +119,13 @@ class HookManager(IHookManager):
                 self.register(hook)
         except Exception:
             pass
+        # Optional: load workspace hooks (Claude Code-style extension point)
+        try:
+            from .workspace_loader import load_workspace_hooks
+
+            load_workspace_hooks(hook_manager=self)
+        except Exception:
+            pass
     
     def register(self, hook: Hook) -> None:
         """Register a hook"""

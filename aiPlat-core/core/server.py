@@ -15,6 +15,7 @@ import time
 import json
 import os
 import shutil
+import yaml
 import uvicorn
 import aiohttp
 
@@ -130,6 +131,8 @@ _mcp_manager = None
 _workspace_agent_manager = None
 _workspace_skill_manager = None
 _workspace_mcp_manager = None
+_package_manager = None
+_workspace_package_manager = None
 
 _agent_executions: Dict[str, Dict[str, Any]] = {}
 _skill_executions: Dict[str, Dict[str, Any]] = {}
@@ -170,6 +173,25 @@ async def _sync_mcp_runtime() -> None:
         await _mcp_runtime.sync_from_servers(servers=list(servers.values()), tool_registry=get_tool_registry())
     except Exception:
         pass
+
+
+def _reload_workspace_managers() -> None:
+    """
+    Best-effort reload workspace managers from filesystem.
+    Needed for operations that modify ~/.aiplat directly (e.g., package install).
+    """
+    global _workspace_agent_manager, _workspace_skill_manager, _workspace_mcp_manager
+    try:
+        if _agent_manager:
+            _workspace_agent_manager = AgentManager(seed=False, scope="workspace", reserved_ids=set(_agent_manager.get_agent_ids()))
+        if _skill_manager:
+            _workspace_skill_manager = SkillManager(seed=False, scope="workspace", reserved_ids=set(_skill_manager.get_skill_ids()))
+        if _mcp_manager is not None:
+            from core.management.mcp_manager import MCPManager
+
+            _workspace_mcp_manager = MCPManager(scope="workspace", reserved_names=set(_mcp_manager.get_server_names()) if _mcp_manager else set())
+    except Exception:
+        return
 
 
 @asynccontextmanager
@@ -294,6 +316,14 @@ async def lifespan(app: FastAPI):
     # Engine managers (core-only)
     _agent_manager = AgentManager(seed=False, scope="engine")
     _skill_manager = SkillManager(seed=False, scope="engine")
+    # Engine packages (filesystem)
+    try:
+        from core.management.package_manager import PackageManager
+
+        global _package_manager
+        _package_manager = PackageManager(scope="engine")
+    except Exception:
+        _package_manager = None
     try:
         from core.management.mcp_manager import MCPManager
         global _mcp_manager
@@ -375,6 +405,17 @@ async def lifespan(app: FastAPI):
         _workspace_agent_manager = None
         _workspace_skill_manager = None
         _workspace_mcp_manager = None
+    # Workspace packages
+    try:
+        from core.management.package_manager import PackageManager
+
+        global _workspace_package_manager
+        _workspace_package_manager = PackageManager(
+            scope="workspace",
+            reserved_names=set([p.name for p in (_package_manager.list_packages() if _package_manager else [])]),
+        )
+    except Exception:
+        _workspace_package_manager = None
     _memory_manager = MemoryManager(seed=True)
     _knowledge_manager = KnowledgeManager()
     _adapter_manager = AdapterManager()
@@ -3796,6 +3837,190 @@ async def disable_workspace_mcp_server(server_name: str):
     except Exception:
         pass
     return {"status": "disabled"}
+
+
+# ==================== Workspace Packages (P0 MVP) ====================
+
+
+@api_router.get("/workspace/packages")
+async def list_workspace_packages(include_engine: bool = True) -> Dict[str, Any]:
+    items: List[Dict[str, Any]] = []
+    if _workspace_package_manager:
+        for p in _workspace_package_manager.list_packages():
+            items.append({"name": p.name, "scope": p.scope, "version": p.version, "description": p.description, "resources": p.resources})
+    if include_engine and _package_manager:
+        for p in _package_manager.list_packages():
+            items.append({"name": p.name, "scope": p.scope, "version": p.version, "description": p.description, "resources": p.resources})
+    return {"items": items, "total": len(items)}
+
+
+@api_router.get("/workspace/packages/{pkg_name}")
+async def get_workspace_package(pkg_name: str) -> Dict[str, Any]:
+    p = _workspace_package_manager.get_package(pkg_name) if _workspace_package_manager else None
+    if not p and _package_manager:
+        p = _package_manager.get_package(pkg_name)
+    if not p:
+        raise HTTPException(status_code=404, detail="package_not_found")
+    return {
+        "name": p.name,
+        "scope": p.scope,
+        "version": p.version,
+        "description": p.description,
+        "manifest_path": p.manifest_path,
+        "package_dir": p.package_dir,
+        "resources": p.resources,
+    }
+
+
+@api_router.post("/workspace/packages")
+async def create_workspace_package(request: Dict[str, Any]) -> Dict[str, Any]:
+    if not _workspace_package_manager:
+        raise HTTPException(status_code=503, detail="Workspace package manager not available")
+    name = str((request or {}).get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="missing_name")
+    bundle = bool((request or {}).get("bundle", True))
+    resources = (request or {}).get("resources") or []
+    if not isinstance(resources, list):
+        raise HTTPException(status_code=400, detail="resources_must_be_list")
+
+    manifest = {
+        "name": name,
+        "version": str((request or {}).get("version") or "0.1.0"),
+        "description": str((request or {}).get("description") or ""),
+        "resources": resources,
+    }
+    info = _workspace_package_manager.upsert_package(manifest=manifest)
+
+    # Optional: bundle resources into package/bundle/*
+    if bundle:
+        try:
+            import shutil
+            from pathlib import Path
+
+            pkg_dir = Path(info.package_dir)
+            bdir = pkg_dir / "bundle"
+            if bdir.exists():
+                shutil.rmtree(bdir, ignore_errors=True)
+            (bdir / "agents").mkdir(parents=True, exist_ok=True)
+            (bdir / "skills").mkdir(parents=True, exist_ok=True)
+            (bdir / "mcps").mkdir(parents=True, exist_ok=True)
+            (bdir / "hooks").mkdir(parents=True, exist_ok=True)
+
+            repo_root = Path(__file__).resolve().parent  # aiPlat-core/core
+            engine_agents = (repo_root / "engine" / "agents").resolve()
+            engine_skills = (repo_root / "engine" / "skills").resolve()
+            engine_mcps = (repo_root / "engine" / "mcps").resolve()
+            wk_agents = (Path.home() / ".aiplat" / "agents").resolve()
+            wk_skills = (Path.home() / ".aiplat" / "skills").resolve()
+            wk_mcps = (Path.home() / ".aiplat" / "mcps").resolve()
+            wk_hooks = (Path.home() / ".aiplat" / "hooks").resolve()
+
+            for r in resources:
+                if not isinstance(r, dict):
+                    continue
+                kind = str(r.get("kind") or "")
+                rid = str(r.get("id") or "")
+                scope = str(r.get("scope") or "engine").lower()
+                if not kind or not rid:
+                    continue
+                if kind == "agent":
+                    src = (engine_agents / rid) if scope == "engine" else (wk_agents / rid)
+                    dst = bdir / "agents" / rid
+                    if src.exists() and src.is_dir():
+                        shutil.copytree(src, dst, dirs_exist_ok=True)
+                        r["bundled"] = True
+                elif kind == "skill":
+                    src = (engine_skills / rid) if scope == "engine" else (wk_skills / rid)
+                    dst = bdir / "skills" / rid
+                    if src.exists() and src.is_dir():
+                        shutil.copytree(src, dst, dirs_exist_ok=True)
+                        r["bundled"] = True
+                elif kind == "mcp":
+                    src = (engine_mcps / rid) if scope == "engine" else (wk_mcps / rid)
+                    dst = bdir / "mcps" / rid
+                    if src.exists() and src.is_dir():
+                        shutil.copytree(src, dst, dirs_exist_ok=True)
+                        r["bundled"] = True
+                elif kind == "hook":
+                    src = wk_hooks / f"{rid}.py"
+                    dst = bdir / "hooks" / f"{rid}.py"
+                    if src.exists() and src.is_file():
+                        dst.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copy2(src, dst)
+                        r["bundled"] = True
+
+            (pkg_dir / "package.yaml").write_text(yaml.safe_dump(manifest, sort_keys=False, allow_unicode=True), encoding="utf-8")
+            _workspace_package_manager.reload()
+        except Exception:
+            pass
+
+    return {"status": "upserted", "package": await get_workspace_package(name)}
+
+
+@api_router.delete("/workspace/packages/{pkg_name}")
+async def delete_workspace_package(pkg_name: str) -> Dict[str, Any]:
+    if not _workspace_package_manager:
+        raise HTTPException(status_code=503, detail="Workspace package manager not available")
+    ok = _workspace_package_manager.delete_package(pkg_name)
+    if not ok:
+        raise HTTPException(status_code=404, detail="package_not_found")
+    return {"status": "deleted", "name": pkg_name}
+
+
+@api_router.post("/workspace/packages/{pkg_name}/install")
+async def install_workspace_package(pkg_name: str, http_request: Request, request: Dict[str, Any]) -> Dict[str, Any]:
+    allow_overwrite = bool((request or {}).get("allow_overwrite", False))
+    mgr = _workspace_package_manager if (_workspace_package_manager and _workspace_package_manager.get_package(pkg_name)) else _package_manager
+    if not mgr:
+        raise HTTPException(status_code=404, detail="package_not_found")
+    try:
+        record = mgr.install(pkg_name=pkg_name, allow_overwrite=allow_overwrite)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    _reload_workspace_managers()
+    await _sync_mcp_runtime()
+
+    try:
+        if _execution_store is not None and _job_scheduler is not None:
+            from core.harness.smoke import enqueue_autosmoke
+
+            tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID", "ops_smoke")
+            actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")
+            for it in (record.get("applied") or []):
+                k = str(it.get("kind") or "")
+                rid = str(it.get("id") or "")
+                if k not in {"agent", "skill", "mcp"} or not rid:
+                    continue
+                await enqueue_autosmoke(
+                    execution_store=_execution_store,
+                    job_scheduler=_job_scheduler,
+                    resource_type=k,
+                    resource_id=rid,
+                    tenant_id=tenant_id or "ops_smoke",
+                    actor_id=actor_id or "admin",
+                    detail={"op": "package_install", "package": pkg_name},
+                )
+    except Exception:
+        pass
+
+    return {"status": "installed", "record": record}
+
+
+@api_router.post("/workspace/packages/{pkg_name}/uninstall")
+async def uninstall_workspace_package(pkg_name: str, request: Dict[str, Any]) -> Dict[str, Any]:
+    if not _workspace_package_manager:
+        raise HTTPException(status_code=503, detail="Workspace package manager not available")
+    keep_modified = bool((request or {}).get("keep_modified", True))
+    try:
+        res = _workspace_package_manager.uninstall(pkg_name=pkg_name, keep_modified=keep_modified)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    _reload_workspace_managers()
+    await _sync_mcp_runtime()
+    return {"status": "uninstalled", "result": res}
 
 
 @api_router.get("/skills/{skill_id}/binding-stats")

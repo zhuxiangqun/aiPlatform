@@ -1,0 +1,20 @@
+name: starter
+version: 0.1.0
+description: "Starter package: react_agent + core skills (bundled-from-engine)"
+resources:
+  - kind: agent
+    id: react_agent
+    scope: engine
+    bundled: false
+  - kind: skill
+    id: summarization
+    scope: engine
+    bundled: false
+  - kind: skill
+    id: task_planning
+    scope: engine
+    bundled: false
+  - kind: skill
+    id: task_decomposition
+    scope: engine
+    bundled: false

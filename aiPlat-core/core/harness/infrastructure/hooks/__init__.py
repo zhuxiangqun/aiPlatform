@@ -24,6 +24,8 @@ from .builtin import (
     BUILTIN_HOOKS,
 )
 
+from .workspace_loader import load_workspace_hooks
+
 __all__ = [
     "HookPhase",
     "HookContext",
@@ -42,4 +44,5 @@ __all__ = [
     "TokenLimitHook",
     "NotificationHook",
     "BUILTIN_HOOKS",
+    "load_workspace_hooks",
 ]
