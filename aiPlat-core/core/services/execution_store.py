@@ -5852,7 +5852,7 @@ class ExecutionStore:
                     raise KeyError("version_not_found")
                 conn.execute(
                     "UPDATE prompt_templates SET template=?, version=?, metadata_json=?, updated_at=? WHERE template_id=?;",
-                    (str(vrow["template"]), str(version), str(vrow.get("metadata_json") or "{}"), now, str(template_id)),
+                    (str(vrow["template"]), str(version), str(vrow["metadata_json"] or "{}"), now, str(template_id)),
                 )
                 conn.commit()
                 row = conn.execute("SELECT * FROM prompt_templates WHERE template_id=?;", (str(template_id),)).fetchone()
