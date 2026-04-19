@@ -5807,6 +5807,35 @@ async def delete_job_delivery_dlq(dlq_id: str):
     return {"status": "deleted", "dlq_id": dlq_id}
 
 
+# ==================== Diagnostics: E2E Smoke ====================
+
+
+@api_router.post("/diagnostics/e2e/smoke")
+async def run_e2e_smoke(request: Dict[str, Any]):
+    """
+    Production-grade full-chain smoke.
+
+    Notes:
+    - DeepSeek key is read from ENV (DEEPSEEK_API_KEY / AIPLAT_LLM_API_KEY) by core at runtime.
+    - This endpoint performs best-effort cleanup of created resources immediately.
+    """
+    harness = get_harness()
+    run_id = new_prefixed_id("run")
+    exec_req = ExecutionRequest(
+        kind="smoke_e2e",
+        target_id="smoke_e2e",
+        payload=request or {},
+        user_id=str((request or {}).get("actor_id") or "admin"),
+        session_id=str((request or {}).get("session_id") or "ops_smoke"),
+        request_id=run_id,
+        run_id=run_id,
+    )
+    result = await harness.execute(exec_req)
+    if not result.ok:
+        raise HTTPException(status_code=result.http_status, detail=result.error or "Smoke failed")
+    return result.payload
+
+
 # ==================== Health Check ====================
 
 @api_router.get("/health")

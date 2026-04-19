@@ -232,6 +232,23 @@ async def get_system_overview(request: Request) -> Dict[str, Any]:
     return overview
 
 
+# ==================== E2E Smoke (full-chain) ====================
+
+
+@router.post("/e2e/smoke")
+async def run_e2e_smoke(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Trigger a production-grade full-chain smoke test.
+
+    - For CI: call this endpoint and fail the pipeline if ok=false.
+    - For ops: can be triggered manually; schedule is handled by core Jobs (kind=smoke_e2e).
+    """
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="Core client not initialized")
+    return await core_client.run_e2e_smoke(body or {})
+
+
 @router.get("/graphs/{layer}")
 async def list_layer_graph_runs(
     layer: str,

@@ -128,6 +128,10 @@ class CoreAPIClient:
             json={"timeout_ms": int(timeout_ms), "after_seq": int(after_seq)},
         )
 
+    # ===== Diagnostics: E2E smoke =====
+    async def run_e2e_smoke(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", "/api/core/diagnostics/e2e/smoke", json=body or {})
+
     # ===== Jobs / Cron (Roadmap-3) =====
 
     async def list_jobs(self, *, limit: int = 100, offset: int = 0, enabled: Optional[bool] = None) -> Dict[str, Any]:

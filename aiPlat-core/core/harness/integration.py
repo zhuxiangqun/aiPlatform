@@ -159,6 +159,8 @@ class HarnessIntegration:
             return await self._execute_tool(request)
         if request.kind == "graph":
             return await self._execute_graph(request)
+        if request.kind == "smoke_e2e":
+            return await self._execute_smoke_e2e(request)
         return ExecutionResult(
             ok=False,
             error=f"Unsupported kind: {request.kind}",
@@ -1344,6 +1346,76 @@ class HarnessIntegration:
                     pass
         run_id = (final_state.get("metadata") or {}).get("graph_run_id")
         return ExecutionResult(ok=True, payload={"run_id": run_id, "final_state": final_state}, trace_id=trace_id, run_id=run_id)
+
+    async def _execute_smoke_e2e(self, req: "ExecutionRequest") -> "ExecutionResult":
+        """Production-grade full-chain smoke (for CI & ops)."""
+        from core.harness.kernel.types import ExecutionResult
+
+        runtime = self._runtime
+        if runtime is None or runtime.execution_store is None:
+            return self._fail(code="NOT_INITIALIZED", message="ExecutionStore not initialized", http_status=503)
+
+        payload = req.payload if isinstance(req.payload, dict) else {}
+        run_id = str(getattr(req, "run_id", None) or "") or new_prefixed_id("run")
+
+        trace_id = None
+        if runtime.trace_service:
+            try:
+                trace = await runtime.trace_service.start_trace(
+                    name="smoke:e2e",
+                    attributes={
+                        "run_id": run_id,
+                        "kind": "smoke_e2e",
+                        "actor_id": payload.get("actor_id") or req.user_id,
+                        "tenant_id": payload.get("tenant_id"),
+                    },
+                )
+                trace_id = trace.trace_id
+            except Exception:
+                trace_id = None
+
+        # run_start
+        try:
+            await runtime.execution_store.append_run_event(
+                run_id=run_id,
+                event_type="run_start",
+                trace_id=trace_id,
+                payload={"kind": "smoke_e2e", "status": "running"},
+            )
+        except Exception:
+            pass
+
+        try:
+            from core.harness.smoke.e2e import run_smoke_e2e
+
+            res = await run_smoke_e2e(payload=payload, execution_store=runtime.execution_store)
+            status = "completed" if res.get("ok") else "failed"
+            try:
+                await runtime.execution_store.append_run_event(
+                    run_id=run_id,
+                    event_type="run_end",
+                    trace_id=trace_id,
+                    payload={"kind": "smoke_e2e", "status": status},
+                )
+            except Exception:
+                pass
+            return ExecutionResult(
+                ok=True,
+                payload={"run_id": run_id, "status": status, **res},
+                trace_id=trace_id,
+                run_id=run_id,
+            )
+        except Exception as e:
+            try:
+                await runtime.execution_store.append_run_event(
+                    run_id=run_id,
+                    event_type="run_end",
+                    trace_id=trace_id,
+                    payload={"kind": "smoke_e2e", "status": "failed", "error": str(e)},
+                )
+            except Exception:
+                pass
+            return self._fail(code="EXCEPTION", message=str(e), http_status=500, trace_id=trace_id, run_id=run_id)
 
 
 @dataclass
