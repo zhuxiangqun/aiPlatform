@@ -35,6 +35,12 @@ export const ActionableFixes: React.FC<Props> = ({ actions, recommendations, onA
     Array.isArray(a?.input_schema?.required) ? (a.input_schema.required as string[]) : [];
 
   const isSensitive = (spec: any) => !!(spec && spec['x-ui'] && spec['x-ui'].sensitive);
+  const isHidden = (spec: any) => !!(spec && spec['x-ui'] && spec['x-ui'].hidden);
+  const orderOf = (spec: any) => {
+    const o = spec && spec['x-ui'] ? spec['x-ui'].order : undefined;
+    const n = typeof o === 'number' ? o : parseFloat(String(o || ''));
+    return Number.isFinite(n) ? n : 1000;
+  };
   const placeholderOf = (spec: any) => (spec && spec['x-ui'] ? spec['x-ui'].placeholder : undefined);
   const multilineOf = (spec: any) => !!(spec && spec['x-ui'] && spec['x-ui'].multiline);
 
@@ -55,6 +61,7 @@ export const ActionableFixes: React.FC<Props> = ({ actions, recommendations, onA
     const out: Record<string, any> = {};
 
     for (const [k, spec] of Object.entries<any>(props)) {
+      if (isHidden(spec)) continue;
       let v = vals?.[k];
       const t = String(spec?.type || 'string');
 
@@ -261,7 +268,10 @@ export const ActionableFixes: React.FC<Props> = ({ actions, recommendations, onA
               {msg[`global:${k}`] && <div className="mt-2 text-xs text-gray-400">{msg[`global:${k}`]}</div>}
               {a?.input_schema?.properties ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
-                  {Object.entries<any>(a.input_schema.properties || {}).map(([pk, spec]) => {
+                  {Object.entries<any>(a.input_schema.properties || {})
+                    .filter(([, spec]) => !isHidden(spec))
+                    .sort((a, b) => orderOf(a[1]) - orderOf(b[1]))
+                    .map(([pk, spec]) => {
                     const fullKey = `global:${k}`;
                     const v = formValues?.[fullKey]?.[pk];
                     const t = String(spec?.type || 'string');
@@ -362,7 +372,10 @@ export const ActionableFixes: React.FC<Props> = ({ actions, recommendations, onA
                     <div key={`${fullKey}:form`} className="mt-2">
                       <div className="text-xs text-gray-500 mb-1">参数</div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        {Object.entries<any>(a.input_schema.properties || {}).map(([pk, spec]) => {
+                        {Object.entries<any>(a.input_schema.properties || {})
+                          .filter(([, spec]) => !isHidden(spec))
+                          .sort((a, b) => orderOf(a[1]) - orderOf(b[1]))
+                          .map(([pk, spec]) => {
                           const v = formValues?.[fullKey]?.[pk];
                           const t = String(spec?.type || 'string');
                           if (t === 'boolean') {
