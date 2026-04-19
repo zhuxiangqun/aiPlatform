@@ -96,6 +96,14 @@ def test_ops_export_and_prune(tmp_path, monkeypatch):
         assert ja.status_code == 200
         assert b"attempt" in ja.content
 
+        gp = client.get("/api/core/ops/export/gateway_pairings.csv", params={"limit": 50}, headers=headers)
+        assert gp.status_code == 200
+        assert b"channel_user_id" in gp.content
+
+        gt = client.get("/api/core/ops/export/gateway_tokens.csv", params={"limit": 50}, headers=headers)
+        assert gt.status_code == 200
+        assert b"tenant_id" in gt.content
+
         # prune should succeed (best-effort)
         p = client.post("/api/core/ops/prune", json={"now_ts": 1e12}, headers=headers)
         assert p.status_code == 200

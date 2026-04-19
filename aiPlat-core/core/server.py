@@ -11003,6 +11003,41 @@ async def export_job_delivery_attempts_csv(
     return Response(content=data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'})
 
 
+@api_router.get("/ops/export/gateway_pairings.csv")
+async def export_gateway_pairings_csv(
+    http_request: Request,
+    channel: Optional[str] = None,
+    user_id: Optional[str] = None,
+    limit: int = 5000,
+):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    deny = await _rbac_guard(http_request=http_request, payload=None, action="ops_export", resource_type="ops", resource_id="gateway_pairings")
+    if deny:
+        return deny
+    from core.apps.ops import OpsExporter
+
+    data, filename = await OpsExporter(execution_store=_execution_store).export_gateway_pairings_csv(channel=channel, user_id=user_id, limit=limit)
+    return Response(content=data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'})
+
+
+@api_router.get("/ops/export/gateway_tokens.csv")
+async def export_gateway_tokens_csv(
+    http_request: Request,
+    enabled: Optional[bool] = None,
+    limit: int = 5000,
+):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    deny = await _rbac_guard(http_request=http_request, payload=None, action="ops_export", resource_type="ops", resource_id="gateway_tokens")
+    if deny:
+        return deny
+    from core.apps.ops import OpsExporter
+
+    data, filename = await OpsExporter(execution_store=_execution_store).export_gateway_tokens_csv(enabled=enabled, limit=limit)
+    return Response(content=data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'})
+
+
 @api_router.get("/")
 async def root():
     """Root endpoint"""

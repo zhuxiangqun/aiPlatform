@@ -215,3 +215,27 @@ class OpsExporter:
         items = res.get("items") or []
         fieldnames = ["id", "job_id", "run_id", "attempt", "url", "status", "response_status", "error", "created_at"]
         return _csv_bytes(items, fieldnames=fieldnames), "job_delivery_attempts.csv"
+
+    async def export_gateway_pairings_csv(
+        self,
+        *,
+        channel: Optional[str] = None,
+        user_id: Optional[str] = None,
+        limit: int = 5000,
+    ) -> Tuple[bytes, str]:
+        res = await self._store.list_gateway_pairings(channel=channel, user_id=user_id, limit=int(limit), offset=0)
+        items = res.get("items") or []
+        fieldnames = ["id", "channel", "channel_user_id", "user_id", "session_id", "tenant_id", "created_at", "updated_at"]
+        return _csv_bytes(items, fieldnames=fieldnames), "gateway_pairings.csv"
+
+    async def export_gateway_tokens_csv(
+        self,
+        *,
+        enabled: Optional[bool] = None,
+        limit: int = 5000,
+    ) -> Tuple[bytes, str]:
+        res = await self._store.list_gateway_tokens(limit=int(limit), offset=0, enabled=enabled)
+        items = res.get("items") or []
+        # Note: token_sha256 intentionally not present in list_gateway_tokens result.
+        fieldnames = ["id", "name", "tenant_id", "enabled", "created_at"]
+        return _csv_bytes(items, fieldnames=fieldnames), "gateway_tokens.csv"
