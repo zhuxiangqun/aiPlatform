@@ -9206,7 +9206,12 @@ async def install_package(pkg_name: str, http_request: Request, request: Package
     if not _workspace_package_manager:
         raise HTTPException(status_code=503, detail="Workspace package manager not available")
 
+    change_id = _new_change_id()
     version = (request.version or "").strip() or None
+    force_approval_in_prod = (os.getenv("AIPLAT_PACKAGES_FORCE_APPROVAL_IN_PROD", "true") or "true").strip().lower() in {"1", "true", "yes", "on"}
+    if _runtime_env() == "prod" and force_approval_in_prod:
+        # prod 默认严格：强制走审批（fail-closed）
+        request.require_approval = True
 
     # Optional approval
     if request.require_approval:
@@ -9217,9 +9222,41 @@ async def install_package(pkg_name: str, http_request: Request, request: Package
                 details=request.details or f"install package {pkg_name}@{version or 'filesystem'}",
                 metadata={"package_name": pkg_name, "version": version},
             )
-            return {"status": "approval_required", "approval_request_id": rid}
+            try:
+                await _record_changeset(
+                    name="packages.install",
+                    target_type="change",
+                    target_id=change_id,
+                    status="approval_required",
+                    args={"package_name": pkg_name, "version": version, "scope": str(request.scope or "workspace")},
+                    approval_request_id=rid,
+                    user_id=str(http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")),
+                    tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID")) if http_request.headers.get("X-AIPLAT-TENANT-ID") else None,
+                    session_id=None,
+                )
+            except Exception:
+                pass
+            return {"status": "approval_required", "approval_request_id": rid, "change_id": change_id, "links": _change_links(change_id)}
         if not _is_approval_resolved_approved(request.approval_request_id):
-            raise HTTPException(status_code=409, detail="not_approved")
+            try:
+                await _record_changeset(
+                    name="packages.install",
+                    target_type="change",
+                    target_id=change_id,
+                    status="failed",
+                    args={"package_name": pkg_name, "version": version, "scope": str(request.scope or "workspace")},
+                    error="not_approved",
+                    approval_request_id=request.approval_request_id,
+                    user_id=str(http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")),
+                    tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID")) if http_request.headers.get("X-AIPLAT-TENANT-ID") else None,
+                    session_id=None,
+                )
+            except Exception:
+                pass
+            raise HTTPException(
+                status_code=409,
+                detail={"code": "not_approved", "message": "not_approved", "change_id": change_id, "links": _change_links(change_id)},
+            )
 
     applied_record: Dict[str, Any] = {}
     manifest: Dict[str, Any] = {}
@@ -9347,7 +9384,28 @@ async def install_package(pkg_name: str, http_request: Request, request: Package
     except Exception:
         pass
 
-    return {"status": "installed", "install": install_rec, "record": applied_record}
+    # Change control record (best-effort)
+    try:
+        targets = []
+        for it in (applied_record.get("applied") or []):
+            if isinstance(it, dict) and it.get("kind") and it.get("id"):
+                targets.append({"type": str(it.get("kind")), "id": str(it.get("id"))})
+        await _record_changeset(
+            name="packages.install",
+            target_type="change",
+            target_id=change_id,
+            status="success",
+            args={"package_name": pkg_name, "version": version, "scope": str(request.scope or "workspace"), "targets": targets},
+            result={"installed": True, "targets_count": len(targets)},
+            approval_request_id=request.approval_request_id,
+            user_id=str(http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")),
+            tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID")) if http_request.headers.get("X-AIPLAT-TENANT-ID") else None,
+            session_id=None,
+        )
+    except Exception:
+        pass
+
+    return {"status": "installed", "install": install_rec, "record": applied_record, "change_id": change_id, "links": _change_links(change_id)}
 
 
 @api_router.get("/packages/installs")
@@ -9358,7 +9416,7 @@ async def list_package_installs(scope: Optional[str] = None, limit: int = 100, o
 
 
 @api_router.post("/packages/{pkg_name}/uninstall")
-async def uninstall_package(pkg_name: str, request: PackageUninstallRequest):
+async def uninstall_package(pkg_name: str, http_request: Request, request: PackageUninstallRequest):
     """
     Uninstall a registry-installed package from workspace (best-effort, uses filesystem install record).
     """
@@ -9366,6 +9424,11 @@ async def uninstall_package(pkg_name: str, request: PackageUninstallRequest):
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
     if not _workspace_package_manager:
         raise HTTPException(status_code=503, detail="Workspace package manager not available")
+
+    change_id = _new_change_id()
+    force_approval_in_prod = (os.getenv("AIPLAT_PACKAGES_FORCE_APPROVAL_IN_PROD", "true") or "true").strip().lower() in {"1", "true", "yes", "on"}
+    if _runtime_env() == "prod" and force_approval_in_prod:
+        request.require_approval = True
 
     # Optional approval
     if request.require_approval:
@@ -9387,9 +9450,41 @@ async def uninstall_package(pkg_name: str, request: PackageUninstallRequest):
                 )
             except Exception:
                 pass
-            return {"status": "approval_required", "approval_request_id": rid}
+            try:
+                await _record_changeset(
+                    name="packages.uninstall",
+                    target_type="change",
+                    target_id=change_id,
+                    status="approval_required",
+                    args={"package_name": pkg_name, "keep_modified": bool(request.keep_modified)},
+                    approval_request_id=rid,
+                    user_id=str(http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")),
+                    tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID")) if http_request.headers.get("X-AIPLAT-TENANT-ID") else None,
+                    session_id=None,
+                )
+            except Exception:
+                pass
+            return {"status": "approval_required", "approval_request_id": rid, "change_id": change_id, "links": _change_links(change_id)}
         if not _is_approval_resolved_approved(request.approval_request_id):
-            raise HTTPException(status_code=409, detail="not_approved")
+            try:
+                await _record_changeset(
+                    name="packages.uninstall",
+                    target_type="change",
+                    target_id=change_id,
+                    status="failed",
+                    args={"package_name": pkg_name, "keep_modified": bool(request.keep_modified)},
+                    error="not_approved",
+                    approval_request_id=request.approval_request_id,
+                    user_id=str(http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")),
+                    tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID")) if http_request.headers.get("X-AIPLAT-TENANT-ID") else None,
+                    session_id=None,
+                )
+            except Exception:
+                pass
+            raise HTTPException(
+                status_code=409,
+                detail={"code": "not_approved", "message": "not_approved", "change_id": change_id, "links": _change_links(change_id)},
+            )
 
     try:
         res = _workspace_package_manager.uninstall(pkg_name=pkg_name, keep_modified=bool(request.keep_modified))
@@ -9408,9 +9503,31 @@ async def uninstall_package(pkg_name: str, request: PackageUninstallRequest):
     except Exception:
         pass
 
+    try:
+        await _record_changeset(
+            name="packages.uninstall",
+            target_type="change",
+            target_id=change_id,
+            status="success",
+            args={"package_name": pkg_name, "keep_modified": bool(request.keep_modified)},
+            result={"removed": len((res or {}).get("removed") or []), "kept": len((res or {}).get("kept") or [])},
+            approval_request_id=request.approval_request_id,
+            user_id=str(http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")),
+            tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID")) if http_request.headers.get("X-AIPLAT-TENANT-ID") else None,
+            session_id=None,
+        )
+    except Exception:
+        pass
+
     _reload_workspace_managers()
     await _sync_mcp_runtime()
-    return {"status": "uninstalled", "result": res, "approval_request_id": request.approval_request_id}
+    return {
+        "status": "uninstalled",
+        "result": res,
+        "approval_request_id": request.approval_request_id,
+        "change_id": change_id,
+        "links": _change_links(change_id),
+    }
 
 
 # ==================== Onboarding (core) ====================
