@@ -4,7 +4,7 @@ import { onboardingApi, diagnosticsApi } from '../../services/apiClient';
 import { approvalsApi, policyApi } from '../../services';
 import { ActionableFixes } from '../../components/common/ActionableFixes';
 
-type StepKey = 'adapter' | 'health' | 'smoke';
+type StepKey = 'adapter' | 'default_llm' | 'tenant' | 'strong_gate' | 'autosmoke' | 'secrets' | 'doctor' | 'health' | 'smoke';
 
 const StepBadge: React.FC<{ ok?: boolean; loading?: boolean }> = ({ ok, loading }) => {
   if (loading) return <RotateCw className="w-4 h-4 text-primary animate-spin" />;
@@ -256,11 +256,75 @@ const Onboarding: React.FC = () => {
   const steps = useMemo(
     () => [
       { key: 'adapter' as StepKey, title: '配置模型 Adapter', desc: '写入 core 的 Adapter 配置并测试连通性' },
+      { key: 'default_llm' as StepKey, title: '设为默认路由', desc: '配置全局默认 LLM 路由（需要审批时会自动轮询）' },
+      { key: 'tenant' as StepKey, title: '初始化 default tenant', desc: '初始化默认租户/最小策略（可选强门禁）' },
+      { key: 'strong_gate' as StepKey, title: '强门禁开关', desc: 'default tenant：控制“所有工具需审批”开关' },
+      { key: 'autosmoke' as StepKey, title: '配置 autosmoke', desc: '启用 autosmoke + enforce（发布前验证）' },
+      { key: 'secrets' as StepKey, title: '密钥与迁移', desc: '检查 SecretKey、迁移明文密钥、轮换 Adapter key' },
+      { key: 'doctor' as StepKey, title: 'Doctor 一键检查', desc: '聚合诊断 + Quick Fix Actions（自动审批轮询）' },
       { key: 'health' as StepKey, title: '检查全链路健康', desc: 'infra/core/platform/app 健康状态' },
       { key: 'smoke' as StepKey, title: '运行 E2E Smoke', desc: '触发一次生产级全链路冒烟' },
     ],
     []
   );
+
+  const defaultLlmOk = !!(state?.core_state?.default_llm?.adapter_id && state?.core_state?.default_llm?.model);
+  const tenantOk = !!(defaultTenantPolicy || state?.core_state?.tenants?.default || state?.core_state?.tenants?.items?.find?.((t: any) => t?.tenant_id === 'default'));
+  const autosmokeOk = !!state?.core_state?.autosmoke?.enabled;
+  const secretsOk =
+    !!state?.core_state?.secrets?.configured && (Number(secretsStatus?.plaintext_count ?? secretsStatus?.plain_count ?? 0) || 0) === 0;
+  const doctorOk = (() => {
+    if (!doctor) return false;
+    const h = doctor?.health;
+    if (typeof h?.ok === 'boolean') return h.ok;
+    if (h && typeof h === 'object') {
+      const coreOk = h?.core?.ok;
+      if (typeof coreOk === 'boolean') return coreOk;
+      const coreStatus = String(h?.core?.status || '').toLowerCase();
+      if (coreStatus === 'ok' || coreStatus === 'success') return true;
+    }
+    return true;
+  })();
+
+  const getStepOk = (k: StepKey) => {
+    if (k === 'adapter') return adapterOk;
+    if (k === 'default_llm') return defaultLlmOk;
+    if (k === 'tenant') return tenantOk;
+    if (k === 'strong_gate') return isStrongGateEnabled;
+    if (k === 'autosmoke') return autosmokeOk;
+    if (k === 'secrets') return secretsOk;
+    if (k === 'doctor') return doctorOk;
+    if (k === 'health') return healthOk;
+    if (k === 'smoke') return smokeOk;
+    return undefined;
+  };
+
+  const getStepLoading = (k: StepKey) => {
+    if (k === 'adapter') return adapterLoading;
+    if (k === 'default_llm') return defaultLlmLoading;
+    if (k === 'tenant') return initTenantLoading;
+    if (k === 'strong_gate') return strongGateLoading;
+    if (k === 'autosmoke') return autosmokeLoading;
+    if (k === 'secrets') return secretsLoading || migrateSecretsLoading || rotateKeyLoading;
+    if (k === 'doctor') return doctorLoading;
+    if (k === 'health') return healthLoading;
+    if (k === 'smoke') return smokeLoading;
+    return false;
+  };
+
+  // After initial loads, auto-jump to first failed step (best-effort).
+  useEffect(() => {
+    if (!state && !doctor) return;
+    const order: StepKey[] = ['adapter', 'default_llm', 'tenant', 'strong_gate', 'autosmoke', 'secrets', 'doctor', 'health', 'smoke'];
+    for (const k of order) {
+      const ok = getStepOk(k);
+      if (ok === false) {
+        setActiveStep(k);
+        return;
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, doctor]);
 
   const healthOk = useMemo(() => {
     const h = healthResult?.health || state?.health;
@@ -555,8 +619,8 @@ const Onboarding: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {steps.map((s) => {
           const active = activeStep === s.key;
-          const ok = s.key === 'adapter' ? adapterOk : s.key === 'health' ? healthOk : smokeOk;
-          const loading = s.key === 'adapter' ? adapterLoading : s.key === 'health' ? healthLoading : smokeLoading;
+          const ok = getStepOk(s.key);
+          const loading = getStepLoading(s.key);
           return (
             <button
               key={s.key}
@@ -645,6 +709,263 @@ const Onboarding: React.FC = () => {
         </div>
       )}
 
+      {activeStep === 'default_llm' && (
+        <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-4">
+          <div className="text-gray-200 font-medium">Step：设为默认路由（全局，需审批）</div>
+          <div className="text-xs text-gray-500">建议先完成 Adapter 配置；若触发审批会自动轮询并在批准后自动生效。</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <div className="text-xs text-gray-500 mb-1">默认 Adapter</div>
+              <select
+                value={defaultLlmForm.adapter_id}
+                onChange={(e) => setDefaultLlmForm({ ...defaultLlmForm, adapter_id: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
+              >
+                {(state?.adapters?.adapters || []).map((a: any) => (
+                  <option key={a.adapter_id} value={a.adapter_id}>
+                    {a.name} ({a.provider})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <div className="text-xs text-gray-500 mb-1">默认 Model</div>
+              <input
+                value={defaultLlmForm.model}
+                onChange={(e) => setDefaultLlmForm({ ...defaultLlmForm, model: e.target.value })}
+                placeholder="例如：deepseek-reasoner"
+                className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <div className="text-xs text-gray-500 mb-1">approval_request_id（可选：批准后填入再提交）</div>
+              <input
+                value={defaultLlmApprovalId}
+                onChange={(e) => setDefaultLlmApprovalId(e.target.value)}
+                placeholder="例如：apr-xxxx"
+                className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <div className="text-xs text-gray-500 mb-1">details（可选：审批说明/备注）</div>
+              <textarea
+                value={defaultLlmDetails}
+                onChange={(e) => setDefaultLlmDetails(e.target.value)}
+                placeholder="例如：将默认路由切到 deepseek-reasoner"
+                className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
+                rows={3}
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              disabled={defaultLlmLoading}
+              onClick={setDefaultLLM}
+              className="px-4 py-2 rounded-lg bg-primary text-white text-sm hover:opacity-90 disabled:opacity-60"
+            >
+              {defaultLlmLoading ? '提交中…' : '提交审批/生效'}
+            </button>
+            <button
+              onClick={async () => {
+                await refreshState();
+              }}
+              className="px-4 py-2 rounded-lg bg-dark-hover text-gray-200 border border-dark-border text-sm hover:bg-dark-border"
+            >
+              复检
+            </button>
+          </div>
+          <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
+            当前 default_llm：{JSON.stringify(state?.core_state?.default_llm || null, null, 2)}
+          </pre>
+          {defaultLlmResult && (
+            <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
+              {JSON.stringify(defaultLlmResult || {}, null, 2)}
+            </pre>
+          )}
+        </div>
+      )}
+
+      {activeStep === 'tenant' && (
+        <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-4">
+          <div className="text-gray-200 font-medium">Step：初始化默认 Tenant/Policies（需审批）</div>
+          <div>
+            <div className="text-xs text-gray-500 mb-1">approval_request_id（可选：批准后填入再提交）</div>
+            <input
+              value={initTenantApprovalId}
+              onChange={(e) => setInitTenantApprovalId(e.target.value)}
+              placeholder="例如：apr-xxxx"
+              className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
+            />
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 mb-1">details（可选：审批说明/备注）</div>
+            <textarea
+              value={initTenantDetails}
+              onChange={(e) => setInitTenantDetails(e.target.value)}
+              placeholder="例如：初始化 default tenant 并写入最小 policy"
+              className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
+              rows={3}
+            />
+          </div>
+          <label className="flex items-center gap-2 text-sm text-gray-300">
+            <input type="checkbox" checked={strictToolApproval} onChange={(e) => setStrictToolApproval(e.target.checked)} />
+            强门禁：所有工具执行都需审批（approval_required_tools=['*']）
+          </label>
+          <div className="flex items-center gap-2">
+            <button
+              disabled={initTenantLoading}
+              onClick={initTenant}
+              className="px-4 py-2 rounded-lg bg-primary text-white text-sm hover:opacity-90 disabled:opacity-60"
+            >
+              {initTenantLoading ? '提交中…' : '初始化 default tenant'}
+            </button>
+            <button
+              onClick={async () => {
+                await refreshDefaultTenantPolicy();
+                await refreshState();
+              }}
+              className="px-4 py-2 rounded-lg bg-dark-hover text-gray-200 border border-dark-border text-sm hover:bg-dark-border"
+            >
+              复检
+            </button>
+          </div>
+          <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
+            {JSON.stringify(initTenantResult || state?.core_state?.tenants || {}, null, 2)}
+          </pre>
+        </div>
+      )}
+
+      {activeStep === 'strong_gate' && (
+        <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="text-gray-200 font-medium">Step：强门禁开关（default tenant，需审批）</div>
+            <button
+              onClick={refreshDefaultTenantPolicy}
+              className="px-3 py-1.5 rounded-lg bg-dark-hover text-gray-200 hover:bg-dark-border transition-colors text-xs"
+            >
+              {tenantPolicyLoading ? '刷新中…' : '刷新'}
+            </button>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 mb-1">details（可选：审批说明/备注）</div>
+            <textarea
+              value={strongGateDetails}
+              onChange={(e) => setStrongGateDetails(e.target.value)}
+              placeholder="例如：误开启强门禁，需要解除"
+              className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
+              rows={3}
+            />
+          </div>
+          <div className="text-sm text-gray-500">当前状态：{isStrongGateEnabled ? '已开启（所有工具需审批）' : '未开启'}</div>
+          <div className="flex items-center gap-2">
+            <button
+              disabled={strongGateLoading || isStrongGateEnabled}
+              onClick={() => submitStrongGate(true)}
+              className="px-4 py-2 rounded-lg bg-primary text-white text-sm hover:opacity-90 disabled:opacity-60"
+            >
+              启用强门禁
+            </button>
+            <button
+              disabled={strongGateLoading || !isStrongGateEnabled}
+              onClick={() => submitStrongGate(false)}
+              className="px-4 py-2 rounded-lg bg-dark-hover text-gray-200 border border-dark-border text-sm hover:bg-dark-border disabled:opacity-60"
+            >
+              解除强门禁
+            </button>
+            <button
+              onClick={async () => {
+                await refreshDefaultTenantPolicy();
+              }}
+              className="px-4 py-2 rounded-lg bg-dark-hover text-gray-200 border border-dark-border text-sm hover:bg-dark-border"
+            >
+              复检
+            </button>
+          </div>
+          {strongGateResult && (
+            <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
+              {JSON.stringify(strongGateResult || {}, null, 2)}
+            </pre>
+          )}
+          {defaultTenantPolicy && (
+            <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
+              {JSON.stringify(defaultTenantPolicy || {}, null, 2)}
+            </pre>
+          )}
+        </div>
+      )}
+
+      {activeStep === 'autosmoke' && (
+        <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-4">
+          <div className="text-gray-200 font-medium">Step：配置 autosmoke（配置中心，需审批）</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <label className="flex items-center gap-2 text-sm text-gray-300">
+              <input
+                type="checkbox"
+                checked={autosmokeForm.enabled}
+                onChange={(e) => setAutosmokeForm((p) => ({ ...p, enabled: e.target.checked }))}
+              />
+              启用 autosmoke
+            </label>
+            <label className="flex items-center gap-2 text-sm text-gray-300">
+              <input
+                type="checkbox"
+                checked={autosmokeForm.enforce}
+                onChange={(e) => setAutosmokeForm((p) => ({ ...p, enforce: e.target.checked }))}
+              />
+              强门禁（未验证则阻止发布/启用）
+            </label>
+            <div className="md:col-span-2">
+              <div className="text-xs text-gray-500 mb-1">Webhook URL（可选）</div>
+              <input
+                value={autosmokeForm.webhook_url}
+                onChange={(e) => setAutosmokeForm((p) => ({ ...p, webhook_url: e.target.value }))}
+                placeholder="https://hooks.slack.com/..."
+                className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <div className="text-xs text-gray-500 mb-1">approval_request_id（可选）</div>
+              <input
+                value={autosmokeApprovalId}
+                onChange={(e) => setAutosmokeApprovalId(e.target.value)}
+                placeholder="例如：apr-xxxx"
+                className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <div className="text-xs text-gray-500 mb-1">details（可选：审批说明/备注）</div>
+              <textarea
+                value={autosmokeDetails}
+                onChange={(e) => setAutosmokeDetails(e.target.value)}
+                placeholder="例如：开启 autosmoke 强门禁，确保发布前验证通过"
+                className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
+                rows={3}
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              disabled={autosmokeLoading}
+              onClick={() => submitAutosmoke()}
+              className="px-4 py-2 rounded-lg bg-primary text-white text-sm hover:opacity-90 disabled:opacity-60"
+            >
+              {autosmokeLoading ? '提交中…' : '提交审批/生效'}
+            </button>
+            <button
+              onClick={async () => {
+                await refreshState();
+              }}
+              className="px-4 py-2 rounded-lg bg-dark-hover text-gray-200 border border-dark-border text-sm hover:bg-dark-border"
+            >
+              复检
+            </button>
+          </div>
+          <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
+            {JSON.stringify(autosmokeResult || state?.core_state?.autosmoke || {}, null, 2)}
+          </pre>
+        </div>
+      )}
+
       {activeStep === 'health' && (
         <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-4">
           <div className="text-gray-200 font-medium">Step 2：检查全链路健康</div>
@@ -677,13 +998,127 @@ const Onboarding: React.FC = () => {
         </div>
       )}
 
-      {/* Current adapters snapshot */}
-      <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-3">
-        <div className="text-gray-200 font-medium">当前 Adapter 列表（core）</div>
-        <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
-          {JSON.stringify(state?.adapters || {}, null, 2)}
-        </pre>
-      </div>
+      {activeStep === 'secrets' && (
+        <div className="space-y-4">
+          <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-3">
+            <div className="text-gray-200 font-medium">密钥存储状态</div>
+            <div className="text-sm text-gray-500">
+              AIPLAT_SECRET_KEY：{state?.core_state?.secrets?.configured ? '已配置（api_key 将加密存储）' : '未配置（将回退为明文存储，建议尽快配置）'}
+            </div>
+            {!state?.core_state?.secrets?.configured && (
+              <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
+                {`# 生成 Fernet key（一次性）\npython3 -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\"\n# 设置环境变量（示例）\nexport AIPLAT_SECRET_KEY='<paste-key-here>'\n`}
+              </pre>
+            )}
+          </div>
+
+          <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="text-gray-200 font-medium">历史明文密钥迁移（需审批）</div>
+              <button
+                onClick={refreshSecrets}
+                className="px-3 py-1.5 rounded-lg bg-dark-hover text-gray-200 hover:bg-dark-border transition-colors text-xs"
+              >
+                {secretsLoading ? '刷新中…' : '刷新'}
+              </button>
+            </div>
+            <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
+              {JSON.stringify(secretsStatus || {}, null, 2)}
+            </pre>
+            <div>
+              <div className="text-xs text-gray-500 mb-1">approval_request_id（可选）</div>
+              <input
+                value={migrateSecretsApprovalId}
+                onChange={(e) => setMigrateSecretsApprovalId(e.target.value)}
+                placeholder="例如：apr-xxxx"
+                className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
+              />
+            </div>
+            <div>
+              <div className="text-xs text-gray-500 mb-1">details（可选：审批说明/备注）</div>
+              <textarea
+                value={migrateSecretsDetails}
+                onChange={(e) => setMigrateSecretsDetails(e.target.value)}
+                placeholder="例如：将历史明文 key 迁移为加密存储"
+                className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
+                rows={3}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                disabled={migrateSecretsLoading}
+                onClick={() => submitMigrateSecrets()}
+                className="px-4 py-2 rounded-lg bg-primary text-white text-sm hover:opacity-90 disabled:opacity-60"
+              >
+                {migrateSecretsLoading ? '提交中…' : '提交审批/迁移'}
+              </button>
+              <button
+                onClick={async () => {
+                  await refreshSecrets();
+                  await refreshState();
+                }}
+                className="px-4 py-2 rounded-lg bg-dark-hover text-gray-200 border border-dark-border text-sm hover:bg-dark-border"
+              >
+                复检
+              </button>
+            </div>
+            <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
+              {JSON.stringify(migrateSecretsResult || {}, null, 2)}
+            </pre>
+            <div className="text-xs text-gray-500">
+              说明：需要先配置 AIPLAT_SECRET_KEY；迁移会把 adapters.api_key（明文）加密到 api_key_enc 并清空 api_key。
+            </div>
+          </div>
+
+          <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-4">
+            <div className="text-gray-200 font-medium">轮换 Adapter API Key（不回显旧 key）</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <div className="text-xs text-gray-500 mb-1">选择 Adapter</div>
+                <select
+                  value={rotateKeyForm.adapter_id}
+                  onChange={(e) => setRotateKeyForm({ ...rotateKeyForm, adapter_id: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
+                >
+                  {(state?.adapters?.adapters || []).map((a: any) => (
+                    <option key={a.adapter_id} value={a.adapter_id}>
+                      {a.name} ({a.provider})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 mb-1">新 API Key</div>
+                <input
+                  type="password"
+                  value={rotateKeyForm.api_key}
+                  onChange={(e) => setRotateKeyForm({ ...rotateKeyForm, api_key: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                disabled={rotateKeyLoading}
+                onClick={rotateKey}
+                className="px-4 py-2 rounded-lg bg-primary text-white text-sm hover:opacity-90 disabled:opacity-60"
+              >
+                {rotateKeyLoading ? '提交中…' : '轮换 Key'}
+              </button>
+              <button
+                onClick={async () => {
+                  await refreshState();
+                }}
+                className="px-4 py-2 rounded-lg bg-dark-hover text-gray-200 border border-dark-border text-sm hover:bg-dark-border"
+              >
+                复检
+              </button>
+              {rotateKeyResult?.status === 'rotated' && <div className="text-sm text-gray-500">已更新</div>}
+              {rotateKeyResult?.status === 'error' && <div className="text-sm text-red-400">失败：{rotateKeyResult.error}</div>}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Approvals inline */}
       <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-3">
@@ -736,342 +1171,44 @@ const Onboarding: React.FC = () => {
         )}
       </div>
 
-      {/* Enhancements */}
-      <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-4">
-        <div className="text-gray-200 font-medium">增强：设为默认路由（全局，需审批）</div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <div className="text-xs text-gray-500 mb-1">默认 Adapter</div>
-            <select
-              value={defaultLlmForm.adapter_id}
-              onChange={(e) => setDefaultLlmForm({ ...defaultLlmForm, adapter_id: e.target.value })}
-              className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
-            >
-              {(state?.adapters?.adapters || []).map((a: any) => (
-                <option key={a.adapter_id} value={a.adapter_id}>
-                  {a.name} ({a.provider})
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <div className="text-xs text-gray-500 mb-1">默认 Model</div>
-            <input
-              value={defaultLlmForm.model}
-              onChange={(e) => setDefaultLlmForm({ ...defaultLlmForm, model: e.target.value })}
-              placeholder="例如：deepseek-reasoner"
-              className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <div className="text-xs text-gray-500 mb-1">approval_request_id（可选：批准后填入再提交）</div>
-            <input
-              value={defaultLlmApprovalId}
-              onChange={(e) => setDefaultLlmApprovalId(e.target.value)}
-              placeholder="例如：apr-xxxx"
-              className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <div className="text-xs text-gray-500 mb-1">details（可选：审批说明/备注）</div>
-            <textarea
-              value={defaultLlmDetails}
-              onChange={(e) => setDefaultLlmDetails(e.target.value)}
-              placeholder="例如：将默认路由切到 deepseek-reasoner"
-              className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
-              rows={3}
-            />
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            disabled={defaultLlmLoading}
-            onClick={setDefaultLLM}
-            className="px-4 py-2 rounded-lg bg-primary text-white text-sm hover:opacity-90 disabled:opacity-60"
-          >
-            {defaultLlmLoading ? '提交中…' : '提交审批/生效'}
-          </button>
-          {defaultLlmResult?.status === 'approval_required' && (
-            <div className="text-sm text-gray-500">
-              已创建审批：<code className="text-xs">{defaultLlmResult.approval_request_id}</code>，请到 <code>/core/approvals</code> 批准后重试提交（携带 approval_request_id）。
+      {activeStep === 'doctor' && (
+        <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="text-gray-200 font-medium">配置检查（Doctor）</div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={async () => {
+                  await refreshDoctor();
+                  await refreshState();
+                  await refreshSecrets();
+                  await refreshDefaultTenantPolicy();
+                }}
+                className="px-3 py-1.5 rounded-lg bg-dark-hover text-gray-200 hover:bg-dark-border transition-colors text-xs"
+              >
+                {doctorLoading ? '刷新中…' : '刷新/复检'}
+              </button>
             </div>
-          )}
-          {defaultLlmResult?.status === 'updated' && <div className="text-sm text-gray-500">已更新默认路由</div>}
-          {defaultLlmResult?.status === 'error' && <div className="text-sm text-red-400">失败：{defaultLlmResult.error}</div>}
-        </div>
-        <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
-          当前 default_llm：{JSON.stringify(state?.core_state?.default_llm || null, null, 2)}
-        </pre>
-      </div>
-
-      <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-4">
-        <div className="text-gray-200 font-medium">增强：初始化默认 Tenant/Policies（需审批）</div>
-        <div>
-          <div className="text-xs text-gray-500 mb-1">approval_request_id（可选：批准后填入再提交）</div>
-          <input
-            value={initTenantApprovalId}
-            onChange={(e) => setInitTenantApprovalId(e.target.value)}
-            placeholder="例如：apr-xxxx"
-            className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
-          />
-        </div>
-        <div>
-          <div className="text-xs text-gray-500 mb-1">details（可选：审批说明/备注）</div>
-          <textarea
-            value={initTenantDetails}
-            onChange={(e) => setInitTenantDetails(e.target.value)}
-            placeholder="例如：初始化 default tenant 并写入最小 policy"
-            className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
-            rows={3}
-          />
-        </div>
-        <label className="flex items-center gap-2 text-sm text-gray-300">
-          <input type="checkbox" checked={strictToolApproval} onChange={(e) => setStrictToolApproval(e.target.checked)} />
-          强门禁：所有工具执行都需审批（approval_required_tools=['*']）
-        </label>
-        <button
-          disabled={initTenantLoading}
-          onClick={initTenant}
-          className="px-4 py-2 rounded-lg bg-primary text-white text-sm hover:opacity-90 disabled:opacity-60"
-        >
-          {initTenantLoading ? '提交中…' : '初始化 default tenant'}
-        </button>
-        <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
-          {JSON.stringify(initTenantResult || state?.core_state?.tenants || {}, null, 2)}
-        </pre>
-      </div>
-
-      <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="text-gray-200 font-medium">强门禁开关（default tenant，需审批）</div>
-          <button
-            onClick={refreshDefaultTenantPolicy}
-            className="px-3 py-1.5 rounded-lg bg-dark-hover text-gray-200 hover:bg-dark-border transition-colors text-xs"
-          >
-            {tenantPolicyLoading ? '刷新中…' : '刷新'}
-          </button>
-        </div>
-        <div>
-          <div className="text-xs text-gray-500 mb-1">details（可选：审批说明/备注）</div>
-          <textarea
-            value={strongGateDetails}
-            onChange={(e) => setStrongGateDetails(e.target.value)}
-            placeholder="例如：误开启强门禁，需要解除"
-            className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
-            rows={3}
-          />
-        </div>
-        <div className="text-sm text-gray-500">
-          当前状态：{isStrongGateEnabled ? '已开启（所有工具需审批）' : '未开启'}
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            disabled={strongGateLoading || isStrongGateEnabled}
-            onClick={() => submitStrongGate(true)}
-            className="px-4 py-2 rounded-lg bg-primary text-white text-sm hover:opacity-90 disabled:opacity-60"
-          >
-            启用强门禁
-          </button>
-          <button
-            disabled={strongGateLoading || !isStrongGateEnabled}
-            onClick={() => submitStrongGate(false)}
-            className="px-4 py-2 rounded-lg bg-dark-hover text-gray-200 border border-dark-border text-sm hover:bg-dark-border disabled:opacity-60"
-          >
-            解除强门禁
-          </button>
-        </div>
-        {strongGateResult && (
-          <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
-            {JSON.stringify(strongGateResult || {}, null, 2)}
-          </pre>
-        )}
-      </div>
-
-      <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-4">
-        <div className="text-gray-200 font-medium">增强：配置 autosmoke（配置中心，需审批）</div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <label className="flex items-center gap-2 text-sm text-gray-300">
-            <input
-              type="checkbox"
-              checked={autosmokeForm.enabled}
-              onChange={(e) => setAutosmokeForm((p) => ({ ...p, enabled: e.target.checked }))}
-            />
-            启用 autosmoke
-          </label>
-          <label className="flex items-center gap-2 text-sm text-gray-300">
-            <input
-              type="checkbox"
-              checked={autosmokeForm.enforce}
-              onChange={(e) => setAutosmokeForm((p) => ({ ...p, enforce: e.target.checked }))}
-            />
-            强门禁（未验证则阻止发布/启用）
-          </label>
-          <div className="md:col-span-2">
-            <div className="text-xs text-gray-500 mb-1">Webhook URL（可选）</div>
-            <input
-              value={autosmokeForm.webhook_url}
-              onChange={(e) => setAutosmokeForm((p) => ({ ...p, webhook_url: e.target.value }))}
-              placeholder="https://hooks.slack.com/..."
-              className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
-            />
           </div>
-          <div className="md:col-span-2">
-            <div className="text-xs text-gray-500 mb-1">approval_request_id（可选）</div>
-            <input
-              value={autosmokeApprovalId}
-              onChange={(e) => setAutosmokeApprovalId(e.target.value)}
-              placeholder="例如：apr-xxxx"
-              className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <div className="text-xs text-gray-500 mb-1">details（可选：审批说明/备注）</div>
-            <textarea
-              value={autosmokeDetails}
-              onChange={(e) => setAutosmokeDetails(e.target.value)}
-              placeholder="例如：开启 autosmoke 强门禁，确保发布前验证通过"
-              className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
-              rows={3}
-            />
-          </div>
-        </div>
-        <button
-          disabled={autosmokeLoading}
-          onClick={() => submitAutosmoke()}
-          className="px-4 py-2 rounded-lg bg-primary text-white text-sm hover:opacity-90 disabled:opacity-60"
-        >
-          {autosmokeLoading ? '提交中…' : '提交审批/生效'}
-        </button>
-        <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
-          {JSON.stringify(autosmokeResult || {}, null, 2)}
-        </pre>
-      </div>
-
-      <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-3">
-        <div className="text-gray-200 font-medium">安全：密钥存储状态</div>
-        <div className="text-sm text-gray-500">
-          AIPLAT_SECRET_KEY：{state?.core_state?.secrets?.configured ? '已配置（api_key 将加密存储）' : '未配置（将回退为明文存储，建议尽快配置）'}
-        </div>
-        {!state?.core_state?.secrets?.configured && (
-          <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
-            {`# 生成 Fernet key（一次性）\npython3 -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\"\n# 设置环境变量（示例）\nexport AIPLAT_SECRET_KEY='<paste-key-here>'\n`}
-          </pre>
-        )}
-      </div>
-
-      <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="text-gray-200 font-medium">安全：历史明文密钥迁移（需审批）</div>
-          <button
-            onClick={refreshSecrets}
-            className="px-3 py-1.5 rounded-lg bg-dark-hover text-gray-200 hover:bg-dark-border transition-colors text-xs"
-          >
-            {secretsLoading ? '刷新中…' : '刷新'}
-          </button>
-        </div>
-        <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
-          {JSON.stringify(secretsStatus || {}, null, 2)}
-        </pre>
-        <div>
-          <div className="text-xs text-gray-500 mb-1">approval_request_id（可选）</div>
-          <input
-            value={migrateSecretsApprovalId}
-            onChange={(e) => setMigrateSecretsApprovalId(e.target.value)}
-            placeholder="例如：apr-xxxx"
-            className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
-          />
-        </div>
-        <div>
-          <div className="text-xs text-gray-500 mb-1">details（可选：审批说明/备注）</div>
-          <textarea
-            value={migrateSecretsDetails}
-            onChange={(e) => setMigrateSecretsDetails(e.target.value)}
-            placeholder="例如：将历史明文 key 迁移为加密存储"
-            className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
-            rows={3}
-          />
-        </div>
-        <button
-          disabled={migrateSecretsLoading}
-          onClick={() => submitMigrateSecrets()}
-          className="px-4 py-2 rounded-lg bg-primary text-white text-sm hover:opacity-90 disabled:opacity-60"
-        >
-          {migrateSecretsLoading ? '提交中…' : '提交审批/迁移'}
-        </button>
-        <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
-          {JSON.stringify(migrateSecretsResult || {}, null, 2)}
-        </pre>
-        <div className="text-xs text-gray-500">
-          说明：需要先配置 AIPLAT_SECRET_KEY；迁移会把 adapters.api_key（明文）加密到 api_key_enc 并清空 api_key。
-        </div>
-      </div>
-
-      <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-4">
-        <div className="text-gray-200 font-medium">安全：轮换 Adapter API Key（不回显旧 key）</div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <div className="text-xs text-gray-500 mb-1">选择 Adapter</div>
-            <select
-              value={rotateKeyForm.adapter_id}
-              onChange={(e) => setRotateKeyForm({ ...rotateKeyForm, adapter_id: e.target.value })}
-              className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
+          <ActionableFixes actions={doctor?.actions} recommendations={doctor?.recommendations} onAfterAction={refreshDoctor} />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => copyText(`export AIPLAT_MANAGEMENT_PUBLIC_URL='${doctor?.config?.management_public_url || 'https://<your-host>'}'\n`)}
+              className="px-3 py-1.5 rounded-lg bg-dark-hover text-gray-200 hover:bg-dark-border transition-colors text-xs"
             >
-              {(state?.adapters?.adapters || []).map((a: any) => (
-                <option key={a.adapter_id} value={a.adapter_id}>
-                  {a.name} ({a.provider})
-                </option>
-              ))}
-            </select>
+              复制 Public URL 示例
+            </button>
+            <button
+              onClick={() => copyText(`export AIPLAT_AUTOSMOKE_ENABLED=true\nexport AIPLAT_AUTOSMOKE_ENFORCE=true\n`)}
+              className="px-3 py-1.5 rounded-lg bg-dark-hover text-gray-200 hover:bg-dark-border transition-colors text-xs"
+            >
+              复制 autosmoke 示例
+            </button>
           </div>
-          <div>
-            <div className="text-xs text-gray-500 mb-1">新 API Key</div>
-            <input
-              type="password"
-              value={rotateKeyForm.api_key}
-              onChange={(e) => setRotateKeyForm({ ...rotateKeyForm, api_key: e.target.value })}
-              className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
-            />
-          </div>
+          <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
+            {JSON.stringify(doctor || {}, null, 2)}
+          </pre>
         </div>
-        <div className="flex items-center gap-3">
-          <button
-            disabled={rotateKeyLoading}
-            onClick={rotateKey}
-            className="px-4 py-2 rounded-lg bg-primary text-white text-sm hover:opacity-90 disabled:opacity-60"
-          >
-            {rotateKeyLoading ? '提交中…' : '轮换 Key'}
-          </button>
-          {rotateKeyResult?.status === 'rotated' && <div className="text-sm text-gray-500">已更新</div>}
-          {rotateKeyResult?.status === 'error' && <div className="text-sm text-red-400">失败：{rotateKeyResult.error}</div>}
-        </div>
-      </div>
-
-      <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="text-gray-200 font-medium">配置检查（Doctor）</div>
-          <button
-            onClick={refreshDoctor}
-            className="px-3 py-1.5 rounded-lg bg-dark-hover text-gray-200 hover:bg-dark-border transition-colors text-xs"
-          >
-            {doctorLoading ? '刷新中…' : '刷新'}
-          </button>
-        </div>
-        <ActionableFixes actions={doctor?.actions} recommendations={doctor?.recommendations} onAfterAction={refreshDoctor} />
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => copyText(`export AIPLAT_MANAGEMENT_PUBLIC_URL='${doctor?.config?.management_public_url || 'https://<your-host>'}'\n`)}
-            className="px-3 py-1.5 rounded-lg bg-dark-hover text-gray-200 hover:bg-dark-border transition-colors text-xs"
-          >
-            复制 Public URL 示例
-          </button>
-          <button
-            onClick={() => copyText(`export AIPLAT_AUTOSMOKE_ENABLED=true\nexport AIPLAT_AUTOSMOKE_ENFORCE=true\n`)}
-            className="px-3 py-1.5 rounded-lg bg-dark-hover text-gray-200 hover:bg-dark-border transition-colors text-xs"
-          >
-            复制 autosmoke 示例
-          </button>
-        </div>
-      </div>
+      )}
     </div>
   );
 };
