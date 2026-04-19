@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { approvalsApi, onboardingApi } from '../../services';
+import { approvalsApi, diagnosticsApi, onboardingApi } from '../../services';
 import { Badge } from '../ui';
 
 export type DoctorAction = {
@@ -14,6 +14,7 @@ const labelForActionKey = (key: string) => {
   if (key === 'toggle_strong_gate') return '解除强门禁';
   if (key === 'enable_autosmoke') return '开启 autosmoke';
   if (key === 'migrate_secrets') return '迁移明文密钥';
+  if (key === 'record_repo_changeset') return '记录 Repo 变更集';
   return `执行：${key}`;
 };
 
@@ -148,6 +149,8 @@ export const ActionableFixes: React.FC<Props> = ({ actions, recommendations, onA
         res = await onboardingApi.setAutosmoke(body);
       } else if (actionType === 'onboarding.secrets_migrate' || apiUrl === '/api/onboarding/secrets/migrate') {
         res = await onboardingApi.migrateSecrets(body);
+      } else if (actionType === 'diagnostics.repo_changeset_record' || apiUrl === '/api/diagnostics/repo/changeset/record') {
+        res = await diagnosticsApi.recordRepoChangeset(body);
       } else {
         setMsg((p) => ({ ...(p || {}), [k]: `未在白名单内的 action：${actionType || apiUrl}` }));
         return;

@@ -4,6 +4,7 @@ Diagnostics API
 
 from fastapi import APIRouter, HTTPException, Request
 from typing import Dict, Any, Optional
+import os
 
 router = APIRouter(prefix="/diagnostics", tags=["diagnostics"])
 
@@ -78,6 +79,28 @@ async def get_all_health(request: Request) -> Dict[str, Dict[str, Any]]:
         all_health[layer] = health
     
     return all_health
+
+
+@router.post("/repo/changeset/record")
+async def record_repo_changeset(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Record repo changeset into core syscall_events(kind=changeset).
+    Security: repo_root is server-controlled via AIPLAT_REPO_ROOT.
+    """
+    repo_root = os.getenv("AIPLAT_REPO_ROOT", "").strip()
+    if not repo_root:
+        raise HTTPException(status_code=400, detail="AIPLAT_REPO_ROOT is not set")
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="core_client not initialized")
+
+    details = ""
+    try:
+        details = str((body or {}).get("details") or "").strip()
+    except Exception:
+        details = ""
+
+    return await core_client.repo_changeset_record({"repo_root": repo_root, "include_patch": False, "note": details})
 
 
 @router.get("/health")
@@ -514,6 +537,24 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
             },
             "body_example": {"enabled": True, "enforce": True, "require_approval": True},
         },
+        "record_repo_changeset": {
+            "action_type": "diagnostics.repo_changeset_record",
+            "method": "POST",
+            "api_url": "/api/diagnostics/repo/changeset/record",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "details": {
+                        "type": "string",
+                        "default": "",
+                        "description": "记录说明（可选）",
+                        "x-ui": {"multiline": True, "placeholder": "例如：本次准备提交修复 autosmoke 的变更", "order": 10},
+                    }
+                },
+                "required": [],
+            },
+            "body_example": {"details": ""},
+        },
     }
     config = {
         "management_public_url": os.getenv("AIPLAT_MANAGEMENT_PUBLIC_URL"),
@@ -601,6 +642,21 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
                 "actions": {"disable_strong_gate": actions["toggle_strong_gate"]},
             }
         )
+
+    # Repo changeset hint (if configured and dirty)
+    try:
+        dirty = int((repo_changeset or {}).get("status_lines") or 0) > 0
+        if dirty and config.get("repo_root"):
+            recs.append(
+                {
+                    "severity": "info",
+                    "code": "repo_changes_detected",
+                    "message": "检测到当前 repo 工作区有未提交变更；如需审计留痕，可记录为 ChangeSet。",
+                    "actions": {"record_repo_changeset": actions["record_repo_changeset"]},
+                }
+            )
+    except Exception:
+        pass
 
     # Capability governance hint
     try:

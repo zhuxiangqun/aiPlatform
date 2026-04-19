@@ -106,6 +106,10 @@ export const diagnosticsApi = {
     return apiClient.get<any>('/diagnostics/doctor');
   },
 
+  recordRepoChangeset: async (body: Record<string, unknown>) => {
+    return apiClient.post<any>('/diagnostics/repo/changeset/record', body);
+  },
+
   // ===== Observability (core only for now) =====
 
   listTraces: async (params: { limit?: number; offset?: number; status?: string } = {}) => {

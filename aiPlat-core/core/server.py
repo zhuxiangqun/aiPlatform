@@ -7718,7 +7718,7 @@ async def diagnostics_repo_changeset_record(request: RepoChangesetPreviewRequest
             name="repo_changeset_record",
             target_type="repo",
             target_id=str(preview.get("repo_root") or ""),
-            args={"branch": preview.get("branch"), "head": preview.get("head")},
+            args={"branch": preview.get("branch"), "head": preview.get("head"), "note": str(request.note or "").strip()},
             result={
                 "working_tree": preview.get("working_tree"),
                 "staged": preview.get("staged"),
