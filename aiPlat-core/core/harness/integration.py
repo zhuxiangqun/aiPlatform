@@ -292,6 +292,17 @@ class HarnessIntegration:
                     agent.set_model(adapter)  # type: ignore[attr-defined]
                 else:
                     setattr(agent, "_model", adapter)
+                # Many agents bind the model into an internal loop at construction time.
+                # Ensure loop model is updated as well, otherwise execution may still run with a None model.
+                try:
+                    loop = getattr(agent, "_loop", None)
+                    if loop is not None:
+                        if hasattr(loop, "set_model"):
+                            loop.set_model(adapter)  # type: ignore[attr-defined]
+                        elif hasattr(loop, "_model"):
+                            setattr(loop, "_model", adapter)
+                except Exception:
+                    pass
         except Exception:
             pass
 
