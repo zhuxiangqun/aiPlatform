@@ -43,7 +43,7 @@ class ExecutionStoreConfig:
 
 
 class ExecutionStore:
-    CURRENT_SCHEMA_VERSION = 28
+    CURRENT_SCHEMA_VERSION = 29
 
     def __init__(self, config: ExecutionStoreConfig):
         self._config = config
@@ -1045,6 +1045,38 @@ class ExecutionStore:
                         _set_version(28)
                         current = 28
 
+                    # ---- Migration v29: tenant_id columns for executions/syscalls (platformization PR-01) ----
+                    if current < 29:
+                        for stmt in [
+                            "ALTER TABLE agent_executions ADD COLUMN tenant_id TEXT;",
+                            "ALTER TABLE skill_executions ADD COLUMN tenant_id TEXT;",
+                            "ALTER TABLE syscall_events ADD COLUMN tenant_id TEXT;",
+                        ]:
+                            try:
+                                conn.execute(stmt)
+                            except Exception:
+                                pass
+                        try:
+                            conn.execute(
+                                "CREATE INDEX IF NOT EXISTS idx_agent_exec_tenant_time ON agent_executions(tenant_id, start_time DESC);"
+                            )
+                        except Exception:
+                            pass
+                        try:
+                            conn.execute(
+                                "CREATE INDEX IF NOT EXISTS idx_skill_exec_tenant_time ON skill_executions(tenant_id, start_time DESC);"
+                            )
+                        except Exception:
+                            pass
+                        try:
+                            conn.execute(
+                                "CREATE INDEX IF NOT EXISTS idx_syscall_events_tenant_time ON syscall_events(tenant_id, start_time DESC);"
+                            )
+                        except Exception:
+                            pass
+                        _set_version(29)
+                        current = 29
+
                     # If legacy db exists with tables but without meta, upgrade meta to current
                     if current < self.CURRENT_SCHEMA_VERSION:
                         _set_version(self.CURRENT_SCHEMA_VERSION)
@@ -2044,6 +2076,7 @@ class ExecutionStore:
             event.get("trace_id"),
             event.get("span_id"),
             event.get("run_id"),
+            event.get("tenant_id"),
             event.get("kind") or "",
             event.get("name") or "",
             event.get("status") or "",
@@ -2068,11 +2101,11 @@ class ExecutionStore:
                 conn.execute(
                     """
                     INSERT INTO syscall_events(
-                      id, trace_id, span_id, run_id, kind, name, status, start_time, end_time, duration_ms,
+                      id, trace_id, span_id, run_id, tenant_id, kind, name, status, start_time, end_time, duration_ms,
                       args_json, result_json, error, error_code, target_type, target_id, user_id, session_id,
                       approval_request_id, created_at
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
                     """,
                     payload,
                 )
@@ -2177,6 +2210,7 @@ class ExecutionStore:
                             "target_id": r["target_id"] if "target_id" in r.keys() else None,
                             "user_id": r["user_id"] if "user_id" in r.keys() else None,
                             "session_id": r["session_id"] if "session_id" in r.keys() else None,
+                            "tenant_id": r["tenant_id"] if "tenant_id" in r.keys() else None,
                             "approval_request_id": r["approval_request_id"] if "approval_request_id" in r.keys() else None,
                             "created_at": r["created_at"],
                         }
@@ -2958,9 +2992,18 @@ class ExecutionStore:
             except Exception:
                 error_code = None
 
+        tenant_id = record.get("tenant_id")
+        if not tenant_id:
+            try:
+                if isinstance(meta, dict):
+                    tenant_id = meta.get("tenant_id")
+            except Exception:
+                tenant_id = None
+
         payload = (
             record.get("id"),
             record.get("agent_id"),
+            str(tenant_id) if tenant_id is not None else None,
             record.get("status"),
             _json_dumps(record.get("input")),
             _json_dumps(record.get("output")),
@@ -2981,10 +3024,11 @@ class ExecutionStore:
                 conn.execute(
                     """
                     INSERT INTO agent_executions
-                      (id, agent_id, status, input_json, output_json, error, error_code, start_time, end_time, duration_ms, trace_id, metadata_json, approval_request_id, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                      (id, agent_id, tenant_id, status, input_json, output_json, error, error_code, start_time, end_time, duration_ms, trace_id, metadata_json, approval_request_id, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(id) DO UPDATE SET
                       agent_id=excluded.agent_id,
+                      tenant_id=excluded.tenant_id,
                       status=excluded.status,
                       input_json=excluded.input_json,
                       output_json=excluded.output_json,
@@ -3022,6 +3066,7 @@ class ExecutionStore:
                 return {
                     "id": row["id"],
                     "agent_id": row["agent_id"],
+                    "tenant_id": row["tenant_id"] if "tenant_id" in row.keys() else None,
                     "status": row["status"],
                     "input": _json_loads(row["input_json"]),
                     "output": _json_loads(row["output_json"]),
@@ -3074,6 +3119,7 @@ class ExecutionStore:
                         {
                             "id": row["id"],
                             "agent_id": row["agent_id"],
+                            "tenant_id": row["tenant_id"] if "tenant_id" in row.keys() else None,
                             "status": row["status"],
                             "input": _json_loads(row["input_json"]),
                             "output": _json_loads(row["output_json"]),
@@ -3317,9 +3363,18 @@ class ExecutionStore:
             except Exception:
                 error_code = None
 
+        tenant_id = record.get("tenant_id")
+        if not tenant_id:
+            try:
+                if isinstance(meta, dict):
+                    tenant_id = meta.get("tenant_id")
+            except Exception:
+                tenant_id = None
+
         payload = (
             record.get("id"),
             record.get("skill_id"),
+            str(tenant_id) if tenant_id is not None else None,
             record.get("status"),
             _json_dumps(record.get("input")),
             _json_dumps(record.get("output")),
@@ -3340,10 +3395,11 @@ class ExecutionStore:
                 conn.execute(
                     """
                     INSERT INTO skill_executions
-                      (id, skill_id, status, input_json, output_json, error, error_code, start_time, end_time, duration_ms, user_id, trace_id, metadata_json, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                      (id, skill_id, tenant_id, status, input_json, output_json, error, error_code, start_time, end_time, duration_ms, user_id, trace_id, metadata_json, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(id) DO UPDATE SET
                       skill_id=excluded.skill_id,
+                      tenant_id=excluded.tenant_id,
                       status=excluded.status,
                       input_json=excluded.input_json,
                       output_json=excluded.output_json,
@@ -3381,6 +3437,7 @@ class ExecutionStore:
                 return {
                     "id": row["id"],
                     "skill_id": row["skill_id"],
+                    "tenant_id": row["tenant_id"] if "tenant_id" in row.keys() else None,
                     "status": row["status"],
                     "input": _json_loads(row["input_json"]),
                     "output": _json_loads(row["output_json"]),
@@ -3425,6 +3482,7 @@ class ExecutionStore:
                         {
                             "id": row["id"],
                             "skill_id": row["skill_id"],
+                            "tenant_id": row["tenant_id"] if "tenant_id" in row.keys() else None,
                             "status": row["status"],
                             "input": _json_loads(row["input_json"]),
                             "output": _json_loads(row["output_json"]),

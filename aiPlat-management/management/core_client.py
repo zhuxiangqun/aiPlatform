@@ -7,6 +7,7 @@ HTTP client for calling aiPlat-core layer API.
 import httpx
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
+from management.request_context import get_forward_headers
 
 
 @dataclass
@@ -45,6 +46,18 @@ class CoreAPIClient:
                 transport=self.config.transport,
             )
         
+        # PR-01: forward tenant/actor identity headers (best-effort).
+        try:
+            fh = get_forward_headers()
+            if fh:
+                h0 = kwargs.get("headers") if isinstance(kwargs.get("headers"), dict) else {}
+                h = dict(h0)
+                for k, v in fh.items():
+                    h.setdefault(k, v)
+                kwargs["headers"] = h
+        except Exception:
+            pass
+
         response = await self._client.request(method, path, **kwargs)
         response.raise_for_status()
         return response.json()

@@ -16,7 +16,7 @@ from ..interfaces import SkillContext
 from core.harness.infrastructure.gates import TraceGate, ContextGate, ResilienceGate
 from core.harness.kernel.runtime import get_kernel_runtime
 import time
-from core.harness.kernel.execution_context import get_active_release_context
+from core.harness.kernel.execution_context import get_active_release_context, get_active_request_context
 
 
 async def sys_skill_call(
@@ -45,6 +45,7 @@ async def sys_skill_call(
     )
     start_ts = time.time()
     _ar = get_active_release_context()
+    _pr = get_active_request_context()
 
     if skill is None or not hasattr(skill, "execute"):
         end_ts = time.time()
@@ -63,6 +64,7 @@ async def sys_skill_call(
                         "status": "failed",
                         "target_type": _ar.target_type if _ar else None,
                         "target_id": _ar.target_id if _ar else None,
+                        "tenant_id": getattr(_pr, "tenant_id", None),
                         "user_id": user_id,
                         "session_id": session_id,
                         "start_time": start_ts,
@@ -103,6 +105,7 @@ async def sys_skill_call(
                         "status": "success" if bool(getattr(result, "success", True)) else "failed",
                         "target_type": _ar.target_type if _ar else None,
                         "target_id": _ar.target_id if _ar else None,
+                        "tenant_id": getattr(_pr, "tenant_id", None),
                         "user_id": user_id,
                         "session_id": session_id,
                         "start_time": start_ts,
@@ -133,6 +136,7 @@ async def sys_skill_call(
                         "status": "failed",
                         "target_type": _ar.target_type if _ar else None,
                         "target_id": _ar.target_id if _ar else None,
+                        "tenant_id": getattr(_pr, "tenant_id", None),
                         "user_id": user_id,
                         "session_id": session_id,
                         "start_time": start_ts,

@@ -99,9 +99,24 @@ class ActiveRequestContext:
     user_id: str = "system"
     session_id: str = "default"
     channel: Optional[str] = None
+    # PR-01: tenant/actor context (platformization)
+    tenant_id: Optional[str] = None
+    actor_id: Optional[str] = None
+    actor_role: Optional[str] = None
+    entrypoint: Optional[str] = None
+    request_id: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        return {"user_id": self.user_id, "session_id": self.session_id, "channel": self.channel}
+        return {
+            "user_id": self.user_id,
+            "session_id": self.session_id,
+            "channel": self.channel,
+            "tenant_id": self.tenant_id,
+            "actor_id": self.actor_id,
+            "actor_role": self.actor_role,
+            "entrypoint": self.entrypoint,
+            "request_id": self.request_id,
+        }
 
 
 _active_request_ctx: ContextVar[Optional[ActiveRequestContext]] = ContextVar("active_request_ctx", default=None)

@@ -2,7 +2,7 @@
 aiPlat-management 服务器 - FastAPI 应用
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 import yaml
 from pathlib import Path
@@ -61,6 +61,29 @@ def create_app() -> FastAPI:
         description="AI Platform Management System - Dashboard, Monitoring, Alerting, Diagnostics",
         version="0.1.0",
     )
+
+    # PR-01: propagate tenant/actor headers to downstream core/platform/app clients.
+    try:
+        from management.request_context import set_forward_headers, reset_forward_headers
+
+        @app.middleware("http")
+        async def _forward_identity_headers(req: Request, call_next):
+            forward: Dict[str, str] = {}
+            for k in ("x-aiplat-tenant-id", "x-aiplat-actor-id", "x-aiplat-actor-role", "x-aiplat-request-id"):
+                v = req.headers.get(k) or req.headers.get(k.upper())
+                if v:
+                    # keep canonical header casing
+                    forward[k.upper()] = v
+            token = set_forward_headers(forward if forward else None)
+            try:
+                return await call_next(req)
+            finally:
+                try:
+                    reset_forward_headers(token)
+                except Exception:
+                    pass
+    except Exception:
+        pass
     
     # 配置 CORS
     cors_config = config.get("server", {}).get("api", {}).get("cors", {})

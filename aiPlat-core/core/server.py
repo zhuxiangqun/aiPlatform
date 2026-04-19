@@ -824,6 +824,36 @@ def _api_url(path: str) -> str:
     return _ui_url(path)
 
 
+def _inject_http_request_context(payload: Any, http_request: Request, *, entrypoint: str) -> Any:
+    """
+    Best-effort: inject tenant/actor/request identity from headers into payload.context.
+    Used for PR-01 tenant/actor propagation into harness/syscalls.
+    """
+    if not isinstance(payload, dict):
+        return payload
+    try:
+        ctx = payload.get("context") if isinstance(payload.get("context"), dict) else {}
+        ctx = dict(ctx) if isinstance(ctx, dict) else {}
+        ctx.setdefault("entrypoint", str(entrypoint or "api"))
+
+        tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID") or http_request.headers.get("x-aiplat-tenant-id")
+        actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID") or http_request.headers.get("x-aiplat-actor-id")
+        actor_role = http_request.headers.get("X-AIPLAT-ACTOR-ROLE") or http_request.headers.get("x-aiplat-actor-role")
+        req_id = http_request.headers.get("X-AIPLAT-REQUEST-ID") or http_request.headers.get("x-aiplat-request-id")
+        if tenant_id:
+            ctx.setdefault("tenant_id", str(tenant_id))
+        if actor_id:
+            ctx.setdefault("actor_id", str(actor_id))
+        if actor_role:
+            ctx.setdefault("actor_role", str(actor_role))
+        if req_id:
+            ctx.setdefault("request_id", str(req_id))
+        payload["context"] = ctx
+    except Exception:
+        return payload
+    return payload
+
+
 async def _require_targets_verified(targets: list[tuple[str, str]]) -> None:
     """
     Gate publish/enable actions by autosmoke verification status.
@@ -1632,7 +1662,7 @@ async def unbind_workspace_agent_tool(agent_id: str, tool_id: str):
 
 
 @api_router.post("/workspace/agents/{agent_id}/execute")
-async def execute_workspace_agent(agent_id: str, request: dict):
+async def execute_workspace_agent(agent_id: str, request: dict, http_request: Request):
     """Execute workspace agent."""
     if not _workspace_agent_manager:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -1640,12 +1670,16 @@ async def execute_workspace_agent(agent_id: str, request: dict):
     if not agent:
         raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
     harness = get_harness()
+    payload = _inject_http_request_context(dict(request or {}), http_request, entrypoint="api")
+    ctx0 = payload.get("context") if isinstance(payload.get("context"), dict) else {}
+    user_id = payload.get("user_id") or (ctx0.get("actor_id") if isinstance(ctx0, dict) else None) or "system"
+    session_id = payload.get("session_id") or (ctx0.get("session_id") if isinstance(ctx0, dict) else None) or "default"
     exec_req = ExecutionRequest(
         kind="agent",
         target_id=agent_id,
-        payload=request or {},
-        user_id=(request or {}).get("user_id", "system"),
-        session_id=(request or {}).get("session_id", "default"),
+        payload=payload,
+        user_id=str(user_id),
+        session_id=str(session_id),
     )
     result = await harness.execute(exec_req)
     if not result.ok:
@@ -1796,15 +1830,19 @@ async def unbind_agent_tool(agent_id: str, tool_id: str):
 
 
 @api_router.post("/agents/{agent_id}/execute")
-async def execute_agent(agent_id: str, request: dict):
+async def execute_agent(agent_id: str, request: dict, http_request: Request):
     """Execute agent"""
     harness = get_harness()
+    payload = _inject_http_request_context(dict(request or {}), http_request, entrypoint="api")
+    ctx0 = payload.get("context") if isinstance(payload.get("context"), dict) else {}
+    user_id = payload.get("user_id") or (ctx0.get("actor_id") if isinstance(ctx0, dict) else None) or "system"
+    session_id = payload.get("session_id") or (ctx0.get("session_id") if isinstance(ctx0, dict) else None) or "default"
     exec_req = ExecutionRequest(
         kind="agent",
         target_id=agent_id,
-        payload=request or {},
-        user_id=(request or {}).get("user_id", "system"),
-        session_id=(request or {}).get("session_id", "default"),
+        payload=payload,
+        user_id=str(user_id),
+        session_id=str(session_id),
     )
     result = await harness.execute(exec_req)
     if not result.ok:
@@ -3849,7 +3887,7 @@ async def get_workspace_skill_file(skill_id: str, rel_path: str):
 
 
 @api_router.post("/workspace/skills/{skill_id}/execute")
-async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest):
+async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest, http_request: Request):
     """Execute workspace skill."""
     if not _workspace_skill_manager:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
@@ -3876,6 +3914,14 @@ async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest):
             "candidate_id": pg.get("candidate_id"),
             "releases_url": _ui_url("/core/learning/releases"),
         }
+
+    # Merge platform identity headers into context (best-effort)
+    ctx_for_user: Dict[str, Any] = dict(request.context or {}) if isinstance(request.context, dict) else {}
+    try:
+        tmp = _inject_http_request_context({"context": dict(ctx_for_user)}, http_request, entrypoint="api")
+        ctx_for_user = tmp.get("context") if isinstance(tmp, dict) and isinstance(tmp.get("context"), dict) else ctx_for_user
+    except Exception:
+        pass
     # Signature gate: unverified workspace skills require approval to execute.
     try:
         opts = request.options if isinstance(getattr(request, "options", None), dict) else {}
@@ -3901,7 +3947,7 @@ async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest):
     if gate.get("required") is True:
         if not approval_request_id:
             rid = await _require_skill_signature_gate_approval(
-                user_id=(request.context or {}).get("user_id", "admin") if isinstance(request.context, dict) else "admin",
+                user_id=str(ctx_for_user.get("actor_id") or ctx_for_user.get("user_id") or "admin"),
                 skill_id=str(skill_id),
                 action="execute",
                 details=details or f"execute workspace skill {skill_id}",
@@ -3950,19 +3996,19 @@ async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest):
             )
         except Exception:
             pass
-    user_id = request.context.get("user_id", "system") if request.context else "system"
+    user_id = str(ctx_for_user.get("actor_id") or ctx_for_user.get("user_id") or "system")
     harness = get_harness()
     exec_req = ExecutionRequest(
         kind="skill",
         target_id=skill_id,
         payload={
             "input": request.input,
-            "context": request.context or {},
+            "context": ctx_for_user,
             "mode": getattr(request, "mode", "inline"),
             "options": getattr(request, "options", None) or None,
         },
         user_id=user_id,
-        session_id=(request.context or {}).get("session_id", "default"),
+        session_id=str(ctx_for_user.get("session_id") or "default"),
     )
     result = await harness.execute(exec_req)
     if not result.ok:
@@ -4844,21 +4890,27 @@ async def get_skill_active_version(skill_id: str):
 
 
 @api_router.post("/skills/{skill_id}/execute")
-async def execute_skill(skill_id: str, request: SkillExecuteRequest):
+async def execute_skill(skill_id: str, request: SkillExecuteRequest, http_request: Request):
     """Execute skill"""
-    user_id = request.context.get("user_id", "system") if request.context else "system"
+    ctx_for_user: Dict[str, Any] = dict(request.context or {}) if isinstance(request.context, dict) else {}
+    try:
+        tmp = _inject_http_request_context({"context": dict(ctx_for_user)}, http_request, entrypoint="api")
+        ctx_for_user = tmp.get("context") if isinstance(tmp, dict) and isinstance(tmp.get("context"), dict) else ctx_for_user
+    except Exception:
+        pass
+    user_id = str(ctx_for_user.get("actor_id") or ctx_for_user.get("user_id") or "system")
     harness = get_harness()
     exec_req = ExecutionRequest(
         kind="skill",
         target_id=skill_id,
         payload={
             "input": request.input,
-            "context": request.context or {},
+            "context": ctx_for_user,
             "mode": getattr(request, "mode", "inline"),
             "options": getattr(request, "options", None) or None,
         },
         user_id=user_id,
-        session_id=(request.context or {}).get("session_id", "default"),
+        session_id=str(ctx_for_user.get("session_id") or "default"),
     )
     result = await harness.execute(exec_req)
     if not result.ok:
@@ -5141,7 +5193,7 @@ async def resume_graph_run(run_id: str, request: dict):
 
 
 @api_router.post("/graphs/compiled/react/execute")
-async def execute_compiled_react_graph(request: dict):
+async def execute_compiled_react_graph(request: dict, http_request: Request):
     """
     Execute internal CompiledGraph-based ReAct workflow (checkpoint/callback enabled).
 
@@ -5152,12 +5204,16 @@ async def execute_compiled_react_graph(request: dict):
       - checkpoint_interval: int
     """
     harness = get_harness()
+    payload = _inject_http_request_context(dict(request or {}), http_request, entrypoint="api")
+    ctx0 = payload.get("context") if isinstance(payload.get("context"), dict) else {}
+    user_id = payload.get("user_id") or (ctx0.get("actor_id") if isinstance(ctx0, dict) else None) or "system"
+    session_id = payload.get("session_id") or (ctx0.get("session_id") if isinstance(ctx0, dict) else None) or "default"
     exec_req = ExecutionRequest(
         kind="graph",
         target_id="compiled_react",
-        payload=request or {},
-        user_id=(request or {}).get("user_id", "system"),
-        session_id=(request or {}).get("session_id", "default"),
+        payload=payload,
+        user_id=str(user_id),
+        session_id=str(session_id),
     )
     result = await harness.execute(exec_req)
     if not result.ok:
@@ -6341,15 +6397,19 @@ async def update_tool_config(tool_name: str, request: dict):
 
 
 @api_router.post("/tools/{tool_name}/execute")
-async def execute_tool(tool_name: str, request: dict):
+async def execute_tool(tool_name: str, request: dict, http_request: Request):
     """Execute a tool with given parameters"""
     harness = get_harness()
+    payload = _inject_http_request_context(dict(request or {}), http_request, entrypoint="api")
+    ctx0 = payload.get("context") if isinstance(payload.get("context"), dict) else {}
+    user_id = payload.get("user_id") or (ctx0.get("actor_id") if isinstance(ctx0, dict) else None) or "system"
+    session_id = payload.get("session_id") or (ctx0.get("session_id") if isinstance(ctx0, dict) else None) or "default"
     exec_req = ExecutionRequest(
         kind="tool",
         target_id=tool_name,
-        payload=request or {},
-        user_id=(request or {}).get("user_id", "system"),
-        session_id=(request or {}).get("session_id", "default"),
+        payload=payload,
+        user_id=str(user_id),
+        session_id=str(session_id),
     )
     result = await harness.execute(exec_req)
     if not result.ok:
@@ -6395,9 +6455,25 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request)
         ctx = payload.get("context") if isinstance(payload.get("context"), dict) else {}
         ctx = dict(ctx) if isinstance(ctx, dict) else {}
         ctx.setdefault("source", "gateway")
+        ctx.setdefault("entrypoint", "gateway")
         ctx.setdefault("channel", request.channel)
         if request.tenant_id:
             ctx.setdefault("tenant_id", str(request.tenant_id))
+        else:
+            # Allow tenant_id to come from header when client doesn't send it in body.
+            h_tenant = http_request.headers.get("X-AIPLAT-TENANT-ID") or http_request.headers.get("x-aiplat-tenant-id")
+            if h_tenant:
+                ctx.setdefault("tenant_id", str(h_tenant))
+        # platform identity passthrough (optional)
+        try:
+            actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID") or http_request.headers.get("x-aiplat-actor-id")
+            actor_role = http_request.headers.get("X-AIPLAT-ACTOR-ROLE") or http_request.headers.get("x-aiplat-actor-role")
+            if actor_id:
+                ctx.setdefault("actor_id", str(actor_id))
+            if actor_role:
+                ctx.setdefault("actor_role", str(actor_role))
+        except Exception:
+            pass
         # preserve external identity if present
         if request.channel_user_id:
             ctx.setdefault("channel_user_id", request.channel_user_id)
@@ -6465,6 +6541,15 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request)
     request_id = str(request_id).strip() if isinstance(request_id, str) else None
     if not request_id:
         request_id = new_prefixed_id("req")
+    # surface request_id into payload.context for downstream syscalls/audit
+    try:
+        if isinstance(payload, dict):
+            ctx = payload.get("context") if isinstance(payload.get("context"), dict) else {}
+            ctx = dict(ctx) if isinstance(ctx, dict) else {}
+            ctx.setdefault("request_id", str(request_id))
+            payload["context"] = ctx
+    except Exception:
+        pass
 
     reserved_run_id = None
     if _execution_store and request_id:

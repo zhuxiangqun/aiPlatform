@@ -429,6 +429,11 @@ class HarnessIntegration:
                             user_id=str(user_id or "system"),
                             session_id=str(sess_id or req.session_id or "default"),
                             channel=str(getattr(req, "channel", None)) if hasattr(req, "channel") else None,
+                            tenant_id=str(ctx0.get("tenant_id")) if isinstance(ctx0, dict) and ctx0.get("tenant_id") else None,
+                            actor_id=str(ctx0.get("actor_id")) if isinstance(ctx0, dict) and ctx0.get("actor_id") else str(user_id or "system"),
+                            actor_role=str(ctx0.get("actor_role")) if isinstance(ctx0, dict) and ctx0.get("actor_role") else None,
+                            entrypoint=str(ctx0.get("entrypoint") or ctx0.get("source")) if isinstance(ctx0, dict) and (ctx0.get("entrypoint") or ctx0.get("source")) else None,
+                            request_id=str(ctx0.get("request_id")) if isinstance(ctx0, dict) and ctx0.get("request_id") else getattr(req, "request_id", None),
                         )
                     )
                 except Exception:
@@ -897,7 +902,15 @@ class HarnessIntegration:
                 ctx0 = payload.get("context") if isinstance(payload.get("context"), dict) else {}
                 sess_id = payload.get("session_id") or ctx0.get("session_id") or req.session_id
                 request_token = set_active_request_context(
-                    ActiveRequestContext(user_id=str(user_id or "system"), session_id=str(sess_id or "default"))
+                    ActiveRequestContext(
+                        user_id=str(user_id or "system"),
+                        session_id=str(sess_id or "default"),
+                        tenant_id=str(ctx0.get("tenant_id")) if isinstance(ctx0, dict) and ctx0.get("tenant_id") else None,
+                        actor_id=str(ctx0.get("actor_id")) if isinstance(ctx0, dict) and ctx0.get("actor_id") else str(user_id or "system"),
+                        actor_role=str(ctx0.get("actor_role")) if isinstance(ctx0, dict) and ctx0.get("actor_role") else None,
+                        entrypoint=str(ctx0.get("entrypoint") or ctx0.get("source")) if isinstance(ctx0, dict) and (ctx0.get("entrypoint") or ctx0.get("source")) else None,
+                        request_id=getattr(req, "request_id", None),
+                    )
                 )
             except Exception:
                 request_token = None
@@ -1106,7 +1119,15 @@ class HarnessIntegration:
                 ctx0 = payload.get("context") if isinstance(payload.get("context"), dict) else {}
                 sess_id = payload.get("session_id") or ctx0.get("session_id") or req.session_id
                 request_token = set_active_request_context(
-                    ActiveRequestContext(user_id=str(req.user_id or "system"), session_id=str(sess_id or "default"))
+                    ActiveRequestContext(
+                        user_id=str(req.user_id or "system"),
+                        session_id=str(sess_id or "default"),
+                        tenant_id=str(ctx0.get("tenant_id")) if isinstance(ctx0, dict) and ctx0.get("tenant_id") else None,
+                        actor_id=str(ctx0.get("actor_id")) if isinstance(ctx0, dict) and ctx0.get("actor_id") else str(req.user_id or "system"),
+                        actor_role=str(ctx0.get("actor_role")) if isinstance(ctx0, dict) and ctx0.get("actor_role") else None,
+                        entrypoint=str(ctx0.get("entrypoint") or ctx0.get("source")) if isinstance(ctx0, dict) and (ctx0.get("entrypoint") or ctx0.get("source")) else None,
+                        request_id=str(ctx0.get("request_id")) if isinstance(ctx0, dict) and ctx0.get("request_id") else getattr(req, "request_id", None),
+                    )
                 )
             except Exception:
                 request_token = None

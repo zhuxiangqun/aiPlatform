@@ -22,6 +22,17 @@ class ApiClient {
     const defaultHeaders: HeadersInit = {
       'Content-Type': 'application/json',
     };
+    // PR-01: tenant/actor propagation (best-effort; platformization MVP)
+    try {
+      const tenantId = localStorage.getItem('active_tenant_id') || '';
+      const actorId = localStorage.getItem('active_actor_id') || '';
+      const actorRole = localStorage.getItem('active_actor_role') || '';
+      if (tenantId.trim()) (defaultHeaders as any)['X-AIPLAT-TENANT-ID'] = tenantId.trim();
+      if (actorId.trim()) (defaultHeaders as any)['X-AIPLAT-ACTOR-ID'] = actorId.trim();
+      if (actorRole.trim()) (defaultHeaders as any)['X-AIPLAT-ACTOR-ROLE'] = actorRole.trim();
+    } catch {
+      // ignore (SSR / privacy mode)
+    }
 
     const config: RequestInit = {
       ...options,

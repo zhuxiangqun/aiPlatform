@@ -16,7 +16,7 @@ import time
 
 from core.harness.infrastructure.gates import TraceGate, ContextGate, ResilienceGate
 from core.harness.kernel.runtime import get_kernel_runtime
-from core.harness.kernel.execution_context import get_active_release_context, record_prompt_revision_application
+from core.harness.kernel.execution_context import get_active_release_context, get_active_request_context, record_prompt_revision_application
 
 
 Message = Dict[str, Any]
@@ -52,6 +52,7 @@ async def sys_llm_generate(
     )
     start_ts = time.time()
     _ar = get_active_release_context()
+    _pr = get_active_request_context()
 
     if model is None or not hasattr(model, "generate"):
         end_ts = time.time()
@@ -70,6 +71,9 @@ async def sys_llm_generate(
                         "status": "failed",
                         "target_type": _ar.target_type if _ar else None,
                         "target_id": _ar.target_id if _ar else None,
+                        "tenant_id": getattr(_pr, "tenant_id", None),
+                        "user_id": getattr(_pr, "user_id", None),
+                        "session_id": getattr(_pr, "session_id", None),
                         "start_time": start_ts,
                         "end_time": end_ts,
                         "duration_ms": (end_ts - start_ts) * 1000.0,
@@ -197,6 +201,9 @@ async def sys_llm_generate(
                         "status": "success",
                         "target_type": _ar.target_type if _ar else None,
                         "target_id": _ar.target_id if _ar else None,
+                        "tenant_id": getattr(_pr, "tenant_id", None),
+                        "user_id": getattr(_pr, "user_id", None),
+                        "session_id": getattr(_pr, "session_id", None),
                         "start_time": start_ts,
                         "end_time": end_ts,
                         "duration_ms": (end_ts - start_ts) * 1000.0,
@@ -230,6 +237,9 @@ async def sys_llm_generate(
                         "status": "failed",
                         "target_type": _ar.target_type if _ar else None,
                         "target_id": _ar.target_id if _ar else None,
+                        "tenant_id": getattr(_pr, "tenant_id", None),
+                        "user_id": getattr(_pr, "user_id", None),
+                        "session_id": getattr(_pr, "session_id", None),
                         "start_time": start_ts,
                         "end_time": end_ts,
                         "duration_ms": (end_ts - start_ts) * 1000.0,
