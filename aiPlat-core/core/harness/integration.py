@@ -268,41 +268,11 @@ class HarnessIntegration:
         agent_info = await runtime.agent_manager.get_agent(agent_id)
         model_name = agent_info.config.get("model", "gpt-4") if agent_info else "gpt-4"
 
-        # Inject / override model (best effort).
-        # If the environment has no external API key, force a mock model so agent execution can terminate.
+        # Ensure agent model is usable and consistent (agent + internal loop).
         try:
-            from core.adapters.llm import create_adapter
+            from core.harness.utils.model_injection import ensure_agent_model
 
-            provider = os.getenv("AIPLAT_LLM_PROVIDER", "openai").strip().lower() or "openai"
-            base_url = os.getenv("AIPLAT_LLM_BASE_URL") or os.getenv("OPENAI_BASE_URL")
-            api_key = os.getenv("OPENAI_API_KEY") or os.getenv("AIPLAT_LLM_API_KEY") or ""
-            if provider == "openai" and not api_key:
-                provider = "mock"
-
-            adapter = create_adapter(provider=provider, api_key=api_key or None, model=model_name, base_url=base_url)
-
-            # Override if:
-            # - no model configured
-            # - openai configured but no api key (likely produces empty output)
-            cur = getattr(agent, "_model", None)
-            cur_provider = getattr(getattr(cur, "metadata", None), "provider", None) if cur is not None else None
-            should_override = cur is None or (cur_provider == "openai" and not api_key)
-            if should_override:
-                if hasattr(agent, "set_model"):
-                    agent.set_model(adapter)  # type: ignore[attr-defined]
-                else:
-                    setattr(agent, "_model", adapter)
-                # Many agents bind the model into an internal loop at construction time.
-                # Ensure loop model is updated as well, otherwise execution may still run with a None model.
-                try:
-                    loop = getattr(agent, "_loop", None)
-                    if loop is not None:
-                        if hasattr(loop, "set_model"):
-                            loop.set_model(adapter)  # type: ignore[attr-defined]
-                        elif hasattr(loop, "_model"):
-                            setattr(loop, "_model", adapter)
-                except Exception:
-                    pass
+            ensure_agent_model(agent, model_name=model_name)
         except Exception:
             pass
 
@@ -336,12 +306,12 @@ class HarnessIntegration:
             for skill_name in agent_info.skills:
                 skill = skill_registry.get(skill_name)
                 if skill:
-                    # inject model if needed
+                    # inject model if needed (env-aware + mock fallback)
                     if hasattr(skill, "_model") and getattr(skill, "_model") is None:
                         try:
-                            from core.adapters.llm import create_adapter
+                            from core.harness.utils.model_injection import ensure_skill_model
 
-                            skill.set_model(create_adapter(provider="openai", api_key="", model=model_name))  # type: ignore[attr-defined]
+                            ensure_skill_model(skill, model_name=model_name)
                         except Exception:
                             pass
                     try:
