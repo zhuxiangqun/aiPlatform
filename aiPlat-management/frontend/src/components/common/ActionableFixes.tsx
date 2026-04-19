@@ -30,6 +30,71 @@ export const ActionableFixes: React.FC<Props> = ({ actions, recommendations, onA
   const pollInFlight = useRef<Record<string, boolean>>({});
   const [formValues, setFormValues] = useState<Record<string, any>>({});
 
+  const _schemaProps = (a: DoctorAction) => (a?.input_schema && typeof a.input_schema === 'object' ? a.input_schema.properties || {} : {});
+  const _schemaReq = (a: DoctorAction) =>
+    Array.isArray(a?.input_schema?.required) ? (a.input_schema.required as string[]) : [];
+
+  const isSensitive = (spec: any) => !!(spec && spec['x-ui'] && spec['x-ui'].sensitive);
+  const placeholderOf = (spec: any) => (spec && spec['x-ui'] ? spec['x-ui'].placeholder : undefined);
+  const multilineOf = (spec: any) => !!(spec && spec['x-ui'] && spec['x-ui'].multiline);
+
+  const redactForDisplay = (vals: Record<string, any>, a: DoctorAction) => {
+    const props = _schemaProps(a);
+    const out: Record<string, any> = { ...(vals || {}) };
+    for (const [k, spec] of Object.entries<any>(props)) {
+      if (isSensitive(spec) && out[k]) out[k] = '***';
+    }
+    return out;
+  };
+
+  const coerceAndValidate = (vals: Record<string, any>, a: DoctorAction): { ok: boolean; body?: any; err?: string } => {
+    const schema = a?.input_schema;
+    if (!schema || typeof schema !== 'object') return { ok: true, body: vals };
+    const props = _schemaProps(a);
+    const required = _schemaReq(a);
+    const out: Record<string, any> = {};
+
+    for (const [k, spec] of Object.entries<any>(props)) {
+      let v = vals?.[k];
+      const t = String(spec?.type || 'string');
+
+      // Normalize empty string
+      if (typeof v === 'string' && v.trim() === '') v = '';
+
+      if (t === 'boolean') {
+        out[k] = !!v;
+      } else if (t === 'integer') {
+        if (v === '' || v == null) {
+          // omit if not required
+        } else {
+          const n = typeof v === 'number' ? v : parseInt(String(v), 10);
+          if (Number.isNaN(n)) return { ok: false, err: `${k} 必须是整数` };
+          out[k] = n;
+        }
+      } else if (t === 'number') {
+        if (v === '' || v == null) {
+          // omit if not required
+        } else {
+          const n = typeof v === 'number' ? v : parseFloat(String(v));
+          if (Number.isNaN(n)) return { ok: false, err: `${k} 必须是数字` };
+          out[k] = n;
+        }
+      } else {
+        // string (default)
+        if (v === '' || v == null) {
+          // omit if not required
+        } else {
+          out[k] = String(v);
+        }
+      }
+    }
+
+    for (const reqKey of required) {
+      if (!(reqKey in out)) return { ok: false, err: `缺少必填字段：${reqKey}` };
+    }
+    return { ok: true, body: out };
+  };
+
   const initValues = (a: DoctorAction) => {
     const schema = a?.input_schema;
     const props = schema?.properties || {};
@@ -59,7 +124,13 @@ export const ActionableFixes: React.FC<Props> = ({ actions, recommendations, onA
     setRunning((p) => ({ ...(p || {}), [k]: true }));
     setMsg((p) => ({ ...(p || {}), [k]: '' }));
     try {
-      const body = { ...(formValues?.[k] || a?.body_example || {}) };
+      const raw = { ...(formValues?.[k] || a?.body_example || {}) };
+      const cv = coerceAndValidate(raw, a);
+      if (!cv.ok) {
+        setMsg((p) => ({ ...(p || {}), [k]: cv.err || '参数不合法' }));
+        return;
+      }
+      const body = { ...(cv.body || {}) };
       if (override?.approval_request_id) body.approval_request_id = override.approval_request_id;
 
       let res: any = null;
@@ -204,20 +275,41 @@ export const ActionableFixes: React.FC<Props> = ({ actions, recommendations, onA
                               setFormValues((p) => ({ ...(p || {}), [fullKey]: { ...(p?.[fullKey] || {}), [pk]: e.target.checked } }))
                             }
                           />
-                          {pk}
+                          <span>
+                            {pk}
+                            {spec?.description ? <span className="text-gray-500">（{String(spec.description)}）</span> : null}
+                          </span>
                         </label>
                       );
                     }
+                    const ph = placeholderOf(spec);
+                    const sensitive = isSensitive(spec);
+                    const multiline = multilineOf(spec);
                     return (
                       <div key={pk}>
                         <div className="text-xs text-gray-500 mb-1">{pk}</div>
-                        <input
-                          value={v ?? ''}
-                          onChange={(e) =>
-                            setFormValues((p) => ({ ...(p || {}), [fullKey]: { ...(p?.[fullKey] || {}), [pk]: e.target.value } }))
-                          }
-                          className="w-full px-3 py-2 rounded-lg bg-dark-bg border border-dark-border text-gray-200 text-xs"
-                        />
+                        {spec?.description ? <div className="text-xs text-gray-600 mb-1">{String(spec.description)}</div> : null}
+                        {multiline ? (
+                          <textarea
+                            value={v ?? ''}
+                            placeholder={ph}
+                            onChange={(e) =>
+                              setFormValues((p) => ({ ...(p || {}), [fullKey]: { ...(p?.[fullKey] || {}), [pk]: e.target.value } }))
+                            }
+                            className="w-full px-3 py-2 rounded-lg bg-dark-bg border border-dark-border text-gray-200 text-xs"
+                            rows={3}
+                          />
+                        ) : (
+                          <input
+                            type={t === 'integer' || t === 'number' ? 'number' : sensitive ? 'password' : 'text'}
+                            value={v ?? ''}
+                            placeholder={ph}
+                            onChange={(e) =>
+                              setFormValues((p) => ({ ...(p || {}), [fullKey]: { ...(p?.[fullKey] || {}), [pk]: e.target.value } }))
+                            }
+                            className="w-full px-3 py-2 rounded-lg bg-dark-bg border border-dark-border text-gray-200 text-xs"
+                          />
+                        )}
                       </div>
                     );
                   })}
@@ -226,7 +318,7 @@ export const ActionableFixes: React.FC<Props> = ({ actions, recommendations, onA
                 <pre className="text-xs text-gray-300 mt-2">{JSON.stringify(a.body_example || {}, null, 2)}</pre>
               )}
               <pre className="text-xs text-gray-300 mt-2">
-                {JSON.stringify(formValues?.[`global:${k}`] || a.body_example || {}, null, 2)}
+                {JSON.stringify(redactForDisplay(formValues?.[`global:${k}`] || a.body_example || {}, a), null, 2)}
               </pre>
             </div>
           ))}
@@ -283,25 +375,46 @@ export const ActionableFixes: React.FC<Props> = ({ actions, recommendations, onA
                                     setFormValues((p) => ({ ...(p || {}), [fullKey]: { ...(p?.[fullKey] || {}), [pk]: e.target.checked } }))
                                   }
                                 />
-                                {pk}
+                                <span>
+                                  {pk}
+                                  {spec?.description ? <span className="text-gray-500">（{String(spec.description)}）</span> : null}
+                                </span>
                               </label>
                             );
                           }
+                          const ph = placeholderOf(spec);
+                          const sensitive = isSensitive(spec);
+                          const multiline = multilineOf(spec);
                           return (
                             <div key={pk}>
                               <div className="text-xs text-gray-500 mb-1">{pk}</div>
-                              <input
-                                value={v ?? ''}
-                                onChange={(e) =>
-                                  setFormValues((p) => ({ ...(p || {}), [fullKey]: { ...(p?.[fullKey] || {}), [pk]: e.target.value } }))
-                                }
-                                className="w-full px-3 py-2 rounded-lg bg-dark-bg border border-dark-border text-gray-200 text-xs"
-                              />
+                              {spec?.description ? <div className="text-xs text-gray-600 mb-1">{String(spec.description)}</div> : null}
+                              {multiline ? (
+                                <textarea
+                                  value={v ?? ''}
+                                  placeholder={ph}
+                                  onChange={(e) =>
+                                    setFormValues((p) => ({ ...(p || {}), [fullKey]: { ...(p?.[fullKey] || {}), [pk]: e.target.value } }))
+                                  }
+                                  className="w-full px-3 py-2 rounded-lg bg-dark-bg border border-dark-border text-gray-200 text-xs"
+                                  rows={3}
+                                />
+                              ) : (
+                                <input
+                                  type={t === 'integer' || t === 'number' ? 'number' : sensitive ? 'password' : 'text'}
+                                  value={v ?? ''}
+                                  placeholder={ph}
+                                  onChange={(e) =>
+                                    setFormValues((p) => ({ ...(p || {}), [fullKey]: { ...(p?.[fullKey] || {}), [pk]: e.target.value } }))
+                                  }
+                                  className="w-full px-3 py-2 rounded-lg bg-dark-bg border border-dark-border text-gray-200 text-xs"
+                                />
+                              )}
                             </div>
                           );
                         })}
                       </div>
-                      <pre className="text-xs text-gray-300 mt-2">{JSON.stringify(formValues?.[fullKey] || a.body_example || {}, null, 2)}</pre>
+                      <pre className="text-xs text-gray-300 mt-2">{JSON.stringify(redactForDisplay(formValues?.[fullKey] || a.body_example || {}, a), null, 2)}</pre>
                     </div>
                   );
                 })}

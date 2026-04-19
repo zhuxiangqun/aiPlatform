@@ -354,9 +354,22 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
             "input_schema": {
                 "type": "object",
                 "properties": {
-                    "tenant_id": {"type": "string", "default": "default"},
-                    "enabled": {"type": "boolean", "default": False},
-                    "require_approval": {"type": "boolean", "default": True},
+                    "tenant_id": {
+                        "type": "string",
+                        "default": "default",
+                        "description": "目标 tenant_id",
+                        "x-ui": {"placeholder": "default"},
+                    },
+                    "enabled": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": "是否启用强门禁（启用后所有工具执行需审批）",
+                    },
+                    "require_approval": {
+                        "type": "boolean",
+                        "default": True,
+                        "description": "是否需要审批（建议保持 true）",
+                    },
                 },
                 "required": ["tenant_id", "enabled", "require_approval"],
             },
@@ -369,7 +382,11 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
             "input_schema": {
                 "type": "object",
                 "properties": {
-                    "require_approval": {"type": "boolean", "default": True},
+                    "require_approval": {
+                        "type": "boolean",
+                        "default": True,
+                        "description": "是否需要审批（建议保持 true）",
+                    },
                 },
                 "required": ["require_approval"],
             },
@@ -382,10 +399,33 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
             "input_schema": {
                 "type": "object",
                 "properties": {
-                    "enabled": {"type": "boolean", "default": True},
-                    "enforce": {"type": "boolean", "default": True},
-                    "webhook_url": {"type": "string", "default": ""},
-                    "require_approval": {"type": "boolean", "default": True},
+                    "enabled": {
+                        "type": "boolean",
+                        "default": True,
+                        "description": "是否启用 autosmoke",
+                    },
+                    "enforce": {
+                        "type": "boolean",
+                        "default": True,
+                        "description": "是否强制门禁（未验证则阻止发布/启用）",
+                    },
+                    "dedup_seconds": {
+                        "type": "integer",
+                        "default": 600,
+                        "description": "去重窗口（秒）",
+                        "x-ui": {"placeholder": "600"},
+                    },
+                    "webhook_url": {
+                        "type": "string",
+                        "default": "",
+                        "description": "失败告警 Webhook（可选）",
+                        "x-ui": {"placeholder": "https://hooks.slack.com/..."},
+                    },
+                    "require_approval": {
+                        "type": "boolean",
+                        "default": True,
+                        "description": "是否需要审批（建议保持 true）",
+                    },
                 },
                 "required": ["enabled", "enforce", "require_approval"],
             },
