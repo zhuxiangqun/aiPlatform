@@ -52,3 +52,20 @@ class PluginManager:
             raise RuntimeError("ExecutionStore not initialized")
         return await self._store.set_plugin_enabled(tenant_id=str(tenant_id) if tenant_id else None, plugin_id=str(plugin_id), enabled=bool(enabled))
 
+    async def list_versions(self, *, tenant_id: Optional[str], plugin_id: str, limit: int = 50, offset: int = 0) -> Dict[str, Any]:
+        if not self._store:
+            raise RuntimeError("ExecutionStore not initialized")
+        return await self._store.list_plugin_versions(tenant_id=str(tenant_id) if tenant_id else None, plugin_id=str(plugin_id), limit=limit, offset=offset)
+
+    async def rollback(self, *, tenant_id: Optional[str], plugin_id: str, version: str) -> Dict[str, Any]:
+        if not self._store:
+            raise RuntimeError("ExecutionStore not initialized")
+        cur = await self._store.get_plugin(tenant_id=str(tenant_id) if tenant_id else None, plugin_id=str(plugin_id))
+        if not cur:
+            raise RuntimeError("plugin_not_found")
+        pv = await self._store.get_plugin_version(tenant_id=str(tenant_id) if tenant_id else None, plugin_id=str(plugin_id), version=str(version))
+        if not pv:
+            raise RuntimeError("version_not_found")
+        enabled = bool(int(cur.get("enabled") or 0) == 1)
+        # upsert using stored manifest + keep enabled flag
+        return await self.upsert_plugin(tenant_id=str(tenant_id) if tenant_id else None, manifest=pv.get("manifest") or {}, enabled=enabled)

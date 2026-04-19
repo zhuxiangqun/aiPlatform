@@ -4136,6 +4136,56 @@ async def run_plugin(plugin_id: str, request: dict, http_request: Request):
     }
 
 
+@api_router.get("/plugins/{plugin_id}/versions")
+async def list_plugin_versions(plugin_id: str, http_request: Request, limit: int = 50, offset: int = 0):
+    if not _execution_store or not _plugin_manager:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    actor0 = _rbac_actor_from_http(http_request, None)
+    tid = actor0.get("tenant_id")
+    if not tid:
+        raise HTTPException(status_code=400, detail="tenant_id required")
+    deny = await _rbac_guard(http_request=http_request, payload=None, action="read", resource_type="plugin", resource_id=str(plugin_id))
+    if deny:
+        return deny
+    return await _plugin_manager.list_versions(tenant_id=str(tid), plugin_id=str(plugin_id), limit=limit, offset=offset)
+
+
+@api_router.post("/plugins/{plugin_id}/rollback")
+async def rollback_plugin(plugin_id: str, request: dict, http_request: Request):
+    if not _execution_store or not _plugin_manager:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    actor0 = _rbac_actor_from_http(http_request, request if isinstance(request, dict) else None)
+    tid = actor0.get("tenant_id")
+    if not tid:
+        raise HTTPException(status_code=400, detail="tenant_id required")
+    deny = await _rbac_guard(http_request=http_request, payload=request if isinstance(request, dict) else None, action="rollback", resource_type="plugin", resource_id=str(plugin_id))
+    if deny:
+        return deny
+    ver = (request or {}).get("version") if isinstance(request, dict) else None
+    if not ver:
+        raise HTTPException(status_code=400, detail="version required")
+    try:
+        rec = await _plugin_manager.rollback(tenant_id=str(tid), plugin_id=str(plugin_id), version=str(ver))
+    except RuntimeError as e:
+        if "not_found" in str(e):
+            raise HTTPException(status_code=404, detail=str(e))
+        raise
+    try:
+        await _execution_store.add_audit_log(
+            action="plugin_rollback",
+            status="ok",
+            tenant_id=str(tid),
+            actor_id=str(actor0.get("actor_id") or "system"),
+            actor_role=str(actor0.get("actor_role") or "") or None,
+            resource_type="plugin",
+            resource_id=str(plugin_id),
+            detail={"version": str(ver)},
+        )
+    except Exception:
+        pass
+    return {"status": "ok", "plugin": rec}
+
+
 @api_router.get("/agents/executions/{execution_id}")
 async def get_agent_execution(execution_id: str):
     """Get agent execution"""

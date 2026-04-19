@@ -32,13 +32,42 @@ def test_plugin_run_approval_and_replay_and_policy_deny(tmp_path, monkeypatch):
                     "plugin_id": "p_demo",
                     "name": "demo",
                     "version": "1.0.0",
+                    "dependencies": [],
                     "required_tools": ["calculator"],
+                    "permissions": {"tools": ["calculator"], "files": {"read": ["workspace/**"]}},
+                    "tests": [{"kind": "pytest", "target": "core/tests/integration/test_plugins_workflow.py"}],
                 },
                 "enabled": True,
             },
             headers=headers_admin,
         )
         assert up.status_code == 200, up.text
+
+        # upsert new version and verify versions list
+        up2 = client.put(
+            "/api/core/plugins",
+            json={
+                "manifest": {
+                    "plugin_id": "p_demo",
+                    "name": "demo",
+                    "version": "1.1.0",
+                    "required_tools": ["calculator"],
+                },
+                "enabled": True,
+            },
+            headers=headers_admin,
+        )
+        assert up2.status_code == 200, up2.text
+
+        vs = client.get("/api/core/plugins/p_demo/versions", headers=headers_admin)
+        assert vs.status_code == 200, vs.text
+        items = vs.json().get("items") or []
+        assert any((it.get("version") == "1.0.0") for it in items)
+        assert any((it.get("version") == "1.1.0") for it in items)
+
+        rb = client.post("/api/core/plugins/p_demo/rollback", json={"version": "1.0.0"}, headers=headers_admin)
+        assert rb.status_code == 200, rb.text
+        assert rb.json().get("plugin", {}).get("version") == "1.0.0"
 
         r = client.post(
             "/api/core/plugins/p_demo/run",
@@ -74,4 +103,3 @@ def test_plugin_run_approval_and_replay_and_policy_deny(tmp_path, monkeypatch):
         r2 = client.post("/api/core/plugins/p_demo/run", json={"input": {}}, headers=headers_admin)
         assert r2.status_code == 403, r2.text
         assert r2.json().get("error", {}).get("code") == "POLICY_DENIED"
-
