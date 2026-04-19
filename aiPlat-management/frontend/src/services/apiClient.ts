@@ -221,6 +221,12 @@ export const onboardingApi = {
   setAutosmoke: async (body: Record<string, unknown>) => {
     return apiClient.post<any>('/onboarding/autosmoke', body);
   },
+  getSecretsStatus: async () => {
+    return apiClient.get<any>('/onboarding/secrets/status');
+  },
+  migrateSecrets: async (body: Record<string, unknown>) => {
+    return apiClient.post<any>('/onboarding/secrets/migrate', body);
+  },
 };
 
 // Monitoring API (legacy - for layer metrics)

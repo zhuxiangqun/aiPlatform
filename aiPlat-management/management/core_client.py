@@ -164,6 +164,12 @@ class CoreAPIClient:
     async def set_autosmoke(self, body: Dict[str, Any]) -> Dict[str, Any]:
         return await self._request("POST", "/api/core/onboarding/autosmoke", json=body or {})
 
+    async def get_secrets_status(self) -> Dict[str, Any]:
+        return await self._request("GET", "/api/core/onboarding/secrets/status")
+
+    async def migrate_secrets(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", "/api/core/onboarding/secrets/migrate", json=body or {})
+
     # ===== Jobs / Cron (Roadmap-3) =====
 
     async def list_jobs(self, *, limit: int = 100, offset: int = 0, enabled: Optional[bool] = None) -> Dict[str, Any]:

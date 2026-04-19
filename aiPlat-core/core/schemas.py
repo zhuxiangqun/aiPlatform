@@ -186,6 +186,12 @@ class OnboardingAutosmokeConfigRequest(BaseModel):
     details: Optional[str] = None
 
 
+class OnboardingSecretsMigrateRequest(BaseModel):
+    require_approval: bool = True
+    approval_request_id: Optional[str] = None
+    details: Optional[str] = None
+
+
 class LongTermMemoryAddRequest(BaseModel):
     user_id: Optional[str] = None
     key: Optional[str] = None

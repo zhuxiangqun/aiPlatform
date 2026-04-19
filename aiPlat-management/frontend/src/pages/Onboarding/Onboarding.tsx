@@ -60,8 +60,16 @@ const Onboarding: React.FC = () => {
   const [autosmokeApprovalId, setAutosmokeApprovalId] = useState<string>('');
   const [autosmokeForm, setAutosmokeForm] = useState({ enabled: true, enforce: true, webhook_url: '' });
 
+  const [secretsStatus, setSecretsStatus] = useState<any>(null);
+  const [secretsLoading, setSecretsLoading] = useState(false);
+  const [migrateSecretsLoading, setMigrateSecretsLoading] = useState(false);
+  const [migrateSecretsResult, setMigrateSecretsResult] = useState<any>(null);
+  const [migrateSecretsApprovalId, setMigrateSecretsApprovalId] = useState<string>('');
+
   // Auto-poll approvals and auto-apply on approval
-  const [approvalWatch, setApprovalWatch] = useState<Record<string, { op: 'default_llm' | 'init_tenant' | 'autosmoke'; created_at: number }>>({});
+  const [approvalWatch, setApprovalWatch] = useState<
+    Record<string, { op: 'default_llm' | 'init_tenant' | 'autosmoke' | 'secrets_migrate'; created_at: number }>
+  >({});
   const [approvalWatchLog, setApprovalWatchLog] = useState<Record<string, string>>({});
   const approvalWatchInFlight = useRef<Record<string, boolean>>({});
 
@@ -89,6 +97,19 @@ const Onboarding: React.FC = () => {
       setDoctor(null);
     } finally {
       setDoctorLoading(false);
+    }
+  };
+
+  const refreshSecrets = async () => {
+    setSecretsLoading(true);
+    try {
+      const st = await onboardingApi.getSecretsStatus();
+      setSecretsStatus(st);
+    } catch (e) {
+      console.error(e);
+      setSecretsStatus(null);
+    } finally {
+      setSecretsLoading(false);
     }
   };
 
@@ -125,6 +146,7 @@ const Onboarding: React.FC = () => {
     refreshState();
     refreshApprovals();
     refreshDoctor();
+    refreshSecrets();
   }, []);
 
   // Poll approval status and auto-apply when approved
@@ -164,6 +186,9 @@ const Onboarding: React.FC = () => {
             } else if (w.op === 'autosmoke') {
               setAutosmokeApprovalId(requestId);
               await submitAutosmoke(requestId);
+            } else if (w.op === 'secrets_migrate') {
+              setMigrateSecretsApprovalId(requestId);
+              await submitMigrateSecrets(requestId);
             }
             setApprovalWatch((prev) => {
               const next = { ...(prev || {}) };
@@ -343,6 +368,9 @@ const Onboarding: React.FC = () => {
       } else if (String(op) === 'onboarding:autosmoke') {
         setAutosmokeApprovalId(requestId);
         await submitAutosmoke(requestId);
+      } else if (String(op) === 'onboarding:secrets_migrate') {
+        setMigrateSecretsApprovalId(requestId);
+        await submitMigrateSecrets(requestId);
       }
     } catch (e) {
       console.error(e);
@@ -397,6 +425,29 @@ const Onboarding: React.FC = () => {
       setAutosmokeResult({ status: 'error', error: e?.message || String(e) });
     } finally {
       setAutosmokeLoading(false);
+    }
+  };
+
+  const submitMigrateSecrets = async (approvalIdOverride?: string) => {
+    setMigrateSecretsLoading(true);
+    setMigrateSecretsResult(null);
+    try {
+      const res = await onboardingApi.migrateSecrets({
+        require_approval: true,
+        approval_request_id: approvalIdOverride || migrateSecretsApprovalId || undefined,
+      });
+      setMigrateSecretsResult(res);
+      if (res?.status === 'approval_required' && res?.approval_request_id) {
+        const rid = String(res.approval_request_id);
+        setMigrateSecretsApprovalId(rid);
+        setApprovalWatch((prev) => ({ ...(prev || {}), [rid]: { op: 'secrets_migrate', created_at: Date.now() } }));
+        setApprovalWatchLog((prev) => ({ ...(prev || {}), [rid]: '等待审批中：pending' }));
+      }
+      await refreshSecrets();
+    } catch (e: any) {
+      setMigrateSecretsResult({ status: 'error', error: e?.message || String(e) });
+    } finally {
+      setMigrateSecretsLoading(false);
     }
   };
 
@@ -754,6 +805,43 @@ const Onboarding: React.FC = () => {
             {`# 生成 Fernet key（一次性）\npython3 -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\"\n# 设置环境变量（示例）\nexport AIPLAT_SECRET_KEY='<paste-key-here>'\n`}
           </pre>
         )}
+      </div>
+
+      <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="text-gray-200 font-medium">安全：历史明文密钥迁移（需审批）</div>
+          <button
+            onClick={refreshSecrets}
+            className="px-3 py-1.5 rounded-lg bg-dark-hover text-gray-200 hover:bg-dark-border transition-colors text-xs"
+          >
+            {secretsLoading ? '刷新中…' : '刷新'}
+          </button>
+        </div>
+        <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
+          {JSON.stringify(secretsStatus || {}, null, 2)}
+        </pre>
+        <div>
+          <div className="text-xs text-gray-500 mb-1">approval_request_id（可选）</div>
+          <input
+            value={migrateSecretsApprovalId}
+            onChange={(e) => setMigrateSecretsApprovalId(e.target.value)}
+            placeholder="例如：apr-xxxx"
+            className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
+          />
+        </div>
+        <button
+          disabled={migrateSecretsLoading}
+          onClick={() => submitMigrateSecrets()}
+          className="px-4 py-2 rounded-lg bg-primary text-white text-sm hover:opacity-90 disabled:opacity-60"
+        >
+          {migrateSecretsLoading ? '提交中…' : '提交审批/迁移'}
+        </button>
+        <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
+          {JSON.stringify(migrateSecretsResult || {}, null, 2)}
+        </pre>
+        <div className="text-xs text-gray-500">
+          说明：需要先配置 AIPLAT_SECRET_KEY；迁移会把 adapters.api_key（明文）加密到 api_key_enc 并清空 api_key。
+        </div>
       </div>
 
       <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-4">

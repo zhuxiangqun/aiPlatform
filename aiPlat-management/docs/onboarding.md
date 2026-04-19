@@ -14,6 +14,7 @@
 10. （增强）轮换 adapter API key（不回显旧 key）
 11. （增强）强门禁策略：tenant policy 支持通配符 '*'（所有工具执行需审批）
 12. （增强）autosmoke 配置中心：写入 core global_settings（env 仍可覆盖）
+13. （增强）历史明文密钥迁移：将 adapters.api_key 迁移到 api_key_enc 并清空明文列（需审批）
 
 ## 入口
 
@@ -108,6 +109,22 @@
 - `POST /api/core/onboarding/autosmoke`
 
 写入 `global_settings(key="autosmoke")`。运行时以 **env 优先生效**，若 env 未设置则回退使用该配置。
+
+## 增强：历史明文密钥迁移（需审批）
+
+向导提供“历史明文密钥迁移”区，会调用：
+
+- `GET /api/onboarding/secrets/status`
+- `POST /api/onboarding/secrets/migrate`
+
+该接口转调 core：
+
+- `GET /api/core/onboarding/secrets/status`
+- `POST /api/core/onboarding/secrets/migrate`
+
+迁移要求：
+- 必须先配置 `AIPLAT_SECRET_KEY`
+- 会把 `adapters.api_key`（明文）加密写入 `api_key_enc`，并清空 `api_key`
 
 ## 常见问题
 

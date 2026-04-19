@@ -5057,6 +5057,68 @@ class ExecutionStore:
 
         return await anyio.to_thread.run_sync(_sync)
 
+    async def get_adapter_secrets_status(self) -> Dict[str, Any]:
+        """
+        Returns counts of encrypted/plaintext adapter secrets stored at rest.
+        """
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                total = int(conn.execute("SELECT COUNT(1) AS c FROM adapters;").fetchone()["c"])
+                enc = int(conn.execute("SELECT COUNT(1) AS c FROM adapters WHERE api_key_enc IS NOT NULL AND api_key_enc != '';").fetchone()["c"])
+                plain = int(conn.execute("SELECT COUNT(1) AS c FROM adapters WHERE api_key IS NOT NULL AND api_key != '';").fetchone()["c"])
+                return {"total": total, "encrypted": enc, "plaintext": plain}
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
+    async def migrate_adapter_secrets_to_encrypted(self) -> Dict[str, Any]:
+        """
+        Encrypt any legacy plaintext api_key into api_key_enc and clear api_key.
+        Requires AIPLAT_SECRET_KEY configured; otherwise raises.
+        """
+        await self.init()
+        db_path = self._config.db_path
+
+        from core.harness.infrastructure.crypto.secretbox import encrypt_str, is_configured
+
+        if not is_configured():
+            raise RuntimeError("AIPLAT_SECRET_KEY is not set")
+
+        def _sync() -> Dict[str, Any]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            updated = 0
+            skipped = 0
+            try:
+                rows = conn.execute(
+                    "SELECT adapter_id, api_key, api_key_enc FROM adapters WHERE api_key IS NOT NULL AND api_key != '';"
+                ).fetchall()
+                for r in rows:
+                    aid = r["adapter_id"]
+                    api_key = r["api_key"] or ""
+                    api_key_enc = r["api_key_enc"]
+                    if api_key_enc:
+                        skipped += 1
+                        continue
+                    enc = encrypt_str(str(api_key))
+                    conn.execute(
+                        "UPDATE adapters SET api_key_enc=?, api_key_kid=?, api_key='' WHERE adapter_id=?;",
+                        (enc, "fernet:v1", str(aid)),
+                    )
+                    updated += 1
+                conn.commit()
+            finally:
+                conn.close()
+            return {"updated": updated, "skipped": skipped, "scanned": len(rows)}
+
+        return await anyio.to_thread.run_sync(_sync)
+
     # ---------------------------------------------------------------------
     # Global settings
     # ---------------------------------------------------------------------

@@ -42,6 +42,7 @@ from core.schemas import (
     OnboardingDefaultLLMRequest,
     OnboardingInitTenantRequest,
     OnboardingAutosmokeConfigRequest,
+    OnboardingSecretsMigrateRequest,
     LongTermMemoryAddRequest,
     LongTermMemorySearchRequest,
     MessageCreateRequest,
@@ -6834,6 +6835,45 @@ async def set_autosmoke_config(request: OnboardingAutosmokeConfigRequest):
         value["dedup_seconds"] = int(request.dedup_seconds)
     res = await _execution_store.upsert_global_setting(key="autosmoke", value=value)
     return {"status": "updated", "autosmoke": res}
+
+
+@api_router.get("/onboarding/secrets/status")
+async def get_secrets_status():
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    st = await _execution_store.get_adapter_secrets_status()
+    try:
+        from core.harness.infrastructure.crypto.secretbox import is_configured
+
+        st["encryption_configured"] = bool(is_configured())
+    except Exception:
+        st["encryption_configured"] = False
+    return st
+
+
+@api_router.post("/onboarding/secrets/migrate")
+async def migrate_secrets(request: OnboardingSecretsMigrateRequest):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+
+    if request.require_approval:
+        if not request.approval_request_id:
+            rid = await _require_onboarding_approval(
+                operation="secrets_migrate",
+                user_id="admin",
+                details=request.details or "migrate adapter api_key to encrypted storage",
+                metadata={},
+            )
+            return {"status": "approval_required", "approval_request_id": rid}
+        if not _is_approval_resolved_approved(request.approval_request_id):
+            raise HTTPException(status_code=409, detail="not_approved")
+
+    try:
+        res = await _execution_store.migrate_adapter_secrets_to_encrypted()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    st = await _execution_store.get_adapter_secrets_status()
+    return {"status": "migrated", "result": res, "secrets_status": st}
 
 
 @api_router.post("/memory/longterm")
