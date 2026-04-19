@@ -253,14 +253,20 @@ async def api_v1_agent_execute(agent_id: str, req: AgentExecuteRequest, request:
     payload_ctx.setdefault("source", "app")
     payload_ctx.setdefault("tenant_id", identity.tenant_id)
     payload_ctx.setdefault("session_id", req.session_id or "default")
+    # Execute workspace agent via core workspace agent endpoint (not gateway/execute),
+    # because /api/v1/agents CRUD is backed by core /workspace/agents.
     body = {
-        "channel": "api_v1",
-        "kind": "agent",
-        "target_id": agent_id,
+        "input": {"text": req.input},
+        "context": payload_ctx,
+        "user_id": identity.actor_id,
         "session_id": req.session_id or "default",
-        "payload": {"input": {"text": req.input}, "context": payload_ctx},
     }
-    return await _call_core_gateway_execute(identity, body)
+    return await _core_request(
+        "POST",
+        f"/api/core/workspace/agents/{agent_id}/execute",
+        identity=identity,
+        json_body=body,
+    )
 
 
 @app.get("/api/v1/agents")

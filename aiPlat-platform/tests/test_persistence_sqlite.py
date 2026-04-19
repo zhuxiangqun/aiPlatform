@@ -62,6 +62,9 @@ def test_platform_agents_crud_proxy(monkeypatch):
             return {"id": "a_new", "status": "created", "name": "N1"}
         if method == "GET" and path == "/api/core/workspace/agents/a1":
             return {"id": "a1", "name": "A1", "agent_type": "base", "status": "ready"}
+        if method == "POST" and path == "/api/core/workspace/agents/a1/execute":
+            assert json_body and json_body["session_id"] == "s1"
+            return {"ok": True, "run_id": "run_x", "status": "running"}
         if method == "DELETE" and path == "/api/core/workspace/agents/a1":
             return {"status": "deleted", "id": "a1"}
         raise AssertionError(f"unexpected call: {method} {path}")
@@ -85,3 +88,6 @@ def test_platform_agents_crud_proxy(monkeypatch):
         assert d.status_code == 200
         assert d.json()["ok"] is True
 
+        ex = client.post("/api/v1/agents/a1/execute", json={"input": "hi", "session_id": "s1", "context": {"tenant_id": "t1"}})
+        assert ex.status_code == 200
+        assert ex.json()["run_id"] == "run_x"
