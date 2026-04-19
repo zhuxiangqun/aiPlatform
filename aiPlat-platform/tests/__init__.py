@@ -1,0 +1,2 @@
+"""aiPlat-platform tests."""
+

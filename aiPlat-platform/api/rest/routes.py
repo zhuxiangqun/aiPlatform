@@ -24,6 +24,7 @@ import httpx
 # Use subpackages directly (auth/, utils/, etc).
 from utils.ids import new_prefixed_id as _new_prefixed_id  # type: ignore
 from auth.authenticator import authenticator as _authenticator  # type: ignore
+from storage import sqlite as platform_store  # type: ignore
 
 
 app = FastAPI(title="aiPlat-platform", version="0.1.0")
@@ -172,8 +173,32 @@ async def _call_core_gateway_execute(identity: Identity, body: Dict[str, Any]) -
     if not body.get("session_id"):
         body["session_id"] = body.get("payload", {}).get("session_id") if isinstance(body.get("payload"), dict) else None
 
+    return await _core_request("POST", "/api/core/gateway/execute", identity=identity, json_body=body, extra_headers=headers)
+
+
+async def _core_request(
+    method: str,
+    path: str,
+    *,
+    identity: Identity,
+    params: Optional[Dict[str, Any]] = None,
+    json_body: Optional[Dict[str, Any]] = None,
+    extra_headers: Optional[Dict[str, str]] = None,
+) -> Dict[str, Any]:
+    headers = {
+        "Content-Type": "application/json",
+        "X-AIPLAT-REQUEST-ID": identity.request_id,
+        "X-AIPLAT-TENANT-ID": identity.tenant_id,
+        "X-AIPLAT-ACTOR-ID": identity.actor_id,
+    }
+    if identity.scopes:
+        headers["X-AIPLAT-SCOPES"] = ",".join(identity.scopes)
+    if identity.actor_role:
+        headers["X-AIPLAT-ACTOR-ROLE"] = identity.actor_role
+    if extra_headers:
+        headers.update(extra_headers)
     async with httpx.AsyncClient(timeout=60.0) as client:
-        resp = await client.post(f"{_core_base_url()}/api/core/gateway/execute", headers=headers, json=body)
+        resp = await client.request(method.upper(), f"{_core_base_url()}{path}", headers=headers, params=params, json=json_body)
         resp.raise_for_status()
         return resp.json()
 
@@ -239,24 +264,84 @@ async def api_v1_agent_execute(agent_id: str, req: AgentExecuteRequest, request:
 
 
 @app.get("/api/v1/agents")
-async def api_v1_agents_list(limit: int = 100):
-    # minimal placeholder; can be expanded to proxy core /agents later
-    return {"agents": [], "total": 0, "limit": limit}
+async def api_v1_agents_list(request: Request, limit: int = 100, offset: int = 0):
+    identity = _resolve_identity(request)
+    data = await _core_request(
+        "GET",
+        "/api/core/workspace/agents",
+        identity=identity,
+        params={"limit": int(limit), "offset": int(offset)},
+    )
+    # core already returns {agents,total,limit,offset}
+    return data
+
+
+@app.post("/api/v1/agents")
+async def api_v1_agents_create(request: Request, body: Dict[str, Any]):
+    identity = _resolve_identity(request)
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail="body must be json object")
+    name = body.get("name")
+    if not name:
+        raise HTTPException(status_code=400, detail="name is required")
+    metadata = body.get("metadata") if isinstance(body.get("metadata"), dict) else {}
+    if body.get("description"):
+        metadata = dict(metadata)
+        metadata.setdefault("description", str(body.get("description")))
+    payload = {
+        "name": str(name),
+        "agent_type": str(body.get("agent_type") or "base"),
+        "config": body.get("config") if isinstance(body.get("config"), dict) else {},
+        "skills": body.get("skills") if isinstance(body.get("skills"), list) else [],
+        "tools": body.get("tools") if isinstance(body.get("tools"), list) else [],
+        "memory_config": body.get("memory_config") if isinstance(body.get("memory_config"), dict) else None,
+        "metadata": metadata or None,
+    }
+    return await _core_request("POST", "/api/core/workspace/agents", identity=identity, json_body=payload)
+
+
+@app.get("/api/v1/agents/{agent_id}")
+async def api_v1_agents_get(agent_id: str, request: Request):
+    identity = _resolve_identity(request)
+    agent = await _core_request("GET", f"/api/core/workspace/agents/{agent_id}", identity=identity)
+    return {"agent": agent}
+
+
+@app.put("/api/v1/agents/{agent_id}")
+async def api_v1_agents_update(agent_id: str, request: Request, body: Dict[str, Any]):
+    identity = _resolve_identity(request)
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail="body must be json object")
+    payload: Dict[str, Any] = {}
+    for k in ("name", "config", "skills", "tools", "memory_config", "metadata"):
+        if k in body:
+            payload[k] = body.get(k)
+    if "description" in body:
+        md = payload.get("metadata") if isinstance(payload.get("metadata"), dict) else {}
+        md = dict(md)
+        md["description"] = str(body.get("description") or "")
+        payload["metadata"] = md
+    return await _core_request("PUT", f"/api/core/workspace/agents/{agent_id}", identity=identity, json_body=payload)
+
+
+@app.delete("/api/v1/agents/{agent_id}")
+async def api_v1_agents_delete(agent_id: str, request: Request):
+    identity = _resolve_identity(request)
+    try:
+        await _core_request("DELETE", f"/api/core/workspace/agents/{agent_id}", identity=identity)
+        return {"ok": True, "id": agent_id}
+    except httpx.HTTPStatusError as e:
+        if e.response is not None and e.response.status_code == 404:
+            return {"ok": False, "id": agent_id}
+        raise
 
 
 # -------------------- Management-facing platform resources (minimal, in-memory) --------------------
 
 
-_gateway_routes: Dict[str, Dict[str, Any]] = {}
-_auth_users: Dict[str, Dict[str, Any]] = {}
-_tenants: Dict[str, Dict[str, Any]] = {}
-
-
 @app.get("/platform/gateway/routes")
 async def list_gateway_routes(enabled: Optional[bool] = None):
-    routes = list(_gateway_routes.values())
-    if enabled is not None:
-        routes = [r for r in routes if bool(r.get("enabled")) == bool(enabled)]
+    routes = platform_store.list_gateway_routes(enabled=enabled)
     return {"routes": routes, "total": len(routes)}
 
 
@@ -275,13 +360,12 @@ async def create_gateway_route(body: Dict[str, Any]):
         "created_at": body.get("created_at") or "",
         "updated_at": body.get("updated_at") or "",
     }
-    _gateway_routes[rid] = route
-    return route
+    return platform_store.upsert_gateway_route(route)
 
 
 @app.get("/platform/gateway/routes/{route_id}")
 async def get_gateway_route(route_id: str):
-    r = _gateway_routes.get(route_id)
+    r = platform_store.get_gateway_route(route_id)
     if not r:
         raise HTTPException(status_code=404, detail="route_not_found")
     return r
@@ -289,33 +373,28 @@ async def get_gateway_route(route_id: str):
 
 @app.put("/platform/gateway/routes/{route_id}")
 async def update_gateway_route(route_id: str, patch: Dict[str, Any]):
-    r = _gateway_routes.get(route_id)
+    r = platform_store.get_gateway_route(route_id)
     if not r:
         raise HTTPException(status_code=404, detail="route_not_found")
     r.update({k: v for k, v in (patch or {}).items() if v is not None})
-    _gateway_routes[route_id] = r
-    return r
+    return platform_store.upsert_gateway_route(r)
 
 
 @app.delete("/platform/gateway/routes/{route_id}")
 async def delete_gateway_route(route_id: str):
-    _gateway_routes.pop(route_id, None)
+    platform_store.delete_gateway_route(route_id)
     return {"status": "ok"}
 
 
 @app.get("/platform/gateway/metrics")
 async def gateway_metrics():
     # stubbed metrics
-    return {"total_requests": 0, "success_rate": 1.0, "avg_latency_ms": 0, "active_routes": len(_gateway_routes)}
+    return {"total_requests": 0, "success_rate": 1.0, "avg_latency_ms": 0, "active_routes": len(platform_store.list_gateway_routes())}
 
 
 @app.get("/platform/auth/users")
 async def list_auth_users(role: Optional[str] = None, status: Optional[str] = None):
-    users = list(_auth_users.values())
-    if role:
-        users = [u for u in users if str(u.get("role")) == str(role)]
-    if status:
-        users = [u for u in users if str(u.get("status")) == str(status)]
+    users = platform_store.list_auth_users(role=role, status=status)
     return {"users": users, "total": len(users)}
 
 
@@ -331,31 +410,27 @@ async def create_auth_user(body: Dict[str, Any]):
         "last_login": None,
         "created_at": "",
     }
-    _auth_users[uid] = user
-    return user
+    return platform_store.upsert_auth_user(user)
 
 
 @app.put("/platform/auth/users/{user_id}")
 async def update_auth_user(user_id: str, patch: Dict[str, Any]):
-    u = _auth_users.get(user_id)
+    u = platform_store.get_auth_user(user_id)
     if not u:
         raise HTTPException(status_code=404, detail="user_not_found")
     u.update({k: v for k, v in (patch or {}).items() if v is not None})
-    _auth_users[user_id] = u
-    return u
+    return platform_store.upsert_auth_user(u)
 
 
 @app.delete("/platform/auth/users/{user_id}")
 async def delete_auth_user(user_id: str):
-    _auth_users.pop(user_id, None)
+    platform_store.delete_auth_user(user_id)
     return {"status": "ok"}
 
 
 @app.get("/platform/tenants")
 async def list_tenants(status: Optional[str] = None):
-    tenants = list(_tenants.values())
-    if status:
-        tenants = [t for t in tenants if str(t.get("status")) == str(status)]
+    tenants = platform_store.list_tenants(status=status)
     return {"tenants": tenants, "total": len(tenants)}
 
 
@@ -371,41 +446,41 @@ async def create_tenant(body: Dict[str, Any]):
         "user_count": 0,
         "created_at": "",
     }
-    _tenants[tid] = t
-    return t
+    return platform_store.upsert_tenant(t)
 
 
 @app.put("/platform/tenants/{tenant_id}")
 async def update_tenant(tenant_id: str, patch: Dict[str, Any]):
-    t = _tenants.get(tenant_id)
+    t = platform_store.get_tenant(tenant_id)
     if not t:
         raise HTTPException(status_code=404, detail="tenant_not_found")
     t.update({k: v for k, v in (patch or {}).items() if v is not None})
-    _tenants[tenant_id] = t
-    return t
+    return platform_store.upsert_tenant(t)
 
 
 @app.delete("/platform/tenants/{tenant_id}")
 async def delete_tenant(tenant_id: str):
-    _tenants.pop(tenant_id, None)
+    platform_store.delete_tenant(tenant_id)
     return {"status": "ok"}
 
 
 @app.post("/platform/tenants/{tenant_id}/suspend")
 async def suspend_tenant(tenant_id: str):
-    t = _tenants.get(tenant_id)
+    t = platform_store.get_tenant(tenant_id)
     if not t:
         raise HTTPException(status_code=404, detail="tenant_not_found")
     t["status"] = "suspended"
+    platform_store.upsert_tenant(t)
     return {"status": "ok"}
 
 
 @app.post("/platform/tenants/{tenant_id}/resume")
 async def resume_tenant(tenant_id: str):
-    t = _tenants.get(tenant_id)
+    t = platform_store.get_tenant(tenant_id)
     if not t:
         raise HTTPException(status_code=404, detail="tenant_not_found")
     t["status"] = "active"
+    platform_store.upsert_tenant(t)
     return {"status": "ok"}
 
 
