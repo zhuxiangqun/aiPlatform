@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Copy, RotateCw, Search } from 'lucide-react';
 import { Button, Input, Select, Table, toast } from '../../../components/ui';
 import { diagnosticsApi } from '../../../services';
 
 const Syscalls: React.FC = () => {
+  const location = useLocation();
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
@@ -22,13 +24,16 @@ const Syscalls: React.FC = () => {
   const [status, setStatus] = useState<string>('');
   const [errorContains, setErrorContains] = useState('');
 
-  const loadStats = async () => {
+  const loadStats = async (ovr?: Partial<{ kind: string; windowHours: number; topN: number }>) => {
     setStatsLoading(true);
     try {
+      const effectiveKind = ovr?.kind != null ? ovr.kind : kind;
+      const effectiveWindow = ovr?.windowHours != null ? ovr.windowHours : windowHours;
+      const effectiveTopN = ovr?.topN != null ? ovr.topN : topN;
       const res = await diagnosticsApi.getSyscallStats({
-        window_hours: windowHours,
-        top_n: topN,
-        kind: kind || undefined,
+        window_hours: effectiveWindow,
+        top_n: effectiveTopN,
+        kind: effectiveKind || undefined,
       });
       setStats(res?.stats || null);
     } catch (e: any) {
@@ -39,18 +44,37 @@ const Syscalls: React.FC = () => {
     }
   };
 
-  const load = async () => {
+  const load = async (
+    ovr?: Partial<{
+      limit: number;
+      offset: number;
+      traceId: string;
+      runId: string;
+      kind: string;
+      name: string;
+      status: string;
+      errorContains: string;
+    }>,
+  ) => {
     setLoading(true);
     try {
+      const effectiveLimit = ovr?.limit != null ? ovr.limit : limit;
+      const effectiveOffset = ovr?.offset != null ? ovr.offset : offset;
+      const effectiveTraceId = ovr?.traceId != null ? ovr.traceId : traceId;
+      const effectiveRunId = ovr?.runId != null ? ovr.runId : runId;
+      const effectiveKind = ovr?.kind != null ? ovr.kind : kind;
+      const effectiveName = ovr?.name != null ? ovr.name : name;
+      const effectiveStatus = ovr?.status != null ? ovr.status : status;
+      const effectiveErrorContains = ovr?.errorContains != null ? ovr.errorContains : errorContains;
       const res = await diagnosticsApi.listSyscalls({
-        limit,
-        offset,
-        trace_id: traceId || undefined,
-        run_id: runId || undefined,
-        kind: kind || undefined,
-        name: name || undefined,
-        status: status || undefined,
-        error_contains: errorContains || undefined,
+        limit: effectiveLimit,
+        offset: effectiveOffset,
+        trace_id: effectiveTraceId || undefined,
+        run_id: effectiveRunId || undefined,
+        kind: effectiveKind || undefined,
+        name: effectiveName || undefined,
+        status: effectiveStatus || undefined,
+        error_contains: effectiveErrorContains || undefined,
       });
       const data = res?.syscalls || {};
       setItems(Array.isArray(data.items) ? data.items : []);
@@ -73,6 +97,46 @@ const Syscalls: React.FC = () => {
     loadStats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [windowHours, topN]);
+
+  // Read query params on mount (for deep links from Doctor page).
+  useEffect(() => {
+    const q = new URLSearchParams(location.search || '');
+    const qKind = q.get('kind') || '';
+    const qTrace = q.get('trace_id') || '';
+    const qRun = q.get('run_id') || '';
+    const qName = q.get('name') || '';
+    const qStatus = q.get('status') || '';
+    const qError = q.get('error_contains') || '';
+    const qLimit = q.get('limit');
+    const qOffset = q.get('offset');
+
+    const nextLimit = qLimit ? Math.max(1, parseInt(qLimit, 10) || 100) : limit;
+    const nextOffset = qOffset ? Math.max(0, parseInt(qOffset, 10) || 0) : 0;
+
+    if (qKind || qTrace || qRun || qName || qStatus || qError || qLimit || qOffset) {
+      setKind(qKind);
+      setTraceId(qTrace);
+      setRunId(qRun);
+      setName(qName);
+      setStatus(qStatus);
+      setErrorContains(qError);
+      setLimit(nextLimit);
+      setOffset(nextOffset);
+      // Load with parsed values immediately (avoid waiting for setState)
+      load({
+        kind: qKind,
+        traceId: qTrace,
+        runId: qRun,
+        name: qName,
+        status: qStatus,
+        errorContains: qError,
+        limit: nextLimit,
+        offset: nextOffset,
+      });
+      loadStats({ kind: qKind });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const columns = useMemo(
     () => [
@@ -136,6 +200,7 @@ const Syscalls: React.FC = () => {
             { value: 'tool', label: 'tool' },
             { value: 'llm', label: 'llm' },
             { value: 'skill', label: 'skill' },
+            { value: 'changeset', label: 'changeset' },
           ]}
         />
         <Input label="name(模糊)" value={name} onChange={(e: any) => setName(e.target.value)} />
@@ -194,7 +259,7 @@ const Syscalls: React.FC = () => {
               value={String(topN)}
               onChange={(e: any) => setTopN(Math.max(1, Number(e.target.value || 10)))}
             />
-            <Button variant="ghost" icon={<RotateCw className="w-4 h-4" />} onClick={loadStats} loading={statsLoading}>
+            <Button variant="ghost" icon={<RotateCw className="w-4 h-4" />} onClick={() => loadStats()} loading={statsLoading}>
               刷新统计
             </Button>
           </div>

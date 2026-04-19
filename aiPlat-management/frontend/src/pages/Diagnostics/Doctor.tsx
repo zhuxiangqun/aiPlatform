@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { diagnosticsApi } from '../../services';
-import { Card, CardContent, CardHeader, Badge } from '../../components/ui';
+import { Card, CardContent, CardHeader, Badge, Button, Table } from '../../components/ui';
 import { ActionableFixes } from '../../components/common/ActionableFixes';
+import { Copy } from 'lucide-react';
 
 const Doctor: React.FC = () => {
   const [data, setData] = useState<any>(null);
@@ -35,6 +36,17 @@ const Doctor: React.FC = () => {
   const repo = data?.repo?.changeset || null;
   const changesets = data?.changesets || null;
   const repoAction = data?.actions?.record_repo_changeset ? { record_repo_changeset: data.actions.record_repo_changeset } : null;
+  const changesetItems = Array.isArray(changesets?.items) ? changesets.items : [];
+
+  const formatTs = (ts: any) => {
+    const n = Number(ts);
+    if (!Number.isFinite(n) || n <= 0) return '-';
+    try {
+      return new Date(n * 1000).toLocaleString();
+    } catch {
+      return String(ts);
+    }
+  };
 
   const copyReport = async () => {
     try {
@@ -180,13 +192,59 @@ const Doctor: React.FC = () => {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div className="text-sm font-semibold text-gray-200">Recent ChangeSets</div>
-              <Badge variant="info">{changesets?.total ?? 0}</Badge>
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/diagnostics/syscalls?kind=changeset"
+                  className="text-xs text-primary hover:underline"
+                  title="打开 Syscalls 并筛选 kind=changeset"
+                >
+                  打开 Syscalls
+                </Link>
+                <Button
+                  variant="ghost"
+                  icon={<Copy size={14} />}
+                  onClick={() => navigator.clipboard.writeText(`${window.location.origin}/diagnostics/syscalls?kind=changeset`)}
+                />
+                <Badge variant="info">{changesets?.total ?? 0}</Badge>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
-            <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
-              {JSON.stringify(changesets || {}, null, 2)}
-            </pre>
+            {changesetItems.length === 0 ? (
+              <div className="text-sm text-gray-500">暂无变更审计（changeset）记录</div>
+            ) : (
+              <Table
+                columns={[
+                  { key: 'created_at', title: '时间', width: 170, render: (_: any, r: any) => <span className="text-xs text-gray-300">{formatTs(r.created_at)}</span> },
+                  { key: 'name', title: 'name', width: 200, render: (_: any, r: any) => <span className="text-xs text-gray-200">{r.name}</span> },
+                  {
+                    key: 'target',
+                    title: 'target',
+                    width: 220,
+                    render: (_: any, r: any) => (
+                      <span className="text-xs text-gray-400">
+                        {r.target_type || '-'} / {String(r.target_id || '-').slice(0, 24)}
+                      </span>
+                    ),
+                  },
+                  {
+                    key: 'note',
+                    title: 'note',
+                    render: (_: any, r: any) => <span className="text-xs text-gray-400">{r?.args?.note || '-'}</span>,
+                  },
+                  {
+                    key: 'approval',
+                    title: 'approval',
+                    width: 160,
+                    render: (_: any, r: any) => (
+                      <span className="text-xs text-gray-400">{r.approval_request_id ? String(r.approval_request_id).slice(0, 12) : '-'}</span>
+                    ),
+                  },
+                ]}
+                data={changesetItems.slice(0, 20)}
+                rowKey={(r: any) => String(r.id)}
+              />
+            )}
           </CardContent>
         </Card>
 
