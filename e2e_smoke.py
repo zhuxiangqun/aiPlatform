@@ -34,14 +34,21 @@ MGMT = _env("AIPLAT_MANAGEMENT_ENDPOINT", "http://localhost:8000")
 
 API_KEY = os.getenv("AIPLAT_API_KEY", "").strip()
 TENANT_ID = os.getenv("AIPLAT_TENANT_ID", "").strip()
+ACTOR_ID = os.getenv("AIPLAT_ACTOR_ID", "").strip()
 
 
 def _headers() -> Dict[str, str]:
     h = {"Content-Type": "application/json"}
     if API_KEY:
         h["X-AIPLAT-API-KEY"] = API_KEY
-    if TENANT_ID:
-        h["X-AIPLAT-TENANT-ID"] = TENANT_ID
+    # For local dev, allow explicit header identity so permissions work out-of-the-box.
+    # If you have a real API key / JWT, set AIPLAT_API_KEY instead.
+    if not API_KEY:
+        h["X-AIPLAT-ACTOR-ID"] = ACTOR_ID or "admin"
+        h["X-AIPLAT-TENANT-ID"] = TENANT_ID or "default"
+    else:
+        if TENANT_ID:
+            h["X-AIPLAT-TENANT-ID"] = TENANT_ID
     return h
 
 

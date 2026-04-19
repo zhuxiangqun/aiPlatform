@@ -2201,26 +2201,84 @@ class ExecutionStore:
                         "session_id": meta.get("session_id") or (meta.get("context") or {}).get("session_id") if isinstance(meta.get("context"), dict) else None,
                     }
                 # tool
-                row = conn.execute("SELECT * FROM tool_executions WHERE id=? LIMIT 1", (run_id,)).fetchone()
-                if row:
-                    meta = _json_loads(row["metadata_json"]) if "metadata_json" in row.keys() else {}
-                    meta = meta or {}
-                    err_obj = meta.get("error_detail") if isinstance(meta.get("error_detail"), dict) else None
-                    return {
-                        "run_id": row["id"],
-                        "kind": "tool",
-                        "target_type": "tool",
-                        "target_id": row["tool_name"],
-                        "trace_id": row["trace_id"],
-                        "status": row["status"],
-                        "start_time": row["start_time"],
-                        "end_time": row["end_time"],
-                        "error_code": row["error_code"],
-                        "error_message": row["error"] if "error" in row.keys() else None,
-                        "error": err_obj or None,
-                        "user_id": row["user_id"] if "user_id" in row.keys() else meta.get("user_id"),
-                        "session_id": row["session_id"] if "session_id" in row.keys() else (meta.get("context") or {}).get("session_id") if isinstance(meta.get("context"), dict) else None,
-                    }
+                # NOTE: tool_executions is not a guaranteed table in all schema versions.
+                # Prefer reconstructing a best-effort summary from run_events.
+                try:
+                    row = conn.execute("SELECT * FROM tool_executions WHERE id=? LIMIT 1", (run_id,)).fetchone()
+                    if row:
+                        meta = _json_loads(row["metadata_json"]) if "metadata_json" in row.keys() else {}
+                        meta = meta or {}
+                        err_obj = meta.get("error_detail") if isinstance(meta.get("error_detail"), dict) else None
+                        return {
+                            "run_id": row["id"],
+                            "kind": "tool",
+                            "target_type": "tool",
+                            "target_id": row["tool_name"],
+                            "trace_id": row["trace_id"],
+                            "status": row["status"],
+                            "start_time": row["start_time"],
+                            "end_time": row["end_time"],
+                            "error_code": row["error_code"],
+                            "error_message": row["error"] if "error" in row.keys() else None,
+                            "error": err_obj or None,
+                            "user_id": row["user_id"] if "user_id" in row.keys() else meta.get("user_id"),
+                            "session_id": row["session_id"] if "session_id" in row.keys() else (meta.get("context") or {}).get("session_id") if isinstance(meta.get("context"), dict) else None,
+                        }
+                except Exception:
+                    pass
+
+                # Fallback: build run summary from run_events (run_start/run_end).
+                try:
+                    start = conn.execute(
+                        "SELECT seq, trace_id, tenant_id, payload_json, created_at FROM run_events WHERE run_id=? AND type='run_start' ORDER BY seq ASC LIMIT 1",
+                        (run_id,),
+                    ).fetchone()
+                    if start:
+                        start_payload = _json_loads(start["payload_json"]) or {}
+                        kind = str(start_payload.get("kind") or "unknown")
+                        trace_id = start["trace_id"]
+                        tenant_id = start["tenant_id"]
+                        start_time = start["created_at"]
+                        end = conn.execute(
+                            "SELECT seq, payload_json, created_at FROM run_events WHERE run_id=? AND type='run_end' ORDER BY seq DESC LIMIT 1",
+                            (run_id,),
+                        ).fetchone()
+                        end_payload = _json_loads(end["payload_json"]) or {} if end else {}
+                        status = str(end_payload.get("status") or "running") if end else "running"
+                        end_time = end["created_at"] if end else None
+                        target_id = (
+                            start_payload.get("agent_id")
+                            or start_payload.get("skill_id")
+                            or start_payload.get("tool_name")
+                            or end_payload.get("tool_name")
+                            or end_payload.get("agent_id")
+                            or end_payload.get("skill_id")
+                        )
+                        session_id = (
+                            start_payload.get("session_id")
+                            or (start_payload.get("context") or {}).get("session_id")
+                            if isinstance(start_payload.get("context"), dict)
+                            else None
+                        )
+                        user_id = start_payload.get("user_id")
+                        return {
+                            "run_id": run_id,
+                            "kind": kind,
+                            "target_type": kind,
+                            "target_id": target_id,
+                            "trace_id": trace_id,
+                            "status": status,
+                            "start_time": start_time,
+                            "end_time": end_time,
+                            "error_code": None,
+                            "error_message": end_payload.get("error"),
+                            "error": None,
+                            "user_id": user_id,
+                            "session_id": session_id,
+                            "tenant_id": tenant_id,
+                        }
+                except Exception:
+                    pass
                 return None
             finally:
                 conn.close()
