@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle, AlertTriangle, RotateCw } from 'lucide-react';
 import { onboardingApi, diagnosticsApi } from '../../services/apiClient';
-import { approvalsApi } from '../../services';
+import { approvalsApi, policyApi } from '../../services';
 
 type StepKey = 'adapter' | 'health' | 'smoke';
 
@@ -66,9 +66,18 @@ const Onboarding: React.FC = () => {
   const [migrateSecretsResult, setMigrateSecretsResult] = useState<any>(null);
   const [migrateSecretsApprovalId, setMigrateSecretsApprovalId] = useState<string>('');
 
+  const [defaultTenantPolicy, setDefaultTenantPolicy] = useState<any>(null);
+  const [tenantPolicyLoading, setTenantPolicyLoading] = useState(false);
+  const [strongGateLoading, setStrongGateLoading] = useState(false);
+  const [strongGateResult, setStrongGateResult] = useState<any>(null);
+  const [strongGateApprovalId, setStrongGateApprovalId] = useState<string>('');
+
   // Auto-poll approvals and auto-apply on approval
   const [approvalWatch, setApprovalWatch] = useState<
-    Record<string, { op: 'default_llm' | 'init_tenant' | 'autosmoke' | 'secrets_migrate'; created_at: number }>
+    Record<
+      string,
+      { op: 'default_llm' | 'init_tenant' | 'autosmoke' | 'secrets_migrate' | 'strong_gate_on' | 'strong_gate_off'; created_at: number }
+    >
   >({});
   const [approvalWatchLog, setApprovalWatchLog] = useState<Record<string, string>>({});
   const approvalWatchInFlight = useRef<Record<string, boolean>>({});
@@ -113,6 +122,19 @@ const Onboarding: React.FC = () => {
     }
   };
 
+  const refreshDefaultTenantPolicy = async () => {
+    setTenantPolicyLoading(true);
+    try {
+      const p = await policyApi.getTenant('default');
+      setDefaultTenantPolicy(p);
+    } catch (e) {
+      // policy might not exist yet
+      setDefaultTenantPolicy(null);
+    } finally {
+      setTenantPolicyLoading(false);
+    }
+  };
+
   const refreshState = async () => {
     setLoadingState(true);
     try {
@@ -147,6 +169,7 @@ const Onboarding: React.FC = () => {
     refreshApprovals();
     refreshDoctor();
     refreshSecrets();
+    refreshDefaultTenantPolicy();
   }, []);
 
   // Poll approval status and auto-apply when approved
@@ -189,6 +212,12 @@ const Onboarding: React.FC = () => {
             } else if (w.op === 'secrets_migrate') {
               setMigrateSecretsApprovalId(requestId);
               await submitMigrateSecrets(requestId);
+            } else if (w.op === 'strong_gate_on') {
+              setStrongGateApprovalId(requestId);
+              await submitStrongGate(true, requestId);
+            } else if (w.op === 'strong_gate_off') {
+              setStrongGateApprovalId(requestId);
+              await submitStrongGate(false, requestId);
             }
             setApprovalWatch((prev) => {
               const next = { ...(prev || {}) };
@@ -371,6 +400,10 @@ const Onboarding: React.FC = () => {
       } else if (String(op) === 'onboarding:secrets_migrate') {
         setMigrateSecretsApprovalId(requestId);
         await submitMigrateSecrets(requestId);
+      } else if (String(op) === 'onboarding:strong_gate') {
+        setStrongGateApprovalId(requestId);
+        // default to disabling strong gate when approving from list; user can re-run enable explicitly
+        await submitStrongGate(false, requestId);
       }
     } catch (e) {
       console.error(e);
@@ -448,6 +481,38 @@ const Onboarding: React.FC = () => {
       setMigrateSecretsResult({ status: 'error', error: e?.message || String(e) });
     } finally {
       setMigrateSecretsLoading(false);
+    }
+  };
+
+  const isStrongGateEnabled = useMemo(() => {
+    const policy = defaultTenantPolicy?.policy;
+    const tools = policy?.tool_policy?.approval_required_tools;
+    if (!Array.isArray(tools)) return false;
+    return tools.includes('*');
+  }, [defaultTenantPolicy]);
+
+  const submitStrongGate = async (enabled: boolean, approvalIdOverride?: string) => {
+    setStrongGateLoading(true);
+    setStrongGateResult(null);
+    try {
+      const res = await onboardingApi.setStrongGate({
+        tenant_id: 'default',
+        enabled,
+        require_approval: true,
+        approval_request_id: approvalIdOverride || strongGateApprovalId || undefined,
+      });
+      setStrongGateResult(res);
+      if (res?.status === 'approval_required' && res?.approval_request_id) {
+        const rid = String(res.approval_request_id);
+        setStrongGateApprovalId(rid);
+        setApprovalWatch((prev) => ({ ...(prev || {}), [rid]: { op: enabled ? 'strong_gate_on' : 'strong_gate_off', created_at: Date.now() } }));
+        setApprovalWatchLog((prev) => ({ ...(prev || {}), [rid]: '等待审批中：pending' }));
+      }
+      await refreshDefaultTenantPolicy();
+    } catch (e: any) {
+      setStrongGateResult({ status: 'error', error: e?.message || String(e) });
+    } finally {
+      setStrongGateLoading(false);
     }
   };
 
@@ -743,6 +808,42 @@ const Onboarding: React.FC = () => {
         <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
           {JSON.stringify(initTenantResult || state?.core_state?.tenants || {}, null, 2)}
         </pre>
+      </div>
+
+      <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="text-gray-200 font-medium">强门禁开关（default tenant，需审批）</div>
+          <button
+            onClick={refreshDefaultTenantPolicy}
+            className="px-3 py-1.5 rounded-lg bg-dark-hover text-gray-200 hover:bg-dark-border transition-colors text-xs"
+          >
+            {tenantPolicyLoading ? '刷新中…' : '刷新'}
+          </button>
+        </div>
+        <div className="text-sm text-gray-500">
+          当前状态：{isStrongGateEnabled ? '已开启（所有工具需审批）' : '未开启'}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            disabled={strongGateLoading || isStrongGateEnabled}
+            onClick={() => submitStrongGate(true)}
+            className="px-4 py-2 rounded-lg bg-primary text-white text-sm hover:opacity-90 disabled:opacity-60"
+          >
+            启用强门禁
+          </button>
+          <button
+            disabled={strongGateLoading || !isStrongGateEnabled}
+            onClick={() => submitStrongGate(false)}
+            className="px-4 py-2 rounded-lg bg-dark-hover text-gray-200 border border-dark-border text-sm hover:bg-dark-border disabled:opacity-60"
+          >
+            解除强门禁
+          </button>
+        </div>
+        {strongGateResult && (
+          <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
+            {JSON.stringify(strongGateResult || {}, null, 2)}
+          </pre>
+        )}
       </div>
 
       <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-4">

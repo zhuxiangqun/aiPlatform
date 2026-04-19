@@ -192,6 +192,14 @@ class OnboardingSecretsMigrateRequest(BaseModel):
     details: Optional[str] = None
 
 
+class OnboardingStrongGateRequest(BaseModel):
+    tenant_id: str = "default"
+    enabled: bool = True
+    require_approval: bool = True
+    approval_request_id: Optional[str] = None
+    details: Optional[str] = None
+
+
 class LongTermMemoryAddRequest(BaseModel):
     user_id: Optional[str] = None
     key: Optional[str] = None

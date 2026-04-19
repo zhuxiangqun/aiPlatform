@@ -227,6 +227,9 @@ export const onboardingApi = {
   migrateSecrets: async (body: Record<string, unknown>) => {
     return apiClient.post<any>('/onboarding/secrets/migrate', body);
   },
+  setStrongGate: async (body: Record<string, unknown>) => {
+    return apiClient.post<any>('/onboarding/strong-gate', body);
+  },
 };
 
 // Monitoring API (legacy - for layer metrics)

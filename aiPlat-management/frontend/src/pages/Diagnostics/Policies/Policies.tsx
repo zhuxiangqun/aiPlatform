@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, Copy, Save, Search } from 'lucide-react';
 
 import { Badge, Button, Card, CardContent, CardHeader, Input, Table } from '../../../components/ui';
-import { policyApi } from '../../../services';
+import { onboardingApi, policyApi } from '../../../services';
 
 const shortId = (id?: string, left: number = 10, right: number = 8) => {
   if (!id) return '-';
@@ -24,6 +24,18 @@ const Policies: React.FC = () => {
   const [okMsg, setOkMsg] = useState<string | null>(null);
   const [toolName, setToolName] = useState('file_operations');
   const [preview, setPreview] = useState<any>(null);
+  const [toggleLoading, setToggleLoading] = useState(false);
+  const [toggleMsg, setToggleMsg] = useState<string | null>(null);
+
+  const isStrongGate = useMemo(() => {
+    try {
+      const obj = JSON.parse(policyText || '{}');
+      const arr = obj?.tool_policy?.approval_required_tools;
+      return Array.isArray(arr) && arr.includes('*');
+    } catch {
+      return false;
+    }
+  }, [policyText]);
 
   const validatePolicy = (obj: any): string[] => {
     const errs: string[] = [];
@@ -103,6 +115,25 @@ const Policies: React.FC = () => {
       setError(e?.message || '保存失败');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const disableStrongGate = async () => {
+    const tid = tenantId.trim();
+    if (!tid) return;
+    setToggleLoading(true);
+    setToggleMsg(null);
+    try {
+      const res = await onboardingApi.setStrongGate({ tenant_id: tid, enabled: false, require_approval: true });
+      setToggleMsg(JSON.stringify(res));
+      if (res?.status === 'updated') {
+        await loadOne(tid);
+        await loadList();
+      }
+    } catch (e: any) {
+      setToggleMsg(e?.message || '操作失败');
+    } finally {
+      setToggleLoading(false);
     }
   };
 
@@ -218,6 +249,15 @@ const Policies: React.FC = () => {
               </Button>
             </div>
           </div>
+          {isStrongGate && (
+            <div className="mt-3 text-xs text-warning">
+              当前策略已启用强门禁（approval_required_tools 包含 '*'）。如需回滚，请点击
+              <Button variant="secondary" onClick={disableStrongGate} loading={toggleLoading} className="ml-2">
+                解除强门禁（需审批）
+              </Button>
+              {toggleMsg && <span className="ml-2 text-gray-500">{toggleMsg}</span>}
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3">
             <Input label="tenant_id" value={tenantId} onChange={(e: any) => setTenantId(e.target.value.trim())} placeholder="tenant_xxx" />
             <Input label="version（可选）" value={version == null ? '' : String(version)} onChange={(e: any) => setVersion(e.target.value ? Number(e.target.value) : undefined)} placeholder="用于并发更新，填则冲突返回 409" />

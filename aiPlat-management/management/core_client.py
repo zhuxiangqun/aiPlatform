@@ -170,6 +170,9 @@ class CoreAPIClient:
     async def migrate_secrets(self, body: Dict[str, Any]) -> Dict[str, Any]:
         return await self._request("POST", "/api/core/onboarding/secrets/migrate", json=body or {})
 
+    async def set_strong_gate(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", "/api/core/onboarding/strong-gate", json=body or {})
+
     # ===== Jobs / Cron (Roadmap-3) =====
 
     async def list_jobs(self, *, limit: int = 100, offset: int = 0, enabled: Optional[bool] = None) -> Dict[str, Any]:

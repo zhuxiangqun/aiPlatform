@@ -43,6 +43,7 @@ from core.schemas import (
     OnboardingInitTenantRequest,
     OnboardingAutosmokeConfigRequest,
     OnboardingSecretsMigrateRequest,
+    OnboardingStrongGateRequest,
     LongTermMemoryAddRequest,
     LongTermMemorySearchRequest,
     MessageCreateRequest,
@@ -6874,6 +6875,65 @@ async def migrate_secrets(request: OnboardingSecretsMigrateRequest):
         raise HTTPException(status_code=400, detail=str(e))
     st = await _execution_store.get_adapter_secrets_status()
     return {"status": "migrated", "result": res, "secrets_status": st}
+
+
+@api_router.post("/onboarding/strong-gate")
+async def set_strong_gate(request: OnboardingStrongGateRequest):
+    """
+    Toggle strong gate for a tenant by setting tenant policy:
+      tool_policy.approval_required_tools contains "*"
+    This provides a safe, approval-guarded rollback switch.
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+
+    tenant_id = str(request.tenant_id or "default")
+    enabled = bool(request.enabled)
+
+    if request.require_approval:
+        if not request.approval_request_id:
+            rid = await _require_onboarding_approval(
+                operation="strong_gate",
+                user_id="admin",
+                details=request.details or f"set strong gate enabled={enabled} for tenant={tenant_id}",
+                metadata={"tenant_id": tenant_id, "enabled": enabled},
+            )
+            return {"status": "approval_required", "approval_request_id": rid}
+        if not _is_approval_resolved_approved(request.approval_request_id):
+            raise HTTPException(status_code=409, detail="not_approved")
+
+    # ensure tenant exists (best-effort)
+    try:
+        await _execution_store.upsert_tenant(tenant_id=tenant_id, name=tenant_id)
+    except Exception:
+        pass
+
+    cur = await _execution_store.get_tenant_policy(tenant_id=tenant_id)
+    policy = (cur or {}).get("policy") if isinstance(cur, dict) else None
+    if not isinstance(policy, dict):
+        policy = {"tool_policy": {"deny_tools": [], "approval_required_tools": []}}
+    tp = policy.get("tool_policy")
+    if not isinstance(tp, dict):
+        tp = {}
+        policy["tool_policy"] = tp
+    deny_tools = tp.get("deny_tools") if isinstance(tp.get("deny_tools"), list) else []
+    approval_tools = tp.get("approval_required_tools") if isinstance(tp.get("approval_required_tools"), list) else []
+
+    # normalize
+    deny_tools = [str(x) for x in deny_tools if x]
+    approval_tools = [str(x) for x in approval_tools if x]
+
+    if enabled:
+        if "*" not in approval_tools:
+            approval_tools.insert(0, "*")
+    else:
+        approval_tools = [x for x in approval_tools if x != "*"]
+
+    tp["deny_tools"] = deny_tools
+    tp["approval_required_tools"] = approval_tools
+
+    saved = await _execution_store.upsert_tenant_policy(tenant_id=tenant_id, policy=policy, version=None)
+    return {"status": "updated", "tenant_policy": saved, "enabled": enabled}
 
 
 @api_router.post("/memory/longterm")

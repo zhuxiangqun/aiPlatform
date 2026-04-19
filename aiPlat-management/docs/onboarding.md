@@ -15,6 +15,7 @@
 11. （增强）强门禁策略：tenant policy 支持通配符 '*'（所有工具执行需审批）
 12. （增强）autosmoke 配置中心：写入 core global_settings（env 仍可覆盖）
 13. （增强）历史明文密钥迁移：将 adapters.api_key 迁移到 api_key_enc 并清空明文列（需审批）
+14. （增强）强门禁可视化与回滚：一键启用/解除 default tenant 强门禁（需审批）
 
 ## 入口
 
@@ -125,6 +126,15 @@
 迁移要求：
 - 必须先配置 `AIPLAT_SECRET_KEY`
 - 会把 `adapters.api_key`（明文）加密写入 `api_key_enc`，并清空 `api_key`
+
+## 增强：强门禁可视化与回滚（需审批）
+
+向导提供 “强门禁开关（default tenant）” 区域：
+- 展示当前是否已启用 `approval_required_tools=['*']`
+- 支持一键启用/解除（走审批）
+
+核心接口：
+- `POST /api/onboarding/strong-gate` → `POST /api/core/onboarding/strong-gate`
 
 ## 常见问题
 

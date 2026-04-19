@@ -105,6 +105,14 @@ async def migrate_secrets(request: Request, body: Dict[str, Any]) -> Dict[str, A
     return await core_client.migrate_secrets(body or {})
 
 
+@router.post("/strong-gate")
+async def set_strong_gate(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="Core client not initialized")
+    return await core_client.set_strong_gate(body or {})
+
+
 @router.post("/llm-adapter")
 async def configure_llm_adapter(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
     """
