@@ -1,0 +1,2 @@
+"""aiPlat-app REST API."""
+

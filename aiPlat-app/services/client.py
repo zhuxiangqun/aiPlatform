@@ -12,7 +12,7 @@ from datetime import datetime
 class APIClient:
     """API 客户端"""
 
-    def __init__(self, base_url: str = "http://localhost:8080", api_key: str = ""):
+    def __init__(self, base_url: str = "http://localhost:8003", api_key: str = ""):
         self.base_url = base_url
         self.api_key = api_key
         self._session = requests.Session()
@@ -23,6 +23,8 @@ class APIClient:
 
     def set_api_key(self, api_key: str) -> None:
         self.api_key = api_key
+        # Prefer explicit API key header; keep Authorization for compatibility
+        self._headers["X-AIPLAT-API-KEY"] = api_key
         self._headers["Authorization"] = f"Bearer {api_key}"
 
     def set_tenant_id(self, tenant_id: str) -> None:

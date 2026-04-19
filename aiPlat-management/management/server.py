@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Dict, Any
 
 from management.api import dashboard, alerting, diagnostics, infra, core, audit, policies
+from management.api.proxy import build_app_proxy_router, build_platform_proxy_router
 from management.api.alerting import router as alerting_router, alias_router as alerts_router
 from management.dashboard import DashboardAggregator, InfraAdapter, CoreAdapter, PlatformAdapter, AppAdapter
 from management.monitoring import InfraMetricsCollector, CoreMetricsCollector, PlatformMetricsCollector, AppMetricsCollector
@@ -82,6 +83,8 @@ def create_app() -> FastAPI:
     app.include_router(core.router, prefix=api_prefix)
     app.include_router(audit.router, prefix=api_prefix)
     app.include_router(policies.router, prefix=api_prefix)
+    app.include_router(build_platform_proxy_router(), prefix=api_prefix)
+    app.include_router(build_app_proxy_router(), prefix=api_prefix)
     
     # 创建聚合器和适配器
     aggregator = DashboardAggregator()
