@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
-import { Copy, RotateCw, Search } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Copy, ExternalLink, RotateCw, Search, Share2 } from 'lucide-react';
 import { Button, Input, Select, Table, toast } from '../../../components/ui';
 import { diagnosticsApi } from '../../../services';
 
 const Syscalls: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
@@ -178,14 +179,37 @@ const Syscalls: React.FC = () => {
       {
         key: 'trace_id',
         title: 'trace_id',
-        width: 170,
-        render: (_: unknown, r: any) => <code className="text-xs text-gray-400">{String(r.trace_id || '').slice(0, 8)}...</code>,
+        width: 210,
+        render: (_: unknown, r: any) => {
+          const tid = String(r.trace_id || '');
+          if (!tid) return <span className="text-xs text-gray-500">-</span>;
+          return (
+            <div className="flex items-center gap-1">
+              <code className="text-xs text-gray-400">{tid.slice(0, 8)}...</code>
+              <Button variant="ghost" icon={<Copy size={14} />} onClick={() => navigator.clipboard.writeText(tid)} />
+              <Button variant="ghost" icon={<ExternalLink size={14} />} onClick={() => navigate(`/diagnostics/traces?trace_id=${encodeURIComponent(tid)}`)} />
+              <Link to={`/diagnostics/links?trace_id=${encodeURIComponent(tid)}`}>
+                <Button variant="ghost" icon={<Share2 size={14} />} />
+              </Link>
+            </div>
+          );
+        },
       },
       {
         key: 'run_id',
         title: 'run_id',
-        width: 160,
-        render: (_: unknown, r: any) => <code className="text-xs text-gray-400">{String(r.run_id || '').slice(0, 10)}...</code>,
+        width: 210,
+        render: (_: unknown, r: any) => {
+          const rid = String(r.run_id || '');
+          if (!rid) return <span className="text-xs text-gray-500">-</span>;
+          return (
+            <div className="flex items-center gap-1">
+              <code className="text-xs text-gray-400">{rid.slice(0, 10)}...</code>
+              <Button variant="ghost" icon={<Copy size={14} />} onClick={() => navigator.clipboard.writeText(rid)} />
+              <Button variant="ghost" icon={<ExternalLink size={14} />} onClick={() => navigate(`/diagnostics/runs?run_id=${encodeURIComponent(rid)}`)} />
+            </div>
+          );
+        },
       },
       {
         key: 'duration_ms',
@@ -200,7 +224,7 @@ const Syscalls: React.FC = () => {
         render: (_: unknown, r: any) => <span className="text-gray-400">{r.error || '-'}</span>,
       },
     ],
-    [],
+    [navigate],
   );
 
   return (
