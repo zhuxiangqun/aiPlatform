@@ -81,6 +81,21 @@ def test_ops_export_and_prune(tmp_path, monkeypatch):
         assert c.status_code == 200
         assert b"connector" in c.content
 
+        # jobs dlq export should work even if empty
+        j = client.get("/api/core/ops/export/jobs_dlq.csv", params={"limit": 50}, headers=headers)
+        assert j.status_code == 200
+        assert b"job_id" in j.content
+
+        # seed job delivery attempt
+        async def _seed_job():
+            await store.add_job_delivery_attempt(job_id="job_1", run_id="run_seed", attempt=1, url="http://example.com/h", status="failed", response_status=500, error="nope", payload={"x": 1})
+
+        anyio.run(_seed_job)
+
+        ja = client.get("/api/core/ops/export/job_delivery_attempts.csv", params={"job_id": "job_1", "limit": 50}, headers=headers)
+        assert ja.status_code == 200
+        assert b"attempt" in ja.content
+
         # prune should succeed (best-effort)
         p = client.post("/api/core/ops/prune", json={"now_ts": 1e12}, headers=headers)
         assert p.status_code == 200

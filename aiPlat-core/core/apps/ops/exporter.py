@@ -190,3 +190,28 @@ class OpsExporter:
         items = res.get("items") or []
         fieldnames = ["id", "connector", "tenant_id", "run_id", "attempt", "url", "status", "response_status", "error", "created_at"]
         return _csv_bytes(items, fieldnames=fieldnames), "connector_attempts.csv"
+
+    async def export_jobs_dlq_csv(
+        self,
+        *,
+        status: Optional[str] = None,
+        job_id: Optional[str] = None,
+        limit: int = 2000,
+    ) -> Tuple[bytes, str]:
+        res = await self._store.list_job_delivery_dlq(status=status, job_id=job_id, limit=int(limit), offset=0)
+        items = res.get("items") or []
+        fieldnames = ["id", "job_id", "run_id", "url", "attempts", "error", "status", "created_at", "resolved_at"]
+        return _csv_bytes(items, fieldnames=fieldnames), "jobs_dlq.csv"
+
+    async def export_job_delivery_attempts_csv(
+        self,
+        *,
+        job_id: Optional[str] = None,
+        run_id: Optional[str] = None,
+        status: Optional[str] = None,
+        limit: int = 2000,
+    ) -> Tuple[bytes, str]:
+        res = await self._store.list_job_delivery_attempts(job_id=job_id, run_id=run_id, status=status, limit=int(limit), offset=0)
+        items = res.get("items") or []
+        fieldnames = ["id", "job_id", "run_id", "attempt", "url", "status", "response_status", "error", "created_at"]
+        return _csv_bytes(items, fieldnames=fieldnames), "job_delivery_attempts.csv"
