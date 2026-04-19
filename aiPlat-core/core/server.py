@@ -588,6 +588,13 @@ def _ui_url(path: str) -> str:
     return base + path
 
 
+def _api_url(path: str) -> str:
+    """
+    API URL under management domain (assumes /api is served from same host).
+    """
+    return _ui_url(path)
+
+
 async def _require_targets_verified(targets: list[tuple[str, str]]) -> None:
     """
     Gate publish/enable actions by autosmoke verification status.
@@ -612,6 +619,7 @@ async def _require_targets_verified(targets: list[tuple[str, str]]) -> None:
             if not a or not _is_verified(meta):
                 item = {"type": ttype, "id": tid, "reason": "unverified", "verification": ver or {}}
                 jr = (ver or {}).get("job_run_id") if isinstance(ver, dict) else None
+                jid = (ver or {}).get("job_id") if isinstance(ver, dict) else None
                 if isinstance(jr, str) and jr:
                     item["diagnostics_url"] = _ui_url(f"/diagnostics/runs?run_id={jr}")
                     if _execution_store:
@@ -619,6 +627,8 @@ async def _require_targets_verified(targets: list[tuple[str, str]]) -> None:
                             item["job_run"] = await _execution_store.get_job_run(jr)
                         except Exception:
                             pass
+                if isinstance(jid, str) and jid:
+                    item["retry"] = {"method": "POST", "api_url": _api_url(f"/api/core/jobs/{jid}/run"), "job_id": jid}
                 missing.append(item)
         elif ttype == "skill":
             if not _workspace_skill_manager:
@@ -630,6 +640,7 @@ async def _require_targets_verified(targets: list[tuple[str, str]]) -> None:
             if not s or not _is_verified(meta):
                 item = {"type": ttype, "id": tid, "reason": "unverified", "verification": ver or {}}
                 jr = (ver or {}).get("job_run_id") if isinstance(ver, dict) else None
+                jid = (ver or {}).get("job_id") if isinstance(ver, dict) else None
                 if isinstance(jr, str) and jr:
                     item["diagnostics_url"] = _ui_url(f"/diagnostics/runs?run_id={jr}")
                     if _execution_store:
@@ -637,6 +648,8 @@ async def _require_targets_verified(targets: list[tuple[str, str]]) -> None:
                             item["job_run"] = await _execution_store.get_job_run(jr)
                         except Exception:
                             pass
+                if isinstance(jid, str) and jid:
+                    item["retry"] = {"method": "POST", "api_url": _api_url(f"/api/core/jobs/{jid}/run"), "job_id": jid}
                 missing.append(item)
         elif ttype == "mcp":
             if not _workspace_mcp_manager:
@@ -648,6 +661,7 @@ async def _require_targets_verified(targets: list[tuple[str, str]]) -> None:
             if not m or not _is_verified(meta):
                 item = {"type": ttype, "id": tid, "reason": "unverified", "verification": ver or {}}
                 jr = (ver or {}).get("job_run_id") if isinstance(ver, dict) else None
+                jid = (ver or {}).get("job_id") if isinstance(ver, dict) else None
                 if isinstance(jr, str) and jr:
                     item["diagnostics_url"] = _ui_url(f"/diagnostics/runs?run_id={jr}")
                     if _execution_store:
@@ -655,6 +669,8 @@ async def _require_targets_verified(targets: list[tuple[str, str]]) -> None:
                             item["job_run"] = await _execution_store.get_job_run(jr)
                         except Exception:
                             pass
+                if isinstance(jid, str) and jid:
+                    item["retry"] = {"method": "POST", "api_url": _api_url(f"/api/core/jobs/{jid}/run"), "job_id": jid}
                 missing.append(item)
         else:
             # ignore other target types
