@@ -37,6 +37,7 @@ TENANT_ID = os.getenv("AIPLAT_TENANT_ID", "").strip()
 ACTOR_ID = os.getenv("AIPLAT_ACTOR_ID", "").strip()
 LLM_PROVIDER = os.getenv("AIPLAT_LLM_PROVIDER", "").strip().lower()
 AGENT_MODEL = os.getenv("AIPLAT_AGENT_MODEL", "").strip()
+AGENT_REASONER = os.getenv("AIPLAT_AGENT_REASONER", "").strip()
 
 
 def _headers() -> Dict[str, str]:
@@ -101,7 +102,15 @@ def main() -> int:
             #   AIPLAT_LLM_PROVIDER=deepseek
             #   AIPLAT_LLM_API_KEY=...
             # Optionally override model name via AIPLAT_AGENT_MODEL / AIPLAT_LLM_MODEL.
-            "config": {"model": (AGENT_MODEL or ("deepseek-chat" if LLM_PROVIDER == "deepseek" else None))} if (AGENT_MODEL or LLM_PROVIDER == "deepseek") else {},
+            "config": {
+                "model": (
+                    AGENT_MODEL
+                    or AGENT_REASONER
+                    or ("deepseek-reasoner" if LLM_PROVIDER == "deepseek" else None)
+                )
+            }
+            if (AGENT_MODEL or AGENT_REASONER or LLM_PROVIDER == "deepseek")
+            else {},
         },
     )
     agent_id = created.get("id")
