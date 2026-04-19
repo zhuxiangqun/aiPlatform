@@ -75,10 +75,53 @@ class AdapterManager:
     - Connection testing
     """
     
-    def __init__(self):
+    def __init__(self, execution_store: Optional[Any] = None):
         self._adapters: Dict[str, AdapterInfo] = {}
         self._call_stats: Dict[str, CallStats] = {}
         self._call_history: Dict[str, List[CallRecord]] = {}
+        self._execution_store = execution_store
+
+    async def init_from_store(self) -> None:
+        """
+        Best-effort load persisted adapters from ExecutionStore.
+        """
+        if not self._execution_store:
+            return
+        try:
+            res = await self._execution_store.list_adapters(limit=1000, offset=0)
+            for it in res.get("items") or []:
+                try:
+                    adapter_id = str(it.get("adapter_id") or "")
+                    if not adapter_id:
+                        continue
+                    # Need full record (with api_key)
+                    full = await self._execution_store.get_adapter(adapter_id)
+                    if not full:
+                        continue
+                    now = datetime.utcnow()
+                    a = AdapterInfo(
+                        id=adapter_id,
+                        name=str(full.get("name") or adapter_id),
+                        provider=str(full.get("provider") or ""),
+                        description=str(full.get("description") or ""),
+                        status=str(full.get("status") or "active"),
+                        api_key=str(full.get("api_key") or ""),
+                        api_base_url=str(full.get("api_base_url") or ""),
+                        organization_id=full.get("organization_id"),
+                        models=full.get("models") or [],
+                        rate_limit=full.get("rate_limit") or {},
+                        retry_config=full.get("retry_config") or {},
+                        created_at=now,
+                        updated_at=now,
+                        metadata=full.get("metadata") or {},
+                    )
+                    self._adapters[adapter_id] = a
+                    self._call_stats.setdefault(adapter_id, CallStats())
+                    self._call_history.setdefault(adapter_id, [])
+                except Exception:
+                    continue
+        except Exception:
+            return
     
     async def create_adapter(
         self,
@@ -126,6 +169,27 @@ class AdapterManager:
         self._call_stats[adapter_id] = CallStats()
         self._call_history[adapter_id] = []
         
+        # Persist (best-effort)
+        try:
+            if self._execution_store:
+                await self._execution_store.upsert_adapter(
+                    {
+                        "adapter_id": adapter.id,
+                        "name": adapter.name,
+                        "provider": adapter.provider,
+                        "description": adapter.description,
+                        "status": adapter.status,
+                        "api_key": adapter.api_key,
+                        "api_base_url": adapter.api_base_url,
+                        "organization_id": adapter.organization_id,
+                        "models": adapter.models,
+                        "rate_limit": adapter.rate_limit,
+                        "retry_config": adapter.retry_config,
+                        "metadata": adapter.metadata,
+                    }
+                )
+        except Exception:
+            pass
         return adapter
     
     async def get_adapter(self, adapter_id: str) -> Optional[AdapterInfo]:
@@ -178,6 +242,26 @@ class AdapterManager:
             adapter.metadata.update(metadata)
         
         adapter.updated_at = datetime.utcnow()
+        try:
+            if self._execution_store:
+                await self._execution_store.upsert_adapter(
+                    {
+                        "adapter_id": adapter.id,
+                        "name": adapter.name,
+                        "provider": adapter.provider,
+                        "description": adapter.description,
+                        "status": adapter.status,
+                        "api_key": adapter.api_key,
+                        "api_base_url": adapter.api_base_url,
+                        "organization_id": adapter.organization_id,
+                        "models": adapter.models,
+                        "rate_limit": adapter.rate_limit,
+                        "retry_config": adapter.retry_config,
+                        "metadata": adapter.metadata,
+                    }
+                )
+        except Exception:
+            pass
         
         return adapter
     
@@ -189,6 +273,11 @@ class AdapterManager:
         del self._adapters[adapter_id]
         del self._call_stats[adapter_id]
         del self._call_history[adapter_id]
+        try:
+            if self._execution_store:
+                await self._execution_store.delete_adapter(adapter_id)
+        except Exception:
+            pass
         
         return True
     
@@ -199,6 +288,11 @@ class AdapterManager:
             return False
         adapter.status = "active"
         adapter.updated_at = datetime.utcnow()
+        try:
+            if self._execution_store:
+                await self._execution_store.upsert_adapter({"adapter_id": adapter.id, "name": adapter.name, "provider": adapter.provider, "status": adapter.status, "api_key": adapter.api_key, "api_base_url": adapter.api_base_url, "models": adapter.models, "rate_limit": adapter.rate_limit, "retry_config": adapter.retry_config, "metadata": adapter.metadata, "description": adapter.description, "organization_id": adapter.organization_id})
+        except Exception:
+            pass
         return True
     
     async def disable_adapter(self, adapter_id: str) -> bool:
@@ -208,6 +302,11 @@ class AdapterManager:
             return False
         adapter.status = "disabled"
         adapter.updated_at = datetime.utcnow()
+        try:
+            if self._execution_store:
+                await self._execution_store.upsert_adapter({"adapter_id": adapter.id, "name": adapter.name, "provider": adapter.provider, "status": adapter.status, "api_key": adapter.api_key, "api_base_url": adapter.api_base_url, "models": adapter.models, "rate_limit": adapter.rate_limit, "retry_config": adapter.retry_config, "metadata": adapter.metadata, "description": adapter.description, "organization_id": adapter.organization_id})
+        except Exception:
+            pass
         return True
     
     async def test_connection(self, adapter_id: str) -> Dict[str, Any]:
@@ -245,6 +344,11 @@ class AdapterManager:
         
         adapter.models.append(model_config)
         adapter.updated_at = datetime.utcnow()
+        try:
+            if self._execution_store:
+                await self._execution_store.upsert_adapter({"adapter_id": adapter.id, "name": adapter.name, "provider": adapter.provider, "status": adapter.status, "api_key": adapter.api_key, "api_base_url": adapter.api_base_url, "models": adapter.models, "rate_limit": adapter.rate_limit, "retry_config": adapter.retry_config, "metadata": adapter.metadata, "description": adapter.description, "organization_id": adapter.organization_id})
+        except Exception:
+            pass
         
         return True
     
@@ -256,6 +360,11 @@ class AdapterManager:
         
         adapter.models = [m for m in adapter.models if m["name"] != model_name]
         adapter.updated_at = datetime.utcnow()
+        try:
+            if self._execution_store:
+                await self._execution_store.upsert_adapter({"adapter_id": adapter.id, "name": adapter.name, "provider": adapter.provider, "status": adapter.status, "api_key": adapter.api_key, "api_base_url": adapter.api_base_url, "models": adapter.models, "rate_limit": adapter.rate_limit, "retry_config": adapter.retry_config, "metadata": adapter.metadata, "description": adapter.description, "organization_id": adapter.organization_id})
+        except Exception:
+            pass
         
         return True
     

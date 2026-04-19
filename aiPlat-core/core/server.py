@@ -424,7 +424,11 @@ async def lifespan(app: FastAPI):
         _workspace_package_manager = None
     _memory_manager = MemoryManager(seed=True)
     _knowledge_manager = KnowledgeManager()
-    _adapter_manager = AdapterManager()
+    _adapter_manager = AdapterManager(execution_store=_execution_store)
+    try:
+        await _adapter_manager.init_from_store()
+    except Exception:
+        pass
     _harness_manager = HarnessManager()
     
     # Seed execution-layer registries with real instances

@@ -43,7 +43,7 @@ class ExecutionStoreConfig:
 
 
 class ExecutionStore:
-    CURRENT_SCHEMA_VERSION = 25
+    CURRENT_SCHEMA_VERSION = 26
 
     def __init__(self, config: ExecutionStoreConfig):
         self._config = config
@@ -924,6 +924,37 @@ class ExecutionStore:
                             pass
                         _set_version(25)
                         current = 25
+
+                    # ---- Migration v26: adapters registry (persist LLM adapter configs) ----
+                    if current < 26:
+                        try:
+                            conn.execute(
+                                """
+                                CREATE TABLE IF NOT EXISTS adapters (
+                                  adapter_id TEXT PRIMARY KEY,
+                                  name TEXT NOT NULL,
+                                  provider TEXT NOT NULL,
+                                  description TEXT,
+                                  status TEXT NOT NULL,
+                                  api_key TEXT,
+                                  api_base_url TEXT,
+                                  organization_id TEXT,
+                                  models_json TEXT,
+                                  rate_limit_json TEXT,
+                                  retry_config_json TEXT,
+                                  metadata_json TEXT,
+                                  created_at REAL NOT NULL,
+                                  updated_at REAL NOT NULL
+                                );
+                                """
+                            )
+                            conn.execute("CREATE INDEX IF NOT EXISTS idx_adapters_provider ON adapters(provider);")
+                            conn.execute("CREATE INDEX IF NOT EXISTS idx_adapters_status ON adapters(status);")
+                            conn.execute("CREATE INDEX IF NOT EXISTS idx_adapters_updated ON adapters(updated_at DESC);")
+                        except Exception:
+                            pass
+                        _set_version(26)
+                        current = 26
 
                     # If legacy db exists with tables but without meta, upgrade meta to current
                     if current < self.CURRENT_SCHEMA_VERSION:
@@ -4764,6 +4795,184 @@ class ExecutionStore:
                 }
             )
         return {"items": items, "total": int(res.get("total") or 0), "limit": int(limit), "offset": int(offset)}
+
+    # ---------------------------------------------------------------------
+    # Adapters Registry (persist LLM adapter configs)
+    # ---------------------------------------------------------------------
+
+    async def upsert_adapter(self, record: Dict[str, Any]) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            now = time.time()
+            rec = dict(record or {})
+            adapter_id = str(rec.get("adapter_id") or rec.get("id") or "")
+            if not adapter_id:
+                adapter_id = f"adapter-{uuid.uuid4().hex[:8]}"
+            rec["adapter_id"] = adapter_id
+            rec.setdefault("status", "active")
+            rec.setdefault("created_at", now)
+            rec["updated_at"] = now
+
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                conn.execute(
+                    """
+                    INSERT INTO adapters(
+                      adapter_id, name, provider, description, status,
+                      api_key, api_base_url, organization_id,
+                      models_json, rate_limit_json, retry_config_json, metadata_json,
+                      created_at, updated_at
+                    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    ON CONFLICT(adapter_id) DO UPDATE SET
+                      name=excluded.name,
+                      provider=excluded.provider,
+                      description=excluded.description,
+                      status=excluded.status,
+                      api_key=excluded.api_key,
+                      api_base_url=excluded.api_base_url,
+                      organization_id=excluded.organization_id,
+                      models_json=excluded.models_json,
+                      rate_limit_json=excluded.rate_limit_json,
+                      retry_config_json=excluded.retry_config_json,
+                      metadata_json=excluded.metadata_json,
+                      updated_at=excluded.updated_at;
+                    """,
+                    (
+                        adapter_id,
+                        str(rec.get("name") or ""),
+                        str(rec.get("provider") or ""),
+                        str(rec.get("description") or ""),
+                        str(rec.get("status") or "active"),
+                        str(rec.get("api_key") or ""),
+                        str(rec.get("api_base_url") or ""),
+                        str(rec.get("organization_id") or "") or None,
+                        _json_dumps(rec.get("models") or []),
+                        _json_dumps(rec.get("rate_limit") or {}),
+                        _json_dumps(rec.get("retry_config") or {}),
+                        _json_dumps(rec.get("metadata") or {}),
+                        float(rec.get("created_at") or now),
+                        float(now),
+                    ),
+                )
+                conn.commit()
+                row = conn.execute("SELECT * FROM adapters WHERE adapter_id=?;", (adapter_id,)).fetchone()
+                return dict(row) if row else {}
+            finally:
+                conn.close()
+
+        row = await anyio.to_thread.run_sync(_sync)
+        return {
+            "adapter_id": row.get("adapter_id"),
+            "name": row.get("name"),
+            "provider": row.get("provider"),
+            "description": row.get("description"),
+            "status": row.get("status"),
+            "api_key": row.get("api_key"),
+            "api_base_url": row.get("api_base_url"),
+            "organization_id": row.get("organization_id"),
+            "models": _json_loads(row.get("models_json")) or [],
+            "rate_limit": _json_loads(row.get("rate_limit_json")) or {},
+            "retry_config": _json_loads(row.get("retry_config_json")) or {},
+            "metadata": _json_loads(row.get("metadata_json")) or {},
+            "created_at": row.get("created_at"),
+            "updated_at": row.get("updated_at"),
+        }
+
+    async def get_adapter(self, adapter_id: str) -> Optional[Dict[str, Any]]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Optional[Dict[str, Any]]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                row = conn.execute("SELECT * FROM adapters WHERE adapter_id=?;", (str(adapter_id),)).fetchone()
+                return dict(row) if row else None
+            finally:
+                conn.close()
+
+        row = await anyio.to_thread.run_sync(_sync)
+        if not row:
+            return None
+        return {
+            "adapter_id": row.get("adapter_id"),
+            "name": row.get("name"),
+            "provider": row.get("provider"),
+            "description": row.get("description"),
+            "status": row.get("status"),
+            "api_key": row.get("api_key"),
+            "api_base_url": row.get("api_base_url"),
+            "organization_id": row.get("organization_id"),
+            "models": _json_loads(row.get("models_json")) or [],
+            "rate_limit": _json_loads(row.get("rate_limit_json")) or {},
+            "retry_config": _json_loads(row.get("retry_config_json")) or {},
+            "metadata": _json_loads(row.get("metadata_json")) or {},
+            "created_at": row.get("created_at"),
+            "updated_at": row.get("updated_at"),
+        }
+
+    async def list_adapters(self, *, provider: Optional[str] = None, status: Optional[str] = None, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                clauses = []
+                params: List[Any] = []
+                if provider:
+                    clauses.append("provider=?")
+                    params.append(str(provider))
+                if status:
+                    clauses.append("status=?")
+                    params.append(str(status))
+                where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+                total_row = conn.execute(f"SELECT COUNT(1) AS c FROM adapters {where};", params).fetchone()
+                total = int(total_row["c"] if total_row else 0)
+                rows = conn.execute(
+                    f"SELECT * FROM adapters {where} ORDER BY updated_at DESC LIMIT ? OFFSET ?;",
+                    [*params, int(limit), int(offset)],
+                ).fetchall()
+                return {"items": [dict(r) for r in rows], "total": total}
+            finally:
+                conn.close()
+
+        res = await anyio.to_thread.run_sync(_sync)
+        items = []
+        for r in res.get("items") or []:
+            items.append(
+                {
+                    "adapter_id": r.get("adapter_id"),
+                    "name": r.get("name"),
+                    "provider": r.get("provider"),
+                    "description": r.get("description"),
+                    "status": r.get("status"),
+                    "api_base_url": r.get("api_base_url"),
+                    "models": _json_loads(r.get("models_json")) or [],
+                    "created_at": r.get("created_at"),
+                    "updated_at": r.get("updated_at"),
+                }
+            )
+        return {"items": items, "total": int(res.get("total") or 0), "limit": int(limit), "offset": int(offset)}
+
+    async def delete_adapter(self, adapter_id: str) -> bool:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> bool:
+            conn = sqlite3.connect(db_path)
+            try:
+                cur = conn.execute("DELETE FROM adapters WHERE adapter_id=?;", (str(adapter_id),))
+                conn.commit()
+                return bool(cur.rowcount)
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
 
     async def add_long_term_memory(self, *, user_id: str, content: str, key: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         await self.init()
