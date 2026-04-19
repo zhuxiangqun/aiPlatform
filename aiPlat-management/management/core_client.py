@@ -205,6 +205,9 @@ class CoreAPIClient:
     async def repo_changeset_record(self, body: Dict[str, Any]) -> Dict[str, Any]:
         return await self._request("POST", "/api/core/diagnostics/repo/changeset/record", json=body or {})
 
+    async def repo_tests_run(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", "/api/core/diagnostics/repo/tests/run", json=body or {})
+
     # ===== Jobs / Cron (Roadmap-3) =====
 
     async def list_jobs(self, *, limit: int = 100, offset: int = 0, enabled: Optional[bool] = None) -> Dict[str, Any]:

@@ -110,6 +110,14 @@ export const diagnosticsApi = {
     return apiClient.post<any>('/diagnostics/repo/changeset/record', body);
   },
 
+  getRepoChangesetPatch: async () => {
+    return apiClient.get<any>('/diagnostics/repo/changeset/patch');
+  },
+
+  runRepoTests: async (body: Record<string, unknown>) => {
+    return apiClient.post<any>('/diagnostics/repo/tests/run', body);
+  },
+
   // ===== Observability (core only for now) =====
 
   listTraces: async (params: { limit?: number; offset?: number; status?: string } = {}) => {

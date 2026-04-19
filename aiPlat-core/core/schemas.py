@@ -238,6 +238,11 @@ class RepoChangesetPreviewRequest(BaseModel):
     note: Optional[str] = None
 
 
+class RepoTestsRunRequest(BaseModel):
+    repo_root: str
+    note: Optional[str] = None
+
+
 class LongTermMemoryAddRequest(BaseModel):
     user_id: Optional[str] = None
     key: Optional[str] = None

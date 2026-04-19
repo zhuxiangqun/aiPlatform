@@ -36,8 +36,16 @@ const Doctor: React.FC = () => {
   const jsonText = useMemo(() => JSON.stringify(data || {}, null, 2), [data]);
   const repo = data?.repo?.changeset || null;
   const changesets = data?.changesets || null;
-  const repoAction = data?.actions?.record_repo_changeset ? { record_repo_changeset: data.actions.record_repo_changeset } : null;
+  const repoActions = useMemo(() => {
+    const a: Record<string, any> = {};
+    if (data?.actions?.record_repo_changeset) a.record_repo_changeset = data.actions.record_repo_changeset;
+    if (data?.actions?.run_repo_tests) a.run_repo_tests = data.actions.run_repo_tests;
+    return Object.keys(a).length > 0 ? a : null;
+  }, [data]);
   const changesetItems = Array.isArray(changesets?.items) ? changesets.items : [];
+  const [repoPatchOpen, setRepoPatchOpen] = useState(false);
+  const [repoPatchLoading, setRepoPatchLoading] = useState(false);
+  const [repoPatch, setRepoPatch] = useState<string>('');
 
   const formatTs = (ts: any) => {
     const n = Number(ts);
@@ -203,6 +211,7 @@ const Doctor: React.FC = () => {
                   <div className="text-xs text-gray-400">
                     <div>branch: <span className="text-gray-200">{repo?.branch || '-'}</span></div>
                     <div>head: <span className="text-gray-200">{(repo?.head || '').slice(0, 12) || '-'}</span></div>
+                    <div>last_commit: <span className="text-gray-200">{(repo?.last_commit?.sha || '').slice(0, 12) || '-'}</span> <span className="text-gray-500">{repo?.last_commit?.subject || ''}</span></div>
                     <div>diff_sha256: <span className="text-gray-200">{(repo?.diff_sha256 || '').slice(0, 16) || '-'}</span></div>
                   </div>
                   <div className="text-xs text-gray-400">
@@ -211,10 +220,38 @@ const Doctor: React.FC = () => {
                   </div>
                 </div>
 
-                {repoAction && repo?.status_lines > 0 ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={async () => {
+                      const next = !repoPatchOpen;
+                      setRepoPatchOpen(next);
+                      if (next && !repoPatch) {
+                        setRepoPatchLoading(true);
+                        try {
+                          const res = await diagnosticsApi.getRepoChangesetPatch();
+                          setRepoPatch(String(res?.patch || ''));
+                        } finally {
+                          setRepoPatchLoading(false);
+                        }
+                      }
+                    }}
+                    loading={repoPatchLoading}
+                  >
+                    {repoPatchOpen ? '隐藏 diff' : '查看 diff'}
+                  </Button>
+                </div>
+
+                {repoPatchOpen && (
+                  <pre className="text-[11px] text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto max-h-[420px]">
+                    {repoPatch || '(empty)'}
+                  </pre>
+                )}
+
+                {repoActions && repo?.status_lines > 0 ? (
                   <div>
-                    <div className="text-xs text-gray-500 mb-1">一键记录为 ChangeSet（进入变更审计时间线）</div>
-                    <ActionableFixes actions={repoAction} recommendations={[]} onAfterAction={refresh} />
+                    <div className="text-xs text-gray-500 mb-1">一键动作（会进入 ChangeSet 审计时间线）</div>
+                    <ActionableFixes actions={repoActions} recommendations={[]} onAfterAction={refresh} />
                   </div>
                 ) : (
                   <div className="text-sm text-gray-500">当前工作区无变更，或未提供记录动作。</div>

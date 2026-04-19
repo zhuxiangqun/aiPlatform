@@ -48,6 +48,7 @@ from core.schemas import (
     PromptTemplateUpsertRequest,
     PromptTemplateRollbackRequest,
     RepoChangesetPreviewRequest,
+    RepoTestsRunRequest,
     LongTermMemoryAddRequest,
     LongTermMemorySearchRequest,
     MessageCreateRequest,
@@ -7982,6 +7983,15 @@ async def diagnostics_repo_changeset_preview(request: RepoChangesetPreviewReques
         branch = _run(["git", "-C", repo_root, "rev-parse", "--abbrev-ref", "HEAD"])
     except Exception:
         branch = ""
+    last_commit = {}
+    try:
+        # sha<TAB>author<TAB>author_date<TAB>subject
+        line = _run(["git", "-C", repo_root, "log", "-1", "--pretty=format:%H%x09%an%x09%ad%x09%s"])
+        parts = (line or "").split("\t")
+        if len(parts) >= 4:
+            last_commit = {"sha": parts[0], "author": parts[1], "date": parts[2], "subject": "\t".join(parts[3:])}
+    except Exception:
+        last_commit = {}
 
     status = _run(["git", "-C", repo_root, "status", "--porcelain=v1"])
     # numstat: "added\tdeleted\tpath"
@@ -8018,6 +8028,7 @@ async def diagnostics_repo_changeset_preview(request: RepoChangesetPreviewReques
         "repo_root": repo_root,
         "branch": branch,
         "head": head,
+        "last_commit": last_commit,
         "status_lines": len(status.splitlines()) if status else 0,
         "working_tree": _summarize(numstat),
         "staged": _summarize(staged_numstat),
@@ -8027,6 +8038,84 @@ async def diagnostics_repo_changeset_preview(request: RepoChangesetPreviewReques
         out["patch"] = patch
         out["patch_len"] = len(patch)
     return out
+
+
+@api_router.post("/diagnostics/repo/tests/run")
+async def diagnostics_repo_tests_run(request: RepoTestsRunRequest):
+    """
+    Repo-aware workflow MVP: run repo tests with an allowlisted command.
+    Security: command is controlled by env AIPLAT_REPO_TEST_CMD, not user input.
+    """
+    import subprocess
+    import time as _time
+    import hashlib
+    import shlex
+    from pathlib import Path
+
+    repo_root = str(request.repo_root or "").strip()
+    if not repo_root:
+        raise HTTPException(status_code=400, detail="repo_root_required")
+    p = Path(repo_root)
+    if not p.exists() or not p.is_dir():
+        raise HTTPException(status_code=404, detail="repo_root_not_found")
+    if not (p / ".git").exists():
+        raise HTTPException(status_code=400, detail="not_a_git_repo")
+
+    cmd = str(os.getenv("AIPLAT_REPO_TEST_CMD", "")).strip()
+    if not cmd:
+        raise HTTPException(status_code=400, detail="AIPLAT_REPO_TEST_CMD_not_set")
+
+    args = shlex.split(cmd)
+    t0 = _time.time()
+    try:
+        cp = subprocess.run(args, cwd=repo_root, capture_output=True, text=True, timeout=600)
+    except subprocess.TimeoutExpired:
+        duration_ms = int((_time.time() - t0) * 1000)
+        await _record_changeset(
+            name="repo_tests_run",
+            target_type="repo",
+            target_id=repo_root,
+            status="failed",
+            args={"cmd": cmd, "note": str(request.note or "").strip()},
+            error="timeout",
+            result={"duration_ms": duration_ms},
+        )
+        raise HTTPException(status_code=408, detail="tests_timeout")
+    duration_ms = int((_time.time() - t0) * 1000)
+
+    def _tail(s: str, n: int = 8000) -> str:
+        s = s or ""
+        return s[-n:] if len(s) > n else s
+
+    stdout_tail = _tail(cp.stdout or "")
+    stderr_tail = _tail(cp.stderr or "")
+    out = {
+        "cmd": cmd,
+        "exit_code": int(cp.returncode),
+        "duration_ms": duration_ms,
+        "stdout_tail": stdout_tail,
+        "stderr_tail": stderr_tail,
+        "stdout_sha256": hashlib.sha256(stdout_tail.encode("utf-8")).hexdigest(),
+        "stderr_sha256": hashlib.sha256(stderr_tail.encode("utf-8")).hexdigest(),
+    }
+
+    await _record_changeset(
+        name="repo_tests_run",
+        target_type="repo",
+        target_id=repo_root,
+        status="success" if cp.returncode == 0 else "failed",
+        args={"cmd": cmd, "note": str(request.note or "").strip()},
+        error=None if cp.returncode == 0 else f"exit_code:{cp.returncode}",
+        result={
+            "exit_code": int(cp.returncode),
+            "duration_ms": duration_ms,
+            "stdout_sha256": out["stdout_sha256"],
+            "stderr_sha256": out["stderr_sha256"],
+            "stdout_tail_len": len(stdout_tail),
+            "stderr_tail_len": len(stderr_tail),
+        },
+    )
+    return {"status": "ok", "result": out}
 
 
 @api_router.post("/diagnostics/repo/changeset/record")

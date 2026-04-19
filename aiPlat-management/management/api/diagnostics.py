@@ -103,6 +103,46 @@ async def record_repo_changeset(request: Request, body: Dict[str, Any]) -> Dict[
     return await core_client.repo_changeset_record({"repo_root": repo_root, "include_patch": False, "note": details})
 
 
+@router.get("/repo/changeset/patch")
+async def get_repo_changeset_patch(request: Request) -> Dict[str, Any]:
+    """
+    Fetch repo diff patch (best-effort) for review.
+    Security: repo_root is server-controlled via AIPLAT_REPO_ROOT.
+    """
+    repo_root = os.getenv("AIPLAT_REPO_ROOT", "").strip()
+    if not repo_root:
+        raise HTTPException(status_code=400, detail="AIPLAT_REPO_ROOT is not set")
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="core_client not initialized")
+
+    preview = await core_client.repo_changeset_preview({"repo_root": repo_root, "include_patch": True})
+    patch = preview.get("patch") if isinstance(preview, dict) else ""
+    # prevent returning extremely large patches
+    if isinstance(patch, str) and len(patch) > 200_000:
+        patch = patch[-200_000:]
+    return {"status": "ok", "preview": preview, "patch": patch}
+
+
+@router.post("/repo/tests/run")
+async def run_repo_tests(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Run repo tests via core allowlisted command (AIPLAT_REPO_TEST_CMD).
+    """
+    repo_root = os.getenv("AIPLAT_REPO_ROOT", "").strip()
+    if not repo_root:
+        raise HTTPException(status_code=400, detail="AIPLAT_REPO_ROOT is not set")
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="core_client not initialized")
+    note = ""
+    try:
+        note = str((body or {}).get("details") or "").strip()
+    except Exception:
+        note = ""
+    return await core_client.repo_tests_run({"repo_root": repo_root, "note": note})
+
+
 @router.get("/health")
 async def list_available_checks(request: Request) -> Dict[str, Any]:
     """列出可用的健康检查
@@ -577,6 +617,24 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
             },
             "body_example": {"details": ""},
         },
+        "run_repo_tests": {
+            "action_type": "diagnostics.repo_tests_run",
+            "method": "POST",
+            "api_url": "/api/diagnostics/repo/tests/run",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "details": {
+                        "type": "string",
+                        "default": "",
+                        "description": "测试说明（可选）",
+                        "x-ui": {"multiline": True, "placeholder": "例如：记录本次测试目的/关联变更", "order": 10},
+                    }
+                },
+                "required": [],
+            },
+            "body_example": {"details": ""},
+        },
     }
     config = {
         "management_public_url": os.getenv("AIPLAT_MANAGEMENT_PUBLIC_URL"),
@@ -674,7 +732,10 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
                     "severity": "info",
                     "code": "repo_changes_detected",
                     "message": "检测到当前 repo 工作区有未提交变更；如需审计留痕，可记录为 ChangeSet。",
-                    "actions": {"record_repo_changeset": actions["record_repo_changeset"]},
+                    "actions": {
+                        "record_repo_changeset": actions["record_repo_changeset"],
+                        "run_repo_tests": actions["run_repo_tests"],
+                    },
                 }
             )
     except Exception:

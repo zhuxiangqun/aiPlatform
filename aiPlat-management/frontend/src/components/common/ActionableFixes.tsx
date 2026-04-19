@@ -15,6 +15,7 @@ const labelForActionKey = (key: string) => {
   if (key === 'enable_autosmoke') return '开启 autosmoke';
   if (key === 'migrate_secrets') return '迁移明文密钥';
   if (key === 'record_repo_changeset') return '记录 Repo 变更集';
+  if (key === 'run_repo_tests') return '运行 Repo 测试';
   return `执行：${key}`;
 };
 
@@ -151,6 +152,8 @@ export const ActionableFixes: React.FC<Props> = ({ actions, recommendations, onA
         res = await onboardingApi.migrateSecrets(body);
       } else if (actionType === 'diagnostics.repo_changeset_record' || apiUrl === '/api/diagnostics/repo/changeset/record') {
         res = await diagnosticsApi.recordRepoChangeset(body);
+      } else if (actionType === 'diagnostics.repo_tests_run' || apiUrl === '/api/diagnostics/repo/tests/run') {
+        res = await diagnosticsApi.runRepoTests(body);
       } else {
         setMsg((p) => ({ ...(p || {}), [k]: `未在白名单内的 action：${actionType || apiUrl}` }));
         return;
