@@ -716,6 +716,36 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
             },
             "body_example": {"backend": "local", "require_approval": True},
         },
+        "set_trusted_skill_keys": {
+            "action_type": "onboarding.trusted_skill_keys",
+            "method": "POST",
+            "api_url": "/api/onboarding/trusted-skill-keys",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "keys_json": {
+                        "type": "string",
+                        "default": "[]",
+                        "description": "JSON 数组：[{\"key_id\":\"k1\",\"public_key\":\"ed25519:...\"}]（key_id 可省略）",
+                        "x-ui": {"multiline": True, "placeholder": "[{\"public_key\":\"ed25519:BASE64...\"}]", "order": 10},
+                    },
+                    "require_approval": {
+                        "type": "boolean",
+                        "default": True,
+                        "description": "是否需要审批（建议保持 true）",
+                        "x-ui": {"hidden": True, "order": 999},
+                    },
+                    "details": {
+                        "type": "string",
+                        "default": "",
+                        "description": "审批说明/备注（可选）",
+                        "x-ui": {"multiline": True, "placeholder": "例如：添加 acme 的受信任 skill 公钥", "order": 90},
+                    },
+                },
+                "required": ["keys_json", "require_approval"],
+            },
+            "body_example": {"keys_json": "[]", "require_approval": True},
+        },
     }
     config = {
         "management_public_url": os.getenv("AIPLAT_MANAGEMENT_PUBLIC_URL"),

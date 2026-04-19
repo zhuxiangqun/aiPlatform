@@ -301,6 +301,42 @@ class SkillManager:
             pass
         metadata["integrity"] = integ
 
+    def compute_skill_signature_verification(self, skill: "SkillInfo", trusted_keys: Dict[str, str]) -> Dict[str, Any]:
+        """
+        Compute verification info and return a provenance dict (does not persist).
+        """
+        if not isinstance(getattr(skill, "metadata", None), dict):
+            return {}
+        prov = dict(skill.metadata.get("provenance") or {}) if isinstance(skill.metadata.get("provenance"), dict) else {}
+        integ = skill.metadata.get("integrity") if isinstance(skill.metadata.get("integrity"), dict) else {}
+        sig = prov.get("signature")
+        bundle_sha = integ.get("bundle_sha256")
+        ver = prov.get("version") or getattr(skill, "version", None) or ""
+        if not sig or not bundle_sha:
+            return prov
+        if not trusted_keys:
+            prov["signature_verified"] = False
+            prov["signature_verified_reason"] = "no_trusted_keys"
+            return prov
+
+        try:
+            from core.harness.infrastructure.crypto.signature import verify_skill_signature
+
+            r = verify_skill_signature(
+                skill_id=str(skill.id),
+                version=str(ver),
+                bundle_sha256=str(bundle_sha),
+                signature=str(sig),
+                trusted_keys=trusted_keys,
+            )
+            prov["signature_verified"] = bool(r.get("verified"))
+            prov["signature_verified_key_id"] = r.get("key_id")
+            prov["signature_verified_reason"] = r.get("error")
+        except Exception as e:
+            prov["signature_verified"] = False
+            prov["signature_verified_reason"] = f"exception:{type(e).__name__}"
+        return prov
+
     def _find_skill_md(self, skill_id: str) -> Optional[Path]:
         """Find SKILL.md by searching skills paths from high priority to low."""
         for base_dir in reversed(self._resolve_skills_paths()):

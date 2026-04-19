@@ -261,6 +261,9 @@ export const onboardingApi = {
   setExecBackend: async (body: Record<string, unknown>) => {
     return apiClient.post<any>('/onboarding/exec-backend', body);
   },
+  setTrustedSkillKeys: async (body: Record<string, unknown>) => {
+    return apiClient.post<any>('/onboarding/trusted-skill-keys', body);
+  },
 };
 
 // Monitoring API (legacy - for layer metrics)

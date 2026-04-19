@@ -207,6 +207,14 @@ class OnboardingExecBackendRequest(BaseModel):
     details: Optional[str] = None
 
 
+class OnboardingTrustedSkillKeysRequest(BaseModel):
+    # List of {key_id, public_key}; if key_id omitted, server will derive a deterministic id.
+    keys: List[Dict[str, Any]] = Field(default_factory=list)
+    require_approval: bool = True
+    approval_request_id: Optional[str] = None
+    details: Optional[str] = None
+
+
 class DiagnosticsPromptAssembleRequest(BaseModel):
     """
     Diagnostics-only endpoint helper to introspect prompt/context assembly.

@@ -45,6 +45,7 @@ from core.schemas import (
     OnboardingSecretsMigrateRequest,
     OnboardingStrongGateRequest,
     OnboardingExecBackendRequest,
+    OnboardingTrustedSkillKeysRequest,
     DiagnosticsPromptAssembleRequest,
     PromptTemplateUpsertRequest,
     PromptTemplateRollbackRequest,
@@ -173,6 +174,72 @@ _harness_manager: Optional[HarnessManager] = None
 _approval_manager: Optional[Any] = None
 _job_scheduler: Optional[JobScheduler] = None
 _mcp_runtime: Optional[MCPRuntime] = None
+
+
+async def _get_trusted_skill_pubkeys_map() -> Dict[str, str]:
+    """
+    Global trusted public keys for skill signature verification.
+    Stored in global_setting: trusted_skill_pubkeys = {"keys":[{"key_id","public_key"}]}
+    """
+    out: Dict[str, str] = {}
+    try:
+        if _execution_store is None:
+            return out
+        gs = await _execution_store.get_global_setting(key="trusted_skill_pubkeys")
+        v = gs.get("value") if isinstance(gs, dict) else None
+        keys = (v or {}).get("keys") if isinstance(v, dict) else None
+        if isinstance(keys, list):
+            for it in keys:
+                if not isinstance(it, dict):
+                    continue
+                kid = str(it.get("key_id") or "").strip()
+                pk = str(it.get("public_key") or "").strip()
+                if kid and pk:
+                    out[kid] = pk
+    except Exception:
+        return {}
+    return out
+
+
+async def _maybe_verify_and_audit_skill_signature(*, skill: Any, scope: str) -> None:
+    """
+    Best-effort: compute verification status and record a changeset event.
+    """
+    try:
+        meta = getattr(skill, "metadata", None)
+        if not isinstance(meta, dict):
+            return
+        prov = meta.get("provenance") if isinstance(meta.get("provenance"), dict) else {}
+        integ = meta.get("integrity") if isinstance(meta.get("integrity"), dict) else {}
+        if not prov.get("signature") or not integ.get("bundle_sha256"):
+            return
+
+        trusted = await _get_trusted_skill_pubkeys_map()
+        mgr = _workspace_skill_manager if scope == "workspace" else _skill_manager
+        if not mgr:
+            return
+        prov2 = mgr.compute_skill_signature_verification(skill, trusted)
+        if prov2:
+            meta["provenance"] = prov2
+
+        status = "success" if bool(prov2.get("signature_verified")) else "failed"
+        if not trusted:
+            status = "failed"
+        await _record_changeset(
+            name="skill_signature_verify",
+            target_type="skill",
+            target_id=str(getattr(skill, "id", "") or ""),
+            status=status,
+            args={"scope": scope, "trusted_keys_count": len(trusted)},
+            result={
+                "bundle_sha256": integ.get("bundle_sha256"),
+                "signature_verified": prov2.get("signature_verified"),
+                "signature_verified_key_id": prov2.get("signature_verified_key_id"),
+                "signature_verified_reason": prov2.get("signature_verified_reason"),
+            },
+        )
+    except Exception:
+        return
 
 
 async def _sync_mcp_runtime() -> None:
@@ -2844,11 +2911,21 @@ async def list_skills(
     """List all skills"""
     # SkillManager.list_skills signature: (skill_type, status, limit, offset)
     skills = await _skill_manager.list_skills(category, status, limit, offset)
+
+    trusted_keys = await _get_trusted_skill_pubkeys_map()
     
     result = []
     for s in skills:
         if enabled_only and s.status != "enabled":
             continue
+        # Enrich verification status in response (no persistence here)
+        try:
+            if trusted_keys and isinstance(getattr(s, "metadata", None), dict):
+                prov2 = _skill_manager.compute_skill_signature_verification(s, trusted_keys)
+                if prov2:
+                    s.metadata["provenance"] = prov2
+        except Exception:
+            pass
         result.append({
             "id": s.id,
             "name": s.name,
@@ -2893,6 +2970,10 @@ async def create_skill(request: SkillCreateRequest):
                 "provenance": (getattr(skill, "metadata", None) or {}).get("provenance") if isinstance(getattr(skill, "metadata", None), dict) else None,
             },
         )
+    except Exception:
+        pass
+    try:
+        await _maybe_verify_and_audit_skill_signature(skill=skill, scope="engine")
     except Exception:
         pass
     return {
@@ -2954,6 +3035,10 @@ async def update_skill(skill_id: str, request: dict):
         )
     except Exception:
         pass
+    try:
+        await _maybe_verify_and_audit_skill_signature(skill=skill, scope="engine")
+    except Exception:
+        pass
     return {"status": "updated"}
 
 
@@ -3011,10 +3096,19 @@ async def list_workspace_skills(
     if not _workspace_skill_manager:
         return {"skills": [], "total": 0, "limit": limit, "offset": offset}
     skills = await _workspace_skill_manager.list_skills(category, status, limit, offset)
+
+    trusted_keys = await _get_trusted_skill_pubkeys_map()
     result = []
     for s in skills:
         if enabled_only and s.status != "enabled":
             continue
+        try:
+            if trusted_keys and isinstance(getattr(s, "metadata", None), dict):
+                prov2 = _workspace_skill_manager.compute_skill_signature_verification(s, trusted_keys)
+                if prov2:
+                    s.metadata["provenance"] = prov2
+        except Exception:
+            pass
         result.append(
             {
                 "id": s.id,
@@ -3113,6 +3207,10 @@ async def create_workspace_skill(request: SkillCreateRequest, http_request: Requ
                     "provenance": (getattr(skill, "metadata", None) or {}).get("provenance") if isinstance(getattr(skill, "metadata", None), dict) else None,
                 },
             )
+        except Exception:
+            pass
+        try:
+            await _maybe_verify_and_audit_skill_signature(skill=skill, scope="workspace")
         except Exception:
             pass
         return {"id": skill.id, "status": "created", "name": skill.name}
@@ -3214,6 +3312,10 @@ async def update_workspace_skill(skill_id: str, request: dict, http_request: Req
                 "provenance": (getattr(skill, "metadata", None) or {}).get("provenance") if isinstance(getattr(skill, "metadata", None), dict) else None,
             },
         )
+    except Exception:
+        pass
+    try:
+        await _maybe_verify_and_audit_skill_signature(skill=skill, scope="workspace")
     except Exception:
         pass
     return {"status": "updated", "id": skill_id}
@@ -7278,6 +7380,77 @@ async def set_exec_backend(request: OnboardingExecBackendRequest):
     except Exception:
         pass
     return {"status": "updated", "exec_backend": res}
+
+
+@api_router.post("/onboarding/trusted-skill-keys")
+async def set_trusted_skill_keys(request: OnboardingTrustedSkillKeysRequest):
+    """
+    Configure trusted public keys for skill signature verification (P1-3).
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+
+    keys_in = request.keys if isinstance(request.keys, list) else []
+    keys_out: list[dict] = []
+    from core.harness.infrastructure.crypto.signature import key_id_for_public_key
+
+    for it in keys_in:
+        if not isinstance(it, dict):
+            continue
+        pk = str(it.get("public_key") or "").strip()
+        if not pk:
+            continue
+        kid = str(it.get("key_id") or "").strip() or key_id_for_public_key(pk)
+        keys_out.append({"key_id": kid, "public_key": pk})
+
+    if request.require_approval:
+        if not request.approval_request_id:
+            rid = await _require_onboarding_approval(
+                operation="trusted_skill_keys",
+                user_id="admin",
+                details=request.details or f"set trusted skill keys: {len(keys_out)} keys",
+                metadata={"keys_count": len(keys_out), "key_ids": [k.get("key_id") for k in keys_out][:20]},
+            )
+            try:
+                await _record_changeset(
+                    name="global_setting_upsert_trusted_skill_keys",
+                    target_type="global_setting",
+                    target_id="trusted_skill_pubkeys",
+                    status="approval_required",
+                    args={"keys_count": len(keys_out)},
+                    approval_request_id=rid,
+                )
+            except Exception:
+                pass
+            return {"status": "approval_required", "approval_request_id": rid}
+        if not _is_approval_resolved_approved(request.approval_request_id):
+            try:
+                await _record_changeset(
+                    name="global_setting_upsert_trusted_skill_keys",
+                    target_type="global_setting",
+                    target_id="trusted_skill_pubkeys",
+                    status="failed",
+                    args={"keys_count": len(keys_out)},
+                    error="not_approved",
+                    approval_request_id=request.approval_request_id,
+                )
+            except Exception:
+                pass
+            raise HTTPException(status_code=409, detail="not_approved")
+
+    res = await _execution_store.upsert_global_setting(key="trusted_skill_pubkeys", value={"keys": keys_out})
+    try:
+        await _record_changeset(
+            name="global_setting_upsert_trusted_skill_keys",
+            target_type="global_setting",
+            target_id="trusted_skill_pubkeys",
+            args={"keys_count": len(keys_out), "key_ids": [k.get("key_id") for k in keys_out][:20]},
+            result={"updated_at": res.get("updated_at") if isinstance(res, dict) else None},
+            approval_request_id=request.approval_request_id,
+        )
+    except Exception:
+        pass
+    return {"status": "updated", "trusted_skill_pubkeys": {"keys_count": len(keys_out), "key_ids": [k.get("key_id") for k in keys_out]}}
 
 
 @api_router.get("/onboarding/secrets/status")
