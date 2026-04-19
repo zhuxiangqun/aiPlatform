@@ -151,6 +151,7 @@ class ApprovalManager:
             return []
 
     def _to_record(self, req: ApprovalRequest) -> Dict[str, Any]:
+        meta = req.metadata or {}
         return {
             "request_id": req.request_id,
             "user_id": req.user_id,
@@ -165,7 +166,13 @@ class ApprovalManager:
             "created_at": req.created_at.timestamp(),
             "updated_at": req.updated_at.timestamp(),
             "expires_at": req.expires_at.timestamp() if req.expires_at else None,
-            "metadata": req.metadata or {},
+            "metadata": meta or {},
+            # PR-08 indexed columns (best-effort)
+            "tenant_id": meta.get("tenant_id") if isinstance(meta, dict) else None,
+            "actor_id": meta.get("actor_id") if isinstance(meta, dict) else None,
+            "actor_role": meta.get("actor_role") if isinstance(meta, dict) else None,
+            "session_id": meta.get("session_id") if isinstance(meta, dict) else None,
+            "run_id": meta.get("run_id") if isinstance(meta, dict) else None,
             "result": {
                 "request_id": req.result.request_id,
                 "decision": req.result.decision.value,
@@ -331,6 +338,18 @@ class ApprovalManager:
             rule = self.check_approval_required(context)
         
         if rule is None:
+            # PR-08: persist operation_context into metadata for replay.
+            meta = dict(context.metadata or {})
+            try:
+                if hasattr(context, "operation_context") and isinstance(context.operation_context, dict):
+                    meta.setdefault("operation_context", dict(context.operation_context))
+            except Exception:
+                pass
+            try:
+                if getattr(context, "session_id", None):
+                    meta.setdefault("session_id", getattr(context, "session_id"))
+            except Exception:
+                pass
             request = ApprovalRequest(
                 request_id=str(uuid.uuid4()),
                 user_id=context.user_id,
@@ -340,7 +359,7 @@ class ApprovalManager:
                 amount=context.amount,
                 batch_size=context.batch_size,
                 is_first_time=context.is_first_time,
-                metadata=context.metadata
+                metadata=meta
             )
             request.result = ApprovalResult(
                 request_id=request.request_id,
@@ -362,6 +381,17 @@ class ApprovalManager:
         if rule.expires_in_seconds:
             expires_at = datetime.utcnow() + timedelta(seconds=rule.expires_in_seconds)
         
+        meta = dict(context.metadata or {})
+        try:
+            if hasattr(context, "operation_context") and isinstance(context.operation_context, dict):
+                meta.setdefault("operation_context", dict(context.operation_context))
+        except Exception:
+            pass
+        try:
+            if getattr(context, "session_id", None):
+                meta.setdefault("session_id", getattr(context, "session_id"))
+        except Exception:
+            pass
         request = ApprovalRequest(
             request_id=str(uuid.uuid4()),
             user_id=context.user_id,
@@ -373,7 +403,7 @@ class ApprovalManager:
             batch_size=context.batch_size,
             is_first_time=context.is_first_time,
             expires_at=expires_at,
-            metadata=context.metadata
+            metadata=meta
         )
         
         self._requests[request.request_id] = request

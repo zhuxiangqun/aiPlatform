@@ -124,6 +124,13 @@ async def sys_tool_call(
             args["_tenant_id"] = trace_context.get("tenant_id")
     except Exception:
         pass
+    # PR-08: persist run_id for approval replay/links (best-effort).
+    try:
+        _run_id = (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None
+        if _run_id and "_run_id" not in args:
+            args["_run_id"] = str(_run_id)
+    except Exception:
+        pass
     # Provide identity info for permission wrapper + auditing.
     args.setdefault("_user_id", user_id)
     args.setdefault("_session_id", session_id)

@@ -2199,6 +2199,38 @@ async def resume_agent_execution(execution_id: str, request: dict):
 
 # ==================== Approval Management (Phase 3) ====================
 
+@api_router.get("/approvals")
+async def list_approvals(
+    status: Optional[str] = None,
+    tenant_id: Optional[str] = None,
+    actor_id: Optional[str] = None,
+    run_id: Optional[str] = None,
+    operation: Optional[str] = None,
+    user_id: Optional[str] = None,
+    include_related_counts: bool = False,
+    order_by: str = "created_at",
+    order_dir: str = "desc",
+    limit: int = 100,
+    offset: int = 0,
+):
+    """List approvals (store-backed)."""
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    return await _execution_store.list_approval_requests(
+        status=status,
+        user_id=user_id,
+        tenant_id=tenant_id,
+        actor_id=actor_id,
+        run_id=run_id,
+        operation=operation,
+        include_related_counts=include_related_counts,
+        order_by=order_by,
+        order_dir=order_dir,
+        limit=limit,
+        offset=offset,
+    )
+
+
 @api_router.get("/approvals/pending")
 async def list_pending_approvals(
     user_id: Optional[str] = None,
@@ -2297,6 +2329,76 @@ async def get_approval_request(request_id: str):
             "syscall_events": calls,
         }
     return resp
+
+
+@api_router.post("/approvals/{request_id}/replay")
+async def replay_approval(request_id: str, request: dict, http_request: Request):
+    """
+    PR-08: Approval Hub replay
+
+    - tool:* : replay blocked tool call with _approval_request_id injected
+    - learning:* : re-run publish/rollback actions (status transitions only)
+    """
+    if not _approval_manager:
+        raise HTTPException(status_code=503, detail="ApprovalManager not initialized")
+    r = _approval_manager.get_request(request_id)
+    if not r:
+        raise HTTPException(status_code=404, detail="Approval request not found")
+    from core.harness.infrastructure.approval.types import RequestStatus
+
+    if r.status not in (RequestStatus.APPROVED, RequestStatus.AUTO_APPROVED):
+        raise HTTPException(status_code=409, detail=f"not_approved:{r.status.value}")
+
+    op = str(r.operation or "")
+    meta = r.metadata if isinstance(r.metadata, dict) else {}
+    opctx = meta.get("operation_context") if isinstance(meta.get("operation_context"), dict) else {}
+
+    # Replay tool call (best-effort).
+    if op.startswith("tool:"):
+        tool_name = op.split(":", 1)[1]
+        tool_args = opctx.get("args") if isinstance(opctx, dict) else None
+        tool_args = dict(tool_args) if isinstance(tool_args, dict) else {}
+        tool_args["_approval_request_id"] = str(request_id)
+
+        ctx = {
+            "tenant_id": meta.get("tenant_id"),
+            "actor_id": meta.get("actor_id") or r.user_id,
+            "actor_role": meta.get("actor_role"),
+            "session_id": meta.get("session_id"),
+            "entrypoint": "approval_hub",
+            "source": "approval_hub",
+        }
+        payload = {"input": tool_args, "context": ctx}
+
+        harness = get_harness()
+        exec_req = ExecutionRequest(
+            kind="tool",
+            target_id=str(tool_name),
+            payload=payload,
+            user_id=str(ctx.get("actor_id") or "system"),
+            session_id=str(ctx.get("session_id") or "default"),
+            run_id=str(meta.get("run_id") or new_prefixed_id("run")),
+        )
+        result = await harness.execute(exec_req)
+        resp = _wrap_execution_result_as_run_summary(result)
+        return JSONResponse(status_code=200, content=resp)
+
+    # Replay learning release transitions.
+    if op in ("learning:publish_release", "learning:rollback_release"):
+        candidate_id = meta.get("candidate_id")
+        if not isinstance(candidate_id, str) or not candidate_id:
+            raise HTTPException(status_code=400, detail="missing_candidate_id")
+        if op == "learning:publish_release":
+            return await publish_release_candidate(
+                candidate_id=str(candidate_id),
+                request={"require_approval": True, "approval_request_id": str(request_id), "user_id": r.user_id},
+            )
+        return await rollback_release_candidate(
+            candidate_id=str(candidate_id),
+            request={"require_approval": True, "approval_request_id": str(request_id), "user_id": r.user_id},
+        )
+
+    raise HTTPException(status_code=400, detail=f"unsupported_operation:{op}")
 
 
 @api_router.get("/approvals/{request_id}/audit")
@@ -2690,6 +2792,19 @@ async def approve_request(request_id: str, request: dict, http_request: Request)
     updated = await _approval_manager.approve(request_id=request_id, approved_by=approved_by, comments=comments)
     if not updated:
         raise HTTPException(status_code=404, detail="Approval request not found")
+    # PR-08: run_events linkage (best-effort)
+    try:
+        meta = updated.metadata if isinstance(getattr(updated, "metadata", None), dict) else {}
+        if _execution_store and meta.get("run_id"):
+            await _execution_store.append_run_event(
+                run_id=str(meta.get("run_id")),
+                event_type="approval_approved",
+                trace_id=None,
+                tenant_id=str(meta.get("tenant_id")) if meta.get("tenant_id") else None,
+                payload={"approval_request_id": str(request_id), "approved_by": str(approved_by), "comments": str(comments or "")},
+            )
+    except Exception:
+        pass
     if _execution_store:
         try:
             actor0 = _rbac_actor_from_http(http_request, request if isinstance(request, dict) else None)
@@ -2720,6 +2835,19 @@ async def reject_request(request_id: str, request: dict, http_request: Request):
     updated = await _approval_manager.reject(request_id=request_id, rejected_by=rejected_by, comments=comments)
     if not updated:
         raise HTTPException(status_code=404, detail="Approval request not found")
+    # PR-08: run_events linkage (best-effort)
+    try:
+        meta = updated.metadata if isinstance(getattr(updated, "metadata", None), dict) else {}
+        if _execution_store and meta.get("run_id"):
+            await _execution_store.append_run_event(
+                run_id=str(meta.get("run_id")),
+                event_type="approval_rejected",
+                trace_id=None,
+                tenant_id=str(meta.get("tenant_id")) if meta.get("tenant_id") else None,
+                payload={"approval_request_id": str(request_id), "rejected_by": str(rejected_by), "comments": str(comments or "")},
+            )
+    except Exception:
+        pass
     if _execution_store:
         try:
             actor0 = _rbac_actor_from_http(http_request, request if isinstance(request, dict) else None)

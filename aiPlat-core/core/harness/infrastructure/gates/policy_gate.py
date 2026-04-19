@@ -162,6 +162,7 @@ class PolicyGate:
 
         try:
             from core.harness.infrastructure.approval import ApprovalContext, RequestStatus
+            from core.harness.infrastructure.approval.types import ApprovalRule, RuleType
 
             ctx = ApprovalContext(
                 session_id=str((tool_args or {}).get("_session_id", "default")),
@@ -172,8 +173,36 @@ class PolicyGate:
                     "tool_name": tool_name,
                     "risk_level": (tool_args or {}).get("_risk_level"),
                     "risk_weight": (tool_args or {}).get("_risk_weight"),
+                    # PR-08: identity/run linkage for approval hub & replay
+                    "tenant_id": (tool_args or {}).get("_tenant_id"),
+                    "actor_id": user_id,
+                    "actor_role": (tool_args or {}).get("_actor_role"),
+                    "session_id": str((tool_args or {}).get("_session_id", "default")),
+                    "run_id": (tool_args or {}).get("_run_id"),
+                    # Plan fields (MVP)
+                    "system_run_plan": {
+                        "type": "tool_call",
+                        "tool": tool_name,
+                        "args": tool_args or {},
+                    },
                 },
             )
+            # PR-08: when force_approval is true, ensure a matching rule exists (otherwise manager auto-approves).
+            if force_approval:
+                try:
+                    rid = f"tool_force_approval:{tool_name}"
+                    approval_mgr.register_rule(
+                        ApprovalRule(
+                            rule_id=rid,
+                            rule_type=RuleType.SENSITIVE_OPERATION,
+                            name=f"工具调用审批：{tool_name}",
+                            description=f"tool:{tool_name} requires approval",
+                            priority=1,
+                            metadata={"sensitive_operations": [ctx.operation]},
+                        )
+                    )
+                except Exception:
+                    pass
             req = approval_mgr.check_and_request(ctx)
             # Ensure request metadata includes risk fields (ApprovalManager persists metadata).
             try:

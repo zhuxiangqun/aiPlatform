@@ -43,7 +43,7 @@ class ExecutionStoreConfig:
 
 
 class ExecutionStore:
-    CURRENT_SCHEMA_VERSION = 30
+    CURRENT_SCHEMA_VERSION = 31
 
     def __init__(self, config: ExecutionStoreConfig):
         self._config = config
@@ -1126,6 +1126,39 @@ class ExecutionStore:
                             pass
                         _set_version(30)
                         current = 30
+
+                    # ---- Migration v31: approval_requests tenant/actor/run columns (PR-08 approval hub) ----
+                    if current < 31:
+                        try:
+                            conn.execute("ALTER TABLE approval_requests ADD COLUMN tenant_id TEXT;")
+                        except Exception:
+                            pass
+                        try:
+                            conn.execute("ALTER TABLE approval_requests ADD COLUMN actor_id TEXT;")
+                        except Exception:
+                            pass
+                        try:
+                            conn.execute("ALTER TABLE approval_requests ADD COLUMN actor_role TEXT;")
+                        except Exception:
+                            pass
+                        try:
+                            conn.execute("ALTER TABLE approval_requests ADD COLUMN session_id TEXT;")
+                        except Exception:
+                            pass
+                        try:
+                            conn.execute("ALTER TABLE approval_requests ADD COLUMN run_id TEXT;")
+                        except Exception:
+                            pass
+                        try:
+                            conn.execute("CREATE INDEX IF NOT EXISTS idx_approval_tenant_time ON approval_requests(tenant_id, created_at DESC);")
+                        except Exception:
+                            pass
+                        try:
+                            conn.execute("CREATE INDEX IF NOT EXISTS idx_approval_run_id ON approval_requests(run_id);")
+                        except Exception:
+                            pass
+                        _set_version(31)
+                        current = 31
 
                     # If legacy db exists with tables but without meta, upgrade meta to current
                     if current < self.CURRENT_SCHEMA_VERSION:
@@ -2958,6 +2991,13 @@ class ExecutionStore:
         await self.init()
         db_path = self._config.db_path
 
+        # PR-08: optional indexed columns
+        tenant_id = record.get("tenant_id")
+        actor_id = record.get("actor_id")
+        actor_role = record.get("actor_role")
+        session_id = record.get("session_id")
+        run_id = record.get("run_id")
+
         payload = (
             record.get("request_id"),
             record.get("user_id"),
@@ -2974,6 +3014,11 @@ class ExecutionStore:
             record.get("expires_at"),
             _json_dumps(record.get("metadata") or {}),
             _json_dumps(record.get("result") or {}),
+            str(tenant_id) if tenant_id is not None else None,
+            str(actor_id) if actor_id is not None else None,
+            str(actor_role) if actor_role is not None else None,
+            str(session_id) if session_id is not None else None,
+            str(run_id) if run_id is not None else None,
         )
 
         def _sync():
@@ -2984,9 +3029,10 @@ class ExecutionStore:
                     INSERT INTO approval_requests(
                       request_id, user_id, operation, details, rule_id, rule_type, status,
                       amount, batch_size, is_first_time, created_at, updated_at, expires_at,
-                      metadata_json, result_json
+                      metadata_json, result_json,
+                      tenant_id, actor_id, actor_role, session_id, run_id
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(request_id) DO UPDATE SET
                       user_id=excluded.user_id,
                       operation=excluded.operation,
@@ -3001,7 +3047,12 @@ class ExecutionStore:
                       updated_at=excluded.updated_at,
                       expires_at=excluded.expires_at,
                       metadata_json=excluded.metadata_json,
-                      result_json=excluded.result_json;
+                      result_json=excluded.result_json,
+                      tenant_id=excluded.tenant_id,
+                      actor_id=excluded.actor_id,
+                      actor_role=excluded.actor_role,
+                      session_id=excluded.session_id,
+                      run_id=excluded.run_id;
                     """,
                     payload,
                 )
@@ -3038,6 +3089,11 @@ class ExecutionStore:
                     "expires_at": row["expires_at"],
                     "metadata": _json_loads(row["metadata_json"]) or {},
                     "result": _json_loads(row["result_json"]) or None,
+                    "tenant_id": row["tenant_id"] if "tenant_id" in row.keys() else None,
+                    "actor_id": row["actor_id"] if "actor_id" in row.keys() else None,
+                    "actor_role": row["actor_role"] if "actor_role" in row.keys() else None,
+                    "session_id": row["session_id"] if "session_id" in row.keys() else None,
+                    "run_id": row["run_id"] if "run_id" in row.keys() else None,
                 }
             finally:
                 conn.close()
@@ -3049,6 +3105,10 @@ class ExecutionStore:
         *,
         status: Optional[str] = None,
         user_id: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+        actor_id: Optional[str] = None,
+        run_id: Optional[str] = None,
+        operation: Optional[str] = None,
         include_related_counts: bool = False,
         order_by: str = "created_at",
         order_dir: str = "desc",
@@ -3070,6 +3130,18 @@ class ExecutionStore:
                 if user_id:
                     clauses.append("user_id=?")
                     params.append(user_id)
+                if tenant_id is not None:
+                    clauses.append("tenant_id=?")
+                    params.append(str(tenant_id))
+                if actor_id is not None:
+                    clauses.append("actor_id=?")
+                    params.append(str(actor_id))
+                if run_id is not None:
+                    clauses.append("run_id=?")
+                    params.append(str(run_id))
+                if operation is not None:
+                    clauses.append("operation=?")
+                    params.append(str(operation))
                 where_sql = ("WHERE " + " AND ".join(clauses)) if clauses else ""
 
                 total_row = conn.execute(f"SELECT COUNT(*) AS c FROM approval_requests {where_sql}", tuple(params)).fetchone()
@@ -3123,6 +3195,11 @@ class ExecutionStore:
                         "expires_at": r["expires_at"],
                         "metadata": _json_loads(r["metadata_json"]) or {},
                         "result": _json_loads(r["result_json"]) or None,
+                        "tenant_id": r["tenant_id"] if "tenant_id" in r.keys() else None,
+                        "actor_id": r["actor_id"] if "actor_id" in r.keys() else None,
+                        "actor_role": r["actor_role"] if "actor_role" in r.keys() else None,
+                        "session_id": r["session_id"] if "session_id" in r.keys() else None,
+                        "run_id": r["run_id"] if "run_id" in r.keys() else None,
                     }
 
                     # Derived metrics for queueing / SLA
