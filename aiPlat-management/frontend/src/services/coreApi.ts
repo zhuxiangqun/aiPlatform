@@ -1082,6 +1082,8 @@ export const auditApi = {
     run_id?: string;
     trace_id?: string;
     status?: string;
+    created_after?: number;
+    created_before?: number;
     limit?: number;
     offset?: number;
   } = {}) => {

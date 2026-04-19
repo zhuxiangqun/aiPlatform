@@ -2291,6 +2291,8 @@ class ExecutionStore:
         run_id: Optional[str] = None,
         trace_id: Optional[str] = None,
         status: Optional[str] = None,
+        created_after: Optional[float] = None,
+        created_before: Optional[float] = None,
         limit: int = 100,
         offset: int = 0,
     ) -> Dict[str, Any]:
@@ -2330,6 +2332,12 @@ class ExecutionStore:
                 if status:
                     clauses.append("status=?")
                     params.append(str(status))
+                if created_after is not None:
+                    clauses.append("created_at>=?")
+                    params.append(float(created_after))
+                if created_before is not None:
+                    clauses.append("created_at<=?")
+                    params.append(float(created_before))
                 where = " AND ".join(clauses)
                 total = conn.execute(f"SELECT COUNT(1) FROM audit_logs WHERE {where}", params).fetchone()[0]
                 rows = conn.execute(

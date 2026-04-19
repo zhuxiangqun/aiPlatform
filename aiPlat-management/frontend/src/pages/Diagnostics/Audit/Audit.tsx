@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Copy, Search } from 'lucide-react';
 
-import { Badge, Button, Card, CardContent, CardHeader, Input, Table } from '../../../components/ui';
+import { Badge, Button, Card, CardContent, CardHeader, Input, Modal, Table } from '../../../components/ui';
 import { auditApi } from '../../../services';
 
 const shortId = (id?: string, left: number = 10, right: number = 8) => {
@@ -25,12 +25,18 @@ const Audit: React.FC = () => {
   const [actorId, setActorId] = useState('');
   const [runId, setRunId] = useState('');
   const [requestId, setRequestId] = useState('');
+  const [tenantId, setTenantId] = useState('');
+  const [status, setStatus] = useState('');
+  const [createdAfter, setCreatedAfter] = useState<number | undefined>(undefined);
+  const [createdBefore, setCreatedBefore] = useState<number | undefined>(undefined);
   const [items, setItems] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [limit, setLimit] = useState(50);
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailItem, setDetailItem] = useState<any>(null);
 
   const load = async (filters?: { action?: string; actor_id?: string; run_id?: string; request_id?: string; limit?: number; offset?: number }) => {
     setLoading(true);
@@ -41,6 +47,10 @@ const Audit: React.FC = () => {
         actor_id: filters?.actor_id ?? (actorId || undefined),
         run_id: filters?.run_id ?? (runId || undefined),
         request_id: filters?.request_id ?? (requestId || undefined),
+        tenant_id: tenantId || undefined,
+        status: status || undefined,
+        created_after: createdAfter,
+        created_before: createdBefore,
         limit: filters?.limit ?? limit,
         offset: filters?.offset ?? offset,
       });
@@ -59,6 +69,10 @@ const Audit: React.FC = () => {
     const nextActor = searchParams.get('actor_id') || '';
     const nextRun = searchParams.get('run_id') || '';
     const nextReq = searchParams.get('request_id') || '';
+    const nextTenant = searchParams.get('tenant_id') || '';
+    const nextStatus = searchParams.get('status') || '';
+    const nextAfter = searchParams.get('created_after');
+    const nextBefore = searchParams.get('created_before');
     const nextLimit = Number(searchParams.get('limit') || 50);
     const nextOffset = Number(searchParams.get('offset') || 0);
 
@@ -66,6 +80,10 @@ const Audit: React.FC = () => {
     setActorId(nextActor);
     setRunId(nextRun);
     setRequestId(nextReq);
+    setTenantId(nextTenant);
+    setStatus(nextStatus);
+    setCreatedAfter(nextAfter ? Number(nextAfter) : undefined);
+    setCreatedBefore(nextBefore ? Number(nextBefore) : undefined);
     setLimit(Number.isFinite(nextLimit) ? nextLimit : 50);
     setOffset(Number.isFinite(nextOffset) ? nextOffset : 0);
 
@@ -80,18 +98,37 @@ const Audit: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  const updateUrl = (next: { action?: string; actor_id?: string; run_id?: string; request_id?: string; limit?: number; offset?: number }) => {
+  const updateUrl = (next: {
+    action?: string;
+    actor_id?: string;
+    run_id?: string;
+    request_id?: string;
+    tenant_id?: string;
+    status?: string;
+    created_after?: number | undefined;
+    created_before?: number | undefined;
+    limit?: number;
+    offset?: number;
+  }) => {
     const q = new URLSearchParams();
     const a = next.action ?? action;
     const u = next.actor_id ?? actorId;
     const r = next.run_id ?? runId;
     const req = next.request_id ?? requestId;
+    const t = next.tenant_id ?? tenantId;
+    const st = next.status ?? status;
+    const ca = next.created_after ?? createdAfter;
+    const cb = next.created_before ?? createdBefore;
     const l = next.limit ?? limit;
     const o = next.offset ?? offset;
     if (a) q.set('action', a);
     if (u) q.set('actor_id', u);
     if (r) q.set('run_id', r);
     if (req) q.set('request_id', req);
+    if (t) q.set('tenant_id', t);
+    if (st) q.set('status', st);
+    if (ca != null) q.set('created_after', String(ca));
+    if (cb != null) q.set('created_before', String(cb));
     q.set('limit', String(l));
     q.set('offset', String(o));
     setSearchParams(q);
@@ -152,13 +189,64 @@ const Audit: React.FC = () => {
         ),
       },
       {
+        key: 'tenant_id',
+        title: 'tenant',
+        dataIndex: 'tenant_id',
+        width: 120,
+        render: (v: any) => (
+          <button className="text-left" onClick={() => updateUrl({ tenant_id: String(v || ''), offset: 0 })} title="点击按 tenant_id 筛选">
+            <code className="text-xs text-gray-200">{shortId(v, 6, 4)}</code>
+          </button>
+        ),
+      },
+      {
+        key: 'trace_id',
+        title: 'trace_id',
+        dataIndex: 'trace_id',
+        width: 140,
+        render: (v: any) =>
+          v ? (
+            <Link to={`/diagnostics/links?trace_id=${encodeURIComponent(String(v))}`}>
+              <Button variant="ghost">{shortId(String(v), 6, 4)}</Button>
+            </Link>
+          ) : (
+            <span className="text-xs text-gray-500">-</span>
+          ),
+      },
+      {
+        key: 'resource',
+        title: 'resource',
+        render: (_: any, row: any) => (
+          <span className="text-xs text-gray-300">
+            {String(row.resource_type || '-')}/{String(row.resource_id || '-')}
+          </span>
+        ),
+      },
+      {
+        key: 'detail',
+        title: 'detail',
+        width: 90,
+        render: (_: any, row: any) => (
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setDetailItem(row);
+              setDetailOpen(true);
+            }}
+          >
+            查看
+          </Button>
+        ),
+      },
+      {
         key: 'request_id',
         title: 'request_id',
         dataIndex: 'request_id',
         render: (v: any) => <code className="text-xs text-gray-200">{shortId(v)}</code>,
       },
     ],
-    []
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [action, actorId, runId, requestId, tenantId, status, createdAfter, createdBefore]
   );
 
   return (
@@ -179,11 +267,29 @@ const Audit: React.FC = () => {
 
       <Card>
         <CardHeader>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-2">
             <Input label="action" value={action} onChange={(e: any) => setAction(e.target.value.trim())} placeholder="gateway_execute" />
             <Input label="actor_id" value={actorId} onChange={(e: any) => setActorId(e.target.value.trim())} placeholder="u_xxx" />
             <Input label="run_id" value={runId} onChange={(e: any) => setRunId(e.target.value.trim())} placeholder="run_<ulid>" />
             <Input label="request_id" value={requestId} onChange={(e: any) => setRequestId(e.target.value.trim())} placeholder="req_<ulid>" />
+            <Input label="tenant_id" value={tenantId} onChange={(e: any) => setTenantId(e.target.value.trim())} placeholder="t1" />
+            <Input label="status" value={status} onChange={(e: any) => setStatus(e.target.value.trim())} placeholder="ok/denied/approval_required" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3">
+            <Input
+              label="created_after（epoch s）"
+              type="number"
+              value={createdAfter == null ? '' : String(createdAfter)}
+              onChange={(e: any) => setCreatedAfter(e.target.value ? Number(e.target.value) : undefined)}
+              placeholder="例如：1710000000"
+            />
+            <Input
+              label="created_before（epoch s）"
+              type="number"
+              value={createdBefore == null ? '' : String(createdBefore)}
+              onChange={(e: any) => setCreatedBefore(e.target.value ? Number(e.target.value) : undefined)}
+              placeholder="例如：1710003600"
+            />
           </div>
           <div className="flex flex-wrap items-center gap-2 mt-3">
             <Button variant="secondary" onClick={() => updateUrl({ action: 'gateway_execute', offset: 0 })}>
@@ -204,6 +310,30 @@ const Audit: React.FC = () => {
             <Button variant="secondary" onClick={() => updateUrl({ action: '', offset: 0 })}>
               清空 action
             </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                const now = Math.floor(Date.now() / 1000);
+                updateUrl({ created_after: now - 3600, created_before: undefined, offset: 0 });
+              }}
+            >
+              最近 1h
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                const now = Math.floor(Date.now() / 1000);
+                updateUrl({ created_after: now - 86400, created_before: undefined, offset: 0 });
+              }}
+            >
+              最近 24h
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => updateUrl({ created_after: undefined, created_before: undefined, offset: 0 })}
+            >
+              清空时间
+            </Button>
           </div>
           <div className="flex items-center justify-between mt-3">
             <div className="text-xs text-gray-500">total: {total}</div>
@@ -213,7 +343,7 @@ const Audit: React.FC = () => {
                 icon={<Search size={16} />}
                 onClick={() => {
                   setOffset(0);
-                  updateUrl({ offset: 0, limit });
+                  updateUrl({ offset: 0, limit, action, actor_id: actorId, run_id: runId, request_id: requestId, tenant_id: tenantId, status, created_after: createdAfter, created_before: createdBefore });
                 }}
                 loading={loading}
               >
@@ -237,6 +367,18 @@ const Audit: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+
+      <Modal open={detailOpen} onClose={() => setDetailOpen(false)} title="Audit Detail" width={900}>
+        <div className="space-y-3">
+          <div className="text-xs text-gray-500">
+            action: <code className="text-xs text-gray-200">{String(detailItem?.action || '-')}</code> ｜ status:{' '}
+            <code className="text-xs text-gray-200">{String(detailItem?.status || '-')}</code>
+          </div>
+          <pre className="text-[11px] text-gray-200 whitespace-pre-wrap">
+            {JSON.stringify(detailItem || {}, null, 2)}
+          </pre>
+        </div>
+      </Modal>
     </div>
   );
 };

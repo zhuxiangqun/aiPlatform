@@ -1629,6 +1629,8 @@ async def list_audit_logs(
     run_id: Optional[str] = None,
     trace_id: Optional[str] = None,
     status: Optional[str] = None,
+    created_after: Optional[float] = None,
+    created_before: Optional[float] = None,
     limit: int = 100,
     offset: int = 0,
 ):
@@ -1644,6 +1646,8 @@ async def list_audit_logs(
         run_id=run_id,
         trace_id=trace_id,
         status=status,
+        created_after=created_after,
+        created_before=created_before,
         limit=limit,
         offset=offset,
     )
