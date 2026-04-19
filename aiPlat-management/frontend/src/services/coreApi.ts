@@ -1242,4 +1242,17 @@ export const policyApi = {
       `/policies/tenants/${encodeURIComponent(tenantId)}/evaluate-tool?${q.toString()}`
     );
   },
+  evaluate: async (body: {
+    tenant_id?: string;
+    actor_id?: string;
+    actor_role?: string;
+    kind: 'tool' | 'mcp_server';
+    tool_name?: string;
+    tool_args?: Record<string, unknown>;
+    server_name?: string;
+    transport?: string;
+    server_metadata?: Record<string, unknown>;
+  }) => {
+    return apiClient.post<any>(`/policies/evaluate`, body as any);
+  },
 };
