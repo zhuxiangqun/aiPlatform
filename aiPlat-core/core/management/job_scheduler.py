@@ -385,13 +385,25 @@ class JobScheduler:
         if not isinstance(include, list) or not include:
             include = ["job", "run", "result"]
 
-        body: Dict[str, Any] = {"type": "job_run"}
-        if "job" in include:
-            body["job"] = job
-        if "run" in include:
-            body["run"] = run
-        if "result" in include:
-            body["result"] = result
+        fmt = str(delivery.get("format") or "json").strip().lower()
+        if fmt == "slack":
+            # Slack Incoming Webhook requires a "text" field.
+            # Keep payload small and readable; include full json in "details" if needed via your relay.
+            status = str((run or {}).get("status") or "")
+            err = str((run or {}).get("error") or "")
+            job_id = str((job or {}).get("id") or "")
+            run_id = str((run or {}).get("id") or (run or {}).get("run_id") or "")
+            body: Dict[str, Any] = {
+                "text": f"[aiPlat] job_run {status}: {job_id} ({run_id}){(' - ' + err) if err else ''}",
+            }
+        else:
+            body = {"type": "job_run"}
+            if "job" in include:
+                body["job"] = job
+            if "run" in include:
+                body["run"] = run
+            if "result" in include:
+                body["result"] = result
 
         # env overrides
         retries = int(os.getenv("AIPLAT_JOBS_DELIVERY_RETRIES", str(self._cfg.delivery_retries)) or "2")

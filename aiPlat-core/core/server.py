@@ -570,6 +570,47 @@ def _is_verified(meta: Dict[str, Any] | None) -> bool:
     return False
 
 
+async def _require_targets_verified(targets: list[tuple[str, str]]) -> None:
+    """
+    Gate publish/enable actions by autosmoke verification status.
+
+    targets: list of (target_type, target_id), e.g. ("agent","xxx")
+    """
+    if not _autosmoke_enforce():
+        return
+    missing: list[dict] = []
+    for ttype, tid in targets:
+        ttype = str(ttype or "").strip().lower()
+        tid = str(tid or "").strip()
+        if not ttype or not tid:
+            continue
+        if ttype == "agent":
+            if not _workspace_agent_manager:
+                missing.append({"type": ttype, "id": tid, "reason": "agent_manager_unavailable"})
+                continue
+            a = await _workspace_agent_manager.get_agent(tid)
+            if not a or not _is_verified(getattr(a, "metadata", None)):
+                missing.append({"type": ttype, "id": tid, "reason": "unverified"})
+        elif ttype == "skill":
+            if not _workspace_skill_manager:
+                missing.append({"type": ttype, "id": tid, "reason": "skill_manager_unavailable"})
+                continue
+            s = await _workspace_skill_manager.get_skill(tid)
+            if not s or not _is_verified(getattr(s, "metadata", None)):
+                missing.append({"type": ttype, "id": tid, "reason": "unverified"})
+        elif ttype == "mcp":
+            if not _workspace_mcp_manager:
+                missing.append({"type": ttype, "id": tid, "reason": "mcp_manager_unavailable"})
+                continue
+            m = _workspace_mcp_manager.get_server(tid)
+            if not m or not _is_verified(getattr(m, "metadata", None)):
+                missing.append({"type": ttype, "id": tid, "reason": "unverified"})
+        else:
+            # ignore other target types
+            continue
+    if missing:
+        raise HTTPException(status_code=403, detail={"code": "unverified", "message": "autosmoke must pass before publish/enable", "targets": missing})
+
 async def _audit_event(kind: str, name: str, status: str, *, args: Dict[str, Any] | None = None, result: Dict[str, Any] | None = None, error: str | None = None) -> None:
     """Best-effort append to ExecutionStore syscall_events for auditability."""
     try:
@@ -2304,6 +2345,28 @@ async def publish_release_candidate(candidate_id: str, request: dict):
         raise HTTPException(status_code=404, detail="candidate_not_found")
     if cand.get("kind") != "release_candidate":
         raise HTTPException(status_code=400, detail="not_a_release_candidate")
+
+    # Gate: ensure involved targets are verified before publish (when enforcement enabled).
+    try:
+        targets: list[tuple[str, str]] = []
+        if cand.get("target_type") and cand.get("target_id"):
+            targets.append((str(cand.get("target_type")), str(cand.get("target_id"))))
+        ids = (cand.get("payload") or {}).get("artifact_ids") if isinstance(cand.get("payload"), dict) else []
+        if isinstance(ids, list):
+            for aid in ids:
+                if not isinstance(aid, str) or not aid:
+                    continue
+                a = await _execution_store.get_learning_artifact(aid)
+                if isinstance(a, dict) and a.get("target_type") and a.get("target_id"):
+                    targets.append((str(a.get("target_type")), str(a.get("target_id"))))
+        # unique
+        uniq = list({(t[0].lower(), t[1]) for t in targets})
+        await _require_targets_verified(uniq)
+    except HTTPException:
+        raise
+    except Exception:
+        # fail-open if any unexpected parsing issues happen
+        pass
 
     user_id = (request or {}).get("user_id") or "system"
     require_approval = bool((request or {}).get("require_approval", False))
@@ -5800,6 +5863,24 @@ async def publish_skill_pack(pack_id: str, request: SkillPackPublishRequest):
         if not pack:
             raise ValueError("Skill pack not found")
         _normalize_skill_pack_manifest(pack.get("manifest"))
+        # Gate: referenced skills should be verified (workspace skills) when enforcement enabled.
+        try:
+            manifest = pack.get("manifest") if isinstance(pack, dict) else None
+            manifest = _normalize_skill_pack_manifest(manifest if isinstance(manifest, dict) else {})
+            skills = manifest.get("skills") if isinstance(manifest, dict) else []
+            targets: list[tuple[str, str]] = []
+            if isinstance(skills, list):
+                for it in skills:
+                    if not isinstance(it, dict):
+                        continue
+                    sid = str(it.get("id") or "").strip()
+                    if sid:
+                        targets.append(("skill", sid))
+            await _require_targets_verified(list({(t[0], t[1]) for t in targets}))
+        except HTTPException:
+            raise
+        except Exception:
+            pass
         return await _execution_store.publish_skill_pack_version(pack_id=pack_id, version=request.version)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -5820,6 +5901,30 @@ async def install_skill_pack(pack_id: str, request: SkillPackInstallRequest):
     if not _execution_store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
     try:
+        # Gate: referenced skills should be verified before install (workspace apply) when enforcement enabled.
+        try:
+            manifest = None
+            if request.version:
+                vrec = await _execution_store.get_skill_pack_version(pack_id=pack_id, version=request.version)
+                manifest = vrec.get("manifest") if isinstance(vrec, dict) else None
+            if manifest is None:
+                pack = await _execution_store.get_skill_pack(pack_id)
+                manifest = pack.get("manifest") if isinstance(pack, dict) else None
+            manifest = _normalize_skill_pack_manifest(manifest if isinstance(manifest, dict) else {})
+            skills = manifest.get("skills") if isinstance(manifest, dict) else []
+            targets: list[tuple[str, str]] = []
+            if isinstance(skills, list):
+                for it in skills:
+                    if not isinstance(it, dict):
+                        continue
+                    sid = str(it.get("id") or "").strip()
+                    if sid:
+                        targets.append(("skill", sid))
+            await _require_targets_verified(list({(t[0], t[1]) for t in targets}))
+        except HTTPException:
+            raise
+        except Exception:
+            pass
         install = await _execution_store.install_skill_pack(
             pack_id=pack_id,
             version=request.version,
