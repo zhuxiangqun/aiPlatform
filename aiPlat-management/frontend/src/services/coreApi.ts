@@ -1054,8 +1054,18 @@ export const toolApi = {
     return apiClient.get<Record<string, ToolInfo['stats']>>('/core/tools/stats');
   },
 
-  execute: async (toolName: string, params: Record<string, unknown>) => {
-    return apiClient.post<{ output?: unknown; error?: string; success: boolean; latency?: number }>(`/core/tools/${toolName}/execute`, { input: params });
+  execute: async (
+    toolName: string,
+    params: Record<string, unknown>,
+    opts?: { toolset?: string; context?: Record<string, unknown>; session_id?: string; user_id?: string }
+  ) => {
+    return apiClient.post<{ output?: unknown; error?: string; success: boolean; latency?: number }>(`/core/tools/${toolName}/execute`, {
+      input: params,
+      options: opts?.toolset ? { toolset: opts.toolset } : undefined,
+      context: opts?.context,
+      session_id: opts?.session_id,
+      user_id: opts?.user_id,
+    });
   },
 
   updateConfig: async (toolName: string, config: Record<string, unknown>) => {

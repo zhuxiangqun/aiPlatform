@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
-import { Activity, GitBranch, Share2, Zap, Wrench } from 'lucide-react';
+import { Activity, GitBranch, Share2, Zap, Wrench, FolderSearch } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, Badge } from '../../components/ui';
 import { diagnosticsApi } from '../../services';
@@ -57,6 +57,7 @@ const Diagnostics: React.FC = () => {
       { title: 'Traces', desc: '链路追踪与 spans 定位', href: '/diagnostics/traces', icon: Activity },
       { title: 'Graph Runs', desc: '执行 runs / checkpoints / 恢复', href: '/diagnostics/graphs', icon: GitBranch },
       { title: 'Links', desc: '输入任意 ID 联动查询', href: '/diagnostics/links', icon: Share2 },
+      { title: 'Repo', desc: 'Repo 索引/全文搜索（gitignore-aware）', href: '/diagnostics/repo', icon: FolderSearch },
       { title: 'Runs', desc: 'run_id 维度的摘要与事件流', href: '/diagnostics/runs', icon: Share2 },
       { title: 'Audit Logs', desc: '关键操作审计日志', href: '/diagnostics/audit', icon: Share2 },
       { title: 'Tenant Policies', desc: 'Policy-as-code 策略快照', href: '/diagnostics/policies', icon: Share2 },
