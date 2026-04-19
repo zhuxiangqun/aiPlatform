@@ -278,7 +278,18 @@ const Syscalls: React.FC = () => {
             <div className="mt-2 rounded border border-dark-border bg-dark-hover p-2">
               <div className="text-xs text-gray-500 mb-1">changeset 摘要</div>
               {kv('note', r?.args?.note || '-')}
-              {kv('diff_sha256', r?.result?.diff_sha256 || r?.result?.template_sha256 || '-')}
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-xs text-gray-400">
+                  <span className="text-gray-500">diff_sha256:</span>{' '}
+                  <span className="text-gray-200">{r?.result?.diff_sha256 || r?.result?.template_sha256 || '-'}</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  onClick={() => copyJson('diff_sha256', r?.result?.diff_sha256 || r?.result?.template_sha256 || '')}
+                >
+                  复制
+                </Button>
+              </div>
               {kv('working_tree', r?.result?.working_tree ? JSON.stringify(r.result.working_tree) : '-')}
               {kv('staged', r?.result?.staged ? JSON.stringify(r.result.staged) : '-')}
             </div>

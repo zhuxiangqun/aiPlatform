@@ -229,6 +229,16 @@ const Doctor: React.FC = () => {
                   { key: 'created_at', title: '时间', width: 170, render: (_: any, r: any) => <span className="text-xs text-gray-300">{formatTs(r.created_at)}</span> },
                   { key: 'name', title: 'name', width: 200, render: (_: any, r: any) => <span className="text-xs text-gray-200">{r.name}</span> },
                   {
+                    key: 'diff',
+                    title: 'diff',
+                    width: 160,
+                    render: (_: any, r: any) => (
+                      <span className="text-xs text-gray-400">
+                        {String(r?.result?.diff_sha256 || r?.result?.template_sha256 || '').slice(0, 16) || '-'}
+                      </span>
+                    ),
+                  },
+                  {
                     key: 'target',
                     title: 'target',
                     width: 220,
