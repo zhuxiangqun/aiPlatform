@@ -306,11 +306,42 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
         "webhook_url_set": bool(env_webhook) or bool(core_autosmoke_cfg.get("webhook_url")),
         "source": {"env_override": bool(env_enabled or env_enforce or env_dedup or env_webhook), "core_setting": core_autosmoke_cfg},
     }
+    # Strong gate status (default tenant)
+    strong_gate: Dict[str, Any] = {"tenant_id": "default", "enabled": False}
+    try:
+        core_client = getattr(request.app.state, "core_client", None)
+        if core_client:
+            tp = await core_client.get_tenant_policy("default")
+            policy = tp.get("policy") if isinstance(tp, dict) else None
+            tool_policy = policy.get("tool_policy") if isinstance(policy, dict) else None
+            approval_tools = (
+                tool_policy.get("approval_required_tools")
+                if isinstance(tool_policy, dict) and isinstance(tool_policy.get("approval_required_tools"), list)
+                else []
+            )
+            enabled = "*" in [str(x) for x in approval_tools]
+            strong_gate = {
+                "tenant_id": "default",
+                "enabled": bool(enabled),
+                "policy_version": tp.get("version"),
+                "approval_required_tools": approval_tools,
+            }
+    except Exception:
+        pass
+
     links = {
         "onboarding_ui": "/onboarding",
         "diagnostics_smoke_ui": "/diagnostics/smoke",
+        "tenant_policies_ui": "/diagnostics/policies",
         "doctor_api": "/api/diagnostics/doctor",
         "run_e2e_smoke_api": "/api/diagnostics/e2e/smoke",
+    }
+    actions = {
+        "toggle_strong_gate": {
+            "method": "POST",
+            "api_url": "/api/onboarding/strong-gate",
+            "body_example": {"tenant_id": "default", "enabled": False, "require_approval": True},
+        }
     }
     config = {
         "management_public_url": os.getenv("AIPLAT_MANAGEMENT_PUBLIC_URL"),
@@ -336,13 +367,26 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
     if not config["management_public_url"]:
         recs.append({"severity": "info", "code": "missing_public_url", "message": "建议设置 AIPLAT_MANAGEMENT_PUBLIC_URL，用于生成可点击诊断/重跑链接"})
 
+    if strong_gate.get("enabled"):
+        recs.append(
+            {
+                "severity": "warn",
+                "code": "strong_gate_enabled",
+                "message": "default tenant 已启用强门禁（所有工具需审批）。如为误开启，可在 Onboarding 或 Tenant Policies 页面一键解除。",
+                "links": {"onboarding_ui": "/onboarding", "tenant_policies_ui": "/diagnostics/policies"},
+                "actions": {"disable_strong_gate": actions["toggle_strong_gate"]},
+            }
+        )
+
     return {
         "generated_at": time.time(),
         "health": health,
         "adapters": adapters,
         "autosmoke": autosmoke,
+        "strong_gate": strong_gate,
         "config": config,
         "links": links,
+        "actions": actions,
         "recommendations": recs,
     }
 
