@@ -9141,9 +9141,14 @@ async def get_package_version(pkg_name: str, version: str):
 
 
 @api_router.post("/packages/{pkg_name}/publish")
-async def publish_package(pkg_name: str, request: PackagePublishRequest):
+async def publish_package(pkg_name: str, http_request: Request, request: PackagePublishRequest):
     if not _execution_store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+
+    change_id = _new_change_id()
+    force_approval_in_prod = (os.getenv("AIPLAT_PACKAGES_FORCE_APPROVAL_IN_PROD", "true") or "true").strip().lower() in {"1", "true", "yes", "on"}
+    if _runtime_env() == "prod" and force_approval_in_prod:
+        request.require_approval = True
 
     # Optional approval
     if request.require_approval:
@@ -9154,9 +9159,41 @@ async def publish_package(pkg_name: str, request: PackagePublishRequest):
                 details=request.details or f"publish package {pkg_name}@{request.version}",
                 metadata={"package_name": pkg_name, "version": request.version},
             )
-            return {"status": "approval_required", "approval_request_id": rid}
+            try:
+                await _record_changeset(
+                    name="packages.publish",
+                    target_type="change",
+                    target_id=change_id,
+                    status="approval_required",
+                    args={"package_name": pkg_name, "version": request.version},
+                    approval_request_id=rid,
+                    user_id=str(http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")),
+                    tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID")) if http_request.headers.get("X-AIPLAT-TENANT-ID") else None,
+                    session_id=None,
+                )
+            except Exception:
+                pass
+            return {"status": "approval_required", "approval_request_id": rid, "change_id": change_id, "links": _change_links(change_id)}
         if not _is_approval_resolved_approved(request.approval_request_id):
-            raise HTTPException(status_code=409, detail="not_approved")
+            try:
+                await _record_changeset(
+                    name="packages.publish",
+                    target_type="change",
+                    target_id=change_id,
+                    status="failed",
+                    args={"package_name": pkg_name, "version": request.version},
+                    error="not_approved",
+                    approval_request_id=request.approval_request_id,
+                    user_id=str(http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")),
+                    tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID")) if http_request.headers.get("X-AIPLAT-TENANT-ID") else None,
+                    session_id=None,
+                )
+            except Exception:
+                pass
+            raise HTTPException(
+                status_code=409,
+                detail={"code": "not_approved", "message": "not_approved", "change_id": change_id, "links": _change_links(change_id)},
+            )
 
     pkg = _find_filesystem_package(pkg_name)
     if not pkg:
@@ -9196,7 +9233,22 @@ async def publish_package(pkg_name: str, request: PackagePublishRequest):
         artifact_sha256=sha,
         approval_request_id=request.approval_request_id,
     )
-    return {"status": "published", "package_version": rec}
+    try:
+        await _record_changeset(
+            name="packages.publish",
+            target_type="change",
+            target_id=change_id,
+            status="success",
+            args={"package_name": pkg_name, "version": request.version},
+            result={"artifact_sha256": sha, "artifact_path": str(archive_path)},
+            approval_request_id=request.approval_request_id,
+            user_id=str(http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")),
+            tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID")) if http_request.headers.get("X-AIPLAT-TENANT-ID") else None,
+            session_id=None,
+        )
+    except Exception:
+        pass
+    return {"status": "published", "package_version": rec, "change_id": change_id, "links": _change_links(change_id)}
 
 
 @api_router.post("/packages/{pkg_name}/install")
