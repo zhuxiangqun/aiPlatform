@@ -165,6 +165,7 @@ class DefaultContextEngine(ContextEngine):
                             db_path=getattr(getattr(store, "_config", None), "db_path", None),
                             query=q,
                             user_id=rctx.user_id,
+                            tenant_id=getattr(rctx, "tenant_id", None),
                             limit=3,
                         )
                         if items:
@@ -172,6 +173,16 @@ class DefaultContextEngine(ContextEngine):
                             session_sha = hashlib.sha256(("|".join(ids)).encode("utf-8")).hexdigest()
                             meta["session_search_hits"] = len(items)
                             meta["session_search_ids"] = ids
+                            meta["session_search_sources"] = [
+                                {
+                                    "id": it.get("id"),
+                                    "session_id": it.get("session_id"),
+                                    "run_id": it.get("run_id"),
+                                    "source_run_id": it.get("source_run_id"),
+                                    "sensitivity": it.get("sensitivity"),
+                                }
+                                for it in items
+                            ]
                             status["session_search"].update(
                                 {"injected": True, "hits": int(len(items)), "sha256": session_sha, "ids": ids}
                             )
@@ -181,11 +192,13 @@ class DefaultContextEngine(ContextEngine):
                                 sid = it.get("session_id")
                                 role = it.get("role")
                                 c = str(it.get("content") or "")
-                                snippet_lines.append(f"- ({sid}/{role}) {c}")
+                                rid = it.get("source_run_id") or it.get("run_id")
+                                src = f" [run_id={rid}]" if rid else ""
+                                snippet_lines.append(f"- ({sid}/{role}) {c}{src}")
                             inject = {
                                 "role": "system",
                                 "content": "# Session Search\n\n" + "\n".join(snippet_lines),
-                                "metadata": {"layer": "ephemeral", "kind": "session_search"},
+                                "metadata": {"layer": "ephemeral", "kind": "session_search", "sources": meta.get("session_search_sources") or []},
                             }
                             # Put after project context if present, else as first system message.
                             if msgs and msgs[0].get("role") == "system" and "# Project Context" in str(msgs[0].get("content", "")):
@@ -272,7 +285,9 @@ class DefaultContextEngine(ContextEngine):
                 return t if t else None
         return None
 
-    def _search_session_messages_sync(self, *, db_path: Optional[str], query: str, user_id: str, limit: int) -> List[Dict[str, Any]]:
+    def _search_session_messages_sync(
+        self, *, db_path: Optional[str], query: str, user_id: str, tenant_id: Optional[str], limit: int
+    ) -> List[Dict[str, Any]]:
         """
         Best-effort session search (sync, SQLite).
         We keep ContextEngine synchronous; avoid awaiting ExecutionStore methods.
@@ -287,6 +302,7 @@ class DefaultContextEngine(ContextEngine):
             try:
                 q = str(query or "").strip()
                 uid = str(user_id or "system")
+                tid = str(tenant_id) if tenant_id is not None else None
                 # Prefer FTS; fallback to LIKE.
                 try:
                     q_fts = q.replace('"', '""')
@@ -299,28 +315,59 @@ class DefaultContextEngine(ContextEngine):
                         """,
                         (q_fts, uid, int(limit)),
                     ).fetchall()
-                    return [
-                        {
-                            "id": r["id"],
-                            "user_id": r["user_id"],
-                            "session_id": r["session_id"],
-                            "role": r["role"],
-                            "content": str(r["content"] or "")[:200],
-                            "score": 1.0,
-                        }
-                        for r in rows
-                    ]
+                    ids = [str(r["id"]) for r in rows if r and r["id"]]
+                    if not ids:
+                        return []
+                    placeholders = ",".join(["?"] * len(ids))
+                    params2: List[Any] = list(ids)
+                    where2 = f"WHERE id IN ({placeholders}) AND user_id = ?"
+                    params2.append(uid)
+                    if tid is not None:
+                        where2 += " AND tenant_id = ?"
+                        params2.append(tid)
+                    rows2 = conn.execute(
+                        f"""
+                        SELECT id,user_id,session_id,role,content,run_id,source_run_id,sensitivity,tenant_id
+                        FROM memory_messages
+                        {where2}
+                        ORDER BY created_at DESC
+                        LIMIT ?;
+                        """,
+                        tuple(params2 + [int(limit)]),
+                    ).fetchall()
+                    out = []
+                    for r2 in rows2:
+                        out.append(
+                            {
+                                "id": r2["id"],
+                                "user_id": r2["user_id"],
+                                "session_id": r2["session_id"],
+                                "role": r2["role"],
+                                "content": str(r2["content"] or "")[:200],
+                                "run_id": r2["run_id"] if "run_id" in r2.keys() else None,
+                                "source_run_id": r2["source_run_id"] if "source_run_id" in r2.keys() else None,
+                                "sensitivity": r2["sensitivity"] if "sensitivity" in r2.keys() else None,
+                                "tenant_id": r2["tenant_id"] if "tenant_id" in r2.keys() else None,
+                                "score": 1.0,
+                            }
+                        )
+                    return out
                 except Exception:
                     pass
                 like = f"%{q}%"
+                where = "WHERE user_id = ? AND content LIKE ?"
+                params3: List[Any] = [uid, like]
+                if tid is not None:
+                    where += " AND tenant_id = ?"
+                    params3.append(tid)
                 rows = conn.execute(
-                    """
-                    SELECT id,user_id,session_id,role,content FROM memory_messages
-                    WHERE user_id = ? AND content LIKE ?
+                    f"""
+                    SELECT id,user_id,session_id,role,content,run_id,source_run_id,sensitivity,tenant_id FROM memory_messages
+                    {where}
                     ORDER BY created_at DESC
                     LIMIT ?;
                     """,
-                    (uid, like, int(limit)),
+                    tuple(params3 + [int(limit)]),
                 ).fetchall()
                 return [
                     {
@@ -329,6 +376,10 @@ class DefaultContextEngine(ContextEngine):
                         "session_id": r["session_id"],
                         "role": r["role"],
                         "content": str(r["content"] or "")[:200],
+                        "run_id": r["run_id"] if "run_id" in r.keys() else None,
+                        "source_run_id": r["source_run_id"] if "source_run_id" in r.keys() else None,
+                        "sensitivity": r["sensitivity"] if "sensitivity" in r.keys() else None,
+                        "tenant_id": r["tenant_id"] if "tenant_id" in r.keys() else None,
                         "score": 1.0,
                     }
                     for r in rows

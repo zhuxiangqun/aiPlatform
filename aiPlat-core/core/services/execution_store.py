@@ -43,7 +43,7 @@ class ExecutionStoreConfig:
 
 
 class ExecutionStore:
-    CURRENT_SCHEMA_VERSION = 31
+    CURRENT_SCHEMA_VERSION = 32
 
     def __init__(self, config: ExecutionStoreConfig):
         self._config = config
@@ -1159,6 +1159,83 @@ class ExecutionStore:
                             pass
                         _set_version(31)
                         current = 31
+
+                    # ---- Migration v32: enterprise memory fields + pins/blocks (PR-09) ----
+                    if current < 32:
+                        # memory_sessions: tenant_id
+                        try:
+                            conn.execute("ALTER TABLE memory_sessions ADD COLUMN tenant_id TEXT;")
+                        except Exception:
+                            pass
+                        try:
+                            conn.execute("CREATE INDEX IF NOT EXISTS idx_mem_sess_tenant_time ON memory_sessions(tenant_id, updated_at DESC);")
+                        except Exception:
+                            pass
+
+                        # memory_messages: tenant_id + sensitivity + source_run_id
+                        try:
+                            conn.execute("ALTER TABLE memory_messages ADD COLUMN tenant_id TEXT;")
+                        except Exception:
+                            pass
+                        try:
+                            conn.execute("ALTER TABLE memory_messages ADD COLUMN sensitivity TEXT;")
+                        except Exception:
+                            pass
+                        try:
+                            conn.execute("ALTER TABLE memory_messages ADD COLUMN source_run_id TEXT;")
+                        except Exception:
+                            pass
+                        try:
+                            conn.execute(
+                                "CREATE INDEX IF NOT EXISTS idx_mem_msg_tenant_sess_time ON memory_messages(tenant_id, session_id, created_at DESC);"
+                            )
+                        except Exception:
+                            pass
+                        try:
+                            conn.execute("CREATE INDEX IF NOT EXISTS idx_mem_msg_source_run ON memory_messages(source_run_id);")
+                        except Exception:
+                            pass
+
+                        # memory_pins: allow pinning important messages (tenant-scoped)
+                        try:
+                            conn.execute(
+                                """
+                                CREATE TABLE IF NOT EXISTS memory_pins (
+                                  tenant_id TEXT,
+                                  session_id TEXT NOT NULL,
+                                  message_id TEXT NOT NULL,
+                                  created_by TEXT,
+                                  note TEXT,
+                                  created_at REAL NOT NULL,
+                                  PRIMARY KEY(tenant_id, message_id)
+                                );
+                                """
+                            )
+                            conn.execute("CREATE INDEX IF NOT EXISTS idx_mem_pins_sess_time ON memory_pins(tenant_id, session_id, created_at DESC);")
+                        except Exception:
+                            pass
+
+                        # memory_blocks: allow blocking patterns for injection/PII safety (tenant-scoped)
+                        try:
+                            conn.execute(
+                                """
+                                CREATE TABLE IF NOT EXISTS memory_blocks (
+                                  id TEXT PRIMARY KEY,
+                                  tenant_id TEXT,
+                                  session_id TEXT,
+                                  pattern TEXT NOT NULL,
+                                  reason TEXT,
+                                  created_by TEXT,
+                                  created_at REAL NOT NULL
+                                );
+                                """
+                            )
+                            conn.execute("CREATE INDEX IF NOT EXISTS idx_mem_blocks_tenant_time ON memory_blocks(tenant_id, created_at DESC);")
+                        except Exception:
+                            pass
+
+                        _set_version(32)
+                        current = 32
 
                     # If legacy db exists with tables but without meta, upgrade meta to current
                     if current < self.CURRENT_SCHEMA_VERSION:
@@ -5739,6 +5816,7 @@ class ExecutionStore:
     async def create_memory_session(
         self,
         *,
+        tenant_id: Optional[str] = None,
         user_id: str,
         agent_type: str = "default",
         session_type: str = "session",
@@ -5753,6 +5831,7 @@ class ExecutionStore:
             sid = str(session_id) if session_id else f"sess-{uuid.uuid4().hex[:10]}"
             rec = {
                 "id": sid,
+                "tenant_id": str(tenant_id) if tenant_id is not None else None,
                 "user_id": str(user_id or "system"),
                 "agent_type": str(agent_type or "default"),
                 "session_type": str(session_type or "session"),
@@ -5766,9 +5845,10 @@ class ExecutionStore:
             try:
                 conn.execute(
                     """
-                    INSERT INTO memory_sessions(id,user_id,agent_type,session_type,status,metadata_json,message_count,created_at,updated_at)
-                    VALUES(?,?,?,?,?,?,?,?,?)
+                    INSERT INTO memory_sessions(id,tenant_id,user_id,agent_type,session_type,status,metadata_json,message_count,created_at,updated_at)
+                    VALUES(?,?,?,?,?,?,?,?,?,?)
                     ON CONFLICT(id) DO UPDATE SET
+                      tenant_id=excluded.tenant_id,
                       user_id=excluded.user_id,
                       agent_type=excluded.agent_type,
                       session_type=excluded.session_type,
@@ -5778,6 +5858,7 @@ class ExecutionStore:
                     """,
                     (
                         rec["id"],
+                        rec["tenant_id"],
                         rec["user_id"],
                         rec["agent_type"],
                         rec["session_type"],
@@ -5799,10 +5880,13 @@ class ExecutionStore:
     async def add_memory_message(
         self,
         *,
+        tenant_id: Optional[str] = None,
         session_id: str,
         user_id: str,
         role: str,
         content: str,
+        sensitivity: Optional[str] = None,
+        source_run_id: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
         trace_id: Optional[str] = None,
         run_id: Optional[str] = None,
@@ -5816,9 +5900,12 @@ class ExecutionStore:
             rec = {
                 "id": mid,
                 "session_id": str(session_id or "default"),
+                "tenant_id": str(tenant_id) if tenant_id is not None else None,
                 "user_id": str(user_id or "system"),
                 "role": str(role or "user"),
                 "content": str(content or ""),
+                "sensitivity": str(sensitivity) if sensitivity is not None else None,
+                "source_run_id": str(source_run_id) if source_run_id is not None else None,
                 "metadata_json": _json_dumps(metadata or {}),
                 "trace_id": str(trace_id) if trace_id else None,
                 "run_id": str(run_id) if run_id else None,
@@ -5829,12 +5916,13 @@ class ExecutionStore:
                 # Ensure session exists (idempotent).
                 conn.execute(
                     """
-                    INSERT INTO memory_sessions(id,user_id,agent_type,session_type,status,metadata_json,message_count,created_at,updated_at)
-                    VALUES(?,?,?,?,?,?,?,?,?)
+                    INSERT INTO memory_sessions(id,tenant_id,user_id,agent_type,session_type,status,metadata_json,message_count,created_at,updated_at)
+                    VALUES(?,?,?,?,?,?,?,?,?,?)
                     ON CONFLICT(id) DO UPDATE SET updated_at=excluded.updated_at;
                     """,
                     (
                         rec["session_id"],
+                        rec["tenant_id"],
                         rec["user_id"],
                         "default",
                         "session",
@@ -5845,23 +5933,48 @@ class ExecutionStore:
                         now,
                     ),
                 )
-                conn.execute(
-                    """
-                    INSERT INTO memory_messages(id,session_id,user_id,role,content,metadata_json,trace_id,run_id,created_at)
-                    VALUES(?,?,?,?,?,?,?,?,?);
-                    """,
-                    (
-                        rec["id"],
-                        rec["session_id"],
-                        rec["user_id"],
-                        rec["role"],
-                        rec["content"],
-                        rec["metadata_json"],
-                        rec["trace_id"],
-                        rec["run_id"],
-                        rec["created_at"],
-                    ),
-                )
+                # Insert message with v32 columns; fallback to legacy insert for compatibility.
+                try:
+                    conn.execute(
+                        """
+                        INSERT INTO memory_messages(
+                          id,session_id,tenant_id,user_id,role,content,sensitivity,source_run_id,metadata_json,trace_id,run_id,created_at
+                        )
+                        VALUES(?,?,?,?,?,?,?,?,?,?,?,?);
+                        """,
+                        (
+                            rec["id"],
+                            rec["session_id"],
+                            rec["tenant_id"],
+                            rec["user_id"],
+                            rec["role"],
+                            rec["content"],
+                            rec["sensitivity"],
+                            rec["source_run_id"],
+                            rec["metadata_json"],
+                            rec["trace_id"],
+                            rec["run_id"],
+                            rec["created_at"],
+                        ),
+                    )
+                except Exception:
+                    conn.execute(
+                        """
+                        INSERT INTO memory_messages(id,session_id,user_id,role,content,metadata_json,trace_id,run_id,created_at)
+                        VALUES(?,?,?,?,?,?,?,?,?);
+                        """,
+                        (
+                            rec["id"],
+                            rec["session_id"],
+                            rec["user_id"],
+                            rec["role"],
+                            rec["content"],
+                            rec["metadata_json"],
+                            rec["trace_id"],
+                            rec["run_id"],
+                            rec["created_at"],
+                        ),
+                    )
                 # best-effort: sync FTS
                 try:
                     conn.execute(
@@ -5882,7 +5995,9 @@ class ExecutionStore:
         row = await anyio.to_thread.run_sync(_sync)
         return {**row, "metadata": _json_loads(row.get("metadata_json")) or {}}
 
-    async def list_memory_sessions(self, *, user_id: Optional[str] = None, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+    async def list_memory_sessions(
+        self, *, tenant_id: Optional[str] = None, user_id: Optional[str] = None, limit: int = 100, offset: int = 0
+    ) -> Dict[str, Any]:
         await self.init()
         db_path = self._config.db_path
 
@@ -5892,8 +6007,14 @@ class ExecutionStore:
             try:
                 where = ""
                 args: List[Any] = []
+                if tenant_id is not None:
+                    where = "WHERE tenant_id = ?"
+                    args.append(str(tenant_id))
                 if user_id:
-                    where = "WHERE user_id = ?"
+                    if where:
+                        where += " AND user_id = ?"
+                    else:
+                        where = "WHERE user_id = ?"
                     args.append(str(user_id))
                 total_row = conn.execute(f"SELECT COUNT(1) AS c FROM memory_sessions {where};", args).fetchone()
                 total = int(total_row["c"] if total_row else 0)
@@ -5950,7 +6071,7 @@ class ExecutionStore:
         return bool(await anyio.to_thread.run_sync(_sync))
 
     async def list_memory_messages(
-        self, *, session_id: str, limit: int = 100, offset: int = 0
+        self, *, session_id: str, tenant_id: Optional[str] = None, limit: int = 100, offset: int = 0
     ) -> Dict[str, Any]:
         await self.init()
         db_path = self._config.db_path
@@ -5960,17 +6081,29 @@ class ExecutionStore:
             conn.row_factory = sqlite3.Row
             try:
                 total_row = conn.execute(
-                    "SELECT COUNT(1) AS c FROM memory_messages WHERE session_id = ?;", (str(session_id),)
+                    "SELECT COUNT(1) AS c FROM memory_messages WHERE session_id = ? AND (? IS NULL OR tenant_id = ?);",
+                    (
+                        str(session_id),
+                        str(tenant_id) if tenant_id is not None else None,
+                        str(tenant_id) if tenant_id is not None else None,
+                    ),
                 ).fetchone()
                 total = int(total_row["c"] if total_row else 0)
                 rows = conn.execute(
                     """
                     SELECT * FROM memory_messages
                     WHERE session_id = ?
+                      AND (? IS NULL OR tenant_id = ?)
                     ORDER BY created_at ASC
                     LIMIT ? OFFSET ?;
                     """,
-                    (str(session_id), int(limit), int(offset)),
+                    (
+                        str(session_id),
+                        str(tenant_id) if tenant_id is not None else None,
+                        str(tenant_id) if tenant_id is not None else None,
+                        int(limit),
+                        int(offset),
+                    ),
                 ).fetchall()
                 return {"items": [dict(r) for r in rows], "total": total}
             finally:
@@ -5987,6 +6120,7 @@ class ExecutionStore:
         *,
         query: str,
         user_id: Optional[str] = None,
+        tenant_id: Optional[str] = None,
         limit: int = 10,
         offset: int = 0,
     ) -> Dict[str, Any]:
@@ -5998,6 +6132,7 @@ class ExecutionStore:
             conn.row_factory = sqlite3.Row
             try:
                 uid = str(user_id) if user_id else None
+                tid = str(tenant_id) if tenant_id is not None else None
                 q = str(query or "").strip()
                 # Prefer FTS when available; fallback to LIKE.
                 try:
@@ -6017,16 +6152,33 @@ class ExecutionStore:
                             """,
                             params,
                         ).fetchall()
-                        # FTS table already carries content; hydrate minimal fields.
+                        # FTS table doesn't have tenant_id; filter via memory_messages join (best-effort).
+                        ids = [str(r["id"]) for r in rows if r and r["id"]]
+                        if not ids:
+                            return {"items": [], "total": 0}
+                        placeholders = ",".join(["?"] * len(ids))
+                        args2: List[Any] = list(ids)
+                        where2 = f"WHERE id IN ({placeholders})"
+                        if tid is not None:
+                            where2 += " AND tenant_id = ?"
+                            args2.append(tid)
+                        rows2 = conn.execute(
+                            f"SELECT id,user_id,session_id,role,content,tenant_id,run_id,source_run_id,sensitivity FROM memory_messages {where2};",
+                            tuple(args2),
+                        ).fetchall()
                         items = []
-                        for r in rows:
+                        for r2 in rows2:
                             items.append(
                                 {
-                                    "id": r["id"],
-                                    "user_id": r["user_id"],
-                                    "session_id": r["session_id"],
-                                    "role": r["role"],
-                                    "content": r["content"][:200],
+                                    "id": r2["id"],
+                                    "user_id": r2["user_id"],
+                                    "session_id": r2["session_id"],
+                                    "role": r2["role"],
+                                    "content": str(r2["content"] or "")[:200],
+                                    "tenant_id": r2["tenant_id"] if "tenant_id" in r2.keys() else None,
+                                    "run_id": r2["run_id"] if "run_id" in r2.keys() else None,
+                                    "source_run_id": r2["source_run_id"] if "source_run_id" in r2.keys() else None,
+                                    "sensitivity": r2["sensitivity"] if "sensitivity" in r2.keys() else None,
                                     "score": 1.0,
                                 }
                             )
@@ -6037,11 +6189,15 @@ class ExecutionStore:
                 if not q:
                     return {"items": [], "total": 0}
                 like = f"%{q}%"
-                where = "WHERE content LIKE ?"
+                where_parts = ["content LIKE ?"]
                 params2: List[Any] = [like]
                 if uid:
-                    where += " AND user_id = ?"
+                    where_parts.append("user_id = ?")
                     params2.append(uid)
+                if tid is not None:
+                    where_parts.append("tenant_id = ?")
+                    params2.append(tid)
+                where = "WHERE " + " AND ".join(where_parts)
                 total_row = conn.execute(f"SELECT COUNT(1) AS c FROM memory_messages {where};", params2).fetchone()
                 total = int(total_row["c"] if total_row else 0)
                 rows = conn.execute(
@@ -6066,6 +6222,103 @@ class ExecutionStore:
                         }
                     )
                 return {"items": items, "total": total}
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
+    # ==================== Enterprise Memory Pins / Blocks (PR-09) ====================
+
+    async def pin_memory_message(
+        self,
+        *,
+        tenant_id: Optional[str],
+        session_id: str,
+        message_id: str,
+        created_by: Optional[str] = None,
+        note: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            now = float(time.time())
+            conn = sqlite3.connect(db_path)
+            try:
+                conn.execute(
+                    """
+                    INSERT INTO memory_pins(tenant_id, session_id, message_id, created_by, note, created_at)
+                    VALUES(?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(tenant_id, message_id) DO UPDATE SET
+                      session_id=excluded.session_id,
+                      created_by=excluded.created_by,
+                      note=excluded.note,
+                      created_at=excluded.created_at;
+                    """,
+                    (
+                        str(tenant_id or ""),
+                        str(session_id),
+                        str(message_id),
+                        str(created_by) if created_by else None,
+                        str(note) if note else None,
+                        now,
+                    ),
+                )
+                conn.commit()
+                return {
+                    "tenant_id": str(tenant_id or ""),
+                    "session_id": str(session_id),
+                    "message_id": str(message_id),
+                    "created_by": str(created_by) if created_by else None,
+                    "note": str(note) if note else None,
+                    "created_at": now,
+                }
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
+    async def unpin_memory_message(self, *, tenant_id: Optional[str], message_id: str) -> bool:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> bool:
+            conn = sqlite3.connect(db_path)
+            try:
+                cur = conn.execute(
+                    "DELETE FROM memory_pins WHERE tenant_id=? AND message_id=?",
+                    (str(tenant_id or ""), str(message_id)),
+                )
+                conn.commit()
+                return bool(cur.rowcount)
+            finally:
+                conn.close()
+
+        return bool(await anyio.to_thread.run_sync(_sync))
+
+    async def list_memory_pins(
+        self, *, tenant_id: Optional[str], session_id: Optional[str] = None, limit: int = 100, offset: int = 0
+    ) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                clauses = ["tenant_id=?"]
+                params: List[Any] = [str(tenant_id or "")]
+                if session_id:
+                    clauses.append("session_id=?")
+                    params.append(str(session_id))
+                where = "WHERE " + " AND ".join(clauses)
+                total_row = conn.execute(f"SELECT COUNT(1) AS c FROM memory_pins {where};", tuple(params)).fetchone()
+                total = int(total_row["c"] if total_row else 0)
+                rows = conn.execute(
+                    f"SELECT * FROM memory_pins {where} ORDER BY created_at DESC LIMIT ? OFFSET ?;",
+                    tuple(params + [int(limit), int(offset)]),
+                ).fetchall()
+                return {"items": [dict(r) for r in rows], "total": total, "limit": int(limit), "offset": int(offset)}
             finally:
                 conn.close()
 

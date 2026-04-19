@@ -5942,15 +5942,22 @@ async def get_skill_derived(skill_id: str):
 # ==================== Memory Management ====================
 
 @api_router.get("/memory/sessions")
-async def list_sessions(limit: int = 100, offset: int = 0):
+async def list_sessions(http_request: Request, limit: int = 100, offset: int = 0):
     """List memory sessions"""
     if _execution_store:
-        res = await _execution_store.list_memory_sessions(limit=limit, offset=offset)
+        tenant_id = None
+        try:
+            if http_request is not None:
+                tenant_id = _rbac_actor_from_http(http_request, None).get("tenant_id")
+        except Exception:
+            tenant_id = None
+        res = await _execution_store.list_memory_sessions(tenant_id=str(tenant_id) if tenant_id else None, limit=limit, offset=offset)
         out = []
         for s in res.get("items") or []:
             out.append(
                 {
                     "session_id": s.get("id"),
+                    "tenant_id": s.get("tenant_id"),
                     "metadata": s.get("metadata") or {},
                     "created_at": s.get("created_at"),
                     "updated_at": s.get("updated_at"),
@@ -5977,15 +5984,27 @@ async def list_sessions(limit: int = 100, offset: int = 0):
 
 
 @api_router.post("/memory/sessions")
-async def create_session(request: SessionCreateRequest):
+async def create_session(request: SessionCreateRequest, http_request: Request):
     """Create memory session"""
     meta = request.metadata or {}
     if _execution_store:
+        actor0 = _rbac_actor_from_http(http_request, {"context": meta} if isinstance(meta, dict) else None)
+        tid = actor0.get("tenant_id")
+        # keep old behavior: allow user_id from metadata, else fall back to actor_id
+        uid = meta.get("user_id") if isinstance(meta, dict) else None
+        if not uid:
+            uid = actor0.get("actor_id") or "system"
+        if isinstance(meta, dict):
+            meta.setdefault("tenant_id", tid)
+            meta.setdefault("actor_id", actor0.get("actor_id"))
+            meta.setdefault("actor_role", actor0.get("actor_role"))
         session = await _execution_store.create_memory_session(
-            user_id=str(meta.get("user_id", "system")),
+            tenant_id=str(tid) if tid else None,
+            user_id=str(uid),
             agent_type=str(meta.get("agent_type", "default")),
             session_type=str(meta.get("session_type", "session")),
             metadata=meta,
+            session_id=request.session_id,
         )
         return {"session_id": session.get("id"), "status": "created"}
 
@@ -5999,21 +6018,31 @@ async def create_session(request: SessionCreateRequest):
 
 
 @api_router.get("/memory/sessions/{session_id}")
-async def get_session(session_id: str):
+async def get_session(session_id: str, http_request: Request):
     """Get session details"""
     if _execution_store:
+        actor0 = _rbac_actor_from_http(http_request, None)
+        tid = actor0.get("tenant_id")
         session = await _execution_store.get_memory_session(session_id=session_id)
-        if not session:
+        if not session or (tid and str(session.get("tenant_id") or "") != str(tid)):
             raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
-        msgs = await _execution_store.list_memory_messages(session_id=session_id, limit=200, offset=0)
+        msgs = await _execution_store.list_memory_messages(session_id=session_id, tenant_id=str(tid) if tid else None, limit=200, offset=0)
         return {
             "session_id": session_id,
             "messages": [
-                {"role": m.get("role"), "content": m.get("content"), "timestamp": m.get("created_at")}
+                {
+                    "role": m.get("role"),
+                    "content": m.get("content"),
+                    "timestamp": m.get("created_at"),
+                    "source_run_id": m.get("source_run_id"),
+                    "run_id": m.get("run_id"),
+                    "sensitivity": m.get("sensitivity"),
+                }
                 for m in (msgs.get("items") or [])
             ],
             "metadata": session.get("metadata") or {},
             "message_count": int(msgs.get("total") or 0),
+            "tenant_id": session.get("tenant_id"),
         }
 
     session = await _memory_manager.get_session(session_id)
@@ -6032,9 +6061,14 @@ async def get_session(session_id: str):
 
 
 @api_router.delete("/memory/sessions/{session_id}")
-async def delete_session(session_id: str):
+async def delete_session(session_id: str, http_request: Request):
     """Delete session"""
     if _execution_store:
+        actor0 = _rbac_actor_from_http(http_request, None)
+        tid = actor0.get("tenant_id")
+        session = await _execution_store.get_memory_session(session_id=session_id)
+        if not session or (tid and str(session.get("tenant_id") or "") != str(tid)):
+            raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
         success = await _execution_store.delete_memory_session(session_id=session_id)
     else:
         success = await _memory_manager.delete_session(session_id)
@@ -6044,13 +6078,15 @@ async def delete_session(session_id: str):
 
 
 @api_router.get("/memory/sessions/{session_id}/context")
-async def get_session_context(session_id: str):
+async def get_session_context(session_id: str, http_request: Request):
     """Get session context"""
     if _execution_store:
+        actor0 = _rbac_actor_from_http(http_request, None)
+        tid = actor0.get("tenant_id")
         session = await _execution_store.get_memory_session(session_id=session_id)
-        if not session:
+        if not session or (tid and str(session.get("tenant_id") or "") != str(tid)):
             raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
-        msgs = await _execution_store.list_memory_messages(session_id=session_id, limit=200, offset=0)
+        msgs = await _execution_store.list_memory_messages(session_id=session_id, tenant_id=str(tid) if tid else None, limit=200, offset=0)
         return {
             "session_id": session_id,
             "context": {"messages": msgs.get("items") or [], "message_count": int(msgs.get("total") or 0)},
@@ -6063,15 +6099,18 @@ async def get_session_context(session_id: str):
 
 
 @api_router.post("/memory/sessions/{session_id}/messages")
-async def add_message(session_id: str, request: MessageCreateRequest):
+async def add_message(session_id: str, request: MessageCreateRequest, http_request: Request):
     """Add message to session"""
     if _execution_store:
+        actor0 = _rbac_actor_from_http(http_request, None)
+        tid = actor0.get("tenant_id")
         session = await _execution_store.get_memory_session(session_id=session_id)
-        if not session:
+        if not session or (tid and str(session.get("tenant_id") or "") != str(tid)):
             raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
         msg = await _execution_store.add_memory_message(
+            tenant_id=str(tid) if tid else None,
             session_id=session_id,
-            user_id=str(session.get("user_id") or "system"),
+            user_id=str(actor0.get("actor_id") or session.get("user_id") or "system"),
             role=request.role,
             content=request.content,
             metadata=None,
@@ -6093,14 +6132,68 @@ async def add_message(session_id: str, request: MessageCreateRequest):
 
 
 @api_router.post("/memory/search")
-async def search_memory(request: SearchRequest):
+async def search_memory(request: SearchRequest, http_request: Request):
     """Search memory"""
     if _execution_store:
-        res = await _execution_store.search_memory_messages(query=request.query, user_id=None, limit=int(request.limit or 10), offset=0)
+        actor0 = _rbac_actor_from_http(http_request, None)
+        tid = actor0.get("tenant_id")
+        res = await _execution_store.search_memory_messages(
+            query=request.query,
+            user_id=None,
+            tenant_id=str(tid) if tid else None,
+            limit=int(request.limit or 10),
+            offset=0,
+        )
         return {"results": res.get("items") or [], "total": int(res.get("total") or 0)}
 
     results = await _memory_manager.search_memory(request.query, request.limit)
     return {"results": results, "total": len(results)}
+
+
+@api_router.get("/memory/pins")
+async def list_memory_pins(http_request: Request, session_id: Optional[str] = None, limit: int = 100, offset: int = 0):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    tenant_id = None
+    try:
+        if http_request is not None:
+            tenant_id = _rbac_actor_from_http(http_request, None).get("tenant_id")
+    except Exception:
+        tenant_id = None
+    return await _execution_store.list_memory_pins(tenant_id=str(tenant_id) if tenant_id else None, session_id=session_id, limit=limit, offset=offset)
+
+
+@api_router.post("/memory/pins")
+async def pin_memory(request: dict, http_request: Request):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    actor0 = _rbac_actor_from_http(http_request, request if isinstance(request, dict) else None)
+    tenant_id = actor0.get("tenant_id")
+    session_id = (request or {}).get("session_id")
+    message_id = (request or {}).get("message_id")
+    if not session_id or not message_id:
+        raise HTTPException(status_code=400, detail="session_id and message_id are required")
+    note = (request or {}).get("note")
+    rec = await _execution_store.pin_memory_message(
+        tenant_id=str(tenant_id) if tenant_id else None,
+        session_id=str(session_id),
+        message_id=str(message_id),
+        created_by=str(actor0.get("actor_id") or "system"),
+        note=str(note) if note else None,
+    )
+    return {"status": "pinned", "pin": rec}
+
+
+@api_router.delete("/memory/pins/{message_id}")
+async def unpin_memory(message_id: str, http_request: Request):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    actor0 = _rbac_actor_from_http(http_request, None)
+    tenant_id = actor0.get("tenant_id")
+    ok = await _execution_store.unpin_memory_message(tenant_id=str(tenant_id) if tenant_id else None, message_id=str(message_id))
+    if not ok:
+        raise HTTPException(status_code=404, detail="pin_not_found")
+    return {"status": "unpinned", "message_id": str(message_id)}
 
 
 @api_router.get("/memory/stats")
