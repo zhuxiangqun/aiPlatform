@@ -344,24 +344,51 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
         "run_e2e_smoke_api": "/api/diagnostics/e2e/smoke",
     }
     # Doctor Actions: use action_type (frontend executes by allowlist).
-    # Keep api_url for backward compatibility.
+    # Provide input_schema so UI can render a minimal form.
+    # Keep api_url/body_example for backward compatibility.
     actions = {
         "toggle_strong_gate": {
             "action_type": "onboarding.strong_gate",
             "method": "POST",
             "api_url": "/api/onboarding/strong-gate",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "tenant_id": {"type": "string", "default": "default"},
+                    "enabled": {"type": "boolean", "default": False},
+                    "require_approval": {"type": "boolean", "default": True},
+                },
+                "required": ["tenant_id", "enabled", "require_approval"],
+            },
             "body_example": {"tenant_id": "default", "enabled": False, "require_approval": True},
         },
         "migrate_secrets": {
             "action_type": "onboarding.secrets_migrate",
             "method": "POST",
             "api_url": "/api/onboarding/secrets/migrate",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "require_approval": {"type": "boolean", "default": True},
+                },
+                "required": ["require_approval"],
+            },
             "body_example": {"require_approval": True},
         },
         "enable_autosmoke": {
             "action_type": "onboarding.autosmoke",
             "method": "POST",
             "api_url": "/api/onboarding/autosmoke",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "enabled": {"type": "boolean", "default": True},
+                    "enforce": {"type": "boolean", "default": True},
+                    "webhook_url": {"type": "string", "default": ""},
+                    "require_approval": {"type": "boolean", "default": True},
+                },
+                "required": ["enabled", "enforce", "require_approval"],
+            },
             "body_example": {"enabled": True, "enforce": True, "require_approval": True},
         },
     }

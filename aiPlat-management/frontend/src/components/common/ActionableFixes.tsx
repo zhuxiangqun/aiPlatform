@@ -6,6 +6,7 @@ export type DoctorAction = {
   action_type?: string;
   method: string;
   api_url: string;
+  input_schema?: any;
   body_example?: Record<string, any>;
 };
 
@@ -27,6 +28,25 @@ export const ActionableFixes: React.FC<Props> = ({ actions, recommendations, onA
   const [msg, setMsg] = useState<Record<string, string>>({});
   const [pending, setPending] = useState<Record<string, { approval_id: string; action: DoctorAction }>>({});
   const pollInFlight = useRef<Record<string, boolean>>({});
+  const [formValues, setFormValues] = useState<Record<string, any>>({});
+
+  const initValues = (a: DoctorAction) => {
+    const schema = a?.input_schema;
+    const props = schema?.properties || {};
+    const out: Record<string, any> = {};
+    for (const [k, v] of Object.entries<any>(props)) {
+      if (v && Object.prototype.hasOwnProperty.call(v, 'default')) out[k] = (v as any).default;
+    }
+    // fallback to example
+    return { ...(a?.body_example || {}), ...out };
+  };
+
+  const ensureFormKey = (key: string, a: DoctorAction) => {
+    setFormValues((prev) => {
+      if (prev && Object.prototype.hasOwnProperty.call(prev, key)) return prev;
+      return { ...(prev || {}), [key]: initValues(a) };
+    });
+  };
 
   const run = async (k: string, a: DoctorAction, override?: { approval_request_id?: string }) => {
     const apiUrl = String(a?.api_url || '');
@@ -39,7 +59,7 @@ export const ActionableFixes: React.FC<Props> = ({ actions, recommendations, onA
     setRunning((p) => ({ ...(p || {}), [k]: true }));
     setMsg((p) => ({ ...(p || {}), [k]: '' }));
     try {
-      const body = { ...(a?.body_example || {}) };
+      const body = { ...(formValues?.[k] || a?.body_example || {}) };
       if (override?.approval_request_id) body.approval_request_id = override.approval_request_id;
 
       let res: any = null;
@@ -123,6 +143,26 @@ export const ActionableFixes: React.FC<Props> = ({ actions, recommendations, onA
   }, [pending]);
 
   const actionEntries = useMemo(() => Object.entries(actions || {}), [actions]);
+  const recActionEntries = useMemo(() => {
+    const out: Array<{ key: string; actionKey: string; action: DoctorAction; recIdx: number; code: string; severity: string; message: string }> = [];
+    (recommendations || []).forEach((r: any, idx: number) => {
+      const code = String(r?.code || idx);
+      const severity = String(r?.severity || 'info');
+      const message = String(r?.message || '');
+      const recActions = (r?.actions || {}) as Record<string, DoctorAction>;
+      Object.entries(recActions || {}).forEach(([k, a]) => {
+        out.push({ key: `rec:${idx}:${k}`, actionKey: k, action: a, recIdx: idx, code, severity, message });
+      });
+    });
+    return out;
+  }, [recommendations]);
+
+  useEffect(() => {
+    // Initialize forms for actions we render.
+    for (const [k, a] of actionEntries) ensureFormKey(`global:${k}`, a);
+    for (const ra of recActionEntries) ensureFormKey(ra.key, ra.action);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actionEntries.length, recActionEntries.length]);
 
   return (
     <div className="space-y-3">
@@ -148,7 +188,46 @@ export const ActionableFixes: React.FC<Props> = ({ actions, recommendations, onA
                 </button>
               </div>
               {msg[`global:${k}`] && <div className="mt-2 text-xs text-gray-400">{msg[`global:${k}`]}</div>}
-              <pre className="text-xs text-gray-300 mt-2">{JSON.stringify(a.body_example || {}, null, 2)}</pre>
+              {a?.input_schema?.properties ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                  {Object.entries<any>(a.input_schema.properties || {}).map(([pk, spec]) => {
+                    const fullKey = `global:${k}`;
+                    const v = formValues?.[fullKey]?.[pk];
+                    const t = String(spec?.type || 'string');
+                    if (t === 'boolean') {
+                      return (
+                        <label key={pk} className="flex items-center gap-2 text-xs text-gray-300">
+                          <input
+                            type="checkbox"
+                            checked={!!v}
+                            onChange={(e) =>
+                              setFormValues((p) => ({ ...(p || {}), [fullKey]: { ...(p?.[fullKey] || {}), [pk]: e.target.checked } }))
+                            }
+                          />
+                          {pk}
+                        </label>
+                      );
+                    }
+                    return (
+                      <div key={pk}>
+                        <div className="text-xs text-gray-500 mb-1">{pk}</div>
+                        <input
+                          value={v ?? ''}
+                          onChange={(e) =>
+                            setFormValues((p) => ({ ...(p || {}), [fullKey]: { ...(p?.[fullKey] || {}), [pk]: e.target.value } }))
+                          }
+                          className="w-full px-3 py-2 rounded-lg bg-dark-bg border border-dark-border text-gray-200 text-xs"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <pre className="text-xs text-gray-300 mt-2">{JSON.stringify(a.body_example || {}, null, 2)}</pre>
+              )}
+              <pre className="text-xs text-gray-300 mt-2">
+                {JSON.stringify(formValues?.[`global:${k}`] || a.body_example || {}, null, 2)}
+              </pre>
             </div>
           ))}
         </div>
@@ -184,6 +263,48 @@ export const ActionableFixes: React.FC<Props> = ({ actions, recommendations, onA
                     ))}
                   </div>
                 )}
+                {Object.entries(recActions || {}).map(([k, a]) => {
+                  const fullKey = `rec:${idx}:${k}`;
+                  if (!a?.input_schema?.properties) return null;
+                  return (
+                    <div key={`${fullKey}:form`} className="mt-2">
+                      <div className="text-xs text-gray-500 mb-1">参数</div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {Object.entries<any>(a.input_schema.properties || {}).map(([pk, spec]) => {
+                          const v = formValues?.[fullKey]?.[pk];
+                          const t = String(spec?.type || 'string');
+                          if (t === 'boolean') {
+                            return (
+                              <label key={pk} className="flex items-center gap-2 text-xs text-gray-300">
+                                <input
+                                  type="checkbox"
+                                  checked={!!v}
+                                  onChange={(e) =>
+                                    setFormValues((p) => ({ ...(p || {}), [fullKey]: { ...(p?.[fullKey] || {}), [pk]: e.target.checked } }))
+                                  }
+                                />
+                                {pk}
+                              </label>
+                            );
+                          }
+                          return (
+                            <div key={pk}>
+                              <div className="text-xs text-gray-500 mb-1">{pk}</div>
+                              <input
+                                value={v ?? ''}
+                                onChange={(e) =>
+                                  setFormValues((p) => ({ ...(p || {}), [fullKey]: { ...(p?.[fullKey] || {}), [pk]: e.target.value } }))
+                                }
+                                className="w-full px-3 py-2 rounded-lg bg-dark-bg border border-dark-border text-gray-200 text-xs"
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <pre className="text-xs text-gray-300 mt-2">{JSON.stringify(formValues?.[fullKey] || a.body_example || {}, null, 2)}</pre>
+                    </div>
+                  );
+                })}
                 {Object.keys(recActions || {}).map((k) => {
                   const key = `rec:${idx}:${k}`;
                   return msg[key] ? (
