@@ -214,6 +214,19 @@ const Doctor: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="text-xs text-gray-500 mb-2">来源：core prompt assemble（最小 messages），仅展示 context_status，不展示 prompt 内容</div>
+            {data?.context_status_sample?.compaction?.applied ? (
+              <div className="text-xs text-gray-400 mb-2 flex items-center gap-2">
+                <Badge variant="warning">compacted</Badge>
+                <span>
+                  {data?.context_status_sample?.compaction?.before?.tokens_est ?? '-'}t → {data?.context_status_sample?.compaction?.after?.tokens_est ?? '-'}t
+                </span>
+                <span>
+                  {data?.context_status_sample?.compaction?.before?.chars ?? '-'}c → {data?.context_status_sample?.compaction?.after?.chars ?? '-'}c
+                </span>
+              </div>
+            ) : (
+              <div className="text-xs text-gray-500 mb-2">compaction: not applied</div>
+            )}
             <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
               {JSON.stringify(data?.context_status_sample || {}, null, 2)}
             </pre>

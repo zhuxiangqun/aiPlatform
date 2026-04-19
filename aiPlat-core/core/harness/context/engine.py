@@ -197,10 +197,38 @@ class DefaultContextEngine(ContextEngine):
                 status["session_search"]["error"] = "failed"
 
         # Optional compaction (deterministic, non-LLM).
-        if self.should_compact(messages=msgs, metadata=meta):
+        reasons: List[str] = []
+        try:
+            token_limit = int(os.getenv("AIPLAT_CONTEXT_TOKEN_LIMIT", "24000") or "24000")
+            max_messages = int(os.getenv("AIPLAT_CONTEXT_MAX_MESSAGES", "120") or "120")
+            char_limit = int(os.getenv("AIPLAT_CONTEXT_CHAR_LIMIT", "80000") or "80000")
+        except Exception:
+            token_limit, max_messages, char_limit = 24000, 120, 80000
+        try:
+            est_tokens = self._estimate_tokens(msgs)
+            est_chars = self._estimate_chars(msgs)
+            if est_tokens > token_limit:
+                reasons.append("token_limit")
+            if len(msgs) > max_messages:
+                reasons.append("max_messages")
+            if est_chars > char_limit:
+                reasons.append("char_limit")
+            status["compaction"].update(
+                {
+                    "limits": {"token_limit": token_limit, "max_messages": max_messages, "char_limit": char_limit},
+                    "observed": {"tokens_est": est_tokens, "chars": est_chars, "messages": len(msgs)},
+                    "reasons": reasons,
+                }
+            )
+        except Exception:
+            pass
+
+        if reasons and self.should_compact(messages=msgs, metadata=meta):
             cr = self.compact(messages=msgs, metadata=meta)
             msgs, meta = cr.messages, cr.metadata
             status["compaction"]["applied"] = True
+            if isinstance(meta.get("context_compaction"), dict):
+                status["compaction"].update(meta.get("context_compaction") or {})
 
         status["budgets"]["messages"] = len(msgs)
         try:
@@ -319,38 +347,103 @@ class DefaultContextEngine(ContextEngine):
                 pass
         return int(total_chars / 4) + 1
 
+    def _estimate_chars(self, msgs: List[Message]) -> int:
+        total_chars = 0
+        for m in msgs or []:
+            try:
+                total_chars += len(str(m.get("content") or ""))
+            except Exception:
+                pass
+        return int(total_chars)
+
+    def _hash_messages(self, msgs: List[Message]) -> str:
+        """
+        Stable-ish hash for observability (not for security).
+        """
+        try:
+            parts: List[str] = []
+            for m in msgs or []:
+                if not isinstance(m, dict):
+                    continue
+                role = str(m.get("role") or "")
+                content = str(m.get("content") or "")
+                parts.append(f"{role}:{content}")
+            return hashlib.sha256(("\n---\n".join(parts)).encode("utf-8")).hexdigest()
+        except Exception:
+            return ""
+
     def should_compact(self, *, messages: List[Message], metadata: Dict[str, Any]) -> bool:
         try:
             token_limit = int(os.getenv("AIPLAT_CONTEXT_TOKEN_LIMIT", "24000") or "24000")
             max_messages = int(os.getenv("AIPLAT_CONTEXT_MAX_MESSAGES", "120") or "120")
+            char_limit = int(os.getenv("AIPLAT_CONTEXT_CHAR_LIMIT", "80000") or "80000")
         except Exception:
-            token_limit, max_messages = 24000, 120
+            token_limit, max_messages, char_limit = 24000, 120, 80000
         est = self._estimate_tokens(messages)
-        return est > token_limit or len(messages or []) > max_messages
+        ch = self._estimate_chars(messages)
+        return est > token_limit or len(messages or []) > max_messages or ch > char_limit
 
     def compact(self, *, messages: List[Message], metadata: Dict[str, Any]) -> ContextResult:
         """
         Deterministic compaction (no LLM):
         - Keep leading system messages
         - Keep last K messages
-        - Summarize the middle as a system note
+        - Summarize the middle as a system note (hash + truncated snippets)
+        - If too many system messages, summarize excess system messages as a single note
+        - Emit compaction stats for observability (before/after hash, chars, tokens, drops)
         """
         meta = dict(metadata or {})
         msgs = list(messages or [])
+
         try:
             keep_last = int(os.getenv("AIPLAT_CONTEXT_KEEP_LAST", "30") or "30")
         except Exception:
             keep_last = 30
+        try:
+            keep_system = int(os.getenv("AIPLAT_CONTEXT_KEEP_SYSTEM", "6") or "6")
+        except Exception:
+            keep_system = 6
+        try:
+            summary_max_chars = int(os.getenv("AIPLAT_CONTEXT_SUMMARY_MAX_CHARS", "2000") or "2000")
+        except Exception:
+            summary_max_chars = 2000
+
+        before_hash = self._hash_messages(msgs)
+        before_chars = self._estimate_chars(msgs)
+        before_tokens = self._estimate_tokens(msgs)
+
         # Split head system messages
         head: List[Message] = []
         i = 0
         while i < len(msgs) and isinstance(msgs[i], dict) and msgs[i].get("role") == "system":
             head.append(msgs[i])
             i += 1
+
+        # Summarize excess system messages (keep first keep_system)
+        head_kept = head[:keep_system]
+        head_dropped = head[keep_system:]
+        sys_summary_msg: Optional[Message] = None
+        if head_dropped:
+            lines: List[str] = []
+            for m in head_dropped[-10:]:
+                c = str(m.get("content") or "")
+                c = c.replace("\n", " ").strip()
+                if len(c) > 120:
+                    c = c[:117] + "..."
+                lines.append(f"- system: {c}")
+            sys_blob = "\n".join(lines)
+            sys_summary_msg = {
+                "role": "system",
+                "content": "# System Messages Summary\n\n[TRUNCATED {} system messages]\n{}".format(len(head_dropped), sys_blob),
+                "metadata": {"layer": "stable", "kind": "system_summary"},
+            }
+
         tail = msgs[max(i, len(msgs) - keep_last) :]
         middle = msgs[i : max(i, len(msgs) - keep_last)]
+
+        summary_msg: Optional[Message] = None
         if middle:
-            lines = []
+            lines: List[str] = []
             for m in middle[-10:]:
                 role = m.get("role")
                 c = str(m.get("content") or "")
@@ -358,18 +451,37 @@ class DefaultContextEngine(ContextEngine):
                 if len(c) > 120:
                     c = c[:117] + "..."
                 lines.append(f"- {role}: {c}")
-            summary = {
-                "role": "system",
-                "content": "# Context Summary\n\n[TRUNCATED {} messages]\n{}".format(len(middle), "\n".join(lines)),
-            }
-            msgs2 = head + [summary] + tail
-        else:
-            msgs2 = head + tail
+            dropped_hash = self._hash_messages(middle)
+            content = "# Context Summary\n\n[TRUNCATED {} messages]\n[dropped_sha256:{}]\n{}".format(
+                len(middle), dropped_hash[:16], "\n".join(lines)
+            )
+            if len(content) > summary_max_chars:
+                content = content[:summary_max_chars] + "\n…[TRUNCATED]"
+            summary_msg = {"role": "system", "content": content, "metadata": {"layer": "ephemeral", "kind": "context_summary"}}
+
+        msgs2: List[Message] = []
+        msgs2.extend(head_kept)
+        if sys_summary_msg:
+            msgs2.append(sys_summary_msg)
+        if summary_msg:
+            msgs2.append(summary_msg)
+        msgs2.extend(tail)
+
+        after_hash = self._hash_messages(msgs2)
+        after_chars = self._estimate_chars(msgs2)
+        after_tokens = self._estimate_tokens(msgs2)
+
         meta["context_compacted"] = True
         meta["context_compaction_keep_last"] = keep_last
         meta["context_compaction_truncated"] = len(middle)
+        meta["context_compaction"] = {
+            "before": {"hash": before_hash, "chars": before_chars, "tokens_est": before_tokens, "messages": len(msgs)},
+            "after": {"hash": after_hash, "chars": after_chars, "tokens_est": after_tokens, "messages": len(msgs2)},
+            "dropped": {"system": len(head_dropped), "middle": len(middle)},
+            "keep": {"system": keep_system, "last": keep_last},
+            "summary_max_chars": summary_max_chars,
+        }
         return ContextResult(messages=msgs2, metadata=meta)
-
     def get_status(self, *, messages: List[Message], metadata: Dict[str, Any]) -> Dict[str, Any]:
         return {
             "message_count": len(messages or []),
