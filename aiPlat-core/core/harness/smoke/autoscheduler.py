@@ -81,6 +81,10 @@ async def _autosmoke_webhook_delivery(execution_store: Any) -> Dict[str, Any]:
     if not url:
         return {}
     fmt = (os.getenv("AIPLAT_AUTOSMOKE_WEBHOOK_FORMAT") or "json").strip().lower()
+    on_raw = (os.getenv("AIPLAT_AUTOSMOKE_WEBHOOK_ON") or "").strip()
+    on_events = None
+    if on_raw:
+        on_events = [x.strip() for x in on_raw.split(",") if x.strip()]
     headers_raw = (os.getenv("AIPLAT_AUTOSMOKE_WEBHOOK_HEADERS") or "").strip()
     headers: Dict[str, str] = {}
     if headers_raw:
@@ -97,7 +101,8 @@ async def _autosmoke_webhook_delivery(execution_store: Any) -> Dict[str, Any]:
         "url": url,
         "headers": headers,
         "include": ["job", "run", "result"],
-        "on": ["failed"],
+        # default: failures only; can be overridden by env (e.g. "started,failed,completed")
+        "on": on_events or ["failed"],
         "format": fmt,
     }
 

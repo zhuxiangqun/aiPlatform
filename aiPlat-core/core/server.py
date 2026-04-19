@@ -1131,14 +1131,18 @@ async def _require_targets_verified(targets: list[tuple[str, str]]) -> None:
                     item["retry"] = {"method": "POST", "api_url": _api_url(f"/api/core/jobs/{jid}/run"), "job_id": jid}
                 missing.append(item)
         elif ttype == "skill":
-            if not _workspace_skill_manager:
-                missing.append({"type": ttype, "id": tid, "reason": "skill_manager_unavailable"})
-                continue
-            s = await _workspace_skill_manager.get_skill(tid)
+            # Prefer workspace skill manager, fallback to engine skill manager.
+            s = None
+            mgr_kind = "workspace"
+            if _workspace_skill_manager:
+                s = await _workspace_skill_manager.get_skill(tid)
+            if not s and _skill_manager:
+                mgr_kind = "engine"
+                s = await _skill_manager.get_skill(tid)
             meta = getattr(s, "metadata", None) if s else None
             ver = meta.get("verification") if isinstance(meta, dict) else None
             if not s or not _is_verified(meta):
-                item = {"type": ttype, "id": tid, "reason": "unverified", "verification": ver or {}}
+                item = {"type": ttype, "id": tid, "reason": "unverified", "verification": ver or {}, "scope": mgr_kind}
                 jr = (ver or {}).get("job_run_id") if isinstance(ver, dict) else None
                 jid = (ver or {}).get("job_id") if isinstance(ver, dict) else None
                 if isinstance(jr, str) and jr:
@@ -1152,14 +1156,18 @@ async def _require_targets_verified(targets: list[tuple[str, str]]) -> None:
                     item["retry"] = {"method": "POST", "api_url": _api_url(f"/api/core/jobs/{jid}/run"), "job_id": jid}
                 missing.append(item)
         elif ttype == "mcp":
-            if not _workspace_mcp_manager:
-                missing.append({"type": ttype, "id": tid, "reason": "mcp_manager_unavailable"})
-                continue
-            m = _workspace_mcp_manager.get_server(tid)
+            # Prefer workspace MCP manager, fallback to engine MCP manager.
+            m = None
+            mgr_kind = "workspace"
+            if _workspace_mcp_manager:
+                m = _workspace_mcp_manager.get_server(tid)
+            if not m and _mcp_manager:
+                mgr_kind = "engine"
+                m = _mcp_manager.get_server(tid)
             meta = getattr(m, "metadata", None) if m else None
             ver = meta.get("verification") if isinstance(meta, dict) else None
             if not m or not _is_verified(meta):
-                item = {"type": ttype, "id": tid, "reason": "unverified", "verification": ver or {}}
+                item = {"type": ttype, "id": tid, "reason": "unverified", "verification": ver or {}, "scope": mgr_kind}
                 jr = (ver or {}).get("job_run_id") if isinstance(ver, dict) else None
                 jid = (ver or {}).get("job_id") if isinstance(ver, dict) else None
                 if isinstance(jr, str) and jr:
@@ -4400,6 +4408,8 @@ async def delete_skill(skill_id: str, delete_files: bool = False):
 @api_router.post("/skills/{skill_id}/enable")
 async def enable_skill(skill_id: str):
     """Enable skill"""
+    if _autosmoke_enforce():
+        await _require_targets_verified([("skill", str(skill_id))])
     success = await _skill_manager.enable_skill(skill_id)
     if not success:
         raise HTTPException(status_code=400, detail=f"Skill {skill_id} cannot be enabled (maybe deprecated; use restore)")
@@ -4858,11 +4868,7 @@ async def enable_workspace_skill(skill_id: str, request: Optional[Dict[str, Any]
     approval_request_id = str(req.get("approval_request_id") or "").strip() or None
     details = str(req.get("details") or "").strip()
     if _autosmoke_enforce():
-        s = await _workspace_skill_manager.get_skill(skill_id)
-        if not s:
-            raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
-        if not _is_verified(getattr(s, "metadata", None)):
-            raise HTTPException(status_code=403, detail="skill_unverified: smoke must pass before enable")
+        await _require_targets_verified([("skill", str(skill_id))])
 
     # Signature gate: unverified workspace skills require approval to enable.
     s = await _workspace_skill_manager.get_skill(skill_id)
@@ -5414,6 +5420,8 @@ async def enable_mcp_server(server_name: str):
     """Enable an MCP server in filesystem config."""
     if not _mcp_manager:
         raise HTTPException(status_code=503, detail="MCP manager not available")
+    if _autosmoke_enforce():
+        await _require_targets_verified([("mcp", str(server_name))])
     ok = _mcp_manager.set_enabled(server_name, True)
     if not ok:
         raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
@@ -5800,8 +5808,7 @@ async def enable_workspace_mcp_server(server_name: str):
     if not s:
         raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
     if _autosmoke_enforce():
-        if not _is_verified(getattr(s, "metadata", None)):
-            raise HTTPException(status_code=403, detail="mcp_unverified: smoke must pass before enable")
+        await _require_targets_verified([("mcp", str(server_name))])
     ok, reason = _prod_stdio_policy_check(server_name, str(s.transport or ""), s.command, s.args, s.metadata)
     if not ok:
         await _audit_event(

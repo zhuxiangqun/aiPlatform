@@ -216,6 +216,32 @@ class JobScheduler:
             }
         )
 
+        # Delivery: started/running event (best-effort).
+        try:
+            delivery = job.get("delivery") if isinstance(job, dict) else None
+            delivery_result = await self._deliver_webhook(
+                delivery if isinstance(delivery, dict) else {},
+                job=job,
+                run={
+                    "id": run_id,
+                    "job_id": job_id,
+                    "scheduled_for": float(scheduled_for),
+                    "status": "running",
+                    "error": None,
+                    "trace_id": None,
+                    "run_id": run_id,
+                },
+                result={"ok": None, "event": "started"},
+                phase="started",
+            )
+            if delivery_result is not None:
+                try:
+                    await self._store.finish_job_run(run_id, {"result": {"started_delivery": delivery_result}})
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
 
         payload = dict(job.get("payload") or {})
         options = dict(job.get("options") or {})
@@ -304,14 +330,6 @@ class JobScheduler:
         # Delivery (best-effort): webhook POST for completion/failure.
         try:
             delivery = job.get("delivery") if isinstance(job, dict) else None
-            # Optional delivery filter: only send on specific run statuses.
-            # Example: {"on": ["failed"]} to alert failures only.
-            if isinstance(delivery, dict):
-                on = delivery.get("on")
-                if isinstance(on, list) and on:
-                    st = "completed" if final_ok else "failed"
-                    if st not in {str(x) for x in on if x}:
-                        delivery = {}
             delivery_result = await self._deliver_webhook(
                 delivery if isinstance(delivery, dict) else {},
                 job=job,
@@ -325,6 +343,7 @@ class JobScheduler:
                     "run_id": run_id,
                 },
                 result=final_payload,
+                phase="completed" if final_ok else "failed",
             )
             if delivery_result is not None:
                 # merge into job_run result for auditability
@@ -360,6 +379,7 @@ class JobScheduler:
         job: Dict[str, Any],
         run: Dict[str, Any],
         result: Dict[str, Any],
+        phase: str = "completed",
     ) -> Optional[Dict[str, Any]]:
         """
         Webhook delivery (best-effort).
@@ -385,6 +405,29 @@ class JobScheduler:
         if not isinstance(include, list) or not include:
             include = ["job", "run", "result"]
 
+        # Delivery filter: only send on specific phases.
+        # Supported: started/running, completed/success, failed/error, all
+        on = delivery.get("on")
+        if isinstance(on, list) and on:
+            want = {str(x).strip().lower() for x in on if str(x).strip()}
+            ph = str(phase or "").strip().lower()
+            ph_norm = "running" if ph in {"started", "running"} else ("completed" if ph in {"completed", "success"} else ("failed" if ph in {"failed", "error"} else ph))
+            if "all" not in want:
+                if ph_norm == "running" and not ({"running", "started"} & want):
+                    return None
+                if ph_norm == "completed" and not ({"completed", "success"} & want):
+                    return None
+                if ph_norm == "failed" and not ({"failed", "error"} & want):
+                    return None
+
+        def _public_url(path: str) -> Optional[str]:
+            base = (os.getenv("AIPLAT_MANAGEMENT_PUBLIC_URL") or "").strip()
+            if not base:
+                return None
+            base = base[:-1] if base.endswith("/") else base
+            path2 = path if path.startswith("/") else f"/{path}"
+            return f"{base}{path2}"
+
         fmt = str(delivery.get("format") or "json").strip().lower()
         if fmt == "slack":
             # Slack Incoming Webhook requires a "text" field.
@@ -396,6 +439,12 @@ class JobScheduler:
             body: Dict[str, Any] = {
                 "text": f"[aiPlat] job_run {status}: {job_id} ({run_id}){(' - ' + err) if err else ''}",
             }
+            try:
+                url = _public_url(f"/diagnostics/runs?run_id={run_id}")
+                if url:
+                    body["text"] += f" | {url}"
+            except Exception:
+                pass
         else:
             body = {"type": "job_run"}
             if "job" in include:
@@ -404,6 +453,24 @@ class JobScheduler:
                 body["run"] = run
             if "result" in include:
                 body["result"] = result
+            # Add links for UI deep-linking (best-effort).
+            try:
+                rid = str(run.get("id") or run.get("run_id") or "")
+                jid = str(job.get("id") or run.get("job_id") or "")
+                links: Dict[str, Any] = {}
+                u1 = _public_url(f"/diagnostics/runs?run_id={rid}")
+                u2 = _public_url(f"/diagnostics/syscalls?run_id={rid}")
+                u3 = _public_url(f"/core/jobs?job_id={jid}")
+                if u1:
+                    links["run_ui"] = u1
+                if u2:
+                    links["syscalls_ui"] = u2
+                if u3:
+                    links["job_ui"] = u3
+                if links:
+                    body["links"] = links
+            except Exception:
+                pass
 
         # env overrides
         retries = int(os.getenv("AIPLAT_JOBS_DELIVERY_RETRIES", str(self._cfg.delivery_retries)) or "2")
