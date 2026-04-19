@@ -5,7 +5,7 @@ Provides REST API endpoints for agent, skill, tool, memory, knowledge, and harne
 Runs on port 8002.
 """
 
-from fastapi import FastAPI, HTTPException, APIRouter, Request
+from fastapi import FastAPI, HTTPException, APIRouter, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from typing import Optional, List, Dict, Any
@@ -10718,7 +10718,108 @@ async def diagnostics_repo_changeset_record(request: RepoChangesetPreviewRequest
 @api_router.get("/health")
 async def health_check():
     """Health check endpoint"""
-    return {"status": "healthy"}
+    out: Dict[str, Any] = {"status": "healthy"}
+    checks: Dict[str, Any] = {}
+    # DB
+    try:
+        if _execution_store:
+            v = await _execution_store.get_schema_version()
+            checks["db"] = {"ok": True, "schema_version": v}
+        else:
+            checks["db"] = {"ok": False, "error": "ExecutionStore not initialized"}
+            out["status"] = "degraded"
+    except Exception as e:
+        checks["db"] = {"ok": False, "error": str(e)}
+        out["status"] = "degraded"
+    # JobScheduler
+    try:
+        checks["job_scheduler"] = {"ok": bool(_job_scheduler is not None)}
+    except Exception:
+        checks["job_scheduler"] = {"ok": False}
+        out["status"] = "degraded"
+    # MCP runtime
+    try:
+        checks["mcp_runtime"] = {"ok": bool(_mcp_runtime is not None)}
+    except Exception:
+        checks["mcp_runtime"] = {"ok": False}
+        out["status"] = "degraded"
+    # Approval manager
+    try:
+        checks["approval_manager"] = {"ok": bool(_approval_manager is not None)}
+    except Exception:
+        checks["approval_manager"] = {"ok": False}
+        out["status"] = "degraded"
+    out["checks"] = checks
+    return out
+
+
+@api_router.get("/healthz")
+async def healthz():
+    """K8s style health check (alias)."""
+    return await health_check()
+
+
+# ==================== Ops: Export / Retention (PR-14) ====================
+
+
+@api_router.post("/ops/prune")
+async def ops_prune(request: dict, http_request: Request):
+    """
+    Trigger ExecutionStore.prune() manually (best-effort).
+    Use RBAC guard: action=ops_prune.
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    deny = await _rbac_guard(http_request=http_request, payload=request, action="ops_prune", resource_type="ops", resource_id="prune")
+    if deny:
+        return deny
+    now_ts = (request or {}).get("now_ts")
+    try:
+        now_ts = float(now_ts) if now_ts is not None else None
+    except Exception:
+        now_ts = None
+    res = await _execution_store.prune(now_ts=now_ts)
+    try:
+        actor0 = _rbac_actor_from_http(http_request, request if isinstance(request, dict) else None)
+        await _execution_store.add_audit_log(
+            action="ops_prune",
+            status="ok",
+            tenant_id=actor0.get("tenant_id"),
+            actor_id=str(actor0.get("actor_id") or "system"),
+            actor_role=str(actor0.get("actor_role") or "") or None,
+            resource_type="ops",
+            resource_id="prune",
+            detail=res,
+        )
+    except Exception:
+        pass
+    return {"ok": True, "deleted": res}
+
+
+@api_router.get("/ops/export/audit_logs.csv")
+async def export_audit_logs_csv(http_request: Request, tenant_id: Optional[str] = None, limit: int = 1000):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    deny = await _rbac_guard(http_request=http_request, payload=None, action="ops_export", resource_type="ops", resource_id="audit_logs")
+    if deny:
+        return deny
+    from core.apps.ops import OpsExporter
+
+    data, filename = await OpsExporter(execution_store=_execution_store).export_audit_logs_csv(tenant_id=tenant_id, limit=limit)
+    return Response(content=data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'})
+
+
+@api_router.get("/ops/export/run_events.csv")
+async def export_run_events_csv(http_request: Request, run_id: str, limit: int = 5000):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    deny = await _rbac_guard(http_request=http_request, payload=None, action="ops_export", resource_type="ops", resource_id="run_events")
+    if deny:
+        return deny
+    from core.apps.ops import OpsExporter
+
+    data, filename = await OpsExporter(execution_store=_execution_store).export_run_events_csv(run_id=run_id, limit=limit)
+    return Response(content=data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'})
 
 
 @api_router.get("/")
