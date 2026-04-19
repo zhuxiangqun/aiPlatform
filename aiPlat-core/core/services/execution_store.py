@@ -2641,6 +2641,93 @@ class ExecutionStore:
 
         return await anyio.to_thread.run_sync(_sync)
 
+    # ==================== Change Control (Derived from syscall_events) ====================
+
+    async def list_change_controls(
+        self,
+        *,
+        limit: int = 50,
+        offset: int = 0,
+        tenant_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        List change controls (grouped by change_id) from syscall_events.
+
+        Source of truth:
+          syscall_events(kind='changeset', target_type='change', target_id=change_id)
+        """
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                clauses = ["kind='changeset'", "target_type='change'", "target_id IS NOT NULL", "target_id != ''"]
+                params: list = []
+                if tenant_id:
+                    clauses.append("tenant_id=?")
+                    params.append(str(tenant_id))
+                where = " AND ".join(clauses)
+
+                total_row = conn.execute(f"SELECT COUNT(DISTINCT target_id) AS c FROM syscall_events WHERE {where};", params).fetchone()
+                total = int(total_row["c"] if total_row else 0)
+
+                rows = conn.execute(
+                    f"""
+                    SELECT e.*
+                    FROM syscall_events e
+                    JOIN (
+                      SELECT target_id, MAX(created_at) AS last_ts
+                      FROM syscall_events
+                      WHERE {where}
+                      GROUP BY target_id
+                    ) t
+                    ON e.target_id = t.target_id AND e.created_at = t.last_ts
+                    WHERE {where}
+                    ORDER BY e.created_at DESC
+                    LIMIT ? OFFSET ?;
+                    """,
+                    [*params, int(limit), int(offset)],
+                ).fetchall()
+
+                return {"items": [dict(r) for r in rows], "total": total}
+            finally:
+                conn.close()
+
+        raw = await anyio.to_thread.run_sync(_sync)
+        out_items = []
+        for r in raw.get("items") or []:
+            out_items.append(
+                {
+                    **r,
+                    "args": _json_loads(r.get("args_json")) or {},
+                    "result": _json_loads(r.get("result_json")) or {},
+                    "change_id": r.get("target_id"),
+                }
+            )
+        return {"items": out_items, "total": int(raw.get("total") or 0), "limit": int(limit), "offset": int(offset)}
+
+    async def get_change_control(
+        self,
+        *,
+        change_id: str,
+        limit: int = 200,
+        offset: int = 0,
+        tenant_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Return a change control detail: latest + events."""
+        items = await self.list_syscall_events(
+            limit=int(limit),
+            offset=int(offset),
+            tenant_id=tenant_id,
+            kind="changeset",
+            target_type="change",
+            target_id=str(change_id),
+        )
+        latest = (items.get("items") or [None])[0] if isinstance(items.get("items"), list) and items.get("items") else None
+        return {"change_id": str(change_id), "latest": latest, "events": {**items, "limit": int(limit), "offset": int(offset)}}
+
     # ==================== Runs / Run events (platform contract) ====================
 
     async def get_run_id_for_request(self, *, request_id: str, tenant_id: Optional[str] = None) -> Optional[str]:

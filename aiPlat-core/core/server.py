@@ -2577,6 +2577,47 @@ async def get_syscall_stats(
     return await _execution_store.get_syscall_event_stats(window_hours=window_hours, top_n=top_n, kind=kind)
 
 
+# ==================== Change Control (Roadmap) ====================
+
+
+@api_router.get("/change-control/changes")
+async def list_change_controls(limit: int = 50, offset: int = 0, tenant_id: Optional[str] = None):
+    """
+    List Change Control items (derived from syscall_events changesets).
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    res = await _execution_store.list_change_controls(limit=limit, offset=offset, tenant_id=tenant_id)
+    items = []
+    for it in res.get("items") or []:
+        cid = str(it.get("change_id") or it.get("target_id") or "")
+        links = {"syscalls_ui": _ui_url(f"/diagnostics/syscalls?kind=changeset&target_type=change&target_id={cid}")}
+        arid = it.get("approval_request_id")
+        if arid:
+            links["approvals_ui"] = _ui_url("/core/approvals")
+            links["audit_ui"] = _ui_url(f"/diagnostics/audit?request_id={arid}")
+        items.append({**it, "change_id": cid, "links": links})
+    return {**res, "items": items}
+
+
+@api_router.get("/change-control/changes/{change_id}")
+async def get_change_control(change_id: str, limit: int = 200, offset: int = 0, tenant_id: Optional[str] = None):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    out = await _execution_store.get_change_control(change_id=change_id, limit=limit, offset=offset, tenant_id=tenant_id)
+    cid = str(change_id)
+    links = {"syscalls_ui": _ui_url(f"/diagnostics/syscalls?kind=changeset&target_type=change&target_id={cid}")}
+    try:
+        arid = ((out.get("latest") or {}).get("approval_request_id")) if isinstance(out.get("latest"), dict) else None
+        if arid:
+            links["approvals_ui"] = _ui_url("/core/approvals")
+            links["audit_ui"] = _ui_url(f"/diagnostics/audit?request_id={arid}")
+    except Exception:
+        pass
+    out["links"] = links
+    return out
+
+
 # ==================== Runs (Platform Execution Contract) ====================
 
 
