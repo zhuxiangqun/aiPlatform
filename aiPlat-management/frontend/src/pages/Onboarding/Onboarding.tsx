@@ -1129,25 +1129,43 @@ const Onboarding: React.FC = () => {
                         <div className="text-xs text-gray-500 mt-1 flex flex-wrap gap-2">
                           <a
                             className="underline hover:text-gray-300"
-                            href={`/diagnostics/audit?action=onboarding_evidence&request_id=${encodeURIComponent(String(it.approval_request_id || it.id || ''))}`}
+                            href={String(
+                              it?.links?.audit_ui ||
+                                `/diagnostics/audit?action=onboarding_evidence&request_id=${encodeURIComponent(String(it.approval_request_id || it.id || ''))}`
+                            )}
                             target="_blank"
                             rel="noreferrer"
                           >
                             Audit
                           </a>
-                          {it.approval_request_id ? (
+                          {it?.links?.approvals_ui || it.approval_request_id ? (
                             <>
-                              <a className="underline hover:text-gray-300" href="/core/approvals" target="_blank" rel="noreferrer">
+                              <a
+                                className="underline hover:text-gray-300"
+                                href={String(it?.links?.approvals_ui || '/core/approvals')}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
                                 Approvals
                               </a>
                               <a
                                 className="underline hover:text-gray-300"
-                                href={`/diagnostics/syscalls?approval_request_id=${encodeURIComponent(String(it.approval_request_id))}`}
+                                href={String(
+                                  it?.links?.syscalls_ui ||
+                                    (it.approval_request_id
+                                      ? `/diagnostics/syscalls?approval_request_id=${encodeURIComponent(String(it.approval_request_id))}`
+                                      : `/diagnostics/syscalls?target_type=onboarding_evidence&target_id=${encodeURIComponent(String(it.id || ''))}`)
+                                )}
                                 target="_blank"
                                 rel="noreferrer"
                               >
                                 Syscalls
                               </a>
+                              {it?.links?.syscalls_ui_by_evidence ? (
+                                <a className="underline hover:text-gray-300" href={String(it.links.syscalls_ui_by_evidence)} target="_blank" rel="noreferrer">
+                                  Syscalls(evidence)
+                                </a>
+                              ) : null}
                             </>
                           ) : null}
                         </div>
