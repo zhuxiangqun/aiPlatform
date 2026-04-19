@@ -805,6 +805,14 @@ export const gatewayDlqApi = {
   },
 };
 
+// ==================== Ops actions (PR-14) ====================
+
+export const opsApi = {
+  prune: async (body: { now_ts?: number } = {}) => {
+    return apiClient.post<{ ok: boolean; deleted?: any }>(`/core/ops/prune`, body);
+  },
+};
+
 // ==================== Memory API ====================
 
 export interface MemorySession {
