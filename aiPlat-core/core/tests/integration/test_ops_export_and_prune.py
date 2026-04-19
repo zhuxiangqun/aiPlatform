@@ -150,7 +150,14 @@ def test_ops_export_and_prune(tmp_path, monkeypatch):
 
         z = client.get(
             "/api/core/ops/export/bundle.zip",
-            params={"tenant_id": "t1", "day_start": "2026-01-01", "day_end": "2026-12-31", "run_id": "run_seed", "candidate_id": "cand_1"},
+            params={
+                "tenant_id": "t1",
+                "day_start": "2026-01-01",
+                "day_end": "2026-12-31",
+                "run_id": "run_seed",
+                "candidate_id": "cand_1",
+                "include": "audit_logs,syscall_events,approvals,tenant_usage,run_events,release_metrics,release_rollouts",
+            },
             headers=headers,
         )
         assert z.status_code == 200

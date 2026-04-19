@@ -11118,6 +11118,7 @@ async def export_ops_bundle_zip(
     day_end: Optional[str] = None,
     run_id: Optional[str] = None,
     candidate_id: Optional[str] = None,
+    include: Optional[str] = None,
 ):
     """
     PR-14+: 打包导出常用运维 CSV 为 zip。
@@ -11137,27 +11138,69 @@ async def export_ops_bundle_zip(
     exp = OpsExporter(execution_store=_execution_store)
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as z:
-        files = []
-        files.append(await exp.export_audit_logs_csv(tenant_id=tenant_id, limit=5000))
-        files.append(await exp.export_syscall_events_csv(tenant_id=tenant_id, limit=5000))
-        files.append(await exp.export_approvals_csv(tenant_id=tenant_id, limit=5000))
-        files.append(
-            await exp.export_tenant_usage_csv(
-                tenant_id=tenant_id, day_start=day_start, day_end=day_end, metric_key=None, limit=5000
-            )
-        )
-        files.append(await exp.export_gateway_dlq_csv(status="pending", tenant_id=tenant_id, connector=None, limit=5000))
-        files.append(await exp.export_connector_attempts_csv(tenant_id=tenant_id, connector=None, run_id=None, status=None, limit=5000))
-        files.append(await exp.export_jobs_dlq_csv(status="pending", job_id=None, limit=5000))
-        if run_id:
-            files.append(await exp.export_run_events_csv(run_id=run_id, limit=5000))
-        if candidate_id:
-            files.append(
-                await exp.export_release_metrics_csv(tenant_id=tenant_id, candidate_id=candidate_id, metric_key=None, limit=5000)
-            )
-        files.append(await exp.export_release_rollouts_csv(tenant_id=tenant_id, target_type=None, target_id=None, limit=5000))
-        for data, fname in files:
-            z.writestr(fname, data)
+        include_set = set()
+        if include:
+            # comma separated list
+            include_set = {x.strip() for x in str(include).split(",") if x.strip()}
+        # Default bundle set
+        if not include_set:
+            include_set = {
+                "audit_logs",
+                "syscall_events",
+                "approvals",
+                "tenant_usage",
+                "gateway_dlq",
+                "connector_attempts",
+                "jobs_dlq",
+                "release_rollouts",
+            }
+            if run_id:
+                include_set.add("run_events")
+            if candidate_id:
+                include_set.add("release_metrics")
+
+        async def _add(key: str):
+            if key == "audit_logs":
+                return await exp.export_audit_logs_csv(tenant_id=tenant_id, limit=5000)
+            if key == "syscall_events":
+                return await exp.export_syscall_events_csv(tenant_id=tenant_id, limit=5000)
+            if key == "approvals":
+                return await exp.export_approvals_csv(tenant_id=tenant_id, limit=5000)
+            if key == "tenant_usage":
+                return await exp.export_tenant_usage_csv(
+                    tenant_id=tenant_id, day_start=day_start, day_end=day_end, metric_key=None, limit=5000
+                )
+            if key == "gateway_dlq":
+                return await exp.export_gateway_dlq_csv(status="pending", tenant_id=tenant_id, connector=None, limit=5000)
+            if key == "connector_attempts":
+                return await exp.export_connector_attempts_csv(
+                    tenant_id=tenant_id, connector=None, run_id=None, status=None, limit=5000
+                )
+            if key == "jobs_dlq":
+                return await exp.export_jobs_dlq_csv(status="pending", job_id=None, limit=5000)
+            if key == "run_events":
+                if not run_id:
+                    return None
+                return await exp.export_run_events_csv(run_id=run_id, limit=5000)
+            if key == "release_rollouts":
+                return await exp.export_release_rollouts_csv(tenant_id=tenant_id, target_type=None, target_id=None, limit=5000)
+            if key == "release_metrics":
+                if not candidate_id:
+                    return None
+                return await exp.export_release_metrics_csv(
+                    tenant_id=tenant_id, candidate_id=candidate_id, metric_key=None, limit=5000
+                )
+            if key == "gateway_tokens":
+                return await exp.export_gateway_tokens_csv(enabled=None, limit=5000)
+            if key == "gateway_pairings":
+                return await exp.export_gateway_pairings_csv(channel=None, user_id=None, limit=5000)
+            return None
+
+        for k in sorted(include_set):
+            item = await _add(k)
+            if item:
+                data, fname = item
+                z.writestr(fname, data)
 
     content = buf.getvalue()
     fname = f"ops_bundle_{tenant_id}.zip"
