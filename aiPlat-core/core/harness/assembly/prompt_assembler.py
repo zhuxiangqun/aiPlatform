@@ -107,6 +107,29 @@ class PromptAssembler:
         meta.setdefault("stable_system_prompt_chars", len(stable_system))
         meta.setdefault("ephemeral_overlay_chars", len(overlay))
 
+        # Roadmap-1: enrich context_status with cache + token-ish metrics (best-effort).
+        try:
+            cs = meta.get("context_status") if isinstance(meta.get("context_status"), dict) else None
+            if cs is not None:
+                cs.setdefault("stable_cache", {})
+                if isinstance(cs.get("stable_cache"), dict):
+                    cs["stable_cache"]["key"] = stable_cache_key
+                    cs["stable_cache"]["hit"] = bool(stable_cache_hit)
+                    cs["stable_cache"]["stable_prompt_version"] = stable_prompt_version
+                cs.setdefault("workspace_context_hash", w_hash)
+                cs.setdefault("system_layers", {})
+                if isinstance(cs.get("system_layers"), dict):
+                    cs["system_layers"]["stable_system_prompt_chars"] = len(stable_system)
+                    cs["system_layers"]["ephemeral_overlay_chars"] = len(overlay)
+                    cs["system_layers"]["stable_system_prompt_token_estimate"] = int(len(stable_system) // 4) if stable_system else 0
+                    cs["system_layers"]["ephemeral_overlay_token_estimate"] = int(len(overlay) // 4) if overlay else 0
+                cs.setdefault("prompt", {})
+                if isinstance(cs.get("prompt"), dict):
+                    cs["prompt"]["message_count"] = len(msgs)
+                    cs["prompt"]["estimated_tokens"] = meta.get("prompt_estimated_tokens")
+        except Exception:
+            pass
+
         return PromptAssemblyResult(
             messages=msgs,
             prompt_version=version,

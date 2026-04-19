@@ -209,6 +209,13 @@ class DefaultContextEngine(ContextEngine):
             )
         except Exception:
             pass
+        try:
+            total_chars = sum(len(str(m.get("content") or "")) for m in msgs if isinstance(m, dict))
+            status["budgets"]["total_chars"] = int(total_chars)
+            # naive token estimate (keeps deps minimal): ~4 chars/token for English-like text
+            status["budgets"]["token_estimate"] = int(total_chars // 4) if total_chars else 0
+        except Exception:
+            pass
 
         fin = self._finalize(msgs, meta, project_sha=meta.get("project_context_sha256"), session_sha=session_sha)
         # attach status produced during apply
