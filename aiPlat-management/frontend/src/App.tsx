@@ -46,6 +46,7 @@ const PlatformTenant = lazy(() => import('./pages/Platform/Tenant/Tenant'));
 const AppChannels = lazy(() => import('./pages/App/Channels/Channels'));
 const AppSessions = lazy(() => import('./pages/App/Sessions/Sessions'));
 const DiagnosticsHome = lazy(() => import('./pages/Diagnostics/Diagnostics'));
+const DiagnosticsDoctor = lazy(() => import('./pages/Diagnostics/Doctor'));
 const DiagnosticsTraces = lazy(() => import('./pages/Diagnostics/Traces/Traces'));
 const DiagnosticsTraceDetail = lazy(() => import('./pages/Diagnostics/Traces/TraceDetail'));
 const DiagnosticsGraphs = lazy(() => import('./pages/Diagnostics/Graphs/Graphs'));
@@ -94,6 +95,7 @@ const router = createBrowserRouter([
       { path: 'app/channels', element: withSuspense(AppChannels) },
       { path: 'app/sessions', element: withSuspense(AppSessions) },
       { path: 'diagnostics', element: withSuspense(DiagnosticsHome) },
+      { path: 'diagnostics/doctor', element: withSuspense(DiagnosticsDoctor) },
       { path: 'diagnostics/traces', element: withSuspense(DiagnosticsTraces) },
       { path: 'diagnostics/traces/:traceId', element: withSuspense(DiagnosticsTraceDetail) },
       { path: 'diagnostics/graphs', element: withSuspense(DiagnosticsGraphs) },

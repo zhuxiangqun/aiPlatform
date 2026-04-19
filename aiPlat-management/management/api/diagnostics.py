@@ -249,6 +249,66 @@ async def run_e2e_smoke(request: Request, body: Dict[str, Any]) -> Dict[str, Any
     return await core_client.run_e2e_smoke(body or {})
 
 
+# ==================== Doctor (one-shot report) ====================
+
+
+@router.get("/doctor")
+async def doctor_report(request: Request) -> Dict[str, Any]:
+    """
+    One-shot diagnostics report (MVP).
+
+    Aggregates:
+    - health (infra/core/platform/app)
+    - core adapters summary
+    - autosmoke env hints (best-effort)
+    """
+    import os
+    import time
+
+    # Health summary
+    health_checkers = request.app.state.health_checkers
+    health = {}
+    for layer, checker in health_checkers.items():
+        try:
+            health[layer] = await checker.get_health()
+        except Exception as e:
+            health[layer] = {"status": "unhealthy", "message": str(e)}
+
+    # Core adapters summary
+    adapters = {"adapters": [], "total": 0}
+    try:
+        core_client = getattr(request.app.state, "core_client", None)
+        if core_client:
+            adapters = await core_client.list_adapters(limit=50, offset=0)
+    except Exception:
+        pass
+
+    autosmoke = {
+        "enabled": os.getenv("AIPLAT_AUTOSMOKE_ENABLED"),
+        "enforce": os.getenv("AIPLAT_AUTOSMOKE_ENFORCE"),
+        "dedup_seconds": os.getenv("AIPLAT_AUTOSMOKE_DEDUP_SECONDS"),
+        "webhook_url_set": bool(os.getenv("AIPLAT_AUTOSMOKE_WEBHOOK_URL")),
+    }
+
+    recs = []
+    if not autosmoke["enabled"]:
+        recs.append({"severity": "warn", "code": "autosmoke_disabled", "message": "建议开启 AIPLAT_AUTOSMOKE_ENABLED=true 以获得自动验证闭环"})
+    if autosmoke["enabled"] and not autosmoke["enforce"]:
+        recs.append({"severity": "info", "code": "autosmoke_gate_off", "message": "如需强门禁，开启 AIPLAT_AUTOSMOKE_ENFORCE=true"})
+    if autosmoke["enabled"] and not autosmoke["webhook_url_set"]:
+        recs.append({"severity": "info", "code": "autosmoke_no_alerts", "message": "如需失败告警，设置 AIPLAT_AUTOSMOKE_WEBHOOK_URL"})
+
+    layers = ["infra", "core", "platform", "app"]
+    unhealthy = [k for k in layers if (health.get(k, {}).get("status") != "healthy")]
+    if unhealthy:
+        recs.append({"severity": "error", "code": "unhealthy_layers", "message": f"存在不健康层：{','.join(unhealthy)}；建议先修复 health 再跑 smoke"})
+
+    if (adapters or {}).get("total", 0) <= 0:
+        recs.append({"severity": "warn", "code": "no_adapters", "message": "尚未配置任何 LLM adapter；请先在初始化向导配置模型 Provider/API Key"})
+
+    return {"generated_at": time.time(), "health": health, "adapters": adapters, "autosmoke": autosmoke, "recommendations": recs}
+
+
 @router.get("/graphs/{layer}")
 async def list_layer_graph_runs(
     layer: str,
