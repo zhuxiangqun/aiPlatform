@@ -8124,6 +8124,26 @@ async def diagnostics_repo_changeset_record(request: RepoChangesetPreviewRequest
     Record the repo changeset summary as a changeset audit event.
     """
     preview = await diagnostics_repo_changeset_preview(request)
+    tests_summary = None
+    try:
+        if bool(getattr(request, "run_tests", False)):
+            tr = await diagnostics_repo_tests_run(RepoTestsRunRequest(repo_root=request.repo_root, note=request.note))
+            tests_summary = (tr or {}).get("result") if isinstance(tr, dict) else None
+    except Exception as e:
+        # If tests failed hard, still record the repo changeset with a failure marker.
+        try:
+            await _record_changeset(
+                name="repo_changeset_record",
+                target_type="repo",
+                target_id=str(preview.get("repo_root") or ""),
+                status="failed",
+                args={"branch": preview.get("branch"), "head": preview.get("head"), "note": str(request.note or "").strip()},
+                error=f"tests_exception:{type(e).__name__}",
+                result={"diff_sha256": preview.get("diff_sha256"), "tests": {"error": str(e)[:200]}},
+            )
+        except Exception:
+            pass
+        raise
     try:
         await _record_changeset(
             name="repo_changeset_record",
@@ -8134,11 +8154,17 @@ async def diagnostics_repo_changeset_record(request: RepoChangesetPreviewRequest
                 "working_tree": preview.get("working_tree"),
                 "staged": preview.get("staged"),
                 "diff_sha256": preview.get("diff_sha256"),
+                "tests": {
+                    "exit_code": (tests_summary or {}).get("exit_code") if isinstance(tests_summary, dict) else None,
+                    "duration_ms": (tests_summary or {}).get("duration_ms") if isinstance(tests_summary, dict) else None,
+                    "stdout_sha256": (tests_summary or {}).get("stdout_sha256") if isinstance(tests_summary, dict) else None,
+                    "stderr_sha256": (tests_summary or {}).get("stderr_sha256") if isinstance(tests_summary, dict) else None,
+                }
             },
         )
     except Exception:
         pass
-    return {"status": "recorded", "preview": preview}
+    return {"status": "recorded", "preview": preview, "tests": tests_summary}
 
 
 # ==================== Health Check ====================

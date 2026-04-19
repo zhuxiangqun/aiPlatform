@@ -100,7 +100,15 @@ async def record_repo_changeset(request: Request, body: Dict[str, Any]) -> Dict[
     except Exception:
         details = ""
 
-    return await core_client.repo_changeset_record({"repo_root": repo_root, "include_patch": False, "note": details})
+    run_tests = False
+    try:
+        run_tests = bool((body or {}).get("run_tests"))
+    except Exception:
+        run_tests = False
+
+    return await core_client.repo_changeset_record(
+        {"repo_root": repo_root, "include_patch": False, "note": details, "run_tests": run_tests}
+    )
 
 
 @router.get("/repo/changeset/patch")
@@ -612,10 +620,17 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
                         "description": "记录说明（可选）",
                         "x-ui": {"multiline": True, "placeholder": "例如：本次准备提交修复 autosmoke 的变更", "order": 10},
                     }
+                    ,
+                    "run_tests": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": "记录前先运行测试（使用 AIPLAT_REPO_TEST_CMD）",
+                        "x-ui": {"order": 20},
+                    }
                 },
                 "required": [],
             },
-            "body_example": {"details": ""},
+            "body_example": {"details": "", "run_tests": False},
         },
         "run_repo_tests": {
             "action_type": "diagnostics.repo_tests_run",

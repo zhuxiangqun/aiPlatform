@@ -236,6 +236,7 @@ class RepoChangesetPreviewRequest(BaseModel):
     repo_root: str
     include_patch: bool = False  # default: do NOT return full diff
     note: Optional[str] = None
+    run_tests: bool = False
 
 
 class RepoTestsRunRequest(BaseModel):
