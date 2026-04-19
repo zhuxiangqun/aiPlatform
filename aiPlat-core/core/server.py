@@ -98,11 +98,12 @@ def _create_llm_adapter(model_name: str = "gpt-4"):
     """
     try:
         from core.adapters.llm import create_adapter
-        return create_adapter(
-            provider="openai",
-            api_key="",
-            model=model_name,
-        )
+        provider = os.getenv("AIPLAT_LLM_PROVIDER", "openai").strip().lower() or "openai"
+        base_url = os.getenv("AIPLAT_LLM_BASE_URL") or os.getenv("OPENAI_BASE_URL")
+        api_key = os.getenv("OPENAI_API_KEY") or os.getenv("AIPLAT_LLM_API_KEY") or ""
+        if provider == "openai" and not api_key:
+            provider = "mock"
+        return create_adapter(provider=provider, api_key=api_key or None, model=model_name, base_url=base_url)
     except Exception:
         return None
 

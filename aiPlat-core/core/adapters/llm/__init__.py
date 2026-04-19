@@ -31,6 +31,8 @@ from .local_adapter import (
     create_local_adapter,
 )
 
+from .mock_adapter import MockAdapter
+
 __all__ = [
     # Base
     "ILLMAdapter",
@@ -54,4 +56,5 @@ __all__ = [
     "VLLMAdapter",
     "HuggingFaceTGIAdapter",
     "create_local_adapter",
+    "MockAdapter",
 ]

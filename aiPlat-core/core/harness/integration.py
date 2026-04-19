@@ -268,12 +268,17 @@ class HarnessIntegration:
         agent_info = await runtime.agent_manager.get_agent(agent_id)
         model_name = agent_info.config.get("model", "gpt-4") if agent_info else "gpt-4"
 
-        # Inject model if needed (best effort, mirrors server.py behavior)
+        # Inject model if needed (best effort)
         if hasattr(agent, "_model") and getattr(agent, "_model") is None:
             try:
                 from core.adapters.llm import create_adapter
-
-                agent.set_model(create_adapter(provider="openai", api_key="", model=model_name))  # type: ignore[attr-defined]
+                provider = os.getenv("AIPLAT_LLM_PROVIDER", "openai").strip().lower() or "openai"
+                base_url = os.getenv("AIPLAT_LLM_BASE_URL") or os.getenv("OPENAI_BASE_URL")
+                api_key = os.getenv("OPENAI_API_KEY") or os.getenv("AIPLAT_LLM_API_KEY") or ""
+                # Dev-friendly fallback: if no API key for openai, use mock adapter.
+                if provider == "openai" and not api_key:
+                    provider = "mock"
+                agent.set_model(create_adapter(provider=provider, api_key=api_key or None, model=model_name, base_url=base_url))  # type: ignore[attr-defined]
             except Exception:
                 pass
 

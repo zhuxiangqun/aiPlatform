@@ -310,6 +310,25 @@ class ReActLoop(BaseLoop):
             state.context["reasoning"] = reasoning
             await self._trigger_hook(HookPhase.POST_REASONING, state.context)
 
+        # 支持“直接结束”语义：当模型给出 DONE/FINAL 且没有动作调用时，直接结束。
+        # 这使得在无工具调用场景也能完成一次 agent 执行（例如 mock LLM / 纯对话）。
+        try:
+            raw = str(reasoning or "")
+            up = raw.strip().upper()
+            # Only treat as terminal when DONE/FINAL appears at the beginning.
+            # This avoids false positives when the prompt contains JSON examples.
+            if up.startswith("DONE:") or up.startswith("FINAL:"):
+                final_text = raw.strip()
+                for tag in ("DONE:", "FINAL:"):
+                    if final_text.upper().startswith(tag):
+                        final_text = final_text[len(tag) :].strip()
+                        break
+                state.context["output"] = final_text
+                state.current = LoopStateEnum.FINISHED
+                return state
+        except Exception:
+            pass
+
         state.current = LoopStateEnum.ACTING
         await self._trigger_hook(HookPhase.PRE_ACT, state.context)
         action_result = await self._act(state)

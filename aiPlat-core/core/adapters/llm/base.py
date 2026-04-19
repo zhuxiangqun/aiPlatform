@@ -222,6 +222,10 @@ def create_adapter(
     elif provider == "local":
         from .local_adapter import LocalAdapter
         return LocalAdapter(base_url=base_url or "http://localhost:8000", model=model, **kwargs)
+
+    elif provider == "mock":
+        from .mock_adapter import MockAdapter
+        return MockAdapter(model=model, **kwargs)
     
     else:
         raise ValueError(f"Unknown provider: {provider}")

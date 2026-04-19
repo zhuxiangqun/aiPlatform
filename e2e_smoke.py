@@ -123,6 +123,8 @@ def main() -> int:
     waited = _req("POST", f"{CORE}/api/core/runs/{run_id}/wait", json_body={"timeout_ms": 60000, "after_seq": 0})
     run = waited.get("run") or {}
     print(f"[run] status={run.get('status')} done={waited.get('done')}")
+    if str(run.get("status")) != "completed":
+        raise RuntimeError(f"agent run not completed: {run}")
 
     # 7) observe (core events + audit via management proxy)
     events = _req("GET", f"{CORE}/api/core/runs/{run_id}/events", params={"after_seq": 0, "limit": 50})
