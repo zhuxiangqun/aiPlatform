@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { workspaceAgentApi, workspaceSkillApi } from '../../services/coreApi';
 import { modelApi, toolApi, type Model } from '../../services';
 import { Alert, Button, Input, Modal, Textarea, toast } from '../ui';
+import { diagnosticsApi } from '../../services';
 
 interface AgentConfigTemplate {
   name: string;
@@ -52,6 +53,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
   const [toolOptions, setToolOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [modelOptions, setModelOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [selectedModel, setSelectedModel] = useState<string>('');
+  const [autoSmoke, setAutoSmoke] = useState(true);
 
   // Disambiguation wizard
   const [wizOpen, setWizOpen] = useState(false);
@@ -142,6 +144,16 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
       setSkillOptions([]);
       setToolOptions([]);
       setModelOptions([]);
+    }
+  };
+
+  const maybeRunSmoke = async () => {
+    if (!autoSmoke) return;
+    try {
+      const smoke = await diagnosticsApi.runE2ESmoke({ tenant_id: 'ops_smoke', actor_id: 'admin', agent_model: 'deepseek-reasoner' });
+      toast.success(smoke?.ok ? '全链路冒烟通过' : '全链路冒烟失败');
+    } catch (e: any) {
+      toast.error('全链路冒烟失败', String(e?.message || 'unknown'));
     }
   };
 
@@ -296,6 +308,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
       }
       toast.success('创建成功');
       onSuccess();
+      await maybeRunSmoke();
       onClose();
     } catch (e: any) {
       toast.error('创建失败', String(e?.message || ''));
@@ -328,6 +341,11 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
       <div className="space-y-4">
         <Input label="名称" value={name} onChange={(e: any) => setName(e.target.value)} placeholder="例如：数据分析助手" />
         <Input label="描述（可选）" value={description} onChange={(e: any) => setDescription(e.target.value)} placeholder="这个 Agent 的职责边界与适用场景" />
+
+        <label className="flex items-center gap-2 text-sm text-gray-400">
+          <input type="checkbox" checked={autoSmoke} onChange={(e) => setAutoSmoke(e.target.checked)} />
+          创建后自动运行全链路冒烟（会创建/清理资源）
+        </label>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>

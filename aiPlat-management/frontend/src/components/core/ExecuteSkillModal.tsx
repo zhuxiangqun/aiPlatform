@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 
 import { Button, Modal, Textarea, toast } from '../ui';
+import { diagnosticsApi } from '../../services';
 
 interface ExecuteSkillModalProps {
   open: boolean;
@@ -12,6 +13,7 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ status: string; output?: unknown; error?: any; error_message?: string; error_detail?: any; duration_ms?: number } | null>(null);
   const [inputText, setInputText] = useState('');
+  const [autoSmoke, setAutoSmoke] = useState(false);
 
   const handleExecute = async () => {
     if (!skill) return;
@@ -32,6 +34,15 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
       const res = await skillApi.execute(skill.id, { input: payload });
       setResult(res as any);
       toast.success(res.status === 'completed' || res.status === 'success' ? '执行成功' : `状态: ${res.status}`);
+
+      if (autoSmoke) {
+        try {
+          const smoke = await diagnosticsApi.runE2ESmoke({ tenant_id: 'ops_smoke', actor_id: 'admin', agent_model: 'deepseek-reasoner' });
+          toast.success(smoke?.ok ? '全链路冒烟通过' : '全链路冒烟失败');
+        } catch (e: any) {
+          toast.error('全链路冒烟失败', String(e?.message || 'unknown'));
+        }
+      }
     } catch (error: any) {
       toast.error('执行失败');
       setResult({ status: 'error', error: error.message || 'Unknown error' });
@@ -70,6 +81,11 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
         onChange={(e: any) => setInputText(e.target.value)}
         placeholder='{"query": "搜索关键词"} 或直接输入文本'
       />
+
+      <label className="mt-3 flex items-center gap-2 text-sm text-gray-400">
+        <input type="checkbox" checked={autoSmoke} onChange={(e) => setAutoSmoke(e.target.checked)} />
+        执行后自动运行全链路冒烟（会创建/清理资源）
+      </label>
 
       {result && (
         <div className="mt-4 p-4 rounded-lg border border-dark-border bg-dark-bg">

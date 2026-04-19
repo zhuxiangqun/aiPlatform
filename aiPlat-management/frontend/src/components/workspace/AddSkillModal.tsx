@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { workspaceSkillApi } from '../../services/coreApi';
 import { Button, Input, Modal, Select, Textarea, toast } from '../ui';
+import { diagnosticsApi } from '../../services';
 
 interface AddSkillModalProps {
   open: boolean;
@@ -92,6 +93,7 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
   const [wizStructured, setWizStructured] = useState(false);
   const [wizMayWrite, setWizMayWrite] = useState(false);
   const [genWarnings, setGenWarnings] = useState<string[]>([]);
+  const [autoSmoke, setAutoSmoke] = useState(true);
 
   const categoryOptions = useMemo(() => SKILL_CATEGORIES, []);
 
@@ -226,6 +228,14 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
 
       toast.success('已创建');
       onSuccess();
+      if (autoSmoke) {
+        try {
+          const smoke = await diagnosticsApi.runE2ESmoke({ tenant_id: 'ops_smoke', actor_id: 'admin', agent_model: 'deepseek-reasoner' });
+          toast.success(smoke?.ok ? '全链路冒烟通过' : '全链路冒烟失败');
+        } catch (e: any) {
+          toast.error('全链路冒烟失败', String(e?.message || 'unknown'));
+        }
+      }
       onClose();
       setName('');
       setCategory('general');
@@ -259,6 +269,10 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
         </>
       }
     >
+      <label className="mb-3 flex items-center gap-2 text-sm text-gray-400">
+        <input type="checkbox" checked={autoSmoke} onChange={(e) => setAutoSmoke(e.target.checked)} />
+        创建后自动运行全链路冒烟（会创建/清理资源）
+      </label>
       <div className="space-y-4">
         <Input label="名称" value={name} onChange={(e: any) => setName(e.target.value)} placeholder="例如：我的客服助手" />
         <div className="flex items-end justify-between gap-3">

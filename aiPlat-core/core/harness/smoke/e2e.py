@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import os
 import time
+import asyncio
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
@@ -34,6 +35,8 @@ class SmokeConfig:
     app_url: str = field(default_factory=lambda: _env("AIPLAT_APP_ENDPOINT", "http://localhost:8004"))
     management_url: str = field(default_factory=lambda: _env("AIPLAT_MANAGEMENT_ENDPOINT", "http://localhost:8000"))
     timeout_s: float = 30.0
+    wait_timeout_s: float = 60.0
+    poll_interval_s: float = 0.25
 
 
 def _headers(*, actor_id: str, tenant_id: str, api_key: Optional[str] = None, request_id: Optional[str] = None) -> Dict[str, str]:
@@ -54,6 +57,28 @@ async def _req(client: httpx.AsyncClient, method: str, url: str, *, headers: Dic
     if resp.headers.get("content-type", "").startswith("application/json"):
         return resp.json()
     return {"text": resp.text}
+
+
+async def _wait_run_completed(*, store: Any, run_id: str, timeout_s: float, poll_interval_s: float) -> Dict[str, Any]:
+    """
+    Wait for run summary to reach terminal state and assert status==completed.
+
+    Works for agent/skill/tool runs:
+    - agent/skill: tables exist
+    - tool: get_run_summary() falls back to run_events
+    """
+    start = time.time()
+    last = None
+    while time.time() - start < float(timeout_s):
+        last = await store.get_run_summary(run_id=str(run_id))
+        if isinstance(last, dict) and last.get("status") in ("completed", "failed", "approval_required", "timeout"):
+            break
+        await asyncio.sleep(float(poll_interval_s))
+    if not isinstance(last, dict):
+        raise RuntimeError(f"run summary not found: {run_id}")
+    if last.get("status") != "completed":
+        raise RuntimeError(f"run not completed: {last}")
+    return last
 
 
 async def run_smoke_e2e(*, payload: Dict[str, Any], execution_store: Any = None) -> Dict[str, Any]:
@@ -143,10 +168,13 @@ async def run_smoke_e2e(*, payload: Dict[str, Any], execution_store: Any = None)
             run_id = exec_res.get("run_id")
             evidence["steps"].append({"name": "platform.agents.execute", "ok": True, "run_id": run_id, "exec": exec_res})
 
-            # We can't call core wait directly here without core endpoint; rely on platform execute result + run_id existence.
-            # Ops can further inspect run via management/core runs API.
             if not run_id:
                 raise RuntimeError(f"agent execute returned no run_id: {exec_res}")
+            # 强制验收：agent run 必须 completed
+            if execution_store is None:
+                raise RuntimeError("execution_store is required to assert run completion")
+            agent_summary = await _wait_run_completed(store=execution_store, run_id=str(run_id), timeout_s=cfg.wait_timeout_s, poll_interval_s=cfg.poll_interval_s)
+            evidence["steps"].append({"name": "core.runs.wait(agent)", "ok": True, "summary": agent_summary})
 
             # 5) tool execute via platform gateway (should write audit)
             tool_exec = await _req(
@@ -164,16 +192,18 @@ async def run_smoke_e2e(*, payload: Dict[str, Any], execution_store: Any = None)
             )
             tool_run_id = tool_exec.get("run_id")
             evidence["steps"].append({"name": "platform.gateway.tool_execute", "ok": True, "run_id": tool_run_id, "exec": tool_exec})
+            if not tool_run_id:
+                raise RuntimeError(f"tool execute returned no run_id: {tool_exec}")
+            tool_summary = await _wait_run_completed(store=execution_store, run_id=str(tool_run_id), timeout_s=cfg.wait_timeout_s, poll_interval_s=cfg.poll_interval_s)
+            evidence["steps"].append({"name": "core.runs.wait(tool)", "ok": True, "summary": tool_summary})
 
             # 6) audit check: prefer core store if available; also attempt management proxy (best-effort)
-            audit_count = None
-            if execution_store is not None and tool_run_id:
-                try:
-                    logs = await execution_store.list_audit_logs(run_id=str(tool_run_id), action="gateway_execute", limit=5, offset=0)
-                    audit_count = len(logs.get("items") or [])
-                except Exception:
-                    audit_count = None
+            audit_count = 0
+            logs = await execution_store.list_audit_logs(run_id=str(tool_run_id), action="gateway_execute", limit=5, offset=0)
+            audit_count = len(logs.get("items") or [])
             evidence["audit_count_core"] = audit_count
+            if audit_count < 1:
+                raise RuntimeError("expected at least 1 audit log (action=gateway_execute)")
 
             try:
                 if tool_run_id:
@@ -231,4 +261,3 @@ async def run_smoke_e2e(*, payload: Dict[str, Any], execution_store: Any = None)
                         cleanup["errors"].append({"step": "tenants.delete", "error": str(e)})
             finally:
                 evidence["cleanup"] = cleanup
-

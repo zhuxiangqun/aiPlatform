@@ -98,6 +98,10 @@ export const diagnosticsApi = {
     return apiClient.get<any>(`/diagnostics/health/${layer}`);
   },
 
+  runE2ESmoke: async (body: Record<string, unknown>) => {
+    return apiClient.post<any>('/diagnostics/e2e/smoke', body);
+  },
+
   // ===== Observability (core only for now) =====
 
   listTraces: async (params: { limit?: number; offset?: number; status?: string } = {}) => {

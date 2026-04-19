@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { workspaceMcpApi } from '../../services/coreApi';
 import type { McpServer } from '../../services/coreApi';
 import { Alert, Button, Input, Modal, Select, Switch, Textarea, toast } from '../ui';
+import { diagnosticsApi } from '../../services';
 
 interface AddMcpModalProps {
   open: boolean;
@@ -50,6 +51,7 @@ const AddMcpModal: React.FC<AddMcpModalProps> = ({ open, onClose, onSuccess }) =
   const [allowedToolsText, setAllowedToolsText] = useState('');
   const [authText, setAuthText] = useState('');
   const [metadataText, setMetadataText] = useState('{\n  "description": ""\n}');
+  const [autoSmoke, setAutoSmoke] = useState(true);
   const [launcherPath, setLauncherPath] = useState('/opt/aiplat/mcp/bin/launch');
   const [template, setTemplate] = useState('sse_internal');
   const [wizOpen, setWizOpen] = useState(false);
@@ -276,6 +278,14 @@ const AddMcpModal: React.FC<AddMcpModalProps> = ({ open, onClose, onSuccess }) =
       await workspaceMcpApi.upsertServer(payload);
       toast.success('已创建 MCP Server');
       onSuccess();
+      if (autoSmoke) {
+        try {
+          const smoke = await diagnosticsApi.runE2ESmoke({ tenant_id: 'ops_smoke', actor_id: 'admin', agent_model: 'deepseek-reasoner' });
+          toast.success(smoke?.ok ? '全链路冒烟通过' : '全链路冒烟失败');
+        } catch (e: any) {
+          toast.error('全链路冒烟失败', String(e?.message || 'unknown'));
+        }
+      }
       onClose();
       setName('');
     } catch (e: any) {
@@ -303,6 +313,10 @@ const AddMcpModal: React.FC<AddMcpModalProps> = ({ open, onClose, onSuccess }) =
         </>
       }
     >
+      <label className="mb-3 flex items-center gap-2 text-sm text-gray-400">
+        <input type="checkbox" checked={autoSmoke} onChange={(e) => setAutoSmoke(e.target.checked)} />
+        创建后自动运行全链路冒烟（会创建/清理资源）
+      </label>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-4">
           <Input label="名称" value={name} onChange={(e: any) => setName(e.target.value)} placeholder="例如：integrated_browser" />

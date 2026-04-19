@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { agentApi, type Agent } from '../../services';
 import { Button, Modal, Textarea, toast } from '../ui';
+import { diagnosticsApi } from '../../services';
 
 interface ExecuteAgentModalProps {
   open: boolean;
@@ -12,6 +13,7 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ status: string; execution_id?: string; output?: unknown; error?: any; error_message?: string; error_detail?: any } | null>(null);
+  const [autoSmoke, setAutoSmoke] = useState(false);
 
   const handleExecute = async () => {
     if (!agent) return;
@@ -37,6 +39,16 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
         error_detail: (result as any)?.error_detail,
       });
       toast.success(status === 'success' || status === 'completed' ? '执行成功' : `状态: ${status}`);
+
+      // 可选：自动触发全链路冒烟（用于你刚修改/新增 agent 后的快速验收）
+      if (autoSmoke) {
+        try {
+          const smoke = await diagnosticsApi.runE2ESmoke({ tenant_id: 'ops_smoke', actor_id: 'admin', agent_model: 'deepseek-reasoner' });
+          toast.success(smoke?.ok ? '全链路冒烟通过' : '全链路冒烟失败');
+        } catch (e: any) {
+          toast.error('全链路冒烟失败', String(e?.message || 'unknown'));
+        }
+      }
     } catch (e: any) {
       const msg = String(e?.message || e?.detail || '执行失败');
       setResult({ status: 'failed', error: msg });
@@ -66,6 +78,11 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
         onChange={(e: any) => setInput(e.target.value)}
         placeholder="输入 JSON 或文本"
       />
+
+      <label className="mt-3 flex items-center gap-2 text-sm text-gray-400">
+        <input type="checkbox" checked={autoSmoke} onChange={(e) => setAutoSmoke(e.target.checked)} />
+        执行后自动运行全链路冒烟（会创建/清理资源）
+      </label>
 
       {result && (
         <div className="mt-4 p-4 rounded-lg border border-dark-border bg-dark-bg">

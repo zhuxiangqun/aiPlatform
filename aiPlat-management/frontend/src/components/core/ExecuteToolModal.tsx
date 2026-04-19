@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Button, Input, Modal, Select, Textarea, toast } from '../ui';
+import { diagnosticsApi } from '../../services';
 
 interface ParameterProperty {
   type?: string;
@@ -22,6 +23,7 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ output?: unknown; error?: any; error_message?: string; error_detail?: any; success?: boolean; latency?: number } | null>(null);
   const [params, setParams] = useState<Record<string, any>>({});
+  const [autoSmoke, setAutoSmoke] = useState(false);
 
   const paramSchema = tool?.parameters as any;
   const requiredFields: string[] = paramSchema?.required || [];
@@ -106,6 +108,15 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
       const res = await toolApi.execute(tool.name, normalized);
       setResult(res as any);
       toast.success(res.success !== false ? '执行成功' : '执行完成');
+
+      if (autoSmoke) {
+        try {
+          const smoke = await diagnosticsApi.runE2ESmoke({ tenant_id: 'ops_smoke', actor_id: 'admin', agent_model: 'deepseek-reasoner' });
+          toast.success(smoke?.ok ? '全链路冒烟通过' : '全链路冒烟失败');
+        } catch (e: any) {
+          toast.error('全链路冒烟失败', String(e?.message || 'unknown'));
+        }
+      }
     } catch (error: any) {
       toast.error('执行失败');
       setResult({ error: error.message || 'Unknown error', success: false });
@@ -221,6 +232,10 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
         </>
       }
     >
+      <label className="mb-3 flex items-center gap-2 text-sm text-gray-400">
+        <input type="checkbox" checked={autoSmoke} onChange={(e) => setAutoSmoke(e.target.checked)} />
+        执行后自动运行全链路冒烟（会创建/清理资源）
+      </label>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           {tool?.description && (
