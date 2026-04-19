@@ -29,6 +29,7 @@ const InfraMonitoring = lazy(() => import('./pages/Infra/Monitoring/Monitoring')
 const CoreAgents = lazy(() => import('./pages/Core/Agents/Agents'));
 const CoreSkills = lazy(() => import('./pages/Core/Skills/Skills'));
 const CoreTools = lazy(() => import('./pages/Core/Tools/Tools'));
+const CorePlugins = lazy(() => import('./pages/Core/Plugins'));
 const CoreMCP = lazy(() => import('./pages/Core/MCP/MCP'));
 const CoreMemory = lazy(() => import('./pages/Core/Memory/Memory'));
 const CoreJobs = lazy(() => import('./pages/Core/Jobs/Jobs'));
@@ -80,6 +81,7 @@ const router = createBrowserRouter([
       { path: 'core/agents', element: withSuspense(CoreAgents) },
       { path: 'core/skills', element: withSuspense(CoreSkills) },
       { path: 'core/tools', element: withSuspense(CoreTools) },
+      { path: 'core/plugins', element: withSuspense(CorePlugins) },
       { path: 'core/mcp', element: withSuspense(CoreMCP) },
       { path: 'core/memory', element: withSuspense(CoreMemory) },
       { path: 'core/skill-packs', element: withSuspense(CoreSkillPacks) },

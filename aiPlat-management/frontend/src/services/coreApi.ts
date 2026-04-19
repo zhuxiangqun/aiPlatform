@@ -813,6 +813,31 @@ export const opsApi = {
   },
 };
 
+// ==================== Plugins (P0 standardization) ====================
+
+export interface PluginRecord {
+  tenant_id: string;
+  plugin_id: string;
+  name?: string | null;
+  version?: string | null;
+  enabled: number;
+  manifest?: any;
+  metadata?: any;
+  created_at?: number | null;
+  updated_at?: number | null;
+}
+
+export const pluginApi = {
+  list: async () => apiClient.get<{ items: PluginRecord[] }>(`/core/plugins`),
+  upsert: async (manifest: any, enabled: boolean) => apiClient.put<{ status: string; plugin: PluginRecord }>(`/core/plugins`, { manifest, enabled }),
+  setEnabled: async (pluginId: string, enabled: boolean) =>
+    apiClient.post<{ status: string; plugin_id: string; enabled: boolean }>(`/core/plugins/${pluginId}/enable`, { enabled }),
+  versions: async (pluginId: string, limit = 50, offset = 0) =>
+    apiClient.get<{ items: any[]; total: number; limit: number; offset: number }>(`/core/plugins/${pluginId}/versions?limit=${limit}&offset=${offset}`),
+  rollback: async (pluginId: string, version: string) =>
+    apiClient.post<{ status: string; plugin: PluginRecord }>(`/core/plugins/${pluginId}/rollback`, { version }),
+};
+
 // ==================== Memory API ====================
 
 export interface MemorySession {
