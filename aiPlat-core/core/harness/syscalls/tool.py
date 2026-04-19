@@ -175,7 +175,7 @@ async def sys_tool_call(
     try:
         if tool_name == "repo":
             op = args.get("operation") or args.get("op")
-            if str(op) in {"add", "commit", "checkout", "branch_create"}:
+            if str(op) in {"add", "unstage", "restore", "commit", "checkout", "branch_create", "reset"}:
                 args["_approval_required"] = True
     except Exception:
         pass

@@ -76,7 +76,7 @@ class RepoTool(BaseTool):
                 "properties": {
                     "operation": {
                         "type": "string",
-                        "description": "git operation: status|diff|log|ls_files|show|add|checkout|commit|branch_list|branch_create",
+                        "description": "git operation: status|diff|log|ls_files|show|add|unstage|restore|checkout|commit|branch_list|branch_create|reset",
                     },
                     "repo_root": {"type": "string", "description": "repo root path (defaults to ActiveWorkspaceContext.repo_root or cwd)"},
                     "staged": {"type": "boolean", "description": "diff staged changes"},
@@ -87,6 +87,8 @@ class RepoTool(BaseTool):
                     "branch": {"type": "string", "description": "branch name"},
                     "from_ref": {"type": "string", "description": "branch create base ref (default HEAD)"},
                     "message": {"type": "string", "description": "commit message"},
+                    "mode": {"type": "string", "description": "reset mode: soft|mixed|hard (default mixed)"},
+                    "ref": {"type": "string", "description": "reset ref (default HEAD)"},
                 },
                 "required": ["operation"],
             },
@@ -349,6 +351,37 @@ class RepoTool(BaseTool):
                     return ToolResult(success=False, error=r.err or "git add failed")
                 return ToolResult(success=True, output="ok")
 
+            if op == "unstage":
+                if not paths:
+                    return ToolResult(success=False, error="missing paths")
+                # Prefer git restore --staged, fallback to git reset HEAD
+                cmd = ["restore", "--staged", "--"]
+                cmd.extend([str(p) for p in paths])
+                r = await asyncio.to_thread(_run_git, cmd, cwd=cwd, timeout=self._timeout_s)
+                if r.code != 0:
+                    cmd2 = ["reset", "HEAD", "--"]
+                    cmd2.extend([str(p) for p in paths])
+                    r2 = await asyncio.to_thread(_run_git, cmd2, cwd=cwd, timeout=self._timeout_s)
+                    if r2.code != 0:
+                        return ToolResult(success=False, error=r.err or r2.err or "git unstage failed")
+                return ToolResult(success=True, output="ok")
+
+            if op == "restore":
+                if not paths:
+                    return ToolResult(success=False, error="missing paths")
+                # Discard working tree changes for files
+                cmd = ["restore", "--"]
+                cmd.extend([str(p) for p in paths])
+                r = await asyncio.to_thread(_run_git, cmd, cwd=cwd, timeout=self._timeout_s)
+                if r.code != 0:
+                    # fallback legacy
+                    cmd2 = ["checkout", "--"]
+                    cmd2.extend([str(p) for p in paths])
+                    r2 = await asyncio.to_thread(_run_git, cmd2, cwd=cwd, timeout=self._timeout_s)
+                    if r2.code != 0:
+                        return ToolResult(success=False, error=r.err or r2.err or "git restore failed")
+                return ToolResult(success=True, output="ok")
+
             if op == "checkout":
                 b = str(params.get("branch") or "").strip()
                 if not b:
@@ -365,6 +398,16 @@ class RepoTool(BaseTool):
                 r = await asyncio.to_thread(_run_git, ["commit", "-m", msg], cwd=cwd, timeout=self._timeout_s)
                 if r.code != 0:
                     return ToolResult(success=False, error=r.err or "git commit failed")
+                return ToolResult(success=True, output=r.out or "ok")
+
+            if op == "reset":
+                mode = str(params.get("mode") or "mixed").strip().lower()
+                if mode not in {"soft", "mixed", "hard"}:
+                    mode = "mixed"
+                ref = str(params.get("ref") or "HEAD").strip()
+                r = await asyncio.to_thread(_run_git, ["reset", f"--{mode}", ref], cwd=cwd, timeout=self._timeout_s)
+                if r.code != 0:
+                    return ToolResult(success=False, error=r.err or "git reset failed")
                 return ToolResult(success=True, output=r.out or "ok")
 
             if op == "branch_list":

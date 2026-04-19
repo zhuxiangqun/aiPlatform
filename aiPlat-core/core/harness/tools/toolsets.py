@@ -81,6 +81,8 @@ DEFAULT_TOOLSETS: Dict[str, ToolsetPolicy] = {
             "branch_create",
             "checkout",
             "add",
+            "unstage",
+            "restore",
             "commit",
         },
     ),
