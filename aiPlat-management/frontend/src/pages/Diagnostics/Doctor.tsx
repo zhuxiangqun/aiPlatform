@@ -49,6 +49,14 @@ const Doctor: React.FC = () => {
     }
   };
 
+  const statusVariant = (s: any) => {
+    const v = String(s || '').toLowerCase();
+    if (v === 'success' || v === 'ok' || v === 'completed') return 'success';
+    if (v.includes('fail') || v === 'error') return 'error';
+    if (v.includes('approval')) return 'warning';
+    return 'default';
+  };
+
   const openChangesetInSyscalls = (r: any) => {
     const q = new URLSearchParams();
     q.set('kind', 'changeset');
@@ -228,6 +236,7 @@ const Doctor: React.FC = () => {
                 columns={[
                   { key: 'created_at', title: '时间', width: 170, render: (_: any, r: any) => <span className="text-xs text-gray-300">{formatTs(r.created_at)}</span> },
                   { key: 'name', title: 'name', width: 200, render: (_: any, r: any) => <span className="text-xs text-gray-200">{r.name}</span> },
+                  { key: 'status', title: 'status', width: 110, render: (_: any, r: any) => <Badge variant={statusVariant(r.status)}>{String(r.status || '-')}</Badge> },
                   {
                     key: 'diff',
                     title: 'diff',
