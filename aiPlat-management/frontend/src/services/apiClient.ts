@@ -215,6 +215,9 @@ export const onboardingApi = {
   initTenant: async (body: Record<string, unknown>) => {
     return apiClient.post<any>('/onboarding/init-tenant', body);
   },
+  rotateAdapterKey: async (body: Record<string, unknown>) => {
+    return apiClient.post<any>('/onboarding/rotate-adapter-key', body);
+  },
 };
 
 // Monitoring API (legacy - for layer metrics)

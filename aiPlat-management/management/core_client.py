@@ -147,6 +147,9 @@ class CoreAPIClient:
     async def add_adapter_model(self, adapter_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
         return await self._request("POST", f"/api/core/adapters/{adapter_id}/models", json=body or {})
 
+    async def update_adapter(self, adapter_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("PUT", f"/api/core/adapters/{adapter_id}", json=body or {})
+
     # ===== Core Onboarding =====
 
     async def get_onboarding_state(self) -> Dict[str, Any]:

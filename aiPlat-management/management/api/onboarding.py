@@ -61,6 +61,26 @@ async def init_tenant(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
     return await core_client.init_tenant(body or {})
 
 
+@router.post("/rotate-adapter-key")
+async def rotate_adapter_key(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Rotate adapter api key.
+    Body:
+      { "adapter_id": "...", "api_key": "..." }
+    """
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="Core client not initialized")
+    adapter_id = str((body or {}).get("adapter_id") or "").strip()
+    api_key = str((body or {}).get("api_key") or "").strip()
+    if not adapter_id:
+        raise HTTPException(status_code=400, detail="missing_adapter_id")
+    if not api_key:
+        raise HTTPException(status_code=400, detail="missing_api_key")
+    await core_client.update_adapter(adapter_id, {"api_key": api_key})
+    return {"status": "rotated", "adapter_id": adapter_id}
+
+
 @router.post("/llm-adapter")
 async def configure_llm_adapter(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
     """

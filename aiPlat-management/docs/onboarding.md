@@ -8,6 +8,9 @@
 4. （增强）设置全局默认 LLM 路由（default adapter/model，需审批）
 5. （增强）初始化默认 tenant/policies（需审批）
 6. （增强）密钥存储状态提示（AIPLAT_SECRET_KEY）
+7. （增强）Onboarding 内嵌审批处理（批准/拒绝 + 批准后自动重试）
+8. （增强）配置检查（复用 Doctor recommendations）
+9. （增强）轮换 adapter API key（不回显旧 key）
 
 ## 入口
 
@@ -59,6 +62,8 @@
 
 如返回 `approval_required`，请到管理台 `Core → Approvals` 批准后，将 `approval_request_id` 填回向导再次提交。
 
+（增强）现在向导页面会展示 `onboarding:*` 的待审批列表，可直接 **批准并自动重试**，无需手动复制 approval_request_id。
+
 ## 增强：初始化默认 tenant/policies（需审批）
 
 页面会调用：
@@ -75,6 +80,15 @@
 
 当配置了 `AIPLAT_SECRET_KEY`（Fernet key）后，core 会将 adapter 的 `api_key` **加密存储**在 ExecutionStore。
 向导会展示当前是否已配置该环境变量，并给出生成示例。
+
+## 增强：轮换 adapter API key（不回显旧 key）
+
+向导提供 “轮换 Adapter API Key” 区域：只输入 **新 key**，提交后通过 management API 转调 core 更新 adapter。
+该操作不会在 UI 回显旧 key。
+
+## 增强：配置检查（Doctor）
+
+向导页面会调用 `/api/diagnostics/doctor` 获取 recommendations，并提供“一键复制 env 示例”的快捷按钮（如 Public URL、autosmoke）。
 
 ## 常见问题
 
