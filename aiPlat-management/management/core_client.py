@@ -131,6 +131,27 @@ class CoreAPIClient:
             params["kind"] = kind
         return await self._request("GET", "/api/core/syscalls/stats", params=params)
 
+    # ===== Change Control (derived) =====
+
+    async def list_change_controls(self, *, limit: int = 50, offset: int = 0, tenant_id: Optional[str] = None) -> Dict[str, Any]:
+        params: Dict[str, Any] = {"limit": int(limit), "offset": int(offset)}
+        if tenant_id:
+            params["tenant_id"] = str(tenant_id)
+        return await self._request("GET", "/api/core/change-control/changes", params=params)
+
+    async def get_change_control(
+        self,
+        change_id: str,
+        *,
+        limit: int = 200,
+        offset: int = 0,
+        tenant_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        params: Dict[str, Any] = {"limit": int(limit), "offset": int(offset)}
+        if tenant_id:
+            params["tenant_id"] = str(tenant_id)
+        return await self._request("GET", f"/api/core/change-control/changes/{change_id}", params=params)
+
     # ===== Runs (Platform execution contract) =====
 
     async def get_run(self, run_id: str) -> Dict[str, Any]:

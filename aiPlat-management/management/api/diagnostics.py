@@ -986,6 +986,42 @@ async def get_layer_syscall_stats(
     return {"layer": "core", "supported": True, "stats": stats}
 
 
+@router.get("/change-control/{layer}")
+async def list_layer_change_controls(layer: str, request: Request, limit: int = 50, offset: int = 0, tenant_id: Optional[str] = None) -> Dict[str, Any]:
+    """List Change Control items (core layer only for now)."""
+    health_checkers = request.app.state.health_checkers
+    if layer not in health_checkers:
+        raise HTTPException(status_code=404, detail=f"Layer '{layer}' not found")
+
+    if layer != "core":
+        return {"layer": layer, "supported": False, "message": "Change Control is supported for core layer only (for now)."}
+
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="Core client not initialized")
+
+    changes = await core_client.list_change_controls(limit=limit, offset=offset, tenant_id=tenant_id)
+    return {"layer": "core", "supported": True, "changes": changes, "limit": limit, "offset": offset}
+
+
+@router.get("/change-control/{layer}/{change_id}")
+async def get_layer_change_control(layer: str, change_id: str, request: Request, limit: int = 200, offset: int = 0, tenant_id: Optional[str] = None) -> Dict[str, Any]:
+    """Get Change Control detail (core layer only for now)."""
+    health_checkers = request.app.state.health_checkers
+    if layer not in health_checkers:
+        raise HTTPException(status_code=404, detail=f"Layer '{layer}' not found")
+
+    if layer != "core":
+        return {"layer": layer, "supported": False, "message": "Change Control is supported for core layer only (for now)."}
+
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="Core client not initialized")
+
+    detail = await core_client.get_change_control(change_id, limit=limit, offset=offset, tenant_id=tenant_id)
+    return {"layer": "core", "supported": True, "change": detail}
+
+
 @router.get("/graphs/{layer}/{run_id}")
 async def get_layer_graph_run(
     layer: str,
