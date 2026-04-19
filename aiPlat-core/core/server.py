@@ -44,6 +44,9 @@ from core.schemas import (
     OnboardingAutosmokeConfigRequest,
     OnboardingSecretsMigrateRequest,
     OnboardingStrongGateRequest,
+    DiagnosticsPromptAssembleRequest,
+    PromptTemplateUpsertRequest,
+    PromptTemplateRollbackRequest,
     LongTermMemoryAddRequest,
     LongTermMemorySearchRequest,
     MessageCreateRequest,
@@ -7152,6 +7155,213 @@ async def run_e2e_smoke(request: Dict[str, Any]):
     if not result.ok:
         raise HTTPException(status_code=result.http_status, detail=result.error or "Smoke failed")
     return result.payload
+
+
+# ==================== Diagnostics: Context / Prompt Assembly ====================
+
+
+@api_router.get("/diagnostics/context/config")
+async def get_context_config():
+    """
+    Return context/prompt assembly configuration for observability (no secrets).
+    """
+    from core.harness.context.engine import DefaultContextEngine
+
+    enable_session_search = os.getenv("AIPLAT_ENABLE_SESSION_SEARCH", "false").lower() in ("1", "true", "yes", "y")
+    return {
+        "context_engine": "default_v1",
+        "enable_session_search": bool(enable_session_search),
+        "project_context": {
+            "supported_files": ["AGENTS.md", "AIPLAT.md"],
+            "max_context_chars": int(getattr(DefaultContextEngine, "_MAX_CONTEXT_CHARS", 20000)),
+        },
+        "security": {"has_injection_detection": True},
+    }
+
+
+@api_router.post("/diagnostics/prompt/assemble")
+async def diagnostics_prompt_assemble(request: DiagnosticsPromptAssembleRequest):
+    """
+    Assemble prompt + context and return metadata for debugging.
+    NOTE: This endpoint is for diagnostics and should not be used on hot paths.
+    """
+    from core.harness.assembly.prompt_assembler import PromptAssembler
+    from core.harness.kernel.execution_context import (
+        ActiveRequestContext,
+        ActiveWorkspaceContext,
+        reset_active_request_context,
+        reset_active_workspace_context,
+        set_active_request_context,
+        set_active_workspace_context,
+    )
+
+    msgs: List[Dict[str, Any]] = []
+    if request.messages and isinstance(request.messages, list):
+        msgs = request.messages  # type: ignore[assignment]
+    elif request.session_id and _execution_store:
+        sess = await _execution_store.get_memory_session(session_id=str(request.session_id))
+        if not sess:
+            raise HTTPException(status_code=404, detail="session_not_found")
+        res = await _execution_store.list_memory_messages(session_id=str(request.session_id), limit=200, offset=0)
+        msgs = [
+            {"role": m.get("role"), "content": m.get("content"), "metadata": (m.get("metadata") or {})}
+            for m in (res.get("items") or [])
+        ]
+    else:
+        raise HTTPException(status_code=400, detail="messages_or_session_id_required")
+
+    meta: Dict[str, Any] = {"enable_project_context": bool(request.enable_project_context)}
+
+    # Optional toggle override (best-effort; restore after)
+    env_prev = os.getenv("AIPLAT_ENABLE_SESSION_SEARCH")
+    env_set = None
+    if request.enable_session_search is not None:
+        env_set = "true" if request.enable_session_search else "false"
+        os.environ["AIPLAT_ENABLE_SESSION_SEARCH"] = env_set
+
+    t1 = None
+    t2 = None
+    try:
+        t1 = set_active_workspace_context(ActiveWorkspaceContext(repo_root=request.repo_root))
+        t2 = set_active_request_context(
+            ActiveRequestContext(user_id=str(request.user_id), session_id=str(request.session_id or "default"))
+        )
+        out = PromptAssembler().assemble(msgs, metadata=meta)
+        return {
+            "status": "ok",
+            "prompt_version": out.prompt_version,
+            "workspace_context_hash": out.workspace_context_hash,
+            "stable_prompt_version": out.stable_prompt_version,
+            "stable_cache_key": out.stable_cache_key,
+            "stable_cache_hit": bool(out.stable_cache_hit),
+            "metadata": out.metadata,
+            "system_layers": {
+                "stable_system_prompt_chars": len(out.stable_system_prompt or ""),
+                "ephemeral_overlay_chars": len(out.ephemeral_overlay or ""),
+            },
+            "message_count": len(out.messages or []),
+        }
+    finally:
+        if t2 is not None:
+            try:
+                reset_active_request_context(t2)
+            except Exception:
+                pass
+        if t1 is not None:
+            try:
+                reset_active_workspace_context(t1)
+            except Exception:
+                pass
+        if env_set is not None:
+            try:
+                if env_prev is None:
+                    os.environ.pop("AIPLAT_ENABLE_SESSION_SEARCH", None)
+                else:
+                    os.environ["AIPLAT_ENABLE_SESSION_SEARCH"] = env_prev
+            except Exception:
+                pass
+
+
+# ==================== Prompt Templates (platformization MVP) ====================
+
+
+@api_router.get("/prompts")
+async def list_prompt_templates(limit: int = 100, offset: int = 0):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    return await _execution_store.list_prompt_templates(limit=int(limit), offset=int(offset))
+
+
+@api_router.get("/prompts/{template_id}")
+async def get_prompt_template(template_id: str):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    tpl = await _execution_store.get_prompt_template(template_id=str(template_id))
+    if not tpl:
+        raise HTTPException(status_code=404, detail="not_found")
+    return tpl
+
+
+@api_router.post("/prompts")
+async def upsert_prompt_template(request: PromptTemplateUpsertRequest):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+
+    if request.require_approval:
+        if not request.approval_request_id:
+            rid = await _require_onboarding_approval(
+                operation="prompt_template_upsert",
+                user_id="admin",
+                details=request.details or f"upsert prompt template {request.template_id}",
+                metadata={"template_id": request.template_id, "name": request.name},
+            )
+            return {"status": "approval_required", "approval_request_id": rid}
+        if not _is_approval_resolved_approved(request.approval_request_id):
+            raise HTTPException(status_code=409, detail="not_approved")
+
+    res = await _execution_store.upsert_prompt_template(
+        template_id=request.template_id,
+        name=request.name,
+        template=request.template,
+        metadata=request.metadata or {},
+        increment_version=bool(request.increment_version),
+    )
+    return {"status": "updated", "template": res}
+
+
+@api_router.post("/prompts/{template_id}/rollback")
+async def rollback_prompt_template(template_id: str, request: PromptTemplateRollbackRequest):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+
+    if request.template_id and str(request.template_id) != str(template_id):
+        raise HTTPException(status_code=400, detail="template_id_mismatch")
+
+    if request.require_approval:
+        if not request.approval_request_id:
+            rid = await _require_onboarding_approval(
+                operation="prompt_template_rollback",
+                user_id="admin",
+                details=request.details or f"rollback prompt template {template_id} to {request.version}",
+                metadata={"template_id": str(template_id), "version": str(request.version)},
+            )
+            return {"status": "approval_required", "approval_request_id": rid}
+        if not _is_approval_resolved_approved(request.approval_request_id):
+            raise HTTPException(status_code=409, detail="not_approved")
+
+    try:
+        tpl = await _execution_store.rollback_prompt_template_version(template_id=str(template_id), version=str(request.version))
+    except KeyError:
+        raise HTTPException(status_code=404, detail="version_not_found")
+    return {"status": "rolled_back", "template": tpl}
+
+
+@api_router.get("/prompts/{template_id}/versions")
+async def list_prompt_template_versions(template_id: str, limit: int = 100, offset: int = 0):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    return await _execution_store.list_prompt_template_versions(template_id=str(template_id), limit=int(limit), offset=int(offset))
+
+
+@api_router.delete("/prompts/{template_id}")
+async def delete_prompt_template(template_id: str, require_approval: bool = True, approval_request_id: Optional[str] = None, details: Optional[str] = None):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+
+    if require_approval:
+        if not approval_request_id:
+            rid = await _require_onboarding_approval(
+                operation="prompt_template_delete",
+                user_id="admin",
+                details=details or f"delete prompt template {template_id}",
+                metadata={"template_id": str(template_id)},
+            )
+            return {"status": "approval_required", "approval_request_id": rid}
+        if not _is_approval_resolved_approved(approval_request_id):
+            raise HTTPException(status_code=409, detail="not_approved")
+
+    ok = await _execution_store.delete_prompt_template(template_id=str(template_id))
+    return {"status": "deleted" if ok else "not_found"}
 
 
 # ==================== Health Check ====================

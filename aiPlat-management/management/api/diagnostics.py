@@ -314,6 +314,48 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
     except Exception:
         secrets = {}
 
+    # Context / prompt assembly config (best-effort)
+    context_config: Dict[str, Any] = {}
+    try:
+        if core_client:
+            context_config = await core_client.get_context_config()
+    except Exception:
+        context_config = {}
+
+    # Skills capability summary (best-effort)
+    skill_capabilities: Dict[str, Any] = {"total": 0, "capability_counts": {}, "high_risk_skill_count": 0}
+    try:
+        if core_client:
+            skills = await core_client.list_skills(limit=200, offset=0)
+            items = skills.get("items") or []
+            cap_counts: Dict[str, int] = {}
+            high_risk = 0
+            for it in items:
+                meta = it.get("metadata") if isinstance(it, dict) else None
+                caps = meta.get("capabilities") if isinstance(meta, dict) else None
+                if isinstance(caps, list):
+                    for c in caps:
+                        s = str(c)
+                        cap_counts[s] = cap_counts.get(s, 0) + 1
+                # heuristic: mark high-risk if includes shell/fs/browser
+                if isinstance(caps, list) and any(x in ("shell_exec", "fs_write", "browser_control") for x in [str(z) for z in caps]):
+                    high_risk += 1
+            skill_capabilities = {
+                "total": len(items),
+                "capability_counts": dict(sorted(cap_counts.items(), key=lambda kv: kv[1], reverse=True)),
+                "high_risk_skill_count": int(high_risk),
+            }
+    except Exception:
+        pass
+
+    # Prompt templates summary (best-effort)
+    prompt_templates: Dict[str, Any] = {"total": 0}
+    try:
+        if core_client:
+            prompt_templates = await core_client.list_prompt_templates(limit=20, offset=0)
+    except Exception:
+        prompt_templates = {"total": 0}
+
     # Strong gate status (default tenant)
     strong_gate: Dict[str, Any] = {"tenant_id": "default", "enabled": False}
     try:
@@ -480,6 +522,20 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
     if not config["management_public_url"]:
         recs.append({"severity": "info", "code": "missing_public_url", "message": "建议设置 AIPLAT_MANAGEMENT_PUBLIC_URL，用于生成可点击诊断/重跑链接"})
 
+    # Context observability: show config and recommend enabling session search when appropriate.
+    try:
+        if isinstance(context_config, dict) and not context_config.get("enable_session_search"):
+            recs.append(
+                {
+                    "severity": "info",
+                    "code": "session_search_disabled",
+                    "message": "当前未开启跨会话检索注入（AIPLAT_ENABLE_SESSION_SEARCH=false）。若你需要长期记忆召回/跨会话一致性，可考虑开启。",
+                    "links": {"onboarding_ui": "/onboarding"},
+                }
+            )
+    except Exception:
+        pass
+
     # If autosmoke is disabled, provide an action using config center (env still can override).
     if not autosmoke["enabled"]:
         recs.append(
@@ -528,12 +584,29 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
             }
         )
 
+    # Capability governance hint
+    try:
+        if int(skill_capabilities.get("high_risk_skill_count") or 0) > 0 and not strong_gate.get("enabled"):
+            recs.append(
+                {
+                    "severity": "info",
+                    "code": "high_risk_skills_detected",
+                    "message": f"检测到 {skill_capabilities.get('high_risk_skill_count')} 个高风险能力技能（如 shell/fs/browser）。如为生产环境，建议对关键工具开启审批（例如 strong gate 或按工具白名单）。",
+                    "links": {"onboarding_ui": "/onboarding", "tenant_policies_ui": "/diagnostics/policies"},
+                }
+            )
+    except Exception:
+        pass
+
     return {
         "generated_at": time.time(),
         "health": health,
         "adapters": adapters,
         "autosmoke": autosmoke,
         "secrets": secrets,
+        "context": context_config,
+        "skills": {"capabilities": skill_capabilities},
+        "prompts": {"templates": {"total": int((prompt_templates or {}).get("total") or 0), "items": (prompt_templates or {}).get("items") or []}},
         "strong_gate": strong_gate,
         "config": config,
         "links": links,

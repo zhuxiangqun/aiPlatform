@@ -139,6 +139,21 @@ class SkillManager:
                         output_schema = {}
 
                     metadata = dict(fm)
+                    # Normalize capabilities for later policy/doctor analysis.
+                    caps = metadata.get("capabilities") or metadata.get("capability") or []
+                    if isinstance(caps, str):
+                        caps = [caps]
+                    if not isinstance(caps, list):
+                        caps = []
+                    norm_caps: List[str] = []
+                    for c in caps:
+                        try:
+                            s = str(c).strip()
+                            if s:
+                                norm_caps.append(s)
+                        except Exception:
+                            continue
+                    metadata["capabilities"] = norm_caps
                     metadata.setdefault("filesystem", {})
                     if isinstance(metadata["filesystem"], dict):
                         metadata["filesystem"]["skill_dir"] = str(item)

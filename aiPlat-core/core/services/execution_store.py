@@ -43,7 +43,7 @@ class ExecutionStoreConfig:
 
 
 class ExecutionStore:
-    CURRENT_SCHEMA_VERSION = 27
+    CURRENT_SCHEMA_VERSION = 28
 
     def __init__(self, config: ExecutionStoreConfig):
         self._config = config
@@ -1002,6 +1002,48 @@ class ExecutionStore:
 
                         _set_version(27)
                         current = 27
+
+                    # ---- Migration v28: prompt_templates (prompt platformization MVP) ----
+                    if current < 28:
+                        try:
+                            conn.execute(
+                                """
+                                CREATE TABLE IF NOT EXISTS prompt_templates (
+                                  template_id TEXT PRIMARY KEY,
+                                  name TEXT NOT NULL,
+                                  template TEXT NOT NULL,
+                                  version TEXT NOT NULL,
+                                  metadata_json TEXT,
+                                  created_at REAL NOT NULL,
+                                  updated_at REAL NOT NULL
+                                );
+                                """
+                            )
+                            conn.execute("CREATE INDEX IF NOT EXISTS idx_prompt_templates_updated ON prompt_templates(updated_at DESC);")
+                        except Exception:
+                            pass
+                        try:
+                            conn.execute(
+                                """
+                                CREATE TABLE IF NOT EXISTS prompt_template_versions (
+                                  id TEXT PRIMARY KEY,
+                                  template_id TEXT NOT NULL,
+                                  version TEXT NOT NULL,
+                                  template TEXT NOT NULL,
+                                  metadata_json TEXT,
+                                  created_at REAL NOT NULL
+                                );
+                                """
+                            )
+                            conn.execute("CREATE INDEX IF NOT EXISTS idx_prompt_template_versions_tid ON prompt_template_versions(template_id);")
+                            conn.execute(
+                                "CREATE UNIQUE INDEX IF NOT EXISTS idx_prompt_template_versions_unique ON prompt_template_versions(template_id, version);"
+                            )
+                        except Exception:
+                            pass
+
+                        _set_version(28)
+                        current = 28
 
                     # If legacy db exists with tables but without meta, upgrade meta to current
                     if current < self.CURRENT_SCHEMA_VERSION:
@@ -5672,6 +5714,165 @@ class ExecutionStore:
                         }
                     )
                 return {"items": items, "total": total}
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
+    # ==================== Prompt Templates (MVP) ====================
+
+    async def upsert_prompt_template(
+        self,
+        *,
+        template_id: str,
+        name: str,
+        template: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        increment_version: bool = True,
+    ) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _bump(v: str) -> str:
+            try:
+                parts = str(v or "1.0.0").split(".")
+                parts[-1] = str(int(parts[-1]) + 1)
+                return ".".join(parts)
+            except Exception:
+                return "1.0.1"
+
+        def _sync() -> Dict[str, Any]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            now = time.time()
+            try:
+                row = conn.execute("SELECT * FROM prompt_templates WHERE template_id=?;", (str(template_id),)).fetchone()
+                if row:
+                    cur_ver = str(row["version"])
+                    new_ver = _bump(cur_ver) if increment_version else cur_ver
+                    conn.execute(
+                        "UPDATE prompt_templates SET name=?, template=?, version=?, metadata_json=?, updated_at=? WHERE template_id=?;",
+                        (str(name), str(template), str(new_ver), json.dumps(metadata or {}), now, str(template_id)),
+                    )
+                else:
+                    new_ver = "1.0.0"
+                    conn.execute(
+                        "INSERT INTO prompt_templates(template_id, name, template, version, metadata_json, created_at, updated_at) VALUES(?,?,?,?,?,?,?);",
+                        (str(template_id), str(name), str(template), str(new_ver), json.dumps(metadata or {}), now, now),
+                    )
+                # record version snapshot (best-effort, idempotent on (template_id, version))
+                try:
+                    vid = f"ptv:{template_id}:{new_ver}"
+                    conn.execute(
+                        "INSERT OR IGNORE INTO prompt_template_versions(id, template_id, version, template, metadata_json, created_at) VALUES(?,?,?,?,?,?);",
+                        (vid, str(template_id), str(new_ver), str(template), json.dumps(metadata or {}), now),
+                    )
+                except Exception:
+                    pass
+                conn.commit()
+                out = conn.execute("SELECT * FROM prompt_templates WHERE template_id=?;", (str(template_id),)).fetchone()
+                return dict(out) if out else {"template_id": template_id, "name": name, "version": new_ver}
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
+    async def get_prompt_template(self, *, template_id: str) -> Optional[Dict[str, Any]]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Optional[Dict[str, Any]]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                row = conn.execute("SELECT * FROM prompt_templates WHERE template_id=?;", (str(template_id),)).fetchone()
+                return dict(row) if row else None
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
+    async def list_prompt_templates(self, *, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                total = int(conn.execute("SELECT COUNT(1) AS c FROM prompt_templates;").fetchone()["c"])
+                rows = conn.execute(
+                    "SELECT * FROM prompt_templates ORDER BY updated_at DESC LIMIT ? OFFSET ?;",
+                    (int(limit), int(offset)),
+                ).fetchall()
+                return {"total": total, "items": [dict(r) for r in rows]}
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
+    async def list_prompt_template_versions(self, *, template_id: str, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                total = int(
+                    conn.execute(
+                        "SELECT COUNT(1) AS c FROM prompt_template_versions WHERE template_id=?;",
+                        (str(template_id),),
+                    ).fetchone()["c"]
+                )
+                rows = conn.execute(
+                    "SELECT * FROM prompt_template_versions WHERE template_id=? ORDER BY created_at DESC LIMIT ? OFFSET ?;",
+                    (str(template_id), int(limit), int(offset)),
+                ).fetchall()
+                return {"total": total, "items": [dict(r) for r in rows]}
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
+    async def rollback_prompt_template_version(self, *, template_id: str, version: str) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            now = time.time()
+            try:
+                vrow = conn.execute(
+                    "SELECT * FROM prompt_template_versions WHERE template_id=? AND version=? LIMIT 1;",
+                    (str(template_id), str(version)),
+                ).fetchone()
+                if not vrow:
+                    raise KeyError("version_not_found")
+                conn.execute(
+                    "UPDATE prompt_templates SET template=?, version=?, metadata_json=?, updated_at=? WHERE template_id=?;",
+                    (str(vrow["template"]), str(version), str(vrow.get("metadata_json") or "{}"), now, str(template_id)),
+                )
+                conn.commit()
+                row = conn.execute("SELECT * FROM prompt_templates WHERE template_id=?;", (str(template_id),)).fetchone()
+                return dict(row) if row else {"template_id": template_id, "version": version}
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
+    async def delete_prompt_template(self, *, template_id: str) -> bool:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> bool:
+            conn = sqlite3.connect(db_path)
+            try:
+                cur = conn.execute("DELETE FROM prompt_templates WHERE template_id=?;", (str(template_id),))
+                conn.execute("DELETE FROM prompt_template_versions WHERE template_id=?;", (str(template_id),))
+                conn.commit()
+                return (cur.rowcount or 0) > 0
             finally:
                 conn.close()
 

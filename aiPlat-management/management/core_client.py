@@ -178,6 +178,19 @@ class CoreAPIClient:
     async def get_tenant_policy(self, tenant_id: str) -> Dict[str, Any]:
         return await self._request("GET", f"/api/core/policies/tenants/{tenant_id}")
 
+    # ===== Diagnostics: context/prompt =====
+
+    async def get_context_config(self) -> Dict[str, Any]:
+        return await self._request("GET", "/api/core/diagnostics/context/config")
+
+    async def diagnostics_prompt_assemble(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", "/api/core/diagnostics/prompt/assemble", json=body or {})
+
+    # ===== Prompt Templates =====
+
+    async def list_prompt_templates(self, *, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        return await self._request("GET", "/api/core/prompts", params={"limit": int(limit), "offset": int(offset)})
+
     # ===== Jobs / Cron (Roadmap-3) =====
 
     async def list_jobs(self, *, limit: int = 100, offset: int = 0, enabled: Optional[bool] = None) -> Dict[str, Any]:

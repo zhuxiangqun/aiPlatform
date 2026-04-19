@@ -200,6 +200,38 @@ class OnboardingStrongGateRequest(BaseModel):
     details: Optional[str] = None
 
 
+class DiagnosticsPromptAssembleRequest(BaseModel):
+    """
+    Diagnostics-only endpoint helper to introspect prompt/context assembly.
+    """
+
+    session_id: Optional[str] = None
+    user_id: str = "system"
+    repo_root: Optional[str] = None
+    messages: Optional[list] = None  # list[{"role": "...", "content": "..."}]
+    enable_project_context: bool = True
+    enable_session_search: Optional[bool] = None  # None=use env
+
+
+class PromptTemplateUpsertRequest(BaseModel):
+    template_id: str
+    name: str
+    template: str
+    metadata: Optional[Dict[str, Any]] = None
+    increment_version: bool = True
+    require_approval: bool = True
+    approval_request_id: Optional[str] = None
+    details: Optional[str] = None
+
+
+class PromptTemplateRollbackRequest(BaseModel):
+    template_id: str
+    version: str
+    require_approval: bool = True
+    approval_request_id: Optional[str] = None
+    details: Optional[str] = None
+
+
 class LongTermMemoryAddRequest(BaseModel):
     user_id: Optional[str] = None
     key: Optional[str] = None
