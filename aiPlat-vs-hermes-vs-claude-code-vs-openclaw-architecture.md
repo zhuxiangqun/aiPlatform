@@ -517,6 +517,15 @@ flowchart TB
   - core：通过 `syscall_events(kind="changeset")` 记录关键变更（当前已覆盖 prompt template upsert/rollback）  
   - management Doctor：增加 `changesets` 最近变更列表（来源：`/api/core/syscalls/events?kind=changeset`）
 
+- **ChangeSet 审计覆盖扩展（治理面）**  
+  - core：已将 changeset 记录扩展到 tenant policy、onboarding（default_llm/autosmoke/init_tenant/secrets_migrate/strong_gate）、adapters（create/update/enable/disable/model add/delete）与 prompt delete  
+  - 约束：changeset 仅记录摘要/哈希，避免写入敏感明文（如 api_key/prompt 全文）
+
+- **Repo-aware 工作流（MVP）**  
+  - core：`POST /api/core/diagnostics/repo/changeset/preview`（仅 git 命令；返回 numstat/摘要/hash，可选 patch）  
+  - core：`POST /api/core/diagnostics/repo/changeset/record`（将 repo 变更摘要写入 changeset 时间线）  
+  - management Doctor：可配置 `AIPLAT_REPO_ROOT` 后在报告中展示 `repo.changeset` 预览
+
 ---
 
 ## 6) aiPlat 架构图“产品化表达”的版本（主线不止三条）
