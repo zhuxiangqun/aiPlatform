@@ -275,6 +275,20 @@ export const onboardingApi = {
   setTrustedSkillKeys: async (body: Record<string, unknown>) => {
     return apiClient.post<any>('/onboarding/trusted-skill-keys', body);
   },
+  createEvidence: async (body: Record<string, unknown>) => {
+    return apiClient.post<any>('/onboarding/evidence/runs', body);
+  },
+  listEvidence: async (params: { step_key?: string; limit?: number; offset?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.step_key) q.set('step_key', params.step_key);
+    if (params.limit != null) q.set('limit', String(params.limit));
+    if (params.offset != null) q.set('offset', String(params.offset));
+    const qs = q.toString();
+    return apiClient.get<any>(`/onboarding/evidence/runs${qs ? `?${qs}` : ''}`);
+  },
+  getEvidence: async (evidenceId: string) => {
+    return apiClient.get<any>(`/onboarding/evidence/runs/${encodeURIComponent(evidenceId)}`);
+  },
 };
 
 // Monitoring API (legacy - for layer metrics)

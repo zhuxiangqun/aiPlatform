@@ -47,6 +47,16 @@ const ChecksPanel: React.FC<{ title?: string; checks: StepCheck[] }> = ({ title 
   );
 };
 
+const formatTs = (ts: any) => {
+  const n = Number(ts);
+  if (!Number.isFinite(n) || n <= 0) return '-';
+  try {
+    return new Date(n * 1000).toLocaleString();
+  } catch {
+    return String(ts);
+  }
+};
+
 const Onboarding: React.FC = () => {
   const [activeStep, setActiveStep] = useState<StepKey>('adapter');
   const [state, setState] = useState<any>(null);
@@ -122,6 +132,57 @@ const Onboarding: React.FC = () => {
   const [approvalWatchLog, setApprovalWatchLog] = useState<Record<string, string>>({});
   const approvalWatchInFlight = useRef<Record<string, boolean>>({});
 
+  // Evidence (server-side, best-effort)
+  const [evidenceOpen, setEvidenceOpen] = useState(false);
+  const [evidenceStep, setEvidenceStep] = useState<StepKey>('adapter');
+  const [evidenceLoading, setEvidenceLoading] = useState(false);
+  const [evidenceItems, setEvidenceItems] = useState<any[]>([]);
+
+  const recordEvidence = async (payload: {
+    step_key: StepKey;
+    action: string;
+    status: string;
+    input?: any;
+    output?: any;
+    approval_request_id?: string;
+    links?: any;
+  }) => {
+    try {
+      await onboardingApi.createEvidence(payload as any);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const loadEvidence = async (step: StepKey) => {
+    setEvidenceLoading(true);
+    try {
+      const res = await onboardingApi.listEvidence({ step_key: step, limit: 100, offset: 0 });
+      setEvidenceItems(Array.isArray(res?.items) ? res.items : []);
+    } catch (e) {
+      console.error(e);
+      setEvidenceItems([]);
+    } finally {
+      setEvidenceLoading(false);
+    }
+  };
+
+  const openEvidence = async (step: StepKey) => {
+    setEvidenceStep(step);
+    setEvidenceOpen(true);
+    await loadEvidence(step);
+  };
+
+  const downloadJson = (filename: string, obj: any) => {
+    const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const refreshApprovals = async () => {
     setApprovalsLoading(true);
     try {
@@ -141,6 +202,14 @@ const Onboarding: React.FC = () => {
     try {
       const res = await diagnosticsApi.getDoctor();
       setDoctor(res);
+      await recordEvidence({
+        step_key: 'doctor',
+        action: 'doctor_refresh',
+        status: 'ok',
+        input: {},
+        output: { doctor: res },
+        links: { diagnostics: '/diagnostics/doctor' },
+      });
     } catch (e) {
       console.error(e);
       setDoctor(null);
@@ -154,6 +223,13 @@ const Onboarding: React.FC = () => {
     try {
       const st = await onboardingApi.getSecretsStatus();
       setSecretsStatus(st);
+      await recordEvidence({
+        step_key: 'secrets',
+        action: 'secrets_status',
+        status: 'ok',
+        input: {},
+        output: st,
+      });
     } catch (e) {
       console.error(e);
       setSecretsStatus(null);
@@ -552,18 +628,33 @@ const Onboarding: React.FC = () => {
         .split(',')
         .map((s) => s.trim())
         .filter(Boolean);
-      const res = await onboardingApi.configureLLMAdapter({
+      const input = {
         name: adapterForm.name,
         provider: adapterForm.provider,
         api_base_url: adapterForm.api_base_url,
         api_key: adapterForm.api_key,
         models,
-      });
+      };
+      const res = await onboardingApi.configureLLMAdapter(input);
       setAdapterResult(res);
+      await recordEvidence({
+        step_key: 'adapter',
+        action: 'configure_llm_adapter',
+        status: res?.test?.success ? 'ok' : 'failed',
+        input: { ...input, api_key: input.api_key ? '***' : '' },
+        output: res,
+      });
       await refreshState();
       setActiveStep('health');
     } catch (e: any) {
       setAdapterResult({ test: { success: false, error: e?.message || String(e) } });
+      await recordEvidence({
+        step_key: 'adapter',
+        action: 'configure_llm_adapter',
+        status: 'error',
+        input: { name: adapterForm.name, provider: adapterForm.provider, api_base_url: adapterForm.api_base_url, models: adapterForm.models },
+        output: { error: e?.message || String(e) },
+      });
     } finally {
       setAdapterLoading(false);
     }
@@ -575,9 +666,23 @@ const Onboarding: React.FC = () => {
       const res = await diagnosticsApi.getHealth('all');
       // diagnosticsApi.getHealth expects layer; we use /diagnostics/health/all via apiClient.get directly
       setHealthResult({ health: res });
+      await recordEvidence({
+        step_key: 'health',
+        action: 'health_check_all',
+        status: 'ok',
+        input: {},
+        output: res,
+      });
       setActiveStep('smoke');
     } catch (e) {
       console.error(e);
+      await recordEvidence({
+        step_key: 'health',
+        action: 'health_check_all',
+        status: 'error',
+        input: {},
+        output: { error: String((e as any)?.message || e) },
+      });
     } finally {
       setHealthLoading(false);
     }
@@ -589,9 +694,23 @@ const Onboarding: React.FC = () => {
     try {
       const res = await diagnosticsApi.runE2ESmoke({});
       setSmokeResult(res);
+      await recordEvidence({
+        step_key: 'smoke',
+        action: 'e2e_smoke',
+        status: res?.ok ? 'ok' : 'failed',
+        input: {},
+        output: res,
+      });
       await refreshState();
     } catch (e: any) {
       setSmokeResult({ ok: false, error: e?.message || String(e) });
+      await recordEvidence({
+        step_key: 'smoke',
+        action: 'e2e_smoke',
+        status: 'error',
+        input: {},
+        output: { error: e?.message || String(e) },
+      });
     } finally {
       setSmokeLoading(false);
     }
@@ -601,14 +720,23 @@ const Onboarding: React.FC = () => {
     setDefaultLlmLoading(true);
     setDefaultLlmResult(null);
     try {
-      const res = await onboardingApi.setDefaultLLM({
+      const input = {
         adapter_id: defaultLlmForm.adapter_id,
         model: defaultLlmForm.model,
         require_approval: true,
         approval_request_id: approvalIdOverride || defaultLlmApprovalId || undefined,
         details: defaultLlmDetails || undefined,
-      });
+      };
+      const res = await onboardingApi.setDefaultLLM(input);
       setDefaultLlmResult(res);
+      await recordEvidence({
+        step_key: 'default_llm',
+        action: 'set_default_llm',
+        status: String(res?.status || 'unknown'),
+        input,
+        output: res,
+        approval_request_id: res?.approval_request_id || input.approval_request_id,
+      });
       if (res?.status === 'approval_required' && res?.approval_request_id) {
         const rid = String(res.approval_request_id);
         setDefaultLlmApprovalId(rid);
@@ -618,6 +746,14 @@ const Onboarding: React.FC = () => {
       await refreshState();
     } catch (e: any) {
       setDefaultLlmResult({ status: 'error', error: e?.message || String(e) });
+      await recordEvidence({
+        step_key: 'default_llm',
+        action: 'set_default_llm',
+        status: 'error',
+        input: { adapter_id: defaultLlmForm.adapter_id, model: defaultLlmForm.model },
+        output: { error: e?.message || String(e) },
+        approval_request_id: approvalIdOverride || defaultLlmApprovalId || undefined,
+      });
     } finally {
       setDefaultLlmLoading(false);
     }
@@ -627,7 +763,7 @@ const Onboarding: React.FC = () => {
     setInitTenantLoading(true);
     setInitTenantResult(null);
     try {
-      const res = await onboardingApi.initTenant({
+      const input = {
         tenant_id: 'default',
         tenant_name: 'default',
         init_policies: true,
@@ -635,8 +771,17 @@ const Onboarding: React.FC = () => {
         require_approval: true,
         approval_request_id: approvalIdOverride || initTenantApprovalId || undefined,
         details: initTenantDetails || undefined,
-      });
+      };
+      const res = await onboardingApi.initTenant(input);
       setInitTenantResult(res);
+      await recordEvidence({
+        step_key: 'tenant',
+        action: 'init_tenant',
+        status: String(res?.status || 'unknown'),
+        input,
+        output: res,
+        approval_request_id: res?.approval_request_id || input.approval_request_id,
+      });
       if (res?.status === 'approval_required' && res?.approval_request_id) {
         const rid = String(res.approval_request_id);
         setInitTenantApprovalId(rid);
@@ -646,6 +791,14 @@ const Onboarding: React.FC = () => {
       await refreshState();
     } catch (e: any) {
       setInitTenantResult({ status: 'error', error: e?.message || String(e) });
+      await recordEvidence({
+        step_key: 'tenant',
+        action: 'init_tenant',
+        status: 'error',
+        input: { tenant_id: 'default', init_policies: true, strict_tool_approval: strictToolApproval },
+        output: { error: e?.message || String(e) },
+        approval_request_id: approvalIdOverride || initTenantApprovalId || undefined,
+      });
     } finally {
       setInitTenantLoading(false);
     }
@@ -696,12 +849,27 @@ const Onboarding: React.FC = () => {
     setRotateKeyLoading(true);
     setRotateKeyResult(null);
     try {
-      const res = await onboardingApi.rotateAdapterKey({ adapter_id: rotateKeyForm.adapter_id, api_key: rotateKeyForm.api_key });
+      const input = { adapter_id: rotateKeyForm.adapter_id, api_key: rotateKeyForm.api_key };
+      const res = await onboardingApi.rotateAdapterKey(input);
       setRotateKeyResult(res);
       setRotateKeyForm((p) => ({ ...p, api_key: '' }));
+      await recordEvidence({
+        step_key: 'secrets',
+        action: 'rotate_adapter_key',
+        status: String(res?.status || 'unknown'),
+        input: { adapter_id: input.adapter_id, api_key: input.api_key ? '***' : '' },
+        output: res,
+      });
       await refreshState();
     } catch (e: any) {
       setRotateKeyResult({ status: 'error', error: e?.message || String(e) });
+      await recordEvidence({
+        step_key: 'secrets',
+        action: 'rotate_adapter_key',
+        status: 'error',
+        input: { adapter_id: rotateKeyForm.adapter_id },
+        output: { error: e?.message || String(e) },
+      });
     } finally {
       setRotateKeyLoading(false);
     }
@@ -711,15 +879,24 @@ const Onboarding: React.FC = () => {
     setAutosmokeLoading(true);
     setAutosmokeResult(null);
     try {
-      const res = await onboardingApi.setAutosmoke({
+      const input = {
         enabled: autosmokeForm.enabled,
         enforce: autosmokeForm.enforce,
         webhook_url: autosmokeForm.webhook_url || undefined,
         require_approval: true,
         approval_request_id: approvalIdOverride || autosmokeApprovalId || undefined,
         details: autosmokeDetails || undefined,
-      });
+      };
+      const res = await onboardingApi.setAutosmoke(input);
       setAutosmokeResult(res);
+      await recordEvidence({
+        step_key: 'autosmoke',
+        action: 'set_autosmoke',
+        status: String(res?.status || 'unknown'),
+        input,
+        output: res,
+        approval_request_id: res?.approval_request_id || input.approval_request_id,
+      });
       if (res?.status === 'approval_required' && res?.approval_request_id) {
         const rid = String(res.approval_request_id);
         setAutosmokeApprovalId(rid);
@@ -730,6 +907,14 @@ const Onboarding: React.FC = () => {
       await refreshDoctor();
     } catch (e: any) {
       setAutosmokeResult({ status: 'error', error: e?.message || String(e) });
+      await recordEvidence({
+        step_key: 'autosmoke',
+        action: 'set_autosmoke',
+        status: 'error',
+        input: { ...autosmokeForm },
+        output: { error: e?.message || String(e) },
+        approval_request_id: approvalIdOverride || autosmokeApprovalId || undefined,
+      });
     } finally {
       setAutosmokeLoading(false);
     }
@@ -739,12 +924,21 @@ const Onboarding: React.FC = () => {
     setMigrateSecretsLoading(true);
     setMigrateSecretsResult(null);
     try {
-      const res = await onboardingApi.migrateSecrets({
+      const input = {
         require_approval: true,
         approval_request_id: approvalIdOverride || migrateSecretsApprovalId || undefined,
         details: migrateSecretsDetails || undefined,
-      });
+      };
+      const res = await onboardingApi.migrateSecrets(input);
       setMigrateSecretsResult(res);
+      await recordEvidence({
+        step_key: 'secrets',
+        action: 'migrate_secrets',
+        status: String(res?.status || 'unknown'),
+        input,
+        output: res,
+        approval_request_id: res?.approval_request_id || input.approval_request_id,
+      });
       if (res?.status === 'approval_required' && res?.approval_request_id) {
         const rid = String(res.approval_request_id);
         setMigrateSecretsApprovalId(rid);
@@ -754,6 +948,14 @@ const Onboarding: React.FC = () => {
       await refreshSecrets();
     } catch (e: any) {
       setMigrateSecretsResult({ status: 'error', error: e?.message || String(e) });
+      await recordEvidence({
+        step_key: 'secrets',
+        action: 'migrate_secrets',
+        status: 'error',
+        input: {},
+        output: { error: e?.message || String(e) },
+        approval_request_id: approvalIdOverride || migrateSecretsApprovalId || undefined,
+      });
     } finally {
       setMigrateSecretsLoading(false);
     }
@@ -763,14 +965,23 @@ const Onboarding: React.FC = () => {
     setStrongGateLoading(true);
     setStrongGateResult(null);
     try {
-      const res = await onboardingApi.setStrongGate({
+      const input = {
         tenant_id: 'default',
         enabled,
         require_approval: true,
         approval_request_id: approvalIdOverride || strongGateApprovalId || undefined,
         details: strongGateDetails || undefined,
-      });
+      };
+      const res = await onboardingApi.setStrongGate(input);
       setStrongGateResult(res);
+      await recordEvidence({
+        step_key: 'strong_gate',
+        action: enabled ? 'strong_gate_on' : 'strong_gate_off',
+        status: String(res?.status || 'unknown'),
+        input,
+        output: res,
+        approval_request_id: res?.approval_request_id || input.approval_request_id,
+      });
       if (res?.status === 'approval_required' && res?.approval_request_id) {
         const rid = String(res.approval_request_id);
         setStrongGateApprovalId(rid);
@@ -780,6 +991,14 @@ const Onboarding: React.FC = () => {
       await refreshDefaultTenantPolicy();
     } catch (e: any) {
       setStrongGateResult({ status: 'error', error: e?.message || String(e) });
+      await recordEvidence({
+        step_key: 'strong_gate',
+        action: enabled ? 'strong_gate_on' : 'strong_gate_off',
+        status: 'error',
+        input: { enabled },
+        output: { error: e?.message || String(e) },
+        approval_request_id: approvalIdOverride || strongGateApprovalId || undefined,
+      });
     } finally {
       setStrongGateLoading(false);
     }
@@ -838,6 +1057,85 @@ const Onboarding: React.FC = () => {
           );
         })}
       </div>
+
+      <div className="flex items-center justify-end">
+        <button
+          onClick={() => openEvidence(activeStep)}
+          className="px-3 py-1.5 rounded-lg bg-dark-hover text-gray-200 hover:bg-dark-border transition-colors text-xs"
+        >
+          查看本步骤证据
+        </button>
+      </div>
+
+      {evidenceOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-6" onClick={() => setEvidenceOpen(false)}>
+          <div className="w-full max-w-4xl bg-dark-bg border border-dark-border rounded-xl p-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-gray-200 font-medium">证据链：{evidenceStep}</div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => loadEvidence(evidenceStep)}
+                  className="px-3 py-1.5 rounded-lg bg-dark-hover text-gray-200 hover:bg-dark-border transition-colors text-xs"
+                >
+                  {evidenceLoading ? '刷新中…' : '刷新'}
+                </button>
+                <button
+                  onClick={() => downloadJson(`onboarding-evidence-${evidenceStep}.json`, evidenceItems)}
+                  className="px-3 py-1.5 rounded-lg bg-dark-hover text-gray-200 hover:bg-dark-border transition-colors text-xs"
+                >
+                  导出 JSON
+                </button>
+                <button
+                  onClick={() => setEvidenceOpen(false)}
+                  className="px-3 py-1.5 rounded-lg bg-dark-hover text-gray-200 hover:bg-dark-border transition-colors text-xs"
+                >
+                  关闭
+                </button>
+              </div>
+            </div>
+            <div className="text-xs text-gray-500 mt-2">记录来源：向导步骤执行/复检/自动审批轮询（best-effort）。</div>
+            <div className="mt-3 max-h-[70vh] overflow-auto space-y-2">
+              {(evidenceItems || []).length === 0 ? (
+                <div className="text-sm text-gray-500">{evidenceLoading ? '加载中…' : '暂无证据'}</div>
+              ) : (
+                (evidenceItems || []).map((it: any) => (
+                  <div key={it.id} className="bg-dark-hover border border-dark-border rounded-lg p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="text-sm text-gray-200">
+                        <div>
+                          <span className="text-gray-500">time：</span>
+                          {formatTs(it.created_at)}
+                        </div>
+                        <div>
+                          <span className="text-gray-500">action：</span>
+                          <code className="text-xs">{String(it.action)}</code>
+                          <span className="text-gray-500 ml-3">status：</span>
+                          <code className="text-xs">{String(it.status)}</code>
+                          {it.approval_request_id ? (
+                            <>
+                              <span className="text-gray-500 ml-3">approval：</span>
+                              <code className="text-xs">{String(it.approval_request_id).slice(0, 12)}</code>
+                            </>
+                          ) : null}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => downloadJson(`evidence-${it.id}.json`, it)}
+                        className="px-3 py-1.5 rounded-lg bg-dark-bg text-gray-200 border border-dark-border text-xs hover:bg-dark-border"
+                      >
+                        导出
+                      </button>
+                    </div>
+                    <pre className="text-xs text-gray-300 mt-2 bg-dark-bg border border-dark-border rounded-lg p-2 overflow-auto">
+                      {JSON.stringify({ input: it.input, output: it.output, links: it.links }, null, 2)}
+                    </pre>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Step content */}
       {activeStep === 'adapter' && (
