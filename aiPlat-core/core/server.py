@@ -9103,6 +9103,17 @@ async def create_onboarding_evidence(request: Dict[str, Any], http_request: Requ
     status = str((request or {}).get("status") or "")
     if not step_key or not action or not status:
         raise HTTPException(status_code=400, detail="step_key/action/status required")
+    approval_request_id = (request or {}).get("approval_request_id")
+    links = (request or {}).get("links") if isinstance((request or {}).get("links"), dict) else {}
+    # Enrich links (best-effort) for deep-linking in Management.
+    try:
+        if approval_request_id:
+            links = dict(links or {})
+            links.setdefault("approvals_ui", "/core/approvals")
+            links.setdefault("syscalls_ui", f"/diagnostics/syscalls?approval_request_id={approval_request_id}")
+            links.setdefault("audit_ui", f"/diagnostics/audit?action=onboarding_evidence&request_id={approval_request_id}")
+    except Exception:
+        pass
     rec = await _execution_store.create_onboarding_evidence(
         tenant_id=str(tid),
         step_key=step_key,
@@ -9110,10 +9121,11 @@ async def create_onboarding_evidence(request: Dict[str, Any], http_request: Requ
         status=status,
         input=(request or {}).get("input") if isinstance((request or {}).get("input"), dict) else {},
         output=(request or {}).get("output") if isinstance((request or {}).get("output"), dict) else {},
-        links=(request or {}).get("links") if isinstance((request or {}).get("links"), dict) else {},
-        approval_request_id=(request or {}).get("approval_request_id"),
+        links=links,
+        approval_request_id=approval_request_id,
     )
     try:
+        req_id = str(approval_request_id) if approval_request_id else str(rec.get("id") or "")
         await _execution_store.add_audit_log(
             action="onboarding_evidence",
             status=status,
@@ -9122,11 +9134,13 @@ async def create_onboarding_evidence(request: Dict[str, Any], http_request: Requ
             actor_role=str(actor0.get("actor_role") or "") or None,
             resource_type="onboarding",
             resource_id=step_key,
+            request_id=req_id or None,
             detail={
                 "evidence_id": rec.get("id"),
                 "step_key": step_key,
                 "action": action,
-                "approval_request_id": (request or {}).get("approval_request_id"),
+                "approval_request_id": approval_request_id,
+                "links": links,
             },
         )
     except Exception:
