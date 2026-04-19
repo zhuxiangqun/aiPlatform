@@ -570,6 +570,24 @@ def _is_verified(meta: Dict[str, Any] | None) -> bool:
     return False
 
 
+def _management_public_url() -> str:
+    """
+    Public base URL for management UI (for clickable links in API errors).
+
+    Example: https://console.example.com
+    """
+    return (os.getenv("AIPLAT_MANAGEMENT_PUBLIC_URL") or "").rstrip("/")
+
+
+def _ui_url(path: str) -> str:
+    base = _management_public_url()
+    if not base:
+        return path
+    if not path.startswith("/"):
+        path = "/" + path
+    return base + path
+
+
 async def _require_targets_verified(targets: list[tuple[str, str]]) -> None:
     """
     Gate publish/enable actions by autosmoke verification status.
@@ -589,27 +607,68 @@ async def _require_targets_verified(targets: list[tuple[str, str]]) -> None:
                 missing.append({"type": ttype, "id": tid, "reason": "agent_manager_unavailable"})
                 continue
             a = await _workspace_agent_manager.get_agent(tid)
-            if not a or not _is_verified(getattr(a, "metadata", None)):
-                missing.append({"type": ttype, "id": tid, "reason": "unverified"})
+            meta = getattr(a, "metadata", None) if a else None
+            ver = meta.get("verification") if isinstance(meta, dict) else None
+            if not a or not _is_verified(meta):
+                item = {"type": ttype, "id": tid, "reason": "unverified", "verification": ver or {}}
+                jr = (ver or {}).get("job_run_id") if isinstance(ver, dict) else None
+                if isinstance(jr, str) and jr:
+                    item["diagnostics_url"] = _ui_url(f"/diagnostics/runs?run_id={jr}")
+                    if _execution_store:
+                        try:
+                            item["job_run"] = await _execution_store.get_job_run(jr)
+                        except Exception:
+                            pass
+                missing.append(item)
         elif ttype == "skill":
             if not _workspace_skill_manager:
                 missing.append({"type": ttype, "id": tid, "reason": "skill_manager_unavailable"})
                 continue
             s = await _workspace_skill_manager.get_skill(tid)
-            if not s or not _is_verified(getattr(s, "metadata", None)):
-                missing.append({"type": ttype, "id": tid, "reason": "unverified"})
+            meta = getattr(s, "metadata", None) if s else None
+            ver = meta.get("verification") if isinstance(meta, dict) else None
+            if not s or not _is_verified(meta):
+                item = {"type": ttype, "id": tid, "reason": "unverified", "verification": ver or {}}
+                jr = (ver or {}).get("job_run_id") if isinstance(ver, dict) else None
+                if isinstance(jr, str) and jr:
+                    item["diagnostics_url"] = _ui_url(f"/diagnostics/runs?run_id={jr}")
+                    if _execution_store:
+                        try:
+                            item["job_run"] = await _execution_store.get_job_run(jr)
+                        except Exception:
+                            pass
+                missing.append(item)
         elif ttype == "mcp":
             if not _workspace_mcp_manager:
                 missing.append({"type": ttype, "id": tid, "reason": "mcp_manager_unavailable"})
                 continue
             m = _workspace_mcp_manager.get_server(tid)
-            if not m or not _is_verified(getattr(m, "metadata", None)):
-                missing.append({"type": ttype, "id": tid, "reason": "unverified"})
+            meta = getattr(m, "metadata", None) if m else None
+            ver = meta.get("verification") if isinstance(meta, dict) else None
+            if not m or not _is_verified(meta):
+                item = {"type": ttype, "id": tid, "reason": "unverified", "verification": ver or {}}
+                jr = (ver or {}).get("job_run_id") if isinstance(ver, dict) else None
+                if isinstance(jr, str) and jr:
+                    item["diagnostics_url"] = _ui_url(f"/diagnostics/runs?run_id={jr}")
+                    if _execution_store:
+                        try:
+                            item["job_run"] = await _execution_store.get_job_run(jr)
+                        except Exception:
+                            pass
+                missing.append(item)
         else:
             # ignore other target types
             continue
     if missing:
-        raise HTTPException(status_code=403, detail={"code": "unverified", "message": "autosmoke must pass before publish/enable", "targets": missing})
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "unverified",
+                "message": "autosmoke must pass before publish/enable",
+                "hint": "查看 targets[*].diagnostics_url 获取失败原因；或等待 autosmoke 完成后再重试",
+                "targets": missing,
+            },
+        )
 
 async def _audit_event(kind: str, name: str, status: str, *, args: Dict[str, Any] | None = None, result: Dict[str, Any] | None = None, error: str | None = None) -> None:
     """Best-effort append to ExecutionStore syscall_events for auditability."""
