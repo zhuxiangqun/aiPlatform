@@ -2392,10 +2392,12 @@ async def replay_approval(request_id: str, request: dict, http_request: Request)
             return await publish_release_candidate(
                 candidate_id=str(candidate_id),
                 request={"require_approval": True, "approval_request_id": str(request_id), "user_id": r.user_id},
+                http_request=http_request,
             )
         return await rollback_release_candidate(
             candidate_id=str(candidate_id),
             request={"require_approval": True, "approval_request_id": str(request_id), "user_id": r.user_id},
+            http_request=http_request,
         )
 
     raise HTTPException(status_code=400, detail=f"unsupported_operation:{op}")
@@ -3202,7 +3204,7 @@ async def autocapture_to_skill_evolution(request: dict):
 
 
 @api_router.post("/learning/releases/{candidate_id}/publish")
-async def publish_release_candidate(candidate_id: str, request: dict):
+async def publish_release_candidate(candidate_id: str, request: dict, http_request: Request):
     """
     Publish a release_candidate (status transitions only).
 
@@ -3246,6 +3248,9 @@ async def publish_release_candidate(candidate_id: str, request: dict):
         pass
 
     user_id = (request or {}).get("user_id") or "system"
+    # PR-10: tenant-aware rollout config (optional)
+    actor0 = _rbac_actor_from_http(http_request, request if isinstance(request, dict) else None)
+    tenant_id = actor0.get("tenant_id")
     require_approval = bool((request or {}).get("require_approval", False))
     approval_request_id = (request or {}).get("approval_request_id")
     details = (request or {}).get("details") or ""
@@ -3313,11 +3318,42 @@ async def publish_release_candidate(candidate_id: str, request: dict):
                 await mgr2.update_skill(sid, metadata={"governance": gov2})
     except Exception:
         pass
-    return {"status": "published", "candidate_id": candidate_id, "approval_request_id": approval_request_id}
+    # PR-10: optionally attach rollout config to target (tenant-scoped)
+    rollout = (request or {}).get("rollout") if isinstance(request, dict) else None
+    rr = None
+    if isinstance(rollout, dict) and tenant_id and _execution_store:
+        try:
+            target_type = str(cand.get("target_type") or "")
+            target_id = str(cand.get("target_id") or "")
+            mode = str(rollout.get("mode") or "percentage")
+            percentage = rollout.get("percentage")
+            enabled = bool(rollout.get("enabled", True))
+            include_actor_ids = rollout.get("include_actor_ids") if isinstance(rollout.get("include_actor_ids"), list) else None
+            exclude_actor_ids = rollout.get("exclude_actor_ids") if isinstance(rollout.get("exclude_actor_ids"), list) else None
+            if target_type and target_id:
+                rr = await _execution_store.upsert_release_rollout(
+                    tenant_id=str(tenant_id),
+                    target_type=target_type,
+                    target_id=target_id,
+                    candidate_id=str(candidate_id),
+                    mode=mode,
+                    percentage=int(percentage) if percentage is not None else None,
+                    include_actor_ids=include_actor_ids,
+                    exclude_actor_ids=exclude_actor_ids,
+                    enabled=enabled,
+                    metadata={"published_at": now, "published_by": actor0.get("actor_id"), "source": "publish_release_candidate"},
+                )
+        except Exception:
+            rr = None
+
+    out = {"status": "published", "candidate_id": candidate_id, "approval_request_id": approval_request_id}
+    if rr is not None:
+        out["rollout"] = rr
+    return out
 
 
 @api_router.post("/learning/releases/{candidate_id}/rollback")
-async def rollback_release_candidate(candidate_id: str, request: dict):
+async def rollback_release_candidate(candidate_id: str, request: dict, http_request: Request):
     """
     Rollback a release_candidate (status transitions only).
 
@@ -3339,6 +3375,7 @@ async def rollback_release_candidate(candidate_id: str, request: dict):
         raise HTTPException(status_code=400, detail="not_a_release_candidate")
 
     user_id = (request or {}).get("user_id") or "system"
+    actor0 = _rbac_actor_from_http(http_request, request if isinstance(request, dict) else None)
     require_approval = bool((request or {}).get("require_approval", False))
     approval_request_id = (request or {}).get("approval_request_id")
     reason = (request or {}).get("reason") or ""
@@ -3390,7 +3427,130 @@ async def rollback_release_candidate(candidate_id: str, request: dict):
                 await mgr2.update_skill(sid, metadata={"governance": gov2})
     except Exception:
         pass
+    # PR-10: optionally disable rollout if it points to this candidate (best-effort)
+    try:
+        tid = actor0.get("tenant_id")
+        if tid and _execution_store:
+            target_type = str(cand.get("target_type") or "")
+            target_id = str(cand.get("target_id") or "")
+            rr = await _execution_store.get_release_rollout(tenant_id=str(tid), target_type=target_type, target_id=target_id)
+            if rr and str(rr.get("candidate_id") or "") == str(candidate_id):
+                await _execution_store.upsert_release_rollout(
+                    tenant_id=str(tid),
+                    target_type=target_type,
+                    target_id=target_id,
+                    candidate_id=str(candidate_id),
+                    mode=str(rr.get("mode") or "percentage"),
+                    percentage=rr.get("percentage"),
+                    include_actor_ids=rr.get("include_actor_ids"),
+                    exclude_actor_ids=rr.get("exclude_actor_ids"),
+                    enabled=False,
+                    metadata={"disabled_via": "rollback_release_candidate"},
+                )
+    except Exception:
+        pass
     return {"status": "rolled_back", "candidate_id": candidate_id, "approval_request_id": approval_request_id}
+
+
+# ==================== Release Rollouts / Metrics (PR-10) ====================
+
+
+@api_router.get("/learning/rollouts")
+async def list_release_rollouts(
+    http_request: Request,
+    target_type: Optional[str] = None,
+    target_id: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
+):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    actor0 = _rbac_actor_from_http(http_request, None)
+    tid = actor0.get("tenant_id")
+    return await _execution_store.list_release_rollouts(
+        tenant_id=str(tid) if tid else None, target_type=target_type, target_id=target_id, limit=limit, offset=offset
+    )
+
+
+@api_router.put("/learning/rollouts")
+async def upsert_release_rollout(request: dict, http_request: Request):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    actor0 = _rbac_actor_from_http(http_request, request if isinstance(request, dict) else None)
+    tid = actor0.get("tenant_id")
+    if not tid:
+        raise HTTPException(status_code=400, detail="tenant_id required")
+    target_type = (request or {}).get("target_type")
+    target_id = (request or {}).get("target_id")
+    candidate_id = (request or {}).get("candidate_id")
+    if not target_type or not target_id or not candidate_id:
+        raise HTTPException(status_code=400, detail="target_type,target_id,candidate_id required")
+    rr = await _execution_store.upsert_release_rollout(
+        tenant_id=str(tid),
+        target_type=str(target_type),
+        target_id=str(target_id),
+        candidate_id=str(candidate_id),
+        mode=str((request or {}).get("mode") or "percentage"),
+        percentage=(request or {}).get("percentage"),
+        include_actor_ids=(request or {}).get("include_actor_ids"),
+        exclude_actor_ids=(request or {}).get("exclude_actor_ids"),
+        enabled=bool((request or {}).get("enabled", True)),
+        metadata=(request or {}).get("metadata") if isinstance((request or {}).get("metadata"), dict) else None,
+    )
+    return {"status": "ok", "rollout": rr}
+
+
+@api_router.delete("/learning/rollouts")
+async def delete_release_rollout(request: dict, http_request: Request):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    actor0 = _rbac_actor_from_http(http_request, request if isinstance(request, dict) else None)
+    tid = actor0.get("tenant_id")
+    if not tid:
+        raise HTTPException(status_code=400, detail="tenant_id required")
+    target_type = (request or {}).get("target_type")
+    target_id = (request or {}).get("target_id")
+    if not target_type or not target_id:
+        raise HTTPException(status_code=400, detail="target_type,target_id required")
+    ok = await _execution_store.delete_release_rollout(tenant_id=str(tid), target_type=str(target_type), target_id=str(target_id))
+    return {"status": "deleted" if ok else "not_found"}
+
+
+@api_router.post("/learning/releases/{candidate_id}/metrics/snapshots")
+async def add_release_metric_snapshot(candidate_id: str, request: dict, http_request: Request):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    actor0 = _rbac_actor_from_http(http_request, request if isinstance(request, dict) else None)
+    tid = actor0.get("tenant_id")
+    metric_key = (request or {}).get("metric_key")
+    value = (request or {}).get("value")
+    if not metric_key or value is None:
+        raise HTTPException(status_code=400, detail="metric_key and value are required")
+    try:
+        val = float(value)
+    except Exception:
+        raise HTTPException(status_code=400, detail="value must be number")
+    rec = await _execution_store.add_release_metric_snapshot(
+        tenant_id=str(tid) if tid else None,
+        candidate_id=str(candidate_id),
+        metric_key=str(metric_key),
+        value=val,
+        window_start=(request or {}).get("window_start"),
+        window_end=(request or {}).get("window_end"),
+        metadata=(request or {}).get("metadata") if isinstance((request or {}).get("metadata"), dict) else None,
+    )
+    return {"status": "created", "snapshot": rec}
+
+
+@api_router.get("/learning/releases/{candidate_id}/metrics/snapshots")
+async def list_release_metric_snapshots(candidate_id: str, http_request: Request, metric_key: Optional[str] = None, limit: int = 200, offset: int = 0):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    actor0 = _rbac_actor_from_http(http_request, None)
+    tid = actor0.get("tenant_id")
+    return await _execution_store.list_release_metric_snapshots(
+        tenant_id=str(tid) if tid else None, candidate_id=str(candidate_id), metric_key=metric_key, limit=limit, offset=offset
+    )
 
 
 @api_router.post("/learning/releases/expire")

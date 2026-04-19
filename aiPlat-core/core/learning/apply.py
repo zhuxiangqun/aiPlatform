@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 import os
+import hashlib
 
 
 @dataclass
@@ -44,20 +45,64 @@ class LearningApplier:
         page = await self._store.list_learning_artifacts(target_type=target_type, target_id=target_id, limit=50, offset=0)
         items = page.get("items") or []
 
-        published_candidates = [
-            i
-            for i in items
-            if i.get("kind") == "release_candidate" and i.get("status") == "published"
-        ]
+        published_candidates = [i for i in items if i.get("kind") == "release_candidate" and i.get("status") == "published"]
         if not published_candidates:
             return None
 
+        # Stable selection: latest created_at among published candidates.
         published_candidates.sort(key=lambda x: float(x.get("created_at") or 0.0), reverse=True)
-        c = published_candidates[0]
-        payload = c.get("payload") if isinstance(c.get("payload"), dict) else {}
+        stable = published_candidates[0]
+
+        # PR-10: rollout override (tenant-scoped)
+        if os.getenv("AIPLAT_ENABLE_RELEASE_ROLLOUTS", "false").lower() in ("1", "true", "yes", "y"):
+            try:
+                from core.harness.kernel.execution_context import get_active_request_context
+
+                rctx = get_active_request_context()
+                tenant_id = getattr(rctx, "tenant_id", None) if rctx else None
+                actor_id = getattr(rctx, "actor_id", None) if rctx else None
+                if tenant_id and actor_id and hasattr(self._store, "get_release_rollout"):
+                    rr = await self._store.get_release_rollout(
+                        tenant_id=str(tenant_id), target_type=str(target_type), target_id=str(target_id)
+                    )
+                    if isinstance(rr, dict) and int(rr.get("enabled") or 0) == 1:
+                        inc = rr.get("include_actor_ids") if isinstance(rr.get("include_actor_ids"), list) else []
+                        exc = rr.get("exclude_actor_ids") if isinstance(rr.get("exclude_actor_ids"), list) else []
+                        if inc and str(actor_id) not in {str(x) for x in inc}:
+                            rr = None
+                        if rr and exc and str(actor_id) in {str(x) for x in exc}:
+                            rr = None
+                    if isinstance(rr, dict):
+                        mode = str(rr.get("mode") or "percentage").lower()
+                        pct = rr.get("percentage")
+                        choose = False
+                        if mode == "all":
+                            choose = True
+                        else:
+                            try:
+                                p = int(pct) if pct is not None else 0
+                            except Exception:
+                                p = 0
+                            seed = f"{tenant_id}:{target_type}:{target_id}:{actor_id}"
+                            bucket = int(hashlib.sha256(seed.encode("utf-8")).hexdigest()[:8], 16) % 100
+                            choose = bucket < max(0, min(100, p))
+                        if choose and rr.get("candidate_id"):
+                            cand_id = str(rr.get("candidate_id"))
+                            cand = await self._store.get_learning_artifact(cand_id)
+                            if isinstance(cand, dict) and cand.get("kind") == "release_candidate" and cand.get("status") == "published":
+                                payload = cand.get("payload") if isinstance(cand.get("payload"), dict) else {}
+                                return ActiveRelease(
+                                    candidate_id=str(cand.get("artifact_id") or cand_id),
+                                    version=str(cand.get("version") or ""),
+                                    summary=str(payload.get("summary") or ""),
+                                )
+            except Exception:
+                pass
+
+        payload = stable.get("payload") if isinstance(stable.get("payload"), dict) else {}
         return ActiveRelease(
-            candidate_id=str(c.get("artifact_id") or ""),
-            version=str(c.get("version") or ""),
+            candidate_id=str(stable.get("artifact_id") or ""),
+            version=str(stable.get("version") or ""),
             summary=str(payload.get("summary") or ""),
         )
 
