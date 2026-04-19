@@ -650,6 +650,7 @@ async def lifespan(app: FastAPI):
         ("core.apps.tools.code", "CodeExecutionTool", {"timeout": 30000}),
         ("core.apps.tools.database", "DatabaseTool", {"timeout": 60000}),
         ("core.apps.tools.browser", "BrowserTool", {"navigation_timeout": 30000}),
+        ("core.apps.tools.repo", "RepoTool", {"timeout": 20000}),
     ]
     for module_path, cls_name, kwargs in _tool_modules:
         try:

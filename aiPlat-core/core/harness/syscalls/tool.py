@@ -171,6 +171,15 @@ async def sys_tool_call(
     except Exception:
         pass
 
+    # P0: repo-aware workflow gate (force approval for mutating git operations).
+    try:
+        if tool_name == "repo":
+            op = args.get("operation") or args.get("op")
+            if str(op) in {"add", "commit", "checkout", "branch_create"}:
+                args["_approval_required"] = True
+    except Exception:
+        pass
+
     # Phase R2: Toolset gate (runtime allowlist). Fail-closed when a toolset is active.
     try:
         ws = get_active_workspace_context()

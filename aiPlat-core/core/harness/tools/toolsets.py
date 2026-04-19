@@ -26,6 +26,7 @@ class ToolsetPolicy:
     allowed_prefixes: Set[str] = field(default_factory=set)
     # Per-tool restrictions (best-effort; enforced in sys_tool_call).
     file_operations_allowed_ops: Optional[Set[str]] = None
+    repo_allowed_ops: Optional[Set[str]] = None
 
 
 # NOTE: These tool names must match ToolConfig.name in core/apps/tools/*
@@ -34,15 +35,18 @@ DEFAULT_TOOLSETS: Dict[str, ToolsetPolicy] = {
     "safe_readonly": ToolsetPolicy(
         name="safe_readonly",
         description="只读安全工具集：允许读取/列出文件与低风险工具，禁止写入/删除与高风险网络/代码执行",
-        allowed_tools={"calculator", "search", "file_operations", "webfetch"},
+        allowed_tools={"calculator", "search", "file_operations", "webfetch", "repo"},
         file_operations_allowed_ops={"read", "list"},
+        repo_allowed_ops={"status", "diff", "log", "ls_files", "show", "branch_list"},
     ),
     # Default workspace toolset: allow write but still blocks dangerous tools by default.
     "workspace_default": ToolsetPolicy(
         name="workspace_default",
         description="工作区默认工具集：允许文件读写（含 patch/删除），以及基础 webfetch/search；不含 http/browser/code/database",
-        allowed_tools={"calculator", "search", "file_operations", "webfetch"},
+        allowed_tools={"calculator", "search", "file_operations", "webfetch", "repo"},
         file_operations_allowed_ops={"read", "list", "write", "delete"},
+        # repo tool is allowed for read-only developer introspection
+        repo_allowed_ops={"status", "diff", "log", "ls_files", "show", "branch_list"},
     ),
     # Full toolset (explicit opt-in).
     "full": ToolsetPolicy(
@@ -57,6 +61,7 @@ DEFAULT_TOOLSETS: Dict[str, ToolsetPolicy] = {
             "browser",
             "code",
             "database",
+            "repo",
         },
         file_operations_allowed_ops={"read", "list", "write", "delete"},
     ),
@@ -64,8 +69,20 @@ DEFAULT_TOOLSETS: Dict[str, ToolsetPolicy] = {
     "write_repo": ToolsetPolicy(
         name="write_repo",
         description="仓库写入工具集：允许 file_operations 写/删（适用于生成补丁、批量改动）",
-        allowed_tools={"file_operations", "calculator"},
+        allowed_tools={"file_operations", "calculator", "repo"},
         file_operations_allowed_ops={"read", "list", "write", "delete"},
+        repo_allowed_ops={
+            "status",
+            "diff",
+            "log",
+            "ls_files",
+            "show",
+            "branch_list",
+            "branch_create",
+            "checkout",
+            "add",
+            "commit",
+        },
     ),
     "web": ToolsetPolicy(
         name="web",
@@ -118,6 +135,16 @@ def is_tool_allowed(policy: ToolsetPolicy, tool_name: str, tool_args: Optional[D
             return (
                 False,
                 f"file_operations operation '{op}' is not allowed in toolset '{policy.name}'",
+            )
+
+    if tool_name == "repo" and policy.repo_allowed_ops is not None:
+        op = None
+        if isinstance(tool_args, dict):
+            op = tool_args.get("operation") or tool_args.get("op")
+        if op and str(op) not in policy.repo_allowed_ops:
+            return (
+                False,
+                f"repo operation '{op}' is not allowed in toolset '{policy.name}'",
             )
 
     return True, None
