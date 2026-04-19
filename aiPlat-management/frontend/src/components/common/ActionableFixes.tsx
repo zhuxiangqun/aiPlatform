@@ -3,6 +3,7 @@ import { approvalsApi, onboardingApi } from '../../services';
 import { Badge } from '../ui';
 
 export type DoctorAction = {
+  action_type?: string;
   method: string;
   api_url: string;
   body_example?: Record<string, any>;
@@ -29,6 +30,7 @@ export const ActionableFixes: React.FC<Props> = ({ actions, recommendations, onA
 
   const run = async (k: string, a: DoctorAction, override?: { approval_request_id?: string }) => {
     const apiUrl = String(a?.api_url || '');
+    const actionType = String(a?.action_type || '');
     const method = String(a?.method || 'POST').toUpperCase();
     if (method !== 'POST') {
       setMsg((p) => ({ ...(p || {}), [k]: `不支持的 method：${method}` }));
@@ -41,12 +43,15 @@ export const ActionableFixes: React.FC<Props> = ({ actions, recommendations, onA
       if (override?.approval_request_id) body.approval_request_id = override.approval_request_id;
 
       let res: any = null;
-      // allowlist only
-      if (apiUrl === '/api/onboarding/strong-gate') res = await onboardingApi.setStrongGate(body);
-      else if (apiUrl === '/api/onboarding/autosmoke') res = await onboardingApi.setAutosmoke(body);
-      else if (apiUrl === '/api/onboarding/secrets/migrate') res = await onboardingApi.migrateSecrets(body);
-      else {
-        setMsg((p) => ({ ...(p || {}), [k]: `未在白名单内的 api_url：${apiUrl}` }));
+      // allowlist only (prefer action_type, fallback to api_url)
+      if (actionType === 'onboarding.strong_gate' || apiUrl === '/api/onboarding/strong-gate') {
+        res = await onboardingApi.setStrongGate(body);
+      } else if (actionType === 'onboarding.autosmoke' || apiUrl === '/api/onboarding/autosmoke') {
+        res = await onboardingApi.setAutosmoke(body);
+      } else if (actionType === 'onboarding.secrets_migrate' || apiUrl === '/api/onboarding/secrets/migrate') {
+        res = await onboardingApi.migrateSecrets(body);
+      } else {
+        setMsg((p) => ({ ...(p || {}), [k]: `未在白名单内的 action：${actionType || apiUrl}` }));
         return;
       }
 
@@ -195,4 +200,3 @@ export const ActionableFixes: React.FC<Props> = ({ actions, recommendations, onA
     </div>
   );
 };
-

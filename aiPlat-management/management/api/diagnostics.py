@@ -343,19 +343,23 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
         "doctor_api": "/api/diagnostics/doctor",
         "run_e2e_smoke_api": "/api/diagnostics/e2e/smoke",
     }
+    # Doctor Actions: use action_type (frontend executes by allowlist).
+    # Keep api_url for backward compatibility.
     actions = {
         "toggle_strong_gate": {
+            "action_type": "onboarding.strong_gate",
             "method": "POST",
             "api_url": "/api/onboarding/strong-gate",
             "body_example": {"tenant_id": "default", "enabled": False, "require_approval": True},
-        }
-        ,
+        },
         "migrate_secrets": {
+            "action_type": "onboarding.secrets_migrate",
             "method": "POST",
             "api_url": "/api/onboarding/secrets/migrate",
             "body_example": {"require_approval": True},
         },
         "enable_autosmoke": {
+            "action_type": "onboarding.autosmoke",
             "method": "POST",
             "api_url": "/api/onboarding/autosmoke",
             "body_example": {"enabled": True, "enforce": True, "require_approval": True},
