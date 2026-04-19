@@ -364,6 +364,15 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
     except Exception:
         changesets = {"total": 0, "items": []}
 
+    # Repo changeset preview (optional; best-effort). This does not record by default.
+    repo_changeset: Dict[str, Any] = {}
+    try:
+        repo_root = config.get("repo_root") if isinstance(config, dict) else None
+        if repo_root and core_client:
+            repo_changeset = await core_client.repo_changeset_preview({"repo_root": repo_root, "include_patch": False})
+    except Exception:
+        repo_changeset = {}
+
     # Strong gate status (default tenant)
     strong_gate: Dict[str, Any] = {"tenant_id": "default", "enabled": False}
     try:
@@ -509,6 +518,7 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
     config = {
         "management_public_url": os.getenv("AIPLAT_MANAGEMENT_PUBLIC_URL"),
         "autosmoke_webhook_url": os.getenv("AIPLAT_AUTOSMOKE_WEBHOOK_URL"),
+        "repo_root": os.getenv("AIPLAT_REPO_ROOT"),
     }
 
     recs = []
@@ -616,6 +626,7 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
         "skills": {"capabilities": skill_capabilities},
         "prompts": {"templates": {"total": int((prompt_templates or {}).get("total") or 0), "items": (prompt_templates or {}).get("items") or []}},
         "changesets": changesets,
+        "repo": {"changeset": repo_changeset},
         "strong_gate": strong_gate,
         "config": config,
         "links": links,

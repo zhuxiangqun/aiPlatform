@@ -47,6 +47,7 @@ from core.schemas import (
     DiagnosticsPromptAssembleRequest,
     PromptTemplateUpsertRequest,
     PromptTemplateRollbackRequest,
+    RepoChangesetPreviewRequest,
     LongTermMemoryAddRequest,
     LongTermMemorySearchRequest,
     MessageCreateRequest,
@@ -7621,6 +7622,112 @@ async def delete_prompt_template(template_id: str, require_approval: bool = True
     except Exception:
         pass
     return {"status": "deleted" if ok else "not_found"}
+
+
+# ==================== Repo Changeset (repo-aware workflow MVP) ====================
+
+
+@api_router.post("/diagnostics/repo/changeset/preview")
+async def diagnostics_repo_changeset_preview(request: RepoChangesetPreviewRequest):
+    """
+    Repo-aware workflow MVP: summarize git working tree changes (no arbitrary commands).
+    Returns status + numstat + hashes. Optionally includes full patch (include_patch=true).
+    """
+    import subprocess
+    import hashlib
+    from pathlib import Path
+
+    repo_root = str(request.repo_root or "").strip()
+    if not repo_root:
+        raise HTTPException(status_code=400, detail="repo_root_required")
+    p = Path(repo_root)
+    if not p.exists() or not p.is_dir():
+        raise HTTPException(status_code=404, detail="repo_root_not_found")
+    if not (p / ".git").exists():
+        raise HTTPException(status_code=400, detail="not_a_git_repo")
+
+    def _run(args: list[str], timeout_s: int = 5) -> str:
+        cp = subprocess.run(args, capture_output=True, text=True, timeout=timeout_s)
+        if cp.returncode != 0:
+            raise RuntimeError((cp.stderr or cp.stdout or "").strip()[:500])
+        return (cp.stdout or "").strip()
+
+    try:
+        head = _run(["git", "-C", repo_root, "rev-parse", "HEAD"])
+    except Exception:
+        head = ""
+    try:
+        branch = _run(["git", "-C", repo_root, "rev-parse", "--abbrev-ref", "HEAD"])
+    except Exception:
+        branch = ""
+
+    status = _run(["git", "-C", repo_root, "status", "--porcelain=v1"])
+    # numstat: "added\tdeleted\tpath"
+    numstat = _run(["git", "-C", repo_root, "diff", "--numstat"])
+    staged_numstat = _run(["git", "-C", repo_root, "diff", "--cached", "--numstat"])
+    patch = ""
+    if bool(request.include_patch):
+        patch = _run(["git", "-C", repo_root, "diff"], timeout_s=10)
+    diff_hash = hashlib.sha256((numstat + "\n" + staged_numstat + "\n" + patch).encode("utf-8")).hexdigest()
+
+    def _summarize(ns: str) -> dict:
+        files = 0
+        added = 0
+        deleted = 0
+        for line in (ns or "").splitlines():
+            parts = line.split("\t")
+            if len(parts) < 3:
+                continue
+            files += 1
+            a, d = parts[0], parts[1]
+            try:
+                if a.isdigit():
+                    added += int(a)
+            except Exception:
+                pass
+            try:
+                if d.isdigit():
+                    deleted += int(d)
+            except Exception:
+                pass
+        return {"files_changed": files, "lines_added": added, "lines_deleted": deleted}
+
+    out = {
+        "repo_root": repo_root,
+        "branch": branch,
+        "head": head,
+        "status_lines": len(status.splitlines()) if status else 0,
+        "working_tree": _summarize(numstat),
+        "staged": _summarize(staged_numstat),
+        "diff_sha256": diff_hash,
+    }
+    if bool(request.include_patch):
+        out["patch"] = patch
+        out["patch_len"] = len(patch)
+    return out
+
+
+@api_router.post("/diagnostics/repo/changeset/record")
+async def diagnostics_repo_changeset_record(request: RepoChangesetPreviewRequest):
+    """
+    Record the repo changeset summary as a changeset audit event.
+    """
+    preview = await diagnostics_repo_changeset_preview(request)
+    try:
+        await _record_changeset(
+            name="repo_changeset_record",
+            target_type="repo",
+            target_id=str(preview.get("repo_root") or ""),
+            args={"branch": preview.get("branch"), "head": preview.get("head")},
+            result={
+                "working_tree": preview.get("working_tree"),
+                "staged": preview.get("staged"),
+                "diff_sha256": preview.get("diff_sha256"),
+            },
+        )
+    except Exception:
+        pass
+    return {"status": "recorded", "preview": preview}
 
 
 # ==================== Health Check ====================

@@ -232,6 +232,11 @@ class PromptTemplateRollbackRequest(BaseModel):
     details: Optional[str] = None
 
 
+class RepoChangesetPreviewRequest(BaseModel):
+    repo_root: str
+    include_patch: bool = False  # default: do NOT return full diff
+
+
 class LongTermMemoryAddRequest(BaseModel):
     user_id: Optional[str] = None
     key: Optional[str] = None

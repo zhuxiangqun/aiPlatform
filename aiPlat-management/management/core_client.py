@@ -191,6 +191,14 @@ class CoreAPIClient:
     async def list_prompt_templates(self, *, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
         return await self._request("GET", "/api/core/prompts", params={"limit": int(limit), "offset": int(offset)})
 
+    # ===== Repo diagnostics =====
+
+    async def repo_changeset_preview(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", "/api/core/diagnostics/repo/changeset/preview", json=body or {})
+
+    async def repo_changeset_record(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", "/api/core/diagnostics/repo/changeset/record", json=body or {})
+
     # ===== Jobs / Cron (Roadmap-3) =====
 
     async def list_jobs(self, *, limit: int = 100, offset: int = 0, enabled: Optional[bool] = None) -> Dict[str, Any]:
