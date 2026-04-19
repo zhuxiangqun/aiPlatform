@@ -859,7 +859,7 @@ def _inject_http_request_context(payload: Any, http_request: Request, *, entrypo
 def _normalize_run_status_v2(*, ok: bool, legacy_status: Optional[str], error_code: Optional[str]) -> str:
     s = str(legacy_status or "").lower().strip()
     c = str(error_code or "").upper().strip()
-    if s in {"accepted"}:
+    if s in {"accepted", "queued"}:
         return RunStatus.accepted.value
     if s in {"running"}:
         return RunStatus.running.value
@@ -2237,7 +2237,8 @@ async def get_run(run_id: str):
     except Exception:
         pass
     status2 = _normalize_run_status_v2(ok=str(legacy_status) == "completed", legacy_status=legacy_status, error_code=err_code)
-    ok2 = status2 == RunStatus.completed.value
+    # ok: treat queued/accepted/running as ok (no error), but waiting_approval carries error
+    ok2 = status2 not in {RunStatus.failed.value, RunStatus.aborted.value, RunStatus.timeout.value, RunStatus.waiting_approval.value}
     err_obj = None
     if not ok2:
         err_obj = _normalize_run_error(
@@ -2463,7 +2464,7 @@ async def wait_run(run_id: str, request: dict):
     except Exception:
         pass
     status2 = _normalize_run_status_v2(ok=str(legacy_status) == "completed", legacy_status=legacy_status, error_code=err_code)
-    ok2 = status2 == RunStatus.completed.value
+    ok2 = status2 not in {RunStatus.failed.value, RunStatus.aborted.value, RunStatus.timeout.value, RunStatus.waiting_approval.value}
     err_obj = None
     if not ok2:
         err_obj = _normalize_run_error(

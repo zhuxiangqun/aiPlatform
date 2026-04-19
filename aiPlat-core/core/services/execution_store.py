@@ -43,7 +43,7 @@ class ExecutionStoreConfig:
 
 
 class ExecutionStore:
-    CURRENT_SCHEMA_VERSION = 29
+    CURRENT_SCHEMA_VERSION = 30
 
     def __init__(self, config: ExecutionStoreConfig):
         self._config = config
@@ -1076,6 +1076,56 @@ class ExecutionStore:
                             pass
                         _set_version(29)
                         current = 29
+
+                    # ---- Migration v30: session_locks + session_queue (PR-04 session lane) ----
+                    if current < 30:
+                        try:
+                            conn.execute(
+                                """
+                                CREATE TABLE IF NOT EXISTS session_locks (
+                                  tenant_id TEXT,
+                                  session_id TEXT NOT NULL,
+                                  run_id TEXT NOT NULL,
+                                  acquired_at REAL NOT NULL,
+                                  expires_at REAL NOT NULL,
+                                  PRIMARY KEY(tenant_id, session_id)
+                                );
+                                """
+                            )
+                            conn.execute(
+                                "CREATE INDEX IF NOT EXISTS idx_session_locks_exp ON session_locks(expires_at);"
+                            )
+                        except Exception:
+                            pass
+                        try:
+                            conn.execute(
+                                """
+                                CREATE TABLE IF NOT EXISTS session_queue (
+                                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                  tenant_id TEXT,
+                                  session_id TEXT NOT NULL,
+                                  run_id TEXT NOT NULL,
+                                  kind TEXT NOT NULL,
+                                  target_id TEXT NOT NULL,
+                                  user_id TEXT,
+                                  queue_mode TEXT,
+                                  status TEXT NOT NULL,
+                                  payload_json TEXT,
+                                  created_at REAL NOT NULL,
+                                  UNIQUE(run_id)
+                                );
+                                """
+                            )
+                            conn.execute(
+                                "CREATE INDEX IF NOT EXISTS idx_session_queue_sess_time ON session_queue(tenant_id, session_id, created_at ASC);"
+                            )
+                            conn.execute(
+                                "CREATE INDEX IF NOT EXISTS idx_session_queue_status_time ON session_queue(status, created_at ASC);"
+                            )
+                        except Exception:
+                            pass
+                        _set_version(30)
+                        current = 30
 
                     # If legacy db exists with tables but without meta, upgrade meta to current
                     if current < self.CURRENT_SCHEMA_VERSION:
@@ -2348,6 +2398,163 @@ class ExecutionStore:
 
         return await anyio.to_thread.run_sync(_sync)
 
+    # ---------------------------------------------------------------------
+    # PR-04: Session lane (per-session serialization) - locks + queue
+    # ---------------------------------------------------------------------
+
+    async def try_acquire_session_lock(
+        self,
+        *,
+        tenant_id: Optional[str],
+        session_id: str,
+        run_id: str,
+        ttl_seconds: int = 300,
+    ) -> bool:
+        """
+        Best-effort lock to ensure only one active run per (tenant, session).
+        Returns True if acquired (or renewed), False if held by another run.
+        """
+        await self.init()
+        db_path = self._config.db_path
+        t = str(tenant_id or "")
+
+        def _sync() -> bool:
+            now = float(time.time())
+            exp = now + float(max(int(ttl_seconds), 1))
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                row = conn.execute(
+                    "SELECT run_id, expires_at FROM session_locks WHERE tenant_id=? AND session_id=?",
+                    (t, str(session_id)),
+                ).fetchone()
+                if row:
+                    cur_run = row["run_id"]
+                    cur_exp = float(row["expires_at"] or 0.0)
+                    if cur_run != str(run_id) and cur_exp > now:
+                        return False
+                # Upsert lock
+                conn.execute(
+                    """
+                    INSERT INTO session_locks(tenant_id, session_id, run_id, acquired_at, expires_at)
+                    VALUES(?, ?, ?, ?, ?)
+                    ON CONFLICT(tenant_id, session_id) DO UPDATE SET
+                      run_id=excluded.run_id,
+                      acquired_at=excluded.acquired_at,
+                      expires_at=excluded.expires_at
+                    """,
+                    (t, str(session_id), str(run_id), now, exp),
+                )
+                conn.commit()
+                return True
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
+    async def release_session_lock(self, *, tenant_id: Optional[str], session_id: str, run_id: str) -> None:
+        await self.init()
+        db_path = self._config.db_path
+        t = str(tenant_id or "")
+
+        def _sync() -> None:
+            conn = sqlite3.connect(db_path)
+            try:
+                conn.execute(
+                    "DELETE FROM session_locks WHERE tenant_id=? AND session_id=? AND run_id=?",
+                    (t, str(session_id), str(run_id)),
+                )
+                conn.commit()
+            finally:
+                conn.close()
+
+        await anyio.to_thread.run_sync(_sync)
+
+    async def enqueue_session_run(
+        self,
+        *,
+        tenant_id: Optional[str],
+        session_id: str,
+        run_id: str,
+        kind: str,
+        target_id: str,
+        user_id: Optional[str],
+        payload: Optional[Dict[str, Any]],
+        queue_mode: Optional[str] = None,
+    ) -> None:
+        await self.init()
+        db_path = self._config.db_path
+        t = str(tenant_id or "")
+
+        def _sync() -> None:
+            conn = sqlite3.connect(db_path)
+            try:
+                conn.execute(
+                    """
+                    INSERT INTO session_queue(tenant_id, session_id, run_id, kind, target_id, user_id, queue_mode, status, payload_json, created_at)
+                    VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(run_id) DO NOTHING;
+                    """,
+                    (
+                        t,
+                        str(session_id),
+                        str(run_id),
+                        str(kind),
+                        str(target_id),
+                        str(user_id) if user_id else None,
+                        str(queue_mode) if queue_mode else None,
+                        "queued",
+                        _json_dumps(payload or {}),
+                        float(time.time()),
+                    ),
+                )
+                conn.commit()
+            finally:
+                conn.close()
+
+        await anyio.to_thread.run_sync(_sync)
+
+    async def dequeue_session_run(self, *, tenant_id: Optional[str], session_id: str) -> Optional[Dict[str, Any]]:
+        """Pop the oldest queued item for session; mark it as dequeued."""
+        await self.init()
+        db_path = self._config.db_path
+        t = str(tenant_id or "")
+
+        def _sync() -> Optional[Dict[str, Any]]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                row = conn.execute(
+                    """
+                    SELECT id, run_id, kind, target_id, user_id, queue_mode, payload_json, created_at
+                    FROM session_queue
+                    WHERE tenant_id=? AND session_id=? AND status='queued'
+                    ORDER BY created_at ASC
+                    LIMIT 1
+                    """,
+                    (t, str(session_id)),
+                ).fetchone()
+                if not row:
+                    return None
+                conn.execute("UPDATE session_queue SET status='dequeued' WHERE id=?", (int(row["id"]),))
+                conn.commit()
+                return {
+                    "id": int(row["id"]),
+                    "tenant_id": t,
+                    "session_id": str(session_id),
+                    "run_id": row["run_id"],
+                    "kind": row["kind"],
+                    "target_id": row["target_id"],
+                    "user_id": row["user_id"],
+                    "queue_mode": row["queue_mode"],
+                    "payload": _json_loads(row["payload_json"]) or {},
+                    "created_at": float(row["created_at"] or 0.0),
+                }
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
     async def get_run_summary(self, *, run_id: str) -> Optional[Dict[str, Any]]:
         """
         Best-effort unified run view across agent/skill/tool executions.
@@ -2452,7 +2659,11 @@ class ExecutionStore:
                             (run_id,),
                         ).fetchone()
                         end_payload = _json_loads(end["payload_json"]) or {} if end else {}
-                        status = str(end_payload.get("status") or "running") if end else "running"
+                        status = (
+                            str(end_payload.get("status") or "running")
+                            if end
+                            else str(start_payload.get("status") or "running")
+                        )
                         end_time = end["created_at"] if end else None
                         target_id = (
                             start_payload.get("agent_id")

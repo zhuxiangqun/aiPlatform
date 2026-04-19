@@ -7,6 +7,7 @@ Provides a unified entry point for the Harness framework.
 from typing import Any, Dict, Optional
 from dataclasses import dataclass, field
 import os
+import asyncio
 import time
 import uuid
 
@@ -93,6 +94,9 @@ class HarnessIntegration:
 
         # Phase-1 Kernel runtime dependencies (wired by core/server.py lifespan)
         self._runtime: Optional["KernelRuntime"] = None
+
+        # PR-04: prevent duplicate drain tasks per (tenant, session)
+        self._session_drain_inflight: set[str] = set()
     
     @classmethod
     def get_instance(cls) -> "HarnessIntegration":
@@ -151,22 +155,183 @@ class HarnessIntegration:
         This method is intentionally minimal: it preserves existing API behavior while
         routing execution through a single kernel entry point.
         """
-        if request.kind == "agent":
-            return await self._execute_agent(request)
-        if request.kind == "skill":
-            return await self._execute_skill(request)
-        if request.kind == "tool":
-            return await self._execute_tool(request)
-        if request.kind == "graph":
-            return await self._execute_graph(request)
-        if request.kind == "smoke_e2e":
-            return await self._execute_smoke_e2e(request)
+        # PR-04: per-session serialization + queueing (best-effort, can be disabled)
+        runtime = getattr(self, "_runtime", None)
+        store = getattr(runtime, "execution_store", None) if runtime else None
+        enable_queue = os.getenv("AIPLAT_SESSION_QUEUE_ENABLED", "true").lower() in ("1", "true", "yes", "y")
+        tenant_id = None
+        queue_mode = None
+        try:
+            if isinstance(getattr(request, "payload", None), dict):
+                ctx0 = request.payload.get("context") if isinstance(request.payload.get("context"), dict) else {}
+                opts0 = request.payload.get("options") if isinstance(request.payload.get("options"), dict) else {}
+                tenant_id = ctx0.get("tenant_id") if isinstance(ctx0, dict) else None
+                queue_mode = (
+                    (opts0.get("queue_mode") if isinstance(opts0, dict) else None)
+                    or request.payload.get("queue_mode")
+                    or (ctx0.get("queue_mode") if isinstance(ctx0, dict) else None)
+                )
+        except Exception:
+            tenant_id = None
+            queue_mode = None
+
+        session_id = str(getattr(request, "session_id", None) or "")
+        run_id = str(getattr(request, "run_id", None) or "") or new_prefixed_id("run")
+        request.run_id = run_id
+
+        lock_acquired = False
+        if enable_queue and store is not None and session_id and request.kind in ("agent", "skill", "tool", "graph"):
+            try:
+                lock_acquired = await store.try_acquire_session_lock(
+                    tenant_id=str(tenant_id) if tenant_id is not None else None,
+                    session_id=session_id,
+                    run_id=run_id,
+                    ttl_seconds=int(os.getenv("AIPLAT_SESSION_LOCK_TTL_SECONDS", "300") or "300"),
+                )
+            except Exception:
+                lock_acquired = False
+
+            if not lock_acquired:
+                # Enqueue and return immediately (queue_mode default collect).
+                try:
+                    await store.enqueue_session_run(
+                        tenant_id=str(tenant_id) if tenant_id is not None else None,
+                        session_id=session_id,
+                        run_id=run_id,
+                        kind=str(request.kind),
+                        target_id=str(request.target_id),
+                        user_id=str(getattr(request, "user_id", None) or "system"),
+                        payload=request.payload if isinstance(request.payload, dict) else {},
+                        queue_mode=str(queue_mode) if queue_mode else None,
+                    )
+                except Exception:
+                    pass
+                try:
+                    await store.append_run_event(
+                        run_id=run_id,
+                        event_type="run_start",
+                        trace_id=None,
+                        tenant_id=str(tenant_id) if tenant_id is not None else None,
+                        payload={
+                            "kind": str(request.kind),
+                            "target_id": str(request.target_id),
+                            "user_id": str(getattr(request, "user_id", None) or "system"),
+                            "session_id": session_id,
+                            "status": "queued",
+                            "queue_mode": str(queue_mode) if queue_mode else "collect",
+                        },
+                    )
+                    await store.append_run_event(
+                        run_id=run_id,
+                        event_type="queued",
+                        trace_id=None,
+                        tenant_id=str(tenant_id) if tenant_id is not None else None,
+                        payload={"reason": "session_locked", "session_id": session_id},
+                    )
+                except Exception:
+                    pass
+                return ExecutionResult(
+                    ok=True,
+                    payload={
+                        "execution_id": run_id,
+                        "run_id": run_id,
+                        "status": "queued",
+                        "queued": True,
+                        "queue_mode": str(queue_mode) if queue_mode else "collect",
+                    },
+                    run_id=run_id,
+                )
+
+        try:
+            if request.kind == "agent":
+                return await self._execute_agent(request)
+            if request.kind == "skill":
+                return await self._execute_skill(request)
+            if request.kind == "tool":
+                return await self._execute_tool(request)
+            if request.kind == "graph":
+                return await self._execute_graph(request)
+            if request.kind == "smoke_e2e":
+                return await self._execute_smoke_e2e(request)
+        finally:
+            if lock_acquired and store is not None and session_id:
+                try:
+                    await store.release_session_lock(
+                        tenant_id=str(tenant_id) if tenant_id is not None else None,
+                        session_id=session_id,
+                        run_id=run_id,
+                    )
+                except Exception:
+                    pass
+                # Kick queue drain in background (best-effort)
+                try:
+                    self._kick_session_drain(tenant_id=str(tenant_id) if tenant_id is not None else None, session_id=session_id)
+                except Exception:
+                    pass
         return ExecutionResult(
             ok=False,
             error=f"Unsupported kind: {request.kind}",
             error_detail=self._error_detail("UNSUPPORTED_KIND", f"Unsupported kind: {request.kind}"),
             http_status=400,
         )
+
+    def _kick_session_drain(self, *, tenant_id: Optional[str], session_id: str) -> None:
+        key = f"{tenant_id or ''}::{session_id}"
+        if key in self._session_drain_inflight:
+            return
+        self._session_drain_inflight.add(key)
+
+        async def _runner():
+            try:
+                await self._drain_session_queue(tenant_id=tenant_id, session_id=session_id)
+            finally:
+                try:
+                    self._session_drain_inflight.discard(key)
+                except Exception:
+                    pass
+
+        asyncio.create_task(_runner())
+
+    async def _drain_session_queue(self, *, tenant_id: Optional[str], session_id: str) -> None:
+        runtime = getattr(self, "_runtime", None)
+        store = getattr(runtime, "execution_store", None) if runtime else None
+        if store is None:
+            return
+        while True:
+            item = None
+            try:
+                item = await store.dequeue_session_run(tenant_id=tenant_id, session_id=session_id)
+            except Exception:
+                item = None
+            if not item:
+                return
+            run_id = str(item.get("run_id") or "") or new_prefixed_id("run")
+            try:
+                await store.append_run_event(
+                    run_id=run_id,
+                    event_type="dequeued",
+                    trace_id=None,
+                    tenant_id=str(tenant_id) if tenant_id is not None else None,
+                    payload={"session_id": session_id, "kind": item.get("kind"), "target_id": item.get("target_id")},
+                )
+            except Exception:
+                pass
+            try:
+                from core.harness.kernel.types import ExecutionRequest
+
+                req = ExecutionRequest(
+                    kind=str(item.get("kind") or "agent"),  # type: ignore[arg-type]
+                    target_id=str(item.get("target_id") or ""),
+                    payload=item.get("payload") if isinstance(item.get("payload"), dict) else {},
+                    user_id=str(item.get("user_id") or "system"),
+                    session_id=str(item.get("session_id") or session_id),
+                    run_id=run_id,
+                )
+                if req.target_id:
+                    await self.execute(req)
+            except Exception:
+                # best-effort: swallow to continue draining other sessions
+                pass
 
     # -----------------------------
     # Roadmap-0: error normalization

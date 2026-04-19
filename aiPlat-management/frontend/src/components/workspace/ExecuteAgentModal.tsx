@@ -58,6 +58,7 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
     try {
       const result = await workspaceAgentApi.execute(agent.id, { input: parsedInput, options: { toolset } });
       const status = String((result as any)?.status || 'ok');
+      const legacyStatus = String((result as any)?.legacy_status || '');
       const execution_id = (result as any)?.execution_id ? String((result as any).execution_id) : undefined;
       setResult({
         status,
@@ -67,7 +68,8 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
         error_message: (result as any)?.error_message,
         error_detail: (result as any)?.error_detail,
       });
-      toast.success(status === 'completed' ? '执行成功' : `状态: ${status}`);
+      if (legacyStatus === 'queued') toast.success('已排队');
+      else toast.success(status === 'completed' ? '执行成功' : `状态: ${status}`);
     } catch (e: any) {
       const msg = String(e?.message || e?.detail || '执行失败');
       setResult({ status: 'failed', error: msg });

@@ -59,7 +59,9 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
       const approvalId =
         (res as any)?.approval_request_id || (res as any)?.error?.detail?.approval_request_id || (res as any)?.error_detail?.approval_request_id;
 
-      if ((status === 'waiting_approval' || legacyStatus === 'approval_required' || errCode === 'APPROVAL_REQUIRED') && approvalId) {
+      if (legacyStatus === 'queued') {
+        toast.success('已排队');
+      } else if ((status === 'waiting_approval' || legacyStatus === 'approval_required' || errCode === 'APPROVAL_REQUIRED') && approvalId) {
         toast.error(`需要审批：${String(approvalId)}`);
         try {
           window.open('/core/approvals', '_blank', 'noopener,noreferrer');
