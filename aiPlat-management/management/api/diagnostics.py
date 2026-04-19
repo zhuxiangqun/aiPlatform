@@ -345,6 +345,28 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
     except Exception:
         context_config = {}
 
+    # Context status sample (best-effort): call prompt assemble with minimal messages,
+    # return only status-like metadata (do not include full prompt content).
+    context_status_sample: Dict[str, Any] = {}
+    try:
+        repo_root = config.get("repo_root") if isinstance(config, dict) else None
+        if core_client and repo_root:
+            assembled = await core_client.diagnostics_prompt_assemble(
+                {
+                    "messages": [{"role": "user", "content": "healthcheck"}],
+                    "repo_root": repo_root,
+                    "user_id": "admin",
+                    "session_id": "doctor",
+                    "enable_project_context": True,
+                    "enable_session_search": False,
+                }
+            )
+            md = assembled.get("metadata") if isinstance(assembled, dict) else None
+            if isinstance(md, dict):
+                context_status_sample = md.get("context_status") if isinstance(md.get("context_status"), dict) else {}
+    except Exception:
+        context_status_sample = {}
+
     # Skills capability summary (best-effort)
     skill_capabilities: Dict[str, Any] = {"total": 0, "capability_counts": {}, "high_risk_skill_count": 0}
     try:
@@ -679,6 +701,7 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
         "autosmoke": autosmoke,
         "secrets": secrets,
         "context": context_config,
+        "context_status_sample": context_status_sample,
         "skills": {"capabilities": skill_capabilities},
         "prompts": {"templates": {"total": int((prompt_templates or {}).get("total") or 0), "items": (prompt_templates or {}).get("items") or []}},
         "changesets": changesets,

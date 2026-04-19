@@ -159,6 +159,23 @@ const Doctor: React.FC = () => {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
+              <div className="text-sm font-semibold text-gray-200">Context Status Sample</div>
+              <Badge variant={data?.context_status_sample && Object.keys(data?.context_status_sample || {}).length > 0 ? 'success' : 'default'}>
+                {data?.context_status_sample && Object.keys(data?.context_status_sample || {}).length > 0 ? 'ok' : 'n/a'}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-xs text-gray-500 mb-2">来源：core prompt assemble（最小 messages），仅展示 context_status，不展示 prompt 内容</div>
+            <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
+              {JSON.stringify(data?.context_status_sample || {}, null, 2)}
+            </pre>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
               <div className="text-sm font-semibold text-gray-200">Adapters</div>
               <Badge variant={(data?.adapters?.total || 0) > 0 ? 'success' : 'warning'}>{data?.adapters?.total ?? 0}</Badge>
             </div>
