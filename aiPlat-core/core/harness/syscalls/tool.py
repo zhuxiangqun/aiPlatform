@@ -64,7 +64,12 @@ async def sys_tool_call(
                 run_id=str(_run_id),
                 event_type="tool_start",
                 trace_id=span.trace_id,
-                payload={"tool": tool_name or "<unknown>", "user_id": user_id, "session_id": session_id},
+                payload={
+                    "tool": tool_name or "<unknown>",
+                    "user_id": user_id,
+                    "session_id": session_id,
+                    "tenant_id": (trace_context or {}).get("tenant_id") if isinstance(trace_context, dict) else None,
+                },
             )
     except Exception:
         pass
@@ -254,7 +259,13 @@ async def sys_tool_call(
                     run_id=str(_run_id),
                     event_type="tool_end",
                     trace_id=span.trace_id,
-                    payload={"tool": tool_name or "<unknown>", "status": "policy_denied", "error": pr.reason or "POLICY_DENIED"},
+                    payload={
+                        "tool": tool_name or "<unknown>",
+                        "status": "policy_denied",
+                        "error": pr.reason or "POLICY_DENIED",
+                        "tenant_id": getattr(pr, "tenant_id", None) or args.get("_tenant_id"),
+                        "policy_version": getattr(pr, "policy_version", None),
+                    },
                 )
         except Exception:
             pass
@@ -331,6 +342,8 @@ async def sys_tool_call(
                         "status": "approval_required",
                         "approval_request_id": pr.approval_request_id,
                         "error": pr.reason or "APPROVAL_REQUIRED",
+                        "tenant_id": getattr(pr, "tenant_id", None) or args.get("_tenant_id"),
+                        "policy_version": getattr(pr, "policy_version", None),
                     },
                 )
         except Exception:
