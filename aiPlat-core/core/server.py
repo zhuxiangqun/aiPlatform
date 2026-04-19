@@ -892,7 +892,7 @@ async def list_workspace_agents(
 
 
 @api_router.post("/workspace/agents")
-async def create_workspace_agent(request: AgentCreateRequest):
+async def create_workspace_agent(request: AgentCreateRequest, http_request: Request):
     if not _workspace_agent_manager:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
     try:
@@ -905,6 +905,24 @@ async def create_workspace_agent(request: AgentCreateRequest):
             memory_config=request.memory_config,
             metadata=request.metadata,
         )
+        # Auto-smoke (async, dedup): trigger on create/update to validate the full chain.
+        try:
+            if _execution_store is not None and _job_scheduler is not None:
+                from core.harness.smoke import enqueue_autosmoke
+
+                tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID", "ops_smoke")
+                actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")
+                await enqueue_autosmoke(
+                    execution_store=_execution_store,
+                    job_scheduler=_job_scheduler,
+                    resource_type="agent",
+                    resource_id=str(agent.id),
+                    tenant_id=tenant_id or "ops_smoke",
+                    actor_id=actor_id or "admin",
+                    detail={"op": "create", "name": agent.name},
+                )
+        except Exception:
+            pass
         return {"id": agent.id, "status": "created", "name": agent.name}
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
@@ -1009,7 +1027,7 @@ async def stop_workspace_agent(agent_id: str):
 
 
 @api_router.put("/workspace/agents/{agent_id}")
-async def update_workspace_agent(agent_id: str, request: AgentUpdateRequest):
+async def update_workspace_agent(agent_id: str, request: AgentUpdateRequest, http_request: Request):
     """Update workspace agent."""
     if not _workspace_agent_manager:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -1024,6 +1042,23 @@ async def update_workspace_agent(agent_id: str, request: AgentUpdateRequest):
     )
     if not agent:
         raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    try:
+        if _execution_store is not None and _job_scheduler is not None:
+            from core.harness.smoke import enqueue_autosmoke
+
+            tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID", "ops_smoke")
+            actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")
+            await enqueue_autosmoke(
+                execution_store=_execution_store,
+                job_scheduler=_job_scheduler,
+                resource_type="agent",
+                resource_id=str(agent_id),
+                tenant_id=tenant_id or "ops_smoke",
+                actor_id=actor_id or "admin",
+                detail={"op": "update"},
+            )
+    except Exception:
+        pass
     return {"status": "updated", "id": agent_id}
 
 
@@ -2612,7 +2647,7 @@ async def list_workspace_skills(
 
 
 @api_router.post("/workspace/skills")
-async def create_workspace_skill(request: SkillCreateRequest):
+async def create_workspace_skill(request: SkillCreateRequest, http_request: Request):
     """Create a new workspace skill."""
     if not _workspace_skill_manager:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
@@ -2626,6 +2661,23 @@ async def create_workspace_skill(request: SkillCreateRequest):
             output_schema=request.output_schema or {},
             metadata={"template": request.template, "sop": request.sop},
         )
+        try:
+            if _execution_store is not None and _job_scheduler is not None:
+                from core.harness.smoke import enqueue_autosmoke
+
+                tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID", "ops_smoke")
+                actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")
+                await enqueue_autosmoke(
+                    execution_store=_execution_store,
+                    job_scheduler=_job_scheduler,
+                    resource_type="skill",
+                    resource_id=str(skill.id),
+                    tenant_id=tenant_id or "ops_smoke",
+                    actor_id=actor_id or "admin",
+                    detail={"op": "create", "name": skill.name},
+                )
+        except Exception:
+            pass
         return {"id": skill.id, "status": "created", "name": skill.name}
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
@@ -2654,7 +2706,7 @@ async def get_workspace_skill(skill_id: str):
 
 
 @api_router.put("/workspace/skills/{skill_id}")
-async def update_workspace_skill(skill_id: str, request: dict):
+async def update_workspace_skill(skill_id: str, request: dict, http_request: Request):
     if not _workspace_skill_manager:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
     from core.schemas import SkillUpdateRequest
@@ -2663,6 +2715,23 @@ async def update_workspace_skill(skill_id: str, request: dict):
     skill = await _workspace_skill_manager.update_skill(skill_id, r.model_dump(exclude_unset=True))
     if not skill:
         raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    try:
+        if _execution_store is not None and _job_scheduler is not None:
+            from core.harness.smoke import enqueue_autosmoke
+
+            tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID", "ops_smoke")
+            actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")
+            await enqueue_autosmoke(
+                execution_store=_execution_store,
+                job_scheduler=_job_scheduler,
+                resource_type="skill",
+                resource_id=str(skill_id),
+                tenant_id=tenant_id or "ops_smoke",
+                actor_id=actor_id or "admin",
+                detail={"op": "update"},
+            )
+    except Exception:
+        pass
     return {"status": "updated", "id": skill_id}
 
 
@@ -3285,7 +3354,7 @@ async def check_workspace_mcp_server_policy(server_name: str):
 
 
 @api_router.post("/workspace/mcp/servers")
-async def upsert_workspace_mcp_server(request: dict):
+async def upsert_workspace_mcp_server(request: dict, http_request: Request):
     """Create or update a workspace MCP server (writes to ~/.aiplat/mcps/<name>/server.yaml + policy.yaml)."""
     if not _workspace_mcp_manager:
         raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
@@ -3318,17 +3387,35 @@ async def upsert_workspace_mcp_server(request: dict):
             await _sync_mcp_runtime()
         except Exception:
             pass
+        # Auto-smoke on MCP upsert (async, dedup)
+        try:
+            if _execution_store is not None and _job_scheduler is not None:
+                from core.harness.smoke import enqueue_autosmoke
+
+                tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID", "ops_smoke")
+                actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")
+                await enqueue_autosmoke(
+                    execution_store=_execution_store,
+                    job_scheduler=_job_scheduler,
+                    resource_type="mcp",
+                    resource_id=str(saved.name),
+                    tenant_id=tenant_id or "ops_smoke",
+                    actor_id=actor_id or "admin",
+                    detail={"op": "upsert", "transport": saved.transport},
+                )
+        except Exception:
+            pass
         return {"status": "upserted", "server": {"name": saved.name, "enabled": saved.enabled}}
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
 @api_router.put("/workspace/mcp/servers/{server_name}")
-async def update_workspace_mcp_server(server_name: str, request: dict):
+async def update_workspace_mcp_server(server_name: str, request: dict, http_request: Request):
     """Update workspace MCP server (upsert semantics)."""
     payload = dict(request or {})
     payload["name"] = server_name
-    return await upsert_workspace_mcp_server(payload)
+    return await upsert_workspace_mcp_server(payload, http_request)
 
 
 
