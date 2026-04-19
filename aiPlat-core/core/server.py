@@ -787,6 +787,42 @@ async def _audit_event(kind: str, name: str, status: str, *, args: Dict[str, Any
         return
 
 
+async def _record_changeset(
+    *,
+    name: str,
+    target_type: str,
+    target_id: str,
+    args: Dict[str, Any] | None = None,
+    result: Dict[str, Any] | None = None,
+    user_id: str = "admin",
+    session_id: str | None = None,
+    approval_request_id: str | None = None,
+) -> None:
+    """
+    Record a governance "changeset" event (best-effort).
+    IMPORTANT: Do not store secrets; pass hashes/lengths instead.
+    """
+    try:
+        if not _execution_store:
+            return
+        await _execution_store.add_syscall_event(
+            {
+                "kind": "changeset",
+                "name": str(name),
+                "status": "success",
+                "args": args or {},
+                "result": result or {},
+                "target_type": str(target_type),
+                "target_id": str(target_id),
+                "user_id": str(user_id or "admin"),
+                "session_id": str(session_id) if session_id else None,
+                "approval_request_id": str(approval_request_id) if approval_request_id else None,
+            }
+        )
+    except Exception:
+        return
+
+
 def _prod_stdio_policy_check(
     server_name: str,
     transport: str,
@@ -2015,6 +2051,23 @@ async def upsert_tenant_policy(tenant_id: str, request: dict):
             resource_type="tenant_policy",
             resource_id=str(tenant_id),
             detail={"version": saved.get("version")},
+        )
+    except Exception:
+        pass
+    # Changeset (best-effort): store only hash + version
+    try:
+        import hashlib
+
+        await _record_changeset(
+            name="tenant_policy_upsert",
+            target_type="tenant_policy",
+            target_id=str(tenant_id),
+            args={"tenant_id": str(tenant_id), "prev_version": int(version) if isinstance(version, int) else None},
+            result={
+                "version": saved.get("version") if isinstance(saved, dict) else None,
+                "policy_sha256": hashlib.sha256(json.dumps(policy, sort_keys=True).encode("utf-8")).hexdigest(),
+            },
+            user_id=str((request or {}).get("actor_id") or "admin"),
         )
     except Exception:
         pass
@@ -5096,6 +5149,21 @@ async def create_adapter(request: AdapterCreateRequest):
         api_base_url=request.api_base_url,
         description=request.description
     )
+    try:
+        import hashlib
+
+        api_key_hash = None
+        if request.api_key:
+            api_key_hash = hashlib.sha256(str(request.api_key).encode("utf-8")).hexdigest()
+        await _record_changeset(
+            name="adapter_create",
+            target_type="adapter",
+            target_id=str(adapter.id),
+            args={"name": request.name, "provider": request.provider, "api_base_url": request.api_base_url},
+            result={"adapter_id": str(adapter.id), "api_key_sha256": api_key_hash, "api_key_len": len(str(request.api_key or ""))},
+        )
+    except Exception:
+        pass
     return {"adapter_id": adapter.id, "status": "created"}
 
 
@@ -5132,6 +5200,21 @@ async def update_adapter(adapter_id: str, request: AdapterUpdateRequest):
     )
     if not adapter:
         raise HTTPException(status_code=404, detail=f"Adapter {adapter_id} not found")
+    try:
+        import hashlib
+
+        api_key_hash = None
+        if request.api_key:
+            api_key_hash = hashlib.sha256(str(request.api_key).encode("utf-8")).hexdigest()
+        await _record_changeset(
+            name="adapter_update",
+            target_type="adapter",
+            target_id=str(adapter_id),
+            args={"name": request.name, "api_base_url": request.api_base_url, "rate_limit": request.rate_limit},
+            result={"api_key_sha256": api_key_hash, "api_key_len": len(str(request.api_key or "")) if request.api_key else 0},
+        )
+    except Exception:
+        pass
     return {"status": "updated"}
 
 
@@ -5141,6 +5224,16 @@ async def delete_adapter(adapter_id: str):
     success = await _adapter_manager.delete_adapter(adapter_id)
     if not success:
         raise HTTPException(status_code=404, detail=f"Adapter {adapter_id} not found")
+    try:
+        await _record_changeset(
+            name="adapter_delete",
+            target_type="adapter",
+            target_id=str(adapter_id),
+            args={},
+            result={"status": "deleted"},
+        )
+    except Exception:
+        pass
     return {"status": "deleted"}
 
 
@@ -5157,6 +5250,16 @@ async def enable_adapter(adapter_id: str):
     success = await _adapter_manager.enable_adapter(adapter_id)
     if not success:
         raise HTTPException(status_code=404, detail=f"Adapter {adapter_id} not found")
+    try:
+        await _record_changeset(
+            name="adapter_enable",
+            target_type="adapter",
+            target_id=str(adapter_id),
+            args={},
+            result={"status": "enabled"},
+        )
+    except Exception:
+        pass
     return {"status": "enabled"}
 
 
@@ -5166,6 +5269,16 @@ async def disable_adapter(adapter_id: str):
     success = await _adapter_manager.disable_adapter(adapter_id)
     if not success:
         raise HTTPException(status_code=404, detail=f"Adapter {adapter_id} not found")
+    try:
+        await _record_changeset(
+            name="adapter_disable",
+            target_type="adapter",
+            target_id=str(adapter_id),
+            args={},
+            result={"status": "disabled"},
+        )
+    except Exception:
+        pass
     return {"status": "disabled"}
 
 
@@ -5190,6 +5303,21 @@ async def add_adapter_model(adapter_id: str, request: dict):
     )
     if not success:
         raise HTTPException(status_code=404, detail=f"Adapter {adapter_id} not found")
+    try:
+        await _record_changeset(
+            name="adapter_model_add",
+            target_type="adapter",
+            target_id=str(adapter_id),
+            args={
+                "model": request.get("name", "default"),
+                "max_tokens": request.get("max_tokens", 4096),
+                "temperature": request.get("temperature", 0.7),
+                "enabled": request.get("enabled", True),
+            },
+            result={"status": "added"},
+        )
+    except Exception:
+        pass
     return {"status": "added"}
 
 
@@ -5205,6 +5333,16 @@ async def delete_adapter_model(adapter_id: str, model_name: str):
     success = await _adapter_manager.remove_model(adapter_id, model_name)
     if not success:
         raise HTTPException(status_code=404, detail=f"Adapter {adapter_id} not found")
+    try:
+        await _record_changeset(
+            name="adapter_model_delete",
+            target_type="adapter",
+            target_id=str(adapter_id),
+            args={"model": str(model_name)},
+            result={"status": "deleted"},
+        )
+    except Exception:
+        pass
     return {"status": "deleted"}
 
 
@@ -6779,6 +6917,17 @@ async def set_default_llm(request: OnboardingDefaultLLMRequest):
         key="default_llm",
         value={"adapter_id": request.adapter_id, "model": request.model},
     )
+    try:
+        await _record_changeset(
+            name="global_setting_upsert_default_llm",
+            target_type="global_setting",
+            target_id="default_llm",
+            args={"adapter_id": request.adapter_id, "model": request.model},
+            result={"updated_at": res.get("updated_at") if isinstance(res, dict) else None},
+            approval_request_id=request.approval_request_id,
+        )
+    except Exception:
+        pass
     return {"status": "updated", "default_llm": res}
 
 
@@ -6812,6 +6961,21 @@ async def init_default_tenant(request: OnboardingInitTenantRequest):
         }
         policy_res = await _execution_store.upsert_tenant_policy(tenant_id=request.tenant_id, policy=baseline_policy)
 
+    try:
+        await _record_changeset(
+            name="tenant_init",
+            target_type="tenant",
+            target_id=str(request.tenant_id),
+            args={
+                "tenant_id": str(request.tenant_id),
+                "init_policies": bool(request.init_policies),
+                "strict_tool_approval": bool(request.strict_tool_approval),
+            },
+            result={"policy_version": policy_res.get("version") if isinstance(policy_res, dict) else None},
+            approval_request_id=request.approval_request_id,
+        )
+    except Exception:
+        pass
     return {"status": "initialized", "tenant": tenant, "tenant_policy": policy_res}
 
 
@@ -6838,6 +7002,17 @@ async def set_autosmoke_config(request: OnboardingAutosmokeConfigRequest):
     if request.dedup_seconds is not None:
         value["dedup_seconds"] = int(request.dedup_seconds)
     res = await _execution_store.upsert_global_setting(key="autosmoke", value=value)
+    try:
+        await _record_changeset(
+            name="global_setting_upsert_autosmoke",
+            target_type="global_setting",
+            target_id="autosmoke",
+            args=value,
+            result={"updated_at": res.get("updated_at") if isinstance(res, dict) else None},
+            approval_request_id=request.approval_request_id,
+        )
+    except Exception:
+        pass
     return {"status": "updated", "autosmoke": res}
 
 
@@ -6877,6 +7052,20 @@ async def migrate_secrets(request: OnboardingSecretsMigrateRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     st = await _execution_store.get_adapter_secrets_status()
+    try:
+        await _record_changeset(
+            name="secrets_migrate",
+            target_type="adapters",
+            target_id="api_key",
+            args={},
+            result={
+                "migrated_count": res.get("migrated") if isinstance(res, dict) else None,
+                "plaintext_after": st.get("plaintext") if isinstance(st, dict) else None,
+            },
+            approval_request_id=request.approval_request_id,
+        )
+    except Exception:
+        pass
     return {"status": "migrated", "result": res, "secrets_status": st}
 
 
@@ -6936,6 +7125,17 @@ async def set_strong_gate(request: OnboardingStrongGateRequest):
     tp["approval_required_tools"] = approval_tools
 
     saved = await _execution_store.upsert_tenant_policy(tenant_id=tenant_id, policy=policy, version=None)
+    try:
+        await _record_changeset(
+            name="strong_gate_set",
+            target_type="tenant_policy",
+            target_id=str(tenant_id),
+            args={"tenant_id": str(tenant_id), "enabled": bool(enabled)},
+            result={"version": saved.get("version") if isinstance(saved, dict) else None},
+            approval_request_id=request.approval_request_id,
+        )
+    except Exception:
+        pass
     return {"status": "updated", "tenant_policy": saved, "enabled": enabled}
 
 
@@ -7409,6 +7609,17 @@ async def delete_prompt_template(template_id: str, require_approval: bool = True
             raise HTTPException(status_code=409, detail="not_approved")
 
     ok = await _execution_store.delete_prompt_template(template_id=str(template_id))
+    try:
+        await _record_changeset(
+            name="prompt_template_delete",
+            target_type="prompt_template",
+            target_id=str(template_id),
+            args={},
+            result={"status": "deleted" if ok else "not_found"},
+            approval_request_id=approval_request_id,
+        )
+    except Exception:
+        pass
     return {"status": "deleted" if ok else "not_found"}
 
 
