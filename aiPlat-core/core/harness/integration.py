@@ -324,6 +324,13 @@ class HarnessIntegration:
         # Platform default: run_id should be time-sortable and stable for tracing/log correlation.
         execution_id = str(getattr(req, "run_id", None) or "") or new_prefixed_id("run")
         start_time = time.time()
+        tenant_id = None
+        try:
+            if isinstance(req.payload, dict):
+                ctx0 = req.payload.get("context") if isinstance(req.payload.get("context"), dict) else {}
+                tenant_id = ctx0.get("tenant_id") if isinstance(ctx0, dict) else None
+        except Exception:
+            tenant_id = None
 
         trace_id = None
         if runtime.trace_service:
@@ -357,6 +364,7 @@ class HarnessIntegration:
                     run_id=execution_id,
                     event_type="run_start",
                     trace_id=trace_id,
+                    tenant_id=str(tenant_id) if tenant_id else None,
                     payload={"kind": "agent", "agent_id": agent_id, "user_id": user_id, "session_id": req.session_id},
                 )
             except Exception:
@@ -741,6 +749,7 @@ class HarnessIntegration:
                         run_id=execution_id,
                         event_type="run_end",
                         trace_id=trace_id,
+                        tenant_id=str(tenant_id) if tenant_id else None,
                         payload={
                             "kind": "agent",
                             "agent_id": agent_id,
@@ -806,6 +815,7 @@ class HarnessIntegration:
                         run_id=execution_id,
                         event_type="run_end",
                         trace_id=trace_id,
+                        tenant_id=str(tenant_id) if tenant_id else None,
                         payload={"kind": "agent", "agent_id": agent_id, "status": "failed", "error": str(e)},
                     )
                 except Exception:
@@ -946,10 +956,18 @@ class HarnessIntegration:
         # Persist execution (best effort)
         if runtime.execution_store:
             try:
+                tenant_id = None
+                try:
+                    ctx0 = payload.get("context") if isinstance(payload.get("context"), dict) else {}
+                    tenant_id = ctx0.get("tenant_id") if isinstance(ctx0, dict) else None
+                except Exception:
+                    tenant_id = None
                 meta2 = {
                     "mode": payload.get("mode", "inline"),
                     "session_id": (payload.get("context") or {}).get("session_id", req.session_id),
                 }
+                if tenant_id:
+                    meta2["tenant_id"] = str(tenant_id)
                 try:
                     meta2.setdefault(
                         "error_detail",
@@ -966,6 +984,7 @@ class HarnessIntegration:
                         run_id=execution.id,
                         event_type="run_start",
                         trace_id=trace_id,
+                        tenant_id=str(tenant_id) if tenant_id else None,
                         payload={"kind": "skill", "skill_id": execution.skill_id, "user_id": user_id, "session_id": meta2.get("session_id")},
                     )
                 except Exception:
@@ -974,6 +993,7 @@ class HarnessIntegration:
                     {
                         "id": execution.id,
                         "skill_id": execution.skill_id,
+                        "tenant_id": str(tenant_id) if tenant_id else None,
                         "status": execution.status,
                         "input": execution.input_data,
                         "output": execution.output_data,
@@ -1016,6 +1036,7 @@ class HarnessIntegration:
                         run_id=execution.id,
                         event_type="run_end",
                         trace_id=trace_id,
+                        tenant_id=str(tenant_id) if tenant_id else None,
                         payload={"kind": "skill", "skill_id": execution.skill_id, "status": execution.status, "error": execution.error},
                     )
                 except Exception:
@@ -1166,6 +1187,7 @@ class HarnessIntegration:
                     run_id=run_id,
                     event_type="run_start",
                     trace_id=trace_id,
+                    tenant_id=str(tenant_id) if tenant_id else None,
                     payload={"kind": "tool", "tool_name": req.target_id, "user_id": req.user_id or "system", "session_id": req.session_id},
                 )
             except Exception:
@@ -1217,6 +1239,7 @@ class HarnessIntegration:
                         run_id=run_id,
                         event_type="run_end",
                         trace_id=trace_id,
+                        tenant_id=str(tenant_id) if tenant_id else None,
                         payload={
                             "kind": "tool",
                             "tool_name": req.target_id,
@@ -1265,6 +1288,7 @@ class HarnessIntegration:
                         run_id=run_id,
                         event_type="run_end",
                         trace_id=trace_id,
+                        tenant_id=str(tenant_id) if tenant_id else None,
                         payload={"kind": "tool", "tool_name": req.target_id, "status": "timeout", "error": "TIMEOUT"},
                     )
                 except Exception:
@@ -1277,6 +1301,7 @@ class HarnessIntegration:
                         run_id=run_id,
                         event_type="run_end",
                         trace_id=trace_id,
+                        tenant_id=str(tenant_id) if tenant_id else None,
                         payload={"kind": "tool", "tool_name": req.target_id, "status": "failed", "error": str(e)},
                     )
                 except Exception:
@@ -1401,6 +1426,7 @@ class HarnessIntegration:
                 run_id=run_id,
                 event_type="run_start",
                 trace_id=trace_id,
+                tenant_id=str(payload.get("tenant_id")) if payload.get("tenant_id") else None,
                 payload={"kind": "smoke_e2e", "status": "running"},
             )
         except Exception:
@@ -1416,6 +1442,7 @@ class HarnessIntegration:
                     run_id=run_id,
                     event_type="run_end",
                     trace_id=trace_id,
+                    tenant_id=str(payload.get("tenant_id")) if payload.get("tenant_id") else None,
                     payload={"kind": "smoke_e2e", "status": status},
                 )
             except Exception:
@@ -1432,6 +1459,7 @@ class HarnessIntegration:
                     run_id=run_id,
                     event_type="run_end",
                     trace_id=trace_id,
+                    tenant_id=str(payload.get("tenant_id")) if payload.get("tenant_id") else None,
                     payload={"kind": "smoke_e2e", "status": "failed", "error": str(e)},
                 )
             except Exception:

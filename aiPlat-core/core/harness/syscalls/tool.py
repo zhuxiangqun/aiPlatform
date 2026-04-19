@@ -64,6 +64,7 @@ async def sys_tool_call(
                 run_id=str(_run_id),
                 event_type="tool_start",
                 trace_id=span.trace_id,
+                tenant_id=(trace_context or {}).get("tenant_id") if isinstance(trace_context, dict) else None,
                 payload={
                     "tool": tool_name or "<unknown>",
                     "user_id": user_id,
@@ -109,6 +110,7 @@ async def sys_tool_call(
                         run_id=str(_run_id),
                         event_type="tool_end",
                         trace_id=span.trace_id,
+                        tenant_id=(trace_context or {}).get("tenant_id") if isinstance(trace_context, dict) else None,
                         payload={"tool": tool_name or "<unknown>", "status": "failed", "error": "TOOL_NOT_EXECUTABLE"},
                     )
             except Exception:
@@ -199,6 +201,7 @@ async def sys_tool_call(
                             run_id=str(_run_id),
                             event_type="tool_end",
                             trace_id=span.trace_id,
+                            tenant_id=args.get("_tenant_id"),
                             payload={"tool": tool_name or "<unknown>", "status": "toolset_denied", "error": reason or "TOOLSET_DENIED"},
                         )
                 except Exception:
@@ -273,6 +276,7 @@ async def sys_tool_call(
                     run_id=str(_run_id),
                     event_type="tool_end",
                     trace_id=span.trace_id,
+                    tenant_id=getattr(pr, "tenant_id", None) or args.get("_tenant_id"),
                     payload={
                         "tool": tool_name or "<unknown>",
                         "status": "policy_denied",
@@ -348,10 +352,28 @@ async def sys_tool_call(
             runtime = get_kernel_runtime()
             store = getattr(runtime, "execution_store", None) if runtime else None
             if store is not None and _run_id:
+                # Extra run event for long-poll /runs/{run_id}/wait consumers.
+                try:
+                    await store.append_run_event(
+                        run_id=str(_run_id),
+                        event_type="approval_requested",
+                        trace_id=span.trace_id,
+                        tenant_id=getattr(pr, "tenant_id", None) or args.get("_tenant_id"),
+                        payload={
+                            "kind": "tool",
+                            "tool": tool_name or "<unknown>",
+                            "approval_request_id": pr.approval_request_id,
+                            "reason": pr.reason,
+                            "policy_version": getattr(pr, "policy_version", None),
+                        },
+                    )
+                except Exception:
+                    pass
                 await store.append_run_event(
                     run_id=str(_run_id),
                     event_type="tool_end",
                     trace_id=span.trace_id,
+                    tenant_id=getattr(pr, "tenant_id", None) or args.get("_tenant_id"),
                     payload={
                         "tool": tool_name or "<unknown>",
                         "status": "approval_required",
@@ -402,6 +424,7 @@ async def sys_tool_call(
                             run_id=str(_run_id),
                             event_type="tool_end",
                             trace_id=span.trace_id,
+                            tenant_id=prepared_args.get("_tenant_id") if isinstance(prepared_args, dict) else args.get("_tenant_id"),
                             payload={
                                 "tool": tool_name or "<unknown>",
                                 "status": status,
@@ -445,6 +468,7 @@ async def sys_tool_call(
                             run_id=str(_run_id),
                             event_type="tool_end",
                             trace_id=span.trace_id,
+                            tenant_id=prepared_args.get("_tenant_id") if isinstance(prepared_args, dict) else args.get("_tenant_id"),
                             payload={"tool": tool_name or "<unknown>", "status": "failed", "error": "tool_error"},
                         )
                 except Exception:

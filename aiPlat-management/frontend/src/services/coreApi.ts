@@ -1005,19 +1005,23 @@ export const harnessApi = {
 // ==================== Runs API (Platform execution contract) ====================
 
 export interface RunSummary {
+  ok?: boolean;
   run_id: string;
   kind?: string;
   target_type?: string;
   target_id?: string;
   trace_id?: string | null;
   status?: string;
+  legacy_status?: string;
+  output?: unknown;
   start_time?: number | null;
   end_time?: number | null;
   error_code?: string | null;
   error_message?: string | null;
-  error?: { code?: string; message?: string } | null;
+  error?: { code?: string; message?: string; detail?: Record<string, unknown> | null } | null;
   user_id?: string | null;
   session_id?: string | null;
+  tenant_id?: string | null;
 }
 
 export interface RunEvent {

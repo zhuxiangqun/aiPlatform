@@ -2228,7 +2228,30 @@ async def get_run(run_id: str):
     run = await _execution_store.get_run_summary(run_id=str(run_id))
     if not run:
         raise HTTPException(status_code=404, detail="run_not_found")
-    return run
+    # PR-03 + PR-02: return unified RunSummary v2 (but keep extra fields like target_type/target_id).
+    legacy_status = run.get("status")
+    err_code = run.get("error_code")
+    try:
+        if isinstance(run.get("error"), dict) and (run.get("error") or {}).get("code"):
+            err_code = (run.get("error") or {}).get("code")
+    except Exception:
+        pass
+    status2 = _normalize_run_status_v2(ok=str(legacy_status) == "completed", legacy_status=legacy_status, error_code=err_code)
+    ok2 = status2 == RunStatus.completed.value
+    err_obj = None
+    if not ok2:
+        err_obj = _normalize_run_error(
+            code=err_code or (run.get("error") or {}).get("code") if isinstance(run.get("error"), dict) else None,
+            message=run.get("error_message") or (run.get("error") or {}).get("message") if isinstance(run.get("error"), dict) else None,
+            detail=(run.get("error") or {}).get("detail") if isinstance(run.get("error"), dict) else None,
+        )
+    resp = dict(run)
+    resp["ok"] = ok2
+    resp["legacy_status"] = legacy_status
+    resp["status"] = status2
+    resp["error"] = None if ok2 else err_obj
+    resp["output"] = run.get("output")
+    return resp
 
 
 @api_router.get("/runs/{run_id}/events")
@@ -2412,17 +2435,50 @@ async def wait_run(run_id: str, request: dict):
         if new_events:
             events.extend(new_events)
             last_seq = int(batch.get("last_seq") or last_seq)
-            if any(e.get("type") == "run_end" for e in new_events):
+            if any(e.get("type") in {"run_end", "approval_requested"} for e in new_events):
                 done = True
                 break
         # refresh run status (best-effort)
         run = await _execution_store.get_run_summary(run_id=str(run_id)) or run
-        if str(run.get("status")) in {"completed", "failed", "aborted", "timeout"}:
+        # done when reaching terminal or waiting_approval (paused)
+        legacy = str(run.get("status") or "")
+        err_code = run.get("error_code")
+        try:
+            if isinstance(run.get("error"), dict) and (run.get("error") or {}).get("code"):
+                err_code = (run.get("error") or {}).get("code")
+        except Exception:
+            pass
+        st2 = _normalize_run_status_v2(ok=legacy == "completed", legacy_status=legacy, error_code=err_code)
+        if st2 in {RunStatus.completed.value, RunStatus.failed.value, RunStatus.aborted.value, RunStatus.timeout.value, RunStatus.waiting_approval.value}:
             done = True
             break
         await asyncio.sleep(0.5)
 
-    return {"run": run, "events": events, "after_seq": after_seq, "last_seq": last_seq, "done": done}
+    # normalize run to v2 contract
+    legacy_status = run.get("status")
+    err_code = run.get("error_code")
+    try:
+        if isinstance(run.get("error"), dict) and (run.get("error") or {}).get("code"):
+            err_code = (run.get("error") or {}).get("code")
+    except Exception:
+        pass
+    status2 = _normalize_run_status_v2(ok=str(legacy_status) == "completed", legacy_status=legacy_status, error_code=err_code)
+    ok2 = status2 == RunStatus.completed.value
+    err_obj = None
+    if not ok2:
+        err_obj = _normalize_run_error(
+            code=err_code or (run.get("error") or {}).get("code") if isinstance(run.get("error"), dict) else None,
+            message=run.get("error_message") or (run.get("error") or {}).get("message") if isinstance(run.get("error"), dict) else None,
+            detail=(run.get("error") or {}).get("detail") if isinstance(run.get("error"), dict) else None,
+        )
+    run2 = dict(run)
+    run2["ok"] = ok2
+    run2["legacy_status"] = legacy_status
+    run2["status"] = status2
+    run2["error"] = None if ok2 else err_obj
+    run2["output"] = run.get("output")
+
+    return {"run": run2, "events": events, "after_seq": after_seq, "last_seq": last_seq, "done": done}
 
 
 @api_router.post("/approvals/{request_id}/approve")
