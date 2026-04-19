@@ -365,6 +365,21 @@ const Skills: React.FC = () => {
               )}
             </div>
           </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <div className="text-xs text-gray-500">provenance</div>
+              <pre className="text-xs bg-dark-hover rounded p-2 overflow-auto max-h-40">
+                {JSON.stringify((detailModal.skill as any)?.metadata?.provenance || {}, null, 2)}
+              </pre>
+            </div>
+            <div>
+              <div className="text-xs text-gray-500">integrity</div>
+              <pre className="text-xs bg-dark-hover rounded p-2 overflow-auto max-h-40">
+                {JSON.stringify((detailModal.skill as any)?.metadata?.integrity || {}, null, 2)}
+              </pre>
+            </div>
+          </div>
         </div>
       </Modal>
 

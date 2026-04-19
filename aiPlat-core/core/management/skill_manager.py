@@ -11,6 +11,7 @@ import uuid
 import os
 from pathlib import Path
 import json
+import hashlib
 
 import yaml
 import re
@@ -159,6 +160,7 @@ class SkillManager:
                         metadata["filesystem"]["skill_dir"] = str(item)
                         metadata["filesystem"]["skill_md"] = str(skill_md)
                         metadata["filesystem"]["source"] = str(base_dir)
+                    self._enrich_skill_provenance_and_integrity(metadata, skill_dir=item)
 
                     self._skills[skill_id] = SkillInfo(
                         id=skill_id,
@@ -193,6 +195,111 @@ class SkillManager:
                         pass
         except Exception:
             return
+
+    def _read_skill_manifest_json(self, skill_dir: Path) -> Dict[str, Any]:
+        """
+        Optional provenance manifest, e.g.:
+          {
+            "publisher": "acme",
+            "source": "https://github.com/acme/skills",
+            "version": "1.2.3",
+            "signature": "base64:...."   # reserved, not verified in P1-3 MVP
+          }
+        """
+        p = skill_dir / "SKILL.manifest.json"
+        if not p.exists():
+            return {}
+        try:
+            raw = p.read_text(encoding="utf-8")
+            data = json.loads(raw or "{}")
+            return data if isinstance(data, dict) else {}
+        except Exception:
+            return {}
+
+    def _sha256_file(self, p: Path) -> str:
+        h = hashlib.sha256()
+        with p.open("rb") as f:
+            while True:
+                b = f.read(1024 * 1024)
+                if not b:
+                    break
+                h.update(b)
+        return h.hexdigest()
+
+    def _compute_skill_bundle_integrity(self, skill_dir: Path) -> Dict[str, Any]:
+        """
+        Compute a stable-ish directory hash for integrity/audit (not a security signature).
+        """
+        entries: List[str] = []
+        total_bytes = 0
+        file_count = 0
+        files_sample: List[str] = []
+        try:
+            for p in sorted(skill_dir.rglob("*")):
+                try:
+                    if p.is_dir():
+                        continue
+                    rel = str(p.relative_to(skill_dir))
+                    # ignore dynamic/irrelevant folders
+                    if rel.startswith("__pycache__/") or rel.endswith(".pyc"):
+                        continue
+                    if rel.startswith(".revisions/"):
+                        continue
+                    if rel.startswith(".git/"):
+                        continue
+                    if rel.startswith("node_modules/"):
+                        continue
+                    size = int(p.stat().st_size)
+                    sha = self._sha256_file(p)
+                    entries.append(f"{rel}\t{size}\t{sha}")
+                    total_bytes += size
+                    file_count += 1
+                    if len(files_sample) < 20:
+                        files_sample.append(rel)
+                except Exception:
+                    continue
+        except Exception:
+            pass
+        bundle_sha256 = hashlib.sha256(("\n".join(entries)).encode("utf-8")).hexdigest()
+        return {
+            "bundle_sha256": bundle_sha256,
+            "file_count": int(file_count),
+            "total_bytes": int(total_bytes),
+            "files_sample": files_sample,
+        }
+
+    def _enrich_skill_provenance_and_integrity(self, metadata: Dict[str, Any], *, skill_dir: Path) -> None:
+        """
+        Mutates metadata in-place.
+        """
+        if not isinstance(metadata, dict):
+            return
+        prov = metadata.get("provenance") if isinstance(metadata.get("provenance"), dict) else {}
+        prov.setdefault("source_type", "filesystem")
+        prov.setdefault("scope", (self._scope or "engine"))
+        prov.setdefault("skill_dir", str(skill_dir))
+
+        manifest = self._read_skill_manifest_json(skill_dir)
+        if manifest:
+            prov.setdefault("publisher", manifest.get("publisher"))
+            prov.setdefault("source", manifest.get("source"))
+            prov.setdefault("version", manifest.get("version"))
+            if manifest.get("signature") is not None:
+                prov.setdefault("signature", manifest.get("signature"))
+            try:
+                mpath = skill_dir / "SKILL.manifest.json"
+                if mpath.exists():
+                    prov.setdefault("manifest_sha256", self._sha256_file(mpath))
+            except Exception:
+                pass
+        metadata["provenance"] = prov
+
+        integ = metadata.get("integrity") if isinstance(metadata.get("integrity"), dict) else {}
+        try:
+            integ.update(self._compute_skill_bundle_integrity(skill_dir))
+        except Exception:
+            pass
+        metadata["integrity"] = integ
 
     def _find_skill_md(self, skill_id: str) -> Optional[Path]:
         """Find SKILL.md by searching skills paths from high priority to low."""
@@ -415,6 +522,8 @@ class SkillManager:
                 if isinstance(skill.metadata["filesystem"], dict):
                     skill.metadata["filesystem"]["skill_dir"] = str(skill_dir)
                     skill.metadata["filesystem"]["skill_md"] = str(skill_md_path)
+                # Compute provenance + integrity after filesystem materialization
+                self._enrich_skill_provenance_and_integrity(skill.metadata, skill_dir=skill_dir)
         except Exception as e:
             # Do not fail the management operation due to filesystem issues;
             # record the error for operators.
@@ -504,6 +613,8 @@ class SkillManager:
                                 cfg.metadata["version"] = skill_info.version
                                 cfg.metadata["sop_markdown"] = sop_markdown
                                 cfg.metadata["filesystem"] = (skill_info.metadata or {}).get("filesystem", {}) if isinstance(skill_info.metadata, dict) else {}
+                                cfg.metadata["provenance"] = (skill_info.metadata or {}).get("provenance", {}) if isinstance(skill_info.metadata, dict) else {}
+                                cfg.metadata["integrity"] = (skill_info.metadata or {}).get("integrity", {}) if isinstance(skill_info.metadata, dict) else {}
                                 # Optional: tools allowlist from SKILL.md
                                 if isinstance(fm, dict) and isinstance(fm.get("tools"), list):
                                     cfg.metadata["tools"] = list(fm.get("tools") or [])
@@ -529,6 +640,8 @@ class SkillManager:
                         # L2: SOP injection (SKILL.md body)
                         "sop_markdown": sop_markdown,
                         "filesystem": (skill_info.metadata or {}).get("filesystem", {}) if isinstance(skill_info.metadata, dict) else {},
+                        "provenance": (skill_info.metadata or {}).get("provenance", {}) if isinstance(skill_info.metadata, dict) else {},
+                        "integrity": (skill_info.metadata or {}).get("integrity", {}) if isinstance(skill_info.metadata, dict) else {},
                     }
                 )
                 skill_instance = _GenericSkill(config)
@@ -664,6 +777,8 @@ class SkillManager:
                 if isinstance(skill.metadata["filesystem"], dict):
                     skill.metadata["filesystem"]["skill_dir"] = str(skill_dir)
                     skill.metadata["filesystem"]["skill_md"] = str(skill_md_path)
+                # Refresh provenance + integrity after writeback
+                self._enrich_skill_provenance_and_integrity(skill.metadata, skill_dir=skill_dir)
         except Exception as e:
             if isinstance(skill.metadata, dict):
                 skill.metadata.setdefault("filesystem", {})
@@ -749,6 +864,12 @@ class SkillManager:
                 if hasattr(cfg, "metadata") and isinstance(cfg.metadata, dict):
                     cfg.metadata["category"] = skill.type
                     cfg.metadata["version"] = skill.version
+                    # propagate provenance/integrity for diagnostics
+                    if isinstance(getattr(skill, "metadata", None), dict):
+                        if isinstance(skill.metadata.get("provenance"), dict):
+                            cfg.metadata["provenance"] = skill.metadata.get("provenance")
+                        if isinstance(skill.metadata.get("integrity"), dict):
+                            cfg.metadata["integrity"] = skill.metadata.get("integrity")
             except Exception:
                 pass
             # Refresh SOP from filesystem (L2)

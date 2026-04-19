@@ -2881,6 +2881,20 @@ async def create_skill(request: SkillCreateRequest):
         input_schema=request.input_schema or {},
         output_schema=request.output_schema or {},
     )
+    try:
+        await _record_changeset(
+            name="skill_upsert",
+            target_type="skill",
+            target_id=str(skill.id),
+            args={"scope": "engine", "category": request.category, "name": request.name},
+            result={
+                "status": "created",
+                "integrity": (getattr(skill, "metadata", None) or {}).get("integrity") if isinstance(getattr(skill, "metadata", None), dict) else None,
+                "provenance": (getattr(skill, "metadata", None) or {}).get("provenance") if isinstance(getattr(skill, "metadata", None), dict) else None,
+            },
+        )
+    except Exception:
+        pass
     return {
         "id": skill.id,
         "status": "created",
@@ -2926,6 +2940,20 @@ async def update_skill(skill_id: str, request: dict):
         raise HTTPException(status_code=403, detail=str(e))
     if not skill:
         raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    try:
+        await _record_changeset(
+            name="skill_upsert",
+            target_type="skill",
+            target_id=str(skill_id),
+            args={"scope": "engine", "fields": list((request or {}).keys())[:50]},
+            result={
+                "status": "updated",
+                "integrity": (getattr(skill, "metadata", None) or {}).get("integrity") if isinstance(getattr(skill, "metadata", None), dict) else None,
+                "provenance": (getattr(skill, "metadata", None) or {}).get("provenance") if isinstance(getattr(skill, "metadata", None), dict) else None,
+            },
+        )
+    except Exception:
+        pass
     return {"status": "updated"}
 
 
@@ -3073,6 +3101,20 @@ async def create_workspace_skill(request: SkillCreateRequest, http_request: Requ
                 )
         except Exception:
             pass
+        try:
+            await _record_changeset(
+                name="skill_upsert",
+                target_type="skill",
+                target_id=str(skill.id),
+                args={"scope": "workspace", "category": request.category, "name": request.name},
+                result={
+                    "status": "created",
+                    "integrity": (getattr(skill, "metadata", None) or {}).get("integrity") if isinstance(getattr(skill, "metadata", None), dict) else None,
+                    "provenance": (getattr(skill, "metadata", None) or {}).get("provenance") if isinstance(getattr(skill, "metadata", None), dict) else None,
+                },
+            )
+        except Exception:
+            pass
         return {"id": skill.id, "status": "created", "name": skill.name}
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
@@ -3107,7 +3149,8 @@ async def update_workspace_skill(skill_id: str, request: dict, http_request: Req
     from core.schemas import SkillUpdateRequest
 
     r = SkillUpdateRequest(**(request or {}))
-    skill = await _workspace_skill_manager.update_skill(skill_id, r.model_dump(exclude_unset=True))
+    # NOTE: SkillManager.update_skill expects keyword fields; do not pass the dict as positional arg.
+    skill = await _workspace_skill_manager.update_skill(skill_id, **r.model_dump(exclude_unset=True))
     if not skill:
         raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
     # Mark as pending verification (best-effort)
@@ -3157,6 +3200,20 @@ async def update_workspace_skill(skill_id: str, request: dict, http_request: Req
                 detail={"op": "update"},
                 on_complete=_on_complete,
             )
+    except Exception:
+        pass
+    try:
+        await _record_changeset(
+            name="skill_upsert",
+            target_type="skill",
+            target_id=str(skill_id),
+            args={"scope": "workspace", "fields": list(r.model_dump(exclude_unset=True).keys())[:50]},
+            result={
+                "status": "updated",
+                "integrity": (getattr(skill, "metadata", None) or {}).get("integrity") if isinstance(getattr(skill, "metadata", None), dict) else None,
+                "provenance": (getattr(skill, "metadata", None) or {}).get("provenance") if isinstance(getattr(skill, "metadata", None), dict) else None,
+            },
+        )
     except Exception:
         pass
     return {"status": "updated", "id": skill_id}
