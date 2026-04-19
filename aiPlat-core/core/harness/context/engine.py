@@ -84,11 +84,19 @@ class DefaultContextEngine(ContextEngine):
     def apply(self, *, messages: List[Message], metadata: Dict[str, Any], repo_root: Optional[str]) -> ContextResult:
         msgs = list(messages or [])
         meta = dict(metadata or {})
+        status: Dict[str, Any] = {
+            "context_engine": "default_v1",
+            "project_context": {"enabled": False, "injected": False},
+            "session_search": {"enabled": False, "injected": False, "hits": 0},
+            "compaction": {"applied": False},
+            "budgets": {"max_context_chars": int(self._MAX_CONTEXT_CHARS)},
+        }
 
         # Project context is optional; even when absent, we still allow:
         # - session search injection
         # - deterministic compaction
         if str(meta.get("enable_project_context", "")).lower() not in ("0", "false", "no") and repo_root:
+            status["project_context"]["enabled"] = True
             content, used_path, decision = self._load_project_context(repo_root)
             if isinstance(decision, dict) and decision.get("action") in {"block", "approval_required"}:
                 meta["project_context_blocked"] = ",".join(decision.get("findings") or []) if decision.get("findings") else decision.get("action")
@@ -97,6 +105,15 @@ class DefaultContextEngine(ContextEngine):
                     meta["project_context_approval_request_id"] = decision.get("approval_request_id")
                 meta["project_context_file"] = used_path
                 meta["repo_root"] = str(repo_root)
+                status["project_context"].update(
+                    {
+                        "injected": False,
+                        "file": used_path,
+                        "blocked": True,
+                        "blocked_policy": decision.get("action"),
+                        "findings": decision.get("findings") or [],
+                    }
+                )
             elif content and used_path:
                 # Avoid duplication if caller already injected it.
                 if not (
@@ -115,14 +132,25 @@ class DefaultContextEngine(ContextEngine):
                 meta["project_context_file"] = used_path
                 meta["repo_root"] = str(repo_root)
                 meta["project_context_sha256"] = hashlib.sha256(content.encode("utf-8")).hexdigest()
+                status["project_context"].update(
+                    {
+                        "injected": True,
+                        "file": used_path,
+                        "sha256": meta.get("project_context_sha256"),
+                        "chars": len(content),
+                    }
+                )
                 if isinstance(decision, dict) and decision.get("action") == "warn":
                     meta["project_context_warn"] = decision.get("findings") or []
+                    status["project_context"]["warn_findings"] = decision.get("findings") or []
                 if isinstance(decision, dict) and decision.get("action") == "truncate":
                     meta["project_context_truncated"] = True
+                    status["project_context"]["truncated"] = True
 
         # Roadmap-4 (P0): optional session search injection (cross-session memory).
         session_sha = None
         if os.getenv("AIPLAT_ENABLE_SESSION_SEARCH", "false").lower() in ("1", "true", "yes", "y"):
+            status["session_search"]["enabled"] = True
             try:
                 from core.harness.kernel.execution_context import get_active_request_context
                 from core.harness.kernel.runtime import get_kernel_runtime
@@ -144,6 +172,9 @@ class DefaultContextEngine(ContextEngine):
                             session_sha = hashlib.sha256(("|".join(ids)).encode("utf-8")).hexdigest()
                             meta["session_search_hits"] = len(items)
                             meta["session_search_ids"] = ids
+                            status["session_search"].update(
+                                {"injected": True, "hits": int(len(items)), "sha256": session_sha, "ids": ids}
+                            )
                             # Inject as system message (ephemeral overlay)
                             snippet_lines = []
                             for it in items:
@@ -163,13 +194,26 @@ class DefaultContextEngine(ContextEngine):
                                 msgs = [inject] + msgs
             except Exception:
                 session_sha = None
+                status["session_search"]["error"] = "failed"
 
         # Optional compaction (deterministic, non-LLM).
         if self.should_compact(messages=msgs, metadata=meta):
             cr = self.compact(messages=msgs, metadata=meta)
             msgs, meta = cr.messages, cr.metadata
+            status["compaction"]["applied"] = True
 
-        return self._finalize(msgs, meta, project_sha=meta.get("project_context_sha256"), session_sha=session_sha)
+        status["budgets"]["messages"] = len(msgs)
+        try:
+            status["budgets"]["system_chars"] = sum(
+                len(str(m.get("content") or "")) for m in msgs if isinstance(m, dict) and m.get("role") == "system"
+            )
+        except Exception:
+            pass
+
+        fin = self._finalize(msgs, meta, project_sha=meta.get("project_context_sha256"), session_sha=session_sha)
+        # attach status produced during apply
+        fin.status = status
+        return fin
 
     def _finalize(
         self,

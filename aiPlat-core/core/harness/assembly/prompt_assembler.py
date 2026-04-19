@@ -67,6 +67,8 @@ class PromptAssembler:
             msgs, meta = res.messages, res.metadata
             if getattr(res, "workspace_context_hash", None):
                 meta.setdefault("workspace_context_hash", getattr(res, "workspace_context_hash", None))
+            if getattr(res, "status", None) and isinstance(getattr(res, "status", None), dict):
+                meta.setdefault("context_status", getattr(res, "status", None))
         except Exception:
             pass
 
