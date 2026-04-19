@@ -256,6 +256,14 @@ const Syscalls: React.FC = () => {
         <span className="text-gray-500">{k}:</span> <span className="text-gray-200">{v ?? '-'}</span>
       </div>
     );
+    const copyJson = async (label: string, obj: any) => {
+      try {
+        await navigator.clipboard.writeText(json(obj));
+        toast.success('已复制', label);
+      } catch (e: any) {
+        toast.error('复制失败', String(e?.message || ''));
+      }
+    };
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="space-y-1">
@@ -266,14 +274,33 @@ const Syscalls: React.FC = () => {
           {kv('approval_request_id', r.approval_request_id)}
           {kv('target', `${r.target_type || '-'} / ${r.target_id || '-'}`)}
           {kv('error_code', r.error_code)}
+          {String(r.kind || '') === 'changeset' && (
+            <div className="mt-2 rounded border border-dark-border bg-dark-hover p-2">
+              <div className="text-xs text-gray-500 mb-1">changeset 摘要</div>
+              {kv('note', r?.args?.note || '-')}
+              {kv('diff_sha256', r?.result?.diff_sha256 || r?.result?.template_sha256 || '-')}
+              {kv('working_tree', r?.result?.working_tree ? JSON.stringify(r.result.working_tree) : '-')}
+              {kv('staged', r?.result?.staged ? JSON.stringify(r.result.staged) : '-')}
+            </div>
+          )}
         </div>
         <div className="space-y-2">
           <div>
-            <div className="text-xs text-gray-500 mb-1">args</div>
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-xs text-gray-500 mb-1">args</div>
+              <Button variant="ghost" onClick={() => copyJson('args', r.args)}>
+                复制
+              </Button>
+            </div>
             <pre className="text-[11px] text-gray-300 bg-dark-hover border border-dark-border rounded p-2 overflow-auto max-h-56">{json(r.args)}</pre>
           </div>
           <div>
-            <div className="text-xs text-gray-500 mb-1">result</div>
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-xs text-gray-500 mb-1">result</div>
+              <Button variant="ghost" onClick={() => copyJson('result', r.result)}>
+                复制
+              </Button>
+            </div>
             <pre className="text-[11px] text-gray-300 bg-dark-hover border border-dark-border rounded p-2 overflow-auto max-h-56">{json(r.result)}</pre>
           </div>
         </div>
