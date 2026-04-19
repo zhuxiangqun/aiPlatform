@@ -1118,4 +1118,10 @@ export const policyApi = {
   upsertTenant: async (tenantId: string, data: { policy: Record<string, unknown>; version?: number; actor_id?: string }) => {
     return apiClient.put<TenantPolicy>(`/policies/tenants/${encodeURIComponent(tenantId)}`, data);
   },
+  evaluateTool: async (tenantId: string, toolName: string) => {
+    const q = new URLSearchParams({ tool_name: toolName });
+    return apiClient.get<{ tenant_id: string; tool_name: string; decision: string; policy_version?: number; matched_rule?: string | null }>(
+      `/policies/tenants/${encodeURIComponent(tenantId)}/evaluate-tool?${q.toString()}`
+    );
+  },
 };

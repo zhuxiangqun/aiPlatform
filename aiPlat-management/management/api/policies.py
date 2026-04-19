@@ -38,3 +38,14 @@ async def upsert_tenant_policy(tenant_id: str, body: dict):
     except httpx.HTTPError as e:
         raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
 
+
+@router.get("/tenants/{tenant_id}/evaluate-tool")
+async def evaluate_tenant_tool_policy(tenant_id: str, tool_name: str):
+    try:
+        client = get_core_client()
+        return await client._request("GET", f"/api/core/policies/tenants/{tenant_id}/evaluate-tool", params={"tool_name": tool_name})
+    except httpx.HTTPStatusError as e:
+        status = getattr(getattr(e, "response", None), "status_code", 500)
+        raise HTTPException(status_code=int(status), detail=str(e))
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")

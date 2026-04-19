@@ -1704,6 +1704,42 @@ async def upsert_tenant_policy(tenant_id: str, request: dict):
     return saved
 
 
+@api_router.get("/policies/tenants/{tenant_id}/evaluate-tool")
+async def evaluate_tenant_tool_policy(tenant_id: str, tool_name: str):
+    """
+    Evaluate a single tool against tenant policy (best-effort).
+    Returns: allow | deny | approval_required with policy_version and matched rule.
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    item = await _execution_store.get_tenant_policy(tenant_id=str(tenant_id))
+    if not item:
+        raise HTTPException(status_code=404, detail="tenant_policy_not_found")
+    policy = item.get("policy") if isinstance(item, dict) else {}
+    tool_policy = policy.get("tool_policy") if isinstance(policy, dict) else None
+    deny_tools = tool_policy.get("deny_tools") if isinstance(tool_policy, dict) and isinstance(tool_policy.get("deny_tools"), list) else []
+    approval_tools = (
+        tool_policy.get("approval_required_tools")
+        if isinstance(tool_policy, dict) and isinstance(tool_policy.get("approval_required_tools"), list)
+        else []
+    )
+    decision = "allow"
+    matched = None
+    if str(tool_name) in deny_tools:
+        decision = "deny"
+        matched = "tool_policy.deny_tools"
+    elif str(tool_name) in approval_tools:
+        decision = "approval_required"
+        matched = "tool_policy.approval_required_tools"
+    return {
+        "tenant_id": str(tenant_id),
+        "tool_name": str(tool_name),
+        "decision": decision,
+        "policy_version": item.get("version"),
+        "matched_rule": matched,
+    }
+
+
 @api_router.post("/runs/{run_id}/wait")
 async def wait_run(run_id: str, request: dict):
     """
