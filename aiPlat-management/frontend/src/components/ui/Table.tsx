@@ -16,6 +16,8 @@ interface TableProps<T> {
   loading?: boolean;
   emptyText?: string;
   onRow?: (record: T) => { onClick?: () => void; className?: string };
+  expandedRowKeys?: string[];
+  expandedRowRender?: (record: T, index: number) => React.ReactNode;
   className?: string;
 }
 
@@ -38,6 +40,8 @@ export function Table<T>({
   loading,
   emptyText = '暂无数据',
   onRow,
+  expandedRowKeys,
+  expandedRowRender,
   className = '',
 }: TableProps<T>) {
   const getRowKey = (record: T, index: number): string => {
@@ -102,29 +106,39 @@ export function Table<T>({
           ) : (
             data.map((record, index) => {
               const rowProps = onRow?.(record);
+              const k = getRowKey(record, index);
+              const expanded = !!(expandedRowKeys && expandedRowKeys.includes(k) && expandedRowRender);
               return (
-                <tr
-                  key={getRowKey(record, index)}
-                  className={`
-                    border-b border-dark-border
-                    hover:bg-dark-hover transition-colors
-                    ${rowProps?.className || ''}
-                  `}
-                  onClick={rowProps?.onClick}
-                  style={{ cursor: rowProps?.onClick ? 'pointer' : 'default' }}
-                >
-                  {columns.map((column) => (
-                    <td
-                      key={column.key}
-                      className={`
-                        px-4 py-3 text-sm text-gray-200
-                        ${column.align === 'center' ? 'text-center' : column.align === 'right' ? 'text-right' : 'text-left'}
-                      `}
-                    >
-                      {renderCell(column, record, index)}
-                    </td>
-                  ))}
-                </tr>
+                <React.Fragment key={k}>
+                  <tr
+                    className={`
+                      border-b border-dark-border
+                      hover:bg-dark-hover transition-colors
+                      ${rowProps?.className || ''}
+                    `}
+                    onClick={rowProps?.onClick}
+                    style={{ cursor: rowProps?.onClick ? 'pointer' : 'default' }}
+                  >
+                    {columns.map((column) => (
+                      <td
+                        key={column.key}
+                        className={`
+                          px-4 py-3 text-sm text-gray-200
+                          ${column.align === 'center' ? 'text-center' : column.align === 'right' ? 'text-right' : 'text-left'}
+                        `}
+                      >
+                        {renderCell(column, record, index)}
+                      </td>
+                    ))}
+                  </tr>
+                  {expanded && (
+                    <tr className="border-b border-dark-border bg-dark-bg">
+                      <td colSpan={columns.length} className="px-4 py-3">
+                        {expandedRowRender ? expandedRowRender(record, index) : null}
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               );
             })
           )}

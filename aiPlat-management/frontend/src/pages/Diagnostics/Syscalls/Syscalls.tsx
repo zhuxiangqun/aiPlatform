@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Copy, ExternalLink, RotateCw, Search, Share2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Copy, ExternalLink, RotateCw, Search, Share2 } from 'lucide-react';
 import { Button, Input, Select, Table, toast } from '../../../components/ui';
 import { diagnosticsApi } from '../../../services';
 
@@ -27,6 +27,7 @@ const Syscalls: React.FC = () => {
   const [approvalRequestId, setApprovalRequestId] = useState('');
   const [targetType, setTargetType] = useState('');
   const [targetId, setTargetId] = useState('');
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const loadStats = async (ovr?: Partial<{ kind: string; windowHours: number; topN: number }>) => {
     setStatsLoading(true);
@@ -163,6 +164,26 @@ const Syscalls: React.FC = () => {
   const columns = useMemo(
     () => [
       {
+        key: '__exp',
+        title: '',
+        width: 42,
+        render: (_: unknown, r: any) => {
+          const id = String(r.id || '');
+          const isOpen = !!expanded[id];
+          return (
+            <Button
+              variant="ghost"
+              icon={isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              onClick={(e: any) => {
+                e?.stopPropagation?.();
+                setExpanded((p) => ({ ...(p || {}), [id]: !p?.[id] }));
+              }}
+              title={isOpen ? '收起详情' : '展开详情'}
+            />
+          );
+        },
+      },
+      {
         key: 'id',
         title: 'id',
         width: 160,
@@ -224,9 +245,41 @@ const Syscalls: React.FC = () => {
         render: (_: unknown, r: any) => <span className="text-gray-400">{r.error || '-'}</span>,
       },
     ],
-    [navigate],
+    [navigate, expanded],
   );
 
+  const expandedKeys = useMemo(() => Object.entries(expanded).filter(([, v]) => !!v).map(([k]) => k), [expanded]);
+  const renderExpanded = (r: any) => {
+    const json = (x: any) => JSON.stringify(x || {}, null, 2);
+    const kv = (k: string, v: any) => (
+      <div className="text-xs text-gray-400">
+        <span className="text-gray-500">{k}:</span> <span className="text-gray-200">{v ?? '-'}</span>
+      </div>
+    );
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="space-y-1">
+          {kv('created_at', r.created_at)}
+          {kv('span_id', r.span_id)}
+          {kv('session_id', r.session_id)}
+          {kv('user_id', r.user_id)}
+          {kv('approval_request_id', r.approval_request_id)}
+          {kv('target', `${r.target_type || '-'} / ${r.target_id || '-'}`)}
+          {kv('error_code', r.error_code)}
+        </div>
+        <div className="space-y-2">
+          <div>
+            <div className="text-xs text-gray-500 mb-1">args</div>
+            <pre className="text-[11px] text-gray-300 bg-dark-hover border border-dark-border rounded p-2 overflow-auto max-h-56">{json(r.args)}</pre>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 mb-1">result</div>
+            <pre className="text-[11px] text-gray-300 bg-dark-hover border border-dark-border rounded p-2 overflow-auto max-h-56">{json(r.result)}</pre>
+          </div>
+        </div>
+      </div>
+    );
+  };
   return (
     <div className="space-y-6">
       <div>
@@ -378,7 +431,22 @@ const Syscalls: React.FC = () => {
       </div>
 
       <div className="bg-dark-card rounded-xl border border-dark-border overflow-hidden">
-        <Table columns={columns} data={items} rowKey="id" loading={loading} emptyText="暂无 syscall events" />
+        <Table
+          columns={columns}
+          data={items}
+          rowKey="id"
+          loading={loading}
+          emptyText="暂无 syscall events"
+          expandedRowKeys={expandedKeys}
+          expandedRowRender={(r: any) => renderExpanded(r)}
+          onRow={(r: any) => ({
+            onClick: () => {
+              const id = String(r?.id || '');
+              if (!id) return;
+              setExpanded((p) => ({ ...(p || {}), [id]: !p?.[id] }));
+            },
+          })}
+        />
       </div>
 
       <div className="flex items-center justify-between text-sm text-gray-400">
