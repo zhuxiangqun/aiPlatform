@@ -49,6 +49,7 @@ from core.schemas import (
     PromptTemplateRollbackRequest,
     RepoChangesetPreviewRequest,
     RepoTestsRunRequest,
+    RepoStagedPreviewRequest,
     LongTermMemoryAddRequest,
     LongTermMemorySearchRequest,
     MessageCreateRequest,
@@ -8116,6 +8117,83 @@ async def diagnostics_repo_tests_run(request: RepoTestsRunRequest):
         },
     )
     return {"status": "ok", "result": out}
+
+
+@api_router.post("/diagnostics/repo/staged/preview")
+async def diagnostics_repo_staged_preview(request: RepoStagedPreviewRequest):
+    """
+    Repo-aware workflow: preview staged changes (git diff --cached) and suggest a commit message.
+    Security: read-only git commands only.
+    """
+    import subprocess
+    import hashlib
+    from pathlib import Path
+
+    repo_root = str(request.repo_root or "").strip()
+    if not repo_root:
+        raise HTTPException(status_code=400, detail="repo_root_required")
+    p = Path(repo_root)
+    if not p.exists() or not p.is_dir():
+        raise HTTPException(status_code=404, detail="repo_root_not_found")
+    if not (p / ".git").exists():
+        raise HTTPException(status_code=400, detail="not_a_git_repo")
+
+    def _run(args: list[str], timeout_s: int = 5) -> str:
+        cp = subprocess.run(args, capture_output=True, text=True, timeout=timeout_s)
+        if cp.returncode != 0:
+            raise RuntimeError((cp.stderr or cp.stdout or "").strip()[:500])
+        return (cp.stdout or "").strip()
+
+    staged_numstat = _run(["git", "-C", repo_root, "diff", "--cached", "--numstat"])
+    staged_files: list[str] = []
+    adds = 0
+    dels = 0
+    for line in (staged_numstat or "").splitlines():
+        parts = line.split("\t")
+        if len(parts) < 3:
+            continue
+        a, d, path = parts[0], parts[1], parts[2]
+        staged_files.append(path)
+        if a.isdigit():
+            adds += int(a)
+        if d.isdigit():
+            dels += int(d)
+
+    patch = ""
+    if bool(request.include_patch):
+        patch = _run(["git", "-C", repo_root, "diff", "--cached"], timeout_s=10)
+    patch_sha = hashlib.sha256((patch or staged_numstat or "").encode("utf-8")).hexdigest()
+
+    # Simple, deterministic commit message suggestion (no LLM).
+    scope = "repo"
+    if any(f.startswith("aiPlat-core/") for f in staged_files):
+        scope = "core"
+    elif any(f.startswith("aiPlat-management/") for f in staged_files):
+        scope = "management"
+    elif any(f.startswith("docs/") or f.endswith(".md") for f in staged_files):
+        scope = "docs"
+
+    subject = ""
+    if len(staged_files) == 1:
+        subject = f"update {staged_files[0].split('/')[-1]}"
+    elif len(staged_files) > 1:
+        subject = f"update {len(staged_files)} files"
+    else:
+        subject = "no staged changes"
+
+    suggested = f"chore({scope}): {subject}"
+
+    out = {
+        "repo_root": repo_root,
+        "staged": {"files_changed": len(staged_files), "lines_added": adds, "lines_deleted": dels},
+        "staged_files": staged_files,
+        "patch_sha256": patch_sha,
+        "suggested_commit_message": suggested,
+    }
+    if bool(request.include_patch):
+        out["patch"] = patch
+        out["patch_len"] = len(patch)
+    return out
 
 
 @api_router.post("/diagnostics/repo/changeset/record")

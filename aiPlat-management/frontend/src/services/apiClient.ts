@@ -114,6 +114,10 @@ export const diagnosticsApi = {
     return apiClient.get<any>('/diagnostics/repo/changeset/patch');
   },
 
+  getRepoStagedPreview: async () => {
+    return apiClient.get<any>('/diagnostics/repo/staged/preview');
+  },
+
   runRepoTests: async (body: Record<string, unknown>) => {
     return apiClient.post<any>('/diagnostics/repo/tests/run', body);
   },

@@ -244,6 +244,11 @@ class RepoTestsRunRequest(BaseModel):
     note: Optional[str] = None
 
 
+class RepoStagedPreviewRequest(BaseModel):
+    repo_root: str
+    include_patch: bool = False
+
+
 class LongTermMemoryAddRequest(BaseModel):
     user_id: Optional[str] = None
     key: Optional[str] = None

@@ -151,6 +151,20 @@ async def run_repo_tests(request: Request, body: Dict[str, Any]) -> Dict[str, An
     return await core_client.repo_tests_run({"repo_root": repo_root, "note": note})
 
 
+@router.get("/repo/staged/preview")
+async def get_repo_staged_preview(request: Request) -> Dict[str, Any]:
+    """
+    Preview staged diff and suggested commit message.
+    """
+    repo_root = os.getenv("AIPLAT_REPO_ROOT", "").strip()
+    if not repo_root:
+        raise HTTPException(status_code=400, detail="AIPLAT_REPO_ROOT is not set")
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="core_client not initialized")
+    return await core_client.repo_staged_preview({"repo_root": repo_root, "include_patch": True})
+
+
 @router.get("/health")
 async def list_available_checks(request: Request) -> Dict[str, Any]:
     """列出可用的健康检查

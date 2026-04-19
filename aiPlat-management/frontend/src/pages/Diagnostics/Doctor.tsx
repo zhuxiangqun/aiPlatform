@@ -46,6 +46,9 @@ const Doctor: React.FC = () => {
   const [repoPatchOpen, setRepoPatchOpen] = useState(false);
   const [repoPatchLoading, setRepoPatchLoading] = useState(false);
   const [repoPatch, setRepoPatch] = useState<string>('');
+  const [stagedOpen, setStagedOpen] = useState(false);
+  const [stagedLoading, setStagedLoading] = useState(false);
+  const [stagedPreview, setStagedPreview] = useState<any>(null);
 
   const formatTs = (ts: any) => {
     const n = Number(ts);
@@ -240,12 +243,58 @@ const Doctor: React.FC = () => {
                   >
                     {repoPatchOpen ? '隐藏 diff' : '查看 diff'}
                   </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={async () => {
+                      const next = !stagedOpen;
+                      setStagedOpen(next);
+                      if (next && !stagedPreview) {
+                        setStagedLoading(true);
+                        try {
+                          const res = await diagnosticsApi.getRepoStagedPreview();
+                          setStagedPreview(res || {});
+                        } finally {
+                          setStagedLoading(false);
+                        }
+                      }
+                    }}
+                    loading={stagedLoading}
+                  >
+                    {stagedOpen ? '隐藏 staged' : '查看 staged'}
+                  </Button>
                 </div>
 
                 {repoPatchOpen && (
                   <pre className="text-[11px] text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto max-h-[420px]">
                     {repoPatch || '(empty)'}
                   </pre>
+                )}
+
+                {stagedOpen && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-gray-500">
+                        staged: {stagedPreview?.staged?.files_changed ?? 0} files, +{stagedPreview?.staged?.lines_added ?? 0}/-{stagedPreview?.staged?.lines_deleted ?? 0}
+                      </div>
+                      {stagedPreview?.suggested_commit_message && (
+                        <Button
+                          variant="ghost"
+                          icon={<Copy size={14} />}
+                          onClick={() => navigator.clipboard.writeText(String(stagedPreview?.suggested_commit_message || ''))}
+                          title="复制建议 commit message"
+                        />
+                      )}
+                    </div>
+                    {stagedPreview?.suggested_commit_message && (
+                      <div className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-2">
+                        <span className="text-gray-500">suggested:</span>{' '}
+                        <span className="text-gray-200">{String(stagedPreview?.suggested_commit_message || '')}</span>
+                      </div>
+                    )}
+                    <pre className="text-[11px] text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto max-h-[420px]">
+                      {String(stagedPreview?.patch || '(empty)')}
+                    </pre>
+                  </div>
                 )}
 
                 {repoActions && repo?.status_lines > 0 ? (
