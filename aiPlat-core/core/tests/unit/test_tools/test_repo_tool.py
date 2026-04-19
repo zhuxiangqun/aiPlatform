@@ -49,3 +49,6 @@ async def test_repo_tool_status_and_ls_files(tmp_path: Path, monkeypatch):
     assert "a.txt" in (r2.output or {}).get("tracked", [])
     assert "b.txt" in (r2.output or {}).get("untracked", [])
 
+    r3 = await t.execute({"operation": "search", "repo_root": str(repo), "query": "world"})
+    assert r3.success is True
+    assert (r3.output or {}).get("returned", 0) >= 1

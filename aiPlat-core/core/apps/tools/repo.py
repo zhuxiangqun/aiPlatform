@@ -172,6 +172,162 @@ class RepoTool(BaseTool):
                 out = {"tracked": r1.out.splitlines() if r1.out else [], "untracked": r2.out.splitlines() if r2.out else []}
                 return ToolResult(success=True, output=out)
 
+            if op == "index":
+                """
+                Build a lightweight repo index:
+                - enumerate tracked/untracked (gitignore-aware)
+                - compute basic stats (counts, top extensions, sizes)
+                """
+                max_files = int(params.get("max_files") or 5000)
+                max_files = max(1, min(max_files, 20000))
+                include_untracked = params.get("include_untracked")
+                include_untracked = True if include_untracked is None else bool(include_untracked)
+
+                r_ls = await self.execute({"operation": "ls_files", "repo_root": str(cwd)})
+                if not r_ls.success:
+                    return r_ls
+                tracked = list((r_ls.output or {}).get("tracked", []) or [])
+                untracked = list((r_ls.output or {}).get("untracked", []) or []) if include_untracked else []
+
+                files = tracked + untracked
+                files = files[:max_files]
+
+                ext_counts: Dict[str, int] = {}
+                total_bytes = 0
+                items = []
+                for rel in files:
+                    try:
+                        p = (cwd / rel).resolve()
+                        if not p.exists() or not p.is_file():
+                            continue
+                        st = p.stat()
+                        size = int(st.st_size)
+                        total_bytes += size
+                        ext = p.suffix.lower() if p.suffix else ""
+                        ext_counts[ext] = ext_counts.get(ext, 0) + 1
+                        items.append({"path": rel, "size": size, "mtime": float(st.st_mtime), "tracked": rel in tracked})
+                    except Exception:
+                        continue
+
+                top_ext = sorted(ext_counts.items(), key=lambda x: x[1], reverse=True)[:20]
+                return ToolResult(
+                    success=True,
+                    output={
+                        "repo_root": str(cwd),
+                        "tracked_count": len(tracked),
+                        "untracked_count": len(untracked),
+                        "indexed_count": len(items),
+                        "total_bytes": total_bytes,
+                        "top_extensions": [{"ext": k, "count": v} for k, v in top_ext],
+                        "items": items,
+                    },
+                )
+
+            if op == "search":
+                """
+                Search repository text files (gitignore-aware file set).
+                Params:
+                - query (required): string
+                - regex: bool
+                - case_sensitive: bool
+                - max_results: int (default 200)
+                - max_file_size: bytes (default 512KB)
+                - paths: optional list of file paths to limit search
+                """
+                import re
+
+                query = str(params.get("query") or "")
+                if not query:
+                    return ToolResult(success=False, error="missing query")
+                use_regex = bool(params.get("regex")) if params.get("regex") is not None else False
+                case_sensitive = bool(params.get("case_sensitive")) if params.get("case_sensitive") is not None else False
+                max_results = int(params.get("max_results") or 200)
+                max_results = max(1, min(max_results, 2000))
+                max_file_size = int(params.get("max_file_size") or 524288)
+                max_file_size = max(1024, min(max_file_size, 10 * 1024 * 1024))
+
+                r_ls = await self.execute({"operation": "ls_files", "repo_root": str(cwd)})
+                if not r_ls.success:
+                    return r_ls
+                candidate_files = list((r_ls.output or {}).get("tracked", []) or []) + list((r_ls.output or {}).get("untracked", []) or [])
+
+                # optional filter by paths
+                if isinstance(params.get("paths"), list) and params.get("paths"):
+                    allow = {str(p) for p in params.get("paths") if isinstance(p, str)}
+                    candidate_files = [p for p in candidate_files if p in allow]
+
+                flags = 0 if case_sensitive else re.IGNORECASE
+                pat = re.compile(query, flags=flags) if use_regex else None
+
+                matches: List[Dict[str, Any]] = []
+
+                def _is_binary(p: Path) -> bool:
+                    try:
+                        with p.open("rb") as f:
+                            chunk = f.read(4096)
+                        return b"\x00" in chunk
+                    except Exception:
+                        return True
+
+                for rel in candidate_files:
+                    if len(matches) >= max_results:
+                        break
+                    try:
+                        p = (cwd / rel).resolve()
+                        if not p.exists() or not p.is_file():
+                            continue
+                        st = p.stat()
+                        if int(st.st_size) > max_file_size:
+                            continue
+                        if _is_binary(p):
+                            continue
+                        with p.open("r", encoding="utf-8", errors="ignore") as f:
+                            for ln, line in enumerate(f, start=1):
+                                if len(matches) >= max_results:
+                                    break
+                                line0 = line.rstrip("\n")
+                                if use_regex:
+                                    m = pat.search(line0) if pat else None
+                                    if not m:
+                                        continue
+                                    matches.append(
+                                        {
+                                            "path": rel,
+                                            "line": ln,
+                                            "col": int(m.start() + 1),
+                                            "preview": line0[:400],
+                                        }
+                                    )
+                                else:
+                                    hay = line0 if case_sensitive else line0.lower()
+                                    needle = query if case_sensitive else query.lower()
+                                    idx = hay.find(needle)
+                                    if idx < 0:
+                                        continue
+                                    matches.append(
+                                        {
+                                            "path": rel,
+                                            "line": ln,
+                                            "col": int(idx + 1),
+                                            "preview": line0[:400],
+                                        }
+                                    )
+                    except Exception:
+                        continue
+
+                return ToolResult(
+                    success=True,
+                    output={
+                        "repo_root": str(cwd),
+                        "query": query,
+                        "regex": use_regex,
+                        "case_sensitive": case_sensitive,
+                        "max_results": max_results,
+                        "returned": len(matches),
+                        "matches": matches,
+                    },
+                )
+
             if op == "show":
                 rev = str(params.get("rev") or "HEAD")
                 p = str(params.get("path") or "")
@@ -230,4 +386,3 @@ class RepoTool(BaseTool):
             return ToolResult(success=False, error=f"unsupported operation: {op}")
 
         return await self._call_with_tracking(params, handler, timeout=self._timeout_s + 5.0)
-
