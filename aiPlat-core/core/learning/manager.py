@@ -37,6 +37,7 @@ class LearningManager:
         target_type: str,
         target_id: str,
         version: str,
+        status: str = LearningArtifactStatus.DRAFT,
         payload: Optional[Dict[str, Any]] = None,
         metadata: Optional[Dict[str, Any]] = None,
         trace_id: Optional[str] = None,
@@ -54,6 +55,12 @@ class LearningManager:
             payload=payload or {},
             metadata=metadata or {},
         )
+        # Allow custom status beyond the enum (e.g. pending/verified/failed) for governance.
+        try:
+            if isinstance(status, str) and status:
+                artifact.status = status  # type: ignore[assignment]
+        except Exception:
+            pass
         store = self._get_store()
         if store is not None and hasattr(store, "upsert_learning_artifact"):
             try:

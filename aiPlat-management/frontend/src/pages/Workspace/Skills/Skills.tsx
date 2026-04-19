@@ -21,6 +21,16 @@ const categoryConfig: Record<string, { color: string; text: string }> = {
   transformation: { color: 'bg-yellow-50 text-yellow-300 border-yellow-200', text: '转换' },
 };
 
+const governanceBadge = (record: any) => {
+  const g = (record?.metadata as any)?.governance || {};
+  const v = (record?.metadata as any)?.verification || {};
+  const st = String((g?.status || v?.status || '')).toLowerCase();
+  if (st === 'verified') return <Badge variant={'success' as any}>verified</Badge>;
+  if (st === 'failed') return <Badge variant={'error' as any}>failed</Badge>;
+  if (st === 'pending') return <Badge variant={'warning' as any}>pending</Badge>;
+  return <Badge variant={'default' as any}>n/a</Badge>;
+};
+
 const SKILL_CATEGORIES = [
   { value: '', label: '全部' },
   { value: 'general', label: '通用' },
@@ -195,6 +205,13 @@ const WorkspaceSkills: React.FC = () => {
       },
     },
     {
+      title: '治理',
+      key: 'governance',
+      width: 110,
+      align: 'center' as const,
+      render: (_: unknown, record: Skill) => <div className="flex items-center justify-center">{governanceBadge(record)}</div>,
+    },
+    {
       title: '操作',
       key: 'actions',
       width: 120,
@@ -256,6 +273,8 @@ const WorkspaceSkills: React.FC = () => {
 
   const fs = ((detailModal.skill as any)?.metadata?.filesystem || {}) as any;
   const sp = ((detailModal.skill as any)?.metadata?.skill_pack || {}) as any;
+  const gov = ((detailModal.skill as any)?.metadata?.governance || {}) as any;
+  const ver = ((detailModal.skill as any)?.metadata?.verification || {}) as any;
 
   return (
     <div className="space-y-6">
@@ -395,6 +414,37 @@ const WorkspaceSkills: React.FC = () => {
             ) : (
               <div className="text-gray-500">-</div>
             )}
+          </div>
+          <div>
+            <div className="text-xs text-gray-500">governance</div>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                {governanceBadge({ metadata: { governance: gov, verification: ver } } as any)}
+                <span className="text-xs text-gray-500">
+                  {gov?.job_run_id ? `job_run: ${String(gov.job_run_id).slice(0, 10)}...` : ''}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {gov?.candidate_id && (
+                  <Button variant="ghost" onClick={() => copyText(String(gov.candidate_id))}>
+                    复制 candidate_id
+                  </Button>
+                )}
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    try {
+                      window.open('/core/learning/releases', '_blank', 'noopener,noreferrer');
+                    } catch {
+                      // ignore
+                    }
+                  }}
+                >
+                  打开 Releases
+                </Button>
+              </div>
+            </div>
+            <pre className="mt-2 text-xs bg-dark-hover rounded p-2 overflow-auto max-h-40">{JSON.stringify(gov || {}, null, 2)}</pre>
           </div>
           <div>
             <div className="text-xs text-gray-500">filesystem.skill_md</div>

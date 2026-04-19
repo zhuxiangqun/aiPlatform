@@ -3202,6 +3202,9 @@ async def create_workspace_skill(request: SkillCreateRequest, http_request: Requ
             metadata={"template": request.template, "sop": request.sop},
         )
         # Mark as pending verification (best-effort)
+        eval_artifact_id: Optional[str] = None
+        candidate_id: Optional[str] = None
+        job_id = None
         try:
             await _workspace_skill_manager.update_skill(
                 str(skill.id),
@@ -3213,6 +3216,50 @@ async def create_workspace_skill(request: SkillCreateRequest, http_request: Requ
                     }
                 },
             )
+        except Exception:
+            pass
+        # Create governance artifacts (best-effort): evaluation_report + release_candidate
+        try:
+            if _execution_store is not None:
+                from core.learning.manager import LearningManager
+                from core.learning.types import LearningArtifactKind
+
+                mgr = LearningManager(execution_store=_execution_store)
+                sid = str(skill.id)
+                job_id = f"autosmoke-skill:{sid}"
+                eval_art = await mgr.create_artifact(
+                    kind=LearningArtifactKind.EVALUATION_REPORT,
+                    target_type="skill",
+                    target_id=sid,
+                    version=f"autosmoke:{int(time.time())}",
+                    status="pending",
+                    payload={"source": "autosmoke", "job_id": job_id, "op": "create"},
+                    metadata={"governance": True},
+                )
+                eval_artifact_id = eval_art.artifact_id
+                cand = await mgr.create_artifact(
+                    kind=LearningArtifactKind.RELEASE_CANDIDATE,
+                    target_type="skill",
+                    target_id=sid,
+                    version=str(getattr(skill, "version", "") or "v1.0.0"),
+                    status="draft",
+                    payload={"evaluation_artifact_id": eval_artifact_id},
+                    metadata={"governance": True, "ready": False},
+                )
+                candidate_id = cand.artifact_id
+                await _workspace_skill_manager.update_skill(
+                    sid,
+                    metadata={
+                        "governance": {
+                            "status": "pending",
+                            "evaluation_artifact_id": eval_artifact_id,
+                            "candidate_id": candidate_id,
+                            "job_id": job_id,
+                            "last_op": "create",
+                            "updated_at": time.time(),
+                        }
+                    },
+                )
         except Exception:
             pass
         try:
@@ -3229,12 +3276,54 @@ async def create_workspace_skill(request: SkillCreateRequest, http_request: Requ
                         "status": "verified" if st == "completed" else "failed",
                         "updated_at": time.time(),
                         "source": "autosmoke",
-                        "job_id": f"autosmoke-skill:{sid}",
+                        "job_id": job_id or f"autosmoke-skill:{sid}",
                         "job_run_id": str(job_run.get("id") or ""),
                         "reason": str(job_run.get("error") or ""),
                     }
                     try:
                         await _workspace_skill_manager.update_skill(sid, metadata={"verification": ver})
+                    except Exception:
+                        pass
+                    # Update governance artifacts (best-effort)
+                    try:
+                        if _execution_store is not None:
+                            from core.learning.manager import LearningManager
+
+                            mgr = LearningManager(execution_store=_execution_store)
+                            gid = eval_artifact_id
+                            cid = candidate_id
+                            if not gid or not cid:
+                                # Try read from persisted frontmatter
+                                s2 = await _workspace_skill_manager.get_skill(sid)
+                                g = (getattr(s2, "metadata", None) or {}).get("governance") if isinstance(getattr(s2, "metadata", None), dict) else {}
+                                gid = g.get("evaluation_artifact_id")
+                                cid = g.get("candidate_id")
+                            if gid:
+                                await mgr.set_artifact_status(
+                                    artifact_id=str(gid),
+                                    status="verified" if st == "completed" else "failed",
+                                    metadata_update={"job_run_id": str(job_run.get("id") or ""), "reason": str(job_run.get("error") or "")},
+                                )
+                            if cid:
+                                await mgr.set_artifact_status(
+                                    artifact_id=str(cid),
+                                    status="draft",
+                                    metadata_update={
+                                        "ready": bool(st == "completed"),
+                                        "verification": ver,
+                                        "job_run_id": str(job_run.get("id") or ""),
+                                    },
+                                )
+                            await _workspace_skill_manager.update_skill(
+                                sid,
+                                metadata={
+                                    "governance": {
+                                        "status": "verified" if st == "completed" else "failed",
+                                        "job_run_id": str(job_run.get("id") or ""),
+                                        "updated_at": time.time(),
+                                    }
+                                },
+                            )
                     except Exception:
                         pass
 
@@ -3307,6 +3396,9 @@ async def update_workspace_skill(skill_id: str, request: dict, http_request: Req
     if not skill:
         raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
     # Mark as pending verification (best-effort)
+    eval_artifact_id: Optional[str] = None
+    candidate_id: Optional[str] = None
+    job_id = None
     try:
         await _workspace_skill_manager.update_skill(
             str(skill_id),
@@ -3318,6 +3410,50 @@ async def update_workspace_skill(skill_id: str, request: dict, http_request: Req
                 }
             },
         )
+    except Exception:
+        pass
+    # Create governance artifacts (best-effort)
+    try:
+        if _execution_store is not None:
+            from core.learning.manager import LearningManager
+            from core.learning.types import LearningArtifactKind
+
+            mgr = LearningManager(execution_store=_execution_store)
+            sid = str(skill_id)
+            job_id = f"autosmoke-skill:{sid}"
+            eval_art = await mgr.create_artifact(
+                kind=LearningArtifactKind.EVALUATION_REPORT,
+                target_type="skill",
+                target_id=sid,
+                version=f"autosmoke:{int(time.time())}",
+                status="pending",
+                payload={"source": "autosmoke", "job_id": job_id, "op": "update"},
+                metadata={"governance": True},
+            )
+            eval_artifact_id = eval_art.artifact_id
+            cand = await mgr.create_artifact(
+                kind=LearningArtifactKind.RELEASE_CANDIDATE,
+                target_type="skill",
+                target_id=sid,
+                version=str(getattr(skill, "version", "") or "v1.0.0"),
+                status="draft",
+                payload={"evaluation_artifact_id": eval_artifact_id},
+                metadata={"governance": True, "ready": False},
+            )
+            candidate_id = cand.artifact_id
+            await _workspace_skill_manager.update_skill(
+                sid,
+                metadata={
+                    "governance": {
+                        "status": "pending",
+                        "evaluation_artifact_id": eval_artifact_id,
+                        "candidate_id": candidate_id,
+                        "job_id": job_id,
+                        "last_op": "update",
+                        "updated_at": time.time(),
+                    }
+                },
+            )
     except Exception:
         pass
     try:
@@ -3334,12 +3470,52 @@ async def update_workspace_skill(skill_id: str, request: dict, http_request: Req
                     "status": "verified" if st == "completed" else "failed",
                     "updated_at": time.time(),
                     "source": "autosmoke",
-                    "job_id": f"autosmoke-skill:{sid}",
+                    "job_id": job_id or f"autosmoke-skill:{sid}",
                     "job_run_id": str(job_run.get("id") or ""),
                     "reason": str(job_run.get("error") or ""),
                 }
                 try:
                     await _workspace_skill_manager.update_skill(sid, metadata={"verification": ver})
+                except Exception:
+                    pass
+                try:
+                    if _execution_store is not None:
+                        from core.learning.manager import LearningManager
+
+                        mgr = LearningManager(execution_store=_execution_store)
+                        gid = eval_artifact_id
+                        cid = candidate_id
+                        if not gid or not cid:
+                            s2 = await _workspace_skill_manager.get_skill(sid)
+                            g = (getattr(s2, "metadata", None) or {}).get("governance") if isinstance(getattr(s2, "metadata", None), dict) else {}
+                            gid = g.get("evaluation_artifact_id")
+                            cid = g.get("candidate_id")
+                        if gid:
+                            await mgr.set_artifact_status(
+                                artifact_id=str(gid),
+                                status="verified" if st == "completed" else "failed",
+                                metadata_update={"job_run_id": str(job_run.get("id") or ""), "reason": str(job_run.get("error") or "")},
+                            )
+                        if cid:
+                            await mgr.set_artifact_status(
+                                artifact_id=str(cid),
+                                status="draft",
+                                metadata_update={
+                                    "ready": bool(st == "completed"),
+                                    "verification": ver,
+                                    "job_run_id": str(job_run.get("id") or ""),
+                                },
+                            )
+                        await _workspace_skill_manager.update_skill(
+                            sid,
+                            metadata={
+                                "governance": {
+                                    "status": "verified" if st == "completed" else "failed",
+                                    "job_run_id": str(job_run.get("id") or ""),
+                                    "updated_at": time.time(),
+                                }
+                            },
+                        )
                 except Exception:
                     pass
 

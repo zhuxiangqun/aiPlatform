@@ -859,7 +859,7 @@ class SkillManager:
             em = skill.metadata.get("execution_mode")
             if isinstance(em, str) and em.strip():
                 execution_mode = em.strip()
-        return {
+        manifest = {
             "name": skill.id,
             "display_name": getattr(skill, "name", skill.id),
             "description": getattr(skill, "description", "") or "",
@@ -871,6 +871,15 @@ class SkillManager:
             "input_schema": getattr(skill, "input_schema", {}) or {},
             "output_schema": getattr(skill, "output_schema", {}) or {},
         }
+        # Persist selected traceability/governance metadata so it survives reload.
+        try:
+            if isinstance(getattr(skill, "metadata", None), dict):
+                for k in ("verification", "governance", "provenance", "integrity", "skill_pack"):
+                    if k in skill.metadata:
+                        manifest[k] = skill.metadata.get(k)
+        except Exception:
+            pass
+        return manifest
 
     def _sync_registry_config(self, skill: "SkillInfo") -> None:
         """Best-effort: sync SkillRegistry config for an existing skill instance."""
