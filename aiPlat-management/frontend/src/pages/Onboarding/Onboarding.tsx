@@ -42,11 +42,13 @@ const Onboarding: React.FC = () => {
   const [defaultLlmResult, setDefaultLlmResult] = useState<any>(null);
   const [defaultLlmLoading, setDefaultLlmLoading] = useState(false);
   const [defaultLlmApprovalId, setDefaultLlmApprovalId] = useState<string>('');
+  const [defaultLlmDetails, setDefaultLlmDetails] = useState<string>('');
 
   const [initTenantLoading, setInitTenantLoading] = useState(false);
   const [initTenantResult, setInitTenantResult] = useState<any>(null);
   const [initTenantApprovalId, setInitTenantApprovalId] = useState<string>('');
   const [strictToolApproval, setStrictToolApproval] = useState(true);
+  const [initTenantDetails, setInitTenantDetails] = useState<string>('');
 
   // Enhancements: approvals + doctor + key rotation
   const [pendingApprovals, setPendingApprovals] = useState<any[]>([]);
@@ -60,18 +62,21 @@ const Onboarding: React.FC = () => {
   const [autosmokeResult, setAutosmokeResult] = useState<any>(null);
   const [autosmokeApprovalId, setAutosmokeApprovalId] = useState<string>('');
   const [autosmokeForm, setAutosmokeForm] = useState({ enabled: true, enforce: true, webhook_url: '' });
+  const [autosmokeDetails, setAutosmokeDetails] = useState<string>('');
 
   const [secretsStatus, setSecretsStatus] = useState<any>(null);
   const [secretsLoading, setSecretsLoading] = useState(false);
   const [migrateSecretsLoading, setMigrateSecretsLoading] = useState(false);
   const [migrateSecretsResult, setMigrateSecretsResult] = useState<any>(null);
   const [migrateSecretsApprovalId, setMigrateSecretsApprovalId] = useState<string>('');
+  const [migrateSecretsDetails, setMigrateSecretsDetails] = useState<string>('');
 
   const [defaultTenantPolicy, setDefaultTenantPolicy] = useState<any>(null);
   const [tenantPolicyLoading, setTenantPolicyLoading] = useState(false);
   const [strongGateLoading, setStrongGateLoading] = useState(false);
   const [strongGateResult, setStrongGateResult] = useState<any>(null);
   const [strongGateApprovalId, setStrongGateApprovalId] = useState<string>('');
+  const [strongGateDetails, setStrongGateDetails] = useState<string>('');
 
   // Auto-poll approvals and auto-apply on approval
   const [approvalWatch, setApprovalWatch] = useState<
@@ -336,6 +341,7 @@ const Onboarding: React.FC = () => {
         model: defaultLlmForm.model,
         require_approval: true,
         approval_request_id: approvalIdOverride || defaultLlmApprovalId || undefined,
+        details: defaultLlmDetails || undefined,
       });
       setDefaultLlmResult(res);
       if (res?.status === 'approval_required' && res?.approval_request_id) {
@@ -363,6 +369,7 @@ const Onboarding: React.FC = () => {
         strict_tool_approval: strictToolApproval,
         require_approval: true,
         approval_request_id: approvalIdOverride || initTenantApprovalId || undefined,
+        details: initTenantDetails || undefined,
       });
       setInitTenantResult(res);
       if (res?.status === 'approval_required' && res?.approval_request_id) {
@@ -445,6 +452,7 @@ const Onboarding: React.FC = () => {
         webhook_url: autosmokeForm.webhook_url || undefined,
         require_approval: true,
         approval_request_id: approvalIdOverride || autosmokeApprovalId || undefined,
+        details: autosmokeDetails || undefined,
       });
       setAutosmokeResult(res);
       if (res?.status === 'approval_required' && res?.approval_request_id) {
@@ -469,6 +477,7 @@ const Onboarding: React.FC = () => {
       const res = await onboardingApi.migrateSecrets({
         require_approval: true,
         approval_request_id: approvalIdOverride || migrateSecretsApprovalId || undefined,
+        details: migrateSecretsDetails || undefined,
       });
       setMigrateSecretsResult(res);
       if (res?.status === 'approval_required' && res?.approval_request_id) {
@@ -501,6 +510,7 @@ const Onboarding: React.FC = () => {
         enabled,
         require_approval: true,
         approval_request_id: approvalIdOverride || strongGateApprovalId || undefined,
+        details: strongGateDetails || undefined,
       });
       setStrongGateResult(res);
       if (res?.status === 'approval_required' && res?.approval_request_id) {
@@ -762,6 +772,16 @@ const Onboarding: React.FC = () => {
               className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
             />
           </div>
+          <div className="md:col-span-2">
+            <div className="text-xs text-gray-500 mb-1">details（可选：审批说明/备注）</div>
+            <textarea
+              value={defaultLlmDetails}
+              onChange={(e) => setDefaultLlmDetails(e.target.value)}
+              placeholder="例如：将默认路由切到 deepseek-reasoner"
+              className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
+              rows={3}
+            />
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -795,6 +815,16 @@ const Onboarding: React.FC = () => {
             className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
           />
         </div>
+        <div>
+          <div className="text-xs text-gray-500 mb-1">details（可选：审批说明/备注）</div>
+          <textarea
+            value={initTenantDetails}
+            onChange={(e) => setInitTenantDetails(e.target.value)}
+            placeholder="例如：初始化 default tenant 并写入最小 policy"
+            className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
+            rows={3}
+          />
+        </div>
         <label className="flex items-center gap-2 text-sm text-gray-300">
           <input type="checkbox" checked={strictToolApproval} onChange={(e) => setStrictToolApproval(e.target.checked)} />
           强门禁：所有工具执行都需审批（approval_required_tools=['*']）
@@ -820,6 +850,16 @@ const Onboarding: React.FC = () => {
           >
             {tenantPolicyLoading ? '刷新中…' : '刷新'}
           </button>
+        </div>
+        <div>
+          <div className="text-xs text-gray-500 mb-1">details（可选：审批说明/备注）</div>
+          <textarea
+            value={strongGateDetails}
+            onChange={(e) => setStrongGateDetails(e.target.value)}
+            placeholder="例如：误开启强门禁，需要解除"
+            className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
+            rows={3}
+          />
         </div>
         <div className="text-sm text-gray-500">
           当前状态：{isStrongGateEnabled ? '已开启（所有工具需审批）' : '未开启'}
@@ -884,6 +924,16 @@ const Onboarding: React.FC = () => {
               className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
             />
           </div>
+          <div className="md:col-span-2">
+            <div className="text-xs text-gray-500 mb-1">details（可选：审批说明/备注）</div>
+            <textarea
+              value={autosmokeDetails}
+              onChange={(e) => setAutosmokeDetails(e.target.value)}
+              placeholder="例如：开启 autosmoke 强门禁，确保发布前验证通过"
+              className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
+              rows={3}
+            />
+          </div>
         </div>
         <button
           disabled={autosmokeLoading}
@@ -929,6 +979,16 @@ const Onboarding: React.FC = () => {
             onChange={(e) => setMigrateSecretsApprovalId(e.target.value)}
             placeholder="例如：apr-xxxx"
             className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
+          />
+        </div>
+        <div>
+          <div className="text-xs text-gray-500 mb-1">details（可选：审批说明/备注）</div>
+          <textarea
+            value={migrateSecretsDetails}
+            onChange={(e) => setMigrateSecretsDetails(e.target.value)}
+            placeholder="例如：将历史明文 key 迁移为加密存储"
+            className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
+            rows={3}
           />
         </div>
         <button
