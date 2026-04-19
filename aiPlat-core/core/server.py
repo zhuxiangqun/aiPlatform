@@ -3755,9 +3755,36 @@ async def rollback_release_candidate(candidate_id: str, request: dict, http_requ
 
     user_id = (request or {}).get("user_id") or "system"
     actor0 = _rbac_actor_from_http(http_request, request if isinstance(request, dict) else None)
+    change_id = _new_change_id()
     require_approval = bool((request or {}).get("require_approval", False))
     approval_request_id = (request or {}).get("approval_request_id")
     reason = (request or {}).get("reason") or ""
+
+    # Gate: ensure involved targets are verified before rollback (when enforcement enabled).
+    try:
+        targets: list[tuple[str, str]] = []
+        if cand.get("target_type") and cand.get("target_id"):
+            targets.append((str(cand.get("target_type")), str(cand.get("target_id"))))
+        ids = (cand.get("payload") or {}).get("artifact_ids") if isinstance(cand.get("payload"), dict) else []
+        if isinstance(ids, list):
+            for aid in ids:
+                if not isinstance(aid, str) or not aid:
+                    continue
+                a = await _execution_store.get_learning_artifact(aid)
+                if isinstance(a, dict) and a.get("target_type") and a.get("target_id"):
+                    targets.append((str(a.get("target_type")), str(a.get("target_id"))))
+        uniq = list({(t[0].lower(), t[1]) for t in targets})
+        if _autosmoke_enforce():
+            change_id = await _gate_with_change_control(
+                operation="learning.release.rollback",
+                targets=uniq,
+                actor=actor0,
+                approval_request_id=str(approval_request_id or "").strip() or None,
+            )
+    except HTTPException:
+        raise
+    except Exception:
+        pass
 
     if require_approval:
         if not approval_request_id:
@@ -3768,9 +3795,41 @@ async def rollback_release_candidate(candidate_id: str, request: dict, http_requ
                 regression_report_id=None,
                 details=reason or "manual_rollback",
             )
-            return {"status": "approval_required", "approval_request_id": req_id}
+            try:
+                await _record_changeset(
+                    name="learning.release.rollback",
+                    target_type="change",
+                    target_id=change_id,
+                    status="approval_required",
+                    args={"candidate_id": candidate_id, "reason": reason},
+                    approval_request_id=req_id,
+                    user_id=str(actor0.get("actor_id") or "admin"),
+                    tenant_id=str(actor0.get("tenant_id") or "") or None,
+                    session_id=str(actor0.get("session_id") or "") or None,
+                )
+            except Exception:
+                pass
+            return {"status": "approval_required", "approval_request_id": req_id, "change_id": change_id, "links": _change_links(change_id)}
         if not is_approved(approval_mgr, approval_request_id):
-            raise HTTPException(status_code=409, detail="not_approved")
+            try:
+                await _record_changeset(
+                    name="learning.release.rollback",
+                    target_type="change",
+                    target_id=change_id,
+                    status="failed",
+                    args={"candidate_id": candidate_id, "reason": reason},
+                    error="not_approved",
+                    approval_request_id=approval_request_id,
+                    user_id=str(actor0.get("actor_id") or "admin"),
+                    tenant_id=str(actor0.get("tenant_id") or "") or None,
+                    session_id=str(actor0.get("session_id") or "") or None,
+                )
+            except Exception:
+                pass
+            raise HTTPException(
+                status_code=409,
+                detail={"code": "not_approved", "message": "not_approved", "change_id": change_id, "links": _change_links(change_id)},
+            )
 
     await mgr.set_artifact_status(
         artifact_id=candidate_id,
@@ -3828,7 +3887,21 @@ async def rollback_release_candidate(candidate_id: str, request: dict, http_requ
                 )
     except Exception:
         pass
-    return {"status": "rolled_back", "candidate_id": candidate_id, "approval_request_id": approval_request_id}
+    try:
+        await _record_changeset(
+            name="learning.release.rollback",
+            target_type="change",
+            target_id=change_id,
+            status="success",
+            args={"candidate_id": candidate_id, "reason": reason},
+            approval_request_id=approval_request_id,
+            user_id=str(actor0.get("actor_id") or "admin"),
+            tenant_id=str(actor0.get("tenant_id") or "") or None,
+            session_id=str(actor0.get("session_id") or "") or None,
+        )
+    except Exception:
+        pass
+    return {"status": "rolled_back", "candidate_id": candidate_id, "approval_request_id": approval_request_id, "change_id": change_id, "links": _change_links(change_id)}
 
 
 # ==================== Release Rollouts / Metrics (PR-10) ====================
