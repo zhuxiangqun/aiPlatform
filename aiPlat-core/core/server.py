@@ -85,10 +85,12 @@ from core.apps.tools.base import ToolRegistry, get_tool_registry, create_tool
 from core.apps.tools.permission import PermissionManager, Permission, get_permission_manager
 from core.apps.agents import get_agent_registry
 from core.apps.skills import get_skill_registry, get_skill_executor
+from core.apps.plugins.manager import PluginManager
 from core.services import get_execution_store
 from core.services.trace_service import TraceService, TraceServiceTracer, SpanStatus
 from core.harness.integration import get_harness, KernelRuntime
 from core.harness.kernel.types import ExecutionRequest
+from core.policy.engine import evaluate_tool_policy_snapshot, PolicyDecision as EnginePolicyDecision
 import uuid
 
 
@@ -178,6 +180,7 @@ _harness_manager: Optional[HarnessManager] = None
 _approval_manager: Optional[Any] = None
 _job_scheduler: Optional[JobScheduler] = None
 _mcp_runtime: Optional[MCPRuntime] = None
+_plugin_manager: Optional[PluginManager] = None
 
 
 async def _get_trusted_skill_pubkeys_map() -> Dict[str, str]:
@@ -368,6 +371,12 @@ async def lifespan(app: FastAPI):
     # ExecutionStore (SQLite) - persistent execution/history
     _execution_store = get_execution_store()
     await _execution_store.init()
+    # Plugins
+    try:
+        global _plugin_manager
+        _plugin_manager = PluginManager(execution_store=_execution_store)
+    except Exception:
+        _plugin_manager = None
 
     # TraceService (optional persistence) + tool tracer wiring
     try:
@@ -2400,6 +2409,22 @@ async def replay_approval(request_id: str, request: dict, http_request: Request)
             http_request=http_request,
         )
 
+    # Replay plugin run.
+    if op == "plugin:run":
+        plugin_id = meta.get("plugin_id")
+        if not isinstance(plugin_id, str) or not plugin_id:
+            raise HTTPException(status_code=400, detail="missing_plugin_id")
+        return await run_plugin(
+            plugin_id=str(plugin_id),
+            request={
+                "approval_request_id": str(request_id),
+                "run_id": meta.get("run_id"),
+                "input": meta.get("input") or {},
+                "session_id": meta.get("session_id"),
+            },
+            http_request=http_request,
+        )
+
     raise HTTPException(status_code=400, detail=f"unsupported_operation:{op}")
 
 
@@ -3644,6 +3669,347 @@ async def api_cleanup_rollback_approvals(request: dict):
         candidate_id=(request or {}).get("candidate_id"),
         page_size=int((request or {}).get("page_size", 500) or 500),
     )
+
+
+# ==================== Plugins / Workflows (PR-11) ====================
+
+
+async def _require_plugin_run_approval(
+    *,
+    actor_id: str,
+    plugin_id: str,
+    run_id: str,
+    tenant_id: Optional[str],
+    actor_role: Optional[str],
+    session_id: Optional[str],
+    required_tools: list[str],
+    input: Optional[dict] = None,
+    details: str = "",
+) -> str:
+    from core.harness.infrastructure.approval.types import ApprovalContext, ApprovalRule, RuleType
+
+    if not _approval_manager:
+        raise HTTPException(status_code=503, detail="ApprovalManager not initialized")
+    rule = ApprovalRule(
+        rule_id="plugin_run",
+        rule_type=RuleType.SENSITIVE_OPERATION,
+        name="插件运行审批",
+        description="运行 workflow/plugin 需要审批",
+        priority=1,
+        metadata={"sensitive_operations": ["plugin:run"]},
+    )
+    _approval_manager.register_rule(rule)
+    ctx = ApprovalContext(
+        session_id=str(session_id or "default"),
+        user_id=str(actor_id or "system"),
+        operation="plugin:run",
+        operation_context={"plugin_id": plugin_id, "details": details or f"run plugin {plugin_id}", "input": input or {}},
+        metadata={
+            "tenant_id": tenant_id,
+            "actor_id": actor_id,
+            "actor_role": actor_role,
+            "session_id": session_id,
+            "run_id": run_id,
+            "plugin_id": plugin_id,
+            "required_tools": required_tools,
+            "input": input or {},
+            "system_run_plan": {"type": "plugin", "plugin_id": plugin_id, "required_tools": required_tools},
+        },
+    )
+    req = _approval_manager.create_request(ctx, rule=rule)
+    try:
+        await _approval_manager._persist(req)  # type: ignore[attr-defined]
+    except Exception:
+        pass
+    return req.request_id
+
+
+@api_router.get("/plugins")
+async def list_plugins(http_request: Request, limit: int = 100, offset: int = 0):
+    if not _execution_store or not _plugin_manager:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    actor0 = _rbac_actor_from_http(http_request, None)
+    tid = actor0.get("tenant_id")
+    return await _plugin_manager.list_plugins(tenant_id=str(tid) if tid else None, limit=limit, offset=offset)
+
+
+@api_router.put("/plugins")
+async def upsert_plugin(request: dict, http_request: Request):
+    if not _execution_store or not _plugin_manager:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    actor0 = _rbac_actor_from_http(http_request, request if isinstance(request, dict) else None)
+    tid = actor0.get("tenant_id")
+    deny = await _rbac_guard(http_request=http_request, payload=request if isinstance(request, dict) else None, action="upsert", resource_type="plugin", resource_id=str((request or {}).get("plugin_id") or ""))
+    if deny:
+        return deny
+    if not tid:
+        raise HTTPException(status_code=400, detail="tenant_id required")
+    manifest = (request or {}).get("manifest")
+    if not isinstance(manifest, dict):
+        raise HTTPException(status_code=400, detail="manifest must be object")
+    enabled = bool((request or {}).get("enabled", False))
+    rec = await _plugin_manager.upsert_plugin(tenant_id=str(tid), manifest=manifest, enabled=enabled)
+    try:
+        await _execution_store.add_audit_log(
+            action="plugin_upsert",
+            status="ok",
+            tenant_id=str(tid),
+            actor_id=str(actor0.get("actor_id") or "system"),
+            actor_role=str(actor0.get("actor_role") or "") or None,
+            resource_type="plugin",
+            resource_id=str(rec.get("plugin_id")),
+            detail={"name": rec.get("name"), "version": rec.get("version"), "enabled": bool(rec.get("enabled"))},
+        )
+    except Exception:
+        pass
+    return {"status": "ok", "plugin": rec}
+
+
+@api_router.post("/plugins/{plugin_id}/enable")
+async def set_plugin_enabled(plugin_id: str, request: dict, http_request: Request):
+    if not _execution_store or not _plugin_manager:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    deny = await _rbac_guard(http_request=http_request, payload=request if isinstance(request, dict) else None, action="enable", resource_type="plugin", resource_id=str(plugin_id))
+    if deny:
+        return deny
+    actor0 = _rbac_actor_from_http(http_request, request if isinstance(request, dict) else None)
+    tid = actor0.get("tenant_id")
+    if not tid:
+        raise HTTPException(status_code=400, detail="tenant_id required")
+    enabled = bool((request or {}).get("enabled", True))
+    ok = await _plugin_manager.set_enabled(tenant_id=str(tid), plugin_id=str(plugin_id), enabled=enabled)
+    if not ok:
+        raise HTTPException(status_code=404, detail="plugin_not_found")
+    try:
+        await _execution_store.add_audit_log(
+            action="plugin_enable",
+            status="ok",
+            tenant_id=str(tid),
+            actor_id=str(actor0.get("actor_id") or "system"),
+            actor_role=str(actor0.get("actor_role") or "") or None,
+            resource_type="plugin",
+            resource_id=str(plugin_id),
+            detail={"enabled": enabled},
+        )
+    except Exception:
+        pass
+    return {"status": "ok", "plugin_id": plugin_id, "enabled": enabled}
+
+
+@api_router.post("/plugins/{plugin_id}/run")
+async def run_plugin(plugin_id: str, request: dict, http_request: Request):
+    """
+    PR-11: plugin run (MVP)
+    - policy：基于 tenant policy 对 required_tools 做 allow/deny/approval_required 汇总
+    - approval：需要审批时返回 waiting_approval + approval_request_id
+    - execution：当前仅写 run_events/audit + 返回占位 output（后续接 workflow 执行器）
+    """
+    if not _execution_store or not _plugin_manager:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    deny = await _rbac_guard(http_request=http_request, payload=request if isinstance(request, dict) else None, action="execute", resource_type="plugin", resource_id=str(plugin_id))
+    if deny:
+        return deny
+
+    actor0 = _rbac_actor_from_http(http_request, request if isinstance(request, dict) else None)
+    tid = actor0.get("tenant_id")
+    actor_id = str(actor0.get("actor_id") or "system")
+    actor_role = actor0.get("actor_role")
+    if not tid:
+        raise HTTPException(status_code=400, detail="tenant_id required")
+
+    plugin = await _plugin_manager.get_plugin(tenant_id=str(tid), plugin_id=str(plugin_id))
+    if not plugin:
+        raise HTTPException(status_code=404, detail="plugin_not_found")
+    if int(plugin.get("enabled") or 0) != 1:
+        raise HTTPException(status_code=409, detail="plugin_disabled")
+
+    manifest = plugin.get("manifest") if isinstance(plugin.get("manifest"), dict) else {}
+    required_tools = manifest.get("required_tools") if isinstance(manifest.get("required_tools"), list) else []
+    required_tools = [str(x) for x in required_tools if isinstance(x, (str, int, float)) and str(x).strip()]
+
+    # Load tenant policy snapshot once (best-effort).
+    pol_item = await _execution_store.get_tenant_policy(tenant_id=str(tid))
+    policy = pol_item.get("policy") if isinstance(pol_item, dict) and isinstance(pol_item.get("policy"), dict) else None
+    policy_version = pol_item.get("version") if isinstance(pol_item, dict) else None
+    try:
+        policy_version = int(policy_version) if policy_version is not None else None
+    except Exception:
+        policy_version = None
+
+    # Evaluate required tools: if any deny => deny; else if any approval_required => approval.
+    deny_reason = None
+    approval_needed = False
+    for tn in required_tools:
+        ev = evaluate_tool_policy_snapshot(
+            policy=policy,
+            policy_version=policy_version,
+            tenant_id=str(tid),
+            actor_id=actor_id,
+            actor_role=str(actor_role) if actor_role else None,
+            tool_name=str(tn),
+            tool_args={"_tenant_id": str(tid), "_actor_role": actor_role},
+        )
+        if ev.decision == EnginePolicyDecision.DENY:
+            deny_reason = ev.reason
+            break
+        if ev.decision == EnginePolicyDecision.APPROVAL_REQUIRED:
+            approval_needed = True
+
+    approval_request_id = (request or {}).get("approval_request_id")
+    run_id = str((request or {}).get("run_id") or new_prefixed_id("run"))
+    session_id = (request or {}).get("session_id")
+    input_obj = (request or {}).get("input") if isinstance((request or {}).get("input"), dict) else {}
+
+    if deny_reason:
+        try:
+            await _execution_store.create_plugin_run(
+                run_id=run_id,
+                tenant_id=str(tid),
+                plugin_id=str(plugin_id),
+                status="failed",
+                approval_request_id=str(approval_request_id) if approval_request_id else None,
+                input=input_obj,
+                output=None,
+                error=str(deny_reason),
+            )
+        except Exception:
+            pass
+        return JSONResponse(
+            status_code=403,
+            content={"error": {"code": "POLICY_DENIED", "message": str(deny_reason), "detail": {"policy_version": policy_version}}},
+        )
+
+    if approval_needed and not approval_request_id:
+        approval_request_id = await _require_plugin_run_approval(
+            actor_id=actor_id,
+            plugin_id=str(plugin_id),
+            run_id=run_id,
+            tenant_id=str(tid),
+            actor_role=str(actor_role) if actor_role else None,
+            session_id=str(session_id) if session_id else None,
+            required_tools=required_tools,
+            input=input_obj,
+        )
+        # Persist run record as waiting_approval.
+        try:
+            await _execution_store.create_plugin_run(
+                run_id=run_id,
+                tenant_id=str(tid),
+                plugin_id=str(plugin_id),
+                status="waiting_approval",
+                approval_request_id=str(approval_request_id),
+                input=input_obj,
+                output=None,
+                error="approval_required",
+            )
+            await _execution_store.append_run_event(
+                run_id=str(run_id),
+                event_type="approval_requested",
+                trace_id=None,
+                tenant_id=str(tid),
+                payload={"kind": "plugin", "plugin_id": str(plugin_id), "approval_request_id": str(approval_request_id)},
+            )
+        except Exception:
+            pass
+        return {
+            "ok": False,
+            "run_id": run_id,
+            "trace_id": None,
+            "status": RunStatus.waiting_approval.value,
+            "legacy_status": "approval_required",
+            "output": None,
+            "error": {"code": "APPROVAL_REQUIRED", "message": "approval_required", "detail": {"approval_request_id": approval_request_id}},
+            "approval_request_id": approval_request_id,
+        }
+
+    if approval_needed and approval_request_id:
+        ar = _approval_manager.get_request(str(approval_request_id)) if _approval_manager else None
+        from core.harness.infrastructure.approval.types import RequestStatus
+
+        if not ar:
+            raise HTTPException(status_code=404, detail="approval_request_not_found")
+        if ar.status not in (RequestStatus.APPROVED, RequestStatus.AUTO_APPROVED):
+            raise HTTPException(status_code=409, detail=f"not_approved:{ar.status.value}")
+
+    # Allowed: record run events and return placeholder output.
+    try:
+        await _execution_store.create_plugin_run(
+            run_id=run_id,
+            tenant_id=str(tid),
+            plugin_id=str(plugin_id),
+            status="running",
+            approval_request_id=str(approval_request_id) if approval_request_id else None,
+            input=input_obj,
+            output=None,
+            error=None,
+        )
+        await _execution_store.append_run_event(
+            run_id=str(run_id),
+            event_type="run_start",
+            trace_id=None,
+            tenant_id=str(tid),
+            payload={"kind": "plugin", "plugin_id": str(plugin_id), "actor_id": actor_id},
+        )
+        await _execution_store.append_run_event(
+            run_id=str(run_id),
+            event_type="plugin_start",
+            trace_id=None,
+            tenant_id=str(tid),
+            payload={"plugin_id": str(plugin_id), "required_tools": required_tools},
+        )
+    except Exception:
+        pass
+
+    output = {"message": "plugin executed (mvp)", "plugin_id": str(plugin_id), "required_tools": required_tools}
+
+    try:
+        await _execution_store.create_plugin_run(
+            run_id=run_id,
+            tenant_id=str(tid),
+            plugin_id=str(plugin_id),
+            status="completed",
+            approval_request_id=str(approval_request_id) if approval_request_id else None,
+            input=input_obj,
+            output=output,
+            error=None,
+        )
+        await _execution_store.append_run_event(
+            run_id=str(run_id),
+            event_type="plugin_end",
+            trace_id=None,
+            tenant_id=str(tid),
+            payload={"plugin_id": str(plugin_id), "status": "completed"},
+        )
+        await _execution_store.append_run_event(
+            run_id=str(run_id),
+            event_type="run_end",
+            trace_id=None,
+            tenant_id=str(tid),
+            payload={"kind": "plugin", "plugin_id": str(plugin_id), "status": "completed"},
+        )
+        await _execution_store.add_audit_log(
+            action="plugin_run",
+            status="ok",
+            tenant_id=str(tid),
+            actor_id=str(actor_id),
+            actor_role=str(actor_role) if actor_role else None,
+            resource_type="plugin",
+            resource_id=str(plugin_id),
+            run_id=str(run_id),
+            detail={"required_tools": required_tools},
+        )
+    except Exception:
+        pass
+
+    return {
+        "ok": True,
+        "run_id": run_id,
+        "trace_id": None,
+        "status": RunStatus.completed.value,
+        "legacy_status": "completed",
+        "output": output,
+        "error": None,
+    }
 
 
 @api_router.get("/agents/executions/{execution_id}")

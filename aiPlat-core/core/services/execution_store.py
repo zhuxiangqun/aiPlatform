@@ -43,7 +43,7 @@ class ExecutionStoreConfig:
 
 
 class ExecutionStore:
-    CURRENT_SCHEMA_VERSION = 33
+    CURRENT_SCHEMA_VERSION = 34
 
     def __init__(self, config: ExecutionStoreConfig):
         self._config = config
@@ -1293,6 +1293,54 @@ class ExecutionStore:
                             pass
                         _set_version(33)
                         current = 33
+
+                    # ---- Migration v34: plugins + plugin runs (PR-11) ----
+                    if current < 34:
+                        try:
+                            conn.execute(
+                                """
+                                CREATE TABLE IF NOT EXISTS plugins (
+                                  tenant_id TEXT,
+                                  plugin_id TEXT NOT NULL,
+                                  name TEXT,
+                                  version TEXT,
+                                  enabled INTEGER NOT NULL DEFAULT 0,
+                                  manifest_json TEXT,
+                                  metadata_json TEXT,
+                                  created_at REAL NOT NULL,
+                                  updated_at REAL NOT NULL,
+                                  PRIMARY KEY(tenant_id, plugin_id)
+                                );
+                                """
+                            )
+                            conn.execute("CREATE INDEX IF NOT EXISTS idx_plugins_tenant_time ON plugins(tenant_id, updated_at DESC);")
+                        except Exception:
+                            pass
+                        try:
+                            conn.execute(
+                                """
+                                CREATE TABLE IF NOT EXISTS plugin_runs (
+                                  run_id TEXT PRIMARY KEY,
+                                  tenant_id TEXT,
+                                  plugin_id TEXT NOT NULL,
+                                  status TEXT NOT NULL, -- queued|running|completed|failed|waiting_approval
+                                  trace_id TEXT,
+                                  approval_request_id TEXT,
+                                  input_json TEXT,
+                                  output_json TEXT,
+                                  error TEXT,
+                                  created_at REAL NOT NULL,
+                                  updated_at REAL NOT NULL
+                                );
+                                """
+                            )
+                            conn.execute("CREATE INDEX IF NOT EXISTS idx_plugin_runs_tenant_time ON plugin_runs(tenant_id, created_at DESC);")
+                            conn.execute("CREATE INDEX IF NOT EXISTS idx_plugin_runs_plugin_time ON plugin_runs(plugin_id, created_at DESC);")
+                            conn.execute("CREATE INDEX IF NOT EXISTS idx_plugin_runs_approval ON plugin_runs(approval_request_id);")
+                        except Exception:
+                            pass
+                        _set_version(34)
+                        current = 34
 
                     # If legacy db exists with tables but without meta, upgrade meta to current
                     if current < self.CURRENT_SCHEMA_VERSION:
@@ -6646,6 +6694,205 @@ class ExecutionStore:
                 conn.close()
 
         return await anyio.to_thread.run_sync(_sync)
+
+    # ==================== Plugins (PR-11) ====================
+
+    async def upsert_plugin(
+        self,
+        *,
+        tenant_id: Optional[str],
+        plugin_id: str,
+        name: Optional[str] = None,
+        version: Optional[str] = None,
+        enabled: bool = False,
+        manifest: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            now = float(time.time())
+            rec = {
+                "tenant_id": str(tenant_id or ""),
+                "plugin_id": str(plugin_id),
+                "name": str(name) if name is not None else None,
+                "version": str(version) if version is not None else None,
+                "enabled": 1 if bool(enabled) else 0,
+                "manifest_json": _json_dumps(manifest or {}),
+                "metadata_json": _json_dumps(metadata or {}),
+                "created_at": now,
+                "updated_at": now,
+            }
+            conn = sqlite3.connect(db_path)
+            try:
+                conn.execute(
+                    """
+                    INSERT INTO plugins(
+                      tenant_id, plugin_id, name, version, enabled, manifest_json, metadata_json, created_at, updated_at
+                    ) VALUES(?,?,?,?,?,?,?,?,?)
+                    ON CONFLICT(tenant_id, plugin_id) DO UPDATE SET
+                      name=excluded.name,
+                      version=excluded.version,
+                      enabled=excluded.enabled,
+                      manifest_json=excluded.manifest_json,
+                      metadata_json=excluded.metadata_json,
+                      updated_at=excluded.updated_at;
+                    """,
+                    (
+                        rec["tenant_id"],
+                        rec["plugin_id"],
+                        rec["name"],
+                        rec["version"],
+                        rec["enabled"],
+                        rec["manifest_json"],
+                        rec["metadata_json"],
+                        rec["created_at"],
+                        rec["updated_at"],
+                    ),
+                )
+                conn.commit()
+                return rec
+            finally:
+                conn.close()
+
+        row = await anyio.to_thread.run_sync(_sync)
+        return {**row, "manifest": _json_loads(row.get("manifest_json")) or {}, "metadata": _json_loads(row.get("metadata_json")) or {}}
+
+    async def get_plugin(self, *, tenant_id: Optional[str], plugin_id: str) -> Optional[Dict[str, Any]]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Optional[Dict[str, Any]]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                row = conn.execute(
+                    "SELECT * FROM plugins WHERE tenant_id=? AND plugin_id=?",
+                    (str(tenant_id or ""), str(plugin_id)),
+                ).fetchone()
+                return dict(row) if row else None
+            finally:
+                conn.close()
+
+        row = await anyio.to_thread.run_sync(_sync)
+        if not row:
+            return None
+        return {**row, "manifest": _json_loads(row.get("manifest_json")) or {}, "metadata": _json_loads(row.get("metadata_json")) or {}}
+
+    async def list_plugins(self, *, tenant_id: Optional[str], limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                total_row = conn.execute("SELECT COUNT(1) AS c FROM plugins WHERE tenant_id=?", (str(tenant_id or ""),)).fetchone()
+                total = int(total_row["c"] if total_row else 0)
+                rows = conn.execute(
+                    "SELECT * FROM plugins WHERE tenant_id=? ORDER BY updated_at DESC LIMIT ? OFFSET ?;",
+                    (str(tenant_id or ""), int(limit), int(offset)),
+                ).fetchall()
+                items = []
+                for r in rows:
+                    d = dict(r)
+                    d["manifest"] = _json_loads(d.get("manifest_json")) or {}
+                    d["metadata"] = _json_loads(d.get("metadata_json")) or {}
+                    items.append(d)
+                return {"items": items, "total": total, "limit": int(limit), "offset": int(offset)}
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
+    async def set_plugin_enabled(self, *, tenant_id: Optional[str], plugin_id: str, enabled: bool) -> bool:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> bool:
+            now = float(time.time())
+            conn = sqlite3.connect(db_path)
+            try:
+                cur = conn.execute(
+                    "UPDATE plugins SET enabled=?, updated_at=? WHERE tenant_id=? AND plugin_id=?;",
+                    (1 if bool(enabled) else 0, now, str(tenant_id or ""), str(plugin_id)),
+                )
+                conn.commit()
+                return bool(cur.rowcount)
+            finally:
+                conn.close()
+
+        return bool(await anyio.to_thread.run_sync(_sync))
+
+    async def create_plugin_run(
+        self,
+        *,
+        run_id: str,
+        tenant_id: Optional[str],
+        plugin_id: str,
+        status: str,
+        trace_id: Optional[str] = None,
+        approval_request_id: Optional[str] = None,
+        input: Optional[Dict[str, Any]] = None,
+        output: Optional[Dict[str, Any]] = None,
+        error: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            now = float(time.time())
+            rec = {
+                "run_id": str(run_id),
+                "tenant_id": str(tenant_id or ""),
+                "plugin_id": str(plugin_id),
+                "status": str(status),
+                "trace_id": str(trace_id) if trace_id else None,
+                "approval_request_id": str(approval_request_id) if approval_request_id else None,
+                "input_json": _json_dumps(input or {}),
+                "output_json": _json_dumps(output or {}),
+                "error": str(error) if error else None,
+                "created_at": now,
+                "updated_at": now,
+            }
+            conn = sqlite3.connect(db_path)
+            try:
+                conn.execute(
+                    """
+                    INSERT INTO plugin_runs(
+                      run_id, tenant_id, plugin_id, status, trace_id, approval_request_id, input_json, output_json, error, created_at, updated_at
+                    ) VALUES(?,?,?,?,?,?,?,?,?,?,?)
+                    ON CONFLICT(run_id) DO UPDATE SET
+                      status=excluded.status,
+                      trace_id=excluded.trace_id,
+                      approval_request_id=excluded.approval_request_id,
+                      input_json=excluded.input_json,
+                      output_json=excluded.output_json,
+                      error=excluded.error,
+                      updated_at=excluded.updated_at;
+                    """,
+                    (
+                        rec["run_id"],
+                        rec["tenant_id"],
+                        rec["plugin_id"],
+                        rec["status"],
+                        rec["trace_id"],
+                        rec["approval_request_id"],
+                        rec["input_json"],
+                        rec["output_json"],
+                        rec["error"],
+                        rec["created_at"],
+                        rec["updated_at"],
+                    ),
+                )
+                conn.commit()
+                return rec
+            finally:
+                conn.close()
+
+        row = await anyio.to_thread.run_sync(_sync)
+        return {**row, "input": _json_loads(row.get("input_json")) or {}, "output": _json_loads(row.get("output_json")) or {}}
 
     # ==================== Prompt Templates (MVP) ====================
 
