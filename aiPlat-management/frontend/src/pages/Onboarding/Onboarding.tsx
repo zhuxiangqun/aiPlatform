@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle, AlertTriangle, RotateCw } from 'lucide-react';
 import { onboardingApi, diagnosticsApi } from '../../services/apiClient';
 import { approvalsApi, policyApi } from '../../services';
+import { ActionableFixes } from '../../components/common/ActionableFixes';
 
 type StepKey = 'adapter' | 'health' | 'smoke';
 
@@ -995,9 +996,7 @@ const Onboarding: React.FC = () => {
             {doctorLoading ? '刷新中…' : '刷新'}
           </button>
         </div>
-        <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
-          {JSON.stringify(doctor?.recommendations || [], null, 2)}
-        </pre>
+        <ActionableFixes actions={doctor?.actions} recommendations={doctor?.recommendations} onAfterAction={refreshDoctor} />
         <div className="flex items-center gap-2">
           <button
             onClick={() => copyText(`export AIPLAT_MANAGEMENT_PUBLIC_URL='${doctor?.config?.management_public_url || 'https://<your-host>'}'\n`)}
