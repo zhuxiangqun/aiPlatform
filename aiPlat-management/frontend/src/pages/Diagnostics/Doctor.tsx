@@ -32,6 +32,9 @@ const Doctor: React.FC = () => {
   }, []);
 
   const jsonText = useMemo(() => JSON.stringify(data || {}, null, 2), [data]);
+  const repo = data?.repo?.changeset || null;
+  const changesets = data?.changesets || null;
+  const repoAction = data?.actions?.record_repo_changeset ? { record_repo_changeset: data.actions.record_repo_changeset } : null;
 
   const copyReport = async () => {
     try {
@@ -132,6 +135,57 @@ const Doctor: React.FC = () => {
           <CardContent>
             <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
               {JSON.stringify(data?.adapters || {}, null, 2)}
+            </pre>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-semibold text-gray-200">Repo（AIPLAT_REPO_ROOT）</div>
+              <Badge variant={repo?.status_lines > 0 ? 'warning' : 'success'}>{repo?.status_lines ?? 0} changes</Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {!repo ? (
+              <div className="text-sm text-gray-500">未配置 repo_root 或无法读取 git 状态（设置 AIPLAT_REPO_ROOT 后可显示）。</div>
+            ) : (
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="text-xs text-gray-400">
+                    <div>branch: <span className="text-gray-200">{repo?.branch || '-'}</span></div>
+                    <div>head: <span className="text-gray-200">{(repo?.head || '').slice(0, 12) || '-'}</span></div>
+                    <div>diff_sha256: <span className="text-gray-200">{(repo?.diff_sha256 || '').slice(0, 16) || '-'}</span></div>
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    <div>working_tree: <span className="text-gray-200">{repo?.working_tree?.files_changed ?? 0} files</span>, +{repo?.working_tree?.lines_added ?? 0}/-{repo?.working_tree?.lines_deleted ?? 0}</div>
+                    <div>staged: <span className="text-gray-200">{repo?.staged?.files_changed ?? 0} files</span>, +{repo?.staged?.lines_added ?? 0}/-{repo?.staged?.lines_deleted ?? 0}</div>
+                  </div>
+                </div>
+
+                {repoAction && repo?.status_lines > 0 ? (
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">一键记录为 ChangeSet（进入变更审计时间线）</div>
+                    <ActionableFixes actions={repoAction} recommendations={[]} onAfterAction={refresh} />
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-500">当前工作区无变更，或未提供记录动作。</div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-semibold text-gray-200">Recent ChangeSets</div>
+              <Badge variant="info">{changesets?.total ?? 0}</Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
+              {JSON.stringify(changesets || {}, null, 2)}
             </pre>
           </CardContent>
         </Card>
