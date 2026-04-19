@@ -16,12 +16,10 @@ from typing import Any, Dict, Optional
 from fastapi import FastAPI, HTTPException
 
 from utils.ids import new_prefixed_id  # type: ignore
+from storage import sqlite as app_store  # type: ignore
 
 
 app = FastAPI(title="aiPlat-app", version="0.1.0")
-
-_channels: Dict[str, Dict[str, Any]] = {}
-_sessions: Dict[str, Dict[str, Any]] = {}
 
 
 @app.get("/health")
@@ -34,9 +32,7 @@ async def health():
 
 @app.get("/app/channels")
 async def list_channels(status: Optional[str] = None):
-    items = list(_channels.values())
-    if status:
-        items = [c for c in items if str(c.get("status")) == str(status)]
+    items = app_store.list_channels(status=status)
     return {"channels": items, "total": len(items)}
 
 
@@ -54,13 +50,12 @@ async def create_channel(body: Dict[str, Any]):
         "created_at": "",
         "updated_at": "",
     }
-    _channels[cid] = ch
-    return ch
+    return app_store.upsert_channel(ch)
 
 
 @app.get("/app/channels/{channel_id}")
 async def get_channel(channel_id: str):
-    ch = _channels.get(channel_id)
+    ch = app_store.get_channel(channel_id)
     if not ch:
         raise HTTPException(status_code=404, detail="channel_not_found")
     return ch
@@ -68,23 +63,22 @@ async def get_channel(channel_id: str):
 
 @app.put("/app/channels/{channel_id}")
 async def update_channel(channel_id: str, patch: Dict[str, Any]):
-    ch = _channels.get(channel_id)
+    ch = app_store.get_channel(channel_id)
     if not ch:
         raise HTTPException(status_code=404, detail="channel_not_found")
     ch.update({k: v for k, v in (patch or {}).items() if v is not None})
-    _channels[channel_id] = ch
-    return ch
+    return app_store.upsert_channel(ch)
 
 
 @app.delete("/app/channels/{channel_id}")
 async def delete_channel(channel_id: str):
-    _channels.pop(channel_id, None)
+    app_store.delete_channel(channel_id)
     return {"status": "ok"}
 
 
 @app.post("/app/channels/{channel_id}/test")
 async def test_channel(channel_id: str):
-    ch = _channels.get(channel_id)
+    ch = app_store.get_channel(channel_id)
     if not ch:
         raise HTTPException(status_code=404, detail="channel_not_found")
     return {"status": "ok", "message": "test_sent"}
@@ -95,15 +89,13 @@ async def test_channel(channel_id: str):
 
 @app.get("/app/sessions")
 async def list_sessions(status: Optional[str] = None):
-    items = list(_sessions.values())
-    if status:
-        items = [s for s in items if str(s.get("status")) == str(status)]
+    items = app_store.list_sessions(status=status)
     return {"sessions": items, "total": len(items)}
 
 
 @app.get("/app/sessions/{session_id}")
 async def get_session(session_id: str):
-    s = _sessions.get(session_id)
+    s = app_store.get_session(session_id)
     if not s:
         raise HTTPException(status_code=404, detail="session_not_found")
     return s
@@ -121,17 +113,16 @@ async def create_session(body: Dict[str, Any]):
         "last_message_at": None,
         "metadata": body.get("metadata") or {},
     }
-    _sessions[sid] = s
-    return s
+    return app_store.upsert_session(s)
 
 
 @app.post("/app/sessions/{session_id}/end")
 async def end_session(session_id: str):
-    s = _sessions.get(session_id)
+    s = app_store.get_session(session_id)
     if not s:
         raise HTTPException(status_code=404, detail="session_not_found")
     s["status"] = "ended"
-    _sessions[session_id] = s
+    app_store.upsert_session(s)
     return {"status": "ok"}
 
 
@@ -139,4 +130,3 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("AIPLAT_APP_PORT", "8004")))
-
