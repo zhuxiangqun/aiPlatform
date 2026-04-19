@@ -940,6 +940,41 @@ async def _rbac_guard(
     return JSONResponse(status_code=403, content=body)
 
 
+async def _audit_execute(
+    *,
+    http_request: Request,
+    payload: Optional[Dict[str, Any]],
+    resource_type: str,
+    resource_id: str,
+    resp: Dict[str, Any],
+    action: Optional[str] = None,
+) -> None:
+    """PR-06: enterprise audit for execute entrypoints (best-effort)."""
+    if not _execution_store:
+        return
+    try:
+        actor = _rbac_actor_from_http(http_request, payload)
+        await _execution_store.add_audit_log(
+            action=action or f"execute_{resource_type}",
+            status=str(resp.get("legacy_status") or resp.get("status") or ("ok" if resp.get("ok") else "failed")),
+            tenant_id=str(actor.get("tenant_id") or "") or None,
+            actor_id=str(actor.get("actor_id") or "") or None,
+            actor_role=str(actor.get("actor_role") or "") or None,
+            resource_type=str(resource_type),
+            resource_id=str(resource_id),
+            request_id=str(resp.get("request_id") or "") or (http_request.headers.get("X-AIPLAT-REQUEST-ID") or http_request.headers.get("x-aiplat-request-id")),
+            run_id=str(resp.get("run_id") or resp.get("execution_id") or "") or None,
+            trace_id=str(resp.get("trace_id") or "") or None,
+            detail={
+                "status": resp.get("status"),
+                "legacy_status": resp.get("legacy_status"),
+                "error": resp.get("error"),
+            },
+        )
+    except Exception:
+        return
+
+
 def _normalize_run_status_v2(*, ok: bool, legacy_status: Optional[str], error_code: Optional[str]) -> str:
     s = str(legacy_status or "").lower().strip()
     c = str(error_code or "").upper().strip()
@@ -1855,6 +1890,10 @@ async def execute_workspace_agent(agent_id: str, request: dict, http_request: Re
     )
     result = await harness.execute(exec_req)
     resp = _wrap_execution_result_as_run_summary(result)
+    try:
+        await _audit_execute(http_request=http_request, payload=payload, resource_type="agent", resource_id=str(agent_id), resp=resp)
+    except Exception:
+        pass
     return JSONResponse(status_code=200 if resp.get("ok") else int(getattr(result, "http_status", 500) or 500), content=resp)
 
 
@@ -2021,6 +2060,10 @@ async def execute_agent(agent_id: str, request: dict, http_request: Request):
     result = await harness.execute(exec_req)
     if not result.ok:
         resp = _wrap_execution_result_as_run_summary(result)
+        try:
+            await _audit_execute(http_request=http_request, payload=payload, resource_type="agent", resource_id=str(agent_id), resp=resp)
+        except Exception:
+            pass
         return JSONResponse(status_code=int(getattr(result, "http_status", 500) or 500), content=resp)
     # Minimal resume semantics: cache paused requests in memory
     try:
@@ -2052,6 +2095,10 @@ async def execute_agent(agent_id: str, request: dict, http_request: Request):
     except Exception:
         pass
     resp = _wrap_execution_result_as_run_summary(result)
+    try:
+        await _audit_execute(http_request=http_request, payload=payload, resource_type="agent", resource_id=str(agent_id), resp=resp)
+    except Exception:
+        pass
     return JSONResponse(status_code=200 if resp.get("ok") else int(getattr(result, "http_status", 500) or 500), content=resp)
 
 
@@ -2434,11 +2481,13 @@ async def upsert_tenant_policy(tenant_id: str, request: dict, http_request: Requ
         raise
     # Audit (best-effort)
     try:
+        actor0 = _rbac_actor_from_http(http_request, request if isinstance(request, dict) else None)
         await _execution_store.add_audit_log(
             action="tenant_policy_upsert",
             status="ok",
             tenant_id=str(tenant_id),
-            actor_id=str((request or {}).get("actor_id") or "admin"),
+            actor_id=str((request or {}).get("actor_id") or actor0.get("actor_id") or "admin"),
+            actor_role=str(actor0.get("actor_role") or "") or None,
             resource_type="tenant_policy",
             resource_id=str(tenant_id),
             detail={"version": saved.get("version")},
@@ -2589,10 +2638,13 @@ async def approve_request(request_id: str, request: dict, http_request: Request)
         raise HTTPException(status_code=404, detail="Approval request not found")
     if _execution_store:
         try:
+            actor0 = _rbac_actor_from_http(http_request, request if isinstance(request, dict) else None)
             await _execution_store.add_audit_log(
                 action="approval_approve",
                 status="ok",
+                tenant_id=str(actor0.get("tenant_id") or "") or None,
                 actor_id=str(approved_by),
+                actor_role=str(actor0.get("actor_role") or "") or None,
                 resource_type="approval_request",
                 resource_id=str(request_id),
                 detail={"comments": comments},
@@ -2616,10 +2668,13 @@ async def reject_request(request_id: str, request: dict, http_request: Request):
         raise HTTPException(status_code=404, detail="Approval request not found")
     if _execution_store:
         try:
+            actor0 = _rbac_actor_from_http(http_request, request if isinstance(request, dict) else None)
             await _execution_store.add_audit_log(
                 action="approval_reject",
                 status="ok",
+                tenant_id=str(actor0.get("tenant_id") or "") or None,
                 actor_id=str(rejected_by),
+                actor_role=str(actor0.get("actor_role") or "") or None,
                 resource_type="approval_request",
                 resource_id=str(request_id),
                 detail={"comments": comments},
@@ -4152,7 +4207,7 @@ async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest, h
         except Exception:
             pass
         # PR-02: Run Contract v2 (blocked)
-        return {
+        resp = {
             "ok": False,
             "run_id": new_prefixed_id("run"),
             "trace_id": None,
@@ -4163,6 +4218,11 @@ async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest, h
             "candidate_id": pg.get("candidate_id"),
             "releases_url": _ui_url("/core/learning/releases"),
         }
+        try:
+            await _audit_execute(http_request=http_request, payload={"context": {}}, resource_type="skill", resource_id=str(skill_id), resp=resp, action="execute_skill")
+        except Exception:
+            pass
+        return resp
 
     # Merge platform identity headers into context (best-effort)
     ctx_for_user: Dict[str, Any] = dict(request.context or {}) if isinstance(request.context, dict) else {}
@@ -4223,7 +4283,7 @@ async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest, h
                 )
             except Exception:
                 pass
-            return {
+            resp = {
                 "ok": False,
                 "run_id": new_prefixed_id("run"),
                 "trace_id": None,
@@ -4238,6 +4298,11 @@ async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest, h
                 "approval_request_id": rid,
                 "reason": gate.get("reason"),
             }
+            try:
+                await _audit_execute(http_request=http_request, payload={"context": ctx_for_user}, resource_type="skill", resource_id=str(skill_id), resp=resp, action="execute_skill")
+            except Exception:
+                pass
+            return resp
         if not _is_approval_resolved_approved(approval_request_id):
             try:
                 await _record_changeset(
@@ -4279,6 +4344,10 @@ async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest, h
     )
     result = await harness.execute(exec_req)
     resp = _wrap_execution_result_as_run_summary(result)
+    try:
+        await _audit_execute(http_request=http_request, payload={"context": ctx_for_user}, resource_type="skill", resource_id=str(skill_id), resp=resp, action="execute_skill")
+    except Exception:
+        pass
     return JSONResponse(status_code=200 if resp.get("ok") else int(getattr(result, "http_status", 500) or 500), content=resp)
 
 
@@ -5183,6 +5252,10 @@ async def execute_skill(skill_id: str, request: SkillExecuteRequest, http_reques
     )
     result = await harness.execute(exec_req)
     resp = _wrap_execution_result_as_run_summary(result)
+    try:
+        await _audit_execute(http_request=http_request, payload={"context": ctx_for_user}, resource_type="skill", resource_id=str(skill_id), resp=resp, action="execute_skill")
+    except Exception:
+        pass
     return JSONResponse(status_code=200 if resp.get("ok") else int(getattr(result, "http_status", 500) or 500), content=resp)
 
 
@@ -6684,6 +6757,10 @@ async def execute_tool(tool_name: str, request: dict, http_request: Request):
     result = await harness.execute(exec_req)
     resp = _wrap_execution_result_as_run_summary(result)
     # Keep legacy behavior: tool execute returns 200 even when failed, but carries {ok:false,error:{...}}.
+    try:
+        await _audit_execute(http_request=http_request, payload=payload, resource_type="tool", resource_id=str(tool_name), resp=resp)
+    except Exception:
+        pass
     return JSONResponse(status_code=200, content=resp)
 
 
@@ -6877,13 +6954,16 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request)
             pass
 
     # Audit (best-effort)
-    if _execution_store:
-        try:
+    try:
+        # prefer actor identity from headers when present
+        actor0 = _rbac_actor_from_http(http_request, payload)
+        if _execution_store:
             await _execution_store.add_audit_log(
                 action="gateway_execute",
                 status="ok" if result.ok else "failed",
-                tenant_id=str(resolved_tenant) if resolved_tenant else None,
-                actor_id=str(resolved_user) if resolved_user else None,
+                tenant_id=str(resolved_tenant) if resolved_tenant else (str(actor0.get("tenant_id") or "") or None),
+                actor_id=str(resolved_user) if resolved_user else (str(actor0.get("actor_id") or "") or None),
+                actor_role=str(actor0.get("actor_role") or "") or None,
                 resource_type=str(request.kind or "agent"),
                 resource_id=str(request.target_id),
                 request_id=request_id,
@@ -6891,8 +6971,8 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request)
                 trace_id=str(result.trace_id) if result.trace_id else None,
                 detail={"channel": request.channel, "channel_user_id": request.channel_user_id},
             )
-        except Exception:
-            pass
+    except Exception:
+        pass
     # Normalize: always include trace_id/run_id.
     resp = dict(result.payload or {})
     # Prefer payload status for ok semantics (agent/skill often return ok=True but status=failed).
