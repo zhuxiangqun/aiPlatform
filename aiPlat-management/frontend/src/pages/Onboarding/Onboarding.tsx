@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle, AlertTriangle, RotateCw } from 'lucide-react';
 import { onboardingApi, diagnosticsApi } from '../../services/apiClient';
 import { approvalsApi } from '../../services';
@@ -55,6 +55,11 @@ const Onboarding: React.FC = () => {
   const [rotateKeyLoading, setRotateKeyLoading] = useState(false);
   const [rotateKeyResult, setRotateKeyResult] = useState<any>(null);
 
+  // Auto-poll approvals and auto-apply on approval
+  const [approvalWatch, setApprovalWatch] = useState<Record<string, { op: 'default_llm' | 'init_tenant'; created_at: number }>>({});
+  const [approvalWatchLog, setApprovalWatchLog] = useState<Record<string, string>>({});
+  const approvalWatchInFlight = useRef<Record<string, boolean>>({});
+
   const refreshApprovals = async () => {
     setApprovalsLoading(true);
     try {
@@ -106,6 +111,69 @@ const Onboarding: React.FC = () => {
     refreshApprovals();
     refreshDoctor();
   }, []);
+
+  // Poll approval status and auto-apply when approved
+  useEffect(() => {
+    const keys = Object.keys(approvalWatch || {});
+    if (keys.length === 0) return;
+
+    const timer = window.setInterval(async () => {
+      for (const requestId of Object.keys(approvalWatch || {})) {
+        const w = approvalWatch[requestId];
+        if (!w) continue;
+        if (approvalWatchInFlight.current[requestId]) continue;
+
+        // TTL: 10 minutes
+        if (Date.now() - w.created_at > 10 * 60 * 1000) {
+          setApprovalWatch((prev) => {
+            const next = { ...(prev || {}) };
+            delete next[requestId];
+            return next;
+          });
+          setApprovalWatchLog((prev) => ({ ...(prev || {}), [requestId]: '轮询超时（已停止）' }));
+          continue;
+        }
+
+        approvalWatchInFlight.current[requestId] = true;
+        try {
+          const detail = await approvalsApi.get(requestId);
+          const status = String(detail?.status || '');
+          if (status === 'approved' || status === 'auto_approved') {
+            setApprovalWatchLog((prev) => ({ ...(prev || {}), [requestId]: '已批准，正在自动生效…' }));
+            if (w.op === 'default_llm') {
+              setDefaultLlmApprovalId(requestId);
+              await submitDefaultLLM(requestId);
+            } else if (w.op === 'init_tenant') {
+              setInitTenantApprovalId(requestId);
+              await submitInitTenant(requestId);
+            }
+            setApprovalWatch((prev) => {
+              const next = { ...(prev || {}) };
+              delete next[requestId];
+              return next;
+            });
+            setApprovalWatchLog((prev) => ({ ...(prev || {}), [requestId]: '已自动生效' }));
+          } else if (status === 'rejected' || status === 'cancelled' || status === 'expired') {
+            setApprovalWatch((prev) => {
+              const next = { ...(prev || {}) };
+              delete next[requestId];
+              return next;
+            });
+            setApprovalWatchLog((prev) => ({ ...(prev || {}), [requestId]: `审批未通过：${status}` }));
+          } else {
+            setApprovalWatchLog((prev) => ({ ...(prev || {}), [requestId]: `等待审批中：${status || 'pending'}` }));
+          }
+        } catch (e) {
+          console.error(e);
+        } finally {
+          approvalWatchInFlight.current[requestId] = false;
+        }
+      }
+    }, 2500);
+
+    return () => window.clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [approvalWatch]);
 
   const steps = useMemo(
     () => [
@@ -198,7 +266,10 @@ const Onboarding: React.FC = () => {
       });
       setDefaultLlmResult(res);
       if (res?.status === 'approval_required' && res?.approval_request_id) {
-        setDefaultLlmApprovalId(String(res.approval_request_id));
+        const rid = String(res.approval_request_id);
+        setDefaultLlmApprovalId(rid);
+        setApprovalWatch((prev) => ({ ...(prev || {}), [rid]: { op: 'default_llm', created_at: Date.now() } }));
+        setApprovalWatchLog((prev) => ({ ...(prev || {}), [rid]: '等待审批中：pending' }));
       }
       await refreshState();
     } catch (e: any) {
@@ -221,7 +292,10 @@ const Onboarding: React.FC = () => {
       });
       setInitTenantResult(res);
       if (res?.status === 'approval_required' && res?.approval_request_id) {
-        setInitTenantApprovalId(String(res.approval_request_id));
+        const rid = String(res.approval_request_id);
+        setInitTenantApprovalId(rid);
+        setApprovalWatch((prev) => ({ ...(prev || {}), [rid]: { op: 'init_tenant', created_at: Date.now() } }));
+        setApprovalWatchLog((prev) => ({ ...(prev || {}), [rid]: '等待审批中：pending' }));
       }
       await refreshState();
     } catch (e: any) {
@@ -446,6 +520,9 @@ const Onboarding: React.FC = () => {
             {approvalsLoading ? '刷新中…' : '刷新'}
           </button>
         </div>
+        {Object.keys(approvalWatch || {}).length > 0 && (
+          <div className="text-xs text-gray-500">自动轮询中：{Object.keys(approvalWatch).length} 条（批准后将自动生效）</div>
+        )}
         {(pendingApprovals || []).length === 0 ? (
           <div className="text-sm text-gray-500">暂无待审批项</div>
         ) : (
@@ -461,6 +538,7 @@ const Onboarding: React.FC = () => {
                     <span className="text-gray-500">request_id：</span>
                     <code>{String(p.request_id).slice(0, 12)}</code>
                   </div>
+                  {approvalWatchLog?.[p.request_id] && <div className="text-gray-500 mt-1">{approvalWatchLog[p.request_id]}</div>}
                 </div>
                 <div className="flex items-center gap-2">
                   <button

@@ -9,6 +9,7 @@
 5. （增强）初始化默认 tenant/policies（需审批）
 6. （增强）密钥存储状态提示（AIPLAT_SECRET_KEY）
 7. （增强）Onboarding 内嵌审批处理（批准/拒绝 + 批准后自动重试）
+10. （增强）提交后自动轮询审批状态（批准后自动生效）
 8. （增强）配置检查（复用 Doctor recommendations）
 9. （增强）轮换 adapter API key（不回显旧 key）
 
@@ -63,6 +64,8 @@
 如返回 `approval_required`，请到管理台 `Core → Approvals` 批准后，将 `approval_request_id` 填回向导再次提交。
 
 （增强）现在向导页面会展示 `onboarding:*` 的待审批列表，可直接 **批准并自动重试**，无需手动复制 approval_request_id。
+
+（增强）当提交后返回 `approval_required`，向导会自动轮询该 request 的状态：一旦被批准会自动执行后续生效动作（设置默认路由 / 初始化 tenant），无需人工介入。
 
 ## 增强：初始化默认 tenant/policies（需审批）
 
