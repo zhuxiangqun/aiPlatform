@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Download, RefreshCw, Trash2, RotateCw, Eye, Package, Activity } from 'lucide-react';
-import { Button, Card, CardContent, CardHeader, Input, Table, toast, Tabs, Modal } from '../../../components/ui';
+import { Button, Card, CardContent, CardHeader, Input, Table, toast, Tabs, Modal, Pagination } from '../../../components/ui';
 import { diagnosticsApi } from '../../../services';
 import { gatewayDlqApi, jobApi, opsApi, quotaApi } from '../../../services';
 
@@ -79,12 +79,21 @@ async function downloadZip(endpoint: string, params: Record<string, any> = {}, f
 
 const todayUtc = () => new Date().toISOString().slice(0, 10);
 
+const LS_KEYS = {
+  tenantId: 'ops_ctx_tenant_id',
+  runId: 'ops_ctx_run_id',
+  candidateId: 'ops_ctx_candidate_id',
+  dayStart: 'ops_ctx_day_start',
+  dayEnd: 'ops_ctx_day_end',
+  bundleInclude: 'ops_bundle_include',
+};
+
 const Ops: React.FC = () => {
-  const [tenantId, setTenantId] = useState<string>(() => localStorage.getItem('active_tenant_id') || '');
-  const [runId, setRunId] = useState('');
-  const [candidateId, setCandidateId] = useState('');
-  const [dayStart, setDayStart] = useState(todayUtc());
-  const [dayEnd, setDayEnd] = useState(todayUtc());
+  const [tenantId, setTenantId] = useState<string>(() => localStorage.getItem(LS_KEYS.tenantId) || localStorage.getItem('active_tenant_id') || '');
+  const [runId, setRunId] = useState(() => localStorage.getItem(LS_KEYS.runId) || '');
+  const [candidateId, setCandidateId] = useState(() => localStorage.getItem(LS_KEYS.candidateId) || '');
+  const [dayStart, setDayStart] = useState(() => localStorage.getItem(LS_KEYS.dayStart) || todayUtc());
+  const [dayEnd, setDayEnd] = useState(() => localStorage.getItem(LS_KEYS.dayEnd) || todayUtc());
 
   // Quota
   const [quotaLoading, setQuotaLoading] = useState(false);
@@ -95,8 +104,14 @@ const Ops: React.FC = () => {
   // DLQ
   const [jobsDlqLoading, setJobsDlqLoading] = useState(false);
   const [jobsDlqItems, setJobsDlqItems] = useState<any[]>([]);
+  const [jobsDlqTotal, setJobsDlqTotal] = useState(0);
+  const [jobsDlqPage, setJobsDlqPage] = useState(1);
+  const [jobsDlqPageSize, setJobsDlqPageSize] = useState(20);
   const [gwDlqLoading, setGwDlqLoading] = useState(false);
   const [gwDlqItems, setGwDlqItems] = useState<any[]>([]);
+  const [gwDlqTotal, setGwDlqTotal] = useState(0);
+  const [gwDlqPage, setGwDlqPage] = useState(1);
+  const [gwDlqPageSize, setGwDlqPageSize] = useState(20);
 
   // Filters / selections / modal
   const [jobsDlqStatus, setJobsDlqStatus] = useState('pending');
@@ -114,6 +129,59 @@ const Ops: React.FC = () => {
   // Core health (via diagnosticsApi)
   const [coreHealthLoading, setCoreHealthLoading] = useState(false);
   const [coreHealth, setCoreHealth] = useState<any>(null);
+
+  // Bundle include selection (comma separated keys)
+  const defaultBundleInclude = [
+    'audit_logs',
+    'syscall_events',
+    'approvals',
+    'tenant_usage',
+    'gateway_dlq',
+    'connector_attempts',
+    'jobs_dlq',
+    'release_rollouts',
+  ];
+  const [bundleInclude, setBundleInclude] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem(LS_KEYS.bundleInclude);
+      if (!raw) return defaultBundleInclude;
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr : defaultBundleInclude;
+    } catch {
+      return defaultBundleInclude;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_KEYS.tenantId, tenantId || '');
+    } catch {}
+  }, [tenantId]);
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_KEYS.runId, runId || '');
+    } catch {}
+  }, [runId]);
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_KEYS.candidateId, candidateId || '');
+    } catch {}
+  }, [candidateId]);
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_KEYS.dayStart, dayStart || '');
+    } catch {}
+  }, [dayStart]);
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_KEYS.dayEnd, dayEnd || '');
+    } catch {}
+  }, [dayEnd]);
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_KEYS.bundleInclude, JSON.stringify(bundleInclude));
+    } catch {}
+  }, [bundleInclude]);
 
   const loadQuota = async () => {
     if (!tenantId.trim()) {
@@ -155,32 +223,43 @@ const Ops: React.FC = () => {
     }
   };
 
-  const loadJobsDlq = async () => {
+  const loadJobsDlq = async (page?: number) => {
+    const p = page || jobsDlqPage || 1;
     setJobsDlqLoading(true);
     try {
-      const res = await jobApi.listDLQ({ status: jobsDlqStatus || 'pending', job_id: jobsDlqJobId || undefined, limit: 100, offset: 0 });
+      const res = await jobApi.listDLQ({
+        status: jobsDlqStatus || 'pending',
+        job_id: jobsDlqJobId || undefined,
+        limit: jobsDlqPageSize,
+        offset: (p - 1) * jobsDlqPageSize,
+      });
       setJobsDlqItems(Array.isArray(res?.items) ? res.items : []);
+      setJobsDlqTotal(Number(res?.total || 0));
     } catch (e: any) {
       setJobsDlqItems([]);
+      setJobsDlqTotal(0);
       toast.error('加载 Jobs DLQ 失败', String(e?.message || ''));
     } finally {
       setJobsDlqLoading(false);
     }
   };
 
-  const loadGatewayDlq = async () => {
+  const loadGatewayDlq = async (page?: number) => {
+    const p = page || gwDlqPage || 1;
     setGwDlqLoading(true);
     try {
       const res = await gatewayDlqApi.list({
         status: gwDlqStatus || 'pending',
         connector: gwDlqConnector || undefined,
         tenant_id: gwDlqTenant || undefined,
-        limit: 100,
-        offset: 0,
+        limit: gwDlqPageSize,
+        offset: (p - 1) * gwDlqPageSize,
       });
       setGwDlqItems(Array.isArray(res?.items) ? res.items : []);
+      setGwDlqTotal(Number(res?.total || 0));
     } catch (e: any) {
       setGwDlqItems([]);
+      setGwDlqTotal(0);
       toast.error('加载 Gateway DLQ 失败', String(e?.message || ''));
     } finally {
       setGwDlqLoading(false);
@@ -188,6 +267,7 @@ const Ops: React.FC = () => {
   };
 
   useEffect(() => {
+    // initial load
     loadJobsDlq();
     loadGatewayDlq();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -241,11 +321,18 @@ const Ops: React.FC = () => {
       {
         label: '打包导出 bundle.zip（常用集合）',
         path: '/core/ops/export/bundle.zip',
-        params: () => ({ tenant_id: tenantId, day_start: dayStart, day_end: dayEnd, run_id: runId || undefined, candidate_id: candidateId || undefined }),
+        params: () => ({
+          tenant_id: tenantId,
+          day_start: dayStart,
+          day_end: dayEnd,
+          run_id: runId || undefined,
+          candidate_id: candidateId || undefined,
+          include: bundleInclude.join(','),
+        }),
         disabled: () => !tenantId.trim(),
       } as any,
     ],
-    [tenantId, runId, candidateId, dayStart, dayEnd]
+    [tenantId, runId, candidateId, dayStart, dayEnd, bundleInclude]
   );
 
   const jobsDlqColumns = useMemo(
@@ -463,7 +550,14 @@ const Ops: React.FC = () => {
                         try {
                           await downloadZip(
                             '/core/ops/export/bundle.zip',
-                            { tenant_id: tenantId, day_start: dayStart, day_end: dayEnd, run_id: runId || undefined, candidate_id: candidateId || undefined },
+                            {
+                              tenant_id: tenantId,
+                              day_start: dayStart,
+                              day_end: dayEnd,
+                              run_id: runId || undefined,
+                              candidate_id: candidateId || undefined,
+                              include: bundleInclude.join(','),
+                            },
                             `ops_bundle_${tenantId || 'tenant'}.zip`
                           );
                           toast.success('已开始下载 bundle.zip');
@@ -475,6 +569,44 @@ const Ops: React.FC = () => {
                       打包导出（bundle.zip）
                     </Button>
                     <div className="text-xs text-gray-500">tenant_id 必填；run_id/candidate_id 可选</div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 mb-4">
+                    {[
+                      { key: 'audit_logs', label: 'audit_logs' },
+                      { key: 'syscall_events', label: 'syscall_events' },
+                      { key: 'approvals', label: 'approvals' },
+                      { key: 'tenant_usage', label: 'tenant_usage' },
+                      { key: 'gateway_dlq', label: 'gateway_dlq' },
+                      { key: 'connector_attempts', label: 'connector_attempts' },
+                      { key: 'jobs_dlq', label: 'jobs_dlq' },
+                      { key: 'run_events', label: 'run_events（需 run_id）' },
+                      { key: 'release_rollouts', label: 'release_rollouts' },
+                      { key: 'release_metrics', label: 'release_metrics（需 candidate_id）' },
+                      { key: 'gateway_tokens', label: 'gateway_tokens' },
+                      { key: 'gateway_pairings', label: 'gateway_pairings' },
+                    ].map((it) => {
+                      const disabled =
+                        (it.key === 'run_events' && !runId.trim()) || (it.key === 'release_metrics' && !candidateId.trim());
+                      return (
+                        <label key={it.key} className={`flex items-center gap-2 text-xs ${disabled ? 'opacity-60' : ''}`}>
+                          <input
+                            type="checkbox"
+                            disabled={disabled}
+                            checked={bundleInclude.includes(it.key)}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setBundleInclude((prev) => {
+                                const s = new Set(prev);
+                                if (checked) s.add(it.key);
+                                else s.delete(it.key);
+                                return Array.from(s);
+                              });
+                            }}
+                          />
+                          <span className="text-gray-400">{it.label}</span>
+                        </label>
+                      );
+                    })}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
@@ -515,10 +647,10 @@ const Ops: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <div className="text-sm font-semibold text-gray-200">DLQ（含批量操作与 payload 查看）</div>
                     <div className="flex items-center gap-2">
-                      <Button size="sm" variant="secondary" icon={<RefreshCw size={14} />} loading={jobsDlqLoading} onClick={loadJobsDlq}>
+                      <Button size="sm" variant="secondary" icon={<RefreshCw size={14} />} loading={jobsDlqLoading} onClick={() => loadJobsDlq()}>
                         刷新 Jobs
                       </Button>
-                      <Button size="sm" variant="secondary" icon={<RefreshCw size={14} />} loading={gwDlqLoading} onClick={loadGatewayDlq}>
+                      <Button size="sm" variant="secondary" icon={<RefreshCw size={14} />} loading={gwDlqLoading} onClick={() => loadGatewayDlq()}>
                         刷新 Gateway
                       </Button>
                     </div>
@@ -535,8 +667,43 @@ const Ops: React.FC = () => {
                         <div className="text-xs text-gray-500 mb-1">job_id（可选）</div>
                         <Input value={jobsDlqJobId} onChange={(e) => setJobsDlqJobId(e.target.value)} placeholder="job_xxx" />
                       </div>
-                      <Button size="sm" variant="secondary" onClick={loadJobsDlq}>
+                      <div className="w-28">
+                        <div className="text-xs text-gray-500 mb-1">page_size</div>
+                        <Input
+                          value={String(jobsDlqPageSize)}
+                          onChange={(e) => {
+                            const n = Number(e.target.value || '0');
+                            setJobsDlqPageSize(Number.isFinite(n) && n > 0 ? Math.min(200, Math.floor(n)) : 20);
+                          }}
+                        />
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => {
+                          setJobsDlqPage(1);
+                          setSelectedJobsDlq({});
+                          loadJobsDlq(1);
+                        }}
+                      >
                         查询
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => {
+                          const ids = jobsDlqItems.map((x) => String(x.id));
+                          setSelectedJobsDlq((prev) => {
+                            const next = { ...prev };
+                            ids.forEach((id) => (next[id] = true));
+                            return next;
+                          });
+                        }}
+                      >
+                        全选当前页
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setSelectedJobsDlq({})}>
+                        清空选择
                       </Button>
                       <Button
                         size="sm"
@@ -577,6 +744,18 @@ const Ops: React.FC = () => {
                     </div>
                     <div className="text-xs text-gray-500 mb-2">Jobs delivery DLQ</div>
                     <Table rowKey={(r: any) => String(r.id)} loading={jobsDlqLoading} data={jobsDlqItems} columns={jobsDlqColumns as any} />
+                    <Pagination
+                      className="mt-3"
+                      current={jobsDlqPage}
+                      total={jobsDlqTotal}
+                      pageSize={jobsDlqPageSize}
+                      onChange={(p) => {
+                        setJobsDlqPage(p);
+                        // clear current page selection
+                        setSelectedJobsDlq({});
+                        loadJobsDlq(p);
+                      }}
+                    />
                   </div>
 
                   <div>
@@ -593,8 +772,43 @@ const Ops: React.FC = () => {
                         <div className="text-xs text-gray-500 mb-1">connector（可选）</div>
                         <Input value={gwDlqConnector} onChange={(e) => setGwDlqConnector(e.target.value)} placeholder="slack/feishu/..." />
                       </div>
-                      <Button size="sm" variant="secondary" onClick={loadGatewayDlq}>
+                      <div className="w-28">
+                        <div className="text-xs text-gray-500 mb-1">page_size</div>
+                        <Input
+                          value={String(gwDlqPageSize)}
+                          onChange={(e) => {
+                            const n = Number(e.target.value || '0');
+                            setGwDlqPageSize(Number.isFinite(n) && n > 0 ? Math.min(200, Math.floor(n)) : 20);
+                          }}
+                        />
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => {
+                          setGwDlqPage(1);
+                          setSelectedGwDlq({});
+                          loadGatewayDlq(1);
+                        }}
+                      >
                         查询
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => {
+                          const ids = gwDlqItems.map((x) => String(x.id));
+                          setSelectedGwDlq((prev) => {
+                            const next = { ...prev };
+                            ids.forEach((id) => (next[id] = true));
+                            return next;
+                          });
+                        }}
+                      >
+                        全选当前页
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setSelectedGwDlq({})}>
+                        清空选择
                       </Button>
                       <Button
                         size="sm"
@@ -635,6 +849,17 @@ const Ops: React.FC = () => {
                     </div>
                     <div className="text-xs text-gray-500 mb-2">Gateway/Connector delivery DLQ</div>
                     <Table rowKey={(r: any) => String(r.id)} loading={gwDlqLoading} data={gwDlqItems} columns={gwDlqColumns as any} />
+                    <Pagination
+                      className="mt-3"
+                      current={gwDlqPage}
+                      total={gwDlqTotal}
+                      pageSize={gwDlqPageSize}
+                      onChange={(p) => {
+                        setGwDlqPage(p);
+                        setSelectedGwDlq({});
+                        loadGatewayDlq(p);
+                      }}
+                    />
                   </div>
                 </CardContent>
               </Card>
