@@ -19,13 +19,15 @@ done
 # 确保 uvicorn, frontend 进程都停止
 pkill -f "uvicorn.*8002" 2>/dev/null && echo "✓ 已停止 aiPlat-core"
 pkill -f "uvicorn.*8001" 2>/dev/null && echo "✓ 已停止 aiPlat-infra"
+pkill -f "uvicorn.*8003" 2>/dev/null && echo "✓ 已停止 aiPlat-platform"
+pkill -f "uvicorn.*8004" 2>/dev/null && echo "✓ 已停止 aiPlat-app"
 pkill -f "uvicorn.*8000" 2>/dev/null && echo "✓ 已停止 aiPlat-management"
 pkill -f "proxy_server.py" 2>/dev/null && echo "✓ 已停止前端"
 
 sleep 1
 
 # 强制清理残留端口
-for port in 8002 8001 8000 5173; do
+for port in 8002 8001 8003 8004 8000 5173; do
     pid=$(lsof -ti :$port 2>/dev/null)
     if [ -n "$pid" ]; then
         kill -9 $pid 2>/dev/null && echo "✓ 强制停止端口 $port"

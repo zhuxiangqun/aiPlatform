@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# aiPlat-platform 三层+前端 启动脚本
-# 启动顺序: aiPlat-core (8002) → aiPlat-infra (8001) → aiPlat-management (8000) → frontend (5173)
+# aiPlat-platform 三层 + platform/app + 前端 启动脚本
+# 启动顺序:
+#   aiPlat-core (8002) → aiPlat-infra (8001) → aiPlat-platform (8003) → aiPlat-app (8004) → aiPlat-management (8000) → frontend (5173)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$SCRIPT_DIR"
@@ -59,10 +60,52 @@ for i in 1 2 3 4 5; do
     sleep 1
 done
 
-# ===== Step 3: aiPlat-management =====
+# ===== Step 3: aiPlat-platform =====
 echo ""
 echo "============================================================"
-echo "  Step 3/4: 启动 aiPlat-management (端口 8000)"
+echo "  Step 3/6: 启动 aiPlat-platform (端口 8003)"
+echo "============================================================"
+
+cd "$PROJECT_ROOT/aiPlat-platform"
+export AIPLAT_PLATFORM_DB_PATH="${AIPLAT_PLATFORM_DB_PATH:-$PROJECT_ROOT/aiPlat-platform/data/aiplat_platform.sqlite3}"
+mkdir -p "$(dirname "$AIPLAT_PLATFORM_DB_PATH")"
+echo "Platform DB: $AIPLAT_PLATFORM_DB_PATH"
+PYTHONPATH="$PROJECT_ROOT/aiPlat-platform" nohup "$PY" -m uvicorn api.rest.routes:app --host 0.0.0.0 --port 8003 > /tmp/aiplat-platform.log 2>&1 &
+PLATFORM_PID=$!
+echo "PID: $PLATFORM_PID"
+
+sleep 3
+for i in 1 2 3 4 5; do
+    curl -s http://localhost:8003/health >/dev/null 2>&1 && echo "✓ aiPlat-platform 启动成功 (8003)" && break
+    echo "等待... ($i/5)"
+    sleep 1
+done
+
+# ===== Step 4: aiPlat-app =====
+echo ""
+echo "============================================================"
+echo "  Step 4/6: 启动 aiPlat-app (端口 8004)"
+echo "============================================================"
+
+cd "$PROJECT_ROOT/aiPlat-app"
+export AIPLAT_APP_DB_PATH="${AIPLAT_APP_DB_PATH:-$PROJECT_ROOT/aiPlat-app/data/aiplat_app.sqlite3}"
+mkdir -p "$(dirname "$AIPLAT_APP_DB_PATH")"
+echo "App DB: $AIPLAT_APP_DB_PATH"
+PYTHONPATH="$PROJECT_ROOT/aiPlat-app" nohup "$PY" -m uvicorn api.rest.routes:app --host 0.0.0.0 --port 8004 > /tmp/aiplat-app.log 2>&1 &
+APP_PID=$!
+echo "PID: $APP_PID"
+
+sleep 3
+for i in 1 2 3 4 5; do
+    curl -s http://localhost:8004/health >/dev/null 2>&1 && echo "✓ aiPlat-app 启动成功 (8004)" && break
+    echo "等待... ($i/5)"
+    sleep 1
+done
+
+# ===== Step 5: aiPlat-management =====
+echo ""
+echo "============================================================"
+echo "  Step 5/6: 启动 aiPlat-management (端口 8000)"
 echo "============================================================"
 
 cd "$PROJECT_ROOT/aiPlat-management"
@@ -77,10 +120,10 @@ for i in 1 2 3 4 5; do
     sleep 1
 done
 
-# ===== Step 4: Frontend =====
+# ===== Step 6: Frontend =====
 echo ""
 echo "============================================================"
-echo "  Step 4/4: 启动前端 (端口 5173)"
+echo "  Step 6/6: 启动前端 (端口 5173)"
 echo "============================================================"
 
 cd "$PROJECT_ROOT/aiPlat-management/frontend"
@@ -103,7 +146,7 @@ for i in 1 2 3 4 5; do
 done
 
 # 保存 PID
-echo -e "$CORE_PID\n$INFRA_PID\n$MGMT_PID\n$FRONTEND_PID" > /tmp/aiplat.pids
+echo -e "$CORE_PID\n$INFRA_PID\n$PLATFORM_PID\n$APP_PID\n$MGMT_PID\n$FRONTEND_PID" > /tmp/aiplat.pids
 
 echo ""
 echo "============================================================"
@@ -113,6 +156,8 @@ echo ""
 echo "服务:"
 echo "  - core:        http://localhost:8002"
 echo "  - infra:       http://localhost:8001"
+echo "  - platform:    http://localhost:8003"
+echo "  - app:         http://localhost:8004"
 echo "  - management:  http://localhost:8000"
 echo "  - 前端:        http://localhost:5173"
 echo ""
