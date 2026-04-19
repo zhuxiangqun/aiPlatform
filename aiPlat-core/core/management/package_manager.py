@@ -351,6 +351,102 @@ class PackageManager:
         self._write_install_record(pkg.name, record)
         return record
 
+    def install_bundle(
+        self,
+        *,
+        pkg_name: str,
+        pkg_version: str,
+        manifest: Dict[str, Any],
+        bundle_dir: Path,
+        allow_overwrite: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Install using an extracted bundle directory (bundle/*).
+        Used by the DB-backed package registry install flow.
+        """
+        sources = self._resolve_source_dirs()
+        applied: List[Dict[str, Any]] = []
+        conflicts: List[Dict[str, Any]] = []
+
+        def _copy_dir(src: Path, dst: Path) -> Tuple[bool, str]:
+            if not src.exists():
+                return False, "source_missing"
+            if dst.exists():
+                if not allow_overwrite:
+                    if _sha256_dir(dst) == _sha256_dir(src):
+                        return True, "already_present_same"
+                    return False, "conflict_exists"
+                shutil.rmtree(dst, ignore_errors=True)
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copytree(src, dst)
+            return True, "copied"
+
+        def _copy_file(src: Path, dst: Path) -> Tuple[bool, str]:
+            if not src.exists():
+                return False, "source_missing"
+            if dst.exists() and not allow_overwrite:
+                if dst.read_bytes() == src.read_bytes():
+                    return True, "already_present_same"
+                return False, "conflict_exists"
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst)
+            return True, "copied"
+
+        resources = (manifest or {}).get("resources") or []
+        if not isinstance(resources, list):
+            resources = []
+        for r in resources:
+            if not isinstance(r, dict):
+                continue
+            kind = str(r.get("kind") or "").strip()
+            rid = str(r.get("id") or "").strip()
+            if not kind or not rid:
+                continue
+            try:
+                if kind == "agent":
+                    src = bundle_dir / "agents" / rid
+                    dst = sources["workspace_agents"] / rid
+                    ok, reason = _copy_dir(src, dst)
+                    if ok:
+                        applied.append({"kind": kind, "id": rid, "dst": str(dst), "sha256": _sha256_dir(dst), "reason": reason})
+                    else:
+                        conflicts.append({"kind": kind, "id": rid, "dst": str(dst), "reason": reason})
+                elif kind == "skill":
+                    src = bundle_dir / "skills" / rid
+                    dst = sources["workspace_skills"] / rid
+                    ok, reason = _copy_dir(src, dst)
+                    if ok:
+                        applied.append({"kind": kind, "id": rid, "dst": str(dst), "sha256": _sha256_dir(dst), "reason": reason})
+                    else:
+                        conflicts.append({"kind": kind, "id": rid, "dst": str(dst), "reason": reason})
+                elif kind == "mcp":
+                    src = bundle_dir / "mcps" / rid
+                    dst = sources["workspace_mcps"] / rid
+                    ok, reason = _copy_dir(src, dst)
+                    if ok:
+                        applied.append({"kind": kind, "id": rid, "dst": str(dst), "sha256": _sha256_dir(dst), "reason": reason})
+                    else:
+                        conflicts.append({"kind": kind, "id": rid, "dst": str(dst), "reason": reason})
+                elif kind == "hook":
+                    src = bundle_dir / "hooks" / f"{rid}.py"
+                    dst = sources["workspace_hooks"] / f"{rid}.py"
+                    ok, reason = _copy_file(src, dst)
+                    if ok:
+                        applied.append({"kind": kind, "id": rid, "dst": str(dst), "sha256": _sha256_dir(dst), "reason": reason})
+                    else:
+                        conflicts.append({"kind": kind, "id": rid, "dst": str(dst), "reason": reason})
+            except Exception as e:
+                conflicts.append({"kind": kind, "id": rid, "reason": f"exception:{e}"})
+
+        record = {
+            "package": {"name": pkg_name, "version": pkg_version, "scope": "registry"},
+            "installed_at": __import__("time").time(),
+            "applied": applied,
+            "conflicts": conflicts,
+        }
+        self._write_install_record(pkg_name, record)
+        return record
+
     def uninstall(self, *, pkg_name: str, keep_modified: bool = True) -> Dict[str, Any]:
         """
         Best-effort uninstall using recorded paths.
@@ -385,4 +481,3 @@ class PackageManager:
         except Exception:
             pass
         return {"package": record.get("package"), "removed": removed, "kept": kept}
-

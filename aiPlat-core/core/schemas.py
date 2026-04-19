@@ -128,6 +128,31 @@ class SkillPackInstallRequest(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
 
 
+# ---------------------------------------------------------------------
+# Packages Registry (publish/install)
+# ---------------------------------------------------------------------
+
+
+class PackagePublishRequest(BaseModel):
+    version: str
+    # Optional approval gate
+    require_approval: bool = False
+    approval_request_id: Optional[str] = None
+    details: Optional[str] = None
+
+
+class PackageInstallRequest(BaseModel):
+    package_name: Optional[str] = None  # allow body override; path param is authoritative
+    version: Optional[str] = None  # if omitted, install from filesystem package (latest)
+    scope: str = "workspace"  # engine|workspace (target scope for apply)
+    allow_overwrite: bool = False
+    metadata: Optional[Dict[str, Any]] = None
+    # Optional approval gate
+    require_approval: bool = False
+    approval_request_id: Optional[str] = None
+    details: Optional[str] = None
+
+
 class LongTermMemoryAddRequest(BaseModel):
     user_id: Optional[str] = None
     key: Optional[str] = None

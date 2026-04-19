@@ -15,6 +15,10 @@ import time
 import json
 import os
 import shutil
+import tarfile
+import tempfile
+import hashlib
+from pathlib import Path
 import yaml
 import uvicorn
 import aiohttp
@@ -33,6 +37,8 @@ from core.schemas import (
     SkillPackUpdateRequest,
     SkillPackPublishRequest,
     SkillPackInstallRequest,
+    PackagePublishRequest,
+    PackageInstallRequest,
     LongTermMemoryAddRequest,
     LongTermMemorySearchRequest,
     MessageCreateRequest,
@@ -6297,6 +6303,362 @@ async def list_skill_pack_installs(scope: Optional[str] = None, limit: int = 100
     if not _execution_store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
     return await _execution_store.list_skill_pack_installs(scope=scope, limit=limit, offset=offset)
+
+
+# ==================== Packages Registry (P0 MVP) ====================
+
+
+def _sha256_file(p: Path) -> str:
+    h = hashlib.sha256()
+    with p.open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _packages_registry_dir() -> Path:
+    return (Path.home() / ".aiplat" / "registry" / "packages").resolve()
+
+
+def _is_approval_resolved_approved(approval_request_id: str) -> bool:
+    if not approval_request_id or not _approval_manager:
+        return False
+    from core.harness.infrastructure.approval.types import RequestStatus
+
+    r = _approval_manager.get_request(str(approval_request_id))
+    if not r:
+        return False
+    return r.status in (RequestStatus.APPROVED, RequestStatus.AUTO_APPROVED)
+
+
+async def _require_package_approval(*, operation: str, user_id: str, details: str, metadata: Dict[str, Any]) -> str:
+    from core.harness.infrastructure.approval.types import ApprovalContext, ApprovalRule, RuleType
+
+    if not _approval_manager:
+        raise HTTPException(status_code=503, detail="Approval manager not available")
+    rule = ApprovalRule(
+        rule_id=f"packages_{operation}",
+        rule_type=RuleType.SENSITIVE_OPERATION,
+        name=f"Packages {operation} 审批",
+        description=f"{operation} package 需要审批",
+        priority=1,
+        metadata={"sensitive_operations": [f"packages:{operation}"]},
+    )
+    _approval_manager.register_rule(rule)
+    ctx = ApprovalContext(
+        user_id=user_id,
+        operation=f"packages:{operation}",
+        operation_context={"details": details},
+        metadata=metadata or {},
+    )
+    req = _approval_manager.create_request(ctx, rule=rule)
+    try:
+        await _approval_manager._persist(req)  # type: ignore[attr-defined]
+    except Exception:
+        pass
+    return req.request_id
+
+
+def _find_filesystem_package(pkg_name: str):
+    p = _workspace_package_manager.get_package(pkg_name) if _workspace_package_manager else None
+    if not p and _package_manager:
+        p = _package_manager.get_package(pkg_name)
+    return p
+
+
+def _build_bundle_dir_for_package(pkg: Dict[str, Any], out_bundle_dir: Path) -> None:
+    """
+    Build a normalized bundle directory for publishing.
+    Prefers <package_dir>/bundle when present; otherwise materializes from source dirs.
+    """
+    pkg_dir = Path(str(pkg.get("package_dir") or ""))
+    existing_bundle = pkg_dir / "bundle"
+    if existing_bundle.exists() and existing_bundle.is_dir():
+        # copy existing bundle
+        shutil.copytree(existing_bundle, out_bundle_dir, dirs_exist_ok=True)
+        return
+
+    # materialize from sources based on manifest resources
+    repo_root = Path(__file__).resolve().parent
+    engine_agents = (repo_root / "engine" / "agents").resolve()
+    engine_skills = (repo_root / "engine" / "skills").resolve()
+    engine_mcps = (repo_root / "engine" / "mcps").resolve()
+    wk_agents = (Path.home() / ".aiplat" / "agents").resolve()
+    wk_skills = (Path.home() / ".aiplat" / "skills").resolve()
+    wk_mcps = (Path.home() / ".aiplat" / "mcps").resolve()
+    wk_hooks = (Path.home() / ".aiplat" / "hooks").resolve()
+
+    (out_bundle_dir / "agents").mkdir(parents=True, exist_ok=True)
+    (out_bundle_dir / "skills").mkdir(parents=True, exist_ok=True)
+    (out_bundle_dir / "mcps").mkdir(parents=True, exist_ok=True)
+    (out_bundle_dir / "hooks").mkdir(parents=True, exist_ok=True)
+
+    resources = pkg.get("resources") or []
+    if not isinstance(resources, list):
+        resources = []
+    for r in resources:
+        if not isinstance(r, dict):
+            continue
+        kind = str(r.get("kind") or "")
+        rid = str(r.get("id") or "")
+        scope = str(r.get("scope") or "engine").lower()
+        if not kind or not rid:
+            continue
+        if kind == "agent":
+            src = (engine_agents / rid) if scope == "engine" else (wk_agents / rid)
+            dst = out_bundle_dir / "agents" / rid
+            if src.exists() and src.is_dir():
+                shutil.copytree(src, dst, dirs_exist_ok=True)
+        elif kind == "skill":
+            src = (engine_skills / rid) if scope == "engine" else (wk_skills / rid)
+            dst = out_bundle_dir / "skills" / rid
+            if src.exists() and src.is_dir():
+                shutil.copytree(src, dst, dirs_exist_ok=True)
+        elif kind == "mcp":
+            src = (engine_mcps / rid) if scope == "engine" else (wk_mcps / rid)
+            dst = out_bundle_dir / "mcps" / rid
+            if src.exists() and src.is_dir():
+                shutil.copytree(src, dst, dirs_exist_ok=True)
+        elif kind == "hook":
+            src = wk_hooks / f"{rid}.py"
+            dst = out_bundle_dir / "hooks" / f"{rid}.py"
+            if src.exists() and src.is_file():
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, dst)
+
+
+@api_router.get("/packages/{pkg_name}/versions")
+async def list_package_versions(pkg_name: str, limit: int = 100, offset: int = 0):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    return await _execution_store.list_package_versions(package_name=pkg_name, limit=limit, offset=offset)
+
+
+@api_router.get("/packages/{pkg_name}/versions/{version}")
+async def get_package_version(pkg_name: str, version: str):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    v = await _execution_store.get_package_version(package_name=pkg_name, version=version)
+    if not v:
+        raise HTTPException(status_code=404, detail="package_version_not_found")
+    return v
+
+
+@api_router.post("/packages/{pkg_name}/publish")
+async def publish_package(pkg_name: str, request: PackagePublishRequest):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+
+    # Optional approval
+    if request.require_approval:
+        if not request.approval_request_id:
+            rid = await _require_package_approval(
+                operation="publish",
+                user_id="admin",
+                details=request.details or f"publish package {pkg_name}@{request.version}",
+                metadata={"package_name": pkg_name, "version": request.version},
+            )
+            return {"status": "approval_required", "approval_request_id": rid}
+        if not _is_approval_resolved_approved(request.approval_request_id):
+            raise HTTPException(status_code=409, detail="not_approved")
+
+    pkg = _find_filesystem_package(pkg_name)
+    if not pkg:
+        raise HTTPException(status_code=404, detail="package_not_found")
+
+    # Build archive from bundle
+    reg_dir = _packages_registry_dir() / pkg_name
+    reg_dir.mkdir(parents=True, exist_ok=True)
+    archive_path = reg_dir / f"{request.version}.tar.gz"
+
+    with tempfile.TemporaryDirectory(prefix="aiplat_pkg_publish_") as td:
+        td_path = Path(td)
+        root = td_path / "pkg"
+        root.mkdir(parents=True, exist_ok=True)
+        bundle_dir = root / "bundle"
+        _build_bundle_dir_for_package(pkg.__dict__ if hasattr(pkg, "__dict__") else (pkg if isinstance(pkg, dict) else {}), bundle_dir)
+        # write package.yaml snapshot
+        manifest = {
+            "name": pkg.name if hasattr(pkg, "name") else pkg_name,
+            "version": request.version,
+            "description": getattr(pkg, "description", "") if hasattr(pkg, "description") else "",
+            "resources": getattr(pkg, "resources", []) if hasattr(pkg, "resources") else (pkg.get("resources") if isinstance(pkg, dict) else []),
+        }
+        (root / "package.yaml").write_text(yaml.safe_dump(manifest, sort_keys=False, allow_unicode=True), encoding="utf-8")
+
+        # create tar.gz
+        with tarfile.open(str(archive_path), "w:gz") as tar:
+            tar.add(str(root / "package.yaml"), arcname="package.yaml")
+            tar.add(str(bundle_dir), arcname="bundle")
+
+    sha = _sha256_file(archive_path)
+    rec = await _execution_store.publish_package_version(
+        package_name=pkg_name,
+        version=request.version,
+        manifest=manifest,
+        artifact_path=str(archive_path),
+        artifact_sha256=sha,
+        approval_request_id=request.approval_request_id,
+    )
+    return {"status": "published", "package_version": rec}
+
+
+@api_router.post("/packages/{pkg_name}/install")
+async def install_package(pkg_name: str, http_request: Request, request: PackageInstallRequest):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    if not _workspace_package_manager:
+        raise HTTPException(status_code=503, detail="Workspace package manager not available")
+
+    version = (request.version or "").strip() or None
+
+    # Optional approval
+    if request.require_approval:
+        if not request.approval_request_id:
+            rid = await _require_package_approval(
+                operation="install",
+                user_id="admin",
+                details=request.details or f"install package {pkg_name}@{version or 'filesystem'}",
+                metadata={"package_name": pkg_name, "version": version},
+            )
+            return {"status": "approval_required", "approval_request_id": rid}
+        if not _is_approval_resolved_approved(request.approval_request_id):
+            raise HTTPException(status_code=409, detail="not_approved")
+
+    applied_record: Dict[str, Any] = {}
+    manifest: Dict[str, Any] = {}
+    artifact_sha256: Optional[str] = None
+
+    if version:
+        v = await _execution_store.get_package_version(package_name=pkg_name, version=version)
+        if not v:
+            raise HTTPException(status_code=404, detail="package_version_not_found")
+        artifact_path = v.get("artifact_path")
+        if not artifact_path or not Path(artifact_path).exists():
+            raise HTTPException(status_code=404, detail="package_artifact_missing")
+        manifest = v.get("manifest") or {}
+        artifact_sha256 = v.get("artifact_sha256")
+
+        with tempfile.TemporaryDirectory(prefix="aiplat_pkg_install_") as td:
+            td_path = Path(td)
+            with tarfile.open(str(artifact_path), "r:gz") as tar:
+                tar.extractall(path=str(td_path))
+            bundle_dir = td_path / "bundle"
+            if not bundle_dir.exists():
+                # some tar may have nested root; try one level
+                nested = td_path / "pkg" / "bundle"
+                bundle_dir = nested if nested.exists() else bundle_dir
+            if not bundle_dir.exists():
+                raise HTTPException(status_code=500, detail="invalid_package_artifact_bundle")
+            applied_record = _workspace_package_manager.install_bundle(
+                pkg_name=pkg_name,
+                pkg_version=version,
+                manifest=manifest,
+                bundle_dir=bundle_dir,
+                allow_overwrite=bool(request.allow_overwrite),
+            )
+    else:
+        # Install directly from filesystem-defined package (engine/workspace)
+        mgr = _workspace_package_manager if (_workspace_package_manager and _workspace_package_manager.get_package(pkg_name)) else _package_manager
+        if not mgr:
+            raise HTTPException(status_code=404, detail="package_not_found")
+        applied_record = mgr.install(pkg_name=pkg_name, allow_overwrite=bool(request.allow_overwrite))
+        manifest = (mgr.get_package(pkg_name).resources if mgr.get_package(pkg_name) else [])  # best-effort
+
+    # Persist install record (DB)
+    install_rec = await _execution_store.record_package_install(
+        package_name=pkg_name,
+        version=version,
+        scope=str(request.scope or "workspace"),
+        metadata={"record": applied_record, **(request.metadata or {}), "artifact_sha256": artifact_sha256},
+        approval_request_id=request.approval_request_id,
+    )
+
+    # Reload managers + sync MCP runtime
+    _reload_workspace_managers()
+    await _sync_mcp_runtime()
+
+    # Verification: mark pending + enqueue autosmoke
+    try:
+        if _execution_store is not None and _job_scheduler is not None:
+            from core.harness.smoke import enqueue_autosmoke
+
+            tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID", "ops_smoke")
+            actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")
+            for it in (applied_record.get("applied") or []):
+                k = str(it.get("kind") or "")
+                rid = str(it.get("id") or "")
+                if k not in {"agent", "skill", "mcp"} or not rid:
+                    continue
+
+                # pending
+                try:
+                    if k == "agent" and _workspace_agent_manager:
+                        await _workspace_agent_manager.update_agent(
+                            rid,
+                            metadata={"verification": {"status": "pending", "updated_at": time.time(), "source": "package"}},
+                        )
+                    elif k == "skill" and _workspace_skill_manager:
+                        await _workspace_skill_manager.update_skill(
+                            rid,
+                            {"metadata": {"verification": {"status": "pending", "updated_at": time.time(), "source": "package"}}},
+                        )
+                    elif k == "mcp" and _workspace_mcp_manager:
+                        s = _workspace_mcp_manager.get_server(rid)
+                        if s:
+                            m = dict(s.metadata or {})
+                            m["verification"] = {"status": "pending", "updated_at": time.time(), "source": "package"}
+                            s.metadata = m
+                            _workspace_mcp_manager.upsert_server(s)
+                except Exception:
+                    pass
+
+                async def _on_complete(job_run: Dict[str, Any], *, _k=k, _rid=rid):
+                    st = str(job_run.get("status") or "")
+                    ver = {
+                        "status": "verified" if st == "completed" else "failed",
+                        "updated_at": time.time(),
+                        "source": "package",
+                        "job_id": str(job_run.get("job_id") or ""),
+                        "job_run_id": str(job_run.get("id") or ""),
+                        "reason": str(job_run.get("error") or ""),
+                    }
+                    try:
+                        if _k == "agent" and _workspace_agent_manager:
+                            await _workspace_agent_manager.update_agent(_rid, metadata={"verification": ver})
+                        elif _k == "skill" and _workspace_skill_manager:
+                            await _workspace_skill_manager.update_skill(_rid, {"metadata": {"verification": ver}})
+                        elif _k == "mcp" and _workspace_mcp_manager:
+                            s2 = _workspace_mcp_manager.get_server(_rid)
+                            if s2:
+                                m2 = dict(s2.metadata or {})
+                                m2["verification"] = ver
+                                s2.metadata = m2
+                                _workspace_mcp_manager.upsert_server(s2)
+                    except Exception:
+                        pass
+
+                await enqueue_autosmoke(
+                    execution_store=_execution_store,
+                    job_scheduler=_job_scheduler,
+                    resource_type=k,
+                    resource_id=rid,
+                    tenant_id=tenant_id or "ops_smoke",
+                    actor_id=actor_id or "admin",
+                    detail={"op": "package_install", "package": pkg_name, "version": version},
+                    on_complete=_on_complete,
+                )
+    except Exception:
+        pass
+
+    return {"status": "installed", "install": install_rec, "record": applied_record}
+
+
+@api_router.get("/packages/installs")
+async def list_package_installs(scope: Optional[str] = None, limit: int = 100, offset: int = 0):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    return await _execution_store.list_package_installs(scope=scope, limit=limit, offset=offset)
 
 
 @api_router.post("/memory/longterm")

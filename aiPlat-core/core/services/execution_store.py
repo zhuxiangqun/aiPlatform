@@ -43,7 +43,7 @@ class ExecutionStoreConfig:
 
 
 class ExecutionStore:
-    CURRENT_SCHEMA_VERSION = 24
+    CURRENT_SCHEMA_VERSION = 25
 
     def __init__(self, config: ExecutionStoreConfig):
         self._config = config
@@ -876,6 +876,54 @@ class ExecutionStore:
                             pass
                         _set_version(24)
                         current = 24
+
+                    # ---- Migration v25: packages registry (publish/install) ----
+                    if current < 25:
+                        try:
+                            conn.execute(
+                                """
+                                CREATE TABLE IF NOT EXISTS package_versions (
+                                  id TEXT PRIMARY KEY,
+                                  package_name TEXT NOT NULL,
+                                  version TEXT NOT NULL,
+                                  manifest_json TEXT,
+                                  artifact_path TEXT,
+                                  artifact_sha256 TEXT,
+                                  approval_request_id TEXT,
+                                  created_at REAL NOT NULL,
+                                  UNIQUE(package_name, version)
+                                );
+                                """
+                            )
+                            conn.execute(
+                                "CREATE INDEX IF NOT EXISTS idx_pkg_versions_name_time ON package_versions(package_name, created_at DESC);"
+                            )
+                        except Exception:
+                            pass
+                        try:
+                            conn.execute(
+                                """
+                                CREATE TABLE IF NOT EXISTS package_installs (
+                                  id TEXT PRIMARY KEY,
+                                  package_name TEXT NOT NULL,
+                                  version TEXT,
+                                  scope TEXT NOT NULL,      -- engine|workspace
+                                  installed_at REAL NOT NULL,
+                                  metadata_json TEXT,
+                                  approval_request_id TEXT
+                                );
+                                """
+                            )
+                            conn.execute(
+                                "CREATE INDEX IF NOT EXISTS idx_pkg_installs_scope_time ON package_installs(scope, installed_at DESC);"
+                            )
+                            conn.execute(
+                                "CREATE INDEX IF NOT EXISTS idx_pkg_installs_name_time ON package_installs(package_name, installed_at DESC);"
+                            )
+                        except Exception:
+                            pass
+                        _set_version(25)
+                        current = 25
 
                     # If legacy db exists with tables but without meta, upgrade meta to current
                     if current < self.CURRENT_SCHEMA_VERSION:
@@ -4482,6 +4530,237 @@ class ExecutionStore:
                     "scope": r.get("scope"),
                     "installed_at": r.get("installed_at"),
                     "metadata": _json_loads(r.get("metadata_json")) or {},
+                }
+            )
+        return {"items": items, "total": int(res.get("total") or 0), "limit": int(limit), "offset": int(offset)}
+
+    # ---------------------------------------------------------------------
+    # Roadmap-P0: packages registry (publish/install)
+    # ---------------------------------------------------------------------
+
+    async def publish_package_version(
+        self,
+        *,
+        package_name: str,
+        version: str,
+        manifest: Dict[str, Any],
+        artifact_path: Optional[str] = None,
+        artifact_sha256: Optional[str] = None,
+        approval_request_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            now = time.time()
+            rec = {
+                "id": f"pkgv-{uuid.uuid4().hex[:12]}",
+                "package_name": str(package_name),
+                "version": str(version),
+                "manifest_json": _json_dumps(manifest or {}),
+                "artifact_path": str(artifact_path) if artifact_path else None,
+                "artifact_sha256": str(artifact_sha256) if artifact_sha256 else None,
+                "approval_request_id": str(approval_request_id) if approval_request_id else None,
+                "created_at": now,
+            }
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                conn.execute(
+                    """
+                    INSERT INTO package_versions(
+                      id, package_name, version, manifest_json, artifact_path, artifact_sha256, approval_request_id, created_at
+                    ) VALUES(?,?,?,?,?,?,?,?);
+                    """,
+                    (
+                        rec["id"],
+                        rec["package_name"],
+                        rec["version"],
+                        rec["manifest_json"],
+                        rec["artifact_path"],
+                        rec["artifact_sha256"],
+                        rec["approval_request_id"],
+                        rec["created_at"],
+                    ),
+                )
+                conn.commit()
+                return rec
+            finally:
+                conn.close()
+
+        row = await anyio.to_thread.run_sync(_sync)
+        return {
+            "id": row["id"],
+            "package_name": row["package_name"],
+            "version": row["version"],
+            "manifest": _json_loads(row.get("manifest_json")) or {},
+            "artifact_path": row.get("artifact_path"),
+            "artifact_sha256": row.get("artifact_sha256"),
+            "approval_request_id": row.get("approval_request_id"),
+            "created_at": row.get("created_at"),
+        }
+
+    async def list_package_versions(self, *, package_name: str, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                total_row = conn.execute("SELECT COUNT(1) AS c FROM package_versions WHERE package_name = ?;", (str(package_name),)).fetchone()
+                total = int(total_row["c"] if total_row else 0)
+                rows = conn.execute(
+                    "SELECT * FROM package_versions WHERE package_name = ? ORDER BY created_at DESC LIMIT ? OFFSET ?;",
+                    (str(package_name), int(limit), int(offset)),
+                ).fetchall()
+                return {"items": [dict(r) for r in rows], "total": total}
+            finally:
+                conn.close()
+
+        res = await anyio.to_thread.run_sync(_sync)
+        items: List[Dict[str, Any]] = []
+        for r in res.get("items") or []:
+            items.append(
+                {
+                    "id": r["id"],
+                    "package_name": r["package_name"],
+                    "version": r["version"],
+                    "manifest": _json_loads(r.get("manifest_json")) or {},
+                    "artifact_path": r.get("artifact_path"),
+                    "artifact_sha256": r.get("artifact_sha256"),
+                    "approval_request_id": r.get("approval_request_id"),
+                    "created_at": r.get("created_at"),
+                }
+            )
+        return {"items": items, "total": int(res.get("total") or 0), "limit": int(limit), "offset": int(offset)}
+
+    async def get_package_version(self, *, package_name: str, version: str) -> Optional[Dict[str, Any]]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Optional[Dict[str, Any]]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                row = conn.execute(
+                    "SELECT * FROM package_versions WHERE package_name = ? AND version = ?;",
+                    (str(package_name), str(version)),
+                ).fetchone()
+                return dict(row) if row else None
+            finally:
+                conn.close()
+
+        row = await anyio.to_thread.run_sync(_sync)
+        if not row:
+            return None
+        return {
+            "id": row["id"],
+            "package_name": row["package_name"],
+            "version": row["version"],
+            "manifest": _json_loads(row.get("manifest_json")) or {},
+            "artifact_path": row.get("artifact_path"),
+            "artifact_sha256": row.get("artifact_sha256"),
+            "approval_request_id": row.get("approval_request_id"),
+            "created_at": row.get("created_at"),
+        }
+
+    async def record_package_install(
+        self,
+        *,
+        package_name: str,
+        version: Optional[str],
+        scope: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        approval_request_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            now = time.time()
+            rec = {
+                "id": f"pkgi-{uuid.uuid4().hex[:12]}",
+                "package_name": str(package_name),
+                "version": str(version) if version is not None else None,
+                "scope": str(scope or "workspace"),
+                "installed_at": now,
+                "metadata_json": _json_dumps(metadata or {}),
+                "approval_request_id": str(approval_request_id) if approval_request_id else None,
+            }
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                if rec["version"]:
+                    v = conn.execute(
+                        "SELECT 1 FROM package_versions WHERE package_name = ? AND version = ?;",
+                        (str(package_name), str(rec["version"])),
+                    ).fetchone()
+                    if not v:
+                        raise ValueError("Package version not found")
+                conn.execute(
+                    "INSERT INTO package_installs(id,package_name,version,scope,installed_at,metadata_json,approval_request_id) VALUES(?,?,?,?,?,?,?);",
+                    (
+                        rec["id"],
+                        rec["package_name"],
+                        rec["version"],
+                        rec["scope"],
+                        rec["installed_at"],
+                        rec["metadata_json"],
+                        rec["approval_request_id"],
+                    ),
+                )
+                conn.commit()
+                return rec
+            finally:
+                conn.close()
+
+        row = await anyio.to_thread.run_sync(_sync)
+        return {
+            "id": row["id"],
+            "package_name": row["package_name"],
+            "version": row.get("version"),
+            "scope": row.get("scope"),
+            "installed_at": row.get("installed_at"),
+            "metadata": _json_loads(row.get("metadata_json")) or {},
+            "approval_request_id": row.get("approval_request_id"),
+        }
+
+    async def list_package_installs(self, *, scope: Optional[str] = None, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                where = ""
+                args: List[Any] = []
+                if scope:
+                    where = "WHERE scope = ?"
+                    args.append(str(scope))
+                total_row = conn.execute(f"SELECT COUNT(1) AS c FROM package_installs {where};", args).fetchone()
+                total = int(total_row["c"] if total_row else 0)
+                rows = conn.execute(
+                    f"SELECT * FROM package_installs {where} ORDER BY installed_at DESC LIMIT ? OFFSET ?;",
+                    [*args, int(limit), int(offset)],
+                ).fetchall()
+                return {"items": [dict(r) for r in rows], "total": total}
+            finally:
+                conn.close()
+
+        res = await anyio.to_thread.run_sync(_sync)
+        items: List[Dict[str, Any]] = []
+        for r in res.get("items") or []:
+            items.append(
+                {
+                    "id": r["id"],
+                    "package_name": r["package_name"],
+                    "version": r.get("version"),
+                    "scope": r.get("scope"),
+                    "installed_at": r.get("installed_at"),
+                    "metadata": _json_loads(r.get("metadata_json")) or {},
+                    "approval_request_id": r.get("approval_request_id"),
                 }
             )
         return {"items": items, "total": int(res.get("total") or 0), "limit": int(limit), "offset": int(offset)}
