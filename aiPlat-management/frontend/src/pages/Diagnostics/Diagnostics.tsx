@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
-import { Activity, GitBranch, Share2, Zap } from 'lucide-react';
+import { Activity, GitBranch, Share2, Zap, Wrench } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, Badge } from '../../components/ui';
 import { diagnosticsApi } from '../../services';
@@ -62,6 +62,7 @@ const Diagnostics: React.FC = () => {
       { title: 'Tenant Policies', desc: 'Policy-as-code 策略快照', href: '/diagnostics/policies', icon: Share2 },
       { title: 'Syscalls', desc: 'syscall_events 检索（tool/llm/skill）', href: '/diagnostics/syscalls', icon: Zap },
       { title: 'E2E Smoke', desc: '生产级全链路冒烟（自动清理）', href: '/diagnostics/smoke', icon: Zap },
+      { title: 'Ops', desc: '导出（CSV）/ DLQ / 配额用量', href: '/diagnostics/ops', icon: Wrench },
     ],
     []
   );

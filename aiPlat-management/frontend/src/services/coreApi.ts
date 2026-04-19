@@ -736,6 +736,75 @@ export const gatewayAdminApi = {
   },
 };
 
+// ==================== Quota / Usage (PR-12/14 ops) ====================
+
+export interface TenantQuotaSnapshot {
+  tenant_id: string;
+  version: number;
+  quota: any;
+  updated_at?: number | null;
+}
+
+export interface TenantUsageItem {
+  tenant_id: string;
+  day: string;
+  metric_key: string;
+  value: number;
+  updated_at?: number | null;
+}
+
+export const quotaApi = {
+  getSnapshot: async (tenantId: string) => {
+    const q = new URLSearchParams({ tenant_id: tenantId });
+    return apiClient.get<TenantQuotaSnapshot>(`/core/quota/snapshot?${q.toString()}`);
+  },
+  getUsage: async (params: { tenant_id: string; day_start?: string; day_end?: string; metric_key?: string; limit?: number; offset?: number }) => {
+    const q = new URLSearchParams();
+    q.set('tenant_id', params.tenant_id);
+    if (params.day_start) q.set('day_start', params.day_start);
+    if (params.day_end) q.set('day_end', params.day_end);
+    if (params.metric_key) q.set('metric_key', params.metric_key);
+    if (params.limit != null) q.set('limit', String(params.limit));
+    if (params.offset != null) q.set('offset', String(params.offset));
+    return apiClient.get<{ items: TenantUsageItem[]; total: number; limit: number; offset: number }>(`/core/quota/usage?${q.toString()}`);
+  },
+};
+
+// ==================== Gateway Delivery DLQ (PR-12 connectors) ====================
+
+export interface GatewayDeliveryDLQItem {
+  id: string;
+  connector: string;
+  tenant_id?: string | null;
+  run_id?: string | null;
+  url?: string | null;
+  payload?: any;
+  attempts: number;
+  error?: string | null;
+  status: 'pending' | 'resolved' | string;
+  created_at?: number | null;
+  resolved_at?: number | null;
+}
+
+export const gatewayDlqApi = {
+  list: async (params: { status?: string; connector?: string; tenant_id?: string; limit?: number; offset?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.status) q.set('status', params.status);
+    if (params.connector) q.set('connector', params.connector);
+    if (params.tenant_id) q.set('tenant_id', params.tenant_id);
+    if (params.limit != null) q.set('limit', String(params.limit));
+    if (params.offset != null) q.set('offset', String(params.offset));
+    const qs = q.toString();
+    return apiClient.get<{ items: GatewayDeliveryDLQItem[]; total: number; limit: number; offset: number }>(`/core/gateway/dlq${qs ? `?${qs}` : ''}`);
+  },
+  retry: async (dlqId: string) => {
+    return apiClient.post<any>(`/core/gateway/dlq/${dlqId}/retry`, {});
+  },
+  delete: async (dlqId: string) => {
+    return apiClient.delete<{ status: string; dlq_id: string }>(`/core/gateway/dlq/${dlqId}`);
+  },
+};
+
 // ==================== Memory API ====================
 
 export interface MemorySession {
