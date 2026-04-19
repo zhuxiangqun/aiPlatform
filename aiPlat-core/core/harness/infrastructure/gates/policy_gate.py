@@ -22,6 +22,7 @@ import json
 
 from core.apps.tools.permission import get_permission_manager, Permission
 from core.harness.kernel.runtime import get_kernel_runtime
+from core.policy.engine import evaluate_tool_policy_snapshot, PolicyDecision as EngineDecision
 
 
 class PolicyDecision(str, Enum):
@@ -58,60 +59,57 @@ class PolicyGate:
                 reason=f"User '{user_id}' lacks EXECUTE permission for tool '{tool_name}'",
             )
 
-        # Tenant policy (policy-as-code): deny/approval_required tool lists.
+        # PR-07: unify policy decisions via policy_engine（同步版）
         tenant_id = (tool_args or {}).get("_tenant_id") if isinstance(tool_args, dict) else None
-        deny_by_policy = False
-        require_approval_by_policy = False
-        policy_reason = None
         policy_version: Optional[int] = None
-        if tenant_id:
-            try:
-                runtime = get_kernel_runtime()
-                store = getattr(runtime, "execution_store", None) if runtime else None
-                db_path = getattr(getattr(store, "_config", None), "db_path", None)
-                if db_path:
-                    conn = sqlite3.connect(str(db_path))
-                    try:
-                        row = conn.execute(
-                            "SELECT policy_json, version FROM tenant_policies WHERE tenant_id=? LIMIT 1", (str(tenant_id),)
-                        ).fetchone()
-                    finally:
-                        conn.close()
-                    if row and row[0]:
-                        try:
-                            policy_version = int(row[1]) if row[1] is not None else None
-                        except Exception:
-                            policy_version = None
-                        policy = json.loads(row[0]) if isinstance(row[0], str) else {}
-                        tool_policy = policy.get("tool_policy") if isinstance(policy, dict) else None
-                        if isinstance(tool_policy, dict):
-                            deny_tools = tool_policy.get("deny_tools") if isinstance(tool_policy.get("deny_tools"), list) else []
-                            approval_tools = (
-                                tool_policy.get("approval_required_tools")
-                                if isinstance(tool_policy.get("approval_required_tools"), list)
-                                else []
-                            )
-                            # MVP: support wildcard "*" for strong gate.
-                            if "*" in deny_tools or tool_name in deny_tools:
-                                deny_by_policy = True
-                                policy_reason = f"Denied by tenant policy (tenant_id={tenant_id}, version={policy_version})"
-                            if "*" in approval_tools or tool_name in approval_tools:
-                                require_approval_by_policy = True
-            except Exception:
-                # Fail-open for compatibility.
-                pass
-
-        if deny_by_policy:
-            return PolicyResult(
-                decision=PolicyDecision.DENY,
-                reason=policy_reason or "Denied by tenant policy",
-                tenant_id=str(tenant_id),
-                policy_version=policy_version,
-            )
-
         force_approval = bool((tool_args or {}).get("_approval_required")) if isinstance(tool_args, dict) else False
-        if require_approval_by_policy:
-            force_approval = True
+        try:
+            runtime = get_kernel_runtime()
+            store = getattr(runtime, "execution_store", None) if runtime else None
+            if os.getenv("AIPLAT_POLICY_ENGINE", "1").lower() not in ("0", "false", "no", "n"):
+                # Read policy snapshot (sync) and evaluate locally.
+                pol = None
+                if tenant_id and store:
+                    try:
+                        db_path = getattr(getattr(store, "_config", None), "db_path", None)
+                        if db_path:
+                            conn = sqlite3.connect(str(db_path))
+                            try:
+                                row = conn.execute(
+                                    "SELECT policy_json, version FROM tenant_policies WHERE tenant_id=? LIMIT 1",
+                                    (str(tenant_id),),
+                                ).fetchone()
+                            finally:
+                                conn.close()
+                            if row and row[0]:
+                                pol = json.loads(row[0]) if isinstance(row[0], str) else {}
+                                try:
+                                    policy_version = int(row[1]) if row[1] is not None else None
+                                except Exception:
+                                    policy_version = None
+                    except Exception:
+                        pol = None
+                ev = evaluate_tool_policy_snapshot(
+                    policy=pol if isinstance(pol, dict) else None,
+                    policy_version=policy_version,
+                    tenant_id=str(tenant_id) if tenant_id else None,
+                    actor_id=user_id,
+                    actor_role=(tool_args or {}).get("_actor_role") if isinstance(tool_args, dict) else None,
+                    tool_name=str(tool_name),
+                    tool_args=tool_args if isinstance(tool_args, dict) else None,
+                )
+                if ev.decision == EngineDecision.DENY:
+                    return PolicyResult(
+                        decision=PolicyDecision.DENY,
+                        reason=ev.reason,
+                        tenant_id=ev.tenant_id,
+                        policy_version=policy_version,
+                    )
+                if ev.decision == EngineDecision.APPROVAL_REQUIRED:
+                    force_approval = True
+        except Exception:
+            # Fail-open for compatibility.
+            pass
 
         if not self._enforce_approval and not force_approval:
             return PolicyResult(decision=PolicyDecision.ALLOW)

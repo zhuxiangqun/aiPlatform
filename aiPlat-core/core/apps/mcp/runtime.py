@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Optional, Set
 from core.apps.mcp.client import MCPClientConfig, MCPClientManager
 from core.apps.mcp.types import TransportType
 from core.apps.mcp.adapter import MCPClientWrapper
+from core.policy.engine import evaluate_mcp_server, PolicyDecision
 
 
 @dataclass
@@ -95,27 +96,73 @@ class MCPRuntime:
     async def _connect_and_register(self, s: Any, tool_registry: Any) -> None:
         # Production safety: forbid stdio unless explicitly allowed.
         transport = str(getattr(s, "transport", "sse") or "sse").lower()
-        if self._is_prod() and transport == "stdio" and not self._prod_allowed(s):
-            # Record an audit event (best-effort) so operators can see why tools are missing.
+        # PR-07: unify via policy_engine (tenant-aware best-effort)
+        if True:
             try:
                 from core.harness.kernel.runtime import get_kernel_runtime
+                from core.harness.kernel.execution_context import get_active_request_context
 
                 rt = get_kernel_runtime()
                 store = getattr(rt, "execution_store", None) if rt else None
-                if store is not None:
-                    await store.add_syscall_event(
-                        {
-                            "kind": "mcp",
-                            "name": str(getattr(s, "name", "")),
-                            "status": "prod_denied",
-                            "error": "prod policy denies stdio MCP server",
-                            "error_code": "PROD_DENIED",
-                            "args": {"transport": "stdio"},
-                        }
-                    )
+                ar = None
+                try:
+                    ar = get_active_request_context()
+                except Exception:
+                    ar = None
+                tenant_id = getattr(ar, "tenant_id", None) if ar else None
+                actor_id = getattr(ar, "actor_id", None) if ar else None
+                actor_role = getattr(ar, "actor_role", None) if ar else None
+
+                meta = getattr(s, "metadata", None)
+                ev = await evaluate_mcp_server(
+                    store=store,
+                    tenant_id=str(tenant_id) if tenant_id else None,
+                    actor_id=str(actor_id) if actor_id else None,
+                    actor_role=str(actor_role) if actor_role else None,
+                    server_name=str(getattr(s, "name", "")),
+                    transport=str(transport),
+                    server_metadata=meta if isinstance(meta, dict) else None,
+                )
+                if ev.decision == PolicyDecision.DENY:
+                    try:
+                        if store is not None:
+                            await store.add_syscall_event(
+                                {
+                                    "kind": "mcp",
+                                    "name": str(getattr(s, "name", "")),
+                                    "status": "policy_denied",
+                                    "error": ev.reason,
+                                    "error_code": ev.reason_code,
+                                    "tenant_id": ev.tenant_id,
+                                    "args": {"transport": str(transport), "policy_version": ev.policy_version},
+                                }
+                            )
+                    except Exception:
+                        pass
+                    raise RuntimeError(ev.reason)
             except Exception:
-                pass
-            raise RuntimeError("prod policy denies stdio MCP server (set policy.prod_allowed=true to allow)")
+                # fallback to legacy prod guard
+                if self._is_prod() and transport == "stdio" and not self._prod_allowed(s):
+                    # Record an audit event (best-effort) so operators can see why tools are missing.
+                    try:
+                        from core.harness.kernel.runtime import get_kernel_runtime
+ 
+                        rt = get_kernel_runtime()
+                        store = getattr(rt, "execution_store", None) if rt else None
+                        if store is not None:
+                            await store.add_syscall_event(
+                                {
+                                    "kind": "mcp",
+                                    "name": str(getattr(s, "name", "")),
+                                    "status": "prod_denied",
+                                    "error": "prod policy denies stdio MCP server",
+                                    "error_code": "PROD_DENIED",
+                                    "args": {"transport": "stdio"},
+                                }
+                            )
+                    except Exception:
+                        pass
+                    raise RuntimeError("prod policy denies stdio MCP server (set policy.prod_allowed=true to allow)")
 
         cfg = self._to_client_config(s)
         # add_server connects + lists tools

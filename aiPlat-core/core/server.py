@@ -2447,6 +2447,60 @@ async def list_tenant_policies(limit: int = 100, offset: int = 0):
     return await _execution_store.list_tenant_policies(limit=limit, offset=offset)
 
 
+# PR-07: policy engine API aliases (tenant snapshot)
+@api_router.get("/policy/snapshot")
+async def get_policy_snapshot(tenant_id: str):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    item = await _execution_store.get_tenant_policy(tenant_id=str(tenant_id))
+    if not item:
+        raise HTTPException(status_code=404, detail="tenant_policy_not_found")
+    return item
+
+
+@api_router.put("/policy/snapshot")
+async def put_policy_snapshot(request: dict, http_request: Request):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    tenant_id = (request or {}).get("tenant_id")
+    policy = (request or {}).get("policy")
+    version = (request or {}).get("version")
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="tenant_id is required")
+    if not isinstance(policy, dict):
+        raise HTTPException(status_code=400, detail="policy must be an object")
+    deny = await _rbac_guard(http_request=http_request, payload=request if isinstance(request, dict) else None, action="policy_upsert", resource_type="tenant_policy", resource_id=str(tenant_id))
+    if deny:
+        return deny
+    if version is not None:
+        try:
+            version = int(version)
+        except Exception:
+            raise HTTPException(status_code=400, detail="invalid version")
+    return await _execution_store.upsert_tenant_policy(tenant_id=str(tenant_id), policy=policy, version=version)
+
+
+@api_router.get("/policy/versions")
+async def list_policy_versions(tenant_id: Optional[str] = None):
+    """
+    MVP：tenant_policies 仅保存最新 version，因此 versions 返回 [current]。
+    后续可扩展为历史版本表 policy_snapshots。
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    if tenant_id:
+        item = await _execution_store.get_tenant_policy(tenant_id=str(tenant_id))
+        if not item:
+            return {"tenant_id": str(tenant_id), "versions": []}
+        return {"tenant_id": str(tenant_id), "versions": [item.get("version")]}
+    items = await _execution_store.list_tenant_policies(limit=200, offset=0)
+    out = []
+    for it in (items.get("items") or []):
+        if isinstance(it, dict) and it.get("tenant_id"):
+            out.append({"tenant_id": it.get("tenant_id"), "version": it.get("version")})
+    return {"items": out}
+
+
 @api_router.get("/policies/tenants/{tenant_id}")
 async def get_tenant_policy(tenant_id: str):
     if not _execution_store:

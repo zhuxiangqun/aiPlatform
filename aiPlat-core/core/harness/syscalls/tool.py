@@ -127,6 +127,15 @@ async def sys_tool_call(
     # Provide identity info for permission wrapper + auditing.
     args.setdefault("_user_id", user_id)
     args.setdefault("_session_id", session_id)
+    # Provide actor_role for policy engine (best-effort).
+    try:
+        from core.harness.kernel.execution_context import get_active_request_context
+
+        arq = get_active_request_context()
+        if arq and getattr(arq, "actor_role", None):
+            args.setdefault("_actor_role", getattr(arq, "actor_role"))
+    except Exception:
+        pass
     # Provide tool risk metadata for approval/priority (best-effort).
     try:
         cfg = getattr(tool, "_config", None)
