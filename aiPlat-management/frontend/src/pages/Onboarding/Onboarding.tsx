@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { CheckCircle, AlertTriangle, RotateCw } from 'lucide-react';
 import { onboardingApi, diagnosticsApi } from '../../services/apiClient';
 import { approvalsApi, policyApi } from '../../services';
@@ -58,6 +59,8 @@ const formatTs = (ts: any) => {
 };
 
 const Onboarding: React.FC = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [activeStep, setActiveStep] = useState<StepKey>('adapter');
   const [state, setState] = useState<any>(null);
   const [loadingState, setLoadingState] = useState(false);
@@ -137,6 +140,7 @@ const Onboarding: React.FC = () => {
   const [evidenceStep, setEvidenceStep] = useState<StepKey>('adapter');
   const [evidenceLoading, setEvidenceLoading] = useState(false);
   const [evidenceItems, setEvidenceItems] = useState<any[]>([]);
+  const [evidenceFocusId, setEvidenceFocusId] = useState<string>('');
 
   const recordEvidence = async (payload: {
     step_key: StepKey;
@@ -178,6 +182,7 @@ const Onboarding: React.FC = () => {
   const openEvidence = async (step: StepKey) => {
     setEvidenceStep(step);
     setEvidenceOpen(true);
+    setEvidenceFocusId('');
     await loadEvidence(step);
   };
 
@@ -190,6 +195,39 @@ const Onboarding: React.FC = () => {
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  // Deep-link: /onboarding?evidence_id=...
+  useEffect(() => {
+    const q = new URLSearchParams(location.search || '');
+    const evidenceId = q.get('evidence_id') || '';
+    if (!evidenceId) return;
+    (async () => {
+      try {
+        const ev = await onboardingApi.getEvidence(evidenceId);
+        const step = (ev?.step_key || 'adapter') as StepKey;
+        setActiveStep(step);
+        setEvidenceStep(step);
+        setEvidenceOpen(true);
+        setEvidenceFocusId(String(evidenceId));
+        await loadEvidence(step);
+        // scroll to focused evidence best-effort
+        window.setTimeout(() => {
+          const el = document.getElementById(`evidence-${evidenceId}`);
+          el?.scrollIntoView?.({ block: 'center' });
+        }, 50);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        // clear query param to avoid reopening on refresh/back
+        try {
+          const q2 = new URLSearchParams(location.search || '');
+          q2.delete('evidence_id');
+          navigate({ pathname: location.pathname, search: q2.toString() ? `?${q2.toString()}` : '' }, { replace: true });
+        } catch {}
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const refreshApprovals = async () => {
     setApprovalsLoading(true);
@@ -1076,7 +1114,13 @@ const Onboarding: React.FC = () => {
       </div>
 
       {evidenceOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-6" onClick={() => setEvidenceOpen(false)}>
+        <div
+          className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-6"
+          onClick={() => {
+            setEvidenceOpen(false);
+            setEvidenceFocusId('');
+          }}
+        >
           <div className="w-full max-w-4xl bg-dark-bg border border-dark-border rounded-xl p-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between gap-3">
               <div className="text-gray-200 font-medium">证据链：{evidenceStep}</div>
@@ -1107,7 +1151,15 @@ const Onboarding: React.FC = () => {
                 <div className="text-sm text-gray-500">{evidenceLoading ? '加载中…' : '暂无证据'}</div>
               ) : (
                 (evidenceItems || []).map((it: any) => (
-                  <div key={it.id} className="bg-dark-hover border border-dark-border rounded-lg p-3">
+                  <div
+                    key={it.id}
+                    id={`evidence-${String(it.id || '')}`}
+                    className={`bg-dark-hover border rounded-lg p-3 ${
+                      evidenceFocusId && String(it.id) === String(evidenceFocusId)
+                        ? 'border-primary ring-1 ring-primary'
+                        : 'border-dark-border'
+                    }`}
+                  >
                     <div className="flex items-start justify-between gap-3">
                       <div className="text-sm text-gray-200">
                         <div>

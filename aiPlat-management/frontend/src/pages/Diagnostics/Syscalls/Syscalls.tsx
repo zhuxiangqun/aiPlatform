@@ -274,6 +274,17 @@ const Syscalls: React.FC = () => {
           {kv('approval_request_id', r.approval_request_id)}
           {kv('target', `${r.target_type || '-'} / ${r.target_id || '-'}`)}
           {kv('error_code', r.error_code)}
+          {String(r.target_type || '') === 'onboarding_evidence' && r.target_id ? (
+            <div className="mt-2">
+              <Button
+                variant="secondary"
+                icon={<ExternalLink size={14} />}
+                onClick={() => navigate(`/onboarding?evidence_id=${encodeURIComponent(String(r.target_id))}`)}
+              >
+                查看 Onboarding 证据
+              </Button>
+            </div>
+          ) : null}
           {String(r.kind || '') === 'changeset' && (
             <div className="mt-2 rounded border border-dark-border bg-dark-hover p-2">
               <div className="text-xs text-gray-500 mb-1">changeset 摘要</div>
@@ -337,6 +348,7 @@ const Syscalls: React.FC = () => {
             { value: 'llm', label: 'llm' },
             { value: 'skill', label: 'skill' },
             { value: 'changeset', label: 'changeset' },
+            { value: 'onboarding', label: 'onboarding' },
           ]}
         />
         <Input label="name(模糊)" value={name} onChange={(e: any) => setName(e.target.value)} />
