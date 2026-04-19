@@ -183,6 +183,11 @@ const Runs: React.FC = () => {
                       <Button variant="ghost">打开 Links</Button>
                     </Link>
                   )}
+                  {run.run_id && (
+                    <Link to={`/diagnostics/audit?run_id=${encodeURIComponent(run.run_id)}`}>
+                      <Button variant="ghost">打开 Audit</Button>
+                    </Link>
+                  )}
                 </div>
               </div>
             </div>
@@ -198,4 +203,3 @@ const Runs: React.FC = () => {
 };
 
 export default Runs;
-
