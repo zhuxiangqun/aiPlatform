@@ -44,6 +44,7 @@ from core.schemas import (
     OnboardingAutosmokeConfigRequest,
     OnboardingSecretsMigrateRequest,
     OnboardingStrongGateRequest,
+    OnboardingExecBackendRequest,
     DiagnosticsPromptAssembleRequest,
     PromptTemplateUpsertRequest,
     PromptTemplateRollbackRequest,
@@ -7163,6 +7164,65 @@ async def set_autosmoke_config(request: OnboardingAutosmokeConfigRequest):
     return {"status": "updated", "autosmoke": res}
 
 
+@api_router.post("/onboarding/exec-backend")
+async def set_exec_backend(request: OnboardingExecBackendRequest):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+
+    backend = str(request.backend or "local").strip()
+    if backend not in {"local", "docker"}:
+        raise HTTPException(status_code=400, detail="invalid_backend")
+
+    if request.require_approval:
+        if not request.approval_request_id:
+            rid = await _require_onboarding_approval(
+                operation="exec_backend",
+                user_id="admin",
+                details=request.details or f"set exec backend to {backend}",
+                metadata={"backend": backend},
+            )
+            try:
+                await _record_changeset(
+                    name="global_setting_upsert_exec_backend",
+                    target_type="global_setting",
+                    target_id="exec_backend",
+                    status="approval_required",
+                    args={"backend": backend},
+                    approval_request_id=rid,
+                )
+            except Exception:
+                pass
+            return {"status": "approval_required", "approval_request_id": rid}
+        if not _is_approval_resolved_approved(request.approval_request_id):
+            try:
+                await _record_changeset(
+                    name="global_setting_upsert_exec_backend",
+                    target_type="global_setting",
+                    target_id="exec_backend",
+                    status="failed",
+                    args={"backend": backend},
+                    error="not_approved",
+                    approval_request_id=request.approval_request_id,
+                )
+            except Exception:
+                pass
+            raise HTTPException(status_code=409, detail="not_approved")
+
+    res = await _execution_store.upsert_global_setting(key="exec_backend", value={"backend": backend})
+    try:
+        await _record_changeset(
+            name="global_setting_upsert_exec_backend",
+            target_type="global_setting",
+            target_id="exec_backend",
+            args={"backend": backend},
+            result={"updated_at": res.get("updated_at") if isinstance(res, dict) else None},
+            approval_request_id=request.approval_request_id,
+        )
+    except Exception:
+        pass
+    return {"status": "updated", "exec_backend": res}
+
+
 @api_router.get("/onboarding/secrets/status")
 async def get_secrets_status():
     if not _execution_store:
@@ -8128,6 +8188,23 @@ async def delete_prompt_template(template_id: str, http_request: Request, requir
     except Exception:
         pass
     return {"status": "deleted" if ok else "not_found"}
+
+
+@api_router.get("/diagnostics/exec/backends")
+async def diagnostics_exec_backends():
+    """
+    Exec backend diagnostics (P1-1).
+    """
+    from core.apps.exec_drivers.registry import get_exec_backend, healthcheck_backends
+
+    backend = await get_exec_backend()
+    health = await healthcheck_backends()
+    return {
+        "status": "ok",
+        "current_backend": backend,
+        "backends": health.get("backends") if isinstance(health, dict) else [],
+        "non_local_requires_approval": True,
+    }
 
 
 # ==================== Repo Changeset (repo-aware workflow MVP) ====================

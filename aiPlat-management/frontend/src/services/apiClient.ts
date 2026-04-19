@@ -258,6 +258,9 @@ export const onboardingApi = {
   setStrongGate: async (body: Record<string, unknown>) => {
     return apiClient.post<any>('/onboarding/strong-gate', body);
   },
+  setExecBackend: async (body: Record<string, unknown>) => {
+    return apiClient.post<any>('/onboarding/exec-backend', body);
+  },
 };
 
 // Monitoring API (legacy - for layer metrics)

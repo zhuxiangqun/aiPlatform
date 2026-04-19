@@ -179,6 +179,9 @@ class CoreAPIClient:
     async def set_strong_gate(self, body: Dict[str, Any]) -> Dict[str, Any]:
         return await self._request("POST", "/api/core/onboarding/strong-gate", json=body or {})
 
+    async def set_exec_backend(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", "/api/core/onboarding/exec-backend", json=body or {})
+
     # ===== Tenant Policies =====
 
     async def get_tenant_policy(self, tenant_id: str) -> Dict[str, Any]:
@@ -213,6 +216,9 @@ class CoreAPIClient:
 
     async def prompt_template_diff(self, template_id: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         return await self._request("GET", f"/api/core/prompts/{template_id}/diff", params=params or {})
+
+    async def exec_backends(self) -> Dict[str, Any]:
+        return await self._request("GET", "/api/core/diagnostics/exec/backends")
 
     # ===== Jobs / Cron (Roadmap-3) =====
 

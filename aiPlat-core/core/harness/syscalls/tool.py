@@ -141,6 +141,18 @@ async def sys_tool_call(
     except Exception:
         pass
 
+    # P1-1: Exec backend gate (force approval for non-local execution backends).
+    try:
+        if tool_name == "code":
+            from core.apps.exec_drivers.registry import get_exec_backend
+
+            backend = await get_exec_backend()
+            args.setdefault("_exec_backend", backend)
+            if str(backend) and str(backend) != "local":
+                args["_approval_required"] = True
+    except Exception:
+        pass
+
     # Phase R2: Toolset gate (runtime allowlist). Fail-closed when a toolset is active.
     try:
         ws = get_active_workspace_context()

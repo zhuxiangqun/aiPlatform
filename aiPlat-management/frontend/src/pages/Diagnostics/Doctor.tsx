@@ -53,6 +53,8 @@ const Doctor: React.FC = () => {
   const [promptDiffLoading, setPromptDiffLoading] = useState(false);
   const [promptDiff, setPromptDiff] = useState<string>('');
   const [promptDiffTitle, setPromptDiffTitle] = useState<string>('');
+  const exec = data?.exec || null;
+  const execAction = data?.actions?.set_exec_backend ? { set_exec_backend: data.actions.set_exec_backend } : null;
 
   const formatTs = (ts: any) => {
     const n = Number(ts);
@@ -178,6 +180,26 @@ const Doctor: React.FC = () => {
             <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
               {JSON.stringify(data?.health || {}, null, 2)}
             </pre>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-semibold text-gray-200">Exec Backends</div>
+              <Badge variant="info">{exec?.current_backend || '-'}</Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
+              {JSON.stringify(exec || {}, null, 2)}
+            </pre>
+            {execAction && (
+              <div className="mt-3">
+                <div className="text-xs text-gray-500 mb-1">切换执行后端（docker 会强制审批）</div>
+                <ActionableFixes actions={execAction} recommendations={[]} onAfterAction={refresh} />
+              </div>
+            )}
           </CardContent>
         </Card>
 

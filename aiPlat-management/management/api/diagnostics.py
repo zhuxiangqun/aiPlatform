@@ -493,6 +493,14 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
     except Exception:
         repo_changeset = {}
 
+    # Exec backends (P1-1) (best-effort)
+    exec_backends: Dict[str, Any] = {}
+    try:
+        if core_client:
+            exec_backends = await core_client.exec_backends()
+    except Exception:
+        exec_backends = {}
+
     # Strong gate status (default tenant)
     strong_gate: Dict[str, Any] = {"tenant_id": "default", "enabled": False}
     try:
@@ -677,6 +685,37 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
             },
             "body_example": {"details": ""},
         },
+        "set_exec_backend": {
+            "action_type": "onboarding.exec_backend",
+            "method": "POST",
+            "api_url": "/api/onboarding/exec-backend",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "backend": {
+                        "type": "string",
+                        "default": "local",
+                        "enum": ["local", "docker"],
+                        "description": "执行后端（非 local 会强制审批）",
+                        "x-ui": {"order": 10},
+                    },
+                    "require_approval": {
+                        "type": "boolean",
+                        "default": True,
+                        "description": "是否需要审批（建议保持 true）",
+                        "x-ui": {"hidden": True, "order": 999},
+                    },
+                    "details": {
+                        "type": "string",
+                        "default": "",
+                        "description": "审批说明/备注（可选）",
+                        "x-ui": {"multiline": True, "placeholder": "例如：将 code 执行切换到 docker 沙箱", "order": 90},
+                    },
+                },
+                "required": ["backend", "require_approval"],
+            },
+            "body_example": {"backend": "local", "require_approval": True},
+        },
     }
     config = {
         "management_public_url": os.getenv("AIPLAT_MANAGEMENT_PUBLIC_URL"),
@@ -809,6 +848,7 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
         "prompts": {"templates": {"total": int((prompt_templates or {}).get("total") or 0), "items": (prompt_templates or {}).get("items") or []}},
         "changesets": changesets,
         "repo": {"changeset": repo_changeset},
+        "exec": exec_backends,
         "strong_gate": strong_gate,
         "config": config,
         "links": links,

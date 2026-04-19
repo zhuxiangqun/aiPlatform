@@ -113,6 +113,14 @@ async def set_strong_gate(request: Request, body: Dict[str, Any]) -> Dict[str, A
     return await core_client.set_strong_gate(body or {})
 
 
+@router.post("/exec-backend")
+async def set_exec_backend(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="core_client not initialized")
+    return await core_client.set_exec_backend(body or {})
+
+
 @router.post("/llm-adapter")
 async def configure_llm_adapter(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
     """

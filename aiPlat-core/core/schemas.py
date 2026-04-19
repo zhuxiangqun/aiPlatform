@@ -200,6 +200,13 @@ class OnboardingStrongGateRequest(BaseModel):
     details: Optional[str] = None
 
 
+class OnboardingExecBackendRequest(BaseModel):
+    backend: str = "local"  # local|docker
+    require_approval: bool = True
+    approval_request_id: Optional[str] = None
+    details: Optional[str] = None
+
+
 class DiagnosticsPromptAssembleRequest(BaseModel):
     """
     Diagnostics-only endpoint helper to introspect prompt/context assembly.

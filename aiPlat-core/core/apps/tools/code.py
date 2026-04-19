@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from ...harness.interfaces import ToolConfig, ToolResult
+from ..exec_drivers.registry import get_exec_backend, get_exec_driver
 from .base import BaseTool
 
 
@@ -84,32 +85,32 @@ class CodeExecutionTool(BaseTool):
                 error=f"Language not allowed: {language}"
             )
         
-        # Placeholder implementation - would use container/sandbox
-        # For Python, could use subprocess with restrictions
-        if language == "python":
-            return await self._execute_python(code, timeout_ms / 1000)
-        elif language == "javascript":
-            return await self._execute_javascript(code, timeout_ms / 1000)
-            
+        backend = "local"
+        try:
+            backend = await get_exec_backend()
+        except Exception:
+            backend = "local"
+        driver = get_exec_driver(backend)
+
+        res = await driver.run_code(language=str(language), code=str(code), timeout_s=float(timeout_ms) / 1000.0)
         return ToolResult(
-            success=False,
-            error=f"Unsupported language: {language}"
+            success=bool(res.ok),
+            output={
+                "backend": backend,
+                "exit_code": res.exit_code,
+                "stdout": res.stdout,
+                "stderr": res.stderr,
+                "duration_ms": res.duration_ms,
+                "metadata": res.metadata,
+            },
+            error=res.error,
+            metadata={"backend": backend},
         )
         
     async def _execute_python(self, code: str, timeout: float) -> ToolResult:
         """Execute Python code"""
-        # Placeholder - would use restricted subprocess
-        return ToolResult(
-            success=False,
-            error="CodeExecutionTool requires sandbox setup. "
-                  "Use containerized execution or tools like e2b."
-        )
+        return ToolResult(success=False, error="deprecated: use ExecDriver")
         
     async def _execute_javascript(self, code: str, timeout: float) -> ToolResult:
         """Execute JavaScript code"""
-        # Placeholder
-        return ToolResult(
-            success=False,
-            error="CodeExecutionTool requires sandbox setup. "
-                  "Use containerized execution or tools like e2b."
-        )
+        return ToolResult(success=False, error="deprecated: use ExecDriver")
