@@ -148,7 +148,15 @@ const Onboarding: React.FC = () => {
     links?: any;
   }) => {
     try {
-      await onboardingApi.createEvidence(payload as any);
+      const links: Record<string, any> = { ...(payload.links || {}) };
+      if (payload.approval_request_id) {
+        links.approvals_ui = links.approvals_ui || '/core/approvals';
+        links.syscalls_ui = links.syscalls_ui || `/diagnostics/syscalls?approval_request_id=${encodeURIComponent(String(payload.approval_request_id))}`;
+        links.audit_ui =
+          links.audit_ui ||
+          `/diagnostics/audit?action=onboarding_evidence&request_id=${encodeURIComponent(String(payload.approval_request_id))}`;
+      }
+      await onboardingApi.createEvidence({ ...(payload as any), links });
     } catch (e) {
       console.error(e);
     }
@@ -1115,6 +1123,31 @@ const Onboarding: React.FC = () => {
                             <>
                               <span className="text-gray-500 ml-3">approval：</span>
                               <code className="text-xs">{String(it.approval_request_id).slice(0, 12)}</code>
+                            </>
+                          ) : null}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1 flex flex-wrap gap-2">
+                          <a
+                            className="underline hover:text-gray-300"
+                            href={`/diagnostics/audit?action=onboarding_evidence&request_id=${encodeURIComponent(String(it.approval_request_id || it.id || ''))}`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Audit
+                          </a>
+                          {it.approval_request_id ? (
+                            <>
+                              <a className="underline hover:text-gray-300" href="/core/approvals" target="_blank" rel="noreferrer">
+                                Approvals
+                              </a>
+                              <a
+                                className="underline hover:text-gray-300"
+                                href={`/diagnostics/syscalls?approval_request_id=${encodeURIComponent(String(it.approval_request_id))}`}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                Syscalls
+                              </a>
                             </>
                           ) : null}
                         </div>
