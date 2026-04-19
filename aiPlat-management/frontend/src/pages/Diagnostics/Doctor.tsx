@@ -49,6 +49,10 @@ const Doctor: React.FC = () => {
   const [stagedOpen, setStagedOpen] = useState(false);
   const [stagedLoading, setStagedLoading] = useState(false);
   const [stagedPreview, setStagedPreview] = useState<any>(null);
+  const [promptDiffOpen, setPromptDiffOpen] = useState(false);
+  const [promptDiffLoading, setPromptDiffLoading] = useState(false);
+  const [promptDiff, setPromptDiff] = useState<string>('');
+  const [promptDiffTitle, setPromptDiffTitle] = useState<string>('');
 
   const formatTs = (ts: any) => {
     const n = Number(ts);
@@ -62,9 +66,9 @@ const Doctor: React.FC = () => {
 
   const statusVariant = (s: any) => {
     const v = String(s || '').toLowerCase();
-    if (v === 'success' || v === 'ok' || v === 'completed') return 'success';
+    if (v === 'success' || v === 'ok' || v === 'completed' || v === 'verified') return 'success';
     if (v.includes('fail') || v === 'error') return 'error';
-    if (v.includes('approval')) return 'warning';
+    if (v.includes('approval') || v === 'pending') return 'warning';
     return 'default';
   };
 
@@ -76,6 +80,16 @@ const Doctor: React.FC = () => {
     if (r?.target_type) q.set('target_type', String(r.target_type));
     if (r?.target_id) q.set('target_id', String(r.target_id));
     navigate(`/diagnostics/syscalls?${q.toString()}`);
+  };
+
+  const parseJson = (s: any) => {
+    try {
+      if (!s) return {};
+      if (typeof s === 'object') return s;
+      return JSON.parse(String(s));
+    } catch {
+      return {};
+    }
   };
 
   const copyReport = async () => {
@@ -195,6 +209,85 @@ const Doctor: React.FC = () => {
             <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
               {JSON.stringify(data?.adapters || {}, null, 2)}
             </pre>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-semibold text-gray-200">Prompt Templates</div>
+              <Badge variant="info">{data?.prompts?.templates?.total ?? 0}</Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {Array.isArray(data?.prompts?.templates?.items) && data?.prompts?.templates?.items?.length > 0 ? (
+              <div className="space-y-3">
+                <Table
+                  columns={[
+                    { key: 'template_id', title: 'id', width: 180, render: (_: any, r: any) => <span className="text-xs text-gray-200">{r.template_id}</span> },
+                    { key: 'name', title: 'name', width: 180, render: (_: any, r: any) => <span className="text-xs text-gray-300">{r.name}</span> },
+                    { key: 'version', title: 'ver', width: 90, render: (_: any, r: any) => <Badge variant="default">{String(r.version || '-')}</Badge> },
+                    {
+                      key: 'verification',
+                      title: 'verify',
+                      width: 120,
+                      render: (_: any, r: any) => {
+                        const md = parseJson(r.metadata_json);
+                        const st = md?.verification?.status;
+                        const v = String(st || '-');
+                        return <Badge variant={statusVariant(v)}>{v}</Badge>;
+                      },
+                    },
+                    {
+                      key: 'actions',
+                      title: '',
+                      width: 180,
+                      render: (_: any, r: any) => (
+                        <div className="flex items-center gap-2">
+                          <Button variant="ghost" icon={<Copy size={14} />} onClick={() => navigator.clipboard.writeText(String(r.template_id || ''))} />
+                          <Button
+                            variant="secondary"
+                            onClick={async () => {
+                              setPromptDiffOpen(true);
+                              setPromptDiffLoading(true);
+                              setPromptDiff('');
+                              setPromptDiffTitle(String(r.template_id || ''));
+                              try {
+                                const res = await diagnosticsApi.getPromptTemplateDiff(String(r.template_id || ''));
+                                setPromptDiff(String(res?.diff || ''));
+                                setPromptDiffTitle(`${res?.template_id}@${res?.from_version} → ${res?.to_version}`);
+                              } finally {
+                                setPromptDiffLoading(false);
+                              }
+                            }}
+                          >
+                            diff
+                          </Button>
+                        </div>
+                      ),
+                    },
+                  ]}
+                  data={data.prompts.templates.items.slice(0, 20)}
+                  rowKey={(r: any) => String(r.template_id)}
+                />
+
+                {promptDiffOpen && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-gray-500">diff: {promptDiffTitle || '-'}</div>
+                      <Button variant="secondary" onClick={() => setPromptDiffOpen(false)}>
+                        关闭
+                      </Button>
+                    </div>
+                    <pre className="text-[11px] text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto max-h-[420px]">
+                      {promptDiffLoading ? 'loading…' : promptDiff || '(empty)'}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-sm text-gray-500">暂无 prompt templates</div>
+            )}
           </CardContent>
         </Card>
 

@@ -7703,7 +7703,7 @@ async def get_prompt_template(template_id: str):
 
 
 @api_router.post("/prompts")
-async def upsert_prompt_template(request: PromptTemplateUpsertRequest):
+async def upsert_prompt_template(request: PromptTemplateUpsertRequest, http_request: Request):
     if not _execution_store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
 
@@ -7794,11 +7794,56 @@ async def upsert_prompt_template(request: PromptTemplateUpsertRequest):
         )
     except Exception:
         pass
+
+    # Verification: mark pending + enqueue autosmoke (best-effort)
+    try:
+        if _execution_store is not None and _job_scheduler is not None:
+            from core.harness.smoke import enqueue_autosmoke
+
+            await _execution_store.update_prompt_template_metadata(
+                template_id=str(request.template_id),
+                patch={"verification": {"status": "pending", "updated_at": time.time(), "source": "autosmoke"}},
+                merge=True,
+            )
+
+            tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID", "ops_smoke")
+            actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")
+
+            async def _on_complete(job_run: Dict[str, Any]):
+                st = str(job_run.get("status") or "")
+                ver = {
+                    "status": "verified" if st == "completed" else "failed",
+                    "updated_at": time.time(),
+                    "source": "autosmoke",
+                    "job_id": str(job_run.get("job_id") or ""),
+                    "job_run_id": str(job_run.get("id") or ""),
+                    "trace_id": str(job_run.get("trace_id") or "") or None,
+                    "reason": str(job_run.get("error") or ""),
+                }
+                try:
+                    await _execution_store.update_prompt_template_metadata(
+                        template_id=str(request.template_id), patch={"verification": ver}, merge=True
+                    )
+                except Exception:
+                    pass
+
+            await enqueue_autosmoke(
+                execution_store=_execution_store,
+                job_scheduler=_job_scheduler,
+                resource_type="prompt_template",
+                resource_id=str(request.template_id),
+                tenant_id=tenant_id or "ops_smoke",
+                actor_id=actor_id or "admin",
+                detail={"op": "prompt_template_upsert", "template_id": str(request.template_id)},
+                on_complete=_on_complete,
+            )
+    except Exception:
+        pass
     return {"status": "updated", "template": res}
 
 
 @api_router.post("/prompts/{template_id}/rollback")
-async def rollback_prompt_template(template_id: str, request: PromptTemplateRollbackRequest):
+async def rollback_prompt_template(template_id: str, request: PromptTemplateRollbackRequest, http_request: Request):
     if not _execution_store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
 
@@ -7883,6 +7928,50 @@ async def rollback_prompt_template(template_id: str, request: PromptTemplateRoll
         )
     except Exception:
         pass
+
+    # Verification: mark pending + enqueue autosmoke (best-effort)
+    try:
+        if _execution_store is not None and _job_scheduler is not None:
+            from core.harness.smoke import enqueue_autosmoke
+
+            await _execution_store.update_prompt_template_metadata(
+                template_id=str(template_id),
+                patch={"verification": {"status": "pending", "updated_at": time.time(), "source": "autosmoke"}},
+                merge=True,
+            )
+            tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID", "ops_smoke")
+            actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")
+
+            async def _on_complete(job_run: Dict[str, Any]):
+                st = str(job_run.get("status") or "")
+                ver = {
+                    "status": "verified" if st == "completed" else "failed",
+                    "updated_at": time.time(),
+                    "source": "autosmoke",
+                    "job_id": str(job_run.get("job_id") or ""),
+                    "job_run_id": str(job_run.get("id") or ""),
+                    "trace_id": str(job_run.get("trace_id") or "") or None,
+                    "reason": str(job_run.get("error") or ""),
+                }
+                try:
+                    await _execution_store.update_prompt_template_metadata(
+                        template_id=str(template_id), patch={"verification": ver}, merge=True
+                    )
+                except Exception:
+                    pass
+
+            await enqueue_autosmoke(
+                execution_store=_execution_store,
+                job_scheduler=_job_scheduler,
+                resource_type="prompt_template",
+                resource_id=str(template_id),
+                tenant_id=tenant_id or "ops_smoke",
+                actor_id=actor_id or "admin",
+                detail={"op": "prompt_template_rollback", "template_id": str(template_id), "version": str(request.version)},
+                on_complete=_on_complete,
+            )
+    except Exception:
+        pass
     return {"status": "rolled_back", "template": tpl}
 
 
@@ -7893,8 +7982,81 @@ async def list_prompt_template_versions(template_id: str, limit: int = 100, offs
     return await _execution_store.list_prompt_template_versions(template_id=str(template_id), limit=int(limit), offset=int(offset))
 
 
+@api_router.get("/prompts/{template_id}/diff")
+async def diff_prompt_template(template_id: str, from_version: Optional[str] = None, to_version: Optional[str] = None):
+    """
+    Diff prompt template content between two versions.
+    Defaults:
+      - to_version: current version
+      - from_version: previous version (if exists)
+    """
+    import difflib
+    import hashlib
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+
+    cur = await _execution_store.get_prompt_template(template_id=str(template_id))
+    if not cur:
+        raise HTTPException(status_code=404, detail="not_found")
+    cur_ver = str(cur.get("version") or "")
+    cur_tpl = str(cur.get("template") or "")
+
+    # Resolve to_version
+    resolved_to_ver = str(to_version) if to_version else cur_ver
+    if resolved_to_ver == cur_ver:
+        to_tpl = cur_tpl
+    else:
+        v = await _execution_store.get_prompt_template_version(template_id=str(template_id), version=str(resolved_to_ver))
+        if not v:
+            raise HTTPException(status_code=404, detail="to_version_not_found")
+        to_tpl = str(v.get("template") or "")
+
+    # Resolve from_version
+    resolved_from_ver = str(from_version) if from_version else ""
+    if not resolved_from_ver:
+        # previous version: first version in list that is not resolved_to_ver
+        vers = await _execution_store.list_prompt_template_versions(template_id=str(template_id), limit=20, offset=0)
+        for it in (vers.get("items") or []):
+            vv = str((it or {}).get("version") or "")
+            if vv and vv != resolved_to_ver:
+                resolved_from_ver = vv
+                break
+    if not resolved_from_ver:
+        resolved_from_ver = resolved_to_ver
+    if resolved_from_ver == cur_ver:
+        from_tpl = cur_tpl
+    else:
+        v2 = await _execution_store.get_prompt_template_version(template_id=str(template_id), version=str(resolved_from_ver))
+        if not v2:
+            raise HTTPException(status_code=404, detail="from_version_not_found")
+        from_tpl = str(v2.get("template") or "")
+
+    diff_lines = list(
+        difflib.unified_diff(
+            from_tpl.splitlines(),
+            to_tpl.splitlines(),
+            fromfile=f"{template_id}@{resolved_from_ver}",
+            tofile=f"{template_id}@{resolved_to_ver}",
+            lineterm="",
+        )
+    )
+    diff_text = "\n".join(diff_lines)
+
+    return {
+        "status": "ok",
+        "template_id": str(template_id),
+        "from_version": resolved_from_ver,
+        "to_version": resolved_to_ver,
+        "from_sha256": hashlib.sha256(from_tpl.encode("utf-8")).hexdigest(),
+        "to_sha256": hashlib.sha256(to_tpl.encode("utf-8")).hexdigest(),
+        "diff_sha256": hashlib.sha256(diff_text.encode("utf-8")).hexdigest(),
+        "diff": diff_text,
+        "diff_len": len(diff_text),
+    }
+
+
 @api_router.delete("/prompts/{template_id}")
-async def delete_prompt_template(template_id: str, require_approval: bool = True, approval_request_id: Optional[str] = None, details: Optional[str] = None):
+async def delete_prompt_template(template_id: str, http_request: Request, require_approval: bool = True, approval_request_id: Optional[str] = None, details: Optional[str] = None):
     if not _execution_store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
 
@@ -7943,6 +8105,26 @@ async def delete_prompt_template(template_id: str, require_approval: bool = True
             result={"status": "deleted" if ok else "not_found"},
             approval_request_id=approval_request_id,
         )
+    except Exception:
+        pass
+
+    # Verification: mark pending + enqueue autosmoke (best-effort)
+    try:
+        if ok and _execution_store is not None and _job_scheduler is not None:
+            from core.harness.smoke import enqueue_autosmoke
+
+            tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID", "ops_smoke")
+            actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")
+
+            await enqueue_autosmoke(
+                execution_store=_execution_store,
+                job_scheduler=_job_scheduler,
+                resource_type="prompt_template",
+                resource_id=str(template_id),
+                tenant_id=tenant_id or "ops_smoke",
+                actor_id=actor_id or "admin",
+                detail={"op": "prompt_template_delete", "template_id": str(template_id)},
+            )
     except Exception:
         pass
     return {"status": "deleted" if ok else "not_found"}

@@ -5792,6 +5792,58 @@ class ExecutionStore:
 
         return await anyio.to_thread.run_sync(_sync)
 
+    async def get_prompt_template_version(self, *, template_id: str, version: str) -> Optional[Dict[str, Any]]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Optional[Dict[str, Any]]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                row = conn.execute(
+                    "SELECT * FROM prompt_template_versions WHERE template_id=? AND version=? LIMIT 1;",
+                    (str(template_id), str(version)),
+                ).fetchone()
+                return dict(row) if row else None
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
+    async def update_prompt_template_metadata(self, *, template_id: str, patch: Dict[str, Any], merge: bool = True) -> Optional[Dict[str, Any]]:
+        """
+        Update prompt template metadata_json without changing template content or version.
+        merge=True will shallow-merge patch into existing metadata.
+        """
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Optional[Dict[str, Any]]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            now = time.time()
+            try:
+                row = conn.execute("SELECT * FROM prompt_templates WHERE template_id=?;", (str(template_id),)).fetchone()
+                if not row:
+                    return None
+                cur_meta = _json_loads(row.get("metadata_json")) or {}
+                next_meta = dict(cur_meta)
+                if merge:
+                    next_meta.update(patch or {})
+                else:
+                    next_meta = dict(patch or {})
+                conn.execute(
+                    "UPDATE prompt_templates SET metadata_json=?, updated_at=? WHERE template_id=?;",
+                    (json.dumps(next_meta), now, str(template_id)),
+                )
+                conn.commit()
+                out = conn.execute("SELECT * FROM prompt_templates WHERE template_id=?;", (str(template_id),)).fetchone()
+                return dict(out) if out else None
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
     async def list_prompt_templates(self, *, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
         await self.init()
         db_path = self._config.db_path

@@ -118,6 +118,14 @@ export const diagnosticsApi = {
     return apiClient.get<any>('/diagnostics/repo/staged/preview');
   },
 
+  getPromptTemplateDiff: async (templateId: string, params: { from_version?: string; to_version?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (params.from_version) q.set('from_version', params.from_version);
+    if (params.to_version) q.set('to_version', params.to_version);
+    const qs = q.toString();
+    return apiClient.get<any>(`/diagnostics/prompts/${encodeURIComponent(templateId)}/diff${qs ? `?${qs}` : ''}`);
+  },
+
   runRepoTests: async (body: Record<string, unknown>) => {
     return apiClient.post<any>('/diagnostics/repo/tests/run', body);
   },

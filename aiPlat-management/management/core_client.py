@@ -211,6 +211,9 @@ class CoreAPIClient:
     async def repo_staged_preview(self, body: Dict[str, Any]) -> Dict[str, Any]:
         return await self._request("POST", "/api/core/diagnostics/repo/staged/preview", json=body or {})
 
+    async def prompt_template_diff(self, template_id: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        return await self._request("GET", f"/api/core/prompts/{template_id}/diff", params=params or {})
+
     # ===== Jobs / Cron (Roadmap-3) =====
 
     async def list_jobs(self, *, limit: int = 100, offset: int = 0, enabled: Optional[bool] = None) -> Dict[str, Any]:

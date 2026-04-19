@@ -165,6 +165,19 @@ async def get_repo_staged_preview(request: Request) -> Dict[str, Any]:
     return await core_client.repo_staged_preview({"repo_root": repo_root, "include_patch": True})
 
 
+@router.get("/prompts/{template_id}/diff")
+async def get_prompt_template_diff(template_id: str, request: Request, from_version: Optional[str] = None, to_version: Optional[str] = None) -> Dict[str, Any]:
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="core_client not initialized")
+    params: Dict[str, Any] = {}
+    if from_version:
+        params["from_version"] = str(from_version)
+    if to_version:
+        params["to_version"] = str(to_version)
+    return await core_client.prompt_template_diff(str(template_id), params=params)
+
+
 @router.get("/health")
 async def list_available_checks(request: Request) -> Dict[str, Any]:
     """列出可用的健康检查
