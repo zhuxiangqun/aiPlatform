@@ -11,6 +11,30 @@ type ExportButton = {
   disabled?: () => boolean;
 };
 
+async function runBatch(
+  ids: string[],
+  fn: (id: string) => Promise<any>,
+  concurrency = 6
+): Promise<{ ok: number; failed: number; errors: Array<{ id: string; error: string }> }> {
+  const errors: Array<{ id: string; error: string }> = [];
+  let ok = 0;
+  let idx = 0;
+  const workers = new Array(Math.max(1, concurrency)).fill(0).map(async () => {
+    while (idx < ids.length) {
+      const i = idx++;
+      const id = ids[i];
+      try {
+        await fn(id);
+        ok += 1;
+      } catch (e: any) {
+        errors.push({ id, error: String(e?.message || e || 'error') });
+      }
+    }
+  });
+  await Promise.all(workers);
+  return { ok, failed: errors.length, errors };
+}
+
 function getApiBaseUrl(): string {
   // keep consistent with apiClient.ts
   return (import.meta as any)?.env?.VITE_API_URL || '/api';
@@ -107,11 +131,13 @@ const Ops: React.FC = () => {
   const [jobsDlqTotal, setJobsDlqTotal] = useState(0);
   const [jobsDlqPage, setJobsDlqPage] = useState(1);
   const [jobsDlqPageSize, setJobsDlqPageSize] = useState(20);
+  const [jobsDlqJump, setJobsDlqJump] = useState('');
   const [gwDlqLoading, setGwDlqLoading] = useState(false);
   const [gwDlqItems, setGwDlqItems] = useState<any[]>([]);
   const [gwDlqTotal, setGwDlqTotal] = useState(0);
   const [gwDlqPage, setGwDlqPage] = useState(1);
   const [gwDlqPageSize, setGwDlqPageSize] = useState(20);
+  const [gwDlqJump, setGwDlqJump] = useState('');
 
   // Filters / selections / modal
   const [jobsDlqStatus, setJobsDlqStatus] = useState('pending');
@@ -711,12 +737,11 @@ const Ops: React.FC = () => {
                         disabled={Object.keys(selectedJobsDlq).filter((k) => selectedJobsDlq[k]).length === 0}
                         onClick={async () => {
                           const ids = Object.keys(selectedJobsDlq).filter((k) => selectedJobsDlq[k]);
-                          for (const id of ids) {
-                            try {
-                              await jobApi.retryDLQ(id);
-                            } catch {}
+                          const res = await runBatch(ids, (id) => jobApi.retryDLQ(id), 6);
+                          toast.success(`批量重试完成：成功 ${res.ok} / 失败 ${res.failed}`);
+                          if (res.failed) {
+                            toast.error('部分失败', res.errors.slice(0, 3).map((x) => `${x.id}: ${x.error}`).join('\n'));
                           }
-                          toast.success(`已触发批量重试：${ids.length} 条`);
                           setSelectedJobsDlq({});
                           await loadJobsDlq();
                         }}
@@ -729,12 +754,11 @@ const Ops: React.FC = () => {
                         disabled={Object.keys(selectedJobsDlq).filter((k) => selectedJobsDlq[k]).length === 0}
                         onClick={async () => {
                           const ids = Object.keys(selectedJobsDlq).filter((k) => selectedJobsDlq[k]);
-                          for (const id of ids) {
-                            try {
-                              await jobApi.deleteDLQ(id);
-                            } catch {}
+                          const res = await runBatch(ids, (id) => jobApi.deleteDLQ(id), 6);
+                          toast.success(`批量删除完成：成功 ${res.ok} / 失败 ${res.failed}`);
+                          if (res.failed) {
+                            toast.error('部分失败', res.errors.slice(0, 3).map((x) => `${x.id}: ${x.error}`).join('\n'));
                           }
-                          toast.success(`已批量删除：${ids.length} 条`);
                           setSelectedJobsDlq({});
                           await loadJobsDlq();
                         }}
@@ -756,6 +780,27 @@ const Ops: React.FC = () => {
                         loadJobsDlq(p);
                       }}
                     />
+                    <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                      <div>
+                        offset={(jobsDlqPage - 1) * jobsDlqPageSize} · page_size={jobsDlqPageSize}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span>跳转到页</span>
+                        <Input className="w-20" value={jobsDlqJump} onChange={(e) => setJobsDlqJump(e.target.value)} placeholder="1" />
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => {
+                            const p = Math.max(1, Math.floor(Number(jobsDlqJump || '1')));
+                            setJobsDlqPage(p);
+                            setSelectedJobsDlq({});
+                            loadJobsDlq(p);
+                          }}
+                        >
+                          跳转
+                        </Button>
+                      </div>
+                    </div>
                   </div>
 
                   <div>
@@ -816,12 +861,11 @@ const Ops: React.FC = () => {
                         disabled={Object.keys(selectedGwDlq).filter((k) => selectedGwDlq[k]).length === 0}
                         onClick={async () => {
                           const ids = Object.keys(selectedGwDlq).filter((k) => selectedGwDlq[k]);
-                          for (const id of ids) {
-                            try {
-                              await gatewayDlqApi.retry(id);
-                            } catch {}
+                          const res = await runBatch(ids, (id) => gatewayDlqApi.retry(id), 6);
+                          toast.success(`批量重试完成：成功 ${res.ok} / 失败 ${res.failed}`);
+                          if (res.failed) {
+                            toast.error('部分失败', res.errors.slice(0, 3).map((x) => `${x.id}: ${x.error}`).join('\n'));
                           }
-                          toast.success(`已触发批量重试：${ids.length} 条`);
                           setSelectedGwDlq({});
                           await loadGatewayDlq();
                         }}
@@ -834,12 +878,11 @@ const Ops: React.FC = () => {
                         disabled={Object.keys(selectedGwDlq).filter((k) => selectedGwDlq[k]).length === 0}
                         onClick={async () => {
                           const ids = Object.keys(selectedGwDlq).filter((k) => selectedGwDlq[k]);
-                          for (const id of ids) {
-                            try {
-                              await gatewayDlqApi.delete(id);
-                            } catch {}
+                          const res = await runBatch(ids, (id) => gatewayDlqApi.delete(id), 6);
+                          toast.success(`批量删除完成：成功 ${res.ok} / 失败 ${res.failed}`);
+                          if (res.failed) {
+                            toast.error('部分失败', res.errors.slice(0, 3).map((x) => `${x.id}: ${x.error}`).join('\n'));
                           }
-                          toast.success(`已批量删除：${ids.length} 条`);
                           setSelectedGwDlq({});
                           await loadGatewayDlq();
                         }}
@@ -860,6 +903,27 @@ const Ops: React.FC = () => {
                         loadGatewayDlq(p);
                       }}
                     />
+                    <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                      <div>
+                        offset={(gwDlqPage - 1) * gwDlqPageSize} · page_size={gwDlqPageSize}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span>跳转到页</span>
+                        <Input className="w-20" value={gwDlqJump} onChange={(e) => setGwDlqJump(e.target.value)} placeholder="1" />
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => {
+                            const p = Math.max(1, Math.floor(Number(gwDlqJump || '1')));
+                            setGwDlqPage(p);
+                            setSelectedGwDlq({});
+                            loadGatewayDlq(p);
+                          }}
+                        >
+                          跳转
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
