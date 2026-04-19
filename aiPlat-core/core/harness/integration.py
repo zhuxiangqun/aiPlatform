@@ -11,6 +11,7 @@ import time
 import uuid
 
 from core.utils.ids import new_prefixed_id
+from core.harness.kernel.types import ExecutionResult
 
 from .interfaces import (
     IAgent,

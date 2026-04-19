@@ -303,7 +303,30 @@ async def api_v1_agents_create(request: Request, body: Dict[str, Any]):
         "memory_config": body.get("memory_config") if isinstance(body.get("memory_config"), dict) else None,
         "metadata": metadata or None,
     }
-    return await _core_request("POST", "/api/core/workspace/agents", identity=identity, json_body=payload)
+    created = await _core_request("POST", "/api/core/workspace/agents", identity=identity, json_body=payload)
+    # Grant execute permission to the creator (and system/admin) for newly created workspace agents.
+    # Without this, creator cannot execute immediately due to deny-by-default permissions.
+    try:
+        agent_id = created.get("id")
+        if agent_id:
+            for uid in [identity.actor_id, "system", "admin"]:
+                try:
+                    await _core_request(
+                        "POST",
+                        "/api/core/permissions/grant",
+                        identity=identity,
+                        json_body={
+                            "user_id": str(uid),
+                            "resource_id": str(agent_id),
+                            "permission": "execute",
+                            "granted_by": "platform",
+                        },
+                    )
+                except Exception:
+                    pass
+    except Exception:
+        pass
+    return created
 
 
 @app.get("/api/v1/agents/{agent_id}")

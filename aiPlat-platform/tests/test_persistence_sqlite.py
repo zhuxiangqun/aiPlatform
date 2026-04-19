@@ -60,6 +60,9 @@ def test_platform_agents_crud_proxy(monkeypatch):
         if method == "POST" and path == "/api/core/workspace/agents":
             assert json_body and json_body["name"] == "N1"
             return {"id": "a_new", "status": "created", "name": "N1"}
+        if method == "POST" and path == "/api/core/permissions/grant":
+            assert json_body and json_body.get("permission") == "execute"
+            return {"status": "granted"}
         if method == "GET" and path == "/api/core/workspace/agents/a1":
             return {"id": "a1", "name": "A1", "agent_type": "base", "status": "ready"}
         if method == "POST" and path == "/api/core/workspace/agents/a1/execute":
