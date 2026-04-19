@@ -778,6 +778,27 @@ def _is_verified(meta: Dict[str, Any] | None) -> bool:
     return False
 
 
+def _governance_publish_gate(meta: Dict[str, Any] | None) -> Dict[str, Any]:
+    """
+    If a workspace skill has a governance candidate, it must be published before enable/execute.
+    """
+    if not isinstance(meta, dict):
+        return {"required": False}
+    gov = meta.get("governance")
+    if not isinstance(gov, dict):
+        return {"required": False}
+    candidate_id = gov.get("candidate_id")
+    if not isinstance(candidate_id, str) or not candidate_id.strip():
+        return {"required": False}
+    candidate_id = candidate_id.strip()
+    published_candidate_id = gov.get("published_candidate_id")
+    if isinstance(published_candidate_id, str) and published_candidate_id.strip() == candidate_id:
+        return {"required": False, "candidate_id": candidate_id, "published_candidate_id": published_candidate_id}
+    if str(gov.get("status") or "").lower() == "published":
+        return {"required": False, "candidate_id": candidate_id, "published_candidate_id": published_candidate_id}
+    return {"required": True, "candidate_id": candidate_id, "published_candidate_id": published_candidate_id, "status": gov.get("status")}
+
+
 def _management_public_url() -> str:
     """
     Public base URL for management UI (for clickable links in API errors).
@@ -2748,6 +2769,33 @@ async def publish_release_candidate(candidate_id: str, request: dict):
         for aid in ids:
             if isinstance(aid, str) and aid:
                 await mgr.set_artifact_status(artifact_id=aid, status="published", metadata_update={"published_by_candidate": candidate_id})
+    # Best-effort: reflect publish into target skill metadata for runtime gating.
+    try:
+        if str(cand.get("target_type") or "").lower() == "skill" and cand.get("target_id"):
+            sid = str(cand.get("target_id"))
+            # Prefer workspace skills (this phase).
+            target_skill = None
+            if _workspace_skill_manager:
+                target_skill = await _workspace_skill_manager.get_skill(sid)
+            mgr2 = _workspace_skill_manager
+            if not target_skill and _skill_manager:
+                target_skill = await _skill_manager.get_skill(sid)
+                mgr2 = _skill_manager
+            if target_skill and mgr2:
+                meta = getattr(target_skill, "metadata", None) if target_skill else None
+                gov = meta.get("governance") if isinstance(meta, dict) and isinstance(meta.get("governance"), dict) else {}
+                gov2 = dict(gov)
+                gov2.update(
+                    {
+                        "status": "published",
+                        "published_candidate_id": candidate_id,
+                        "published_at": now,
+                        "updated_at": now,
+                    }
+                )
+                await mgr2.update_skill(sid, metadata={"governance": gov2})
+    except Exception:
+        pass
     return {"status": "published", "candidate_id": candidate_id, "approval_request_id": approval_request_id}
 
 
@@ -2802,6 +2850,29 @@ async def rollback_release_candidate(candidate_id: str, request: dict):
             if isinstance(aid, str) and aid:
                 await mgr.set_artifact_status(artifact_id=aid, status="rolled_back", metadata_update={"rolled_back_by_candidate": candidate_id})
 
+    # Best-effort: reflect rollback into target skill metadata for runtime gating.
+    try:
+        if str(cand.get("target_type") or "").lower() == "skill" and cand.get("target_id"):
+            sid = str(cand.get("target_id"))
+            target_skill = None
+            mgr2 = None
+            if _workspace_skill_manager:
+                target_skill = await _workspace_skill_manager.get_skill(sid)
+                mgr2 = _workspace_skill_manager
+            if not target_skill and _skill_manager:
+                target_skill = await _skill_manager.get_skill(sid)
+                mgr2 = _skill_manager
+            if target_skill and mgr2:
+                meta = getattr(target_skill, "metadata", None) if target_skill else None
+                gov = meta.get("governance") if isinstance(meta, dict) and isinstance(meta.get("governance"), dict) else {}
+                gov2 = dict(gov)
+                if gov2.get("published_candidate_id") == candidate_id:
+                    gov2.pop("published_candidate_id", None)
+                    gov2.pop("published_at", None)
+                gov2.update({"status": "rolled_back", "rolled_back_candidate_id": candidate_id})
+                await mgr2.update_skill(sid, metadata={"governance": gov2})
+    except Exception:
+        pass
     return {"status": "rolled_back", "candidate_id": candidate_id, "approval_request_id": approval_request_id}
 
 
@@ -3580,6 +3651,26 @@ async def enable_workspace_skill(skill_id: str, request: Optional[Dict[str, Any]
     s = await _workspace_skill_manager.get_skill(skill_id)
     if not s:
         raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+
+    # Publish gate: if governance candidate exists, require it to be published before enabling.
+    pg = _governance_publish_gate(getattr(s, "metadata", None))
+    if pg.get("required") is True:
+        try:
+            await _record_changeset(
+                name="skill_publish_gate",
+                target_type="skill",
+                target_id=str(skill_id),
+                status="blocked",
+                args={"scope": "workspace", "action": "enable", "candidate_id": pg.get("candidate_id")},
+                result={"reason": "publish_required"},
+            )
+        except Exception:
+            pass
+        return {
+            "status": "publish_required",
+            "candidate_id": pg.get("candidate_id"),
+            "releases_url": _ui_url("/core/learning/releases"),
+        }
     trusted = await _get_trusted_skill_pubkeys_map()
     try:
         prov2 = _workspace_skill_manager.compute_skill_signature_verification(s, trusted)
@@ -3765,6 +3856,26 @@ async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest):
     skill = await _workspace_skill_manager.get_skill(skill_id)
     if not skill:
         raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+
+    # Publish gate: if governance candidate exists, require it to be published before executing.
+    pg = _governance_publish_gate(getattr(skill, "metadata", None))
+    if pg.get("required") is True:
+        try:
+            await _record_changeset(
+                name="skill_publish_gate",
+                target_type="skill",
+                target_id=str(skill_id),
+                status="blocked",
+                args={"scope": "workspace", "action": "execute", "candidate_id": pg.get("candidate_id")},
+                result={"reason": "publish_required"},
+            )
+        except Exception:
+            pass
+        return {
+            "status": "publish_required",
+            "candidate_id": pg.get("candidate_id"),
+            "releases_url": _ui_url("/core/learning/releases"),
+        }
     # Signature gate: unverified workspace skills require approval to execute.
     try:
         opts = request.options if isinstance(getattr(request, "options", None), dict) else {}

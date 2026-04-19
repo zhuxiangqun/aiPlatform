@@ -60,6 +60,13 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
         } catch {
           // ignore
         }
+      } else if ((res as any)?.status === 'publish_required' && (res as any)?.candidate_id) {
+        toast.error(`需要发布候选：${String((res as any).candidate_id).slice(0, 10)}...`);
+        try {
+          window.open('/core/learning/releases', '_blank', 'noopener,noreferrer');
+        } catch {
+          // ignore
+        }
       } else {
         toast.success((res as any).status === 'completed' || (res as any).status === 'success' ? '执行成功' : `状态: ${(res as any).status}`);
       }

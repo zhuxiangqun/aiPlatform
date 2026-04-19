@@ -26,6 +26,7 @@ const governanceBadge = (record: any) => {
   const v = (record?.metadata as any)?.verification || {};
   const st = String((g?.status || v?.status || '')).toLowerCase();
   if (st === 'verified') return <Badge variant={'success' as any}>verified</Badge>;
+  if (st === 'published') return <Badge variant={'success' as any}>published</Badge>;
   if (st === 'failed') return <Badge variant={'error' as any}>failed</Badge>;
   if (st === 'pending') return <Badge variant={'warning' as any}>pending</Badge>;
   return <Badge variant={'default' as any}>n/a</Badge>;
@@ -90,6 +91,15 @@ const WorkspaceSkills: React.FC = () => {
         toast.error(`需要审批：${res.approval_request_id}`);
         try {
           window.open('/core/learning/approvals', '_blank', 'noopener,noreferrer');
+        } catch {
+          // ignore
+        }
+        return;
+      }
+      if (res?.status === 'publish_required' && res?.candidate_id) {
+        toast.error(`需要发布候选：${String(res.candidate_id).slice(0, 10)}...`);
+        try {
+          window.open('/core/learning/releases', '_blank', 'noopener,noreferrer');
         } catch {
           // ignore
         }
