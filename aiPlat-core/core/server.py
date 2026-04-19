@@ -39,6 +39,8 @@ from core.schemas import (
     SkillPackInstallRequest,
     PackagePublishRequest,
     PackageInstallRequest,
+    OnboardingDefaultLLMRequest,
+    OnboardingInitTenantRequest,
     LongTermMemoryAddRequest,
     LongTermMemorySearchRequest,
     MessageCreateRequest,
@@ -6363,6 +6365,38 @@ async def _require_package_approval(*, operation: str, user_id: str, details: st
     return req.request_id
 
 
+async def _require_onboarding_approval(*, operation: str, user_id: str, details: str, metadata: Dict[str, Any]) -> str:
+    """
+    Onboarding operations are global-impact changes (default routing/policies),
+    so by default they should go through approvals.
+    """
+    from core.harness.infrastructure.approval.types import ApprovalContext, ApprovalRule, RuleType
+
+    if not _approval_manager:
+        raise HTTPException(status_code=503, detail="Approval manager not available")
+    rule = ApprovalRule(
+        rule_id=f"onboarding_{operation}",
+        rule_type=RuleType.SENSITIVE_OPERATION,
+        name=f"Onboarding {operation} 审批",
+        description=f"{operation} onboarding 需要审批",
+        priority=1,
+        metadata={"sensitive_operations": [f"onboarding:{operation}"]},
+    )
+    _approval_manager.register_rule(rule)
+    ctx = ApprovalContext(
+        user_id=user_id,
+        operation=f"onboarding:{operation}",
+        operation_context={"details": details},
+        metadata=metadata or {},
+    )
+    req = _approval_manager.create_request(ctx, rule=rule)
+    try:
+        await _approval_manager._persist(req)  # type: ignore[attr-defined]
+    except Exception:
+        pass
+    return req.request_id
+
+
 def _find_filesystem_package(pkg_name: str):
     p = _workspace_package_manager.get_package(pkg_name) if _workspace_package_manager else None
     if not p and _package_manager:
@@ -6663,6 +6697,91 @@ async def list_package_installs(scope: Optional[str] = None, limit: int = 100, o
     if not _execution_store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
     return await _execution_store.list_package_installs(scope=scope, limit=limit, offset=offset)
+
+
+# ==================== Onboarding (core) ====================
+
+
+@api_router.get("/onboarding/state")
+async def get_core_onboarding_state():
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    default_llm = await _execution_store.get_global_setting(key="default_llm")
+    tenants = await _execution_store.list_tenants(limit=50, offset=0)
+    # adapters summary is already available via /adapters
+    try:
+        from core.harness.infrastructure.crypto import is_configured as secret_configured
+
+        secrets = {"configured": bool(secret_configured())}
+    except Exception:
+        secrets = {"configured": False}
+    return {
+        "default_llm": default_llm["value"] if default_llm else None,
+        "tenants": tenants,
+        "secrets": secrets,
+    }
+
+
+@api_router.post("/onboarding/default-llm")
+async def set_default_llm(request: OnboardingDefaultLLMRequest):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+
+    if request.require_approval:
+        if not request.approval_request_id:
+            rid = await _require_onboarding_approval(
+                operation="default_llm",
+                user_id="admin",
+                details=request.details or f"set default llm to {request.adapter_id}:{request.model}",
+                metadata={"adapter_id": request.adapter_id, "model": request.model},
+            )
+            return {"status": "approval_required", "approval_request_id": rid}
+        if not _is_approval_resolved_approved(request.approval_request_id):
+            raise HTTPException(status_code=409, detail="not_approved")
+
+    # validate adapter exists
+    ad = await _execution_store.get_adapter(request.adapter_id)
+    if not ad:
+        raise HTTPException(status_code=404, detail="adapter_not_found")
+
+    res = await _execution_store.upsert_global_setting(
+        key="default_llm",
+        value={"adapter_id": request.adapter_id, "model": request.model},
+    )
+    return {"status": "updated", "default_llm": res}
+
+
+@api_router.post("/onboarding/init-tenant")
+async def init_default_tenant(request: OnboardingInitTenantRequest):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+
+    if request.require_approval:
+        if not request.approval_request_id:
+            rid = await _require_onboarding_approval(
+                operation="init_tenant",
+                user_id="admin",
+                details=request.details or f"init tenant {request.tenant_id} (policies={request.init_policies})",
+                metadata={"tenant_id": request.tenant_id, "init_policies": request.init_policies},
+            )
+            return {"status": "approval_required", "approval_request_id": rid}
+        if not _is_approval_resolved_approved(request.approval_request_id):
+            raise HTTPException(status_code=409, detail="not_approved")
+
+    tenant = await _execution_store.upsert_tenant(tenant_id=request.tenant_id, name=request.tenant_name)
+
+    policy_res = None
+    if request.init_policies:
+        # Minimal baseline policy-as-code compatible with PolicyGate
+        baseline_policy = {
+            "tool_policy": {
+                "deny_tools": [],
+                "approval_required_tools": [],
+            }
+        }
+        policy_res = await _execution_store.upsert_tenant_policy(tenant_id=request.tenant_id, policy=baseline_policy)
+
+    return {"status": "initialized", "tenant": tenant, "tenant_policy": policy_res}
 
 
 @api_router.post("/memory/longterm")

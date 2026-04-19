@@ -209,6 +209,12 @@ export const onboardingApi = {
   configureLLMAdapter: async (body: Record<string, unknown>) => {
     return apiClient.post<any>('/onboarding/llm-adapter', body);
   },
+  setDefaultLLM: async (body: Record<string, unknown>) => {
+    return apiClient.post<any>('/onboarding/default-llm', body);
+  },
+  initTenant: async (body: Record<string, unknown>) => {
+    return apiClient.post<any>('/onboarding/init-tenant', body);
+  },
 };
 
 // Monitoring API (legacy - for layer metrics)

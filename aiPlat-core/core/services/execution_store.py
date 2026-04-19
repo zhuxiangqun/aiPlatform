@@ -43,7 +43,7 @@ class ExecutionStoreConfig:
 
 
 class ExecutionStore:
-    CURRENT_SCHEMA_VERSION = 26
+    CURRENT_SCHEMA_VERSION = 27
 
     def __init__(self, config: ExecutionStoreConfig):
         self._config = config
@@ -955,6 +955,53 @@ class ExecutionStore:
                             pass
                         _set_version(26)
                         current = 26
+
+                    # ---- Migration v27: global_settings + tenants + encrypted adapter secrets ----
+                    if current < 27:
+                        # global settings (e.g., default llm routing)
+                        try:
+                            conn.execute(
+                                """
+                                CREATE TABLE IF NOT EXISTS global_settings (
+                                  key TEXT PRIMARY KEY,
+                                  value_json TEXT NOT NULL,
+                                  updated_at REAL NOT NULL
+                                );
+                                """
+                            )
+                            conn.execute("CREATE INDEX IF NOT EXISTS idx_global_settings_updated ON global_settings(updated_at DESC);")
+                        except Exception:
+                            pass
+
+                        # tenants (minimal registry; policy-as-code uses tenant_id)
+                        try:
+                            conn.execute(
+                                """
+                                CREATE TABLE IF NOT EXISTS tenants (
+                                  tenant_id TEXT PRIMARY KEY,
+                                  name TEXT,
+                                  metadata_json TEXT,
+                                  created_at REAL NOT NULL,
+                                  updated_at REAL NOT NULL
+                                );
+                                """
+                            )
+                            conn.execute("CREATE INDEX IF NOT EXISTS idx_tenants_updated ON tenants(updated_at DESC);")
+                        except Exception:
+                            pass
+
+                        # encrypted api key columns (keep legacy api_key for backward compatibility)
+                        try:
+                            conn.execute("ALTER TABLE adapters ADD COLUMN api_key_enc TEXT;")
+                        except Exception:
+                            pass
+                        try:
+                            conn.execute("ALTER TABLE adapters ADD COLUMN api_key_kid TEXT;")
+                        except Exception:
+                            pass
+
+                        _set_version(27)
+                        current = 27
 
                     # If legacy db exists with tables but without meta, upgrade meta to current
                     if current < self.CURRENT_SCHEMA_VERSION:
@@ -4815,6 +4862,21 @@ class ExecutionStore:
             rec.setdefault("created_at", now)
             rec["updated_at"] = now
 
+            # Encrypt api_key at rest when configured.
+            api_key_plain = str(rec.get("api_key") or "")
+            api_key_enc = None
+            api_key_kid = None
+            try:
+                from core.harness.infrastructure.crypto.secretbox import encrypt_str, is_configured
+
+                if api_key_plain and is_configured():
+                    api_key_enc = encrypt_str(api_key_plain)
+                    api_key_kid = "fernet:v1"
+                    api_key_plain = ""  # avoid storing plaintext
+            except Exception:
+                # fail-open: keep legacy plaintext
+                pass
+
             conn = sqlite3.connect(db_path)
             conn.row_factory = sqlite3.Row
             try:
@@ -4823,15 +4885,18 @@ class ExecutionStore:
                     INSERT INTO adapters(
                       adapter_id, name, provider, description, status,
                       api_key, api_base_url, organization_id,
+                      api_key_enc, api_key_kid,
                       models_json, rate_limit_json, retry_config_json, metadata_json,
                       created_at, updated_at
-                    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                     ON CONFLICT(adapter_id) DO UPDATE SET
                       name=excluded.name,
                       provider=excluded.provider,
                       description=excluded.description,
                       status=excluded.status,
                       api_key=excluded.api_key,
+                      api_key_enc=excluded.api_key_enc,
+                      api_key_kid=excluded.api_key_kid,
                       api_base_url=excluded.api_base_url,
                       organization_id=excluded.organization_id,
                       models_json=excluded.models_json,
@@ -4846,9 +4911,11 @@ class ExecutionStore:
                         str(rec.get("provider") or ""),
                         str(rec.get("description") or ""),
                         str(rec.get("status") or "active"),
-                        str(rec.get("api_key") or ""),
+                        str(api_key_plain or ""),
                         str(rec.get("api_base_url") or ""),
                         str(rec.get("organization_id") or "") or None,
+                        api_key_enc,
+                        api_key_kid,
                         _json_dumps(rec.get("models") or []),
                         _json_dumps(rec.get("rate_limit") or {}),
                         _json_dumps(rec.get("retry_config") or {}),
@@ -4864,13 +4931,21 @@ class ExecutionStore:
                 conn.close()
 
         row = await anyio.to_thread.run_sync(_sync)
+        api_key = row.get("api_key")
+        try:
+            from core.harness.infrastructure.crypto.secretbox import decrypt_str, is_configured
+
+            if row.get("api_key_enc") and is_configured():
+                api_key = decrypt_str(row.get("api_key_enc"))
+        except Exception:
+            pass
         return {
             "adapter_id": row.get("adapter_id"),
             "name": row.get("name"),
             "provider": row.get("provider"),
             "description": row.get("description"),
             "status": row.get("status"),
-            "api_key": row.get("api_key"),
+            "api_key": api_key,
             "api_base_url": row.get("api_base_url"),
             "organization_id": row.get("organization_id"),
             "models": _json_loads(row.get("models_json")) or [],
@@ -4897,13 +4972,21 @@ class ExecutionStore:
         row = await anyio.to_thread.run_sync(_sync)
         if not row:
             return None
+        api_key = row.get("api_key")
+        try:
+            from core.harness.infrastructure.crypto.secretbox import decrypt_str, is_configured
+
+            if row.get("api_key_enc") and is_configured():
+                api_key = decrypt_str(row.get("api_key_enc"))
+        except Exception:
+            pass
         return {
             "adapter_id": row.get("adapter_id"),
             "name": row.get("name"),
             "provider": row.get("provider"),
             "description": row.get("description"),
             "status": row.get("status"),
-            "api_key": row.get("api_key"),
+            "api_key": api_key,
             "api_base_url": row.get("api_base_url"),
             "organization_id": row.get("organization_id"),
             "models": _json_loads(row.get("models_json")) or [],
@@ -4974,6 +5057,122 @@ class ExecutionStore:
 
         return await anyio.to_thread.run_sync(_sync)
 
+    # ---------------------------------------------------------------------
+    # Global settings
+    # ---------------------------------------------------------------------
+
+    async def upsert_global_setting(self, *, key: str, value: Dict[str, Any]) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            now = time.time()
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                conn.execute(
+                    """
+                    INSERT INTO global_settings(key, value_json, updated_at)
+                    VALUES(?,?,?)
+                    ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json, updated_at=excluded.updated_at;
+                    """,
+                    (str(key), _json_dumps(value or {}), float(now)),
+                )
+                conn.commit()
+                row = conn.execute("SELECT * FROM global_settings WHERE key=?;", (str(key),)).fetchone()
+                return dict(row) if row else {}
+            finally:
+                conn.close()
+
+        row = await anyio.to_thread.run_sync(_sync)
+        return {"key": row.get("key"), "value": _json_loads(row.get("value_json")) or {}, "updated_at": row.get("updated_at")}
+
+    async def get_global_setting(self, *, key: str) -> Optional[Dict[str, Any]]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Optional[Dict[str, Any]]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                row = conn.execute("SELECT * FROM global_settings WHERE key=?;", (str(key),)).fetchone()
+                return dict(row) if row else None
+            finally:
+                conn.close()
+
+        row = await anyio.to_thread.run_sync(_sync)
+        if not row:
+            return None
+        return {"key": row.get("key"), "value": _json_loads(row.get("value_json")) or {}, "updated_at": row.get("updated_at")}
+
+    # ---------------------------------------------------------------------
+    # Tenants (minimal registry)
+    # ---------------------------------------------------------------------
+
+    async def upsert_tenant(self, *, tenant_id: str, name: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            now = time.time()
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                row0 = conn.execute("SELECT tenant_id, created_at FROM tenants WHERE tenant_id=?;", (str(tenant_id),)).fetchone()
+                created_at = float(row0["created_at"]) if row0 and row0.get("created_at") else float(now)
+                conn.execute(
+                    """
+                    INSERT INTO tenants(tenant_id, name, metadata_json, created_at, updated_at)
+                    VALUES(?,?,?,?,?)
+                    ON CONFLICT(tenant_id) DO UPDATE SET
+                      name=excluded.name,
+                      metadata_json=excluded.metadata_json,
+                      updated_at=excluded.updated_at;
+                    """,
+                    (str(tenant_id), str(name or tenant_id), _json_dumps(metadata or {}), created_at, float(now)),
+                )
+                conn.commit()
+                row = conn.execute("SELECT * FROM tenants WHERE tenant_id=?;", (str(tenant_id),)).fetchone()
+                return dict(row) if row else {}
+            finally:
+                conn.close()
+
+        row = await anyio.to_thread.run_sync(_sync)
+        return {
+            "tenant_id": row.get("tenant_id"),
+            "name": row.get("name"),
+            "metadata": _json_loads(row.get("metadata_json")) or {},
+            "created_at": row.get("created_at"),
+            "updated_at": row.get("updated_at"),
+        }
+
+    async def list_tenants(self, *, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                total = int(conn.execute("SELECT COUNT(1) FROM tenants;").fetchone()[0])
+                rows = conn.execute("SELECT * FROM tenants ORDER BY updated_at DESC LIMIT ? OFFSET ?;", (int(limit), int(offset))).fetchall()
+                return {"items": [dict(r) for r in rows], "total": total}
+            finally:
+                conn.close()
+
+        res = await anyio.to_thread.run_sync(_sync)
+        items = []
+        for r in res.get("items") or []:
+            items.append(
+                {
+                    "tenant_id": r.get("tenant_id"),
+                    "name": r.get("name"),
+                    "metadata": _json_loads(r.get("metadata_json")) or {},
+                    "created_at": r.get("created_at"),
+                    "updated_at": r.get("updated_at"),
+                }
+            )
+        return {"items": items, "total": int(res.get("total") or 0), "limit": int(limit), "offset": int(offset)}
     async def add_long_term_memory(self, *, user_id: str, content: str, key: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         await self.init()
         db_path = self._config.db_path

@@ -147,6 +147,17 @@ class CoreAPIClient:
     async def add_adapter_model(self, adapter_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
         return await self._request("POST", f"/api/core/adapters/{adapter_id}/models", json=body or {})
 
+    # ===== Core Onboarding =====
+
+    async def get_onboarding_state(self) -> Dict[str, Any]:
+        return await self._request("GET", "/api/core/onboarding/state")
+
+    async def set_default_llm(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", "/api/core/onboarding/default-llm", json=body or {})
+
+    async def init_tenant(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", "/api/core/onboarding/init-tenant", json=body or {})
+
     # ===== Jobs / Cron (Roadmap-3) =====
 
     async def list_jobs(self, *, limit: int = 100, offset: int = 0, enabled: Optional[bool] = None) -> Dict[str, Any]:

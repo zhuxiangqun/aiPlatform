@@ -10,15 +10,102 @@ from __future__ import annotations
 
 import os
 from typing import Any, Optional
+import json
+import sqlite3
+
+
+def _norm_provider(p: str) -> str:
+    p = (p or "").strip().lower()
+    if p in {"openai", "openai-compatible", "openai_compatible"}:
+        return "openai"
+    if p in {"anthropic", "claude"}:
+        return "anthropic"
+    if p in {"deepseek"}:
+        return "deepseek"
+    if p in {"mock"}:
+        return "mock"
+    return p or "openai"
+
+
+def _load_default_llm_from_store() -> Optional[dict]:
+    """
+    Sync read from ExecutionStore to avoid making model injection async.
+    Returns: {adapter_id, model} or None.
+    """
+    try:
+        from core.harness.kernel.runtime import get_kernel_runtime
+
+        runtime = get_kernel_runtime()
+        store = getattr(runtime, "execution_store", None) if runtime else None
+        db_path = getattr(getattr(store, "_config", None), "db_path", None)
+        if not db_path:
+            return None
+        conn = sqlite3.connect(str(db_path))
+        try:
+            row = conn.execute("SELECT value_json FROM global_settings WHERE key='default_llm' LIMIT 1;").fetchone()
+            if not row or not row[0]:
+                return None
+            v = json.loads(row[0]) if isinstance(row[0], str) else {}
+            if isinstance(v, dict) and v.get("adapter_id") and v.get("model"):
+                return v
+        finally:
+            conn.close()
+    except Exception:
+        return None
+    return None
+
+
+def _load_adapter_from_store(adapter_id: str) -> Optional[dict]:
+    try:
+        from core.harness.kernel.runtime import get_kernel_runtime
+        from core.harness.infrastructure.crypto.secretbox import decrypt_str, is_configured
+
+        runtime = get_kernel_runtime()
+        store = getattr(runtime, "execution_store", None) if runtime else None
+        db_path = getattr(getattr(store, "_config", None), "db_path", None)
+        if not db_path:
+            return None
+        conn = sqlite3.connect(str(db_path))
+        conn.row_factory = sqlite3.Row
+        try:
+            r = conn.execute("SELECT * FROM adapters WHERE adapter_id=? LIMIT 1;", (str(adapter_id),)).fetchone()
+            if not r:
+                return None
+            d = dict(r)
+            api_key = d.get("api_key")
+            try:
+                if d.get("api_key_enc") and is_configured():
+                    api_key = decrypt_str(d.get("api_key_enc"))
+            except Exception:
+                pass
+            d["api_key"] = api_key
+            try:
+                d["models"] = json.loads(d.get("models_json") or "[]") if d.get("models_json") else []
+            except Exception:
+                d["models"] = []
+            return d
+        finally:
+            conn.close()
+    except Exception:
+        return None
 
 
 def create_selected_adapter(*, model_name: str) -> Any:
     """Create adapter based on env vars, with dev-friendly fallback to mock."""
     from core.adapters.llm import create_adapter
 
-    provider = os.getenv("AIPLAT_LLM_PROVIDER", "openai").strip().lower() or "openai"
-    # Allow explicit model override (useful for OpenAI-compatible providers like DeepSeek).
-    selected_model = os.getenv("AIPLAT_LLM_MODEL", "").strip() or model_name
+    # Highest priority: explicit env overrides
+    provider_env = os.getenv("AIPLAT_LLM_PROVIDER", "").strip()
+    model_env = os.getenv("AIPLAT_LLM_MODEL", "").strip()
+    base_url_env = os.getenv("AIPLAT_LLM_BASE_URL", "").strip()
+    api_key_env = (os.getenv("AIPLAT_LLM_API_KEY") or "").strip()
+
+    # Next priority: global default routing stored in ExecutionStore (set by Onboarding)
+    default_llm = None if provider_env else _load_default_llm_from_store()
+    selected_model = model_env or (default_llm.get("model") if default_llm else "") or model_name
+
+    # Provider resolution
+    provider = _norm_provider(provider_env or "openai")
 
     # Provider-specific defaults (OpenAI-compatible).
     if provider == "deepseek":
@@ -37,8 +124,20 @@ def create_selected_adapter(*, model_name: str) -> Any:
         return create_adapter(provider="openai", api_key=api_key or None, model=selected_model, base_url=base_url)
 
     # Generic providers
-    base_url = os.getenv("AIPLAT_LLM_BASE_URL") or os.getenv("OPENAI_BASE_URL")
-    api_key = os.getenv("OPENAI_API_KEY") or os.getenv("AIPLAT_LLM_API_KEY") or ""
+    # If no explicit env provider set, try default_llm adapter config.
+    if default_llm and default_llm.get("adapter_id"):
+        ad = _load_adapter_from_store(str(default_llm.get("adapter_id")))
+        if ad:
+            provider = _norm_provider(str(ad.get("provider") or provider))
+            base_url = str(ad.get("api_base_url") or base_url_env or os.getenv("OPENAI_BASE_URL") or "")
+            api_key = str(ad.get("api_key") or api_key_env or os.getenv("OPENAI_API_KEY") or "")
+            # For OpenAI-compatible adapters, use openai provider
+            if provider in {"openai", "deepseek"}:
+                provider = "openai"
+            return create_adapter(provider=provider, api_key=api_key or None, model=selected_model, base_url=base_url or None)
+
+    base_url = base_url_env or os.getenv("OPENAI_BASE_URL")
+    api_key = (os.getenv("OPENAI_API_KEY") or api_key_env or "")
     if provider == "openai" and not api_key:
         provider = "mock"
     return create_adapter(provider=provider, api_key=api_key or None, model=selected_model, base_url=base_url)

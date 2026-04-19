@@ -153,6 +153,28 @@ class PackageInstallRequest(BaseModel):
     details: Optional[str] = None
 
 
+# ---------------------------------------------------------------------
+# Onboarding (core-side)
+# ---------------------------------------------------------------------
+
+
+class OnboardingDefaultLLMRequest(BaseModel):
+    adapter_id: str
+    model: str
+    require_approval: bool = True
+    approval_request_id: Optional[str] = None
+    details: Optional[str] = None
+
+
+class OnboardingInitTenantRequest(BaseModel):
+    tenant_id: str = "default"
+    tenant_name: Optional[str] = None
+    init_policies: bool = True
+    require_approval: bool = True
+    approval_request_id: Optional[str] = None
+    details: Optional[str] = None
+
+
 class LongTermMemoryAddRequest(BaseModel):
     user_id: Optional[str] = None
     key: Optional[str] = None

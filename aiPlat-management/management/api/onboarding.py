@@ -36,7 +36,29 @@ async def get_onboarding_state(request: Request) -> Dict[str, Any]:
     except Exception:
         adapters = {"adapters": [], "total": 0}
 
-    return {"health": health, "adapters": adapters}
+    # Core onboarding state (default routing, tenants, secrets)
+    try:
+        core_state = await core_client.get_onboarding_state()
+    except Exception:
+        core_state = {}
+
+    return {"health": health, "adapters": adapters, "core_state": core_state}
+
+
+@router.post("/default-llm")
+async def set_default_llm(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="Core client not initialized")
+    return await core_client.set_default_llm(body or {})
+
+
+@router.post("/init-tenant")
+async def init_tenant(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="Core client not initialized")
+    return await core_client.init_tenant(body or {})
 
 
 @router.post("/llm-adapter")
@@ -105,4 +127,3 @@ async def configure_llm_adapter(request: Request, body: Dict[str, Any]) -> Dict[
         test = {"success": False, "error": str(e)}
 
     return {"status": "configured", "adapter_id": adapter_id, "models": added, "test": test}
-
