@@ -20,10 +20,12 @@ def test_toolset_repo_ops_allowed_and_denied():
     assert is_tool_allowed(ws, "repo", {"operation": "diff"})[0] is True
     assert is_tool_allowed(ws, "repo", {"operation": "commit"})[0] is False
     assert is_tool_allowed(ws, "repo", {"operation": "unstage"})[0] is False
+    assert is_tool_allowed(ws, "repo", {"operation": "revert"})[0] is False
 
     wr = resolve_toolset("write_repo")
     assert is_tool_allowed(wr, "repo", {"operation": "commit"})[0] is True
     assert is_tool_allowed(wr, "repo", {"operation": "unstage"})[0] is True
+    assert is_tool_allowed(wr, "repo", {"operation": "revert"})[0] is False
 
 
 @pytest.mark.unit

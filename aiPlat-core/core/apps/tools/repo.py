@@ -76,7 +76,7 @@ class RepoTool(BaseTool):
                 "properties": {
                     "operation": {
                         "type": "string",
-                        "description": "git operation: status|diff|log|ls_files|show|add|unstage|restore|checkout|commit|branch_list|branch_create|reset",
+                        "description": "git operation: status|diff|log|ls_files|show|add|unstage|restore|checkout|commit|branch_list|branch_create|reset|revert",
                     },
                     "repo_root": {"type": "string", "description": "repo root path (defaults to ActiveWorkspaceContext.repo_root or cwd)"},
                     "staged": {"type": "boolean", "description": "diff staged changes"},
@@ -89,6 +89,8 @@ class RepoTool(BaseTool):
                     "message": {"type": "string", "description": "commit message"},
                     "mode": {"type": "string", "description": "reset mode: soft|mixed|hard (default mixed)"},
                     "ref": {"type": "string", "description": "reset ref (default HEAD)"},
+                    "commit": {"type": "string", "description": "commit hash for revert"},
+                    "no_edit": {"type": "boolean", "description": "revert with --no-edit (default true)"},
                 },
                 "required": ["operation"],
             },
@@ -408,6 +410,20 @@ class RepoTool(BaseTool):
                 r = await asyncio.to_thread(_run_git, ["reset", f"--{mode}", ref], cwd=cwd, timeout=self._timeout_s)
                 if r.code != 0:
                     return ToolResult(success=False, error=r.err or "git reset failed")
+                return ToolResult(success=True, output=r.out or "ok")
+
+            if op == "revert":
+                commit = str(params.get("commit") or "").strip()
+                if not commit:
+                    return ToolResult(success=False, error="missing commit")
+                no_edit = True if params.get("no_edit") is None else bool(params.get("no_edit"))
+                cmd = ["revert"]
+                if no_edit:
+                    cmd.append("--no-edit")
+                cmd.append(commit)
+                r = await asyncio.to_thread(_run_git, cmd, cwd=cwd, timeout=self._timeout_s)
+                if r.code != 0:
+                    return ToolResult(success=False, error=r.err or "git revert failed")
                 return ToolResult(success=True, output=r.out or "ok")
 
             if op == "branch_list":
