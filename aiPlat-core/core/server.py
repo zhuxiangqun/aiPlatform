@@ -9124,6 +9124,43 @@ async def create_onboarding_evidence(request: Dict[str, Any], http_request: Requ
         links=links,
         approval_request_id=approval_request_id,
     )
+
+    # Create a syscall event for bidirectional linking (UI deep links -> syscalls, and syscalls -> evidence).
+    try:
+        await _execution_store.add_syscall_event(
+            {
+                "id": str(uuid.uuid4()),
+                "tenant_id": str(tid),
+                "kind": "onboarding",
+                "name": f"evidence:{action}",
+                "status": status,
+                "args": {"evidence_id": rec.get("id"), "step_key": step_key, "action": action},
+                "result": {"stored": True},
+                "error": None if status not in ("error", "failed") else status,
+                "target_type": "onboarding_evidence",
+                "target_id": str(rec.get("id") or ""),
+                "approval_request_id": str(approval_request_id) if approval_request_id else None,
+                "created_at": time.time(),
+            }
+        )
+    except Exception:
+        pass
+
+    # Enrich links with evidence_id-based deep link (and persist links_json best-effort).
+    try:
+        links2 = dict(rec.get("links") or {})
+        links2.setdefault("syscalls_ui_by_evidence", f"/diagnostics/syscalls?target_type=onboarding_evidence&target_id={rec.get('id')}")
+        # default syscalls_ui: prefer approval if present, fallback to evidence
+        if approval_request_id:
+            links2.setdefault("syscalls_ui", f"/diagnostics/syscalls?approval_request_id={approval_request_id}")
+        else:
+            links2.setdefault("syscalls_ui", links2.get("syscalls_ui_by_evidence"))
+        links2.setdefault("audit_ui", f"/diagnostics/audit?action=onboarding_evidence&request_id={approval_request_id or rec.get('id')}")
+        links2.setdefault("approvals_ui", "/core/approvals")
+        rec["links"] = links2
+        await _execution_store.update_onboarding_evidence_links(tenant_id=str(tid), evidence_id=str(rec.get("id")), links=links2)
+    except Exception:
+        pass
     try:
         req_id = str(approval_request_id) if approval_request_id else str(rec.get("id") or "")
         await _execution_store.add_audit_log(

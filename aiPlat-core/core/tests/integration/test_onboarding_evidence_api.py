@@ -1,4 +1,5 @@
 import importlib
+import sqlite3
 
 import pytest
 from fastapi.testclient import TestClient
@@ -31,6 +32,17 @@ def test_onboarding_evidence_create_list_get(tmp_path, monkeypatch):
         assert c.status_code == 200, c.text
         ev = c.json().get("evidence") or {}
         assert ev.get("id")
+        # syscall event should be recorded for bidirectional linking
+        db_path = tmp_path / "exec.sqlite3"
+        conn = sqlite3.connect(str(db_path))
+        try:
+            row = conn.execute(
+                "SELECT COUNT(1) FROM syscall_events WHERE tenant_id=? AND target_type=? AND target_id=?",
+                ("t1", "onboarding_evidence", str(ev.get("id"))),
+            ).fetchone()
+            assert int(row[0] or 0) >= 1
+        finally:
+            conn.close()
 
         lst = client.get("/api/core/onboarding/evidence/runs?step_key=adapter&limit=50&offset=0", headers=headers_admin)
         assert lst.status_code == 200, lst.text
@@ -40,4 +52,3 @@ def test_onboarding_evidence_create_list_get(tmp_path, monkeypatch):
         g = client.get(f"/api/core/onboarding/evidence/runs/{ev.get('id')}", headers=headers_admin)
         assert g.status_code == 200, g.text
         assert g.json().get("id") == ev.get("id")
-

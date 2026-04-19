@@ -7616,6 +7616,24 @@ class ExecutionStore:
             "links": _json_loads(row.get("links_json")) or {},
         }
 
+    async def update_onboarding_evidence_links(self, *, tenant_id: Optional[str], evidence_id: str, links: Dict[str, Any]) -> bool:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> bool:
+            conn = sqlite3.connect(db_path)
+            try:
+                cur = conn.execute(
+                    "UPDATE onboarding_evidence SET links_json=? WHERE tenant_id=? AND id=?;",
+                    (_json_dumps(links or {}), str(tenant_id or ""), str(evidence_id)),
+                )
+                conn.commit()
+                return bool(cur.rowcount)
+            finally:
+                conn.close()
+
+        return bool(await anyio.to_thread.run_sync(_sync))
+
     async def get_plugin(self, *, tenant_id: Optional[str], plugin_id: str) -> Optional[Dict[str, Any]]:
         await self.init()
         db_path = self._config.db_path
