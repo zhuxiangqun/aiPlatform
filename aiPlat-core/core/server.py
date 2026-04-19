@@ -9091,6 +9091,154 @@ async def get_core_onboarding_state():
     }
 
 
+# ==================== AutoSmoke (P1 productized) ====================
+
+
+def _autosmoke_job_id(resource_type: str, resource_id: str) -> str:
+    return f"autosmoke-{str(resource_type).strip().lower()}:{str(resource_id).strip()}"
+
+
+async def _set_resource_verification(*, resource_type: str, resource_id: str, ver: Dict[str, Any]) -> None:
+    rtype = str(resource_type or "").strip().lower()
+    rid = str(resource_id or "").strip()
+    if not rtype or not rid:
+        return
+    try:
+        if rtype == "agent" and _workspace_agent_manager:
+            await _workspace_agent_manager.update_agent(rid, metadata={"verification": ver})
+        elif rtype == "skill" and _workspace_skill_manager:
+            await _workspace_skill_manager.update_skill(rid, metadata={"verification": ver})
+        elif rtype == "mcp" and _workspace_mcp_manager:
+            _workspace_mcp_manager.update_server(rid, metadata={"verification": ver})
+    except Exception:
+        return
+
+
+async def _mark_resource_pending_verification(*, resource_type: str, resource_id: str) -> None:
+    await _set_resource_verification(
+        resource_type=resource_type,
+        resource_id=resource_id,
+        ver={"status": "pending", "updated_at": time.time(), "source": "autosmoke"},
+    )
+
+
+async def _apply_autosmoke_result_to_verification(*, resource_type: str, resource_id: str, job_run: Dict[str, Any]) -> None:
+    st = str((job_run or {}).get("status") or "")
+    jid = _autosmoke_job_id(resource_type, resource_id)
+    ver = {
+        "status": "verified" if st == "completed" else "failed",
+        "updated_at": time.time(),
+        "source": "autosmoke",
+        "job_id": jid,
+        "job_run_id": str((job_run or {}).get("id") or ""),
+        "reason": str((job_run or {}).get("error") or ""),
+    }
+    await _set_resource_verification(resource_type=resource_type, resource_id=resource_id, ver=ver)
+
+
+@api_router.post("/autosmoke/run")
+async def run_autosmoke(request: Dict[str, Any], http_request: Request):
+    """
+    Productized wrapper: enqueue autosmoke for a resource and persist verification state updates.
+    """
+    if not _execution_store or not _job_scheduler:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    rtype = str((request or {}).get("resource_type") or "").strip().lower()
+    rid = str((request or {}).get("resource_id") or "").strip()
+    if not rtype or not rid:
+        raise HTTPException(status_code=400, detail="resource_type/resource_id required")
+    actor0 = _rbac_actor_from_http(http_request, request if isinstance(request, dict) else None)
+    tenant_id = str((request or {}).get("tenant_id") or actor0.get("tenant_id") or "ops_smoke")
+    actor_id = str((request or {}).get("actor_id") or actor0.get("actor_id") or "admin")
+    detail = (request or {}).get("detail") if isinstance((request or {}).get("detail"), dict) else {}
+
+    try:
+        await _mark_resource_pending_verification(resource_type=rtype, resource_id=rid)
+    except Exception:
+        pass
+
+    from core.harness.smoke import enqueue_autosmoke
+
+    async def _on_complete(job_run: Dict[str, Any]):
+        await _apply_autosmoke_result_to_verification(resource_type=rtype, resource_id=rid, job_run=job_run)
+
+    res = await enqueue_autosmoke(
+        execution_store=_execution_store,
+        job_scheduler=_job_scheduler,
+        resource_type=rtype,
+        resource_id=rid,
+        tenant_id=tenant_id,
+        actor_id=actor_id,
+        detail={"op": "manual_run", **(detail or {})},
+        on_complete=_on_complete,
+    )
+    # Enrich response with links
+    try:
+        jid = res.get("job_id") or _autosmoke_job_id(rtype, rid)
+        res["links"] = {
+            "jobs_ui": _ui_url("/core/jobs"),
+            "job_runs_ui": _ui_url(f"/core/jobs?job_id={jid}"),
+            "syscalls_ui": _ui_url(f"/diagnostics/syscalls?kind=onboarding&target_type=onboarding_evidence&target_id="),
+        }
+    except Exception:
+        pass
+    return res
+
+
+@api_router.get("/autosmoke/runs")
+async def list_autosmoke_runs(resource_type: str, resource_id: str, http_request: Request, limit: int = 50, offset: int = 0):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    rtype = str(resource_type or "").strip().lower()
+    rid = str(resource_id or "").strip()
+    if not rtype or not rid:
+        raise HTTPException(status_code=400, detail="resource_type/resource_id required")
+    job_id = _autosmoke_job_id(rtype, rid)
+    runs = await _execution_store.list_job_runs(job_id=job_id, limit=limit, offset=offset)
+    # Attach UI links for convenience
+    items = []
+    for it in runs.get("items") or []:
+        d = dict(it)
+        try:
+            run_id = str(d.get("id") or "")
+            d["links"] = {
+                "run_ui": _ui_url(f"/diagnostics/runs?run_id={run_id}"),
+                "syscalls_ui": _ui_url(f"/diagnostics/syscalls?run_id={run_id}"),
+                "audit_ui": _ui_url(f"/diagnostics/audit?action=autosmoke_result&resource_id={rid}"),
+            }
+        except Exception:
+            pass
+        items.append(d)
+    return {**runs, "job_id": job_id, "resource": {"type": rtype, "id": rid}, "items": items}
+
+
+@api_router.get("/autosmoke/status")
+async def get_autosmoke_status(resource_type: str, resource_id: str, http_request: Request):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    rtype = str(resource_type or "").strip().lower()
+    rid = str(resource_id or "").strip()
+    if not rtype or not rid:
+        raise HTTPException(status_code=400, detail="resource_type/resource_id required")
+    job_id = _autosmoke_job_id(rtype, rid)
+    latest = await _execution_store.list_job_runs(job_id=job_id, limit=1, offset=0)
+    latest_run = (latest.get("items") or [None])[0]
+    verification = None
+    try:
+        if rtype == "agent" and _workspace_agent_manager:
+            a = await _workspace_agent_manager.get_agent(rid)
+            verification = (getattr(a, "metadata", None) or {}).get("verification")
+        elif rtype == "skill" and _workspace_skill_manager:
+            s = await _workspace_skill_manager.get_skill(rid)
+            verification = (getattr(s, "metadata", None) or {}).get("verification")
+        elif rtype == "mcp" and _workspace_mcp_manager:
+            m = _workspace_mcp_manager.get_server(rid)
+            verification = (getattr(m, "metadata", None) or {}).get("verification")
+    except Exception:
+        verification = None
+    return {"resource": {"type": rtype, "id": rid}, "job_id": job_id, "latest_run": latest_run, "verification": verification}
+
+
 @api_router.post("/onboarding/evidence/runs")
 async def create_onboarding_evidence(request: Dict[str, Any], http_request: Request):
     if not _execution_store:
