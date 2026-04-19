@@ -49,3 +49,16 @@ async def evaluate_tenant_tool_policy(tenant_id: str, tool_name: str):
         raise HTTPException(status_code=int(status), detail=str(e))
     except httpx.HTTPError as e:
         raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/evaluate")
+async def evaluate_policy(body: dict):
+    """调试接口：代理 core 的 /api/core/policies/evaluate"""
+    try:
+        client = get_core_client()
+        return await client._request("POST", "/api/core/policies/evaluate", json=body or {})
+    except httpx.HTTPStatusError as e:
+        status = getattr(getattr(e, "response", None), "status_code", 500)
+        raise HTTPException(status_code=int(status), detail=str(e))
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
