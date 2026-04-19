@@ -242,6 +242,60 @@ async def _maybe_verify_and_audit_skill_signature(*, skill: Any, scope: str) -> 
         return
 
 
+async def _require_skill_signature_gate_approval(*, user_id: str, skill_id: str, action: str, details: str, metadata: Dict[str, Any]) -> str:
+    """
+    Create approval request for unverified skill signature actions.
+    """
+    from core.harness.infrastructure.approval.types import ApprovalContext, ApprovalRule, RuleType
+
+    if not _approval_manager:
+        raise HTTPException(status_code=503, detail="Approval manager not available")
+    op = f"skills:signature_gate:{action}"
+    rule = ApprovalRule(
+        rule_id=f"skills_signature_gate_{action}",
+        rule_type=RuleType.SENSITIVE_OPERATION,
+        name=f"Skills signature gate（{action}）审批",
+        description=f"workspace skill 签名未验证，{action} 需要审批",
+        priority=1,
+        metadata={"sensitive_operations": ["skills:signature_gate"]},
+    )
+    _approval_manager.register_rule(rule)
+    ctx = ApprovalContext(
+        user_id=user_id or "admin",
+        operation=op,
+        operation_context={"details": details},
+        metadata=metadata or {},
+    )
+    req = _approval_manager.create_request(ctx, rule=rule)
+    try:
+        await _approval_manager._persist(req)  # type: ignore[attr-defined]
+    except Exception:
+        pass
+    return req.request_id
+
+
+def _signature_gate_eval(*, metadata: Optional[Dict[str, Any]], trusted_keys_count: int) -> Dict[str, Any]:
+    """
+    Determine whether signature gate should trigger.
+    Rule: require approval unless signature_verified == True.
+    """
+    prov = (metadata or {}).get("provenance") if isinstance((metadata or {}).get("provenance"), dict) else {}
+    integ = (metadata or {}).get("integrity") if isinstance((metadata or {}).get("integrity"), dict) else {}
+    sig = prov.get("signature")
+    bundle = integ.get("bundle_sha256")
+    verified = prov.get("signature_verified") is True
+    reason = prov.get("signature_verified_reason")
+    if verified:
+        return {"required": False, "verified": True, "reason": None}
+    if not bundle:
+        return {"required": True, "verified": False, "reason": "missing_bundle_sha256"}
+    if not sig:
+        return {"required": True, "verified": False, "reason": "missing_signature"}
+    if trusted_keys_count <= 0:
+        return {"required": True, "verified": False, "reason": "no_trusted_keys"}
+    return {"required": True, "verified": False, "reason": str(reason or "not_verified")}
+
+
 async def _sync_mcp_runtime() -> None:
     """Best-effort: sync MCP servers into ToolRegistry runtime."""
     global _mcp_runtime
@@ -3332,19 +3386,87 @@ async def delete_workspace_skill(skill_id: str, delete_files: bool = False):
 
 
 @api_router.post("/workspace/skills/{skill_id}/enable")
-async def enable_workspace_skill(skill_id: str):
+async def enable_workspace_skill(skill_id: str, request: Optional[Dict[str, Any]] = None):
     if not _workspace_skill_manager:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    req = request or {}
+    approval_request_id = str(req.get("approval_request_id") or "").strip() or None
+    details = str(req.get("details") or "").strip()
     if _autosmoke_enforce():
         s = await _workspace_skill_manager.get_skill(skill_id)
         if not s:
             raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
         if not _is_verified(getattr(s, "metadata", None)):
             raise HTTPException(status_code=403, detail="skill_unverified: smoke must pass before enable")
+
+    # Signature gate: unverified workspace skills require approval to enable.
+    s = await _workspace_skill_manager.get_skill(skill_id)
+    if not s:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    trusted = await _get_trusted_skill_pubkeys_map()
+    try:
+        prov2 = _workspace_skill_manager.compute_skill_signature_verification(s, trusted)
+        if isinstance(getattr(s, "metadata", None), dict) and prov2:
+            s.metadata["provenance"] = prov2
+    except Exception:
+        prov2 = (getattr(s, "metadata", None) or {}).get("provenance") if isinstance(getattr(s, "metadata", None), dict) else {}
+    gate = _signature_gate_eval(metadata=getattr(s, "metadata", None), trusted_keys_count=len(trusted))
+    if gate.get("required") is True:
+        if not approval_request_id:
+            rid = await _require_skill_signature_gate_approval(
+                user_id="admin",
+                skill_id=str(skill_id),
+                action="enable",
+                details=details or f"enable workspace skill {skill_id}",
+                metadata={
+                    "skill_id": str(skill_id),
+                    "action": "enable",
+                    "reason": gate.get("reason"),
+                    "provenance": (getattr(s, "metadata", None) or {}).get("provenance") if isinstance(getattr(s, "metadata", None), dict) else {},
+                    "integrity": (getattr(s, "metadata", None) or {}).get("integrity") if isinstance(getattr(s, "metadata", None), dict) else {},
+                },
+            )
+            try:
+                await _record_changeset(
+                    name="skill_signature_gate",
+                    target_type="skill",
+                    target_id=str(skill_id),
+                    status="approval_required",
+                    args={"scope": "workspace", "action": "enable", "reason": gate.get("reason")},
+                    approval_request_id=rid,
+                )
+            except Exception:
+                pass
+            return {"status": "approval_required", "approval_request_id": rid}
+        if not _is_approval_resolved_approved(approval_request_id):
+            try:
+                await _record_changeset(
+                    name="skill_signature_gate",
+                    target_type="skill",
+                    target_id=str(skill_id),
+                    status="failed",
+                    args={"scope": "workspace", "action": "enable", "reason": gate.get("reason")},
+                    error="not_approved",
+                    approval_request_id=approval_request_id,
+                )
+            except Exception:
+                pass
+            raise HTTPException(status_code=409, detail="not_approved")
+        try:
+            await _record_changeset(
+                name="skill_signature_gate",
+                target_type="skill",
+                target_id=str(skill_id),
+                status="success",
+                args={"scope": "workspace", "action": "enable"},
+                approval_request_id=approval_request_id,
+            )
+        except Exception:
+            pass
     ok = await _workspace_skill_manager.enable_skill(skill_id)
     if not ok:
         raise HTTPException(status_code=400, detail=f"Skill {skill_id} cannot be enabled (maybe deprecated; use restore)")
-    return {"status": "enabled"}
+    return {"status": "enabled", "approval_request_id": approval_request_id}
 
 
 @api_router.post("/workspace/skills/{skill_id}/disable")
@@ -3466,6 +3588,80 @@ async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest):
     skill = await _workspace_skill_manager.get_skill(skill_id)
     if not skill:
         raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    # Signature gate: unverified workspace skills require approval to execute.
+    try:
+        opts = request.options if isinstance(getattr(request, "options", None), dict) else {}
+    except Exception:
+        opts = {}
+    approval_request_id = None
+    details = ""
+    try:
+        approval_request_id = str(opts.get("approval_request_id") or "").strip() or None
+        details = str(opts.get("details") or "").strip()
+    except Exception:
+        approval_request_id = None
+        details = ""
+
+    trusted = await _get_trusted_skill_pubkeys_map()
+    try:
+        prov2 = _workspace_skill_manager.compute_skill_signature_verification(skill, trusted)
+        if isinstance(getattr(skill, "metadata", None), dict) and prov2:
+            skill.metadata["provenance"] = prov2
+    except Exception:
+        pass
+    gate = _signature_gate_eval(metadata=getattr(skill, "metadata", None), trusted_keys_count=len(trusted))
+    if gate.get("required") is True:
+        if not approval_request_id:
+            rid = await _require_skill_signature_gate_approval(
+                user_id=(request.context or {}).get("user_id", "admin") if isinstance(request.context, dict) else "admin",
+                skill_id=str(skill_id),
+                action="execute",
+                details=details or f"execute workspace skill {skill_id}",
+                metadata={
+                    "skill_id": str(skill_id),
+                    "action": "execute",
+                    "reason": gate.get("reason"),
+                    "provenance": (getattr(skill, "metadata", None) or {}).get("provenance") if isinstance(getattr(skill, "metadata", None), dict) else {},
+                    "integrity": (getattr(skill, "metadata", None) or {}).get("integrity") if isinstance(getattr(skill, "metadata", None), dict) else {},
+                },
+            )
+            try:
+                await _record_changeset(
+                    name="skill_signature_gate",
+                    target_type="skill",
+                    target_id=str(skill_id),
+                    status="approval_required",
+                    args={"scope": "workspace", "action": "execute", "reason": gate.get("reason")},
+                    approval_request_id=rid,
+                )
+            except Exception:
+                pass
+            return {"status": "approval_required", "approval_request_id": rid, "reason": gate.get("reason")}
+        if not _is_approval_resolved_approved(approval_request_id):
+            try:
+                await _record_changeset(
+                    name="skill_signature_gate",
+                    target_type="skill",
+                    target_id=str(skill_id),
+                    status="failed",
+                    args={"scope": "workspace", "action": "execute", "reason": gate.get("reason")},
+                    error="not_approved",
+                    approval_request_id=approval_request_id,
+                )
+            except Exception:
+                pass
+            raise HTTPException(status_code=409, detail="not_approved")
+        try:
+            await _record_changeset(
+                name="skill_signature_gate",
+                target_type="skill",
+                target_id=str(skill_id),
+                status="success",
+                args={"scope": "workspace", "action": "execute"},
+                approval_request_id=approval_request_id,
+            )
+        except Exception:
+            pass
     user_id = request.context.get("user_id", "system") if request.context else "system"
     harness = get_harness()
     exec_req = ExecutionRequest(

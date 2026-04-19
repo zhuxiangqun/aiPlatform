@@ -6,7 +6,7 @@ interface WorkspaceSkillState {
   skills: Skill[];
   loading: boolean;
   fetchSkills: (params?: { category?: string; status?: string; enabled_only?: boolean }) => Promise<void>;
-  toggleSkill: (id: string, enable: boolean) => Promise<void>;
+  toggleSkill: (id: string, enable: boolean) => Promise<any>;
   deleteSkill: (id: string, opts?: { delete_files?: boolean }) => Promise<void>;
   restoreSkill: (id: string) => Promise<void>;
   createSkill: (data: { name: string; description: string; category?: string }) => Promise<void>;
@@ -33,9 +33,11 @@ export const useWorkspaceSkillStore = create<WorkspaceSkillState>((set, get) => 
   },
 
   toggleSkill: async (id, enable) => {
-    if (enable) await workspaceSkillApi.enable(id);
-    else await workspaceSkillApi.disable(id);
+    let res: any = null;
+    if (enable) res = await workspaceSkillApi.enable(id);
+    else res = await workspaceSkillApi.disable(id);
     await get().fetchSkills();
+    return res;
   },
 
   deleteSkill: async (id, opts) => {
@@ -53,4 +55,3 @@ export const useWorkspaceSkillStore = create<WorkspaceSkillState>((set, get) => 
     await get().fetchSkills();
   },
 }));
-

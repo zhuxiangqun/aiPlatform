@@ -53,7 +53,16 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
 
       const res = await workspaceSkillApi.execute(skill.id, { input: payload, options: { toolset } });
       setResult(res as any);
-      toast.success((res as any).status === 'completed' || (res as any).status === 'success' ? '执行成功' : `状态: ${(res as any).status}`);
+      if ((res as any)?.status === 'approval_required' && (res as any)?.approval_request_id) {
+        toast.error(`需要审批：${String((res as any).approval_request_id)}`);
+        try {
+          window.open('/core/learning/approvals', '_blank', 'noopener,noreferrer');
+        } catch {
+          // ignore
+        }
+      } else {
+        toast.success((res as any).status === 'completed' || (res as any).status === 'success' ? '执行成功' : `状态: ${(res as any).status}`);
+      }
     } catch (error: any) {
       toast.error('执行失败');
       setResult({ status: 'error', error: error.message || 'Unknown error' });

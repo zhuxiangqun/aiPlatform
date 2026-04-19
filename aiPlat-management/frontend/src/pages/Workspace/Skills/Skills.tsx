@@ -75,7 +75,16 @@ const WorkspaceSkills: React.FC = () => {
         toast.error('已弃用的 Skill 不能直接切换开关（可先“恢复”再启用）');
         return;
       }
-      await toggleSkill(skill.id, !skill.enabled);
+      const res: any = await toggleSkill(skill.id, !skill.enabled);
+      if (res?.status === 'approval_required' && res?.approval_request_id) {
+        toast.error(`需要审批：${res.approval_request_id}`);
+        try {
+          window.open('/core/learning/approvals', '_blank', 'noopener,noreferrer');
+        } catch {
+          // ignore
+        }
+        return;
+      }
       toast.success(skill.enabled ? `Skill "${skill.name}" 已禁用` : `Skill "${skill.name}" 已启用`);
     } catch {
       toast.error('操作失败');
