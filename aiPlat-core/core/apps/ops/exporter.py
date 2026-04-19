@@ -70,3 +70,42 @@ class OpsExporter:
                     d["payload"] = json.dumps(d.get("payload"), ensure_ascii=False)
                 norm.append(d)
         return _csv_bytes(norm, fieldnames=fieldnames), f"run_events_{run_id}.csv"
+
+    async def export_syscall_events_csv(
+        self,
+        *,
+        tenant_id: Optional[str],
+        run_id: Optional[str] = None,
+        kind: Optional[str] = None,
+        status: Optional[str] = None,
+        limit: int = 2000,
+    ) -> Tuple[bytes, str]:
+        res = await self._store.list_syscall_events(
+            tenant_id=tenant_id,
+            run_id=run_id,
+            kind=kind,
+            status=status,
+            limit=int(limit),
+            offset=0,
+        )
+        items = res.get("items") or []
+        fieldnames = [
+            "id",
+            "tenant_id",
+            "run_id",
+            "trace_id",
+            "span_id",
+            "kind",
+            "name",
+            "status",
+            "duration_ms",
+            "error_code",
+            "error",
+            "target_type",
+            "target_id",
+            "user_id",
+            "session_id",
+            "created_at",
+        ]
+        # Flatten args/result to keep export small; can be extended later.
+        return _csv_bytes(items, fieldnames=fieldnames), "syscall_events.csv"

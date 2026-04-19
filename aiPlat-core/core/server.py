@@ -181,6 +181,7 @@ _approval_manager: Optional[Any] = None
 _job_scheduler: Optional[JobScheduler] = None
 _mcp_runtime: Optional[MCPRuntime] = None
 _plugin_manager: Optional[PluginManager] = None
+_ops_prune_task: Optional[asyncio.Task] = None
 
 
 async def _get_trusted_skill_pubkeys_map() -> Dict[str, str]:
@@ -717,6 +718,27 @@ async def lifespan(app: FastAPI):
             await _job_scheduler.start()
     except Exception:
         _job_scheduler = None
+
+    # PR-14: background retention pruning loop (opt-in)
+    global _ops_prune_task
+    try:
+        enable_prune = os.getenv("AIPLAT_ENABLE_PRUNE_SCHEDULER", "false").lower() in ("1", "true", "yes", "y")
+        interval = float(os.getenv("AIPLAT_PRUNE_INTERVAL_SECONDS", "3600") or "3600")
+        if enable_prune and _execution_store is not None and interval > 0:
+            async def _prune_loop():
+                while True:
+                    try:
+                        await asyncio.sleep(interval)
+                        await _execution_store.prune()
+                    except asyncio.CancelledError:
+                        raise
+                    except Exception:
+                        # best-effort: never crash the server due to pruning
+                        continue
+
+            _ops_prune_task = asyncio.create_task(_prune_loop())
+    except Exception:
+        _ops_prune_task = None
     
     yield
 
@@ -724,6 +746,11 @@ async def lifespan(app: FastAPI):
     try:
         if _job_scheduler is not None:
             await _job_scheduler.stop()
+    except Exception:
+        pass
+    try:
+        if _ops_prune_task is not None:
+            _ops_prune_task.cancel()
     except Exception:
         pass
 
@@ -10749,6 +10776,21 @@ async def health_check():
     except Exception:
         checks["approval_manager"] = {"ok": False}
         out["status"] = "degraded"
+    # DLQ depth (best-effort)
+    try:
+        if _execution_store:
+            # Jobs DLQ
+            j = await _execution_store.list_job_delivery_dlq(status="pending", job_id=None, limit=1, offset=0)
+            # Gateway/connector delivery DLQ
+            g = await _execution_store.list_connector_delivery_dlq(status="pending", limit=1, offset=0)
+            checks["dlq"] = {
+                "ok": True,
+                "jobs_pending": int(j.get("total") or 0),
+                "gateway_pending": int(g.get("total") or 0),
+            }
+    except Exception as e:
+        checks["dlq"] = {"ok": False, "error": str(e)}
+        out["status"] = "degraded"
     out["checks"] = checks
     return out
 
@@ -10819,6 +10861,28 @@ async def export_run_events_csv(http_request: Request, run_id: str, limit: int =
     from core.apps.ops import OpsExporter
 
     data, filename = await OpsExporter(execution_store=_execution_store).export_run_events_csv(run_id=run_id, limit=limit)
+    return Response(content=data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'})
+
+
+@api_router.get("/ops/export/syscall_events.csv")
+async def export_syscall_events_csv(
+    http_request: Request,
+    tenant_id: Optional[str] = None,
+    run_id: Optional[str] = None,
+    kind: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 2000,
+):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    deny = await _rbac_guard(http_request=http_request, payload=None, action="ops_export", resource_type="ops", resource_id="syscall_events")
+    if deny:
+        return deny
+    from core.apps.ops import OpsExporter
+
+    data, filename = await OpsExporter(execution_store=_execution_store).export_syscall_events_csv(
+        tenant_id=tenant_id, run_id=run_id, kind=kind, status=status, limit=limit
+    )
     return Response(content=data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'})
 
 

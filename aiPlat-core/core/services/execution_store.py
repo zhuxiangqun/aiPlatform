@@ -2484,6 +2484,7 @@ class ExecutionStore:
         self,
         limit: int = 100,
         offset: int = 0,
+        tenant_id: Optional[str] = None,
         trace_id: Optional[str] = None,
         run_id: Optional[str] = None,
         kind: Optional[str] = None,
@@ -2506,6 +2507,9 @@ class ExecutionStore:
             try:
                 clauses = []
                 params: list = []
+                if tenant_id:
+                    clauses.append("tenant_id=?")
+                    params.append(str(tenant_id))
                 if trace_id:
                     clauses.append("trace_id=?")
                     params.append(trace_id)

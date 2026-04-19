@@ -24,8 +24,12 @@ def test_ops_export_and_prune(tmp_path, monkeypatch):
         assert "text/csv" in (r.headers.get("content-type") or "")
         assert b"tenant_id" in r.content
 
+        s = client.get("/api/core/ops/export/syscall_events.csv", params={"tenant_id": "t1", "limit": 50}, headers=headers)
+        assert s.status_code == 200
+        assert "text/csv" in (s.headers.get("content-type") or "")
+        assert b"trace_id" in s.content
+
         # prune should succeed (best-effort)
         p = client.post("/api/core/ops/prune", json={"now_ts": 1e12}, headers=headers)
         assert p.status_code == 200
         assert p.json().get("ok") is True
-
