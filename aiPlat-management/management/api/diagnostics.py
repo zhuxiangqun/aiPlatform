@@ -289,6 +289,16 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
         "dedup_seconds": os.getenv("AIPLAT_AUTOSMOKE_DEDUP_SECONDS"),
         "webhook_url_set": bool(os.getenv("AIPLAT_AUTOSMOKE_WEBHOOK_URL")),
     }
+    links = {
+        "onboarding_ui": "/onboarding",
+        "diagnostics_smoke_ui": "/diagnostics/smoke",
+        "doctor_api": "/api/diagnostics/doctor",
+        "run_e2e_smoke_api": "/api/diagnostics/e2e/smoke",
+    }
+    config = {
+        "management_public_url": os.getenv("AIPLAT_MANAGEMENT_PUBLIC_URL"),
+        "autosmoke_webhook_url": os.getenv("AIPLAT_AUTOSMOKE_WEBHOOK_URL"),
+    }
 
     recs = []
     if not autosmoke["enabled"]:
@@ -306,7 +316,18 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
     if (adapters or {}).get("total", 0) <= 0:
         recs.append({"severity": "warn", "code": "no_adapters", "message": "尚未配置任何 LLM adapter；请先在初始化向导配置模型 Provider/API Key"})
 
-    return {"generated_at": time.time(), "health": health, "adapters": adapters, "autosmoke": autosmoke, "recommendations": recs}
+    if not config["management_public_url"]:
+        recs.append({"severity": "info", "code": "missing_public_url", "message": "建议设置 AIPLAT_MANAGEMENT_PUBLIC_URL，用于生成可点击诊断/重跑链接"})
+
+    return {
+        "generated_at": time.time(),
+        "health": health,
+        "adapters": adapters,
+        "autosmoke": autosmoke,
+        "config": config,
+        "links": links,
+        "recommendations": recs,
+    }
 
 
 @router.get("/graphs/{layer}")
