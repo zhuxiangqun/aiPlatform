@@ -274,10 +274,11 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
         except Exception as e:
             health[layer] = {"status": "unhealthy", "message": str(e)}
 
+    core_client = getattr(request.app.state, "core_client", None)
+
     # Core adapters summary
     adapters = {"adapters": [], "total": 0}
     try:
-        core_client = getattr(request.app.state, "core_client", None)
         if core_client:
             adapters = await core_client.list_adapters(limit=50, offset=0)
     except Exception:
@@ -286,7 +287,6 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
     # Autosmoke config: env overrides first, otherwise fall back to core global_settings(key="autosmoke")
     core_autosmoke_cfg: Dict[str, Any] = {}
     try:
-        core_client = getattr(request.app.state, "core_client", None)
         if core_client:
             st = await core_client.get_onboarding_state()
             if isinstance(st, dict) and isinstance(st.get("autosmoke"), dict):
@@ -306,10 +306,17 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
         "webhook_url_set": bool(env_webhook) or bool(core_autosmoke_cfg.get("webhook_url")),
         "source": {"env_override": bool(env_enabled or env_enforce or env_dedup or env_webhook), "core_setting": core_autosmoke_cfg},
     }
+    # Secrets status (best-effort)
+    secrets: Dict[str, Any] = {}
+    try:
+        if core_client:
+            secrets = await core_client.get_secrets_status()
+    except Exception:
+        secrets = {}
+
     # Strong gate status (default tenant)
     strong_gate: Dict[str, Any] = {"tenant_id": "default", "enabled": False}
     try:
-        core_client = getattr(request.app.state, "core_client", None)
         if core_client:
             tp = await core_client.get_tenant_policy("default")
             policy = tp.get("policy") if isinstance(tp, dict) else None
@@ -342,6 +349,17 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
             "api_url": "/api/onboarding/strong-gate",
             "body_example": {"tenant_id": "default", "enabled": False, "require_approval": True},
         }
+        ,
+        "migrate_secrets": {
+            "method": "POST",
+            "api_url": "/api/onboarding/secrets/migrate",
+            "body_example": {"require_approval": True},
+        },
+        "enable_autosmoke": {
+            "method": "POST",
+            "api_url": "/api/onboarding/autosmoke",
+            "body_example": {"enabled": True, "enforce": True, "require_approval": True},
+        },
     }
     config = {
         "management_public_url": os.getenv("AIPLAT_MANAGEMENT_PUBLIC_URL"),
@@ -367,6 +385,43 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
     if not config["management_public_url"]:
         recs.append({"severity": "info", "code": "missing_public_url", "message": "建议设置 AIPLAT_MANAGEMENT_PUBLIC_URL，用于生成可点击诊断/重跑链接"})
 
+    # If autosmoke is disabled, provide an action using config center (env still can override).
+    if not autosmoke["enabled"]:
+        recs.append(
+            {
+                "severity": "info",
+                "code": "autosmoke_enable_action",
+                "message": "可在配置中心开启 autosmoke（需审批）；若已使用 env 管理，也可忽略此项。",
+                "links": {"onboarding_ui": "/onboarding"},
+                "actions": {"enable_autosmoke": actions["enable_autosmoke"]},
+            }
+        )
+
+    # If secrets still stored in plaintext, recommend migration.
+    try:
+        if isinstance(secrets, dict) and int(secrets.get("plaintext") or 0) > 0:
+            if secrets.get("encryption_configured"):
+                recs.append(
+                    {
+                        "severity": "warn",
+                        "code": "plaintext_secrets_detected",
+                        "message": "检测到 adapters.api_key 仍存在明文存储，建议执行一键迁移到加密列（需审批）。",
+                        "links": {"onboarding_ui": "/onboarding"},
+                        "actions": {"migrate_secrets": actions["migrate_secrets"]},
+                    }
+                )
+            else:
+                recs.append(
+                    {
+                        "severity": "warn",
+                        "code": "plaintext_secrets_and_no_key",
+                        "message": "检测到 adapters.api_key 存在明文且未配置 AIPLAT_SECRET_KEY；建议先配置密钥后再迁移。",
+                        "links": {"onboarding_ui": "/onboarding"},
+                    }
+                )
+    except Exception:
+        pass
+
     if strong_gate.get("enabled"):
         recs.append(
             {
@@ -383,6 +438,7 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
         "health": health,
         "adapters": adapters,
         "autosmoke": autosmoke,
+        "secrets": secrets,
         "strong_gate": strong_gate,
         "config": config,
         "links": links,
