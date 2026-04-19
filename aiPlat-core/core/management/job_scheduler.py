@@ -304,6 +304,14 @@ class JobScheduler:
         # Delivery (best-effort): webhook POST for completion/failure.
         try:
             delivery = job.get("delivery") if isinstance(job, dict) else None
+            # Optional delivery filter: only send on specific run statuses.
+            # Example: {"on": ["failed"]} to alert failures only.
+            if isinstance(delivery, dict):
+                on = delivery.get("on")
+                if isinstance(on, list) and on:
+                    st = "completed" if final_ok else "failed"
+                    if st not in {str(x) for x in on if x}:
+                        delivery = {}
             delivery_result = await self._deliver_webhook(
                 delivery if isinstance(delivery, dict) else {},
                 job=job,

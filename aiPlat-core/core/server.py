@@ -557,6 +557,19 @@ def _runtime_env() -> str:
     return env
 
 
+def _autosmoke_enforce() -> bool:
+    return (os.getenv("AIPLAT_AUTOSMOKE_ENFORCE", "false") or "").strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _is_verified(meta: Dict[str, Any] | None) -> bool:
+    if not isinstance(meta, dict):
+        return False
+    v = meta.get("verification")
+    if isinstance(v, dict):
+        return str(v.get("status") or "") == "verified"
+    return False
+
+
 async def _audit_event(kind: str, name: str, status: str, *, args: Dict[str, Any] | None = None, result: Dict[str, Any] | None = None, error: str | None = None) -> None:
     """Best-effort append to ExecutionStore syscall_events for auditability."""
     try:
@@ -905,6 +918,20 @@ async def create_workspace_agent(request: AgentCreateRequest, http_request: Requ
             memory_config=request.memory_config,
             metadata=request.metadata,
         )
+        # Mark as pending verification (best-effort)
+        try:
+            await _workspace_agent_manager.update_agent(
+                str(agent.id),
+                metadata={
+                    "verification": {
+                        "status": "pending",
+                        "updated_at": time.time(),
+                        "source": "autosmoke",
+                    }
+                },
+            )
+        except Exception:
+            pass
         # Auto-smoke (async, dedup): trigger on create/update to validate the full chain.
         try:
             if _execution_store is not None and _job_scheduler is not None:
@@ -912,14 +939,32 @@ async def create_workspace_agent(request: AgentCreateRequest, http_request: Requ
 
                 tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID", "ops_smoke")
                 actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")
+                agent_id = str(agent.id)
+
+                async def _on_complete(job_run: Dict[str, Any]):
+                    st = str(job_run.get("status") or "")
+                    ver = {
+                        "status": "verified" if st == "completed" else "failed",
+                        "updated_at": time.time(),
+                        "source": "autosmoke",
+                        "job_id": f"autosmoke-agent:{agent_id}",
+                        "job_run_id": str(job_run.get("id") or ""),
+                        "reason": str(job_run.get("error") or ""),
+                    }
+                    try:
+                        await _workspace_agent_manager.update_agent(agent_id, metadata={"verification": ver})
+                    except Exception:
+                        pass
+
                 await enqueue_autosmoke(
                     execution_store=_execution_store,
                     job_scheduler=_job_scheduler,
                     resource_type="agent",
-                    resource_id=str(agent.id),
+                    resource_id=agent_id,
                     tenant_id=tenant_id or "ops_smoke",
                     actor_id=actor_id or "admin",
                     detail={"op": "create", "name": agent.name},
+                    on_complete=_on_complete,
                 )
         except Exception:
             pass
@@ -1010,6 +1055,12 @@ async def delete_workspace_agent(agent_id: str):
 async def start_workspace_agent(agent_id: str):
     if not _workspace_agent_manager:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    if _autosmoke_enforce():
+        a = await _workspace_agent_manager.get_agent(agent_id)
+        if not a:
+            raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+        if not _is_verified(getattr(a, "metadata", None)):
+            raise HTTPException(status_code=403, detail="agent_unverified: smoke must pass before start")
     ok = await _workspace_agent_manager.start_agent(agent_id)
     if not ok:
         raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
@@ -1042,20 +1093,52 @@ async def update_workspace_agent(agent_id: str, request: AgentUpdateRequest, htt
     )
     if not agent:
         raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    # Mark as pending verification (best-effort)
+    try:
+        await _workspace_agent_manager.update_agent(
+            str(agent_id),
+            metadata={
+                "verification": {
+                    "status": "pending",
+                    "updated_at": time.time(),
+                    "source": "autosmoke",
+                }
+            },
+        )
+    except Exception:
+        pass
     try:
         if _execution_store is not None and _job_scheduler is not None:
             from core.harness.smoke import enqueue_autosmoke
 
             tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID", "ops_smoke")
             actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")
+            aid = str(agent_id)
+
+            async def _on_complete(job_run: Dict[str, Any]):
+                st = str(job_run.get("status") or "")
+                ver = {
+                    "status": "verified" if st == "completed" else "failed",
+                    "updated_at": time.time(),
+                    "source": "autosmoke",
+                    "job_id": f"autosmoke-agent:{aid}",
+                    "job_run_id": str(job_run.get("id") or ""),
+                    "reason": str(job_run.get("error") or ""),
+                }
+                try:
+                    await _workspace_agent_manager.update_agent(aid, metadata={"verification": ver})
+                except Exception:
+                    pass
+
             await enqueue_autosmoke(
                 execution_store=_execution_store,
                 job_scheduler=_job_scheduler,
                 resource_type="agent",
-                resource_id=str(agent_id),
+                resource_id=aid,
                 tenant_id=tenant_id or "ops_smoke",
                 actor_id=actor_id or "admin",
                 detail={"op": "update"},
+                on_complete=_on_complete,
             )
     except Exception:
         pass
@@ -2661,20 +2744,52 @@ async def create_workspace_skill(request: SkillCreateRequest, http_request: Requ
             output_schema=request.output_schema or {},
             metadata={"template": request.template, "sop": request.sop},
         )
+        # Mark as pending verification (best-effort)
+        try:
+            await _workspace_skill_manager.update_skill(
+                str(skill.id),
+                metadata={
+                    "verification": {
+                        "status": "pending",
+                        "updated_at": time.time(),
+                        "source": "autosmoke",
+                    }
+                },
+            )
+        except Exception:
+            pass
         try:
             if _execution_store is not None and _job_scheduler is not None:
                 from core.harness.smoke import enqueue_autosmoke
 
                 tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID", "ops_smoke")
                 actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")
+                sid = str(skill.id)
+
+                async def _on_complete(job_run: Dict[str, Any]):
+                    st = str(job_run.get("status") or "")
+                    ver = {
+                        "status": "verified" if st == "completed" else "failed",
+                        "updated_at": time.time(),
+                        "source": "autosmoke",
+                        "job_id": f"autosmoke-skill:{sid}",
+                        "job_run_id": str(job_run.get("id") or ""),
+                        "reason": str(job_run.get("error") or ""),
+                    }
+                    try:
+                        await _workspace_skill_manager.update_skill(sid, metadata={"verification": ver})
+                    except Exception:
+                        pass
+
                 await enqueue_autosmoke(
                     execution_store=_execution_store,
                     job_scheduler=_job_scheduler,
                     resource_type="skill",
-                    resource_id=str(skill.id),
+                    resource_id=sid,
                     tenant_id=tenant_id or "ops_smoke",
                     actor_id=actor_id or "admin",
                     detail={"op": "create", "name": skill.name},
+                    on_complete=_on_complete,
                 )
         except Exception:
             pass
@@ -2715,20 +2830,52 @@ async def update_workspace_skill(skill_id: str, request: dict, http_request: Req
     skill = await _workspace_skill_manager.update_skill(skill_id, r.model_dump(exclude_unset=True))
     if not skill:
         raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    # Mark as pending verification (best-effort)
+    try:
+        await _workspace_skill_manager.update_skill(
+            str(skill_id),
+            metadata={
+                "verification": {
+                    "status": "pending",
+                    "updated_at": time.time(),
+                    "source": "autosmoke",
+                }
+            },
+        )
+    except Exception:
+        pass
     try:
         if _execution_store is not None and _job_scheduler is not None:
             from core.harness.smoke import enqueue_autosmoke
 
             tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID", "ops_smoke")
             actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")
+            sid = str(skill_id)
+
+            async def _on_complete(job_run: Dict[str, Any]):
+                st = str(job_run.get("status") or "")
+                ver = {
+                    "status": "verified" if st == "completed" else "failed",
+                    "updated_at": time.time(),
+                    "source": "autosmoke",
+                    "job_id": f"autosmoke-skill:{sid}",
+                    "job_run_id": str(job_run.get("id") or ""),
+                    "reason": str(job_run.get("error") or ""),
+                }
+                try:
+                    await _workspace_skill_manager.update_skill(sid, metadata={"verification": ver})
+                except Exception:
+                    pass
+
             await enqueue_autosmoke(
                 execution_store=_execution_store,
                 job_scheduler=_job_scheduler,
                 resource_type="skill",
-                resource_id=str(skill_id),
+                resource_id=sid,
                 tenant_id=tenant_id or "ops_smoke",
                 actor_id=actor_id or "admin",
                 detail={"op": "update"},
+                on_complete=_on_complete,
             )
     except Exception:
         pass
@@ -2749,6 +2896,12 @@ async def delete_workspace_skill(skill_id: str, delete_files: bool = False):
 async def enable_workspace_skill(skill_id: str):
     if not _workspace_skill_manager:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    if _autosmoke_enforce():
+        s = await _workspace_skill_manager.get_skill(skill_id)
+        if not s:
+            raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+        if not _is_verified(getattr(s, "metadata", None)):
+            raise HTTPException(status_code=403, detail="skill_unverified: smoke must pass before enable")
     ok = await _workspace_skill_manager.enable_skill(skill_id)
     if not ok:
         raise HTTPException(status_code=400, detail=f"Skill {skill_id} cannot be enabled (maybe deprecated; use restore)")
@@ -3387,6 +3540,16 @@ async def upsert_workspace_mcp_server(request: dict, http_request: Request):
             await _sync_mcp_runtime()
         except Exception:
             pass
+        # Mark as pending verification (best-effort)
+        try:
+            cur = _workspace_mcp_manager.get_server(saved.name)
+            if cur:
+                meta = dict(cur.metadata or {})
+                meta["verification"] = {"status": "pending", "updated_at": time.time(), "source": "autosmoke"}
+                cur.metadata = meta
+                _workspace_mcp_manager.upsert_server(cur)
+        except Exception:
+            pass
         # Auto-smoke on MCP upsert (async, dedup)
         try:
             if _execution_store is not None and _job_scheduler is not None:
@@ -3394,14 +3557,37 @@ async def upsert_workspace_mcp_server(request: dict, http_request: Request):
 
                 tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID", "ops_smoke")
                 actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")
+                sid = str(saved.name)
+
+                async def _on_complete(job_run: Dict[str, Any]):
+                    st = str(job_run.get("status") or "")
+                    ver = {
+                        "status": "verified" if st == "completed" else "failed",
+                        "updated_at": time.time(),
+                        "source": "autosmoke",
+                        "job_id": f"autosmoke-mcp:{sid}",
+                        "job_run_id": str(job_run.get("id") or ""),
+                        "reason": str(job_run.get("error") or ""),
+                    }
+                    try:
+                        cur2 = _workspace_mcp_manager.get_server(sid)
+                        if cur2:
+                            m2 = dict(cur2.metadata or {})
+                            m2["verification"] = ver
+                            cur2.metadata = m2
+                            _workspace_mcp_manager.upsert_server(cur2)
+                    except Exception:
+                        pass
+
                 await enqueue_autosmoke(
                     execution_store=_execution_store,
                     job_scheduler=_job_scheduler,
                     resource_type="mcp",
-                    resource_id=str(saved.name),
+                    resource_id=sid,
                     tenant_id=tenant_id or "ops_smoke",
                     actor_id=actor_id or "admin",
                     detail={"op": "upsert", "transport": saved.transport},
+                    on_complete=_on_complete,
                 )
         except Exception:
             pass
@@ -3427,6 +3613,9 @@ async def enable_workspace_mcp_server(server_name: str):
     s = _workspace_mcp_manager.get_server(server_name)
     if not s:
         raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
+    if _autosmoke_enforce():
+        if not _is_verified(getattr(s, "metadata", None)):
+            raise HTTPException(status_code=403, detail="mcp_unverified: smoke must pass before enable")
     ok, reason = _prod_stdio_policy_check(server_name, str(s.transport or ""), s.command, s.args, s.metadata)
     if not ok:
         await _audit_event(

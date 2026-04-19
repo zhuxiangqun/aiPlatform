@@ -14,7 +14,7 @@ from __future__ import annotations
 import asyncio
 import os
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Callable, Awaitable
 
 
 def _truthy(v: str) -> bool:
@@ -35,6 +35,36 @@ def _dedup_seconds() -> int:
 def _default_agent_model() -> str:
     return (os.getenv("AIPLAT_AUTOSMOKE_AGENT_MODEL") or os.getenv("AIPLAT_AGENT_MODEL") or "deepseek-reasoner").strip()
 
+def _autosmoke_webhook_delivery() -> Dict[str, Any]:
+    """
+    Optional alert delivery for autosmoke failures.
+
+    Use cases:
+    - Slack incoming webhook (set AIPLAT_AUTOSMOKE_WEBHOOK_URL to Slack webhook URL)
+    - Any generic webhook receiver
+    """
+    url = (os.getenv("AIPLAT_AUTOSMOKE_WEBHOOK_URL") or "").strip()
+    if not url:
+        return {}
+    headers_raw = (os.getenv("AIPLAT_AUTOSMOKE_WEBHOOK_HEADERS") or "").strip()
+    headers: Dict[str, str] = {}
+    if headers_raw:
+        # simple format: "K1:V1;K2:V2"
+        for part in headers_raw.split(";"):
+            if ":" not in part:
+                continue
+            k, v = part.split(":", 1)
+            k, v = k.strip(), v.strip()
+            if k:
+                headers[k] = v
+    return {
+        "type": "webhook",
+        "url": url,
+        "headers": headers,
+        "include": ["job", "run", "result"],
+        "on": ["failed"],
+    }
+
 
 async def enqueue_autosmoke(
     *,
@@ -45,6 +75,7 @@ async def enqueue_autosmoke(
     tenant_id: str = "ops_smoke",
     actor_id: str = "admin",
     detail: Optional[Dict[str, Any]] = None,
+    on_complete: Optional[Callable[[Dict[str, Any]], Awaitable[None]]] = None,
 ) -> Dict[str, Any]:
     """
     Enqueue an autosmoke job run for a resource.
@@ -77,6 +108,7 @@ async def enqueue_autosmoke(
                 "user_id": actor_id,
                 "session_id": tenant_id,
                 "payload": {},
+                "delivery": _autosmoke_webhook_delivery(),
             }
         )
 
@@ -116,11 +148,31 @@ async def enqueue_autosmoke(
     # Async execution: run once in background so API returns immediately.
     async def _run_once():
         try:
-            await job_scheduler.run_job_once(job_id)
+            run = await job_scheduler.run_job_once(job_id)
+            # Emit audit + update verification state (best-effort).
+            try:
+                st = str((run or {}).get("status") or "")
+                await execution_store.add_audit_log(
+                    action="autosmoke_result",
+                    status="ok" if st == "completed" else "failed",
+                    tenant_id=tenant_id,
+                    actor_id=actor_id,
+                    resource_type=resource_type,
+                    resource_id=resource_id,
+                    run_id=str((run or {}).get("run_id") or (run or {}).get("id") or ""),
+                    trace_id=str((run or {}).get("trace_id") or "") or None,
+                    detail={"job_id": job_id, "job_run": run},
+                )
+            except Exception:
+                pass
+            if on_complete is not None and isinstance(run, dict):
+                try:
+                    await on_complete(run)
+                except Exception:
+                    pass
         except Exception:
             # job_run will be marked failed by scheduler when possible; swallow here to keep loop alive
             return
 
     asyncio.create_task(_run_once(), name=f"autosmoke:{resource_type}:{resource_id}")
     return {"enqueued": True, "job_id": job_id, "reason": None}
-
