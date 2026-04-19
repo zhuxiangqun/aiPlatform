@@ -238,6 +238,24 @@ export const diagnosticsApi = {
     const qs = q.toString();
     return apiClient.get<any>(`/diagnostics/syscalls/core/stats${qs ? `?${qs}` : ''}`);
   },
+
+  // Change Control (derived from changeset syscalls)
+  listChangeControls: async (params: { limit?: number; offset?: number; tenant_id?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (params.limit != null) q.set('limit', String(params.limit));
+    if (params.offset != null) q.set('offset', String(params.offset));
+    if (params.tenant_id) q.set('tenant_id', params.tenant_id);
+    const qs = q.toString();
+    return apiClient.get<any>(`/diagnostics/change-control/core${qs ? `?${qs}` : ''}`);
+  },
+  getChangeControl: async (changeId: string, params: { limit?: number; offset?: number; tenant_id?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (params.limit != null) q.set('limit', String(params.limit));
+    if (params.offset != null) q.set('offset', String(params.offset));
+    if (params.tenant_id) q.set('tenant_id', params.tenant_id);
+    const qs = q.toString();
+    return apiClient.get<any>(`/diagnostics/change-control/core/${encodeURIComponent(changeId)}${qs ? `?${qs}` : ''}`);
+  },
 };
 
 // Onboarding API
