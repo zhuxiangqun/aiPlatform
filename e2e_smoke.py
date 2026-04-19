@@ -121,8 +121,33 @@ def main() -> int:
     events = _req("GET", f"{CORE}/api/core/runs/{run_id}/events", params={"after_seq": 0, "limit": 50})
     print(f"[events] count={len(events.get('items') or [])}")
 
-    audit = _req("GET", f"{MGMT}/api/audit/logs", params={"run_id": run_id, "limit": 20, "offset": 0})
+    # 8) tool run via platform gateway (guaranteed non-LLM path) to validate run+audit pipeline
+    tool_exec = _req(
+        "POST",
+        f"{PLATFORM}/platform/gateway/execute",
+        json_body={
+            "channel": "e2e",
+            "kind": "tool",
+            "target_id": "calculator",
+            "session_id": sess.get("id"),
+            "payload": {"input": {"expression": "1+1"}, "context": {"tenant_id": tenant_id}},
+        },
+    )
+    tool_run_id = tool_exec.get("run_id")
+    if not tool_run_id:
+        raise RuntimeError(f"tool execute returned no run_id: {tool_exec}")
+    print(f"[tool] run_id={tool_run_id} status={tool_exec.get('status')} ok={tool_exec.get('ok')}")
+
+    tool_waited = _req("POST", f"{CORE}/api/core/runs/{tool_run_id}/wait", json_body={"timeout_ms": 60000, "after_seq": 0})
+    tool_run = tool_waited.get("run") or {}
+    if str(tool_run.get("status")) not in ("completed",):
+        raise RuntimeError(f"tool run not completed: {tool_run}")
+    print(f"[tool-run] status={tool_run.get('status')} done={tool_waited.get('done')}")
+
+    audit = _req("GET", f"{MGMT}/api/audit/logs", params={"run_id": tool_run_id, "action": "gateway_execute", "limit": 20, "offset": 0})
     print(f"[audit] count={len(audit.get('items') or [])}")
+    if len(audit.get("items") or []) < 1:
+        raise RuntimeError("expected at least 1 audit log for gateway_execute")
 
     print(f"✓ PASS in {time.time() - started:.2f}s")
     return 0
@@ -134,4 +159,3 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"✗ FAIL: {e}")
         sys.exit(1)
-
