@@ -35,6 +35,8 @@ MGMT = _env("AIPLAT_MANAGEMENT_ENDPOINT", "http://localhost:8000")
 API_KEY = os.getenv("AIPLAT_API_KEY", "").strip()
 TENANT_ID = os.getenv("AIPLAT_TENANT_ID", "").strip()
 ACTOR_ID = os.getenv("AIPLAT_ACTOR_ID", "").strip()
+LLM_PROVIDER = os.getenv("AIPLAT_LLM_PROVIDER", "").strip().lower()
+AGENT_MODEL = os.getenv("AIPLAT_AGENT_MODEL", "").strip()
 
 
 def _headers() -> Dict[str, str]:
@@ -95,7 +97,11 @@ def main() -> int:
             "name": f"smoke-agent-{int(time.time())}",
             "description": "e2e smoke",
             "agent_type": "base",
-            "config": {},
+            # If you want real LLM runs in smoke, set:
+            #   AIPLAT_LLM_PROVIDER=deepseek
+            #   AIPLAT_LLM_API_KEY=...
+            # Optionally override model name via AIPLAT_AGENT_MODEL / AIPLAT_LLM_MODEL.
+            "config": {"model": (AGENT_MODEL or ("deepseek-chat" if LLM_PROVIDER == "deepseek" else None))} if (AGENT_MODEL or LLM_PROVIDER == "deepseek") else {},
         },
     )
     agent_id = created.get("id")

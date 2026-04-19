@@ -97,13 +97,9 @@ def _create_llm_adapter(model_name: str = "gpt-4"):
     Uses AdapterManager if available, otherwise falls back to create_adapter().
     """
     try:
-        from core.adapters.llm import create_adapter
-        provider = os.getenv("AIPLAT_LLM_PROVIDER", "openai").strip().lower() or "openai"
-        base_url = os.getenv("AIPLAT_LLM_BASE_URL") or os.getenv("OPENAI_BASE_URL")
-        api_key = os.getenv("OPENAI_API_KEY") or os.getenv("AIPLAT_LLM_API_KEY") or ""
-        if provider == "openai" and not api_key:
-            provider = "mock"
-        return create_adapter(provider=provider, api_key=api_key or None, model=model_name, base_url=base_url)
+        from core.harness.utils.model_injection import create_selected_adapter
+
+        return create_selected_adapter(model_name=model_name)
     except Exception:
         return None
 

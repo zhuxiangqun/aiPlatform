@@ -17,11 +17,31 @@ def create_selected_adapter(*, model_name: str) -> Any:
     from core.adapters.llm import create_adapter
 
     provider = os.getenv("AIPLAT_LLM_PROVIDER", "openai").strip().lower() or "openai"
+    # Allow explicit model override (useful for OpenAI-compatible providers like DeepSeek).
+    selected_model = os.getenv("AIPLAT_LLM_MODEL", "").strip() or model_name
+
+    # Provider-specific defaults (OpenAI-compatible).
+    if provider == "deepseek":
+        # DeepSeek官方文档：可用 base_url=https://api.deepseek.com 或 https://api.deepseek.com/v1
+        # 为兼容 OpenAI SDK 的默认 /v1 路径，这里默认使用 /v1。
+        base_url = (
+            os.getenv("AIPLAT_LLM_BASE_URL")
+            or os.getenv("DEEPSEEK_BASE_URL")
+            or "https://api.deepseek.com/v1"
+        )
+        api_key = os.getenv("AIPLAT_LLM_API_KEY") or os.getenv("DEEPSEEK_API_KEY") or ""
+        # If user kept default model_name (gpt-4), map to deepseek-chat by default.
+        if selected_model in ("gpt-4", "gpt-4o", "gpt-3.5-turbo"):
+            selected_model = "deepseek-chat"
+        # DeepSeek is OpenAI-compatible → use openai adapter.
+        return create_adapter(provider="openai", api_key=api_key or None, model=selected_model, base_url=base_url)
+
+    # Generic providers
     base_url = os.getenv("AIPLAT_LLM_BASE_URL") or os.getenv("OPENAI_BASE_URL")
     api_key = os.getenv("OPENAI_API_KEY") or os.getenv("AIPLAT_LLM_API_KEY") or ""
     if provider == "openai" and not api_key:
         provider = "mock"
-    return create_adapter(provider=provider, api_key=api_key or None, model=model_name, base_url=base_url)
+    return create_adapter(provider=provider, api_key=api_key or None, model=selected_model, base_url=base_url)
 
 
 def _bind_model(obj: Any, adapter: Any) -> None:
@@ -105,4 +125,3 @@ def ensure_skill_model(skill: Any, *, model_name: str, force: bool = False) -> A
         _bind_model(skill, adapter)
         return adapter
     return cur
-
