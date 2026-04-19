@@ -8202,6 +8202,14 @@ async def diagnostics_repo_changeset_record(request: RepoChangesetPreviewRequest
     Record the repo changeset summary as a changeset audit event.
     """
     preview = await diagnostics_repo_changeset_preview(request)
+    staged_preview: dict | None = None
+    try:
+        staged_preview = await diagnostics_repo_staged_preview(
+            RepoStagedPreviewRequest(repo_root=request.repo_root, include_patch=False)
+        )
+    except Exception:
+        staged_preview = None
+
     tests_summary = None
     try:
         if bool(getattr(request, "run_tests", False)):
@@ -8217,7 +8225,13 @@ async def diagnostics_repo_changeset_record(request: RepoChangesetPreviewRequest
                 status="failed",
                 args={"branch": preview.get("branch"), "head": preview.get("head"), "note": str(request.note or "").strip()},
                 error=f"tests_exception:{type(e).__name__}",
-                result={"diff_sha256": preview.get("diff_sha256"), "tests": {"error": str(e)[:200]}},
+                result={
+                    "diff_sha256": preview.get("diff_sha256"),
+                    "staged_patch_sha256": (staged_preview or {}).get("patch_sha256") if isinstance(staged_preview, dict) else None,
+                    "staged_files_count": len((staged_preview or {}).get("staged_files") or []) if isinstance(staged_preview, dict) else 0,
+                    "staged_files_sample": ((staged_preview or {}).get("staged_files") or [])[:20] if isinstance(staged_preview, dict) else [],
+                    "tests": {"error": str(e)[:200]},
+                },
             )
         except Exception:
             pass
@@ -8232,6 +8246,10 @@ async def diagnostics_repo_changeset_record(request: RepoChangesetPreviewRequest
                 "working_tree": preview.get("working_tree"),
                 "staged": preview.get("staged"),
                 "diff_sha256": preview.get("diff_sha256"),
+                "staged_patch_sha256": (staged_preview or {}).get("patch_sha256") if isinstance(staged_preview, dict) else None,
+                "staged_files_count": len((staged_preview or {}).get("staged_files") or []) if isinstance(staged_preview, dict) else 0,
+                "staged_files_sample": ((staged_preview or {}).get("staged_files") or [])[:20] if isinstance(staged_preview, dict) else [],
+                "suggested_commit_message": (staged_preview or {}).get("suggested_commit_message") if isinstance(staged_preview, dict) else None,
                 "tests": {
                     "exit_code": (tests_summary or {}).get("exit_code") if isinstance(tests_summary, dict) else None,
                     "duration_ms": (tests_summary or {}).get("duration_ms") if isinstance(tests_summary, dict) else None,
@@ -8242,7 +8260,12 @@ async def diagnostics_repo_changeset_record(request: RepoChangesetPreviewRequest
         )
     except Exception:
         pass
-    return {"status": "recorded", "preview": preview, "tests": tests_summary}
+    return {
+        "status": "recorded",
+        "preview": preview,
+        "tests": tests_summary,
+        "staged": staged_preview,
+    }
 
 
 # ==================== Health Check ====================

@@ -341,6 +341,36 @@ const Doctor: React.FC = () => {
                   { key: 'name', title: 'name', width: 200, render: (_: any, r: any) => <span className="text-xs text-gray-200">{r.name}</span> },
                   { key: 'status', title: 'status', width: 110, render: (_: any, r: any) => <Badge variant={statusVariant(r.status)}>{String(r.status || '-')}</Badge> },
                   {
+                    key: 'tests',
+                    title: 'tests',
+                    width: 140,
+                    render: (_: any, r: any) => {
+                      const ec = r?.result?.tests?.exit_code;
+                      const ms = r?.result?.tests?.duration_ms;
+                      if (ec === undefined || ec === null) return <span className="text-xs text-gray-500">-</span>;
+                      return (
+                        <div className="flex items-center gap-2">
+                          <Badge variant={Number(ec) === 0 ? 'success' : 'error'}>{String(ec)}</Badge>
+                          <span className="text-xs text-gray-400">{ms != null ? `${ms}ms` : ''}</span>
+                        </div>
+                      );
+                    },
+                  },
+                  {
+                    key: 'staged',
+                    title: 'staged',
+                    width: 160,
+                    render: (_: any, r: any) => {
+                      const cnt = r?.result?.staged_files_count ?? r?.result?.staged?.files_changed;
+                      const sha = String(r?.result?.staged_patch_sha256 || '');
+                      return (
+                        <span className="text-xs text-gray-400">
+                          {cnt != null ? `${cnt}f` : '-'} {sha ? sha.slice(0, 8) : ''}
+                        </span>
+                      );
+                    },
+                  },
+                  {
                     key: 'diff',
                     title: 'diff',
                     width: 160,
