@@ -23,6 +23,9 @@ const Syscalls: React.FC = () => {
   const [name, setName] = useState('');
   const [status, setStatus] = useState<string>('');
   const [errorContains, setErrorContains] = useState('');
+  const [approvalRequestId, setApprovalRequestId] = useState('');
+  const [targetType, setTargetType] = useState('');
+  const [targetId, setTargetId] = useState('');
 
   const loadStats = async (ovr?: Partial<{ kind: string; windowHours: number; topN: number }>) => {
     setStatsLoading(true);
@@ -54,6 +57,9 @@ const Syscalls: React.FC = () => {
       name: string;
       status: string;
       errorContains: string;
+      approvalRequestId: string;
+      targetType: string;
+      targetId: string;
     }>,
   ) => {
     setLoading(true);
@@ -66,6 +72,9 @@ const Syscalls: React.FC = () => {
       const effectiveName = ovr?.name != null ? ovr.name : name;
       const effectiveStatus = ovr?.status != null ? ovr.status : status;
       const effectiveErrorContains = ovr?.errorContains != null ? ovr.errorContains : errorContains;
+      const effectiveApproval = ovr?.approvalRequestId != null ? ovr.approvalRequestId : approvalRequestId;
+      const effectiveTargetType = ovr?.targetType != null ? ovr.targetType : targetType;
+      const effectiveTargetId = ovr?.targetId != null ? ovr.targetId : targetId;
       const res = await diagnosticsApi.listSyscalls({
         limit: effectiveLimit,
         offset: effectiveOffset,
@@ -75,6 +84,9 @@ const Syscalls: React.FC = () => {
         name: effectiveName || undefined,
         status: effectiveStatus || undefined,
         error_contains: effectiveErrorContains || undefined,
+        approval_request_id: effectiveApproval || undefined,
+        target_type: effectiveTargetType || undefined,
+        target_id: effectiveTargetId || undefined,
       });
       const data = res?.syscalls || {};
       setItems(Array.isArray(data.items) ? data.items : []);
@@ -107,6 +119,9 @@ const Syscalls: React.FC = () => {
     const qName = q.get('name') || '';
     const qStatus = q.get('status') || '';
     const qError = q.get('error_contains') || '';
+    const qApproval = q.get('approval_request_id') || '';
+    const qTargetType = q.get('target_type') || '';
+    const qTargetId = q.get('target_id') || '';
     const qLimit = q.get('limit');
     const qOffset = q.get('offset');
 
@@ -120,6 +135,9 @@ const Syscalls: React.FC = () => {
       setName(qName);
       setStatus(qStatus);
       setErrorContains(qError);
+      setApprovalRequestId(qApproval);
+      setTargetType(qTargetType);
+      setTargetId(qTargetId);
       setLimit(nextLimit);
       setOffset(nextOffset);
       // Load with parsed values immediately (avoid waiting for setState)
@@ -130,6 +148,9 @@ const Syscalls: React.FC = () => {
         name: qName,
         status: qStatus,
         errorContains: qError,
+        approvalRequestId: qApproval,
+        targetType: qTargetType,
+        targetId: qTargetId,
         limit: nextLimit,
         offset: nextOffset,
       });
@@ -216,6 +237,9 @@ const Syscalls: React.FC = () => {
           ]}
         />
         <Input label="error(模糊)" value={errorContains} onChange={(e: any) => setErrorContains(e.target.value)} />
+        <Input label="approval_id" value={approvalRequestId} onChange={(e: any) => setApprovalRequestId(e.target.value)} />
+        <Input label="target_type" value={targetType} onChange={(e: any) => setTargetType(e.target.value)} />
+        <Input label="target_id" value={targetId} onChange={(e: any) => setTargetId(e.target.value)} />
 
         <Button
           icon={<Search className="w-4 h-4" />}

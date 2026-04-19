@@ -177,6 +177,8 @@ export const diagnosticsApi = {
     name?: string;
     status?: string;
     error_contains?: string;
+    target_type?: string;
+    target_id?: string;
     approval_request_id?: string;
     span_id?: string;
   } = {}) => {
@@ -189,6 +191,8 @@ export const diagnosticsApi = {
     if (params.name) q.set('name', params.name);
     if (params.status) q.set('status', params.status);
     if (params.error_contains) q.set('error_contains', params.error_contains);
+    if (params.target_type) q.set('target_type', params.target_type);
+    if (params.target_id) q.set('target_id', params.target_id);
     if (params.approval_request_id) q.set('approval_request_id', params.approval_request_id);
     if (params.span_id) q.set('span_id', params.span_id);
     const qs = q.toString();

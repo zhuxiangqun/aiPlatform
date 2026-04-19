@@ -730,6 +730,8 @@ async def list_layer_syscalls(
     name: Optional[str] = None,
     status: Optional[str] = None,
     error_contains: Optional[str] = None,
+    target_type: Optional[str] = None,
+    target_id: Optional[str] = None,
     approval_request_id: Optional[str] = None,
     span_id: Optional[str] = None,
     limit: int = 100,
@@ -756,6 +758,8 @@ async def list_layer_syscalls(
         name=name,
         status=status,
         error_contains=error_contains,
+        target_type=target_type,
+        target_id=target_id,
         approval_request_id=approval_request_id,
         span_id=span_id,
     )

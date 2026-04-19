@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { diagnosticsApi } from '../../services';
 import { Card, CardContent, CardHeader, Badge, Button, Table } from '../../components/ui';
 import { ActionableFixes } from '../../components/common/ActionableFixes';
 import { Copy } from 'lucide-react';
 
 const Doctor: React.FC = () => {
+  const navigate = useNavigate();
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [runningSmoke, setRunningSmoke] = useState(false);
@@ -46,6 +47,16 @@ const Doctor: React.FC = () => {
     } catch {
       return String(ts);
     }
+  };
+
+  const openChangesetInSyscalls = (r: any) => {
+    const q = new URLSearchParams();
+    q.set('kind', 'changeset');
+    if (r?.name) q.set('name', String(r.name));
+    if (r?.approval_request_id) q.set('approval_request_id', String(r.approval_request_id));
+    if (r?.target_type) q.set('target_type', String(r.target_type));
+    if (r?.target_id) q.set('target_id', String(r.target_id));
+    navigate(`/diagnostics/syscalls?${q.toString()}`);
   };
 
   const copyReport = async () => {
@@ -243,6 +254,10 @@ const Doctor: React.FC = () => {
                 ]}
                 data={changesetItems.slice(0, 20)}
                 rowKey={(r: any) => String(r.id)}
+                onRow={(r: any) => ({
+                  onClick: () => openChangesetInSyscalls(r),
+                  className: 'cursor-pointer',
+                })}
               />
             )}
           </CardContent>

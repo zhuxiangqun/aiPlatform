@@ -78,6 +78,8 @@ class CoreAPIClient:
         name: Optional[str] = None,
         status: Optional[str] = None,
         error_contains: Optional[str] = None,
+        target_type: Optional[str] = None,
+        target_id: Optional[str] = None,
         approval_request_id: Optional[str] = None,
         span_id: Optional[str] = None,
     ) -> Dict[str, Any]:
@@ -94,6 +96,10 @@ class CoreAPIClient:
             params["status"] = status
         if error_contains:
             params["error_contains"] = error_contains
+        if target_type:
+            params["target_type"] = target_type
+        if target_id:
+            params["target_id"] = target_id
         if approval_request_id:
             params["approval_request_id"] = approval_request_id
         if span_id:
