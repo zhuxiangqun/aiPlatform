@@ -239,3 +239,112 @@ class OpsExporter:
         # Note: token_sha256 intentionally not present in list_gateway_tokens result.
         fieldnames = ["id", "name", "tenant_id", "enabled", "created_at"]
         return _csv_bytes(items, fieldnames=fieldnames), "gateway_tokens.csv"
+
+    async def export_release_rollouts_csv(
+        self,
+        *,
+        tenant_id: str,
+        target_type: Optional[str] = None,
+        target_id: Optional[str] = None,
+        limit: int = 5000,
+    ) -> Tuple[bytes, str]:
+        res = await self._store.list_release_rollouts(
+            tenant_id=str(tenant_id),
+            target_type=target_type,
+            target_id=target_id,
+            limit=int(limit),
+            offset=0,
+        )
+        items = res.get("items") or []
+        fieldnames = [
+            "tenant_id",
+            "target_type",
+            "target_id",
+            "candidate_id",
+            "status",
+            "rollout_percent",
+            "include_actor_ids",
+            "exclude_actor_ids",
+            "metadata",
+            "created_at",
+            "updated_at",
+        ]
+        # stringify lists/dicts
+        norm = []
+        for it in items:
+            if isinstance(it, dict):
+                d = dict(it)
+                import json
+
+                if isinstance(d.get("include_actor_ids"), (list, dict)):
+                    d["include_actor_ids"] = json.dumps(d.get("include_actor_ids"), ensure_ascii=False)
+                if isinstance(d.get("exclude_actor_ids"), (list, dict)):
+                    d["exclude_actor_ids"] = json.dumps(d.get("exclude_actor_ids"), ensure_ascii=False)
+                if isinstance(d.get("metadata"), (list, dict)):
+                    d["metadata"] = json.dumps(d.get("metadata"), ensure_ascii=False)
+                norm.append(d)
+        return _csv_bytes(norm, fieldnames=fieldnames), "release_rollouts.csv"
+
+    async def export_release_metrics_csv(
+        self,
+        *,
+        tenant_id: str,
+        candidate_id: str,
+        metric_key: Optional[str] = None,
+        limit: int = 5000,
+    ) -> Tuple[bytes, str]:
+        res = await self._store.list_release_metric_snapshots(
+            tenant_id=str(tenant_id),
+            candidate_id=str(candidate_id),
+            metric_key=metric_key,
+            limit=int(limit),
+            offset=0,
+        )
+        items = res.get("items") or []
+        fieldnames = ["id", "tenant_id", "candidate_id", "metric_key", "value", "window_start", "window_end", "metadata", "created_at"]
+        norm = []
+        for it in items:
+            if isinstance(it, dict):
+                d = dict(it)
+                import json
+
+                if isinstance(d.get("metadata"), (list, dict)):
+                    d["metadata"] = json.dumps(d.get("metadata"), ensure_ascii=False)
+                norm.append(d)
+        return _csv_bytes(norm, fieldnames=fieldnames), f"release_metrics_{candidate_id}.csv"
+
+    async def export_learning_artifacts_csv(
+        self,
+        *,
+        target_type: Optional[str] = None,
+        target_id: Optional[str] = None,
+        kind: Optional[str] = None,
+        status: Optional[str] = None,
+        trace_id: Optional[str] = None,
+        run_id: Optional[str] = None,
+        limit: int = 5000,
+    ) -> Tuple[bytes, str]:
+        res = await self._store.list_learning_artifacts(
+            target_type=target_type,
+            target_id=target_id,
+            kind=kind,
+            status=status,
+            trace_id=trace_id,
+            run_id=run_id,
+            limit=int(limit),
+            offset=0,
+        )
+        items = res.get("items") or []
+        fieldnames = ["artifact_id", "kind", "target_type", "target_id", "version", "status", "trace_id", "run_id", "created_at", "payload", "metadata"]
+        norm = []
+        for it in items:
+            if isinstance(it, dict):
+                d = dict(it)
+                import json
+
+                if isinstance(d.get("payload"), (list, dict)):
+                    d["payload"] = json.dumps(d.get("payload"), ensure_ascii=False)
+                if isinstance(d.get("metadata"), (list, dict)):
+                    d["metadata"] = json.dumps(d.get("metadata"), ensure_ascii=False)
+                norm.append(d)
+        return _csv_bytes(norm, fieldnames=fieldnames), "learning_artifacts.csv"

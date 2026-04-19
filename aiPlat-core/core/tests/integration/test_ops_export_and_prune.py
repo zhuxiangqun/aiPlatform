@@ -104,6 +104,50 @@ def test_ops_export_and_prune(tmp_path, monkeypatch):
         assert gt.status_code == 200
         assert b"tenant_id" in gt.content
 
+        # seed release + metrics + learning artifact
+        async def _seed_learning_release():
+            await store.upsert_release_rollout(
+                tenant_id="t1",
+                target_type="agent",
+                target_id="agent_1",
+                candidate_id="cand_1",
+                mode="percentage",
+                percentage=50,
+                include_actor_ids=["u1"],
+                exclude_actor_ids=[],
+                enabled=True,
+                metadata={"note": "seed"},
+            )
+            await store.add_release_metric_snapshot(tenant_id="t1", candidate_id="cand_1", metric_key="error_rate", value=0.1, metadata={"w": "1h"})
+            await store.upsert_learning_artifact(
+                {
+                    "artifact_id": "la_1",
+                    "kind": "release_candidate",
+                    "target_type": "agent",
+                    "target_id": "agent_1",
+                    "version": "1.0.0",
+                    "status": "published",
+                    "trace_id": "t1",
+                    "run_id": "run_seed",
+                    "payload": {"a": 1},
+                    "metadata": {"m": 2},
+                }
+            )
+
+        anyio.run(_seed_learning_release)
+
+        rr = client.get("/api/core/ops/export/release_rollouts.csv", params={"tenant_id": "t1", "limit": 50}, headers=headers)
+        assert rr.status_code == 200
+        assert b"candidate_id" in rr.content
+
+        rm = client.get("/api/core/ops/export/release_metrics.csv", params={"tenant_id": "t1", "candidate_id": "cand_1", "limit": 50}, headers=headers)
+        assert rm.status_code == 200
+        assert b"metric_key" in rm.content
+
+        la = client.get("/api/core/ops/export/learning_artifacts.csv", params={"kind": "release_candidate", "limit": 50}, headers=headers)
+        assert la.status_code == 200
+        assert b"artifact_id" in la.content
+
         # prune should succeed (best-effort)
         p = client.post("/api/core/ops/prune", json={"now_ts": 1e12}, headers=headers)
         assert p.status_code == 200

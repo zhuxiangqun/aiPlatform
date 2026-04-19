@@ -11038,6 +11038,78 @@ async def export_gateway_tokens_csv(
     return Response(content=data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'})
 
 
+@api_router.get("/ops/export/release_rollouts.csv")
+async def export_release_rollouts_csv(
+    http_request: Request,
+    tenant_id: str,
+    target_type: Optional[str] = None,
+    target_id: Optional[str] = None,
+    limit: int = 5000,
+):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    deny = await _rbac_guard(http_request=http_request, payload=None, action="ops_export", resource_type="ops", resource_id="release_rollouts")
+    if deny:
+        return deny
+    from core.apps.ops import OpsExporter
+
+    data, filename = await OpsExporter(execution_store=_execution_store).export_release_rollouts_csv(
+        tenant_id=tenant_id, target_type=target_type, target_id=target_id, limit=limit
+    )
+    return Response(content=data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'})
+
+
+@api_router.get("/ops/export/release_metrics.csv")
+async def export_release_metrics_csv(
+    http_request: Request,
+    tenant_id: str,
+    candidate_id: str,
+    metric_key: Optional[str] = None,
+    limit: int = 5000,
+):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    deny = await _rbac_guard(http_request=http_request, payload=None, action="ops_export", resource_type="ops", resource_id="release_metrics")
+    if deny:
+        return deny
+    from core.apps.ops import OpsExporter
+
+    data, filename = await OpsExporter(execution_store=_execution_store).export_release_metrics_csv(
+        tenant_id=tenant_id, candidate_id=candidate_id, metric_key=metric_key, limit=limit
+    )
+    return Response(content=data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'})
+
+
+@api_router.get("/ops/export/learning_artifacts.csv")
+async def export_learning_artifacts_csv(
+    http_request: Request,
+    target_type: Optional[str] = None,
+    target_id: Optional[str] = None,
+    kind: Optional[str] = None,
+    status: Optional[str] = None,
+    trace_id: Optional[str] = None,
+    run_id: Optional[str] = None,
+    limit: int = 5000,
+):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    deny = await _rbac_guard(http_request=http_request, payload=None, action="ops_export", resource_type="ops", resource_id="learning_artifacts")
+    if deny:
+        return deny
+    from core.apps.ops import OpsExporter
+
+    data, filename = await OpsExporter(execution_store=_execution_store).export_learning_artifacts_csv(
+        target_type=target_type,
+        target_id=target_id,
+        kind=kind,
+        status=status,
+        trace_id=trace_id,
+        run_id=run_id,
+        limit=limit,
+    )
+    return Response(content=data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'})
+
+
 @api_router.get("/")
 async def root():
     """Root endpoint"""
