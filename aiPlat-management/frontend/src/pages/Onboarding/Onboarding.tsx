@@ -13,6 +13,40 @@ const StepBadge: React.FC<{ ok?: boolean; loading?: boolean }> = ({ ok, loading 
   return <span className="w-4 h-4 inline-block" />;
 };
 
+type CheckStatus = 'pass' | 'fail' | 'warn';
+type StepCheck = { key: string; label: string; status: CheckStatus; detail?: string };
+
+const CheckBadge: React.FC<{ status: CheckStatus }> = ({ status }) => {
+  const cls =
+    status === 'pass'
+      ? 'bg-green-500/15 text-green-400 border-green-500/30'
+      : status === 'fail'
+        ? 'bg-red-500/15 text-red-400 border-red-500/30'
+        : 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30';
+  const text = status === 'pass' ? '通过' : status === 'fail' ? '未通过' : '警告';
+  return <span className={`px-2 py-0.5 rounded border text-xs ${cls}`}>{text}</span>;
+};
+
+const ChecksPanel: React.FC<{ title?: string; checks: StepCheck[] }> = ({ title = '检查项', checks }) => {
+  if (!checks || checks.length === 0) return null;
+  return (
+    <div className="bg-dark-hover border border-dark-border rounded-lg p-3">
+      <div className="text-sm font-semibold text-gray-200 mb-2">{title}</div>
+      <div className="space-y-2">
+        {checks.map((c) => (
+          <div key={c.key} className="flex items-start justify-between gap-3">
+            <div className="text-sm text-gray-200">
+              {c.label}
+              {c.detail ? <div className="text-xs text-gray-500 mt-0.5">{c.detail}</div> : null}
+            </div>
+            <CheckBadge status={c.status} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const Onboarding: React.FC = () => {
   const [activeStep, setActiveStep] = useState<StepKey>('adapter');
   const [state, setState] = useState<any>(null);
@@ -290,10 +324,11 @@ const Onboarding: React.FC = () => {
     if (k === 'adapter') return adapterOk;
     if (k === 'default_llm') return defaultLlmOk;
     if (k === 'tenant') return tenantOk;
-    if (k === 'strong_gate') return isStrongGateEnabled;
+    // strong_gate 是可选项：不把“未开启”视为失败（否则会卡住 auto-jump）
+    if (k === 'strong_gate') return undefined;
     if (k === 'autosmoke') return autosmokeOk;
     if (k === 'secrets') return secretsOk;
-    if (k === 'doctor') return doctorOk;
+    if (k === 'doctor') return doctor ? doctorOk : undefined;
     if (k === 'health') return healthOk;
     if (k === 'smoke') return smokeOk;
     return undefined;
@@ -326,6 +361,21 @@ const Onboarding: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, doctor]);
 
+  // Persist activeStep for a more productized experience.
+  useEffect(() => {
+    try {
+      localStorage.setItem('onboarding_active_step', String(activeStep));
+    } catch {}
+  }, [activeStep]);
+
+  useEffect(() => {
+    try {
+      const s = localStorage.getItem('onboarding_active_step') as StepKey | null;
+      if (s) setActiveStep(s);
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const healthOk = useMemo(() => {
     const h = healthResult?.health || state?.health;
     if (!h) return undefined;
@@ -342,6 +392,157 @@ const Onboarding: React.FC = () => {
     if (!smokeResult) return undefined;
     return !!smokeResult?.ok;
   }, [smokeResult]);
+
+  const isStrongGateEnabled = useMemo(() => {
+    const policy = defaultTenantPolicy?.policy;
+    const tools = policy?.tool_policy?.approval_required_tools;
+    if (!Array.isArray(tools)) return false;
+    return tools.includes('*');
+  }, [defaultTenantPolicy]);
+
+  const stepOrder: StepKey[] = ['adapter', 'default_llm', 'tenant', 'strong_gate', 'autosmoke', 'secrets', 'doctor', 'health', 'smoke'];
+  const progress = useMemo(() => {
+    const passed = stepOrder.filter((k) => getStepOk(k) === true).length;
+    const failed = stepOrder.filter((k) => getStepOk(k) === false).length;
+    const total = stepOrder.length;
+    return { passed, failed, total };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adapterOk, defaultLlmOk, tenantOk, autosmokeOk, secretsOk, doctorOk, healthOk, smokeOk, isStrongGateEnabled, doctor]);
+
+  const activeChecks: StepCheck[] = useMemo(() => {
+    const checks: StepCheck[] = [];
+    if (activeStep === 'adapter') {
+      const adapters = state?.adapters?.adapters || [];
+      checks.push({
+        key: 'adapter.exists',
+        label: '至少存在一个 Adapter',
+        status: Array.isArray(adapters) && adapters.length > 0 ? 'pass' : 'fail',
+        detail: Array.isArray(adapters) ? `当前数量：${adapters.length}` : '未加载',
+      });
+      if (adapterResult) {
+        checks.push({
+          key: 'adapter.test',
+          label: 'Adapter 连通性测试',
+          status: adapterResult?.test?.success ? 'pass' : 'fail',
+          detail: adapterResult?.test?.success ? 'success' : String(adapterResult?.test?.error || 'unknown'),
+        });
+      }
+      return checks;
+    }
+    if (activeStep === 'default_llm') {
+      checks.push({
+        key: 'default_llm.set',
+        label: 'default_llm 已配置',
+        status: defaultLlmOk ? 'pass' : 'fail',
+        detail: defaultLlmOk ? `${state?.core_state?.default_llm?.adapter_id} / ${state?.core_state?.default_llm?.model}` : '未设置',
+      });
+      return checks;
+    }
+    if (activeStep === 'tenant') {
+      checks.push({
+        key: 'tenant.default',
+        label: 'default tenant 已初始化',
+        status: tenantOk ? 'pass' : 'fail',
+      });
+      return checks;
+    }
+    if (activeStep === 'strong_gate') {
+      checks.push({
+        key: 'strong_gate.state',
+        label: '强门禁状态（可选）',
+        status: isStrongGateEnabled ? 'warn' : 'pass',
+        detail: isStrongGateEnabled ? '已开启：所有工具执行都需审批（可能影响调试效率）' : '未开启',
+      });
+      return checks;
+    }
+    if (activeStep === 'autosmoke') {
+      checks.push({
+        key: 'autosmoke.enabled',
+        label: 'autosmoke 已启用',
+        status: autosmokeOk ? 'pass' : 'fail',
+      });
+      const enforce = !!state?.core_state?.autosmoke?.enforce;
+      checks.push({
+        key: 'autosmoke.enforce',
+        label: 'enforce（发布前验证）',
+        status: enforce ? 'pass' : 'warn',
+        detail: enforce ? '已开启' : '未开启（建议开启）',
+      });
+      return checks;
+    }
+    if (activeStep === 'secrets') {
+      const configured = !!state?.core_state?.secrets?.configured;
+      checks.push({
+        key: 'secrets.key',
+        label: 'AIPLAT_SECRET_KEY 已配置',
+        status: configured ? 'pass' : 'warn',
+        detail: configured ? '已配置' : '未配置（将回退明文存储，不建议）',
+      });
+      const plainCount = Number(secretsStatus?.plaintext_count ?? secretsStatus?.plain_count ?? 0) || 0;
+      checks.push({
+        key: 'secrets.plain',
+        label: '历史明文 key 已迁移',
+        status: configured && plainCount === 0 ? 'pass' : plainCount > 0 ? 'fail' : 'warn',
+        detail: plainCount > 0 ? `检测到明文条目：${plainCount}` : 'n/a',
+      });
+      return checks;
+    }
+    if (activeStep === 'doctor') {
+      if (!doctor) {
+        checks.push({ key: 'doctor.loaded', label: 'Doctor 已加载', status: 'warn', detail: '暂无数据，请点击刷新/复检' });
+        return checks;
+      }
+      const recs = Array.isArray(doctor?.recommendations) ? doctor.recommendations : [];
+      const hasActions = !!doctor?.actions && Object.keys(doctor.actions || {}).length > 0;
+      checks.push({
+        key: 'doctor.recs',
+        label: '建议项（recommendations）',
+        status: recs.length === 0 ? 'pass' : 'warn',
+        detail: `数量：${recs.length}`,
+      });
+      checks.push({
+        key: 'doctor.actions',
+        label: 'Quick Fix Actions（白名单）',
+        status: hasActions ? 'pass' : 'warn',
+        detail: hasActions ? `数量：${Object.keys(doctor.actions || {}).length}` : '无可执行 action',
+      });
+      return checks;
+    }
+    if (activeStep === 'health') {
+      const ok = healthOk;
+      checks.push({
+        key: 'health.all',
+        label: '全链路健康（infra/core/platform/app）',
+        status: ok === true ? 'pass' : ok === false ? 'fail' : 'warn',
+        detail: ok == null ? '尚未运行健康检查' : ok ? 'healthy' : '存在非 healthy 的 layer',
+      });
+      return checks;
+    }
+    if (activeStep === 'smoke') {
+      const ok = smokeOk;
+      checks.push({
+        key: 'smoke.e2e',
+        label: 'E2E Smoke',
+        status: ok === true ? 'pass' : ok === false ? 'fail' : 'warn',
+        detail: ok == null ? '尚未运行' : ok ? 'ok' : String(smokeResult?.error || 'failed'),
+      });
+      return checks;
+    }
+    return checks;
+  }, [
+    activeStep,
+    state,
+    adapterResult,
+    defaultLlmOk,
+    tenantOk,
+    autosmokeOk,
+    secretsStatus,
+    doctor,
+    healthOk,
+    smokeOk,
+    smokeResult,
+    isStrongGateEnabled,
+  ]);
 
   const runConfigureAdapter = async () => {
     setAdapterLoading(true);
@@ -558,13 +759,6 @@ const Onboarding: React.FC = () => {
     }
   };
 
-  const isStrongGateEnabled = useMemo(() => {
-    const policy = defaultTenantPolicy?.policy;
-    const tools = policy?.tool_policy?.approval_required_tools;
-    if (!Array.isArray(tools)) return false;
-    return tools.includes('*');
-  }, [defaultTenantPolicy]);
-
   const submitStrongGate = async (enabled: boolean, approvalIdOverride?: string) => {
     setStrongGateLoading(true);
     setStrongGateResult(null);
@@ -606,6 +800,10 @@ const Onboarding: React.FC = () => {
           <h1 className="text-xl font-semibold text-gray-200">初始化向导</h1>
           <p className="text-sm text-gray-500 mt-1">把系统快速带到“可用 + 可观测 + 可验证”的状态</p>
         </div>
+        <div className="text-xs text-gray-500">
+          进度：<span className="text-gray-300">{progress.passed}</span>/{progress.total}
+          {progress.failed > 0 ? <span className="ml-2 text-red-400">未通过：{progress.failed}</span> : null}
+        </div>
         <button
           onClick={refreshState}
           className="px-3 py-2 rounded-lg bg-dark-hover text-gray-200 hover:bg-dark-border transition-colors text-sm flex items-center gap-2"
@@ -645,6 +843,7 @@ const Onboarding: React.FC = () => {
       {activeStep === 'adapter' && (
         <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-4">
           <div className="text-gray-200 font-medium">Step 1：配置模型 Adapter</div>
+          <ChecksPanel checks={activeChecks} />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <div className="text-xs text-gray-500 mb-1">名称</div>
@@ -713,6 +912,7 @@ const Onboarding: React.FC = () => {
         <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-4">
           <div className="text-gray-200 font-medium">Step：设为默认路由（全局，需审批）</div>
           <div className="text-xs text-gray-500">建议先完成 Adapter 配置；若触发审批会自动轮询并在批准后自动生效。</div>
+          <ChecksPanel checks={activeChecks} />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <div className="text-xs text-gray-500 mb-1">默认 Adapter</div>
@@ -788,6 +988,7 @@ const Onboarding: React.FC = () => {
       {activeStep === 'tenant' && (
         <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-4">
           <div className="text-gray-200 font-medium">Step：初始化默认 Tenant/Policies（需审批）</div>
+          <ChecksPanel checks={activeChecks} />
           <div>
             <div className="text-xs text-gray-500 mb-1">approval_request_id（可选：批准后填入再提交）</div>
             <input
@@ -846,6 +1047,7 @@ const Onboarding: React.FC = () => {
               {tenantPolicyLoading ? '刷新中…' : '刷新'}
             </button>
           </div>
+          <ChecksPanel checks={activeChecks} />
           <div>
             <div className="text-xs text-gray-500 mb-1">details（可选：审批说明/备注）</div>
             <textarea
@@ -897,6 +1099,7 @@ const Onboarding: React.FC = () => {
       {activeStep === 'autosmoke' && (
         <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-4">
           <div className="text-gray-200 font-medium">Step：配置 autosmoke（配置中心，需审批）</div>
+          <ChecksPanel checks={activeChecks} />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <label className="flex items-center gap-2 text-sm text-gray-300">
               <input
@@ -969,6 +1172,7 @@ const Onboarding: React.FC = () => {
       {activeStep === 'health' && (
         <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-4">
           <div className="text-gray-200 font-medium">Step 2：检查全链路健康</div>
+          <ChecksPanel checks={activeChecks} />
           <button
             disabled={healthLoading}
             onClick={runHealthCheck}
@@ -985,6 +1189,7 @@ const Onboarding: React.FC = () => {
       {activeStep === 'smoke' && (
         <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-4">
           <div className="text-gray-200 font-medium">Step 3：运行 E2E Smoke</div>
+          <ChecksPanel checks={activeChecks} />
           <button
             disabled={smokeLoading}
             onClick={runSmoke}
@@ -1000,6 +1205,7 @@ const Onboarding: React.FC = () => {
 
       {activeStep === 'secrets' && (
         <div className="space-y-4">
+          <ChecksPanel checks={activeChecks} />
           <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-3">
             <div className="text-gray-200 font-medium">密钥存储状态</div>
             <div className="text-sm text-gray-500">
@@ -1189,6 +1395,7 @@ const Onboarding: React.FC = () => {
               </button>
             </div>
           </div>
+          <ChecksPanel checks={activeChecks} />
           <ActionableFixes actions={doctor?.actions} recommendations={doctor?.recommendations} onAfterAction={refreshDoctor} />
           <div className="flex items-center gap-2">
             <button
