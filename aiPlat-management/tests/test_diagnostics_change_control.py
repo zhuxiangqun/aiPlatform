@@ -31,6 +31,8 @@ def client():
                     "events": {"items": [{"id": "se1"}], "total": 1, "limit": 200, "offset": 0},
                 },
             )
+        if p == "/api/core/change-control/changes/chg-1/autosmoke":
+            return httpx.Response(200, json={"status": "ok", "change_id": "chg-1", "results": [{"type": "skill", "id": "s1", "enqueued": True}]})
         return httpx.Response(404, json={"detail": "not found"})
 
     transport = httpx.MockTransport(handler)
@@ -55,3 +57,11 @@ def test_change_control_detail_core(client):
     assert payload["layer"] == "core"
     assert payload["change"]["change_id"] == "chg-1"
 
+
+def test_change_control_autosmoke_core(client):
+    r = client.post("/api/diagnostics/change-control/core/chg-1/autosmoke")
+    assert r.status_code == 200
+    payload = r.json()
+    assert payload["supported"] is True
+    assert payload["layer"] == "core"
+    assert payload["result"]["change_id"] == "chg-1"

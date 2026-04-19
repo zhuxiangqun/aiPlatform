@@ -1022,6 +1022,24 @@ async def get_layer_change_control(layer: str, change_id: str, request: Request,
     return {"layer": "core", "supported": True, "change": detail}
 
 
+@router.post("/change-control/{layer}/{change_id}/autosmoke")
+async def autosmoke_layer_change_control(layer: str, change_id: str, request: Request) -> Dict[str, Any]:
+    """Trigger autosmoke for targets referenced by change_id (core layer only)."""
+    health_checkers = request.app.state.health_checkers
+    if layer not in health_checkers:
+        raise HTTPException(status_code=404, detail=f"Layer '{layer}' not found")
+
+    if layer != "core":
+        return {"layer": layer, "supported": False, "message": "Change Control autosmoke is supported for core layer only (for now)."}
+
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="Core client not initialized")
+
+    out = await core_client.autosmoke_change_control(change_id)
+    return {"layer": "core", "supported": True, "result": out}
+
+
 @router.get("/graphs/{layer}/{run_id}")
 async def get_layer_graph_run(
     layer: str,

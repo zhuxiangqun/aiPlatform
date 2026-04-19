@@ -152,6 +152,9 @@ class CoreAPIClient:
             params["tenant_id"] = str(tenant_id)
         return await self._request("GET", f"/api/core/change-control/changes/{change_id}", params=params)
 
+    async def autosmoke_change_control(self, change_id: str) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/change-control/changes/{change_id}/autosmoke", json={})
+
     # ===== Runs (Platform execution contract) =====
 
     async def get_run(self, run_id: str) -> Dict[str, Any]:
