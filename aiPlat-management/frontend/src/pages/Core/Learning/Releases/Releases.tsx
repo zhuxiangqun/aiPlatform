@@ -60,7 +60,8 @@ function formatRemaining(expiresAtSeconds: number | null): { text: string; expir
 
 const Releases: React.FC = () => {
   const navigate = useNavigate();
-  const [agentId, setAgentId] = useState('');
+  const [targetType, setTargetType] = useState<'agent' | 'skill'>('skill');
+  const [targetId, setTargetId] = useState('');
   const [loading, setLoading] = useState(false);
   const [published, setPublished] = useState<Candidate[]>([]);
   const [history, setHistory] = useState<Candidate[]>([]);
@@ -87,8 +88,8 @@ const Releases: React.FC = () => {
     setLoading(true);
     try {
       const pub = await learningApi.listArtifacts({
-        target_type: 'agent',
-        target_id: agentId || undefined,
+        target_type: targetType,
+        target_id: targetId || undefined,
         kind: 'release_candidate',
         status: 'published',
         limit: 50,
@@ -99,8 +100,8 @@ const Releases: React.FC = () => {
       setPublished(pubItems);
 
       const hist = await learningApi.listArtifacts({
-        target_type: 'agent',
-        target_id: agentId || undefined,
+        target_type: targetType,
+        target_id: targetId || undefined,
         kind: 'release_candidate',
         status: historyStatus || undefined,
         // history: include rolled_back/draft by not filtering status
@@ -184,9 +185,28 @@ const Releases: React.FC = () => {
     }
   };
 
+  const publish = async (candidateId: string) => {
+    try {
+      const r: any = await learningApi.publishCandidate(candidateId, { user_id: 'admin', require_approval: true, details: 'manual publish' });
+      if (r?.status === 'approval_required' && r?.approval_request_id) {
+        toast.info(`已创建审批：${String(r.approval_request_id)}`);
+        try {
+          navigate('/core/approvals');
+        } catch {
+          // ignore
+        }
+        return;
+      }
+      toast.success('已发布');
+      fetchData();
+    } catch (e: any) {
+      toast.error(e?.message || '发布失败');
+    }
+  };
+
   const expireNow = async () => {
     try {
-      await learningApi.expireReleases({ target_type: 'agent', target_id: agentId || undefined, now: Math.floor(Date.now() / 1000) });
+      await learningApi.expireReleases({ target_type: targetType, target_id: targetId || undefined, now: Math.floor(Date.now() / 1000) });
       toast.success('已执行 expire 检查');
       fetchData();
     } catch (e: any) {
@@ -255,6 +275,11 @@ const Releases: React.FC = () => {
             <Button variant="ghost" icon={<RotateCcw size={14} />} onClick={() => openRollbackReport(r)}>
               回滚原因
             </Button>
+            {r.status !== 'published' && (
+              <Button variant="primary" onClick={() => publish(r.artifact_id)}>
+                发布
+              </Button>
+            )}
             {r.trace_id && (
               <Button variant="ghost" icon={<ExternalLink size={14} />} onClick={() => navigate(`/diagnostics/traces/${r.trace_id}`)}>
                 Trace
@@ -276,13 +301,17 @@ const Releases: React.FC = () => {
   );
 
   const runAutoRollback = async (dryRun: boolean) => {
-    if (!agentId) {
+    if (targetType !== 'agent') {
+      toast.error('回归回滚仅支持 agent');
+      return;
+    }
+    if (!targetId) {
       toast.error('请先填写 agent_id');
       return;
     }
     try {
       const payload: Record<string, unknown> = {
-        agent_id: agentId,
+        agent_id: targetId,
         candidate_id: publishedActive?.artifact_id,
         baseline_candidate_id: rbBaselineCandidateId || undefined,
         current_window: Number(rbCurrentWindow) || 50,
@@ -319,7 +348,7 @@ const Releases: React.FC = () => {
           <div className="text-sm text-gray-500 mt-1">active candidate、TTL/expires_at、历史与回滚原因（regression_report）</div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" icon={<Clock size={16} />} onClick={expireNow} disabled={!agentId}>
+          <Button variant="secondary" icon={<Clock size={16} />} onClick={expireNow} disabled={!targetId}>
             立即检查过期
           </Button>
           <Button variant="secondary" icon={<RefreshCw size={16} />} onClick={fetchData} loading={loading}>
@@ -333,9 +362,18 @@ const Releases: React.FC = () => {
           <div className="flex flex-wrap items-center gap-3">
             <Input
               className="w-72"
-              placeholder="agent_id（必填，用于查询/expire/回归回滚）"
-              value={agentId}
-              onChange={(e) => setAgentId(e.target.value)}
+              placeholder={`${targetType}_id（必填，用于查询/expire/回归回滚）`}
+              value={targetId}
+              onChange={(e) => setTargetId(e.target.value)}
+            />
+            <Select
+              className="w-36"
+              value={targetType}
+              onChange={(v) => setTargetType(v as any)}
+              options={[
+                { label: 'skill', value: 'skill' },
+                { label: 'agent', value: 'agent' },
+              ]}
             />
             <Select
               className="w-44"

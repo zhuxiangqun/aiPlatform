@@ -56,7 +56,7 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
       if ((res as any)?.status === 'approval_required' && (res as any)?.approval_request_id) {
         toast.error(`需要审批：${String((res as any).approval_request_id)}`);
         try {
-          window.open('/core/learning/approvals', '_blank', 'noopener,noreferrer');
+          window.open('/core/approvals', '_blank', 'noopener,noreferrer');
         } catch {
           // ignore
         }

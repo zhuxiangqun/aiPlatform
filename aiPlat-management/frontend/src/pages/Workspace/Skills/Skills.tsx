@@ -4,7 +4,7 @@ import { Copy, Info, Plus, RotateCw, Trash2, Pencil, Play, Layers, Clock } from 
 import { motion } from 'framer-motion';
 import { Badge, Table, Select, Switch, Button, Modal, toast } from '../../../components/ui';
 import { useWorkspaceSkillStore } from '../../../stores';
-import type { Skill } from '../../../services';
+import { learningApi, type Skill } from '../../../services';
 import { workspaceSkillApi } from '../../../services/coreApi';
 import AddSkillModal from '../../../components/workspace/AddSkillModal';
 import EditSkillModal from '../../../components/workspace/EditSkillModal';
@@ -90,7 +90,7 @@ const WorkspaceSkills: React.FC = () => {
       if (res?.status === 'approval_required' && res?.approval_request_id) {
         toast.error(`需要审批：${res.approval_request_id}`);
         try {
-          window.open('/core/learning/approvals', '_blank', 'noopener,noreferrer');
+          window.open('/core/approvals', '_blank', 'noopener,noreferrer');
         } catch {
           // ignore
         }
@@ -435,6 +435,37 @@ const WorkspaceSkills: React.FC = () => {
                 </span>
               </div>
               <div className="flex items-center gap-2">
+                {gov?.candidate_id && String(gov?.published_candidate_id || '') !== String(gov?.candidate_id || '') && (
+                  <Button
+                    variant="primary"
+                    onClick={async () => {
+                      try {
+                        const cid = String(gov.candidate_id);
+                        const r: any = await learningApi.publishCandidate(cid, {
+                          user_id: 'admin',
+                          require_approval: true,
+                          details: `publish workspace skill ${String(detailModal.skill?.id || '')}`,
+                        });
+                        if (r?.status === 'approval_required' && r?.approval_request_id) {
+                          toast.error(`需要审批：${String(r.approval_request_id)}`);
+                          try {
+                            window.open('/core/approvals', '_blank', 'noopener,noreferrer');
+                          } catch {
+                            // ignore
+                          }
+                          return;
+                        }
+                        toast.success('已发布');
+                        fetchSkills();
+                        setDetailModal({ open: false, skill: null });
+                      } catch (e: any) {
+                        toast.error(e?.message || '发布失败');
+                      }
+                    }}
+                  >
+                    发布
+                  </Button>
+                )}
                 {gov?.candidate_id && (
                   <Button variant="ghost" onClick={() => copyText(String(gov.candidate_id))}>
                     复制 candidate_id
