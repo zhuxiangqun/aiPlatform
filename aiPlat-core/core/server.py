@@ -7287,6 +7287,12 @@ async def upsert_prompt_template(request: PromptTemplateUpsertRequest):
     if not _execution_store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
 
+    prev = None
+    try:
+        prev = await _execution_store.get_prompt_template(template_id=str(request.template_id))
+    except Exception:
+        prev = None
+
     if request.require_approval:
         if not request.approval_request_id:
             rid = await _require_onboarding_approval(
@@ -7306,6 +7312,32 @@ async def upsert_prompt_template(request: PromptTemplateUpsertRequest):
         metadata=request.metadata or {},
         increment_version=bool(request.increment_version),
     )
+    # Audit as a "changeset" syscall event (no secret content, hash only)
+    try:
+        import hashlib
+        await _execution_store.add_syscall_event(
+            {
+                "kind": "changeset",
+                "name": "prompt_template_upsert",
+                "status": "success",
+                "args": {
+                    "template_id": request.template_id,
+                    "name": request.name,
+                    "prev_version": (prev or {}).get("version") if isinstance(prev, dict) else None,
+                },
+                "result": {
+                    "version": res.get("version") if isinstance(res, dict) else None,
+                    "template_sha256": hashlib.sha256(str(request.template).encode("utf-8")).hexdigest(),
+                    "template_len": len(str(request.template)),
+                },
+                "target_type": "prompt_template",
+                "target_id": str(request.template_id),
+                "user_id": "admin",
+                "approval_request_id": request.approval_request_id,
+            }
+        )
+    except Exception:
+        pass
     return {"status": "updated", "template": res}
 
 
@@ -7333,6 +7365,22 @@ async def rollback_prompt_template(template_id: str, request: PromptTemplateRoll
         tpl = await _execution_store.rollback_prompt_template_version(template_id=str(template_id), version=str(request.version))
     except KeyError:
         raise HTTPException(status_code=404, detail="version_not_found")
+    try:
+        await _execution_store.add_syscall_event(
+            {
+                "kind": "changeset",
+                "name": "prompt_template_rollback",
+                "status": "success",
+                "args": {"template_id": str(template_id), "version": str(request.version)},
+                "result": {"status": "rolled_back"},
+                "target_type": "prompt_template",
+                "target_id": str(template_id),
+                "user_id": "admin",
+                "approval_request_id": request.approval_request_id,
+            }
+        )
+    except Exception:
+        pass
     return {"status": "rolled_back", "template": tpl}
 
 

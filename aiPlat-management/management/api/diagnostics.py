@@ -356,6 +356,14 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
     except Exception:
         prompt_templates = {"total": 0}
 
+    # Recent changesets (best-effort): stored as syscall_events(kind="changeset")
+    changesets: Dict[str, Any] = {"total": 0, "items": []}
+    try:
+        if core_client:
+            changesets = await core_client.list_syscall_events(limit=20, offset=0, kind="changeset")
+    except Exception:
+        changesets = {"total": 0, "items": []}
+
     # Strong gate status (default tenant)
     strong_gate: Dict[str, Any] = {"tenant_id": "default", "enabled": False}
     try:
@@ -607,6 +615,7 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
         "context": context_config,
         "skills": {"capabilities": skill_capabilities},
         "prompts": {"templates": {"total": int((prompt_templates or {}).get("total") or 0), "items": (prompt_templates or {}).get("items") or []}},
+        "changesets": changesets,
         "strong_gate": strong_gate,
         "config": config,
         "links": links,
