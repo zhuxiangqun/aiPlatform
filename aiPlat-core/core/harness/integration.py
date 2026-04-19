@@ -268,19 +268,32 @@ class HarnessIntegration:
         agent_info = await runtime.agent_manager.get_agent(agent_id)
         model_name = agent_info.config.get("model", "gpt-4") if agent_info else "gpt-4"
 
-        # Inject model if needed (best effort)
-        if hasattr(agent, "_model") and getattr(agent, "_model") is None:
-            try:
-                from core.adapters.llm import create_adapter
-                provider = os.getenv("AIPLAT_LLM_PROVIDER", "openai").strip().lower() or "openai"
-                base_url = os.getenv("AIPLAT_LLM_BASE_URL") or os.getenv("OPENAI_BASE_URL")
-                api_key = os.getenv("OPENAI_API_KEY") or os.getenv("AIPLAT_LLM_API_KEY") or ""
-                # Dev-friendly fallback: if no API key for openai, use mock adapter.
-                if provider == "openai" and not api_key:
-                    provider = "mock"
-                agent.set_model(create_adapter(provider=provider, api_key=api_key or None, model=model_name, base_url=base_url))  # type: ignore[attr-defined]
-            except Exception:
-                pass
+        # Inject / override model (best effort).
+        # If the environment has no external API key, force a mock model so agent execution can terminate.
+        try:
+            from core.adapters.llm import create_adapter
+
+            provider = os.getenv("AIPLAT_LLM_PROVIDER", "openai").strip().lower() or "openai"
+            base_url = os.getenv("AIPLAT_LLM_BASE_URL") or os.getenv("OPENAI_BASE_URL")
+            api_key = os.getenv("OPENAI_API_KEY") or os.getenv("AIPLAT_LLM_API_KEY") or ""
+            if provider == "openai" and not api_key:
+                provider = "mock"
+
+            adapter = create_adapter(provider=provider, api_key=api_key or None, model=model_name, base_url=base_url)
+
+            # Override if:
+            # - no model configured
+            # - openai configured but no api key (likely produces empty output)
+            cur = getattr(agent, "_model", None)
+            cur_provider = getattr(getattr(cur, "metadata", None), "provider", None) if cur is not None else None
+            should_override = cur is None or (cur_provider == "openai" and not api_key)
+            if should_override:
+                if hasattr(agent, "set_model"):
+                    agent.set_model(adapter)  # type: ignore[attr-defined]
+                else:
+                    setattr(agent, "_model", adapter)
+        except Exception:
+            pass
 
         # Wire approval manager into loop (best effort)
         if runtime.approval_manager and hasattr(agent, "_loop") and hasattr(agent._loop, "set_approval_manager"):
