@@ -10886,6 +10886,84 @@ async def export_syscall_events_csv(
     return Response(content=data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'})
 
 
+@api_router.get("/ops/export/approvals.csv")
+async def export_approvals_csv(http_request: Request, tenant_id: Optional[str] = None, status: Optional[str] = None, limit: int = 1000):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    deny = await _rbac_guard(http_request=http_request, payload=None, action="ops_export", resource_type="ops", resource_id="approvals")
+    if deny:
+        return deny
+    from core.apps.ops import OpsExporter
+
+    data, filename = await OpsExporter(execution_store=_execution_store).export_approvals_csv(tenant_id=tenant_id, status=status, limit=limit)
+    return Response(content=data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'})
+
+
+@api_router.get("/ops/export/tenant_usage.csv")
+async def export_tenant_usage_csv(
+    http_request: Request,
+    tenant_id: str,
+    day_start: Optional[str] = None,
+    day_end: Optional[str] = None,
+    metric_key: Optional[str] = None,
+    limit: int = 2000,
+):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    deny = await _rbac_guard(http_request=http_request, payload=None, action="ops_export", resource_type="ops", resource_id="tenant_usage")
+    if deny:
+        return deny
+    from core.apps.ops import OpsExporter
+
+    data, filename = await OpsExporter(execution_store=_execution_store).export_tenant_usage_csv(
+        tenant_id=tenant_id, day_start=day_start, day_end=day_end, metric_key=metric_key, limit=limit
+    )
+    return Response(content=data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'})
+
+
+@api_router.get("/ops/export/gateway_dlq.csv")
+async def export_gateway_dlq_csv(
+    http_request: Request,
+    status: Optional[str] = None,
+    tenant_id: Optional[str] = None,
+    connector: Optional[str] = None,
+    limit: int = 2000,
+):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    deny = await _rbac_guard(http_request=http_request, payload=None, action="ops_export", resource_type="ops", resource_id="gateway_dlq")
+    if deny:
+        return deny
+    from core.apps.ops import OpsExporter
+
+    data, filename = await OpsExporter(execution_store=_execution_store).export_gateway_dlq_csv(
+        status=status, tenant_id=tenant_id, connector=connector, limit=limit
+    )
+    return Response(content=data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'})
+
+
+@api_router.get("/ops/export/connector_attempts.csv")
+async def export_connector_attempts_csv(
+    http_request: Request,
+    connector: Optional[str] = None,
+    tenant_id: Optional[str] = None,
+    run_id: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 2000,
+):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    deny = await _rbac_guard(http_request=http_request, payload=None, action="ops_export", resource_type="ops", resource_id="connector_attempts")
+    if deny:
+        return deny
+    from core.apps.ops import OpsExporter
+
+    data, filename = await OpsExporter(execution_store=_execution_store).export_connector_attempts_csv(
+        connector=connector, tenant_id=tenant_id, run_id=run_id, status=status, limit=limit
+    )
+    return Response(content=data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'})
+
+
 @api_router.get("/")
 async def root():
     """Root endpoint"""

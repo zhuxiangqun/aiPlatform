@@ -3507,6 +3507,57 @@ class ExecutionStore:
         row = await anyio.to_thread.run_sync(_sync)
         return {**row, "payload": _json_loads(row.get("payload_json")) or {}}
 
+    async def list_connector_delivery_attempts(
+        self,
+        *,
+        connector: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+        run_id: Optional[str] = None,
+        status: Optional[str] = None,
+        limit: int = 200,
+        offset: int = 0,
+    ) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                clauses = []
+                params: List[Any] = []
+                if connector:
+                    clauses.append("connector=?")
+                    params.append(str(connector))
+                if tenant_id:
+                    clauses.append("tenant_id=?")
+                    params.append(str(tenant_id))
+                if run_id:
+                    clauses.append("run_id=?")
+                    params.append(str(run_id))
+                if status:
+                    clauses.append("status=?")
+                    params.append(str(status))
+                where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+                total_row = conn.execute(
+                    f"SELECT COUNT(1) AS c FROM connector_delivery_attempts {where};", tuple(params)
+                ).fetchone()
+                total = int(total_row["c"] if total_row else 0)
+                rows = conn.execute(
+                    f"SELECT * FROM connector_delivery_attempts {where} ORDER BY created_at DESC LIMIT ? OFFSET ?;",
+                    tuple(params + [int(limit), int(offset)]),
+                ).fetchall()
+                items = []
+                for r in rows:
+                    d = dict(r)
+                    d["payload"] = _json_loads(d.get("payload_json")) or {}
+                    items.append(d)
+                return {"items": items, "total": total, "limit": int(limit), "offset": int(offset)}
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
     async def enqueue_connector_delivery_dlq(
         self,
         *,

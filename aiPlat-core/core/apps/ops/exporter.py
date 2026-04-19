@@ -109,3 +109,84 @@ class OpsExporter:
         ]
         # Flatten args/result to keep export small; can be extended later.
         return _csv_bytes(items, fieldnames=fieldnames), "syscall_events.csv"
+
+    async def export_approvals_csv(
+        self,
+        *,
+        tenant_id: Optional[str],
+        status: Optional[str] = None,
+        limit: int = 1000,
+    ) -> Tuple[bytes, str]:
+        res = await self._store.list_approval_requests(tenant_id=tenant_id, status=status, limit=int(limit), offset=0)
+        items = res.get("items") or []
+        fieldnames = [
+            "request_id",
+            "tenant_id",
+            "user_id",
+            "actor_id",
+            "actor_role",
+            "session_id",
+            "run_id",
+            "operation",
+            "status",
+            "details",
+            "created_at",
+            "updated_at",
+            "expires_at",
+        ]
+        return _csv_bytes(items, fieldnames=fieldnames), "approvals.csv"
+
+    async def export_tenant_usage_csv(
+        self,
+        *,
+        tenant_id: str,
+        day_start: Optional[str] = None,
+        day_end: Optional[str] = None,
+        metric_key: Optional[str] = None,
+        limit: int = 2000,
+    ) -> Tuple[bytes, str]:
+        res = await self._store.list_tenant_usage(
+            tenant_id=str(tenant_id),
+            day_start=day_start,
+            day_end=day_end,
+            metric_key=metric_key,
+            limit=int(limit),
+            offset=0,
+        )
+        items = res.get("items") or []
+        fieldnames = ["tenant_id", "day", "metric_key", "value", "updated_at"]
+        return _csv_bytes(items, fieldnames=fieldnames), "tenant_usage.csv"
+
+    async def export_gateway_dlq_csv(
+        self,
+        *,
+        status: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+        connector: Optional[str] = None,
+        limit: int = 2000,
+    ) -> Tuple[bytes, str]:
+        res = await self._store.list_connector_delivery_dlq(status=status, tenant_id=tenant_id, connector=connector, limit=int(limit), offset=0)
+        items = res.get("items") or []
+        fieldnames = ["id", "connector", "tenant_id", "run_id", "url", "attempts", "error", "status", "created_at", "resolved_at"]
+        return _csv_bytes(items, fieldnames=fieldnames), "gateway_dlq.csv"
+
+    async def export_connector_attempts_csv(
+        self,
+        *,
+        connector: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+        run_id: Optional[str] = None,
+        status: Optional[str] = None,
+        limit: int = 2000,
+    ) -> Tuple[bytes, str]:
+        res = await self._store.list_connector_delivery_attempts(
+            connector=connector,
+            tenant_id=tenant_id,
+            run_id=run_id,
+            status=status,
+            limit=int(limit),
+            offset=0,
+        )
+        items = res.get("items") or []
+        fieldnames = ["id", "connector", "tenant_id", "run_id", "attempt", "url", "status", "response_status", "error", "created_at"]
+        return _csv_bytes(items, fieldnames=fieldnames), "connector_attempts.csv"
