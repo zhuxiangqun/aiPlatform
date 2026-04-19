@@ -289,6 +289,23 @@ export const onboardingApi = {
   getEvidence: async (evidenceId: string) => {
     return apiClient.get<any>(`/onboarding/evidence/runs/${encodeURIComponent(evidenceId)}`);
   },
+  autosmokeRuns: async (params: { resource_type: string; resource_id: string; limit?: number; offset?: number }) => {
+    const q = new URLSearchParams();
+    q.set('resource_type', params.resource_type);
+    q.set('resource_id', params.resource_id);
+    if (params.limit != null) q.set('limit', String(params.limit));
+    if (params.offset != null) q.set('offset', String(params.offset));
+    return apiClient.get<any>(`/autosmoke/runs?${q.toString()}`);
+  },
+  autosmokeStatus: async (params: { resource_type: string; resource_id: string }) => {
+    const q = new URLSearchParams();
+    q.set('resource_type', params.resource_type);
+    q.set('resource_id', params.resource_id);
+    return apiClient.get<any>(`/autosmoke/status?${q.toString()}`);
+  },
+  autosmokeRun: async (body: { resource_type: string; resource_id: string; tenant_id?: string; actor_id?: string; detail?: any }) => {
+    return apiClient.post<any>(`/autosmoke/run`, body);
+  },
 };
 
 // Monitoring API (legacy - for layer metrics)
