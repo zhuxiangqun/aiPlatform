@@ -3,7 +3,7 @@
  */
 
 // 基础设施层 API
-export { apiClient, dashboardApi, alertingApi, diagnosticsApi } from './apiClient';
+export { apiClient, dashboardApi, alertingApi, diagnosticsApi, onboardingApi } from './apiClient';
 export { nodeApi } from './nodeApi';
 export { serviceApi } from './serviceApi';
 export { schedulerApi } from './schedulerApi';

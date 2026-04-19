@@ -8,7 +8,7 @@ import yaml
 from pathlib import Path
 from typing import Dict, Any
 
-from management.api import dashboard, alerting, diagnostics, infra, core, audit, policies
+from management.api import dashboard, alerting, diagnostics, infra, core, audit, policies, onboarding
 from management.api.proxy import build_app_proxy_router, build_platform_proxy_router
 from management.api.alerting import router as alerting_router, alias_router as alerts_router
 from management.dashboard import DashboardAggregator, InfraAdapter, CoreAdapter, PlatformAdapter, AppAdapter
@@ -81,6 +81,7 @@ def create_app() -> FastAPI:
     app.include_router(diagnostics.router, prefix=api_prefix)
     app.include_router(infra.router, prefix=api_prefix)
     app.include_router(core.router, prefix=api_prefix)
+    app.include_router(onboarding.router, prefix=api_prefix)
     app.include_router(audit.router, prefix=api_prefix)
     app.include_router(policies.router, prefix=api_prefix)
     app.include_router(build_platform_proxy_router(), prefix=api_prefix)

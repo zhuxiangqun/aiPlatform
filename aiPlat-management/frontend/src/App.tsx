@@ -56,6 +56,7 @@ const DiagnosticsAudit = lazy(() => import('./pages/Diagnostics/Audit/Audit'));
 const DiagnosticsPolicies = lazy(() => import('./pages/Diagnostics/Policies/Policies'));
 const DiagnosticsSyscalls = lazy(() => import('./pages/Diagnostics/Syscalls'));
 const DiagnosticsSmoke = lazy(() => import('./pages/Diagnostics/Smoke/Smoke'));
+const Onboarding = lazy(() => import('./pages/Onboarding/Onboarding'));
 
 const router = createBrowserRouter([
   {
@@ -65,6 +66,7 @@ const router = createBrowserRouter([
       { index: true, element: withSuspense(Overview) },
       { path: 'overview', element: withSuspense(Overview) },
       { path: 'alerts', element: withSuspense(Alerts) },
+      { path: 'onboarding', element: withSuspense(Onboarding) },
       { path: 'infra/nodes', element: withSuspense(InfraNodes) },
       { path: 'infra/models', element: withSuspense(InfraModels) },
       { path: 'infra/services', element: withSuspense(InfraServices) },

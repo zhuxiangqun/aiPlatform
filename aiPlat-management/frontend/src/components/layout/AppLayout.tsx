@@ -50,6 +50,7 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
   { key: '/overview', icon: LayoutDashboard, label: '平台总览' },
   { key: '/alerts', icon: Bell, label: '告警中心' },
   { key: '/diagnostics', icon: Activity, label: '可观测性' },
+  { key: '/onboarding', icon: Settings, label: '初始化向导' },
   { divider: true },
   { group: 'infra', label: '基础设施层', items: [
     { key: '/infra/nodes', icon: Server, label: '节点管理' },

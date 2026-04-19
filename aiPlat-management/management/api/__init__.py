@@ -14,6 +14,7 @@ from .alerting import router as alerting_router, alias_router as alerts_router
 from .diagnostics import router as diagnostics_router
 from .infra import router as infra_router
 from .core import router as core_router
+from .onboarding import router as onboarding_router
 
 __all__ = [
     "dashboard_router",
@@ -22,4 +23,5 @@ __all__ = [
     "diagnostics_router",
     "infra_router",
     "core_router",
+    "onboarding_router",
 ]

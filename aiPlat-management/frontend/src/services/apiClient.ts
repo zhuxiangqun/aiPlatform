@@ -197,6 +197,16 @@ export const diagnosticsApi = {
   },
 };
 
+// Onboarding API
+export const onboardingApi = {
+  getState: async () => {
+    return apiClient.get<any>('/onboarding/state');
+  },
+  configureLLMAdapter: async (body: Record<string, unknown>) => {
+    return apiClient.post<any>('/onboarding/llm-adapter', body);
+  },
+};
+
 // Monitoring API (legacy - for layer metrics)
 export const monitoringApi = {
   getMetrics: async (layer: string) => {

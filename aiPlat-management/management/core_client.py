@@ -132,6 +132,21 @@ class CoreAPIClient:
     async def run_e2e_smoke(self, body: Dict[str, Any]) -> Dict[str, Any]:
         return await self._request("POST", "/api/core/diagnostics/e2e/smoke", json=body or {})
 
+    # ===== Adapters =====
+
+    async def list_adapters(self, *, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        params: Dict[str, Any] = {"limit": int(limit), "offset": int(offset)}
+        return await self._request("GET", "/api/core/adapters", params=params)
+
+    async def create_adapter(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", "/api/core/adapters", json=body or {})
+
+    async def test_adapter(self, adapter_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/adapters/{adapter_id}/test", json=body or {})
+
+    async def add_adapter_model(self, adapter_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/adapters/{adapter_id}/models", json=body or {})
+
     # ===== Jobs / Cron (Roadmap-3) =====
 
     async def list_jobs(self, *, limit: int = 100, offset: int = 0, enabled: Optional[bool] = None) -> Dict[str, Any]:
