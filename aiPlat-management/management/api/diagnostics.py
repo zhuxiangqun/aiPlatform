@@ -194,6 +194,17 @@ async def diagnostics_prompt_assemble(request: Request, body: Dict[str, Any]) ->
     return await core_client.diagnostics_prompt_assemble(body or {})
 
 
+@router.get("/exec/backends")
+async def diagnostics_exec_backends(request: Request) -> Dict[str, Any]:
+    """
+    Exec backend health + current backend (proxy to core).
+    """
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="core_client not initialized")
+    return await core_client.exec_backends()
+
+
 @router.get("/health")
 async def list_available_checks(request: Request) -> Dict[str, Any]:
     """列出可用的健康检查
