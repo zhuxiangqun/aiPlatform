@@ -18,8 +18,9 @@
 - [x] Tenant policy：upsert 产出 `change_id` + 写入 Change Control
 - [x] **Approvals ↔ Change Control 反向联动（P0）**  
   - Approvals 列表/详情页展示关联 `change_id`（若存在），提供一键跳转 Change Control
-- [ ] **治理错误标准化（P0）**  
+- [x] **治理错误标准化（P0）**  
   - 统一使用 `_gate_error_envelope`（code/message/change_id/approval_request_id/next_actions/detail）
+  - management 透传 core 的非 2xx 错误 payload（避免 gate envelope 在代理层丢失）
   - 前端统一用 `toastGateError` 展示（已局部接入）
 
 ---
