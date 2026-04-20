@@ -226,11 +226,25 @@ export const promptApi = {
     const qs = q.toString();
     return apiClient.get<any>(`/core/prompts/${encodeURIComponent(templateId)}/diff${qs ? `?${qs}` : ''}`);
   },
+  resolve: async (templateId: string, params: { tenant_id?: string; user_id?: string; session_id?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (params.tenant_id) q.set('tenant_id', params.tenant_id);
+    if (params.user_id) q.set('user_id', params.user_id);
+    if (params.session_id) q.set('session_id', params.session_id);
+    const qs = q.toString();
+    return apiClient.get<any>(`/core/prompts/${encodeURIComponent(templateId)}/resolve${qs ? `?${qs}` : ''}`);
+  },
   upsert: async (body: Record<string, any>) => {
     return apiClient.post<any>('/core/prompts', body);
   },
   rollback: async (templateId: string, body: Record<string, any>) => {
     return apiClient.post<any>(`/core/prompts/${encodeURIComponent(templateId)}/rollback`, body);
+  },
+  release: async (templateId: string, body: Record<string, any>) => {
+    return apiClient.post<any>(`/core/prompts/${encodeURIComponent(templateId)}/release`, body);
+  },
+  rollbackRelease: async (templateId: string, body: Record<string, any>) => {
+    return apiClient.post<any>(`/core/prompts/${encodeURIComponent(templateId)}/release/rollback`, body);
   },
   delete: async (templateId: string, params: { require_approval?: boolean; approval_request_id?: string; details?: string } = {}) => {
     const q = new URLSearchParams();

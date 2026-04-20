@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Copy, Eye, GitCompare, RefreshCw, Pencil, Plus, Trash2, RotateCcw, ExternalLink } from 'lucide-react';
+import { Copy, Eye, GitCompare, RefreshCw, Pencil, Plus, Trash2, RotateCcw, ExternalLink, Megaphone } from 'lucide-react';
 
-import { Badge, Button, Card, CardContent, CardHeader, Input, Modal, Table, Textarea, toast } from '../../../components/ui';
+import { Badge, Button, Card, CardContent, CardHeader, Input, Modal, Select, Table, Textarea, toast } from '../../../components/ui';
 import { promptApi, type PromptTemplateRow } from '../../../services';
 import { toastGateError } from '../../../utils/governanceError';
 
@@ -18,6 +18,17 @@ type EditForm = {
   template_id: string;
   name: string;
   template: string;
+  require_approval: boolean;
+  approval_request_id: string;
+  details: string;
+};
+
+type ReleaseForm = {
+  template_id: string;
+  pinned_version: string;
+  base_version: string;
+  canary_version: string;
+  canary_percent: number;
   require_approval: boolean;
   approval_request_id: string;
   details: string;
@@ -56,6 +67,20 @@ const Prompts: React.FC = () => {
 
   const [rollingBack, setRollingBack] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  const [openRelease, setOpenRelease] = useState(false);
+  const [releaseSaving, setReleaseSaving] = useState(false);
+  const [releaseRollingBack, setReleaseRollingBack] = useState(false);
+  const [release, setRelease] = useState<ReleaseForm>({
+    template_id: '',
+    pinned_version: '',
+    base_version: '',
+    canary_version: '',
+    canary_percent: 0,
+    require_approval: true,
+    approval_request_id: '',
+    details: '',
+  });
 
   const fetchList = async () => {
     setLoading(true);
@@ -222,6 +247,112 @@ const Prompts: React.FC = () => {
     }
   };
 
+  const openReleaseModal = async (templateId: string) => {
+    setSelectedId(String(templateId));
+    setOpenRelease(true);
+    try {
+      const tpl: any = await promptApi.get(templateId);
+      setCurrent(tpl);
+      const md = parseJson(tpl?.metadata_json) || {};
+      const rel = md?.release && typeof md.release === 'object' ? md.release : {};
+      const pinned = String(rel?.pinned_version || '');
+      const rollout = Array.isArray(rel?.rollout) ? rel.rollout : [];
+      const baseV = String(tpl?.version || '');
+      let canaryV = '';
+      let canaryP = 0;
+      try {
+        const r1 = rollout.find((x: any) => String(x?.version || '') && String(x?.version || '') !== baseV);
+        if (r1) {
+          canaryV = String(r1.version || '');
+          canaryP = Number(r1.weight || 0);
+        }
+      } catch {
+        // ignore
+      }
+      try {
+        const res = await promptApi.versions(templateId, { limit: 100, offset: 0 });
+        setVersions(Array.isArray(res?.items) ? res.items : []);
+      } catch {
+        // ignore
+      }
+      setRelease({
+        template_id: String(tpl?.template_id || templateId),
+        pinned_version: pinned,
+        base_version: baseV,
+        canary_version: canaryV,
+        canary_percent: canaryP,
+        require_approval: true,
+        approval_request_id: '',
+        details: `release prompt template ${templateId}`,
+      });
+    } catch (e: any) {
+      toastGateError(e, '加载模板失败');
+    }
+  };
+
+  const submitRelease = async () => {
+    const tid = release.template_id.trim();
+    if (!tid) return;
+    setReleaseSaving(true);
+    try {
+      const pinned = release.pinned_version.trim();
+      const canaryP = Math.max(0, Math.min(100, Number(release.canary_percent || 0)));
+      const baseV = release.base_version.trim();
+      const canaryV = release.canary_version.trim();
+      let rollout: any[] = [];
+      if (!pinned && canaryV && canaryP > 0 && baseV) {
+        rollout = [
+          { version: baseV, weight: 100 - canaryP },
+          { version: canaryV, weight: canaryP },
+        ];
+      }
+      const res: any = await promptApi.release(tid, {
+        pinned_version: pinned || null,
+        rollout,
+        require_approval: !!release.require_approval,
+        approval_request_id: release.approval_request_id.trim() || undefined,
+        details: release.details.trim() || undefined,
+      });
+      if (res?.status === 'approval_required' && res?.approval_request_id) {
+        toast.info(`已创建审批：${String(res.approval_request_id)}`);
+      } else {
+        toast.success(`已更新发布设置（change_id=${String(res?.change_id || '-') }）`);
+      }
+      setOpenRelease(false);
+      await fetchList();
+      await openTemplate(tid);
+    } catch (e: any) {
+      toastGateError(e, '发布设置更新失败');
+    } finally {
+      setReleaseSaving(false);
+    }
+  };
+
+  const rollbackRelease = async () => {
+    const tid = release.template_id.trim();
+    if (!tid) return;
+    setReleaseRollingBack(true);
+    try {
+      const res: any = await promptApi.rollbackRelease(tid, {
+        require_approval: true,
+        approval_request_id: release.approval_request_id.trim() || undefined,
+        details: `rollback prompt template release ${tid}`,
+      });
+      if (res?.status === 'approval_required' && res?.approval_request_id) {
+        toast.info(`已创建审批：${String(res.approval_request_id)}`);
+      } else {
+        toast.success(`已回滚发布设置（change_id=${String(res?.change_id || '-') }）`);
+      }
+      setOpenRelease(false);
+      await fetchList();
+      await openTemplate(tid);
+    } catch (e: any) {
+      toastGateError(e, '回滚发布设置失败');
+    } finally {
+      setReleaseRollingBack(false);
+    }
+  };
+
   const openTemplateDiff = async (templateId: string) => {
     setSelectedId(String(templateId));
     setOpenDiff(true);
@@ -296,6 +427,9 @@ const Prompts: React.FC = () => {
             />
             <Button variant="secondary" icon={<Eye size={14} />} onClick={() => openTemplate(String(r.template_id))}>
               查看
+            </Button>
+            <Button variant="secondary" icon={<Megaphone size={14} />} onClick={() => openReleaseModal(String(r.template_id))}>
+              发布/灰度
             </Button>
             <Button variant="secondary" icon={<Pencil size={14} />} onClick={() => openEditExisting(String(r.template_id))}>
               编辑
@@ -392,6 +526,9 @@ const Prompts: React.FC = () => {
               {String(current.template || '')}
             </pre>
             <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" icon={<Megaphone size={14} />} onClick={() => openReleaseModal(String(current.template_id))}>
+                发布/灰度
+              </Button>
               <Button variant="secondary" icon={<Pencil size={14} />} onClick={() => openEditExisting(String(current.template_id))}>
                 编辑
               </Button>
@@ -407,6 +544,120 @@ const Prompts: React.FC = () => {
             </pre>
           </div>
         )}
+      </Modal>
+
+      {/* Release / Rollout */}
+      <Modal
+        open={openRelease}
+        onClose={() => setOpenRelease(false)}
+        title={`发布/灰度：${release.template_id || '-'}`}
+        width={980}
+      >
+        <div className="space-y-3">
+          <div className="text-xs text-gray-500">
+            发布/灰度只修改 metadata.release（不改变模板内容）。灰度采用 deterministic bucketing（优先按 session_id，其次 user_id/tenant_id）。
+          </div>
+
+          <Card>
+            <CardHeader>
+              <div className="text-sm font-semibold text-gray-200">版本 pin（最高优先级）</div>
+            </CardHeader>
+            <CardContent>
+              <Select
+                value={release.pinned_version}
+                onChange={(v: any) => setRelease((p) => ({ ...p, pinned_version: String(v || '') }))}
+                options={[
+                  { label: '不固定（使用灰度/默认）', value: '' },
+                  ...versions.map((x: any) => ({ label: String(x?.version || ''), value: String(x?.version || '') })),
+                ]}
+              />
+              <div className="text-xs text-gray-500 mt-2">用于紧急强制固定/快速回滚发布影响面。</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="text-sm font-semibold text-gray-200">灰度（当未 pin 时生效）</div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                <div>
+                  <div className="text-xs text-gray-500 mb-1">base_version</div>
+                  <Select
+                    value={release.base_version}
+                    onChange={(v: any) => setRelease((p) => ({ ...p, base_version: String(v || '') }))}
+                    options={versions.map((x: any) => ({ label: String(x?.version || ''), value: String(x?.version || '') }))}
+                  />
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500 mb-1">canary_version</div>
+                  <Select
+                    value={release.canary_version}
+                    onChange={(v: any) => setRelease((p) => ({ ...p, canary_version: String(v || '') }))}
+                    options={[{ label: '不启用灰度', value: '' }, ...versions.map((x: any) => ({ label: String(x?.version || ''), value: String(x?.version || '') }))]}
+                  />
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500 mb-1">canary_percent（0-100）</div>
+                  <Input
+                    value={String(release.canary_percent ?? 0)}
+                    onChange={(e: any) => setRelease((p) => ({ ...p, canary_percent: Number(e.target.value || 0) }))}
+                    placeholder="10"
+                  />
+                </div>
+              </div>
+              <div className="text-xs text-gray-500 mt-2">
+                将生成 rollout：base={100 - Number(release.canary_percent || 0)}%，canary={Number(release.canary_percent || 0)}%。
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="text-sm font-semibold text-gray-200">审批</div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="text-xs text-gray-400 flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={release.require_approval}
+                    onChange={(e) => setRelease((p) => ({ ...p, require_approval: e.target.checked }))}
+                  />
+                  require_approval
+                </label>
+                {release.require_approval ? (
+                  <Input
+                    className="w-[320px]"
+                    value={release.approval_request_id}
+                    onChange={(e) => setRelease((p) => ({ ...p, approval_request_id: e.target.value }))}
+                    placeholder="approval_request_id（可选：审批通过后再填重试）"
+                  />
+                ) : null}
+                <Input
+                  className="min-w-[360px]"
+                  value={release.details}
+                  onChange={(e) => setRelease((p) => ({ ...p, details: e.target.value }))}
+                  placeholder="details（可选）"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="flex items-center justify-between gap-2">
+            <Button variant="secondary" onClick={rollbackRelease} loading={releaseRollingBack}>
+              回滚发布设置
+            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" onClick={() => setOpenRelease(false)}>
+                取消
+              </Button>
+              <Button onClick={submitRelease} loading={releaseSaving}>
+                保存发布设置
+              </Button>
+            </div>
+          </div>
+        </div>
       </Modal>
 
       {/* Edit */}
