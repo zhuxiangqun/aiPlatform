@@ -88,6 +88,6 @@
 ## G. Exec Backends（P1）
 
 - [x] Exec backend health 页面（current_backend + backends health + 标志位）
-- [ ] **后端路由/切换（P1）**
-  - [ ] 在 management 提供选择/切换入口（需审批）
-  - [ ] 后端维度 metrics：success_rate/latency/policy_denied_count
+- [x] **后端路由/切换（P1）**
+  - [x] 在 management 提供选择/切换入口（需审批）
+  - [x] 后端维度 metrics：success_rate/latency/policy_denied_count
