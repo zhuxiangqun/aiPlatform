@@ -333,6 +333,20 @@ class CoreAPIClient:
     async def repo_git_commit(self, body: Dict[str, Any]) -> Dict[str, Any]:
         return await self._request("POST", "/api/core/diagnostics/repo/git/commit", json=body or {})
 
+    async def context_metrics_recent(self, *, limit: int = 50, offset: int = 0, tenant_id: Optional[str] = None, session_id: Optional[str] = None) -> Dict[str, Any]:
+        params: Dict[str, Any] = {"limit": int(limit), "offset": int(offset)}
+        if tenant_id:
+            params["tenant_id"] = str(tenant_id)
+        if session_id:
+            params["session_id"] = str(session_id)
+        return await self._request("GET", "/api/core/diagnostics/context/metrics/recent", params=params)
+
+    async def context_metrics_summary(self, *, window_hours: int = 24, top_n: int = 8, tenant_id: Optional[str] = None) -> Dict[str, Any]:
+        params: Dict[str, Any] = {"window_hours": int(window_hours), "top_n": int(top_n)}
+        if tenant_id:
+            params["tenant_id"] = str(tenant_id)
+        return await self._request("GET", "/api/core/diagnostics/context/metrics/summary", params=params)
+
     async def prompt_template_diff(self, template_id: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         return await self._request("GET", f"/api/core/prompts/{template_id}/diff", params=params or {})
 

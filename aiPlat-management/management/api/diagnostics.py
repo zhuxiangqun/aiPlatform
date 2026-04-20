@@ -147,6 +147,33 @@ async def repo_git_commit(request: Request, body: Dict[str, Any]) -> Dict[str, A
     return await core_client.repo_git_commit(payload)
 
 
+@router.get("/context/metrics/recent")
+async def context_metrics_recent(
+    request: Request,
+    limit: int = 50,
+    offset: int = 0,
+    tenant_id: Optional[str] = None,
+    session_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="core_client not initialized")
+    return await core_client.context_metrics_recent(limit=limit, offset=offset, tenant_id=tenant_id, session_id=session_id)
+
+
+@router.get("/context/metrics/summary")
+async def context_metrics_summary(
+    request: Request,
+    window_hours: int = 24,
+    top_n: int = 8,
+    tenant_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="core_client not initialized")
+    return await core_client.context_metrics_summary(window_hours=window_hours, top_n=top_n, tenant_id=tenant_id)
+
+
 @router.get("/repo/changeset/patch")
 async def get_repo_changeset_patch(request: Request) -> Dict[str, Any]:
     """
