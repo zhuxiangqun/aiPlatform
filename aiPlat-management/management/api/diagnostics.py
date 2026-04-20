@@ -268,6 +268,17 @@ async def diagnostics_exec_backends(request: Request) -> Dict[str, Any]:
     return await core_client.exec_backends()
 
 
+@router.get("/exec/metrics/summary")
+async def diagnostics_exec_backend_metrics_summary(request: Request, window_hours: int = 24, limit: int = 20) -> Dict[str, Any]:
+    """
+    Exec backend metrics summary (proxy to core).
+    """
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="core_client not initialized")
+    return await core_client.exec_backend_metrics_summary(window_hours=int(window_hours or 24), limit=int(limit or 20))
+
+
 @router.get("/health")
 async def list_available_checks(request: Request) -> Dict[str, Any]:
     """列出可用的健康检查

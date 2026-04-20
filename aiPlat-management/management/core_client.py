@@ -377,6 +377,10 @@ class CoreAPIClient:
     async def exec_backends(self) -> Dict[str, Any]:
         return await self._request("GET", "/api/core/diagnostics/exec/backends")
 
+    async def exec_backend_metrics_summary(self, *, window_hours: int = 24, limit: int = 20) -> Dict[str, Any]:
+        params = {"window_hours": int(window_hours), "limit": int(limit)}
+        return await self._request("GET", "/api/core/diagnostics/exec/metrics/summary", params=params)
+
     # ===== Jobs / Cron (Roadmap-3) =====
 
     async def list_jobs(self, *, limit: int = 100, offset: int = 0, enabled: Optional[bool] = None) -> Dict[str, Any]:
