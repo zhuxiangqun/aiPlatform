@@ -16,7 +16,7 @@
 - [x] Repo changeset：record 产出 `change_id` + 非本地/高风险触发审批 + UI 审阅入口
 - [x] Prompt：upsert/rollback/delete 产出 `change_id` + autosmoke gate + autosmoke 结果回写到同一 `change_id`
 - [x] Tenant policy：upsert 产出 `change_id` + 写入 Change Control
-- [ ] **Approvals ↔ Change Control 反向联动（P0）**  
+- [x] **Approvals ↔ Change Control 反向联动（P0）**  
   - Approvals 列表/详情页展示关联 `change_id`（若存在），提供一键跳转 Change Control
 - [ ] **治理错误标准化（P0）**  
   - 统一使用 `_gate_error_envelope`（code/message/change_id/approval_request_id/next_actions/detail）
