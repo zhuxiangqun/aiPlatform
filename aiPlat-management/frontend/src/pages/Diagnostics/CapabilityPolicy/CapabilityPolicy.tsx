@@ -6,6 +6,7 @@ import { policyApi, skillApi, workspaceSkillApi } from '../../../services';
 import { toastGateError } from '../../../utils/governanceError';
 
 type ToolAgg = { tool: string; count: number; examples: Array<{ scope: string; skill_id: string; name: string }> };
+type CapIssue = { scope: string; skill_id: string; name: string; issue: string; raw: any };
 
 function uniq(arr: string[]): string[] {
   const seen = new Set<string>();
@@ -72,6 +73,31 @@ const CapabilityPolicy: React.FC = () => {
   useEffect(() => {
     loadSkills();
   }, []);
+
+  const capIssues: CapIssue[] = useMemo(() => {
+    const out: CapIssue[] = [];
+    for (const s of skills) {
+      const caps = (s?.metadata as any)?.capabilities;
+      const sid = String(s?.id || '');
+      const nm = String(s?.name || '');
+      const scope = String((s as any)?.scope || '');
+      if (caps == null) {
+        out.push({ scope, skill_id: sid, name: nm, issue: 'capabilities 缺失', raw: caps });
+        continue;
+      }
+      if (typeof caps === 'string') {
+        out.push({ scope, skill_id: sid, name: nm, issue: 'capabilities 应为数组（当前为 string）', raw: caps });
+        continue;
+      }
+      if (!Array.isArray(caps)) {
+        out.push({ scope, skill_id: sid, name: nm, issue: `capabilities 类型非法（${typeof caps}）`, raw: caps });
+        continue;
+      }
+      const bad = caps.filter((x: any) => typeof x !== 'string' || !String(x).trim());
+      if (bad.length) out.push({ scope, skill_id: sid, name: nm, issue: 'capabilities 存在空值/非字符串', raw: bad.slice(0, 5) });
+    }
+    return out;
+  }, [skills]);
 
   const tools: ToolAgg[] = useMemo(() => {
     const m = new Map<string, ToolAgg>();
@@ -214,6 +240,11 @@ const CapabilityPolicy: React.FC = () => {
           </div>
         </CardHeader>
         <CardContent>
+          {capIssues.length > 0 && (
+            <div className="mb-3 text-xs text-amber-400">
+              检测到 capabilities 字段缺失/非法：{capIssues.length} 个（建议修复对应 SKILL.md front matter）。
+            </div>
+          )}
           <Table
             data={tools}
             rowKey={(r: any) => String(r.tool)}
@@ -258,9 +289,32 @@ const CapabilityPolicy: React.FC = () => {
           />
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-sm font-semibold text-gray-200">capabilities 校验（缺失/非法）</div>
+            <Badge variant={capIssues.length ? 'warning' : 'success'}>issues={capIssues.length}</Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Table
+            data={capIssues}
+            rowKey={(r: any) => `${r.scope}:${r.skill_id}:${r.issue}`}
+            loading={loading}
+            columns={[
+              { key: 'scope', title: 'scope', dataIndex: 'scope', width: 120 },
+              { key: 'skill_id', title: 'skill_id', dataIndex: 'skill_id', width: 220 },
+              { key: 'name', title: 'name', dataIndex: 'name', width: 220 },
+              { key: 'issue', title: 'issue', dataIndex: 'issue', width: 240, render: (v: any) => <span className="text-amber-300">{String(v)}</span> },
+              { key: 'raw', title: 'raw', dataIndex: 'raw', render: (v: any) => <code className="text-xs text-gray-400">{JSON.stringify(v)}</code> },
+            ]}
+            emptyText="未发现问题"
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 };
 
 export default CapabilityPolicy;
-
