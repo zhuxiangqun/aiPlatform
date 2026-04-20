@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle2, Eye, RefreshCw, XCircle } from 'lucide-react';
+import { CheckCircle2, Eye, RefreshCw, XCircle, ExternalLink } from 'lucide-react';
 
 import { approvalsApi, type ApprovalRequestSummary } from '../../../../services';
 import { Badge, Button, Card, CardContent, CardHeader, Modal, Table, toast } from '../../../../components/ui';
@@ -147,8 +147,39 @@ const Approvals: React.FC = () => {
         onClose={() => setDetailOpen(false)}
         title={detail?.request_id ? `Approval: ${detail.request_id}` : 'Approval'}
         width={920}
-        footer={<Button onClick={() => setDetailOpen(false)}>关闭</Button>}
+        footer={
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-2">
+              {detail?.change_id ? (
+                <Link to={`/diagnostics/change-control/${encodeURIComponent(String(detail.change_id))}`}>
+                  <Button variant="secondary" icon={<ExternalLink size={14} />}>
+                    打开变更
+                  </Button>
+                </Link>
+              ) : null}
+              {detail?.request_id ? (
+                <Link to={`/diagnostics/audit?request_id=${encodeURIComponent(String(detail.request_id))}`}>
+                  <Button variant="secondary" icon={<ExternalLink size={14} />}>
+                    打开审计
+                  </Button>
+                </Link>
+              ) : null}
+            </div>
+            <Button onClick={() => setDetailOpen(false)}>关闭</Button>
+          </div>
+        }
       >
+        {detail?.change_id ? (
+          <div className="text-xs text-gray-400 mb-2">
+            change_id:{' '}
+            <Link
+              to={`/diagnostics/change-control/${encodeURIComponent(String(detail.change_id))}`}
+              className="underline text-gray-300 hover:text-white"
+            >
+              {String(detail.change_id)}
+            </Link>
+          </div>
+        ) : null}
         <pre className="text-xs text-gray-200 bg-dark-bg border border-dark-border rounded-lg p-3 overflow-auto">
           {JSON.stringify(detail || {}, null, 2)}
         </pre>
