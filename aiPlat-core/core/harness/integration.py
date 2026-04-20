@@ -1112,6 +1112,10 @@ class HarnessIntegration:
         # Phase R2: apply workspace context for downstream syscalls (toolset gating).
         workspace_token = None
         request_token = None
+        token = None
+        audit_token = None
+        audit_data = None
+        active_release = None
         try:
             from core.harness.kernel.execution_context import (
                 ActiveRequestContext,
@@ -1164,6 +1168,42 @@ class HarnessIntegration:
             workspace_token = None
             request_token = None
 
+        # Phase 6.7: optional LearningApplier (behavior-preserving; metadata-only)
+        if os.getenv("AIPLAT_ENABLE_LEARNING_APPLIER", "false").lower() in ("1", "true", "yes", "y"):
+            try:
+                from core.learning.apply import LearningApplier
+
+                applier = LearningApplier(self._runtime.execution_store if self._runtime else None)
+                active_release = await applier.resolve_active_release(target_type="skill", target_id=str(skill_id))
+            except Exception:
+                active_release = None
+
+        # Phase 6.8: set per-request active release context for syscalls (behavior change is gated elsewhere).
+        if active_release is not None:
+            try:
+                from core.harness.kernel.execution_context import (
+                    ActiveReleaseContext,
+                    PromptRevisionAudit,
+                    set_active_release_context,
+                    set_prompt_revision_audit,
+                )
+
+                token = set_active_release_context(
+                    ActiveReleaseContext(
+                        target_type="skill",
+                        target_id=str(skill_id),
+                        candidate_id=active_release.candidate_id,
+                        version=active_release.version,
+                        summary=active_release.summary,
+                    )
+                )
+                audit_token = set_prompt_revision_audit(
+                    PromptRevisionAudit(applied_ids=[], ignored_ids=[], conflicts=[], llm_calls=0, updated_at=0.0)
+                )
+            except Exception:
+                token = None
+                audit_token = None
+
         try:
             execution = await runtime.skill_manager.execute_skill(
                 skill_id,
@@ -1174,6 +1214,23 @@ class HarnessIntegration:
         except Exception as e:
             return self._fail(code="EXCEPTION", message=str(e), http_status=500, trace_id=trace_id)
         finally:
+            # Capture then reset prompt revision audit
+            if audit_token is not None:
+                try:
+                    from core.harness.kernel.execution_context import get_prompt_revision_audit, reset_prompt_revision_audit
+
+                    audit = get_prompt_revision_audit()
+                    audit_data = audit.to_dict() if audit is not None else None
+                    reset_prompt_revision_audit(audit_token)
+                except Exception:
+                    pass
+            if token is not None:
+                try:
+                    from core.harness.kernel.execution_context import reset_active_release_context
+
+                    reset_active_release_context(token)
+                except Exception:
+                    pass
             if workspace_token is not None:
                 try:
                     from core.harness.kernel.execution_context import reset_active_workspace_context
@@ -1202,6 +1259,13 @@ class HarnessIntegration:
                     "mode": payload.get("mode", "inline"),
                     "session_id": (payload.get("context") or {}).get("session_id", req.session_id),
                 }
+                if active_release is not None:
+                    try:
+                        meta2.setdefault("active_release", active_release.to_dict())
+                    except Exception:
+                        pass
+                if audit_data is not None:
+                    meta2.setdefault("prompt_revision_audit", audit_data)
                 if tenant_id:
                     meta2["tenant_id"] = str(tenant_id)
                 try:
@@ -1234,6 +1298,7 @@ class HarnessIntegration:
                             "user_id": user_id,
                             "session_id": meta2.get("session_id"),
                             "exec_backend": exec_backend,
+                            "active_release": active_release.to_dict() if active_release is not None else None,
                             "request_payload": self._redact_request_payload(req.payload if isinstance(req.payload, dict) else {}),
                         },
                     )
@@ -1287,7 +1352,13 @@ class HarnessIntegration:
                         event_type="run_end",
                         trace_id=trace_id,
                         tenant_id=str(tenant_id) if tenant_id else None,
-                        payload={"kind": "skill", "skill_id": execution.skill_id, "status": execution.status, "error": execution.error},
+                        payload={
+                            "kind": "skill",
+                            "skill_id": execution.skill_id,
+                            "status": execution.status,
+                            "error": execution.error,
+                            "prompt_revision_audit": audit_data,
+                        },
                     )
                 except Exception:
                     pass
@@ -1355,6 +1426,11 @@ class HarnessIntegration:
         workspace_token = None
         request_token = None
         requested_toolset = None
+        token = None
+        audit_token = None
+        audit_data = None
+        active_release = None
+        tenant_id = None
         try:
             from core.harness.kernel.execution_context import (
                 ActiveRequestContext,
@@ -1389,6 +1465,7 @@ class HarnessIntegration:
             try:
                 ctx0 = payload.get("context") if isinstance(payload.get("context"), dict) else {}
                 sess_id = payload.get("session_id") or ctx0.get("session_id") or req.session_id
+                tenant_id = ctx0.get("tenant_id") if isinstance(ctx0, dict) else None
                 request_token = set_active_request_context(
                     ActiveRequestContext(
                         user_id=str(req.user_id or "system"),
@@ -1405,6 +1482,42 @@ class HarnessIntegration:
         except Exception:
             workspace_token = None
             request_token = None
+
+        # Phase 6.7: optional LearningApplier (behavior-preserving; metadata-only)
+        if os.getenv("AIPLAT_ENABLE_LEARNING_APPLIER", "false").lower() in ("1", "true", "yes", "y"):
+            try:
+                from core.learning.apply import LearningApplier
+
+                applier = LearningApplier(self._runtime.execution_store if self._runtime else None)
+                active_release = await applier.resolve_active_release(target_type="tool", target_id=str(req.target_id))
+            except Exception:
+                active_release = None
+
+        # Phase 6.8: set per-request active release context for syscalls (behavior change is gated elsewhere).
+        if active_release is not None:
+            try:
+                from core.harness.kernel.execution_context import (
+                    ActiveReleaseContext,
+                    PromptRevisionAudit,
+                    set_active_release_context,
+                    set_prompt_revision_audit,
+                )
+
+                token = set_active_release_context(
+                    ActiveReleaseContext(
+                        target_type="tool",
+                        target_id=str(req.target_id),
+                        candidate_id=active_release.candidate_id,
+                        version=active_release.version,
+                        summary=active_release.summary,
+                    )
+                )
+                audit_token = set_prompt_revision_audit(
+                    PromptRevisionAudit(applied_ids=[], ignored_ids=[], conflicts=[], llm_calls=0, updated_at=0.0)
+                )
+            except Exception:
+                token = None
+                audit_token = None
 
         # Add a trace for tool execute so syscall spans are linked (best-effort).
         trace_id = None
@@ -1451,6 +1564,7 @@ class HarnessIntegration:
                         "user_id": req.user_id or "system",
                         "session_id": req.session_id,
                         "exec_backend": exec_backend,
+                        "active_release": active_release.to_dict() if active_release is not None else None,
                         "request_payload": self._redact_request_payload(req.payload if isinstance(req.payload, dict) else {}),
                     },
                 )
@@ -1458,12 +1572,6 @@ class HarnessIntegration:
                 pass
 
         try:
-            tenant_id = None
-            try:
-                ctx0 = payload.get("context") if isinstance(payload.get("context"), dict) else {}
-                tenant_id = ctx0.get("tenant_id") if isinstance(ctx0, dict) else None
-            except Exception:
-                tenant_id = None
             result = await sys_tool_call(
                 tool,
                 input_data if isinstance(input_data, dict) else {},
@@ -1472,6 +1580,15 @@ class HarnessIntegration:
                 timeout_seconds=60,
                 trace_context={"trace_id": trace_id, "run_id": run_id, "tenant_id": tenant_id} if trace_id else {"run_id": run_id, "tenant_id": tenant_id},
             )
+            # Snapshot prompt revision audit before emitting run_end.
+            if audit_token is not None:
+                try:
+                    from core.harness.kernel.execution_context import get_prompt_revision_audit
+
+                    audit = get_prompt_revision_audit()
+                    audit_data = audit.to_dict() if audit is not None else None
+                except Exception:
+                    audit_data = None
             # Roadmap-4: persist session messages for cross-session search (best-effort).
             if runtime and runtime.execution_store:
                 try:
@@ -1509,6 +1626,7 @@ class HarnessIntegration:
                             "tool_name": req.target_id,
                             "status": "completed" if getattr(result, "success", True) else "failed",
                             "error": getattr(result, "error", None),
+                            "prompt_revision_audit": audit_data,
                         },
                     )
                 except Exception:
@@ -1533,6 +1651,8 @@ class HarnessIntegration:
                     ),
                     "latency": getattr(result, "latency", 0),
                     "metadata": getattr(result, "metadata", {}) or {},
+                    "active_release": active_release.to_dict() if active_release is not None else None,
+                    "prompt_revision_audit": audit_data,
                     "trace_id": trace_id,
                     "run_id": run_id,
                     "toolset": str(requested_toolset) if requested_toolset else None,
@@ -1577,6 +1697,21 @@ class HarnessIntegration:
                     from core.services.trace_service import SpanStatus
 
                     await runtime.trace_service.end_trace(trace_id, status=SpanStatus.SUCCESS)
+                except Exception:
+                    pass
+            # Reset prompt revision audit
+            if audit_token is not None:
+                try:
+                    from core.harness.kernel.execution_context import reset_prompt_revision_audit
+
+                    reset_prompt_revision_audit(audit_token)
+                except Exception:
+                    pass
+            if token is not None:
+                try:
+                    from core.harness.kernel.execution_context import reset_active_release_context
+
+                    reset_active_release_context(token)
                 except Exception:
                     pass
             if workspace_token is not None:
