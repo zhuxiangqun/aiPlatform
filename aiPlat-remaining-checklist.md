@@ -55,8 +55,8 @@
 
 - [x] Context/Prompt assemble 单次诊断页（config + assemble）
 - [ ] **Context 指标沉淀（P1）**
-  - [ ] 记录 tokens_in/out、cache_hit、compaction_applied、session_search_hits 等到 store（可按 tenant/session 聚合）
-  - [ ] management Insights：趋势图/TopN/回归对比
+  - [x] 记录 tokens_in/out、cache_hit、compaction_applied、session_search_hits 等到 store（可按 tenant/session 聚合）
+  - [x] management Insights：趋势图/TopN/回归对比
   - [ ] Doctor 动作：建议开启压缩/缓存/会话搜索（必要时审批）
 
 ---
