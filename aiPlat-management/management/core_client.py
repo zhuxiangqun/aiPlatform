@@ -265,6 +265,30 @@ class CoreAPIClient:
     async def list_prompt_templates(self, *, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
         return await self._request("GET", "/api/core/prompts", params={"limit": int(limit), "offset": int(offset)})
 
+    async def get_prompt_template(self, template_id: str) -> Dict[str, Any]:
+        return await self._request("GET", f"/api/core/prompts/{template_id}")
+
+    async def list_prompt_template_versions(self, template_id: str, *, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        return await self._request(
+            "GET",
+            f"/api/core/prompts/{template_id}/versions",
+            params={"limit": int(limit), "offset": int(offset)},
+        )
+
+    async def upsert_prompt_template(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", "/api/core/prompts", json=body or {})
+
+    async def rollback_prompt_template(self, template_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/prompts/{template_id}/rollback", json=body or {})
+
+    async def delete_prompt_template(self, template_id: str, *, require_approval: bool = True, approval_request_id: Optional[str] = None, details: Optional[str] = None) -> Dict[str, Any]:
+        params: Dict[str, Any] = {"require_approval": bool(require_approval)}
+        if approval_request_id:
+            params["approval_request_id"] = str(approval_request_id)
+        if details:
+            params["details"] = str(details)
+        return await self._request("DELETE", f"/api/core/prompts/{template_id}", params=params)
+
     # ===== Repo diagnostics =====
 
     async def repo_changeset_preview(self, body: Dict[str, Any]) -> Dict[str, Any]:

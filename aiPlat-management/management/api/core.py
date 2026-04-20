@@ -118,6 +118,91 @@ async def delete_job(job_id: str):
         raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
 
 
+# ==================== Prompt Templates (platformization MVP) ====================
+
+
+@router.get("/prompts")
+async def list_prompt_templates(limit: int = Query(100, ge=1, le=500), offset: int = Query(0, ge=0)):
+    try:
+        client = get_core_client()
+        return await client.list_prompt_templates(limit=limit, offset=offset)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/prompts/{template_id}")
+async def get_prompt_template(template_id: str):
+    try:
+        client = get_core_client()
+        return await client.get_prompt_template(str(template_id))
+    except httpx.HTTPStatusError as e:
+        # bubble up core status if available
+        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/prompts/{template_id}/versions")
+async def list_prompt_template_versions(
+    template_id: str,
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+):
+    try:
+        client = get_core_client()
+        return await client.list_prompt_template_versions(str(template_id), limit=limit, offset=offset)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/prompts/{template_id}/diff")
+async def diff_prompt_template(template_id: str, from_version: Optional[str] = None, to_version: Optional[str] = None):
+    try:
+        client = get_core_client()
+        params: Dict[str, Any] = {}
+        if from_version:
+            params["from_version"] = str(from_version)
+        if to_version:
+            params["to_version"] = str(to_version)
+        return await client.prompt_template_diff(str(template_id), params=params)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/prompts")
+async def upsert_prompt_template(body: Dict[str, Any]):
+    try:
+        client = get_core_client()
+        return await client.upsert_prompt_template(body or {})
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/prompts/{template_id}/rollback")
+async def rollback_prompt_template(template_id: str, body: Dict[str, Any]):
+    try:
+        client = get_core_client()
+        return await client.rollback_prompt_template(str(template_id), body or {})
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.delete("/prompts/{template_id}")
+async def delete_prompt_template(
+    template_id: str,
+    require_approval: bool = True,
+    approval_request_id: Optional[str] = None,
+    details: Optional[str] = None,
+):
+    try:
+        client = get_core_client()
+        return await client.delete_prompt_template(
+            str(template_id), require_approval=bool(require_approval), approval_request_id=approval_request_id, details=details
+        )
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
 @router.post("/jobs/{job_id}/enable")
 async def enable_job(job_id: str):
     try:
