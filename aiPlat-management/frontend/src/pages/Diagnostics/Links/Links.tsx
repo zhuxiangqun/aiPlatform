@@ -287,7 +287,7 @@ const Links: React.FC = () => {
                   </Button>
                 </div>
                 <div className="p-3 bg-dark-bg rounded-lg">
-                  <div className="text-xs text-gray-400 mb-1">Audit/Approvals</div>
+                  <div className="text-xs text-gray-400 mb-1">联动</div>
                   <div className="flex items-center gap-2">
                     {data?.change?.links?.audit_ui ? (
                       <a className="text-xs underline text-gray-300 hover:text-white" href={String(data.change.links.audit_ui)} target="_blank" rel="noreferrer">
@@ -304,6 +304,21 @@ const Links: React.FC = () => {
                         rel="noreferrer"
                       >
                         Approvals <ExternalLink size={12} className="inline ml-1" />
+                      </a>
+                    ) : null}
+                    {data?.change?.links?.runs_ui ? (
+                      <a className="text-xs underline text-gray-300 hover:text-white" href={String(data.change.links.runs_ui)} target="_blank" rel="noreferrer">
+                        Runs <ExternalLink size={12} className="inline ml-1" />
+                      </a>
+                    ) : null}
+                    {data?.change?.links?.traces_ui ? (
+                      <a className="text-xs underline text-gray-300 hover:text-white" href={String(data.change.links.traces_ui)} target="_blank" rel="noreferrer">
+                        Traces <ExternalLink size={12} className="inline ml-1" />
+                      </a>
+                    ) : null}
+                    {data?.change?.links?.links_ui ? (
+                      <a className="text-xs underline text-gray-300 hover:text-white" href={String(data.change.links.links_ui)} target="_blank" rel="noreferrer">
+                        Links <ExternalLink size={12} className="inline ml-1" />
                       </a>
                     ) : null}
                   </div>

@@ -250,6 +250,16 @@ const ChangeControl: React.FC = () => {
                 Audit <ExternalLink size={14} className="inline ml-1" />
               </a>
             ) : null}
+            {detail?.links?.runs_ui ? (
+              <a className="text-sm underline text-gray-300 hover:text-white" href={String(detail.links.runs_ui)} target="_blank" rel="noreferrer">
+                Runs <ExternalLink size={14} className="inline ml-1" />
+              </a>
+            ) : null}
+            {detail?.links?.traces_ui ? (
+              <a className="text-sm underline text-gray-300 hover:text-white" href={String(detail.links.traces_ui)} target="_blank" rel="noreferrer">
+                Traces <ExternalLink size={14} className="inline ml-1" />
+              </a>
+            ) : null}
           </div>
         </div>
 
@@ -293,6 +303,21 @@ const ChangeControl: React.FC = () => {
               {detail?.links?.approvals_ui ? (
                 <a className="text-sm underline text-gray-300 hover:text-white" href={String(detail.links.approvals_ui)} target="_blank" rel="noreferrer">
                   Approvals <ExternalLink size={14} className="inline ml-1" />
+                </a>
+              ) : null}
+              {detail?.links?.runs_ui ? (
+                <a className="text-sm underline text-gray-300 hover:text-white" href={String(detail.links.runs_ui)} target="_blank" rel="noreferrer">
+                  Runs <ExternalLink size={14} className="inline ml-1" />
+                </a>
+              ) : null}
+              {detail?.links?.traces_ui ? (
+                <a className="text-sm underline text-gray-300 hover:text-white" href={String(detail.links.traces_ui)} target="_blank" rel="noreferrer">
+                  Traces <ExternalLink size={14} className="inline ml-1" />
+                </a>
+              ) : null}
+              {detail?.links?.links_ui ? (
+                <a className="text-sm underline text-gray-300 hover:text-white" href={String(detail.links.links_ui)} target="_blank" rel="noreferrer">
+                  Links <ExternalLink size={14} className="inline ml-1" />
                 </a>
               ) : null}
             </div>
