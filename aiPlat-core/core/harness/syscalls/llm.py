@@ -21,6 +21,78 @@ from core.harness.kernel.execution_context import get_active_release_context, ge
 
 Message = Dict[str, Any]
 
+def _guard_messages(messages: List[Message]) -> tuple[List[Message], Dict[str, Any]]:
+    """
+    Guard + repair a chat transcript to reduce provider rejection and "orphan tool result" issues.
+
+    - Unknown roles are converted to `system`
+    - `tool` role is converted to `system` (aiPlat doesn't use native tool-role protocols)
+    - Adjacent same-role messages are merged (keeps alternation stable)
+    - Per-message content length is capped (env: AIPLAT_LLM_MESSAGE_MAX_CHARS)
+    """
+    max_chars = int(os.getenv("AIPLAT_LLM_MESSAGE_MAX_CHARS", "20000") or "20000")
+
+    stats: Dict[str, Any] = {
+        "input_count": len(messages or []),
+        "output_count": 0,
+        "converted_roles": 0,
+        "merged_messages": 0,
+        "truncated_messages": 0,
+        "max_chars": max_chars,
+    }
+
+    if not messages:
+        return [], stats
+
+    def _norm_role(r: Any) -> str:
+        r = str(r or "").strip().lower()
+        if r in ("system", "user", "assistant"):
+            return r
+        if r == "tool":
+            return "system"
+        return "system"
+
+    def _norm_content(c: Any) -> str:
+        if c is None:
+            return ""
+        if not isinstance(c, str):
+            try:
+                c = str(c)
+            except Exception:
+                c = ""
+        if max_chars > 0 and len(c) > max_chars:
+            stats["truncated_messages"] += 1
+            return c[: max(0, max_chars - 16)] + " …(truncated)"
+        return c
+
+    out: List[Message] = []
+    for m in messages:
+        if not isinstance(m, dict):
+            continue
+        role0 = m.get("role", "user")
+        role = _norm_role(role0)
+        if role != str(role0 or "").strip().lower():
+            stats["converted_roles"] += 1
+
+        content = _norm_content(m.get("content", ""))
+        if str(role0 or "").strip().lower() == "tool":
+            # prevent "tool message without tool_call" provider errors
+            content = "TOOL_RESULT:\n" + content
+
+        if out and out[-1].get("role") == role and role != "system":
+            # merge adjacent user/user or assistant/assistant (fail-open)
+            out[-1]["content"] = (str(out[-1].get("content") or "") + "\n" + content).strip()
+            stats["merged_messages"] += 1
+        else:
+            out.append({"role": role, "content": content})
+
+    # Ensure system message at the front for provider compatibility.
+    if out and out[0].get("role") != "system":
+        out.insert(0, {"role": "system", "content": ""})
+        stats["output_count"] = len(out)
+    stats["output_count"] = len(out)
+    return out, stats
+
 
 async def sys_llm_generate(
     model: Any,
@@ -87,6 +159,12 @@ async def sys_llm_generate(
         raise RuntimeError("No model available for sys_llm_generate")
 
     prepared = ctx_gate.prepare_llm_args(prompt, context=trace_context or {})
+    message_guard_stats: Optional[Dict[str, Any]] = None
+    if isinstance(prepared, list):
+        try:
+            prepared, message_guard_stats = _guard_messages(prepared)
+        except Exception:
+            message_guard_stats = {"error": "message_guard_failed"}
 
     # PR-12: Tenant quotas (best-effort). Block when already over daily budget.
     try:
@@ -286,7 +364,10 @@ async def sys_llm_generate(
                         "start_time": start_ts,
                         "end_time": end_ts,
                         "duration_ms": (end_ts - start_ts) * 1000.0,
-                        "args": {"prompt_type": "messages" if isinstance(prepared, list) else "text"},
+                        "args": {
+                            "prompt_type": "messages" if isinstance(prepared, list) else "text",
+                            "message_guard": message_guard_stats,
+                        },
                         "result": {
                             "has_content": bool(getattr(result, "content", None)),
                             "prompt_version": prompt_version,
