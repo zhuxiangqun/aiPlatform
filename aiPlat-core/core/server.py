@@ -2377,7 +2377,27 @@ async def resume_agent_execution(execution_id: str, request: dict):
             raise HTTPException(status_code=404, detail=f"Approval request not found: {approval_id}")
         from core.harness.infrastructure.approval.types import RequestStatus
         if ar.status not in (RequestStatus.APPROVED, RequestStatus.AUTO_APPROVED):
-            raise HTTPException(status_code=409, detail=f"Approval not granted: status={ar.status.value}")
+            change_id = None
+            try:
+                if _execution_store:
+                    lk = await _execution_store.get_change_linkages_for_approval_request_ids([str(approval_id)])
+                    one = (lk or {}).get(str(approval_id)) or {}
+                    change_id = one.get("change_id")
+            except Exception:
+                change_id = None
+            raise HTTPException(
+                status_code=409,
+                detail=_gate_error_envelope(
+                    code="not_approved",
+                    message=f"not_approved: status={ar.status.value}",
+                    change_id=str(change_id) if change_id else None,
+                    approval_request_id=str(approval_id),
+                    next_actions=[x for x in [
+                        {"type": "open_approvals", "label": "打开审批中心", "url": _ui_url("/core/approvals"), "approval_request_id": str(approval_id)},
+                        {"type": "open_change_control", "label": "打开变更控制台", "url": _ui_url(f"/diagnostics/change-control/{change_id}")} if change_id else None,
+                    ] if x],
+                ),
+            )
 
     # Prefer checkpointed resume when available (Phase 3.5):
     # If we have a loop snapshot, pass it down and let HarnessIntegration run from that state.
@@ -2629,7 +2649,27 @@ async def replay_approval(request_id: str, request: dict, http_request: Request)
     from core.harness.infrastructure.approval.types import RequestStatus
 
     if r.status not in (RequestStatus.APPROVED, RequestStatus.AUTO_APPROVED):
-        raise HTTPException(status_code=409, detail=f"not_approved:{r.status.value}")
+        change_id = None
+        try:
+            if _execution_store:
+                lk = await _execution_store.get_change_linkages_for_approval_request_ids([str(request_id)])
+                one = (lk or {}).get(str(request_id)) or {}
+                change_id = one.get("change_id")
+        except Exception:
+            change_id = None
+        raise HTTPException(
+            status_code=409,
+            detail=_gate_error_envelope(
+                code="not_approved",
+                message=f"not_approved: status={r.status.value}",
+                change_id=str(change_id) if change_id else None,
+                approval_request_id=str(request_id),
+                next_actions=[x for x in [
+                    {"type": "open_approvals", "label": "打开审批中心", "url": _ui_url("/core/approvals"), "approval_request_id": str(request_id)},
+                    {"type": "open_change_control", "label": "打开变更控制台", "url": _ui_url(f"/diagnostics/change-control/{change_id}")} if change_id else None,
+                ] if x],
+            ),
+        )
 
     op = str(r.operation or "")
     meta = r.metadata if isinstance(r.metadata, dict) else {}
@@ -4820,7 +4860,27 @@ async def run_plugin(plugin_id: str, request: dict, http_request: Request):
         if not ar:
             raise HTTPException(status_code=404, detail="approval_request_not_found")
         if ar.status not in (RequestStatus.APPROVED, RequestStatus.AUTO_APPROVED):
-            raise HTTPException(status_code=409, detail=f"not_approved:{ar.status.value}")
+            change_id = None
+            try:
+                if _execution_store:
+                    lk = await _execution_store.get_change_linkages_for_approval_request_ids([str(approval_request_id)])
+                    one = (lk or {}).get(str(approval_request_id)) or {}
+                    change_id = one.get("change_id")
+            except Exception:
+                change_id = None
+            raise HTTPException(
+                status_code=409,
+                detail=_gate_error_envelope(
+                    code="not_approved",
+                    message=f"not_approved: status={ar.status.value}",
+                    change_id=str(change_id) if change_id else None,
+                    approval_request_id=str(approval_request_id),
+                    next_actions=[x for x in [
+                        {"type": "open_approvals", "label": "打开审批中心", "url": _ui_url("/core/approvals"), "approval_request_id": str(approval_request_id)},
+                        {"type": "open_change_control", "label": "打开变更控制台", "url": _ui_url(f"/diagnostics/change-control/{change_id}")} if change_id else None,
+                    ] if x],
+                ),
+            )
 
     # Allowed: record run events and return placeholder output.
     try:
