@@ -275,6 +275,116 @@ class CalculatorTool(BaseTool):
         return await self._call_with_tracking(params, handler, timeout=10)
 
 
+class ToolSearchTool(BaseTool):
+    """
+    ToolSearch Tool
+
+    用于在工具规模较大（尤其 MCP 工具多）时按需发现工具：
+    - 支持按关键字/前缀搜索
+    - 支持按名称精确查询
+    - 返回工具的描述、参数 schema（截断版）与 metadata（如 mcp_server）
+    """
+
+    def __init__(self):
+        config = ToolConfig(
+            name="tool_search",
+            description="搜索/查看可用工具（用于工具规模较大时按需发现）",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "搜索关键字（匹配 name/description/metadata）"},
+                    "name": {"type": "string", "description": "精确查询某个工具名（优先）"},
+                    "category": {"type": "string", "description": "可选：按 category 过滤（例如 mcp）"},
+                    "limit": {"type": "integer", "description": "返回条数上限（默认 20）"},
+                    "include_schema": {"type": "boolean", "description": "是否返回参数 schema（默认 true）"},
+                },
+            },
+        )
+        super().__init__(config)
+
+    async def execute(self, params: Dict[str, Any]) -> ToolResult:
+        async def handler() -> ToolResult:
+            from .base import get_tool_registry  # type: ignore
+
+            registry = get_tool_registry()
+            name = str(params.get("name") or "").strip()
+            query = str(params.get("query") or "").strip().lower()
+            category = str(params.get("category") or "").strip().lower()
+            limit = int(params.get("limit") or 20)
+            include_schema = bool(params.get("include_schema", True))
+            limit = max(1, min(limit, 200))
+
+            def _match(text: str) -> bool:
+                return (not query) or (query in (text or "").lower())
+
+            results: List[Dict[str, Any]] = []
+
+            if name:
+                t = registry.get(name)
+                if not t:
+                    return ToolResult(success=True, output={"items": [], "total": 0})
+                schema = t.get_schema() if include_schema and hasattr(t, "get_schema") else None
+                out: Dict[str, Any] = {
+                    "name": getattr(t, "name", name),
+                    "description": getattr(t, "description", "") or "",
+                }
+                # metadata best-effort
+                meta = getattr(getattr(t, "_config", None), "metadata", None)
+                if isinstance(meta, dict):
+                    out["metadata"] = meta
+                if schema is not None:
+                    # Truncate schema fields to avoid bloating context
+                    out["schema"] = {
+                        "name": schema.name,
+                        "description": (schema.description or "")[:800],
+                        "parameters": schema.parameters if isinstance(schema.parameters, dict) else {},
+                        "required": schema.required if isinstance(schema.required, list) else [],
+                    }
+                return ToolResult(success=True, output={"items": [out], "total": 1})
+
+            for tool_name in registry.list_tools():
+                t = registry.get(tool_name)
+                if not t:
+                    continue
+                # category filter (best-effort: read from config.metadata.category)
+                if category:
+                    meta = getattr(getattr(t, "_config", None), "metadata", None)
+                    cat = ""
+                    if isinstance(meta, dict):
+                        cat = str(meta.get("category") or "").lower()
+                    if cat != category:
+                        continue
+
+                desc = str(getattr(t, "description", "") or "")
+                meta = getattr(getattr(t, "_config", None), "metadata", None)
+                meta_s = ""
+                if isinstance(meta, dict):
+                    try:
+                        meta_s = str(meta)
+                    except Exception:
+                        meta_s = ""
+
+                if not (_match(tool_name) or _match(desc) or _match(meta_s)):
+                    continue
+
+                item: Dict[str, Any] = {"name": getattr(t, "name", tool_name), "description": desc[:800]}
+                if isinstance(meta, dict):
+                    item["metadata"] = meta
+                if include_schema and hasattr(t, "get_schema"):
+                    schema = t.get_schema()
+                    item["schema"] = {
+                        "parameters": schema.parameters if isinstance(schema.parameters, dict) else {},
+                        "required": schema.required if isinstance(schema.required, list) else [],
+                    }
+                results.append(item)
+                if len(results) >= limit:
+                    break
+
+            return ToolResult(success=True, output={"items": results, "total": len(results)})
+
+        return await self._call_with_tracking(params, handler, timeout=10)
+
+
 class SearchTool(BaseTool):
     """
     Search Tool
@@ -659,6 +769,14 @@ class FileOperationsTool(BaseTool):
                 if len(content.encode("utf-8", errors="ignore")) > max_bytes:
                     raise ValueError(f"content too large (> {max_bytes} bytes)")
                 target_resolved.write_text(content, encoding="utf-8")
+                # Ensure mtime advances (some FS have coarse timestamp resolution).
+                # This makes the optimistic concurrency guard (expected_mtime) reliable.
+                try:
+                    import time as _time
+                    now_ns = int(_time.time_ns())
+                    os.utime(target_resolved, ns=(now_ns, now_ns))
+                except Exception:
+                    pass
                 result = "ok"
             elif operation == "delete":
                 if os.environ.get("AIPLAT_FILE_OPERATIONS_ALLOW_DELETE", "false").lower() not in {"1", "true", "yes", "y"}:
@@ -801,6 +919,8 @@ def create_tool(
         return CalculatorTool()
     elif tool_type == "search":
         return SearchTool()
+    elif tool_type == "tool_search":
+        return ToolSearchTool()
     elif tool_type == "file_operations":
         return FileOperationsTool()
     else:

@@ -443,8 +443,16 @@ DONE: final_answer
         if not self._tools:
             return "No tools available", stats
 
+        # Ensure tool_search is always visible to the model when tools are truncated.
+        always_include = {"tool_search"}
+        ordered = list(self._tools)
+        try:
+            ordered.sort(key=lambda x: (0 if getattr(x, "name", "") in always_include else 1, str(getattr(x, "name", ""))))
+        except Exception:
+            ordered = list(self._tools)
+
         lines: List[str] = []
-        for t in self._tools:
+        for t in ordered:
             try:
                 name = getattr(t, "name", None) or (t.get_name() if hasattr(t, "get_name") else str(t))
             except Exception:

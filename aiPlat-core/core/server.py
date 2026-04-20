@@ -645,7 +645,8 @@ async def lifespan(app: FastAPI):
         perm_mgr = None
     
     # Built-in tools via create_tool factory
-    for tool_type in ["calculator", "search", "file_operations"]:
+    # NOTE: tool_search is used to discover tools on-demand when tool list is large.
+    for tool_type in ["calculator", "search", "tool_search", "file_operations"]:
         try:
             tool = create_tool(tool_type)
             registry.register(tool)
