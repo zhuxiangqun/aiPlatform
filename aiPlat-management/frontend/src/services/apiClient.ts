@@ -365,6 +365,9 @@ export const onboardingApi = {
   setExecBackend: async (body: Record<string, unknown>) => {
     return apiClient.post<any>('/onboarding/exec-backend', body);
   },
+  setContextConfig: async (body: Record<string, unknown>) => {
+    return apiClient.post<any>('/onboarding/context-config', body);
+  },
   setTrustedSkillKeys: async (body: Record<string, unknown>) => {
     return apiClient.post<any>('/onboarding/trusted-skill-keys', body);
   },

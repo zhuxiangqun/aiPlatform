@@ -18,6 +18,7 @@ const labelForActionKey = (key: string) => {
   if (key === 'record_repo_changeset') return '记录 Repo 变更集';
   if (key === 'run_repo_tests') return '运行 Repo 测试';
   if (key === 'set_exec_backend') return '切换 Exec 后端';
+  if (key === 'set_context_config') return '配置 Context 行为';
   if (key === 'set_trusted_skill_keys') return '配置受信任 Skill 公钥';
   return `执行：${key}`;
 };
@@ -155,6 +156,8 @@ export const ActionableFixes: React.FC<Props> = ({ actions, recommendations, onA
         res = await onboardingApi.migrateSecrets(body);
       } else if (actionType === 'onboarding.exec_backend' || apiUrl === '/api/onboarding/exec-backend') {
         res = await onboardingApi.setExecBackend(body);
+      } else if (actionType === 'onboarding.context_config' || apiUrl === '/api/onboarding/context-config') {
+        res = await onboardingApi.setContextConfig(body);
       } else if (actionType === 'onboarding.trusted_skill_keys' || apiUrl === '/api/onboarding/trusted-skill-keys') {
         res = await onboardingApi.setTrustedSkillKeys(body);
       } else if (actionType === 'diagnostics.repo_changeset_record' || apiUrl === '/api/diagnostics/repo/changeset/record') {
