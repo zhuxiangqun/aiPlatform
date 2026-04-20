@@ -2772,6 +2772,87 @@ async def autosmoke_change_control(change_id: str, http_request: Request):
     return {"status": "ok", "change_id": str(change_id), "targets": [{"type": t[0], "id": t[1]} for t in uniq], "results": results}
 
 
+@api_router.get("/change-control/changes/{change_id}/evidence")
+async def export_change_control_evidence(change_id: str, http_request: Request, format: str = "zip", limit: int = 500):
+    """
+    Export an evidence pack for a change_id.
+    Includes:
+      - change_control detail (latest + events + summary + links)
+      - audit logs filtered by change_id
+      - (optional) latest run summary + run_events when run_id exists
+    format:
+      - json: returns a JSON object
+      - zip: returns a ZIP containing evidence.json
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+
+    fmt = str(format or "zip").strip().lower()
+    if fmt not in {"json", "zip"}:
+        raise HTTPException(status_code=400, detail="format must be json|zip")
+
+    tenant_id = None
+    try:
+        actor0 = _rbac_actor_from_http(http_request, None)
+        tenant_id = actor0.get("tenant_id") or http_request.headers.get("X-AIPLAT-TENANT-ID")
+    except Exception:
+        tenant_id = None
+
+    cc = await _execution_store.get_change_control(change_id=str(change_id), limit=int(limit), offset=0, tenant_id=tenant_id)
+    # attach UI links consistently
+    cc["links"] = {
+        "change_control_ui": _ui_url(f"/diagnostics/change-control/{str(change_id)}"),
+        "syscalls_ui": _ui_url(f"/diagnostics/syscalls?kind=changeset&target_type=change&target_id={str(change_id)}"),
+        "audit_ui": _ui_url(f"/diagnostics/audit?change_id={str(change_id)}"),
+    }
+
+    audits = await _execution_store.list_audit_logs(change_id=str(change_id), limit=1000, offset=0)
+    summary = cc.get("summary") if isinstance(cc, dict) else None
+    latest_run_id = None
+    try:
+        if isinstance(summary, dict):
+            latest_run_id = summary.get("latest_run_id")
+        if not latest_run_id and isinstance(cc.get("latest"), dict):
+            latest_run_id = cc["latest"].get("run_id")
+    except Exception:
+        latest_run_id = None
+
+    run = None
+    run_events = None
+    if latest_run_id:
+        try:
+            run = await _execution_store.get_run_summary(run_id=str(latest_run_id))
+        except Exception:
+            run = None
+        try:
+            run_events = await _execution_store.list_run_events(run_id=str(latest_run_id), after_seq=0, limit=500)
+        except Exception:
+            run_events = None
+
+    evidence = {
+        "change_id": str(change_id),
+        "exported_at": time.time(),
+        "change_control": cc,
+        "audit": audits,
+        "run": run,
+        "run_events": run_events,
+    }
+
+    if fmt == "json":
+        return evidence
+
+    import io
+    import zipfile
+    from fastapi.responses import StreamingResponse
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("evidence.json", json.dumps(evidence, ensure_ascii=False, indent=2, default=str))
+    buf.seek(0)
+    headers = {"Content-Disposition": f'attachment; filename="change_{str(change_id)}_evidence.zip"'}
+    return StreamingResponse(buf, media_type="application/zip", headers=headers)
+
+
 # ==================== Runs (Platform Execution Contract) ====================
 
 
