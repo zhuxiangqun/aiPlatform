@@ -43,9 +43,9 @@
 
 - [x] Repo changeset：patch/staged/tests/record + management Repo 页面审阅入口
 - [ ] **Git primitives（P0）**
-  - [ ] commit（带建议 message + 审批/审计）
-  - [ ] branch 操作（create/switch）
-  - [ ] 将“recorded changeset”与 commit/PR 建立关联（change control 证据链）
+  - [x] commit（带建议 message + 审批/审计）
+  - [x] branch 操作（create/switch）
+  - [x] 将“recorded changeset”与 commit 建立关联（使用同一 change_id 写入 Change Control）
 - [ ] **失败可恢复（P1）**
   - [ ] /undo /retry /stop 的一等能力（尤其是写文件/执行命令/发布类操作）
 
