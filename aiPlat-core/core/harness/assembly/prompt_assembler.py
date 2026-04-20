@@ -86,7 +86,9 @@ class PromptAssembler:
         stable_system, overlay = self._split_system_layers(msgs)
         stable_prompt_version = hashlib.sha256(stable_system.encode("utf-8")).hexdigest() if stable_system else ""
         w_hash = meta.get("workspace_context_hash")
-        stable_cache_key = self._build_stable_cache_key(meta=meta, prompt_version=version, workspace_context_hash=w_hash)
+        stable_cache_key = self._build_stable_cache_key(
+            meta=meta, stable_prompt_version=stable_prompt_version, workspace_context_hash=w_hash
+        )
         stable_cache_hit = False
         if stable_cache_key:
             stable_cache_hit = _STABLE_PROMPT_CACHE.get(stable_cache_key) == stable_system
@@ -289,12 +291,16 @@ Based on this observation, what should I do next?
                 saw_non_system = True
         return "\n\n".join([p for p in stable_parts if p]), "\n\n".join([p for p in overlay_parts if p])
 
-    def _build_stable_cache_key(self, *, meta: Dict[str, Any], prompt_version: str, workspace_context_hash: Any) -> Optional[str]:
+    def _build_stable_cache_key(
+        self, *, meta: Dict[str, Any], stable_prompt_version: str, workspace_context_hash: Any
+    ) -> Optional[str]:
         try:
             target_type = str(meta.get("target_type") or meta.get("release_target_type") or "").strip() or "unknown"
             target_id = str(meta.get("target_id") or meta.get("release_target_id") or "").strip() or "unknown"
             w = str(workspace_context_hash or "")
-            raw = f"{target_type}:{target_id}:{prompt_version}:{w}"
+            # Important: stable cache key must *not* depend on per-turn prompt_version,
+            # otherwise it will miss whenever user/assistant messages change.
+            raw = f"{target_type}:{target_id}:{stable_prompt_version}:{w}"
             return hashlib.sha256(raw.encode("utf-8")).hexdigest()
         except Exception:
             return None
