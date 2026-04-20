@@ -170,6 +170,12 @@ async def enqueue_autosmoke(
         "changed_resource": {"type": resource_type, "id": resource_id},
         "detail": detail or {},
     }
+    change_id = None
+    try:
+        if isinstance(payload.get("detail"), dict):
+            change_id = payload["detail"].get("change_id")
+    except Exception:
+        change_id = None
     await execution_store.update_job(job_id, {"user_id": actor_id, "session_id": tenant_id, "payload": payload})
 
     # Audit (best-effort)
@@ -181,6 +187,7 @@ async def enqueue_autosmoke(
             actor_id=actor_id,
             resource_type=resource_type,
             resource_id=resource_id,
+                change_id=str(change_id) if change_id else None,
             detail={"job_id": job_id, "payload": payload},
         )
     except Exception:
@@ -200,6 +207,7 @@ async def enqueue_autosmoke(
                     actor_id=actor_id,
                     resource_type=resource_type,
                     resource_id=resource_id,
+                    change_id=str(change_id) if change_id else None,
                     run_id=str((run or {}).get("run_id") or (run or {}).get("id") or ""),
                     trace_id=str((run or {}).get("trace_id") or "") or None,
                     detail={"job_id": job_id, "job_run": run},

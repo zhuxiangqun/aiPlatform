@@ -43,7 +43,7 @@ class ExecutionStoreConfig:
 
 
 class ExecutionStore:
-    CURRENT_SCHEMA_VERSION = 38
+    CURRENT_SCHEMA_VERSION = 39
 
     def __init__(self, config: ExecutionStoreConfig):
         self._config = config
@@ -1492,6 +1492,20 @@ class ExecutionStore:
                             pass
                         _set_version(38)
                         current = 38
+
+                    # ---- Migration v39: audit_logs add change_id ----
+                    if current < 39:
+                        try:
+                            conn.execute("ALTER TABLE audit_logs ADD COLUMN change_id TEXT;")
+                        except Exception:
+                            # already exists / legacy db without audit_logs
+                            pass
+                        try:
+                            conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_logs_change ON audit_logs(change_id, created_at DESC);")
+                        except Exception:
+                            pass
+                        _set_version(39)
+                        current = 39
 
                     # If legacy db exists with tables but without meta, upgrade meta to current
                     if current < self.CURRENT_SCHEMA_VERSION:
@@ -3174,6 +3188,7 @@ class ExecutionStore:
         resource_type: Optional[str] = None,
         resource_id: Optional[str] = None,
         request_id: Optional[str] = None,
+        change_id: Optional[str] = None,
         run_id: Optional[str] = None,
         trace_id: Optional[str] = None,
         detail: Optional[Dict[str, Any]] = None,
@@ -3189,8 +3204,8 @@ class ExecutionStore:
                     """
                     INSERT INTO audit_logs(
                       tenant_id, actor_id, actor_role, action, resource_type, resource_id,
-                      request_id, run_id, trace_id, status, detail_json, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                      request_id, change_id, run_id, trace_id, status, detail_json, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
                     """,
                     (
                         tenant_id,
@@ -3200,6 +3215,7 @@ class ExecutionStore:
                         resource_type,
                         resource_id,
                         request_id,
+                        change_id,
                         run_id,
                         trace_id,
                         status,
@@ -3222,6 +3238,7 @@ class ExecutionStore:
         resource_type: Optional[str] = None,
         resource_id: Optional[str] = None,
         request_id: Optional[str] = None,
+        change_id: Optional[str] = None,
         run_id: Optional[str] = None,
         trace_id: Optional[str] = None,
         status: Optional[str] = None,
@@ -3257,6 +3274,9 @@ class ExecutionStore:
                 if request_id:
                     clauses.append("request_id=?")
                     params.append(str(request_id))
+                if change_id:
+                    clauses.append("change_id=?")
+                    params.append(str(change_id))
                 if run_id:
                     clauses.append("run_id=?")
                     params.append(str(run_id))
@@ -3277,7 +3297,7 @@ class ExecutionStore:
                 rows = conn.execute(
                     f"""
                     SELECT id, tenant_id, actor_id, actor_role, action, resource_type, resource_id,
-                           request_id, run_id, trace_id, status, detail_json, created_at
+                           request_id, change_id, run_id, trace_id, status, detail_json, created_at
                     FROM audit_logs
                     WHERE {where}
                     ORDER BY created_at DESC
@@ -3297,6 +3317,7 @@ class ExecutionStore:
                             "resource_type": r["resource_type"],
                             "resource_id": r["resource_id"],
                             "request_id": r["request_id"],
+                            "change_id": r["change_id"],
                             "run_id": r["run_id"],
                             "trace_id": r["trace_id"],
                             "status": r["status"],

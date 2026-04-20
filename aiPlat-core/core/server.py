@@ -1266,9 +1266,13 @@ def _change_links(change_id: str) -> Dict[str, Any]:
     try:
         return {
             "syscalls_ui": _ui_url(f"/diagnostics/syscalls?kind=changeset&target_type=change&target_id={change_id}"),
+            "audit_ui": _ui_url(f"/diagnostics/audit?change_id={change_id}"),
         }
     except Exception:
-        return {"syscalls_ui": f"/diagnostics/syscalls?kind=changeset&target_type=change&target_id={change_id}"}
+        return {
+            "syscalls_ui": f"/diagnostics/syscalls?kind=changeset&target_type=change&target_id={change_id}",
+            "audit_ui": f"/diagnostics/audit?change_id={change_id}",
+        }
 
 
 async def _gate_with_change_control(
@@ -1310,6 +1314,23 @@ async def _gate_with_change_control(
             tenant_id=str(actor0.get("tenant_id") or "") or None,
             approval_request_id=approval_request_id,
         )
+        # audit (best-effort)
+        try:
+            if _execution_store:
+                await _execution_store.add_audit_log(
+                    action="gate_blocked",
+                    status="failed",
+                    tenant_id=str(actor0.get("tenant_id") or "") or None,
+                    actor_id=str(actor0.get("actor_id") or "admin"),
+                    actor_role=str(actor0.get("actor_role") or "") or None,
+                    resource_type="change",
+                    resource_id=str(change_id),
+                    change_id=str(change_id),
+                    request_id=str(approval_request_id) if approval_request_id else None,
+                    detail={"operation": operation, "targets": [{"type": t[0], "id": t[1]} for t in targets], "gate": detail},
+                )
+        except Exception:
+            pass
         raise HTTPException(status_code=e.status_code, detail=detail)
 
 
@@ -2610,7 +2631,10 @@ async def get_change_control(change_id: str, limit: int = 200, offset: int = 0, 
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
     out = await _execution_store.get_change_control(change_id=change_id, limit=limit, offset=offset, tenant_id=tenant_id)
     cid = str(change_id)
-    links = {"syscalls_ui": _ui_url(f"/diagnostics/syscalls?kind=changeset&target_type=change&target_id={cid}")}
+    links = {
+        "syscalls_ui": _ui_url(f"/diagnostics/syscalls?kind=changeset&target_type=change&target_id={cid}"),
+        "audit_ui": _ui_url(f"/diagnostics/audit?change_id={cid}"),
+    }
     try:
         latest = out.get("latest") if isinstance(out.get("latest"), dict) else {}
         arid = (latest or {}).get("approval_request_id")
@@ -2618,7 +2642,7 @@ async def get_change_control(change_id: str, limit: int = 200, offset: int = 0, 
         rid = (latest or {}).get("run_id")
         if arid:
             links["approvals_ui"] = _ui_url("/core/approvals")
-            links["audit_ui"] = _ui_url(f"/diagnostics/audit?request_id={arid}")
+            links["audit_request_ui"] = _ui_url(f"/diagnostics/audit?request_id={arid}")
         if tid:
             links["traces_ui"] = _ui_url(f"/diagnostics/traces?trace_id={tid}")
             links["links_ui"] = _ui_url(f"/diagnostics/links?trace_id={tid}")
@@ -2793,6 +2817,7 @@ async def list_audit_logs(
     resource_type: Optional[str] = None,
     resource_id: Optional[str] = None,
     request_id: Optional[str] = None,
+    change_id: Optional[str] = None,
     run_id: Optional[str] = None,
     trace_id: Optional[str] = None,
     status: Optional[str] = None,
@@ -2810,6 +2835,7 @@ async def list_audit_logs(
         resource_type=resource_type,
         resource_id=resource_id,
         request_id=request_id,
+        change_id=change_id,
         run_id=run_id,
         trace_id=trace_id,
         status=status,
