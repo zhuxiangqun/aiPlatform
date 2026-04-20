@@ -389,10 +389,10 @@ async def upsert_release_rollout(body: Dict[str, Any]):
 
 
 @router.delete("/learning/rollouts")
-async def delete_release_rollout(body: Dict[str, Any]):
+async def delete_release_rollout(target_type: str = Query(...), target_id: str = Query(...)):
     try:
         client = get_core_client()
-        return await client.delete_release_rollout(body or {})
+        return await client.delete_release_rollout({"target_type": str(target_type), "target_id": str(target_id)})
     except httpx.HTTPError as e:
         raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
 
