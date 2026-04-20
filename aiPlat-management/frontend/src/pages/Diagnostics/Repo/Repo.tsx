@@ -130,7 +130,11 @@ const Repo: React.FC = () => {
     try {
       const res = await diagnosticsApi.recordRepoChangeset({ details: recordDetails || '', run_tests: runTestsOnRecord });
       setLastRecord(res);
-      toast.success('已记录 changeset');
+      if (res?.status === 'approval_required' && res?.approval_request_id) {
+        toast.info(`已创建审批：${String(res.approval_request_id)}`);
+      } else {
+        toast.success('已记录 changeset');
+      }
       await loadRecent();
     } catch (e: any) {
       setLastRecord(null);
