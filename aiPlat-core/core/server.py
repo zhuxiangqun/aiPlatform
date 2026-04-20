@@ -11417,7 +11417,7 @@ async def get_context_config():
 
 
 @api_router.post("/diagnostics/prompt/assemble")
-async def diagnostics_prompt_assemble(request: DiagnosticsPromptAssembleRequest):
+async def diagnostics_prompt_assemble(request: DiagnosticsPromptAssembleRequest, http_request: Request):
     """
     Assemble prompt + context and return metadata for debugging.
     NOTE: This endpoint is for diagnostics and should not be used on hot paths.
@@ -11460,11 +11460,25 @@ async def diagnostics_prompt_assemble(request: DiagnosticsPromptAssembleRequest)
     t2 = None
     try:
         t1 = set_active_workspace_context(ActiveWorkspaceContext(repo_root=request.repo_root))
+        # propagate tenant/actor context into ContextEngine session_search
+        actor0 = _rbac_actor_from_http(http_request, None)
+        tenant_id = actor0.get("tenant_id") or http_request.headers.get("X-AIPLAT-TENANT-ID")
+        actor_id = actor0.get("actor_id") or http_request.headers.get("X-AIPLAT-ACTOR-ID")
+        actor_role = actor0.get("actor_role") or http_request.headers.get("X-AIPLAT-ACTOR-ROLE")
+        req_id = http_request.headers.get("X-AIPLAT-REQUEST-ID") or None
         t2 = set_active_request_context(
-            ActiveRequestContext(user_id=str(request.user_id), session_id=str(request.session_id or "default"))
+            ActiveRequestContext(
+                user_id=str(request.user_id),
+                session_id=str(request.session_id or "default"),
+                tenant_id=str(tenant_id) if tenant_id else None,
+                actor_id=str(actor_id) if actor_id else None,
+                actor_role=str(actor_role) if actor_role else None,
+                entrypoint="diagnostics_prompt_assemble",
+                request_id=str(req_id) if req_id else None,
+            )
         )
         out = PromptAssembler().assemble(msgs, metadata=meta)
-        return {
+        resp = {
             "status": "ok",
             "prompt_version": out.prompt_version,
             "workspace_context_hash": out.workspace_context_hash,
@@ -11478,6 +11492,46 @@ async def diagnostics_prompt_assemble(request: DiagnosticsPromptAssembleRequest)
             },
             "message_count": len(out.messages or []),
         }
+        # Persist context metrics (best-effort) for trends/regression.
+        try:
+            if _execution_store:
+                cs = out.metadata.get("context_status") if isinstance(out.metadata.get("context_status"), dict) else {}
+                budgets = cs.get("budgets") if isinstance(cs.get("budgets"), dict) else {}
+                comp = cs.get("compaction") if isinstance(cs.get("compaction"), dict) else {}
+                ss = cs.get("session_search") if isinstance(cs.get("session_search"), dict) else {}
+                proj = cs.get("project_context") if isinstance(cs.get("project_context"), dict) else {}
+                metrics = {
+                    "stable_cache_hit": bool(out.stable_cache_hit),
+                    "stable_cache_key": out.stable_cache_key,
+                    "workspace_context_hash": out.workspace_context_hash,
+                    "prompt_estimated_tokens": out.metadata.get("prompt_estimated_tokens"),
+                    "budgets_token_estimate": budgets.get("token_estimate"),
+                    "budgets_total_chars": budgets.get("total_chars"),
+                    "compaction_applied": bool(comp.get("applied")),
+                    "session_search_enabled": bool(ss.get("enabled")),
+                    "session_search_injected": bool(ss.get("injected")),
+                    "session_search_hits": int(ss.get("hits") or 0),
+                    "project_context_injected": bool(proj.get("injected")),
+                    "project_context_file": proj.get("file"),
+                    "project_context_blocked": bool(proj.get("blocked")),
+                }
+                await _execution_store.add_syscall_event(
+                    {
+                        "kind": "metric",
+                        "name": "context_assemble",
+                        "status": "success",
+                        "tenant_id": str(tenant_id) if tenant_id else None,
+                        "user_id": str(request.user_id or "system"),
+                        "session_id": str(request.session_id or "default"),
+                        "target_type": "context",
+                        "target_id": str(out.workspace_context_hash or out.stable_cache_key or ""),
+                        "args": {"operation": "diagnostics_prompt_assemble", "repo_root": str(request.repo_root or "")},
+                        "result": {"metrics": metrics},
+                    }
+                )
+        except Exception:
+            pass
+        return resp
     finally:
         if t2 is not None:
             try:
@@ -11497,6 +11551,125 @@ async def diagnostics_prompt_assemble(request: DiagnosticsPromptAssembleRequest)
                     os.environ["AIPLAT_ENABLE_SESSION_SEARCH"] = env_prev
             except Exception:
                 pass
+
+
+@api_router.get("/diagnostics/context/metrics/recent")
+async def diagnostics_context_metrics_recent(
+    limit: int = 50,
+    offset: int = 0,
+    tenant_id: Optional[str] = None,
+    session_id: Optional[str] = None,
+):
+    """
+    Recent context assembly metrics (stored as syscall_events kind=metric, name=context_assemble).
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    res = await _execution_store.list_syscall_events(
+        limit=int(limit),
+        offset=int(offset),
+        kind="metric",
+        name="context_assemble",
+        tenant_id=tenant_id,
+        session_id=session_id,
+    )
+    return res
+
+
+@api_router.get("/diagnostics/context/metrics/summary")
+async def diagnostics_context_metrics_summary(
+    window_hours: int = 24,
+    top_n: int = 8,
+    tenant_id: Optional[str] = None,
+):
+    """
+    Aggregate context metrics for trends/regression (best-effort, diagnostics use).
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    now = time.time()
+    since = now - float(max(1, int(window_hours))) * 3600.0
+    # Fetch a bounded window (diagnostics only). We post-filter by created_at to avoid schema changes.
+    raw = await _execution_store.list_syscall_events(
+        limit=2000,
+        offset=0,
+        kind="metric",
+        name="context_assemble",
+        tenant_id=tenant_id,
+    )
+    items = [x for x in (raw.get("items") or []) if isinstance(x, dict) and float(x.get("created_at") or 0) >= since]
+    total = len(items)
+    if total == 0:
+        return {"window_hours": int(window_hours), "total": 0, "rates": {}, "avgs": {}, "top": {}}
+
+    cache_hit = 0
+    compaction = 0
+    ss_enabled = 0
+    ss_injected = 0
+    ss_hits_sum = 0
+    prompt_tok_sum = 0
+    prompt_tok_cnt = 0
+    budget_tok_sum = 0
+    budget_tok_cnt = 0
+    by_hash: Dict[str, int] = {}
+    by_session: Dict[str, int] = {}
+
+    for it in items:
+        r = it.get("result") if isinstance(it.get("result"), dict) else {}
+        m = r.get("metrics") if isinstance(r.get("metrics"), dict) else {}
+        if bool(m.get("stable_cache_hit")):
+            cache_hit += 1
+        if bool(m.get("compaction_applied")):
+            compaction += 1
+        if bool(m.get("session_search_enabled")):
+            ss_enabled += 1
+        if bool(m.get("session_search_injected")):
+            ss_injected += 1
+        try:
+            ss_hits_sum += int(m.get("session_search_hits") or 0)
+        except Exception:
+            pass
+        try:
+            pt = m.get("prompt_estimated_tokens")
+            if isinstance(pt, (int, float)):
+                prompt_tok_sum += float(pt)
+                prompt_tok_cnt += 1
+        except Exception:
+            pass
+        try:
+            bt = m.get("budgets_token_estimate")
+            if isinstance(bt, (int, float)):
+                budget_tok_sum += float(bt)
+                budget_tok_cnt += 1
+        except Exception:
+            pass
+
+        h = str(m.get("workspace_context_hash") or it.get("target_id") or "").strip()
+        if h:
+            by_hash[h] = by_hash.get(h, 0) + 1
+        sid = str(it.get("session_id") or "").strip()
+        if sid:
+            by_session[sid] = by_session.get(sid, 0) + 1
+
+    def _top(d: Dict[str, int]) -> List[Dict[str, Any]]:
+        return [{"key": k, "count": v} for k, v in sorted(d.items(), key=lambda kv: kv[1], reverse=True)[: int(top_n)]]
+
+    return {
+        "window_hours": int(window_hours),
+        "total": total,
+        "rates": {
+            "stable_cache_hit_rate": cache_hit / float(total),
+            "compaction_rate": compaction / float(total),
+            "session_search_enabled_rate": ss_enabled / float(total),
+            "session_search_injected_rate": ss_injected / float(total),
+        },
+        "avgs": {
+            "session_search_hits": ss_hits_sum / float(total),
+            "prompt_estimated_tokens": (prompt_tok_sum / float(prompt_tok_cnt)) if prompt_tok_cnt else None,
+            "budgets_token_estimate": (budget_tok_sum / float(budget_tok_cnt)) if budget_tok_cnt else None,
+        },
+        "top": {"workspace_context_hash": _top(by_hash), "session_id": _top(by_session)},
+    }
 
 
 # ==================== Prompt Templates (platformization MVP) ====================
