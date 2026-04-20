@@ -121,6 +121,14 @@ async def set_exec_backend(request: Request, body: Dict[str, Any]) -> Dict[str, 
     return await core_client.set_exec_backend(body or {})
 
 
+@router.post("/context-config")
+async def set_context_config(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="core_client not initialized")
+    return await core_client.set_context_config(body or {})
+
+
 @router.post("/trusted-skill-keys")
 async def set_trusted_skill_keys(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
     core_client = getattr(request.app.state, "core_client", None)

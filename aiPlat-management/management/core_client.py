@@ -268,6 +268,9 @@ class CoreAPIClient:
     async def set_exec_backend(self, body: Dict[str, Any]) -> Dict[str, Any]:
         return await self._request("POST", "/api/core/onboarding/exec-backend", json=body or {})
 
+    async def set_context_config(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", "/api/core/onboarding/context-config", json=body or {})
+
     async def set_trusted_skill_keys(self, body: Dict[str, Any]) -> Dict[str, Any]:
         return await self._request("POST", "/api/core/onboarding/trusted-skill-keys", json=body or {})
 

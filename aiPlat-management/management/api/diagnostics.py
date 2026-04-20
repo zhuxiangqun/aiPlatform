@@ -871,6 +871,27 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
                     "code": "session_search_disabled",
                     "message": "当前未开启跨会话检索注入（AIPLAT_ENABLE_SESSION_SEARCH=false）。若你需要长期记忆召回/跨会话一致性，可考虑开启。",
                     "links": {"onboarding_ui": "/onboarding"},
+                    "actions": {
+                        "set_context_config": {
+                            "action_type": "onboarding.context_config",
+                            "method": "POST",
+                            "api_url": "/api/onboarding/context-config",
+                            "input_schema": {
+                                "type": "object",
+                                "properties": {
+                                    "enable_session_search": {"type": "boolean", "default": True, "x-ui": {"order": 1}},
+                                    "context_token_limit": {"type": "integer", "default": 12000, "x-ui": {"order": 2, "placeholder": "context token 预算（可选）"}},
+                                    "context_char_limit": {"type": "integer", "default": 60000, "x-ui": {"order": 3, "placeholder": "context 字符预算（可选）"}},
+                                    "context_max_messages": {"type": "integer", "default": 80, "x-ui": {"order": 4, "placeholder": "最大消息数（可选）"}},
+                                    "require_approval": {"type": "boolean", "default": True, "x-ui": {"order": 98}},
+                                    "approval_request_id": {"type": "string", "x-ui": {"order": 99, "placeholder": "审批通过后可填入以重试"}},
+                                    "details": {"type": "string", "x-ui": {"order": 100, "placeholder": "变更说明（可选）"}},
+                                },
+                                "required": ["enable_session_search"],
+                            },
+                            "body_example": {"enable_session_search": True, "require_approval": True},
+                        }
+                    },
                 }
             )
     except Exception:
