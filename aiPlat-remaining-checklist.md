@@ -65,8 +65,8 @@
 
 - [x] Capability→Policy 辅助页面（从 capabilities(tool:xxx) 汇总 → 写入 tenant policy）
 - [ ] **capabilities 数据源打通（P0）**
-  - [ ] 后端确保从 `SKILL.md` front matter 提取 capabilities 并写入 skill metadata（而不是仅靠手工）
-  - [ ] capability schema 校验（缺失/非法时 UI 告警）
+  - [x] 后端确保从 `SKILL.md` front matter 提取 capabilities 并写入 skill metadata（而不是仅靠手工）
+  - [x] capability schema 校验（缺失/非法时 UI 告警）
 - [ ] **插件元数据规范化（P0）**
   - [ ] 插件/skill pack：权限声明、依赖声明、测试声明、版本/升级/回滚策略
   - [ ] management UI：安装/升级/回滚的可视化流程
