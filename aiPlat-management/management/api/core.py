@@ -264,6 +264,175 @@ async def delete_prompt_template(
         raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
 
 
+# ==================== Learning / Releases / Approvals (Phase 6) ====================
+
+
+@router.get("/learning/artifacts")
+async def list_learning_artifacts(
+    target_type: Optional[str] = None,
+    target_id: Optional[str] = None,
+    kind: Optional[str] = None,
+    status: Optional[str] = None,
+    trace_id: Optional[str] = None,
+    run_id: Optional[str] = None,
+    limit: int = Query(50, ge=1, le=2000),
+    offset: int = Query(0, ge=0),
+):
+    try:
+        client = get_core_client()
+        return await client.list_learning_artifacts(
+            target_type=target_type,
+            target_id=target_id,
+            kind=kind,
+            status=status,
+            trace_id=trace_id,
+            run_id=run_id,
+            limit=limit,
+            offset=offset,
+        )
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/learning/artifacts/{artifact_id}")
+async def get_learning_artifact(artifact_id: str):
+    try:
+        client = get_core_client()
+        return await client.get_learning_artifact(str(artifact_id))
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/learning/artifacts/{artifact_id}/status")
+async def set_learning_artifact_status(artifact_id: str, body: Dict[str, Any]):
+    try:
+        client = get_core_client()
+        status = (body or {}).get("status")
+        if not isinstance(status, str) or not status:
+            raise HTTPException(status_code=400, detail="missing_status")
+        metadata_update = (body or {}).get("metadata_update") if isinstance((body or {}).get("metadata_update"), dict) else {}
+        return await client.set_learning_artifact_status(str(artifact_id), status=str(status), metadata_update=metadata_update)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/learning/autocapture")
+async def autocapture_learning(body: Dict[str, Any]):
+    try:
+        client = get_core_client()
+        return await client.autocapture(body or {})
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/learning/autocapture/to_prompt_revision")
+async def autocapture_to_prompt_revision(body: Dict[str, Any]):
+    try:
+        client = get_core_client()
+        return await client.autocapture_to_prompt_revision(body or {})
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/learning/autocapture/to_skill_evolution")
+async def autocapture_to_skill_evolution(body: Dict[str, Any]):
+    try:
+        client = get_core_client()
+        return await client.autocapture_to_skill_evolution(body or {})
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/learning/releases/{candidate_id}/publish")
+async def publish_release_candidate(candidate_id: str, body: Dict[str, Any]):
+    try:
+        client = get_core_client()
+        return await client.publish_release_candidate(str(candidate_id), body or {})
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/learning/releases/{candidate_id}/rollback")
+async def rollback_release_candidate(candidate_id: str, body: Dict[str, Any]):
+    try:
+        client = get_core_client()
+        return await client.rollback_release_candidate(str(candidate_id), body or {})
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/learning/releases/expire")
+async def expire_releases(body: Dict[str, Any] = None):
+    try:
+        client = get_core_client()
+        return await client.expire_releases(body or {})
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/learning/rollouts")
+async def list_release_rollouts(target_type: Optional[str] = None, target_id: Optional[str] = None, limit: int = Query(100, ge=1, le=1000), offset: int = Query(0, ge=0)):
+    try:
+        client = get_core_client()
+        return await client.list_release_rollouts(target_type=target_type, target_id=target_id, limit=limit, offset=offset)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.put("/learning/rollouts")
+async def upsert_release_rollout(body: Dict[str, Any]):
+    try:
+        client = get_core_client()
+        return await client.upsert_release_rollout(body or {})
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.delete("/learning/rollouts")
+async def delete_release_rollout(body: Dict[str, Any]):
+    try:
+        client = get_core_client()
+        return await client.delete_release_rollout(body or {})
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/learning/releases/{candidate_id}/metrics/snapshots")
+async def add_release_metric_snapshot(candidate_id: str, body: Dict[str, Any]):
+    try:
+        client = get_core_client()
+        return await client.add_release_metric_snapshot(str(candidate_id), body or {})
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/learning/releases/{candidate_id}/metrics/snapshots")
+async def list_release_metric_snapshots(candidate_id: str, metric_key: Optional[str] = None, limit: int = Query(200, ge=1, le=2000), offset: int = Query(0, ge=0)):
+    try:
+        client = get_core_client()
+        return await client.list_release_metric_snapshots(str(candidate_id), metric_key=metric_key, limit=limit, offset=offset)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/learning/auto-rollback/regression")
+async def auto_rollback_regression(body: Dict[str, Any]):
+    try:
+        client = get_core_client()
+        return await client.auto_rollback_regression(body or {})
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/learning/approvals/cleanup-rollback-approvals")
+async def cleanup_rollback_approvals(body: Dict[str, Any] = None):
+    try:
+        client = get_core_client()
+        return await client.cleanup_rollback_approvals(body or {})
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
 @router.post("/jobs/{job_id}/enable")
 async def enable_job(job_id: str):
     try:

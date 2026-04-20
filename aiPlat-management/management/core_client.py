@@ -523,6 +523,49 @@ class CoreAPIClient:
     async def autocapture_to_prompt_revision(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         return await self._request("POST", "/api/core/learning/autocapture/to_prompt_revision", json=payload)
 
+    async def autocapture(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", "/api/core/learning/autocapture", json=payload)
+
+    async def autocapture_to_skill_evolution(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", "/api/core/learning/autocapture/to_skill_evolution", json=payload)
+
+    async def list_release_rollouts(
+        self,
+        *,
+        target_type: Optional[str] = None,
+        target_id: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> Dict[str, Any]:
+        params: Dict[str, Any] = {"limit": limit, "offset": offset}
+        if target_type:
+            params["target_type"] = target_type
+        if target_id:
+            params["target_id"] = target_id
+        return await self._request("GET", "/api/core/learning/rollouts", params=params)
+
+    async def upsert_release_rollout(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("PUT", "/api/core/learning/rollouts", json=payload)
+
+    async def delete_release_rollout(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("DELETE", "/api/core/learning/rollouts", json=payload)
+
+    async def add_release_metric_snapshot(self, candidate_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/learning/releases/{candidate_id}/metrics/snapshots", json=payload)
+
+    async def list_release_metric_snapshots(
+        self,
+        candidate_id: str,
+        *,
+        metric_key: Optional[str] = None,
+        limit: int = 200,
+        offset: int = 0,
+    ) -> Dict[str, Any]:
+        params: Dict[str, Any] = {"limit": limit, "offset": offset}
+        if metric_key:
+            params["metric_key"] = metric_key
+        return await self._request("GET", f"/api/core/learning/releases/{candidate_id}/metrics/snapshots", params=params)
+
     # ===== Approvals (reuse core approvals API) =====
 
     async def list_pending_approvals(
