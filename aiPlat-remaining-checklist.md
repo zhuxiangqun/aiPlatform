@@ -34,8 +34,8 @@
   - [x] Rollback UI（选择版本 → 回滚 → 看到 change_id/links）
   - [x] Delete UI（带审批）
   - [x] 在 Prompt 页面展示 autosmoke 状态/trace/job 链接（来自 metadata.verification + change control）
-- [ ] **Prompt 灰度/发布语义（P1，可选）**  
-  - 版本 pin / 灰度比例 / 回滚策略（若产品需要）
+- [x] **Prompt 灰度/发布语义（P1，可选）**  
+  - [x] 版本 pin / 灰度比例 / 回滚策略（若产品需要）
 
 ---
 
