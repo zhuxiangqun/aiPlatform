@@ -63,4 +63,3 @@ def test_prompt_autosmoke_gate_blocks_upsert_when_verification_pending(tmp_path,
         detail = (r2.json() or {}).get("detail") or {}
         assert detail.get("code") == "autosmoke_not_verified"
         assert isinstance(detail.get("change_id"), str) and detail["change_id"].startswith("chg-")
-

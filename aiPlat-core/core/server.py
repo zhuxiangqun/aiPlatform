@@ -3284,6 +3284,8 @@ async def upsert_tenant_policy(tenant_id: str, request: dict, http_request: Requ
         if str(e) == "version_conflict":
             raise HTTPException(status_code=409, detail="version_conflict")
         raise
+
+    change_id = _new_change_id()
     # Audit (best-effort)
     try:
         actor0 = _rbac_actor_from_http(http_request, request if isinstance(request, dict) else None)
@@ -3305,18 +3307,27 @@ async def upsert_tenant_policy(tenant_id: str, request: dict, http_request: Requ
 
         await _record_changeset(
             name="tenant_policy_upsert",
-            target_type="tenant_policy",
-            target_id=str(tenant_id),
-            args={"tenant_id": str(tenant_id), "prev_version": int(version) if isinstance(version, int) else None},
+            target_type="change",
+            target_id=str(change_id),
+            args={
+                "operation": "tenant_policy_upsert",
+                "tenant_id": str(tenant_id),
+                "prev_version": int(version) if isinstance(version, int) else None,
+            },
             result={
                 "version": saved.get("version") if isinstance(saved, dict) else None,
                 "policy_sha256": hashlib.sha256(json.dumps(policy, sort_keys=True).encode("utf-8")).hexdigest(),
             },
             user_id=str((request or {}).get("actor_id") or "admin"),
+            tenant_id=str(tenant_id),
         )
     except Exception:
         pass
-    return saved
+    # Attach change control links for UI
+    out = dict(saved or {}) if isinstance(saved, dict) else {"tenant_id": str(tenant_id), "policy": policy}
+    out["change_id"] = str(change_id)
+    out["links"] = _governance_links(change_id=str(change_id))
+    return out
 
 
 @api_router.get("/policies/tenants/{tenant_id}/evaluate-tool")
