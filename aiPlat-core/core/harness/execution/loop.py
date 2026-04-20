@@ -675,8 +675,27 @@ DONE: final_answer
                     elif getattr(result, "error", None) == "policy_denied":
                         state.context["error"] = "policy_denied"
                         state.context["policy"] = getattr(result, "metadata", {}) or {}
-                        state.metadata["pause_requested"] = True
-                        result_output = "Policy denied"
+                        # Claude Code-like: provide retry guidance and optionally allow the loop to continue
+                        denied_count = int(state.metadata.get("policy_denied", 0) or 0) + 1
+                        state.metadata["policy_denied"] = denied_count
+                        auto_retry = os.getenv("AIPLAT_POLICY_DENIED_AUTO_RETRY", "true").lower() in ("1", "true", "yes", "y")
+                        max_denied = int(os.getenv("AIPLAT_POLICY_DENIED_MAX_AUTO_RETRY", "3") or "3")
+                        meta0 = getattr(result, "metadata", {}) or {}
+                        approval_id = meta0.get("approval_request_id")
+                        reason = str(meta0.get("reason") or meta0.get("error_code") or "policy_denied")
+                        result_output = (
+                            "POLICY_DENIED: 工具调用被策略拒绝。\n"
+                            f"- tool: {tool_name}\n"
+                            f"- reason: {reason}\n"
+                            + (f"- approval_request_id: {approval_id}\n" if approval_id else "")
+                            + "\n可选重试策略（择一）：\n"
+                            "1) 改用更安全的只读工具（Read/Grep/Glob）先收集信息。\n"
+                            "2) 缩小影响范围/调整参数（例如只读单文件、避免写入/执行）。\n"
+                            "3) 使用 tool_search 搜索可用工具：{\"tool\":\"tool_search\",\"args\":{\"query\":\"read\"}}。\n"
+                            "4) 若确实需要高风险操作，请走审批流程（如果返回 approval_request_id）。\n"
+                        )
+                        if (not auto_retry) or denied_count >= max_denied:
+                            state.metadata["pause_requested"] = True
                         ok = False
                     else:
                         result_output = result.output if hasattr(result, 'output') else str(result)
