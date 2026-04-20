@@ -1222,6 +1222,8 @@ async def _record_changeset(
     args: Dict[str, Any] | None = None,
     result: Dict[str, Any] | None = None,
     error: str | None = None,
+    trace_id: str | None = None,
+    run_id: str | None = None,
     user_id: str = "admin",
     session_id: str | None = None,
     approval_request_id: str | None = None,
@@ -1236,6 +1238,8 @@ async def _record_changeset(
             return
         await _execution_store.add_syscall_event(
             {
+                "trace_id": str(trace_id) if trace_id else None,
+                "run_id": str(run_id) if run_id else None,
                 "kind": "changeset",
                 "name": str(name),
                 "status": str(status or "success"),
@@ -2680,6 +2684,26 @@ async def autosmoke_change_control(change_id: str, http_request: Request):
 
         async def _on_complete(job_run: Dict[str, Any], *, _rtype=rtype, _rid=rid):
             await _apply_autosmoke_result_to_verification(resource_type=_rtype, resource_id=_rid, job_run=job_run)
+            # best-effort: append a changeset event that carries run_id/trace_id for deep linking
+            try:
+                st = str((job_run or {}).get("status") or "")
+                rid2 = str((job_run or {}).get("run_id") or (job_run or {}).get("id") or "") or None
+                tid2 = str((job_run or {}).get("trace_id") or "") or None
+                await _record_changeset(
+                    name="change_control.autosmoke.result",
+                    target_type="change",
+                    target_id=str(change_id),
+                    status="success" if st == "completed" else ("failed" if st else "success"),
+                    args={"resource": {"type": _rtype, "id": _rid}},
+                    result={"job_run_status": st, "job_run_id": rid2, "job_trace_id": tid2},
+                    trace_id=tid2,
+                    run_id=rid2,
+                    user_id=str(actor0.get("actor_id") or "admin"),
+                    tenant_id=str(tenant_id) if tenant_id else None,
+                    session_id=str(actor0.get("session_id") or "") or None,
+                )
+            except Exception:
+                pass
 
         try:
             res = await enqueue_autosmoke(
