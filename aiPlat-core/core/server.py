@@ -12166,7 +12166,8 @@ async def diagnostics_repo_staged_preview(request: RepoStagedPreviewRequest):
 @api_router.post("/diagnostics/repo/changeset/record")
 async def diagnostics_repo_changeset_record(request: RepoChangesetPreviewRequest):
     """
-    Record the repo changeset summary as a changeset audit event.
+    Record the repo changeset summary as a first-class "change" (changeset syscall),
+    so it can be reviewed in Change Control.
     """
     preview = await diagnostics_repo_changeset_preview(request)
     staged_preview: dict | None = None
@@ -12203,12 +12204,19 @@ async def diagnostics_repo_changeset_record(request: RepoChangesetPreviewRequest
         except Exception:
             pass
         raise
+    change_id = _new_change_id()
     try:
         await _record_changeset(
             name="repo_changeset_record",
-            target_type="repo",
-            target_id=str(preview.get("repo_root") or ""),
-            args={"branch": preview.get("branch"), "head": preview.get("head"), "note": str(request.note or "").strip()},
+            target_type="change",
+            target_id=str(change_id),
+            args={
+                "operation": "repo_changeset_record",
+                "repo_root": str(preview.get("repo_root") or ""),
+                "branch": preview.get("branch"),
+                "head": preview.get("head"),
+                "note": str(request.note or "").strip(),
+            },
             result={
                 "working_tree": preview.get("working_tree"),
                 "staged": preview.get("staged"),
@@ -12217,18 +12225,21 @@ async def diagnostics_repo_changeset_record(request: RepoChangesetPreviewRequest
                 "staged_files_count": len((staged_preview or {}).get("staged_files") or []) if isinstance(staged_preview, dict) else 0,
                 "staged_files_sample": ((staged_preview or {}).get("staged_files") or [])[:20] if isinstance(staged_preview, dict) else [],
                 "suggested_commit_message": (staged_preview or {}).get("suggested_commit_message") if isinstance(staged_preview, dict) else None,
+                "patch_available": True,
                 "tests": {
                     "exit_code": (tests_summary or {}).get("exit_code") if isinstance(tests_summary, dict) else None,
                     "duration_ms": (tests_summary or {}).get("duration_ms") if isinstance(tests_summary, dict) else None,
                     "stdout_sha256": (tests_summary or {}).get("stdout_sha256") if isinstance(tests_summary, dict) else None,
                     "stderr_sha256": (tests_summary or {}).get("stderr_sha256") if isinstance(tests_summary, dict) else None,
-                }
+                },
             },
         )
     except Exception:
         pass
     return {
         "status": "recorded",
+        "change_id": change_id,
+        "links": _governance_links(change_id=change_id),
         "preview": preview,
         "tests": tests_summary,
         "staged": staged_preview,
