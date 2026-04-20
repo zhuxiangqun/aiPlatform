@@ -46,8 +46,8 @@
   - [x] commit（带建议 message + 审批/审计）
   - [x] branch 操作（create/switch）
   - [x] 将“recorded changeset”与 commit 建立关联（使用同一 change_id 写入 Change Control）
-- [ ] **失败可恢复（P1）**
-  - [ ] /undo /retry /stop 的一等能力（尤其是写文件/执行命令/发布类操作）
+- [x] **失败可恢复（P1）**
+  - [x] /undo /retry /stop 的一等能力（尤其是写文件/执行命令/发布类操作）
 
 ---
 
