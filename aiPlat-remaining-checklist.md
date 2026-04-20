@@ -29,10 +29,10 @@
 - [x] Prompt 模板：列表/查看/versions/diff UI（management 代理 + frontend 页面）
 - [x] Gate：verification pending/failed 阻断新 upsert（rollback 作为恢复路径）
 - [ ] **Prompt 变更 UI 完整闭环（P0）**
-  - [ ] 新建/编辑（upsert）表单 + require_approval/approval_request_id 支持
-  - [ ] Rollback UI（选择版本 → 回滚 → 看到 change_id/links）
-  - [ ] Delete UI（带审批）
-  - [ ] 在 Prompt 页面展示 autosmoke 状态/trace/job 链接（来自 metadata.verification + change control）
+  - [x] 新建/编辑（upsert）表单 + require_approval/approval_request_id 支持
+  - [x] Rollback UI（选择版本 → 回滚 → 看到 change_id/links）
+  - [x] Delete UI（带审批）
+  - [x] 在 Prompt 页面展示 autosmoke 状态/trace/job 链接（来自 metadata.verification + change control）
 - [ ] **Prompt 灰度/发布语义（P1，可选）**  
   - 版本 pin / 灰度比例 / 回滚策略（若产品需要）
 
@@ -90,4 +90,3 @@
 - [ ] **后端路由/切换（P1）**
   - [ ] 在 management 提供选择/切换入口（需审批）
   - [ ] 后端维度 metrics：success_rate/latency/policy_denied_count
-
