@@ -2616,11 +2616,21 @@ async def list_change_controls(limit: int = 50, offset: int = 0, tenant_id: Opti
     items = []
     for it in res.get("items") or []:
         cid = str(it.get("change_id") or it.get("target_id") or "")
-        links = {"syscalls_ui": _ui_url(f"/diagnostics/syscalls?kind=changeset&target_type=change&target_id={cid}")}
+        links = {
+            "syscalls_ui": _ui_url(f"/diagnostics/syscalls?kind=changeset&target_type=change&target_id={cid}"),
+            "audit_ui": _ui_url(f"/diagnostics/audit?change_id={cid}"),
+        }
         arid = it.get("approval_request_id")
         if arid:
             links["approvals_ui"] = _ui_url("/core/approvals")
-            links["audit_ui"] = _ui_url(f"/diagnostics/audit?request_id={arid}")
+            links["audit_request_ui"] = _ui_url(f"/diagnostics/audit?request_id={arid}")
+        tid = it.get("trace_id")
+        rid = it.get("run_id")
+        if tid:
+            links["traces_ui"] = _ui_url(f"/diagnostics/traces?trace_id={tid}")
+            links["links_ui"] = _ui_url(f"/diagnostics/links?trace_id={tid}")
+        if rid:
+            links["runs_ui"] = _ui_url(f"/diagnostics/runs?run_id={rid}")
         items.append({**it, "change_id": cid, "links": links})
     return {**res, "items": items}
 

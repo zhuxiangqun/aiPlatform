@@ -33,6 +33,57 @@ def _json_loads(s: Optional[str]) -> Any:
         return s
 
 
+# ==================== Change Control derived state ====================
+
+
+def _derive_change_summary(latest: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Derive a stable "state machine" summary from the latest changeset event.
+    This is UI-facing and should be conservative.
+    """
+    if not isinstance(latest, dict) or not latest:
+        return {
+            "derived_state": "unknown",
+            "latest_status": None,
+            "latest_name": None,
+            "latest_created_at": None,
+            "latest_run_id": None,
+            "latest_trace_id": None,
+            "approval_request_id": None,
+        }
+
+    status = str(latest.get("status") or "").lower() or None
+    name = str(latest.get("name") or "") or None
+    approval_request_id = latest.get("approval_request_id")
+    run_id = latest.get("run_id")
+    trace_id = latest.get("trace_id")
+    created_at = latest.get("created_at")
+
+    derived = "unknown"
+    if status in {"blocked", "deny", "denied"}:
+        derived = "blocked"
+    elif status in {"approval_required", "waiting_approval"}:
+        derived = "approval_required"
+    elif status in {"failed", "error"}:
+        derived = "failed"
+    elif status in {"success", "completed", "ok"}:
+        derived = "success"
+
+    if approval_request_id and derived not in {"blocked", "failed"}:
+        if derived != "success":
+            derived = "approval_required"
+
+    return {
+        "derived_state": derived,
+        "latest_status": status,
+        "latest_name": name,
+        "latest_created_at": created_at,
+        "latest_run_id": run_id,
+        "latest_trace_id": trace_id,
+        "approval_request_id": str(approval_request_id) if approval_request_id else None,
+    }
+
+
 @dataclass(frozen=True)
 class ExecutionStoreConfig:
     db_path: str
@@ -2683,6 +2734,10 @@ class ExecutionStore:
                     clauses.append("tenant_id=?")
                     params.append(str(tenant_id))
                 where = " AND ".join(clauses)
+                clauses_e = ["e.kind='changeset'", "e.target_type='change'", "e.target_id IS NOT NULL", "e.target_id != ''"]
+                if tenant_id:
+                    clauses_e.append("e.tenant_id=?")
+                where_e = " AND ".join(clauses_e)
 
                 total_row = conn.execute(f"SELECT COUNT(DISTINCT target_id) AS c FROM syscall_events WHERE {where};", params).fetchone()
                 total = int(total_row["c"] if total_row else 0)
@@ -2698,7 +2753,7 @@ class ExecutionStore:
                       GROUP BY target_id
                     ) t
                     ON e.target_id = t.target_id AND e.created_at = t.last_ts
-                    WHERE {where}
+                    WHERE {where_e}
                     ORDER BY e.created_at DESC
                     LIMIT ? OFFSET ?;
                     """,
@@ -2712,14 +2767,11 @@ class ExecutionStore:
         raw = await anyio.to_thread.run_sync(_sync)
         out_items = []
         for r in raw.get("items") or []:
-            out_items.append(
-                {
-                    **r,
-                    "args": _json_loads(r.get("args_json")) or {},
-                    "result": _json_loads(r.get("result_json")) or {},
-                    "change_id": r.get("target_id"),
-                }
-            )
+            args = _json_loads(r.get("args_json")) or {}
+            result = _json_loads(r.get("result_json")) or {}
+            change_id = r.get("target_id")
+            latest = {**r, "args": args, "result": result, "change_id": change_id}
+            out_items.append({**latest, "summary": _derive_change_summary(latest)})
         return {"items": out_items, "total": int(raw.get("total") or 0), "limit": int(limit), "offset": int(offset)}
 
     async def get_change_control(
@@ -2740,7 +2792,8 @@ class ExecutionStore:
             target_id=str(change_id),
         )
         latest = (items.get("items") or [None])[0] if isinstance(items.get("items"), list) and items.get("items") else None
-        return {"change_id": str(change_id), "latest": latest, "events": {**items, "limit": int(limit), "offset": int(offset)}}
+        summary = _derive_change_summary(latest) if isinstance(latest, dict) else _derive_change_summary(None)
+        return {"change_id": str(change_id), "latest": latest, "events": {**items, "limit": int(limit), "offset": int(offset)}, "summary": summary}
 
     # ==================== Runs / Run events (platform contract) ====================
 
