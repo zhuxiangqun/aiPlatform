@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, RefreshCw, ClipboardCopy, ExternalLink, FileText, Hammer } from 'lucide-react';
+import { Search, RefreshCw, ClipboardCopy, ExternalLink, FileText, Hammer, GitBranch, GitCommit } from 'lucide-react';
 import { Button, Card, CardContent, CardHeader, Input, Table, toast } from '../../../components/ui';
 import { diagnosticsApi, toolApi } from '../../../services';
 import { toastGateError } from '../../../utils/governanceError';
@@ -26,6 +26,11 @@ const Repo: React.FC = () => {
   const [recordDetails, setRecordDetails] = useState('');
   const [runTestsOnRecord, setRunTestsOnRecord] = useState(true);
   const [lastRecord, setLastRecord] = useState<any>(null);
+
+  const [branchName, setBranchName] = useState('');
+  const [branching, setBranching] = useState(false);
+  const [commitMsg, setCommitMsg] = useState('');
+  const [committing, setCommitting] = useState(false);
 
   const [loadingRecent, setLoadingRecent] = useState(false);
   const [recent, setRecent] = useState<any[]>([]);
@@ -130,6 +135,10 @@ const Repo: React.FC = () => {
     try {
       const res = await diagnosticsApi.recordRepoChangeset({ details: recordDetails || '', run_tests: runTestsOnRecord });
       setLastRecord(res);
+      try {
+        const suggested = res?.staged?.suggested_commit_message;
+        if (suggested && typeof suggested === 'string') setCommitMsg(suggested);
+      } catch {}
       if (res?.status === 'approval_required' && res?.approval_request_id) {
         toast.info(`已创建审批：${String(res.approval_request_id)}`);
       } else {
@@ -141,6 +150,60 @@ const Repo: React.FC = () => {
       toastGateError(e, '记录 changeset 失败');
     } finally {
       setRecording(false);
+    }
+  };
+
+  const createBranch = async () => {
+    if (!branchName.trim()) {
+      toast.error('请填写分支名');
+      return;
+    }
+    setBranching(true);
+    try {
+      const changeId = lastRecord?.change_id ? String(lastRecord.change_id) : undefined;
+      const res = await diagnosticsApi.repoGitBranch({
+        branch: branchName.trim(),
+        checkout: true,
+        require_approval: true,
+        change_id: changeId,
+        details: recordDetails || '',
+      });
+      if (res?.status === 'approval_required' && res?.approval_request_id) {
+        toast.info(`已创建审批：${String(res.approval_request_id)}`);
+      } else {
+        toast.success(`已切换分支：${String(res?.current_branch || branchName.trim())}`);
+      }
+    } catch (e: any) {
+      toastGateError(e, '创建/切换分支失败');
+    } finally {
+      setBranching(false);
+    }
+  };
+
+  const doCommit = async () => {
+    if (!commitMsg.trim()) {
+      toast.error('请填写 commit message');
+      return;
+    }
+    setCommitting(true);
+    try {
+      const changeId = lastRecord?.change_id ? String(lastRecord.change_id) : undefined;
+      const res = await diagnosticsApi.repoGitCommit({
+        message: commitMsg.trim(),
+        require_approval: true,
+        change_id: changeId,
+        details: recordDetails || '',
+      });
+      if (res?.status === 'approval_required' && res?.approval_request_id) {
+        toast.info(`已创建审批：${String(res.approval_request_id)}`);
+      } else {
+        toast.success(`已提交：${String(res?.commit_sha || '-')}`);
+      }
+      await loadRecent();
+    } catch (e: any) {
+      toastGateError(e, 'commit 失败');
+    } finally {
+      setCommitting(false);
     }
   };
 
@@ -197,6 +260,17 @@ const Repo: React.FC = () => {
               记录时跑测试
             </label>
             <Input className="min-w-[320px]" value={recordDetails} onChange={(e) => setRecordDetails(e.target.value)} placeholder="备注（会写入审计事件/测试 note）" />
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-2 items-center">
+            <Input className="w-[240px]" value={branchName} onChange={(e) => setBranchName(e.target.value)} placeholder="branch（例如 feat/x）" />
+            <Button variant="secondary" loading={branching} icon={<GitBranch size={14} />} onClick={createBranch}>
+              创建/切换分支
+            </Button>
+            <Input className="min-w-[420px]" value={commitMsg} onChange={(e) => setCommitMsg(e.target.value)} placeholder="commit message（可使用 suggested）" />
+            <Button variant="secondary" loading={committing} icon={<GitCommit size={14} />} onClick={doCommit}>
+              commit（staged）
+            </Button>
           </div>
 
           {lastRecord?.change_id && (

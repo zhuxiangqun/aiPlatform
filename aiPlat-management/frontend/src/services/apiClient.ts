@@ -145,6 +145,14 @@ export const diagnosticsApi = {
     return apiClient.post<any>('/diagnostics/repo/changeset/record', body);
   },
 
+  repoGitBranch: async (body: Record<string, unknown>) => {
+    return apiClient.post<any>('/diagnostics/repo/git/branch', body);
+  },
+
+  repoGitCommit: async (body: Record<string, unknown>) => {
+    return apiClient.post<any>('/diagnostics/repo/git/commit', body);
+  },
+
   getRepoChangesetPatch: async () => {
     return apiClient.get<any>('/diagnostics/repo/changeset/patch');
   },
