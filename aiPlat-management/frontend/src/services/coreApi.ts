@@ -1227,6 +1227,18 @@ export const runApi = {
       }
     );
   },
+  cancel: async (runId: string, body: { reason?: string } = {}) => {
+    return apiClient.post<{ status: string; run_id: string; cancelled_queued?: boolean }>(
+      `/core/runs/${encodeURIComponent(runId)}/cancel`,
+      body
+    );
+  },
+  retry: async (runId: string) => {
+    return apiClient.post<any>(`/core/runs/${encodeURIComponent(runId)}/retry`, {});
+  },
+  undo: async (runId: string, body: { reason?: string } = {}) => {
+    return apiClient.post<any>(`/core/runs/${encodeURIComponent(runId)}/undo`, body);
+  },
 };
 
 // ==================== Audit API (enterprise governance) ====================

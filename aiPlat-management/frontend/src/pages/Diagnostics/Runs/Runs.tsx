@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Copy, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Copy, RefreshCw, Ban, RotateCcw } from 'lucide-react';
 
 import { Badge, Button, Card, CardContent, CardHeader, Input, Table } from '../../../components/ui';
 import { runApi } from '../../../services';
@@ -73,6 +73,44 @@ const Runs: React.FC = () => {
     }
   };
 
+  const cancel = async () => {
+    const rid = runId.trim();
+    if (!rid) return;
+    setLoading(true);
+    setError(null);
+    try {
+      await runApi.cancel(rid, { reason: 'ui_cancel' });
+      await load({ reset: true });
+    } catch (e: any) {
+      setError(e?.message || '取消失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const retry = async () => {
+    const rid = runId.trim();
+    if (!rid) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res: any = await runApi.retry(rid);
+      const newId = String(res?.new_run_id || res?.run_id || '');
+      if (newId) {
+        setRunId(newId);
+        const next = new URLSearchParams();
+        next.set('run_id', newId);
+        setSearchParams(next);
+      } else {
+        await load({ reset: true });
+      }
+    } catch (e: any) {
+      setError(e?.message || '重试失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (runId) load({ reset: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -137,6 +175,16 @@ const Runs: React.FC = () => {
               <Button variant="secondary" icon={<Copy size={16} />} onClick={() => runId && navigator.clipboard.writeText(runId)}>
                 复制
               </Button>
+              {runId ? (
+                <>
+                  <Button variant="secondary" icon={<Ban size={16} />} onClick={cancel} loading={loading}>
+                    stop
+                  </Button>
+                  <Button variant="secondary" icon={<RotateCcw size={16} />} onClick={retry} loading={loading}>
+                    retry
+                  </Button>
+                </>
+              ) : null}
               <Button variant="secondary" icon={<RefreshCw size={16} />} onClick={() => load({ reset: true })} loading={loading}>
                 刷新
               </Button>
