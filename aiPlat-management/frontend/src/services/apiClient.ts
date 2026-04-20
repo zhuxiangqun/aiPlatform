@@ -160,6 +160,14 @@ export const diagnosticsApi = {
     return apiClient.get<any>('/diagnostics/exec/backends');
   },
 
+  getExecBackendMetricsSummary: async (params: { window_hours?: number; limit?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.window_hours != null) q.set('window_hours', String(params.window_hours));
+    if (params.limit != null) q.set('limit', String(params.limit));
+    const qs = q.toString();
+    return apiClient.get<any>(`/diagnostics/exec/metrics/summary${qs ? '?' + qs : ''}`);
+  },
+
   recordRepoChangeset: async (body: Record<string, unknown>) => {
     return apiClient.post<any>('/diagnostics/repo/changeset/record', body);
   },
