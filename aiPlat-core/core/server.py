@@ -1262,17 +1262,89 @@ def _new_change_id() -> str:
     return f"chg-{uuid.uuid4().hex[:12]}"
 
 
-def _change_links(change_id: str) -> Dict[str, Any]:
+def _governance_links(
+    *,
+    change_id: str | None = None,
+    approval_request_id: str | None = None,
+    run_id: str | None = None,
+    trace_id: str | None = None,
+) -> Dict[str, Any]:
     try:
-        return {
-            "syscalls_ui": _ui_url(f"/diagnostics/syscalls?kind=changeset&target_type=change&target_id={change_id}"),
-            "audit_ui": _ui_url(f"/diagnostics/audit?change_id={change_id}"),
-        }
+        links: Dict[str, Any] = {}
+        if change_id:
+            links.update(
+                {
+                    "change_control_ui": _ui_url(f"/diagnostics/change-control/{change_id}"),
+                    "syscalls_ui": _ui_url(f"/diagnostics/syscalls?kind=changeset&target_type=change&target_id={change_id}"),
+                    "audit_ui": _ui_url(f"/diagnostics/audit?change_id={change_id}"),
+                    "evidence_json_api": f"/api/core/change-control/changes/{change_id}/evidence?format=json",
+                    "evidence_zip_api": f"/api/core/change-control/changes/{change_id}/evidence?format=zip",
+                }
+            )
+        if approval_request_id:
+            links["approvals_ui"] = _ui_url("/core/approvals")
+            links["audit_request_ui"] = _ui_url(f"/diagnostics/audit?request_id={approval_request_id}")
+        if run_id:
+            links["runs_ui"] = _ui_url(f"/diagnostics/runs?run_id={run_id}")
+        if trace_id:
+            links["traces_ui"] = _ui_url(f"/diagnostics/traces?trace_id={trace_id}")
+            links["links_ui"] = _ui_url(f"/diagnostics/links?trace_id={trace_id}")
+        return links
     except Exception:
-        return {
-            "syscalls_ui": f"/diagnostics/syscalls?kind=changeset&target_type=change&target_id={change_id}",
-            "audit_ui": f"/diagnostics/audit?change_id={change_id}",
-        }
+        links: Dict[str, Any] = {}
+        if change_id:
+            links.update(
+                {
+                    "change_control_ui": f"/diagnostics/change-control/{change_id}",
+                    "syscalls_ui": f"/diagnostics/syscalls?kind=changeset&target_type=change&target_id={change_id}",
+                    "audit_ui": f"/diagnostics/audit?change_id={change_id}",
+                    "evidence_json_api": f"/api/core/change-control/changes/{change_id}/evidence?format=json",
+                    "evidence_zip_api": f"/api/core/change-control/changes/{change_id}/evidence?format=zip",
+                }
+            )
+        if approval_request_id:
+            links["approvals_ui"] = "/core/approvals"
+            links["audit_request_ui"] = f"/diagnostics/audit?request_id={approval_request_id}"
+        if run_id:
+            links["runs_ui"] = f"/diagnostics/runs?run_id={run_id}"
+        if trace_id:
+            links["traces_ui"] = f"/diagnostics/traces?trace_id={trace_id}"
+            links["links_ui"] = f"/diagnostics/links?trace_id={trace_id}"
+        return links
+
+
+def _change_links(change_id: str) -> Dict[str, Any]:
+    # Backward compatible alias (historically only had syscalls_ui/audit_ui)
+    return _governance_links(change_id=change_id)
+
+
+def _gate_error_envelope(
+    *,
+    code: str,
+    message: str,
+    change_id: str | None = None,
+    approval_request_id: str | None = None,
+    links: Dict[str, Any] | None = None,
+    next_actions: List[Dict[str, Any]] | None = None,
+    detail: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
+    env: Dict[str, Any] = {"code": str(code), "message": str(message)}
+    if change_id:
+        env["change_id"] = str(change_id)
+    if approval_request_id:
+        env["approval_request_id"] = str(approval_request_id)
+    lk = dict(links or {})
+    if change_id:
+        lk.update(_governance_links(change_id=str(change_id), approval_request_id=str(approval_request_id) if approval_request_id else None))
+    elif approval_request_id:
+        lk.update(_governance_links(approval_request_id=str(approval_request_id)))
+    if lk:
+        env["links"] = lk
+    if next_actions:
+        env["next_actions"] = next_actions
+    if detail:
+        env["detail"] = detail
+    return env
 
 
 async def _gate_with_change_control(
@@ -1296,12 +1368,29 @@ async def _gate_with_change_control(
             detail = dict(e.detail)
         else:
             detail = {"code": "blocked", "message": str(e.detail)}
-        detail.setdefault("code", "blocked")
-        detail.setdefault("message", "blocked by gate")
-        detail["change_id"] = change_id
-        links = dict(detail.get("links") or {}) if isinstance(detail.get("links"), dict) else {}
-        links.update(_change_links(change_id))
-        detail["links"] = links
+        code = str(detail.get("code") or "blocked")
+        msg = str(detail.get("message") or "blocked by gate")
+        # Standardize envelope
+        detail = _gate_error_envelope(
+            code=code,
+            message=msg,
+            change_id=change_id,
+            approval_request_id=approval_request_id,
+            links=detail.get("links") if isinstance(detail.get("links"), dict) else None,
+            next_actions=[
+                {"type": "open_change_control", "label": "打开变更控制台", "url": _ui_url(f"/diagnostics/change-control/{change_id}")},
+                {"type": "open_syscalls", "label": "打开 Syscalls", "url": _ui_url(f"/diagnostics/syscalls?kind=changeset&target_type=change&target_id={change_id}")},
+                {"type": "open_audit", "label": "打开 Audit", "url": _ui_url(f"/diagnostics/audit?change_id={change_id}")},
+                {"type": "download_evidence", "label": "导出证据包（zip）", "url": _ui_url(f"/diagnostics/change-control/{change_id}")},
+                {"type": "retry_autosmoke", "label": "重试 autosmoke", "method": "POST", "api_url": f"/api/core/change-control/changes/{change_id}/autosmoke"},
+                *(
+                    [{"type": "open_approvals", "label": "打开审批中心", "url": _ui_url("/core/approvals"), "approval_request_id": str(approval_request_id)}]
+                    if approval_request_id
+                    else []
+                ),
+            ],
+            detail={"operation": operation, "targets": [{"type": t[0], "id": t[1]} for t in targets]},
+        )
         # record blocked change event (best-effort)
         await _record_changeset(
             name=f"gate:{operation}",
@@ -1805,7 +1894,16 @@ async def start_workspace_agent(agent_id: str):
         if not a:
             raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
         if not _is_verified(getattr(a, "metadata", None)):
-            raise HTTPException(status_code=403, detail="agent_unverified: smoke must pass before start")
+            raise HTTPException(
+                status_code=403,
+                detail=_gate_error_envelope(
+                    code="agent_unverified",
+                    message="smoke must pass before start",
+                    next_actions=[
+                        {"type": "open_smoke", "label": "打开 Smoke", "url": _ui_url("/diagnostics/smoke")},
+                    ],
+                ),
+            )
     ok = await _workspace_agent_manager.start_agent(agent_id)
     if not ok:
         raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
@@ -3947,9 +4045,22 @@ async def publish_release_candidate(candidate_id: str, request: dict, http_reque
                 )
             except Exception:
                 pass
-            return {"status": "approval_required", "approval_request_id": req_id, "change_id": change_id, "links": _change_links(change_id)}
+            return {
+                "status": "approval_required",
+                "approval_request_id": req_id,
+                "change_id": change_id,
+                "links": _governance_links(change_id=change_id, approval_request_id=req_id),
+            }
         if not is_approved(approval_mgr, approval_request_id):
-            raise HTTPException(status_code=409, detail="not_approved")
+            raise HTTPException(
+                status_code=409,
+                detail=_gate_error_envelope(
+                    code="not_approved",
+                    message="not_approved",
+                    approval_request_id=str(approval_request_id),
+                    next_actions=[{"type": "open_approvals", "label": "打开审批中心", "url": _ui_url("/core/approvals"), "approval_request_id": str(approval_request_id)}],
+                ),
+            )
 
     now = __import__("time").time()
     meta_update = {"published_via": "core_api", "approval_request_id": approval_request_id, "published_at": now}
@@ -4044,7 +4155,13 @@ async def publish_release_candidate(candidate_id: str, request: dict, http_reque
         )
     except Exception:
         pass
-    out = {"status": "published", "candidate_id": candidate_id, "approval_request_id": approval_request_id, "change_id": change_id, "links": _change_links(change_id)}
+    out = {
+        "status": "published",
+        "candidate_id": candidate_id,
+        "approval_request_id": approval_request_id,
+        "change_id": change_id,
+        "links": _governance_links(change_id=change_id, approval_request_id=str(approval_request_id) if approval_request_id else None),
+    }
     if rr is not None:
         out["rollout"] = rr
     return out
@@ -4128,7 +4245,12 @@ async def rollback_release_candidate(candidate_id: str, request: dict, http_requ
                 )
             except Exception:
                 pass
-            return {"status": "approval_required", "approval_request_id": req_id, "change_id": change_id, "links": _change_links(change_id)}
+            return {
+                "status": "approval_required",
+                "approval_request_id": req_id,
+                "change_id": change_id,
+                "links": _governance_links(change_id=change_id, approval_request_id=req_id),
+            }
         if not is_approved(approval_mgr, approval_request_id):
             try:
                 await _record_changeset(
@@ -4147,7 +4269,13 @@ async def rollback_release_candidate(candidate_id: str, request: dict, http_requ
                 pass
             raise HTTPException(
                 status_code=409,
-                detail={"code": "not_approved", "message": "not_approved", "change_id": change_id, "links": _change_links(change_id)},
+                detail=_gate_error_envelope(
+                    code="not_approved",
+                    message="not_approved",
+                    change_id=change_id,
+                    approval_request_id=str(approval_request_id),
+                    next_actions=[{"type": "open_approvals", "label": "打开审批中心", "url": _ui_url("/core/approvals"), "approval_request_id": str(approval_request_id)}],
+                ),
             )
 
     await mgr.set_artifact_status(
@@ -4220,7 +4348,13 @@ async def rollback_release_candidate(candidate_id: str, request: dict, http_requ
         )
     except Exception:
         pass
-    return {"status": "rolled_back", "candidate_id": candidate_id, "approval_request_id": approval_request_id, "change_id": change_id, "links": _change_links(change_id)}
+    return {
+        "status": "rolled_back",
+        "candidate_id": candidate_id,
+        "approval_request_id": approval_request_id,
+        "change_id": change_id,
+        "links": _governance_links(change_id=change_id, approval_request_id=str(approval_request_id) if approval_request_id else None),
+    }
 
 
 # ==================== Release Rollouts / Metrics (PR-10) ====================
@@ -5041,7 +5175,7 @@ async def enable_skill(skill_id: str):
         args={"targets": [{"type": "skill", "id": str(skill_id)}]},
         user_id="admin",
     )
-    return {"status": "enabled", "change_id": change_id, "links": _change_links(change_id)}
+    return {"status": "enabled", "change_id": change_id, "links": _governance_links(change_id=change_id)}
 
 
 @api_router.post("/skills/{skill_id}/disable")
@@ -5529,7 +5663,7 @@ async def enable_workspace_skill(skill_id: str, request: Optional[Dict[str, Any]
             "candidate_id": pg.get("candidate_id"),
             "releases_url": _ui_url("/core/learning/releases"),
             "change_id": change_id,
-            "links": _change_links(change_id),
+            "links": _governance_links(change_id=change_id),
         }
     trusted = await _get_trusted_skill_pubkeys_map()
     try:
@@ -5579,7 +5713,12 @@ async def enable_workspace_skill(skill_id: str, request: Optional[Dict[str, Any]
                 )
             except Exception:
                 pass
-            return {"status": "approval_required", "approval_request_id": rid, "change_id": change_id, "links": _change_links(change_id)}
+            return {
+                "status": "approval_required",
+                "approval_request_id": rid,
+                "change_id": change_id,
+                "links": _governance_links(change_id=change_id, approval_request_id=rid),
+            }
         if not _is_approval_resolved_approved(approval_request_id):
             try:
                 await _record_changeset(
@@ -5593,7 +5732,15 @@ async def enable_workspace_skill(skill_id: str, request: Optional[Dict[str, Any]
                 )
             except Exception:
                 pass
-            raise HTTPException(status_code=409, detail="not_approved")
+            raise HTTPException(
+                status_code=409,
+                detail=_gate_error_envelope(
+                    code="not_approved",
+                    message="not_approved",
+                    approval_request_id=str(approval_request_id),
+                    next_actions=[{"type": "open_approvals", "label": "打开审批中心", "url": _ui_url("/core/approvals"), "approval_request_id": str(approval_request_id)}],
+                ),
+            )
         try:
             await _record_changeset(
                 name="skill_signature_gate",
@@ -5622,7 +5769,12 @@ async def enable_workspace_skill(skill_id: str, request: Optional[Dict[str, Any]
         )
     except Exception:
         pass
-    return {"status": "enabled", "approval_request_id": approval_request_id, "change_id": change_id, "links": _change_links(change_id)}
+    return {
+        "status": "enabled",
+        "approval_request_id": approval_request_id,
+        "change_id": change_id,
+        "links": _governance_links(change_id=change_id, approval_request_id=str(approval_request_id) if approval_request_id else None),
+    }
 
 
 @api_router.post("/workspace/skills/{skill_id}/disable")
@@ -5869,7 +6021,15 @@ async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest, h
                 )
             except Exception:
                 pass
-            raise HTTPException(status_code=409, detail="not_approved")
+            raise HTTPException(
+                status_code=409,
+                detail=_gate_error_envelope(
+                    code="not_approved",
+                    message="not_approved",
+                    approval_request_id=str(approval_request_id),
+                    next_actions=[{"type": "open_approvals", "label": "打开审批中心", "url": _ui_url("/core/approvals"), "approval_request_id": str(approval_request_id)}],
+                ),
+            )
         try:
             await _record_changeset(
                 name="skill_signature_gate",
@@ -6103,7 +6263,7 @@ async def enable_mcp_server(server_name: str):
         args={"targets": [{"type": "mcp", "id": str(server_name)}]},
         user_id="admin",
     )
-    return {"status": "enabled", "change_id": change_id, "links": _change_links(change_id)}
+    return {"status": "enabled", "change_id": change_id, "links": _governance_links(change_id=change_id)}
 
 
 @api_router.post("/mcp/servers/{server_name}/disable")
@@ -6532,7 +6692,7 @@ async def enable_workspace_mcp_server(server_name: str, http_request: Request):
         )
     except Exception:
         pass
-    return {"status": "enabled", "change_id": change_id, "links": _change_links(change_id)}
+    return {"status": "enabled", "change_id": change_id, "links": _governance_links(change_id=change_id)}
 
 
 @api_router.post("/workspace/mcp/servers/{server_name}/disable")
@@ -9226,7 +9386,7 @@ async def publish_skill_pack(pack_id: str, request: SkillPackPublishRequest):
             )
         except Exception:
             pass
-        return {**(res or {}), "change_id": change_id, "links": _change_links(change_id)}
+        return {**(res or {}), "change_id": change_id, "links": _governance_links(change_id=change_id)}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
@@ -9349,7 +9509,7 @@ async def install_skill_pack(pack_id: str, request: SkillPackInstallRequest):
             )
         except Exception:
             pass
-        return {"install": install, "applied": applied, "change_id": change_id, "links": _change_links(change_id)}
+        return {"install": install, "applied": applied, "change_id": change_id, "links": _governance_links(change_id=change_id)}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -9565,7 +9725,12 @@ async def publish_package(pkg_name: str, http_request: Request, request: Package
                 )
             except Exception:
                 pass
-            return {"status": "approval_required", "approval_request_id": rid, "change_id": change_id, "links": _change_links(change_id)}
+            return {
+                "status": "approval_required",
+                "approval_request_id": rid,
+                "change_id": change_id,
+                "links": _governance_links(change_id=change_id, approval_request_id=rid),
+            }
         if not _is_approval_resolved_approved(request.approval_request_id):
             try:
                 await _record_changeset(
@@ -9584,7 +9749,13 @@ async def publish_package(pkg_name: str, http_request: Request, request: Package
                 pass
             raise HTTPException(
                 status_code=409,
-                detail={"code": "not_approved", "message": "not_approved", "change_id": change_id, "links": _change_links(change_id)},
+                detail=_gate_error_envelope(
+                    code="not_approved",
+                    message="not_approved",
+                    change_id=change_id,
+                    approval_request_id=str(request.approval_request_id),
+                    next_actions=[{"type": "open_approvals", "label": "打开审批中心", "url": _ui_url("/core/approvals"), "approval_request_id": str(request.approval_request_id)}],
+                ),
             )
 
     pkg = _find_filesystem_package(pkg_name)
@@ -9640,7 +9811,7 @@ async def publish_package(pkg_name: str, http_request: Request, request: Package
         )
     except Exception:
         pass
-    return {"status": "published", "package_version": rec, "change_id": change_id, "links": _change_links(change_id)}
+    return {"status": "published", "package_version": rec, "change_id": change_id, "links": _governance_links(change_id=change_id)}
 
 
 @api_router.post("/packages/{pkg_name}/install")
@@ -9680,7 +9851,12 @@ async def install_package(pkg_name: str, http_request: Request, request: Package
                 )
             except Exception:
                 pass
-            return {"status": "approval_required", "approval_request_id": rid, "change_id": change_id, "links": _change_links(change_id)}
+            return {
+                "status": "approval_required",
+                "approval_request_id": rid,
+                "change_id": change_id,
+                "links": _governance_links(change_id=change_id, approval_request_id=rid),
+            }
         if not _is_approval_resolved_approved(request.approval_request_id):
             try:
                 await _record_changeset(
@@ -9699,7 +9875,13 @@ async def install_package(pkg_name: str, http_request: Request, request: Package
                 pass
             raise HTTPException(
                 status_code=409,
-                detail={"code": "not_approved", "message": "not_approved", "change_id": change_id, "links": _change_links(change_id)},
+                detail=_gate_error_envelope(
+                    code="not_approved",
+                    message="not_approved",
+                    change_id=change_id,
+                    approval_request_id=str(request.approval_request_id),
+                    next_actions=[{"type": "open_approvals", "label": "打开审批中心", "url": _ui_url("/core/approvals"), "approval_request_id": str(request.approval_request_id)}],
+                ),
             )
 
     applied_record: Dict[str, Any] = {}
@@ -9849,7 +10031,7 @@ async def install_package(pkg_name: str, http_request: Request, request: Package
     except Exception:
         pass
 
-    return {"status": "installed", "install": install_rec, "record": applied_record, "change_id": change_id, "links": _change_links(change_id)}
+    return {"status": "installed", "install": install_rec, "record": applied_record, "change_id": change_id, "links": _governance_links(change_id=change_id)}
 
 
 @api_router.get("/packages/installs")
@@ -9908,7 +10090,12 @@ async def uninstall_package(pkg_name: str, http_request: Request, request: Packa
                 )
             except Exception:
                 pass
-            return {"status": "approval_required", "approval_request_id": rid, "change_id": change_id, "links": _change_links(change_id)}
+            return {
+                "status": "approval_required",
+                "approval_request_id": rid,
+                "change_id": change_id,
+                "links": _governance_links(change_id=change_id, approval_request_id=rid),
+            }
         if not _is_approval_resolved_approved(request.approval_request_id):
             try:
                 await _record_changeset(
@@ -9927,7 +10114,13 @@ async def uninstall_package(pkg_name: str, http_request: Request, request: Packa
                 pass
             raise HTTPException(
                 status_code=409,
-                detail={"code": "not_approved", "message": "not_approved", "change_id": change_id, "links": _change_links(change_id)},
+                detail=_gate_error_envelope(
+                    code="not_approved",
+                    message="not_approved",
+                    change_id=change_id,
+                    approval_request_id=str(request.approval_request_id),
+                    next_actions=[{"type": "open_approvals", "label": "打开审批中心", "url": _ui_url("/core/approvals"), "approval_request_id": str(request.approval_request_id)}],
+                ),
             )
 
     try:
@@ -9970,7 +10163,7 @@ async def uninstall_package(pkg_name: str, http_request: Request, request: Packa
         "result": res,
         "approval_request_id": request.approval_request_id,
         "change_id": change_id,
-        "links": _change_links(change_id),
+        "links": _governance_links(change_id=change_id, approval_request_id=str(request.approval_request_id) if request.approval_request_id else None),
     }
 
 
@@ -10300,7 +10493,15 @@ async def set_default_llm(request: OnboardingDefaultLLMRequest):
                 )
             except Exception:
                 pass
-            raise HTTPException(status_code=409, detail="not_approved")
+            raise HTTPException(
+                status_code=409,
+                detail=_gate_error_envelope(
+                    code="not_approved",
+                    message="not_approved",
+                    approval_request_id=str(request.approval_request_id),
+                    next_actions=[{"type": "open_approvals", "label": "打开审批中心", "url": _ui_url("/core/approvals"), "approval_request_id": str(request.approval_request_id)}],
+                ),
+            )
 
     # validate adapter exists
     ad = await _execution_store.get_adapter(request.adapter_id)
@@ -10390,7 +10591,15 @@ async def init_default_tenant(request: OnboardingInitTenantRequest):
                 )
             except Exception:
                 pass
-            raise HTTPException(status_code=409, detail="not_approved")
+            raise HTTPException(
+                status_code=409,
+                detail=_gate_error_envelope(
+                    code="not_approved",
+                    message="not_approved",
+                    approval_request_id=str(request.approval_request_id),
+                    next_actions=[{"type": "open_approvals", "label": "打开审批中心", "url": _ui_url("/core/approvals"), "approval_request_id": str(request.approval_request_id)}],
+                ),
+            )
 
     try:
         tenant = await _execution_store.upsert_tenant(tenant_id=request.tenant_id, name=request.tenant_name)
@@ -10491,7 +10700,15 @@ async def set_autosmoke_config(request: OnboardingAutosmokeConfigRequest):
                 )
             except Exception:
                 pass
-            raise HTTPException(status_code=409, detail="not_approved")
+            raise HTTPException(
+                status_code=409,
+                detail=_gate_error_envelope(
+                    code="not_approved",
+                    message="not_approved",
+                    approval_request_id=str(request.approval_request_id),
+                    next_actions=[{"type": "open_approvals", "label": "打开审批中心", "url": _ui_url("/core/approvals"), "approval_request_id": str(request.approval_request_id)}],
+                ),
+            )
 
     value: Dict[str, Any] = {"enabled": bool(request.enabled), "enforce": bool(request.enforce)}
     if request.webhook_url is not None:
@@ -10570,7 +10787,15 @@ async def set_exec_backend(request: OnboardingExecBackendRequest):
                 )
             except Exception:
                 pass
-            raise HTTPException(status_code=409, detail="not_approved")
+            raise HTTPException(
+                status_code=409,
+                detail=_gate_error_envelope(
+                    code="not_approved",
+                    message="not_approved",
+                    approval_request_id=str(request.approval_request_id),
+                    next_actions=[{"type": "open_approvals", "label": "打开审批中心", "url": _ui_url("/core/approvals"), "approval_request_id": str(request.approval_request_id)}],
+                ),
+            )
 
     res = await _execution_store.upsert_global_setting(key="exec_backend", value={"backend": backend})
     try:
@@ -10641,7 +10866,15 @@ async def set_trusted_skill_keys(request: OnboardingTrustedSkillKeysRequest):
                 )
             except Exception:
                 pass
-            raise HTTPException(status_code=409, detail="not_approved")
+            raise HTTPException(
+                status_code=409,
+                detail=_gate_error_envelope(
+                    code="not_approved",
+                    message="not_approved",
+                    approval_request_id=str(request.approval_request_id),
+                    next_actions=[{"type": "open_approvals", "label": "打开审批中心", "url": _ui_url("/core/approvals"), "approval_request_id": str(request.approval_request_id)}],
+                ),
+            )
 
     res = await _execution_store.upsert_global_setting(key="trusted_skill_pubkeys", value={"keys": keys_out})
     try:
@@ -10710,7 +10943,15 @@ async def migrate_secrets(request: OnboardingSecretsMigrateRequest):
                 )
             except Exception:
                 pass
-            raise HTTPException(status_code=409, detail="not_approved")
+            raise HTTPException(
+                status_code=409,
+                detail=_gate_error_envelope(
+                    code="not_approved",
+                    message="not_approved",
+                    approval_request_id=str(request.approval_request_id),
+                    next_actions=[{"type": "open_approvals", "label": "打开审批中心", "url": _ui_url("/core/approvals"), "approval_request_id": str(request.approval_request_id)}],
+                ),
+            )
 
     try:
         res = await _execution_store.migrate_adapter_secrets_to_encrypted()
@@ -10792,7 +11033,15 @@ async def set_strong_gate(request: OnboardingStrongGateRequest):
                 )
             except Exception:
                 pass
-            raise HTTPException(status_code=409, detail="not_approved")
+            raise HTTPException(
+                status_code=409,
+                detail=_gate_error_envelope(
+                    code="not_approved",
+                    message="not_approved",
+                    approval_request_id=str(request.approval_request_id),
+                    next_actions=[{"type": "open_approvals", "label": "打开审批中心", "url": _ui_url("/core/approvals"), "approval_request_id": str(request.approval_request_id)}],
+                ),
+            )
 
     # ensure tenant exists (best-effort)
     try:
@@ -11241,7 +11490,15 @@ async def upsert_prompt_template(request: PromptTemplateUpsertRequest, http_requ
                 )
             except Exception:
                 pass
-            raise HTTPException(status_code=409, detail="not_approved")
+            raise HTTPException(
+                status_code=409,
+                detail=_gate_error_envelope(
+                    code="not_approved",
+                    message="not_approved",
+                    approval_request_id=str(request.approval_request_id),
+                    next_actions=[{"type": "open_approvals", "label": "打开审批中心", "url": _ui_url("/core/approvals"), "approval_request_id": str(request.approval_request_id)}],
+                ),
+            )
 
     try:
         res = await _execution_store.upsert_prompt_template(
@@ -11378,7 +11635,15 @@ async def rollback_prompt_template(template_id: str, request: PromptTemplateRoll
                 )
             except Exception:
                 pass
-            raise HTTPException(status_code=409, detail="not_approved")
+            raise HTTPException(
+                status_code=409,
+                detail=_gate_error_envelope(
+                    code="not_approved",
+                    message="not_approved",
+                    approval_request_id=str(request.approval_request_id),
+                    next_actions=[{"type": "open_approvals", "label": "打开审批中心", "url": _ui_url("/core/approvals"), "approval_request_id": str(request.approval_request_id)}],
+                ),
+            )
 
     try:
         tpl = await _execution_store.rollback_prompt_template_version(template_id=str(template_id), version=str(request.version))
@@ -11588,7 +11853,15 @@ async def delete_prompt_template(template_id: str, http_request: Request, requir
                 )
             except Exception:
                 pass
-            raise HTTPException(status_code=409, detail="not_approved")
+            raise HTTPException(
+                status_code=409,
+                detail=_gate_error_envelope(
+                    code="not_approved",
+                    message="not_approved",
+                    approval_request_id=str(approval_request_id),
+                    next_actions=[{"type": "open_approvals", "label": "打开审批中心", "url": _ui_url("/core/approvals"), "approval_request_id": str(approval_request_id)}],
+                ),
+            )
 
     ok = await _execution_store.delete_prompt_template(template_id=str(template_id))
     try:
