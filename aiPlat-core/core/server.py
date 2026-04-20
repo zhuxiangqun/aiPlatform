@@ -9332,10 +9332,92 @@ def _normalize_skill_pack_manifest(manifest: Any) -> Dict[str, Any]:
         raise HTTPException(status_code=400, detail="manifest must be an object")
 
     out = dict(manifest)
+
+    # Optional normalized metadata (plugin-like contract)
+    # - dependencies: [{name, version?}, ...]
+    # - permissions: {tools:[], files:{read:[], write:[]}, network:[] , ...}
+    # - tests: [{kind, target, ...}, ...]
+    # - upgrade_strategy / rollback_strategy: string | object
+    deps = out.get("dependencies")
+    if deps is not None:
+        if not isinstance(deps, list):
+            raise HTTPException(status_code=400, detail="manifest.dependencies must be an array")
+        norm_deps: List[Dict[str, Any]] = []
+        for it in deps:
+            if not isinstance(it, dict):
+                raise HTTPException(status_code=400, detail="manifest.dependencies items must be objects")
+            name = str(it.get("name") or "").strip()
+            if not name:
+                raise HTTPException(status_code=400, detail="manifest.dependencies contains item without name")
+            ver = str(it.get("version") or "").strip()
+            d = {"name": name}
+            if ver:
+                d["version"] = ver
+            norm_deps.append(d)
+        out["dependencies"] = norm_deps
+
+    perms = out.get("permissions")
+    if perms is not None:
+        if not isinstance(perms, dict):
+            raise HTTPException(status_code=400, detail="manifest.permissions must be an object")
+        p = dict(perms)
+        # tools list
+        if "tools" in p:
+            if not isinstance(p.get("tools"), list):
+                raise HTTPException(status_code=400, detail="manifest.permissions.tools must be an array")
+            p["tools"] = [str(x).strip() for x in (p.get("tools") or []) if str(x).strip()]
+        # files.{read,write}
+        files = p.get("files")
+        if files is not None:
+            if not isinstance(files, dict):
+                raise HTTPException(status_code=400, detail="manifest.permissions.files must be an object")
+            f = dict(files)
+            for k in ("read", "write"):
+                if k in f:
+                    if not isinstance(f.get(k), list):
+                        raise HTTPException(status_code=400, detail=f"manifest.permissions.files.{k} must be an array")
+                    f[k] = [str(x).strip() for x in (f.get(k) or []) if str(x).strip()]
+            p["files"] = f
+        # network list
+        if "network" in p:
+            if not isinstance(p.get("network"), list):
+                raise HTTPException(status_code=400, detail="manifest.permissions.network must be an array")
+            p["network"] = [str(x).strip() for x in (p.get("network") or []) if str(x).strip()]
+        out["permissions"] = p
+
+    tests = out.get("tests")
+    if tests is not None:
+        if not isinstance(tests, list):
+            raise HTTPException(status_code=400, detail="manifest.tests must be an array")
+        norm_tests: List[Dict[str, Any]] = []
+        for it in tests:
+            if not isinstance(it, dict):
+                raise HTTPException(status_code=400, detail="manifest.tests items must be objects")
+            kind = str(it.get("kind") or "").strip()
+            target = str(it.get("target") or "").strip()
+            if not kind or not target:
+                raise HTTPException(status_code=400, detail="manifest.tests items must include kind and target")
+            spec = dict(it)
+            spec["kind"] = kind
+            spec["target"] = target
+            norm_tests.append(spec)
+        out["tests"] = norm_tests
+
+    for key in ("upgrade_strategy", "rollback_strategy"):
+        if key not in out:
+            continue
+        v = out.get(key)
+        if isinstance(v, str):
+            out[key] = {"type": v.strip()}
+        elif isinstance(v, dict):
+            out[key] = dict(v)
+        else:
+            raise HTTPException(status_code=400, detail=f"manifest.{key} must be string or object")
     skills = out.get("skills")
     if skills is None:
         return out
     if not isinstance(skills, list):
+        raise HTTPException(status_code=400, detail="manifest.skills must be an array")
         raise HTTPException(status_code=400, detail="manifest.skills must be an array")
 
     norm_skills: List[Dict[str, Any]] = []
