@@ -4,6 +4,7 @@ aiPlat-management 服务器 - FastAPI 应用
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 import yaml
 from pathlib import Path
 from typing import Dict, Any
@@ -17,7 +18,7 @@ from management.diagnostics import InfraHealthChecker, CoreHealthChecker, Platfo
 from management.alerting import AlertEngine
 from management.config import ConfigManager
 from management.infra_client import InfraAPIClient, InfraAPIClientConfig
-from management.core_client import CoreAPIClient, CoreAPIClientConfig
+from management.core_client import CoreAPIClient, CoreAPIClientConfig, CoreAPIError
 
 
 def load_config() -> Dict[str, Any]:
@@ -61,6 +62,11 @@ def create_app() -> FastAPI:
         description="AI Platform Management System - Dashboard, Monitoring, Alerting, Diagnostics",
         version="0.1.0",
     )
+
+    # Proxy core errors as-is (preserve gate/approval envelopes).
+    @app.exception_handler(CoreAPIError)
+    async def _handle_core_api_error(_: Request, exc: CoreAPIError):
+        return JSONResponse(status_code=exc.status_code, content=exc.payload)
 
     # PR-01: propagate tenant/actor headers to downstream core/platform/app clients.
     try:

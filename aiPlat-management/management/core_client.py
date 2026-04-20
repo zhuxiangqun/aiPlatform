@@ -18,6 +18,20 @@ class CoreAPIClientConfig:
     transport: Optional[httpx.BaseTransport] = None
 
 
+class CoreAPIError(Exception):
+    """
+    Structured downstream error from aiPlat-core.
+
+    We keep the original HTTP status code and JSON payload (if any) so that
+    aiPlat-management can transparently proxy core's gate/approval envelopes.
+    """
+
+    def __init__(self, status_code: int, payload: Any):
+        super().__init__(f"Core API error: status={status_code}")
+        self.status_code = int(status_code)
+        self.payload = payload
+
+
 class CoreAPIClient:
     """HTTP client for aiPlat-core API."""
     
@@ -59,7 +73,12 @@ class CoreAPIClient:
             pass
 
         response = await self._client.request(method, path, **kwargs)
-        response.raise_for_status()
+        if response.status_code >= 400:
+            try:
+                payload: Any = response.json()
+            except Exception:
+                payload = {"detail": response.text}
+            raise CoreAPIError(status_code=response.status_code, payload=payload)
         return response.json()
 
     async def _request_raw(self, method: str, path: str, **kwargs) -> httpx.Response:
@@ -84,7 +103,12 @@ class CoreAPIClient:
             pass
 
         resp = await self._client.request(method, path, **kwargs)
-        resp.raise_for_status()
+        if resp.status_code >= 400:
+            try:
+                payload: Any = resp.json()
+            except Exception:
+                payload = {"detail": resp.text}
+            raise CoreAPIError(status_code=resp.status_code, payload=payload)
         return resp
 
     # ===== Trace / Persistence (ExecutionStore) =====
