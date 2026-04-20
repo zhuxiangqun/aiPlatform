@@ -49,6 +49,7 @@ from core.schemas import (
     OnboardingStrongGateRequest,
     OnboardingExecBackendRequest,
     OnboardingTrustedSkillKeysRequest,
+    OnboardingContextConfigRequest,
     DiagnosticsPromptAssembleRequest,
     PromptTemplateUpsertRequest,
     PromptTemplateRollbackRequest,
@@ -10964,6 +10965,102 @@ async def set_trusted_skill_keys(request: OnboardingTrustedSkillKeysRequest):
     return {"status": "updated", "trusted_skill_pubkeys": {"keys_count": len(keys_out), "key_ids": [k.get("key_id") for k in keys_out]}}
 
 
+@api_router.post("/onboarding/context-config")
+async def set_context_config(request: OnboardingContextConfigRequest):
+    """
+    Configure runtime context behavior toggles (session search / compaction thresholds).
+    Persisted to global_setting key='context' and applied to process env (best-effort).
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+
+    patch: Dict[str, Any] = {}
+    if request.enable_session_search is not None:
+        patch["enable_session_search"] = bool(request.enable_session_search)
+    if request.context_token_limit is not None:
+        patch["context_token_limit"] = int(request.context_token_limit)
+    if request.context_char_limit is not None:
+        patch["context_char_limit"] = int(request.context_char_limit)
+    if request.context_max_messages is not None:
+        patch["context_max_messages"] = int(request.context_max_messages)
+
+    if request.require_approval:
+        if not request.approval_request_id:
+            rid = await _require_onboarding_approval(
+                operation="context_config",
+                user_id="admin",
+                details=request.details or "update context config",
+                metadata={"patch": patch},
+            )
+            try:
+                await _record_changeset(
+                    name="global_setting_upsert_context",
+                    target_type="global_setting",
+                    target_id="context",
+                    status="approval_required",
+                    args={"patch": patch},
+                    approval_request_id=rid,
+                )
+            except Exception:
+                pass
+            return {"status": "approval_required", "approval_request_id": rid}
+        if not _is_approval_resolved_approved(request.approval_request_id):
+            try:
+                await _record_changeset(
+                    name="global_setting_upsert_context",
+                    target_type="global_setting",
+                    target_id="context",
+                    status="failed",
+                    args={"patch": patch},
+                    error="not_approved",
+                    approval_request_id=request.approval_request_id,
+                )
+            except Exception:
+                pass
+            raise HTTPException(
+                status_code=409,
+                detail=_gate_error_envelope(
+                    code="not_approved",
+                    message="not_approved",
+                    approval_request_id=str(request.approval_request_id),
+                    next_actions=[{"type": "open_approvals", "label": "打开审批中心", "url": _ui_url("/core/approvals"), "approval_request_id": str(request.approval_request_id)}],
+                ),
+            )
+
+    # Merge into existing
+    cur = await _execution_store.get_global_setting(key="context")
+    cur_val = cur.get("value") if isinstance(cur, dict) else None
+    merged: Dict[str, Any] = dict(cur_val or {}) if isinstance(cur_val, dict) else {}
+    merged.update(patch)
+
+    # Apply to process env (best-effort).
+    try:
+        if "enable_session_search" in merged:
+            os.environ["AIPLAT_ENABLE_SESSION_SEARCH"] = "1" if bool(merged["enable_session_search"]) else "0"
+        if "context_token_limit" in merged and merged["context_token_limit"] is not None:
+            os.environ["AIPLAT_CONTEXT_TOKEN_LIMIT"] = str(int(merged["context_token_limit"]))
+        if "context_char_limit" in merged and merged["context_char_limit"] is not None:
+            os.environ["AIPLAT_CONTEXT_CHAR_LIMIT"] = str(int(merged["context_char_limit"]))
+        if "context_max_messages" in merged and merged["context_max_messages"] is not None:
+            os.environ["AIPLAT_CONTEXT_MAX_MESSAGES"] = str(int(merged["context_max_messages"]))
+    except Exception:
+        pass
+
+    res = await _execution_store.upsert_global_setting(key="context", value=merged)
+    try:
+        await _record_changeset(
+            name="global_setting_upsert_context",
+            target_type="global_setting",
+            target_id="context",
+            args={"patch": patch},
+            result={"updated_at": res.get("updated_at") if isinstance(res, dict) else None},
+            approval_request_id=request.approval_request_id,
+        )
+    except Exception:
+        pass
+    return {"status": "updated", "context": res}
+
+
 @api_router.get("/onboarding/secrets/status")
 async def get_secrets_status():
     if not _execution_store:
@@ -11404,10 +11501,31 @@ async def get_context_config():
     """
     from core.harness.context.engine import DefaultContextEngine
 
-    enable_session_search = os.getenv("AIPLAT_ENABLE_SESSION_SEARCH", "false").lower() in ("1", "true", "yes", "y")
+    # Prefer persisted global_setting (if present), fallback to env.
+    persisted: Dict[str, Any] = {}
+    try:
+        if _execution_store:
+            gs = await _execution_store.get_global_setting(key="context")
+            val = gs.get("value") if isinstance(gs, dict) else None
+            if isinstance(val, dict):
+                persisted = val
+    except Exception:
+        persisted = {}
+
+    env_enable = os.getenv("AIPLAT_ENABLE_SESSION_SEARCH", "false").lower() in ("1", "true", "yes", "y")
+    enable_session_search = persisted.get("enable_session_search") if "enable_session_search" in persisted else env_enable
+    token_limit = persisted.get("context_token_limit") or os.getenv("AIPLAT_CONTEXT_TOKEN_LIMIT")
+    char_limit = persisted.get("context_char_limit") or os.getenv("AIPLAT_CONTEXT_CHAR_LIMIT")
+    max_messages = persisted.get("context_max_messages") or os.getenv("AIPLAT_CONTEXT_MAX_MESSAGES")
     return {
         "context_engine": "default_v1",
         "enable_session_search": bool(enable_session_search),
+        "limits": {
+            "context_token_limit": int(token_limit) if token_limit is not None and str(token_limit).strip() else None,
+            "context_char_limit": int(char_limit) if char_limit is not None and str(char_limit).strip() else None,
+            "context_max_messages": int(max_messages) if max_messages is not None and str(max_messages).strip() else None,
+        },
+        "persisted": persisted,
         "project_context": {
             "supported_files": ["AGENTS.md", "AIPLAT.md"],
             "max_context_chars": int(getattr(DefaultContextEngine, "_MAX_CONTEXT_CHARS", 20000)),

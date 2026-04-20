@@ -257,6 +257,22 @@ class OnboardingTrustedSkillKeysRequest(BaseModel):
     details: Optional[str] = None
 
 
+class OnboardingContextConfigRequest(BaseModel):
+    """
+    Runtime context behavior toggles (persisted as global_setting: key='context').
+    NOTE: This is diagnostics/onboarding oriented; service restart may still require
+    environment configuration depending on deployment.
+    """
+
+    enable_session_search: Optional[bool] = None
+    context_token_limit: Optional[int] = None
+    context_char_limit: Optional[int] = None
+    context_max_messages: Optional[int] = None
+    require_approval: bool = True
+    approval_request_id: Optional[str] = None
+    details: Optional[str] = None
+
+
 class DiagnosticsPromptAssembleRequest(BaseModel):
     """
     Diagnostics-only endpoint helper to introspect prompt/context assembly.
