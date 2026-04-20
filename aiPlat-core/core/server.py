@@ -743,6 +743,93 @@ async def lifespan(app: FastAPI):
             _ops_prune_task = asyncio.create_task(_prune_loop())
     except Exception:
         _ops_prune_task = None
+
+    # Phase 6.x: Learning metrics snapshot + optional auto-rollback loop (opt-in)
+    global _learning_task
+    try:
+        enable_learning = os.getenv("AIPLAT_ENABLE_LEARNING_SCHEDULER", "false").lower() in ("1", "true", "yes", "y")
+        interval = float(os.getenv("AIPLAT_LEARNING_INTERVAL_SECONDS", "600") or "600")
+        enable_autorollback = os.getenv("AIPLAT_ENABLE_LEARNING_AUTOROLLBACK", "false").lower() in ("1", "true", "yes", "y")
+        require_rb_approval = os.getenv("AIPLAT_LEARNING_AUTOROLLBACK_REQUIRE_APPROVAL", "true").lower() in ("1", "true", "yes", "y")
+        if enable_learning and _execution_store is not None and interval > 0:
+            from core.learning.autorollback import auto_rollback_regression, compute_exec_metrics
+
+            async def _learning_loop():
+                while True:
+                    try:
+                        await asyncio.sleep(interval)
+                        # NOTE: multi-tenant support can be added by enumerating tenants; current default treats "" as tenant.
+                        tenant_id = ""
+                        rollouts = await _execution_store.list_release_rollouts(tenant_id=tenant_id, target_type="agent", limit=200, offset=0)
+                        for ro in (rollouts.get("items") or []):
+                            if not isinstance(ro, dict) or not ro.get("enabled"):
+                                continue
+                            agent_id = str(ro.get("target_id") or "")
+                            candidate_id = str(ro.get("candidate_id") or "")
+                            if not agent_id or not candidate_id:
+                                continue
+                            hist, _total = await _execution_store.list_agent_history(agent_id, limit=200, offset=0)
+                            # Filter to runs that actually used this candidate (by run metadata.active_release.candidate_id)
+                            rows = []
+                            for r in hist:
+                                meta = r.get("metadata") if isinstance(r.get("metadata"), dict) else {}
+                                ar = meta.get("active_release") if isinstance(meta.get("active_release"), dict) else {}
+                                cid = ar.get("candidate_id")
+                                if cid == candidate_id:
+                                    rows.append(r)
+                                if len(rows) >= 50:
+                                    break
+                            m = compute_exec_metrics(rows)
+                            if m.get("error_rate") is None:
+                                continue
+                            er = float(m.get("error_rate") or 0.0)
+                            sr = 1.0 - er
+                            dur = m.get("avg_duration_ms")
+                            await _execution_store.add_release_metric_snapshot(
+                                tenant_id=tenant_id,
+                                candidate_id=candidate_id,
+                                metric_key="error_rate",
+                                value=float(er),
+                                metadata={"source": "learning_scheduler", "samples": m.get("samples")},
+                            )
+                            await _execution_store.add_release_metric_snapshot(
+                                tenant_id=tenant_id,
+                                candidate_id=candidate_id,
+                                metric_key="success_rate",
+                                value=float(sr),
+                                metadata={"source": "learning_scheduler", "samples": m.get("samples")},
+                            )
+                            if dur is not None:
+                                await _execution_store.add_release_metric_snapshot(
+                                    tenant_id=tenant_id,
+                                    candidate_id=candidate_id,
+                                    metric_key="avg_duration_ms",
+                                    value=float(dur),
+                                    metadata={"source": "learning_scheduler", "samples": m.get("samples")},
+                                )
+                            # Optional: auto-rollback by regression (best-effort; non-blocking)
+                            if enable_autorollback and _approval_manager is not None:
+                                try:
+                                    await auto_rollback_regression(
+                                        store=_execution_store,
+                                        approval_manager=_approval_manager,
+                                        agent_id=agent_id,
+                                        candidate_id=candidate_id,
+                                        require_approval=require_rb_approval,
+                                        user_id="learning_scheduler",
+                                        dry_run=False,
+                                    )
+                                except Exception:
+                                    pass
+                    except asyncio.CancelledError:
+                        raise
+                    except Exception:
+                        # best-effort: never crash server due to learning loop
+                        continue
+
+            _learning_task = asyncio.create_task(_learning_loop())
+    except Exception:
+        _learning_task = None
     
     yield
 
@@ -755,6 +842,11 @@ async def lifespan(app: FastAPI):
     try:
         if _ops_prune_task is not None:
             _ops_prune_task.cancel()
+    except Exception:
+        pass
+    try:
+        if _learning_task is not None:
+            _learning_task.cancel()
     except Exception:
         pass
 
