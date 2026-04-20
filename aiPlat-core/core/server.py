@@ -842,6 +842,127 @@ def _governance_publish_gate(meta: Dict[str, Any] | None) -> Dict[str, Any]:
     return {"required": True, "candidate_id": candidate_id, "published_candidate_id": published_candidate_id, "status": gov.get("status")}
 
 
+async def _ensure_workspace_target(
+    *,
+    target_type: str,
+    target_id: str,
+    http_request: Optional[Request] = None,
+) -> Dict[str, Any]:
+    """
+    Ensure learning artifacts land in workspace scope.
+    If target is an engine-level agent/skill, fork a workspace copy and return the new target_id.
+    """
+    t = str(target_type or "").strip()
+    tid = str(target_id or "").strip()
+    if not t or not tid:
+        raise HTTPException(status_code=400, detail="missing_target")
+
+    # skills
+    if t == "skill":
+        if _workspace_skill_manager:
+            try:
+                s0 = await _workspace_skill_manager.get_skill(tid)
+                if s0:
+                    return {"target_type": "skill", "target_id": tid, "forked": False}
+            except Exception:
+                pass
+        # fork from engine if available
+        s1 = await _skill_manager.get_skill(tid)
+        if not s1:
+            raise HTTPException(status_code=404, detail="skill_not_found")
+        if not _workspace_skill_manager:
+            raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+
+        import time
+
+        base_name = str(getattr(s1, "name", None) or "skill").strip() or "skill"
+        name = f"{base_name} (workspace)"
+        # avoid collisions
+        try:
+            new_skill = await _workspace_skill_manager.create_skill(
+                name=name,
+                skill_type=str(getattr(s1, "type", None) or "general"),
+                description=str(getattr(s1, "description", None) or ""),
+                config=getattr(s1, "config", None) or {},
+                input_schema=getattr(s1, "input_schema", None) or {},
+                output_schema=getattr(s1, "output_schema", None) or {},
+                metadata={"lineage": {"forked_from_skill_id": tid, "forked_at": time.time(), "scope": "workspace"}},
+            )
+        except Exception:
+            name = f"{base_name} (workspace {int(time.time())})"
+            new_skill = await _workspace_skill_manager.create_skill(
+                name=name,
+                skill_type=str(getattr(s1, "type", None) or "general"),
+                description=str(getattr(s1, "description", None) or ""),
+                config=getattr(s1, "config", None) or {},
+                input_schema=getattr(s1, "input_schema", None) or {},
+                output_schema=getattr(s1, "output_schema", None) or {},
+                metadata={"lineage": {"forked_from_skill_id": tid, "forked_at": time.time(), "scope": "workspace"}},
+            )
+        # record governance change (best-effort)
+        try:
+            await _record_changeset(
+                name="learning.fork_to_workspace",
+                target_type="skill",
+                target_id=str(new_skill.id),
+                args={"source_scope": "engine", "source_skill_id": tid, "target_scope": "workspace"},
+                user_id=str(_rbac_actor_from_http(http_request, None).get("actor_id") if http_request else "system"),
+            )
+        except Exception:
+            pass
+        return {"target_type": "skill", "target_id": str(new_skill.id), "forked": True, "source_id": tid}
+
+    # agents
+    if t == "agent":
+        if _workspace_agent_manager:
+            try:
+                a0 = await _workspace_agent_manager.get_agent(tid)
+                if a0:
+                    return {"target_type": "agent", "target_id": tid, "forked": False}
+            except Exception:
+                pass
+        a1 = await _agent_manager.get_agent(tid)
+        if not a1:
+            raise HTTPException(status_code=404, detail="agent_not_found")
+        if not _workspace_agent_manager:
+            raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+
+        import time
+
+        base_name = str(getattr(a1, "name", None) or "agent").strip() or "agent"
+        name = f"{base_name} (workspace)"
+        try:
+            new_agent = await _workspace_agent_manager.create_agent(
+                name=name,
+                agent_type=str(getattr(a1, "type", None) or "general"),
+                description=str(getattr(a1, "description", None) or ""),
+                config=getattr(a1, "config", None) or {},
+                metadata={"lineage": {"forked_from_agent_id": tid, "forked_at": time.time(), "scope": "workspace"}},
+            )
+        except Exception:
+            name = f"{base_name} (workspace {int(time.time())})"
+            new_agent = await _workspace_agent_manager.create_agent(
+                name=name,
+                agent_type=str(getattr(a1, "type", None) or "general"),
+                description=str(getattr(a1, "description", None) or ""),
+                config=getattr(a1, "config", None) or {},
+                metadata={"lineage": {"forked_from_agent_id": tid, "forked_at": time.time(), "scope": "workspace"}},
+            )
+        try:
+            await _record_changeset(
+                name="learning.fork_to_workspace",
+                target_type="agent",
+                target_id=str(new_agent.id),
+                args={"source_scope": "engine", "source_agent_id": tid, "target_scope": "workspace"},
+                user_id=str(_rbac_actor_from_http(http_request, None).get("actor_id") if http_request else "system"),
+            )
+        except Exception:
+            pass
+        return {"target_type": "agent", "target_id": str(new_agent.id), "forked": True, "source_id": tid}
+
+    return {"target_type": t, "target_id": tid, "forked": False}
+
+
 def _management_public_url() -> str:
     """
     Public base URL for management UI (for clickable links in API errors).
@@ -3857,7 +3978,7 @@ async def set_learning_artifact_status(artifact_id: str, request: dict):
 
 
 @api_router.post("/learning/autocapture")
-async def autocapture_learning_suggestion(request: dict):
+async def autocapture_learning_suggestion(request: dict, http_request: Request):
     """
     Roadmap-4 (minimal): create a reviewable learning artifact from one execution.
 
@@ -3887,6 +4008,17 @@ async def autocapture_learning_suggestion(request: dict):
         raise HTTPException(status_code=400, detail="target_type and target_id are required")
     if not trace_id and not run_id:
         raise HTTPException(status_code=400, detail="trace_id or run_id is required")
+
+    # Ensure learning artifacts land in workspace scope (fork engine target if needed).
+    try:
+        ensured = await _ensure_workspace_target(target_type=target_type, target_id=target_id, http_request=http_request)
+        if isinstance(ensured, dict):
+            target_type = str(ensured.get("target_type") or target_type)
+            target_id = str(ensured.get("target_id") or target_id)
+    except HTTPException:
+        raise
+    except Exception:
+        pass
 
     # Collect syscall events
     events_res = await _execution_store.list_syscall_events(
@@ -3944,7 +4076,7 @@ async def autocapture_learning_suggestion(request: dict):
 
 
 @api_router.post("/learning/autocapture/to_prompt_revision")
-async def autocapture_to_prompt_revision(request: dict):
+async def autocapture_to_prompt_revision(request: dict, http_request: Request):
     """
     Roadmap-4 (minimal): convert a feedback_summary artifact into a draft prompt_revision,
     optionally wrapping it into a draft release_candidate.
@@ -3980,6 +4112,17 @@ async def autocapture_to_prompt_revision(request: dict):
     run_id = src.get("run_id")
     fb = (src.get("payload") or {}).get("feedback") if isinstance(src.get("payload"), dict) else None
     fb = fb if isinstance(fb, dict) else {}
+
+    # Ensure learning artifacts land in workspace scope (fork engine target if needed).
+    try:
+        ensured = await _ensure_workspace_target(target_type=target_type, target_id=target_id, http_request=http_request)
+        if isinstance(ensured, dict):
+            target_type = str(ensured.get("target_type") or target_type)
+            target_id = str(ensured.get("target_id") or target_id)
+    except HTTPException:
+        raise
+    except Exception:
+        pass
 
     patch = (request or {}).get("patch") if isinstance((request or {}).get("patch"), dict) else None
     if patch is None:
@@ -4048,7 +4191,7 @@ async def autocapture_to_prompt_revision(request: dict):
 
 
 @api_router.post("/learning/autocapture/to_skill_evolution")
-async def autocapture_to_skill_evolution(request: dict):
+async def autocapture_to_skill_evolution(request: dict, http_request: Request):
     """
     Roadmap-4 (minimal): convert a feedback_summary into a draft skill_evolution suggestion artifact.
 
@@ -4081,6 +4224,17 @@ async def autocapture_to_skill_evolution(request: dict):
     run_id = src.get("run_id")
     fb = (src.get("payload") or {}).get("feedback") if isinstance(src.get("payload"), dict) else None
     fb = fb if isinstance(fb, dict) else {}
+
+    # Ensure learning artifacts land in workspace scope (fork engine target if needed).
+    try:
+        ensured = await _ensure_workspace_target(target_type=target_type, target_id=target_id, http_request=http_request)
+        if isinstance(ensured, dict):
+            target_type = str(ensured.get("target_type") or target_type)
+            target_id = str(ensured.get("target_id") or target_id)
+    except HTTPException:
+        raise
+    except Exception:
+        pass
 
     suggestion = (request or {}).get("suggestion")
     if not isinstance(suggestion, str) or not suggestion.strip():
