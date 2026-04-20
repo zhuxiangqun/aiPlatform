@@ -385,6 +385,12 @@ export const onboardingApi = {
   getEvidence: async (evidenceId: string) => {
     return apiClient.get<any>(`/onboarding/evidence/runs/${encodeURIComponent(evidenceId)}`);
   },
+  getReport: async (params: { limit?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.limit != null) q.set('limit', String(params.limit));
+    const qs = q.toString();
+    return apiClient.get<any>(`/onboarding/report${qs ? `?${qs}` : ''}`);
+  },
   autosmokeRuns: async (params: { resource_type: string; resource_id: string; limit?: number; offset?: number }) => {
     const q = new URLSearchParams();
     q.set('resource_type', params.resource_type);

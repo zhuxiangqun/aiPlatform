@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CheckCircle, AlertTriangle, RotateCw } from 'lucide-react';
+import { CheckCircle, AlertTriangle, RotateCw, Download } from 'lucide-react';
 import { onboardingApi, diagnosticsApi } from '../../services/apiClient';
 import { approvalsApi, policyApi } from '../../services';
 import { ActionableFixes } from '../../components/common/ActionableFixes';
@@ -194,6 +194,23 @@ const Onboarding: React.FC = () => {
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const exportReport = async () => {
+    try {
+      const rep = await onboardingApi.getReport({ limit: 800 });
+      downloadJson(`onboarding-report.json`, rep);
+    } catch (e: any) {
+      // fallback: export local snapshot (best-effort)
+      downloadJson(`onboarding-report.local.json`, {
+        generated_at: Date.now() / 1000,
+        state,
+        doctor,
+        pendingApprovals,
+        secretsStatus,
+        defaultTenantPolicy,
+      });
+    }
   };
 
   // Deep-link: /onboarding?evidence_id=...
@@ -1065,17 +1082,26 @@ const Onboarding: React.FC = () => {
           <h1 className="text-xl font-semibold text-gray-200">初始化向导</h1>
           <p className="text-sm text-gray-500 mt-1">把系统快速带到“可用 + 可观测 + 可验证”的状态</p>
         </div>
-        <div className="text-xs text-gray-500">
-          进度：<span className="text-gray-300">{progress.passed}</span>/{progress.total}
-          {progress.failed > 0 ? <span className="ml-2 text-red-400">未通过：{progress.failed}</span> : null}
+        <div className="flex items-center gap-3">
+          <div className="text-xs text-gray-500">
+            进度：<span className="text-gray-300">{progress.passed}</span>/{progress.total}
+            {progress.failed > 0 ? <span className="ml-2 text-red-400">未通过：{progress.failed}</span> : null}
+          </div>
+          <button
+            onClick={exportReport}
+            className="px-3 py-2 rounded-lg bg-dark-hover text-gray-200 hover:bg-dark-border transition-colors text-sm flex items-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            导出报告
+          </button>
+          <button
+            onClick={refreshState}
+            className="px-3 py-2 rounded-lg bg-dark-hover text-gray-200 hover:bg-dark-border transition-colors text-sm flex items-center gap-2"
+          >
+            <RotateCw className={`w-4 h-4 ${loadingState ? 'animate-spin' : ''}`} />
+            刷新
+          </button>
         </div>
-        <button
-          onClick={refreshState}
-          className="px-3 py-2 rounded-lg bg-dark-hover text-gray-200 hover:bg-dark-border transition-colors text-sm flex items-center gap-2"
-        >
-          <RotateCw className={`w-4 h-4 ${loadingState ? 'animate-spin' : ''}`} />
-          刷新
-        </button>
       </div>
 
       {/* Stepper */}
