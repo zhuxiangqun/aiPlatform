@@ -137,6 +137,25 @@ export const diagnosticsApi = {
     return apiClient.post<any>('/diagnostics/prompt/assemble', body);
   },
 
+  getContextMetricsRecent: async (params: { limit?: number; offset?: number; tenant_id?: string; session_id?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (params.limit != null) q.set('limit', String(params.limit));
+    if (params.offset != null) q.set('offset', String(params.offset));
+    if (params.tenant_id) q.set('tenant_id', String(params.tenant_id));
+    if (params.session_id) q.set('session_id', String(params.session_id));
+    const qs = q.toString();
+    return apiClient.get<any>(`/diagnostics/context/metrics/recent${qs ? '?' + qs : ''}`);
+  },
+
+  getContextMetricsSummary: async (params: { window_hours?: number; top_n?: number; tenant_id?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (params.window_hours != null) q.set('window_hours', String(params.window_hours));
+    if (params.top_n != null) q.set('top_n', String(params.top_n));
+    if (params.tenant_id) q.set('tenant_id', String(params.tenant_id));
+    const qs = q.toString();
+    return apiClient.get<any>(`/diagnostics/context/metrics/summary${qs ? '?' + qs : ''}`);
+  },
+
   getExecBackends: async () => {
     return apiClient.get<any>('/diagnostics/exec/backends');
   },
