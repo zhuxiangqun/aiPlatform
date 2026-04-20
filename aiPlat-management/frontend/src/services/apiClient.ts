@@ -137,6 +137,10 @@ export const diagnosticsApi = {
     return apiClient.post<any>('/diagnostics/prompt/assemble', body);
   },
 
+  getExecBackends: async () => {
+    return apiClient.get<any>('/diagnostics/exec/backends');
+  },
+
   recordRepoChangeset: async (body: Record<string, unknown>) => {
     return apiClient.post<any>('/diagnostics/repo/changeset/record', body);
   },
