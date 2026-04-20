@@ -216,3 +216,97 @@ async def configure_llm_adapter(request: Request, body: Dict[str, Any]) -> Dict[
         test = {"success": False, "error": str(e)}
 
     return {"status": "configured", "adapter_id": adapter_id, "models": added, "test": test}
+
+
+# ------------------------------
+# Onboarding evidence (proxy)
+# ------------------------------
+
+
+@router.post("/evidence/runs")
+async def create_evidence(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="core_client not initialized")
+    return await core_client.create_onboarding_evidence(body or {})
+
+
+@router.get("/evidence/runs")
+async def list_evidence(request: Request, step_key: Optional[str] = None, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="core_client not initialized")
+    return await core_client.list_onboarding_evidence(step_key=step_key, limit=limit, offset=offset)
+
+
+@router.get("/evidence/runs/{evidence_id}")
+async def get_evidence(request: Request, evidence_id: str) -> Dict[str, Any]:
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="core_client not initialized")
+    return await core_client.get_onboarding_evidence(str(evidence_id))
+
+
+@router.get("/report")
+async def onboarding_report(request: Request, limit: int = 500) -> Dict[str, Any]:
+    """
+    Export a best-effort onboarding report for support/debugging.
+    This aggregates:
+    - onboarding state (health/adapters/core_state)
+    - doctor recommendations snapshot
+    - pending onboarding approvals
+    - onboarding evidence runs
+    """
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="core_client not initialized")
+
+    # 1) state (already includes health checkers)
+    state = await get_onboarding_state(request)
+
+    # 2) doctor snapshot
+    doctor: Dict[str, Any] = {}
+    try:
+        # Import locally to avoid circular imports at module load time.
+        from management.api.diagnostics import doctor_report
+
+        doctor = await doctor_report(request)
+    except Exception:
+        doctor = {}
+
+    # 3) approvals snapshot (best-effort)
+    approvals: List[Dict[str, Any]] = []
+    try:
+        approvals_res = await core_client.list_pending_approvals(limit=200, offset=0)
+        approvals = [
+            r for r in (approvals_res.get("items") or [])
+            if isinstance(r, dict) and str(r.get("operation") or "").startswith("onboarding:")
+        ]
+    except Exception:
+        approvals = []
+
+    # 4) evidence (paged; bounded)
+    evidence: List[Dict[str, Any]] = []
+    try:
+        off = 0
+        while len(evidence) < int(limit):
+            res = await core_client.list_onboarding_evidence(limit=min(200, int(limit) - len(evidence)), offset=off)
+            items = res.get("items") or []
+            if not isinstance(items, list) or not items:
+                break
+            evidence.extend([x for x in items if isinstance(x, dict)])
+            off += len(items)
+            if len(items) < 200:
+                break
+    except Exception:
+        evidence = []
+
+    import time
+
+    return {
+        "generated_at": time.time(),
+        "state": state,
+        "doctor": doctor,
+        "pending_onboarding_approvals": approvals,
+        "evidence": evidence,
+    }

@@ -274,6 +274,18 @@ class CoreAPIClient:
     async def set_trusted_skill_keys(self, body: Dict[str, Any]) -> Dict[str, Any]:
         return await self._request("POST", "/api/core/onboarding/trusted-skill-keys", json=body or {})
 
+    async def create_onboarding_evidence(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", "/api/core/onboarding/evidence/runs", json=body or {})
+
+    async def list_onboarding_evidence(self, *, step_key: Optional[str] = None, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        params: Dict[str, Any] = {"limit": int(limit), "offset": int(offset)}
+        if step_key:
+            params["step_key"] = str(step_key)
+        return await self._request("GET", "/api/core/onboarding/evidence/runs", params=params)
+
+    async def get_onboarding_evidence(self, evidence_id: str) -> Dict[str, Any]:
+        return await self._request("GET", f"/api/core/onboarding/evidence/runs/{evidence_id}")
+
     # ===== Tenant Policies =====
 
     async def get_tenant_policy(self, tenant_id: str) -> Dict[str, Any]:
