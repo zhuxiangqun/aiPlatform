@@ -4416,15 +4416,76 @@ async def publish_release_candidate(candidate_id: str, request: dict, http_reque
     try:
         if str(cand.get("target_type") or "").lower() == "skill" and cand.get("target_id"):
             sid = str(cand.get("target_id"))
-            # Prefer workspace skills (this phase).
+            # Prefer workspace skills; if the skill is engine-scoped, fork it into workspace then publish there.
+            mgr2 = None
+            wsid = sid
             target_skill = None
             if _workspace_skill_manager:
-                target_skill = await _workspace_skill_manager.get_skill(sid)
-            mgr2 = _workspace_skill_manager
+                try:
+                    target_skill = await _workspace_skill_manager.get_skill(sid)
+                    if target_skill:
+                        mgr2 = _workspace_skill_manager
+                except Exception:
+                    target_skill = None
+            if not target_skill and _workspace_skill_manager:
+                try:
+                    ensured = await _ensure_workspace_target(target_type="skill", target_id=sid, http_request=http_request)
+                    wsid = str(ensured.get("target_id") or sid)
+                    target_skill = await _workspace_skill_manager.get_skill(wsid)
+                    mgr2 = _workspace_skill_manager if target_skill else None
+                except Exception:
+                    pass
             if not target_skill and _skill_manager:
                 target_skill = await _skill_manager.get_skill(sid)
                 mgr2 = _skill_manager
+
             if target_skill and mgr2:
+                old_version = getattr(target_skill, "version", None)
+                # Collect a lightweight "changes" summary from referenced artifacts.
+                ids = (cand.get("payload") or {}).get("artifact_ids") if isinstance(cand.get("payload"), dict) else []
+                changes_lines = [f"learning release {candidate_id}"]
+                try:
+                    summ = (cand.get("payload") or {}).get("summary") if isinstance(cand.get("payload"), dict) else ""
+                    if isinstance(summ, str) and summ.strip():
+                        changes_lines.append(f"summary: {summ.strip()}")
+                except Exception:
+                    pass
+                if isinstance(ids, list) and _execution_store:
+                    for aid in ids[:20]:
+                        if not isinstance(aid, str) or not aid:
+                            continue
+                        a = await _execution_store.get_learning_artifact(aid)
+                        if not isinstance(a, dict):
+                            continue
+                        if str(a.get("kind") or "") != "skill_evolution":
+                            continue
+                        payload_a = a.get("payload") if isinstance(a.get("payload"), dict) else {}
+                        # Support both legacy {suggestion} and structured {evolution}/{skill_version}
+                        if isinstance(payload_a.get("suggestion"), str) and payload_a.get("suggestion"):
+                            changes_lines.append(f"- suggestion: {payload_a.get('suggestion')[:300]}")
+                        evo = payload_a.get("evolution") if isinstance(payload_a.get("evolution"), dict) else None
+                        if isinstance(evo, dict):
+                            reason = evo.get("reason") or evo.get("trigger") or evo.get("type")
+                            if reason:
+                                changes_lines.append(f"- evolution: {str(reason)[:200]}")
+                        sv = payload_a.get("skill_version") if isinstance(payload_a.get("skill_version"), dict) else None
+                        if isinstance(sv, dict) and sv.get("diff"):
+                            changes_lines.append(f"- diff: {str(sv.get('diff'))[:300]}")
+
+                # Materialize a new workspace skill version (best-effort). This does not auto-change SOP body;
+                # it records provenance & allows deterministic rollback.
+                new_version = None
+                try:
+                    if hasattr(mgr2, "create_version"):
+                        await mgr2.create_version(wsid, changes="\n".join(changes_lines)[:2000])  # type: ignore[attr-defined]
+                        try:
+                            s2 = await mgr2.get_skill(wsid)
+                            new_version = getattr(s2, "version", None) if s2 else None
+                        except Exception:
+                            new_version = None
+                except Exception:
+                    new_version = None
+
                 meta = getattr(target_skill, "metadata", None) if target_skill else None
                 gov = meta.get("governance") if isinstance(meta, dict) and isinstance(meta.get("governance"), dict) else {}
                 gov2 = dict(gov)
@@ -4434,9 +4495,36 @@ async def publish_release_candidate(candidate_id: str, request: dict, http_reque
                         "published_candidate_id": candidate_id,
                         "published_at": now,
                         "updated_at": now,
+                        "published_skill_id": wsid,
+                        "published_skill_version": new_version,
+                        "rollback_to_skill_version": old_version,
                     }
                 )
-                await mgr2.update_skill(sid, metadata={"governance": gov2})
+                await mgr2.update_skill(
+                    wsid,
+                    metadata={
+                        "governance": gov2,
+                        "learning": {
+                            "published_candidate_id": candidate_id,
+                            "published_at": now,
+                            "artifact_ids": ids if isinstance(ids, list) else [],
+                            "changes": "\n".join(changes_lines)[:2000],
+                        },
+                    },
+                )
+                # Also reflect into candidate metadata (best-effort, merge).
+                try:
+                    await mgr.set_artifact_status(
+                        artifact_id=candidate_id,
+                        status="published",
+                        metadata_update={
+                            "published_workspace_skill_id": wsid,
+                            "published_skill_version": new_version,
+                            "rollback_to_skill_version": old_version,
+                        },
+                    )
+                except Exception:
+                    pass
     except Exception:
         pass
     # PR-10: optionally attach rollout config to target (tenant-scoped)
@@ -4619,14 +4707,32 @@ async def rollback_release_candidate(candidate_id: str, request: dict, http_requ
     try:
         if str(cand.get("target_type") or "").lower() == "skill" and cand.get("target_id"):
             sid = str(cand.get("target_id"))
-            target_skill = None
             mgr2 = None
+            wsid = sid
+            target_skill = None
             if _workspace_skill_manager:
                 target_skill = await _workspace_skill_manager.get_skill(sid)
-                mgr2 = _workspace_skill_manager
+                if target_skill:
+                    mgr2 = _workspace_skill_manager
             if not target_skill and _skill_manager:
                 target_skill = await _skill_manager.get_skill(sid)
                 mgr2 = _skill_manager
+
+            # If candidate metadata recorded a workspace skill id / rollback version, attempt a deterministic rollback.
+            cand_meta = cand.get("metadata") if isinstance(cand.get("metadata"), dict) else {}
+            rb_skill_id = cand_meta.get("published_workspace_skill_id") or cand_meta.get("published_skill_id")
+            rb_to_ver = cand_meta.get("rollback_to_skill_version")
+            if _workspace_skill_manager and isinstance(rb_skill_id, str) and rb_skill_id:
+                wsid = rb_skill_id
+                target_skill = await _workspace_skill_manager.get_skill(wsid)
+                mgr2 = _workspace_skill_manager if target_skill else mgr2
+                if mgr2 and isinstance(rb_to_ver, str) and rb_to_ver:
+                    try:
+                        if hasattr(mgr2, "rollback_version"):
+                            await mgr2.rollback_version(wsid, rb_to_ver)  # type: ignore[attr-defined]
+                    except Exception:
+                        pass
+
             if target_skill and mgr2:
                 meta = getattr(target_skill, "metadata", None) if target_skill else None
                 gov = meta.get("governance") if isinstance(meta, dict) and isinstance(meta.get("governance"), dict) else {}
@@ -4635,7 +4741,7 @@ async def rollback_release_candidate(candidate_id: str, request: dict, http_requ
                     gov2.pop("published_candidate_id", None)
                     gov2.pop("published_at", None)
                 gov2.update({"status": "rolled_back", "rolled_back_candidate_id": candidate_id})
-                await mgr2.update_skill(sid, metadata={"governance": gov2})
+                await mgr2.update_skill(wsid, metadata={"governance": gov2})
     except Exception:
         pass
     # PR-10: optionally disable rollout if it points to this candidate (best-effort)
