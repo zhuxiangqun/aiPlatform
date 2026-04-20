@@ -55,6 +55,8 @@ from core.schemas import (
     RepoChangesetPreviewRequest,
     RepoTestsRunRequest,
     RepoStagedPreviewRequest,
+    RepoGitBranchRequest,
+    RepoGitCommitRequest,
     LongTermMemoryAddRequest,
     LongTermMemorySearchRequest,
     MessageCreateRequest,
@@ -12575,6 +12577,311 @@ async def diagnostics_repo_changeset_record(request: RepoChangesetPreviewRequest
         "tests": tests_summary,
         "staged": staged_preview,
         "backend": backend,
+    }
+
+
+@api_router.post("/diagnostics/repo/git/branch")
+async def diagnostics_repo_git_branch(request: RepoGitBranchRequest):
+    """
+    Create/switch branch (git).
+    Governance: reuse repo changeset heuristics: require approval when non-local backend or high-risk.
+    """
+    repo_root = str(request.repo_root or "").strip()
+    if not repo_root:
+        raise HTTPException(status_code=400, detail="repo_root_required")
+    branch = str(request.branch or "").strip()
+    if not branch:
+        raise HTTPException(status_code=400, detail="branch_required")
+
+    import subprocess
+
+    def _run_git(args: list[str], timeout_s: int = 20) -> str:
+        cp = subprocess.run(args, capture_output=True, text=True, timeout=timeout_s)
+        if cp.returncode != 0:
+            raise RuntimeError((cp.stderr or cp.stdout or "git_failed")[:500])
+        return cp.stdout or ""
+
+    # Determine backend (best-effort)
+    from core.apps.exec_drivers.registry import get_exec_backend
+    backend = "local"
+    try:
+        backend = await get_exec_backend()
+    except Exception:
+        backend = "local"
+
+    require_approval = bool(getattr(request, "require_approval", True))
+    approval_request_id = str(getattr(request, "approval_request_id", "") or "").strip() or None
+    user_id = str(getattr(request, "user_id", "") or "").strip() or "admin"
+    change_id = str(getattr(request, "change_id", "") or "").strip() or _new_change_id()
+    details = str(getattr(request, "details", "") or "").strip()
+
+    approval_needed = bool(require_approval) and (str(backend) != "local")
+    if approval_needed:
+        from core.harness.infrastructure.approval.types import ApprovalContext, ApprovalRule, RuleType
+        from core.harness.infrastructure.approval.manager import ApprovalManager
+
+        approval_mgr = _approval_manager or ApprovalManager(execution_store=_execution_store)
+        if not _approval_manager:
+            raise HTTPException(status_code=503, detail="Approval manager not available")
+
+        if not approval_request_id:
+            rule = ApprovalRule(
+                rule_id="repo_git_branch",
+                rule_type=RuleType.SENSITIVE_OPERATION,
+                name="Repo git branch 操作审批",
+                description="非本地执行 backend 时进行 git branch 操作需要审批",
+                priority=1,
+                metadata={"sensitive_operations": ["repo:git_branch"]},
+            )
+            _approval_manager.register_rule(rule)
+            ctx = ApprovalContext(
+                user_id=user_id,
+                operation="repo:git_branch",
+                operation_context={
+                    "repo_root": repo_root,
+                    "branch": branch,
+                    "base": str(getattr(request, "base", "") or "").strip() or None,
+                    "checkout": bool(getattr(request, "checkout", True)),
+                    "backend": str(backend),
+                    "details": details,
+                },
+                metadata={"kind": "repo_git", "change_id": str(change_id)},
+            )
+            req = _approval_manager.create_request(ctx, rule=rule)
+            approval_request_id = req.request_id
+            try:
+                await _approval_manager._persist(req)  # type: ignore[attr-defined]
+            except Exception:
+                pass
+
+        if approval_request_id and not is_approved(approval_mgr, approval_request_id):
+            try:
+                await _record_changeset(
+                    name="repo_git_branch",
+                    target_type="change",
+                    target_id=str(change_id),
+                    status="approval_required",
+                    args={
+                        "operation": "repo_git_branch",
+                        "repo_root": repo_root,
+                        "branch": branch,
+                        "base": str(getattr(request, "base", "") or "").strip() or None,
+                        "checkout": bool(getattr(request, "checkout", True)),
+                        "backend": str(backend),
+                        "details": details,
+                    },
+                    approval_request_id=str(approval_request_id),
+                    user_id=user_id,
+                )
+            except Exception:
+                pass
+            return {
+                "status": "approval_required",
+                "approval_request_id": approval_request_id,
+                "change_id": change_id,
+                "links": _governance_links(change_id=change_id, approval_request_id=str(approval_request_id)),
+                "backend": backend,
+            }
+
+    # Execute
+    base = str(getattr(request, "base", "") or "").strip() or None
+    checkout = bool(getattr(request, "checkout", True))
+    try:
+        if base:
+            _run_git(["git", "-C", repo_root, "checkout", "-b", branch, base], timeout_s=20)
+        else:
+            _run_git(["git", "-C", repo_root, "checkout", "-b", branch], timeout_s=20)
+    except Exception:
+        # if branch exists, optionally just switch
+        if checkout:
+            _run_git(["git", "-C", repo_root, "checkout", branch], timeout_s=20)
+        else:
+            raise
+
+    head = _run_git(["git", "-C", repo_root, "rev-parse", "HEAD"], timeout_s=10).strip()
+    cur_branch = _run_git(["git", "-C", repo_root, "rev-parse", "--abbrev-ref", "HEAD"], timeout_s=10).strip()
+
+    try:
+        await _record_changeset(
+            name="repo_git_branch",
+            target_type="change",
+            target_id=str(change_id),
+            status="success",
+            args={"operation": "repo_git_branch", "repo_root": repo_root, "branch": branch, "base": base, "checkout": checkout, "backend": str(backend)},
+            result={"current_branch": cur_branch, "head": head},
+            approval_request_id=str(approval_request_id) if approval_request_id else None,
+            user_id=user_id,
+        )
+    except Exception:
+        pass
+
+    return {
+        "status": "ok",
+        "change_id": change_id,
+        "approval_request_id": approval_request_id,
+        "links": _governance_links(change_id=change_id, approval_request_id=str(approval_request_id) if approval_request_id else None),
+        "backend": backend,
+        "current_branch": cur_branch,
+        "head": head,
+    }
+
+
+@api_router.post("/diagnostics/repo/git/commit")
+async def diagnostics_repo_git_commit(request: RepoGitCommitRequest):
+    """
+    Commit staged changes with commit message.
+    Governance: reuse repo changeset heuristics (high-risk / non-local) by looking at staged files.
+    """
+    repo_root = str(request.repo_root or "").strip()
+    if not repo_root:
+        raise HTTPException(status_code=400, detail="repo_root_required")
+    msg = str(request.message or "").strip()
+    if not msg:
+        raise HTTPException(status_code=400, detail="commit_message_required")
+
+    import subprocess
+
+    def _run_git(args: list[str], timeout_s: int = 20) -> str:
+        cp = subprocess.run(args, capture_output=True, text=True, timeout=timeout_s)
+        if cp.returncode != 0:
+            raise RuntimeError((cp.stderr or cp.stdout or "git_failed")[:500])
+        return cp.stdout or ""
+
+    # Determine backend (best-effort)
+    from core.apps.exec_drivers.registry import get_exec_backend
+    backend = "local"
+    try:
+        backend = await get_exec_backend()
+    except Exception:
+        backend = "local"
+
+    # staged files (best-effort)
+    staged_numstat = _run_git(["git", "-C", repo_root, "diff", "--cached", "--numstat"], timeout_s=10)
+    staged_files: list[str] = []
+    for line in (staged_numstat or "").splitlines():
+        parts = line.split("\t")
+        if len(parts) >= 3:
+            staged_files.append(parts[2])
+
+    def _is_high_risk(paths: list[str]) -> bool:
+        for p in paths:
+            ps = str(p or "")
+            if not ps:
+                continue
+            if ps.endswith((".pem", ".key")):
+                return True
+            if "/.github/workflows/" in ps or ps.startswith(".github/workflows/"):
+                return True
+            if ps.startswith("aiPlat-core/core/server.py"):
+                return True
+            if "policy" in ps or "rbac" in ps or "permission" in ps:
+                return True
+            if "ops/" in ps or ps.startswith("aiPlat-management/management/api/"):
+                return True
+        return False
+
+    require_approval = bool(getattr(request, "require_approval", True))
+    approval_request_id = str(getattr(request, "approval_request_id", "") or "").strip() or None
+    user_id = str(getattr(request, "user_id", "") or "").strip() or "admin"
+    change_id = str(getattr(request, "change_id", "") or "").strip() or _new_change_id()
+    details = str(getattr(request, "details", "") or "").strip()
+
+    approval_needed = bool(require_approval) and (str(backend) != "local" or _is_high_risk(staged_files))
+    if approval_needed:
+        from core.harness.infrastructure.approval.types import ApprovalContext, ApprovalRule, RuleType
+        from core.harness.infrastructure.approval.manager import ApprovalManager
+
+        approval_mgr = _approval_manager or ApprovalManager(execution_store=_execution_store)
+        if not _approval_manager:
+            raise HTTPException(status_code=503, detail="Approval manager not available")
+
+        if not approval_request_id:
+            rule = ApprovalRule(
+                rule_id="repo_git_commit",
+                rule_type=RuleType.SENSITIVE_OPERATION,
+                name="Repo git commit 审批",
+                description="非本地执行或高风险变更时，git commit 需要审批",
+                priority=1,
+                metadata={"sensitive_operations": ["repo:git_commit"]},
+            )
+            _approval_manager.register_rule(rule)
+            ctx = ApprovalContext(
+                user_id=user_id,
+                operation="repo:git_commit",
+                operation_context={
+                    "repo_root": repo_root,
+                    "message": msg,
+                    "backend": str(backend),
+                    "staged_files": staged_files[:50],
+                    "details": details,
+                },
+                metadata={"kind": "repo_git", "change_id": str(change_id)},
+            )
+            req = _approval_manager.create_request(ctx, rule=rule)
+            approval_request_id = req.request_id
+            try:
+                await _approval_manager._persist(req)  # type: ignore[attr-defined]
+            except Exception:
+                pass
+
+        if approval_request_id and not is_approved(approval_mgr, approval_request_id):
+            try:
+                await _record_changeset(
+                    name="repo_git_commit",
+                    target_type="change",
+                    target_id=str(change_id),
+                    status="approval_required",
+                    args={
+                        "operation": "repo_git_commit",
+                        "repo_root": repo_root,
+                        "message": msg,
+                        "backend": str(backend),
+                        "staged_files_sample": staged_files[:20],
+                        "details": details,
+                    },
+                    approval_request_id=str(approval_request_id),
+                    user_id=user_id,
+                )
+            except Exception:
+                pass
+            return {
+                "status": "approval_required",
+                "approval_request_id": approval_request_id,
+                "change_id": change_id,
+                "links": _governance_links(change_id=change_id, approval_request_id=str(approval_request_id)),
+                "backend": backend,
+            }
+
+    # Execute
+    if not staged_files:
+        raise HTTPException(status_code=409, detail=_gate_error_envelope(code="no_staged_changes", message="no staged changes to commit"))
+
+    _run_git(["git", "-C", repo_root, "commit", "-m", msg], timeout_s=60)
+    commit_sha = _run_git(["git", "-C", repo_root, "rev-parse", "HEAD"], timeout_s=10).strip()
+    cur_branch = _run_git(["git", "-C", repo_root, "rev-parse", "--abbrev-ref", "HEAD"], timeout_s=10).strip()
+
+    try:
+        await _record_changeset(
+            name="repo_git_commit",
+            target_type="change",
+            target_id=str(change_id),
+            status="success",
+            args={"operation": "repo_git_commit", "repo_root": repo_root, "message": msg, "backend": str(backend)},
+            result={"commit_sha": commit_sha, "branch": cur_branch, "staged_files_count": len(staged_files), "staged_files_sample": staged_files[:20]},
+            approval_request_id=str(approval_request_id) if approval_request_id else None,
+            user_id=user_id,
+        )
+    except Exception:
+        pass
+
+    return {
+        "status": "ok",
+        "change_id": change_id,
+        "approval_request_id": approval_request_id,
+        "links": _governance_links(change_id=change_id, approval_request_id=str(approval_request_id) if approval_request_id else None),
+        "backend": backend,
+        "commit_sha": commit_sha,
+        "branch": cur_branch,
     }
 
 

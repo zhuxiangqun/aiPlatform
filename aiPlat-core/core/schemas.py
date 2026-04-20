@@ -310,6 +310,30 @@ class RepoStagedPreviewRequest(BaseModel):
     include_patch: bool = False
 
 
+class RepoGitBranchRequest(BaseModel):
+    repo_root: str
+    branch: str
+    base: Optional[str] = None  # base ref, default: current HEAD
+    checkout: bool = True
+    # Governance
+    require_approval: bool = True
+    approval_request_id: Optional[str] = None
+    user_id: Optional[str] = None
+    change_id: Optional[str] = None  # optional linkage to an existing change
+    details: Optional[str] = None
+
+
+class RepoGitCommitRequest(BaseModel):
+    repo_root: str
+    message: str
+    # Governance
+    require_approval: bool = True
+    approval_request_id: Optional[str] = None
+    user_id: Optional[str] = None
+    change_id: Optional[str] = None  # optional linkage to an existing change
+    details: Optional[str] = None
+
+
 class LongTermMemoryAddRequest(BaseModel):
     user_id: Optional[str] = None
     key: Optional[str] = None
