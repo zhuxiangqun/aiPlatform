@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { CheckCircle2, Eye, RefreshCw, XCircle } from 'lucide-react';
 
 import { approvalsApi, type ApprovalRequestSummary } from '../../../../services';
@@ -64,6 +65,19 @@ const Approvals: React.FC = () => {
         key: 'request_id',
         render: (v: string) => <code className="text-xs bg-dark-hover px-1.5 py-0.5 rounded">{String(v || '').slice(0, 12)}</code>,
       },
+      {
+        title: 'change_id',
+        key: 'change_id',
+        render: (_: any, r: ApprovalRequestSummary) => {
+          const cid = (r as any).change_id;
+          if (!cid) return <span className="text-xs text-gray-500">-</span>;
+          return (
+            <Link to={`/diagnostics/change-control/${encodeURIComponent(String(cid))}`} className="text-xs underline text-gray-300 hover:text-white">
+              {String(cid)}
+            </Link>
+          );
+        },
+      },
       { title: 'operation', dataIndex: 'operation', key: 'operation' },
       {
         title: 'status',
@@ -88,6 +102,11 @@ const Approvals: React.FC = () => {
             <Button variant="ghost" icon={<Eye size={14} />} onClick={() => openDetail(r.request_id)}>
               查看
             </Button>
+            {(r as any)?.change_id ? (
+              <Link to={`/diagnostics/change-control/${encodeURIComponent(String((r as any).change_id))}`}>
+                <Button variant="ghost">变更</Button>
+              </Link>
+            ) : null}
             <Button variant="secondary" icon={<CheckCircle2 size={14} />} onClick={() => approve(r.request_id)}>
               批准
             </Button>
@@ -138,4 +157,3 @@ const Approvals: React.FC = () => {
 };
 
 export default Approvals;
-

@@ -286,6 +286,8 @@ export interface ApprovalRequestSummary {
   status: string;
   rule_id?: string | null;
   rule_type?: string | null;
+  change_id?: string | null;
+  change_links?: Record<string, unknown> | null;
   created_at?: string;
   expires_at?: string | null;
   metadata?: Record<string, unknown>;
