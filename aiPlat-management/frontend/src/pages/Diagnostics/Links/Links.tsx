@@ -5,7 +5,7 @@ import { ArrowLeft, Copy, ExternalLink, Search } from 'lucide-react';
 import { Badge, Button, Card, CardContent, CardHeader, Input, Select, Table, Tabs } from '../../../components/ui';
 import { diagnosticsApi } from '../../../services';
 
-type Mode = 'trace_id' | 'execution_id' | 'graph_run_id';
+type Mode = 'trace_id' | 'execution_id' | 'graph_run_id' | 'change_id';
 
 const shortId = (id?: string, left: number = 8, right: number = 6) => {
   if (!id) return '-';
@@ -28,9 +28,13 @@ const Links: React.FC = () => {
     const traceId = searchParams.get('trace_id');
     const executionId = searchParams.get('execution_id');
     const runId = searchParams.get('graph_run_id');
+    const changeId = searchParams.get('change_id');
     const spans = searchParams.get('include_spans') === 'true';
     setIncludeSpans(spans);
-    if (executionId) {
+    if (changeId) {
+      setMode('change_id');
+      setValue(changeId);
+    } else if (executionId) {
       setMode('execution_id');
       setValue(executionId);
     } else if (runId) {
@@ -45,6 +49,7 @@ const Links: React.FC = () => {
   const guessMode = (input: string): Mode => {
     const v = input.trim();
     if (!v) return 'trace_id';
+    if (v.startsWith('chg-')) return 'change_id';
     // aiPlat v2: run_id is used as execution_id (time-sortable ULID)
     if (v.startsWith('run_') || v.startsWith('exec-') || v.startsWith('execution_')) return 'execution_id';
     // assume UUID-like => trace_id by default
@@ -57,6 +62,7 @@ const Links: React.FC = () => {
     if (!value) return {};
     if (mode === 'execution_id') return { execution_id: value };
     if (mode === 'graph_run_id') return { graph_run_id: value };
+    if (mode === 'change_id') return { change_id: value };
     return { trace_id: value };
   }, [mode, value]);
 
@@ -64,8 +70,13 @@ const Links: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await diagnosticsApi.linksUi({ ...(query as any), include_spans: includeSpans });
-      setData(res);
+      if (mode === 'change_id') {
+        const res = await diagnosticsApi.getChangeControl(value, { limit: 200, offset: 0 });
+        setData({ mode: 'change_id', change: res?.change || null });
+      } else {
+        const res = await diagnosticsApi.linksUi({ ...(query as any), include_spans: includeSpans });
+        setData(res);
+      }
     } catch (e: any) {
       setError(e?.message || '加载失败');
     } finally {
@@ -84,6 +95,7 @@ const Links: React.FC = () => {
     if (mode === 'trace_id') next.set('trace_id', value);
     if (mode === 'execution_id') next.set('execution_id', value);
     if (mode === 'graph_run_id') next.set('graph_run_id', value);
+    if (mode === 'change_id') next.set('change_id', value);
     if (includeSpans) next.set('include_spans', 'true');
     setSearchParams(next);
   };
@@ -205,6 +217,7 @@ const Links: React.FC = () => {
                   { value: 'trace_id', label: 'trace_id' },
                   { value: 'execution_id', label: 'execution_id' },
                   { value: 'graph_run_id', label: 'graph_run_id' },
+                  { value: 'change_id', label: 'change_id' },
                 ]}
               />
               <Input
@@ -229,6 +242,7 @@ const Links: React.FC = () => {
               <Button
                 variant={includeSpans ? 'primary' : 'secondary'}
                 onClick={() => setIncludeSpans((v) => !v)}
+                disabled={mode === 'change_id'}
               >
                 spans: {includeSpans ? 'on' : 'off'}
               </Button>
@@ -238,13 +252,68 @@ const Links: React.FC = () => {
             </div>
           </div>
           <div className="text-xs text-gray-500 mt-2">
-            提示：Links 会联动返回 trace / executions / graph_runs / lineage；默认不含 spans，可手动打开。
+            提示：Links 支持 trace/execution/graph_run 的联动查询；也支持 change_id 快捷生成变更证据链入口。
           </div>
         </CardHeader>
         <CardContent>
           {error && <div className="text-sm text-error mb-3">{error}</div>}
           {!data ? (
             <div className="text-sm text-gray-500">请输入 ID 并查询</div>
+          ) : mode === 'change_id' ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+                <div className="p-3 bg-dark-bg rounded-lg">
+                  <div className="text-xs text-gray-400 mb-1">change_id</div>
+                  <div className="flex items-center gap-2">
+                    <code className="text-xs break-all text-gray-200">{value || '-'}</code>
+                    <Button variant="ghost" icon={<Copy size={14} />} onClick={() => value && navigator.clipboard.writeText(value)} />
+                    <Button variant="ghost" icon={<ExternalLink size={14} />} onClick={() => navigate(`/diagnostics/change-control/${encodeURIComponent(value)}`)} />
+                  </div>
+                </div>
+                <div className="p-3 bg-dark-bg rounded-lg">
+                  <div className="text-xs text-gray-400 mb-1">latest</div>
+                  <div className="text-xs text-gray-200">
+                    <code>{String(data?.change?.latest?.name || '-')}</code>
+                    <span className="ml-2 text-gray-400">{String(data?.change?.latest?.status || '-')}</span>
+                  </div>
+                </div>
+                <div className="p-3 bg-dark-bg rounded-lg">
+                  <div className="text-xs text-gray-400 mb-1">Syscalls</div>
+                  <Button
+                    variant="secondary"
+                    onClick={() => navigate(`/diagnostics/syscalls?kind=changeset&target_type=change&target_id=${encodeURIComponent(value)}`)}
+                  >
+                    打开
+                  </Button>
+                </div>
+                <div className="p-3 bg-dark-bg rounded-lg">
+                  <div className="text-xs text-gray-400 mb-1">Audit/Approvals</div>
+                  <div className="flex items-center gap-2">
+                    {data?.change?.links?.audit_ui ? (
+                      <a className="text-xs underline text-gray-300 hover:text-white" href={String(data.change.links.audit_ui)} target="_blank" rel="noreferrer">
+                        Audit <ExternalLink size={12} className="inline ml-1" />
+                      </a>
+                    ) : (
+                      <span className="text-xs text-gray-500">-</span>
+                    )}
+                    {data?.change?.links?.approvals_ui ? (
+                      <a
+                        className="text-xs underline text-gray-300 hover:text-white"
+                        href={String(data.change.links.approvals_ui)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Approvals <ExternalLink size={12} className="inline ml-1" />
+                      </a>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-xs text-gray-500">
+                说明：change_id 模式下不做 trace 联动聚合；请通过 Change Control 详情页/ Syscalls 展开查看证据与上下游关联。
+              </div>
+            </div>
           ) : (
             <div className="space-y-4">
               {/* Summary cards */}

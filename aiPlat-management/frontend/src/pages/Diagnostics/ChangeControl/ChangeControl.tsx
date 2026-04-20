@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Copy, ExternalLink, RotateCw } from 'lucide-react';
+import { ArrowLeft, Copy, ExternalLink, Link2, RotateCw } from 'lucide-react';
 import { Button, Card, CardContent, CardHeader, Input, Table, toast, Badge } from '../../../components/ui';
 import { diagnosticsApi } from '../../../services';
 
@@ -245,8 +245,59 @@ const ChangeControl: React.FC = () => {
                 Approvals
               </Link>
             ) : null}
+            {detail?.links?.audit_ui ? (
+              <a className="text-sm underline text-gray-300 hover:text-white" href={String(detail.links.audit_ui)} target="_blank" rel="noreferrer">
+                Audit <ExternalLink size={14} className="inline ml-1" />
+              </a>
+            ) : null}
           </div>
         </div>
+
+        <Card>
+          <CardHeader>
+            <div className="text-sm font-semibold text-gray-200">联动跳转</div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="secondary"
+                icon={<Link2 size={14} />}
+                onClick={() => {
+                  const url = `/diagnostics/links?change_id=${encodeURIComponent(changeId)}`;
+                  navigate(url);
+                }}
+              >
+                打开 Links
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  const links = detail?.links || {};
+                  const payload = { change_id: changeId, links };
+                  navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+                  toast.success('已复制 links JSON');
+                }}
+              >
+                复制 links
+              </Button>
+              {detail?.links?.syscalls_ui ? (
+                <a className="text-sm underline text-gray-300 hover:text-white" href={String(detail.links.syscalls_ui)} target="_blank" rel="noreferrer">
+                  Syscalls <ExternalLink size={14} className="inline ml-1" />
+                </a>
+              ) : null}
+              {detail?.links?.audit_ui ? (
+                <a className="text-sm underline text-gray-300 hover:text-white" href={String(detail.links.audit_ui)} target="_blank" rel="noreferrer">
+                  Audit <ExternalLink size={14} className="inline ml-1" />
+                </a>
+              ) : null}
+              {detail?.links?.approvals_ui ? (
+                <a className="text-sm underline text-gray-300 hover:text-white" href={String(detail.links.approvals_ui)} target="_blank" rel="noreferrer">
+                  Approvals <ExternalLink size={14} className="inline ml-1" />
+                </a>
+              ) : null}
+            </div>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
