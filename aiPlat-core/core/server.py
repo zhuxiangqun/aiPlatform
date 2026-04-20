@@ -4349,6 +4349,10 @@ async def publish_release_candidate(candidate_id: str, request: dict, http_reque
     approval_request_id = (request or {}).get("approval_request_id")
     details = (request or {}).get("details") or ""
 
+    # Policy 自进化：强制审批（高风险变更不允许 bypass）
+    if str(cand.get("target_type") or "").lower() == "policy":
+        require_approval = True
+
     if require_approval:
         if not approval_request_id:
             req_id = await require_publish_approval(
@@ -4412,6 +4416,64 @@ async def publish_release_candidate(candidate_id: str, request: dict, http_reque
         for aid in ids:
             if isinstance(aid, str) and aid:
                 await mgr.set_artifact_status(artifact_id=aid, status="published", metadata_update={"published_by_candidate": candidate_id})
+
+    # Policy 自进化：发布时将 policy_revision 应用为 tenant policy 新版本（best-effort, 版本化，可回滚）。
+    try:
+        if str(cand.get("target_type") or "").lower() == "policy" and cand.get("target_id") and _execution_store:
+            tenant_policy_id = str(cand.get("target_id"))
+            cur = await _execution_store.get_tenant_policy(tenant_id=tenant_policy_id)
+            cur_policy = cur.get("policy") if isinstance(cur, dict) and isinstance(cur.get("policy"), dict) else {}
+            cur_ver = cur.get("version") if isinstance(cur, dict) else None
+
+            def _deep_merge(a: Dict[str, Any], b: Dict[str, Any]) -> Dict[str, Any]:
+                out = dict(a or {})
+                for k, v in (b or {}).items():
+                    if isinstance(v, dict) and isinstance(out.get(k), dict):
+                        out[k] = _deep_merge(out.get(k) or {}, v)
+                    else:
+                        out[k] = v
+                return out
+
+            next_policy: Dict[str, Any] = dict(cur_policy or {})
+            ids0 = (cand.get("payload") or {}).get("artifact_ids") if isinstance(cand.get("payload"), dict) else []
+            if isinstance(ids0, list):
+                for aid in ids0:
+                    if not isinstance(aid, str) or not aid:
+                        continue
+                    a = await _execution_store.get_learning_artifact(aid)
+                    if not isinstance(a, dict) or str(a.get("kind") or "") != "policy_revision" or str(a.get("status") or "") != "published":
+                        continue
+                    p0 = a.get("payload") if isinstance(a.get("payload"), dict) else {}
+                    # 支持：全量 policy、或 patch 合并
+                    if isinstance(p0.get("policy"), dict):
+                        next_policy = dict(p0.get("policy") or {})
+                    elif isinstance(p0.get("patch"), dict):
+                        next_policy = _deep_merge(next_policy, p0.get("patch") or {})
+                    else:
+                        # 兼容直接把子树当 patch
+                        next_policy = _deep_merge(next_policy, p0)
+
+            # 写入新版本（带并发保护）
+            up = await _execution_store.upsert_tenant_policy(
+                tenant_id=tenant_policy_id,
+                policy=next_policy,
+                version=int(cur_ver) if cur_ver is not None else None,
+            )
+            # 回写 candidate 元数据：记录回滚指针（上一版快照）
+            try:
+                await mgr.set_artifact_status(
+                    artifact_id=candidate_id,
+                    status="published",
+                    metadata_update={
+                        "tenant_policy_id": tenant_policy_id,
+                        "applied_policy_version": up.get("version"),
+                        "previous_policy_snapshot": {"version": cur_ver, "policy": cur_policy},
+                    },
+                )
+            except Exception:
+                pass
+    except Exception:
+        pass
     # Best-effort: reflect publish into target skill metadata for runtime gating.
     try:
         if str(cand.get("target_type") or "").lower() == "skill" and cand.get("target_id"):
@@ -4702,6 +4764,18 @@ async def rollback_release_candidate(candidate_id: str, request: dict, http_requ
         for aid in ids:
             if isinstance(aid, str) and aid:
                 await mgr.set_artifact_status(artifact_id=aid, status="rolled_back", metadata_update={"rolled_back_by_candidate": candidate_id})
+
+    # Policy 自进化：回滚时恢复到 candidate 记录的 previous_policy_snapshot（best-effort）。
+    try:
+        if str(cand.get("target_type") or "").lower() == "policy" and _execution_store:
+            meta0 = cand.get("metadata") if isinstance(cand.get("metadata"), dict) else {}
+            tenant_policy_id = meta0.get("tenant_policy_id") or cand.get("target_id")
+            prev = meta0.get("previous_policy_snapshot") if isinstance(meta0.get("previous_policy_snapshot"), dict) else None
+            if isinstance(tenant_policy_id, str) and tenant_policy_id and isinstance(prev, dict) and isinstance(prev.get("policy"), dict):
+                # 直接 upsert，生成一个新版本（等价回滚）。
+                await _execution_store.upsert_tenant_policy(tenant_id=str(tenant_policy_id), policy=prev.get("policy") or {}, version=None)
+    except Exception:
+        pass
 
     # Best-effort: reflect rollback into target skill metadata for runtime gating.
     try:
