@@ -499,6 +499,14 @@ flowchart TB
 
 > 用于追踪“分析 → 实施”的闭环：下面列出已合入的最小能力与对应 API/数据输出点。
 
+- **Approvals ↔ Change Control 反向联动（治理可操作性增强）**  
+  - core：`GET /api/core/approvals` / `GET /api/core/approvals/pending` / `GET /api/core/approvals/{request_id}` 返回中补齐 `change_id`（通过 `syscall_events(kind="changeset")` 的 `approval_request_id -> change_id` 反向推导），并提供 `change_links`（Change Control / Syscalls / Audit 等）。  
+  - management：Approvals 列表页新增 `change_id` 列与跳转到 Change Control 的入口。
+
+- **Gate 结构化错误 + 前端统一提示（toastGateError）**  
+  - core：统一 gate/审批相关错误的 `detail` envelope：`{code,message,change_id,approval_request_id,links,next_actions,...}`，并扩展 governance links（Change Control / Syscalls / Audit / Evidence / Runs / Traces）。  
+  - management：前端 `ApiClient` 保留 `err.detail`，并新增 `toastGateError` 在关键操作点统一展示 `code/change_id/approval_id`（便于从 toast 直接定位到 Change Control / Approvals）。
+
 - **Context 可观测（最小版）**  
   - core：`GET /api/core/diagnostics/context/config`  
   - core：`POST /api/core/diagnostics/prompt/assemble`（用于查看 prompt/context 组装元数据）
