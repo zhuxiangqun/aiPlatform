@@ -1180,6 +1180,7 @@ export interface AuditLogEntry {
   resource_type?: string | null;
   resource_id?: string | null;
   request_id?: string | null;
+  change_id?: string | null;
   run_id?: string | null;
   trace_id?: string | null;
   status?: string | null;
@@ -1195,6 +1196,7 @@ export const auditApi = {
     resource_type?: string;
     resource_id?: string;
     request_id?: string;
+    change_id?: string;
     run_id?: string;
     trace_id?: string;
     status?: string;
