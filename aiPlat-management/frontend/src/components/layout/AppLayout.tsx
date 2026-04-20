@@ -65,6 +65,7 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
   { group: 'core', label: '核心能力层', items: [
     { key: '/core/agents', icon: Bot, label: 'Agent管理' },
     { key: '/core/skills', icon: Sparkles, label: 'Skill管理' },
+    { key: '/core/prompts', icon: FileText, label: 'Prompt模板' },
     { key: '/core/skill-packs', icon: Package, label: 'Skill Packs' },
     { key: '/core/plugins', icon: Package, label: '插件管理' },
     { key: '/core/tools', icon: Wrench, label: 'Tool管理' },

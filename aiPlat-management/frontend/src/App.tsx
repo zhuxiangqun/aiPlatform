@@ -28,6 +28,7 @@ const InfraNetwork = lazy(() => import('./pages/Infra/Network/Network'));
 const InfraMonitoring = lazy(() => import('./pages/Infra/Monitoring/Monitoring'));
 const CoreAgents = lazy(() => import('./pages/Core/Agents/Agents'));
 const CoreSkills = lazy(() => import('./pages/Core/Skills/Skills'));
+const CorePrompts = lazy(() => import('./pages/Core/Prompts'));
 const CoreTools = lazy(() => import('./pages/Core/Tools/Tools'));
 const CorePlugins = lazy(() => import('./pages/Core/Plugins'));
 const CoreMCP = lazy(() => import('./pages/Core/MCP/MCP'));
@@ -82,6 +83,7 @@ const router = createBrowserRouter([
       { path: 'infra/monitoring', element: withSuspense(InfraMonitoring) },
       { path: 'core/agents', element: withSuspense(CoreAgents) },
       { path: 'core/skills', element: withSuspense(CoreSkills) },
+      { path: 'core/prompts', element: withSuspense(CorePrompts) },
       { path: 'core/tools', element: withSuspense(CoreTools) },
       { path: 'core/plugins', element: withSuspense(CorePlugins) },
       { path: 'core/mcp', element: withSuspense(CoreMCP) },

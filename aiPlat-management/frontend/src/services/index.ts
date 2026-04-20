@@ -13,7 +13,7 @@ export { monitoringApi } from './monitoringApi';
 export { modelApi } from './modelApi';
 
 // 核心能力层 API
-export { agentApi, skillApi, memoryApi, knowledgeApi, harnessApi, toolApi, learningApi, approvalsApi, jobApi, skillPackApi, runApi, auditApi, policyApi, quotaApi, gatewayDlqApi, opsApi, pluginApi } from './coreApi';
+export { agentApi, skillApi, memoryApi, knowledgeApi, harnessApi, toolApi, learningApi, approvalsApi, jobApi, skillPackApi, runApi, auditApi, policyApi, quotaApi, gatewayDlqApi, opsApi, pluginApi, promptApi } from './coreApi';
 export { gatewayAdminApi } from './coreApi';
 
 // Legacy monitoring API (for layer metrics)
@@ -58,6 +58,7 @@ export type {
   SkillPack,
   SkillPackVersion,
   SkillPackInstall,
+  PromptTemplateRow,
   RunSummary,
   RunEvent,
   AuditLogEntry,

@@ -189,6 +189,59 @@ export const workspaceAgentApi = {
   },
 };
 
+// ==================== Prompt Templates (platformization MVP) ====================
+
+export type PromptTemplateRow = {
+  template_id: string;
+  name: string;
+  version: string;
+  template?: string;
+  metadata_json?: string;
+  created_at?: number;
+  updated_at?: number;
+};
+
+export const promptApi = {
+  list: async (params: { limit?: number; offset?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.limit != null) q.set('limit', String(params.limit));
+    if (params.offset != null) q.set('offset', String(params.offset));
+    const qs = q.toString();
+    return apiClient.get<{ total: number; items: PromptTemplateRow[] }>(`/core/prompts${qs ? `?${qs}` : ''}`);
+  },
+  get: async (templateId: string) => {
+    return apiClient.get<PromptTemplateRow>(`/core/prompts/${encodeURIComponent(templateId)}`);
+  },
+  versions: async (templateId: string, params: { limit?: number; offset?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.limit != null) q.set('limit', String(params.limit));
+    if (params.offset != null) q.set('offset', String(params.offset));
+    const qs = q.toString();
+    return apiClient.get<{ total: number; items: Array<Record<string, any>> }>(`/core/prompts/${encodeURIComponent(templateId)}/versions${qs ? `?${qs}` : ''}`);
+  },
+  diff: async (templateId: string, params: { from_version?: string; to_version?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (params.from_version) q.set('from_version', params.from_version);
+    if (params.to_version) q.set('to_version', params.to_version);
+    const qs = q.toString();
+    return apiClient.get<any>(`/core/prompts/${encodeURIComponent(templateId)}/diff${qs ? `?${qs}` : ''}`);
+  },
+  upsert: async (body: Record<string, any>) => {
+    return apiClient.post<any>('/core/prompts', body);
+  },
+  rollback: async (templateId: string, body: Record<string, any>) => {
+    return apiClient.post<any>(`/core/prompts/${encodeURIComponent(templateId)}/rollback`, body);
+  },
+  delete: async (templateId: string, params: { require_approval?: boolean; approval_request_id?: string; details?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (params.require_approval != null) q.set('require_approval', params.require_approval ? 'true' : 'false');
+    if (params.approval_request_id) q.set('approval_request_id', params.approval_request_id);
+    if (params.details) q.set('details', params.details);
+    const qs = q.toString();
+    return apiClient.delete<any>(`/core/prompts/${encodeURIComponent(templateId)}${qs ? `?${qs}` : ''}`);
+  },
+};
+
 // ==================== Learning / Releases / Approvals (Phase 6) ====================
 
 export interface LearningArtifact {
