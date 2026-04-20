@@ -220,6 +220,15 @@ class CoreAPIClient:
             json={"timeout_ms": int(timeout_ms), "after_seq": int(after_seq)},
         )
 
+    async def cancel_run(self, run_id: str, body: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/runs/{run_id}/cancel", json=body or {})
+
+    async def retry_run(self, run_id: str) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/runs/{run_id}/retry", json={})
+
+    async def undo_run(self, run_id: str, body: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/runs/{run_id}/undo", json=body or {})
+
     # ===== Diagnostics: E2E smoke =====
     async def run_e2e_smoke(self, body: Dict[str, Any]) -> Dict[str, Any]:
         return await self._request("POST", "/api/core/diagnostics/e2e/smoke", json=body or {})

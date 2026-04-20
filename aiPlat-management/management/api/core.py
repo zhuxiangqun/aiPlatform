@@ -70,6 +70,33 @@ async def wait_run(run_id: str, body: dict):
         raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
 
 
+@router.post("/runs/{run_id}/cancel")
+async def cancel_run(run_id: str, body: dict = None):
+    try:
+        client = get_core_client()
+        return await client.cancel_run(run_id, body or {})
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/runs/{run_id}/retry")
+async def retry_run(run_id: str):
+    try:
+        client = get_core_client()
+        return await client.retry_run(run_id)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/runs/{run_id}/undo")
+async def undo_run(run_id: str, body: dict = None):
+    try:
+        client = get_core_client()
+        return await client.undo_run(run_id, body or {})
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
 # ==================== Jobs / Cron (Roadmap-3) ====================
 
 
