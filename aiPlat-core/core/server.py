@@ -2343,7 +2343,7 @@ async def list_approvals(
     """List approvals (store-backed)."""
     if not _execution_store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
-    return await _execution_store.list_approval_requests(
+    res = await _execution_store.list_approval_requests(
         status=status,
         user_id=user_id,
         tenant_id=tenant_id,
@@ -2356,6 +2356,26 @@ async def list_approvals(
         limit=limit,
         offset=offset,
     )
+    # enrich with derived change linkage + UI links
+    try:
+        ids = [str(x.get("request_id")) for x in (res.get("items") or []) if isinstance(x, dict) and x.get("request_id")]
+        mapping = await _execution_store.get_change_linkages_for_approval_request_ids(ids)
+        out_items = []
+        for it in res.get("items") or []:
+            if not isinstance(it, dict):
+                continue
+            aid = str(it.get("request_id") or "")
+            lk = mapping.get(aid) or {}
+            change_id = lk.get("change_id")
+            it2 = dict(it)
+            if change_id:
+                it2["change_id"] = str(change_id)
+                it2["change_links"] = _change_links(str(change_id))
+            out_items.append(it2)
+        res["items"] = out_items
+    except Exception:
+        pass
+    return res
 
 
 @api_router.get("/approvals/pending")
@@ -2381,6 +2401,25 @@ async def list_pending_approvals(
                 limit=limit,
                 offset=offset,
             )
+            # enrich with derived change linkage + UI links
+            try:
+                ids = [str(x.get("request_id")) for x in (res.get("items") or []) if isinstance(x, dict) and x.get("request_id")]
+                mapping = await _execution_store.get_change_linkages_for_approval_request_ids(ids)
+                out_items = []
+                for it in res.get("items") or []:
+                    if not isinstance(it, dict):
+                        continue
+                    aid = str(it.get("request_id") or "")
+                    lk = mapping.get(aid) or {}
+                    change_id = lk.get("change_id")
+                    it2 = dict(it)
+                    if change_id:
+                        it2["change_id"] = str(change_id)
+                        it2["change_links"] = _change_links(str(change_id))
+                    out_items.append(it2)
+                res["items"] = out_items
+            except Exception:
+                pass
             return res
         except Exception:
             pass
@@ -2455,6 +2494,24 @@ async def get_approval_request(request_id: str):
             "agent_executions": execs,
             "syscall_events": calls,
         }
+        # add approval-centric links
+        try:
+            resp.setdefault("links", {})
+            resp["links"]["audit_ui"] = _ui_url(f"/diagnostics/audit?request_id={str(request_id)}")
+        except Exception:
+            pass
+        # derived change linkage + UI links
+        try:
+            lk = await _execution_store.get_change_linkages_for_approval_request_ids([str(request_id)])
+            one = lk.get(str(request_id)) or {}
+            change_id = one.get("change_id")
+            if change_id:
+                resp["change_id"] = str(change_id)
+                if not isinstance(resp.get("links"), dict):
+                    resp["links"] = {}
+                resp["links"].update(_change_links(str(change_id)))
+        except Exception:
+            pass
     return resp
 
 

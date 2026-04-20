@@ -4213,6 +4213,60 @@ class ExecutionStore:
 
         return await anyio.to_thread.run_sync(_sync)
 
+    async def get_change_linkages_for_approval_request_ids(self, request_ids: List[str]) -> Dict[str, Dict[str, Any]]:
+        """
+        Best-effort mapping approval_request_id -> {change_id, run_id, trace_id, created_at}.
+        Source: syscall_events(kind='changeset', target_type='change', approval_request_id in request_ids)
+        """
+        await self.init()
+        ids = [str(x) for x in (request_ids or []) if isinstance(x, str) and x.strip()]
+        if not ids:
+            return {}
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Dict[str, Any]]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                placeholders = ",".join(["?"] * len(ids))
+                rows = conn.execute(
+                    f"""
+                    SELECT e.approval_request_id, e.target_id AS change_id, e.run_id, e.trace_id, e.created_at
+                    FROM syscall_events e
+                    JOIN (
+                      SELECT approval_request_id, MAX(created_at) AS last_ts
+                      FROM syscall_events
+                      WHERE kind='changeset'
+                        AND target_type='change'
+                        AND approval_request_id IN ({placeholders})
+                        AND approval_request_id IS NOT NULL
+                        AND approval_request_id != ''
+                        AND target_id IS NOT NULL
+                        AND target_id != ''
+                      GROUP BY approval_request_id
+                    ) t
+                    ON e.approval_request_id = t.approval_request_id AND e.created_at = t.last_ts
+                    WHERE e.kind='changeset' AND e.target_type='change';
+                    """,
+                    tuple(ids),
+                ).fetchall()
+                out: Dict[str, Dict[str, Any]] = {}
+                for r in rows:
+                    aid = r["approval_request_id"]
+                    if not aid:
+                        continue
+                    out[str(aid)] = {
+                        "change_id": r["change_id"],
+                        "run_id": r["run_id"],
+                        "trace_id": r["trace_id"],
+                        "created_at": r["created_at"],
+                    }
+                return out
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
     # ==================== Agent ====================
 
     async def upsert_agent_execution(self, record: Dict[str, Any]) -> None:
