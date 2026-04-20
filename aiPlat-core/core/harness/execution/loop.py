@@ -361,10 +361,13 @@ class ReActLoop(BaseLoop):
             f"{msg.get('role', 'user')}: {msg.get('content', '')}"
             for msg in state.context.get("messages", [])[-5:]
         ])
-        tools_desc = "\n".join([
-            f"- {getattr(t, 'name', str(t))}: {getattr(t, 'description', '')}"
-            for t in self._tools
-        ]) if self._tools else "No tools available"
+        tools_desc, tools_desc_stats = self._build_tools_desc()
+        # Best-effort: attach to state for observability/debugging
+        try:
+            state.metadata["tools_desc_stats"] = tools_desc_stats
+            state.context["tools_desc_stats"] = tools_desc_stats
+        except Exception:
+            pass
 
         if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y"):
             prompt = PromptAssembler().build_react_reasoning_messages(
@@ -413,6 +416,63 @@ DONE: final_answer
             return response.content
         except Exception as e:
             return f"Model error: {e}"
+
+    def _build_tools_desc(self) -> tuple[str, Dict[str, Any]]:
+        """
+        Build a compact tools description string with budgets.
+
+        Why:
+        - MCP / tool ecosystems can grow large; dumping full descriptions every turn is expensive.
+        - Claude Code uses dynamic MCP discovery; as a first step we apply budgets + observability.
+        """
+        import os
+
+        per_tool_max = int(os.getenv("AIPLAT_TOOL_DESC_PER_TOOL_MAX_CHARS", "400") or "400")
+        total_max = int(os.getenv("AIPLAT_TOOLS_DESC_MAX_CHARS", "4000") or "4000")
+
+        stats: Dict[str, Any] = {
+            "per_tool_max_chars": per_tool_max,
+            "total_max_chars": total_max,
+            "tools_total": len(self._tools or []),
+            "tools_included": 0,
+            "tools_hidden": 0,
+            "tools_truncated": 0,
+            "chars_total": 0,
+        }
+
+        if not self._tools:
+            return "No tools available", stats
+
+        lines: List[str] = []
+        for t in self._tools:
+            try:
+                name = getattr(t, "name", None) or (t.get_name() if hasattr(t, "get_name") else str(t))
+            except Exception:
+                name = str(t)
+            try:
+                desc = getattr(t, "description", None) or (t.get_description() if hasattr(t, "get_description") else "")
+            except Exception:
+                desc = ""
+
+            desc = str(desc or "")
+            if per_tool_max > 0 and len(desc) > per_tool_max:
+                desc = desc[: max(0, per_tool_max - 16)] + " …(truncated)"
+                stats["tools_truncated"] += 1
+
+            line = f"- {name}: {desc}".strip()
+            projected = stats["chars_total"] + len(line) + (1 if lines else 0)
+            if total_max > 0 and projected > total_max:
+                stats["tools_hidden"] = stats["tools_total"] - stats["tools_included"]
+                break
+
+            lines.append(line)
+            stats["tools_included"] += 1
+            stats["chars_total"] = projected
+
+        if stats["tools_hidden"]:
+            lines.append(f"... ({stats['tools_hidden']} tools hidden; use tool search/narrow toolset)")
+
+        return "\n".join(lines), stats
 
     async def _act(self, state: LoopState) -> str:
         """Acting phase - execute tool or skill."""

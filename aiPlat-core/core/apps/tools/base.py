@@ -173,6 +173,26 @@ class BaseTool(ITool):
         """Get tool description"""
         return self._config.description
 
+    # -----------------------------
+    # Compatibility properties
+    # -----------------------------
+    # NOTE: Harness loops historically expect `tool.name` / `tool.description`.
+    # Expose these as read-only properties so ToolRegistry tools are usable
+    # without additional wrapper objects.
+    @property
+    def name(self) -> str:
+        return self.get_name()
+
+    @property
+    def description(self) -> str:
+        return self.get_description()
+
+    def __repr__(self) -> str:
+        try:
+            return f"<Tool {self.get_name()}>"
+        except Exception:
+            return super().__repr__()
+
     def get_stats(self) -> Dict[str, Any]:
         """Get tool statistics"""
         with self._stats_lock:
