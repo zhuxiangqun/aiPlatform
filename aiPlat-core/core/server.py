@@ -375,6 +375,12 @@ async def lifespan(app: FastAPI):
     # ExecutionStore (SQLite) - persistent execution/history
     _execution_store = get_execution_store()
     await _execution_store.init()
+    # Ensure ApprovalManager is store-backed (tests may swap db_path between runs)
+    try:
+        if _approval_manager is not None:
+            setattr(_approval_manager, "_execution_store", _execution_store)
+    except Exception:
+        pass
     # Plugins
     try:
         global _plugin_manager
