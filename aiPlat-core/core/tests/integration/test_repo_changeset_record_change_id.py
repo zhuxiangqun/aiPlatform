@@ -45,3 +45,31 @@ def test_repo_changeset_record_returns_change_id_and_writes_changeset(tmp_path, 
         ev = cc.get("events") if isinstance(cc, dict) else None
         items = (ev.get("items") or []) if isinstance(ev, dict) else []
         assert any((isinstance(it, dict) and it.get("name") == "repo_changeset_record") for it in items)
+
+
+@pytest.mark.integration
+def test_repo_changeset_record_requires_approval_on_non_local_backend(tmp_path, monkeypatch):
+    monkeypatch.setenv("AIPLAT_EXECUTION_DB_PATH", str(tmp_path / "exec.sqlite3"))
+    monkeypatch.setenv("AIPLAT_EXEC_BACKEND", "docker")
+
+    repo = tmp_path / "repo2"
+    repo.mkdir(parents=True, exist_ok=True)
+    _run(["git", "init"], cwd=str(repo))
+    _run(["git", "config", "user.email", "test@example.com"], cwd=str(repo))
+    _run(["git", "config", "user.name", "Test"], cwd=str(repo))
+    (repo / "a.txt").write_text("hello\n", encoding="utf-8")
+    _run(["git", "add", "a.txt"], cwd=str(repo))
+    _run(["git", "commit", "-m", "init"], cwd=str(repo))
+    (repo / "a.txt").write_text("hello\nworld\n", encoding="utf-8")
+    _run(["git", "add", "a.txt"], cwd=str(repo))
+
+    from core.server import app
+
+    with TestClient(app) as client:
+        client.get("/api/core/permissions/stats")
+        r = client.post("/api/core/diagnostics/repo/changeset/record", json={"repo_root": str(repo), "include_patch": False, "note": "x"})
+        assert r.status_code == 200, r.text
+        data = r.json()
+        assert data.get("status") == "approval_required"
+        assert isinstance(data.get("approval_request_id"), str) and data["approval_request_id"]
+        assert isinstance(data.get("change_id"), str) and data["change_id"].startswith("chg-")

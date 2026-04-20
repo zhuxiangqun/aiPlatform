@@ -12204,7 +12204,132 @@ async def diagnostics_repo_changeset_record(request: RepoChangesetPreviewRequest
         except Exception:
             pass
         raise
+    # ==================== governance: approval when high-risk / non-local ====================
+    from core.harness.infrastructure.approval.types import ApprovalContext, ApprovalRule, RuleType
+    from core.harness.infrastructure.approval.manager import ApprovalManager
+    from core.apps.exec_drivers.registry import get_exec_backend
+
+    approval_mgr = _approval_manager or ApprovalManager(execution_store=_execution_store)
+    backend = "local"
+    try:
+        backend = await get_exec_backend()
+    except Exception:
+        backend = "local"
+
+    staged_files = (staged_preview or {}).get("staged_files") if isinstance(staged_preview, dict) else []
+    if not isinstance(staged_files, list):
+        staged_files = []
+
+    def _is_high_risk(paths: list[str]) -> bool:
+        # Conservative allowlist: treat core governance/auth/policy changes as high risk.
+        for p in paths:
+            ps = str(p or "")
+            if not ps:
+                continue
+            if ps.endswith((".pem", ".key")):
+                return True
+            if "/.github/workflows/" in ps or ps.startswith(".github/workflows/"):
+                return True
+            if ps.startswith("aiPlat-core/core/server.py"):
+                return True
+            if "policy" in ps or "rbac" in ps or "permission" in ps:
+                return True
+            if "ops/" in ps or ps.startswith("aiPlat-management/management/api/"):
+                return True
+        return False
+
+    require_approval = bool(getattr(request, "require_approval", True))
+    approval_needed = bool(require_approval) and (str(backend) != "local" or _is_high_risk([str(x) for x in staged_files]))
+    approval_request_id = str(getattr(request, "approval_request_id", "") or "").strip() or None
+    user_id = str(getattr(request, "user_id", "") or "").strip() or "admin"
+
     change_id = _new_change_id()
+    if approval_needed:
+        if not _approval_manager:
+            raise HTTPException(status_code=503, detail="Approval manager not available")
+        if approval_request_id and is_approved(approval_mgr, approval_request_id):
+            # ok: proceed, keep the approval_request_id on the syscall event
+            pass
+        else:
+            # create (or re-use provided) approval request
+            if not approval_request_id:
+                rule = ApprovalRule(
+                    rule_id="repo_changeset_record",
+                    rule_type=RuleType.SENSITIVE_OPERATION,
+                    name="Repo changeset 记录审批",
+                    description="repo changeset（非本地执行或高风险变更）需要审批后才能进入后续流程",
+                    priority=1,
+                    metadata={"sensitive_operations": ["repo:changeset_record"]},
+                )
+                _approval_manager.register_rule(rule)
+                ctx = ApprovalContext(
+                    user_id=user_id,
+                    operation="repo:changeset_record",
+                    operation_context={
+                        "repo_root": str(preview.get("repo_root") or ""),
+                        "branch": preview.get("branch"),
+                        "head": preview.get("head"),
+                        "backend": str(backend),
+                        "diff_sha256": preview.get("diff_sha256"),
+                        "staged_files": staged_files[:50],
+                        "details": str(request.note or "").strip(),
+                    },
+                    metadata={"kind": "repo_changeset", "change_id": str(change_id)},
+                )
+                req = _approval_manager.create_request(ctx, rule=rule)
+                approval_request_id = req.request_id
+                try:
+                    await _approval_manager._persist(req)  # type: ignore[attr-defined]
+                except Exception:
+                    pass
+
+            # record a pending change event for review in Change Control
+            try:
+                await _record_changeset(
+                    name="repo_changeset_record",
+                    target_type="change",
+                    target_id=str(change_id),
+                    status="approval_required",
+                    args={
+                        "operation": "repo_changeset_record",
+                        "repo_root": str(preview.get("repo_root") or ""),
+                        "branch": preview.get("branch"),
+                        "head": preview.get("head"),
+                        "backend": str(backend),
+                        "note": str(request.note or "").strip(),
+                    },
+                    result={
+                        "working_tree": preview.get("working_tree"),
+                        "staged": preview.get("staged"),
+                        "diff_sha256": preview.get("diff_sha256"),
+                        "staged_patch_sha256": (staged_preview or {}).get("patch_sha256") if isinstance(staged_preview, dict) else None,
+                        "staged_files_count": len(staged_files),
+                        "staged_files_sample": staged_files[:20],
+                        "suggested_commit_message": (staged_preview or {}).get("suggested_commit_message") if isinstance(staged_preview, dict) else None,
+                        "patch_available": True,
+                        "tests": {
+                            "exit_code": (tests_summary or {}).get("exit_code") if isinstance(tests_summary, dict) else None,
+                            "duration_ms": (tests_summary or {}).get("duration_ms") if isinstance(tests_summary, dict) else None,
+                            "stdout_sha256": (tests_summary or {}).get("stdout_sha256") if isinstance(tests_summary, dict) else None,
+                            "stderr_sha256": (tests_summary or {}).get("stderr_sha256") if isinstance(tests_summary, dict) else None,
+                        },
+                    },
+                    approval_request_id=str(approval_request_id) if approval_request_id else None,
+                    user_id=user_id,
+                )
+            except Exception:
+                pass
+            return {
+                "status": "approval_required",
+                "approval_request_id": approval_request_id,
+                "change_id": change_id,
+                "links": _governance_links(change_id=change_id, approval_request_id=str(approval_request_id) if approval_request_id else None),
+                "preview": preview,
+                "tests": tests_summary,
+                "staged": staged_preview,
+                "backend": backend,
+            }
+
     try:
         await _record_changeset(
             name="repo_changeset_record",
@@ -12233,16 +12358,20 @@ async def diagnostics_repo_changeset_record(request: RepoChangesetPreviewRequest
                     "stderr_sha256": (tests_summary or {}).get("stderr_sha256") if isinstance(tests_summary, dict) else None,
                 },
             },
+            approval_request_id=str(approval_request_id) if approval_request_id else None,
+            user_id=user_id,
         )
     except Exception:
         pass
     return {
         "status": "recorded",
         "change_id": change_id,
-        "links": _governance_links(change_id=change_id),
+        "approval_request_id": approval_request_id,
+        "links": _governance_links(change_id=change_id, approval_request_id=str(approval_request_id) if approval_request_id else None),
         "preview": preview,
         "tests": tests_summary,
         "staged": staged_preview,
+        "backend": backend,
     }
 
 

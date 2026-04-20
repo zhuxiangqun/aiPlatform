@@ -294,6 +294,10 @@ class RepoChangesetPreviewRequest(BaseModel):
     include_patch: bool = False  # default: do NOT return full diff
     note: Optional[str] = None
     run_tests: bool = False
+    # Governance: when changeset is high-risk or non-local backend, require approval.
+    require_approval: bool = True
+    approval_request_id: Optional[str] = None
+    user_id: Optional[str] = None
 
 
 class RepoTestsRunRequest(BaseModel):
