@@ -129,6 +129,14 @@ export const diagnosticsApi = {
     return apiClient.get<any>('/diagnostics/doctor');
   },
 
+  getContextConfig: async () => {
+    return apiClient.get<any>('/diagnostics/context/config');
+  },
+
+  promptAssemble: async (body: Record<string, unknown>) => {
+    return apiClient.post<any>('/diagnostics/prompt/assemble', body);
+  },
+
   recordRepoChangeset: async (body: Record<string, unknown>) => {
     return apiClient.post<any>('/diagnostics/repo/changeset/record', body);
   },

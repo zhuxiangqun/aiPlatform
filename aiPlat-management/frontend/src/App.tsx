@@ -63,6 +63,7 @@ const DiagnosticsOps = lazy(() => import('./pages/Diagnostics/Ops'));
 const DiagnosticsRepo = lazy(() => import('./pages/Diagnostics/Repo'));
 const DiagnosticsChangeControl = lazy(() => import('./pages/Diagnostics/ChangeControl'));
 const DiagnosticsPolicyDebug = lazy(() => import('./pages/Diagnostics/PolicyDebug'));
+const DiagnosticsContext = lazy(() => import('./pages/Diagnostics/Context'));
 const Onboarding = lazy(() => import('./pages/Onboarding/Onboarding'));
 
 const router = createBrowserRouter([
@@ -119,6 +120,7 @@ const router = createBrowserRouter([
       { path: 'diagnostics/policy-debug', element: withSuspense(DiagnosticsPolicyDebug) },
       { path: 'diagnostics/smoke', element: withSuspense(DiagnosticsSmoke) },
       { path: 'diagnostics/ops', element: withSuspense(DiagnosticsOps) },
+      { path: 'diagnostics/context', element: withSuspense(DiagnosticsContext) },
     ],
   },
 ]);
