@@ -11451,11 +11451,68 @@ async def upsert_prompt_template(request: PromptTemplateUpsertRequest, http_requ
     if not _execution_store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
 
+    # Autosmoke gate strategy (machine-picked):
+    # - When verification is pending/failed, block *new upserts* (avoid piling changes).
+    # - Rollback remains available as recovery path.
+    change_id = _new_change_id()
+
     prev = None
     try:
         prev = await _execution_store.get_prompt_template(template_id=str(request.template_id))
     except Exception:
         prev = None
+
+    # Gate: block new upserts when last verification isn't verified.
+    try:
+        if isinstance(prev, dict):
+            md: Dict[str, Any] = {}
+            if isinstance(prev.get("metadata"), dict):
+                md = prev.get("metadata")  # type: ignore[assignment]
+            elif isinstance(prev.get("metadata_json"), str) and prev.get("metadata_json"):
+                try:
+                    import json as _json
+
+                    md = _json.loads(str(prev.get("metadata_json") or "{}"))
+                    if not isinstance(md, dict):
+                        md = {}
+                except Exception:
+                    md = {}
+            ver = md.get("verification") if isinstance(md.get("verification"), dict) else {}
+            st = str(ver.get("status") or "").strip().lower()
+            if st in {"pending", "failed"}:
+                # Record change attempt for auditing (best-effort).
+                try:
+                    await _record_changeset(
+                        name="prompt_template_upsert",
+                        target_type="change",
+                        target_id=str(change_id),
+                        status="failed",
+                        args={"operation": "prompt_template_upsert", "template_id": request.template_id, "name": request.name},
+                        error="autosmoke_not_verified",
+                        approval_request_id=request.approval_request_id,
+                    )
+                except Exception:
+                    pass
+                raise HTTPException(
+                    status_code=409,
+                    detail=_gate_error_envelope(
+                        code="autosmoke_not_verified",
+                        message=f"autosmoke_not_verified: current_verification_status={st}",
+                        change_id=change_id,
+                        approval_request_id=str(request.approval_request_id) if request.approval_request_id else None,
+                        next_actions=[
+                            {"type": "open_change_control", "label": "打开变更控制台", "url": _ui_url(f"/diagnostics/change-control/{change_id}")},
+                            {"type": "open_prompts", "label": "打开 Prompt 模板", "url": _ui_url("/core/prompts")},
+                            {"type": "open_doctor", "label": "打开 Doctor", "url": _ui_url("/diagnostics/doctor")},
+                        ],
+                        detail={"template_id": str(request.template_id), "verification_status": st},
+                    ),
+                )
+    except HTTPException:
+        raise
+    except Exception:
+        # Fail-open: do not block prompt ops on metadata parsing errors.
+        pass
 
     if request.require_approval:
         if not request.approval_request_id:
@@ -11468,23 +11525,28 @@ async def upsert_prompt_template(request: PromptTemplateUpsertRequest, http_requ
             try:
                 await _record_changeset(
                     name="prompt_template_upsert",
-                    target_type="prompt_template",
-                    target_id=str(request.template_id),
+                    target_type="change",
+                    target_id=str(change_id),
                     status="approval_required",
-                    args={"template_id": request.template_id, "name": request.name},
+                    args={"operation": "prompt_template_upsert", "template_id": request.template_id, "name": request.name},
                     approval_request_id=rid,
                 )
             except Exception:
                 pass
-            return {"status": "approval_required", "approval_request_id": rid}
+            return {
+                "status": "approval_required",
+                "approval_request_id": rid,
+                "change_id": change_id,
+                "links": _governance_links(change_id=change_id, approval_request_id=rid),
+            }
         if not _is_approval_resolved_approved(request.approval_request_id):
             try:
                 await _record_changeset(
                     name="prompt_template_upsert",
-                    target_type="prompt_template",
-                    target_id=str(request.template_id),
+                    target_type="change",
+                    target_id=str(change_id),
                     status="failed",
-                    args={"template_id": request.template_id, "name": request.name},
+                    args={"operation": "prompt_template_upsert", "template_id": request.template_id, "name": request.name},
                     error="not_approved",
                     approval_request_id=request.approval_request_id,
                 )
@@ -11495,6 +11557,7 @@ async def upsert_prompt_template(request: PromptTemplateUpsertRequest, http_requ
                 detail=_gate_error_envelope(
                     code="not_approved",
                     message="not_approved",
+                    change_id=change_id,
                     approval_request_id=str(request.approval_request_id),
                     next_actions=[{"type": "open_approvals", "label": "打开审批中心", "url": _ui_url("/core/approvals"), "approval_request_id": str(request.approval_request_id)}],
                 ),
@@ -11512,10 +11575,10 @@ async def upsert_prompt_template(request: PromptTemplateUpsertRequest, http_requ
         try:
             await _record_changeset(
                 name="prompt_template_upsert",
-                target_type="prompt_template",
-                target_id=str(request.template_id),
+                target_type="change",
+                target_id=str(change_id),
                 status="failed",
-                args={"template_id": request.template_id, "name": request.name},
+                args={"operation": "prompt_template_upsert", "template_id": request.template_id, "name": request.name},
                 error=f"exception:{type(e).__name__}",
                 approval_request_id=request.approval_request_id,
             )
@@ -11529,10 +11592,11 @@ async def upsert_prompt_template(request: PromptTemplateUpsertRequest, http_requ
 
         await _record_changeset(
             name="prompt_template_upsert",
-            target_type="prompt_template",
-            target_id=str(request.template_id),
+            target_type="change",
+            target_id=str(change_id),
             status="success",
             args={
+                "operation": "prompt_template_upsert",
                 "template_id": request.template_id,
                 "name": request.name,
                 "prev_version": (prev or {}).get("version") if isinstance(prev, dict) else None,
@@ -11541,6 +11605,7 @@ async def upsert_prompt_template(request: PromptTemplateUpsertRequest, http_requ
                 "version": res.get("version") if isinstance(res, dict) else None,
                 "template_sha256": hashlib.sha256(str(request.template).encode("utf-8")).hexdigest(),
                 "template_len": len(str(request.template)),
+                "verification_status": "pending",
             },
             approval_request_id=request.approval_request_id,
         )
@@ -11554,7 +11619,7 @@ async def upsert_prompt_template(request: PromptTemplateUpsertRequest, http_requ
 
             await _execution_store.update_prompt_template_metadata(
                 template_id=str(request.template_id),
-                patch={"verification": {"status": "pending", "updated_at": time.time(), "source": "autosmoke"}},
+                patch={"verification": {"status": "pending", "updated_at": time.time(), "source": "autosmoke"}, "governance": {"latest_change_id": change_id}},
                 merge=True,
             )
 
@@ -11579,6 +11644,23 @@ async def upsert_prompt_template(request: PromptTemplateUpsertRequest, http_requ
                 except Exception:
                     pass
 
+                # Change Control writeback (best-effort): record autosmoke result to same change_id.
+                try:
+                    await _record_changeset(
+                        name="prompt_template_autosmoke",
+                        target_type="change",
+                        target_id=str(change_id),
+                        status="success" if st == "completed" else "failed",
+                        args={"operation": "prompt_template_autosmoke", "template_id": str(request.template_id)},
+                        result={"verification": ver, "job": {"job_id": ver.get("job_id"), "job_run_id": ver.get("job_run_id")}},
+                        trace_id=ver.get("trace_id"),
+                        run_id=str(job_run.get("run_id") or job_run.get("id") or "") or None,
+                        approval_request_id=request.approval_request_id,
+                        tenant_id=http_request.headers.get("X-AIPLAT-TENANT-ID", None),
+                    )
+                except Exception:
+                    pass
+
             await enqueue_autosmoke(
                 execution_store=_execution_store,
                 job_scheduler=_job_scheduler,
@@ -11586,18 +11668,26 @@ async def upsert_prompt_template(request: PromptTemplateUpsertRequest, http_requ
                 resource_id=str(request.template_id),
                 tenant_id=tenant_id or "ops_smoke",
                 actor_id=actor_id or "admin",
-                detail={"op": "prompt_template_upsert", "template_id": str(request.template_id)},
+                detail={"op": "prompt_template_upsert", "template_id": str(request.template_id), "change_id": str(change_id)},
                 on_complete=_on_complete,
             )
     except Exception:
         pass
-    return {"status": "updated", "template": res}
+    return {
+        "status": "updated",
+        "template": res,
+        "change_id": change_id,
+        "approval_request_id": request.approval_request_id,
+        "links": _governance_links(change_id=change_id, approval_request_id=str(request.approval_request_id) if request.approval_request_id else None),
+    }
 
 
 @api_router.post("/prompts/{template_id}/rollback")
 async def rollback_prompt_template(template_id: str, request: PromptTemplateRollbackRequest, http_request: Request):
     if not _execution_store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+
+    change_id = _new_change_id()
 
     if request.template_id and str(request.template_id) != str(template_id):
         raise HTTPException(status_code=400, detail="template_id_mismatch")
@@ -11613,23 +11703,28 @@ async def rollback_prompt_template(template_id: str, request: PromptTemplateRoll
             try:
                 await _record_changeset(
                     name="prompt_template_rollback",
-                    target_type="prompt_template",
-                    target_id=str(template_id),
+                    target_type="change",
+                    target_id=str(change_id),
                     status="approval_required",
-                    args={"template_id": str(template_id), "version": str(request.version)},
+                    args={"operation": "prompt_template_rollback", "template_id": str(template_id), "version": str(request.version)},
                     approval_request_id=rid,
                 )
             except Exception:
                 pass
-            return {"status": "approval_required", "approval_request_id": rid}
+            return {
+                "status": "approval_required",
+                "approval_request_id": rid,
+                "change_id": change_id,
+                "links": _governance_links(change_id=change_id, approval_request_id=rid),
+            }
         if not _is_approval_resolved_approved(request.approval_request_id):
             try:
                 await _record_changeset(
                     name="prompt_template_rollback",
-                    target_type="prompt_template",
-                    target_id=str(template_id),
+                    target_type="change",
+                    target_id=str(change_id),
                     status="failed",
-                    args={"template_id": str(template_id), "version": str(request.version)},
+                    args={"operation": "prompt_template_rollback", "template_id": str(template_id), "version": str(request.version)},
                     error="not_approved",
                     approval_request_id=request.approval_request_id,
                 )
@@ -11640,6 +11735,7 @@ async def rollback_prompt_template(template_id: str, request: PromptTemplateRoll
                 detail=_gate_error_envelope(
                     code="not_approved",
                     message="not_approved",
+                    change_id=change_id,
                     approval_request_id=str(request.approval_request_id),
                     next_actions=[{"type": "open_approvals", "label": "打开审批中心", "url": _ui_url("/core/approvals"), "approval_request_id": str(request.approval_request_id)}],
                 ),
@@ -11651,10 +11747,10 @@ async def rollback_prompt_template(template_id: str, request: PromptTemplateRoll
         try:
             await _record_changeset(
                 name="prompt_template_rollback",
-                target_type="prompt_template",
-                target_id=str(template_id),
+                target_type="change",
+                target_id=str(change_id),
                 status="failed",
-                args={"template_id": str(template_id), "version": str(request.version)},
+                args={"operation": "prompt_template_rollback", "template_id": str(template_id), "version": str(request.version)},
                 error="version_not_found",
                 approval_request_id=request.approval_request_id,
             )
@@ -11665,10 +11761,10 @@ async def rollback_prompt_template(template_id: str, request: PromptTemplateRoll
         try:
             await _record_changeset(
                 name="prompt_template_rollback",
-                target_type="prompt_template",
-                target_id=str(template_id),
+                target_type="change",
+                target_id=str(change_id),
                 status="failed",
-                args={"template_id": str(template_id), "version": str(request.version)},
+                args={"operation": "prompt_template_rollback", "template_id": str(template_id), "version": str(request.version)},
                 error=f"exception:{type(e).__name__}",
                 approval_request_id=request.approval_request_id,
             )
@@ -11679,11 +11775,11 @@ async def rollback_prompt_template(template_id: str, request: PromptTemplateRoll
     try:
         await _record_changeset(
             name="prompt_template_rollback",
-            target_type="prompt_template",
-            target_id=str(template_id),
+            target_type="change",
+            target_id=str(change_id),
             status="success",
-            args={"template_id": str(template_id), "version": str(request.version)},
-            result={"status": "rolled_back"},
+            args={"operation": "prompt_template_rollback", "template_id": str(template_id), "version": str(request.version)},
+            result={"status": "rolled_back", "verification_status": "pending"},
             approval_request_id=request.approval_request_id,
         )
     except Exception:
@@ -11696,7 +11792,7 @@ async def rollback_prompt_template(template_id: str, request: PromptTemplateRoll
 
             await _execution_store.update_prompt_template_metadata(
                 template_id=str(template_id),
-                patch={"verification": {"status": "pending", "updated_at": time.time(), "source": "autosmoke"}},
+                patch={"verification": {"status": "pending", "updated_at": time.time(), "source": "autosmoke"}, "governance": {"latest_change_id": change_id}},
                 merge=True,
             )
             tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID", "ops_smoke")
@@ -11720,6 +11816,23 @@ async def rollback_prompt_template(template_id: str, request: PromptTemplateRoll
                 except Exception:
                     pass
 
+                # Change Control writeback (best-effort): record autosmoke result to same change_id.
+                try:
+                    await _record_changeset(
+                        name="prompt_template_autosmoke",
+                        target_type="change",
+                        target_id=str(change_id),
+                        status="success" if st == "completed" else "failed",
+                        args={"operation": "prompt_template_autosmoke", "template_id": str(template_id)},
+                        result={"verification": ver, "job": {"job_id": ver.get("job_id"), "job_run_id": ver.get("job_run_id")}},
+                        trace_id=ver.get("trace_id"),
+                        run_id=str(job_run.get("run_id") or job_run.get("id") or "") or None,
+                        approval_request_id=request.approval_request_id,
+                        tenant_id=http_request.headers.get("X-AIPLAT-TENANT-ID", None),
+                    )
+                except Exception:
+                    pass
+
             await enqueue_autosmoke(
                 execution_store=_execution_store,
                 job_scheduler=_job_scheduler,
@@ -11727,12 +11840,18 @@ async def rollback_prompt_template(template_id: str, request: PromptTemplateRoll
                 resource_id=str(template_id),
                 tenant_id=tenant_id or "ops_smoke",
                 actor_id=actor_id or "admin",
-                detail={"op": "prompt_template_rollback", "template_id": str(template_id), "version": str(request.version)},
+                detail={"op": "prompt_template_rollback", "template_id": str(template_id), "version": str(request.version), "change_id": str(change_id)},
                 on_complete=_on_complete,
             )
     except Exception:
         pass
-    return {"status": "rolled_back", "template": tpl}
+    return {
+        "status": "rolled_back",
+        "template": tpl,
+        "change_id": change_id,
+        "approval_request_id": request.approval_request_id,
+        "links": _governance_links(change_id=change_id, approval_request_id=str(request.approval_request_id) if request.approval_request_id else None),
+    }
 
 
 @api_router.get("/prompts/{template_id}/versions")
@@ -11820,6 +11939,8 @@ async def delete_prompt_template(template_id: str, http_request: Request, requir
     if not _execution_store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
 
+    change_id = _new_change_id()
+
     if require_approval:
         if not approval_request_id:
             rid = await _require_onboarding_approval(
@@ -11831,23 +11952,28 @@ async def delete_prompt_template(template_id: str, http_request: Request, requir
             try:
                 await _record_changeset(
                     name="prompt_template_delete",
-                    target_type="prompt_template",
-                    target_id=str(template_id),
+                    target_type="change",
+                    target_id=str(change_id),
                     status="approval_required",
-                    args={},
+                    args={"operation": "prompt_template_delete", "template_id": str(template_id)},
                     approval_request_id=rid,
                 )
             except Exception:
                 pass
-            return {"status": "approval_required", "approval_request_id": rid}
+            return {
+                "status": "approval_required",
+                "approval_request_id": rid,
+                "change_id": change_id,
+                "links": _governance_links(change_id=change_id, approval_request_id=rid),
+            }
         if not _is_approval_resolved_approved(approval_request_id):
             try:
                 await _record_changeset(
                     name="prompt_template_delete",
-                    target_type="prompt_template",
-                    target_id=str(template_id),
+                    target_type="change",
+                    target_id=str(change_id),
                     status="failed",
-                    args={},
+                    args={"operation": "prompt_template_delete", "template_id": str(template_id)},
                     error="not_approved",
                     approval_request_id=approval_request_id,
                 )
@@ -11858,6 +11984,7 @@ async def delete_prompt_template(template_id: str, http_request: Request, requir
                 detail=_gate_error_envelope(
                     code="not_approved",
                     message="not_approved",
+                    change_id=change_id,
                     approval_request_id=str(approval_request_id),
                     next_actions=[{"type": "open_approvals", "label": "打开审批中心", "url": _ui_url("/core/approvals"), "approval_request_id": str(approval_request_id)}],
                 ),
@@ -11867,9 +11994,9 @@ async def delete_prompt_template(template_id: str, http_request: Request, requir
     try:
         await _record_changeset(
             name="prompt_template_delete",
-            target_type="prompt_template",
-            target_id=str(template_id),
-            args={},
+            target_type="change",
+            target_id=str(change_id),
+            args={"operation": "prompt_template_delete", "template_id": str(template_id)},
             result={"status": "deleted" if ok else "not_found"},
             approval_request_id=approval_request_id,
         )
@@ -11891,11 +12018,16 @@ async def delete_prompt_template(template_id: str, http_request: Request, requir
                 resource_id=str(template_id),
                 tenant_id=tenant_id or "ops_smoke",
                 actor_id=actor_id or "admin",
-                detail={"op": "prompt_template_delete", "template_id": str(template_id)},
+                detail={"op": "prompt_template_delete", "template_id": str(template_id), "change_id": str(change_id)},
             )
     except Exception:
         pass
-    return {"status": "deleted" if ok else "not_found"}
+    return {
+        "status": "deleted" if ok else "not_found",
+        "change_id": change_id,
+        "approval_request_id": approval_request_id,
+        "links": _governance_links(change_id=change_id, approval_request_id=str(approval_request_id) if approval_request_id else None),
+    }
 
 
 @api_router.get("/diagnostics/exec/backends")
