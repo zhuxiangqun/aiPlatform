@@ -12164,6 +12164,311 @@ async def get_prompt_template(template_id: str):
     return tpl
 
 
+def _parse_prompt_metadata(tpl: Dict[str, Any]) -> Dict[str, Any]:
+    md: Dict[str, Any] = {}
+    if isinstance(tpl.get("metadata"), dict):
+        md = tpl.get("metadata")  # type: ignore[assignment]
+    elif isinstance(tpl.get("metadata_json"), str) and tpl.get("metadata_json"):
+        try:
+            import json as _json
+
+            md2 = _json.loads(str(tpl.get("metadata_json") or "{}"))
+            md = md2 if isinstance(md2, dict) else {}
+        except Exception:
+            md = {}
+    return md if isinstance(md, dict) else {}
+
+
+def _select_release_version(
+    *,
+    tpl: Dict[str, Any],
+    release: Dict[str, Any],
+    tenant_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+    session_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Resolve an "effective" prompt template version based on release semantics:
+    - pinned_version: always use this version
+    - rollout: weighted list [{version, weight}], deterministic bucketing
+    """
+    current_version = str(tpl.get("version") or "")
+    pinned = release.get("pinned_version")
+    if isinstance(pinned, str) and pinned.strip():
+        return {"version": pinned.strip(), "strategy": "pinned"}
+
+    rollout = release.get("rollout") if isinstance(release.get("rollout"), list) else []
+    items = []
+    total = 0
+    for it in rollout:
+        if not isinstance(it, dict):
+            continue
+        v = str(it.get("version") or "").strip()
+        if not v:
+            continue
+        try:
+            w = int(it.get("weight") or 0)
+        except Exception:
+            w = 0
+        if w <= 0:
+            continue
+        items.append({"version": v, "weight": w})
+        total += w
+    if total <= 0 or not items:
+        return {"version": current_version, "strategy": "current"}
+
+    key = str(session_id or user_id or tenant_id or "default")
+    import hashlib
+
+    h = hashlib.sha256(key.encode("utf-8")).hexdigest()
+    bucket = int(h[:8], 16) % total
+    acc = 0
+    for it in items:
+        acc += int(it["weight"])
+        if bucket < acc:
+            return {
+                "version": str(it["version"]),
+                "strategy": "rollout",
+                "bucket": bucket,
+                "bucket_total": total,
+                "bucket_key": key,
+            }
+    return {"version": current_version, "strategy": "current"}
+
+
+@api_router.get("/prompts/{template_id}/resolve")
+async def resolve_prompt_template(template_id: str, tenant_id: Optional[str] = None, user_id: Optional[str] = None, session_id: Optional[str] = None):
+    """
+    Resolve effective prompt version with optional release semantics (P1):
+    - pinned_version
+    - rollout (weighted bucketing)
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    tpl = await _execution_store.get_prompt_template(template_id=str(template_id))
+    if not tpl:
+        raise HTTPException(status_code=404, detail="not_found")
+    md = _parse_prompt_metadata(tpl)
+    rel = md.get("release") if isinstance(md.get("release"), dict) else {}
+    rel = rel if isinstance(rel, dict) else {}
+    sel = _select_release_version(tpl=tpl, release=rel, tenant_id=tenant_id, user_id=user_id, session_id=session_id)
+    ver = str(sel.get("version") or tpl.get("version") or "")
+    vrow = None
+    try:
+        vrow = await _execution_store.get_prompt_template_version(template_id=str(template_id), version=str(ver))
+    except Exception:
+        vrow = None
+    out = dict(tpl)
+    if isinstance(vrow, dict) and vrow.get("template"):
+        out["template"] = vrow.get("template")
+        out["version"] = str(ver)
+        out["metadata_json"] = vrow.get("metadata_json")
+    out["release"] = rel
+    out["resolution"] = sel
+    return out
+
+
+@api_router.post("/prompts/{template_id}/release")
+async def set_prompt_template_release(template_id: str, request: dict, http_request: Request):
+    """
+    P1: Prompt 发布/灰度语义（不修改 template 内容/版本，只修改 metadata.release）。
+    Supports:
+      - pinned_version: string | null
+      - rollout: [{version, weight}] | []
+      - require_approval/approval_request_id/details
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    tpl = await _execution_store.get_prompt_template(template_id=str(template_id))
+    if not tpl:
+        raise HTTPException(status_code=404, detail="not_found")
+
+    change_id = _new_change_id()
+    md = _parse_prompt_metadata(tpl)
+    ver_md = md.get("verification") if isinstance(md.get("verification"), dict) else {}
+    st = str(ver_md.get("status") or "").strip().lower()
+    # Require verified before altering release settings (conservative).
+    if st and st not in {"verified", "passed", "success"}:
+        raise HTTPException(
+            status_code=409,
+            detail=_gate_error_envelope(
+                code="autosmoke_not_verified",
+                message=f"autosmoke_not_verified: current_verification_status={st}",
+                change_id=change_id,
+                next_actions=[
+                    {"type": "open_change_control", "label": "打开变更控制台", "url": _ui_url(f"/diagnostics/change-control/{change_id}")},
+                    {"type": "open_prompts", "label": "打开 Prompt 模板", "url": _ui_url("/core/prompts")},
+                    {"type": "open_doctor", "label": "打开 Doctor", "url": _ui_url("/diagnostics/doctor")},
+                ],
+                detail={"template_id": str(template_id), "verification_status": st},
+            ),
+        )
+
+    pinned_version = request.get("pinned_version")
+    if pinned_version is not None and not (isinstance(pinned_version, str) and pinned_version.strip()):
+        pinned_version = None
+    pinned_version = str(pinned_version).strip() if isinstance(pinned_version, str) and pinned_version.strip() else None
+
+    rollout = request.get("rollout") if isinstance(request.get("rollout"), list) else []
+    norm_rollout = []
+    total = 0
+    seen = set()
+    for it in rollout:
+        if not isinstance(it, dict):
+            continue
+        v = str(it.get("version") or "").strip()
+        if not v or v in seen:
+            continue
+        try:
+            w = int(it.get("weight") or 0)
+        except Exception:
+            w = 0
+        if w <= 0:
+            continue
+        seen.add(v)
+        total += w
+        norm_rollout.append({"version": v, "weight": w})
+    if total > 10000:
+        raise HTTPException(status_code=400, detail="invalid_rollout_total")
+
+    # Validate referenced versions exist (best-effort).
+    try:
+        versions = await _execution_store.list_prompt_template_versions(template_id=str(template_id), limit=500, offset=0)
+        exist = {str(x.get("version")) for x in (versions.get("items") or []) if isinstance(x, dict) and x.get("version")}
+        if pinned_version and pinned_version not in exist:
+            raise HTTPException(status_code=400, detail="pinned_version_not_found")
+        for it in norm_rollout:
+            if it["version"] not in exist:
+                raise HTTPException(status_code=400, detail="rollout_version_not_found")
+    except HTTPException:
+        raise
+    except Exception:
+        pass
+
+    require_approval = bool(request.get("require_approval", True))
+    approval_request_id = request.get("approval_request_id")
+    details = str(request.get("details") or f"set prompt template release {template_id}").strip()
+    if require_approval:
+        if not approval_request_id:
+            rid = await _require_onboarding_approval(
+                operation="prompt_template_release",
+                user_id="admin",
+                details=details,
+                metadata={"template_id": str(template_id), "pinned_version": pinned_version, "rollout": norm_rollout},
+            )
+            try:
+                await _record_changeset(
+                    name="prompt_template_release",
+                    target_type="change",
+                    target_id=str(change_id),
+                    status="approval_required",
+                    args={"template_id": str(template_id), "pinned_version": pinned_version, "rollout": norm_rollout},
+                    approval_request_id=rid,
+                )
+            except Exception:
+                pass
+            return {"status": "approval_required", "approval_request_id": rid, "change_id": change_id, "links": _governance_links(change_id=change_id, approval_request_id=rid)}
+        if not _is_approval_resolved_approved(str(approval_request_id)):
+            raise HTTPException(
+                status_code=409,
+                detail=_gate_error_envelope(
+                    code="not_approved",
+                    message="not_approved",
+                    change_id=change_id,
+                    approval_request_id=str(approval_request_id),
+                    next_actions=[{"type": "open_approvals", "label": "打开审批中心", "url": _ui_url("/core/approvals"), "approval_request_id": str(approval_request_id)}],
+                ),
+            )
+
+    prev_release = md.get("release") if isinstance(md.get("release"), dict) else {}
+    prev_release = prev_release if isinstance(prev_release, dict) else {}
+    now = time.time()
+    actor = _rbac_actor_from_http(http_request, None)
+    new_release = {
+        "pinned_version": pinned_version,
+        "rollout": norm_rollout,
+        "updated_at": now,
+        "updated_by": actor.get("actor_id"),
+        "previous_release": prev_release,
+    }
+    await _execution_store.update_prompt_template_metadata(template_id=str(template_id), patch={"release": new_release}, merge=True)
+    try:
+        await _record_changeset(
+            name="prompt_template_release",
+            target_type="change",
+            target_id=str(change_id),
+            status="success",
+            args={"template_id": str(template_id), "pinned_version": pinned_version, "rollout": norm_rollout},
+            result={"updated_at": now},
+            approval_request_id=str(approval_request_id) if approval_request_id else None,
+        )
+    except Exception:
+        pass
+    return {"status": "updated", "change_id": change_id, "release": new_release, "links": _governance_links(change_id=change_id)}
+
+
+@api_router.post("/prompts/{template_id}/release/rollback")
+async def rollback_prompt_template_release(template_id: str, request: dict, http_request: Request):
+    """Rollback metadata.release to previous_release (best-effort)."""
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    tpl = await _execution_store.get_prompt_template(template_id=str(template_id))
+    if not tpl:
+        raise HTTPException(status_code=404, detail="not_found")
+    md = _parse_prompt_metadata(tpl)
+    cur = md.get("release") if isinstance(md.get("release"), dict) else {}
+    cur = cur if isinstance(cur, dict) else {}
+    prev = cur.get("previous_release") if isinstance(cur.get("previous_release"), dict) else None
+    if not isinstance(prev, dict):
+        raise HTTPException(status_code=409, detail="no_previous_release")
+
+    change_id = _new_change_id()
+    require_approval = bool((request or {}).get("require_approval", True))
+    approval_request_id = (request or {}).get("approval_request_id")
+    details = str((request or {}).get("details") or f"rollback prompt template release {template_id}").strip()
+    if require_approval:
+        if not approval_request_id:
+            rid = await _require_onboarding_approval(
+                operation="prompt_template_release_rollback",
+                user_id="admin",
+                details=details,
+                metadata={"template_id": str(template_id)},
+            )
+            return {"status": "approval_required", "approval_request_id": rid, "change_id": change_id, "links": _governance_links(change_id=change_id, approval_request_id=rid)}
+        if not _is_approval_resolved_approved(str(approval_request_id)):
+            raise HTTPException(
+                status_code=409,
+                detail=_gate_error_envelope(
+                    code="not_approved",
+                    message="not_approved",
+                    change_id=change_id,
+                    approval_request_id=str(approval_request_id),
+                    next_actions=[{"type": "open_approvals", "label": "打开审批中心", "url": _ui_url("/core/approvals"), "approval_request_id": str(approval_request_id)}],
+                ),
+            )
+
+    now = time.time()
+    actor = _rbac_actor_from_http(http_request, None)
+    prev2 = dict(prev)
+    prev2["updated_at"] = now
+    prev2["updated_by"] = actor.get("actor_id")
+    prev2["previous_release"] = cur
+    await _execution_store.update_prompt_template_metadata(template_id=str(template_id), patch={"release": prev2}, merge=True)
+    try:
+        await _record_changeset(
+            name="prompt_template_release_rollback",
+            target_type="change",
+            target_id=str(change_id),
+            status="success",
+            args={"template_id": str(template_id)},
+            result={"updated_at": now},
+            approval_request_id=str(approval_request_id) if approval_request_id else None,
+        )
+    except Exception:
+        pass
+    return {"status": "rolled_back", "change_id": change_id, "release": prev2, "links": _governance_links(change_id=change_id)}
+
+
 @api_router.post("/prompts")
 async def upsert_prompt_template(request: PromptTemplateUpsertRequest, http_request: Request):
     if not _execution_store:
