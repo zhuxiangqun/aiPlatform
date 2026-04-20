@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { agentApi, type Agent } from '../../services';
 import { Button, Modal, Textarea, toast } from '../ui';
 import { diagnosticsApi } from '../../services';
+import { toastGateError } from '../../utils/governanceError';
 
 interface ExecuteAgentModalProps {
   open: boolean;
@@ -54,7 +55,7 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
     } catch (e: any) {
       const msg = String(e?.message || e?.detail || '执行失败');
       setResult({ status: 'failed', error: msg });
-      toast.error('执行失败', msg);
+      toastGateError(e, '执行失败');
     } finally {
       setLoading(false);
     }

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Badge, Table, Switch, Button, Modal, toast } from '../../../components/ui';
 import { useMcpStore } from '../../../stores';
 import type { McpServer } from '../../../services/coreApi';
+import { toastGateError } from '../../../utils/governanceError';
 
 const MCP: React.FC = () => {
   const { servers, loading, fetchServers, setServerEnabled } = useMcpStore();
@@ -27,8 +28,8 @@ const MCP: React.FC = () => {
     try {
       await setServerEnabled(s.name, !s.enabled);
       toast.success(!s.enabled ? '已启用' : '已禁用');
-    } catch {
-      toast.error('操作失败');
+    } catch (e: any) {
+      toastGateError(e, '操作失败');
     }
   };
 

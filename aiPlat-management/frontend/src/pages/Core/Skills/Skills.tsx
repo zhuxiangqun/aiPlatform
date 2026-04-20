@@ -5,6 +5,7 @@ import { Badge, Table, Select, Switch, Button, Modal, toast } from '../../../com
 import { EditSkillModal, ExecuteSkillModal } from '../../../components/core';
 import { useSkillStore } from '../../../stores';
 import type { Skill } from '../../../services';
+import { toastGateError } from '../../../utils/governanceError';
 
 const categoryConfig: Record<string, { color: string; text: string }> = {
   general: { color: 'bg-dark-hover text-gray-300 border-gray-200', text: '通用' },
@@ -44,8 +45,8 @@ const Skills: React.FC = () => {
       }
       await toggleSkill(skill.id, !skill.enabled);
       toast.success(skill.enabled ? `Skill "${skill.name}" 已禁用` : `Skill "${skill.name}" 已启用`);
-    } catch {
-      toast.error('操作失败');
+    } catch (e: any) {
+      toastGateError(e, '操作失败');
     }
   };
 

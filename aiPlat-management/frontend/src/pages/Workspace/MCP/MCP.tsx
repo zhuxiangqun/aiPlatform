@@ -6,6 +6,7 @@ import { useWorkspaceMcpStore } from '../../../stores';
 import type { McpServer } from '../../../services/coreApi';
 import AddMcpModal from '../../../components/workspace/AddMcpModal';
 import EditMcpModal from '../../../components/workspace/EditMcpModal';
+import { toastGateError } from '../../../utils/governanceError';
 
 const WorkspaceMCP: React.FC = () => {
   const { servers, loading, fetchServers, setServerEnabled } = useWorkspaceMcpStore();
@@ -32,8 +33,8 @@ const WorkspaceMCP: React.FC = () => {
     try {
       await setServerEnabled(s.name, !s.enabled);
       toast.success(!s.enabled ? '已启用' : '已禁用');
-    } catch {
-      toast.error('操作失败');
+    } catch (e: any) {
+      toastGateError(e, '操作失败');
     }
   };
 

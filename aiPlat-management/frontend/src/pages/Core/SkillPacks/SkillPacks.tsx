@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import PageHeader from '../../../components/common/PageHeader';
 import { Button, Input, Modal, Table, Textarea, toast, Select } from '../../../components/ui';
 import { skillPackApi, type SkillPack, type SkillPackInstall, type SkillPackVersion } from '../../../services';
+import { toastGateError } from '../../../utils/governanceError';
 
 const SkillPacks: React.FC = () => {
   const navigate = useNavigate();
@@ -153,7 +154,7 @@ const SkillPacks: React.FC = () => {
       toast.success(`已发布版本 ${v.version}`);
       setPublishOpen(false);
     } catch (e: any) {
-      toast.error('发布失败', String(e?.message || ''));
+      toastGateError(e, '发布失败');
     }
   };
 
@@ -168,7 +169,7 @@ const SkillPacks: React.FC = () => {
       setInstallResult(res);
       toast.success('安装请求已提交');
     } catch (e: any) {
-      toast.error('安装失败', String(e?.message || ''));
+      toastGateError(e, '安装失败');
     }
   };
 

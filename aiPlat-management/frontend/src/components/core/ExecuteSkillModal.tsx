@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 
 import { Button, Modal, Textarea, toast } from '../ui';
 import { diagnosticsApi } from '../../services';
+import { toastGateError } from '../../utils/governanceError';
 
 interface ExecuteSkillModalProps {
   open: boolean;
@@ -59,7 +60,7 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
         }
       }
     } catch (error: any) {
-      toast.error('执行失败');
+      toastGateError(error, '执行失败');
       setResult({ status: 'error', error: error.message || 'Unknown error' });
     } finally {
       setLoading(false);

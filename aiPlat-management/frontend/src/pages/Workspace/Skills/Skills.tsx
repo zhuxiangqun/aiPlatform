@@ -6,6 +6,7 @@ import { Badge, Table, Select, Switch, Button, Modal, toast } from '../../../com
 import { useWorkspaceSkillStore } from '../../../stores';
 import { learningApi, type Skill } from '../../../services';
 import { workspaceSkillApi } from '../../../services/coreApi';
+import { toastGateError } from '../../../utils/governanceError';
 import AddSkillModal from '../../../components/workspace/AddSkillModal';
 import EditSkillModal from '../../../components/workspace/EditSkillModal';
 import ExecuteSkillModal from '../../../components/workspace/ExecuteSkillModal';
@@ -106,8 +107,8 @@ const WorkspaceSkills: React.FC = () => {
         return;
       }
       toast.success(skill.enabled ? `Skill "${skill.name}" 已禁用` : `Skill "${skill.name}" 已启用`);
-    } catch {
-      toast.error('操作失败');
+    } catch (e: any) {
+      toastGateError(e, '操作失败');
     }
   };
 
@@ -459,7 +460,7 @@ const WorkspaceSkills: React.FC = () => {
                         fetchSkills();
                         setDetailModal({ open: false, skill: null });
                       } catch (e: any) {
-                        toast.error(e?.message || '发布失败');
+                        toastGateError(e, '发布失败');
                       }
                     }}
                   >
