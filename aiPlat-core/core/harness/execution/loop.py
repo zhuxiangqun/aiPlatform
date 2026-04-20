@@ -166,6 +166,12 @@ class BaseLoop(ILoop):
         max_tokens = float(getattr(config, "max_tokens", state.max_tokens) or state.max_tokens)
         used_tokens = float(getattr(state, "used_tokens", 0) or 0)
         if max_tokens > 0 and (used_tokens / max_tokens) > 0.8:
+            # If advanced compaction is enabled, let the loop implementation handle it
+            # (e.g., ReActLoop._maybe_compact_messages) rather than dropping turns here.
+            if os.getenv("AIPLAT_ENABLE_CONTEXT_COMPACTION", "false").lower() in ("1", "true", "yes", "y"):
+                state.metadata["control_action"] = state.metadata.get("control_action") or "context_pressure"
+                state.metadata["context_pressure"] = True
+                return
             msgs = state.context.get("messages")
             if isinstance(msgs, list) and len(msgs) > 2:
                 state.context["messages"] = msgs[-2:]
@@ -356,6 +362,12 @@ class ReActLoop(BaseLoop):
         if not self._model:
             return "No model available"
 
+        # Optional: context compaction (best-effort)
+        try:
+            await self._maybe_compact_messages(state)
+        except Exception:
+            pass
+
         task = state.context.get("task", "")
         history = "\n".join([
             f"{msg.get('role', 'user')}: {msg.get('content', '')}"
@@ -413,9 +425,96 @@ DONE: final_answer
                 "run_id": state.context.get("_run_id") or state.context.get("run_id"),
             }
             response = await sys_llm_generate(self._model, prompt, trace_context=trace_ctx)
+            # Track token usage (best-effort) for compaction budgets.
+            try:
+                usage = getattr(response, "usage", None)
+                if isinstance(usage, dict):
+                    total = usage.get("total_tokens")
+                    if total is None:
+                        total = (usage.get("prompt_tokens") or 0) + (usage.get("completion_tokens") or 0)
+                    state.used_tokens = float(getattr(state, "used_tokens", 0) or 0) + float(total or 0)
+            except Exception:
+                pass
             return response.content
         except Exception as e:
             return f"Model error: {e}"
+
+    async def _maybe_compact_messages(self, state: LoopState) -> None:
+        """
+        When token budget pressure is high, compact older messages into a summary.
+
+        Inspired by OpenClaw:
+        - Preserve identifiers (UUIDs, hashes, filenames)
+        - Keep recent turns verbatim
+        - Best-effort; fail-open to no compaction
+        """
+        import os
+        import re
+
+        if os.getenv("AIPLAT_ENABLE_CONTEXT_COMPACTION", "false").lower() not in ("1", "true", "yes", "y"):
+            return
+
+        msgs = state.context.get("messages")
+        if not isinstance(msgs, list) or len(msgs) < 8:
+            return
+
+        max_tokens = float(getattr(self._config, "max_tokens", None) or getattr(state, "max_tokens", 0) or 0)
+        used_tokens = float(getattr(state, "used_tokens", 0) or 0)
+        if max_tokens <= 0:
+            return
+
+        threshold = float(os.getenv("AIPLAT_CONTEXT_COMPACTION_THRESHOLD", "0.8") or "0.8")
+        if (used_tokens / max_tokens) < threshold:
+            return
+
+        protect_last_n = int(os.getenv("AIPLAT_CONTEXT_COMPACTION_PROTECT_LAST_N", "6") or "6")
+        protect_last_n = max(2, min(protect_last_n, 50))
+        head = msgs[:-protect_last_n]
+        tail = msgs[-protect_last_n:]
+
+        # Extract identifiers to preserve
+        text = "\n".join([str(m.get("content", "")) for m in head if isinstance(m, dict)])
+        uuid_re = r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b"
+        sha_re = r"\b[0-9a-f]{12,64}\b"
+        file_re = r"\b[\w./-]+\.(?:py|ts|tsx|js|json|md|yaml|yml|toml|sql)\b"
+        ids = set(re.findall(uuid_re, text, flags=re.IGNORECASE))
+        ids |= set(re.findall(file_re, text, flags=re.IGNORECASE))
+        # Limit hashes (avoid huge noise)
+        for h in re.findall(sha_re, text, flags=re.IGNORECASE):
+            if 12 <= len(h) <= 40:
+                ids.add(h)
+        ids_list = sorted(list(ids))[:50]
+
+        summary_prompt = (
+            "你是一个对话压缩器。请将以下历史对话压缩为一段“可继续执行任务”的摘要。\n"
+            "强制要求：\n"
+            "1) 保留关键结论、进行中的计划、未解决的问题。\n"
+            "2) 严格保留并逐字输出任何标识符（UUID/哈希/文件名/路径/ID）。\n"
+            "3) 不要编造不存在的事实。\n\n"
+            f"需要保留的标识符（如出现过）：{', '.join(ids_list) if ids_list else '(none)'}\n\n"
+            "历史对话（将被压缩）：\n"
+            + "\n".join([f"{m.get('role','user')}: {m.get('content','')}" for m in head if isinstance(m, dict)])
+            + "\n\n输出格式：直接输出摘要文本（不要加额外标题）。"
+        )
+
+        trace_ctx = {
+            "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
+            "run_id": state.context.get("_run_id") or state.context.get("run_id"),
+        }
+        resp = await sys_llm_generate(self._model, summary_prompt, trace_context=trace_ctx)
+        summary_text = str(getattr(resp, "content", "") or "").strip()
+        if not summary_text:
+            return
+
+        state.context["messages"] = [
+            {
+                "role": "system",
+                "content": "CONTEXT_SUMMARY:\n" + summary_text + ("\n\nPRESERVED_IDENTIFIERS:\n" + "\n".join(ids_list) if ids_list else ""),
+            }
+        ] + tail
+        state.metadata["control_action"] = "compact_context_summary"
+        state.metadata["compacted_messages"] = True
+        state.metadata["compaction_stats"] = {"before": len(msgs), "after": len(state.context["messages"]), "preserved_ids": len(ids_list)}
 
     def _build_tools_desc(self) -> tuple[str, Dict[str, Any]]:
         """
@@ -676,6 +775,15 @@ class PlanExecuteLoop(BaseLoop):
                     "run_id": state.context.get("_run_id") or state.context.get("run_id"),
                 },
             )
+            try:
+                usage = getattr(response, "usage", None)
+                if isinstance(usage, dict):
+                    total = usage.get("total_tokens")
+                    if total is None:
+                        total = (usage.get("prompt_tokens") or 0) + (usage.get("completion_tokens") or 0)
+                    state.used_tokens = float(getattr(state, "used_tokens", 0) or 0) + float(total or 0)
+            except Exception:
+                pass
             
             # Parse plan (simplified)
             self._plan = [
