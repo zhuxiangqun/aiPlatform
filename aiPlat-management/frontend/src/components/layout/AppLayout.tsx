@@ -74,6 +74,7 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
     { key: '/core/jobs', icon: CalendarClock, label: 'Jobs/Cron' },
     { key: '/core/learning/artifacts', icon: FileText, label: 'Learning产物' },
     { key: '/core/learning/releases', icon: Layers, label: 'Release候选' },
+    { key: '/core/learning/rollouts', icon: Settings, label: 'Rollouts/Metrics' },
     { key: '/core/approvals', icon: ShieldCheck, label: '审批中心' },
   ]},
   { divider: true },

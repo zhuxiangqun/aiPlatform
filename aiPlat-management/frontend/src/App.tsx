@@ -42,6 +42,7 @@ const CoreLearningArtifacts = lazy(() => import('./pages/Core/Learning/Artifacts
 const CoreLearningArtifactDetail = lazy(() => import('./pages/Core/Learning/Artifacts/ArtifactDetail'));
 const CoreApprovals = lazy(() => import('./pages/Core/Learning/Approvals'));
 const CoreReleases = lazy(() => import('./pages/Core/Learning/Releases'));
+const CoreLearningRollouts = lazy(() => import('./pages/Core/Learning/Rollouts'));
 const PlatformGateway = lazy(() => import('./pages/Platform/Gateway/Gateway'));
 const PlatformAuth = lazy(() => import('./pages/Platform/Auth/Auth'));
 const PlatformTenant = lazy(() => import('./pages/Platform/Tenant/Tenant'));
@@ -99,6 +100,7 @@ const router = createBrowserRouter([
       { path: 'core/learning/artifacts', element: withSuspense(CoreLearningArtifacts) },
       { path: 'core/learning/artifacts/:artifactId', element: withSuspense(CoreLearningArtifactDetail) },
       { path: 'core/learning/releases', element: withSuspense(CoreReleases) },
+      { path: 'core/learning/rollouts', element: withSuspense(CoreLearningRollouts) },
       { path: 'core/approvals', element: withSuspense(CoreApprovals) },
       { path: 'platform/gateway', element: withSuspense(PlatformGateway) },
       { path: 'platform/auth', element: withSuspense(PlatformAuth) },

@@ -344,6 +344,43 @@ export const learningApi = {
   }) => {
     return apiClient.post<any>(`/core/learning/autocapture/to_prompt_revision`, payload as any);
   },
+
+  listRollouts: async (params: { target_type?: string; target_id?: string; limit?: number; offset?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.target_type) q.set('target_type', params.target_type);
+    if (params.target_id) q.set('target_id', params.target_id);
+    if (params.limit != null) q.set('limit', String(params.limit));
+    if (params.offset != null) q.set('offset', String(params.offset));
+    const qs = q.toString();
+    return apiClient.get<any>(`/core/learning/rollouts${qs ? `?${qs}` : ''}`);
+  },
+
+  upsertRollout: async (payload: Record<string, unknown>) => {
+    return apiClient.put<any>(`/core/learning/rollouts`, payload);
+  },
+
+  deleteRollout: async (params: { target_type: string; target_id: string }) => {
+    const q = new URLSearchParams();
+    q.set('target_type', params.target_type);
+    q.set('target_id', params.target_id);
+    return apiClient.delete<any>(`/core/learning/rollouts?${q.toString()}`);
+  },
+
+  addMetricSnapshot: async (candidateId: string, payload: Record<string, unknown>) => {
+    return apiClient.post<any>(`/core/learning/releases/${encodeURIComponent(candidateId)}/metrics/snapshots`, payload);
+  },
+
+  listMetricSnapshots: async (
+    candidateId: string,
+    params: { metric_key?: string; limit?: number; offset?: number } = {}
+  ) => {
+    const q = new URLSearchParams();
+    if (params.metric_key) q.set('metric_key', params.metric_key);
+    if (params.limit != null) q.set('limit', String(params.limit));
+    if (params.offset != null) q.set('offset', String(params.offset));
+    const qs = q.toString();
+    return apiClient.get<any>(`/core/learning/releases/${encodeURIComponent(candidateId)}/metrics/snapshots${qs ? `?${qs}` : ''}`);
+  },
 };
 
 export interface ApprovalRequestSummary {
