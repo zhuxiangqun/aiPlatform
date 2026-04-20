@@ -2608,10 +2608,18 @@ async def get_change_control(change_id: str, limit: int = 200, offset: int = 0, 
     cid = str(change_id)
     links = {"syscalls_ui": _ui_url(f"/diagnostics/syscalls?kind=changeset&target_type=change&target_id={cid}")}
     try:
-        arid = ((out.get("latest") or {}).get("approval_request_id")) if isinstance(out.get("latest"), dict) else None
+        latest = out.get("latest") if isinstance(out.get("latest"), dict) else {}
+        arid = (latest or {}).get("approval_request_id")
+        tid = (latest or {}).get("trace_id")
+        rid = (latest or {}).get("run_id")
         if arid:
             links["approvals_ui"] = _ui_url("/core/approvals")
             links["audit_ui"] = _ui_url(f"/diagnostics/audit?request_id={arid}")
+        if tid:
+            links["traces_ui"] = _ui_url(f"/diagnostics/traces?trace_id={tid}")
+            links["links_ui"] = _ui_url(f"/diagnostics/links?trace_id={tid}")
+        if rid:
+            links["runs_ui"] = _ui_url(f"/diagnostics/runs?run_id={rid}")
     except Exception:
         pass
     out["links"] = links
