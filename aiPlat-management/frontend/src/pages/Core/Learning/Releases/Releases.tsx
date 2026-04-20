@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Clock, Eye, ExternalLink, RefreshCw, RotateCcw, Settings, Trash2 } from 'lucide-react';
 
 import { Badge, Button, Card, CardContent, CardHeader, Input, Modal, Select, Table, toast } from '../../../../components/ui';
+import { toastGateError } from '../../../../utils/governanceError';
 import { learningApi, type LearningArtifact } from '../../../../services';
 
 type Candidate = LearningArtifact;
@@ -181,7 +182,7 @@ const Releases: React.FC = () => {
       toast.success('已回滚');
       fetchData();
     } catch (e: any) {
-      toast.error(e?.message || '回滚失败');
+      toastGateError(e, '回滚失败');
     }
   };
 
@@ -200,7 +201,7 @@ const Releases: React.FC = () => {
       toast.success('已发布');
       fetchData();
     } catch (e: any) {
-      toast.error(e?.message || '发布失败');
+      toastGateError(e, '发布失败');
     }
   };
 

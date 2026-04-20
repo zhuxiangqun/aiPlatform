@@ -45,8 +45,20 @@ class ApiClient {
     const response = await fetch(url, config);
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-      throw new Error(error.message || `HTTP error! status: ${response.status}`);
+      // Try parse structured error envelope from core (FastAPI style).
+      const payload: any = await response.json().catch(() => null);
+      const d = payload?.detail;
+      const msg =
+        (typeof d === 'string' ? d : null) ||
+        (d && typeof d === 'object' ? (d.message || d.code) : null) ||
+        payload?.message ||
+        `HTTP error! status: ${response.status}`;
+      const err: any = new Error(String(msg));
+      // attach raw info for UI handlers
+      err.status = response.status;
+      err.payload = payload;
+      err.detail = d;
+      throw err;
     }
 
     return response.json();
