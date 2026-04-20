@@ -178,6 +178,22 @@ async def get_prompt_template_diff(template_id: str, request: Request, from_vers
     return await core_client.prompt_template_diff(str(template_id), params=params)
 
 
+@router.get("/context/config")
+async def get_context_config(request: Request) -> Dict[str, Any]:
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="core_client not initialized")
+    return await core_client.get_context_config()
+
+
+@router.post("/prompt/assemble")
+async def diagnostics_prompt_assemble(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="core_client not initialized")
+    return await core_client.diagnostics_prompt_assemble(body or {})
+
+
 @router.get("/health")
 async def list_available_checks(request: Request) -> Dict[str, Any]:
     """列出可用的健康检查
