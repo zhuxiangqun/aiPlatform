@@ -33,6 +33,12 @@ def client():
             )
         if p == "/api/core/change-control/changes/chg-1/autosmoke":
             return httpx.Response(200, json={"status": "ok", "change_id": "chg-1", "results": [{"type": "skill", "id": "s1", "enqueued": True}]})
+        if p == "/api/core/change-control/changes/chg-1/evidence":
+            return httpx.Response(
+                200,
+                content=b"ZIPDATA",
+                headers={"content-type": "application/zip", "content-disposition": 'attachment; filename="x.zip"'},
+            )
         return httpx.Response(404, json={"detail": "not found"})
 
     transport = httpx.MockTransport(handler)
@@ -65,3 +71,10 @@ def test_change_control_autosmoke_core(client):
     assert payload["supported"] is True
     assert payload["layer"] == "core"
     assert payload["result"]["change_id"] == "chg-1"
+
+
+def test_change_control_evidence_export_core(client):
+    r = client.get("/api/diagnostics/change-control/core/chg-1/evidence?format=zip&limit=10")
+    assert r.status_code == 200
+    assert r.headers.get("content-type") == "application/zip"
+    assert r.content == b"ZIPDATA"

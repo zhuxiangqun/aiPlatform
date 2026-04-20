@@ -2,7 +2,7 @@
 Diagnostics API
 """
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Response
 from typing import Dict, Any, Optional
 import os
 
@@ -1038,6 +1038,33 @@ async def autosmoke_layer_change_control(layer: str, change_id: str, request: Re
 
     out = await core_client.autosmoke_change_control(change_id)
     return {"layer": "core", "supported": True, "result": out}
+
+
+@router.get("/change-control/{layer}/{change_id}/evidence")
+async def export_layer_change_control_evidence(layer: str, change_id: str, request: Request, format: str = "zip", limit: int = 500):
+    """Proxy evidence export for change_id (core layer only)."""
+    health_checkers = request.app.state.health_checkers
+    if layer not in health_checkers:
+        raise HTTPException(status_code=404, detail=f"Layer '{layer}' not found")
+
+    if layer != "core":
+        return {"layer": layer, "supported": False, "message": "Change Control evidence export is supported for core layer only (for now)."}
+
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="Core client not initialized")
+
+    resp = await core_client._request_raw(
+        "GET",
+        f"/api/core/change-control/changes/{change_id}/evidence",
+        params={"format": str(format or "zip"), "limit": int(limit)},
+    )
+    content_type = resp.headers.get("content-type") or "application/octet-stream"
+    headers = {}
+    cd = resp.headers.get("content-disposition")
+    if cd:
+        headers["Content-Disposition"] = cd
+    return Response(content=resp.content, media_type=content_type, headers=headers)
 
 
 @router.get("/graphs/{layer}/{run_id}")

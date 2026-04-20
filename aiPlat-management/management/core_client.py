@@ -62,6 +62,31 @@ class CoreAPIClient:
         response.raise_for_status()
         return response.json()
 
+    async def _request_raw(self, method: str, path: str, **kwargs) -> httpx.Response:
+        """Make HTTP request to core API and return the raw response (for files/streams)."""
+        if not self._client:
+            self._client = httpx.AsyncClient(
+                base_url=self.config.base_url,
+                timeout=self.config.timeout,
+                transport=self.config.transport,
+            )
+
+        # PR-01: forward tenant/actor identity headers (best-effort).
+        try:
+            fh = get_forward_headers()
+            if fh:
+                h0 = kwargs.get("headers") if isinstance(kwargs.get("headers"), dict) else {}
+                h = dict(h0)
+                for k, v in fh.items():
+                    h.setdefault(k, v)
+                kwargs["headers"] = h
+        except Exception:
+            pass
+
+        resp = await self._client.request(method, path, **kwargs)
+        resp.raise_for_status()
+        return resp
+
     # ===== Trace / Persistence (ExecutionStore) =====
 
     async def list_traces(self, limit: int = 100, offset: int = 0, status: Optional[str] = None) -> Dict[str, Any]:
