@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Copy, Eye, GitCompare, RefreshCw } from 'lucide-react';
+import { Copy, Eye, GitCompare, RefreshCw, Pencil, Plus, Trash2, RotateCcw, ExternalLink } from 'lucide-react';
 
-import { Badge, Button, Card, CardContent, CardHeader, Input, Modal, Table, toast } from '../../../components/ui';
+import { Badge, Button, Card, CardContent, CardHeader, Input, Modal, Table, Textarea, toast } from '../../../components/ui';
 import { promptApi, type PromptTemplateRow } from '../../../services';
 import { toastGateError } from '../../../utils/governanceError';
 
@@ -13,6 +13,15 @@ function parseJson(s: any): any {
     return null;
   }
 }
+
+type EditForm = {
+  template_id: string;
+  name: string;
+  template: string;
+  require_approval: boolean;
+  approval_request_id: string;
+  details: string;
+};
 
 const Prompts: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -33,6 +42,20 @@ const Prompts: React.FC = () => {
   const [diffText, setDiffText] = useState('');
   const [fromVer, setFromVer] = useState<string>('');
   const [toVer, setToVer] = useState<string>('');
+
+  const [openEdit, setOpenEdit] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [edit, setEdit] = useState<EditForm>({
+    template_id: '',
+    name: '',
+    template: '',
+    require_approval: true,
+    approval_request_id: '',
+    details: '',
+  });
+
+  const [rollingBack, setRollingBack] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchList = async () => {
     setLoading(true);
@@ -72,6 +95,76 @@ const Prompts: React.FC = () => {
     }
   };
 
+  const openCreate = () => {
+    setSelectedId('');
+    setCurrent(null);
+    setEdit({
+      template_id: '',
+      name: '',
+      template: '',
+      require_approval: true,
+      approval_request_id: '',
+      details: '',
+    });
+    setOpenEdit(true);
+  };
+
+  const openEditExisting = async (templateId: string) => {
+    setSelectedId(String(templateId));
+    setOpenView(false);
+    try {
+      const tpl = await promptApi.get(templateId);
+      setCurrent(tpl);
+      setEdit({
+        template_id: String(tpl?.template_id || templateId),
+        name: String(tpl?.name || ''),
+        template: String(tpl?.template || ''),
+        require_approval: true,
+        approval_request_id: '',
+        details: '',
+      });
+      setOpenEdit(true);
+    } catch (e: any) {
+      toastGateError(e, '加载模板失败');
+    }
+  };
+
+  const submitUpsert = async () => {
+    if (!edit.template_id.trim()) {
+      toast.error('template_id 不能为空');
+      return;
+    }
+    if (!edit.name.trim()) {
+      toast.error('name 不能为空');
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await promptApi.upsert({
+        template_id: edit.template_id.trim(),
+        name: edit.name.trim(),
+        template: edit.template || '',
+        require_approval: !!edit.require_approval,
+        approval_request_id: edit.approval_request_id.trim() || undefined,
+        details: edit.details.trim() || undefined,
+      });
+      if (res?.status === 'approval_required' && res?.approval_request_id) {
+        toast.info(`已创建审批：${String(res.approval_request_id)}`);
+      } else {
+        toast.success(`已保存（change_id=${String(res?.change_id || '-') }）`);
+      }
+      setOpenEdit(false);
+      await fetchList();
+      if (edit.template_id) {
+        await openTemplate(edit.template_id);
+      }
+    } catch (e: any) {
+      toastGateError(e, '保存失败');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const openTemplateVersions = async (templateId: string) => {
     setSelectedId(String(templateId));
     setOpenVersions(true);
@@ -85,6 +178,47 @@ const Prompts: React.FC = () => {
       toastGateError(e, '加载版本失败');
     } finally {
       setVersionsLoading(false);
+    }
+  };
+
+  const rollbackTo = async (templateId: string, version: string) => {
+    setRollingBack(true);
+    try {
+      const res = await promptApi.rollback(templateId, {
+        template_id: templateId,
+        version,
+        require_approval: true,
+        details: `rollback prompt template ${templateId} to ${version}`,
+      });
+      if (res?.status === 'approval_required' && res?.approval_request_id) {
+        toast.info(`已创建审批：${String(res.approval_request_id)}`);
+      } else {
+        toast.success(`已回滚（change_id=${String(res?.change_id || '-') }）`);
+      }
+      await fetchList();
+      await openTemplate(templateId);
+    } catch (e: any) {
+      toastGateError(e, '回滚失败');
+    } finally {
+      setRollingBack(false);
+    }
+  };
+
+  const deleteTemplate = async (templateId: string) => {
+    setDeleting(true);
+    try {
+      const res = await promptApi.delete(templateId, { require_approval: true, details: `delete prompt template ${templateId}` });
+      if (res?.status === 'approval_required' && res?.approval_request_id) {
+        toast.info(`已创建审批：${String(res.approval_request_id)}`);
+      } else {
+        toast.success(`已删除（change_id=${String(res?.change_id || '-') }）`);
+      }
+      setOpenView(false);
+      await fetchList();
+    } catch (e: any) {
+      toastGateError(e, '删除失败');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -149,7 +283,7 @@ const Prompts: React.FC = () => {
       {
         key: 'actions',
         title: '',
-        width: 240,
+        width: 340,
         render: (_: any, r: PromptTemplateRow) => (
           <div className="flex items-center gap-2">
             <Button
@@ -162,6 +296,9 @@ const Prompts: React.FC = () => {
             />
             <Button variant="secondary" icon={<Eye size={14} />} onClick={() => openTemplate(String(r.template_id))}>
               查看
+            </Button>
+            <Button variant="secondary" icon={<Pencil size={14} />} onClick={() => openEditExisting(String(r.template_id))}>
+              编辑
             </Button>
             <Button
               variant="secondary"
@@ -192,9 +329,14 @@ const Prompts: React.FC = () => {
           <h1 className="text-2xl font-semibold text-gray-200">Prompt Templates</h1>
           <div className="text-sm text-gray-500 mt-1">版本 / diff / 验证状态（autosmoke）</div>
         </div>
-        <Button variant="secondary" icon={<RefreshCw size={16} />} onClick={fetchList} loading={loading}>
-          刷新
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" icon={<Plus size={16} />} onClick={openCreate}>
+            新建
+          </Button>
+          <Button variant="secondary" icon={<RefreshCw size={16} />} onClick={fetchList} loading={loading}>
+            刷新
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -217,15 +359,109 @@ const Prompts: React.FC = () => {
           <div className="text-sm text-gray-500">未加载</div>
         ) : (
           <div className="space-y-3">
-            <div className="text-xs text-gray-500">name: {current.name} / version: {current.version}</div>
+            {(() => {
+              const md = parseJson(current.metadata_json) || {};
+              const ver = md?.verification || {};
+              const gov = md?.governance || {};
+              const st = String(ver?.status || '-');
+              const traceId = String(ver?.trace_id || '');
+              const jobRunId = String(ver?.job_run_id || '');
+              const latestChangeId = String(gov?.latest_change_id || '');
+              return (
+                <div className="text-xs text-gray-500 space-y-1">
+                  <div>
+                    name: {current.name} / version: {current.version} / verify: <code className="bg-dark-hover px-1 py-0.5 rounded">{st}</code>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    {latestChangeId ? (
+                      <a className="underline inline-flex items-center gap-1" href={`/diagnostics/change-control/${encodeURIComponent(latestChangeId)}`}>
+                        latest change_id: {latestChangeId} <ExternalLink size={12} />
+                      </a>
+                    ) : null}
+                    {traceId ? (
+                      <a className="underline inline-flex items-center gap-1" href={`/diagnostics/traces/${encodeURIComponent(traceId)}`}>
+                        trace: {traceId} <ExternalLink size={12} />
+                      </a>
+                    ) : null}
+                    {jobRunId ? <span>job_run_id: {jobRunId}</span> : null}
+                  </div>
+                </div>
+              );
+            })()}
             <pre className="text-[11px] text-gray-200 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto max-h-[420px]">
               {String(current.template || '')}
             </pre>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" icon={<Pencil size={14} />} onClick={() => openEditExisting(String(current.template_id))}>
+                编辑
+              </Button>
+              <Button variant="secondary" icon={<RotateCcw size={14} />} onClick={() => openTemplateVersions(String(current.template_id))} loading={rollingBack}>
+                回滚到版本…
+              </Button>
+              <Button variant="danger" icon={<Trash2 size={14} />} onClick={() => deleteTemplate(String(current.template_id))} loading={deleting}>
+                删除
+              </Button>
+            </div>
             <pre className="text-[11px] text-gray-400 bg-dark-bg border border-dark-border rounded-lg p-3 overflow-auto max-h-[240px]">
               {JSON.stringify(parseJson(current.metadata_json) || {}, null, 2)}
             </pre>
           </div>
         )}
+      </Modal>
+
+      {/* Edit */}
+      <Modal open={openEdit} onClose={() => setOpenEdit(false)} title={edit.template_id ? `编辑：${edit.template_id}` : '新建模板'} width={1000}>
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <div className="text-xs text-gray-500 mb-1">template_id</div>
+              <Input value={edit.template_id} onChange={(e) => setEdit((p) => ({ ...p, template_id: e.target.value }))} placeholder="例如 core.system.prompt.v1" />
+            </div>
+            <div>
+              <div className="text-xs text-gray-500 mb-1">name</div>
+              <Input value={edit.name} onChange={(e) => setEdit((p) => ({ ...p, name: e.target.value }))} />
+            </div>
+          </div>
+
+          <div>
+            <div className="text-xs text-gray-500 mb-1">template</div>
+            <Textarea value={edit.template} onChange={(e) => setEdit((p) => ({ ...p, template: e.target.value }))} rows={12} />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="text-xs text-gray-400 flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={edit.require_approval}
+                onChange={(e) => setEdit((p) => ({ ...p, require_approval: e.target.checked }))}
+              />
+              require_approval
+            </label>
+            {edit.require_approval ? (
+              <Input
+                className="w-[320px]"
+                value={edit.approval_request_id}
+                onChange={(e) => setEdit((p) => ({ ...p, approval_request_id: e.target.value }))}
+                placeholder="approval_request_id（可选：审批通过后再填重试）"
+              />
+            ) : null}
+            <Input
+              className="min-w-[320px]"
+              value={edit.details}
+              onChange={(e) => setEdit((p) => ({ ...p, details: e.target.value }))}
+              placeholder="details（可选）"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button variant="primary" loading={saving} onClick={submitUpsert}>
+              保存
+            </Button>
+            <Button variant="secondary" onClick={() => setOpenEdit(false)}>
+              取消
+            </Button>
+          </div>
+        </div>
       </Modal>
 
       {/* Versions */}
@@ -238,6 +474,21 @@ const Prompts: React.FC = () => {
             { key: 'version', title: 'version', dataIndex: 'version', width: 120 },
             { key: 'created_at', title: 'created_at', dataIndex: 'created_at', width: 180 },
             { key: 'template_sha256', title: 'template_sha256', dataIndex: 'template_sha256' },
+            {
+              key: 'actions',
+              title: '',
+              width: 150,
+              render: (_: any, r: any) => (
+                <Button
+                  variant="secondary"
+                  icon={<RotateCcw size={14} />}
+                  loading={rollingBack}
+                  onClick={() => rollbackTo(String(selectedId || current?.template_id || ''), String(r.version))}
+                >
+                  回滚
+                </Button>
+              ),
+            },
           ]}
           emptyText="暂无版本"
         />
