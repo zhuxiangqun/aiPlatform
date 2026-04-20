@@ -242,6 +242,29 @@ class HarnessIntegration:
                     run_id=run_id,
                 )
 
+        # Best-effort cancellation: if a cancel was requested before execution starts, abort early.
+        try:
+            if store is not None and await store.is_cancel_requested(run_id=run_id):  # type: ignore[arg-type]
+                try:
+                    await store.append_run_event(
+                        run_id=run_id,
+                        event_type="run_end",
+                        trace_id=None,
+                        tenant_id=str(tenant_id) if tenant_id is not None else None,
+                        payload={"status": "cancelled", "reason": "cancel_requested"},
+                    )
+                except Exception:
+                    pass
+                return ExecutionResult(
+                    ok=False,
+                    error="cancelled",
+                    error_detail=self._error_detail("CANCELLED", "cancel_requested"),
+                    http_status=409,
+                    run_id=run_id,
+                )
+        except Exception:
+            pass
+
         try:
             if request.kind == "agent":
                 return await self._execute_agent(request)
@@ -274,6 +297,38 @@ class HarnessIntegration:
             error_detail=self._error_detail("UNSUPPORTED_KIND", f"Unsupported kind: {request.kind}"),
             http_status=400,
         )
+
+    def _redact_request_payload(self, payload: Any) -> Any:
+        """
+        Best-effort redaction for storing request payload in run_events (for retry/debug).
+        """
+        sensitive_keys = {"api_key", "token", "access_token", "refresh_token", "secret", "password"}
+
+        def _walk(x: Any, depth: int = 0) -> Any:
+            if depth > 4:
+                return "..."
+            if isinstance(x, dict):
+                out: Dict[str, Any] = {}
+                for k, v in x.items():
+                    ks = str(k).lower()
+                    if ks in sensitive_keys or "secret" in ks or "token" in ks or "password" in ks or "api_key" in ks:
+                        out[k] = "***"
+                    else:
+                        out[k] = _walk(v, depth + 1)
+                return out
+            if isinstance(x, list):
+                return [_walk(v, depth + 1) for v in x[:50]]
+            if isinstance(x, str):
+                s = x
+                if len(s) > 2000:
+                    return s[:2000] + "…"
+                return s
+            return x
+
+        try:
+            return _walk(payload, 0)
+        except Exception:
+            return {}
 
     def _kick_session_drain(self, *, tenant_id: Optional[str], session_id: str) -> None:
         key = f"{tenant_id or ''}::{session_id}"
@@ -532,7 +587,13 @@ class HarnessIntegration:
                     event_type="run_start",
                     trace_id=trace_id,
                     tenant_id=str(tenant_id) if tenant_id else None,
-                    payload={"kind": "agent", "agent_id": agent_id, "user_id": user_id, "session_id": req.session_id},
+                    payload={
+                        "kind": "agent",
+                        "agent_id": agent_id,
+                        "user_id": user_id,
+                        "session_id": req.session_id,
+                        "request_payload": self._redact_request_payload(req.payload if isinstance(req.payload, dict) else {}),
+                    },
                 )
             except Exception:
                 pass
@@ -1152,7 +1213,13 @@ class HarnessIntegration:
                         event_type="run_start",
                         trace_id=trace_id,
                         tenant_id=str(tenant_id) if tenant_id else None,
-                        payload={"kind": "skill", "skill_id": execution.skill_id, "user_id": user_id, "session_id": meta2.get("session_id")},
+                        payload={
+                            "kind": "skill",
+                            "skill_id": execution.skill_id,
+                            "user_id": user_id,
+                            "session_id": meta2.get("session_id"),
+                            "request_payload": self._redact_request_payload(req.payload if isinstance(req.payload, dict) else {}),
+                        },
                     )
                 except Exception:
                     pass
@@ -1355,7 +1422,13 @@ class HarnessIntegration:
                     event_type="run_start",
                     trace_id=trace_id,
                     tenant_id=str(tenant_id) if tenant_id else None,
-                    payload={"kind": "tool", "tool_name": req.target_id, "user_id": req.user_id or "system", "session_id": req.session_id},
+                    payload={
+                        "kind": "tool",
+                        "tool_name": req.target_id,
+                        "user_id": req.user_id or "system",
+                        "session_id": req.session_id,
+                        "request_payload": self._redact_request_payload(req.payload if isinstance(req.payload, dict) else {}),
+                    },
                 )
             except Exception:
                 pass
@@ -1594,7 +1667,7 @@ class HarnessIntegration:
                 event_type="run_start",
                 trace_id=trace_id,
                 tenant_id=str(payload.get("tenant_id")) if payload.get("tenant_id") else None,
-                payload={"kind": "smoke_e2e", "status": "running"},
+                payload={"kind": "smoke_e2e", "status": "running", "request_payload": self._redact_request_payload(payload)},
             )
         except Exception:
             pass

@@ -3095,6 +3095,124 @@ async def list_run_events(run_id: str, after_seq: int = 0, limit: int = 200):
     return await _execution_store.list_run_events(run_id=str(run_id), after_seq=int(after_seq or 0), limit=int(limit or 200))
 
 
+@api_router.post("/runs/{run_id}/cancel")
+async def cancel_run(run_id: str, http_request: Request, body: Optional[Dict[str, Any]] = None):
+    """
+    Best-effort stop/cancel for platform runs.
+    - If run is queued (session_queue), mark it cancelled so it won't be dequeued.
+    - Always write a cancel_requested marker to run_events.
+    - If run has no run_end yet, append run_end(status=cancelled) so UI becomes stable.
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    rid = str(run_id)
+    run = await _execution_store.get_run_summary(run_id=rid)
+    if not run:
+        raise HTTPException(status_code=404, detail="run_not_found")
+    actor = _rbac_actor_from_http(http_request, None)
+    reason = str((body or {}).get("reason") or "user_requested") if isinstance(body, dict) else "user_requested"
+    cancelled_queued = False
+    try:
+        cancelled_queued = await _execution_store.cancel_queued_run(run_id=rid)
+    except Exception:
+        cancelled_queued = False
+    try:
+        await _execution_store.append_run_event(
+            run_id=rid,
+            event_type="cancel_requested",
+            trace_id=run.get("trace_id"),
+            tenant_id=actor.get("tenant_id"),
+            payload={"reason": reason, "actor_id": actor.get("actor_id"), "actor_role": actor.get("actor_role")},
+        )
+    except Exception:
+        pass
+    try:
+        if not await _execution_store.has_run_end(run_id=rid):
+            await _execution_store.append_run_event(
+                run_id=rid,
+                event_type="run_end",
+                trace_id=run.get("trace_id"),
+                tenant_id=actor.get("tenant_id"),
+                payload={"status": "cancelled", "reason": reason},
+            )
+    except Exception:
+        pass
+    return {"status": "cancel_requested", "run_id": rid, "cancelled_queued": bool(cancelled_queued)}
+
+
+@api_router.post("/runs/{run_id}/retry")
+async def retry_run(run_id: str, http_request: Request):
+    """
+    Best-effort retry for platform runs.
+    This replays the run_start.request_payload captured in run_events (redacted),
+    and re-executes via Harness with a new run_id.
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    rid = str(run_id)
+    start = await _execution_store.get_run_start_event(run_id=rid)
+    if not start:
+        raise HTTPException(status_code=404, detail="run_not_found")
+    payload = start.get("payload") if isinstance(start, dict) else {}
+    payload = payload if isinstance(payload, dict) else {}
+    kind = str(payload.get("kind") or "").strip()
+    req_payload = payload.get("request_payload") if isinstance(payload.get("request_payload"), dict) else {}
+    user_id = str(payload.get("user_id") or "system")
+    session_id = str(payload.get("session_id") or "default")
+    target_id = None
+    if kind == "agent":
+        target_id = payload.get("agent_id")
+    elif kind == "skill":
+        target_id = payload.get("skill_id")
+    elif kind == "tool":
+        target_id = payload.get("tool_name")
+    elif kind == "graph":
+        target_id = payload.get("graph_name") or payload.get("target_id")
+    elif kind == "smoke_e2e":
+        target_id = "smoke_e2e"
+    if not kind or not target_id:
+        raise HTTPException(status_code=409, detail="retry_not_supported")
+
+    from core.harness.kernel.types import ExecutionRequest
+    from core.utils.ids import new_prefixed_id
+
+    new_id = new_prefixed_id("run")
+    req = ExecutionRequest(
+        kind=kind,  # type: ignore[arg-type]
+        target_id=str(target_id),
+        payload=req_payload if isinstance(req_payload, dict) else {},
+        user_id=user_id,
+        session_id=session_id,
+        run_id=new_id,
+    )
+    result = await get_harness().execute(req)
+    resp = _wrap_execution_result_as_run_summary(result)
+    resp["previous_run_id"] = rid
+    resp["new_run_id"] = new_id
+    return resp
+
+
+@api_router.post("/runs/{run_id}/undo")
+async def undo_run(run_id: str, http_request: Request, body: Optional[Dict[str, Any]] = None):
+    """
+    Minimal "undo" for runs: if the run is still queued, cancel it.
+    (For completed runs, undo is not generally defined; use domain-specific rollback endpoints.)
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    rid = str(run_id)
+    q = None
+    try:
+        q = await _execution_store.get_session_queue_item(run_id=rid)
+    except Exception:
+        q = None
+    if q and str(q.get("status") or "") == "queued":
+        out = await cancel_run(run_id=rid, http_request=http_request, body={"reason": str((body or {}).get("reason") or "undo_queued")})
+        out["status"] = "undone"
+        return out
+    raise HTTPException(status_code=409, detail="undo_not_supported")
+
+
 # ==================== Audit Logs (enterprise governance) ====================
 
 
