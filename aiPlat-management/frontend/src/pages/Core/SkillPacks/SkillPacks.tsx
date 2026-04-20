@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Copy, PackagePlus, RotateCw, Trash2, UploadCloud, Tag, Info } from 'lucide-react';
+import { Copy, PackagePlus, RotateCw, Trash2, UploadCloud, Tag, Info, ExternalLink } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import PageHeader from '../../../components/common/PageHeader';
 import { Button, Input, Modal, Table, Textarea, toast, Select } from '../../../components/ui';
@@ -27,12 +27,21 @@ const SkillPacks: React.FC = () => {
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [manifestText, setManifestText] = useState('{\n  "skills": []\n}');
+  const [manifestText, setManifestText] = useState(
+    '{\n' +
+      '  "skills": [],\n' +
+      '  "dependencies": [],\n' +
+      '  "permissions": { "tools": [], "files": { "read": [], "write": [] } },\n' +
+      '  "tests": [],\n' +
+      '  "upgrade_strategy": { "type": "install_latest" },\n' +
+      '  "rollback_strategy": { "type": "install_previous" }\n' +
+      '}',
+  );
 
   const [publishVersion, setPublishVersion] = useState('0.1.0');
   const [installScope, setInstallScope] = useState<'workspace' | 'engine'>('workspace');
   const [installVersion, setInstallVersion] = useState<string>('');
-  const [installResult, setInstallResult] = useState<{ install: SkillPackInstall; applied: any[] } | null>(null);
+  const [installResult, setInstallResult] = useState<{ install: SkillPackInstall; applied: any[]; change_id?: string; links?: any } | null>(null);
 
   const [versions, setVersions] = useState<SkillPackVersion[]>([]);
   const [installs, setInstalls] = useState<SkillPackInstall[]>([]);
@@ -171,6 +180,20 @@ const SkillPacks: React.FC = () => {
     } catch (e: any) {
       toastGateError(e, '安装失败');
     }
+  };
+
+  const openInstallForVersion = (v: string) => {
+    if (!current) return;
+    setInstallScope('workspace');
+    setInstallVersion(String(v || ''));
+    setInstallResult(null);
+    setVersionsOpen(false);
+    setInstallOpen(true);
+  };
+
+  const openChange = (changeId: string) => {
+    navigate(`/diagnostics/change-control/${encodeURIComponent(String(changeId))}`);
+    setInstallOpen(false);
   };
 
   const jumpToWorkspaceSkills = () => {
@@ -428,6 +451,18 @@ const SkillPacks: React.FC = () => {
               { title: 'version', key: 'version', render: (_: unknown, r: SkillPackVersion) => <code className="text-xs bg-dark-hover px-1.5 py-0.5 rounded">{r.version}</code> },
               { title: 'created_at', key: 'created_at', render: (_: unknown, r: SkillPackVersion) => <span className="text-gray-400">{r.created_at ?? '-'}</span> },
               { title: 'id', key: 'id', render: (_: unknown, r: SkillPackVersion) => <span className="text-gray-400">{r.id}</span> },
+              {
+                title: '操作',
+                key: 'actions',
+                width: 220,
+                render: (_: unknown, r: SkillPackVersion) => (
+                  <div className="flex items-center gap-2 justify-end">
+                    <Button variant="secondary" size="sm" onClick={() => openInstallForVersion(r.version)}>
+                      安装此版本（升级/回滚）
+                    </Button>
+                  </div>
+                ),
+              },
             ]}
             data={versions}
             rowKey="id"
@@ -465,6 +500,16 @@ const SkillPacks: React.FC = () => {
           <Input label="version（可选；为空则使用当前 pack manifest）" value={installVersion} onChange={(e: any) => setInstallVersion(e.target.value)} />
           {installResult && (
             <div className="space-y-2">
+              {installResult?.change_id ? (
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-xs text-gray-400">
+                    change_id: <code className="text-xs bg-dark-hover px-1.5 py-0.5 rounded">{String(installResult.change_id)}</code>
+                  </div>
+                  <Button variant="secondary" size="sm" icon={<ExternalLink size={14} />} onClick={() => openChange(String(installResult.change_id))}>
+                    打开变更
+                  </Button>
+                </div>
+              ) : null}
               <div className="text-sm text-gray-200">applied</div>
               <pre className="text-xs bg-dark-hover rounded p-2 overflow-auto max-h-60">{JSON.stringify(installResult.applied || [], null, 2)}</pre>
               <div className="flex items-center justify-end gap-2">

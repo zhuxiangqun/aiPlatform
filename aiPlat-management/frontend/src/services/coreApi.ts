@@ -1050,7 +1050,12 @@ export const skillPackApi = {
   },
 
   install: async (packId: string, data: { version?: string; scope?: 'engine' | 'workspace'; metadata?: Record<string, unknown> }) => {
-    return apiClient.post<{ install: SkillPackInstall; applied: { skill_id: string; status: string; reason?: string }[] }>(
+    return apiClient.post<{
+      install: SkillPackInstall;
+      applied: { skill_id: string; status: string; reason?: string }[];
+      change_id?: string;
+      links?: any;
+    }>(
       `/core/skill-packs/${packId}/install`,
       {
         version: data.version,
