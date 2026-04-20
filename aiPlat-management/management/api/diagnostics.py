@@ -111,6 +111,42 @@ async def record_repo_changeset(request: Request, body: Dict[str, Any]) -> Dict[
     )
 
 
+@router.post("/repo/git/branch")
+async def repo_git_branch(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Create/switch branch in repo (proxy to core).
+    repo_root is server-controlled via AIPLAT_REPO_ROOT.
+    """
+    repo_root = os.getenv("AIPLAT_REPO_ROOT", "").strip()
+    if not repo_root:
+        raise HTTPException(status_code=400, detail="AIPLAT_REPO_ROOT is not set")
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="core_client not initialized")
+
+    payload = dict(body or {})
+    payload["repo_root"] = repo_root
+    return await core_client.repo_git_branch(payload)
+
+
+@router.post("/repo/git/commit")
+async def repo_git_commit(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Commit staged changes in repo (proxy to core).
+    repo_root is server-controlled via AIPLAT_REPO_ROOT.
+    """
+    repo_root = os.getenv("AIPLAT_REPO_ROOT", "").strip()
+    if not repo_root:
+        raise HTTPException(status_code=400, detail="AIPLAT_REPO_ROOT is not set")
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="core_client not initialized")
+
+    payload = dict(body or {})
+    payload["repo_root"] = repo_root
+    return await core_client.repo_git_commit(payload)
+
+
 @router.get("/repo/changeset/patch")
 async def get_repo_changeset_patch(request: Request) -> Dict[str, Any]:
     """

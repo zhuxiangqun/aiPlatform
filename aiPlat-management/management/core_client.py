@@ -327,6 +327,12 @@ class CoreAPIClient:
     async def repo_staged_preview(self, body: Dict[str, Any]) -> Dict[str, Any]:
         return await self._request("POST", "/api/core/diagnostics/repo/staged/preview", json=body or {})
 
+    async def repo_git_branch(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", "/api/core/diagnostics/repo/git/branch", json=body or {})
+
+    async def repo_git_commit(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", "/api/core/diagnostics/repo/git/commit", json=body or {})
+
     async def prompt_template_diff(self, template_id: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         return await self._request("GET", f"/api/core/prompts/{template_id}/diff", params=params or {})
 
