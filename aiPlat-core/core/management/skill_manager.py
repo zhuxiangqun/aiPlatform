@@ -621,6 +621,27 @@ class SkillManager:
             
             registry = get_skill_registry()
             skill_id = skill_info.id
+
+            # Normalize capabilities (from SKILL.md front matter) into registry metadata,
+            # so runtime policy/doctor logic can consume it (e.g. "tool:webfetch").
+            caps_in = []
+            try:
+                if isinstance(skill_info.metadata, dict):
+                    caps_in = skill_info.metadata.get("capabilities") or []
+            except Exception:
+                caps_in = []
+            if isinstance(caps_in, str):
+                caps_in = [caps_in]
+            if not isinstance(caps_in, list):
+                caps_in = []
+            norm_caps: List[str] = []
+            for c in caps_in:
+                try:
+                    s = str(c).strip()
+                    if s:
+                        norm_caps.append(s)
+                except Exception:
+                    continue
             
             _builtin_map = {
                 "text_generation": TextGenerationSkill,
@@ -647,6 +668,7 @@ class SkillManager:
                             if hasattr(cfg, "metadata") and isinstance(cfg.metadata, dict):
                                 cfg.metadata["category"] = skill_info.type
                                 cfg.metadata["version"] = skill_info.version
+                                cfg.metadata["capabilities"] = norm_caps
                                 cfg.metadata["sop_markdown"] = sop_markdown
                                 cfg.metadata["filesystem"] = (skill_info.metadata or {}).get("filesystem", {}) if isinstance(skill_info.metadata, dict) else {}
                                 cfg.metadata["provenance"] = (skill_info.metadata or {}).get("provenance", {}) if isinstance(skill_info.metadata, dict) else {}
@@ -673,6 +695,7 @@ class SkillManager:
                     metadata={
                         "category": skill_info.type,
                         "version": skill_info.version,
+                        "capabilities": norm_caps,
                         # L2: SOP injection (SKILL.md body)
                         "sop_markdown": sop_markdown,
                         "filesystem": (skill_info.metadata or {}).get("filesystem", {}) if isinstance(skill_info.metadata, dict) else {},

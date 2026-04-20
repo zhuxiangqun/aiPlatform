@@ -16,6 +16,7 @@ async def test_create_skill_injects_sop_into_registry_config(tmp_path, monkeypat
         description="用于验证 SOP 注入",
         input_schema={},
         output_schema={},
+        metadata={"capabilities": ["tool:webfetch", "tool:websearch"]},
     )
 
     inst = get_skill_registry().get(skill.id)
@@ -25,3 +26,6 @@ async def test_create_skill_injects_sop_into_registry_config(tmp_path, monkeypat
     assert isinstance(sop, str)
     # from create_skill template body
     assert "工作流程" in sop
+
+    caps = (cfg.metadata or {}).get("capabilities")
+    assert caps == ["tool:webfetch", "tool:websearch"]
