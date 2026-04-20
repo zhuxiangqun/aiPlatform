@@ -1277,6 +1277,8 @@ export interface TenantPolicy {
   version: number;
   policy: Record<string, unknown>;
   updated_at: number;
+  change_id?: string;
+  links?: Record<string, unknown>;
 }
 
 export const policyApi = {

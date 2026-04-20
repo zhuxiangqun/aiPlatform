@@ -4,6 +4,7 @@ import { ArrowLeft, Copy, Save, Search } from 'lucide-react';
 
 import { Badge, Button, Card, CardContent, CardHeader, Input, Table } from '../../../components/ui';
 import { onboardingApi, policyApi } from '../../../services';
+import { toastGateError } from '../../../utils/governanceError';
 
 const shortId = (id?: string, left: number = 10, right: number = 8) => {
   if (!id) return '-';
@@ -109,10 +110,17 @@ const Policies: React.FC = () => {
       }
       const res = await policyApi.upsertTenant(tid, { policy: obj as any, version });
       setVersion(res.version);
-      setOkMsg(`已保存（version=${res.version}）`);
+      if ((res as any)?.change_id) {
+        setOkMsg(`已保存（version=${res.version} / change_id=${String((res as any).change_id)})`);
+      } else {
+        setOkMsg(`已保存（version=${res.version}）`);
+      }
       await loadList();
     } catch (e: any) {
       setError(e?.message || '保存失败');
+      try {
+        toastGateError(e, '保存失败');
+      } catch {}
     } finally {
       setLoading(false);
     }
