@@ -3041,6 +3041,127 @@ class ExecutionStore:
 
         return await anyio.to_thread.run_sync(_sync)
 
+    async def exec_backend_metrics_summary(self, *, window_hours: int = 24, limit: int = 20) -> Dict[str, Any]:
+        """
+        Aggregate per-exec-backend metrics using run_events within a time window.
+        Metrics:
+          - total_runs
+          - done_runs
+          - ok_runs
+          - failed_runs
+          - policy_denied_count (best-effort: any *_end event with payload.status == policy_denied)
+          - avg_latency_ms (run_end.created_at - run_start.created_at)
+        """
+        await self.init()
+        import time
+
+        now = time.time()
+        since = now - max(1, int(window_hours)) * 3600
+        db_path = self._config.db_path
+
+        def _sync() -> List[Dict[str, Any]]:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                rows = conn.execute(
+                    """
+                    SELECT run_id, type, payload_json, created_at
+                    FROM run_events
+                    WHERE created_at >= ?
+                      AND type IN ('run_start','run_end','tool_end','skill_end','agent_end','graph_end')
+                    ORDER BY created_at ASC
+                    """,
+                    (float(since),),
+                ).fetchall()
+                out: List[Dict[str, Any]] = []
+                for r in rows:
+                    out.append(
+                        {
+                            "run_id": r["run_id"],
+                            "type": r["type"],
+                            "payload": _json_loads(r["payload_json"]) or {},
+                            "created_at": float(r["created_at"] or 0.0),
+                        }
+                    )
+                return out
+            finally:
+                conn.close()
+
+        items = await anyio.to_thread.run_sync(_sync)
+
+        # Build run map
+        runs: Dict[str, Dict[str, Any]] = {}
+        for ev in items:
+            rid = str(ev.get("run_id") or "")
+            if not rid:
+                continue
+            r = runs.setdefault(rid, {"run_id": rid})
+            typ = str(ev.get("type") or "")
+            payload = ev.get("payload") if isinstance(ev.get("payload"), dict) else {}
+            t = float(ev.get("created_at") or 0.0)
+            if typ == "run_start":
+                r["start_at"] = t
+                r["exec_backend"] = payload.get("exec_backend") or r.get("exec_backend") or "unknown"
+            elif typ == "run_end":
+                r["end_at"] = t
+                r["end_status"] = payload.get("status") or r.get("end_status")
+            # policy denied signal: any *_end status=policy_denied
+            if typ.endswith("_end"):
+                st = payload.get("status")
+                if isinstance(st, str) and st.lower() == "policy_denied":
+                    r["policy_denied"] = True
+
+        # Aggregate by backend
+        agg: Dict[str, Dict[str, Any]] = {}
+
+        def _is_ok_status(st: Any) -> bool:
+            s = str(st or "").lower()
+            return s in ("completed", "success", "succeeded", "ok")
+
+        for r in runs.values():
+            backend = str(r.get("exec_backend") or "unknown")
+            a = agg.setdefault(
+                backend,
+                {
+                    "exec_backend": backend,
+                    "total_runs": 0,
+                    "done_runs": 0,
+                    "ok_runs": 0,
+                    "failed_runs": 0,
+                    "policy_denied_count": 0,
+                    "avg_latency_ms": None,
+                    "_lat_sum": 0.0,
+                    "_lat_n": 0,
+                },
+            )
+            a["total_runs"] += 1
+            if r.get("policy_denied"):
+                a["policy_denied_count"] += 1
+            if r.get("end_at") and r.get("start_at"):
+                a["done_runs"] += 1
+                if _is_ok_status(r.get("end_status")):
+                    a["ok_runs"] += 1
+                else:
+                    a["failed_runs"] += 1
+                lat_ms = (float(r["end_at"]) - float(r["start_at"])) * 1000.0
+                if lat_ms >= 0:
+                    a["_lat_sum"] += lat_ms
+                    a["_lat_n"] += 1
+
+        out = list(agg.values())
+        for a in out:
+            n = int(a.pop("_lat_n", 0) or 0)
+            s = float(a.pop("_lat_sum", 0.0) or 0.0)
+            a["avg_latency_ms"] = round(s / n, 2) if n > 0 else None
+            # derived rates (best-effort)
+            total = int(a.get("total_runs") or 0)
+            ok = int(a.get("ok_runs") or 0)
+            a["success_rate"] = round(ok / total, 4) if total > 0 else None
+
+        out.sort(key=lambda x: int(x.get("total_runs") or 0), reverse=True)
+        out = out[: max(1, int(limit))]
+        return {"window_hours": int(window_hours), "since": since, "until": now, "items": out}
+
     # ---------------------------------------------------------------------
     # PR-04: Session lane (per-session serialization) - locks + queue
     # ---------------------------------------------------------------------

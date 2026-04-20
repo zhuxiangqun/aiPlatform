@@ -12765,6 +12765,17 @@ async def diagnostics_exec_backends():
     }
 
 
+@api_router.get("/diagnostics/exec/metrics/summary")
+async def diagnostics_exec_backend_metrics_summary(window_hours: int = 24, limit: int = 20):
+    """
+    Exec backend metrics summary (P1).
+    Uses run_events aggregated in ExecutionStore.
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    return await _execution_store.exec_backend_metrics_summary(window_hours=int(window_hours or 24), limit=int(limit or 20))
+
+
 # ==================== Repo Changeset (repo-aware workflow MVP) ====================
 
 

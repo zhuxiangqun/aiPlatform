@@ -582,6 +582,13 @@ class HarnessIntegration:
         # Run events (best-effort): start
         if runtime.execution_store:
             try:
+                exec_backend = None
+                try:
+                    from core.apps.exec_drivers.registry import get_exec_backend
+
+                    exec_backend = await get_exec_backend()
+                except Exception:
+                    exec_backend = None
                 await runtime.execution_store.append_run_event(
                     run_id=execution_id,
                     event_type="run_start",
@@ -592,6 +599,7 @@ class HarnessIntegration:
                         "agent_id": agent_id,
                         "user_id": user_id,
                         "session_id": req.session_id,
+                        "exec_backend": exec_backend,
                         "request_payload": self._redact_request_payload(req.payload if isinstance(req.payload, dict) else {}),
                     },
                 )
@@ -1208,6 +1216,13 @@ class HarnessIntegration:
                 except Exception:
                     pass
                 try:
+                    exec_backend = None
+                    try:
+                        from core.apps.exec_drivers.registry import get_exec_backend
+
+                        exec_backend = await get_exec_backend()
+                    except Exception:
+                        exec_backend = None
                     await runtime.execution_store.append_run_event(
                         run_id=execution.id,
                         event_type="run_start",
@@ -1218,6 +1233,7 @@ class HarnessIntegration:
                             "skill_id": execution.skill_id,
                             "user_id": user_id,
                             "session_id": meta2.get("session_id"),
+                            "exec_backend": exec_backend,
                             "request_payload": self._redact_request_payload(req.payload if isinstance(req.payload, dict) else {}),
                         },
                     )
@@ -1417,6 +1433,13 @@ class HarnessIntegration:
         # Run events (best-effort): start
         if runtime and runtime.execution_store:
             try:
+                exec_backend = None
+                try:
+                    from core.apps.exec_drivers.registry import get_exec_backend
+
+                    exec_backend = await get_exec_backend()
+                except Exception:
+                    exec_backend = None
                 await runtime.execution_store.append_run_event(
                     run_id=run_id,
                     event_type="run_start",
@@ -1427,6 +1450,7 @@ class HarnessIntegration:
                         "tool_name": req.target_id,
                         "user_id": req.user_id or "system",
                         "session_id": req.session_id,
+                        "exec_backend": exec_backend,
                         "request_payload": self._redact_request_payload(req.payload if isinstance(req.payload, dict) else {}),
                     },
                 )
@@ -1662,12 +1686,24 @@ class HarnessIntegration:
 
         # run_start
         try:
+            exec_backend = None
+            try:
+                from core.apps.exec_drivers.registry import get_exec_backend
+
+                exec_backend = await get_exec_backend()
+            except Exception:
+                exec_backend = None
             await runtime.execution_store.append_run_event(
                 run_id=run_id,
                 event_type="run_start",
                 trace_id=trace_id,
                 tenant_id=str(payload.get("tenant_id")) if payload.get("tenant_id") else None,
-                payload={"kind": "smoke_e2e", "status": "running", "request_payload": self._redact_request_payload(payload)},
+                payload={
+                    "kind": "smoke_e2e",
+                    "status": "running",
+                    "exec_backend": exec_backend,
+                    "request_payload": self._redact_request_payload(payload),
+                },
             )
         except Exception:
             pass
