@@ -93,6 +93,18 @@ class DefaultContextEngine(ContextEngine):
             "budgets": {"max_context_chars": int(self._MAX_CONTEXT_CHARS)},
         }
 
+        prompt_mode = str(meta.get("prompt_mode") or "full").lower()
+        if prompt_mode not in {"full", "minimal", "none"}:
+            prompt_mode = "full"
+        status["prompt_mode"] = prompt_mode
+
+        if prompt_mode == "none":
+            # Hard disable all context injections; keep messages unchanged.
+            status["project_context"]["enabled"] = False
+            status["repo_diff"]["enabled"] = False
+            status["session_search"]["enabled"] = False
+            return ContextResult(messages=msgs, metadata=meta, status=status, workspace_context_hash=None)
+
         # Project context is optional; even when absent, we still allow:
         # - session search injection
         # - deterministic compaction
@@ -153,6 +165,7 @@ class DefaultContextEngine(ContextEngine):
         if (
             os.getenv("AIPLAT_ENABLE_REPO_DIFF_CONTEXT", "false").lower() in ("1", "true", "yes", "y")
             and repo_root
+            and prompt_mode == "full"
         ):
             status["repo_diff"]["enabled"] = True
             try:
@@ -179,7 +192,7 @@ class DefaultContextEngine(ContextEngine):
 
         # Roadmap-4 (P0): optional session search injection (cross-session memory).
         session_sha = None
-        if os.getenv("AIPLAT_ENABLE_SESSION_SEARCH", "false").lower() in ("1", "true", "yes", "y"):
+        if os.getenv("AIPLAT_ENABLE_SESSION_SEARCH", "false").lower() in ("1", "true", "yes", "y") and prompt_mode == "full":
             status["session_search"]["enabled"] = True
             try:
                 from core.harness.kernel.execution_context import get_active_request_context

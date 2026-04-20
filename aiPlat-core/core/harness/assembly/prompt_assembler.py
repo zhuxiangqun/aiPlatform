@@ -58,6 +58,23 @@ class PromptAssembler:
         msgs = self._normalize(prompt)
         meta = dict(metadata or {})
 
+        # Prompt Mode (OpenClaw-like): full/minimal/none
+        # - full: default, allow all context injections
+        # - minimal: keep only stable context (e.g., project context), skip heavy overlays
+        # - none: disable context injection (for tightly-scoped subagents/jobs)
+        try:
+            if "prompt_mode" not in meta:
+                from core.harness.kernel.execution_context import get_active_request_context
+
+                rctx = get_active_request_context()
+                ep = (getattr(rctx, "entrypoint", None) or "").lower() if rctx else ""
+                if ep in {"subagent", "cron", "scheduler", "job"}:
+                    meta["prompt_mode"] = "minimal"
+                else:
+                    meta["prompt_mode"] = "full"
+        except Exception:
+            meta.setdefault("prompt_mode", "full")
+
         # Roadmap-1 (Phase 1): ContextEngine handles project context injection.
         try:
             ctx = get_active_workspace_context()
