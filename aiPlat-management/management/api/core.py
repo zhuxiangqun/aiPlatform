@@ -196,6 +196,22 @@ async def diff_prompt_template(template_id: str, from_version: Optional[str] = N
         raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
 
 
+@router.get("/prompts/{template_id}/resolve")
+async def resolve_prompt_template(template_id: str, tenant_id: Optional[str] = None, user_id: Optional[str] = None, session_id: Optional[str] = None):
+    try:
+        client = get_core_client()
+        params: Dict[str, Any] = {}
+        if tenant_id:
+            params["tenant_id"] = str(tenant_id)
+        if user_id:
+            params["user_id"] = str(user_id)
+        if session_id:
+            params["session_id"] = str(session_id)
+        return await client.prompt_template_resolve(str(template_id), params=params)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
 @router.post("/prompts")
 async def upsert_prompt_template(body: Dict[str, Any]):
     try:
@@ -210,6 +226,24 @@ async def rollback_prompt_template(template_id: str, body: Dict[str, Any]):
     try:
         client = get_core_client()
         return await client.rollback_prompt_template(str(template_id), body or {})
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/prompts/{template_id}/release")
+async def release_prompt_template(template_id: str, body: Dict[str, Any]):
+    try:
+        client = get_core_client()
+        return await client.prompt_template_release(str(template_id), body or {})
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/prompts/{template_id}/release/rollback")
+async def rollback_prompt_template_release(template_id: str, body: Dict[str, Any]):
+    try:
+        client = get_core_client()
+        return await client.prompt_template_release_rollback(str(template_id), body or {})
     except httpx.HTTPError as e:
         raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
 

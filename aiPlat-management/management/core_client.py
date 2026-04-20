@@ -374,12 +374,21 @@ class CoreAPIClient:
     async def prompt_template_diff(self, template_id: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         return await self._request("GET", f"/api/core/prompts/{template_id}/diff", params=params or {})
 
+    async def prompt_template_resolve(self, template_id: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        return await self._request("GET", f"/api/core/prompts/{template_id}/resolve", params=params or {})
+
     async def exec_backends(self) -> Dict[str, Any]:
         return await self._request("GET", "/api/core/diagnostics/exec/backends")
 
     async def exec_backend_metrics_summary(self, *, window_hours: int = 24, limit: int = 20) -> Dict[str, Any]:
         params = {"window_hours": int(window_hours), "limit": int(limit)}
         return await self._request("GET", "/api/core/diagnostics/exec/metrics/summary", params=params)
+
+    async def prompt_template_release(self, template_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/prompts/{template_id}/release", json=body or {})
+
+    async def prompt_template_release_rollback(self, template_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/prompts/{template_id}/release/rollback", json=body or {})
 
     # ===== Jobs / Cron (Roadmap-3) =====
 
