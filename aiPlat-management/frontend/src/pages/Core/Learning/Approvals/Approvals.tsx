@@ -4,6 +4,7 @@ import { CheckCircle2, Eye, RefreshCw, XCircle } from 'lucide-react';
 
 import { approvalsApi, type ApprovalRequestSummary } from '../../../../services';
 import { Badge, Button, Card, CardContent, CardHeader, Modal, Table, toast } from '../../../../components/ui';
+import { toastGateError } from '../../../../utils/governanceError';
 
 const Approvals: React.FC = () => {
   const [items, setItems] = useState<ApprovalRequestSummary[]>([]);
@@ -17,7 +18,7 @@ const Approvals: React.FC = () => {
       const res = await approvalsApi.listPending({ limit: 200, offset: 0 });
       setItems(res.items || []);
     } catch (e: any) {
-      toast.error(e?.message || '加载失败');
+      toastGateError(e, '加载失败');
     } finally {
       setLoading(false);
     }
@@ -33,7 +34,7 @@ const Approvals: React.FC = () => {
       setDetail(d);
       setDetailOpen(true);
     } catch (e: any) {
-      toast.error(e?.message || '加载失败');
+      toastGateError(e, '加载失败');
     }
   };
 
@@ -43,7 +44,7 @@ const Approvals: React.FC = () => {
       toast.success('已批准');
       fetchPending();
     } catch (e: any) {
-      toast.error(e?.message || '批准失败');
+      toastGateError(e, '批准失败');
     }
   };
 
@@ -53,7 +54,7 @@ const Approvals: React.FC = () => {
       toast.success('已拒绝');
       fetchPending();
     } catch (e: any) {
-      toast.error(e?.message || '拒绝失败');
+      toastGateError(e, '拒绝失败');
     }
   };
 

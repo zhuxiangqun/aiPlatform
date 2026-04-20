@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, Copy, Download, RotateCw } from 'lucide-react';
 import { Button, Card, CardContent, CardHeader, Input, Select, Textarea, toast, Badge } from '../../../components/ui';
 import { policyApi } from '../../../services';
+import { toastGateError } from '../../../utils/governanceError';
 
 const PolicyDebug: React.FC = () => {
   const [kind, setKind] = useState<'tool' | 'mcp_server'>('tool');
@@ -35,7 +36,7 @@ const PolicyDebug: React.FC = () => {
       a.click();
       URL.revokeObjectURL(url);
     } catch (e: any) {
-      toast.error('导出失败', String(e?.message || e));
+      toastGateError(e, '导出失败');
     }
   };
 
@@ -71,7 +72,7 @@ const PolicyDebug: React.FC = () => {
       toast.success('评估完成');
     } catch (e: any) {
       setOut(null);
-      toast.error('评估失败', String(e?.message || ''));
+      toastGateError(e, '评估失败');
     } finally {
       setLoading(false);
     }
@@ -179,4 +180,3 @@ const PolicyDebug: React.FC = () => {
 };
 
 export default PolicyDebug;
-

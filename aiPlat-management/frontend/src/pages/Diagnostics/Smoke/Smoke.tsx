@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { diagnosticsApi, onboardingApi } from '../../../services';
 import { Button, Card, CardContent, CardHeader, Input, Select, Textarea, toast, Badge, Table } from '../../../components/ui';
+import { toastGateError } from '../../../utils/governanceError';
 
 const Smoke: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -40,7 +41,7 @@ const Smoke: React.FC = () => {
       setResult(res);
       toast.success(res?.ok ? '冒烟通过' : '冒烟失败');
     } catch (e: any) {
-      toast.error('冒烟失败', String(e?.message || 'unknown'));
+      toastGateError(e, '冒烟失败');
       setResult({ ok: false, error: String(e?.message || e) });
     } finally {
       setLoading(false);
@@ -61,7 +62,7 @@ const Smoke: React.FC = () => {
       setAsStatus(st);
       setAsRuns(runs);
     } catch (e: any) {
-      toast.error('加载 autosmoke 失败', String(e?.message || 'unknown'));
+      toastGateError(e, '加载 autosmoke 失败');
       setAsStatus(null);
       setAsRuns(null);
     } finally {
@@ -86,7 +87,7 @@ const Smoke: React.FC = () => {
       toast.success(res?.enqueued ? '已触发 autosmoke' : `未触发：${res?.reason || 'unknown'}`);
       await loadAutosmoke();
     } catch (e: any) {
-      toast.error('触发失败', String(e?.message || 'unknown'));
+      toastGateError(e, '触发失败');
     } finally {
       setAsLoading(false);
     }

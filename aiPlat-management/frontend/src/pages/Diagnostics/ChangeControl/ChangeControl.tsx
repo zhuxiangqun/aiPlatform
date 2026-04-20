@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Copy, ExternalLink, Link2, RotateCw } from 'lucide-react';
 import { Button, Card, CardContent, CardHeader, Input, Select, Table, toast, Badge } from '../../../components/ui';
 import { diagnosticsApi } from '../../../services';
+import { toastGateError } from '../../../utils/governanceError';
 
 const fmtTs = (v: any) => {
   const n = Number(v);
@@ -51,7 +52,7 @@ const ChangeControl: React.FC = () => {
       setItems(filtered);
       setTotal(Number(data.total || 0));
     } catch (e: any) {
-      toast.error('加载失败', String(e?.message || ''));
+      toastGateError(e, '加载失败');
       setItems([]);
       setTotal(0);
     } finally {
@@ -65,7 +66,7 @@ const ChangeControl: React.FC = () => {
       const res = await diagnosticsApi.getChangeControl(cid, { limit: 200, offset: 0 });
       setDetail(res?.change || null);
     } catch (e: any) {
-      toast.error('加载失败', String(e?.message || ''));
+      toastGateError(e, '加载失败');
       setDetail(null);
     } finally {
       setDetailLoading(false);
@@ -82,7 +83,7 @@ const ChangeControl: React.FC = () => {
       a.click();
       URL.revokeObjectURL(url);
     } catch (e: any) {
-      toast.error('导出失败', String(e?.message || e));
+      toastGateError(e, '导出失败');
     }
   };
 
@@ -95,7 +96,7 @@ const ChangeControl: React.FC = () => {
       await loadDetail(cid);
       return res;
     } catch (e: any) {
-      toast.error('触发失败', String(e?.message || ''));
+      toastGateError(e, '触发失败');
       return null;
     } finally {
       setDetailLoading(false);
