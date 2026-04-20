@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { approvalsApi, diagnosticsApi, onboardingApi } from '../../services';
 import { Badge } from '../ui';
+import { extractGateEnvelope } from '../../utils/governanceError';
 
 export type DoctorAction = {
   action_type?: string;
@@ -179,7 +180,17 @@ export const ActionableFixes: React.FC<Props> = ({ actions, recommendations, onA
         await onAfterAction?.();
       }
     } catch (e: any) {
-      setMsg((p) => ({ ...(p || {}), [k]: e?.message || String(e) }));
+      const env = extractGateEnvelope(e);
+      if (env) {
+        const parts: string[] = [];
+        if (env.code) parts.push(String(env.code));
+        if (env.change_id) parts.push(`change_id=${String(env.change_id)}`);
+        if (env.approval_request_id) parts.push(`approval=${String(env.approval_request_id)}`);
+        const extra = parts.length ? `（${parts.join(' / ')}）` : '';
+        setMsg((p) => ({ ...(p || {}), [k]: `${String(env.message || e?.message || '请求失败')}${extra}` }));
+      } else {
+        setMsg((p) => ({ ...(p || {}), [k]: e?.message || String(e) }));
+      }
     } finally {
       setRunning((p) => ({ ...(p || {}), [k]: false }));
     }

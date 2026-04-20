@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { RefreshCw, Save, ToggleLeft, ToggleRight, History, Eye } from 'lucide-react';
 import { Button, Card, CardContent, CardHeader, Modal, Table, toast } from '../../../components/ui';
 import { pluginApi } from '../../../services';
+import { toastGateError } from '../../../utils/governanceError';
 
 const Plugins: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -38,7 +39,7 @@ const Plugins: React.FC = () => {
       setItems(Array.isArray(res?.items) ? res.items : []);
     } catch (e: any) {
       setItems([]);
-      toast.error('加载插件失败', String(e?.message || ''));
+      toastGateError(e, '加载插件失败');
     } finally {
       setLoading(false);
     }
@@ -57,7 +58,7 @@ const Plugins: React.FC = () => {
       toast.success('已保存', res?.plugin?.plugin_id || '');
       await load();
     } catch (e: any) {
-      toast.error('保存失败', String(e?.message || ''));
+      toastGateError(e, '保存失败');
     }
   };
 
@@ -68,7 +69,7 @@ const Plugins: React.FC = () => {
       toast.success('已更新', target ? 'enabled' : 'disabled');
       await load();
     } catch (e: any) {
-      toast.error('更新失败', String(e?.message || ''));
+      toastGateError(e, '更新失败');
     }
   };
 
@@ -87,7 +88,7 @@ const Plugins: React.FC = () => {
       setVersions(Array.isArray(res?.items) ? res.items : []);
     } catch (e: any) {
       setVersions([]);
-      toast.error('加载版本失败', String(e?.message || ''));
+      toastGateError(e, '加载版本失败');
     } finally {
       setVersionsLoading(false);
     }
@@ -100,7 +101,7 @@ const Plugins: React.FC = () => {
       await load();
       await showVersions(p);
     } catch (e: any) {
-      toast.error('回滚失败', String(e?.message || ''));
+      toastGateError(e, '回滚失败');
     }
   };
 
