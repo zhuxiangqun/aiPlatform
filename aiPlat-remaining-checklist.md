@@ -70,9 +70,9 @@
 - [x] **插件元数据规范化（P0）**
   - [x] 插件/skill pack：权限声明、依赖声明、测试声明、版本/升级/回滚策略
   - [x] management UI：安装/升级/回滚的可视化流程
-- [ ] **技能自生长闭环（P1）**
-  - [ ] 学习产物必须落 workspace scope
-  - [ ] 审批 + autosmoke 回归门禁 + 可回滚
+- [x] **技能自生长闭环（P1）**
+  - [x] 学习产物必须落 workspace scope
+  - [x] 审批 + autosmoke 回归门禁 + 可回滚
 
 ---
 
