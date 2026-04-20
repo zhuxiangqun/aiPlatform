@@ -259,6 +259,27 @@ export const diagnosticsApi = {
   autosmokeChangeControl: async (changeId: string) => {
     return apiClient.post<any>(`/diagnostics/change-control/core/${encodeURIComponent(changeId)}/autosmoke`, {});
   },
+  exportChangeControlEvidence: async (changeId: string, params: { format?: 'zip' | 'json'; limit?: number } = {}) => {
+    const q = new URLSearchParams();
+    q.set('format', params.format || 'zip');
+    if (params.limit != null) q.set('limit', String(params.limit));
+    const qs = q.toString();
+    // Return raw Response so caller can download zip
+    const url = `${(import.meta as any).env?.VITE_API_URL || '/api'}/diagnostics/change-control/core/${encodeURIComponent(changeId)}/evidence${qs ? `?${qs}` : ''}`;
+    // best-effort identity headers (align apiClient.request)
+    const headers: any = {};
+    try {
+      const tenantId = localStorage.getItem('active_tenant_id') || '';
+      const actorId = localStorage.getItem('active_actor_id') || '';
+      const actorRole = localStorage.getItem('active_actor_role') || '';
+      if (tenantId.trim()) headers['X-AIPLAT-TENANT-ID'] = tenantId.trim();
+      if (actorId.trim()) headers['X-AIPLAT-ACTOR-ID'] = actorId.trim();
+      if (actorRole.trim()) headers['X-AIPLAT-ACTOR-ROLE'] = actorRole.trim();
+    } catch {
+      // ignore
+    }
+    return fetch(url, { method: 'GET', headers });
+  },
 };
 
 // Onboarding API

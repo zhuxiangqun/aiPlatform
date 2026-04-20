@@ -240,8 +240,29 @@ const ChangeControl: React.FC = () => {
               <Copy size={14} className="mr-1" />
               复制 change_id
             </Button>
+            <Button
+              variant="secondary"
+              onClick={async () => {
+                try {
+                  const resp = await diagnosticsApi.exportChangeControlEvidence(changeId, { format: 'zip', limit: 500 });
+                  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                  const blob = await resp.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `change_${changeId}_evidence.zip`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                  toast.success('已导出证据包（zip）');
+                } catch (e: any) {
+                  toast.error('导出失败', String(e?.message || e));
+                }
+              }}
+            >
+              导出证据包（zip）
+            </Button>
             <Button variant="secondary" onClick={() => downloadJson(`change_${changeId}.json`, detail)}>
-              导出证据包
+              导出当前页 JSON
             </Button>
             {detail?.links?.syscalls_ui ? (
               <a className="text-sm underline text-gray-300 hover:text-white" href={String(detail.links.syscalls_ui)} target="_blank" rel="noreferrer">
