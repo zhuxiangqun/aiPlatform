@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Copy, ExternalLink, Link2, RotateCw } from 'lucide-react';
-import { Button, Card, CardContent, CardHeader, Input, Table, toast, Badge } from '../../../components/ui';
+import { Button, Card, CardContent, CardHeader, Input, Select, Table, toast, Badge } from '../../../components/ui';
 import { diagnosticsApi } from '../../../services';
 
 const fmtTs = (v: any) => {
@@ -30,6 +30,7 @@ const ChangeControl: React.FC = () => {
   const [limit] = useState(50);
   const [offset, setOffset] = useState(0);
   const [q, setQ] = useState('');
+  const [state, setState] = useState<string>('');
 
   // detail
   const [detailLoading, setDetailLoading] = useState(false);
@@ -41,9 +42,12 @@ const ChangeControl: React.FC = () => {
       const res = await diagnosticsApi.listChangeControls({ limit, offset });
       const data = res?.changes || {};
       const rows = Array.isArray(data.items) ? data.items : [];
-      const filtered = q.trim()
+      const filtered0 = q.trim()
         ? rows.filter((r: any) => String(r?.change_id || r?.target_id || '').includes(q.trim()))
         : rows;
+      const filtered = state
+        ? filtered0.filter((r: any) => String(r?.summary?.derived_state || '').toLowerCase() === String(state).toLowerCase())
+        : filtered0;
       setItems(filtered);
       setTotal(Number(data.total || 0));
     } catch (e: any) {
@@ -121,7 +125,10 @@ const ChangeControl: React.FC = () => {
         key: 'status',
         title: 'status',
         width: 140,
-        render: (_: any, r: any) => <Badge variant={badge(String(r?.status || ''))}>{String(r?.status || '-')}</Badge>,
+        render: (_: any, r: any) => {
+          const st = String(r?.summary?.derived_state || r?.status || '-');
+          return <Badge variant={badge(st)}>{st}</Badge>;
+        },
       },
       {
         key: 'updated_at',
@@ -198,6 +205,7 @@ const ChangeControl: React.FC = () => {
   if (changeId) {
     const latest = detail?.latest || null;
     const ev = detail?.events?.items || [];
+    const summary = detail?.summary || null;
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -326,6 +334,24 @@ const ChangeControl: React.FC = () => {
 
         <Card>
           <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-semibold text-gray-200">summary</div>
+              {summary?.derived_state ? <Badge variant={badge(String(summary.derived_state))}>{String(summary.derived_state)}</Badge> : null}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {summary ? (
+              <pre className="text-xs text-gray-300 overflow-auto max-h-[220px] bg-dark-card border border-dark-border rounded-lg p-3">
+                {JSON.stringify(summary, null, 2)}
+              </pre>
+            ) : (
+              <div className="text-sm text-gray-500">暂无 summary</div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <div className="text-sm font-semibold text-gray-200">latest</div>
           </CardHeader>
           <CardContent>
@@ -369,6 +395,19 @@ const ChangeControl: React.FC = () => {
             <div className="text-sm font-semibold text-gray-200">列表</div>
             <div className="flex items-center gap-2">
               <Input value={q} onChange={(e: any) => setQ(e.target.value)} placeholder="按 change_id 过滤（本地过滤）" />
+              <Select
+                value={state}
+                onChange={(v) => setState(String(v || ''))}
+                options={[
+                  { value: '', label: '全部状态' },
+                  { value: 'blocked', label: 'blocked' },
+                  { value: 'approval_required', label: 'approval_required' },
+                  { value: 'success', label: 'success' },
+                  { value: 'failed', label: 'failed' },
+                  { value: 'unknown', label: 'unknown' },
+                ]}
+                placeholder="状态筛选"
+              />
               <Button
                 variant="secondary"
                 onClick={() => {
