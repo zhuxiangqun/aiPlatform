@@ -29,7 +29,7 @@
 
 - [x] Prompt 模板：列表/查看/versions/diff UI（management 代理 + frontend 页面）
 - [x] Gate：verification pending/failed 阻断新 upsert（rollback 作为恢复路径）
-- [ ] **Prompt 变更 UI 完整闭环（P0）**
+- [x] **Prompt 变更 UI 完整闭环（P0）**
   - [x] 新建/编辑（upsert）表单 + require_approval/approval_request_id 支持
   - [x] Rollback UI（选择版本 → 回滚 → 看到 change_id/links）
   - [x] Delete UI（带审批）
@@ -42,7 +42,7 @@
 ## C. Repo-aware 开发工作流（向 Claude Code 学的 P0 主线）
 
 - [x] Repo changeset：patch/staged/tests/record + management Repo 页面审阅入口
-- [ ] **Git primitives（P0）**
+- [x] **Git primitives（P0）**
   - [x] commit（带建议 message + 审批/审计）
   - [x] branch 操作（create/switch）
   - [x] 将“recorded changeset”与 commit 建立关联（使用同一 change_id 写入 Change Control）
@@ -54,7 +54,7 @@
 ## D. Context 可观测（从“单次诊断”→“趋势与回归”）
 
 - [x] Context/Prompt assemble 单次诊断页（config + assemble）
-- [ ] **Context 指标沉淀（P1）**
+- [x] **Context 指标沉淀（P1）**
   - [x] 记录 tokens_in/out、cache_hit、compaction_applied、session_search_hits 等到 store（可按 tenant/session 聚合）
   - [x] management Insights：趋势图/TopN/回归对比
   - [x] Doctor 动作：建议开启压缩/缓存/会话搜索（必要时审批）
@@ -64,12 +64,12 @@
 ## E. Skill/插件生态（P0/P1）
 
 - [x] Capability→Policy 辅助页面（从 capabilities(tool:xxx) 汇总 → 写入 tenant policy）
-- [ ] **capabilities 数据源打通（P0）**
+- [x] **capabilities 数据源打通（P0）**
   - [x] 后端确保从 `SKILL.md` front matter 提取 capabilities 并写入 skill metadata（而不是仅靠手工）
   - [x] capability schema 校验（缺失/非法时 UI 告警）
-- [ ] **插件元数据规范化（P0）**
-  - [ ] 插件/skill pack：权限声明、依赖声明、测试声明、版本/升级/回滚策略
-  - [ ] management UI：安装/升级/回滚的可视化流程
+- [x] **插件元数据规范化（P0）**
+  - [x] 插件/skill pack：权限声明、依赖声明、测试声明、版本/升级/回滚策略
+  - [x] management UI：安装/升级/回滚的可视化流程
 - [ ] **技能自生长闭环（P1）**
   - [ ] 学习产物必须落 workspace scope
   - [ ] 审批 + autosmoke 回归门禁 + 可回滚
