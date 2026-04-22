@@ -656,6 +656,89 @@ export const workspaceSkillApi = {
   },
 };
 
+// ==================== Workspace Skill Installer (Open-source skills) ====================
+
+export type WorkspaceSkillInstallerSourceType = 'git' | 'path' | 'zip';
+
+export type WorkspaceSkillInstallerPlan = {
+  source: Record<string, unknown>;
+  detected_subdir?: string | null;
+  skills: Array<{
+    skill_id: string;
+    name: string;
+    description?: string;
+    version?: string;
+    kind?: string;
+    runtime?: string;
+    entrypoint?: string;
+    permissions?: string[];
+    limits_ok?: boolean;
+    limits_error?: string | null;
+  }>;
+  warnings?: string[];
+  plan_id?: string;
+  plan_expires_at?: number;
+  planned_skills_digest?: string;
+};
+
+export const workspaceSkillInstallerApi = {
+  resolveHead: async (url: string) => {
+    return apiClient.post<{ status: string; url: string; head_sha: string }>(`/core/workspace/skills/installer/resolve-head`, { url });
+  },
+  plan: async (data: {
+    scope?: 'workspace';
+    source_type: WorkspaceSkillInstallerSourceType;
+    url?: string;
+    ref?: string;
+    path?: string;
+    subdir?: string;
+    auto_detect_subdir?: boolean;
+    allow_overwrite?: boolean;
+    skill_id?: string;
+    metadata?: Record<string, unknown>;
+  }) => {
+    return apiClient.post<WorkspaceSkillInstallerPlan>(`/core/workspace/skills/installer/plan`, { scope: 'workspace', ...data });
+  },
+
+  install: async (data: {
+    scope?: 'workspace';
+    source_type: WorkspaceSkillInstallerSourceType;
+    url?: string;
+    ref?: string;
+    path?: string;
+    subdir?: string;
+    auto_detect_subdir?: boolean;
+    allow_overwrite?: boolean;
+    skill_id?: string;
+    metadata?: Record<string, unknown>;
+    // guards:
+    confirm?: boolean;
+    plan_id?: string;
+    require_approval?: boolean;
+    approval_request_id?: string;
+    details?: string;
+  }) => {
+    return apiClient.post<{ status: string; installed?: string[]; skipped?: any[]; base?: string }>(`/core/workspace/skills/installer/install`, { scope: 'workspace', ...data });
+  },
+
+  update: async (skillId: string, data?: { scope?: 'workspace'; ref?: string; metadata?: Record<string, unknown> }) => {
+    return apiClient.post<{ status: string; installed?: string[]; skipped?: any[]; base?: string }>(`/core/workspace/skills/installer/update/${encodeURIComponent(skillId)}`, {
+      scope: 'workspace',
+      ...(data || {}),
+    });
+  },
+
+  uninstall: async (skillId: string, params?: { delete_files?: boolean }) => {
+    const q = new URLSearchParams();
+    if (params?.delete_files) q.set('delete_files', 'true');
+    const qs = q.toString();
+    return apiClient.post<{ status: string; skill_id: string; deleted: boolean }>(
+      `/core/workspace/skills/installer/uninstall/${encodeURIComponent(skillId)}${qs ? `?${qs}` : ''}`,
+      {}
+    );
+  },
+};
+
 // ==================== Jobs / Cron (Roadmap-3) ====================
 
 export interface Job {
@@ -1289,6 +1372,54 @@ export const runApi = {
   },
   undo: async (runId: string, body: { reason?: string } = {}) => {
     return apiClient.post<any>(`/core/runs/${encodeURIComponent(runId)}/undo`, body);
+  },
+  getLatestEvaluation: async (runId: string) => {
+    return apiClient.get<{ status: string; item: any | null }>(`/core/runs/${encodeURIComponent(runId)}/evaluation/latest`);
+  },
+  getLatestRunState: async (runId: string) => {
+    return apiClient.get<{ status: string; item: any | null }>(`/core/runs/${encodeURIComponent(runId)}/state/latest`);
+  },
+  upsertRunState: async (runId: string, body: { state: Record<string, unknown>; lock?: boolean }) => {
+    return apiClient.post<{ status: string; artifact_id: string; state: any }>(`/core/runs/${encodeURIComponent(runId)}/state`, body);
+  },
+  submitEvaluation: async (
+    runId: string,
+    body: { evaluator?: string; report: Record<string, unknown>; thresholds?: Record<string, unknown>; enforce_gate?: boolean }
+  ) => {
+    return apiClient.post<{ status: string; artifact_id: string; report: any }>(`/core/runs/${encodeURIComponent(runId)}/evaluate`, body);
+  },
+  autoEvaluate: async (
+    runId: string,
+    body: {
+      evaluator?: string;
+      thresholds?: Record<string, unknown>;
+      enforce_gate?: boolean;
+      extra?: Record<string, unknown>;
+      project_id?: string;
+      url?: string;
+      steps?: Array<{ tool: string; args?: Record<string, unknown> }>;
+      policy?: Record<string, unknown>;
+      expected_tags?: string[];
+      tag_expectations?: Record<string, unknown>;
+      tag_template?: string;
+    } = {}
+  ) => {
+    return apiClient.post<{ status: string; artifact_id: string; report: any; raw?: string }>(`/core/runs/${encodeURIComponent(runId)}/evaluate/auto`, body);
+  },
+  getLatestEvaluationPolicy: async () => {
+    return apiClient.get<{ status: string; item: any | null }>(`/core/evaluation/policy/latest`);
+  },
+  upsertEvaluationPolicy: async (policy: Record<string, unknown>) => {
+    return apiClient.post<{ status: string; artifact_id: string; policy: any }>(`/core/evaluation/policy`, { policy });
+  },
+  getLatestProjectEvaluationPolicy: async (projectId: string) => {
+    return apiClient.get<{ status: string; item: any | null; merged?: any }>(`/core/projects/${encodeURIComponent(projectId)}/evaluation/policy/latest`);
+  },
+  upsertProjectEvaluationPolicy: async (projectId: string, policy: Record<string, unknown>, mode: 'merge' | 'replace' = 'merge') => {
+    return apiClient.post<{ status: string; artifact_id: string; policy: any; change_id?: string; links?: any }>(
+      `/core/projects/${encodeURIComponent(projectId)}/evaluation/policy`,
+      { policy, mode }
+    );
   },
 };
 

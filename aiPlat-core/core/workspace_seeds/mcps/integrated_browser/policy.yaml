@@ -4,4 +4,7 @@ allowed_tools:
   - browser_click
   - browser_type
   - browser_scroll
-
+  - browser_take_screenshot
+  - browser_console_messages
+  - browser_network_requests
+  - browser_wait_for

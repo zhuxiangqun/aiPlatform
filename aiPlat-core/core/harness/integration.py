@@ -601,6 +601,7 @@ class HarnessIntegration:
                         "session_id": req.session_id,
                         "exec_backend": exec_backend,
                         "request_payload": self._redact_request_payload(req.payload if isinstance(req.payload, dict) else {}),
+                        "project_id": ((req.payload or {}).get("context") or {}).get("project_id") if isinstance(req.payload, dict) else None,
                     },
                 )
             except Exception:
@@ -934,6 +935,13 @@ class HarnessIntegration:
             # Persist (best effort)
             if runtime.execution_store:
                 try:
+                    # Propagate project_id into metadata for downstream policy selection / analytics
+                    try:
+                        ctx0 = payload.get("context") if isinstance(payload, dict) else None
+                        if isinstance(ctx0, dict) and ctx0.get("project_id") and isinstance(meta, dict):
+                            meta.setdefault("project_id", str(ctx0.get("project_id")))
+                    except Exception:
+                        pass
                     await runtime.execution_store.upsert_agent_execution(record)
                 except Exception:
                     pass

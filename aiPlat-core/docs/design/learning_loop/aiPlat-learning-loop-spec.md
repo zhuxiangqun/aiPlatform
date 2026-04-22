@@ -14,6 +14,23 @@
 - **Active Release（生效发布）**：运行时解析出来的“当前对某个 target 生效的候选发布”。由 `LearningApplier` 在执行时解析并附着到执行上下文/trace。
 - **Rollout（灰度）**：在 tenant 维度为某个 target 选择 candidate 的策略（百分比/白名单/黑名单等）。
 
+### 0.3 自动评估与证据（As-Is 补充）
+
+近期实现已新增一条“评估→证据→回归→策略”的闭环子系统（用于生成 `evaluation_report` 并通过门控机制阻断回归），其核心 artifacts 与 API 入口如下：
+
+- artifacts：
+  - `evaluation_report`（run 维度）
+  - `evidence_pack` / `evidence_diff`（run 维度）
+  - `evaluation_policy`（system/default 与 project/<id>）
+  - `run_state`（run 维度 restatement）
+- API：
+  - `POST /runs/{run_id}/evaluate/auto`
+  - `GET  /evaluation/policy/latest`
+  - `POST /projects/{project_id}/evaluation/policy`
+
+完整 As-Is 口径与证据索引见：
+- `docs/design/evaluation/auto-eval-and-regression.md`
+
 ### 0.2 设计原则（关键：与 Hermes/OpenClaw 区分）
 
 1. **闭环必须“可回滚”**：任何自进化产物都必须能被撤回到之前状态，并且可解释原因。
@@ -436,4 +453,3 @@ publish/rollback/release rollout/policy apply 都应写 changeset & audit log。
 3) 把 prompt_revision patch 实际接到 PromptAssembler（让发布真正改变运行时行为）  
 
 只要你回复：**“先做 1+2”** 或 **“直接做 1+2+3”**，我就可以按你们现有代码风格继续实现。
-

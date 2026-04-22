@@ -171,6 +171,7 @@ class PromptAssembler:
         task: str,
         history: str,
         tools_desc: str,
+        skills_desc: str = "",
         observation: str,
     ) -> List[Message]:
         prompt = f"""Task: {task}
@@ -180,6 +181,9 @@ History:
 
 Available tools:
 {tools_desc}
+
+Available skills:
+{skills_desc}
 
 Observation: {observation}
 

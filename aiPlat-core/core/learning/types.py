@@ -16,8 +16,12 @@ import time
 
 class LearningArtifactKind(str, Enum):
     EVALUATION_REPORT = "evaluation_report"
+    EVIDENCE_PACK = "evidence_pack"
+    EVIDENCE_DIFF = "evidence_diff"
+    EVALUATION_POLICY = "evaluation_policy"
     REGRESSION_REPORT = "regression_report"
     FEEDBACK_SUMMARY = "feedback_summary"
+    RUN_STATE = "run_state"
     SKILL_EVOLUTION = "skill_evolution"
     SKILL_ROLLBACK = "skill_rollback"
     RELEASE_CANDIDATE = "release_candidate"

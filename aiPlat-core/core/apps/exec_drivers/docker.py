@@ -13,6 +13,26 @@ from .base import ExecDriver, ExecResult
 class DockerExecDriver(ExecDriver):
     driver_id = "docker"
 
+    def capabilities(self) -> Dict[str, object]:
+        return {
+            "driver_id": self.driver_id,
+            "supported_languages": ["python", "javascript"],
+            "isolation": {
+                "network_isolated": True,  # we run with --network none
+                "filesystem_isolated": True,  # container FS; bind-mount /work read-only
+                "process_isolated": True,
+            },
+            "limits": {
+                "cpus_env": "AIPLAT_DOCKER_CPUS",
+                "memory_env": "AIPLAT_DOCKER_MEM",
+            },
+            "config": {
+                "required": False,
+                "env": ["AIPLAT_DOCKER_PY_IMAGE", "AIPLAT_DOCKER_NODE_IMAGE", "AIPLAT_DOCKER_MEM", "AIPLAT_DOCKER_CPUS"],
+            },
+            "notes": "Executes inside docker containers (best-effort hardened: network none, /work ro, resource caps).",
+        }
+
     def _images(self) -> Dict[str, str]:
         py = (os.getenv("AIPLAT_DOCKER_PY_IMAGE") or "python:3.10-slim").strip()
         node = (os.getenv("AIPLAT_DOCKER_NODE_IMAGE") or "node:20-alpine").strip()
@@ -103,5 +123,9 @@ class DockerExecDriver(ExecDriver):
 
     async def health(self) -> Dict[str, object]:
         ok = await self._docker_available()
-        return {"driver_id": self.driver_id, "ok": bool(ok), "images": self._images()}
-
+        return {
+            "driver_id": self.driver_id,
+            "ok": bool(ok),
+            "images": self._images(),
+            "capabilities": self.capabilities(),
+        }

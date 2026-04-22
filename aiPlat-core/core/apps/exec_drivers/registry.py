@@ -8,11 +8,13 @@ from core.harness.kernel.runtime import get_kernel_runtime
 from .base import ExecDriver
 from .docker import DockerExecDriver
 from .local import LocalExecDriver
+from .ssh import SSHExecDriver
 
 
 _DRIVERS: Dict[str, ExecDriver] = {
     "local": LocalExecDriver(),
     "docker": DockerExecDriver(),
+    "ssh": SSHExecDriver(),
 }
 
 
@@ -56,6 +58,10 @@ async def healthcheck_backends() -> Dict[str, object]:
         try:
             out["backends"].append(await drv.health())
         except Exception:
-            out["backends"].append({"driver_id": k, "ok": False})
+            # best-effort: keep output structured even on unexpected errors
+            try:
+                caps = drv.capabilities()
+            except Exception:
+                caps = {"driver_id": k}
+            out["backends"].append({"driver_id": k, "ok": False, "error": "healthcheck_exception", "capabilities": caps})
     return out
-

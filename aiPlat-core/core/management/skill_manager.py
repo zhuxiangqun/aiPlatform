@@ -140,6 +140,14 @@ class SkillManager:
                         output_schema = {}
 
                     metadata = dict(fm)
+                    # --- Skill kind detection (rule vs executable), production-safe by default ---
+                    try:
+                        kind, kind_meta = self._detect_skill_kind(skill_dir=item, front_matter=metadata)
+                        metadata["skill_kind"] = kind
+                        if isinstance(kind_meta, dict):
+                            metadata.update(kind_meta)
+                    except Exception:
+                        metadata["skill_kind"] = metadata.get("skill_kind") or "rule"
                     # Normalize capabilities for later policy/doctor analysis.
                     caps = metadata.get("capabilities") or metadata.get("capability") or []
                     if isinstance(caps, str):
@@ -155,6 +163,16 @@ class SkillManager:
                         except Exception:
                             continue
                     metadata["capabilities"] = norm_caps
+                    # Normalize permissions (for executable skills / governance)
+                    try:
+                        perms = metadata.get("permissions") or []
+                        if isinstance(perms, str):
+                            perms = [perms]
+                        if not isinstance(perms, list):
+                            perms = []
+                        metadata["permissions"] = [str(p).strip() for p in perms if str(p).strip()]
+                    except Exception:
+                        metadata["permissions"] = []
                     metadata.setdefault("filesystem", {})
                     if isinstance(metadata["filesystem"], dict):
                         metadata["filesystem"]["skill_dir"] = str(item)
@@ -195,6 +213,80 @@ class SkillManager:
                         pass
         except Exception:
             return
+
+    def _detect_skill_kind(self, *, skill_dir: Path, front_matter: Dict[str, Any]) -> tuple[str, Dict[str, Any]]:
+        """
+        Detect skill kind for directory-based skills.
+
+        Returns: (kind, extra_metadata)
+          kind in {"rule", "executable"}
+
+        Rules (production-safe, default conservative):
+        1) frontmatter explicit:
+           - executable:false -> rule
+           - executable:true + runtime + entrypoint -> executable
+        2) fallback inference:
+           - handler.py or manifest.(json|yml|yaml) present -> executable
+           - otherwise -> rule
+        3) security threshold:
+           - executable MUST declare permissions; otherwise degrade to rule and record warning.
+        """
+        fm = front_matter if isinstance(front_matter, dict) else {}
+        warnings: List[str] = []
+
+        def _bool(v: Any) -> Optional[bool]:
+            if isinstance(v, bool):
+                return v
+            if isinstance(v, str):
+                s = v.strip().lower()
+                if s in {"1", "true", "yes", "y", "on"}:
+                    return True
+                if s in {"0", "false", "no", "n", "off"}:
+                    return False
+            return None
+
+        explicit = _bool(fm.get("executable"))
+        runtime = str(fm.get("runtime") or "").strip()
+        entrypoint = str(fm.get("entrypoint") or fm.get("handler") or "").strip()
+
+        kind = "rule"
+        if explicit is False:
+            kind = "rule"
+        elif explicit is True:
+            # explicit executable request
+            if runtime and entrypoint:
+                kind = "executable"
+            else:
+                kind = "executable"
+                if not runtime:
+                    warnings.append("missing_runtime")
+                if not entrypoint:
+                    warnings.append("missing_entrypoint")
+        else:
+            # infer from structure
+            has_handler = skill_dir.joinpath("handler.py").exists()
+            has_manifest = any(
+                skill_dir.joinpath(f).exists()
+                for f in ["manifest.json", "manifest.yaml", "manifest.yml", "SKILL.manifest.json"]
+            )
+            if has_handler or has_manifest:
+                kind = "executable"
+
+        # security threshold for executable
+        if kind == "executable":
+            perms = fm.get("permissions")
+            if not perms:
+                kind = "rule"
+                warnings.append("degraded_to_rule_missing_permissions")
+
+        extra: Dict[str, Any] = {}
+        if runtime:
+            extra["runtime"] = runtime
+        if entrypoint:
+            extra["entrypoint"] = entrypoint
+        if warnings:
+            extra["kind_warnings"] = warnings
+        return kind, extra
 
     def _read_skill_manifest_json(self, skill_dir: Path) -> Dict[str, Any]:
         """
@@ -589,6 +681,196 @@ class SkillManager:
         # last one is highest priority (write target)
         return paths[-1] if paths else (Path(__file__).resolve().parents[2] / "skills")
 
+    async def installer_install(
+        self,
+        *,
+        source_type: str,
+        url: Optional[str] = None,
+        ref: Optional[str] = None,
+        path: Optional[str] = None,
+        skill_id: Optional[str] = None,
+        subdir: Optional[str] = None,
+        auto_detect_subdir: bool = True,
+        allow_overwrite: bool = False,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Install third-party skills into filesystem (workspace scope only).
+        This is intentionally management-plane only; runtime execution still goes through SkillRegistry/Executor.
+        """
+        scope = (self._scope or "engine").strip().lower()
+        if scope != "workspace":
+            raise PermissionError("installer_install_only_allowed_in_workspace_scope")
+
+        from core.management.skill_installer import SkillInstaller
+
+        base = self._resolve_skills_base_path()
+        base.mkdir(parents=True, exist_ok=True)
+        inst = SkillInstaller(target_base_dir=base)
+
+        st = str(source_type or "").strip().lower()
+        if st == "git":
+            if not url:
+                raise ValueError("url_required")
+            if not ref:
+                raise ValueError("ref_required")
+            res = inst.install_from_git(
+                url=str(url),
+                ref=str(ref),
+                skill_id=skill_id,
+                subdir=subdir,
+                auto_detect_subdir=bool(auto_detect_subdir),
+                allow_overwrite=bool(allow_overwrite),
+                metadata=metadata,
+            )
+        elif st == "path":
+            if not path:
+                raise ValueError("path_required")
+            res = inst.install_from_path(
+                path=str(path),
+                skill_id=skill_id,
+                subdir=subdir,
+                auto_detect_subdir=bool(auto_detect_subdir),
+                allow_overwrite=bool(allow_overwrite),
+                metadata=metadata,
+            )
+        elif st == "zip":
+            if not path:
+                raise ValueError("zip_path_required")
+            res = inst.install_from_zip(
+                zip_path=str(path),
+                skill_id=skill_id,
+                subdir=subdir,
+                auto_detect_subdir=bool(auto_detect_subdir),
+                allow_overwrite=bool(allow_overwrite),
+                metadata=metadata,
+            )
+        else:
+            raise ValueError("invalid_source_type")
+
+        # reload directory skills into management plane and bridge to registry
+        self._load_directory_skills()
+        return {"installed": res.installed, "skipped": res.skipped, "base": str(base)}
+
+    async def installer_plan(
+        self,
+        *,
+        source_type: str,
+        url: Optional[str] = None,
+        ref: Optional[str] = None,
+        path: Optional[str] = None,
+        skill_id: Optional[str] = None,
+        subdir: Optional[str] = None,
+        auto_detect_subdir: bool = True,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Dry-run plan for installer (no filesystem writes).
+        """
+        scope = (self._scope or "engine").strip().lower()
+        if scope != "workspace":
+            raise PermissionError("installer_plan_only_allowed_in_workspace_scope")
+        from core.management.skill_installer import SkillInstaller
+
+        base = self._resolve_skills_base_path()
+        base.mkdir(parents=True, exist_ok=True)
+        inst = SkillInstaller(target_base_dir=base)
+        st = str(source_type or "").strip().lower()
+        if st == "git":
+            if not url:
+                raise ValueError("url_required")
+            if not ref:
+                raise ValueError("ref_required")
+            plan = inst.plan_from_git(url=str(url), ref=str(ref), skill_id=skill_id, subdir=subdir, auto_detect_subdir=bool(auto_detect_subdir), metadata=metadata)
+        elif st == "path":
+            if not path:
+                raise ValueError("path_required")
+            plan = inst.plan_from_path(path=str(path), skill_id=skill_id, subdir=subdir, auto_detect_subdir=bool(auto_detect_subdir), metadata=metadata)
+        elif st == "zip":
+            if not path:
+                raise ValueError("zip_path_required")
+            plan = inst.plan_from_zip(zip_path=str(path), skill_id=skill_id, subdir=subdir, auto_detect_subdir=bool(auto_detect_subdir), metadata=metadata)
+        else:
+            raise ValueError("invalid_source_type")
+        return {"source": plan.source, "detected_subdir": plan.detected_subdir, "skills": plan.skills, "warnings": plan.warnings}
+
+    async def installer_resolve_head(self, *, url: str) -> Dict[str, Any]:
+        """
+        Resolve the current HEAD SHA for a git URL (workspace scope).
+        """
+        scope = (self._scope or "engine").strip().lower()
+        if scope != "workspace":
+            raise PermissionError("installer_resolve_head_only_allowed_in_workspace_scope")
+        from core.management.skill_installer import resolve_remote_head_sha
+
+        u = str(url or "").strip()
+        if not u:
+            raise ValueError("url_required")
+        sha = resolve_remote_head_sha(u)
+        return {"url": u, "head_sha": sha}
+
+    async def installer_update(
+        self,
+        *,
+        skill_id: str,
+        ref: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Update an installed skill from its provenance manifest (git only for now).
+        """
+        scope = (self._scope or "engine").strip().lower()
+        if scope != "workspace":
+            raise PermissionError("installer_update_only_allowed_in_workspace_scope")
+        sid = str(skill_id or "").strip()
+        if not sid:
+            raise ValueError("skill_id_required")
+
+        base = self._resolve_skills_base_path()
+        skill_dir = base / sid
+        manifest_p = skill_dir / "SKILL.manifest.json"
+        if not manifest_p.exists():
+            raise ValueError("missing_skill_manifest")
+        try:
+            man = json.loads(manifest_p.read_text(encoding="utf-8") or "{}")
+        except Exception:
+            man = {}
+        src = str(man.get("source") or "")
+        if not src:
+            raise ValueError("missing_manifest_source")
+        publisher = str(man.get("publisher") or "")
+        if publisher not in {"git"}:
+            raise ValueError("update_only_supported_for_git_installs")
+
+        use_ref = str(ref or man.get("ref") or "").strip()
+        if not use_ref:
+            raise ValueError("ref_required")
+        subdir = str(man.get("subdir") or "").strip() or None
+
+        # force overwrite for update
+        return await self.installer_install(
+            source_type="git",
+            url=src,
+            ref=use_ref,
+            skill_id=sid,
+            subdir=subdir,
+            allow_overwrite=True,
+            metadata=metadata,
+        )
+
+    async def installer_uninstall(self, *, skill_id: str, delete_files: bool = True) -> Dict[str, Any]:
+        """
+        Uninstall skill from workspace by deleting filesystem directory (best-effort).
+        """
+        scope = (self._scope or "engine").strip().lower()
+        if scope != "workspace":
+            raise PermissionError("installer_uninstall_only_allowed_in_workspace_scope")
+        sid = str(skill_id or "").strip()
+        if not sid:
+            raise ValueError("skill_id_required")
+        ok = await self.delete_skill(sid, delete_files=bool(delete_files))
+        return {"skill_id": sid, "deleted": bool(ok)}
+
     def _resolve_skills_paths(self) -> List[Path]:
         """Resolve all skills paths in increasing priority order (low -> high) within current scope."""
         repo_root = Path(__file__).resolve().parents[2]  # aiPlat-core/
@@ -669,6 +951,14 @@ class SkillManager:
                                 cfg.metadata["category"] = skill_info.type
                                 cfg.metadata["version"] = skill_info.version
                                 cfg.metadata["capabilities"] = norm_caps
+                                cfg.metadata["skill_kind"] = (skill_info.metadata or {}).get("skill_kind") if isinstance(skill_info.metadata, dict) else "rule"
+                                # Optional governance fields
+                                if isinstance(skill_info.metadata, dict) and isinstance(skill_info.metadata.get("permissions"), list):
+                                    cfg.metadata["permissions"] = list(skill_info.metadata.get("permissions") or [])
+                                if isinstance(skill_info.metadata, dict) and isinstance(skill_info.metadata.get("runtime"), str):
+                                    cfg.metadata["runtime"] = skill_info.metadata.get("runtime")
+                                if isinstance(skill_info.metadata, dict) and isinstance(skill_info.metadata.get("entrypoint"), str):
+                                    cfg.metadata["entrypoint"] = skill_info.metadata.get("entrypoint")
                                 cfg.metadata["sop_markdown"] = sop_markdown
                                 cfg.metadata["filesystem"] = (skill_info.metadata or {}).get("filesystem", {}) if isinstance(skill_info.metadata, dict) else {}
                                 cfg.metadata["provenance"] = (skill_info.metadata or {}).get("provenance", {}) if isinstance(skill_info.metadata, dict) else {}
@@ -696,6 +986,10 @@ class SkillManager:
                         "category": skill_info.type,
                         "version": skill_info.version,
                         "capabilities": norm_caps,
+                        "skill_kind": (skill_info.metadata or {}).get("skill_kind") if isinstance(skill_info.metadata, dict) else "rule",
+                        "permissions": (skill_info.metadata or {}).get("permissions") if isinstance(skill_info.metadata, dict) else [],
+                        "runtime": (skill_info.metadata or {}).get("runtime") if isinstance(skill_info.metadata, dict) else None,
+                        "entrypoint": (skill_info.metadata or {}).get("entrypoint") if isinstance(skill_info.metadata, dict) else None,
                         # L2: SOP injection (SKILL.md body)
                         "sop_markdown": sop_markdown,
                         "filesystem": (skill_info.metadata or {}).get("filesystem", {}) if isinstance(skill_info.metadata, dict) else {},

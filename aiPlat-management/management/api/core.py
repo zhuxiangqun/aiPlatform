@@ -97,6 +97,87 @@ async def undo_run(run_id: str, body: dict = None):
         raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
 
 
+@router.post("/runs/{run_id}/evaluate")
+async def submit_run_evaluation(run_id: str, body: dict, ):
+    try:
+        client = get_core_client()
+        return await client.submit_run_evaluation(run_id, body or {})
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/runs/{run_id}/evaluate/auto")
+async def auto_run_evaluation(run_id: str, body: dict = None):
+    try:
+        client = get_core_client()
+        return await client.auto_run_evaluation(run_id, body or {})
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/runs/{run_id}/evaluation/latest")
+async def get_latest_run_evaluation(run_id: str):
+    try:
+        client = get_core_client()
+        return await client.get_latest_run_evaluation(run_id)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/runs/{run_id}/state/latest")
+async def get_latest_run_state(run_id: str):
+    try:
+        client = get_core_client()
+        return await client.get_latest_run_state(run_id)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/runs/{run_id}/state")
+async def upsert_run_state(run_id: str, body: dict):
+    try:
+        client = get_core_client()
+        return await client.upsert_run_state(run_id, body or {})
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/evaluation/policy/latest")
+async def get_latest_evaluation_policy():
+    try:
+        client = get_core_client()
+        return await client.get_latest_evaluation_policy()
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/evaluation/policy")
+async def upsert_evaluation_policy(body: dict):
+    try:
+        client = get_core_client()
+        return await client.upsert_evaluation_policy(body or {})
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/projects/{project_id}/evaluation/policy/latest")
+async def get_latest_project_evaluation_policy(project_id: str):
+    try:
+        client = get_core_client()
+        return await client.get_latest_project_evaluation_policy(project_id)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/projects/{project_id}/evaluation/policy")
+async def upsert_project_evaluation_policy(project_id: str, body: dict):
+    try:
+        client = get_core_client()
+        return await client.upsert_project_evaluation_policy(project_id, body or {})
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
 # ==================== Jobs / Cron (Roadmap-3) ====================
 
 
@@ -1127,6 +1208,65 @@ async def delete_workspace_skill(skill_id: str, delete_files: bool = False):
     try:
         client = get_core_client()
         return await client.delete_workspace_skill(skill_id, delete_files=delete_files)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+# ==================== Workspace Skill Installer (open-source skills) ====================
+
+
+@router.post("/workspace/skills/installer/plan")
+async def plan_workspace_skill_install(payload: dict):
+    try:
+        client = get_core_client()
+        return await client.plan_workspace_skill_install(payload or {})
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/workspace/skills/installer/install")
+async def install_workspace_skill(payload: dict):
+    try:
+        client = get_core_client()
+        return await client.install_workspace_skill(payload or {})
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/workspace/skills/installer/update/{skill_id}")
+async def update_workspace_skill_install(skill_id: str, payload: dict):
+    try:
+        client = get_core_client()
+        return await client.update_workspace_skill_install(skill_id, payload or {})
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/workspace/skills/installer/uninstall/{skill_id}")
+async def uninstall_workspace_skill_install(skill_id: str, delete_files: bool = True):
+    try:
+        client = get_core_client()
+        return await client.uninstall_workspace_skill_install(skill_id, delete_files=delete_files)
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/workspace/skills/installer/resolve-head")
+async def resolve_workspace_skill_install_head(payload: dict):
+    try:
+        client = get_core_client()
+        url = str((payload or {}).get("url") or "")
+        return await client.resolve_workspace_skill_install_head(url)
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
     except httpx.HTTPError as e:
         raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
 

@@ -15,6 +15,7 @@ import asyncio
 import time
 import json
 import os
+import time
 import shutil
 import tarfile
 import tempfile
@@ -63,6 +64,8 @@ from core.schemas import (
     MessageCreateRequest,
     SessionCreateRequest,
     SearchRequest,
+    SkillInstallerInstallRequest,
+    SkillInstallerUpdateRequest,
     CollectionCreateRequest,
     DocumentCreateRequest,
     AdapterCreateRequest,
@@ -72,6 +75,10 @@ from core.schemas import (
     HookUpdateRequest,
     CoordinatorCreateRequest,
     FeedbackConfigUpdateRequest,
+    AutoEvalRequest,
+    UpsertEvaluationPolicyRequest,
+    UpsertProjectEvaluationPolicyRequest,
+    EvidenceDiffRequest,
     RunStatus,
 )
 from core.management import (
@@ -661,6 +668,9 @@ async def lifespan(app: FastAPI):
         ("core.apps.tools.database", "DatabaseTool", {"timeout": 60000}),
         ("core.apps.tools.browser", "BrowserTool", {"navigation_timeout": 30000}),
         ("core.apps.tools.repo", "RepoTool", {"timeout": 20000}),
+        # OpenCode-style skills (discover + lazy load)
+        ("core.apps.tools.skill_tools", "SkillFindTool", {}),
+        ("core.apps.tools.skill_tools", "SkillLoadTool", {}),
     ]
     for module_path, cls_name, kwargs in _tool_modules:
         try:
@@ -3315,6 +3325,945 @@ async def list_run_events(run_id: str, after_seq: int = 0, limit: int = 200):
     return await _execution_store.list_run_events(run_id=str(run_id), after_seq=int(after_seq or 0), limit=int(limit or 200))
 
 
+@api_router.post("/runs/{run_id}/evaluate")
+async def submit_run_evaluation(run_id: str, request: dict, http_request: Request):
+    """
+    P1 Evaluator Workbench:
+    - Accept a structured evaluator report JSON
+    - Apply threshold gate
+    - Persist as learning artifact + run event + audit log
+
+    Note: This endpoint is intentionally "report-first" (LLM-agnostic). You can generate the
+    report using any evaluator agent and then submit it here.
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    rid = str(run_id)
+    run = await _execution_store.get_run_summary(run_id=rid)
+    if not run:
+        raise HTTPException(status_code=404, detail="run_not_found")
+
+    deny = await _rbac_guard(http_request=http_request, payload=request or {}, action="update", resource_type="run", resource_id=rid)
+    if deny:
+        return deny
+
+    evaluator = str((request or {}).get("evaluator") or "evaluator").strip()
+    report = (request or {}).get("report")
+    thresholds0 = (request or {}).get("thresholds") if isinstance((request or {}).get("thresholds"), dict) else {}
+    enforce_gate = bool((request or {}).get("enforce_gate", False))
+    if not isinstance(report, dict):
+        raise HTTPException(status_code=400, detail="missing_report")
+
+    from core.harness.evaluation.workbench import EvaluatorThresholds, apply_threshold_gate, persist_evaluation, validate_report
+
+    ok, reason = validate_report(report)
+    if not ok:
+        raise HTTPException(status_code=400, detail=f"invalid_report:{reason}")
+    thresholds = EvaluatorThresholds.from_dict(thresholds0)
+    gated_report = apply_threshold_gate(report, thresholds)
+    actor = _rbac_actor_from_http(http_request, request or {})
+    saved = await persist_evaluation(
+        execution_store=_execution_store,
+        run_id=rid,
+        trace_id=run.get("trace_id"),
+        evaluator=evaluator,
+        report=gated_report,
+        thresholds=thresholds,
+        actor=actor,
+    )
+    # Update run_state (best-effort) from evaluator report
+    try:
+        from core.harness.restatement.run_state import merge_from_evaluation, normalize_run_state
+        from core.learning.manager import LearningManager
+        from core.learning.types import LearningArtifactKind
+
+        mgr = LearningManager(execution_store=_execution_store)
+        # read latest run_state
+        latest = await _execution_store.list_learning_artifacts(target_type="run", target_id=rid, kind="run_state", limit=10, offset=0)
+        items = latest.get("items") if isinstance(latest, dict) else None
+        cur = {}
+        if isinstance(items, list) and items:
+            items2 = sorted(items, key=lambda x: float((x or {}).get("created_at") or 0), reverse=True)
+            cur = (items2[0] or {}).get("payload") if isinstance(items2[0], dict) else {}
+        cur2 = normalize_run_state(cur, run_id=rid)
+        # Ensure task stays visible
+        if not str(cur2.get("task") or "").strip():
+            cur2["task"] = str(run.get("task") or "")
+        merged = merge_from_evaluation(cur2, evaluation_report=gated_report, source="evaluator")
+        await mgr.create_artifact(
+            kind=LearningArtifactKind.RUN_STATE,
+            target_type="run",
+            target_id=rid,
+            version=f"run_state:{int(time.time())}",
+            status="draft",
+            payload=merged,
+            metadata={"source": "evaluator", "locked": bool(merged.get("locked"))},
+            trace_id=run.get("trace_id"),
+            run_id=rid,
+        )
+    except Exception:
+        pass
+    if enforce_gate and not bool(gated_report.get("pass")):
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "evaluation_failed", "artifact_id": saved.get("artifact_id"), "report": gated_report},
+        )
+    return {"status": "ok", "artifact_id": saved.get("artifact_id"), "report": gated_report}
+
+
+@api_router.get("/runs/{run_id}/evaluation/latest")
+async def get_latest_run_evaluation(run_id: str):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    rid = str(run_id)
+    run = await _execution_store.get_run_summary(run_id=rid)
+    if not run:
+        raise HTTPException(status_code=404, detail="run_not_found")
+    res = await _execution_store.list_learning_artifacts(
+        target_type="run",
+        target_id=rid,
+        kind="evaluation_report",
+        limit=20,
+        offset=0,
+    )
+    items = (res or {}).get("items") if isinstance(res, dict) else None
+    if not isinstance(items, list) or not items:
+        return {"status": "ok", "item": None}
+    # pick latest by created_at
+    items2 = sorted(items, key=lambda x: float((x or {}).get("created_at") or 0), reverse=True)
+    return {"status": "ok", "item": items2[0]}
+
+
+@api_router.get("/evaluation/policy/latest")
+async def get_latest_evaluation_policy():
+    """
+    Returns the latest evaluation_policy (global default).
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    res = await _execution_store.list_learning_artifacts(
+        target_type="system",
+        target_id="default",
+        kind="evaluation_policy",
+        limit=20,
+        offset=0,
+    )
+    items = (res or {}).get("items") if isinstance(res, dict) else None
+    if not isinstance(items, list) or not items:
+        from core.harness.evaluation.policy import DEFAULT_POLICY
+
+        return {"status": "ok", "item": {"payload": DEFAULT_POLICY, "artifact_id": None}}
+    items2 = sorted(items, key=lambda x: float((x or {}).get("created_at") or 0), reverse=True)
+    return {"status": "ok", "item": items2[0]}
+
+
+@api_router.get("/projects/{project_id}/evaluation/policy/latest")
+async def get_latest_project_evaluation_policy(project_id: str):
+    """
+    Returns:
+      - item: latest project policy (may be None)
+      - merged: system/default merged with project override
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    pid = str(project_id)
+    # project
+    proj = await _execution_store.list_learning_artifacts(target_type="project", target_id=pid, kind="evaluation_policy", limit=10, offset=0)
+    items = (proj or {}).get("items") if isinstance(proj, dict) else None
+    proj_item = None
+    proj_payload = None
+    if isinstance(items, list) and items:
+        items2 = sorted(items, key=lambda x: float((x or {}).get("created_at") or 0), reverse=True)
+        proj_item = items2[0]
+        proj_payload = (proj_item or {}).get("payload") if isinstance(proj_item, dict) else None
+
+    # system
+    sys_res = await _execution_store.list_learning_artifacts(target_type="system", target_id="default", kind="evaluation_policy", limit=10, offset=0)
+    sitems = (sys_res or {}).get("items") if isinstance(sys_res, dict) else None
+    sys_payload = None
+    if isinstance(sitems, list) and sitems:
+        sitems2 = sorted(sitems, key=lambda x: float((x or {}).get("created_at") or 0), reverse=True)
+        sys_payload = (sitems2[0] or {}).get("payload") if isinstance(sitems2[0], dict) else None
+
+    from core.harness.evaluation.policy import DEFAULT_POLICY, EvaluationPolicy, merge_policy
+
+    merged_obj = merge_policy(sys_payload if isinstance(sys_payload, dict) else DEFAULT_POLICY, proj_payload if isinstance(proj_payload, dict) else {})
+    merged = EvaluationPolicy.from_dict(merged_obj).to_dict()
+    return {"status": "ok", "item": proj_item, "merged": merged}
+
+
+@api_router.post("/projects/{project_id}/evaluation/policy")
+async def upsert_project_evaluation_policy(project_id: str, request: UpsertProjectEvaluationPolicyRequest, http_request: Request):
+    """
+    Upsert project evaluation policy (partial or full). Body: { "policy": {...}, "mode": "merge"|"replace" }
+    - merge (default): deep-merge into current project policy
+    - replace: replace project policy payload entirely
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    pid = str(project_id)
+    body = request.dict(exclude_none=True) if hasattr(request, "dict") else {}
+    deny = await _rbac_guard(http_request=http_request, payload=body, action="update", resource_type="policy", resource_id=f"evaluation_policy:project:{pid}")
+    if deny:
+        return deny
+    pol = body.get("policy")
+    if not isinstance(pol, dict):
+        raise HTTPException(status_code=400, detail="missing_policy")
+    mode = str(body.get("mode") or "merge").lower()
+
+    from core.harness.evaluation.policy import EvaluationPolicy, merge_policy
+    from core.learning.manager import LearningManager
+    from core.learning.types import LearningArtifactKind
+
+    actor = _rbac_actor_from_http(http_request, body or {})
+    # Load existing project policy for merge
+    cur = {}
+    if mode != "replace":
+        try:
+            res = await _execution_store.list_learning_artifacts(target_type="project", target_id=pid, kind="evaluation_policy", limit=5, offset=0)
+            items = (res or {}).get("items") if isinstance(res, dict) else None
+            if isinstance(items, list) and items:
+                items2 = sorted(items, key=lambda x: float((x or {}).get("created_at") or 0), reverse=True)
+                cur = (items2[0] or {}).get("payload") if isinstance(items2[0], dict) else {}
+        except Exception:
+            cur = {}
+    merged_obj = merge_policy(cur if isinstance(cur, dict) else {}, pol) if mode != "replace" else pol
+    normalized = EvaluationPolicy.from_dict(merged_obj).to_dict()
+
+    # Optional change-control gating (autosmoke enforce)
+    change_id = _new_change_id()
+    if _autosmoke_enforce():
+        change_id = await _gate_with_change_control(
+            operation="evaluation_policy.project.upsert",
+            targets=[("policy", f"evaluation_policy:project:{pid}")],
+            actor={"actor_id": actor.get("actor_id"), "actor_role": actor.get("actor_role")},
+        )
+
+    mgr = LearningManager(execution_store=_execution_store)
+    art = await mgr.create_artifact(
+        kind=LearningArtifactKind.EVALUATION_POLICY,
+        target_type="project",
+        target_id=pid,
+        version=f"evaluation_policy:{int(time.time())}",
+        status="draft",
+        payload=normalized,
+        metadata={"source": "manual", "mode": mode, "actor_id": actor.get("actor_id"), "actor_role": actor.get("actor_role"), "change_id": change_id},
+        trace_id=None,
+        run_id=None,
+    )
+    # Record governance change event (best-effort)
+    try:
+        await _record_changeset(
+            name="evaluation_policy.project.upsert",
+            target_type="change",
+            target_id=change_id,
+            status="success",
+            args={"project_id": pid, "mode": mode},
+            user_id=str(actor.get("actor_id") or "admin"),
+        )
+    except Exception:
+        pass
+    return {"status": "ok", "artifact_id": art.artifact_id, "policy": normalized, "project_id": pid, "change_id": change_id, "links": _governance_links(change_id=change_id)}
+
+@api_router.post("/evaluation/policy")
+async def upsert_evaluation_policy(request: UpsertEvaluationPolicyRequest, http_request: Request):
+    """
+    Upsert global evaluation policy.
+    Body: { "policy": {...} }
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    body = request.dict(exclude_none=True) if hasattr(request, "dict") else {}
+    deny = await _rbac_guard(http_request=http_request, payload=body or {}, action="update", resource_type="policy", resource_id="evaluation_policy:default")
+    if deny:
+        return deny
+    pol = (body or {}).get("policy")
+    if not isinstance(pol, dict):
+        raise HTTPException(status_code=400, detail="missing_policy")
+
+    from core.harness.evaluation.policy import EvaluationPolicy
+    from core.learning.manager import LearningManager
+    from core.learning.types import LearningArtifactKind
+
+    actor = _rbac_actor_from_http(http_request, body or {})
+    policy = EvaluationPolicy.from_dict(pol).to_dict()
+    mgr = LearningManager(execution_store=_execution_store)
+    art = await mgr.create_artifact(
+        kind=LearningArtifactKind.EVALUATION_POLICY,
+        target_type="system",
+        target_id="default",
+        version=f"evaluation_policy:{int(time.time())}",
+        status="draft",
+        payload=policy,
+        metadata={"source": "manual", "actor_id": actor.get("actor_id"), "actor_role": actor.get("actor_role")},
+        trace_id=None,
+        run_id=None,
+    )
+    return {"status": "ok", "artifact_id": art.artifact_id, "policy": policy}
+
+
+@api_router.get("/runs/{run_id}/state/latest")
+async def get_latest_run_state(run_id: str):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    rid = str(run_id)
+    run = await _execution_store.get_run_summary(run_id=rid)
+    if not run:
+        raise HTTPException(status_code=404, detail="run_not_found")
+    res = await _execution_store.list_learning_artifacts(
+        target_type="run",
+        target_id=rid,
+        kind="run_state",
+        limit=20,
+        offset=0,
+    )
+    items = (res or {}).get("items") if isinstance(res, dict) else None
+    if not isinstance(items, list) or not items:
+        from core.harness.restatement.run_state import default_run_state
+
+        return {"status": "ok", "item": {"payload": default_run_state(run_id=rid, task=str(run.get("task") or "")), "artifact_id": None}}
+    items2 = sorted(items, key=lambda x: float((x or {}).get("created_at") or 0), reverse=True)
+    return {"status": "ok", "item": items2[0]}
+
+
+@api_router.get("/runs/{run_id}/evidence_pack/latest")
+async def get_latest_evidence_pack(run_id: str):
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    rid = str(run_id)
+    run = await _execution_store.get_run_summary(run_id=rid)
+    if not run:
+        raise HTTPException(status_code=404, detail="run_not_found")
+    res = await _execution_store.list_learning_artifacts(target_type="run", target_id=rid, kind="evidence_pack", limit=20, offset=0)
+    items = (res or {}).get("items") if isinstance(res, dict) else None
+    if not isinstance(items, list) or not items:
+        return {"status": "ok", "item": None}
+    items2 = sorted(items, key=lambda x: float((x or {}).get("created_at") or 0), reverse=True)
+    return {"status": "ok", "item": items2[0]}
+
+
+@api_router.post("/runs/{run_id}/evidence/diff")
+async def compute_run_evidence_diff(run_id: str, request: EvidenceDiffRequest, http_request: Request):
+    """
+    Compute & persist evidence diff between two evidence_pack artifacts.
+    Body: { "base_evidence_pack_id": "...", "new_evidence_pack_id": "..." }
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    rid = str(run_id)
+    run = await _execution_store.get_run_summary(run_id=rid)
+    if not run:
+        raise HTTPException(status_code=404, detail="run_not_found")
+    body = request.dict(exclude_none=True) if hasattr(request, "dict") else {}
+    deny = await _rbac_guard(http_request=http_request, payload=body or {}, action="update", resource_type="run", resource_id=rid)
+    if deny:
+        return deny
+    base_id = str((body or {}).get("base_evidence_pack_id") or "").strip()
+    new_id = str((body or {}).get("new_evidence_pack_id") or "").strip()
+    if not base_id or not new_id:
+        raise HTTPException(status_code=400, detail="missing_evidence_pack_ids")
+    base_art = await _execution_store.get_learning_artifact(artifact_id=base_id)
+    new_art = await _execution_store.get_learning_artifact(artifact_id=new_id)
+    if not base_art or not new_art:
+        raise HTTPException(status_code=404, detail="evidence_pack_not_found")
+    base_payload = base_art.get("payload") if isinstance(base_art, dict) else None
+    new_payload = new_art.get("payload") if isinstance(new_art, dict) else None
+    if not isinstance(base_payload, dict) or not isinstance(new_payload, dict):
+        raise HTTPException(status_code=400, detail="invalid_evidence_pack_payload")
+    base_payload = dict(base_payload)
+    new_payload = dict(new_payload)
+    base_payload["evidence_pack_id"] = base_id
+    new_payload["evidence_pack_id"] = new_id
+    from core.harness.evaluation.evidence_diff import compute_evidence_diff
+    from core.learning.manager import LearningManager
+    from core.learning.types import LearningArtifactKind
+
+    diff = compute_evidence_diff(base_payload, new_payload)
+    mgr = LearningManager(execution_store=_execution_store)
+    art = await mgr.create_artifact(
+        kind=LearningArtifactKind.EVIDENCE_DIFF,
+        target_type="run",
+        target_id=rid,
+        version=f"evidence_diff:{int(time.time())}",
+        status="draft",
+        payload=diff,
+        metadata={"source": "manual", "base_evidence_pack_id": base_id, "new_evidence_pack_id": new_id},
+        trace_id=run.get("trace_id"),
+        run_id=rid,
+    )
+    return {"status": "ok", "artifact_id": art.artifact_id, "diff": diff}
+
+
+@api_router.post("/runs/{run_id}/state")
+async def upsert_run_state(run_id: str, request: dict, http_request: Request):
+    """
+    Manual run_state upsert (human-in-the-loop).
+    Body:
+      { "state": {...}, "lock": true|false }
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    rid = str(run_id)
+    run = await _execution_store.get_run_summary(run_id=rid)
+    if not run:
+        raise HTTPException(status_code=404, detail="run_not_found")
+
+    deny = await _rbac_guard(http_request=http_request, payload=request or {}, action="update", resource_type="run", resource_id=rid)
+    if deny:
+        return deny
+
+    st = (request or {}).get("state")
+    if not isinstance(st, dict):
+        raise HTTPException(status_code=400, detail="missing_state")
+    lock_flag = (request or {}).get("lock")
+    from core.harness.restatement.run_state import normalize_run_state
+    from core.learning.manager import LearningManager
+    from core.learning.types import LearningArtifactKind
+
+    actor = _rbac_actor_from_http(http_request, request or {})
+    norm = normalize_run_state(st, run_id=rid)
+    if lock_flag is not None:
+        norm["locked"] = bool(lock_flag)
+    norm["updated_by"] = {"source": "manual", "actor_id": actor.get("actor_id"), "actor_role": actor.get("actor_role")}
+    norm["updated_at"] = time.time()
+
+    mgr = LearningManager(execution_store=_execution_store)
+    art = await mgr.create_artifact(
+        kind=LearningArtifactKind.RUN_STATE,
+        target_type="run",
+        target_id=rid,
+        version=f"run_state:{int(time.time())}",
+        status="draft",
+        payload=norm,
+        metadata={"source": "manual", "locked": bool(norm.get("locked"))},
+        trace_id=run.get("trace_id"),
+        run_id=rid,
+    )
+    try:
+        await _execution_store.append_run_event(
+            run_id=rid,
+            event_type="run_state",
+            trace_id=run.get("trace_id"),
+            tenant_id=actor.get("tenant_id"),
+            payload={"artifact_id": art.artifact_id, "locked": bool(norm.get("locked")), "source": "manual"},
+        )
+    except Exception:
+        pass
+    return {"status": "ok", "artifact_id": art.artifact_id, "state": norm}
+
+
+@api_router.post("/runs/{run_id}/evaluate/auto")
+async def auto_run_evaluation(run_id: str, request: AutoEvalRequest, http_request: Request):
+    """
+    P1: One-click auto evaluation.
+
+    Uses an LLM to generate a structured evaluation report from run summary + run_events,
+    then persists it via the evaluator workbench (learning artifact + run event).
+    """
+    if not _execution_store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    rid = str(run_id)
+    run = await _execution_store.get_run_summary(run_id=rid)
+    if not run:
+        raise HTTPException(status_code=404, detail="run_not_found")
+
+    body = request.dict(exclude_none=True) if hasattr(request, "dict") else {}
+    deny = await _rbac_guard(http_request=http_request, payload=body or {}, action="update", resource_type="run", resource_id=rid)
+    if deny:
+        return deny
+
+    # Load limited events as evidence
+    try:
+        ev = await _execution_store.list_run_events(run_id=rid, after_seq=0, limit=200)
+        events = ev.get("items") or []
+    except Exception:
+        events = []
+
+    evaluator = str((body or {}).get("evaluator") or "auto-llm").strip()
+    thresholds0 = (body or {}).get("thresholds") if isinstance((body or {}).get("thresholds"), dict) else {}
+    enforce_gate = bool((body or {}).get("enforce_gate", False))
+    extra = (body or {}).get("extra") if isinstance((body or {}).get("extra"), dict) else {}
+    policy_override = (body or {}).get("policy") if isinstance((body or {}).get("policy"), dict) else None
+    project_id = str((body or {}).get("project_id") or "").strip() or None
+    url = str((body or {}).get("url") or "").strip() or None
+    steps = (body or {}).get("steps") if isinstance((body or {}).get("steps"), list) else None
+    expected_tags = (body or {}).get("expected_tags") if isinstance((body or {}).get("expected_tags"), list) else None
+    tag_expectations = (body or {}).get("tag_expectations") if isinstance((body or {}).get("tag_expectations"), dict) else None
+    tag_template = str((body or {}).get("tag_template") or "").strip() or None
+
+    # Load evaluation policy (global default) unless caller overrides.
+    try:
+        from core.harness.evaluation.policy import EvaluationPolicy, DEFAULT_POLICY, merge_policy
+
+        # system/default
+        sys_obj = DEFAULT_POLICY
+        try:
+            sys_res = await _execution_store.list_learning_artifacts(target_type="system", target_id="default", kind="evaluation_policy", limit=5, offset=0)
+            sys_items = (sys_res or {}).get("items") if isinstance(sys_res, dict) else None
+            if isinstance(sys_items, list) and sys_items:
+                sys_items2 = sorted(sys_items, key=lambda x: float((x or {}).get("created_at") or 0), reverse=True)
+                payload = (sys_items2[0] or {}).get("payload") if isinstance(sys_items2[0], dict) else None
+                if isinstance(payload, dict):
+                    sys_obj = payload
+        except Exception:
+            sys_obj = DEFAULT_POLICY
+
+        # If project_id not provided, try to derive from run_start payload context (best-effort)
+        if not project_id:
+            try:
+                start_ev = await _execution_store.get_run_start_event(run_id=rid)
+                payload0 = (start_ev or {}).get("payload") if isinstance(start_ev, dict) else None
+                reqp = (payload0 or {}).get("request_payload") if isinstance(payload0, dict) else None
+                ctx0 = (reqp or {}).get("context") if isinstance(reqp, dict) else None
+                if isinstance(ctx0, dict) and ctx0.get("project_id"):
+                    project_id = str(ctx0.get("project_id")).strip() or None
+            except Exception:
+                project_id = None
+
+        # project/<project_id> override (partial)
+        proj_obj = None
+        if project_id:
+            try:
+                proj_res = await _execution_store.list_learning_artifacts(target_type="project", target_id=str(project_id), kind="evaluation_policy", limit=5, offset=0)
+                proj_items = (proj_res or {}).get("items") if isinstance(proj_res, dict) else None
+                if isinstance(proj_items, list) and proj_items:
+                    proj_items2 = sorted(proj_items, key=lambda x: float((x or {}).get("created_at") or 0), reverse=True)
+                    payload = (proj_items2[0] or {}).get("payload") if isinstance(proj_items2[0], dict) else None
+                    if isinstance(payload, dict):
+                        proj_obj = payload
+            except Exception:
+                proj_obj = None
+
+        pol_obj = merge_policy(sys_obj, proj_obj or {})
+        if isinstance(policy_override, dict):
+            pol_obj = merge_policy(pol_obj, policy_override)
+
+        pol = EvaluationPolicy.from_dict(pol_obj).to_dict()
+        extra.setdefault("evaluation_policy", pol)
+        if project_id:
+            extra.setdefault("project_id", project_id)
+        if not thresholds0 and isinstance(pol.get("thresholds"), dict):
+            thresholds0 = dict(pol.get("thresholds") or {})
+        # Resolve tag templates into request defaults (unless caller explicitly set them)
+        try:
+            templates = pol.get("tag_templates") if isinstance(pol.get("tag_templates"), dict) else {}
+            tname = tag_template or str(pol.get("default_tag_template") or "").strip() or None
+            if tname and isinstance(templates.get(tname), dict):
+                tcfg = templates.get(tname) or {}
+                if expected_tags is None and isinstance(tcfg.get("expected_tags"), list):
+                    expected_tags = tcfg.get("expected_tags")
+                if tag_expectations is None and isinstance(tcfg.get("tag_expectations"), dict):
+                    tag_expectations = tcfg.get("tag_expectations")
+                extra.setdefault("tag_template", tname)
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+    # Build an LLM adapter (prefer persisted adapters, fallback to env).
+    provider = str(os.getenv("AIPLAT_AUTO_EVAL_LLM_PROVIDER") or os.getenv("LLM_PROVIDER") or "mock").strip().lower()
+    model = str(os.getenv("AIPLAT_AUTO_EVAL_LLM_MODEL") or os.getenv("LLM_MODEL") or "mock").strip()
+    api_key = None
+    if provider == "openai":
+        api_key = os.getenv("OPENAI_API_KEY")
+    elif provider == "anthropic":
+        api_key = os.getenv("ANTHROPIC_API_KEY")
+    base_url = os.getenv("OPENAI_BASE_URL") if provider == "openai" else None
+    try:
+        from core.adapters.llm.base import create_adapter as _mk
+
+        llm = _mk(provider=provider, api_key=api_key, model=model, base_url=base_url)
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"auto_eval_llm_not_available:{e}")
+
+    from core.harness.evaluation.auto import build_auto_eval_prompt, parse_json_report, try_parse_json
+    from core.harness.evaluation.workbench import EvaluatorThresholds, apply_threshold_gate, persist_evaluation
+
+    browser_evidence: Optional[Dict[str, Any]] = None
+    if url:
+        # Optional: collect browser evidence via MCP integrated_browser tools.
+        # This is best-effort and can be disabled by not enabling the MCP server.
+        try:
+            await _sync_mcp_runtime()
+        except Exception:
+            pass
+        try:
+            from core.apps.tools.base import get_tool_registry
+            from core.harness.syscalls.tool import sys_tool_call
+
+            reg = get_tool_registry()
+            actor = _rbac_actor_from_http(http_request, request or {})
+            user_id = str(actor.get("actor_id") or "admin")
+            session_id = str(actor.get("session_id") or "auto_eval")
+            trace_ctx = {"trace_id": run.get("trace_id"), "run_id": rid, "tenant_id": actor.get("tenant_id")}
+
+            def _get(name: str):
+                t = reg.get(name) if hasattr(reg, "get") else None
+                if t is None:
+                    # registry implementation uses get_tool sometimes
+                    try:
+                        t = reg.get_tool(name)
+                    except Exception:
+                        t = None
+                return t
+
+            async def _call(tool_full_name: str, args: Dict[str, Any]) -> Any:
+                tool_obj = _get(tool_full_name)
+                if tool_obj is None:
+                    raise RuntimeError(f"missing_tool:{tool_full_name} (请在 MCP库 启用 integrated_browser，并确保该 tool 在 allowed_tools 中)")
+                res0 = await sys_tool_call(
+                    tool_obj,
+                    args,
+                    user_id=user_id,
+                    session_id=session_id,
+                    trace_context=trace_ctx,
+                )
+                # approval required -> bubble up as 409 so UI can route to approvals
+                if getattr(res0, "error", None) == "approval_required":
+                    meta0 = getattr(res0, "metadata", {}) or {}
+                    raise HTTPException(status_code=409, detail={"code": "approval_required", **meta0})
+                if getattr(res0, "error", None) in {"policy_denied", "toolset_denied"}:
+                    meta0 = getattr(res0, "metadata", {}) or {}
+                    raise HTTPException(status_code=403, detail={"code": getattr(res0, "error", None), **meta0})
+                if not bool(getattr(res0, "success", True)):
+                    raise RuntimeError(getattr(res0, "error", None) or "browser_tool_failed")
+                return getattr(res0, "output", None)
+
+            # Default flow: navigate -> wait -> snapshot -> screenshot -> console/network
+            browser_evidence = {
+                "url": url,
+                "steps": [],
+                "coverage": {"executed_tags": [], "expected_tags": expected_tags or []},
+                "by_tag": {},
+            }
+            _tag_started_at: Dict[str, float] = {}
+            _active_tag: Optional[str] = None
+
+            async def _capture_tag(tag: str) -> None:
+                """Capture per-tag evidence snapshot/console/network/screenshot (best-effort)."""
+                if not isinstance(browser_evidence, dict):
+                    return
+                by_tag = browser_evidence.get("by_tag")
+                if not isinstance(by_tag, dict):
+                    by_tag = {}
+                    browser_evidence["by_tag"] = by_tag
+                t0 = str(tag or "").strip()
+                if not t0:
+                    return
+                started = _tag_started_at.get(t0)
+                dur_ms = (time.time() - started) * 1000.0 if started else None
+                try:
+                    snap0 = await _call("mcp.integrated_browser.browser_snapshot", {})
+                except Exception:
+                    snap0 = None
+                try:
+                    con0 = await _call("mcp.integrated_browser.browser_console_messages", {})
+                except Exception:
+                    con0 = None
+                try:
+                    net0 = await _call("mcp.integrated_browser.browser_network_requests", {})
+                except Exception:
+                    net0 = None
+                try:
+                    shot0 = await _call("mcp.integrated_browser.browser_take_screenshot", {})
+                except Exception:
+                    shot0 = None
+                by_tag[t0] = {
+                    "snapshot": try_parse_json(snap0),
+                    "console_messages": try_parse_json(con0),
+                    "network_requests": try_parse_json(net0),
+                    "screenshot": try_parse_json(shot0),
+                    "duration_ms": dur_ms,
+                }
+            await _call("mcp.integrated_browser.browser_navigate", {"url": url})
+            browser_evidence["steps"].append({"tool": "browser_navigate", "ok": True, "tag": "navigate"})
+            browser_evidence["coverage"]["executed_tags"].append("navigate")
+            try:
+                out = await _call("mcp.integrated_browser.browser_wait_for", {"timeoutMs": 1500})
+                browser_evidence["steps"].append({"tool": "browser_wait_for", "output": try_parse_json(out), "tag": "wait_for"})
+                browser_evidence["coverage"]["executed_tags"].append("wait_for")
+            except Exception:
+                pass
+            snap = await _call("mcp.integrated_browser.browser_snapshot", {})
+            browser_evidence["snapshot"] = try_parse_json(snap)
+            browser_evidence["coverage"]["executed_tags"].append("snapshot")
+            try:
+                shot = await _call("mcp.integrated_browser.browser_take_screenshot", {})
+                browser_evidence["screenshot"] = try_parse_json(shot)
+                browser_evidence["coverage"]["executed_tags"].append("screenshot")
+            except Exception:
+                pass
+            try:
+                con = await _call("mcp.integrated_browser.browser_console_messages", {})
+                browser_evidence["console_messages"] = try_parse_json(con)
+                browser_evidence["coverage"]["executed_tags"].append("console")
+            except Exception:
+                pass
+            try:
+                net = await _call("mcp.integrated_browser.browser_network_requests", {})
+                browser_evidence["network_requests"] = try_parse_json(net)
+                browser_evidence["coverage"]["executed_tags"].append("network")
+            except Exception:
+                pass
+
+            # Optional user-provided step list (best-effort). Each step:
+            # { "tool": "browser_click|browser_type|browser_scroll|browser_wait_for", "args": {...} }
+            if steps:
+                for st in steps[:20]:
+                    if not isinstance(st, dict):
+                        continue
+                    tname = str(st.get("tool") or "").strip()
+                    args = st.get("args") if isinstance(st.get("args"), dict) else {}
+                    tag = str(st.get("tag") or "").strip() or None
+                    if tname not in {"browser_click", "browser_type", "browser_scroll", "browser_wait_for"}:
+                        continue
+                    # tag boundary: when tag changes, capture previous tag evidence
+                    if tag and tag != _active_tag:
+                        if _active_tag:
+                            try:
+                                await _capture_tag(_active_tag)
+                            except Exception:
+                                pass
+                        _active_tag = tag
+                        _tag_started_at.setdefault(tag, time.time())
+                    out = await _call(f"mcp.integrated_browser.{tname}", args)
+                    browser_evidence["steps"].append({"tool": tname, "args": args, "output": try_parse_json(out), "tag": tag})
+                    if tag:
+                        browser_evidence["coverage"]["executed_tags"].append(tag)
+                # capture last active tag
+                if _active_tag:
+                    try:
+                        await _capture_tag(_active_tag)
+                    except Exception:
+                        pass
+        except HTTPException:
+            raise
+        except Exception as e:
+            # Do not fail auto eval hard; attach the error so evaluator can fail with evidence.
+            browser_evidence = {"url": url, "error": str(e)}
+
+    evidence_pack_id: Optional[str] = None
+    evidence_diff_id: Optional[str] = None
+    evidence_diff: Optional[Dict[str, Any]] = None
+    # Persist evidence pack (best-effort). This makes evidence queryable and reusable for regression.
+    try:
+        if browser_evidence is not None:
+            from core.learning.manager import LearningManager
+            from core.learning.types import LearningArtifactKind
+
+            mgr = LearningManager(execution_store=_execution_store)
+            art = await mgr.create_artifact(
+                kind=LearningArtifactKind.EVIDENCE_PACK,
+                target_type="run",
+                target_id=rid,
+                version=f"evidence_pack:{int(time.time())}",
+                status="draft",
+                payload=browser_evidence,
+                metadata={"source": "auto_eval", "url": url},
+                trace_id=run.get("trace_id"),
+                run_id=rid,
+            )
+            evidence_pack_id = getattr(art, "artifact_id", None)
+            extra.setdefault("evidence_pack_id", evidence_pack_id)
+            if isinstance(browser_evidence, dict) and evidence_pack_id:
+                browser_evidence["evidence_pack_id"] = evidence_pack_id
+    except Exception:
+        pass
+
+    # Auto evidence diff against the previous evidence_pack (same run)
+    try:
+        if evidence_pack_id:
+            prev_res = await _execution_store.list_learning_artifacts(
+                target_type="run",
+                target_id=rid,
+                kind="evidence_pack",
+                limit=5,
+                offset=0,
+            )
+            prev_items = (prev_res or {}).get("items") if isinstance(prev_res, dict) else None
+            if isinstance(prev_items, list) and len(prev_items) >= 2:
+                # newest item is our current evidence pack; take the next one as base
+                prev2 = sorted(prev_items, key=lambda x: float((x or {}).get("created_at") or 0), reverse=True)
+                base_payload = (prev2[1] or {}).get("payload") if isinstance(prev2[1], dict) else None
+                if isinstance(base_payload, dict) and isinstance(browser_evidence, dict):
+                    # stamp ids for compute function
+                    base_payload = dict(base_payload)
+                    base_payload.setdefault("evidence_pack_id", (prev2[1] or {}).get("artifact_id"))
+                    browser_evidence.setdefault("evidence_pack_id", evidence_pack_id)
+                    from core.harness.evaluation.evidence_diff import compute_evidence_diff
+
+                    evidence_diff = compute_evidence_diff(base_payload, browser_evidence)
+                    mgr = LearningManager(execution_store=_execution_store)
+                    art2 = await mgr.create_artifact(
+                        kind=LearningArtifactKind.EVIDENCE_DIFF,
+                        target_type="run",
+                        target_id=rid,
+                        version=f"evidence_diff:{int(time.time())}",
+                        status="draft",
+                        payload=evidence_diff,
+                        metadata={"source": "auto_eval", "base_evidence_pack_id": str((prev2[1] or {}).get("artifact_id")), "new_evidence_pack_id": str(evidence_pack_id)},
+                        trace_id=run.get("trace_id"),
+                        run_id=rid,
+                    )
+                    evidence_diff_id = getattr(art2, "artifact_id", None)
+                    extra.setdefault("evidence_diff_id", evidence_diff_id)
+                    extra.setdefault("evidence_diff_summary", (evidence_diff or {}).get("summary"))
+    except Exception:
+        pass
+
+    msgs = build_auto_eval_prompt(run=run, events=events, extra=extra, browser_evidence=browser_evidence)
+    try:
+        resp = await llm.generate(msgs)
+        text = getattr(resp, "content", "") or ""
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"auto_eval_failed:{e}")
+
+    report, why = parse_json_report(text)
+    if report is None:
+        report = {
+            "pass": False,
+            "score": {"functionality": 0, "product_depth": 0, "design_ux": 0, "code_architecture": 0, "overall": 0},
+            "issues": [
+                {
+                    "severity": "P0",
+                    "title": "自动评估输出无法解析为 JSON",
+                    "repro_steps": [],
+                    "expected": "LLM 输出符合约定的 JSON 报告格式",
+                    "actual": f"{why}: {text[:800]}",
+                    "suggested_fix": "检查 auto_eval 模型配置，或改用手动提交 report。",
+                }
+            ],
+            "positive_notes": [],
+            "next_actions_for_generator": ["配置可用的 LLM_PROVIDER/LLM_MODEL 或 AIPLAT_AUTO_EVAL_LLM_PROVIDER/MODEL 后重试"],
+        }
+    # Attach evidence reference for downstream run_state/todo generation.
+    try:
+        if isinstance(report, dict) and evidence_pack_id:
+            report.setdefault("evidence_pack_id", evidence_pack_id)
+        if isinstance(report, dict) and evidence_diff_id:
+            report.setdefault("evidence_diff_id", evidence_diff_id)
+            if evidence_diff:
+                report.setdefault("evidence_diff_summary", evidence_diff.get("summary"))
+    except Exception:
+        pass
+
+    thresholds = EvaluatorThresholds.from_dict(thresholds0)
+    gated_report = apply_threshold_gate(report, thresholds)
+
+    # Tag assertions (hard gate): based on evidence_pack.by_tag + tag_expectations
+    try:
+        if isinstance(browser_evidence, dict) and isinstance(tag_expectations, dict) and tag_expectations:
+            from core.harness.evaluation.tag_assertions import evaluate_tag_assertions
+
+            ok, failures = evaluate_tag_assertions(browser_evidence, tag_expectations)
+            gated_report.setdefault("assertions", {})
+            gated_report["assertions"]["tag_expectations"] = tag_expectations
+            gated_report["assertions"]["tag_failures"] = failures
+            if not ok:
+                gated_report["pass"] = False
+                gated_report.setdefault("issues", [])
+                if isinstance(gated_report.get("issues"), list):
+                    gated_report["issues"].insert(
+                        0,
+                        {
+                            "severity": "P0",
+                            "title": "关键路径断言未通过（Tag Assertions）",
+                            "expected": tag_expectations,
+                            "actual": {"failures": failures[:20]},
+                            "repro_steps": [],
+                            "evidence": {"evidence_pack_id": evidence_pack_id, "evidence_diff_id": evidence_diff_id},
+                            "suggested_fix": "补齐关键路径交互与可见性/接口稳定性后重新评估。",
+                        },
+                    )
+    except Exception:
+        pass
+
+    # Regression gate based on evidence_diff metrics (best-effort)
+    try:
+        pol = extra.get("evaluation_policy") if isinstance(extra.get("evaluation_policy"), dict) else None
+        gate = (pol or {}).get("regression_gate") if isinstance((pol or {}).get("regression_gate"), dict) else None
+        if gate and evidence_diff:
+            from core.harness.evaluation.evidence_diff import evaluate_regression
+
+            executed_tags = None
+            try:
+                if isinstance(browser_evidence, dict):
+                    cov = browser_evidence.get("coverage")
+                    if isinstance(cov, dict) and isinstance(cov.get("executed_tags"), list):
+                        executed_tags = cov.get("executed_tags")
+            except Exception:
+                executed_tags = None
+            is_reg, reasons = evaluate_regression(evidence_diff, gate, executed_tags=executed_tags)
+            gated_report.setdefault("regression", {})
+            gated_report["regression"] = {
+                "is_regression": bool(is_reg),
+                "reasons": reasons,
+                "gate": gate,
+                "evidence_diff_id": evidence_diff_id,
+            }
+            if is_reg:
+                gated_report["pass"] = False
+                gated_report.setdefault("issues", [])
+                if isinstance(gated_report.get("issues"), list):
+                    gated_report["issues"].insert(
+                        0,
+                        {
+                            "severity": "P0",
+                            "title": "回归对比未通过（Evidence Diff Regression Gate）",
+                            "expected": gate,
+                            "actual": (evidence_diff.get("metrics") if isinstance(evidence_diff, dict) else {}),
+                            "repro_steps": [],
+                            "evidence": {"evidence_diff_id": evidence_diff_id, "summary": evidence_diff.get("summary") if isinstance(evidence_diff, dict) else ""},
+                            "suggested_fix": "检查新增 console error / network 5xx 等回归信号，并修复后重新评估。",
+                        },
+                    )
+    except Exception:
+        pass
+    actor = _rbac_actor_from_http(http_request, request or {})
+    saved = await persist_evaluation(
+        execution_store=_execution_store,
+        run_id=rid,
+        trace_id=run.get("trace_id"),
+        evaluator=evaluator,
+        report=gated_report,
+        thresholds=thresholds,
+        actor=actor,
+    )
+    # Update run_state (best-effort) from evaluator report
+    try:
+        from core.harness.restatement.run_state import merge_from_evaluation, normalize_run_state
+        from core.learning.manager import LearningManager
+        from core.learning.types import LearningArtifactKind
+
+        mgr = LearningManager(execution_store=_execution_store)
+        latest = await _execution_store.list_learning_artifacts(target_type="run", target_id=rid, kind="run_state", limit=10, offset=0)
+        items = latest.get("items") if isinstance(latest, dict) else None
+        cur = {}
+        if isinstance(items, list) and items:
+            items2 = sorted(items, key=lambda x: float((x or {}).get("created_at") or 0), reverse=True)
+            cur = (items2[0] or {}).get("payload") if isinstance(items2[0], dict) else {}
+        cur2 = normalize_run_state(cur, run_id=rid)
+        if not str(cur2.get("task") or "").strip():
+            cur2["task"] = str(run.get("task") or "")
+        merged = merge_from_evaluation(cur2, evaluation_report=gated_report, source="auto_eval")
+        await mgr.create_artifact(
+            kind=LearningArtifactKind.RUN_STATE,
+            target_type="run",
+            target_id=rid,
+            version=f"run_state:{int(time.time())}",
+            status="draft",
+            payload=merged,
+            metadata={"source": "auto_eval", "locked": bool(merged.get("locked"))},
+            trace_id=run.get("trace_id"),
+            run_id=rid,
+        )
+    except Exception:
+        pass
+    if enforce_gate and not bool(gated_report.get("pass")):
+        raise HTTPException(status_code=409, detail={"code": "evaluation_failed", "artifact_id": saved.get("artifact_id"), "report": gated_report})
+    return {"status": "ok", "artifact_id": saved.get("artifact_id"), "report": gated_report, "raw": text[:2000]}
+
+
 @api_router.post("/runs/{run_id}/cancel")
 async def cancel_run(run_id: str, http_request: Request, body: Optional[Dict[str, Any]] = None):
     """
@@ -5876,6 +6825,15 @@ async def create_workspace_skill(request: SkillCreateRequest, http_request: Requ
     """Create a new workspace skill."""
     if not _workspace_skill_manager:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    deny = await _rbac_guard(
+        http_request=http_request,
+        payload=request.model_dump() if hasattr(request, "model_dump") else {},
+        action="create",
+        resource_type="skill",
+        resource_id=str(getattr(request, "name", "") or "") or None,
+    )
+    if deny:
+        return deny
     try:
         skill = await _workspace_skill_manager.create_skill(
             name=request.name,
@@ -6042,6 +7000,22 @@ async def create_workspace_skill(request: SkillCreateRequest, http_request: Requ
             await _maybe_verify_and_audit_skill_signature(skill=skill, scope="workspace")
         except Exception:
             pass
+        # Audit log (best-effort)
+        try:
+            if _execution_store is not None:
+                actor = _rbac_actor_from_http(http_request, request.model_dump() if hasattr(request, "model_dump") else {})
+                await _execution_store.add_audit_log(
+                    action="workspace_skill_create",
+                    status="ok",
+                    tenant_id=str(actor.get("tenant_id") or "") or None,
+                    actor_id=str(actor.get("actor_id") or "") or None,
+                    actor_role=str(actor.get("actor_role") or "") or None,
+                    resource_type="skill",
+                    resource_id=str(skill.id),
+                    detail={"name": request.name, "category": request.category},
+                )
+        except Exception:
+            pass
         return {"id": skill.id, "status": "created", "name": skill.name}
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
@@ -6074,6 +7048,16 @@ async def update_workspace_skill(skill_id: str, request: dict, http_request: Req
     if not _workspace_skill_manager:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
     from core.schemas import SkillUpdateRequest
+
+    deny = await _rbac_guard(
+        http_request=http_request,
+        payload=request or {},
+        action="update",
+        resource_type="skill",
+        resource_id=str(skill_id),
+    )
+    if deny:
+        return deny
 
     r = SkillUpdateRequest(**(request or {}))
     # NOTE: SkillManager.update_skill expects keyword fields; do not pass the dict as positional arg.
@@ -6234,16 +7218,57 @@ async def update_workspace_skill(skill_id: str, request: dict, http_request: Req
         await _maybe_verify_and_audit_skill_signature(skill=skill, scope="workspace")
     except Exception:
         pass
+    # Audit log (best-effort)
+    try:
+        if _execution_store is not None:
+            actor = _rbac_actor_from_http(http_request, request or {})
+            await _execution_store.add_audit_log(
+                action="workspace_skill_update",
+                status="ok",
+                tenant_id=str(actor.get("tenant_id") or "") or None,
+                actor_id=str(actor.get("actor_id") or "") or None,
+                actor_role=str(actor.get("actor_role") or "") or None,
+                resource_type="skill",
+                resource_id=str(skill_id),
+                detail={"fields": list((r.model_dump(exclude_unset=True) or {}).keys())},
+            )
+    except Exception:
+        pass
     return {"status": "updated", "id": skill_id}
 
 
 @api_router.delete("/workspace/skills/{skill_id}")
-async def delete_workspace_skill(skill_id: str, delete_files: bool = False):
+async def delete_workspace_skill(skill_id: str, delete_files: bool = False, http_request: Request = None):
     if not _workspace_skill_manager:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    if http_request is not None:
+        deny = await _rbac_guard(
+            http_request=http_request,
+            payload={"delete_files": bool(delete_files)},
+            action="delete",
+            resource_type="skill",
+            resource_id=str(skill_id),
+        )
+        if deny:
+            return deny
     ok = await _workspace_skill_manager.delete_skill(skill_id, delete_files=delete_files)
     if not ok:
         raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    try:
+        if _execution_store is not None and http_request is not None:
+            actor = _rbac_actor_from_http(http_request, {"delete_files": bool(delete_files)})
+            await _execution_store.add_audit_log(
+                action="workspace_skill_delete",
+                status="ok",
+                tenant_id=str(actor.get("tenant_id") or "") or None,
+                actor_id=str(actor.get("actor_id") or "") or None,
+                actor_role=str(actor.get("actor_role") or "") or None,
+                resource_type="skill",
+                resource_id=str(skill_id),
+                detail={"delete_files": bool(delete_files)},
+            )
+    except Exception:
+        pass
     return {"status": "deleted", "id": skill_id, "delete_files": delete_files}
 
 
@@ -6252,6 +7277,16 @@ async def enable_workspace_skill(skill_id: str, request: Optional[Dict[str, Any]
     if not _workspace_skill_manager:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
     req = request or {}
+    if http_request is not None:
+        deny = await _rbac_guard(
+            http_request=http_request,
+            payload=req if isinstance(req, dict) else {},
+            action="enable",
+            resource_type="skill",
+            resource_id=str(skill_id),
+        )
+        if deny:
+            return deny
     actor0 = _rbac_actor_from_http(http_request, req if isinstance(req, dict) else None) if http_request is not None else {"actor_id": "admin"}
     change_id = _new_change_id()
     approval_request_id = str(req.get("approval_request_id") or "").strip() or None
@@ -6394,6 +7429,21 @@ async def enable_workspace_skill(skill_id: str, request: Optional[Dict[str, Any]
         )
     except Exception:
         pass
+    try:
+        if _execution_store is not None and http_request is not None:
+            actor = _rbac_actor_from_http(http_request, req if isinstance(req, dict) else {})
+            await _execution_store.add_audit_log(
+                action="workspace_skill_enable",
+                status="ok",
+                tenant_id=str(actor.get("tenant_id") or "") or None,
+                actor_id=str(actor.get("actor_id") or "") or None,
+                actor_role=str(actor.get("actor_role") or "") or None,
+                resource_type="skill",
+                resource_id=str(skill_id),
+                detail={"approval_request_id": approval_request_id, "change_id": change_id},
+            )
+    except Exception:
+        pass
     return {
         "status": "enabled",
         "approval_request_id": approval_request_id,
@@ -6403,22 +7453,72 @@ async def enable_workspace_skill(skill_id: str, request: Optional[Dict[str, Any]
 
 
 @api_router.post("/workspace/skills/{skill_id}/disable")
-async def disable_workspace_skill(skill_id: str):
+async def disable_workspace_skill(skill_id: str, http_request: Request = None):
     if not _workspace_skill_manager:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    if http_request is not None:
+        deny = await _rbac_guard(
+            http_request=http_request,
+            payload={},
+            action="disable",
+            resource_type="skill",
+            resource_id=str(skill_id),
+        )
+        if deny:
+            return deny
     ok = await _workspace_skill_manager.disable_skill(skill_id)
     if not ok:
         raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    try:
+        if _execution_store is not None and http_request is not None:
+            actor = _rbac_actor_from_http(http_request, {})
+            await _execution_store.add_audit_log(
+                action="workspace_skill_disable",
+                status="ok",
+                tenant_id=str(actor.get("tenant_id") or "") or None,
+                actor_id=str(actor.get("actor_id") or "") or None,
+                actor_role=str(actor.get("actor_role") or "") or None,
+                resource_type="skill",
+                resource_id=str(skill_id),
+                detail={},
+            )
+    except Exception:
+        pass
     return {"status": "disabled"}
 
 
 @api_router.post("/workspace/skills/{skill_id}/restore")
-async def restore_workspace_skill(skill_id: str):
+async def restore_workspace_skill(skill_id: str, http_request: Request = None):
     if not _workspace_skill_manager:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    if http_request is not None:
+        deny = await _rbac_guard(
+            http_request=http_request,
+            payload={},
+            action="restore",
+            resource_type="skill",
+            resource_id=str(skill_id),
+        )
+        if deny:
+            return deny
     ok = await _workspace_skill_manager.restore_skill(skill_id)
     if not ok:
         raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    try:
+        if _execution_store is not None and http_request is not None:
+            actor = _rbac_actor_from_http(http_request, {})
+            await _execution_store.add_audit_log(
+                action="workspace_skill_restore",
+                status="ok",
+                tenant_id=str(actor.get("tenant_id") or "") or None,
+                actor_id=str(actor.get("actor_id") or "") or None,
+                actor_role=str(actor.get("actor_role") or "") or None,
+                resource_type="skill",
+                resource_id=str(skill_id),
+                detail={},
+            )
+    except Exception:
+        pass
     return {"status": "enabled"}
 
 
@@ -6829,6 +7929,391 @@ async def get_workspace_skill_markdown(skill_id: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to read SKILL.md: {e}")
+
+
+# ====================
+# Skills Installer (workspace scope)
+# ====================
+
+
+@api_router.post("/workspace/skills/installer/install")
+async def workspace_skills_installer_install(request: SkillInstallerInstallRequest, http_request: Request):
+    """
+    Install skills from external sources into workspace skills directory.
+
+    Source types:
+    - git: url + ref (required)
+    - path: local directory path on server
+    - zip: local zip file path on server
+    """
+    if not _workspace_skill_manager:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    if str(request.scope or "workspace").strip().lower() != "workspace":
+        raise HTTPException(status_code=400, detail="only_workspace_scope_is_supported")
+
+    deny = await _rbac_guard(
+        http_request=http_request,
+        payload=request.model_dump(),
+        action="install",
+        resource_type="skill",
+        resource_id=str(request.skill_id) if request.skill_id else None,
+    )
+    if deny:
+        return deny
+
+    try:
+        # Optional plan_id guard (recommended for production).
+        require_plan_id = os.getenv("AIPLAT_SKILL_INSTALL_REQUIRE_PLAN_ID", "false").lower() in ("1", "true", "yes", "y")
+        plan = None
+        if require_plan_id:
+            plan = await _workspace_skill_manager.installer_plan(
+                source_type=str(request.source_type.value if hasattr(request.source_type, "value") else request.source_type),
+                url=request.url,
+                ref=request.ref,
+                path=request.path,
+                skill_id=request.skill_id,
+                subdir=request.subdir,
+                auto_detect_subdir=bool(getattr(request, "auto_detect_subdir", True)),
+                metadata=request.metadata,
+            )
+            from core.management.skill_install_plan_token import canonical_plan_data, verify_plan_token
+
+            from core.management.skill_install_plan_token import skills_digest as _skills_digest
+            digest = _skills_digest((plan or {}).get("skills"))
+
+            expected = canonical_plan_data(
+                scope=str(request.scope or "workspace"),
+                source_type=str(request.source_type.value if hasattr(request.source_type, "value") else request.source_type),
+                url=request.url,
+                ref=request.ref,
+                path=request.path,
+                skill_id=request.skill_id,
+                subdir=request.subdir,
+                auto_detect_subdir=bool(getattr(request, "auto_detect_subdir", True)),
+                allow_overwrite=bool(request.allow_overwrite),
+                metadata=request.metadata,
+                detected_subdir=str((plan or {}).get("detected_subdir") or ""),
+                planned_skills_digest=str(digest or ""),
+            )
+            if not (request.plan_id or "").strip():
+                raise HTTPException(
+                    status_code=409,
+                    detail={"code": "plan_id_required", "message": "必须先调用 /workspace/skills/installer/plan 获取 plan_id", "plan": plan},
+                )
+            try:
+                verify_plan_token(token=str(request.plan_id), expected_data=expected)
+            except Exception as e:
+                raise HTTPException(status_code=409, detail={"code": "plan_id_invalid", "message": str(e), "plan": plan})
+
+        # Optional confirm guard (interactive safety). Recommended for production.
+        require_confirm = os.getenv("AIPLAT_SKILL_INSTALL_REQUIRE_CONFIRM", "false").lower() in ("1", "true", "yes", "y")
+        if require_confirm and not bool(request.confirm):
+            if plan is None:
+                plan = await _workspace_skill_manager.installer_plan(
+                    source_type=str(request.source_type.value if hasattr(request.source_type, "value") else request.source_type),
+                    url=request.url,
+                    ref=request.ref,
+                    path=request.path,
+                    skill_id=request.skill_id,
+                    subdir=request.subdir,
+                    auto_detect_subdir=bool(getattr(request, "auto_detect_subdir", True)),
+                    metadata=request.metadata,
+                )
+            raise HTTPException(
+                status_code=409,
+                detail={"code": "confirm_required", "message": "请先确认安装计划（建议先调用 /workspace/skills/installer/plan）", "plan": plan},
+            )
+
+        # Optional approval gate for installer (manual review).
+        if bool(getattr(request, "require_approval", False)) or os.getenv("AIPLAT_SKILL_INSTALL_REQUIRE_APPROVAL", "false").lower() in ("1", "true", "yes", "y"):
+            approval_id = str(getattr(request, "approval_request_id", None) or "").strip() or None
+            if approval_id:
+                try:
+                    from core.harness.infrastructure.approval.types import RequestStatus
+
+                    if not _approval_manager:
+                        raise HTTPException(status_code=503, detail="Approval manager not available")
+                    ar = _approval_manager.get_request(approval_id)
+                    if not ar:
+                        raise HTTPException(status_code=404, detail=f"Approval request not found: {approval_id}")
+                    if ar.status != RequestStatus.APPROVED:
+                        raise HTTPException(status_code=409, detail={"code": "approval_required", "approval_request_id": approval_id, "status": str(ar.status)})
+                except HTTPException:
+                    raise
+                except Exception as e:
+                    raise HTTPException(status_code=500, detail=f"approval_check_failed:{e}")
+            else:
+                # create approval request
+                from core.harness.infrastructure.approval.types import ApprovalContext, ApprovalRule, RuleType
+
+                if not _approval_manager:
+                    raise HTTPException(status_code=503, detail="Approval manager not available")
+                rule = ApprovalRule(
+                    rule_id="skills_installer_install",
+                    rule_type=RuleType.SENSITIVE_OPERATION,
+                    name="Skills Installer 安装审批",
+                    description="安装第三方开源技能需要审批确认（生产护栏）",
+                    priority=1,
+                    metadata={"sensitive_operations": ["skills:installer"]},
+                )
+                _approval_manager.register_rule(rule)
+                actor = _rbac_actor_from_http(http_request, request.model_dump())
+                ctx = ApprovalContext(
+                    user_id=str(actor.get("actor_id") or "admin"),
+                    operation="skills:installer:install",
+                    operation_context={"details": str(getattr(request, "details", None) or "install skills"), "payload": request.model_dump()},
+                    metadata={"resource_type": "skill", "resource_id": str(request.skill_id) if request.skill_id else None},
+                )
+                ar = _approval_manager.create_request(ctx, rule=rule)
+                try:
+                    await _approval_manager._persist(ar)  # type: ignore[attr-defined]
+                except Exception:
+                    pass
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "code": "approval_required",
+                        "approval_request_id": ar.request_id,
+                        "links": _governance_links(approval_request_id=str(ar.request_id)),
+                    },
+                )
+
+        res = await _workspace_skill_manager.installer_install(
+            source_type=str(request.source_type.value if hasattr(request.source_type, "value") else request.source_type),
+            url=request.url,
+            ref=request.ref,
+            path=request.path,
+            skill_id=request.skill_id,
+            subdir=request.subdir,
+            auto_detect_subdir=bool(getattr(request, "auto_detect_subdir", True)),
+            allow_overwrite=bool(request.allow_overwrite),
+            metadata=request.metadata,
+        )
+        try:
+            if _execution_store is not None:
+                actor = _rbac_actor_from_http(http_request, request.model_dump())
+                await _execution_store.add_audit_log(
+                    action="workspace_skill_installer_install",
+                    status="ok",
+                    tenant_id=str(actor.get("tenant_id") or "") or None,
+                    actor_id=str(actor.get("actor_id") or "") or None,
+                    actor_role=str(actor.get("actor_role") or "") or None,
+                    resource_type="skill",
+                    resource_id=str(request.skill_id) if request.skill_id else None,
+                    detail={
+                        "source_type": str(request.source_type),
+                        "url": request.url,
+                        "path": request.path,
+                        "ref": request.ref,
+                        "installed": res.get("installed") if isinstance(res, dict) else None,
+                        "skipped": res.get("skipped") if isinstance(res, dict) else None,
+                    },
+                )
+        except Exception:
+            pass
+        return {"status": "ok", **res}
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"installer_failed:{e}")
+
+
+@api_router.post("/workspace/skills/installer/plan")
+async def workspace_skills_installer_plan(request: SkillInstallerInstallRequest, http_request: Request):
+    """
+    Dry-run plan for installer. No filesystem write.
+    """
+    if not _workspace_skill_manager:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    if str(request.scope or "workspace").strip().lower() != "workspace":
+        raise HTTPException(status_code=400, detail="only_workspace_scope_is_supported")
+
+    deny = await _rbac_guard(
+        http_request=http_request,
+        payload=request.model_dump(),
+        action="install",
+        resource_type="skill",
+        resource_id=str(request.skill_id) if request.skill_id else None,
+    )
+    if deny:
+        return deny
+
+    try:
+        plan = await _workspace_skill_manager.installer_plan(
+            source_type=str(request.source_type.value if hasattr(request.source_type, "value") else request.source_type),
+            url=request.url,
+            ref=request.ref,
+            path=request.path,
+            skill_id=request.skill_id,
+            subdir=request.subdir,
+            auto_detect_subdir=bool(getattr(request, "auto_detect_subdir", True)),
+            metadata=request.metadata,
+        )
+        plan_id = None
+        expires_at = None
+        # When plan secret is configured, emit signed plan_id for drift-proof installs.
+        try:
+            from core.management.skill_install_plan_token import build_plan_token, canonical_plan_data, skills_digest as _skills_digest
+
+            digest = _skills_digest((plan or {}).get("skills"))
+            data = canonical_plan_data(
+                scope=str(request.scope or "workspace"),
+                source_type=str(request.source_type.value if hasattr(request.source_type, "value") else request.source_type),
+                url=request.url,
+                ref=request.ref,
+                path=request.path,
+                skill_id=request.skill_id,
+                subdir=request.subdir,
+                auto_detect_subdir=bool(getattr(request, "auto_detect_subdir", True)),
+                allow_overwrite=bool(request.allow_overwrite),
+                metadata=request.metadata,
+                detected_subdir=str((plan or {}).get("detected_subdir") or ""),
+                planned_skills_digest=str(digest or ""),
+            )
+            plan_id, expires_at = build_plan_token(data=data)
+        except Exception:
+            plan_id = None
+            expires_at = None
+        out = {"status": "ok", **plan}
+        try:
+            from core.management.skill_install_plan_token import skills_digest as _skills_digest
+
+            out["planned_skills_digest"] = _skills_digest((plan or {}).get("skills"))
+        except Exception:
+            pass
+        if plan_id:
+            out["plan_id"] = plan_id
+            out["plan_expires_at"] = expires_at
+        return out
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"installer_plan_failed:{e}")
+
+
+@api_router.post("/workspace/skills/installer/resolve-head")
+async def workspace_skills_installer_resolve_head(payload: dict, http_request: Request):
+    """
+    Resolve git remote HEAD SHA for a URL (helper for "always latest but pinned sha" workflow).
+    """
+    if not _workspace_skill_manager:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    url = str((payload or {}).get("url") or "").strip()
+    deny = await _rbac_guard(http_request=http_request, payload=payload or {}, action="install", resource_type="skill", resource_id=None)
+    if deny:
+        return deny
+    try:
+        res = await _workspace_skill_manager.installer_resolve_head(url=url)
+        try:
+            if _execution_store is not None:
+                actor = _rbac_actor_from_http(http_request, payload or {})
+                await _execution_store.add_audit_log(
+                    action="workspace_skill_installer_resolve_head",
+                    status="ok",
+                    tenant_id=str(actor.get("tenant_id") or "") or None,
+                    actor_id=str(actor.get("actor_id") or "") or None,
+                    actor_role=str(actor.get("actor_role") or "") or None,
+                    resource_type="skill",
+                    resource_id=None,
+                    detail={"url": url, "head_sha": (res or {}).get("head_sha") if isinstance(res, dict) else None},
+                )
+        except Exception:
+            pass
+        return {"status": "ok", **res}
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"installer_resolve_head_failed:{e}")
+
+
+@api_router.post("/workspace/skills/installer/update/{skill_id}")
+async def workspace_skills_installer_update(skill_id: str, request: SkillInstallerUpdateRequest, http_request: Request):
+    if not _workspace_skill_manager:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    if str(request.scope or "workspace").strip().lower() != "workspace":
+        raise HTTPException(status_code=400, detail="only_workspace_scope_is_supported")
+
+    deny = await _rbac_guard(
+        http_request=http_request,
+        payload=request.model_dump(),
+        action="update",
+        resource_type="skill",
+        resource_id=str(skill_id),
+    )
+    if deny:
+        return deny
+
+    try:
+        res = await _workspace_skill_manager.installer_update(skill_id=str(skill_id), ref=request.ref, metadata=request.metadata)
+        try:
+            if _execution_store is not None:
+                actor = _rbac_actor_from_http(http_request, request.model_dump())
+                await _execution_store.add_audit_log(
+                    action="workspace_skill_installer_update",
+                    status="ok",
+                    tenant_id=str(actor.get("tenant_id") or "") or None,
+                    actor_id=str(actor.get("actor_id") or "") or None,
+                    actor_role=str(actor.get("actor_role") or "") or None,
+                    resource_type="skill",
+                    resource_id=str(skill_id),
+                    detail={"ref": request.ref, "installed": (res or {}).get("installed") if isinstance(res, dict) else None},
+                )
+        except Exception:
+            pass
+        return {"status": "ok", **res}
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"installer_update_failed:{e}")
+
+
+@api_router.post("/workspace/skills/installer/uninstall/{skill_id}")
+async def workspace_skills_installer_uninstall(skill_id: str, http_request: Request, delete_files: bool = True):
+    if not _workspace_skill_manager:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+
+    deny = await _rbac_guard(
+        http_request=http_request,
+        payload={"delete_files": bool(delete_files)},
+        action="delete",
+        resource_type="skill",
+        resource_id=str(skill_id),
+    )
+    if deny:
+        return deny
+
+    try:
+        res = await _workspace_skill_manager.installer_uninstall(skill_id=str(skill_id), delete_files=bool(delete_files))
+        try:
+            if _execution_store is not None:
+                actor = _rbac_actor_from_http(http_request, {"delete_files": bool(delete_files)})
+                await _execution_store.add_audit_log(
+                    action="workspace_skill_installer_uninstall",
+                    status="ok",
+                    tenant_id=str(actor.get("tenant_id") or "") or None,
+                    actor_id=str(actor.get("actor_id") or "") or None,
+                    actor_role=str(actor.get("actor_role") or "") or None,
+                    resource_type="skill",
+                    resource_id=str(skill_id),
+                    detail={"delete_files": bool(delete_files), "deleted": (res or {}).get("deleted") if isinstance(res, dict) else None},
+                )
+        except Exception:
+            pass
+        return {"status": "ok", **res}
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"installer_uninstall_failed:{e}")
 
 
 @api_router.get("/skills/{skill_id}/agents")

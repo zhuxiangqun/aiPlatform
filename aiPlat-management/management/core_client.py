@@ -229,6 +229,33 @@ class CoreAPIClient:
     async def undo_run(self, run_id: str, body: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         return await self._request("POST", f"/api/core/runs/{run_id}/undo", json=body or {})
 
+    async def submit_run_evaluation(self, run_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/runs/{run_id}/evaluate", json=body or {})
+
+    async def auto_run_evaluation(self, run_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/runs/{run_id}/evaluate/auto", json=body or {})
+
+    async def get_latest_run_evaluation(self, run_id: str) -> Dict[str, Any]:
+        return await self._request("GET", f"/api/core/runs/{run_id}/evaluation/latest")
+
+    async def get_latest_run_state(self, run_id: str) -> Dict[str, Any]:
+        return await self._request("GET", f"/api/core/runs/{run_id}/state/latest")
+
+    async def upsert_run_state(self, run_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/runs/{run_id}/state", json=body or {})
+
+    async def get_latest_evaluation_policy(self) -> Dict[str, Any]:
+        return await self._request("GET", "/api/core/evaluation/policy/latest")
+
+    async def upsert_evaluation_policy(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", "/api/core/evaluation/policy", json=body or {})
+
+    async def get_latest_project_evaluation_policy(self, project_id: str) -> Dict[str, Any]:
+        return await self._request("GET", f"/api/core/projects/{project_id}/evaluation/policy/latest")
+
+    async def upsert_project_evaluation_policy(self, project_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/projects/{project_id}/evaluation/policy", json=body or {})
+
     # ===== Diagnostics: E2E smoke =====
     async def run_e2e_smoke(self, body: Dict[str, Any]) -> Dict[str, Any]:
         return await self._request("POST", "/api/core/diagnostics/e2e/smoke", json=body or {})
@@ -861,6 +888,26 @@ class CoreAPIClient:
         if delete_files:
             params["delete_files"] = "true"
         return await self._request("DELETE", f"/api/core/workspace/skills/{skill_id}", params=params)
+
+    # ---- Workspace Skill Installer (open-source skills) ----
+
+    async def plan_workspace_skill_install(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", "/api/core/workspace/skills/installer/plan", json=payload or {})
+
+    async def install_workspace_skill(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", "/api/core/workspace/skills/installer/install", json=payload or {})
+
+    async def update_workspace_skill_install(self, skill_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/workspace/skills/installer/update/{skill_id}", json=payload or {})
+
+    async def uninstall_workspace_skill_install(self, skill_id: str, *, delete_files: bool = True) -> Dict[str, Any]:
+        params: Dict[str, Any] = {}
+        if delete_files:
+            params["delete_files"] = "true"
+        return await self._request("POST", f"/api/core/workspace/skills/installer/uninstall/{skill_id}", params=params, json={})
+
+    async def resolve_workspace_skill_install_head(self, url: str) -> Dict[str, Any]:
+        return await self._request("POST", "/api/core/workspace/skills/installer/resolve-head", json={"url": url})
 
     async def list_workspace_mcp_servers(self) -> Dict[str, Any]:
         return await self._request("GET", "/api/core/workspace/mcp/servers")

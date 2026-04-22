@@ -37,6 +37,7 @@ const CoreJobs = lazy(() => import('./pages/Core/Jobs/Jobs'));
 const CoreSkillPacks = lazy(() => import('./pages/Core/SkillPacks'));
 const WorkspaceAgents = lazy(() => import('./pages/Workspace/Agents/Agents'));
 const WorkspaceSkills = lazy(() => import('./pages/Workspace/Skills/Skills'));
+const WorkspaceSkillMarketplace = lazy(() => import('./pages/Workspace/SkillMarketplace/SkillMarketplace'));
 const WorkspaceMCP = lazy(() => import('./pages/Workspace/MCP/MCP'));
 const CoreLearningArtifacts = lazy(() => import('./pages/Core/Learning/Artifacts'));
 const CoreLearningArtifactDetail = lazy(() => import('./pages/Core/Learning/Artifacts/ArtifactDetail'));
@@ -96,6 +97,7 @@ const router = createBrowserRouter([
       { path: 'core/jobs', element: withSuspense(CoreJobs) },
       { path: 'workspace/agents', element: withSuspense(WorkspaceAgents) },
       { path: 'workspace/skills', element: withSuspense(WorkspaceSkills) },
+      { path: 'workspace/skill-marketplace', element: withSuspense(WorkspaceSkillMarketplace) },
       { path: 'workspace/mcp', element: withSuspense(WorkspaceMCP) },
       { path: 'core/learning/artifacts', element: withSuspense(CoreLearningArtifacts) },
       { path: 'core/learning/artifacts/:artifactId', element: withSuspense(CoreLearningArtifactDetail) },

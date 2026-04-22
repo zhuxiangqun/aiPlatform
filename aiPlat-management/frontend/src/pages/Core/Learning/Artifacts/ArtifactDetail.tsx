@@ -69,6 +69,56 @@ const ArtifactDetail: React.FC = () => {
     return payload?.decision || null;
   }, [kind, payload]);
 
+  const evalSummary: any = useMemo(() => {
+    if (kind !== 'evaluation_report') return null;
+    const rep = payload || {};
+    const issues = Array.isArray(rep.issues) ? rep.issues : [];
+    return {
+      pass: rep.pass,
+      functionality: rep?.score?.functionality,
+      regression: rep?.regression,
+      issues,
+      evidence_pack_id: rep?.evidence_pack_id,
+      evidence_diff_id: rep?.evidence_diff_id,
+      evidence_diff_summary: rep?.evidence_diff_summary,
+    };
+  }, [kind, payload]);
+
+  const severityBadge = (sev: any) => {
+    const s = String(sev || '').toUpperCase();
+    if (s === 'P0') return 'error';
+    if (s === 'P1') return 'warning';
+    if (s === 'P2') return 'info';
+    return 'default';
+  };
+
+  const evidencePackSummary: any = useMemo(() => {
+    if (kind !== 'evidence_pack') return null;
+    return { url: payload?.url, error: payload?.error };
+  }, [kind, payload]);
+
+  const evidenceDiffSummary: any = useMemo(() => {
+    if (kind !== 'evidence_diff') return null;
+    return { summary: payload?.summary, metrics: payload?.metrics, diff: payload?.diff };
+  }, [kind, payload]);
+
+  const runStateSummary: any = useMemo(() => {
+    if (kind !== 'run_state') return null;
+    const todo = Array.isArray(payload?.todo) ? payload.todo : [];
+    const done = todo.filter((t: any) => String(t?.status || '').toLowerCase() === 'completed' || String(t?.status || '').toLowerCase() === 'done').length;
+    return { locked: payload?.locked, next_step: payload?.next_step, todo_total: todo.length, todo_done: done };
+  }, [kind, payload]);
+
+  const evalPolicySummary: any = useMemo(() => {
+    if (kind !== 'evaluation_policy') return null;
+    return {
+      thresholds: payload?.thresholds,
+      regression_gate: payload?.regression_gate,
+      default_tag_template: payload?.default_tag_template,
+      templates: payload?.tag_templates ? Object.keys(payload.tag_templates) : [],
+    };
+  }, [kind, payload]);
+
   const tabs = useMemo(() => {
     return [
       {
@@ -132,6 +182,78 @@ const ArtifactDetail: React.FC = () => {
                       linked_baseline: <span className="text-gray-400">{(regressionEvidence?.linked_baseline_execution_ids || []).length}</span>
                     </div>
                   </div>
+                ) : kind === 'evaluation_report' ? (
+                  <div className="space-y-2 text-sm text-gray-200">
+                    <div className="flex items-center gap-2">
+                      <Badge variant={evalSummary?.pass ? 'success' : 'error'}>{evalSummary?.pass ? 'PASS' : 'FAIL'}</Badge>
+                      {typeof evalSummary?.functionality !== 'undefined' && (
+                        <Badge variant="info">functionality: {String(evalSummary.functionality)}</Badge>
+                      )}
+                      {evalSummary?.regression?.is_regression && <Badge variant="warning">Regression</Badge>}
+                    </div>
+                    <div>
+                      issues: <span className="text-gray-400">{evalSummary?.issues?.length ?? 0}</span>
+                    </div>
+                    {evalSummary?.evidence_diff_summary && (
+                      <div className="text-xs text-gray-400">evidence_diff: {String(evalSummary.evidence_diff_summary).slice(0, 200)}</div>
+                    )}
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {evalSummary?.evidence_pack_id && (
+                        <Button variant="secondary" icon={<ExternalLink size={14} />} onClick={() => navigate(`/core/learning/artifacts/${String(evalSummary.evidence_pack_id)}`)}>
+                          打开 Evidence Pack
+                        </Button>
+                      )}
+                      {evalSummary?.evidence_diff_id && (
+                        <Button variant="secondary" icon={<ExternalLink size={14} />} onClick={() => navigate(`/core/learning/artifacts/${String(evalSummary.evidence_diff_id)}`)}>
+                          打开 Evidence Diff
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ) : kind === 'evidence_pack' ? (
+                  <div className="space-y-2 text-sm text-gray-200">
+                    <div>
+                      url: <span className="text-gray-400 break-all">{String(evidencePackSummary?.url || '-')}</span>
+                    </div>
+                    {evidencePackSummary?.error && (
+                      <div>
+                        error: <span className="text-gray-400 break-all">{String(evidencePackSummary.error)}</span>
+                      </div>
+                    )}
+                  </div>
+                ) : kind === 'evidence_diff' ? (
+                  <div className="space-y-2 text-sm text-gray-200">
+                    <div className="text-xs text-gray-400">{String(evidenceDiffSummary?.summary || '').slice(0, 240)}</div>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(evidenceDiffSummary?.metrics || {}).map(([k, v]) => (
+                        <Badge key={k} variant="info">
+                          {k}:{String(v)}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                ) : kind === 'run_state' ? (
+                  <div className="space-y-2 text-sm text-gray-200">
+                    <div>
+                      locked: <span className="text-gray-400">{String(runStateSummary?.locked ?? '-')}</span>
+                    </div>
+                    <div>
+                      todo: <span className="text-gray-400">{String(runStateSummary?.todo_done ?? 0)}</span> / {String(runStateSummary?.todo_total ?? 0)}
+                    </div>
+                    <div className="text-xs text-gray-400 break-words">next_step: {String(runStateSummary?.next_step || '').slice(0, 260) || '-'}</div>
+                  </div>
+                ) : kind === 'evaluation_policy' ? (
+                  <div className="space-y-2 text-sm text-gray-200">
+                    <div>
+                      default_tag_template: <span className="text-gray-400">{String(evalPolicySummary?.default_tag_template || '-')}</span>
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      thresholds: <span className="text-gray-500">{Object.keys(evalPolicySummary?.thresholds || {}).join(',') || '-'}</span>
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      templates: <span className="text-gray-500">{(evalPolicySummary?.templates || []).join(',') || '-'}</span>
+                    </div>
+                  </div>
                 ) : (
                   <div className="text-sm text-gray-500">无特定视图，详情请查看 Payload/Metadata。</div>
                 )}
@@ -140,6 +262,93 @@ const ArtifactDetail: React.FC = () => {
           </div>
         ),
       },
+      ...(kind === 'evaluation_report'
+        ? [
+            {
+              key: 'issues',
+              label: `Issues（${Array.isArray(payload?.issues) ? payload.issues.length : 0}）`,
+              children: (
+                <div className="space-y-4">
+                  {!Array.isArray(payload?.issues) || payload.issues.length === 0 ? (
+                    <Card>
+                      <CardContent>
+                        <div className="text-sm text-gray-500">无 issues。</div>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <Card>
+                      <CardHeader>
+                        <div className="flex items-center justify-between gap-2">
+                          <div>
+                            <div className="text-sm font-semibold text-gray-200">Issues 列表</div>
+                            <div className="text-xs text-gray-500 mt-1">按严重程度展示，P0/P1 优先修复</div>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {payload?.evidence_pack_id && (
+                              <Button variant="secondary" icon={<ExternalLink size={14} />} onClick={() => navigate(`/core/learning/artifacts/${String(payload.evidence_pack_id)}`)}>
+                                Evidence Pack
+                              </Button>
+                            )}
+                            {payload?.evidence_diff_id && (
+                              <Button variant="secondary" icon={<ExternalLink size={14} />} onClick={() => navigate(`/core/learning/artifacts/${String(payload.evidence_diff_id)}`)}>
+                                Evidence Diff
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          {payload.issues.slice(0, 50).map((it: any, idx: number) => (
+                            <div key={idx} className="rounded-lg border border-dark-border bg-dark-hover p-3">
+                              <div className="flex items-start gap-2">
+                                <Badge variant={severityBadge(it?.severity) as any}>{String(it?.severity || 'P?')}</Badge>
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-sm text-gray-200 break-words">{String(it?.title || '')}</div>
+                                  {it?.suggested_fix && <div className="text-xs text-gray-500 mt-1 break-words">{String(it.suggested_fix)}</div>}
+                                  {it?.expected != null || it?.actual != null ? (
+                                    <details className="mt-2">
+                                      <summary className="text-xs text-gray-400 cursor-pointer select-none">查看 expected / actual</summary>
+                                      <pre className="mt-2 text-xs text-gray-200 bg-dark-bg border border-dark-border rounded-lg p-3 overflow-auto">
+                                        {JSON.stringify({ expected: it?.expected, actual: it?.actual }, null, 2)}
+                                      </pre>
+                                    </details>
+                                  ) : null}
+                                  {it?.evidence ? (
+                                    <details className="mt-2">
+                                      <summary className="text-xs text-gray-400 cursor-pointer select-none">查看 evidence</summary>
+                                      <pre className="mt-2 text-xs text-gray-200 bg-dark-bg border border-dark-border rounded-lg p-3 overflow-auto">
+                                        {JSON.stringify(it?.evidence, null, 2)}
+                                      </pre>
+                                    </details>
+                                  ) : null}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  <Card>
+                    <CardHeader>
+                      <div className="text-sm font-semibold text-gray-200">原始报告（折叠）</div>
+                    </CardHeader>
+                    <CardContent>
+                      <details className="rounded-lg border border-dark-border bg-dark-hover p-3">
+                        <summary className="text-xs text-gray-400 cursor-pointer select-none">展开 raw JSON</summary>
+                        <pre className="mt-2 text-xs text-gray-200 bg-dark-bg border border-dark-border rounded-lg p-3 overflow-auto">
+                          {JSON.stringify(payload || {}, null, 2)}
+                        </pre>
+                      </details>
+                    </CardContent>
+                  </Card>
+                </div>
+              ),
+            },
+          ]
+        : []),
       {
         key: 'links',
         label: '关联与跳转',

@@ -29,6 +29,7 @@ import {
   Activity,
   Plug,
   Package,
+  ShoppingBag,
   CalendarClock,
   type LucideIcon,
 } from 'lucide-react';
@@ -81,6 +82,7 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
   { group: 'workspace', label: '应用库', items: [
     { key: '/workspace/agents', icon: Package, label: 'Agent库' },
     { key: '/workspace/skills', icon: Package, label: 'Skill库' },
+    { key: '/workspace/skill-marketplace', icon: ShoppingBag, label: 'Skill市场/安装器' },
     { key: '/workspace/mcp', icon: Package, label: 'MCP库' },
   ]},
   { divider: true },

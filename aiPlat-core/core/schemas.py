@@ -58,6 +58,100 @@ class SkillExecuteRequest(BaseModel):
 
 
 # ---------------------------------------------------------------------
+# Auto Eval / Evidence / Policy (Phase Eval)
+# ---------------------------------------------------------------------
+
+
+class AutoEvalStep(BaseModel):
+    tool: str
+    args: Optional[Dict[str, Any]] = None
+    tag: Optional[str] = None
+
+
+class AutoEvalRequest(BaseModel):
+    evaluator: str = "auto-llm"
+    thresholds: Optional[Dict[str, Any]] = None
+    enforce_gate: bool = False
+    extra: Optional[Dict[str, Any]] = None
+    policy: Optional[Dict[str, Any]] = None
+    project_id: Optional[str] = None
+    url: Optional[str] = None
+    steps: Optional[List[AutoEvalStep]] = None
+    expected_tags: Optional[List[str]] = None
+    tag_expectations: Optional[Dict[str, Any]] = None
+    tag_template: Optional[str] = None
+
+    class Config:
+        extra = "allow"
+
+
+class UpsertEvaluationPolicyRequest(BaseModel):
+    policy: Dict[str, Any] = Field(default_factory=dict)
+
+    class Config:
+        extra = "allow"
+
+
+class UpsertProjectEvaluationPolicyRequest(BaseModel):
+    policy: Dict[str, Any] = Field(default_factory=dict)
+    mode: str = "merge"  # merge|replace
+
+    class Config:
+        extra = "allow"
+
+
+class EvidenceDiffRequest(BaseModel):
+    base_evidence_pack_id: str
+    new_evidence_pack_id: str
+
+    class Config:
+        extra = "allow"
+
+
+# ---------------------------------------------------------------------
+# Roadmap: Skills Installer (OpenCode-style distribution/installer)
+# ---------------------------------------------------------------------
+
+
+class SkillInstallerSourceType(str, Enum):
+    git = "git"   # git clone url + ref
+    path = "path"  # local directory path on server
+    zip = "zip"   # local zip file path on server
+
+
+class SkillInstallerInstallRequest(BaseModel):
+    scope: str = "workspace"  # workspace only (production safe); engine is not recommended
+    source_type: SkillInstallerSourceType = SkillInstallerSourceType.git
+    # For git:
+    url: Optional[str] = None
+    ref: Optional[str] = None  # required for git (tag/commit SHA)
+    # For path/zip:
+    path: Optional[str] = None
+    # Optional: install a single skill (by directory name or frontmatter name)
+    skill_id: Optional[str] = None
+    # Optional: subdir inside repo/path that contains skills
+    subdir: Optional[str] = None
+    auto_detect_subdir: bool = True
+    allow_overwrite: bool = False
+    # Optional guard: require explicit confirmation before mutating filesystem
+    confirm: bool = False
+    # plan_id returned by /workspace/skills/installer/plan
+    plan_id: Optional[str] = None
+    # Optional approval gate (similar to packages)
+    require_approval: bool = False
+    approval_request_id: Optional[str] = None
+    details: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class SkillInstallerUpdateRequest(BaseModel):
+    scope: str = "workspace"
+    ref: Optional[str] = None  # if omitted, keep existing manifest ref (git only)
+    metadata: Optional[Dict[str, Any]] = None
+
+
+
+# ---------------------------------------------------------------------
 # PR-02: Run Contract v2 (unified run_id + status machine)
 
 

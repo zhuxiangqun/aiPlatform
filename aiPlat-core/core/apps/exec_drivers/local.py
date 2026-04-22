@@ -12,6 +12,20 @@ from .base import ExecDriver, ExecResult
 class LocalExecDriver(ExecDriver):
     driver_id = "local"
 
+    def capabilities(self) -> Dict[str, object]:
+        return {
+            "driver_id": self.driver_id,
+            "supported_languages": ["python", "javascript"],
+            "isolation": {
+                "network_isolated": False,
+                "filesystem_isolated": False,
+                "process_isolated": False,
+            },
+            "limits": {},
+            "config": {"required": False, "env": []},
+            "notes": "Executes on host via local interpreters (python3/node).",
+        }
+
     async def run_code(self, *, language: str, code: str, timeout_s: float) -> ExecResult:
         t0 = time.time()
         language = (language or "").strip().lower()
@@ -69,5 +83,10 @@ class LocalExecDriver(ExecDriver):
             ok_node = proc.returncode == 0
         except Exception:
             ok_node = False
-        return {"driver_id": self.driver_id, "ok": bool(ok_py and ok_node), "python": ok_py, "node": ok_node}
-
+        return {
+            "driver_id": self.driver_id,
+            "ok": bool(ok_py and ok_node),
+            "python": ok_py,
+            "node": ok_node,
+            "capabilities": self.capabilities(),
+        }

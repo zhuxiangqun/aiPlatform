@@ -23,6 +23,7 @@ import json
 from core.apps.tools.permission import get_permission_manager, Permission
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.policy.engine import evaluate_tool_policy_snapshot, PolicyDecision as EngineDecision
+from core.apps.tools.skill_tools import resolve_skill_permission
 
 
 class PolicyDecision(str, Enum):
@@ -63,6 +64,24 @@ class PolicyGate:
         tenant_id = (tool_args or {}).get("_tenant_id") if isinstance(tool_args, dict) else None
         policy_version: Optional[int] = None
         force_approval = bool((tool_args or {}).get("_approval_required")) if isinstance(tool_args, dict) else False
+
+        # Skills (OpenCode style): per-skill allow/deny/ask for skill_load.
+        # This is evaluated BEFORE reading tenant policy snapshots so that local rule config
+        # can immediately hide/deny risky skills and request approval when needed.
+        try:
+            if str(tool_name).strip().lower() == "skill_load" and isinstance(tool_args, dict):
+                sname = str(tool_args.get("name") or tool_args.get("skill") or "").strip()
+                decision = resolve_skill_permission(sname)
+                if decision == "deny":
+                    return PolicyResult(
+                        decision=PolicyDecision.DENY,
+                        reason=f"skill_load denied for '{sname}' by AIPLAT_SKILL_PERMISSION_RULES",
+                        tenant_id=str(tenant_id) if tenant_id else None,
+                    )
+                if decision == "ask":
+                    force_approval = True
+        except Exception:
+            pass
         try:
             runtime = get_kernel_runtime()
             store = getattr(runtime, "execution_store", None) if runtime else None
@@ -222,6 +241,111 @@ class PolicyGate:
                 )
         except Exception:
             # Fail-open in Phase 3 for compatibility.
+            return PolicyResult(decision=PolicyDecision.ALLOW)
+
+        return PolicyResult(decision=PolicyDecision.ALLOW)
+
+    def check_skill(self, *, user_id: str, skill_name: str, skill_args: Optional[Dict[str, Any]] = None) -> PolicyResult:
+        """
+        Governance for executable skills.
+
+        Design:
+        - Reuse the same approval manager + policy engine machinery as tools
+        - Default posture is deny/ask depending on env rules (handled in syscall wrapper)
+        - Skill approval request is recorded as operation: "skill:<name>"
+        """
+        args = skill_args if isinstance(skill_args, dict) else {}
+        tenant_id = args.get("_tenant_id")
+        policy_version: Optional[int] = None
+        force_approval = bool(args.get("_approval_required"))
+
+        if not self._enforce_approval and not force_approval:
+            return PolicyResult(decision=PolicyDecision.ALLOW)
+
+        runtime = get_kernel_runtime()
+        approval_mgr = getattr(runtime, "approval_manager", None) if runtime else None
+        if not approval_mgr:
+            if force_approval:
+                return PolicyResult(
+                    decision=PolicyDecision.APPROVAL_REQUIRED,
+                    reason=f"Skill '{skill_name}' requires approval (approval manager not initialized)",
+                    tenant_id=str(tenant_id) if tenant_id else None,
+                    policy_version=policy_version,
+                )
+            return PolicyResult(decision=PolicyDecision.ALLOW)
+
+        approval_request_id = args.get("_approval_request_id")
+        if approval_request_id:
+            try:
+                req = approval_mgr.get_request(str(approval_request_id))
+                if not req:
+                    return PolicyResult(
+                        decision=PolicyDecision.APPROVAL_REQUIRED,
+                        reason=f"Approval request not found: {approval_request_id}",
+                        approval_request_id=str(approval_request_id),
+                    )
+                status = getattr(req, "status", None)
+                from core.harness.infrastructure.approval.types import RequestStatus
+
+                if status in (RequestStatus.APPROVED, RequestStatus.AUTO_APPROVED):
+                    return PolicyResult(decision=PolicyDecision.ALLOW)
+                if status == RequestStatus.PENDING:
+                    return PolicyResult(
+                        decision=PolicyDecision.APPROVAL_REQUIRED,
+                        reason=f"Skill '{skill_name}' requires approval",
+                        approval_request_id=str(approval_request_id),
+                    )
+                return PolicyResult(
+                    decision=PolicyDecision.DENY,
+                    reason=f"Approval not granted: status={status.value if status else status}",
+                    approval_request_id=str(approval_request_id),
+                )
+            except Exception:
+                return PolicyResult(decision=PolicyDecision.ALLOW)
+
+        try:
+            from core.harness.infrastructure.approval import ApprovalContext, RequestStatus
+            from core.harness.infrastructure.approval.types import ApprovalRule, RuleType
+
+            ctx = ApprovalContext(
+                session_id=str(args.get("_session_id", "default")),
+                user_id=user_id,
+                operation=f"skill:{skill_name}",
+                operation_context={"skill": skill_name, "args": args},
+                metadata={
+                    "skill_name": skill_name,
+                    "tenant_id": tenant_id,
+                    "actor_id": user_id,
+                    "actor_role": args.get("_actor_role"),
+                    "session_id": str(args.get("_session_id", "default")),
+                    "run_id": args.get("_run_id"),
+                    "system_run_plan": {"type": "skill_call", "skill": skill_name, "args": args},
+                },
+            )
+            if force_approval:
+                try:
+                    rid = f"skill_force_approval:{skill_name}"
+                    approval_mgr.register_rule(
+                        ApprovalRule(
+                            rule_id=rid,
+                            rule_type=RuleType.SENSITIVE_OPERATION,
+                            name=f"技能调用审批：{skill_name}",
+                            description=f"skill:{skill_name} requires approval",
+                            priority=1,
+                            metadata={"sensitive_operations": [ctx.operation]},
+                        )
+                    )
+                except Exception:
+                    pass
+            req = approval_mgr.check_and_request(ctx)
+            status = getattr(req, "status", None)
+            if status in (RequestStatus.PENDING, RequestStatus.REJECTED):
+                return PolicyResult(
+                    decision=PolicyDecision.APPROVAL_REQUIRED,
+                    reason=f"Skill '{skill_name}' requires approval",
+                    approval_request_id=getattr(req, "request_id", None) or getattr(req, "id", None),
+                )
+        except Exception:
             return PolicyResult(decision=PolicyDecision.ALLOW)
 
         return PolicyResult(decision=PolicyDecision.ALLOW)

@@ -63,6 +63,11 @@
 
 ---
 
+## 设计文档（Design）
+
+- 自进化闭环（Learning Loop）：`docs/design/learning_loop/aiPlat-learning-loop-spec.md`
+- 自动评估与回归门控（Auto Eval & Regression Gate，As-Is）：`docs/design/evaluation/auto-eval-and-regression.md`
+
 ## Engine vs Workspace（目录与管理边界）
 
 为保证“核心引擎稳定性”与“对外应用可定制”两者兼得，目录化的 Agent / Skill / MCP 配置按 **scope** 严格分离：

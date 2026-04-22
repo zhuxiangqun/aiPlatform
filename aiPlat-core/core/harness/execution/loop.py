@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Callable
 import asyncio
 import os
+import time
 
 from ..interfaces.loop import (
     ILoop,
@@ -21,6 +22,14 @@ from ..infrastructure.hooks import HookManager, HookPhase, HookContext
 from .tool_calling import parse_action_call, parse_tool_call
 from ..syscalls import sys_llm_generate, sys_skill_call, sys_tool_call
 from ..assembly import PromptAssembler
+from ..kernel.runtime import get_kernel_runtime
+from ..restatement.run_state import (
+    default_run_state,
+    format_run_state_for_prompt,
+    normalize_run_state,
+    restate_next_step,
+    set_todo_status,
+)
 
 
 class BaseLoop(ILoop):
@@ -316,6 +325,12 @@ class ReActLoop(BaseLoop):
             state.context["reasoning"] = reasoning
             await self._trigger_hook(HookPhase.POST_REASONING, state.context)
 
+        # Parse TODO_DONE markers from reasoning too (more "seamless")
+        try:
+            await self._apply_todo_done_markers(state, str(reasoning or ""), source="reasoning")
+        except Exception:
+            pass
+
         # 支持“直接结束”语义：当模型给出 DONE/FINAL 且没有动作调用时，直接结束。
         # 这使得在无工具调用场景也能完成一次 agent 执行（例如 mock LLM / 纯对话）。
         try:
@@ -330,6 +345,26 @@ class ReActLoop(BaseLoop):
                         final_text = final_text[len(tag) :].strip()
                         break
                 state.context["output"] = final_text
+                # Optional: auto-complete current todo when finishing (best-effort)
+                try:
+                    if os.getenv("AIPLAT_RUN_STATE_AUTO_COMPLETE_ON_DONE", "true").lower() in ("1", "true", "yes", "y"):
+                        rs = state.context.get("run_state")
+                        if isinstance(rs, dict):
+                            # Use current_todo_id injected in prompt, if present
+                            cur_id = None
+                            try:
+                                todo = rs.get("todo") if isinstance(rs.get("todo"), list) else []
+                                from ..restatement.run_state import pick_next_todo
+
+                                top = pick_next_todo(todo) if isinstance(todo, list) else None
+                                cur_id = str((top or {}).get("id") or "").strip() or None
+                            except Exception:
+                                cur_id = None
+                            if cur_id:
+                                state.context["run_state"] = set_todo_status(rs, todo_id=cur_id, status="completed", source="auto_complete_on_done")
+                                await self._persist_run_state(state, source="auto_complete_on_done", extra={"todo_id": cur_id})
+                except Exception:
+                    pass
                 state.current = LoopStateEnum.FINISHED
                 return state
         except Exception:
@@ -352,10 +387,73 @@ class ReActLoop(BaseLoop):
         state.context["observation"] = observation
         await self._trigger_hook(HookPhase.POST_OBSERVE, state.context)
 
+        # Optional: auto-complete todo items from explicit markers in logs/results.
+        # Format: "TODO_DONE:<todo_id>" (can appear multiple times)
+        try:
+            await self._apply_todo_done_markers(state, f"{state.context.get('action_result','')}\n{observation}", source="observation")
+        except Exception:
+            pass
+
         if "DONE" in observation.upper() or "FINISHED" in observation.upper():
             state.current = LoopStateEnum.FINISHED
 
         return state
+
+    async def _persist_run_state(self, state: LoopState, *, source: str, extra: Optional[Dict[str, Any]] = None) -> None:
+        runtime = get_kernel_runtime()
+        store = getattr(runtime, "execution_store", None) if runtime else None
+        if store is None:
+            return
+        rs = state.context.get("run_state")
+        if not isinstance(rs, dict):
+            return
+        try:
+            from core.learning.manager import LearningManager
+            from core.learning.types import LearningArtifactKind
+
+            mgr = LearningManager(execution_store=store)
+            run_id = state.context.get("_run_id") or state.context.get("run_id")
+            await mgr.create_artifact(
+                kind=LearningArtifactKind.RUN_STATE,
+                target_type="run",
+                target_id=str(run_id),
+                version=f"run_state:{int(time.time())}",
+                status="draft",
+                payload=rs,
+                metadata={"source": source, **(extra or {}), "locked": bool(rs.get("locked"))},
+                trace_id=state.context.get("_trace_id") or state.context.get("trace_id"),
+                run_id=str(run_id),
+            )
+        except Exception:
+            pass
+        try:
+            if hasattr(store, "append_run_event"):
+                await store.append_run_event(
+                    run_id=str(state.context.get("_run_id") or state.context.get("run_id")),
+                    event_type="run_state",
+                    trace_id=state.context.get("_trace_id") or state.context.get("trace_id"),
+                    tenant_id=state.context.get("tenant_id"),
+                    payload={"source": source, **(extra or {})},
+                )
+        except Exception:
+            pass
+
+    async def _apply_todo_done_markers(self, state: LoopState, text: str, *, source: str) -> None:
+        if os.getenv("AIPLAT_RUN_STATE_PARSE_TODO_DONE", "true").lower() not in ("1", "true", "yes", "y"):
+            return
+        done_ids = []
+        for token in str(text or "").split():
+            if token.startswith("TODO_DONE:"):
+                done_ids.append(token.split("TODO_DONE:", 1)[1].strip())
+        if not done_ids:
+            return
+        rs = state.context.get("run_state")
+        if not isinstance(rs, dict):
+            return
+        for tid in done_ids[:20]:
+            rs = set_todo_status(rs, todo_id=tid, status="completed", source=f"todo_done_marker:{source}")
+        state.context["run_state"] = rs
+        await self._persist_run_state(state, source=f"todo_done_marker:{source}", extra={"done_ids": done_ids[:20]})
 
     async def _reason(self, state: LoopState) -> str:
         """Reasoning phase"""
@@ -374,10 +472,26 @@ class ReActLoop(BaseLoop):
             for msg in state.context.get("messages", [])[-5:]
         ])
         tools_desc, tools_desc_stats = self._build_tools_desc()
+        skills_desc, skills_desc_stats = self._build_skills_desc()
         # Best-effort: attach to state for observability/debugging
         try:
             state.metadata["tools_desc_stats"] = tools_desc_stats
             state.context["tools_desc_stats"] = tools_desc_stats
+            state.metadata["skills_desc_stats"] = skills_desc_stats
+            state.context["skills_desc_stats"] = skills_desc_stats
+        except Exception:
+            pass
+
+        # P0: context shaping pipeline (observable, default enabled)
+        try:
+            await self._apply_context_shaping_pipeline(state)
+        except Exception:
+            pass
+
+        # Restatement: load latest run_state and periodically refresh next_step
+        try:
+            await self._load_run_state_for_prompt(state)
+            await self._maybe_restate_and_persist_run_state(state)
         except Exception:
             pass
 
@@ -386,8 +500,12 @@ class ReActLoop(BaseLoop):
                 task=task,
                 history=history,
                 tools_desc=tools_desc,
+                skills_desc=skills_desc,
                 observation=state.context.get("observation", "None"),
             )
+            rs = state.context.get("run_state")
+            if isinstance(rs, dict):
+                prompt.append({"role": "user", "content": format_run_state_for_prompt(rs)})
         else:
             prompt = f"""Task: {task}
 
@@ -396,6 +514,9 @@ History:
 
 Available tools:
 {tools_desc}
+
+Available skills:
+{skills_desc}
 
 Observation: {state.context.get('observation', 'None')}
 
@@ -419,6 +540,9 @@ SKILL: skill_name: argument
 If finished, respond with:
 DONE: final_answer
 """
+            rs = state.context.get("run_state")
+            if isinstance(rs, dict):
+                prompt += "\n\n" + format_run_state_for_prompt(rs)
         try:
             trace_ctx = {
                 "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
@@ -438,6 +562,225 @@ DONE: final_answer
             return response.content
         except Exception as e:
             return f"Model error: {e}"
+
+    async def _load_run_state_for_prompt(self, state: LoopState) -> None:
+        """
+        Load latest run_state artifact (if any) into state.context["run_state"].
+        """
+        run_id = state.context.get("_run_id") or state.context.get("run_id")
+        if not run_id:
+            return
+        if isinstance(state.context.get("run_state"), dict):
+            return
+        runtime = get_kernel_runtime()
+        store = getattr(runtime, "execution_store", None) if runtime else None
+        if store is None or not hasattr(store, "list_learning_artifacts"):
+            state.context["run_state"] = default_run_state(run_id=str(run_id), task=str(state.context.get("task") or ""))
+            return
+        try:
+            res = await store.list_learning_artifacts(target_type="run", target_id=str(run_id), kind="run_state", limit=10, offset=0)
+            items = res.get("items") if isinstance(res, dict) else None
+            if isinstance(items, list) and items:
+                items2 = sorted(items, key=lambda x: float((x or {}).get("created_at") or 0), reverse=True)
+                payload = (items2[0] or {}).get("payload") if isinstance(items2[0], dict) else {}
+                rs = normalize_run_state(payload, run_id=str(run_id))
+                if not str(rs.get("task") or "").strip():
+                    rs["task"] = str(state.context.get("task") or "")
+                state.context["run_state"] = rs
+                state.context["_run_state_artifact_id"] = (items2[0] or {}).get("artifact_id")
+                return
+        except Exception:
+            pass
+        state.context["run_state"] = default_run_state(run_id=str(run_id), task=str(state.context.get("task") or ""))
+
+    async def _maybe_restate_and_persist_run_state(self, state: LoopState) -> None:
+        """
+        Periodically refresh run_state.next_step and persist (debounced).
+        - restate: append run_event every N steps
+        - persist: write learning artifact every M steps
+        """
+        run_id = state.context.get("_run_id") or state.context.get("run_id")
+        if not run_id:
+            return
+        rs = state.context.get("run_state")
+        if not isinstance(rs, dict):
+            return
+        if os.getenv("AIPLAT_ENABLE_RUN_STATE", "true").lower() not in ("1", "true", "yes", "y"):
+            return
+
+        try:
+            restate_n = int(os.getenv("AIPLAT_RUN_STATE_RESTATE_EVERY_N_STEPS", "5"))
+        except Exception:
+            restate_n = 5
+        try:
+            persist_n = int(os.getenv("AIPLAT_RUN_STATE_PERSIST_EVERY_N_STEPS", "20"))
+        except Exception:
+            persist_n = 20
+
+        step_count = int(getattr(state, "step_count", 0) or 0)
+        if step_count <= 0:
+            return
+
+        # Always keep task filled
+        if not str(rs.get("task") or "").strip():
+            rs["task"] = str(state.context.get("task") or "")
+
+        # Restate (cheap)
+        if restate_n > 0 and (step_count % restate_n == 0):
+            rs2 = restate_next_step(rs, step_count=step_count, last_error=state.context.get("error"))
+            state.context["run_state"] = rs2
+            # run event
+            try:
+                runtime = get_kernel_runtime()
+                store = getattr(runtime, "execution_store", None) if runtime else None
+                if store is not None and hasattr(store, "append_run_event"):
+                    await store.append_run_event(
+                        run_id=str(run_id),
+                        event_type="run_state",
+                        trace_id=state.context.get("_trace_id") or state.context.get("trace_id"),
+                        tenant_id=state.context.get("tenant_id"),
+                        payload={"source": "loop", "step_count": step_count, "locked": bool(rs2.get("locked")), "next_step": rs2.get("next_step")},
+                    )
+            except Exception:
+                pass
+
+        # Persist (debounced)
+        if persist_n > 0 and (step_count % persist_n == 0):
+            try:
+                if bool(state.context.get("run_state", {}).get("locked")):
+                    return
+                runtime = get_kernel_runtime()
+                store = getattr(runtime, "execution_store", None) if runtime else None
+                if store is None:
+                    return
+                from core.learning.manager import LearningManager
+                from core.learning.types import LearningArtifactKind
+
+                mgr = LearningManager(execution_store=store)
+                await mgr.create_artifact(
+                    kind=LearningArtifactKind.RUN_STATE,
+                    target_type="run",
+                    target_id=str(run_id),
+                    version=f"run_state:{int(time.time())}",
+                    status="draft",
+                    payload=state.context.get("run_state"),
+                    metadata={"source": "loop", "step_count": step_count, "locked": bool(state.context.get("run_state", {}).get("locked"))},
+                    trace_id=state.context.get("_trace_id") or state.context.get("trace_id"),
+                    run_id=str(run_id),
+                )
+            except Exception:
+                pass
+
+    def _estimate_context_stats(self, state: LoopState) -> Dict[str, Any]:
+        """Cheap best-effort context size estimation."""
+        msgs = state.context.get("messages")
+        msg_count = len(msgs) if isinstance(msgs, list) else 0
+        chars = 0
+        if isinstance(msgs, list):
+            for m in msgs:
+                if isinstance(m, dict):
+                    chars += len(str(m.get("content") or ""))
+        return {
+            "message_count": msg_count,
+            "message_chars": chars,
+            "step_count": int(getattr(state, "step_count", 0) or 0),
+            "budget_remaining": float(getattr(state, "budget_remaining", 0) or 0),
+        }
+
+    async def _append_run_event(self, state: LoopState, *, event_type: str, payload: Dict[str, Any]) -> None:
+        """Append run event for observability (best-effort)."""
+        try:
+            run_id = state.context.get("_run_id") or state.context.get("run_id")
+            trace_id = state.context.get("_trace_id") or state.context.get("trace_id")
+            tenant_id = state.context.get("_tenant_id") or state.context.get("tenant_id")
+            if not run_id:
+                return
+            runtime = get_kernel_runtime()
+            store = getattr(runtime, "execution_store", None) if runtime else None
+            if store is None or not hasattr(store, "append_run_event"):
+                return
+            await store.append_run_event(
+                run_id=str(run_id),
+                event_type=str(event_type),
+                payload=payload or {},
+                trace_id=str(trace_id) if trace_id else None,
+                tenant_id=str(tenant_id) if tenant_id else None,
+            )
+        except Exception:
+            return
+
+    async def _apply_context_shaping_pipeline(self, state: LoopState) -> None:
+        """
+        Multi-stage context shaping pipeline (skeleton + observability).
+
+        Stages (in order, cost ascending):
+        - budget_trim (already applied via tools/skills desc budgets)
+        - prune (placeholder)
+        - micro_compress (reuse existing compaction)
+        - fold (placeholder)
+        - auto_compress (placeholder)
+        """
+        if os.getenv("AIPLAT_ENABLE_CONTEXT_SHAPING_PIPELINE", "true").lower() not in ("1", "true", "yes", "y"):
+            return
+
+        stages = ["budget_trim", "prune", "micro_compress", "fold", "auto_compress"]
+        pipeline_stats: Dict[str, Any] = {"enabled": True, "stages": [], "started_at": time.time()}
+
+        async def _stage(name: str, fn) -> None:
+            s_before = self._estimate_context_stats(state)
+            err = None
+            started = time.time()
+            try:
+                await fn()
+            except Exception as e:
+                err = str(e)
+            ended = time.time()
+            s_after = self._estimate_context_stats(state)
+            item = {
+                "stage": name,
+                "started_at": started,
+                "ended_at": ended,
+                "duration_ms": (ended - started) * 1000.0,
+                "before": s_before,
+                "after": s_after,
+                "error": err,
+            }
+            pipeline_stats["stages"].append(item)
+            await self._append_run_event(state, event_type="context_shaping", payload=item)
+
+        async def _budget_trim():
+            return
+
+        async def _prune():
+            return
+
+        async def _micro_compress():
+            await self._maybe_compact_messages(state)
+
+        async def _fold():
+            return
+
+        async def _auto_compress():
+            return
+
+        mapping = {
+            "budget_trim": _budget_trim,
+            "prune": _prune,
+            "micro_compress": _micro_compress,
+            "fold": _fold,
+            "auto_compress": _auto_compress,
+        }
+        pipeline_stats["before"] = self._estimate_context_stats(state)
+        for stg in stages:
+            await _stage(stg, mapping[stg])
+        pipeline_stats["after"] = self._estimate_context_stats(state)
+        pipeline_stats["ended_at"] = time.time()
+        pipeline_stats["total_duration_ms"] = (pipeline_stats["ended_at"] - pipeline_stats["started_at"]) * 1000.0
+        try:
+            state.metadata["context_shaping_stats"] = pipeline_stats
+            state.context["context_shaping_stats"] = pipeline_stats
+        except Exception:
+            pass
 
     async def _maybe_compact_messages(self, state: LoopState) -> None:
         """
@@ -581,6 +924,80 @@ DONE: final_answer
 
         return "\n".join(lines), stats
 
+    def _build_skills_desc(self) -> tuple[str, Dict[str, Any]]:
+        """
+        Build a compact skills description string with budgets.
+
+        Similar to OpenCode "find-skills" philosophy:
+        - only expose a lightweight index (name + description)
+        - for full SOP, use skill_load (on-demand)
+        """
+        import os
+
+        per_skill_max = int(os.getenv("AIPLAT_SKILL_DESC_PER_SKILL_MAX_CHARS", "120") or "120")
+        total_max = int(os.getenv("AIPLAT_SKILLS_DESC_MAX_CHARS", "1200") or "1200")
+
+        stats: Dict[str, Any] = {
+            "per_skill_max_chars": per_skill_max,
+            "total_max_chars": total_max,
+            "skills_total": 0,
+            "skills_included": 0,
+            "skills_hidden": 0,
+            "skills_truncated": 0,
+            "chars_total": 0,
+        }
+
+        try:
+            from core.apps.skills import get_skill_registry
+
+            reg = get_skill_registry()
+            names = reg.list_skills()
+        except Exception:
+            names = []
+
+        stats["skills_total"] = len(names)
+        if not names:
+            return "No skills available (use skill_find to discover)", stats
+
+        lines: List[str] = []
+        for name in sorted([str(x) for x in names]):
+            # best-effort: hide denied skills (OpenCode behavior)
+            try:
+                from core.apps.tools.skill_tools import resolve_skill_permission
+
+                if resolve_skill_permission(name) == "deny":
+                    continue
+            except Exception:
+                pass
+            try:
+                s = reg.get(name)  # type: ignore[name-defined]
+                cfg = s.get_config() if s else None
+                desc = str(getattr(cfg, "description", "") or "")
+                meta = dict(getattr(cfg, "metadata", {}) or {}) if cfg is not None else {}
+                kind = str(meta.get("skill_kind") or "rule")
+            except Exception:
+                desc = ""
+                kind = "rule"
+
+            if per_skill_max > 0 and len(desc) > per_skill_max:
+                desc = desc[: max(0, per_skill_max - 16)] + " …(truncated)"
+                stats["skills_truncated"] += 1
+
+            line = f"- {name} ({kind}): {desc}".strip()
+            projected = stats["chars_total"] + len(line) + (1 if lines else 0)
+            if total_max > 0 and projected > total_max:
+                stats["skills_hidden"] = stats["skills_total"] - stats["skills_included"]
+                break
+
+            lines.append(line)
+            stats["skills_included"] += 1
+            stats["chars_total"] = projected
+
+        if stats["skills_hidden"]:
+            lines.append(f"... ({stats['skills_hidden']} skills hidden; use skill_find to search, and skill_load to load SOP)")
+
+        return "\n".join(lines), stats
+
     async def _act(self, state: LoopState) -> str:
         """Acting phase - execute tool or skill."""
         reasoning = state.context.get("reasoning", "")
@@ -616,9 +1033,22 @@ DONE: final_answer
                             trace_context={
                                 "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
                                 "run_id": state.context.get("_run_id") or state.context.get("run_id"),
+                                "tenant_id": state.context.get("tenant_id"),
                             },
                         )
-                        result_output = result.output if hasattr(result, 'output') else str(result)
+                        # Standardized approval/policy states for skills (P1)
+                        if getattr(result, "error", None) == "approval_required":
+                            state.context["error"] = "approval_required"
+                            state.context["approval"] = getattr(result, "metadata", {}) or {}
+                            state.metadata["pause_requested"] = True
+                            result_output = "Approval required"
+                        elif getattr(result, "error", None) == "policy_denied":
+                            state.context["error"] = "policy_denied"
+                            state.context["policy"] = getattr(result, "metadata", {}) or {}
+                            state.metadata["pause_requested"] = True
+                            result_output = "POLICY_DENIED"
+                        else:
+                            result_output = result.output if hasattr(result, 'output') else str(result)
                     except Exception as e:
                         result_output = f"Skill error: {e}"
                     await self._trigger_hook(HookPhase.POST_SKILL_USE, {"skill": skill_name, "result": result_output, "format": parsed.format})

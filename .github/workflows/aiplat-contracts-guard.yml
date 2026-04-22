@@ -1,0 +1,74 @@
+name: aiPlat Contracts Guard
+
+on:
+  pull_request:
+    branches: ["**"]
+  push:
+    branches: ["**"]
+
+jobs:
+  contracts-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install packages (editable)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ./aiPlat-infra
+          python -m pip install -e ./aiPlat-core
+
+      - name: Contracts link check
+        run: |
+          python ./aiPlat-core/scripts/ci/check_contracts_guard.py links
+
+      - name: Contracts binding check (PR only)
+        if: ${{ github.event_name == 'pull_request' }}
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python ./aiPlat-core/scripts/ci/check_contracts_guard.py binding --base "$BASE_SHA" --head "$HEAD_SHA"
+
+      - name: Contracts acceptance tests
+        working-directory: ./aiPlat-core
+        run: |
+          pytest -q \
+            core/tests/unit/test_harness/test_llm_message_guard.py \
+            core/tests/unit/test_harness/test_context_compaction.py \
+            core/tests/unit/test_harness/test_context_shaping_pipeline.py \
+            core/tests/unit/test_harness/test_auto_eval_prompt_includes_browser_evidence.py \
+            core/tests/unit/test_harness/test_evidence_diff.py \
+            core/tests/unit/test_harness/test_regression_gate_required_tags.py \
+            core/tests/unit/test_harness/test_tag_assertions.py \
+            core/tests/unit/test_harness/test_evaluator_workbench.py \
+            core/tests/unit/test_harness/test_evaluation_policy_parse.py \
+            core/tests/unit/test_harness/test_evaluation_policy_merge.py \
+            core/tests/unit/test_docs/test_auto_eval_docs_guard.py \
+            core/tests/unit/test_docs/test_auto_eval_openapi_snapshot_guard.py \
+            core/tests/unit/test_docs/test_auto_eval_doc_openapi_section_guard.py \
+            core/tests/unit/test_harness/test_executable_skill_policy_gate.py \
+            core/tests/unit/test_harness/test_run_state_format.py \
+            core/tests/unit/test_harness/test_run_state_merge_generates_todo.py \
+            core/tests/unit/test_harness/test_run_state_auto_next_step_from_todo.py \
+            core/tests/unit/test_harness/test_policy_denied_auto_retry.py \
+            core/tests/unit/test_harness/test_tools_desc_budget.py \
+            core/tests/unit/test_harness/test_skills_desc_budget.py \
+            core/tests/unit/test_tool_search_tool.py \
+            core/tests/unit/test_tools/test_skill_find_load_tools.py \
+            core/tests/unit/test_gates/test_policy_gate_skill_load_permissions.py \
+            core/tests/unit/test_skills/test_skill_kind_detection.py \
+            core/tests/unit/test_skills/test_skill_installer.py \
+            core/tests/unit/test_skills/test_skill_install_plan_token.py \
+            core/tests/unit/test_exec_drivers/test_capabilities.py \
+            core/tests/integration/test_phaseR1_prompt_assembler_layers_cache.py \
+            core/tests/integration/test_phaseR1_prompt_mode.py

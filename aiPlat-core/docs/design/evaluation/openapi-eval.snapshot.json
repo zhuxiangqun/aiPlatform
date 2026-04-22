@@ -1,0 +1,69 @@
+{
+  "endpoints": {
+    "GET /api/core/evaluation/policy/latest": {
+      "operationId": "get_latest_evaluation_policy_api_core_evaluation_policy_latest_get",
+      "request_properties": [],
+      "request_required": []
+    },
+    "GET /api/core/projects/{project_id}/evaluation/policy/latest": {
+      "operationId": "get_latest_project_evaluation_policy_api_core_projects__project_id__evaluation_policy_latest_get",
+      "request_properties": [],
+      "request_required": []
+    },
+    "GET /api/core/runs/{run_id}/evaluation/latest": {
+      "operationId": "get_latest_run_evaluation_api_core_runs__run_id__evaluation_latest_get",
+      "request_properties": [],
+      "request_required": []
+    },
+    "GET /api/core/runs/{run_id}/evidence_pack/latest": {
+      "operationId": "get_latest_evidence_pack_api_core_runs__run_id__evidence_pack_latest_get",
+      "request_properties": [],
+      "request_required": []
+    },
+    "POST /api/core/evaluation/policy": {
+      "operationId": "upsert_evaluation_policy_api_core_evaluation_policy_post",
+      "request_properties": [
+        "policy"
+      ],
+      "request_required": []
+    },
+    "POST /api/core/projects/{project_id}/evaluation/policy": {
+      "operationId": "upsert_project_evaluation_policy_api_core_projects__project_id__evaluation_policy_post",
+      "request_properties": [
+        "mode",
+        "policy"
+      ],
+      "request_required": []
+    },
+    "POST /api/core/runs/{run_id}/evaluate/auto": {
+      "operationId": "auto_run_evaluation_api_core_runs__run_id__evaluate_auto_post",
+      "request_properties": [
+        "enforce_gate",
+        "evaluator",
+        "expected_tags",
+        "extra",
+        "policy",
+        "project_id",
+        "steps",
+        "tag_expectations",
+        "tag_template",
+        "thresholds",
+        "url"
+      ],
+      "request_required": []
+    },
+    "POST /api/core/runs/{run_id}/evidence/diff": {
+      "operationId": "compute_run_evidence_diff_api_core_runs__run_id__evidence_diff_post",
+      "request_properties": [
+        "base_evidence_pack_id",
+        "new_evidence_pack_id"
+      ],
+      "request_required": [
+        "base_evidence_pack_id",
+        "new_evidence_pack_id"
+      ]
+    }
+  },
+  "generated_from": "core.server:app.openapi"
+}
+
