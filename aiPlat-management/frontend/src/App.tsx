@@ -28,6 +28,7 @@ const InfraNetwork = lazy(() => import('./pages/Infra/Network/Network'));
 const InfraMonitoring = lazy(() => import('./pages/Infra/Monitoring/Monitoring'));
 const CoreAgents = lazy(() => import('./pages/Core/Agents/Agents'));
 const CoreSkills = lazy(() => import('./pages/Core/Skills/Skills'));
+const CoreSkillsRollouts = lazy(() => import('./pages/Core/Skills/Rollouts'));
 const CorePrompts = lazy(() => import('./pages/Core/Prompts'));
 const CoreTools = lazy(() => import('./pages/Core/Tools/Tools'));
 const CorePlugins = lazy(() => import('./pages/Core/Plugins'));
@@ -37,6 +38,7 @@ const CoreJobs = lazy(() => import('./pages/Core/Jobs/Jobs'));
 const CoreSkillPacks = lazy(() => import('./pages/Core/SkillPacks'));
 const WorkspaceAgents = lazy(() => import('./pages/Workspace/Agents/Agents'));
 const WorkspaceSkills = lazy(() => import('./pages/Workspace/Skills/Skills'));
+const WorkspaceSkillLint = lazy(() => import('./pages/Workspace/Skills/LintDashboard'));
 const WorkspaceSkillMarketplace = lazy(() => import('./pages/Workspace/SkillMarketplace/SkillMarketplace'));
 const WorkspaceMCP = lazy(() => import('./pages/Workspace/MCP/MCP'));
 const CoreLearningArtifacts = lazy(() => import('./pages/Core/Learning/Artifacts'));
@@ -64,10 +66,15 @@ const DiagnosticsSmoke = lazy(() => import('./pages/Diagnostics/Smoke/Smoke'));
 const DiagnosticsOps = lazy(() => import('./pages/Diagnostics/Ops'));
 const DiagnosticsRepo = lazy(() => import('./pages/Diagnostics/Repo'));
 const DiagnosticsChangeControl = lazy(() => import('./pages/Diagnostics/ChangeControl'));
+const DiagnosticsRoutingReplayList = lazy(() => import('./pages/Diagnostics/RoutingReplay/RoutingReplayList'));
+const DiagnosticsRoutingReplayDetail = lazy(() => import('./pages/Diagnostics/RoutingReplay/RoutingReplayDetail'));
+const DiagnosticsRoutingDashboard = lazy(() => import('./pages/Diagnostics/RoutingReplay/RoutingDashboard'));
 const DiagnosticsPolicyDebug = lazy(() => import('./pages/Diagnostics/PolicyDebug'));
 const DiagnosticsContext = lazy(() => import('./pages/Diagnostics/Context'));
 const DiagnosticsCapabilityPolicy = lazy(() => import('./pages/Diagnostics/CapabilityPolicy'));
 const DiagnosticsExecBackends = lazy(() => import('./pages/Diagnostics/ExecBackends'));
+const DiagnosticsWorkflows = lazy(() => import('./pages/Diagnostics/Workflows'));
+const DiagnosticsCodeIntel = lazy(() => import('./pages/Diagnostics/CodeIntel/CodeIntel'));
 const Onboarding = lazy(() => import('./pages/Onboarding/Onboarding'));
 
 const router = createBrowserRouter([
@@ -88,6 +95,7 @@ const router = createBrowserRouter([
       { path: 'infra/monitoring', element: withSuspense(InfraMonitoring) },
       { path: 'core/agents', element: withSuspense(CoreAgents) },
       { path: 'core/skills', element: withSuspense(CoreSkills) },
+      { path: 'core/skills-rollouts', element: withSuspense(CoreSkillsRollouts) },
       { path: 'core/prompts', element: withSuspense(CorePrompts) },
       { path: 'core/tools', element: withSuspense(CoreTools) },
       { path: 'core/plugins', element: withSuspense(CorePlugins) },
@@ -97,6 +105,7 @@ const router = createBrowserRouter([
       { path: 'core/jobs', element: withSuspense(CoreJobs) },
       { path: 'workspace/agents', element: withSuspense(WorkspaceAgents) },
       { path: 'workspace/skills', element: withSuspense(WorkspaceSkills) },
+      { path: 'workspace/skills-lint', element: withSuspense(WorkspaceSkillLint) },
       { path: 'workspace/skill-marketplace', element: withSuspense(WorkspaceSkillMarketplace) },
       { path: 'workspace/mcp', element: withSuspense(WorkspaceMCP) },
       { path: 'core/learning/artifacts', element: withSuspense(CoreLearningArtifacts) },
@@ -123,12 +132,17 @@ const router = createBrowserRouter([
       { path: 'diagnostics/syscalls', element: withSuspense(DiagnosticsSyscalls) },
       { path: 'diagnostics/change-control', element: withSuspense(DiagnosticsChangeControl) },
       { path: 'diagnostics/change-control/:changeId', element: withSuspense(DiagnosticsChangeControl) },
+      { path: 'diagnostics/routing-replay', element: withSuspense(DiagnosticsRoutingReplayList) },
+      { path: 'diagnostics/routing-replay/:routingDecisionId', element: withSuspense(DiagnosticsRoutingReplayDetail) },
+      { path: 'diagnostics/routing-dashboard', element: withSuspense(DiagnosticsRoutingDashboard) },
       { path: 'diagnostics/policy-debug', element: withSuspense(DiagnosticsPolicyDebug) },
       { path: 'diagnostics/smoke', element: withSuspense(DiagnosticsSmoke) },
       { path: 'diagnostics/ops', element: withSuspense(DiagnosticsOps) },
       { path: 'diagnostics/context', element: withSuspense(DiagnosticsContext) },
       { path: 'diagnostics/capability-policy', element: withSuspense(DiagnosticsCapabilityPolicy) },
       { path: 'diagnostics/exec-backends', element: withSuspense(DiagnosticsExecBackends) },
+      { path: 'diagnostics/workflows', element: withSuspense(DiagnosticsWorkflows) },
+      { path: 'diagnostics/code-intel', element: withSuspense(DiagnosticsCodeIntel) },
     ],
   },
 ]);

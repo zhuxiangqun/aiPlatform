@@ -11,6 +11,7 @@ const targetTypeOptions = [
   { label: 'agent', value: 'agent' },
   { label: 'skill', value: 'skill' },
   { label: 'run', value: 'run' },
+  { label: 'canary', value: 'canary' },
   { label: 'prompt', value: 'prompt' },
   { label: 'policy', value: 'policy' },
 ];
@@ -28,6 +29,8 @@ const kindOptions = [
   { label: 'prompt_revision', value: 'prompt_revision' },
   { label: 'regression_report', value: 'regression_report' },
   { label: 'evaluation_report', value: 'evaluation_report' },
+  { label: 'investigate_report', value: 'investigate_report' },
+  { label: 'canary_report', value: 'canary_report' },
   { label: 'evidence_pack', value: 'evidence_pack' },
   { label: 'evidence_diff', value: 'evidence_diff' },
   { label: 'evaluation_policy', value: 'evaluation_policy' },
@@ -105,6 +108,20 @@ const Artifacts: React.FC = () => {
         const dt = p.default_tag_template || '-';
         const th = p.thresholds || {};
         return `default_template=${dt}, thresholds=${Object.keys(th).join(',') || '-'}`;
+      }
+      if (r.kind === 'investigate_report') {
+        const ev = p.evaluation || {};
+        const sys = p.syscalls?.summary || {};
+        const pass = ev.pass;
+        const issues = ev.issues_count ?? '-';
+        const errs = sys.errors ?? '-';
+        return `pass=${String(pass)}, issues=${String(issues)}, sys_err=${String(errs)}`;
+      }
+      if (r.kind === 'canary_report') {
+        const pass = p.pass;
+        const cid = p.canary_id || '-';
+        const st = p.status || (pass ? 'completed' : 'failed');
+        return `canary=${String(cid)}, status=${String(st)}, pass=${String(pass)}`;
       }
     } catch {
       // ignore

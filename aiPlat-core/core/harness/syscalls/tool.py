@@ -11,6 +11,9 @@ from __future__ import annotations
 
 import asyncio
 import os
+import shutil
+import subprocess
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 from core.harness.infrastructure.gates import PolicyGate, PolicyDecision, TraceGate, ContextGate, ResilienceGate
@@ -19,6 +22,7 @@ import time
 from core.harness.interfaces import ToolResult
 from core.harness.kernel.execution_context import get_active_workspace_context
 from core.harness.kernel.execution_context import get_active_release_context
+from core.harness.kernel.execution_context import get_active_tenant_policy_context
 
 
 async def sys_tool_call(
@@ -54,6 +58,11 @@ async def sys_tool_call(
     start_ts = time.time()
     _ar = get_active_release_context()
     _run_id = (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None
+    coding_profile = (
+        str((trace_context or {}).get("coding_policy_profile") or "off").strip().lower()
+        if isinstance(trace_context, dict)
+        else "off"
+    )
 
     # Run events (best-effort): tool_start
     try:
@@ -124,6 +133,16 @@ async def sys_tool_call(
             args["_tenant_id"] = trace_context.get("tenant_id")
     except Exception:
         pass
+    # Fallback tenant propagation from active request context.
+    try:
+        if "_tenant_id" not in args:
+            from core.harness.kernel.execution_context import get_active_request_context
+
+            arq = get_active_request_context()
+            if arq and getattr(arq, "tenant_id", None):
+                args["_tenant_id"] = getattr(arq, "tenant_id")
+    except Exception:
+        pass
     # PR-08: persist run_id for approval replay/links (best-effort).
     try:
         _run_id = (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None
@@ -131,9 +150,18 @@ async def sys_tool_call(
             args["_run_id"] = str(_run_id)
     except Exception:
         pass
+    # Fallback run_id: for nested calls, session_id is often the run_id.
+    try:
+        if "_run_id" not in args and isinstance(session_id, str) and session_id.startswith(("run_", "run-")):
+            args["_run_id"] = str(session_id)
+    except Exception:
+        pass
     # Provide identity info for permission wrapper + auditing.
     args.setdefault("_user_id", user_id)
     args.setdefault("_session_id", session_id)
+    # Carry profile for observability/debugging (best-effort).
+    if coding_profile and "_coding_policy_profile" not in args:
+        args["_coding_policy_profile"] = coding_profile
     # Provide actor_role for policy engine (best-effort).
     try:
         from core.harness.kernel.execution_context import get_active_request_context
@@ -159,6 +187,41 @@ async def sys_tool_call(
     except Exception:
         pass
 
+    # P4: approval layering policy (skill-only / sensitive-only)
+    # If a parent skill has already been approved, we can reuse the same approval_request_id
+    # for nested tool calls to avoid double-approval when configured.
+    try:
+        approval_layer_policy = str(os.getenv("AIPLAT_APPROVAL_LAYER_POLICY", "both") or "both").strip().lower()
+        tool_force_list = os.getenv("AIPLAT_APPROVAL_TOOL_FORCE_LIST", "").strip()
+        # Tenant policy override
+        try:
+            tpol = get_active_tenant_policy_context()
+            pol0 = getattr(tpol, "policy", None) if tpol else None
+            layer = pol0.get("approval_layering") if isinstance(pol0, dict) else None
+            if isinstance(layer, dict):
+                if isinstance(layer.get("policy"), str) and layer.get("policy").strip():
+                    approval_layer_policy = str(layer.get("policy")).strip().lower()
+                if isinstance(layer.get("tool_force_list"), str):
+                    tool_force_list = str(layer.get("tool_force_list")).strip()
+        except Exception:
+            pass
+        if approval_layer_policy in {"skill_only", "tool_only", "skill_then_tool_sensitive_only"}:
+            from core.harness.kernel.execution_context import get_active_approval_request_id
+            import fnmatch
+
+            arid = get_active_approval_request_id()
+            if isinstance(arid, str) and arid and "_approval_request_id" not in args:
+                # Sensitive-only: do NOT reuse approval for tools in force list (they must request their own approval).
+                if approval_layer_policy == "skill_then_tool_sensitive_only":
+                    patterns = [p.strip() for p in str(tool_force_list or "").split(",") if p.strip()]
+                    op = f"tool:{tool_name}"
+                    if patterns and any(fnmatch.fnmatch(op, pat) for pat in patterns):
+                        arid = None
+                if isinstance(arid, str) and arid:
+                    args["_approval_request_id"] = str(arid)
+    except Exception:
+        pass
+
     # P1-1: Exec backend gate (force approval for non-local execution backends).
     try:
         if tool_name == "code":
@@ -177,6 +240,80 @@ async def sys_tool_call(
             op = args.get("operation") or args.get("op")
             if str(op) in {"add", "unstage", "restore", "commit", "checkout", "branch_create", "reset", "revert"}:
                 args["_approval_required"] = True
+                # Provide an explicit reason for approvals UI (best-effort).
+                args.setdefault("_policy_reason", "repo_mutation_requires_approval")
+                # Stronger guard under karpathy_v1: disallow broad add without explicit paths.
+                if coding_profile == "karpathy_v1":
+                    if str(op) == "add":
+                        paths = args.get("paths") if isinstance(args.get("paths"), list) else None
+                        broad = (not paths) or any(str(p).strip() in {".", "*"} for p in (paths or []))
+                        if broad:
+                            args.setdefault("_policy_reason", "repo_add_broad")
+                            args["_approval_required"] = True
+
+                # Attach a lightweight status snapshot (changed files) to help diff review in approvals.
+                try:
+                    repo_root = args.get("repo_root")
+                    if not repo_root:
+                        try:
+                            from core.harness.kernel.execution_context import get_active_workspace_context
+
+                            ws = get_active_workspace_context()
+                            repo_root = getattr(ws, "repo_root", None) if ws else None
+                        except Exception:
+                            repo_root = None
+                    cwd = Path(str(repo_root)) if repo_root else Path.cwd()
+                    if cwd.exists() and cwd.is_dir() and shutil.which("git"):
+                        p = subprocess.run(
+                            ["git", "status", "--porcelain=v1"],
+                            cwd=str(cwd),
+                            capture_output=True,
+                            text=True,
+                            timeout=3,
+                        )
+                        if p.returncode in (0, 1):
+                            lines = [ln for ln in (p.stdout or "").splitlines() if ln.strip()]
+                            files = []
+                            for ln in lines[:200]:
+                                # "XY path" or "?? path"
+                                parts = ln.split(maxsplit=1)
+                                if len(parts) == 2:
+                                    files.append(parts[1].strip())
+                            args.setdefault("_repo_status_count", len(files))
+                            args.setdefault("_repo_status_files", files[:50])
+                except Exception:
+                    pass
+
+                # Diff Gate (Phase-2): compare repo status against declared change contract from coding skill output.
+                try:
+                    from core.harness.kernel.execution_context import get_active_change_contract
+
+                    contract = get_active_change_contract()
+                    if contract is not None:
+                        args.setdefault("_declared_changed_files", list(contract.changed_files or [])[:50])
+                        if contract.unrelated_changes is not None:
+                            args.setdefault("_declared_unrelated_changes", bool(contract.unrelated_changes))
+                        declared = set([str(x).strip() for x in (contract.changed_files or []) if str(x).strip()])
+                        # Only enforce when contract explicitly claims no unrelated changes.
+                        if contract.unrelated_changes is False and declared:
+                            actual = set([str(x).strip() for x in (args.get("_repo_status_files") or []) if str(x).strip()])
+                            extra = sorted(list(actual - declared))
+                            if extra:
+                                args["_approval_required"] = True
+                                args["_policy_reason"] = "changed_files_out_of_contract"
+                                args["_out_of_contract_files"] = extra[:20]
+                            # If user asks repo add with explicit paths, ensure they are within declared set.
+                            if str(op) == "add":
+                                paths = args.get("paths") if isinstance(args.get("paths"), list) else []
+                                # ignore broad markers (handled above)
+                                chk = [str(p).strip() for p in paths if str(p).strip() and str(p).strip() not in {".", "*"}]
+                                bad = sorted([p for p in chk if p not in declared])
+                                if bad:
+                                    args["_approval_required"] = True
+                                    args["_policy_reason"] = "repo_add_paths_out_of_contract"
+                                    args["_out_of_contract_files"] = bad[:20]
+                except Exception:
+                    pass
     except Exception:
         pass
 
@@ -250,9 +387,9 @@ async def sys_tool_call(
         if get_active_request_context() is None:
             pr = type("_PR", (), {"decision": PolicyDecision.ALLOW, "tenant_id": None, "reason": None})()
         else:
-            pr = policy_gate.check_tool(user_id=user_id, tool_name=tool_name or "<unknown>", tool_args=args)
+            pr = await policy_gate.check_tool(user_id=user_id, tool_name=tool_name or "<unknown>", tool_args=args)
     except Exception:
-        pr = policy_gate.check_tool(user_id=user_id, tool_name=tool_name or "<unknown>", tool_args=args)
+        pr = await policy_gate.check_tool(user_id=user_id, tool_name=tool_name or "<unknown>", tool_args=args)
     if pr.decision == PolicyDecision.DENY:
         # Standardize as a ToolResult to avoid raising and to make approval/deny states machine-readable.
         # Also persist syscall event (best-effort).
@@ -567,7 +704,14 @@ async def sys_tool_call(
                         "end_time": end_ts,
                         "duration_ms": (end_ts - start_ts) * 1000.0,
                         "args": {"tool_args": prepared_args},
-                        "result": {"output": getattr(result, "output", None), "error": getattr(result, "error", None)},
+                        # P2-1: avoid storing large SOP bodies in syscall events (keep summary only).
+                        "result": {
+                            "output": _sanitize_tool_output_for_syscall_event(
+                                tool_name=tool_name or "<unknown>",
+                                output=getattr(result, "output", None),
+                            ),
+                            "error": getattr(result, "error", None),
+                        },
                         "approval_request_id": prepared_args.get("_approval_request_id") if isinstance(prepared_args, dict) else None,
                     }
                 )
@@ -614,3 +758,23 @@ async def sys_tool_call(
             except Exception:
                 pass
         raise
+
+
+def _sanitize_tool_output_for_syscall_event(*, tool_name: str, output: Any) -> Any:
+    """
+    Reduce persistence footprint for tool syscall events.
+    - skill_load: SOP markdown can be large; store only summary fields + a short excerpt.
+    """
+    try:
+        if tool_name != "skill_load":
+            return output
+        if not isinstance(output, dict):
+            return output
+        out = dict(output)
+        sop = out.get("sop_markdown")
+        if isinstance(sop, str) and sop:
+            out["sop_excerpt"] = sop[:160]
+            out.pop("sop_markdown", None)
+        return out
+    except Exception:
+        return output

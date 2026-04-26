@@ -12,11 +12,56 @@ import fnmatch
 import hashlib
 import json
 import os
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ...harness.interfaces import ToolConfig, ToolResult
 from core.apps.skills.registry import get_skill_registry
 from .base import BaseTool
+from core.apps.skills.skill_md import truncate_text
+
+
+def _hash_file_best_effort(path: Path, *, max_bytes: int = 1024 * 1024) -> str:
+    """
+    Best-effort sha256 for evidence purposes.
+    - Hash entire file when small; otherwise hash first max_bytes + file size.
+    """
+    try:
+        h = hashlib.sha256()
+        size = path.stat().st_size
+        with path.open("rb") as f:
+            if size <= max_bytes:
+                h.update(f.read())
+            else:
+                h.update(f.read(max_bytes))
+                h.update(f"<size:{size}>".encode("utf-8"))
+        return h.hexdigest()
+    except Exception:
+        return ""
+
+
+def _collect_dir_manifest(dir_path: str, *, max_files: int = 60) -> List[Dict[str, Any]]:
+    try:
+        p = Path(str(dir_path))
+        if not p.exists() or not p.is_dir():
+            return []
+        out: List[Dict[str, Any]] = []
+        for f in sorted([x for x in p.iterdir() if x.is_file()], key=lambda x: x.name)[:max_files]:
+            try:
+                st = f.stat()
+                out.append(
+                    {
+                        "name": f.name,
+                        "sha256": _hash_file_best_effort(f),
+                        "size": int(st.st_size),
+                        "mtime": float(st.st_mtime),
+                    }
+                )
+            except Exception:
+                continue
+        return out
+    except Exception:
+        return []
 
 
 def _load_permission_rules() -> Dict[str, str]:
@@ -190,6 +235,9 @@ class SkillFindTool(BaseTool):
                     "kind": skind,
                     "version": str(meta.get("version") or ""),
                     "category": str(meta.get("category") or ""),
+                    "risk_level": str(meta.get("risk_level") or ""),
+                    "requires_approval": bool(meta.get("requires_approval")) if meta.get("requires_approval") is not None else False,
+                    "auto_trigger_allowed": bool(meta.get("auto_trigger_allowed")) if meta.get("auto_trigger_allowed") is not None else True,
                 }
                 if include_metadata:
                     # Strip big fields
@@ -260,6 +308,11 @@ class SkillLoadTool(BaseTool):
             cfg = s.get_config()
             meta = dict(getattr(cfg, "metadata", {}) or {}) if hasattr(cfg, "metadata") else {}
             sop = str(meta.get("sop_markdown") or "")
+            fs = meta.get("filesystem") if isinstance(meta.get("filesystem"), dict) else {}
+            evidence = {
+                "references": _collect_dir_manifest(str(fs.get("references_dir") or "")),
+                "scripts": _collect_dir_manifest(str(fs.get("scripts_dir") or "")),
+            }
 
             # enforce max chars budget
             env_max = int(os.getenv("AIPLAT_SKILL_SOP_MAX_CHARS", "8000") or "8000")
@@ -273,10 +326,7 @@ class SkillLoadTool(BaseTool):
                 max_chars = min(max_chars, req_max_i)
             max_chars = max(256, min(max_chars, 200000))
 
-            truncated = False
-            if max_chars > 0 and len(sop) > max_chars:
-                sop = sop[: max(0, max_chars - 16)] + " …(truncated)"
-                truncated = True
+            sop, truncated = truncate_text(sop, max_chars, suffix=" …(truncated)")
 
             h = hashlib.sha256(sop.encode("utf-8")).hexdigest()
             out = {
@@ -284,8 +334,16 @@ class SkillLoadTool(BaseTool):
                 "kind": str(meta.get("skill_kind") or meta.get("kind") or "rule"),
                 "version": str(meta.get("version") or ""),
                 "hash": h,
+                "contract_digest": str(meta.get("contract_digest") or ""),
+                "risk_level": str(meta.get("risk_level") or ""),
+                "permissions": meta.get("permissions") or [],
+                "requires_approval": bool(meta.get("requires_approval")) if meta.get("requires_approval") is not None else False,
+                "auto_trigger_allowed": bool(meta.get("auto_trigger_allowed")) if meta.get("auto_trigger_allowed") is not None else True,
                 "truncated": truncated,
+                "max_chars": max_chars,
+                "chars": len(sop),
                 "sop_markdown": sop,
+                "evidence": evidence,
             }
             return ToolResult(success=True, output=out)
 

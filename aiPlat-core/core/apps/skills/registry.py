@@ -11,6 +11,9 @@ from typing import Any, Dict, List, Optional
 from datetime import datetime
 
 from .base import BaseSkill, SkillMetadata, TextGenerationSkill, CodeGenerationSkill, DataAnalysisSkill, create_skill
+from .eval_trigger import SkillEvalTriggerSkill
+from .eval_quality import SkillEvalQualitySkill
+from .apply_engine_skill_md_patch import ApplyEngineSkillMdPatchSkill
 from ...harness.interfaces import SkillConfig, SkillResult
 
 
@@ -59,6 +62,9 @@ class SkillRegistry:
             ("text_generation", "文本生成", "generation", "根据提示生成各类文本内容", True),
             ("code_generation", "代码生成", "generation", "根据需求描述生成代码", False),
             ("data_analysis", "数据分析", "analysis", "分析数据并提供洞察", True),
+            ("skill_eval_trigger", "技能触发评测", "ops", "对指定 Skill 进行触发评测（正负例）并产出指标", True),
+            ("skill_eval_quality", "技能质量评测", "ops", "对指定 Skill 执行质量做评测（用例+规则评分）并产出指标", True),
+            ("skill_apply_engine_skill_md_patch", "应用 Engine Skill 补丁", "ops", "应用 engine skill 的 SKILL.md 补丁（change-control 治理）", True),
         ]
         
         generic_skills = [
@@ -77,6 +83,9 @@ class SkillRegistry:
             "text_generation": TextGenerationSkill,
             "code_generation": CodeGenerationSkill,
             "data_analysis": DataAnalysisSkill,
+            "skill_eval_trigger": SkillEvalTriggerSkill,
+            "skill_eval_quality": SkillEvalQualitySkill,
+            "skill_apply_engine_skill_md_patch": ApplyEngineSkillMdPatchSkill,
         }
         
         with self._lock:
@@ -102,15 +111,40 @@ class SkillRegistry:
     def register(self, skill: BaseSkill) -> None:
         """Register a skill"""
         with self._lock:
-            name = skill.get_config().name
+            cfg = skill.get_config()
+            name = cfg.name
+            # P0-1: normalize governance contract fields and attach a stable digest.
+            try:
+                from core.apps.skills.contract import build_contract_and_digest
+
+                meta = dict(getattr(cfg, "metadata", {}) or {})
+                kind = str(meta.get("skill_kind") or meta.get("kind") or "rule")
+                version = str(meta.get("version") or "1.0.0")
+                contract, digest = build_contract_and_digest(
+                    name=name,
+                    version=version,
+                    kind=kind,
+                    input_schema=getattr(cfg, "input_schema", {}) or {},
+                    output_schema=getattr(cfg, "output_schema", {}) or {},
+                    metadata=meta,
+                )
+                # Keep contract fields both in metadata (for legacy access) and as a digest.
+                meta["permissions"] = contract.get("permissions") or []
+                meta["risk_level"] = contract.get("risk_level") or "low"
+                meta["auto_trigger_allowed"] = bool(contract.get("auto_trigger_allowed"))
+                meta["requires_approval"] = bool(contract.get("requires_approval"))
+                meta["contract_digest"] = digest
+                setattr(cfg, "metadata", meta)
+            except Exception:
+                pass
             category = self._get_category(skill)
             self._skills[name] = skill
             if category not in self._categories:
                 self._categories[category] = []
             if name not in self._categories[category]:
                 self._categories[category].append(name)
-            version = skill.get_config().metadata.get("version", "1.0.0")
-            self._add_version(name, version, skill.get_config())
+            version = cfg.metadata.get("version", "1.0.0")
+            self._add_version(name, version, cfg)
             self._enabled[name] = True
             self._binding_stats[name] = SkillBindingStats(skill_id=name)
 
@@ -298,12 +332,50 @@ class _GenericSkill(BaseSkill):
                 success=False,
                 error=f"No LLM adapter configured for skill '{self._config.name}'"
             )
-        
+
+        def _extract_json(text: str):
+            import json
+            import re
+
+            if not isinstance(text, str):
+                return None
+            s = text.strip()
+            # strip ```json ... ```
+            m = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", s, re.IGNORECASE)
+            if m:
+                s = m.group(1).strip()
+            # direct parse
+            try:
+                obj = json.loads(s)
+                return obj
+            except Exception:
+                pass
+            # find first {...} block (best-effort)
+            i = s.find("{")
+            j = s.rfind("}")
+            if i >= 0 and j > i:
+                try:
+                    return json.loads(s[i : j + 1])
+                except Exception:
+                    return None
+            return None
+
         prompt = params.get("prompt", params.get("input", ""))
         if not prompt:
-            prompt = f"Execute skill '{self._config.name}': {self._config.description}"
-            if params:
-                prompt += f"\nInput: {params}"
+            # Prefer schema-driven prompt: feed the full params as JSON so SOP can reference fields.
+            prompt = f"Execute skill '{self._config.name}': {self._config.description}\nInput(JSON): {params}"
+
+        # Organization-level coding policy profile (Phase-1).
+        coding_profile = str((params or {}).get("_coding_policy_profile") or "").strip().lower()
+        policy_block = ""
+        if coding_profile == "karpathy_v1":
+            policy_block = (
+                "编码行为规范（karpathy_v1，必须遵循）：\n"
+                "1) 编码前思考：不要做未证实假设；遇到歧义/缺参，先在输出中列出需要确认的问题与可选方案。\n"
+                "2) 简洁优先：坚持最小可行实现；不要引入未经请求的抽象/架构/额外功能。\n"
+                "3) 精准修改：像外科手术一样，只改必须改的地方；避免无关格式化/无关文件改动。\n"
+                "4) 目标驱动：把任务转成可验证目标；在输出中给出验收标准（测试/复现步骤/检查清单）。\n"
+            )
         
         try:
             sop = ""
@@ -328,9 +400,23 @@ class _GenericSkill(BaseSkill):
                 f"技能名称：{self._config.name}",
                 f"技能描述：{self._config.description}",
             ]
+            if policy_block:
+                system_parts.append(policy_block)
             if sop:
                 system_parts.append("下面是该技能的SOP（必须严格遵循）：")
                 system_parts.append(sop)
+
+            # If output_schema exists, require strict JSON output with those top-level keys.
+            out_schema = {}
+            try:
+                out_schema = self._config.output_schema or {}
+            except Exception:
+                out_schema = {}
+            if isinstance(out_schema, dict) and out_schema:
+                keys = list(out_schema.keys())
+                system_parts.append("输出要求：你必须返回严格 JSON（不要输出任何额外文本/解释/代码块外内容）。")
+                system_parts.append(f"JSON 顶层字段必须包含：{keys}")
+                system_parts.append("如果某字段无法给出，请给出空值（空数组/空对象/空字符串），但不要遗漏字段。")
 
             # If tools are available, run as a tool-capable ReAct agent (SkillTool-like orchestration).
             if allowed_tools:
@@ -356,12 +442,22 @@ class _GenericSkill(BaseSkill):
                     tools=allowed_tools,
                 )
                 result = await agent.execute(agent_ctx)
-                return SkillResult(
-                    success=bool(result.success),
-                    output={"text": result.output},
-                    error=result.error,
-                    metadata={"skill": self._config.name, "agent": result.metadata, "tools": allowed_tools},
-                )
+                if isinstance(out_schema, dict) and out_schema:
+                    parsed = _extract_json(str(result.output or ""))
+                    if isinstance(parsed, dict):
+                        return SkillResult(
+                            success=bool(result.success),
+                            output=parsed,
+                            error=result.error,
+                            metadata={"skill": self._config.name, "agent": result.metadata, "tools": allowed_tools, "parsed_json": True},
+                        )
+                    return SkillResult(
+                        success=False,
+                        output={"raw": result.output},
+                        error="json_parse_failed",
+                        metadata={"skill": self._config.name, "agent": result.metadata, "tools": allowed_tools},
+                    )
+                return SkillResult(success=bool(result.success), output={"text": result.output}, error=result.error, metadata={"skill": self._config.name, "agent": result.metadata, "tools": allowed_tools})
 
             # Fallback: plain LLM generation (no tools)
             from ...harness.syscalls.llm import sys_llm_generate
@@ -373,6 +469,11 @@ class _GenericSkill(BaseSkill):
                     {"role": "user", "content": prompt},
                 ],
             )
+            if isinstance(out_schema, dict) and out_schema:
+                parsed = _extract_json(str(getattr(response, "content", "") or ""))
+                if isinstance(parsed, dict):
+                    return SkillResult(success=True, output=parsed, metadata={"model": getattr(response, "model", None), "skill": self._config.name, "parsed_json": True})
+                return SkillResult(success=False, output={"raw": getattr(response, "content", None)}, error="json_parse_failed", metadata={"model": getattr(response, "model", None), "skill": self._config.name})
             return SkillResult(success=True, output={"text": response.content}, metadata={"model": response.model, "skill": self._config.name})
         except Exception as e:
             return SkillResult(success=False, error=str(e))

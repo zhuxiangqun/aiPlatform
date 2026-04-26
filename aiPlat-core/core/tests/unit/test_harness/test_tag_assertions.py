@@ -1,5 +1,5 @@
 def test_tag_assertions_text_and_limits():
-    from core.harness.evaluation.tag_assertions import evaluate_tag_assertions
+    from core.harness.evaluation.tag_assertions import evaluate_tag_assertions, evaluate_tag_assertions_with_stats
 
     evidence = {
         "by_tag": {
@@ -16,3 +16,8 @@ def test_tag_assertions_text_and_limits():
     assert ok is False
     assert len(failures) >= 2
 
+    ok2, failures2, stats = evaluate_tag_assertions_with_stats(evidence, expectations)
+    assert ok2 is False
+    assert isinstance(stats, dict)
+    assert stats["login"]["console_errors"] == 1
+    assert stats["login"]["network_5xx"] == 1

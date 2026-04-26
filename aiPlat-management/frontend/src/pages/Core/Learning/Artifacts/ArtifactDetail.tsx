@@ -119,6 +119,35 @@ const ArtifactDetail: React.FC = () => {
     };
   }, [kind, payload]);
 
+  const investigateSummary: any = useMemo(() => {
+    if (kind !== 'investigate_report') return null;
+    const s = payload || {};
+    return {
+      run: s.run,
+      links: s.links,
+      evaluation: s.evaluation,
+      evidence: s.evidence,
+      syscalls: s.syscalls,
+    };
+  }, [kind, payload]);
+
+  const canarySummary: any = useMemo(() => {
+    if (kind !== 'canary_report') return null;
+    const s = payload || {};
+    return {
+      canary_id: s.canary_id,
+      status: s.status,
+      pass: s.pass,
+      run_id: s.run_id,
+      trace_id: s.trace_id,
+      project_id: s.project_id,
+      url: s.url,
+      evaluation_report_id: s.evaluation_report_id,
+      evidence_pack_id: s.evidence_pack_id,
+      evidence_diff_id: s.evidence_diff_id,
+    };
+  }, [kind, payload]);
+
   const tabs = useMemo(() => {
     return [
       {
@@ -252,6 +281,67 @@ const ArtifactDetail: React.FC = () => {
                     </div>
                     <div className="text-xs text-gray-400">
                       templates: <span className="text-gray-500">{(evalPolicySummary?.templates || []).join(',') || '-'}</span>
+                    </div>
+                  </div>
+                ) : kind === 'investigate_report' ? (
+                  <div className="space-y-2 text-sm text-gray-200">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant={investigateSummary?.evaluation?.pass ? 'success' : 'error'}>
+                        {investigateSummary?.evaluation?.pass ? 'PASS' : 'FAIL'}
+                      </Badge>
+                      <Badge variant="info">issues: {String(investigateSummary?.evaluation?.issues_count ?? '-')}</Badge>
+                      <Badge variant="warning">syscall_err: {String(investigateSummary?.syscalls?.summary?.errors ?? '-')}</Badge>
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      diff: {String(investigateSummary?.evidence?.diff_summary || '').slice(0, 200) || '-'}
+                    </div>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {investigateSummary?.links?.evaluation_report_id && (
+                        <Button variant="secondary" icon={<ExternalLink size={14} />} onClick={() => navigate(`/core/learning/artifacts/${String(investigateSummary.links.evaluation_report_id)}`)}>
+                          打开 Evaluation Report
+                        </Button>
+                      )}
+                      {investigateSummary?.links?.evidence_pack_id && (
+                        <Button variant="secondary" icon={<ExternalLink size={14} />} onClick={() => navigate(`/core/learning/artifacts/${String(investigateSummary.links.evidence_pack_id)}`)}>
+                          打开 Evidence Pack
+                        </Button>
+                      )}
+                      {investigateSummary?.links?.evidence_diff_id && (
+                        <Button variant="secondary" icon={<ExternalLink size={14} />} onClick={() => navigate(`/core/learning/artifacts/${String(investigateSummary.links.evidence_diff_id)}`)}>
+                          打开 Evidence Diff
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ) : kind === 'canary_report' ? (
+                  <div className="space-y-2 text-sm text-gray-200">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant={canarySummary?.pass ? 'success' : 'error'}>{canarySummary?.pass ? 'PASS' : 'FAIL'}</Badge>
+                      <Badge variant="info">canary: {String(canarySummary?.canary_id || '-')}</Badge>
+                      <Badge variant="warning">status: {String(canarySummary?.status || '-')}</Badge>
+                    </div>
+                    <div className="text-xs text-gray-400 break-all">url: {String(canarySummary?.url || '-')}</div>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {canarySummary?.evaluation_report_id && (
+                        <Button variant="secondary" icon={<ExternalLink size={14} />} onClick={() => navigate(`/core/learning/artifacts/${String(canarySummary.evaluation_report_id)}`)}>
+                          打开 Evaluation Report
+                        </Button>
+                      )}
+                      {canarySummary?.evidence_pack_id && (
+                        <Button variant="secondary" icon={<ExternalLink size={14} />} onClick={() => navigate(`/core/learning/artifacts/${String(canarySummary.evidence_pack_id)}`)}>
+                          打开 Evidence Pack
+                        </Button>
+                      )}
+                      {canarySummary?.evidence_diff_id && (
+                        <Button variant="secondary" icon={<ExternalLink size={14} />} onClick={() => navigate(`/core/learning/artifacts/${String(canarySummary.evidence_diff_id)}`)}>
+                          打开 Evidence Diff
+                        </Button>
+                      )}
+                      {canarySummary?.run_id && (
+                        <Button variant="ghost" onClick={() => navigate(`/diagnostics/runs?run_id=${encodeURIComponent(String(canarySummary.run_id))}`)}>
+                          打开 Runs
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ) : (

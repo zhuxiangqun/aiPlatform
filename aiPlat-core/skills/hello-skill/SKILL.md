@@ -8,6 +8,17 @@ trigger_conditions:
   - "hello skill"
   - "测试 skill"
 execution_mode: inline
+executable: true
+permissions:
+  - "llm:generate"
+output_schema:
+  text:
+    type: string
+    required: true
+  markdown:
+    type: string
+    required: true
+    description: 面向人阅读的 Markdown 输出，与结构化字段一致
 ---
 
 # Hello Skill（演示）
@@ -20,4 +31,3 @@ execution_mode: inline
 
 ## 输出
 当执行该 skill 时，请输出：`hello-skill: ok`
-

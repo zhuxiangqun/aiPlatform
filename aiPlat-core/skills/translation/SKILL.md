@@ -6,6 +6,9 @@ category: transformation
 version: 1.0.0
 status: enabled
 execution_mode: inline
+executable: true
+permissions:
+  - "llm:generate"
 trigger_conditions:
   - "翻译"
   - "翻成中文"
@@ -23,6 +26,10 @@ output_schema:
   translated:
     type: string
     description: 翻译后的文本
+  markdown:
+    type: string
+    required: true
+    description: 面向人阅读的 Markdown 输出，与结构化字段一致
 ---
 
 # 多语言翻译

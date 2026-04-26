@@ -8,8 +8,6 @@ Based on framework/patterns.md §7.
 from typing import Dict, List, Optional, Any, Callable
 from datetime import datetime, timedelta
 import uuid
-import sqlite3
-import json
 
 from .types import (
     RuleType,
@@ -52,103 +50,34 @@ class ApprovalManager:
         }
         self._execution_store = execution_store
 
-    def _db_path(self) -> Optional[str]:
+    async def _load_request_record_from_store(self, request_id: str) -> Optional[Dict[str, Any]]:
         if not self._execution_store:
             return None
-        # Best effort: ExecutionStore keeps config on _config.db_path
-        cfg = getattr(self._execution_store, "_config", None)
-        if cfg and getattr(cfg, "db_path", None):
-            return str(cfg.db_path)
-        return getattr(self._execution_store, "db_path", None)
-
-    def _sync_load_request_from_store(self, request_id: str) -> Optional[Dict[str, Any]]:
-        db_path = self._db_path()
-        if not db_path:
-            return None
         try:
-            conn = sqlite3.connect(db_path)
-            conn.row_factory = sqlite3.Row
-            try:
-                row = conn.execute(
-                    "SELECT * FROM approval_requests WHERE request_id=?",
-                    (request_id,),
-                ).fetchone()
-                if not row:
-                    return None
-                return {
-                    "request_id": row["request_id"],
-                    "user_id": row["user_id"],
-                    "operation": row["operation"],
-                    "details": row["details"],
-                    "rule_id": row["rule_id"],
-                    "rule_type": row["rule_type"],
-                    "status": row["status"],
-                    "amount": row["amount"],
-                    "batch_size": row["batch_size"],
-                    "is_first_time": bool(row["is_first_time"] or 0),
-                    "created_at": row["created_at"],
-                    "updated_at": row["updated_at"],
-                    "expires_at": row["expires_at"],
-                    "metadata": json.loads(row["metadata_json"] or "{}"),
-                    "result": json.loads(row["result_json"] or "null"),
-                }
-            finally:
-                conn.close()
+            if hasattr(self._execution_store, "get_approval_request"):
+                return await self._execution_store.get_approval_request(str(request_id))
         except Exception:
             return None
+        return None
 
-    def _sync_list_pending_from_store(self, user_id: Optional[str] = None) -> List[Dict[str, Any]]:
-        db_path = self._db_path()
-        if not db_path:
+    async def _list_pending_records_from_store(self, user_id: Optional[str] = None, limit: int = 2000) -> List[Dict[str, Any]]:
+        if not self._execution_store:
             return []
         try:
-            conn = sqlite3.connect(db_path)
-            conn.row_factory = sqlite3.Row
-            try:
-                if user_id:
-                    rows = conn.execute(
-                        """
-                        SELECT * FROM approval_requests
-                        WHERE status=? AND user_id=?
-                        ORDER BY created_at ASC
-                        """,
-                        (RequestStatus.PENDING.value, user_id),
-                    ).fetchall()
-                else:
-                    rows = conn.execute(
-                        """
-                        SELECT * FROM approval_requests
-                        WHERE status=?
-                        ORDER BY created_at ASC
-                        """,
-                        (RequestStatus.PENDING.value,),
-                    ).fetchall()
-                out: List[Dict[str, Any]] = []
-                for row in rows:
-                    out.append(
-                        {
-                            "request_id": row["request_id"],
-                            "user_id": row["user_id"],
-                            "operation": row["operation"],
-                            "details": row["details"],
-                            "rule_id": row["rule_id"],
-                            "rule_type": row["rule_type"],
-                            "status": row["status"],
-                            "amount": row["amount"],
-                            "batch_size": row["batch_size"],
-                            "is_first_time": bool(row["is_first_time"] or 0),
-                            "created_at": row["created_at"],
-                            "updated_at": row["updated_at"],
-                            "expires_at": row["expires_at"],
-                            "metadata": json.loads(row["metadata_json"] or "{}"),
-                            "result": json.loads(row["result_json"] or "null"),
-                        }
-                    )
-                return out
-            finally:
-                conn.close()
+            if hasattr(self._execution_store, "list_approval_requests"):
+                res = await self._execution_store.list_approval_requests(
+                    status=RequestStatus.PENDING.value,
+                    user_id=user_id,
+                    order_by="created_at",
+                    order_dir="asc",
+                    limit=int(limit),
+                    offset=0,
+                )
+                items = res.get("items") if isinstance(res, dict) else None
+                return [x for x in (items or []) if isinstance(x, dict)]
         except Exception:
             return []
+        return []
 
     def _to_record(self, req: ApprovalRequest) -> Dict[str, Any]:
         meta = req.metadata or {}
@@ -434,7 +363,11 @@ class ApprovalManager:
         Returns:
             Updated ApprovalRequest or None if not found
         """
+        # Load from store on-demand so approvals survive restarts and
+        # also work for requests created outside ApprovalManager.create_request.
         request = self._requests.get(request_id)
+        if not request:
+            request = await self.get_request_async(request_id)
         if not request:
             return None
         
@@ -471,6 +404,8 @@ class ApprovalManager:
         """
         request = self._requests.get(request_id)
         if not request:
+            request = await self.get_request_async(request_id)
+        if not request:
             return None
         
         if not request.is_resolved() and request.status == RequestStatus.PENDING:
@@ -499,6 +434,8 @@ class ApprovalManager:
         """
         request = self._requests.get(request_id)
         if not request:
+            request = await self.get_request_async(request_id)
+        if not request:
             return None
         
         if not request.is_resolved() and request.status == RequestStatus.PENDING:
@@ -509,10 +446,30 @@ class ApprovalManager:
         return request
 
     def get_request(self, request_id: str) -> Optional[ApprovalRequest]:
-        """Get a request by ID."""
+        """Get a request by ID (memory only).
+
+        Store-backed reads are async; use get_request_async in async code paths.
+        """
+        request = self._requests.get(request_id)
+        if request is None and self._execution_store and hasattr(self._execution_store, "get_approval_request_sync"):
+            try:
+                rec = self._execution_store.get_approval_request_sync(str(request_id))
+                if rec:
+                    request = self._from_record(rec)
+                    self._requests[request.request_id] = request
+            except Exception:
+                request = None
+        if request and request.is_expired() and request.status == RequestStatus.PENDING:
+            request.status = RequestStatus.EXPIRED
+            request.updated_at = datetime.utcnow()
+            self._notify_callbacks("on_expired", request)
+        return request
+
+    async def get_request_async(self, request_id: str) -> Optional[ApprovalRequest]:
+        """Get a request by ID (store-backed when available)."""
         request = self._requests.get(request_id)
         if request is None and self._execution_store:
-            rec = self._sync_load_request_from_store(request_id)
+            rec = await self._load_request_record_from_store(request_id)
             if rec:
                 try:
                     request = self._from_record(rec)
@@ -540,18 +497,7 @@ class ApprovalManager:
         Returns:
             List of pending requests
         """
-        # Prefer store-backed listing when available (survives restarts).
-        if self._execution_store:
-            items: List[ApprovalRequest] = []
-            for rec in self._sync_list_pending_from_store(user_id=user_id):
-                try:
-                    items.append(self._from_record(rec))
-                except Exception:
-                    continue
-            if rule_type:
-                items = [r for r in items if r.rule_type == rule_type]
-            return sorted(items, key=lambda r: r.created_at)
-
+        # Memory-only. Store-backed listing is async; use get_pending_requests_async.
         requests = [r for r in self._requests.values() if r.status == RequestStatus.PENDING]
         
         if user_id:
@@ -561,6 +507,25 @@ class ApprovalManager:
             requests = [r for r in requests if r.rule_type == rule_type]
         
         return sorted(requests, key=lambda r: r.created_at)
+
+    async def get_pending_requests_async(
+        self,
+        user_id: Optional[str] = None,
+        rule_type: Optional[RuleType] = None,
+        limit: int = 2000,
+    ) -> List[ApprovalRequest]:
+        """Get pending approval requests (store-backed when available)."""
+        if self._execution_store:
+            items: List[ApprovalRequest] = []
+            for rec in await self._list_pending_records_from_store(user_id=user_id, limit=limit):
+                try:
+                    items.append(self._from_record(rec))
+                except Exception:
+                    continue
+            if rule_type:
+                items = [r for r in items if r.rule_type == rule_type]
+            return sorted(items, key=lambda r: r.created_at)
+        return self.get_pending_requests(user_id=user_id, rule_type=rule_type)
 
     def auto_approve(
         self,

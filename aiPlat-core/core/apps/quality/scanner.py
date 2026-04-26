@@ -73,6 +73,13 @@ class SecurityScanner:
         VulnerabilityType.PII: VulnerabilitySeverity.MEDIUM,
     }
 
+    _SEVERITY_RANK = {
+        VulnerabilitySeverity.LOW.value: 1,
+        VulnerabilitySeverity.MEDIUM.value: 2,
+        VulnerabilitySeverity.HIGH.value: 3,
+        VulnerabilitySeverity.CRITICAL.value: 4,
+    }
+
     SUGGESTIONS = {
         VulnerabilityType.API_KEY: "Move API keys to environment variables or secrets manager",
         VulnerabilityType.CREDENTIALS: "Remove hardcoded credentials, use secure secret management",
@@ -95,6 +102,7 @@ class SecurityScanner:
         """Execute security scan"""
         vulnerabilities: List[Vulnerability] = []
         context = context or {}
+        thresh_rank = self._SEVERITY_RANK.get(self._severity_threshold.value, 2)
 
         for vuln_type in self._enabled_types:
             patterns = self.PATTERNS.get(vuln_type, [])
@@ -105,8 +113,8 @@ class SecurityScanner:
                     snippet = self._get_snippet(content, line_number)
 
                     severity = self.SEVERITY_MAP.get(vuln_type, VulnerabilitySeverity.MEDIUM)
-                    
-                    if severity.value >= self._severity_threshold.value:
+
+                    if self._SEVERITY_RANK.get(severity.value, 2) >= thresh_rank:
                         vulnerabilities.append(Vulnerability(
                             severity=severity,
                             type=vuln_type,
@@ -119,8 +127,11 @@ class SecurityScanner:
 
         vulnerabilities = self._deduplicate(vulnerabilities)
 
+        high_rank = self._SEVERITY_RANK.get(VulnerabilitySeverity.HIGH.value, 3)
+        any_high = any(self._SEVERITY_RANK.get(v.severity.value, 0) >= high_rank for v in vulnerabilities)
+
         return SecurityScanResult(
-            passed=len([v for v in vulnerabilities if v.severity.value >= VulnerabilitySeverity.HIGH.value]) == 0,
+            passed=not any_high,
             vulnerabilities=vulnerabilities,
             scanned_at=datetime.utcnow().isoformat(),
             scanned_content_length=len(content)

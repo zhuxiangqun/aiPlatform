@@ -235,11 +235,22 @@ class SkillExecutor:
                     sop_text = ""
 
                 sop_block = f"技能SOP（必须遵循）：\n{sop_text}\n" if sop_text else ""
+                coding_profile = str((params or {}).get("_coding_policy_profile") or "").strip().lower()
+                policy_block = ""
+                if coding_profile == "karpathy_v1":
+                    policy_block = (
+                        "编码行为规范（karpathy_v1，必须遵循）：\n"
+                        "1) 编码前思考：不要做未证实假设；遇到歧义/缺参，先列出需要确认的问题与可选方案。\n"
+                        "2) 简洁优先：坚持最小可行实现；不要引入未经请求的抽象/架构/额外功能。\n"
+                        "3) 精准修改：只改必须改的地方；避免无关格式化/无关文件改动。\n"
+                        "4) 目标驱动：把任务转成可验证目标；给出验收标准（测试/复现步骤/检查清单）。\n"
+                    )
 
                 system_prompt = (
                     "你是一个专用技能代理（fork mode）。\n"
                     f"技能名称：{getattr(config, 'name', skill_name)}\n"
                     f"技能描述：{getattr(config, 'description', '')}\n"
+                    f"{policy_block}"
                     f"{sop_block}"
                     "你的任务：根据用户给定的参数与输入，严格执行该技能并输出结果。"
                 )

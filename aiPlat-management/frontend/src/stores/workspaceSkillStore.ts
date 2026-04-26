@@ -23,6 +23,7 @@ export const useWorkspaceSkillStore = create<WorkspaceSkillState>((set, get) => 
         category: params?.category,
         status: params?.status,
         enabled_only: params?.enabled_only,
+        include_lint: true,
       });
       set({ skills: res.skills || [] });
     } catch {

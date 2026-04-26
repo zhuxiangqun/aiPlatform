@@ -20,6 +20,11 @@
       "request_properties": [],
       "request_required": []
     },
+    "GET /api/core/runs/{run_id}/investigate/latest": {
+      "operationId": "get_latest_investigate_report_api_core_runs__run_id__investigate_latest_get",
+      "request_properties": [],
+      "request_required": []
+    },
     "POST /api/core/evaluation/policy": {
       "operationId": "upsert_evaluation_policy_api_core_evaluation_policy_post",
       "request_properties": [
@@ -38,6 +43,7 @@
     "POST /api/core/runs/{run_id}/evaluate/auto": {
       "operationId": "auto_run_evaluation_api_core_runs__run_id__evaluate_auto_post",
       "request_properties": [
+        "base_evidence_pack_id",
         "enforce_gate",
         "evaluator",
         "expected_tags",
@@ -62,8 +68,12 @@
         "base_evidence_pack_id",
         "new_evidence_pack_id"
       ]
+    },
+    "POST /api/core/runs/{run_id}/investigate/auto": {
+      "operationId": "auto_investigate_run_api_core_runs__run_id__investigate_auto_post",
+      "request_properties": [],
+      "request_required": []
     }
   },
   "generated_from": "core.server:app.openapi"
 }
-

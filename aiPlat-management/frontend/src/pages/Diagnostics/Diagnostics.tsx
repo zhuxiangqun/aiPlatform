@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
-import { Activity, GitBranch, Share2, Zap, Wrench, FolderSearch } from 'lucide-react';
+import { Activity, GitBranch, Share2, Zap, Wrench, FolderSearch, Wand2 } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, Badge } from '../../components/ui';
 import { diagnosticsApi } from '../../services';
@@ -54,6 +54,7 @@ const Diagnostics: React.FC = () => {
   const items = useMemo(
     () => [
       { title: 'Doctor', desc: '一键聚合诊断报告', href: '/diagnostics/doctor', icon: Activity },
+      { title: 'Workflows', desc: '把评估/证据/门控串成一键流水线', href: '/diagnostics/workflows', icon: Wand2 },
       { title: 'Context', desc: 'Prompt/context 组装诊断（cache/search/注入）', href: '/diagnostics/context', icon: Activity },
       { title: 'Capability→Policy', desc: '从 skill capabilities 生成工具门禁策略', href: '/diagnostics/capability-policy', icon: Activity },
       { title: 'Exec Backends', desc: '执行后端 health 与当前 backend', href: '/diagnostics/exec-backends', icon: Activity },
@@ -61,6 +62,7 @@ const Diagnostics: React.FC = () => {
       { title: 'Graph Runs', desc: '执行 runs / checkpoints / 恢复', href: '/diagnostics/graphs', icon: GitBranch },
       { title: 'Links', desc: '输入任意 ID 联动查询', href: '/diagnostics/links', icon: Share2 },
       { title: 'Repo', desc: 'Repo 索引/全文搜索（gitignore-aware）', href: '/diagnostics/repo', icon: FolderSearch },
+      { title: 'Code Intel', desc: '代码架构/影响面/风险扫描（aiPlat-core + frontend）', href: '/diagnostics/code-intel', icon: FolderSearch },
       { title: 'Runs', desc: 'run_id 维度的摘要与事件流', href: '/diagnostics/runs', icon: Share2 },
       { title: 'Audit Logs', desc: '关键操作审计日志', href: '/diagnostics/audit', icon: Share2 },
       { title: 'Tenant Policies', desc: 'Policy-as-code 策略快照', href: '/diagnostics/policies', icon: Share2 },

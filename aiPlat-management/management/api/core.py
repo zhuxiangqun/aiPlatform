@@ -496,24 +496,6 @@ async def list_release_metric_snapshots(candidate_id: str, metric_key: Optional[
         raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
 
 
-@router.post("/learning/auto-rollback/regression")
-async def auto_rollback_regression(body: Dict[str, Any]):
-    try:
-        client = get_core_client()
-        return await client.auto_rollback_regression(body or {})
-    except httpx.HTTPError as e:
-        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
-
-
-@router.post("/learning/approvals/cleanup-rollback-approvals")
-async def cleanup_rollback_approvals(body: Dict[str, Any] = None):
-    try:
-        client = get_core_client()
-        return await client.cleanup_rollback_approvals(body or {})
-    except httpx.HTTPError as e:
-        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
-
-
 @router.post("/jobs/{job_id}/enable")
 async def enable_job(job_id: str):
     try:

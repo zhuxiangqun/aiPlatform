@@ -6,6 +6,9 @@ category: transformation
 version: 1.0.0
 status: enabled
 execution_mode: inline
+executable: true
+permissions:
+  - "llm:generate"
 trigger_conditions:
   - "总结一下"
   - "帮我摘要"
@@ -19,6 +22,10 @@ output_schema:
   summary:
     type: string
     description: 摘要内容
+  markdown:
+    type: string
+    required: true
+    description: 面向人阅读的 Markdown 输出，与结构化字段一致
 ---
 
 # 内容摘要

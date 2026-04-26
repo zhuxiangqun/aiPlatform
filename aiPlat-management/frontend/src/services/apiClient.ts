@@ -27,9 +27,11 @@ class ApiClient {
       const tenantId = localStorage.getItem('active_tenant_id') || '';
       const actorId = localStorage.getItem('active_actor_id') || '';
       const actorRole = localStorage.getItem('active_actor_role') || '';
+      const releaseChannel = localStorage.getItem('active_release_channel') || '';
       if (tenantId.trim()) (defaultHeaders as any)['X-AIPLAT-TENANT-ID'] = tenantId.trim();
       if (actorId.trim()) (defaultHeaders as any)['X-AIPLAT-ACTOR-ID'] = actorId.trim();
       if (actorRole.trim()) (defaultHeaders as any)['X-AIPLAT-ACTOR-ROLE'] = actorRole.trim();
+      if (releaseChannel.trim()) (defaultHeaders as any)['X-AIPLAT-RELEASE-CHANNEL'] = releaseChannel.trim();
     } catch {
       // ignore (SSR / privacy mode)
     }
@@ -318,6 +320,13 @@ export const diagnosticsApi = {
   autosmokeChangeControl: async (changeId: string) => {
     return apiClient.post<any>(`/diagnostics/change-control/core/${encodeURIComponent(changeId)}/autosmoke`, {});
   },
+  applyEngineSkillMdPatchChangeControl: async (changeId: string, params: { gate_policy_id?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (params.gate_policy_id) q.set('gate_policy_id', params.gate_policy_id);
+    const qs = q.toString();
+    // NOTE: this is a core endpoint (not diagnostics proxy)
+    return apiClient.post<any>(`/core/change-control/changes/${encodeURIComponent(changeId)}/apply-engine-skill-md-patch${qs ? `?${qs}` : ''}`, {});
+  },
   exportChangeControlEvidence: async (changeId: string, params: { format?: 'zip' | 'json'; limit?: number } = {}) => {
     const q = new URLSearchParams();
     q.set('format', params.format || 'zip');
@@ -338,6 +347,19 @@ export const diagnosticsApi = {
       // ignore
     }
     return fetch(url, { method: 'GET', headers });
+  },
+  codeIntelScan: async (params: { roots?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (params.roots) q.set('roots', params.roots);
+    const qs = q.toString();
+    return apiClient.get<any>(`/core/diagnostics/code-intel/scan${qs ? `?${qs}` : ''}`);
+  },
+  codeIntelBlast: async (file: string, params: { roots?: string } = {}) => {
+    const q = new URLSearchParams();
+    q.set('file', file);
+    if (params.roots) q.set('roots', params.roots);
+    const qs = q.toString();
+    return apiClient.get<any>(`/core/diagnostics/code-intel/blast?${qs}`);
   },
 };
 

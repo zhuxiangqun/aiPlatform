@@ -420,6 +420,10 @@ export const approvalsApi = {
   reject: async (requestId: string, rejected_by: string, comments: string = '') => {
     return apiClient.post<any>(`/core/approvals/${requestId}/reject`, { rejected_by, comments });
   },
+
+  replay: async (requestId: string, payload: Record<string, unknown> = {}) => {
+    return apiClient.post<any>(`/core/approvals/${requestId}/replay`, payload as any);
+  },
 };
 
 // ==================== MCP API ====================
@@ -509,6 +513,7 @@ export interface Skill {
   type?: string;
   status?: string;
   metadata?: Record<string, unknown>;
+  lint?: { risk_level: string; error_count: number; warning_count: number; blocked: boolean };
 }
 
 export interface SkillDetail {
@@ -576,22 +581,102 @@ export const skillApi = {
   execute: async (skillId: string, data: { input?: Record<string, unknown>; context?: Record<string, unknown>; options?: { toolset?: string } }) => {
     return apiClient.post<{ execution_id: string; status: string; output?: unknown; error?: string; duration_ms?: number }>(`/core/skills/${skillId}/execute`, data);
   },
+
+  lint: async (skillId: string) => {
+    return apiClient.get<{ skill_id: string; lint: any; fixes?: any[]; fix_summary?: any }>(`/core/skills/${skillId}/lint`);
+  },
+
+  applyLintFix: async (skillId: string, body: { fix_ids?: string[]; issue_codes?: string[]; dry_run?: boolean } = {}) => {
+    return apiClient.post<any>(`/core/skills/${skillId}/apply-lint-fix`, body as any);
+  },
+
+  lintConflicts: async (params: { threshold?: number; min_overlap?: number; limit?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.threshold !== undefined) q.set('threshold', String(params.threshold));
+    if (params.min_overlap !== undefined) q.set('min_overlap', String(params.min_overlap));
+    if (params.limit !== undefined) q.set('limit', String(params.limit));
+    return apiClient.get<{ status: string; items: any[]; total: number }>(`/core/skills/meta/lint-conflicts?${q.toString()}`);
+  },
+
+  skillMetrics: async (params: { since_hours?: number; limit?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.since_hours !== undefined) q.set('since_hours', String(params.since_hours));
+    if (params.limit !== undefined) q.set('limit', String(params.limit));
+    return apiClient.get<{ status: string; items: any[]; total: number; since_hours: number }>(`/core/skills/observability/skill-metrics?${q.toString()}`);
+  },
+
+  routingFunnel: async (params: { since_hours?: number; limit?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.since_hours !== undefined) q.set('since_hours', String(params.since_hours));
+    if (params.limit !== undefined) q.set('limit', String(params.limit));
+    return apiClient.get<{ status: string; items: any[]; total: number; since_hours: number }>(`/core/skills/observability/routing-funnel?${q.toString()}`);
+  },
+
+  routingExplain: async (params: { since_hours?: number; limit?: number; skill_id?: string; selected_kind?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (params.since_hours !== undefined) q.set('since_hours', String(params.since_hours));
+    if (params.limit !== undefined) q.set('limit', String(params.limit));
+    if (params.skill_id) q.set('skill_id', params.skill_id);
+    if (params.selected_kind) q.set('selected_kind', params.selected_kind);
+    return apiClient.get<{ status: string; items: any[]; total: number; since_hours: number }>(`/core/skills/observability/routing-explain?${q.toString()}`);
+  },
+
+  routingReplay: async (params: { routing_decision_id: string; since_hours?: number; limit?: number } ) => {
+    const q = new URLSearchParams();
+    q.set('routing_decision_id', params.routing_decision_id);
+    if (params.since_hours !== undefined) q.set('since_hours', String(params.since_hours));
+    if (params.limit !== undefined) q.set('limit', String(params.limit));
+    return apiClient.get<any>(`/core/skills/observability/routing-replay?${q.toString()}`);
+  },
+
+  routingMetrics: async (params: { since_hours?: number; bucket_minutes?: number; skill_id?: string; coding_policy_profile?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (params.since_hours !== undefined) q.set('since_hours', String(params.since_hours));
+    if (params.bucket_minutes !== undefined) q.set('bucket_minutes', String(params.bucket_minutes));
+    if (params.skill_id) q.set('skill_id', params.skill_id);
+    if (params.coding_policy_profile) q.set('coding_policy_profile', params.coding_policy_profile);
+    return apiClient.get<any>(`/core/skills/observability/routing-metrics?${q.toString()}`);
+  },
+
+  routingMetricTags: async () => {
+    return apiClient.get<any>(`/core/skills/observability/routing-metrics/tags`);
+  },
 };
 
 export const workspaceSkillApi = {
-  list: async (params?: { category?: string; status?: string; enabled_only?: boolean; limit?: number; offset?: number }) => {
+  list: async (params?: { category?: string; status?: string; enabled_only?: boolean; include_lint?: boolean; limit?: number; offset?: number }) => {
     const query = new URLSearchParams();
     if (params?.category) query.set('category', params.category);
     if (params?.status) query.set('status', params.status);
     if (params?.enabled_only) query.set('enabled_only', 'true');
+    if (params?.include_lint) query.set('include_lint', 'true');
     if (params?.limit) query.set('limit', String(params.limit));
     if (params?.offset) query.set('offset', String(params.offset));
     const qs = query.toString();
     return apiClient.get<SkillListResponse>(`/core/workspace/skills${qs ? '?' + qs : ''}`);
   },
 
-  create: async (data: { name: string; category: string; description: string; input_schema?: Record<string, unknown>; output_schema?: Record<string, unknown>; config?: Record<string, unknown>; template?: string; sop?: string }) => {
-    return apiClient.post<{ id: string; status: string }>(`/core/workspace/skills`, data);
+  create: async (data: {
+    name: string;
+    skill_id?: string;
+    display_name?: string;
+    description: string;
+    category: string;
+    version?: string;
+    status?: string;
+    skill_kind?: string;
+    permissions?: string[];
+    trigger_conditions?: string[];
+    decision_tree?: any[];
+    resources?: Record<string, unknown>;
+    input_schema?: Record<string, unknown>;
+    output_schema?: Record<string, unknown>;
+    config?: Record<string, unknown>;
+    template?: string;
+    sop?: string;
+    metadata?: Record<string, unknown>;
+  }) => {
+    return apiClient.post<{ id: string; status: string; lint?: any }>(`/core/workspace/skills`, data);
   },
 
   get: async (skillId: string) => {
@@ -599,11 +684,11 @@ export const workspaceSkillApi = {
   },
 
   update: async (skillId: string, data: Record<string, unknown>) => {
-    return apiClient.put<{ status: string; id: string }>(`/core/workspace/skills/${skillId}`, data);
+    return apiClient.put<{ status: string; id: string; lint?: any }>(`/core/workspace/skills/${skillId}`, data);
   },
 
   enable: async (skillId: string) => {
-    return apiClient.post<{ status: string }>(`/core/workspace/skills/${skillId}/enable`);
+    return apiClient.post<{ status: string; lint?: any; lint_summary?: any }>(`/core/workspace/skills/${skillId}/enable`);
   },
 
   disable: async (skillId: string) => {
@@ -633,6 +718,171 @@ export const workspaceSkillApi = {
 
   getSkillMarkdown: async (skillId: string) => {
     return apiClient.get<{ skill_id: string; path: string; content: string }>(`/core/workspace/skills/${skillId}/skill-md`);
+  },
+
+  updateSkillMarkdown: async (skillId: string, data: { mode?: 'replace_body' | 'replace_all'; body?: string; content?: string }) => {
+    return apiClient.put<{ status: string; skill_id: string; path: string; lint?: any }>(`/core/workspace/skills/${skillId}/skill-md`, data as any);
+  },
+
+  reload: async (skillId: string) => {
+    return apiClient.post<{ status: string; skill_id: string }>(`/core/workspace/skills/${skillId}/reload`, {});
+  },
+
+  governancePreview: async (data: { skill_kind?: string; permissions?: string[]; config?: Record<string, unknown>; tenant_id?: string; actor_id?: string; session_id?: string }) => {
+    return apiClient.post<{
+      scope: string;
+      skill_kind: string;
+      risk_level: string;
+      requires_confirmation: boolean;
+      approval?: any;
+      hints?: string[];
+      permission_details?: Record<string, any>;
+      recommendations?: any;
+    }>(
+      `/core/workspace/skills/governance-preview`,
+      data as any
+    );
+  },
+
+  permissionsCatalog: async () => {
+    return apiClient.get<{ scope: string; items: any[]; default_permissions?: string[]; version?: string; source?: string; tenant_id?: string; channel?: string }>(
+      `/core/workspace/skills/meta/permissions-catalog`
+    );
+  },
+
+  skillSpecV2Schema: async () => {
+    return apiClient.get<{ schema: any; version: string; source?: string; tenant_id?: string; channel?: string }>(`/core/workspace/skills/meta/skill-spec-v2-schema`);
+  },
+
+  configRegistryStatus: async (params: { asset_type: string; scope?: string; tenant_id?: string; channel?: string }) => {
+    const q = new URLSearchParams();
+    q.set('asset_type', params.asset_type);
+    if (params.scope) q.set('scope', params.scope);
+    if (params.tenant_id) q.set('tenant_id', params.tenant_id);
+    if (params.channel) q.set('channel', params.channel);
+    return apiClient.get<{ status: string; published: any; tenant_id: string; channel: string; scope: string; asset_type: string }>(
+      `/core/workspace/skills/meta/config-registry/status?${q.toString()}`
+    );
+  },
+
+  configRegistryVersions: async (params: { asset_type: string; scope?: string; tenant_id?: string; limit?: number; offset?: number }) => {
+    const q = new URLSearchParams();
+    q.set('asset_type', params.asset_type);
+    if (params.scope) q.set('scope', params.scope);
+    if (params.tenant_id) q.set('tenant_id', params.tenant_id);
+    if (params.limit !== undefined) q.set('limit', String(params.limit));
+    if (params.offset !== undefined) q.set('offset', String(params.offset));
+    return apiClient.get<{ status: string; items: any[]; limit: number; offset: number; tenant_id: string; scope: string; asset_type: string }>(
+      `/core/workspace/skills/meta/config-registry/versions?${q.toString()}`
+    );
+  },
+
+  configRegistryAsset: async (params: { asset_type: string; scope?: string; tenant_id?: string; version: string }) => {
+    const q = new URLSearchParams();
+    q.set('asset_type', params.asset_type);
+    if (params.scope) q.set('scope', params.scope);
+    if (params.tenant_id) q.set('tenant_id', params.tenant_id);
+    q.set('version', params.version);
+    return apiClient.get<{ status: string; item: any; tenant_id: string; scope: string; asset_type: string }>(
+      `/core/workspace/skills/meta/config-registry/asset?${q.toString()}`
+    );
+  },
+
+  configRegistryPublish: async (params: { asset_type: string; scope?: string; tenant_id?: string; channel?: string }, body: { version?: string; payload?: any; note?: string; confirm_phrase?: string } = {}) => {
+    const q = new URLSearchParams();
+    q.set('asset_type', params.asset_type);
+    if (params.scope) q.set('scope', params.scope);
+    if (params.tenant_id) q.set('tenant_id', params.tenant_id);
+    if (params.channel) q.set('channel', params.channel);
+    return apiClient.post<{ status: string; version: string; tenant_id: string; channel: string; scope: string; asset_type: string }>(
+      `/core/workspace/skills/meta/config-registry/publish?${q.toString()}`,
+      body
+    );
+  },
+
+  configRegistryRollback: async (params: { asset_type: string; scope?: string; tenant_id?: string; channel?: string }) => {
+    const q = new URLSearchParams();
+    q.set('asset_type', params.asset_type);
+    if (params.scope) q.set('scope', params.scope);
+    if (params.tenant_id) q.set('tenant_id', params.tenant_id);
+    if (params.channel) q.set('channel', params.channel);
+    return apiClient.post<{ status: string; version: string | null; tenant_id: string; channel: string; scope: string; asset_type: string }>(
+      `/core/workspace/skills/meta/config-registry/rollback?${q.toString()}`,
+      {}
+    );
+  },
+
+  configRegistryDiff: async (params: { asset_type: string; scope?: string; tenant_id?: string; channel?: string; from_ref?: string; to_version: string }) => {
+    const q = new URLSearchParams();
+    q.set('asset_type', params.asset_type);
+    if (params.scope) q.set('scope', params.scope);
+    if (params.tenant_id) q.set('tenant_id', params.tenant_id);
+    if (params.channel) q.set('channel', params.channel);
+    if (params.from_ref) q.set('from_ref', params.from_ref);
+    q.set('to_version', params.to_version);
+    return apiClient.get<{ status: string; assessment: any; diff: string; from_version?: string | null; to_version: string }>(
+      `/core/workspace/skills/meta/config-registry/diff?${q.toString()}`
+    );
+  },
+
+  lint: async (skillId: string) => {
+    return apiClient.get<{ skill_id: string; lint: any; fixes?: any[]; fix_summary?: any }>(`/core/workspace/skills/${skillId}/lint`);
+  },
+
+  applyLintFix: async (skillId: string, body: { fix_ids?: string[]; issue_codes?: string[]; dry_run?: boolean } = {}) => {
+    return apiClient.post<any>(`/core/workspace/skills/${skillId}/apply-lint-fix`, body as any);
+  },
+
+  lintConflicts: async (params: { threshold?: number; min_overlap?: number; limit?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.threshold !== undefined) q.set('threshold', String(params.threshold));
+    if (params.min_overlap !== undefined) q.set('min_overlap', String(params.min_overlap));
+    if (params.limit !== undefined) q.set('limit', String(params.limit));
+    return apiClient.get<{ status: string; items: any[]; total: number }>(`/core/workspace/skills/meta/lint-conflicts?${q.toString()}`);
+  },
+
+  skillMetrics: async (params: { since_hours?: number; limit?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.since_hours !== undefined) q.set('since_hours', String(params.since_hours));
+    if (params.limit !== undefined) q.set('limit', String(params.limit));
+    return apiClient.get<{ status: string; items: any[]; total: number; since_hours: number }>(`/core/workspace/skills/observability/skill-metrics?${q.toString()}`);
+  },
+
+  routingFunnel: async (params: { since_hours?: number; limit?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.since_hours !== undefined) q.set('since_hours', String(params.since_hours));
+    if (params.limit !== undefined) q.set('limit', String(params.limit));
+    return apiClient.get<{ status: string; items: any[]; total: number; since_hours: number }>(`/core/workspace/skills/observability/routing-funnel?${q.toString()}`);
+  },
+
+  routingExplain: async (params: { since_hours?: number; limit?: number; skill_id?: string; selected_kind?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (params.since_hours !== undefined) q.set('since_hours', String(params.since_hours));
+    if (params.limit !== undefined) q.set('limit', String(params.limit));
+    if (params.skill_id) q.set('skill_id', params.skill_id);
+    if (params.selected_kind) q.set('selected_kind', params.selected_kind);
+    return apiClient.get<{ status: string; items: any[]; total: number; since_hours: number }>(`/core/workspace/skills/observability/routing-explain?${q.toString()}`);
+  },
+
+  routingReplay: async (params: { routing_decision_id: string; since_hours?: number; limit?: number }) => {
+    const q = new URLSearchParams();
+    q.set('routing_decision_id', params.routing_decision_id);
+    if (params.since_hours !== undefined) q.set('since_hours', String(params.since_hours));
+    if (params.limit !== undefined) q.set('limit', String(params.limit));
+    return apiClient.get<any>(`/core/workspace/skills/observability/routing-replay?${q.toString()}`);
+  },
+
+  routingMetrics: async (params: { since_hours?: number; bucket_minutes?: number; skill_id?: string; coding_policy_profile?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (params.since_hours !== undefined) q.set('since_hours', String(params.since_hours));
+    if (params.bucket_minutes !== undefined) q.set('bucket_minutes', String(params.bucket_minutes));
+    if (params.skill_id) q.set('skill_id', params.skill_id);
+    if (params.coding_policy_profile) q.set('coding_policy_profile', params.coding_policy_profile);
+    return apiClient.get<any>(`/core/workspace/skills/observability/routing-metrics?${q.toString()}`);
+  },
+
+  routingMetricTags: async () => {
+    return apiClient.get<any>(`/core/workspace/skills/observability/routing-metrics/tags`);
   },
 
   listExecutions: async (skillId: string, params?: { limit?: number; offset?: number }) => {
@@ -1379,6 +1629,15 @@ export const runApi = {
   getLatestRunState: async (runId: string) => {
     return apiClient.get<{ status: string; item: any | null }>(`/core/runs/${encodeURIComponent(runId)}/state/latest`);
   },
+  getLatestInvestigate: async (runId: string) => {
+    return apiClient.get<{ status: string; item: any | null }>(`/core/runs/${encodeURIComponent(runId)}/investigate/latest`);
+  },
+  autoInvestigate: async (runId: string) => {
+    return apiClient.post<{ status: string; artifact_id: string; report: any }>(
+      `/core/runs/${encodeURIComponent(runId)}/investigate/auto`,
+      {}
+    );
+  },
   upsertRunState: async (runId: string, body: { state: Record<string, unknown>; lock?: boolean }) => {
     return apiClient.post<{ status: string; artifact_id: string; state: any }>(`/core/runs/${encodeURIComponent(runId)}/state`, body);
   },
@@ -1512,5 +1771,57 @@ export const policyApi = {
     server_metadata?: Record<string, unknown>;
   }) => {
     return apiClient.post<any>(`/policies/evaluate`, body as any);
+  },
+};
+
+// ==================== Gate Policies API (productization Phase 1) ====================
+
+export type GatePolicyItem = {
+  policy_id: string;
+  name?: string;
+  description?: string;
+  config?: Record<string, unknown>;
+  created_at?: number;
+  updated_at?: number;
+};
+
+export const gatePolicyApi = {
+  list: async () => {
+    return apiClient.get<{ status: string; default_id?: string; items: GatePolicyItem[] }>(`/core/governance/gate-policies`);
+  },
+  bootstrap: async (params: { force?: boolean } = {}) => {
+    const q = new URLSearchParams();
+    if (params.force != null) q.set('force', params.force ? 'true' : 'false');
+    const qs = q.toString();
+    return apiClient.post<any>(`/core/governance/gate-policies/bootstrap${qs ? `?${qs}` : ''}`, {});
+  },
+  get: async (policyId: string) => {
+    return apiClient.get<{ status: string; item: GatePolicyItem; default_id?: string }>(`/core/governance/gate-policies/${encodeURIComponent(policyId)}`);
+  },
+  versions: async (policyId: string) => {
+    return apiClient.get<{ status: string; policy_id: string; current_version: number; revisions: any[] }>(
+      `/core/governance/gate-policies/${encodeURIComponent(policyId)}/versions`
+    );
+  },
+  rollback: async (policyId: string, version: number) => {
+    return apiClient.post<any>(`/core/governance/gate-policies/${encodeURIComponent(policyId)}/rollback`, { version });
+  },
+  propose: async (policyId: string, body: { config: any; name?: string; description?: string; set_default?: boolean; require_approval?: boolean }) => {
+    return apiClient.post<any>(`/core/governance/gate-policies/${encodeURIComponent(policyId)}/propose`, body as any);
+  },
+  applyChange: async (changeId: string, body: { approval_request_id?: string } = {}) => {
+    return apiClient.post<any>(`/core/governance/gate-policies/changes/${encodeURIComponent(changeId)}/apply`, body as any);
+  },
+  upsert: async (policyId: string, item: Partial<GatePolicyItem>, params: { set_default?: boolean } = {}) => {
+    return apiClient.put<{ status: string; item: GatePolicyItem; default_id?: string }>(`/core/governance/gate-policies/${encodeURIComponent(policyId)}`, {
+      ...item,
+      set_default: params.set_default,
+    } as any);
+  },
+  remove: async (policyId: string) => {
+    return apiClient.delete<{ status: string; deleted: string; default_id?: string }>(`/core/governance/gate-policies/${encodeURIComponent(policyId)}`);
+  },
+  setDefault: async (policyId: string) => {
+    return apiClient.post<{ status: string; default_id: string }>(`/core/governance/gate-policies/${encodeURIComponent(policyId)}/set-default`, {});
   },
 };

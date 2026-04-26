@@ -7,6 +7,9 @@ version: 1.0.0
 status: enabled
 protected: true
 execution_mode: inline
+executable: true
+permissions:
+  - "llm:generate"
 input_schema:
   task:
     type: string
@@ -14,6 +17,10 @@ input_schema:
 output_schema:
   subtasks:
     type: string
+  markdown:
+    type: string
+    required: true
+    description: 面向人阅读的 Markdown 输出，与结构化字段一致
 ---
 
 # 任务分解（Engine）

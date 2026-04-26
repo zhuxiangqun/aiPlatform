@@ -6,6 +6,9 @@ category: retrieval
 version: 1.0.0
 status: enabled
 execution_mode: inline
+executable: true
+permissions:
+  - "llm:generate"
 trigger_conditions:
   - "帮我查"
   - "搜索一下"
@@ -20,6 +23,10 @@ output_schema:
   results:
     type: string
     description: 结构化结果与来源
+  markdown:
+    type: string
+    required: true
+    description: 面向人阅读的 Markdown 输出，与结构化字段一致
 ---
 
 # 信息检索

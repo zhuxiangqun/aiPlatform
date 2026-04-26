@@ -7,6 +7,9 @@ version: 1.0.0
 status: enabled
 protected: true
 execution_mode: inline
+executable: true
+permissions:
+  - "llm:generate"
 input_schema:
   prompt:
     type: string
@@ -14,6 +17,10 @@ input_schema:
 output_schema:
   text:
     type: string
+  markdown:
+    type: string
+    required: true
+    description: 面向人阅读的 Markdown 输出，与结构化字段一致
 ---
 
 # 文本生成（Engine）

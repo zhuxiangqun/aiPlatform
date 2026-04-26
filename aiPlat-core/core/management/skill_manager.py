@@ -59,6 +59,8 @@ class SkillExecution:
     start_time: datetime
     end_time: Optional[datetime]
     duration_ms: float
+    # Extra metadata for governance/observability (e.g. approval_request_id).
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -478,7 +480,11 @@ class SkillManager:
         config: Optional[Dict[str, Any]] = None,
         dependencies: Optional[List[Dict[str, Any]]] = None,
         created_by: str = "system",
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
+        *,
+        skill_id: Optional[str] = None,
+        version: Optional[str] = None,
+        status: Optional[str] = None,
     ) -> SkillInfo:
         """Create a new skill"""
         # -------------------- Template support (workspace) --------------------
@@ -539,7 +545,17 @@ class SkillManager:
         if not sop_override:
             sop_override = tmpl.get("sop") or None
 
-        skill_id = name.lower().replace(" ", "_").replace("-", "_")
+        # Skill ID: allow explicit id (recommended for management-generated v2 skills).
+        if isinstance(skill_id, str) and skill_id.strip():
+            sid = skill_id.strip().lower()
+            sid = sid.replace(" ", "_").replace("-", "_")
+            # keep conservative characters only
+            sid = "".join([c for c in sid if (c.isalnum() or c in ("_", "-"))])
+            if not sid or not sid[0].isalpha():
+                raise ValueError("invalid_skill_id")
+            skill_id = sid
+        else:
+            skill_id = name.lower().replace(" ", "_").replace("-", "_")
         if self._reserved_ids and skill_id in self._reserved_ids:
             raise ValueError(f"Skill id '{skill_id}' is reserved by engine scope and cannot be created in workspace.")
         now = datetime.utcnow()
@@ -549,7 +565,7 @@ class SkillManager:
             name=name,
             type=skill_type,
             description=description,
-            status="enabled",
+            status=str(status or "enabled"),
             input_schema=input_schema,
             output_schema=output_schema,
             config=config or {
@@ -558,7 +574,7 @@ class SkillManager:
                 "retry_count": 3
             },
             dependencies=dependencies or [],
-            version="v1.0.0",
+            version=("v" + str(version).lstrip("v")) if isinstance(version, str) and version.strip() else "v1.0.0",
             created_at=now,
             updated_at=now,
             created_by=created_by,
@@ -601,17 +617,7 @@ class SkillManager:
                     if isinstance(tc, list):
                         trigger_conditions = [str(x) for x in tc if isinstance(x, (str, int, float)) and str(x).strip()]
 
-                manifest = {
-                    "name": skill_id,
-                    "display_name": name,
-                    "description": description or "",
-                    "category": skill_type or "general",
-                    "version": semver,
-                    "execution_mode": (skill.metadata or {}).get("execution_mode", "inline") if isinstance(skill.metadata, dict) else "inline",
-                    "trigger_conditions": trigger_conditions,
-                    "input_schema": input_schema or {},
-                    "output_schema": output_schema or {},
-                }
+                manifest = self._build_skill_manifest(skill)
 
                 header = yaml.safe_dump(manifest, sort_keys=False, allow_unicode=True).strip()
                 sop_body = ""
@@ -982,6 +988,8 @@ class SkillManager:
                 config = SkillConfig(
                     name=skill_id,
                     description=skill_info.description,
+                    input_schema=skill_info.input_schema or {},
+                    output_schema=skill_info.output_schema or {},
                     metadata={
                         "category": skill_info.type,
                         "version": skill_info.version,
@@ -1145,21 +1153,10 @@ class SkillManager:
         Split SKILL.md into (front_matter_dict, body).
         If not found, returns (None, original_content).
         """
-        if not content.startswith("---"):
-            return None, content
-        # Find the second '---' on its own line.
-        m = re.match(r"^---\s*\n(.*?)\n---\s*\n(.*)$", content, flags=re.DOTALL)
-        if not m:
-            return None, content
-        yaml_part = m.group(1)
-        body = m.group(2)
-        try:
-            data = yaml.safe_load(yaml_part) or {}
-            if not isinstance(data, dict):
-                data = {}
-        except Exception:
-            data = {}
-        return data, body
+        from core.apps.skills.skill_md import parse_skill_md
+
+        parsed = parse_skill_md(content or "")
+        return (parsed.front_matter if parsed.front_matter is not None else None), parsed.body
 
     def _build_skill_manifest(self, skill: "SkillInfo") -> dict:
         """Build YAML frontmatter for directory-based skill."""
@@ -1188,6 +1185,14 @@ class SkillManager:
             "input_schema": getattr(skill, "input_schema", {}) or {},
             "output_schema": getattr(skill, "output_schema", {}) or {},
         }
+        # v2 governance/routing fields (persist if present)
+        try:
+            if isinstance(getattr(skill, "metadata", None), dict):
+                for k in ("skill_kind", "permissions", "decision_tree", "resources"):
+                    if k in skill.metadata and skill.metadata.get(k) is not None:
+                        manifest[k] = skill.metadata.get(k)
+        except Exception:
+            pass
         # Persist selected traceability/governance metadata so it survives reload.
         try:
             if isinstance(getattr(skill, "metadata", None), dict):
@@ -1530,28 +1535,52 @@ class SkillManager:
         skill_id: str,
         input_data: Dict[str, Any],
         context: Optional[Dict[str, Any]] = None,
-        mode: str = "inline"
+        mode: str = "inline",
+        execution_id: Optional[str] = None,
     ) -> SkillExecution:
         """Execute skill via SkillExecutor and record audit trail."""
         import time
-        execution_id = f"exec-{uuid.uuid4().hex[:8]}"
+        execution_id = str(execution_id or f"exec-{uuid.uuid4().hex[:8]}")
         now = datetime.utcnow()
-        
-        execution = SkillExecution(
-            id=execution_id,
-            skill_id=skill_id,
-            status="running",
-            input_data=input_data,
-            output_data=None,
-            error=None,
-            start_time=now,
-            end_time=None,
-            duration_ms=0.0
-        )
-        
-        # Best-effort: allow executing skills even if they weren't loaded into this manager's
-        # in-memory index (e.g. workspace skills registered into SkillRegistry).
-        self._executions.setdefault(skill_id, []).append(execution)
+
+        # If execution_id already exists (e.g. approval replay), reuse the record to keep run_id stable.
+        execution: Optional[SkillExecution] = None
+        try:
+            for execs in self._executions.values():
+                for e in execs:
+                    if e.id == execution_id:
+                        execution = e
+                        break
+                if execution is not None:
+                    break
+        except Exception:
+            execution = None
+
+        if execution is None:
+            execution = SkillExecution(
+                id=execution_id,
+                skill_id=skill_id,
+                status="running",
+                input_data=input_data,
+                output_data=None,
+                error=None,
+                start_time=now,
+                end_time=None,
+                duration_ms=0.0,
+            )
+            # Best-effort: allow executing skills even if they weren't loaded into this manager's
+            # in-memory index (e.g. workspace skills registered into SkillRegistry).
+            self._executions.setdefault(skill_id, []).append(execution)
+        else:
+            # Reset for replay
+            execution.skill_id = skill_id
+            execution.status = "running"
+            execution.input_data = input_data
+            execution.output_data = None
+            execution.error = None
+            execution.start_time = now
+            execution.end_time = None
+            execution.duration_ms = 0.0
         
         stats = self._stats.setdefault(skill_id, SkillStats())
         stats.total_calls += 1
@@ -1573,9 +1602,20 @@ class SkillManager:
                     pass
             
             skill_tools = context.get("tools", []) if context else []
+            # Propagate user_id from active request context when not explicitly provided in payload.context.
+            resolved_user_id = context.get("user_id") if isinstance(context, dict) else None
+            if not resolved_user_id:
+                try:
+                    from core.harness.kernel.execution_context import get_active_request_context
+
+                    arq = get_active_request_context()
+                    if arq and getattr(arq, "user_id", None):
+                        resolved_user_id = getattr(arq, "user_id")
+                except Exception:
+                    resolved_user_id = None
             skill_context = SkillContext(
                 session_id=execution_id,
-                user_id=context.get("user_id", "system") if context else "system",
+                user_id=str(resolved_user_id or "system"),
                 variables=input_data,
                 tools=skill_tools,
             )
@@ -1592,10 +1632,11 @@ class SkillManager:
             
             duration_ms = (datetime.utcnow() - now).total_seconds() * 1000
             
+            res_meta = result.metadata if isinstance(getattr(result, "metadata", None), dict) else {}
             if result.success:
-                await self.complete_execution(execution_id, result.output or {}, duration_ms)
+                await self.complete_execution(execution_id, result.output or {}, duration_ms, metadata=res_meta)
             else:
-                await self.fail_execution(execution_id, result.error or "Unknown error", duration_ms)
+                await self.fail_execution(execution_id, result.error or "Unknown error", duration_ms, metadata=res_meta)
             
         except Exception as e:
             duration_ms = (datetime.utcnow() - now).total_seconds() * 1000
@@ -1719,7 +1760,8 @@ class SkillManager:
         self,
         execution_id: str,
         output_data: Dict[str, Any],
-        duration_ms: float
+        duration_ms: float,
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> bool:
         """Complete execution"""
         for skill_id, executions in self._executions.items():
@@ -1727,8 +1769,11 @@ class SkillManager:
                 if exec_.id == execution_id:
                     exec_.status = "completed"
                     exec_.output_data = output_data
+                    exec_.error = None
                     exec_.end_time = datetime.utcnow()
                     exec_.duration_ms = duration_ms
+                    if isinstance(metadata, dict):
+                        exec_.metadata = dict(metadata)
                     
                     # Update stats
                     stats = self._stats[skill_id]
@@ -1746,7 +1791,8 @@ class SkillManager:
         self,
         execution_id: str,
         error: str,
-        duration_ms: float
+        duration_ms: float,
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> bool:
         """Fail execution"""
         for skill_id, executions in self._executions.items():
@@ -1756,6 +1802,8 @@ class SkillManager:
                     exec_.error = error
                     exec_.end_time = datetime.utcnow()
                     exec_.duration_ms = duration_ms
+                    if isinstance(metadata, dict):
+                        exec_.metadata = dict(metadata)
                     
                     # Update stats
                     stats = self._stats[skill_id]

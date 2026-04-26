@@ -71,6 +71,8 @@ def build_snapshot() -> Dict[str, Any]:
     wanted: List[Tuple[str, str]] = [
         ("POST", "/api/core/runs/{run_id}/evaluate/auto"),
         ("GET", "/api/core/runs/{run_id}/evaluation/latest"),
+        ("POST", "/api/core/runs/{run_id}/investigate/auto"),
+        ("GET", "/api/core/runs/{run_id}/investigate/latest"),
         ("GET", "/api/core/runs/{run_id}/evidence_pack/latest"),
         ("POST", "/api/core/runs/{run_id}/evidence/diff"),
         ("GET", "/api/core/evaluation/policy/latest"),
@@ -107,4 +109,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

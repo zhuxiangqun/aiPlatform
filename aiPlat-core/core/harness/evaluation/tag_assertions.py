@@ -12,7 +12,7 @@ and compare against expectations.
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Optional
 
 
 def _as_dict(x: Any) -> Dict[str, Any]:
@@ -57,7 +57,19 @@ def _snapshot_contains_text(snapshot: Any, text: str) -> bool:
     return str(text) in s
 
 
-def evaluate_tag_assertions(evidence_pack: Dict[str, Any], tag_expectations: Dict[str, Any]) -> Tuple[bool, List[Dict[str, Any]]]:
+def _tag_stats(data: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "console_errors": _count_console_errors(data.get("console_messages")),
+        "network_5xx": _count_network_status(data.get("network_requests"), lo=500, hi=599),
+        "network_4xx": _count_network_status(data.get("network_requests"), lo=400, hi=499),
+        "duration_ms": data.get("duration_ms"),
+    }
+
+
+def evaluate_tag_assertions_with_stats(
+    evidence_pack: Dict[str, Any],
+    tag_expectations: Dict[str, Any],
+) -> Tuple[bool, List[Dict[str, Any]], Dict[str, Any]]:
     """
     Returns (ok, failures).
 
@@ -72,21 +84,44 @@ def evaluate_tag_assertions(evidence_pack: Dict[str, Any], tag_expectations: Dic
     exp = _as_dict(tag_expectations)
 
     failures: List[Dict[str, Any]] = []
-    for tag, cfg in exp.items():
+    stats: Dict[str, Any] = {}
+
+    # Freeze ordering for deterministic outputs
+    for tag in sorted([str(k) for k in exp.keys()]):
+        cfg = exp.get(tag)
         tag0 = str(tag or "").strip()
         if not tag0:
             continue
         cfg0 = _as_dict(cfg)
         data = _as_dict(by_tag.get(tag0))
         if not data:
-            failures.append({"tag": tag0, "type": "missing_tag_data", "expected": "by_tag entry exists", "actual": None})
+            failures.append(
+                {
+                    "tag": tag0,
+                    "type": "missing_tag_data",
+                    "expected": "by_tag entry exists",
+                    "actual": None,
+                    "hint": "请在 steps[] 中为关键步骤标注 tag，并确保 tag 切换时会触发按 tag 采样。",
+                }
+            )
             continue
+        stats[tag0] = _tag_stats(data)
 
         # text_contains: list[str]
+        missing_texts: List[str] = []
         for t in _as_list(cfg0.get("text_contains")):
             tt = str(t or "")
             if tt and not _snapshot_contains_text(data.get("snapshot"), tt):
-                failures.append({"tag": tag0, "type": "text_missing", "expected": tt, "actual": "not_found_in_snapshot"})
+                missing_texts.append(tt)
+        if missing_texts:
+            failures.append(
+                {
+                    "tag": tag0,
+                    "type": "text_missing",
+                    "expected": {"text_contains": missing_texts},
+                    "actual": "not_found_in_snapshot",
+                }
+            )
 
         # max_console_errors
         if "max_console_errors" in cfg0:
@@ -94,7 +129,7 @@ def evaluate_tag_assertions(evidence_pack: Dict[str, Any], tag_expectations: Dic
                 mx = int(cfg0.get("max_console_errors"))
             except Exception:
                 mx = 0
-            actual = _count_console_errors(data.get("console_messages"))
+            actual = int(stats.get(tag0, {}).get("console_errors") or 0)
             if actual > mx:
                 failures.append({"tag": tag0, "type": "console_errors", "expected": f"<= {mx}", "actual": actual})
 
@@ -104,7 +139,7 @@ def evaluate_tag_assertions(evidence_pack: Dict[str, Any], tag_expectations: Dic
                 mx = int(cfg0.get("max_network_5xx"))
             except Exception:
                 mx = 0
-            actual = _count_network_status(data.get("network_requests"), lo=500, hi=599)
+            actual = int(stats.get(tag0, {}).get("network_5xx") or 0)
             if actual > mx:
                 failures.append({"tag": tag0, "type": "network_5xx", "expected": f"<= {mx}", "actual": actual})
         if "max_network_4xx" in cfg0:
@@ -112,7 +147,7 @@ def evaluate_tag_assertions(evidence_pack: Dict[str, Any], tag_expectations: Dic
                 mx = int(cfg0.get("max_network_4xx"))
             except Exception:
                 mx = 999999
-            actual = _count_network_status(data.get("network_requests"), lo=400, hi=499)
+            actual = int(stats.get(tag0, {}).get("network_4xx") or 0)
             if actual > mx:
                 failures.append({"tag": tag0, "type": "network_4xx", "expected": f"<= {mx}", "actual": actual})
 
@@ -129,5 +164,9 @@ def evaluate_tag_assertions(evidence_pack: Dict[str, Any], tag_expectations: Dic
             if mx > 0 and actual > mx:
                 failures.append({"tag": tag0, "type": "duration_ms", "expected": f"<= {mx}", "actual": actual})
 
-    return (len(failures) == 0), failures
+    return (len(failures) == 0), failures, stats
 
+
+def evaluate_tag_assertions(evidence_pack: Dict[str, Any], tag_expectations: Dict[str, Any]) -> Tuple[bool, List[Dict[str, Any]]]:
+    ok, failures, _stats = evaluate_tag_assertions_with_stats(evidence_pack, tag_expectations)
+    return ok, failures

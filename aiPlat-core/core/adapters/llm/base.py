@@ -226,6 +226,10 @@ def create_adapter(
     elif provider == "mock":
         from .mock_adapter import MockAdapter
         return MockAdapter(model=model, **kwargs)
+
+    elif provider == "scripted":
+        from .scripted_adapter import ScriptedAdapter
+        return ScriptedAdapter(model=model, **kwargs)
     
     else:
         raise ValueError(f"Unknown provider: {provider}")

@@ -48,6 +48,17 @@ jobs:
             core/tests/unit/test_harness/test_context_shaping_pipeline.py \
             core/tests/unit/test_harness/test_auto_eval_prompt_includes_browser_evidence.py \
             core/tests/unit/test_harness/test_evidence_diff.py \
+            core/tests/unit/test_harness/test_coverage_gate.py \
+            core/tests/unit/test_harness/test_canary_escalation.py \
+            core/tests/unit/test_harness/test_canary_recommendation.py \
+            core/tests/unit/test_skills/test_generic_skill_json_output.py \
+            core/tests/unit/test_skills/test_skillmanager_bridge_schema_to_registry.py \
+            core/tests/unit/test_skills/test_skill_linter.py \
+            core/tests/unit/test_skill_fix_proposals.py \
+            core/tests/unit/test_skill_lint_scan_job_kind.py \
+            core/tests/unit/test_skill_lint_alert_contract.py \
+            core/tests/unit/test_apply_lint_fix_workspace.py \
+            core/tests/integration/test_canary_block_release_candidate.py \
             core/tests/unit/test_harness/test_regression_gate_required_tags.py \
             core/tests/unit/test_harness/test_tag_assertions.py \
             core/tests/unit/test_harness/test_evaluator_workbench.py \

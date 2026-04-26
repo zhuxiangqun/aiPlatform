@@ -6,6 +6,9 @@ category: generation
 version: 1.0.0
 status: enabled
 execution_mode: inline
+executable: true
+permissions:
+  - "llm:generate"
 trigger_conditions:
   - "生成文本"
   - "写一段"
@@ -20,6 +23,10 @@ output_schema:
   text:
     type: string
     description: 生成的文本内容
+  markdown:
+    type: string
+    required: true
+    description: 面向人阅读的 Markdown 输出，与结构化字段一致
 ---
 
 # 文本生成

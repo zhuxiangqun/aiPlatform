@@ -10,6 +10,8 @@ from typing import Any, Dict, List, Optional, Callable
 import asyncio
 import os
 import time
+import re
+import uuid
 
 from ..interfaces.loop import (
     ILoop,
@@ -264,10 +266,13 @@ class ReActLoop(BaseLoop):
         self._approval_manager = manager
     
     def _approval_check(self, tool_name: str, context: Dict[str, Any]) -> None:
-        """Check tool approval via ApprovalManager. Raises if denied."""
-        # Phase 3+: approval is migrating into sys_tool (PolicyGate). When enabled,
-        # avoid double-approval here to keep behavior stable.
-        if os.getenv("AIPLAT_SYSCALL_ENFORCE_APPROVAL", "false").lower() in ("1", "true", "yes", "y"):
+        """Legacy check tool approval via ApprovalManager (deprecated).
+
+        Phase 3+: approval should be enforced by PolicyGate inside sys_tool_call/sys_skill_call.
+        This loop-level approval check is kept only for backward compatibility and is OFF by default
+        to avoid double-approval / inconsistent state machines.
+        """
+        if os.getenv("AIPLAT_LOOP_ENFORCE_APPROVAL", "false").lower() not in ("1", "true", "yes", "y"):
             return
         if not self._approval_manager:
             return
@@ -472,13 +477,52 @@ class ReActLoop(BaseLoop):
             for msg in state.context.get("messages", [])[-5:]
         ])
         tools_desc, tools_desc_stats = self._build_tools_desc()
-        skills_desc, skills_desc_stats = self._build_skills_desc()
+        # 上下文压力（best-effort）：用于渐进式披露预算
+        try:
+            max_tokens = float(getattr(self._config, "max_tokens", state.max_tokens) or state.max_tokens)
+            used_tokens = float(getattr(state, "used_tokens", 0) or 0)
+            pressure = (used_tokens / max_tokens) if max_tokens > 0 else 0.0
+        except Exception:
+            pressure = 0.0
+        skills_desc, skills_desc_stats = self._build_skills_desc(context_pressure=pressure)
         # Best-effort: attach to state for observability/debugging
         try:
             state.metadata["tools_desc_stats"] = tools_desc_stats
             state.context["tools_desc_stats"] = tools_desc_stats
             state.metadata["skills_desc_stats"] = skills_desc_stats
             state.context["skills_desc_stats"] = skills_desc_stats
+        except Exception:
+            pass
+
+        # P1-2: persist disclosure policy/budgets for replay (best-effort, de-duplicated)
+        try:
+            runtime = get_kernel_runtime()
+            store = getattr(runtime, "execution_store", None) if runtime else None
+            run_id0 = state.context.get("_run_id") or state.context.get("run_id")
+            if store is not None and run_id0 and hasattr(store, "append_run_event"):
+                # Emit only when policy/budget changes to reduce noise.
+                key_fields = {
+                    "disclosure_policy": skills_desc_stats.get("disclosure_policy"),
+                    "per_skill_max_chars": skills_desc_stats.get("per_skill_max_chars"),
+                    "total_max_chars": skills_desc_stats.get("total_max_chars"),
+                    "skill_sop_recommended_max_chars": skills_desc_stats.get("skill_sop_recommended_max_chars"),
+                }
+                last = state.metadata.get("_skills_disclosure_last")
+                if last != key_fields:
+                    state.metadata["_skills_disclosure_last"] = dict(key_fields)
+                    await store.append_run_event(
+                        run_id=str(run_id0),
+                        event_type="skills_disclosure",
+                        trace_id=state.context.get("_trace_id") or state.context.get("trace_id"),
+                        tenant_id=state.context.get("tenant_id"),
+                        payload={
+                            "step_count": int(getattr(state, "step_count", 0) or 0),
+                            "context_pressure": float(pressure),
+                            "used_tokens": float(getattr(state, "used_tokens", 0) or 0),
+                            "max_tokens": float(getattr(self._config, "max_tokens", state.max_tokens) or state.max_tokens),
+                            "budgets": key_fields,
+                        },
+                    )
         except Exception:
             pass
 
@@ -924,7 +968,7 @@ DONE: final_answer
 
         return "\n".join(lines), stats
 
-    def _build_skills_desc(self) -> tuple[str, Dict[str, Any]]:
+    def _build_skills_desc(self, *, context_pressure: float | None = None) -> tuple[str, Dict[str, Any]]:
         """
         Build a compact skills description string with budgets.
 
@@ -936,10 +980,31 @@ DONE: final_answer
 
         per_skill_max = int(os.getenv("AIPLAT_SKILL_DESC_PER_SKILL_MAX_CHARS", "120") or "120")
         total_max = int(os.getenv("AIPLAT_SKILLS_DESC_MAX_CHARS", "1200") or "1200")
+        default_sop_max = int(os.getenv("AIPLAT_SKILL_SOP_MAX_CHARS", "8000") or "8000")
+
+        # P0：统一的渐进式披露预算（基于上下文压力）
+        try:
+            from core.harness.context.skills_disclosure import compute_skills_disclosure_budget
+
+            b = compute_skills_disclosure_budget(
+                context_pressure=float(context_pressure or 0.0),
+                default_per_skill_desc_max_chars=per_skill_max,
+                default_skills_desc_total_max_chars=total_max,
+                default_skill_sop_max_chars=default_sop_max,
+            )
+            per_skill_max = int(b.per_skill_desc_max_chars)
+            total_max = int(b.skills_desc_total_max_chars)
+            stats_policy = b.policy
+            sop_hint = int(b.skill_sop_recommended_max_chars)
+        except Exception:
+            stats_policy = "normal"
+            sop_hint = default_sop_max
 
         stats: Dict[str, Any] = {
             "per_skill_max_chars": per_skill_max,
             "total_max_chars": total_max,
+            "disclosure_policy": stats_policy,
+            "skill_sop_recommended_max_chars": sop_hint,
             "skills_total": 0,
             "skills_included": 0,
             "skills_hidden": 0,
@@ -995,6 +1060,9 @@ DONE: final_answer
 
         if stats["skills_hidden"]:
             lines.append(f"... ({stats['skills_hidden']} skills hidden; use skill_find to search, and skill_load to load SOP)")
+        # Hint (non-binding): advise an SOP budget when context is tight.
+        if sop_hint and isinstance(sop_hint, int) and sop_hint > 0:
+            lines.append(f"(hint) For SOP, call skill_load with max_chars≈{sop_hint}")
 
         return "\n".join(lines), stats
 
@@ -1002,13 +1070,428 @@ DONE: final_answer
         """Acting phase - execute tool or skill."""
         reasoning = state.context.get("reasoning", "")
         parsed = parse_action_call(reasoning)
+        # --- routing candidates snapshot (router-time) ---
+        routing_decision_id = f"rtd_{uuid.uuid4().hex[:16]}"
+        state.context["_routing_decision_id"] = routing_decision_id
+
+        def _coding_policy_profile_for_skill(skill_obj: Any) -> str:
+            """
+            Determine effective coding policy profile for a selected skill.
+            Default off; can be enabled via env:
+            - AIPLAT_CODING_POLICY_PROFILE_WORKSPACE
+            - AIPLAT_CODING_POLICY_PROFILE_ENGINE
+            """
+            try:
+                config = getattr(skill_obj, "_config", None) or getattr(skill_obj, "get_config", lambda: None)()
+                meta = getattr(config, "metadata", None) if config is not None else None
+                meta = meta if isinstance(meta, dict) else {}
+                category = str(meta.get("category") or getattr(config, "category", "") or "").lower()
+                tags = meta.get("tags") or []
+                tags = [str(t).lower() for t in tags] if isinstance(tags, list) else []
+                is_coding = (category == "coding") or ("coding" in tags) or ("code" in tags)
+                if not is_coding:
+                    return "off"
+                scope = str(state.context.get("skill_scope") or "engine").lower()
+                if scope == "workspace":
+                    return os.getenv("AIPLAT_CODING_POLICY_PROFILE_WORKSPACE", "off").strip().lower()
+                return os.getenv("AIPLAT_CODING_POLICY_PROFILE_ENGINE", "off").strip().lower()
+            except Exception:
+                return "off"
+
+        async def _emit_routing_decision(*, selected_kind: str, selected_name: str = "", query_excerpt: str = "") -> None:
+            """Emit decision-level routing event as funnel denominator."""
+            try:
+                runtime = get_kernel_runtime()
+                store = getattr(runtime, "execution_store", None) if runtime else None
+                if store is None:
+                    return
+                qx = str(query_excerpt or "").strip()
+                if not qx:
+                    # best-effort: last user message then task
+                    try:
+                        msgs = state.context.get("messages") if isinstance(state.context.get("messages"), list) else []
+                        for m in reversed(msgs):
+                            if isinstance(m, dict) and str(m.get("role") or "").lower() == "user":
+                                qx = str(m.get("content") or "").strip()
+                                break
+                    except Exception:
+                        qx = ""
+                    if not qx:
+                        qx = str(state.context.get("task") or "").strip()
+                end_ts = time.time()
+                await store.add_syscall_event(
+                    {
+                        "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
+                        "run_id": state.context.get("_run_id") or state.context.get("run_id"),
+                        "tenant_id": state.context.get("tenant_id"),
+                        "kind": "routing",
+                        "name": "routing_decision",
+                        "status": "decision",
+                        "start_time": end_ts,
+                        "end_time": end_ts,
+                        "duration_ms": 0.0,
+                        "args": {
+                            "routing_decision_id": routing_decision_id,
+                            "step_count": int(getattr(state, "step_count", 0) or 0),
+                            "selected_kind": str(selected_kind),
+                            "selected_name": str(selected_name or ""),
+                            "selected_skill_id": str(selected_name or "") if str(selected_kind) == "skill" else "",
+                            "coding_policy_profile": str(state.context.get("_coding_policy_profile") or "off"),
+                            "query_excerpt": qx[:220],
+                        },
+                        "created_at": end_ts,
+                    }
+                )
+            except Exception:
+                return
+
+        async def _emit_skill_candidates_snapshot(*, selected_kind: str, selected_name: str = "") -> None:
+            """
+            Emit candidates even when no skill is invoked (tool chosen / no action).
+            Stored as syscall_events(kind=routing, name=skill_candidates_snapshot) so it joins funnel aggregation.
+            """
+            try:
+                runtime = get_kernel_runtime()
+                store = getattr(runtime, "execution_store", None) if runtime else None
+                if store is None:
+                    return
+
+                # best-effort query text from current task + last user message
+                q = ""
+                try:
+                    msgs = state.context.get("messages") if isinstance(state.context.get("messages"), list) else []
+                    for m in reversed(msgs):
+                        if isinstance(m, dict) and str(m.get("role") or "").lower() == "user":
+                            q = str(m.get("content") or "").strip()
+                            break
+                except Exception:
+                    q = ""
+                if not q:
+                    q = str(state.context.get("task") or "").strip()
+                if not q:
+                    return
+
+                def _norm(s: str) -> str:
+                    s0 = str(s or "").lower().strip()
+                    s0 = re.sub(r"[\s\-\._/]+", " ", s0)
+                    s0 = re.sub(r"[^\w\u4e00-\u9fff ]+", "", s0)
+                    return s0.strip()
+
+                def _tokenize(s: str) -> set[str]:
+                    s0 = _norm(s)
+                    if not s0:
+                        return set()
+                    toks = set()
+                    for w in s0.split():
+                        if len(w) >= 2:
+                            toks.add(w)
+                    for seg in re.findall(r"[\u4e00-\u9fff]{2,}", s0):
+                        for i in range(0, max(0, len(seg) - 1)):
+                            toks.add(seg[i : i + 2])
+                    return toks
+
+                qt = _tokenize(q)
+                if not qt:
+                    return
+
+                candidates: List[Dict[str, Any]] = []
+
+                async def _scan_mgr(mgr: Any, scope0: str) -> None:
+                    if mgr is None:
+                        return
+                    try:
+                        skills = await mgr.list_skills(None, None, 400, 0)
+                    except Exception:
+                        skills = []
+                    for s in skills or []:
+                        try:
+                            sid = str(getattr(s, "id", "") or "")
+                            nm = str(getattr(s, "name", "") or "")
+                            desc = str(getattr(s, "description", "") or "")
+                            meta = getattr(s, "metadata", None)
+                            meta = meta if isinstance(meta, dict) else {}
+                            skill_kind = str(meta.get("skill_kind") or "rule")
+                            tc = meta.get("trigger_conditions") or meta.get("trigger_keywords") or []
+                            kw = meta.get("keywords") if isinstance(meta.get("keywords"), dict) else {}
+                            blob = " ".join(
+                                [
+                                    nm,
+                                    desc,
+                                    " ".join([str(x) for x in (tc or [])]),
+                                    " ".join([str(x) for x in (kw.get("objects") or [])]),
+                                    " ".join([str(x) for x in (kw.get("actions") or [])]),
+                                    " ".join([str(x) for x in (kw.get("constraints") or [])]),
+                                ]
+                            )
+                            st = _tokenize(blob)
+                            if not st:
+                                continue
+                            inter = qt & st
+                            if not inter:
+                                continue
+                            score = float(len(inter))
+                            for t in (tc or [])[:10]:
+                                tt = str(t or "").strip()
+                                if tt and tt in q:
+                                    score += 3.0
+                                    break
+                            # permission hints (best-effort)
+                            perm = None
+                            exec_perm = None
+                            try:
+                                from core.apps.tools.skill_tools import resolve_skill_permission, resolve_executable_skill_permission
+
+                                perm = resolve_skill_permission(nm)
+                                if skill_kind == "executable":
+                                    exec_perm = resolve_executable_skill_permission(nm)
+                            except Exception:
+                                perm = None
+                                exec_perm = None
+                            candidates.append(
+                                {
+                                    "skill_id": sid,
+                                    "name": nm,
+                                    "scope": scope0,
+                                    "skill_kind": skill_kind,
+                                    "score": score,
+                                    "overlap": sorted(list(inter))[:12],
+                                    "perm": perm,
+                                    "exec_perm": exec_perm,
+                                }
+                            )
+                        except Exception:
+                            continue
+
+                await _scan_mgr(getattr(runtime, "workspace_skill_manager", None), "workspace")
+                await _scan_mgr(getattr(runtime, "skill_manager", None), "engine")
+                candidates.sort(key=lambda x: float(x.get("score") or 0.0), reverse=True)
+                top = candidates[:8]
+                end_ts = time.time()
+                await store.add_syscall_event(
+                    {
+                        "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
+                        "run_id": state.context.get("_run_id") or state.context.get("run_id"),
+                        "tenant_id": state.context.get("tenant_id"),
+                        "kind": "routing",
+                        "name": "skill_candidates_snapshot",
+                        "status": "snapshot",
+                        "start_time": end_ts,
+                        "end_time": end_ts,
+                        "duration_ms": 0.0,
+                        "args": {
+                            "routing_decision_id": routing_decision_id,
+                            "step_count": int(getattr(state, "step_count", 0) or 0),
+                            "selected_kind": selected_kind,
+                            "selected_name": selected_name,
+                            "coding_policy_profile": str(state.context.get("_coding_policy_profile") or "off"),
+                            "query_excerpt": q[:220],
+                            "candidates": top,
+                        },
+                        "created_at": end_ts,
+                    }
+                )
+                # return top candidates for explain computation
+                return top
+            except Exception:
+                return []
+
+        async def _emit_routing_explain(*, selected_kind: str, selected_name: str, candidates_top: List[Dict[str, Any]], result_status: str = "", result_error: str = "") -> None:
+            """
+            Emit decision explain event. This is a higher-level, merged view that makes
+            "why tool/no_action/why not top1" debuggable without joining many streams.
+            """
+            try:
+                runtime = get_kernel_runtime()
+                store = getattr(runtime, "execution_store", None) if runtime else None
+                if store is None:
+                    return
+                # best-effort query excerpt
+                qx = ""
+                try:
+                    msgs = state.context.get("messages") if isinstance(state.context.get("messages"), list) else []
+                    for m in reversed(msgs):
+                        if isinstance(m, dict) and str(m.get("role") or "").lower() == "user":
+                            qx = str(m.get("content") or "").strip()
+                            break
+                except Exception:
+                    qx = ""
+                if not qx:
+                    qx = str(state.context.get("task") or "").strip()
+
+                # compute ranks/scores
+                sel_id = str(selected_name or "")
+                top1 = candidates_top[0] if candidates_top and isinstance(candidates_top[0], dict) else {}
+                top1_id = str(top1.get("skill_id") or top1.get("name") or "")
+                top1_score = float(top1.get("score") or 0.0) if top1 else None
+                sel_rank = None
+                sel_score = None
+                for idx, c in enumerate(candidates_top or []):
+                    if not isinstance(c, dict):
+                        continue
+                    cid = str(c.get("skill_id") or c.get("name") or "")
+                    if cid == sel_id:
+                        sel_rank = idx
+                        sel_score = float(c.get("score") or 0.0)
+                        break
+                gap = None
+                try:
+                    if top1_score is not None and sel_score is not None:
+                        gap = float(top1_score - sel_score)
+                except Exception:
+                    gap = None
+
+                # top1 gate hints (permission-based; best-effort)
+                top1_gate = None
+                try:
+                    if str(top1.get("perm") or "") == "deny":
+                        top1_gate = "permission_deny"
+                    elif str(top1.get("skill_kind") or "") == "executable" and str(top1.get("exec_perm") or "") == "ask":
+                        top1_gate = "approval_required"
+                except Exception:
+                    top1_gate = None
+
+                end_ts = time.time()
+                await store.add_syscall_event(
+                    {
+                        "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
+                        "run_id": state.context.get("_run_id") or state.context.get("run_id"),
+                        "tenant_id": state.context.get("tenant_id"),
+                        "kind": "routing",
+                        "name": "routing_explain",
+                        "status": "explain",
+                        "start_time": end_ts,
+                        "end_time": end_ts,
+                        "duration_ms": 0.0,
+                        "args": {
+                            "routing_decision_id": routing_decision_id,
+                            "step_count": int(getattr(state, "step_count", 0) or 0),
+                            "selected_kind": str(selected_kind),
+                            "selected_name": sel_id,
+                            "selected_skill_id": sel_id if str(selected_kind) == "skill" else "",
+                            "coding_policy_profile": str(state.context.get("_coding_policy_profile") or "off"),
+                            "query_excerpt": qx[:220],
+                            "candidates_top": (candidates_top or [])[:5],
+                            "top1_skill_id": top1_id,
+                            "top1_score": top1_score,
+                            "top1_gate_hint": top1_gate,
+                            "selected_rank": sel_rank,
+                            "selected_score": sel_score,
+                            "score_gap": gap,
+                            "result_status": str(result_status or ""),
+                            "result_error": str(result_error or ""),
+                        },
+                        "created_at": end_ts,
+                    }
+                )
+            except Exception:
+                return
+
+        async def _emit_routing_strict_eval(*, selected_kind: str, selected_name: str, candidates_top: List[Dict[str, Any]]) -> None:
+            """
+            Strict miss-rate evaluation (Iteration 4.1).
+            Definition (MVP, env configurable):
+            - Determine eligible_top1: first candidate that is not gated by permission:
+              - perm != deny
+              - if skill_kind==executable: exec_perm != ask
+            - strict_eligible = eligible_top1 exists AND eligible_top1.score >= threshold
+            - outcome:
+              - if strict_eligible:
+                - selected_kind != skill => miss_tool / miss_no_action
+                - selected_kind == skill and selected != eligible_top1 => misroute
+                - selected_kind == skill and selected == eligible_top1 => hit
+              - else: no_eligible
+            """
+            try:
+                runtime = get_kernel_runtime()
+                store = getattr(runtime, "execution_store", None) if runtime else None
+                if store is None:
+                    return
+                thr = float(os.getenv("AIPLAT_ROUTING_STRICT_MIN_SCORE", "3.0") or "3.0")
+                # compute eligible top1
+                eligible = None
+                gated_top1_reason = None
+                top1 = candidates_top[0] if candidates_top and isinstance(candidates_top[0], dict) else None
+                if top1 is not None:
+                    try:
+                        if str(top1.get("perm") or "") == "deny":
+                            gated_top1_reason = "permission_deny"
+                        elif str(top1.get("skill_kind") or "") == "executable" and str(top1.get("exec_perm") or "") == "ask":
+                            gated_top1_reason = "approval_required"
+                    except Exception:
+                        gated_top1_reason = None
+                for c in candidates_top or []:
+                    if not isinstance(c, dict):
+                        continue
+                    try:
+                        if str(c.get("perm") or "") == "deny":
+                            continue
+                        if str(c.get("skill_kind") or "") == "executable" and str(c.get("exec_perm") or "") == "ask":
+                            continue
+                        eligible = c
+                        break
+                    except Exception:
+                        continue
+
+                eligible_id = str((eligible or {}).get("skill_id") or (eligible or {}).get("name") or "")
+                try:
+                    eligible_score = float((eligible or {}).get("score") or 0.0) if eligible else None
+                except Exception:
+                    eligible_score = None
+                strict_eligible = bool(eligible_id and eligible_score is not None and float(eligible_score) >= thr)
+                sel_kind = str(selected_kind or "")
+                sel_name = str(selected_name or "")
+                outcome = "no_eligible"
+                if strict_eligible:
+                    if sel_kind != "skill":
+                        outcome = "miss_tool" if sel_kind == "tool" else "miss_no_action"
+                    else:
+                        outcome = "hit" if sel_name == eligible_id else "misroute"
+
+                end_ts = time.time()
+                await store.add_syscall_event(
+                    {
+                        "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
+                        "run_id": state.context.get("_run_id") or state.context.get("run_id"),
+                        "tenant_id": state.context.get("tenant_id"),
+                        "kind": "routing",
+                        "name": "routing_strict_eval",
+                        "status": "eval",
+                        "start_time": end_ts,
+                        "end_time": end_ts,
+                        "duration_ms": 0.0,
+                        "args": {
+                            "routing_decision_id": routing_decision_id,
+                            "step_count": int(getattr(state, "step_count", 0) or 0),
+                            "coding_policy_profile": str(state.context.get("_coding_policy_profile") or "off"),
+                            "threshold": thr,
+                            "selected_kind": sel_kind,
+                            "selected_name": sel_name,
+                            "selected_skill_id": sel_name if sel_kind == "skill" else "",
+                            "eligible_top1_skill_id": eligible_id,
+                            "eligible_top1_score": eligible_score,
+                            "eligible_top1_exists": bool(eligible_id),
+                            "strict_eligible": strict_eligible,
+                            "strict_outcome": outcome,
+                            "gated_top1_reason": gated_top1_reason,
+                        },
+                        "created_at": end_ts,
+                    }
+                )
+            except Exception:
+                return
+
         if not parsed:
+            await _emit_routing_decision(selected_kind="none")
+            top = await _emit_skill_candidates_snapshot(selected_kind="none")
+            await _emit_routing_strict_eval(selected_kind="none", selected_name="", candidates_top=top)
+            await _emit_routing_explain(selected_kind="none", selected_name="", candidates_top=top, result_status="no_action", result_error="")
             return "No action to execute"
 
         if parsed.kind == "skill":
             skill_name = parsed.name
             skill_args = parsed.args
             state.context["skill_call"] = {"skill": skill_name, "args": skill_args, "format": parsed.format}
+            prof = "off"
             for skill in self._skills:
                 name = ""
                 if hasattr(skill, "name"):
@@ -1016,6 +1499,11 @@ DONE: final_answer
                 elif hasattr(skill, "_config") and getattr(skill, "_config", None) is not None:
                     name = str(getattr(skill._config, "name", "") or "")
                 if name.strip().lower() == skill_name.strip().lower():
+                    prof = _coding_policy_profile_for_skill(skill)
+                    state.context["_coding_policy_profile"] = prof
+                    await _emit_routing_decision(selected_kind="skill", selected_name=str(skill_name))
+                    top = await _emit_skill_candidates_snapshot(selected_kind="skill", selected_name=str(skill_name))
+                    await _emit_routing_strict_eval(selected_kind="skill", selected_name=str(skill_name), candidates_top=top)
                     from ..interfaces import SkillContext
                     await self._trigger_hook(HookPhase.PRE_SKILL_USE, {"skill": skill_name, "skill_args": skill_args, "format": parsed.format})
                     try:
@@ -1034,6 +1522,9 @@ DONE: final_answer
                                 "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
                                 "run_id": state.context.get("_run_id") or state.context.get("run_id"),
                                 "tenant_id": state.context.get("tenant_id"),
+                                "routing_decision_id": routing_decision_id,
+                                "coding_policy_profile": prof,
+                                "routing_candidates_emitted": True,
                             },
                         )
                         # Standardized approval/policy states for skills (P1)
@@ -1051,6 +1542,18 @@ DONE: final_answer
                             result_output = result.output if hasattr(result, 'output') else str(result)
                     except Exception as e:
                         result_output = f"Skill error: {e}"
+                    # explain with execution outcome (best-effort)
+                    try:
+                        st = "success" if getattr(result, "success", False) else "failed"
+                        await _emit_routing_explain(
+                            selected_kind="skill",
+                            selected_name=str(skill_name),
+                            candidates_top=top,
+                            result_status=st,
+                            result_error=str(getattr(result, "error", "") or ""),
+                        )
+                    except Exception:
+                        pass
                     await self._trigger_hook(HookPhase.POST_SKILL_USE, {"skill": skill_name, "result": result_output, "format": parsed.format})
                     return str(result_output)
             return f"Skill not found: {skill_name}"
@@ -1058,6 +1561,11 @@ DONE: final_answer
         tool_name = parsed.name
         tool_args = parsed.args
         state.context["tool_call"] = {"tool": tool_name, "args": tool_args, "format": parsed.format}
+        state.context["_coding_policy_profile"] = "off"
+        await _emit_routing_decision(selected_kind="tool", selected_name=str(tool_name))
+        top = await _emit_skill_candidates_snapshot(selected_kind="tool", selected_name=str(tool_name))
+        await _emit_routing_strict_eval(selected_kind="tool", selected_name=str(tool_name), candidates_top=top)
+        await _emit_routing_explain(selected_kind="tool", selected_name=str(tool_name), candidates_top=top, result_status="tool_selected", result_error="")
 
         for tool in self._tools:
             if str(getattr(tool, 'name', '')).strip().lower() == str(tool_name).strip().lower():
@@ -1093,6 +1601,8 @@ DONE: final_answer
                             "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
                             "run_id": state.context.get("_run_id") or state.context.get("run_id"),
                             "tenant_id": state.context.get("tenant_id"),
+                            "routing_decision_id": routing_decision_id,
+                            "coding_policy_profile": str(state.context.get("_coding_policy_profile") or "off"),
                         },
                     )
                     # Standardized syscall result handling
@@ -1133,6 +1643,23 @@ DONE: final_answer
                 except Exception as e:
                     result_output = f"Tool error: {e}"
                     ok = False
+                # explain with execution outcome (best-effort)
+                try:
+                    if getattr(result, "error", None) == "approval_required":
+                        st = "approval_required"
+                    elif getattr(result, "error", None) == "policy_denied":
+                        st = "policy_denied"
+                    else:
+                        st = "success" if ok else "failed"
+                    await _emit_routing_explain(
+                        selected_kind="tool",
+                        selected_name=str(tool_name),
+                        candidates_top=top,
+                        result_status=st,
+                        result_error=str(getattr(result, "error", "") or ""),
+                    )
+                except Exception:
+                    pass
                 # Record tool stats for observability-driven control
                 state.metadata["tool_calls"] = int(state.metadata.get("tool_calls", 0) or 0) + 1
                 if not ok:

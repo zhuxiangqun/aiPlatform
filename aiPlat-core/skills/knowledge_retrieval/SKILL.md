@@ -6,6 +6,9 @@ category: retrieval
 version: 1.0.0
 status: enabled
 execution_mode: inline
+executable: true
+permissions:
+  - "llm:generate"
 trigger_conditions:
   - "从知识库查"
   - "召回文档"
@@ -19,6 +22,10 @@ output_schema:
   snippets:
     type: string
     description: 召回片段（含引用信息）
+  markdown:
+    type: string
+    required: true
+    description: 面向人阅读的 Markdown 输出，与结构化字段一致
 ---
 
 # 知识召回

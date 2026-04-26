@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Copy, RefreshCw, Ban, RotateCcw } from 'lucide-react';
 
 import { Badge, Button, Card, CardContent, CardHeader, Input, Table, Tabs, Textarea, toast } from '../../../components/ui';
@@ -21,6 +21,7 @@ const toBadgeVariant = (status?: string): 'success' | 'warning' | 'error' | 'inf
 };
 
 const Runs: React.FC = () => {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [runId, setRunId] = useState('');
   const [run, setRun] = useState<any>(null);
@@ -596,6 +597,21 @@ const Runs: React.FC = () => {
                             <Link to={`/core/learning/artifacts/${encodeURIComponent(String(evaluation.artifact_id))}`}>
                               <Button variant="secondary">Artifact</Button>
                             </Link>
+                          )}
+                          {runId && (
+                            <Button
+                              variant="ghost"
+                              onClick={async () => {
+                                try {
+                                  const res: any = await runApi.autoInvestigate(String(runId));
+                                  if (res?.artifact_id) navigate(`/core/learning/artifacts/${encodeURIComponent(String(res.artifact_id))}`);
+                                } catch (e: any) {
+                                  toast.error(e?.message || '生成 Investigate 报告失败');
+                                }
+                              }}
+                            >
+                              Investigate
+                            </Button>
                           )}
                           {runId && (
                             <>

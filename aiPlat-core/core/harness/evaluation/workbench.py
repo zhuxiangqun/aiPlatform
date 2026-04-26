@@ -128,6 +128,7 @@ async def persist_evaluation(
     report: Dict[str, Any],
     thresholds: EvaluatorThresholds,
     actor: Optional[Dict[str, Any]] = None,
+    metadata_extra: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Persist report as:
@@ -137,6 +138,9 @@ async def persist_evaluation(
     """
     mgr = LearningManager(execution_store=execution_store)
     version = f"eval:{int(time.time())}"
+    meta = {"evaluator": evaluator, "thresholds": thresholds.to_dict(), "pass": bool(report.get("pass"))}
+    if isinstance(metadata_extra, dict) and metadata_extra:
+        meta.update(metadata_extra)
     art = await mgr.create_artifact(
         kind=LearningArtifactKind.EVALUATION_REPORT,
         target_type="run",
@@ -144,7 +148,7 @@ async def persist_evaluation(
         version=version,
         status="draft",
         payload=report,
-        metadata={"evaluator": evaluator, "thresholds": thresholds.to_dict(), "pass": bool(report.get("pass"))},
+        metadata=meta,
         trace_id=str(trace_id) if trace_id else None,
         run_id=str(run_id),
     )
@@ -175,4 +179,3 @@ async def persist_evaluation(
     except Exception:
         pass
     return {"artifact_id": art.artifact_id, "version": version}
-

@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Copy, Save, Search } from 'lucide-react';
 
-import { Badge, Button, Card, CardContent, CardHeader, Input, Table } from '../../../components/ui';
-import { onboardingApi, policyApi } from '../../../services';
+import { Badge, Button, Card, CardContent, CardHeader, Input, Modal, Table, Tabs, toast } from '../../../components/ui';
+import { gatePolicyApi, onboardingApi, policyApi } from '../../../services';
 import { toastGateError } from '../../../utils/governanceError';
 
 const shortId = (id?: string, left: number = 10, right: number = 8) => {
@@ -13,6 +13,8 @@ const shortId = (id?: string, left: number = 10, right: number = 8) => {
 };
 
 const Policies: React.FC = () => {
+  const [tab, setTab] = useState<'tenant' | 'gate'>('tenant');
+
   const [tenantId, setTenantId] = useState('');
   const [version, setVersion] = useState<number | undefined>(undefined);
   const [policyText, setPolicyText] = useState('{\n  "tool_policy": {\n    "deny_tools": [],\n    "approval_required_tools": []\n  }\n}\n');
@@ -27,6 +29,16 @@ const Policies: React.FC = () => {
   const [preview, setPreview] = useState<any>(null);
   const [toggleLoading, setToggleLoading] = useState(false);
   const [toggleMsg, setToggleMsg] = useState<string | null>(null);
+
+  // Gate policies
+  const [gatePolicies, setGatePolicies] = useState<any[]>([]);
+  const [gateDefaultId, setGateDefaultId] = useState<string>('');
+  const [gatePolicyId, setGatePolicyId] = useState<string>('default');
+  const [gatePolicyText, setGatePolicyText] = useState('{\n  "apply_gate": { "gate_policy": "autosmoke" },\n  "eval_gate": { "mode": "off" },\n  "security_gate": { "mode": "off" }\n}\n');
+  const [gateLoading, setGateLoading] = useState(false);
+  const [versionsOpen, setVersionsOpen] = useState(false);
+  const [versionsPolicyId, setVersionsPolicyId] = useState<string>('');
+  const [versionsData, setVersionsData] = useState<any | null>(null);
 
   const isStrongGate = useMemo(() => {
     try {
@@ -71,9 +83,155 @@ const Policies: React.FC = () => {
   };
 
   useEffect(() => {
-    loadList();
+    if (tab === 'tenant') loadList();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [limit, offset]);
+  }, [tab, limit, offset]);
+
+  const loadGatePolicies = async () => {
+    setGateLoading(true);
+    try {
+      const res = await gatePolicyApi.list();
+      setGatePolicies(res.items || []);
+      setGateDefaultId(String(res.default_id || ''));
+    } catch (e: any) {
+      toastGateError(e, '加载 Gate Policies 失败');
+      setGatePolicies([]);
+    } finally {
+      setGateLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (tab === 'gate') loadGatePolicies();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
+  const loadGateOne = async (pid: string) => {
+    if (!pid.trim()) return;
+    setGateLoading(true);
+    try {
+      const res = await gatePolicyApi.get(pid.trim());
+      setGatePolicyId(res.item.policy_id);
+      setGatePolicyText(JSON.stringify(res.item.config || {}, null, 2));
+      setGateDefaultId(String(res.default_id || gateDefaultId || ''));
+    } catch (e: any) {
+      toastGateError(e, '加载失败');
+    } finally {
+      setGateLoading(false);
+    }
+  };
+
+  const bootstrapGatePolicies = async (force: boolean) => {
+    setGateLoading(true);
+    try {
+      const res = await gatePolicyApi.bootstrap({ force });
+      toast.success('已初始化 Gate Policies');
+      await loadGatePolicies();
+      return res;
+    } catch (e: any) {
+      toastGateError(e, '初始化失败');
+      return null;
+    } finally {
+      setGateLoading(false);
+    }
+  };
+
+  const openVersions = async (pid: string) => {
+    setGateLoading(true);
+    try {
+      const res = await gatePolicyApi.versions(pid);
+      setVersionsPolicyId(pid);
+      setVersionsData(res);
+      setVersionsOpen(true);
+    } catch (e: any) {
+      toastGateError(e, '加载版本失败');
+    } finally {
+      setGateLoading(false);
+    }
+  };
+
+  const rollbackTo = async (pid: string, version: number) => {
+    if (!confirm(`确认将 ${pid} 回滚到 version=${version} ?`)) return;
+    setGateLoading(true);
+    try {
+      await gatePolicyApi.rollback(pid, version);
+      toast.success('已回滚');
+      await loadGatePolicies();
+      await openVersions(pid);
+    } catch (e: any) {
+      toastGateError(e, '回滚失败');
+    } finally {
+      setGateLoading(false);
+    }
+  };
+
+  const saveGatePolicy = async (setDefault: boolean) => {
+    const pid = gatePolicyId.trim();
+    if (!pid) {
+      toast.error('保存失败', 'policy_id 不能为空');
+      return;
+    }
+    setGateLoading(true);
+    try {
+      const cfg = JSON.parse(gatePolicyText || '{}');
+      const res = await gatePolicyApi.upsert(pid, { config: cfg, name: pid }, { set_default: setDefault });
+      toast.success('已保存 Gate Policy');
+      setGateDefaultId(String(res.default_id || gateDefaultId || ''));
+      await loadGatePolicies();
+    } catch (e: any) {
+      toastGateError(e, '保存失败');
+    } finally {
+      setGateLoading(false);
+    }
+  };
+
+  const proposeGatePolicy = async () => {
+    const pid = gatePolicyId.trim();
+    if (!pid) {
+      toast.error('提交失败', 'policy_id 不能为空');
+      return;
+    }
+    setGateLoading(true);
+    try {
+      const cfg = JSON.parse(gatePolicyText || '{}');
+      const res = await gatePolicyApi.propose(pid, { config: cfg, name: pid, set_default: pid === 'prod', require_approval: pid === 'prod' });
+      toast.success('已提交变更（ChangeControl）');
+      const url = res?.links?.change_control_ui;
+      if (url) window.open(String(url), '_blank');
+    } catch (e: any) {
+      toastGateError(e, '提交失败');
+    } finally {
+      setGateLoading(false);
+    }
+  };
+
+  const setGateDefault = async (pid: string) => {
+    setGateLoading(true);
+    try {
+      const res = await gatePolicyApi.setDefault(pid);
+      setGateDefaultId(res.default_id);
+      toast.success('已设置默认 Gate Policy');
+      await loadGatePolicies();
+    } catch (e: any) {
+      toastGateError(e, '设置失败');
+    } finally {
+      setGateLoading(false);
+    }
+  };
+
+  const deleteGate = async (pid: string) => {
+    if (!confirm(`确认删除 gate policy: ${pid} ?`)) return;
+    setGateLoading(true);
+    try {
+      await gatePolicyApi.remove(pid);
+      toast.success('已删除');
+      await loadGatePolicies();
+    } catch (e: any) {
+      toastGateError(e, '删除失败');
+    } finally {
+      setGateLoading(false);
+    }
+  };
 
   const loadOne = async (tid: string) => {
     if (!tid) return;
@@ -197,7 +355,7 @@ const Policies: React.FC = () => {
     [version]
   );
 
-  return (
+  const renderTenantPolicies = () => (
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -339,6 +497,179 @@ const Policies: React.FC = () => {
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+
+  const gateColumns = useMemo(
+    () => [
+      { key: 'policy_id', title: 'policy_id', dataIndex: 'policy_id', width: 220, render: (v: any) => <code className="text-xs">{String(v)}</code> },
+      {
+        key: 'default',
+        title: 'default',
+        width: 110,
+        render: (_: any, r: any) =>
+          String(r?.policy_id || '') === String(gateDefaultId || '') ? <Badge variant="success">default</Badge> : <Badge variant="default">-</Badge>,
+      },
+      { key: 'updated_at', title: 'updated_at', dataIndex: 'updated_at', width: 160, render: (v: any) => <span className="text-xs text-gray-500">{v || '-'}</span> },
+      {
+        key: 'op',
+        title: 'op',
+        width: 240,
+        render: (_: any, r: any) => (
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" onClick={() => loadGateOne(String(r?.policy_id || ''))} disabled={gateLoading}>
+              编辑
+            </Button>
+            <Button variant="secondary" onClick={() => openVersions(String(r?.policy_id || ''))} disabled={gateLoading}>
+              版本
+            </Button>
+            <Button variant="secondary" onClick={() => setGateDefault(String(r?.policy_id || ''))} disabled={gateLoading}>
+              设为默认
+            </Button>
+            <Button variant="danger" onClick={() => deleteGate(String(r?.policy_id || ''))} disabled={gateLoading}>
+              删除
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    [gateDefaultId, gateLoading],
+  );
+
+  const renderGatePolicies = () => (
+    <div className="space-y-4">
+      <Modal open={versionsOpen} onClose={() => setVersionsOpen(false)} title={`Gate Policy Versions: ${versionsPolicyId}`} width={900}>
+        <div className="space-y-3">
+          <div className="text-sm text-gray-300">
+            current_version: <code>{String(versionsData?.current_version ?? '-')}</code>
+          </div>
+          <div className="bg-dark-card border border-dark-border rounded-lg overflow-hidden">
+            <table className="w-full text-sm text-gray-300">
+              <thead className="bg-dark-hover text-xs text-gray-400">
+                <tr>
+                  <th className="text-left px-3 py-2">version</th>
+                  <th className="text-left px-3 py-2">updated_at</th>
+                  <th className="text-left px-3 py-2">sha256</th>
+                  <th className="text-left px-3 py-2">op</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(versionsData?.revisions || []).map((r: any, idx: number) => (
+                  <tr key={idx} className="border-t border-dark-border">
+                    <td className="px-3 py-2">
+                      <code>{String(r?.version ?? '-')}</code>
+                    </td>
+                    <td className="px-3 py-2">
+                      <span className="text-xs text-gray-400">{String(r?.updated_at ?? '-')}</span>
+                    </td>
+                    <td className="px-3 py-2">
+                      <code className="text-xs">{String(r?.sha256 || '').slice(0, 12)}</code>
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <Button variant="secondary" onClick={() => navigator.clipboard.writeText(JSON.stringify(r?.config || {}, null, 2))}>
+                          复制配置
+                        </Button>
+                        <Button variant="primary" onClick={() => rollbackTo(versionsPolicyId, Number(r?.version || 0))} disabled={!r?.version}>
+                          回滚到此版本
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {!Array.isArray(versionsData?.revisions) || versionsData.revisions.length === 0 ? (
+                  <tr>
+                    <td className="px-3 py-3 text-gray-500" colSpan={4}>
+                      暂无历史版本
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </Modal>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-semibold text-gray-200">Gate Policies</div>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" onClick={() => bootstrapGatePolicies(false)} loading={gateLoading}>
+                初始化模板
+              </Button>
+              <Button variant="secondary" onClick={() => bootstrapGatePolicies(true)} loading={gateLoading}>
+                强制重置
+              </Button>
+              <Button onClick={loadGatePolicies} loading={gateLoading}>
+                刷新
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="bg-dark-card rounded-xl border border-dark-border overflow-hidden">
+            <Table columns={gateColumns as any} data={gatePolicies} rowKey="policy_id" loading={gateLoading} emptyText="暂无 Gate Policies" />
+          </div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-sm font-semibold text-gray-200">编辑 Gate Policy</div>
+            <div className="flex items-center gap-2">
+              <Input label="policy_id" value={gatePolicyId} onChange={(e: any) => setGatePolicyId(String(e.target.value || ''))} />
+              <Button variant="secondary" onClick={() => navigator.clipboard.writeText(gatePolicyText || '')}>
+                复制 JSON
+              </Button>
+              <Button variant="secondary" onClick={proposeGatePolicy} loading={gateLoading}>
+                提交变更
+              </Button>
+              <Button onClick={() => saveGatePolicy(false)} loading={gateLoading}>
+                保存
+              </Button>
+              <Button variant="primary" onClick={() => saveGatePolicy(true)} loading={gateLoading}>
+                保存并设为默认
+              </Button>
+            </div>
+          </div>
+          <p className="text-sm text-gray-500 mt-1">用于将 apply gate/eval/security/cost 等门禁参数封装成可复用策略（产品化 Phase 1）。</p>
+        </CardHeader>
+        <CardContent>
+          <textarea
+            className="w-full h-[320px] bg-dark-card border border-dark-border rounded-lg p-3 text-sm text-gray-200 font-mono"
+            value={gatePolicyText}
+            onChange={(e) => setGatePolicyText(e.target.value)}
+          />
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-200">Policies</h1>
+          <p className="text-sm text-gray-500 mt-1">Policy-as-code / Gate Policies（产品化入口）</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Link to="/diagnostics">
+            <Button variant="secondary" icon={<ArrowLeft size={16} />}>
+              返回
+            </Button>
+          </Link>
+        </div>
+      </div>
+
+      <Tabs
+        defaultActiveKey="tenant"
+        onChange={(k) => setTab((k as any) || 'tenant')}
+        tabs={[
+          { key: 'tenant', label: 'Tenant Policies', children: renderTenantPolicies() },
+          { key: 'gate', label: 'Gate Policies', children: renderGatePolicies() },
+        ]}
+      />
     </div>
   );
 };

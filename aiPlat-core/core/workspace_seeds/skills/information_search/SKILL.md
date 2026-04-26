@@ -7,6 +7,9 @@ version: 1.0.0
 status: disabled
 protected: false
 execution_mode: inline
+executable: true
+permissions:
+  - "llm:generate"
 input_schema:
   query:
     type: string
@@ -14,6 +17,10 @@ input_schema:
 output_schema:
   results:
     type: string
+  markdown:
+    type: string
+    required: true
+    description: 面向人阅读的 Markdown 输出，与结构化字段一致
 ---
 
 # 信息检索（Workspace）
@@ -24,4 +31,3 @@ output_schema:
 1. 明确检索范围与新鲜度要求。
 2. 执行检索并对比多个权威来源。
 3. 输出结论 + 证据要点 + 来源链接。
-

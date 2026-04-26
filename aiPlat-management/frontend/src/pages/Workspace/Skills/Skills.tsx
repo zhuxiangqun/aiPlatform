@@ -33,6 +33,22 @@ const governanceBadge = (record: any) => {
   return <Badge variant={'default' as any}>n/a</Badge>;
 };
 
+const lintBadge = (record: any) => {
+  const l = (record as any)?.lint;
+  if (!l) return <Badge variant={'default' as any}>lint:n/a</Badge>;
+  const e = Number(l.error_count || 0);
+  const w = Number(l.warning_count || 0);
+  const risk = String(l.risk_level || 'low');
+  const blocked = Boolean(l.blocked);
+  const v = blocked || e > 0 ? ('error' as any) : w > 0 ? ('warning' as any) : ('success' as any);
+  return (
+    <div className="flex items-center gap-1 justify-center">
+      <Badge variant={v}>{`E${e}/W${w}`}</Badge>
+      <span className="text-[10px] text-gray-400">{risk}</span>
+    </div>
+  );
+};
+
 const SKILL_CATEGORIES = [
   { value: '', label: '全部' },
   { value: 'general', label: '通用' },
@@ -107,6 +123,10 @@ const WorkspaceSkills: React.FC = () => {
         return;
       }
       toast.success(skill.enabled ? `Skill "${skill.name}" 已禁用` : `Skill "${skill.name}" 已启用`);
+      const sum = res?.lint_summary || res?.lint?.summary;
+      if (sum && (Number(sum.error_count || 0) > 0 || Number(sum.warning_count || 0) > 0)) {
+        toast.warning('Skill Lint', `E${sum.error_count || 0}/W${sum.warning_count || 0}（risk=${sum.risk_level || 'low'}）`);
+      }
     } catch (e: any) {
       toastGateError(e, '操作失败');
     }
@@ -221,6 +241,13 @@ const WorkspaceSkills: React.FC = () => {
       width: 110,
       align: 'center' as const,
       render: (_: unknown, record: Skill) => <div className="flex items-center justify-center">{governanceBadge(record)}</div>,
+    },
+    {
+      title: 'Lint',
+      key: 'lint',
+      width: 120,
+      align: 'center' as const,
+      render: (_: unknown, record: Skill) => <div className="flex items-center justify-center">{lintBadge(record)}</div>,
     },
     {
       title: '操作',

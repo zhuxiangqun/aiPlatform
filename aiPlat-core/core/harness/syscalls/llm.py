@@ -370,6 +370,7 @@ async def sys_llm_generate(
                         },
                         "result": {
                             "has_content": bool(getattr(result, "content", None)),
+                            "usage": getattr(result, "usage", None) if isinstance(getattr(result, "usage", None), dict) else None,
                             "prompt_version": prompt_version,
                             "applied_prompt_revision_ids": applied_prompt_revision_ids,
                             "ignored_prompt_revision_ids": ignored_prompt_revision_ids,

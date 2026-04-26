@@ -7,6 +7,9 @@ version: 1.0.0
 status: disabled
 protected: false
 execution_mode: inline
+executable: true
+permissions:
+  - "llm:generate"
 input_schema:
   endpoint:
     type: string
@@ -20,6 +23,10 @@ input_schema:
 output_schema:
   response:
     type: object
+  markdown:
+    type: string
+    required: true
+    description: 面向人阅读的 Markdown 输出，与结构化字段一致
 ---
 
 # API调用（Workspace）
@@ -30,4 +37,3 @@ output_schema:
 1. 明确鉴权方式与参数口径（token/签名/headers）。
 2. 调用并记录状态码/trace 信息（如有）。
 3. 输出结构化结果与下一步建议（含错误映射）。
-

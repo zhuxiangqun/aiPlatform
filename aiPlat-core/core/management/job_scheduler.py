@@ -299,7 +299,8 @@ class JobScheduler:
                 payload_out = getattr(result, "payload", {}) or {}
                 status = str(payload_out.get("status") or "completed")
                 final_ok = True
-                final_error = payload_out.get("error")
+                err0 = payload_out.get("error")
+                final_error = str(err0) if err0 is not None and not isinstance(err0, str) else err0
                 trace_id = getattr(result, "trace_id", None) or payload_out.get("trace_id")
                 final_payload = {"ok": True, "payload": payload_out}
                 await self._store.finish_job_run(

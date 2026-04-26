@@ -13,6 +13,8 @@ from dataclasses import dataclass, field
 import yaml
 import re
 
+from core.apps.skills.skill_md import parse_skill_md
+
 
 @dataclass
 class DiscoveredSkill:
@@ -33,10 +35,18 @@ class DiscoveredSkill:
     handler_path: Optional[str] = None
     references_path: Optional[str] = None
     scripts_path: Optional[str] = None
+    # Filesystem provenance (for evidence/replay)
+    skill_dir: Optional[str] = None
+    skill_md_path: Optional[str] = None
     # New fields for OpenClaw compatibility
     trigger_keywords: List[str] = field(default_factory=list)
     execution_mode: str = "inline"
     author: str = ""
+    # Governance / contract fields (optional)
+    skill_kind: str = "rule"  # rule|executable
+    auto_trigger_allowed: Optional[bool] = None
+    requires_approval: Optional[bool] = None
+    risk_level: Optional[str] = None
     # L2: SOP markdown body (SKILL.md without YAML frontmatter)
     sop_markdown: str = ""
 
@@ -54,84 +64,39 @@ class SKILLMD_parser:
         if not skill_md.exists():
             return None
         
-        content = skill_md.read_text(encoding='utf-8')
-        
-        # Extract YAML from front matter or code block
-        yaml_content = None
-        sop_markdown = ""
-        
-        # Try front matter format (--- ... ---)
-        if content.startswith('---'):
-            lines = content.split('\n')
-            yaml_lines = []
-            in_front_matter = False
-            end_idx = None
-            for i, line in enumerate(lines):
-                if line.strip() == '---':
-                    if not in_front_matter:
-                        in_front_matter = True
-                        continue
-                    else:
-                        end_idx = i
-                        break
-                if in_front_matter:
-                    yaml_lines.append(line)
-            yaml_content = '\n'.join(yaml_lines)
-            if end_idx is not None:
-                sop_markdown = '\n'.join(lines[end_idx + 1:]).lstrip()
-        
-        if not yaml_content:
-            # Try yaml code block format (```yaml ... ```)
-            match = SKILLMD_parser.YAML_BLOCK_PATTERN.search(content)
-            if match:
-                yaml_content = match.group(1)
-                # Best-effort SOP: remove the yaml block from content
-                sop_markdown = SKILLMD_parser.YAML_BLOCK_PATTERN.sub("", content).strip()
-        
-        if not yaml_content:
-            # Try to find any YAML-like content
-            lines = content.split('\n')
-            yaml_lines = []
-            in_yaml = False
-            for line in lines:
-                if line.strip().startswith('name:'):
-                    in_yaml = True
-                if in_yaml:
-                    yaml_lines.append(line)
-                    if line.strip() == '```' or (line.strip() and not line.startswith(' ') and not line.startswith('\t')) and len(yaml_lines) > 2:
-                        break
-            yaml_content = '\n'.join(yaml_lines)
-            sop_markdown = content
-        
-        if not yaml_content:
+        content = skill_md.read_text(encoding="utf-8")
+        parsed = parse_skill_md(content)
+        data = parsed.front_matter or {}
+        if not data:
             return None
-        
-        try:
-            data = yaml.safe_load(yaml_content)
-            if not data:
-                return None
-            
-            return DiscoveredSkill(
-                name=data.get('name', skill_dir.name),
-                display_name=data.get('display_name', data.get('name', skill_dir.name)),
-                description=data.get('description', ''),
-                version=data.get('version', '1.0.0'),
-                category=data.get('category', 'general'),
-                tags=data.get('tags', []),
-                capabilities=data.get('capabilities', []),
-                trigger_conditions=data.get('trigger_conditions', []),  # Skill 触发条件（路由表）
-                input_schema=data.get('input_schema', {}),
-                output_schema=data.get('output_schema', {}),
-                examples=data.get('examples', []),
-                requirements=data.get('requirements', []),
-                permissions=data.get('permissions', []),
-                trigger_keywords=data.get('trigger_keywords', []),
-                execution_mode=data.get('execution_mode', 'inline'),
-                author=data.get('author', ''),
-                sop_markdown=sop_markdown or "",
-            )
-        except yaml.YAMLError:
-            return None
+
+        sop_markdown = (parsed.body or "").lstrip()
+
+        return DiscoveredSkill(
+            name=data.get("name", skill_dir.name),
+            display_name=data.get("display_name", data.get("name", skill_dir.name)),
+            description=data.get("description", ""),
+            version=data.get("version", "1.0.0"),
+            category=data.get("category", "general"),
+            tags=data.get("tags", []),
+            capabilities=data.get("capabilities", []),
+            trigger_conditions=data.get("trigger_conditions", []),  # Skill 触发条件（路由表）
+            input_schema=data.get("input_schema", {}),
+            output_schema=data.get("output_schema", {}),
+            examples=data.get("examples", []),
+            requirements=data.get("requirements", []),
+            permissions=data.get("permissions", []),
+            trigger_keywords=data.get("trigger_keywords", []),
+            execution_mode=data.get("execution_mode", "inline"),
+            author=data.get("author", ""),
+            skill_kind=str(data.get("skill_kind") or data.get("kind") or "rule"),
+            auto_trigger_allowed=(data.get("auto_trigger_allowed") if "auto_trigger_allowed" in data else None),
+            requires_approval=(data.get("requires_approval") if "requires_approval" in data else None),
+            risk_level=(str(data.get("risk_level")) if data.get("risk_level") is not None else None),
+            sop_markdown=sop_markdown or "",
+            skill_dir=str(skill_dir.resolve()),
+            skill_md_path=str(skill_md.resolve()),
+        )
 
 
 class SkillDiscovery:
@@ -174,9 +139,10 @@ class SkillDiscovery:
             
             skill_info = self._parser.parse(item)
             if skill_info:
-                skill_info.handler_path = str(item / "handler.py")
-                skill_info.references_path = str(item / "references")
-                skill_info.scripts_path = str(item / "scripts")
+                # Use absolute paths to avoid cwd-dependent loading behavior.
+                skill_info.handler_path = str((item / "handler.py").resolve())
+                skill_info.references_path = str((item / "references").resolve())
+                skill_info.scripts_path = str((item / "scripts").resolve())
                 self._discovered[skill_info.name] = skill_info
         
         return self._discovered
@@ -220,8 +186,23 @@ class SkillLoader:
     def __init__(self, discovery: SkillDiscovery):
         self._discovery = discovery
         self._handlers: Dict[str, Any] = {}
+        # key -> {"mtime": float, "sha": str, "content": str}
         self._references: Dict[str, Dict[str, Any]] = {}
-        self._scripts: Dict[str, Dict[str, str]] = {}
+        self._scripts: Dict[str, Dict[str, Any]] = {}
+
+    def invalidate(self, skill_name: Optional[str] = None) -> None:
+        """Invalidate caches (all or a single skill)."""
+        if not skill_name:
+            self._handlers.clear()
+            self._references.clear()
+            self._scripts.clear()
+            return
+        self._handlers.pop(skill_name, None)
+        prefix = f"{skill_name}:"
+        for k in [k for k in self._references.keys() if k.startswith(prefix)]:
+            self._references.pop(k, None)
+        for k in [k for k in self._scripts.keys() if k.startswith(prefix)]:
+            self._scripts.pop(k, None)
     
     def load_handler(self, skill_name: str):
         """Load and cache skill handler"""
@@ -242,20 +223,30 @@ class SkillLoader:
         """Load reference document on-demand"""
         key = f"{skill_name}:{ref_name}"
         
-        if key in self._references:
-            return self._references[key]
-        
         skill_info = self._discovery.get(skill_name)
         if not skill_info or not skill_info.references_path:
             return None
-        
+
         ref_path = Path(skill_info.references_path) / ref_name
         if not ref_path.exists():
             return None
+
+        # cache w/ mtime validation
+        try:
+            mtime = float(ref_path.stat().st_mtime)
+        except Exception:
+            mtime = -1.0
+
+        cached = self._references.get(key)
+        if cached and float(cached.get("mtime") or -1.0) == mtime and isinstance(cached.get("content"), str):
+            return str(cached.get("content") or "")
         
         try:
             content = ref_path.read_text(encoding='utf-8')
-            self._references[key] = content
+            import hashlib
+
+            sha = hashlib.sha256(content.encode("utf-8")).hexdigest()
+            self._references[key] = {"mtime": mtime, "sha": sha, "content": content}
             return content
         except Exception:
             return None
@@ -276,9 +267,6 @@ class SkillLoader:
         """Load deterministic script"""
         key = f"{skill_name}:{script_name}"
         
-        if key in self._scripts:
-            return self._scripts[key]
-        
         skill_info = self._discovery.get(skill_name)
         if not skill_info or not skill_info.scripts_path:
             return None
@@ -286,10 +274,22 @@ class SkillLoader:
         script_path = Path(skill_info.scripts_path) / script_name
         if not script_path.exists():
             return None
+
+        try:
+            mtime = float(script_path.stat().st_mtime)
+        except Exception:
+            mtime = -1.0
+
+        cached = self._scripts.get(key)
+        if cached and float(cached.get("mtime") or -1.0) == mtime and isinstance(cached.get("content"), str):
+            return str(cached.get("content") or "")
         
         try:
             content = script_path.read_text(encoding='utf-8')
-            self._scripts[key] = content
+            import hashlib
+
+            sha = hashlib.sha256(content.encode("utf-8")).hexdigest()
+            self._scripts[key] = {"mtime": mtime, "sha": sha, "content": content}
             return content
         except Exception:
             return None

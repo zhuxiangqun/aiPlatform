@@ -55,6 +55,24 @@ def check_permission(*, actor_role: Optional[str], action: str, resource_type: s
             return RBACDecision(True, "operator_allow_approval")
         return RBACDecision(False, f"{role}_denied_approval")
 
+    # run resume (wait auto-resume)
+    if a in {"resume", "auto_resume"} and rt in {"run"}:
+        if role in {"operator"}:
+            return RBACDecision(True, "operator_allow_resume")
+        return RBACDecision(False, f"{role}_denied_resume")
+
+    # run redo (checkpoint reject -> redo)
+    if a in {"redo", "rerun"} and rt in {"run"}:
+        if role in {"operator"}:
+            return RBACDecision(True, "operator_allow_redo")
+        return RBACDecision(False, f"{role}_denied_redo")
+
+    # run updates (events: checkpoint/join/workflow annotations)
+    if a in {"update", "write"} and rt in {"run"}:
+        if role in {"operator", "developer"}:
+            return RBACDecision(True, f"{role}_allow_run_update")
+        return RBACDecision(False, f"{role}_denied_run_update")
+
     # tenant policy / governance writes
     if a in {"policy_upsert", "policy_delete"} and rt in {"tenant_policy", "policy"}:
         return RBACDecision(False, f"{role}_denied_policy_write")
@@ -81,4 +99,3 @@ def should_enforce() -> bool:
 
 def should_warn() -> bool:
     return not should_enforce()
-

@@ -66,6 +66,7 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
   { group: 'core', label: '核心能力层', items: [
     { key: '/core/agents', icon: Bot, label: 'Agent管理' },
     { key: '/core/skills', icon: Sparkles, label: 'Skill管理' },
+    { key: '/core/skills-rollouts', icon: Layers, label: 'Skill灰度发布' },
     { key: '/core/prompts', icon: FileText, label: 'Prompt模板' },
     { key: '/core/skill-packs', icon: Package, label: 'Skill Packs' },
     { key: '/core/plugins', icon: Package, label: '插件管理' },
@@ -82,6 +83,7 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
   { group: 'workspace', label: '应用库', items: [
     { key: '/workspace/agents', icon: Package, label: 'Agent库' },
     { key: '/workspace/skills', icon: Package, label: 'Skill库' },
+    { key: '/workspace/skills-lint', icon: ShieldCheck, label: 'Skill巡检' },
     { key: '/workspace/skill-marketplace', icon: ShoppingBag, label: 'Skill市场/安装器' },
     { key: '/workspace/mcp', icon: Package, label: 'MCP库' },
   ]},

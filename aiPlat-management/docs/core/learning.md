@@ -32,6 +32,20 @@
 
 ---
 
+## 1.1 Diagnostics → Workflows（一键流水线入口，As-Is）
+
+入口页面：`Diagnostics / Workflows`
+
+当前提供两条最小可用流水线：
+- **QA-only**：触发 `evaluate/auto` 生成 `evaluation_report`（可选 url 取证），完成后自动跳转到 artifact
+- **QA + Gate**：同上，但开启硬门控（Coverage Gate / Tag Assertions / Regression Gate 等）
+- **Investigate**：聚合 run/evaluation/evidence/diff/syscalls 生成 `investigate_report`，用于一键排障
+
+输入建议：
+- 若要启用 Coverage Gate（缺关键 tag 直接 P0），建议在 `steps[]` 中为关键步骤标注 `tag`。
+
+---
+
 ## 2. Learning Artifacts 列表（As-Is）
 
 入口页面：`Core / Learning / Artifacts`
@@ -64,4 +78,3 @@
 - evidence_diff：summary + metrics 摘要
 - run_state：locked/todo/next_step 摘要
 - evaluation_policy：默认模板/阈值/模板列表摘要
-

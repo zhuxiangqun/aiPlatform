@@ -6,6 +6,9 @@ category: generation
 version: 1.0.0
 status: disabled
 execution_mode: inline
+executable: true
+permissions:
+  - "llm:generate"
 trigger_conditions:
   - "写代码"
   - "生成代码"
@@ -28,6 +31,10 @@ output_schema:
   code:
     type: string
     description: 生成的代码（或补丁说明）
+  markdown:
+    type: string
+    required: true
+    description: 面向人阅读的 Markdown 输出，与结构化字段一致
 ---
 
 # 代码生成

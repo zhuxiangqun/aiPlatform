@@ -24,6 +24,8 @@ def _norm_provider(p: str) -> str:
         return "deepseek"
     if p in {"mock"}:
         return "mock"
+    if p in {"scripted"}:
+        return "scripted"
     return p or "openai"
 
 

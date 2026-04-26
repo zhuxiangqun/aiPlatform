@@ -6,6 +6,9 @@ category: analysis
 version: 1.0.0
 status: enabled
 execution_mode: inline
+executable: true
+permissions:
+  - "llm:generate"
 trigger_conditions:
   - "分析数据"
   - "看看这个表"
@@ -24,6 +27,10 @@ output_schema:
   insights:
     type: string
     description: 分析洞察
+  markdown:
+    type: string
+    required: true
+    description: 面向人阅读的 Markdown 输出，与结构化字段一致
 ---
 
 # 数据分析

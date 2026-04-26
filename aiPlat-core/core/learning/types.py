@@ -19,6 +19,8 @@ class LearningArtifactKind(str, Enum):
     EVIDENCE_PACK = "evidence_pack"
     EVIDENCE_DIFF = "evidence_diff"
     EVALUATION_POLICY = "evaluation_policy"
+    INVESTIGATE_REPORT = "investigate_report"
+    CANARY_REPORT = "canary_report"
     REGRESSION_REPORT = "regression_report"
     FEEDBACK_SUMMARY = "feedback_summary"
     RUN_STATE = "run_state"

@@ -1,0 +1,193 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://aiplat.local/schemas/skillSpecV2.schema.json",
+  "title": "SkillSpecV2 (SKILL.md frontmatter)",
+  "description": "用于管理台生成 SKILL.md frontmatter（v2）。生成后允许开发者手动精修 SKILL.md body（SOP）与 L3 资源。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "description", "category", "skill_kind", "output_schema"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "名称（显示名称）",
+      "minLength": 1,
+      "maxLength": 64,
+      "x-ui": { "step": 0, "order": 10, "placeholder": "例如：我的客服助手" }
+    },
+    "skill_id": {
+      "type": "string",
+      "title": "Skill ID（可选）",
+      "pattern": "^[a-z][a-z0-9_-]{2,}$",
+      "minLength": 0,
+      "maxLength": 64,
+      "x-ui": { "step": 0, "order": 20, "placeholder": "例如：customer_support（建议小写/下划线）" }
+    },
+    "display_name": {
+      "type": "string",
+      "title": "display_name（可选）",
+      "maxLength": 64,
+      "x-ui": { "step": 0, "order": 30, "placeholder": "默认等于名称" }
+    },
+    "description": {
+      "type": "string",
+      "title": "描述",
+      "minLength": 8,
+      "maxLength": 280,
+      "x-ui": { "step": 0, "order": 40, "widget": "textarea", "placeholder": "什么时候用这个技能？尽量用用户语言描述（<=280字）" }
+    },
+    "category": {
+      "type": "string",
+      "title": "分类",
+      "enum": ["general", "execution", "retrieval", "analysis", "generation", "transformation", "reasoning", "coding", "search", "tool", "communication"],
+      "x-ui": { "step": 0, "order": 50 }
+    },
+    "version": {
+      "type": "string",
+      "title": "版本",
+      "pattern": "^v?\\d+\\.\\d+\\.\\d+$",
+      "default": "1.0.0",
+      "x-ui": { "step": 0, "order": 60, "advanced": true }
+    },
+    "status": {
+      "type": "string",
+      "title": "状态",
+      "enum": ["enabled", "disabled", "deprecated"],
+      "default": "enabled",
+      "x-ui": { "step": 0, "order": 70, "advanced": true }
+    },
+    "skill_kind": {
+      "type": "string",
+      "title": "形态",
+      "enum": ["rule", "executable"],
+      "default": "rule",
+      "x-ui": { "step": 1, "order": 10, "help": "rule=纯 SOP / prompt；executable=可能调用脚本/工具，需要 permissions" }
+    },
+    "trigger_conditions": {
+      "type": "array",
+      "title": "触发条件（建议）",
+      "items": { "type": "string", "minLength": 1, "maxLength": 120 },
+      "minItems": 0,
+      "maxItems": 20,
+      "x-ui": { "step": 1, "order": 20, "help": "建议 3-10 条用户常用说法（短词/短句），提高路由稳定性" }
+    },
+    "keywords": {
+      "type": "object",
+      "title": "关键词（可选）",
+      "additionalProperties": false,
+      "properties": {
+        "objects": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "actions": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "constraints": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "synonyms": { "type": "array", "items": { "type": "string" }, "default": [] }
+      },
+      "default": { "objects": [], "actions": [], "constraints": [], "synonyms": [] },
+      "x-ui": { "step": 1, "order": 25, "advanced": true, "help": "用于提升召回/区分度：对象词+动作词+约束词；同义词可写在 synonyms" }
+    },
+    "negative_triggers": {
+      "type": "array",
+      "title": "负向触发（减少误触发）",
+      "items": { "type": "string", "minLength": 1, "maxLength": 120 },
+      "minItems": 0,
+      "maxItems": 20,
+      "default": [],
+      "x-ui": { "step": 1, "order": 26, "advanced": true, "help": "明确哪些用户表达/场景不应触发该 Skill（例如：不做 OCR/不做部署）" }
+    },
+    "required_questions": {
+      "type": "array",
+      "title": "缺参追问（高风险建议）",
+      "items": { "type": "string", "minLength": 1, "maxLength": 180 },
+      "minItems": 0,
+      "maxItems": 20,
+      "default": [],
+      "x-ui": { "step": 1, "order": 27, "advanced": true, "help": "当用户缺信息时必须追问的问题清单（高风险/可执行技能建议必填）" }
+    },
+    "permissions": {
+      "type": "array",
+      "title": "权限",
+      "items": { "type": "string", "minLength": 3, "maxLength": 80 },
+      "default": ["llm:generate"],
+      "x-ui": { "step": 1, "order": 30, "advanced": true, "help": "最小权限原则；executable 必填；高风险权限会触发门控/审批" }
+    },
+    "config": {
+      "type": "object",
+      "title": "config（可选）",
+      "additionalProperties": true,
+      "default": {},
+      "x-ui": { "step": 1, "order": 40, "advanced": true, "widget": "json" }
+    },
+    "input_schema": {
+      "type": "object",
+      "title": "输入 Schema",
+      "additionalProperties": { "$ref": "#/definitions/fieldSchema" },
+      "default": {},
+      "x-ui": { "step": 2, "order": 10, "widget": "json" }
+    },
+    "output_schema": {
+      "type": "object",
+      "title": "输出 Schema",
+      "additionalProperties": { "$ref": "#/definitions/fieldSchema" },
+      "default": {
+        "markdown": { "type": "string", "required": true, "description": "面向人阅读的 Markdown 输出，与结构化字段一致" }
+      },
+      "allOf": [
+        { "required": ["markdown"] },
+        {
+          "properties": {
+            "markdown": {
+              "type": "object",
+              "required": ["type", "required"],
+              "properties": {
+                "type": { "const": "string" },
+                "required": { "const": true }
+              }
+            }
+          }
+        }
+      ],
+      "x-ui": { "step": 2, "order": 20, "widget": "json", "help": "平台强约束：必须包含 markdown 字段（JSON+Markdown 输出）" }
+    },
+    "decision_tree": {
+      "type": "array",
+      "title": "决策树（可选）",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["if", "then"],
+        "properties": {
+          "if": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "then": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "notes": { "type": "string", "maxLength": 400 }
+        }
+      },
+      "x-ui": { "step": 1, "order": 50, "advanced": true, "help": "用于引导路由/执行策略；后续可纳入 lint/评测（建议逐步完善）" }
+    },
+    "resources": {
+      "type": "object",
+      "title": "资源声明（可选）",
+      "additionalProperties": false,
+      "properties": {
+        "scripts": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "assets": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "references": { "type": "array", "items": { "type": "string" }, "default": [] }
+      },
+      "x-ui": { "step": 1, "order": 60, "advanced": true }
+    },
+    "sop": {
+      "type": "string",
+      "title": "SOP（Body）",
+      "default": "# 概述\n\n## 目标\n\n## 何时使用 / 何时不用\n\n## 输入 / 输出\n\n## 决策树（Decision tree）\n\n## 工作流程（SOP）\n\n## 异常处理与回滚\n\n## 验收清单（Checklist）\n- [ ] \n",
+      "x-ui": { "step": 3, "order": 999, "widget": "markdown", "help": "生成后建议由开发者精修，并在必要时下沉 scripts/assets/references" }
+    }
+  },
+  "definitions": {
+    "fieldSchema": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "type": { "type": "string" },
+        "required": { "type": "boolean" },
+        "description": { "type": "string" }
+      }
+    }
+  }
+}

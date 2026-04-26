@@ -42,7 +42,7 @@ const Jobs: React.FC = () => {
 
   // form
   const [name, setName] = useState('');
-  const [kind, setKind] = useState<'agent' | 'skill' | 'tool' | 'graph'>('agent');
+  const [kind, setKind] = useState<'agent' | 'skill' | 'tool' | 'graph' | 'smoke_e2e' | 'canary_web'>('agent');
   const [targetId, setTargetId] = useState('');
   const [cron, setCron] = useState('*/1 * * * *');
   const [userId, setUserId] = useState('system');
@@ -53,9 +53,9 @@ const Jobs: React.FC = () => {
   const [targetSuggestions, setTargetSuggestions] = useState<{ value: string; label: string }[]>([]);
   const [targetsLoading, setTargetsLoading] = useState(false);
 
-  const loadTargets = async (k: 'agent' | 'skill' | 'tool' | 'graph') => {
+  const loadTargets = async (k: 'agent' | 'skill' | 'tool' | 'graph' | 'smoke_e2e' | 'canary_web') => {
     // graph 暂不提供可选列表（后续可做：列出内置 graph_name）
-    if (k === 'graph') {
+    if (k === 'graph' || k === 'smoke_e2e' || k === 'canary_web') {
       setTargetSuggestions([]);
       return;
     }
@@ -100,7 +100,7 @@ const Jobs: React.FC = () => {
     }
   };
 
-  const applyTemplate = (tpl: 'tool_calculator' | 'agent_basic' | 'skill_basic' | 'webhook_delivery') => {
+  const applyTemplate = (tpl: 'tool_calculator' | 'agent_basic' | 'skill_basic' | 'webhook_delivery' | 'canary_web') => {
     if (tpl === 'tool_calculator') {
       setKind('tool');
       setTargetId('calculator');
@@ -135,6 +135,31 @@ const Jobs: React.FC = () => {
           2
         )
       );
+      return;
+    }
+    if (tpl === 'canary_web') {
+      setKind('canary_web');
+      setTargetId('canary:demo');
+      setPayloadText(
+        JSON.stringify(
+          {
+            project_id: 'demo',
+            candidate_id: '',
+            repo_change_id: '',
+            url: 'https://example.com',
+            expected_tags: ['login', 'create', 'save'],
+            steps: [
+              { tool: 'browser_click', tag: 'login', args: { ref: 'button.login' } },
+              { tool: 'browser_wait_for', tag: 'login', args: { timeoutMs: 1500 } },
+              { tool: 'browser_click', tag: 'save', args: { ref: 'button.save' } },
+            ],
+            enforce_gate: true,
+          },
+          null,
+          2
+        )
+      );
+      setToolsetQuick('workspace_default');
       return;
     }
   };
@@ -546,6 +571,9 @@ const Jobs: React.FC = () => {
             <Button variant="secondary" onClick={() => applyTemplate('webhook_delivery')}>
               Webhook delivery
             </Button>
+            <Button variant="secondary" onClick={() => applyTemplate('canary_web')}>
+              Canary-Web
+            </Button>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="text-xs text-gray-500 mr-1">快捷设置：</div>
@@ -581,6 +609,8 @@ const Jobs: React.FC = () => {
                 <option value="skill">skill</option>
                 <option value="tool">tool</option>
                 <option value="graph">graph</option>
+                <option value="smoke_e2e">smoke_e2e</option>
+                <option value="canary_web">canary_web</option>
               </select>
             </div>
             <div>
@@ -589,7 +619,7 @@ const Jobs: React.FC = () => {
                 value={targetId}
                 list="job-target-datalist"
                 onChange={(e: any) => setTargetId(e.target.value)}
-                placeholder={kind === 'tool' ? '例如：calculator' : '例如：<id>'}
+                placeholder={kind === 'tool' ? '例如：calculator' : kind === 'canary_web' ? '例如：canary:myapp' : '例如：<id>'}
               />
               <datalist id="job-target-datalist">
                 {targetSuggestions.map((x) => (

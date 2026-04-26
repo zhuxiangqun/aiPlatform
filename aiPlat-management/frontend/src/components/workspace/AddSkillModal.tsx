@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { workspaceSkillApi } from '../../services/coreApi';
 import { Button, Input, Modal, Select, Textarea, toast } from '../ui';
 import { diagnosticsApi } from '../../services';
+import SkillWizardV2Modal, { type SkillWizardV2Value } from './SkillWizardV2Modal';
 
 interface AddSkillModalProps {
   open: boolean;
@@ -31,6 +32,7 @@ const SKILL_TEMPLATES: Record<
     },
     output_schema: {
       passages: { type: 'array', required: true, description: '召回片段（含文本与元信息）' },
+      markdown: { type: 'string', required: true, description: '面向人阅读的 Markdown 输出，与结构化字段一致' },
     },
     sop: '1. 解析 query 与 filters，确定数据域/权限。\n2. 执行召回（top_k）。\n3. 输出 passages（带元信息），供上游引用证据。',
   },
@@ -43,6 +45,7 @@ const SKILL_TEMPLATES: Record<
     output_schema: {
       summary: { type: 'string', required: true, description: '结论摘要' },
       details: { type: 'string', required: false, description: '分析细节' },
+      markdown: { type: 'string', required: true, description: '面向人阅读的 Markdown 输出，与结构化字段一致' },
     },
     sop: '1. 明确分析目标与口径。\n2. 提取关键信息与假设。\n3. 给出结论与可验证依据，必要时输出步骤/推导。',
   },
@@ -55,6 +58,7 @@ const SKILL_TEMPLATES: Record<
     },
     output_schema: {
       text: { type: 'string', required: true, description: '生成文本' },
+      markdown: { type: 'string', required: true, description: '面向人阅读的 Markdown 输出，与结构化字段一致' },
     },
     sop: '1. 复述目标与输出格式。\n2. 按要求生成。\n3. 自检（完整性/一致性/敏感信息）。',
   },
@@ -68,13 +72,17 @@ const SKILL_TEMPLATES: Record<
     output_schema: {
       plan: { type: 'object', required: false, description: '工具调用计划（推荐：tool_name + arguments）' },
       result: { type: 'string', required: false, description: '执行结果/说明' },
+      markdown: { type: 'string', required: true, description: '面向人阅读的 Markdown 输出，与结构化字段一致' },
     },
     sop: '1. 校验输入与权限边界。\n2. 生成工具调用计划（plan）。\n3. 若允许执行，交由 Agent 调用 MCP 工具；否则输出计划与下一步。',
   },
   general: {
     config: { timeout_seconds: 60, max_concurrent: 10, retry_count: 1 },
     input_schema: { input: { type: 'string', required: true, description: '输入' } },
-    output_schema: { output: { type: 'string', required: true, description: '输出' } },
+    output_schema: {
+      output: { type: 'string', required: true, description: '输出' },
+      markdown: { type: 'string', required: true, description: '面向人阅读的 Markdown 输出，与结构化字段一致' },
+    },
     sop: '1. 明确目标。\n2. 执行。\n3. 输出结果与下一步。',
   },
 };
@@ -82,8 +90,13 @@ const SKILL_TEMPLATES: Record<
 const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState('');
+  const [skillId, setSkillId] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [category, setCategory] = useState('general');
   const [description, setDescription] = useState('');
+  const [skillKind, setSkillKind] = useState<'rule' | 'executable'>('rule');
+  const [triggerText, setTriggerText] = useState('');
+  const [permissionsText, setPermissionsText] = useState('["llm:generate"]');
   const [configText, setConfigText] = useState('');
   const [inputSchemaText, setInputSchemaText] = useState('{}');
   const [outputSchemaText, setOutputSchemaText] = useState('{}');
@@ -94,6 +107,7 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
   const [wizMayWrite, setWizMayWrite] = useState(false);
   const [genWarnings, setGenWarnings] = useState<string[]>([]);
   const [autoSmoke, setAutoSmoke] = useState(true);
+  const [wizV2Open, setWizV2Open] = useState(false);
 
   const categoryOptions = useMemo(() => SKILL_CATEGORIES, []);
 
@@ -104,6 +118,7 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
     setInputSchemaText(JSON.stringify(tmpl.input_schema, null, 2));
     setOutputSchemaText(JSON.stringify(tmpl.output_schema, null, 2));
     setSopText(tmpl.sop);
+    setSkillKind(cat === 'execution' ? 'executable' : 'rule');
   };
 
   const openWizard = () => {
@@ -132,6 +147,7 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
     else cat = 'analysis';
 
     setCategory(cat);
+    setSkillKind(wizKind === 'execution' ? 'executable' : 'rule');
     const key = SKILL_TEMPLATES[cat] ? cat : 'general';
     const base = SKILL_TEMPLATES[key];
 
@@ -215,10 +231,32 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
         }
       }
 
-      await workspaceSkillApi.create({
+      let permissions: string[] | undefined;
+      if (permissionsText.trim()) {
+        try {
+          const v = JSON.parse(permissionsText);
+          permissions = Array.isArray(v) ? v.map((x) => String(x)).filter((x) => x.trim()) : undefined;
+        } catch {
+          permissions = permissionsText
+            .split(/[\n,]/g)
+            .map((x) => x.trim())
+            .filter(Boolean);
+        }
+      }
+      const trigger_conditions = triggerText
+        .split('\n')
+        .map((x) => x.trim())
+        .filter(Boolean);
+
+      const res = await workspaceSkillApi.create({
         name: name.trim(),
+        ...(skillId.trim() ? { skill_id: skillId.trim() } : {}),
+        ...(displayName.trim() ? { display_name: displayName.trim() } : { display_name: name.trim() }),
         category,
         description: description || '',
+        skill_kind: skillKind,
+        ...(permissions ? { permissions } : {}),
+        ...(trigger_conditions.length > 0 ? { trigger_conditions } : {}),
         config,
         input_schema,
         output_schema,
@@ -227,6 +265,10 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
       } as any);
 
       toast.success('已创建');
+      const sum = (res as any)?.lint?.summary;
+      if (sum && (Number(sum.error_count || 0) > 0 || Number(sum.warning_count || 0) > 0)) {
+        toast.warning('Skill Lint', `E${sum.error_count || 0}/W${sum.warning_count || 0}（risk=${sum.risk_level || 'low'}）`);
+      }
       onSuccess();
       if (autoSmoke) {
         try {
@@ -238,8 +280,13 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
       }
       onClose();
       setName('');
+      setSkillId('');
+      setDisplayName('');
       setCategory('general');
       setDescription('');
+      setSkillKind('rule');
+      setTriggerText('');
+      setPermissionsText('["llm:generate"]');
       setConfigText('');
       setInputSchemaText('{}');
       setOutputSchemaText('{}');
@@ -275,6 +322,8 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
       </label>
       <div className="space-y-4">
         <Input label="名称" value={name} onChange={(e: any) => setName(e.target.value)} placeholder="例如：我的客服助手" />
+        <Input label="Skill ID（可选，留空则自动生成）" value={skillId} onChange={(e: any) => setSkillId(e.target.value)} placeholder="例如：customer_support（建议小写/下划线）" />
+        <Input label="display_name（可选，默认等于名称）" value={displayName} onChange={(e: any) => setDisplayName(e.target.value)} placeholder="用于 SKILL.md display_name" />
         <div className="flex items-end justify-between gap-3">
           <div className="flex-1">
             <Select
@@ -290,11 +339,31 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
           <Button variant="secondary" onClick={() => applyTemplate(category)} disabled={loading}>
             应用模板
           </Button>
-          <Button variant="primary" onClick={openWizard} disabled={loading}>
-            生成向导（推荐）
+          <Button variant="primary" onClick={() => setWizV2Open(true)} disabled={loading}>
+            向导 v2（推荐）
+          </Button>
+          <Button variant="secondary" onClick={openWizard} disabled={loading}>
+            旧向导
           </Button>
         </div>
+        <Select
+          label="形态"
+          value={skillKind}
+          onChange={(v) => setSkillKind(v as any)}
+          options={[
+            { value: 'rule', label: 'rule（纯 SOP）' },
+            { value: 'executable', label: 'executable（可执行/需权限）' },
+          ]}
+        />
         <Input label="描述" value={description} onChange={(e: any) => setDescription(e.target.value)} placeholder="描述用途" />
+        <Textarea label="trigger_conditions（每行一条，可选）" rows={3} value={triggerText} onChange={(e: any) => setTriggerText(e.target.value)} placeholder="例如：\n帮我查一下...\n检索..." />
+        <Textarea
+          label="permissions（JSON 数组或逗号/换行分隔）"
+          rows={3}
+          value={permissionsText}
+          onChange={(e: any) => setPermissionsText(e.target.value)}
+          placeholder='["llm:generate"]'
+        />
 
         <Textarea label="config（JSON，可选）" rows={6} value={configText} onChange={(e: any) => setConfigText(e.target.value)} placeholder='{"timeout_seconds": 60}' />
         <Textarea label="input_schema（JSON）" rows={6} value={inputSchemaText} onChange={(e: any) => setInputSchemaText(e.target.value)} />
@@ -312,6 +381,65 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
         )}
       </div>
     </Modal>
+
+    <SkillWizardV2Modal
+      open={wizV2Open}
+      onClose={() => setWizV2Open(false)}
+      initial={{
+        name,
+        skill_id: skillId,
+        display_name: displayName,
+        description,
+        category,
+        skill_kind: skillKind,
+        trigger_conditions: triggerText ? triggerText.split('\n').map((x) => x.trim()).filter(Boolean) : [],
+        permissions: (() => {
+          try {
+            const v = JSON.parse(permissionsText || '[]');
+            return Array.isArray(v) ? v : ['llm:generate'];
+          } catch {
+            return ['llm:generate'];
+          }
+        })(),
+        config: (() => {
+          try {
+            return JSON.parse(configText || '{}');
+          } catch {
+            return {};
+          }
+        })(),
+        input_schema: (() => {
+          try {
+            return JSON.parse(inputSchemaText || '{}');
+          } catch {
+            return {};
+          }
+        })(),
+        output_schema: (() => {
+          try {
+            return JSON.parse(outputSchemaText || '{}');
+          } catch {
+            return {};
+          }
+        })(),
+        sop: sopText,
+      }}
+      onApply={(v: SkillWizardV2Value) => {
+        setName(v.name);
+        setSkillId(v.skill_id || '');
+        setDisplayName(v.display_name || '');
+        setDescription(v.description);
+        setCategory(v.category);
+        setSkillKind(v.skill_kind);
+        setTriggerText((v.trigger_conditions || []).join('\n'));
+        setPermissionsText(JSON.stringify(v.permissions || ['llm:generate']));
+        setConfigText(JSON.stringify(v.config || {}, null, 2));
+        setInputSchemaText(JSON.stringify(v.input_schema || {}, null, 2));
+        setOutputSchemaText(JSON.stringify(v.output_schema || {}, null, 2));
+        setSopText(v.sop || '');
+        setWizV2Open(false);
+      }}
+    />
 
     <Modal
       open={wizOpen}

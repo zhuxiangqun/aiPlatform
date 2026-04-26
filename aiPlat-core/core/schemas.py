@@ -29,14 +29,29 @@ class AgentUpdateRequest(BaseModel):
 
 
 class SkillCreateRequest(BaseModel):
+    # v2: name = display_name；skill_id 可选（不填则由 name 派生）
     name: str
+    skill_id: Optional[str] = None
+    display_name: Optional[str] = None
     description: str = ""
     category: str = "general"
+    version: Optional[str] = None
+    status: Optional[str] = None
+    skill_kind: Optional[str] = None  # rule|executable
+    permissions: Optional[List[str]] = None
+    trigger_conditions: Optional[List[str]] = None
+    decision_tree: Optional[List[Dict[str, Any]]] = None
+    resources: Optional[Dict[str, Any]] = None
+
     input_schema: Dict[str, Any] = Field(default_factory=dict)
     output_schema: Dict[str, Any] = Field(default_factory=dict)
     config: Dict[str, Any] = Field(default_factory=dict)
     template: Optional[str] = None
     sop: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+    class Config:
+        extra = "allow"
 
 
 class SkillUpdateRequest(BaseModel):
@@ -80,6 +95,7 @@ class AutoEvalRequest(BaseModel):
     expected_tags: Optional[List[str]] = None
     tag_expectations: Optional[Dict[str, Any]] = None
     tag_template: Optional[str] = None
+    base_evidence_pack_id: Optional[str] = None
 
     class Config:
         extra = "allow"

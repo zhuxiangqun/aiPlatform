@@ -5,6 +5,8 @@ def test_evaluation_policy_from_dict_defaults():
     assert pol["schema_version"] == DEFAULT_POLICY["schema_version"]
     assert "thresholds" in pol
     assert "weights" in pol
+    assert "evidence_capture" in pol
+    assert "canary" in pol
     assert "regression_gate" in pol
     assert "tag_templates" in pol
     assert "default_tag_template" in pol

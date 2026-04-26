@@ -17,8 +17,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, Optional
 import os
-import sqlite3
-import json
+import hashlib
+import fnmatch
 
 from core.apps.tools.permission import get_permission_manager, Permission
 from core.harness.kernel.runtime import get_kernel_runtime
@@ -52,7 +52,154 @@ class PolicyGate:
             "y",
         )
 
-    def check_tool(self, *, user_id: str, tool_name: str, tool_args: Optional[Dict[str, Any]] = None) -> PolicyResult:
+    def _load_approval_review_policy(self, *, tenant_policy: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        P6-3: approval review strategy (sampling/exception review).
+
+        Tenant policy overrides env defaults.
+
+        Schema (tenant policy):
+          policy.approval_review = {
+            "mode": "always|sample|risk_sample|never",
+            "sample_rate": 0.1,
+            "high_risk_always": true,
+            "force_list": "tool:repo,skill:danger-*",
+            "bypass_list": "tool:skill_find",
+            "seed": "optional"
+          }
+        """
+        mode = str(os.getenv("AIPLAT_APPROVAL_REVIEW_MODE", "always") or "always").strip().lower()
+        try:
+            sample_rate = float(os.getenv("AIPLAT_APPROVAL_SAMPLE_RATE", "0") or "0")
+        except Exception:
+            sample_rate = 0.0
+        high_risk_always = os.getenv("AIPLAT_APPROVAL_HIGH_RISK_ALWAYS", "true").lower() in {"1", "true", "yes", "y"}
+        force_list = str(os.getenv("AIPLAT_APPROVAL_FORCE_LIST", "") or "").strip()
+        bypass_list = str(os.getenv("AIPLAT_APPROVAL_BYPASS_LIST", "") or "").strip()
+        seed = str(os.getenv("AIPLAT_APPROVAL_SAMPLE_SEED", "") or "").strip()
+
+        t = tenant_policy.get("approval_review") if isinstance(tenant_policy, dict) else None
+        if isinstance(t, dict):
+            if isinstance(t.get("mode"), str) and str(t.get("mode")).strip():
+                mode = str(t.get("mode")).strip().lower()
+            if t.get("sample_rate") is not None:
+                try:
+                    sample_rate = float(t.get("sample_rate"))
+                except Exception:
+                    pass
+            if isinstance(t.get("high_risk_always"), bool):
+                high_risk_always = bool(t.get("high_risk_always"))
+            if isinstance(t.get("force_list"), str):
+                force_list = str(t.get("force_list")).strip()
+            if isinstance(t.get("bypass_list"), str):
+                bypass_list = str(t.get("bypass_list")).strip()
+            if isinstance(t.get("seed"), str):
+                seed = str(t.get("seed")).strip()
+
+        # clamp
+        if sample_rate < 0:
+            sample_rate = 0.0
+        if sample_rate > 1:
+            sample_rate = 1.0
+        if mode not in {"always", "sample", "risk_sample", "never"}:
+            mode = "always"
+        return {
+            "mode": mode,
+            "sample_rate": float(sample_rate),
+            "high_risk_always": bool(high_risk_always),
+            "force_list": force_list,
+            "bypass_list": bypass_list,
+            "seed": seed,
+        }
+
+    def _match_list(self, operation: str, raw: str) -> bool:
+        pats = [p.strip() for p in str(raw or "").split(",") if p.strip()]
+        if not pats:
+            return False
+        for pat in pats:
+            try:
+                if fnmatch.fnmatch(operation, pat):
+                    return True
+            except Exception:
+                continue
+        return False
+
+    def _deterministic_sample(self, *, key: str, rate: float) -> bool:
+        """
+        Deterministic sampling in [0,1): use sha256(key) mod 10000.
+        """
+        try:
+            h = hashlib.sha256(str(key).encode("utf-8")).hexdigest()
+            v = int(h[:8], 16) % 10000
+            return v < int(rate * 10000)
+        except Exception:
+            return False
+
+    async def _maybe_waive_approval(
+        self,
+        *,
+        operation: str,
+        force_approval: bool,
+        tenant_id: Optional[str],
+        policy_version: Optional[int],
+        args: Optional[Dict[str, Any]],
+    ) -> tuple[bool, Optional[str]]:
+        """
+        Returns: (new_force_approval, waive_reason_if_any)
+        """
+        if not force_approval:
+            return False, None
+        if not isinstance(args, dict):
+            return True, None
+        # if resuming with explicit approval id, never waive
+        if args.get("_approval_request_id"):
+            return True, None
+        runtime = get_kernel_runtime()
+        store = getattr(runtime, "execution_store", None) if runtime else None
+        tenant_pol = None
+        if tenant_id and store and hasattr(store, "get_tenant_policy"):
+            try:
+                rec = await store.get_tenant_policy(tenant_id=str(tenant_id))
+                tenant_pol = rec.get("policy") if isinstance(rec, dict) and isinstance(rec.get("policy"), dict) else None
+                if policy_version is None and isinstance(rec, dict) and rec.get("version") is not None:
+                    try:
+                        policy_version = int(rec.get("version"))
+                    except Exception:
+                        policy_version = policy_version
+            except Exception:
+                tenant_pol = None
+        pol = self._load_approval_review_policy(tenant_policy=tenant_pol if isinstance(tenant_pol, dict) else None)
+        mode = pol.get("mode")
+        # explicit allow/deny lists
+        if self._match_list(operation, pol.get("bypass_list")):
+            return False, f"bypass_list:{operation}"
+        if self._match_list(operation, pol.get("force_list")):
+            return True, f"force_list:{operation}"
+        if mode == "always":
+            return True, None
+        if mode == "never":
+            return False, f"mode_never:{operation}"
+
+        risk_level = str(args.get("_risk_level") or "").strip().lower()
+        if pol.get("high_risk_always") and risk_level in {"high", "critical"}:
+            return True, "high_risk_always"
+
+        rate = float(pol.get("sample_rate") or 0.0)
+        if rate <= 0:
+            return False, "sample_rate_0"
+        if rate >= 1:
+            return True, "sample_rate_1"
+
+        seed = str(pol.get("seed") or "").strip() or str(tenant_id or "")
+        run_id = str(args.get("_run_id") or args.get("_session_id") or "")
+        key = f"{seed}:{tenant_id}:{operation}:{run_id}"
+        hit = self._deterministic_sample(key=key, rate=rate)
+        if mode == "sample":
+            return (True, f"sample_hit:{rate}") if hit else (False, f"sample_miss:{rate}")
+        # risk_sample: treat non-high as sample; high handled above
+        return (True, f"risk_sample_hit:{rate}") if hit else (False, f"risk_sample_miss:{rate}")
+
+    async def check_tool(self, *, user_id: str, tool_name: str, tool_args: Optional[Dict[str, Any]] = None) -> PolicyResult:
         perm_mgr = get_permission_manager()
         if not perm_mgr.check_permission(user_id, tool_name, Permission.EXECUTE):
             return PolicyResult(
@@ -86,24 +233,16 @@ class PolicyGate:
             runtime = get_kernel_runtime()
             store = getattr(runtime, "execution_store", None) if runtime else None
             if os.getenv("AIPLAT_POLICY_ENGINE", "1").lower() not in ("0", "false", "no", "n"):
-                # Read policy snapshot (sync) and evaluate locally.
+                # Read policy snapshot (store) and evaluate locally.
                 pol = None
                 if tenant_id and store:
                     try:
-                        db_path = getattr(getattr(store, "_config", None), "db_path", None)
-                        if db_path:
-                            conn = sqlite3.connect(str(db_path))
-                            try:
-                                row = conn.execute(
-                                    "SELECT policy_json, version FROM tenant_policies WHERE tenant_id=? LIMIT 1",
-                                    (str(tenant_id),),
-                                ).fetchone()
-                            finally:
-                                conn.close()
-                            if row and row[0]:
-                                pol = json.loads(row[0]) if isinstance(row[0], str) else {}
+                        if hasattr(store, "get_tenant_policy"):
+                            rec = await store.get_tenant_policy(tenant_id=str(tenant_id))
+                            if isinstance(rec, dict):
+                                pol = rec.get("policy") if isinstance(rec.get("policy"), dict) else None
                                 try:
-                                    policy_version = int(row[1]) if row[1] is not None else None
+                                    policy_version = int(rec.get("version")) if rec.get("version") is not None else None
                                 except Exception:
                                     policy_version = None
                     except Exception:
@@ -130,7 +269,36 @@ class PolicyGate:
             # Fail-open for compatibility.
             pass
 
-        if not self._enforce_approval and not force_approval:
+        # P6-3: approval sampling/exception review (best-effort)
+        waive_reason = None
+        try:
+            force_approval, waive_reason = await self._maybe_waive_approval(
+                operation=f"tool:{tool_name}",
+                force_approval=force_approval,
+                tenant_id=str(tenant_id) if tenant_id else None,
+                policy_version=policy_version,
+                args=tool_args if isinstance(tool_args, dict) else None,
+            )
+        except Exception:
+            waive_reason = None
+
+        # If no approval required, allow immediately (even when enforce flag is on).
+        if not force_approval:
+            # best-effort observability
+            try:
+                runtime = get_kernel_runtime()
+                store = getattr(runtime, "execution_store", None) if runtime else None
+                rid = (tool_args or {}).get("_run_id") if isinstance(tool_args, dict) else None
+                if store and rid and waive_reason:
+                    await store.append_run_event(
+                        run_id=str(rid),
+                        event_type="approval_waived",
+                        trace_id=None,
+                        tenant_id=str(tenant_id) if tenant_id else None,
+                        payload={"operation": f"tool:{tool_name}", "reason": waive_reason, "policy_version": policy_version},
+                    )
+            except Exception:
+                pass
             return PolicyResult(decision=PolicyDecision.ALLOW)
 
         runtime = get_kernel_runtime()
@@ -150,7 +318,11 @@ class PolicyGate:
         approval_request_id = (tool_args or {}).get("_approval_request_id") if isinstance(tool_args, dict) else None
         if approval_request_id:
             try:
-                req = approval_mgr.get_request(str(approval_request_id))
+                req = None
+                if hasattr(approval_mgr, "get_request_async"):
+                    req = await approval_mgr.get_request_async(str(approval_request_id))
+                else:
+                    req = approval_mgr.get_request(str(approval_request_id))
                 if not req:
                     return PolicyResult(
                         decision=PolicyDecision.APPROVAL_REQUIRED,
@@ -245,7 +417,7 @@ class PolicyGate:
 
         return PolicyResult(decision=PolicyDecision.ALLOW)
 
-    def check_skill(self, *, user_id: str, skill_name: str, skill_args: Optional[Dict[str, Any]] = None) -> PolicyResult:
+    async def check_skill(self, *, user_id: str, skill_name: str, skill_args: Optional[Dict[str, Any]] = None) -> PolicyResult:
         """
         Governance for executable skills.
 
@@ -255,11 +427,53 @@ class PolicyGate:
         - Skill approval request is recorded as operation: "skill:<name>"
         """
         args = skill_args if isinstance(skill_args, dict) else {}
+
+        # Permission check (consistent with tools). For unit/internals with no request context, fail-open.
+        try:
+            from core.harness.kernel.execution_context import get_active_request_context
+
+            if get_active_request_context() is not None:
+                perm_mgr = get_permission_manager()
+                if not perm_mgr.check_permission(user_id, str(skill_name or ""), Permission.EXECUTE):
+                    return PolicyResult(
+                        decision=PolicyDecision.DENY,
+                        reason=f"User '{user_id}' lacks EXECUTE permission for skill '{skill_name}'",
+                    )
+        except Exception:
+            # Fail-open for compatibility (Phase 3).
+            pass
         tenant_id = args.get("_tenant_id")
         policy_version: Optional[int] = None
         force_approval = bool(args.get("_approval_required"))
 
-        if not self._enforce_approval and not force_approval:
+        # P6-3: approval sampling/exception review (best-effort)
+        waive_reason = None
+        try:
+            force_approval, waive_reason = await self._maybe_waive_approval(
+                operation=f"skill:{skill_name}",
+                force_approval=force_approval,
+                tenant_id=str(tenant_id) if tenant_id else None,
+                policy_version=policy_version,
+                args=args if isinstance(args, dict) else None,
+            )
+        except Exception:
+            waive_reason = None
+
+        if not force_approval:
+            try:
+                runtime = get_kernel_runtime()
+                store = getattr(runtime, "execution_store", None) if runtime else None
+                rid = args.get("_run_id") if isinstance(args, dict) else None
+                if store and rid and waive_reason:
+                    await store.append_run_event(
+                        run_id=str(rid),
+                        event_type="approval_waived",
+                        trace_id=None,
+                        tenant_id=str(tenant_id) if tenant_id else None,
+                        payload={"operation": f"skill:{skill_name}", "reason": waive_reason, "policy_version": policy_version},
+                    )
+            except Exception:
+                pass
             return PolicyResult(decision=PolicyDecision.ALLOW)
 
         runtime = get_kernel_runtime()
@@ -277,7 +491,11 @@ class PolicyGate:
         approval_request_id = args.get("_approval_request_id")
         if approval_request_id:
             try:
-                req = approval_mgr.get_request(str(approval_request_id))
+                req = None
+                if hasattr(approval_mgr, "get_request_async"):
+                    req = await approval_mgr.get_request_async(str(approval_request_id))
+                else:
+                    req = approval_mgr.get_request(str(approval_request_id))
                 if not req:
                     return PolicyResult(
                         decision=PolicyDecision.APPROVAL_REQUIRED,

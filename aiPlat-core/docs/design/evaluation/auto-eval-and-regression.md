@@ -124,10 +124,12 @@ policy 主要字段：
 | `GET /api/core/projects/{project_id}/evaluation/policy/latest` | - | - |
 | `GET /api/core/runs/{run_id}/evaluation/latest` | - | - |
 | `GET /api/core/runs/{run_id}/evidence_pack/latest` | - | - |
+| `GET /api/core/runs/{run_id}/investigate/latest` | - | - |
 | `POST /api/core/evaluation/policy` | `policy` | - |
 | `POST /api/core/projects/{project_id}/evaluation/policy` | `mode`, `policy` | - |
-| `POST /api/core/runs/{run_id}/evaluate/auto` | `enforce_gate`, `evaluator`, `expected_tags`, `extra`, `policy`, `project_id`, `steps`, `tag_expectations`, `tag_template`, `thresholds`, `url` | - |
+| `POST /api/core/runs/{run_id}/evaluate/auto` | `base_evidence_pack_id`, `enforce_gate`, `evaluator`, `expected_tags`, `extra`, `policy`, `project_id`, `steps`, `tag_expectations`, `tag_template`, `thresholds`, `url` | - |
 | `POST /api/core/runs/{run_id}/evidence/diff` | `base_evidence_pack_id`, `new_evidence_pack_id` | `base_evidence_pack_id`, `new_evidence_pack_id` |
+| `POST /api/core/runs/{run_id}/investigate/auto` | - | - |
 
 更新方式：
 

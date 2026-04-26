@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from contextvars import ContextVar
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 import time
 
 
@@ -88,6 +88,62 @@ def reset_active_workspace_context(token) -> None:
 
 def get_active_workspace_context() -> Optional[ActiveWorkspaceContext]:
     return _active_workspace_ctx.get()
+
+
+# ---------------------------------------------------------------------------
+# Approval context (P4): propagate approval_request_id across nested calls
+# ---------------------------------------------------------------------------
+
+_active_approval_request_id: ContextVar[Optional[str]] = ContextVar("active_approval_request_id", default=None)
+
+
+def set_active_approval_request_id(approval_request_id: Optional[str]):
+    """Set current approval_request_id for nested syscalls. Returns a token for reset()."""
+    return _active_approval_request_id.set(str(approval_request_id) if approval_request_id else None)
+
+
+def reset_active_approval_request_id(token) -> None:
+    _active_approval_request_id.reset(token)
+
+
+def get_active_approval_request_id() -> Optional[str]:
+    return _active_approval_request_id.get()
+
+
+# ---------------------------------------------------------------------------
+# Tenant policy snapshot (P5): load once per execution, used by syscalls
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class ActiveTenantPolicyContext:
+    tenant_id: Optional[str]
+    version: Optional[int]
+    policy: Dict[str, Any]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "tenant_id": self.tenant_id,
+            "version": self.version,
+            "policy": self.policy or {},
+        }
+
+
+_active_tenant_policy_ctx: ContextVar[Optional[ActiveTenantPolicyContext]] = ContextVar(
+    "active_tenant_policy_ctx", default=None
+)
+
+
+def set_active_tenant_policy_context(ctx: Optional[ActiveTenantPolicyContext]):
+    return _active_tenant_policy_ctx.set(ctx)
+
+
+def reset_active_tenant_policy_context(token) -> None:
+    _active_tenant_policy_ctx.reset(token)
+
+
+def get_active_tenant_policy_context() -> Optional[ActiveTenantPolicyContext]:
+    return _active_tenant_policy_ctx.get()
 
 
 @dataclass
@@ -204,3 +260,50 @@ def record_prompt_revision_application(
         if k not in seen:
             audit.conflicts.append(c)
             seen.add(k)
+
+
+# ---------------------------------------------------------------------------
+# Change contract (Phase 7.2 - Diff Gate)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class ActiveChangeContract:
+    """
+    Captured from a coding/executable skill output to gate follow-up repo mutations.
+    """
+
+    source_skill: str = ""
+    changed_files: List[str] = None
+    unrelated_changes: Optional[bool] = None
+    acceptance_criteria: List[str] = None
+    change_plan: str = ""
+    rollback_plan: str = ""
+    updated_at: float = 0.0
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "source_skill": self.source_skill,
+            "changed_files": list(self.changed_files or []),
+            "unrelated_changes": self.unrelated_changes,
+            "acceptance_criteria": list(self.acceptance_criteria or []),
+            "change_plan": self.change_plan,
+            "rollback_plan": self.rollback_plan,
+            "updated_at": float(self.updated_at or 0.0),
+        }
+
+
+_change_contract_ctx: ContextVar[Optional[ActiveChangeContract]] = ContextVar("change_contract_ctx", default=None)
+
+
+def set_active_change_contract(contract: Optional[ActiveChangeContract]):
+    """Set active change contract for current async task. Returns a token for reset()."""
+    return _change_contract_ctx.set(contract)
+
+
+def reset_active_change_contract(token) -> None:
+    _change_contract_ctx.reset(token)
+
+
+def get_active_change_contract() -> Optional[ActiveChangeContract]:
+    return _change_contract_ctx.get()

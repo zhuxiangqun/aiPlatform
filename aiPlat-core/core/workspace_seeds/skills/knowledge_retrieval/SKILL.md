@@ -7,6 +7,9 @@ version: 1.0.0
 status: enabled
 protected: false
 execution_mode: inline
+executable: true
+permissions:
+  - "llm:generate"
 input_schema:
   query:
     type: string
@@ -25,6 +28,10 @@ output_schema:
     type: array
     required: true
     description: 召回片段列表（含文本与元信息）
+  markdown:
+    type: string
+    required: true
+    description: 面向人阅读的 Markdown 输出，与结构化字段一致
 ---
 
 # 知识召回（Workspace）
@@ -33,4 +40,3 @@ output_schema:
 1. 解析 query 与 filters，确定检索数据域。
 2. 从知识库/向量库召回 top_k 个相关片段。
 3. 输出 passages（文本 + 关键元信息），供上游 Agent 综合生成并引用证据。
-

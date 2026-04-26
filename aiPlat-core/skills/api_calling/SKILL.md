@@ -6,6 +6,9 @@ category: execution
 version: 1.0.0
 status: enabled
 execution_mode: inline
+executable: true
+permissions:
+  - "llm:generate"
 trigger_conditions:
   - "调用接口"
   - "请求API"
@@ -27,6 +30,10 @@ output_schema:
   response:
     type: object
     description: API 响应
+  markdown:
+    type: string
+    required: true
+    description: 面向人阅读的 Markdown 输出，与结构化字段一致
 ---
 
 # API调用

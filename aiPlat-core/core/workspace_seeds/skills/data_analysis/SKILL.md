@@ -7,6 +7,9 @@ version: 1.0.0
 status: enabled
 protected: false
 execution_mode: inline
+executable: true
+permissions:
+  - "llm:generate"
 input_schema:
   data:
     type: string
@@ -17,6 +20,10 @@ input_schema:
 output_schema:
   insights:
     type: string
+  markdown:
+    type: string
+    required: true
+    description: 面向人阅读的 Markdown 输出，与结构化字段一致
 ---
 
 # 数据分析（Workspace）
@@ -25,4 +32,3 @@ output_schema:
 1. 口径澄清：时间范围/指标定义/缺失与异常处理规则。
 2. 数据概览：字段、缺失率、分布、异常点。
 3. 围绕问题分析并给出“结论-证据-建议”。
-

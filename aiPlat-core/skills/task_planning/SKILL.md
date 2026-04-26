@@ -6,6 +6,9 @@ category: execution
 version: 1.0.0
 status: enabled
 execution_mode: inline
+executable: true
+permissions:
+  - "llm:generate"
 trigger_conditions:
   - "写个计划"
   - "怎么做"
@@ -20,6 +23,10 @@ output_schema:
   plan:
     type: string
     description: 分步骤计划
+  markdown:
+    type: string
+    required: true
+    description: 面向人阅读的 Markdown 输出，与结构化字段一致
 ---
 
 # 任务规划
