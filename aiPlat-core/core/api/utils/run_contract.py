@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from core.schemas import RunStatus
+from core.schemas_run import RunStatus
 from core.utils.ids import new_prefixed_id
 
 

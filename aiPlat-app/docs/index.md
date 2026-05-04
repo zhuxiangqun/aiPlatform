@@ -1,5 +1,8 @@
 # aiPlat-app 文档索引
 
+> 系统级跨层契约请优先参考：
+> - [系统整体架构规范（System Architecture Contract）](../../docs/architecture/system-architecture-contract.md)
+
 ## 概述
 
 aiPlat-app 是 AI 中台的应用层（Layer 3），负责面向最终用户的应用实现。本层提供消息网关、CLI 工具、Web UI 等用户交互能力，是用户访问 AI 中台的入口。

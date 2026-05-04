@@ -15,6 +15,8 @@ import urllib.error
 CORE_URL = "http://localhost:8002"
 INFRA_URL = "http://localhost:8001"
 MGMT_URL = "http://localhost:8000"
+PLATFORM_PROXY_URL = MGMT_URL  # platform is accessed via management proxy: /api/platform/* -> management -> platform
+APP_PROXY_URL = MGMT_URL       # same for app: /api/app/* -> management -> app
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dist")
 
 PROXY_ROUTES = {
@@ -24,6 +26,8 @@ PROXY_ROUTES = {
     "/api/alerting": MGMT_URL,
     "/api/diagnostics": MGMT_URL,
     "/api/monitoring": MGMT_URL,
+    "/api/platform": PLATFORM_PROXY_URL,
+    "/api/app": APP_PROXY_URL,
 }
 
 STATIC_EXTENSIONS = {'.html', '.js', '.css', '.json', '.png', '.jpg', '.jpeg', '.gif',
@@ -67,8 +71,27 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         try:
             content_length = int(self.headers.get("Content-Length", 0))
             body = self.rfile.read(content_length) if content_length > 0 else None
+            # Forward most headers (especially X-AIPLAT-* auth/tenant headers) so platform auth works.
+            # Strip hop-by-hop headers.
+            hop_by_hop = {
+                "host",
+                "content-length",
+                "connection",
+                "keep-alive",
+                "proxy-authenticate",
+                "proxy-authorization",
+                "te",
+                "trailers",
+                "transfer-encoding",
+                "upgrade",
+            }
             headers = {}
-            if body:
+            for k, v in self.headers.items():
+                if k.lower() in hop_by_hop:
+                    continue
+                headers[k] = v
+            # Ensure Content-Type exists when there is a body.
+            if body and "Content-Type" not in headers:
                 headers["Content-Type"] = self.headers.get("Content-Type", "application/json")
             req = urllib.request.Request(
                 f"{target}{self.path}",
@@ -79,13 +102,13 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             with urllib.request.urlopen(req, timeout=30) as resp:
                 data = resp.read()
                 self.send_response(resp.status)
-                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Type", resp.headers.get("Content-Type", "application/octet-stream"))
                 self.send_header("Access-Control-Allow-Origin", "*")
                 self.end_headers()
                 self.wfile.write(data)
         except urllib.error.HTTPError as e:
             self.send_response(e.code)
-            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Type", e.headers.get("Content-Type", "application/json"))
             self.end_headers()
             self.wfile.write(e.read())
         except Exception as e:

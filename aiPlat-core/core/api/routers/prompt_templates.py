@@ -8,11 +8,11 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 
-from core.api.deps.rbac import actor_from_http
+from core.api.deps import actor_from_http
 from core.api.utils.governance import gate_error_envelope, governance_links, ui_url
 from core.governance.changeset import record_changeset
 from core.harness.kernel.runtime import get_kernel_runtime
-from core.schemas import PromptTemplateRollbackRequest, PromptTemplateUpsertRequest
+from core.schemas_prompts import PromptTemplateRollbackRequest, PromptTemplateUpsertRequest
 
 router = APIRouter()
 
@@ -1021,4 +1021,3 @@ async def delete_prompt_template(
         "approval_request_id": approval_request_id,
         "links": governance_links(change_id=change_id, approval_request_id=str(approval_request_id) if approval_request_id else None),
     }
-

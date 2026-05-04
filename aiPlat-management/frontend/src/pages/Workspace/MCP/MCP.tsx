@@ -3,10 +3,10 @@ import { Copy, Info, Pencil, Plus, RotateCw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Badge, Table, Switch, Button, Modal, toast } from '../../../components/ui';
 import { useWorkspaceMcpStore } from '../../../stores';
-import type { McpServer } from '../../../services/coreApi';
+import type { McpServer } from '../../../services';
 import AddMcpModal from '../../../components/workspace/AddMcpModal';
 import EditMcpModal from '../../../components/workspace/EditMcpModal';
-import { toastGateError } from '../../../utils/governanceError';
+import { toastGateError } from '../../../components/ui';
 
 const WorkspaceMCP: React.FC = () => {
   const { servers, loading, fetchServers, setServerEnabled } = useWorkspaceMcpStore();

@@ -51,6 +51,8 @@ const PlatformAuth = lazy(() => import('./pages/Platform/Auth/Auth'));
 const PlatformTenant = lazy(() => import('./pages/Platform/Tenant/Tenant'));
 const AppChannels = lazy(() => import('./pages/App/Channels/Channels'));
 const AppSessions = lazy(() => import('./pages/App/Sessions/Sessions'));
+const AppKnowledgeBase = lazy(() => import('./pages/App/KnowledgeBase/KnowledgeBase'));
+const AppMaterialsChat = lazy(() => import('./pages/App/KnowledgeBase/MaterialsChat'));
 const DiagnosticsHome = lazy(() => import('./pages/Diagnostics/Diagnostics'));
 const DiagnosticsDoctor = lazy(() => import('./pages/Diagnostics/Doctor'));
 const DiagnosticsTraces = lazy(() => import('./pages/Diagnostics/Traces/Traces'));
@@ -118,6 +120,8 @@ const router = createBrowserRouter([
       { path: 'platform/tenant', element: withSuspense(PlatformTenant) },
       { path: 'app/channels', element: withSuspense(AppChannels) },
       { path: 'app/sessions', element: withSuspense(AppSessions) },
+      { path: 'app/kb', element: withSuspense(AppKnowledgeBase) },
+      { path: 'app/kb/chat/:sessionId', element: withSuspense(AppMaterialsChat) },
       { path: 'diagnostics', element: withSuspense(DiagnosticsHome) },
       { path: 'diagnostics/doctor', element: withSuspense(DiagnosticsDoctor) },
       { path: 'diagnostics/traces', element: withSuspense(DiagnosticsTraces) },

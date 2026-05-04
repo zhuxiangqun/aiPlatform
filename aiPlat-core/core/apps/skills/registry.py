@@ -11,9 +11,6 @@ from typing import Any, Dict, List, Optional
 from datetime import datetime
 
 from .base import BaseSkill, SkillMetadata, TextGenerationSkill, CodeGenerationSkill, DataAnalysisSkill, create_skill
-from .eval_trigger import SkillEvalTriggerSkill
-from .eval_quality import SkillEvalQualitySkill
-from .apply_engine_skill_md_patch import ApplyEngineSkillMdPatchSkill
 from ...harness.interfaces import SkillConfig, SkillResult
 
 
@@ -83,14 +80,25 @@ class SkillRegistry:
             "text_generation": TextGenerationSkill,
             "code_generation": CodeGenerationSkill,
             "data_analysis": DataAnalysisSkill,
-            "skill_eval_trigger": SkillEvalTriggerSkill,
-            "skill_eval_quality": SkillEvalQualitySkill,
-            "skill_apply_engine_skill_md_patch": ApplyEngineSkillMdPatchSkill,
+            # NOTE: keep these lazy to avoid circular deps:
+            # registry -> eval_trigger -> tools.skill_tools -> registry
+            "skill_eval_trigger": None,
+            "skill_eval_quality": None,
+            "skill_apply_engine_skill_md_patch": None,
         }
         
         with self._lock:
             for name, display_name, category, description, enabled in builtin_skills:
                 skill_cls = _skill_type_map.get(name)
+                if skill_cls is None and name == "skill_eval_trigger":
+                    import importlib
+                    skill_cls = importlib.import_module(f"{__package__}.eval_trigger").SkillEvalTriggerSkill  # type: ignore
+                if skill_cls is None and name == "skill_eval_quality":
+                    import importlib
+                    skill_cls = importlib.import_module(f"{__package__}.eval_quality").SkillEvalQualitySkill  # type: ignore
+                if skill_cls is None and name == "skill_apply_engine_skill_md_patch":
+                    import importlib
+                    skill_cls = importlib.import_module(f"{__package__}.apply_engine_skill_md_patch").ApplyEngineSkillMdPatchSkill  # type: ignore
                 if skill_cls:
                     skill = skill_cls()
                     self.register(skill)

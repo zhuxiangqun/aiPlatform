@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Badge, Button, Input, Modal, Select, Switch, Table, Tabs, Textarea, toast } from '../../../components/ui';
-import { workspaceSkillApi, workspaceSkillInstallerApi, type WorkspaceSkillInstallerPlan } from '../../../services/coreApi';
-import { toastGateError } from '../../../utils/governanceError';
+import { workspaceSkillApi, workspaceSkillInstallerApi, type WorkspaceSkillInstallerPlan } from '../../../services';
+import { toastGateError } from '../../../components/ui';
 
 type SourceType = 'git' | 'path' | 'zip';
 

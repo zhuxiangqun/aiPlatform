@@ -34,7 +34,7 @@ def build_platform_proxy_router() -> APIRouter:
 
     @router.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
     async def platform_proxy(path: str, request: Request):
-        return await _proxy(request, upstream, f"/{path}")
+        return await _proxy(request, upstream, f"/platform/{path}")
 
     return router
 
@@ -45,7 +45,6 @@ def build_app_proxy_router() -> APIRouter:
 
     @router.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
     async def app_proxy(path: str, request: Request):
-        return await _proxy(request, upstream, f"/{path}")
+        return await _proxy(request, upstream, f"/app/{path}")
 
     return router
-

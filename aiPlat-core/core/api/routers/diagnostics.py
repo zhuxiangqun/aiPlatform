@@ -6,11 +6,11 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 
-from core.api.deps.rbac import actor_from_http
+from core.api.deps import actor_from_http
 from core.harness.integration import get_harness
 from core.harness.kernel.types import ExecutionRequest
 from core.harness.kernel.runtime import get_kernel_runtime
-from core.schemas import DiagnosticsPromptAssembleRequest
+from core.schemas_diagnostics import DiagnosticsPromptAssembleRequest
 from core.utils.ids import new_prefixed_id
 
 router = APIRouter()

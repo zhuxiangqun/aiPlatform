@@ -36,15 +36,22 @@ class APIClient:
         path: str,
         data: Optional[dict] = None,
         params: Optional[dict] = None,
+        files: Optional[dict] = None,
     ) -> requests.Response:
         url = f"{self.base_url}{path}"
         try:
+            headers = dict(self._headers)
+            # When uploading multipart, requests will set Content-Type automatically.
+            if files is not None:
+                headers.pop("Content-Type", None)
             resp = self._session.request(
                 method,
                 url,
-                json=data,
+                json=data if files is None else None,
+                data=None if files is None else (data or None),
+                files=files,
                 params=params,
-                headers=self._headers,
+                headers=headers,
                 timeout=30,
             )
             return resp
@@ -62,6 +69,19 @@ class APIClient:
         if resp.status_code == 200:
             return resp.json()
         return {"error": resp.text}
+
+    def post_multipart(self, path: str, *, form: Optional[dict] = None, files: Optional[dict] = None) -> dict:
+        """
+        发送 multipart/form-data（用于上传文件）。
+        files example: {"file": ("name.pdf", open(...,"rb"), "application/pdf")}
+        """
+        resp = self._request("POST", path, data=form or {}, files=files or {})
+        if resp.status_code == 200:
+            return resp.json()
+        try:
+            return {"error": resp.text, "status_code": resp.status_code}
+        except Exception:
+            return {"error": "request_failed", "status_code": getattr(resp, "status_code", 500)}
 
     def put(self, path: str, data: dict) -> dict:
         resp = self._request("PUT", path, data=data)

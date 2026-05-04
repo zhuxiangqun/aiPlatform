@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { agentApi, type Agent } from '../../services';
 import { Button, Modal, Textarea, toast } from '../ui';
 import { diagnosticsApi } from '../../services';
-import { toastGateError } from '../../utils/governanceError';
+import { toastGateError } from '../ui';
 
 interface ExecuteAgentModalProps {
   open: boolean;

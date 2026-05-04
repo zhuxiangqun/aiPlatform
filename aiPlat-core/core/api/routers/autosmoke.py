@@ -4,7 +4,7 @@ from typing import Any, Dict
 
 from fastapi import APIRouter, HTTPException, Request
 
-from core.api.deps.rbac import actor_from_http
+from core.api.deps import actor_from_http
 from core.api.utils.governance import ui_url
 from core.governance.verification import apply_autosmoke_result, autosmoke_job_id, get_resource_verification, mark_resource_pending
 from core.harness.kernel.runtime import get_kernel_runtime

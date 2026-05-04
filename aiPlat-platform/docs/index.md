@@ -1,5 +1,8 @@
 # aiPlat-platform 文档索引
 
+> 系统级跨层契约请优先参考：
+> - [系统整体架构规范（System Architecture Contract）](../../docs/architecture/system-architecture-contract.md)
+
 ## 概述
 
 aiPlat-platform 是 AI 中台的平台服务层，负责提供面向业务的平台级服务。本层在核心层之上构建，提供 API 网关、认证授权、租户管理、消息队列等平台能力，是连接核心层和应用层的桥梁。

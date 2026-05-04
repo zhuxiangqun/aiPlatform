@@ -5,7 +5,7 @@ from typing import Any, Annotated, Dict, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from core.api.deps.rbac import actor_from_http, rbac_guard
+from core.api.deps import actor_from_http, rbac_guard
 from core.api.utils.run_contract import wrap_execution_result_as_run_summary
 from core.apps.tools.base import get_tool_registry
 from core.harness.integration import KernelRuntime, get_harness
@@ -194,4 +194,3 @@ async def execute_tool(tool_name: str, request: dict, http_request: Request, rt:
     except Exception:
         pass
     return JSONResponse(status_code=200, content=resp)
-

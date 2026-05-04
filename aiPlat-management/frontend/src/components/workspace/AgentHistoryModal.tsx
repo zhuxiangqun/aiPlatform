@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ExternalLink, RotateCw } from 'lucide-react';
 import { Modal, Button, Table } from '../ui';
-import { workspaceAgentApi } from '../../services/coreApi';
+import { workspaceAgentApi } from '../../services';
 import type { Agent } from '../../services';
 
 interface AgentHistoryModalProps {
@@ -71,4 +71,3 @@ const AgentHistoryModal: React.FC<AgentHistoryModalProps> = ({ open, agent, onCl
 };
 
 export default AgentHistoryModal;
-

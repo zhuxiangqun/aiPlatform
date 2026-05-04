@@ -13,13 +13,7 @@ from core.api.utils.governance import governance_links
 from core.governance.changeset import record_changeset
 from core.governance.gating import new_change_id
 from core.harness.kernel.runtime import get_kernel_runtime
-from core.schemas import (
-    RepoChangesetPreviewRequest,
-    RepoGitBranchRequest,
-    RepoGitCommitRequest,
-    RepoStagedPreviewRequest,
-    RepoTestsRunRequest,
-)
+from core.schemas_repo import RepoChangesetPreviewRequest, RepoGitBranchRequest, RepoGitCommitRequest, RepoStagedPreviewRequest, RepoTestsRunRequest
 
 
 router = APIRouter()

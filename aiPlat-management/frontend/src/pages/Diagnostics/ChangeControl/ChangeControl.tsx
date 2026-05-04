@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Copy, ExternalLink, Link2, RotateCw } from 'lucide-react';
-import { Button, Card, CardContent, CardHeader, Input, Modal, Select, Table, toast, Badge } from '../../../components/ui';
+import { Badge, Button, Card, CardContent, CardHeader, Input, Modal, Select, Table, extractGateEnvelope, toast, toastGateError } from '../../../components/ui';
 import { diagnosticsApi } from '../../../services';
-import { extractGateEnvelope, toastGateError } from '../../../utils/governanceError';
 
 const fmtTs = (v: any) => {
   const n = Number(v);

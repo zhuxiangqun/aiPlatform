@@ -113,9 +113,11 @@ else
     [ -n "$MGMT_PORT" ] && echo "  端口 8000 仍被占用"
     [ -n "$FRONTEND_PORT" ] && echo "  端口 5173 仍被占用"
     echo ""
-    echo "可以使用以下命令强制停止:"
-    echo "  kill -9 \$(lsof -t -i:8001)  # infra"
-    echo "  kill -9 \$(lsof -t -i:8002)  # core"
-    echo "  kill -9 \$(lsof -t -i:8000)  # management"
-    echo "  kill -9 \$(lsof -t -i:5173)  # frontend"
+    echo "尝试强制停止残留端口..."
+    for port in 8001 8002 8000 5173; do
+        pid=$(lsof -ti :$port 2>/dev/null)
+        if [ -n "$pid" ]; then
+            kill -9 $pid 2>/dev/null && echo "  ✓ 强制停止端口 $port (PID: $pid)"
+        fi
+    done
 fi

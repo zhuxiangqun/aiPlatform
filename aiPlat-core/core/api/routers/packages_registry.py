@@ -19,7 +19,7 @@ from core.governance.verification import apply_autosmoke_result, mark_resource_p
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.mcp.prod_policy import runtime_env
 from core.mcp.runtime_sync import sync_mcp_runtime
-from core.schemas import PackageInstallRequest, PackagePublishRequest, PackageUninstallRequest
+from core.schemas_packages import PackageInstallRequest, PackagePublishRequest, PackageUninstallRequest
 from core.workspace.reload import rebuild_workspace_managers_into_runtime
 
 
@@ -621,4 +621,3 @@ async def uninstall_package(pkg_name: str, http_request: Request, request: Packa
         "change_id": change_id,
         "links": governance_links(change_id=change_id, approval_request_id=str(request.approval_request_id) if request.approval_request_id else None),
     }
-

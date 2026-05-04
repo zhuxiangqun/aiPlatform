@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Search, RefreshCw, ClipboardCopy, ExternalLink, FileText, Hammer, GitBranch, GitCommit } from 'lucide-react';
 import { Button, Card, CardContent, CardHeader, Input, Table, toast } from '../../../components/ui';
 import { diagnosticsApi, toolApi } from '../../../services';
-import { toastGateError } from '../../../utils/governanceError';
+import { toastGateError } from '../../../components/ui';
 
 const Repo: React.FC = () => {
   const [repoRoot, setRepoRoot] = useState(() => localStorage.getItem('repo_ctx_root') || '');

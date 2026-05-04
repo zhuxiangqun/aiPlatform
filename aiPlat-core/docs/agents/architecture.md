@@ -34,6 +34,53 @@ Agent 是基于 Harness 构建的智能体实例，负责具体任务的执行�
 - 状态管理与上下文维护
 - 执行结果评估与反馈
 
+## Agent 作为会话级编排器（推荐职责模型）
+
+在 `aiPlat-core` 中，Agent 的定位不是“万能能力集合”，而是会话级、任务级的编排器。
+
+一个标准 Agent 应负责：
+1. 读取会话上下文（messages、turn summaries、scope、profile、memory）。
+2. 调用 Internal Policy / Service 进行问题分析与策略决策。
+3. 根据策略调用一个或多个 Skill（必要时多步执行）。
+4. 汇总执行结果，组织回答结构与引用信息。
+5. 将结果写回 Memory / Session。
+
+以 `materials_chat_agent` 为例，其合理职责是：
+- 围绕资料对话场景协调上下文；
+- 调用 `question_analysis`、`retrieval_policy`、`answer_strategy`；
+- 选择 `doc_query` / `multi_doc_query` / 未来的 `video_fact_lookup`；
+- 汇总回答与 citation，写回 conversation memory。
+
+## Agent 反模式（SHOULD NOT）
+
+以下做法应视为 Agent 层反模式：
+
+1. 在 Agent 内直接实现复杂检索/索引/切片逻辑（例如直接写 embeddings 检索、视频切片召回、资产映射等）。
+2. 在 Agent 内堆积大量问题分类规则、路由规则、回答格式规则，而不抽离到 Internal Policy。
+3. 将 Agent 变成“胖入口”，同时承担会话协调、底层取数、高层策略、答案生成全部细节。
+
+当 Agent 持续膨胀时，应优先考虑：
+- 将高层判断提取到 Internal Policy；
+- 将执行能力提取为 Skill；
+- 将通用上下文/状态逻辑提取为 Service。
+
+## 资料对话 Agent 的推荐执行链
+
+推荐的资料对话执行链如下：
+
+1. 用户问题进入会话；
+2. Agent 读取 scope、messages、turn summaries；
+3. Agent 调用 `question_analysis`；
+4. Agent 调用 `retrieval_policy`；
+5. Agent 调用 `answer_strategy`；
+6. Agent 选择并执行 Skill；
+7. Agent 汇总 answer / items / citations / metadata；
+8. Agent 将结果写回会话 memory。
+
+推荐链路可表示为：
+
+`question -> analysis -> retrieval_policy -> answer_strategy -> skill -> response -> memory`
+
 ---
 
 ## 二、类型体系

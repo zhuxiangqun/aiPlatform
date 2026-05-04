@@ -1,0 +1,16 @@
+---
+description: aiPlat-management Cursor 规则（与 CLAUDE.md 对齐）
+globs: ["frontend/src/**/*.{ts,tsx}"]
+---
+
+# aiPlat-management Cursor 规则（前端）
+
+请遵守本仓库 `CLAUDE.md` 的原则，特别是：
+- 不确定先问，不要瞎猜
+- 最小改动面（不要顺手改无关组件/样式/格式）
+- 以验收闭环：改动后至少 `npm run build`
+
+项目特定：
+- 禁止直接 import `services/coreApi.ts`；统一从 `services/index.ts` 引用
+- UI 工具（toast/gateError 等）从 `components/ui` 统一出口引用
+

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { workspaceSkillApi } from '../../services/coreApi';
+import { workspaceSkillApi } from '../../services';
 import type { Skill } from '../../services';
 import { Button, Input, Modal, Select, Textarea, toast } from '../ui';
 

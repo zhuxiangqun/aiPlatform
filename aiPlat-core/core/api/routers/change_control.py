@@ -10,7 +10,7 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
-from core.api.deps.rbac import actor_from_http
+from core.api.deps import actor_from_http
 from core.api.utils.governance import gate_error_envelope, governance_links, ui_url
 from core.governance.changeset import record_changeset
 from core.governance.verification import apply_autosmoke_result, mark_resource_pending
@@ -316,7 +316,7 @@ async def apply_engine_skill_md_patch(change_id: str, http_request: Request):
             target_id=str(change_id),
             status="success",
             args={"roots": roots0, "source_path": raw_path, "files": rel_candidates},
-            result={"stats": scan.stats, "touched": touched, "notes": "server-side heuristic import graph (CodeFlow-inspired)"},
+            result={"stats": scan.stats, "health": getattr(scan, "health", None), "touched": touched, "notes": "server-side heuristic import graph (CodeFlow-inspired)"},
             user_id=str(actor_id or "admin"),
             tenant_id=str(tenant_id) if tenant_id else None,
             session_id=str(actor0.get("session_id") or "") or None,

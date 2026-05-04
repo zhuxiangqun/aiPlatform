@@ -4,7 +4,7 @@ from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from core.api.deps.rbac import actor_from_http, rbac_guard
+from core.api.deps import actor_from_http, rbac_guard
 from core.harness.integration import KernelRuntime
 from core.harness.kernel.runtime import get_kernel_runtime
 
@@ -112,4 +112,3 @@ async def get_quota_usage(
         limit=limit,
         offset=offset,
     )
-

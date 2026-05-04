@@ -1,0 +1,1908 @@
+[
+    [
+        {
+            "type": "title",
+            "content": {
+                "title_content": [
+                    {
+                        "type": "text",
+                        "content": "2026年对日业务战略商业计划书"
+                    }
+                ],
+                "level": 1
+            },
+            "bbox": [
+                45,
+                76,
+                630,
+                109
+            ]
+        },
+        {
+            "type": "title",
+            "content": {
+                "title_content": [
+                    {
+                        "type": "text",
+                        "content": "【P1 封面】 （日式极简风格）"
+                    }
+                ],
+                "level": 2
+            },
+            "bbox": [
+                62,
+                148,
+                440,
+                174
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "主题： 2026 年对日业务战略商业计划书"
+                    }
+                ]
+            },
+            "bbox": [
+                45,
+                195,
+                410,
+                214
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "副标题： 依托伊藤忠商社 开拓日本市场"
+                    }
+                ]
+            },
+            "bbox": [
+                43,
+                229,
+                406,
+                248
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "制定部门： 海外事业部"
+                    }
+                ]
+            },
+            "bbox": [
+                45,
+                263,
+                260,
+                284
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "日期： 2026 年 2 月 24 日"
+                    }
+                ]
+            },
+            "bbox": [
+                45,
+                299,
+                277,
+                318
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "战略伙伴： 伊藤忠商事株式会社"
+                    }
+                ]
+            },
+            "bbox": [
+                45,
+                334,
+                341,
+                353
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "投资周期： 2026–2027 年"
+                    }
+                ]
+            },
+            "bbox": [
+                43,
+                369,
+                284,
+                387
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "总投资额： 1,000 万元人民币"
+                    }
+                ]
+            },
+            "bbox": [
+                45,
+                404,
+                314,
+                423
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "排版建议：背景纯白 / 浅灰，标题用「思源黑体」或「微软雅黑」，字号 36-40pt，副标题及下方信息 24-28pt，居中对齐，无多余图案。"
+                    }
+                ]
+            },
+            "bbox": [
+                45,
+                438,
+                936,
+                479
+            ]
+        },
+        {
+            "type": "title",
+            "content": {
+                "title_content": [
+                    {
+                        "type": "text",
+                        "content": "【P2 目录】 （清晰罗列）"
+                    }
+                ],
+                "level": 2
+            },
+            "bbox": [
+                63,
+                511,
+                379,
+                536
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "1. 执行摘要"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                554,
+                163,
+                571
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "2. 战略背景与市场机遇"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                585,
+                263,
+                602
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "3. 战略目标（营收规划）"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                614,
+                268,
+                632
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "4. 四大业务领域"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                645,
+                201,
+                662
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "5. 执行路线图"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                675,
+                181,
+                693
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "6. 2026 年度季度里程碑"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                706,
+                270,
+                722
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "7. 投资预算与回报"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                734,
+                221,
+                752
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "8. 风险管理"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                765,
+                163,
+                783
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "9. 总结与 2026 年核心目标"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                795,
+                297,
+                814
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "排版建议：左侧竖排「目录」（28pt），右侧分点罗列（24pt），项目符号用「・」，行距 1.5 倍。"
+                    }
+                ]
+            },
+            "bbox": [
+                48,
+                828,
+                932,
+                847
+            ]
+        },
+        {
+            "type": "title",
+            "content": {
+                "title_content": [
+                    {
+                        "type": "text",
+                        "content": "【P3 执行摘要】 （重点提炼，无冗余）"
+                    }
+                ],
+                "level": 2
+            },
+            "bbox": [
+                62,
+                879,
+                563,
+                906
+            ]
+        }
+    ],
+    [
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "25 年对日软件开发实绩，与伊藤忠商社建立深度互信关系"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                72,
+                591,
+                90
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "◦ 响应伊藤忠「3 年内新增 1.5 万亿日元营业额」战略需求"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                103,
+                578,
+                121
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "2026 年：设立日本全资子公司，从「外包商」转型为「中日解决方案共创伙伴」"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                133,
+                783,
+                151
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "核心业务：AI 解决方案／呼叫中心／智慧消防／离岸外包"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                162,
+                588,
+                180
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "◦ 3 年目标：营业额 1 亿元、净利润 1,000 万元"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                193,
+                478,
+                211
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "◦ 总投资：1,000 万元（2026–2027 年）"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                223,
+                408,
+                241
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "排版建议：分 6 点，每点一行，重点词汇（如「1 亿元」「共创伙伴」）用深蓝加粗，背景浅灰底纹，字号 24pt。"
+                    }
+                ]
+            },
+            "bbox": [
+                47,
+                255,
+                941,
+                296
+            ]
+        },
+        {
+            "type": "title",
+            "content": {
+                "title_content": [
+                    {
+                        "type": "text",
+                        "content": "【P4 战略背景与公司优势】 （三段式布局）"
+                    }
+                ],
+                "level": 2
+            },
+            "bbox": [
+                62,
+                328,
+                621,
+                353
+            ]
+        },
+        {
+            "type": "title",
+            "content": {
+                "title_content": [
+                    {
+                        "type": "text",
+                        "content": "公司优势"
+                    }
+                ],
+                "level": 2
+            },
+            "bbox": [
+                47,
+                387,
+                201,
+                410
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "◦ 25 年对日开发流程及品质管理体系沉淀"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                429,
+                428,
+                447
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "◦ 中日双语技术及项目管理人才储备"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                460,
+                383,
+                476
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "◦ 与伊藤忠商社多次互访，获得高度认可"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                489,
+                421,
+                507
+            ]
+        },
+        {
+            "type": "title",
+            "content": {
+                "title_content": [
+                    {
+                        "type": "text",
+                        "content": "合作伙伴需求"
+                    }
+                ],
+                "level": 2
+            },
+            "bbox": [
+                47,
+                536,
+                260,
+                560
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "◦ 急需引入中国 AI、数字化领域成熟解决方案"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                577,
+                465,
+                595
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "依托伊藤忠全球渠道 + 合规能力，解决市场准入难题"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                607,
+                544,
+                625
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "我方定位：中国产品出海日本的「桥梁」+ 落地执行方"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                637,
+                559,
+                656
+            ]
+        },
+        {
+            "type": "title",
+            "content": {
+                "title_content": [
+                    {
+                        "type": "text",
+                        "content": "市场机遇"
+                    }
+                ],
+                "level": 2
+            },
+            "bbox": [
+                47,
+                684,
+                201,
+                707
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "中国 AI 应用及数字化场景实践领先日本，存在「技术代差红利"
+                    }
+                ]
+            },
+            "bbox": [
+                45,
+                727,
+                613,
+                746
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "排版建议：三栏并列，每栏标题用「■」+ 26pt 加粗，内容 22pt，左右留足留白（各 2cm）。"
+                    }
+                ]
+            },
+            "bbox": [
+                48,
+                762,
+                882,
+                782
+            ]
+        },
+        {
+            "type": "title",
+            "content": {
+                "title_content": [
+                    {
+                        "type": "text",
+                        "content": "【P5 战略目标（总目标）】 （突出核心）"
+                    }
+                ],
+                "level": 2
+            },
+            "bbox": [
+                63,
+                813,
+                591,
+                839
+            ]
+        },
+        {
+            "type": "title",
+            "content": {
+                "title_content": [
+                    {
+                        "type": "text",
+                        "content": "3 年总目标"
+                    }
+                ],
+                "level": 2
+            },
+            "bbox": [
+                45,
+                859,
+                151,
+                878
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "▽ 营业额：1 亿元人民币"
+                    }
+                ]
+            },
+            "bbox": [
+                45,
+                894,
+                273,
+                913
+            ]
+        }
+    ],
+    [
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "▽ 净利润：1,000 万元人民币"
+                    }
+                ]
+            },
+            "bbox": [
+                45,
+                72,
+                314,
+                91
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "排版建议：居中对齐，「3 年总目标」32pt 加粗，两个目标用「▽」引导，36pt 深蓝加粗，背景纯白，无多余元素。"
+                    }
+                ]
+            },
+            "bbox": [
+                45,
+                107,
+                951,
+                147
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "【P6 阶段性营收规划】 （表格式，日式规整）"
+                    }
+                ]
+            },
+            "bbox": [
+                62,
+                178,
+                652,
+                205
+            ]
+        },
+        {
+            "type": "table",
+            "content": {
+                "image_source": {
+                    "path": "images/1669cb552d35762d00439ee23d3f9af82e2578a265f951541df34f49c551cbf6.jpg"
+                },
+                "table_caption": [],
+                "table_footnote": [],
+                "html": "<table><tr><td rowspan=1 colspan=1>年度</td><td rowspan=1 colspan=1>合同额（万元）</td><td rowspan=1 colspan=1>净收入（（万元）</td><td rowspan=1 colspan=1>净利润（万元）</td><td rowspan=1 colspan=1>战略重点</td></tr><tr><td rowspan=1 colspan=1>2026</td><td rowspan=1 colspan=1>2,000-3,000</td><td rowspan=1 colspan=1>500</td><td rowspan=1 colspan=1></td><td rowspan=1 colspan=1>子公司设立、标杆项目签约</td></tr><tr><td rowspan=1 colspan=1>2027</td><td rowspan=1 colspan=1>5,000</td><td rowspan=1 colspan=1>2,000</td><td rowspan=1 colspan=1>500</td><td rowspan=1 colspan=1>产品成熟、复制推广</td></tr><tr><td rowspan=1 colspan=1>2028</td><td rowspan=1 colspan=1>10,000</td><td rowspan=1 colspan=1>5,000</td><td rowspan=1 colspan=1>1,000</td><td rowspan=1 colspan=1>规模化运营、生态化布局</td></tr></table>",
+                "table_type": "complex_table",
+                "table_nest_level": 1
+            },
+            "bbox": [
+                48,
+                228,
+                947,
+                436
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "排版建议：表格边框细线条（0.5pt），表头深蓝底白字，内容居中对齐，字号 22pt，表格占页面 80% 宽度。"
+                    }
+                ]
+            },
+            "bbox": [
+                45,
+                447,
+                944,
+                486
+            ]
+        },
+        {
+            "type": "title",
+            "content": {
+                "title_content": [
+                    {
+                        "type": "text",
+                        "content": "【P7 业务重心：四大领域】 （四宫格布局）"
+                    }
+                ],
+                "level": 2
+            },
+            "bbox": [
+                62,
+                518,
+                621,
+                544
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "1. AI 解决方案（核心增长引擎）"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                562,
+                336,
+                580
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "2. 呼叫中心（AI 客服 / 智能外呼）"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                592,
+                349,
+                611
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "3. 智慧消防（IoT + 养老联动）"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                621,
+                319,
+                640
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "4. 离岸外包（稳定现金流基础盘）"
+                    }
+                ]
+            },
+            "bbox": [
+                48,
+                652,
+                349,
+                670
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "※ 所有业务均以「伊藤忠商社＋伊藤忠 Techno-Solutions」为核心渠道"
+                    }
+                ]
+            },
+            "bbox": [
+                47,
+                684,
+                689,
+                703
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "排版建议：四宫格，每个格子浅灰底，标题 26pt 加粗，说明 22pt，格子间距 1cm，无边框。"
+                    }
+                ]
+            },
+            "bbox": [
+                48,
+                719,
+                872,
+                738
+            ]
+        },
+        {
+            "type": "title",
+            "content": {
+                "title_content": [
+                    {
+                        "type": "text",
+                        "content": "【P8 AI 解决方案（六大垂直领域）】（列表清晰）"
+                    }
+                ],
+                "level": 2
+            },
+            "bbox": [
+                63,
+                771,
+                715,
+                796
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "。 智能驾驶：数据标注、驾驶员监控系统（DMS）、仿真系统"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                814,
+                608,
+                832
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "◦ AI + 养老：非接触式监测、跌倒雷达报警、健康数据追踪"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                845,
+                583,
+                863
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "◦ AI + 金融：区块链风控、反欺诈系统、智能投顾平台"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                875,
+                541,
+                892
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "◦ AI + 制造：工业视觉质检、预测性维护、生产排程优化"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                904,
+                563,
+                923
+            ]
+        }
+    ],
+    [
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "AI + 通信：5G+AI 网络优化、基站智能运维"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                77,
+                460,
+                95
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "AI + 零售：智慧货架、客户动线分析、无人便利店方案"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                107,
+                563,
+                126
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "排版建议：分 6 点，每点前用「-」，行业词汇加粗，字号 24pt，左对齐，左侧留 1.5cm 缩进。"
+                    }
+                ]
+            },
+            "bbox": [
+                48,
+                140,
+                889,
+                159
+            ]
+        },
+        {
+            "type": "title",
+            "content": {
+                "title_content": [
+                    {
+                        "type": "text",
+                        "content": "【P9 其他三大业务概要】 （三栏简洁）"
+                    }
+                ],
+                "level": 2
+            },
+            "bbox": [
+                62,
+                191,
+                561,
+                216
+            ]
+        },
+        {
+            "type": "title",
+            "content": {
+                "title_content": [
+                    {
+                        "type": "text",
+                        "content": "呼叫中心"
+                    }
+                ],
+                "level": 2
+            },
+            "bbox": [
+                48,
+                250,
+                201,
+                273
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "◦ 解决日本人力短缺导致的客服缺口"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                292,
+                381,
+                310
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "。 融合中国 NLP + 大模型技术，适配日本商务礼仪"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                322,
+                505,
+                340
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "◦ 服务对象：伊藤忠系零售、物流企业客服需求"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                353,
+                484,
+                370
+            ]
+        },
+        {
+            "type": "title",
+            "content": {
+                "title_content": [
+                    {
+                        "type": "text",
+                        "content": "智慧消防"
+                    }
+                ],
+                "level": 2
+            },
+            "bbox": [
+                47,
+                399,
+                201,
+                423
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "针对木质建筑、老旧社区、文物建筑防火需求"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                441,
+                484,
+                458
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "打造「消防 + 养老」联动解决方案"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                470,
+                383,
+                488
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "◦ 对接地方自治体防灾平台"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                500,
+                302,
+                518
+            ]
+        },
+        {
+            "type": "title",
+            "content": {
+                "title_content": [
+                    {
+                        "type": "text",
+                        "content": "离岸外包"
+                    }
+                ],
+                "level": 2
+            },
+            "bbox": [
+                47,
+                546,
+                201,
+                570
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "将 25 年对日开发能力产品化包装"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                588,
+                373,
+                607
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "◦ 承接伊藤忠及 CTC 系统开发、现代化改造项目"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                619,
+                487,
+                637
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "排版建议：同 P4，三栏并列，标题「■」+26pt 加粗，内容 22pt，留白充足。"
+                    }
+                ]
+            },
+            "bbox": [
+                48,
+                651,
+                741,
+                670
+            ]
+        },
+        {
+            "type": "title",
+            "content": {
+                "title_content": [
+                    {
+                        "type": "text",
+                        "content": "【P10 执行路线图】 （四步流程）"
+                    }
+                ],
+                "level": 2
+            },
+            "bbox": [
+                63,
+                702,
+                487,
+                728
+            ]
+        },
+        {
+            "type": "title",
+            "content": {
+                "title_content": [
+                    {
+                        "type": "text",
+                        "content": "1. 日本子公司设立"
+                    }
+                ],
+                "level": 2
+            },
+            "bbox": [
+                50,
+                745,
+                223,
+                764
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "东京选址、5–8 人中日混合团队、2026 年 Q2 完成"
+                    }
+                ]
+            },
+            "bbox": [
+                47,
+                778,
+                497,
+                796
+            ]
+        },
+        {
+            "type": "title",
+            "content": {
+                "title_content": [
+                    {
+                        "type": "text",
+                        "content": "2. 产品本地化适配"
+                    }
+                ],
+                "level": 2
+            },
+            "bbox": [
+                50,
+                810,
+                223,
+                829
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "日语 UI 优化、APPI 合规改造、硬件 PSE/Telec 认证"
+                    }
+                ]
+            },
+            "bbox": [
+                47,
+                844,
+                514,
+                863
+            ]
+        },
+        {
+            "type": "title",
+            "content": {
+                "title_content": [
+                    {
+                        "type": "text",
+                        "content": "3. 联合市场开拓"
+                    }
+                ],
+                "level": 2
+            },
+            "bbox": [
+                50,
+                877,
+                203,
+                895
+            ]
+        }
+    ],
+    [
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "高层互访 → 共创研讨会 → POC 试点 → 正式签约"
+                    }
+                ]
+            },
+            "bbox": [
+                45,
+                79,
+                487,
+                98
+            ]
+        },
+        {
+            "type": "title",
+            "content": {
+                "title_content": [
+                    {
+                        "type": "text",
+                        "content": "4. 生态合作构建"
+                    }
+                ],
+                "level": 2
+            },
+            "bbox": [
+                48,
+                111,
+                203,
+                130
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "日本侧：CTC + 本地 SIer／中国侧：产品出海联盟"
+                    }
+                ]
+            },
+            "bbox": [
+                47,
+                145,
+                494,
+                162
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "排版建议：四步横向排列，每步用箭头连接，标题 24pt 加粗，内容 20pt，背景浅蓝底纹，整体居中。"
+                    }
+                ]
+            },
+            "bbox": [
+                45,
+                179,
+                939,
+                221
+            ]
+        },
+        {
+            "type": "title",
+            "content": {
+                "title_content": [
+                    {
+                        "type": "text",
+                        "content": "【P11 2026 Q1：基础夯实期】 （清单式）"
+                    }
+                ],
+                "level": 2
+            },
+            "bbox": [
+                63,
+                252,
+                603,
+                278
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "◦ 日本子公司注册完成（获取登记薄副本、银行账户）"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                294,
+                531,
+                313
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "。 确定首批 2–3 款产品选型（签订合作意向书）"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                324,
+                472,
+                343
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "C 与伊藤忠商社签订合作备忘录（中日双语）"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                355,
+                450,
+                373
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "启动派驻人员选拔及本地团队招聘"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                385,
+                383,
+                404
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "排版建议：左侧竖排「Q1：基础夯实期」（28pt），右侧分 4 点，每点 24pt，项目符号用「●」，重点成果加粗。"
+                    }
+                ]
+            },
+            "bbox": [
+                47,
+                417,
+                924,
+                457
+            ]
+        },
+        {
+            "type": "title",
+            "content": {
+                "title_content": [
+                    {
+                        "type": "text",
+                        "content": "【P12 2026 Q2–Q4：里程碑一览】 （时间轴式）"
+                    }
+                ],
+                "level": 2
+            },
+            "bbox": [
+                62,
+                489,
+                690,
+                516
+            ]
+        },
+        {
+            "type": "table",
+            "content": {
+                "image_source": {
+                    "path": "images/b19295d275f7788bf687237d3df1f154d6c670588dbed710bd23317a56a4ad1c.jpg"
+                },
+                "table_caption": [],
+                "table_footnote": [
+                    {
+                        "type": "text",
+                        "content": "排版建议：表格横向展开，表头深蓝底白字，内容 22pt，换行清晰，表格占页面 90% 宽度。"
+                    }
+                ],
+                "html": "<table><tr><td rowspan=1 colspan=1>季度</td><td rowspan=1 colspan=1>核心里程碑</td></tr><tr><td rowspan=1 colspan=1>Q2</td><td rowspan=1 colspan=1>办公室启用、产品本地化完成、联合研讨会举办、POC项目确定</td></tr><tr><td rowspan=1 colspan=1>Q3</td><td rowspan=1 colspan=1>POC项目执行与验收、联合发布会召开、首个商用合同谈判</td></tr><tr><td rowspan=1 colspan=1>Q4</td><td rowspan=1 colspan=1>正式合同签约、项目交付、新增2-3个项目、达成年度目标</td></tr></table>",
+                "table_type": "complex_table",
+                "table_nest_level": 1
+            },
+            "bbox": [
+                48,
+                539,
+                949,
+                746
+            ]
+        },
+        {
+            "type": "title",
+            "content": {
+                "title_content": [
+                    {
+                        "type": "text",
+                        "content": "【P13 投资预算（总额 1,000 万元）】（日式规整表格）"
+                    }
+                ],
+                "level": 2
+            },
+            "bbox": [
+                62,
+                808,
+                791,
+                834
+            ]
+        },
+        {
+            "type": "table",
+            "content": {
+                "image_source": {
+                    "path": "images/fc72c162d5425458de1d7411e6e3e3be95b7901839a329ab327a9e51dfd191f3.jpg"
+                },
+                "table_caption": [],
+                "table_footnote": [
+                    {
+                        "type": "text",
+                        "content": "排版建议：同 P6，表头加粗，「合计」行深蓝底白字，字号 22pt，数据居中对齐。"
+                    }
+                ],
+                "html": "<table><tr><td colspan=\"1\" rowspan=\"1\">预算科目</td><td colspan=\"1\" rowspan=\"1\">2026年(万元）</td><td colspan=\"1\" rowspan=\"1\">2027年(万元）</td><td colspan=\"1\" rowspan=\"1\">合计(万元)</td></tr><tr><td colspan=\"1\" rowspan=\"1\">子公司设立及运营</td><td colspan=\"1\" rowspan=\"1\">200</td><td colspan=\"1\" rowspan=\"1\">150</td><td colspan=\"1\" rowspan=\"1\">350</td></tr><tr><td colspan=\"1\" rowspan=\"1\">产品本地化研发</td><td colspan=\"1\" rowspan=\"1\">150</td><td colspan=\"1\" rowspan=\"1\">200</td><td colspan=\"1\" rowspan=\"1\">350</td></tr><tr><td colspan=\"1\" rowspan=\"1\">市场开拓</td><td colspan=\"1\" rowspan=\"1\">100</td><td colspan=\"1\" rowspan=\"1\">100</td><td colspan=\"1\" rowspan=\"1\">200</td></tr><tr><td colspan=\"1\" rowspan=\"1\">合规及法务</td><td colspan=\"1\" rowspan=\"1\">50</td><td colspan=\"1\" rowspan=\"1\">50</td><td colspan=\"1\" rowspan=\"1\">100</td></tr><tr><td colspan=\"1\" rowspan=\"1\">合计</td><td colspan=\"1\" rowspan=\"1\">500</td><td colspan=\"1\" rowspan=\"1\">500</td><td colspan=\"1\" rowspan=\"1\">1,000</td></tr></table>",
+                "table_type": "complex_table",
+                "table_nest_level": 1
+            },
+            "bbox": [
+                48,
+                858,
+                949,
+                927
+            ]
+        }
+    ],
+    [
+        {
+            "type": "table",
+            "content": {
+                "image_source": {
+                    "path": "images/"
+                },
+                "table_caption": [],
+                "table_footnote": [],
+                "html": "",
+                "table_type": "simple_table",
+                "table_nest_level": 1
+            },
+            "bbox": [
+                48,
+                68,
+                949,
+                214
+            ]
+        },
+        {
+            "type": "table",
+            "content": {
+                "image_source": {
+                    "path": "images/b227ea36cc486dd4fc4dda05da2982402e6fd85988473ad4b5e73963ce931566.jpg"
+                },
+                "table_caption": [
+                    {
+                        "type": "text",
+                        "content": "【P14 风险管理】 （对应式布局）"
+                    }
+                ],
+                "table_footnote": [
+                    {
+                        "type": "text",
+                        "content": "排版建议：两栏表格，左栏「风险类型」加粗，右栏「应对策略」简洁说明，字号 22pt，边框细线条。"
+                    }
+                ],
+                "html": "<table><tr><td rowspan=1 colspan=1>风险类型</td><td rowspan=1 colspan=1>应对策略</td></tr><tr><td rowspan=1 colspan=1>合规风险</td><td rowspan=1 colspan=1>依托伊藤忠合规能力+聘请日本专业律所+前置认证审核</td></tr><tr><td rowspan=1 colspan=1>品质风险</td><td rowspan=1 colspan=1>设立对日专属QA团队+3个月灰度测试+本地技术支持岗</td></tr><tr><td rowspan=1 colspan=1>客户依赖风险</td><td rowspan=1 colspan=1>渗透伊藤忠700+家关联企业+通过CTC拓展非伊藤忠系客户</td></tr><tr><td rowspan=1 colspan=1>文化融合风险</td><td rowspan=1 colspan=1>组建中日混合团队+配置日籍营业/顾问+双周定期沟通</td></tr><tr><td rowspan=1 colspan=1>产品适配风险</td><td rowspan=1 colspan=1>与 CTC共建选品机制+小范围 POC验证后再规模化推广</td></tr></table>",
+                "table_type": "complex_table",
+                "table_nest_level": 1
+            },
+            "bbox": [
+                48,
+                324,
+                949,
+                645
+            ]
+        },
+        {
+            "type": "title",
+            "content": {
+                "title_content": [
+                    {
+                        "type": "text",
+                        "content": "【P15 总结＆2026 年核心目标】 （重点突出）"
+                    }
+                ],
+                "level": 2
+            },
+            "bbox": [
+                62,
+                730,
+                653,
+                756
+            ]
+        },
+        {
+            "type": "title",
+            "content": {
+                "title_content": [
+                    {
+                        "type": "text",
+                        "content": "■ 2026 年必须达成目标"
+                    }
+                ],
+                "level": 2
+            },
+            "bbox": [
+                48,
+                789,
+                359,
+                813
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "1. 日本子公司设立并正常运营"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                831,
+                324,
+                848
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "2. 完成 2–3 款产品本地化适配"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                860,
+                326,
+                878
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "3. 与 CTC 合作完成至少 1 个 POC 项目并验收"
+                    }
+                ]
+            },
+            "bbox": [
+                50,
+                890,
+                458,
+                909
+            ]
+        }
+    ],
+    [
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "4. 签订首个正式商用合同"
+                    }
+                ]
+            },
+            "bbox": [
+                48,
+                72,
+                284,
+                91
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "5. 实现合同额 2,000–3,000 万元、净收入 500 万元"
+                    }
+                ]
+            },
+            "bbox": [
+                48,
+                103,
+                505,
+                121
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "排版建议：标题 32pt 加粗，5 项目标用「1.2.3.」编号，26pt，核心数据（如「2,000–3,000 万元」）深蓝加粗，背景纯白，居中对齐。"
+                    }
+                ]
+            },
+            "bbox": [
+                43,
+                135,
+                924,
+                174
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": {
+                "paragraph_content": [
+                    {
+                        "type": "text",
+                        "content": "（注：文档部分内容可能由 AI 生成）"
+                    }
+                ]
+            },
+            "bbox": [
+                43,
+                181,
+                389,
+                203
+            ]
+        }
+    ]
+]

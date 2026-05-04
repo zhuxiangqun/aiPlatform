@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { workspaceSkillApi } from '../../services/coreApi';
+import { workspaceSkillApi } from '../../services';
 import { Button, Input, Modal, Select, Textarea, toast } from '../ui';
 import { diagnosticsApi } from '../../services';
 import SkillWizardV2Modal, { type SkillWizardV2Value } from './SkillWizardV2Modal';

@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from core.api.deps.rbac import actor_from_http, rbac_guard
+from core.api.deps import actor_from_http, rbac_guard
 from core.api.utils.governance import gate_error_envelope, governance_links, ui_url
 from core.api.utils.skills_meta import (
     load_skill_spec_v2_schema,
@@ -19,7 +19,7 @@ from core.api.utils.skills_meta import (
 )
 from core.harness.integration import KernelRuntime
 from core.harness.kernel.runtime import get_kernel_runtime
-from core.schemas import SkillInstallerInstallRequest, SkillInstallerUpdateRequest
+from core.schemas_skills import SkillInstallerInstallRequest, SkillInstallerUpdateRequest
 
 router = APIRouter()
 
@@ -1409,4 +1409,3 @@ async def workspace_skills_installer_uninstall(skill_id: str, http_request: Requ
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"installer_uninstall_failed:{e}")
-

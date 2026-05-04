@@ -3,7 +3,7 @@ import { Copy, Eye, GitCompare, RefreshCw, Pencil, Plus, Trash2, RotateCcw, Exte
 
 import { Badge, Button, Card, CardContent, CardHeader, Input, Modal, Select, Table, Textarea, toast } from '../../../components/ui';
 import { promptApi, type PromptTemplateRow } from '../../../services';
-import { toastGateError } from '../../../utils/governanceError';
+import { toastGateError } from '../../../components/ui';
 
 function parseJson(s: any): any {
   if (!s || typeof s !== 'string') return null;

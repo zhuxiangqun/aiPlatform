@@ -281,6 +281,10 @@ main          ──→ 生产环境
 <type>(<scope>): <summary>
 ```
 
+> 在提交 PR 前，必须对照：
+> - [系统整体架构规范](../architecture/system-architecture-contract.md)
+> - [PR 架构规范检查清单](PR_ARCHITECTURE_CHECKLIST.md)
+
 **PR 描述模板**：
 
 ```markdown
@@ -386,6 +390,7 @@ Closes #xxx
 | **文档** | 重要变更是否有文档 |
 | **性能** | 是否有性能问题（N+1 查询、大循环） |
 | **安全** | 是否有安全问题（SQL 注入、XSS、敏感信息泄露） |
+| **架构边界** | 是否违反系统分层、跨层契约、Harness/Policy/Agent/Skill 边界 |
 
 ### 审查制度
 
@@ -395,6 +400,15 @@ Closes #xxx
 | 功能开发（< 500 行） | 1 人 | 代码 + 测试 + 文档 |
 | 大功能（> 500 行） | 2 人 | 代码 + 测试 + 文档 + 架构 |
 | 架构变更 | 2+ 人（含架构师） | 全部 |
+
+### 架构审查补充要求
+
+以下场景必须明确回答“改动属于哪一层、为何放在该层、是否需要更新规范文档”：
+
+- 新增跨层调用或新的 `X-AIPLAT-*` 透传头
+- 新增 `run_id / trace_id / request_id` 相关语义
+- 在 `aiPlat-core` 中新增 Harness / Policy / Agent / Skill 相关能力
+- 任何可能改变单向依赖边界的重构
 
 ### 审查响应时间
 

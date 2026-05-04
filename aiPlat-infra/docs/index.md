@@ -1,5 +1,8 @@
 # 📚 infra 文档索引（设计真值：以代码事实为准）
 
+> 系统级跨层契约请优先参考：
+> - [系统整体架构规范（System Architecture Contract）](../../docs/architecture/system-architecture-contract.md)
+
 > 基础设施层 - Layer 0，管理和抽象所有基础设施资源
 
 ---

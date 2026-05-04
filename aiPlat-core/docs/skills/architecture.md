@@ -29,6 +29,64 @@ Skill 是智能体可复用的能力单元，是 Agent 完成任务的具体手�
 - 执行调度与监控
 - 版本管理与演进
 
+## Skill 的职责边界
+
+Skill 是 `aiPlat-core` 中的可执行能力单元，其本质是“单一职责、明确输入输出、可复用”的执行能力。
+
+一个能力适合建模为 Skill，通常需要满足以下条件：
+- 可以独立执行；
+- 输入输出边界明确；
+- 可被多个 Agent / API 场景复用；
+- 值得进入 Registry 和治理体系。
+
+典型 Skill 包括：
+- `doc_query`
+- `multi_doc_query`
+- `doc_ingest`
+- 后续可能新增的 `video_fact_lookup`
+
+Skill 解决的是“某项能力如何执行”的问题，而不是“系统应如何为本轮任务做高层决策”的问题。
+
+## Internal Policy 与 Skill 的区别
+
+以下能力当前更适合作为 `aiPlat-core` 内部策略模块（Internal Policy），而不是普通 Skill：
+
+- `question_analysis`
+- `retrieval_policy`
+- `answer_strategy`
+
+原因如下：
+1. 这些能力本质上是决策/规划逻辑，而非独立业务执行单元。
+2. 它们更适合作为 Agent 和 Skill 的共享“决策脑”，而不是额外增加一次执行链调用。
+3. 它们通常低副作用、确定性较强、运行成本低，更适合以内部模块方式直接调用。
+
+因此，当前阶段应优先将它们实现为：
+- `core/apps/document_intelligence/*` 下的 internal policy modules
+
+而不是直接进入：
+- `core/engine/skills/*`
+
+未来只有在需要独立灰度、独立观测、租户差异化、策略替换时，再考虑将其演进为 `internal system skill`。
+
+## Skill 化决策准入标准
+
+新增一个能力时，可按以下问题判断是否适合 Skill 化：
+
+1. 该能力是否可独立执行？
+2. 该能力是否有清晰稳定的输入输出边界？
+3. 该能力是否会被多个 Agent / API 独立复用？
+4. 该能力是否需要独立的权限、灰度、观测、治理？
+5. 该能力是否属于“执行单元”，而不是“高层决策逻辑”？
+
+如果前四项大多为“是”，且第五项为“执行单元”，则适合 Skill 化。
+如果其本质是：
+- 问题分析；
+- 路由决策；
+- 回答策略规划；
+- 统一领域判断；
+
+则应优先放入 Internal Policy / Service 层，而非普通 Skill。
+
 ---
 
 ## 二、架构演进：从基础到 Agent Skill 模式

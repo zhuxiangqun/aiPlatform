@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, Button, Table, Textarea, toast } from '../ui';
-import { workspaceAgentApi } from '../../services/coreApi';
+import { workspaceAgentApi } from '../../services';
 import type { Agent } from '../../services';
 
 interface AgentVersionsModalProps {
@@ -106,4 +106,3 @@ const AgentVersionsModal: React.FC<AgentVersionsModalProps> = ({ open, agent, on
 };
 
 export default AgentVersionsModal;
-

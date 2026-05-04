@@ -21,6 +21,9 @@
 
 aiPlatform 采用四层架构设计：
 
+> 系统级强约束与跨层契约请优先阅读：
+> - [系统整体架构规范（System Architecture Contract）](../../architecture/system-architecture-contract.md)
+
 **Layer 0 - 基础设施层**：
 - 提供最底层的基础设施能力
 - 完全独立，不依赖任何内部模块

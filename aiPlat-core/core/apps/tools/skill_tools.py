@@ -16,7 +16,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ...harness.interfaces import ToolConfig, ToolResult
-from core.apps.skills.registry import get_skill_registry
 from .base import BaseTool
 from core.apps.skills.skill_md import truncate_text
 
@@ -194,6 +193,7 @@ class SkillFindTool(BaseTool):
 
     async def execute(self, params: Dict[str, Any]) -> ToolResult:
         async def handler() -> ToolResult:
+            from core.apps.skills.registry import get_skill_registry
             reg = get_skill_registry()
             name = str(params.get("name") or "").strip()
             query = str(params.get("query") or "").strip().lower()
@@ -292,6 +292,7 @@ class SkillLoadTool(BaseTool):
 
     async def execute(self, params: Dict[str, Any]) -> ToolResult:
         async def handler() -> ToolResult:
+            from core.apps.skills.registry import get_skill_registry
             reg = get_skill_registry()
             name = str(params.get("name") or "").strip()
             if not name:

@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException
 
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.management.job_scheduler import next_run_from_cron
-from core.schemas import JobCreateRequest, JobUpdateRequest
+from core.schemas_jobs import JobCreateRequest, JobUpdateRequest
 
 
 router = APIRouter()
@@ -202,4 +202,3 @@ async def delete_job_delivery_dlq(dlq_id: str):
     if not ok:
         raise HTTPException(status_code=404, detail="DLQ item not found")
     return {"status": "deleted", "dlq_id": dlq_id}
-

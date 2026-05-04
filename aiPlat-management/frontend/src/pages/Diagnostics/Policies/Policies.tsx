@@ -4,7 +4,7 @@ import { ArrowLeft, Copy, Save, Search } from 'lucide-react';
 
 import { Badge, Button, Card, CardContent, CardHeader, Input, Modal, Table, Tabs, toast } from '../../../components/ui';
 import { gatePolicyApi, onboardingApi, policyApi } from '../../../services';
-import { toastGateError } from '../../../utils/governanceError';
+import { toastGateError } from '../../../components/ui';
 
 const shortId = (id?: string, left: number = 10, right: number = 8) => {
   if (!id) return '-';

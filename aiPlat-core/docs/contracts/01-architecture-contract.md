@@ -27,6 +27,41 @@ aiPlat 逻辑上分为：
 
 > 说明：这条约束用于避免“任意 import 都把系统启动一遍”，并降低循环依赖风险。
 
+### 1.2 Layer Boundary Contract（MUST）
+
+以下边界用于约束 `aiPlat-core` 内部各层职责，防止运行时内核、业务语义、会话编排、执行能力之间的边界失守。
+
+#### Harness Contract
+
+- `core/harness/*` **MUST** 提供统一执行运行时，包括 `run / event / wait / context / queue / registry / syscall` 等共性能力。  
+- Harness **MUST NOT** 承载资料问答、视频问答、多资料比较、适用性分析等业务语义决策。  
+- Harness **MUST** 解决“任务如何被执行”的问题，**MUST NOT** 解决“业务上本轮该如何回答”的问题。
+
+#### Policy Contract
+
+- Internal Policy / Service **MUST** 提供问题分析、检索路由、回答策略、会话级领域决策等通用能力。  
+- Internal Policy / Service **SHOULD** 保持低副作用、可解释、可测试。  
+- Internal Policy / Service **MUST NOT** 替代 Skill 承担底层执行细节。  
+- `question_analysis / retrieval_policy / answer_strategy` 当前 **MUST** 视为 internal policy modules，而非普通 Skill。
+
+#### Agent Contract
+
+- Agent **MUST** 作为会话/任务编排器，负责上下文整合、策略调用、能力调度、结果写回。  
+- Agent **MUST NOT** 直接实现复杂底层检索、索引、切片、存储等执行细节。  
+- Agent **SHOULD** 优先通过 Internal Policy 做高层判断，通过 Skill 执行具体能力。
+
+#### Skill Contract
+
+- Skill **MUST** 提供单一职责、明确输入输出、可复用的执行能力。  
+- Skill **MUST NOT** 承担系统级高层路由与策略决策。  
+- 若某能力本质上属于问题分析、路由规划、回答策略，而非独立执行单元，则 **SHOULD NOT** 优先 Skill 化。
+
+#### API Facade Contract
+
+- `core/api/routers/*` **MUST** 保持薄入口，负责请求校验、身份透传、执行请求封装。  
+- API Facade **MUST NOT** 内嵌核心领域策略与业务语义决策。  
+- 领域策略、资料问答路由、回答规划 **MUST** 下沉到 Apps/Services/Policy 层。
+
 ## 2. 契约优先（MUST）
 
 当出现以下冲突时，处理顺序必须是：
@@ -60,4 +95,3 @@ aiPlat 逻辑上分为：
 
 推荐将 ADR 放在：
 - `docs/architecture/` 或 `docs/design/` 对应子目录
-

@@ -8,7 +8,7 @@ from typing import Annotated, Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from core.api.deps.rbac import rbac_guard
+from core.api.deps import rbac_guard
 from core.api.utils.governance import gate_error_envelope, governance_links
 from core.governance.changeset import record_changeset
 from core.governance.gating import new_change_id

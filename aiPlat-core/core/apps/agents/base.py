@@ -17,7 +17,9 @@ from ...harness.interfaces import (
     LoopConfig,
 )
 from ...harness.execution import create_loop
-from ...adapters.llm import ILLMAdapter, LLMConfig
+# Avoid importing adapters.llm package (it is a large public surface area).
+# Import the minimal symbols directly to reduce coupling and avoid cycles.
+from ...adapters.llm.base import ILLMAdapter, LLMConfig
 
 
 @dataclass
@@ -287,10 +289,13 @@ def create_agent(
     Returns:
         IAgent: Agent instance
     """
-    from .react import ReActAgent
-    from .plan_execute import PlanExecuteAgent
-    from .conversational import ConversationalAgent
-    from .multi_agent import MultiAgent
+    # Lazy import to avoid circular dependencies between agent modules.
+    import importlib
+    ReActAgent = importlib.import_module(f"{__package__}.react").ReActAgent
+    PlanExecuteAgent = importlib.import_module(f"{__package__}.plan_execute").PlanExecuteAgent
+    ConversationalAgent = importlib.import_module(f"{__package__}.conversational").ConversationalAgent
+    MultiAgent = importlib.import_module(f"{__package__}.multi_agent").MultiAgent
+    MaterialsChatAgent = importlib.import_module(f"{__package__}.materials_chat").MaterialsChatAgent
     
     if config is None:
         config = AgentConfig(name="default")
@@ -302,6 +307,7 @@ def create_agent(
         "conversational": "conversational",
         "multi_agent": "multi_agent",
         "rag": "rag",
+        "materials_chat": "materials_chat",
         "tool": "react",
         "base": "base",
     }
@@ -317,7 +323,9 @@ def create_agent(
     elif resolved_type == "multi_agent":
         return MultiAgent(config=config, **kwargs)
     elif resolved_type == "rag":
-        from .rag import RAGAgent
+        RAGAgent = importlib.import_module(f"{__package__}.rag").RAGAgent
         return RAGAgent(config=config, **kwargs)
+    elif resolved_type == "materials_chat":
+        return MaterialsChatAgent(config=config, **kwargs)
     else:
         return BaseAgent(config=config, **kwargs)

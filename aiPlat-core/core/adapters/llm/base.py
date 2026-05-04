@@ -211,24 +211,25 @@ def create_adapter(
     Returns:
         ILLMAdapter: Adapter instance
     """
+    import importlib
     if provider == "openai":
-        from .openai_adapter import OpenAIAdapter
+        OpenAIAdapter = importlib.import_module(f"{__package__}.openai_adapter").OpenAIAdapter
         return OpenAIAdapter(api_key=api_key, model=model, base_url=base_url, **kwargs)
     
     elif provider == "anthropic":
-        from .anthropic_adapter import AnthropicAdapter
+        AnthropicAdapter = importlib.import_module(f"{__package__}.anthropic_adapter").AnthropicAdapter
         return AnthropicAdapter(api_key=api_key, model=model, **kwargs)
     
     elif provider == "local":
-        from .local_adapter import LocalAdapter
+        LocalAdapter = importlib.import_module(f"{__package__}.local_adapter").LocalAdapter
         return LocalAdapter(base_url=base_url or "http://localhost:8000", model=model, **kwargs)
 
     elif provider == "mock":
-        from .mock_adapter import MockAdapter
+        MockAdapter = importlib.import_module(f"{__package__}.mock_adapter").MockAdapter
         return MockAdapter(model=model, **kwargs)
 
     elif provider == "scripted":
-        from .scripted_adapter import ScriptedAdapter
+        ScriptedAdapter = importlib.import_module(f"{__package__}.scripted_adapter").ScriptedAdapter
         return ScriptedAdapter(model=model, **kwargs)
     
     else:

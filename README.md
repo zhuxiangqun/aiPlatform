@@ -95,6 +95,7 @@ aiPlatform 是一个企业级 AI 中台系统，采用四层架构 + 独立管�
 ### 系统文档
 
 - **[详细文档](./docs/index.md)** - 架构设计、各层职责、使用指南
+- **[系统整体架构规范](./docs/architecture/system-architecture-contract.md)** - 跨层分层职责、依赖方向、身份透传、可观测与错误透传契约
 
 ### 各层文档
 

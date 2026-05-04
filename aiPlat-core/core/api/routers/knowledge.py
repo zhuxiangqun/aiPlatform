@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from core.harness.integration import KernelRuntime
 from core.harness.kernel.runtime import get_kernel_runtime
-from core.schemas import CollectionCreateRequest, DocumentCreateRequest, SearchRequest
+from core.schemas_knowledge import CollectionCreateRequest, DocumentCreateRequest, SearchRequest
 
 router = APIRouter()
 
@@ -199,4 +199,3 @@ async def search_knowledge(request: SearchRequest, rt: RuntimeDep = Depends(get_
 async def get_search_logs(collection_id: str, limit: int = 100, offset: int = 0):
     """Get search logs"""
     return {"logs": [], "total": 0}
-

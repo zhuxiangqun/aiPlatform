@@ -1,0 +1,18 @@
+---
+description: aiPlat-core Cursor 规则（与 CLAUDE.md 对齐）
+globs: ["**/*.py"]
+---
+
+# aiPlat-core Cursor 规则（后端）
+
+请遵守本仓库 `CLAUDE.md` 的原则，特别是：
+- 不确定先问，不要瞎猜
+- 最小改动面（不要顺手重构/格式化）
+- 简单优先（不要过度工程）
+- 以验收/测试闭环（至少 py_compile；必要时 pytest）
+
+项目特定：
+- schema 按域放在 `core/schemas_*.py`，不要再集中回 `core/schemas.py`
+- 优先按域导入（例如 `from core.schemas_run import RunStatus`）
+- 避免引入新的高耦合“中心枢纽文件”
+

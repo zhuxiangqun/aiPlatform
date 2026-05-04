@@ -2,7 +2,7 @@ import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import PageHeader from '../../../components/common/PageHeader';
 import { Badge, Button, Card, CardContent, CardHeader, Input, Modal, Select } from '../../../components/ui';
 import { skillApi, workspaceSkillApi } from '../../../services';
-import { toastGateError } from '../../../utils/governanceError';
+import { toastGateError } from '../../../components/ui';
 import * as echarts from 'echarts';
 
 const LazyECharts: any = React.lazy(() => import('echarts-for-react'));

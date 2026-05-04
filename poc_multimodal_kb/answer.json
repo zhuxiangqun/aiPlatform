@@ -1,0 +1,48 @@
+{
+  "question": "2026 年投资预算是哪些？",
+  "note": "PoC：在扫描PDF中检测到“投资预算”表格并进行行列结构化（预算科目/2026/2027/合计）。结果仍建议结合引用框位置人工核验。",
+  "answer_2026": [
+    {
+      "item": "子公司设立及运营",
+      "year": 2026,
+      "amount": 200,
+      "unit": "万元",
+      "citation": {
+        "page_idx": 4,
+        "page_human": 5,
+        "asset_path": "computer:///sessions/69df99acf22671cacf117ebb/workspace/poc_multimodal_kb/page_0005.png",
+        "bbox": [576, 2544, 653, 2591]
+      }
+    }
+  ],
+  "also_found": [
+    {
+      "item": "子公司设立及运营",
+      "year": 2027,
+      "amount": 150,
+      "unit": "万元",
+      "citation": {
+        "page_idx": 4,
+        "page_human": 5,
+        "asset_path": "computer:///sessions/69df99acf22671cacf117ebb/workspace/poc_multimodal_kb/page_0005.png",
+        "bbox": [1022, 2544, 1102, 2596]
+      }
+    },
+    {
+      "item": "子公司设立及运营",
+      "year": "合计",
+      "amount": 350,
+      "unit": "万元",
+      "citation": {
+        "page_idx": 4,
+        "page_human": 5,
+        "asset_path": "computer:///sessions/69df99acf22671cacf117ebb/workspace/poc_multimodal_kb/page_0005.png",
+        "bbox": [1468, 2544, 1548, 2596]
+      }
+    }
+  ],
+  "debug": {
+    "table_detected_page_idx": 4,
+    "table_rows": 1
+  }
+}

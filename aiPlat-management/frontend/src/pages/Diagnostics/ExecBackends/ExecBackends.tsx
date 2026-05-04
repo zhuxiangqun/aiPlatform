@@ -3,7 +3,7 @@ import { RefreshCw, ExternalLink } from 'lucide-react';
 
 import { Badge, Button, Card, CardContent, CardHeader, Select, Table, toast } from '../../../components/ui';
 import { diagnosticsApi, onboardingApi } from '../../../services/apiClient';
-import { toastGateError } from '../../../utils/governanceError';
+import { toastGateError } from '../../../components/ui';
 
 const ExecBackends: React.FC = () => {
   const [loading, setLoading] = useState(false);

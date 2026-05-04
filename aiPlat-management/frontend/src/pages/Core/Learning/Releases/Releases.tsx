@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Clock, Eye, ExternalLink, RefreshCw, RotateCcw, Settings, Trash2 } from 'lucide-react';
 
 import { Badge, Button, Card, CardContent, CardHeader, Input, Modal, Select, Table, toast } from '../../../../components/ui';
-import { toastGateError } from '../../../../utils/governanceError';
+import { toastGateError } from '../../../../components/ui';
 import { learningApi, type LearningArtifact } from '../../../../services';
 
 type Candidate = LearningArtifact;

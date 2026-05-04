@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Badge, Button, Card, Input, Modal, Select, Table, Textarea, toast } from '../../../components/ui';
-import { workspaceSkillApi } from '../../../services/coreApi';
+import { workspaceSkillApi } from '../../../services';
 
 type AssetType = 'skill_spec_v2_schema' | 'permissions_catalog';
 

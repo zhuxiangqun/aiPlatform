@@ -61,6 +61,8 @@ class ActiveWorkspaceContext:
     context_file: Optional[str] = None
     project_context: str = ""
     toolset: Optional[str] = None
+    # Optional: multiple CLAUDE.md files for multi-repo / multi-path operations.
+    claude_md_files: Optional[List[str]] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -68,6 +70,7 @@ class ActiveWorkspaceContext:
             "context_file": self.context_file,
             "project_context": self.project_context,
             "toolset": self.toolset,
+            "claude_md_files": list(self.claude_md_files or []) if self.claude_md_files else None,
         }
 
 

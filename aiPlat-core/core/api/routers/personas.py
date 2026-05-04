@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional
 import yaml
 from fastapi import APIRouter, HTTPException, Request
 
-from core.api.deps.rbac import rbac_guard, actor_from_http
+from core.api.deps import actor_from_http, rbac_guard
 from core.harness.kernel.runtime import get_kernel_runtime
 
 router = APIRouter()

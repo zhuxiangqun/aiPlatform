@@ -7,11 +7,11 @@ from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 
-from core.api.deps.rbac import actor_from_http
+from core.api.deps import actor_from_http
 from core.api.utils.governance import gate_error_envelope, ui_url
 from core.governance.changeset import record_changeset
 from core.harness.kernel.runtime import get_kernel_runtime
-from core.schemas import (
+from core.schemas_onboarding import (
     OnboardingAutosmokeConfigRequest,
     OnboardingContextConfigRequest,
     OnboardingDefaultLLMRequest,
@@ -990,4 +990,3 @@ async def set_strong_gate(request: OnboardingStrongGateRequest):
     except Exception:
         pass
     return {"status": "updated", "tenant_policy": saved, "enabled": enabled}
-

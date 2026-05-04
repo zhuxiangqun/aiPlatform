@@ -34,11 +34,23 @@ fi
 echo "Python 版本: $PYTHON_VERSION"
 echo ""
 
+kill_port_if_any () {
+  port="$1"
+  pid=$(lsof -ti :$port 2>/dev/null)
+  if [ -n "$pid" ]; then
+    echo "端口 $port 已被占用，尝试强制停止 PID=$pid"
+    kill -9 $pid 2>/dev/null || true
+    sleep 1
+  fi
+}
+
 # ===== Step 1: 启动 aiPlat-infra 层 =====
 echo "============================================================"
 echo "  Step 1/3: 启动 aiPlat-infra (基础设施层)"
 echo "============================================================"
 echo ""
+
+kill_port_if_any 8001
 
 echo "正在安装 aiPlat-infra 依赖..."
 cd "$PROJECT_ROOT/aiPlat-infra"
@@ -81,6 +93,7 @@ echo "============================================================"
 echo ""
 
 if [ -d "$PROJECT_ROOT/aiPlat-core" ]; then
+    kill_port_if_any 8002
     echo "正在安装 aiPlat-core 依赖..."
     cd "$PROJECT_ROOT/aiPlat-core"
     $PIP install -e . 2>&1 | grep -E "(Successfully|ERROR|error)" || {
@@ -124,6 +137,8 @@ echo "============================================================"
 echo "  Step 3/3: 启动 aiPlat-management (管理系统层)"
 echo "============================================================"
 echo ""
+
+kill_port_if_any 8000
 
 echo "正在安装 aiPlat-management 依赖..."
 cd "$SCRIPT_DIR"
@@ -173,6 +188,7 @@ echo ""
 
 # 检查前端目录是否存在
 if [ -d "frontend" ] && [ -f "frontend/package.json" ]; then
+    kill_port_if_any 5173
     echo "启动前端开发服务器..."
     cd frontend
     nohup npm run dev > /tmp/aiplat-frontend.log 2>&1 &

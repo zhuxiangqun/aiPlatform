@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { workspaceMcpApi } from '../services/coreApi';
-import type { McpServer } from '../services/coreApi';
+import { workspaceMcpApi } from '../services';
+import type { McpServer } from '../services';
 
 interface WorkspaceMcpState {
   servers: McpServer[];
@@ -32,4 +32,3 @@ export const useWorkspaceMcpStore = create<WorkspaceMcpState>((set, get) => ({
     await get().fetchServers();
   },
 }));
-

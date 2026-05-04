@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { diagnosticsApi, onboardingApi } from '../../../services';
 import { Button, Card, CardContent, CardHeader, Input, Select, Textarea, toast, Badge, Table } from '../../../components/ui';
-import { toastGateError } from '../../../utils/governanceError';
+import { toastGateError } from '../../../components/ui';
 
 const Smoke: React.FC = () => {
   const [loading, setLoading] = useState(false);

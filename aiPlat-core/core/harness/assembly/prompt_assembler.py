@@ -78,6 +78,8 @@ class PromptAssembler:
         # Roadmap-1 (Phase 1): ContextEngine handles project context injection.
         try:
             ctx = get_active_workspace_context()
+            if ctx and getattr(ctx, "claude_md_files", None):
+                meta.setdefault("claude_md_files", list(getattr(ctx, "claude_md_files", None) or []))
             res = _DEFAULT_CONTEXT_ENGINE.apply(
                 messages=msgs, metadata=meta, repo_root=str(ctx.repo_root) if ctx and ctx.repo_root else None
             )

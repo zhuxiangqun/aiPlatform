@@ -8,7 +8,7 @@ from core.api.utils.governance import governance_links
 from core.governance.changeset import record_changeset
 from core.governance.gating import autosmoke_enforce, gate_with_change_control, new_change_id
 from core.harness.kernel.runtime import get_kernel_runtime
-from core.schemas import SkillPackCreateRequest, SkillPackInstallRequest, SkillPackPublishRequest, SkillPackUpdateRequest
+from core.schemas_skills import SkillPackCreateRequest, SkillPackInstallRequest, SkillPackPublishRequest, SkillPackUpdateRequest
 
 
 router = APIRouter()
@@ -318,4 +318,3 @@ async def list_skill_pack_installs(scope: Optional[str] = None, limit: int = 100
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
     return await store.list_skill_pack_installs(scope=scope, limit=limit, offset=offset)
-

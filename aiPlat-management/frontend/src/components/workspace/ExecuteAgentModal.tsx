@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { workspaceAgentApi } from '../../services/coreApi';
+import { workspaceAgentApi } from '../../services';
 import type { Agent } from '../../services';
 import { Button, Modal, Textarea, toast } from '../ui';
-import { toastGateError } from '../../utils/governanceError';
+import { toastGateError } from '../ui';
 
 interface ExecuteAgentModalProps {
   open: boolean;

@@ -3,7 +3,7 @@ import { RefreshCw, Save, Search, PlusCircle } from 'lucide-react';
 
 import { Badge, Button, Card, CardContent, CardHeader, Input, Table, Textarea, toast } from '../../../components/ui';
 import { policyApi, skillApi, workspaceSkillApi } from '../../../services';
-import { toastGateError } from '../../../utils/governanceError';
+import { toastGateError } from '../../../components/ui';
 
 type ToolAgg = { tool: string; count: number; examples: Array<{ scope: string; skill_id: string; name: string }> };
 type CapIssue = { scope: string; skill_id: string; name: string; issue: string; raw: any };

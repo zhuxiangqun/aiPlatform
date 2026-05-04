@@ -22,7 +22,7 @@ from core.security.rbac import check_permission as rbac_check_permission, should
 from core.api.deps.rbac import actor_from_http as _actor_from_http_dep, rbac_guard as _rbac_guard_dep
 from core.api.utils import governance as _gov
 
-from core.schemas import RunStatus
+from core.schemas_run import RunStatus
 from core.management import (
     AgentManager,
     SkillManager,
@@ -42,6 +42,9 @@ from core.services import get_execution_store
 from core.services.trace_service import TraceService, TraceServiceTracer
 from core.harness.integration import get_harness, KernelRuntime
 import uuid
+
+# Backward-compatible governance preview helper (used by unit tests / legacy callers)
+from core.api.utils.skills_meta import skill_governance_preview as _skill_governance_preview
 
 
 def _seed_default_permissions(
@@ -1057,6 +1060,7 @@ from core.api.routers.learning_misc import router as learning_misc_router  # noq
 from core.api.routers.tools import router as tools_router  # noqa: E402
 from core.api.routers.executions_trace import router as executions_trace_router  # noqa: E402
 from core.api.routers.gateway import router as gateway_router  # noqa: E402
+from core.api.routers.conversations import router as conversations_router  # noqa: E402
 from core.api.routers.channel_adapters import router as channel_adapters_router  # noqa: E402
 from core.api.routers.catalog import router as catalog_router  # noqa: E402
 from core.api.routers.gate_policies import router as gate_policies_router  # noqa: E402
@@ -1097,6 +1101,7 @@ api_router.include_router(tenant_policies_router)
 api_router.include_router(quota_router)
 api_router.include_router(permissions_router)
 api_router.include_router(memory_router)
+api_router.include_router(conversations_router)
 api_router.include_router(knowledge_router)
 api_router.include_router(adapters_router)
 api_router.include_router(harness_admin_router)

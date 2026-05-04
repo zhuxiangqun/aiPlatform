@@ -5,7 +5,7 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from core.api.deps.rbac import actor_from_http, rbac_guard
+from core.api.deps import actor_from_http, rbac_guard
 from core.api.utils.governance import change_links, gate_error_envelope, ui_url
 from core.api.utils.run_contract import wrap_execution_result_as_run_summary
 from core.harness.kernel.runtime import get_kernel_runtime

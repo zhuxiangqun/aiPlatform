@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { approvalsApi, diagnosticsApi, onboardingApi } from '../../services';
-import { Badge } from '../ui';
-import { extractGateEnvelope } from '../../utils/governanceError';
+import { Badge, extractGateEnvelope } from '../ui';
 
 export type DoctorAction = {
   action_type?: string;

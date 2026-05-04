@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { workspaceMcpApi } from '../../services/coreApi';
-import type { McpServer } from '../../services/coreApi';
+import { workspaceMcpApi } from '../../services';
+import type { McpServer } from '../../services';
 import { Alert, Button, Input, Modal, Select, Switch, Textarea, toast } from '../ui';
 
 interface EditMcpModalProps {

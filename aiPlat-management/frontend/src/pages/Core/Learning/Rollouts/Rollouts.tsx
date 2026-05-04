@@ -3,7 +3,7 @@ import { RefreshCw, Save, Trash2 } from 'lucide-react';
 
 import { Badge, Button, Card, CardContent, CardHeader, Input, Select, Table, toast } from '../../../../components/ui';
 import { learningApi } from '../../../../services';
-import { toastGateError } from '../../../../utils/governanceError';
+import { toastGateError } from '../../../../components/ui';
 
 type RolloutRecord = {
   tenant_id?: string | null;
@@ -346,4 +346,3 @@ const Rollouts: React.FC = () => {
 };
 
 export default Rollouts;
-

@@ -4,7 +4,7 @@ from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from core.api.deps.rbac import rbac_guard
+from core.api.deps import rbac_guard
 from core.harness.integration import KernelRuntime
 from core.harness.kernel.runtime import get_kernel_runtime
 
@@ -77,4 +77,3 @@ async def list_policy_versions(tenant_id: Optional[str] = None, rt: RuntimeDep =
         if isinstance(it, dict) and it.get("tenant_id"):
             out.append({"tenant_id": it.get("tenant_id"), "version": it.get("version")})
     return {"items": out}
-

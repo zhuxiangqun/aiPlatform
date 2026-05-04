@@ -1574,6 +1574,14 @@ class HarnessIntegration:
                         repo_root = inp.get("directory") or inp.get("repo_root") or inp.get("workspace_root")
                     if not repo_root and isinstance(ctx, dict):
                         repo_root = ctx.get("directory") or ctx.get("repo_root") or ctx.get("workspace_root")
+                # Best-effort auto repo_root (enables CLAUDE.md injection/enforcement even if client forgets).
+                if not (isinstance(repo_root, str) and repo_root.strip()):
+                    try:
+                        auto = os.getenv("AIPLAT_AUTO_REPO_ROOT", "true").strip().lower() in ("1", "true", "yes", "y", "on")
+                        if auto:
+                            repo_root = self._infer_default_repo_root()
+                    except Exception:
+                        pass
                 if (isinstance(repo_root, str) and repo_root.strip()) or requested_toolset:
                     workspace_token = set_active_workspace_context(
                         ActiveWorkspaceContext(
@@ -2894,6 +2902,39 @@ class HarnessIntegration:
             except Exception:
                 pass
             return self._fail(code="EXCEPTION", message=str(e), http_status=500, trace_id=trace_id, run_id=run_id)
+
+    @staticmethod
+    def _infer_default_repo_root() -> Optional[str]:
+        """
+        Best-effort repo_root inference when caller did not provide one.
+
+        Motivation:
+        - Allow server-side injection/enforcement of project-level CLAUDE.md rules
+          even when the client does not pass repo_root.
+
+        Resolution order:
+        1) env AIPLAT_DEFAULT_REPO_ROOT
+        2) workspace root (parent of aiPlat-core repo) if it contains CLAUDE.md
+        3) aiPlat-core repo root if it contains CLAUDE.md
+        """
+        try:
+            env_root = (os.getenv("AIPLAT_DEFAULT_REPO_ROOT", "") or "").strip()
+            if env_root:
+                return env_root
+        except Exception:
+            pass
+
+        try:
+            here = Path(__file__).resolve()  # .../aiPlat-core/core/harness/integration.py
+            core_repo_root = here.parents[3]  # .../aiPlat-core
+            workspace_root = core_repo_root.parent
+            if (workspace_root / "CLAUDE.md").is_file():
+                return str(workspace_root)
+            if (core_repo_root / "CLAUDE.md").is_file():
+                return str(core_repo_root)
+        except Exception:
+            return None
+        return None
 
 
 @dataclass

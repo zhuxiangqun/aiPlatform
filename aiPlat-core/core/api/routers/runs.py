@@ -7,12 +7,13 @@ from typing import Any, Annotated, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from core.api.deps.rbac import actor_from_http, rbac_guard
+from core.api.deps import actor_from_http, rbac_guard
 from core.api.utils.run_contract import normalize_run_error, normalize_run_status_v2, wrap_execution_result_as_run_summary
 from core.harness.integration import KernelRuntime, get_harness
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.harness.kernel.types import ExecutionRequest
-from core.schemas import AutoEvalRequest, EvidenceDiffRequest, RunStatus
+from core.schemas_eval import AutoEvalRequest, EvidenceDiffRequest
+from core.schemas_run import RunStatus
 
 router = APIRouter()
 

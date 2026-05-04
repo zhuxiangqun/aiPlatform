@@ -54,6 +54,7 @@
 - [系统级 UI 设计规范](UI_DESIGN.md) - 统一整个系统的前端设计语言和编程标准
 - [UI 实现状态](UI_IMPLEMENTATION_STATUS.md) - 记录 As‑Is/进度/差异，避免污染设计规范
 - [系统级测试指南](TESTING_GUIDE.md) - 测试策略、分层测试方法、跨层测试规范
+- [PR 架构规范检查清单](guides/PR_ARCHITECTURE_CHECKLIST.md) - PR 评审时的架构边界核对清单
 
 ### 功能增强设计
 
@@ -85,6 +86,13 @@
 #### 核心能力层（Layer 1）执行体系
 
 - [核心能力层（Layer 1）最新架构图与执行流程](architecture/core-layer1-latest.md)
+
+#### 系统整体架构规范（跨层契约）
+
+- [系统整体架构规范（System Architecture Contract）](architecture/system-architecture-contract.md)
+- [规范：aiPlat-platform 鉴权与身份透传](../规范-platform-鉴权与身份透传.md)
+- [规范：core run_id / trace_id / request_id](../规范-core-run_id-trace_id-request_id.md)
+- [规范：app session_id 与 conversation_key](../规范-app-session_id与conversation_key.md)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐

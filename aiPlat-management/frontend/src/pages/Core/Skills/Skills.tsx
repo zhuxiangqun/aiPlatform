@@ -5,7 +5,7 @@ import { Badge, Table, Select, Switch, Button, Modal, toast } from '../../../com
 import { EditSkillModal, ExecuteSkillModal } from '../../../components/core';
 import { useSkillStore } from '../../../stores';
 import type { Skill } from '../../../services';
-import { toastGateError } from '../../../utils/governanceError';
+import { toastGateError } from '../../../components/ui';
 
 const categoryConfig: Record<string, { color: string; text: string }> = {
   general: { color: 'bg-dark-hover text-gray-300 border-gray-200', text: '通用' },

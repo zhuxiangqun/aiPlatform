@@ -12,6 +12,10 @@
 - **如何测试**：如何编写单元测试和集成测试
 - **最佳实践**：开发中的最佳实践
 
+> 开发前建议优先阅读：
+> - [系统整体架构规范](../../architecture/system-architecture-contract.md)
+> - [PR 架构规范检查清单](../../guides/PR_ARCHITECTURE_CHECKLIST.md)
+
 ---
 
 ## 🛠️ 开发环境搭建

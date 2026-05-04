@@ -6,7 +6,7 @@ from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from core.api.deps.rbac import actor_from_http
+from core.api.deps import actor_from_http
 from core.harness.integration import KernelRuntime
 from core.harness.kernel.runtime import get_kernel_runtime
 
@@ -291,4 +291,3 @@ async def api_cleanup_rollback_approvals(request: dict, rt: RuntimeDep = None):
         candidate_id=(request or {}).get("candidate_id"),
         page_size=int((request or {}).get("page_size", 500) or 500),
     )
-

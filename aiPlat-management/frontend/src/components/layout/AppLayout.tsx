@@ -97,6 +97,7 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
   { group: 'app', label: '应用接入层', items: [
     { key: '/app/channels', icon: MessageSquare, label: '渠道管理' },
     { key: '/app/sessions', icon: MessageSquare, label: '会话管理' },
+    { key: '/app/kb', icon: Database, label: '知识库' },
   ]},
 ];
 

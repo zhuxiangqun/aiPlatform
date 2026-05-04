@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, Button, Table, toast } from '../ui';
-import { workspaceSkillApi } from '../../services/coreApi';
+import { workspaceSkillApi } from '../../services';
 
 interface SkillVersionsModalProps {
   open: boolean;
@@ -83,4 +83,3 @@ const SkillVersionsModal: React.FC<SkillVersionsModalProps> = ({ open, skill, on
 };
 
 export default SkillVersionsModal;
-

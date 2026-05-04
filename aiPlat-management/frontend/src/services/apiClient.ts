@@ -25,13 +25,17 @@ class ApiClient {
     // PR-01: tenant/actor propagation (best-effort; platformization MVP)
     try {
       const tenantId = localStorage.getItem('active_tenant_id') || '';
-      const actorId = localStorage.getItem('active_actor_id') || '';
-      const actorRole = localStorage.getItem('active_actor_role') || '';
+      const actorId = localStorage.getItem('active_actor_id') || 'admin';
+      const actorRole = localStorage.getItem('active_actor_role') || 'admin';
+      const scopes = localStorage.getItem('active_scopes') || 'kb:read,kb:write';
       const releaseChannel = localStorage.getItem('active_release_channel') || '';
+      const apiKey = localStorage.getItem('active_api_key') || '';
       if (tenantId.trim()) (defaultHeaders as any)['X-AIPLAT-TENANT-ID'] = tenantId.trim();
       if (actorId.trim()) (defaultHeaders as any)['X-AIPLAT-ACTOR-ID'] = actorId.trim();
       if (actorRole.trim()) (defaultHeaders as any)['X-AIPLAT-ACTOR-ROLE'] = actorRole.trim();
+      if (scopes.trim()) (defaultHeaders as any)['X-AIPLAT-SCOPES'] = scopes.trim();
       if (releaseChannel.trim()) (defaultHeaders as any)['X-AIPLAT-RELEASE-CHANNEL'] = releaseChannel.trim();
+      if (apiKey.trim()) (defaultHeaders as any)['X-AIPLAT-API-KEY'] = apiKey.trim();
     } catch {
       // ignore (SSR / privacy mode)
     }
@@ -351,6 +355,10 @@ export const diagnosticsApi = {
   codeIntelScan: async (params: { roots?: string } = {}) => {
     const q = new URLSearchParams();
     if (params.roots) q.set('roots', params.roots);
+    // optional params
+    if ((params as any).mode) q.set('mode', String((params as any).mode));
+    if ((params as any).depth != null) q.set('depth', String((params as any).depth));
+    if ((params as any).limit != null) q.set('limit', String((params as any).limit));
     const qs = q.toString();
     return apiClient.get<any>(`/core/diagnostics/code-intel/scan${qs ? `?${qs}` : ''}`);
   },

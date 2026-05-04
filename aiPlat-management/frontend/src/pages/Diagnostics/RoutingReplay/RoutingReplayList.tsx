@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import PageHeader from '../../../components/common/PageHeader';
 import { Button, Card, CardContent, CardHeader, Input, Select, Table, toast } from '../../../components/ui';
 import { skillApi, workspaceSkillApi } from '../../../services';
-import { toastGateError } from '../../../utils/governanceError';
+import { toastGateError } from '../../../components/ui';
 
 const fmtTs = (ts?: number | null) => {
   if (!ts) return '-';
@@ -130,4 +130,3 @@ const RoutingReplayList: React.FC = () => {
 };
 
 export default RoutingReplayList;
-

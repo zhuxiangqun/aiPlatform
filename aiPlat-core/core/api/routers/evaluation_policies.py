@@ -5,13 +5,13 @@ from typing import Annotated, Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from core.api.deps.rbac import actor_from_http, rbac_guard
+from core.api.deps import actor_from_http, rbac_guard
 from core.api.utils.governance import governance_links
 from core.governance.changeset import record_changeset
 from core.governance.gating import autosmoke_enforce, gate_with_change_control, new_change_id
 from core.harness.integration import KernelRuntime
 from core.harness.kernel.runtime import get_kernel_runtime
-from core.schemas import UpsertEvaluationPolicyRequest, UpsertProjectEvaluationPolicyRequest
+from core.schemas_eval import UpsertEvaluationPolicyRequest, UpsertProjectEvaluationPolicyRequest
 
 router = APIRouter()
 
@@ -332,4 +332,3 @@ async def evaluate_policy_debug(request: dict, http_request: Request, rt: Runtim
         "policy": policy_out,
         "final_decision": final_decision,
     }
-

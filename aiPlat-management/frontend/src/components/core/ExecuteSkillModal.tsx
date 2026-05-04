@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 
 import { Button, Modal, Textarea, toast } from '../ui';
 import { diagnosticsApi } from '../../services';
-import { toastGateError } from '../../utils/governanceError';
+import { toastGateError } from '../ui';
 
 interface ExecuteSkillModalProps {
   open: boolean;

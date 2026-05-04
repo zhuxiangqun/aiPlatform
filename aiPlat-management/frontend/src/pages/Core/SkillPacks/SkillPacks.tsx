@@ -5,7 +5,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import PageHeader from '../../../components/common/PageHeader';
 import { Button, Input, Modal, Table, Textarea, toast, Select } from '../../../components/ui';
 import { skillPackApi, type SkillPack, type SkillPackInstall, type SkillPackVersion } from '../../../services';
-import { toastGateError } from '../../../utils/governanceError';
+import { toastGateError } from '../../../components/ui';
 
 const SkillPacks: React.FC = () => {
   const navigate = useNavigate();

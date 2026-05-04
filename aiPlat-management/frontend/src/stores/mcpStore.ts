@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { mcpApi } from '../services/coreApi';
-import type { McpServer } from '../services/coreApi';
+import { mcpApi } from '../services';
+import type { McpServer } from '../services';
 
 interface McpState {
   servers: McpServer[];
@@ -32,4 +32,3 @@ export const useMcpStore = create<McpState>((set, get) => ({
     await get().fetchServers();
   },
 }));
-

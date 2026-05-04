@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Button } from '../ui';
-import { workspaceAgentApi } from '../../services/coreApi';
+import { workspaceAgentApi } from '../../services';
 import type { Agent } from '../../services';
 
 interface AgentDetailModalProps {

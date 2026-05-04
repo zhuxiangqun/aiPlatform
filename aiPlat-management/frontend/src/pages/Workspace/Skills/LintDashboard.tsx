@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import PageHeader from '../../../components/common/PageHeader';
 import { Alert, Badge, Button, Card, CardContent, CardHeader, Input, Modal, Select, Table, Textarea, toast } from '../../../components/ui';
 import { jobApi, skillApi, workspaceSkillApi, type Job, type JobRun } from '../../../services';
-import { toastGateError } from '../../../utils/governanceError';
+import { toastGateError } from '../../../components/ui';
 
 const JOB_ID = 'cron-skill-lint-scan';
 

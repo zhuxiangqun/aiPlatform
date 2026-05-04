@@ -212,7 +212,10 @@ class SkillEvalTriggerSkill(BaseSkill):
                 perm = None
                 exec_perm = None
                 try:
-                    from core.apps.tools.skill_tools import resolve_skill_permission, resolve_executable_skill_permission
+                    import importlib
+                    st = importlib.import_module("core.apps.tools.skill_tools")
+                    resolve_skill_permission = getattr(st, "resolve_skill_permission")
+                    resolve_executable_skill_permission = getattr(st, "resolve_executable_skill_permission")
 
                     perm = resolve_skill_permission(t.name)
                     # lookup kind from catalog if available

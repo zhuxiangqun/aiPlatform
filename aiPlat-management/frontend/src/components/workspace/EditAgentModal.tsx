@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { workspaceAgentApi, workspaceSkillApi } from '../../services/coreApi';
+import { workspaceAgentApi, workspaceSkillApi } from '../../services';
 import { modelApi, toolApi, type Model } from '../../services';
 import type { Agent } from '../../services';
 import { Alert, Button, Input, Modal, Textarea, toast } from '../ui';

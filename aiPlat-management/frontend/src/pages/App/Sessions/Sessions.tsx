@@ -20,6 +20,11 @@ const channelTypeConfig: Record<string, { bg: string; text: string; label: strin
   wechat: { bg: 'bg-cyan-50', text: 'text-cyan-300', label: '微信' },
 };
 
+const shortText = (v: any, n: number) => {
+  const s = String(v || '');
+  return s ? (s.length > n ? `${s.slice(0, n)}...` : s) : '-';
+};
+
 const Sessions: React.FC = () => {
   const [sessions, setSessions] = useState<AppSession[]>([]);
   const [loading, setLoading] = useState(false);
@@ -67,7 +72,7 @@ const Sessions: React.FC = () => {
       key: 'id',
       title: '会话ID',
       render: (_: unknown, record: AppSession) => (
-        <code className="text-xs bg-dark-hover px-1.5 py-0.5 rounded text-gray-300">{record.id.slice(0, 12)}...</code>
+        <code className="text-xs bg-dark-hover px-1.5 py-0.5 rounded text-gray-300">{shortText(record.id, 12)}</code>
       ),
     },
     {
@@ -86,14 +91,14 @@ const Sessions: React.FC = () => {
       key: 'user_id',
       title: '用户',
       render: (_: unknown, record: AppSession) => (
-        <span className="text-gray-500">{record.user_id}</span>
+        <span className="text-gray-500">{String(record.user_id || '-')}</span>
       ),
     },
     {
       key: 'agent_id',
       title: 'Agent',
       render: (_: unknown, record: AppSession) => (
-        <code className="text-xs bg-dark-hover px-1.5 py-0.5 rounded text-gray-300">{record.agent_id.slice(0, 16)}</code>
+        <code className="text-xs bg-dark-hover px-1.5 py-0.5 rounded text-gray-300">{shortText(record.agent_id, 16)}</code>
       ),
     },
     {
@@ -121,7 +126,7 @@ const Sessions: React.FC = () => {
     {
       key: 'created_at',
       title: '创建时间',
-      render: (_: unknown, record: AppSession) => new Date(record.created_at).toLocaleString('zh-CN'),
+      render: (_: unknown, record: AppSession) => (record.created_at ? new Date(record.created_at).toLocaleString('zh-CN') : '-'),
     },
     {
       key: 'actions',

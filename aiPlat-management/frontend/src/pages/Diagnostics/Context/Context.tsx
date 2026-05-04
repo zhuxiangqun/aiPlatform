@@ -3,7 +3,7 @@ import { RefreshCw, Play } from 'lucide-react';
 
 import { Button, Card, CardContent, CardHeader, Input, Select, Textarea, toast, Badge, Table } from '../../../components/ui';
 import { diagnosticsApi } from '../../../services';
-import { toastGateError } from '../../../utils/governanceError';
+import { toastGateError } from '../../../components/ui';
 
 function tryParseJson(s: string): any | null {
   const t = (s || '').trim();

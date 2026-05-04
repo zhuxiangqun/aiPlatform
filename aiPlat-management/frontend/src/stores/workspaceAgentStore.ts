@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { workspaceAgentApi } from '../services/coreApi';
+import { workspaceAgentApi } from '../services';
 import type { Agent } from '../services';
 
 interface WorkspaceAgentState {
@@ -48,4 +48,3 @@ export const useWorkspaceAgentStore = create<WorkspaceAgentState>((set, get) => 
     await get().fetchAgents();
   },
 }));
-

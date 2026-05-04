@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 import aiohttp
 from fastapi import APIRouter, HTTPException, Request
 
-from core.api.deps.rbac import actor_from_http
+from core.api.deps import actor_from_http
 from core.api.utils.governance import governance_links
 from core.governance.audit import audit_event
 from core.governance.changeset import record_changeset
@@ -509,4 +509,3 @@ async def disable_workspace_mcp_server(server_name: str):
         await audit_event(store=store, kind="mcp_admin", name="workspace.mcp.disable", status="success", args={"server_name": server_name})
     await sync_mcp_runtime(mcp_manager=_mcp_manager(), workspace_mcp_manager=mgr)
     return {"status": "disabled"}
-

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Badge, Button, Input, Modal, Select, Textarea, toast } from '../ui';
 import localSkillSpecV2Schema from '../../schemas/skillSpecV2.schema.json';
-import { workspaceSkillApi } from '../../services/coreApi';
+import { workspaceSkillApi } from '../../services';
 
 type SkillKind = 'rule' | 'executable';
 

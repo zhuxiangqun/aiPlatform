@@ -1,0 +1,50 @@
+{
+  "doc_id": "doc_82e06180653e",
+  "pdf_path": "/sessions/69df99acf22671cacf117ebb/uploads/eed21e2e-93cf-41e7-bf8f-a4071b726650_2026年对日业务战略商业计划书.pdf",
+  "page_images": [
+    "/sessions/69df99acf22671cacf117ebb/work/kb_poc_out/doc_82e06180653e/pages/page_0000.png",
+    "/sessions/69df99acf22671cacf117ebb/work/kb_poc_out/doc_82e06180653e/pages/page_0001.png",
+    "/sessions/69df99acf22671cacf117ebb/work/kb_poc_out/doc_82e06180653e/pages/page_0002.png",
+    "/sessions/69df99acf22671cacf117ebb/work/kb_poc_out/doc_82e06180653e/pages/page_0003.png",
+    "/sessions/69df99acf22671cacf117ebb/work/kb_poc_out/doc_82e06180653e/pages/page_0004.png",
+    "/sessions/69df99acf22671cacf117ebb/work/kb_poc_out/doc_82e06180653e/pages/page_0005.png",
+    "/sessions/69df99acf22671cacf117ebb/work/kb_poc_out/doc_82e06180653e/pages/page_0006.png"
+  ],
+  "pages": [
+    {
+      "page_idx": 0,
+      "token_count": 23,
+      "number_count": 12
+    },
+    {
+      "page_idx": 1,
+      "token_count": 22,
+      "number_count": 1
+    },
+    {
+      "page_idx": 2,
+      "token_count": 42,
+      "number_count": 17
+    },
+    {
+      "page_idx": 3,
+      "token_count": 22,
+      "number_count": 4
+    },
+    {
+      "page_idx": 4,
+      "token_count": 36,
+      "number_count": 6
+    },
+    {
+      "page_idx": 5,
+      "token_count": 44,
+      "number_count": 15
+    },
+    {
+      "page_idx": 6,
+      "token_count": 5,
+      "number_count": 3
+    }
+  ]
+}

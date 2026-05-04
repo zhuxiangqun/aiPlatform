@@ -86,6 +86,7 @@ class DefaultContextEngine(ContextEngine):
         meta = dict(metadata or {})
         status: Dict[str, Any] = {
             "context_engine": "default_v1",
+            "claude_md": {"enabled": False, "injected": False},
             "project_context": {"enabled": False, "injected": False},
             "repo_diff": {"enabled": False, "injected": False, "staged_chars": 0, "unstaged_chars": 0},
             "session_search": {"enabled": False, "injected": False, "hits": 0},
@@ -104,6 +105,92 @@ class DefaultContextEngine(ContextEngine):
             status["repo_diff"]["enabled"] = False
             status["session_search"]["enabled"] = False
             return ContextResult(messages=msgs, metadata=meta, status=status, workspace_context_hash=None)
+
+        # CLAUDE.md (project-level AI contract) injection (stable).
+        # This is separate from AGENTS.md/AIPLAT.md so teams can enforce
+        # coding behavior guidelines inside the execution chain.
+        if str(meta.get("enable_claude_md", "")).lower() not in ("0", "false", "no") and repo_root:
+            status["claude_md"]["enabled"] = True
+            try:
+                from core.harness.context.claude_md import load_claude_md, load_claude_md_file
+
+                # Optional: multi-file injection (set by execution chain when a task touches multiple repos)
+                multi_files = meta.get("claude_md_files") if isinstance(meta.get("claude_md_files"), list) else None
+                if multi_files:
+                    pieces = []
+                    meta_files = []
+                    blocked = []
+                    for fp in [str(x) for x in multi_files if x]:
+                        c, p, d = load_claude_md_file(fp)
+                        meta_files.append(p or fp)
+                        action = getattr(d, "action", "none")
+                        if action in {"block", "approval_required"}:
+                            blocked.append({"file": p or fp, "policy": getattr(d, "policy", None), "findings": getattr(d, "findings", None) or []})
+                            continue
+                        if c and p:
+                            pieces.append(f"## {p}\n\n{c}")
+                    content = "\n\n".join(pieces).strip()
+                    used_path = ",".join([x for x in meta_files if x])
+                    # synthetic decision for status/meta
+                    decision = {"action": "warn" if blocked else "none", "blocked": blocked}
+                    if blocked:
+                        meta["claude_md_multi_blocked"] = blocked
+                else:
+                    content, used_path, decision = load_claude_md(str(repo_root))
+                # record status regardless of injection
+                if used_path:
+                    meta["claude_md_file"] = used_path
+                    meta["repo_root"] = str(repo_root)
+                if decision and getattr(decision, "sha256", None):
+                    meta["claude_md_sha256"] = getattr(decision, "sha256", None)
+
+                # blocked-like decisions: do not inject
+                action = (decision.action if decision else "none") if hasattr(decision, "action") else str((decision or {}).get("action") or "none")
+                if action in {"block", "approval_required"}:
+                    meta["claude_md_blocked"] = True
+                    meta["claude_md_block_policy"] = getattr(decision, "policy", None) if hasattr(decision, "policy") else (decision or {}).get("policy")
+                    meta["claude_md_findings"] = getattr(decision, "findings", None) if hasattr(decision, "findings") else (decision or {}).get("findings") or []
+                    status["claude_md"].update(
+                        {
+                            "injected": False,
+                            "file": used_path,
+                            "blocked": True,
+                            "blocked_policy": getattr(decision, "policy", None) if hasattr(decision, "policy") else (decision or {}).get("policy"),
+                            "findings": getattr(decision, "findings", None) if hasattr(decision, "findings") else (decision or {}).get("findings") or [],
+                        }
+                    )
+                elif content and used_path:
+                    # Avoid duplication if caller already injected it.
+                    if not (
+                        msgs
+                        and isinstance(msgs[0], dict)
+                        and msgs[0].get("role") == "system"
+                        and "# Project Guidelines (CLAUDE.md)" in str(msgs[0].get("content", ""))
+                    ):
+                        msgs = [
+                            {
+                                "role": "system",
+                                "content": f"# Project Guidelines (CLAUDE.md)\n\n{content}",
+                                "metadata": {"layer": "stable", "kind": "claude_md"},
+                            }
+                        ] + msgs
+                    status["claude_md"].update(
+                        {
+                            "injected": True,
+                            "file": used_path,
+                            "sha256": meta.get("claude_md_sha256"),
+                            "chars": len(content),
+                        }
+                    )
+                    if action == "warn":
+                        wf = getattr(decision, "findings", None) if hasattr(decision, "findings") else (decision or {}).get("findings") or []
+                        meta["claude_md_warn"] = wf
+                        status["claude_md"]["warn_findings"] = wf
+                    if action == "truncate":
+                        meta["claude_md_truncated"] = True
+                        status["claude_md"]["truncated"] = True
+            except Exception:
+                status["claude_md"]["error"] = "failed"
 
         # Project context is optional; even when absent, we still allow:
         # - session search injection
@@ -135,13 +222,23 @@ class DefaultContextEngine(ContextEngine):
                     and msgs[0].get("role") == "system"
                     and "# Project Context" in str(msgs[0].get("content", ""))
                 ):
-                    msgs = [
-                        {
-                            "role": "system",
-                            "content": f"# Project Context\n\n{content}",
-                            "metadata": {"layer": "stable", "kind": "project_context"},
-                        }
-                    ] + msgs
+                    # Put project context after CLAUDE.md guidelines if present.
+                    if msgs and msgs[0].get("role") == "system" and "# Project Guidelines (CLAUDE.md)" in str(msgs[0].get("content", "")):
+                        msgs = [msgs[0]] + [
+                            {
+                                "role": "system",
+                                "content": f"# Project Context\n\n{content}",
+                                "metadata": {"layer": "stable", "kind": "project_context"},
+                            }
+                        ] + msgs[1:]
+                    else:
+                        msgs = [
+                            {
+                                "role": "system",
+                                "content": f"# Project Context\n\n{content}",
+                                "metadata": {"layer": "stable", "kind": "project_context"},
+                            }
+                        ] + msgs
                 meta["project_context_file"] = used_path
                 meta["repo_root"] = str(repo_root)
                 meta["project_context_sha256"] = hashlib.sha256(content.encode("utf-8")).hexdigest()

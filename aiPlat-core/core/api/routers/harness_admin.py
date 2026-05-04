@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from core.harness.integration import KernelRuntime
 from core.harness.kernel.runtime import get_kernel_runtime
-from core.schemas import CoordinatorCreateRequest, FeedbackConfigUpdateRequest, HookCreateRequest, HookUpdateRequest
+from core.schemas_harness import CoordinatorCreateRequest, FeedbackConfigUpdateRequest, HookCreateRequest, HookUpdateRequest
 
 router = APIRouter()
 
@@ -209,4 +209,3 @@ async def update_feedback_config(request: FeedbackConfigUpdateRequest, rt: Runti
         raise HTTPException(status_code=503, detail="HarnessManager not initialized")
     config = await hm.update_feedback_config(local=request.local, push=request.push, prod=request.prod)
     return {"status": "updated"}
-

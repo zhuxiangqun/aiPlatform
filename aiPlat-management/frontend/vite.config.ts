@@ -33,10 +33,12 @@ export default defineConfig({
       '/api/platform': {
         target: 'http://localhost:8003',
         changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/api/app': {
         target: 'http://localhost:8004',
         changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },
   },

@@ -26,6 +26,36 @@
 
 Harness 是 aiPlat-core 的"操作系统"，为所有核心模块提供基础设施服务。
 
+## Harness 作为 AI Runtime Kernel
+
+`harness` 是 `aiPlat-core` 的统一 AI 运行时内核，其职责类似传统系统中的操作系统内核：负责统一执行模型、上下文装配、调度、运行状态管理和系统调用式能力接入，而不是承载具体业务语义。
+
+Harness 的核心职责包括：
+- 定义统一执行语义：`ExecutionRequest`、`run_id`、`status`、`events`、`wait`。
+- 组装统一上下文：`AgentContext`、`SkillContext`。
+- 统一执行引擎选择与路由。
+- 管理 Registry、Syscall、Queue、Runtime 集成。
+- 统一接入 Memory、Tool、MCP、外部能力。
+
+Harness 解决的是“任务如何被执行”的问题，而不是“业务上本轮该如何回答”的问题。
+
+## Harness 职责上界
+
+Harness SHOULD 负责：
+- 执行模型统一；
+- 运行时调度；
+- 上下文装配；
+- 生命周期管理；
+- 事件与状态输出。
+
+Harness MUST NOT 负责：
+- 文档/视频问答问题分类；
+- 检索粒度选择；
+- 回答策略选择；
+- 多资料比较、视频总结、适用性分析等领域语义决策。
+
+这些能力应由 `apps/*` 下的 Internal Policy / Service 或 Agent 层负责，以避免将业务特化逻辑下沉到运行时内核，导致 Harness 失去通用性与稳定边界。
+
 ---
 
 ## 一句话定义

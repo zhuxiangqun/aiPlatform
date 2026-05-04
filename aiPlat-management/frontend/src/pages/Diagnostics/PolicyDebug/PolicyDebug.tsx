@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, Copy, Download, RotateCw } from 'lucide-react';
 import { Button, Card, CardContent, CardHeader, Input, Select, Textarea, toast, Badge } from '../../../components/ui';
 import { policyApi } from '../../../services';
-import { toastGateError } from '../../../utils/governanceError';
+import { toastGateError } from '../../../components/ui';
 
 const PolicyDebug: React.FC = () => {
   const [kind, setKind] = useState<'tool' | 'mcp_server'>('tool');

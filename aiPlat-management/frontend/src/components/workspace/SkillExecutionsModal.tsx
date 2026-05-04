@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ExternalLink, RotateCw } from 'lucide-react';
 import { Modal, Button, Table } from '../ui';
-import { workspaceSkillApi } from '../../services/coreApi';
+import { workspaceSkillApi } from '../../services';
 
 interface SkillExecutionsModalProps {
   open: boolean;
@@ -71,4 +71,3 @@ const SkillExecutionsModal: React.FC<SkillExecutionsModalProps> = ({ open, skill
 };
 
 export default SkillExecutionsModal;
-

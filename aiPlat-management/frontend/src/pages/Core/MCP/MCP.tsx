@@ -3,8 +3,8 @@ import { Copy, Info, RotateCw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Badge, Table, Switch, Button, Modal, toast } from '../../../components/ui';
 import { useMcpStore } from '../../../stores';
-import type { McpServer } from '../../../services/coreApi';
-import { toastGateError } from '../../../utils/governanceError';
+import type { McpServer } from '../../../services';
+import { toastGateError } from '../../../components/ui';
 
 const MCP: React.FC = () => {
   const { servers, loading, fetchServers, setServerEnabled } = useMcpStore();

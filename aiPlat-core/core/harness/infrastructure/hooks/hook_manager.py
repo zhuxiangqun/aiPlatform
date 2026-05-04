@@ -207,6 +207,195 @@ def get_default_hooks() -> Dict[str, Hook]:
         priority=50
     )
 
+    # Pre-reasoning repo inference: try to pick correct CLAUDE.md BEFORE LLM reasoning.
+    # This helps the model plan/think under the right project guidelines, not only at tool time.
+    async def repo_root_from_messages_hook(context: HookContext):
+        import os
+        from pathlib import Path
+
+        meta = context.state or {}
+        # Only do best-effort inference; never hard-fail here.
+        try:
+            from core.harness.context.claude_md import infer_claude_md_files_from_text
+            from core.harness.kernel.execution_context import get_active_workspace_context, set_active_workspace_context, ActiveWorkspaceContext
+        except Exception:
+            return {"allow": True}
+
+        # Already has multi files -> nothing to do
+        wctx0 = get_active_workspace_context()
+        if wctx0 and getattr(wctx0, "claude_md_files", None):
+            return {"allow": True}
+
+        task = str(meta.get("task") or "")
+        msgs = meta.get("messages") if isinstance(meta.get("messages"), list) else []
+        tail = []
+        for m in msgs[-8:]:
+            if isinstance(m, dict):
+                tail.append(str(m.get("content") or ""))
+        text = "\n".join([task] + tail).strip()
+        if not text:
+            return {"allow": True}
+
+        files = infer_claude_md_files_from_text(text)
+        if not files:
+            return {"allow": True}
+
+        # Choose a base repo_root for context engine; keep existing repo_root if set.
+        repo_root = getattr(wctx0, "repo_root", None) if wctx0 else None
+        if not (isinstance(repo_root, str) and repo_root.strip()):
+            # best-effort: common parent of all CLAUDE.md files if it has CLAUDE.md, else use first file parent
+            try:
+                parents = [Path(f).resolve().parent for f in files]
+                common = parents[0]
+                for p in parents[1:]:
+                    while common not in p.parents and common != p:
+                        common = common.parent
+                repo_root = str(common)
+            except Exception:
+                repo_root = str(Path(files[0]).resolve().parent)
+
+        set_active_workspace_context(
+            ActiveWorkspaceContext(
+                repo_root=str(repo_root) if repo_root else None,
+                toolset=getattr(wctx0, "toolset", None) if wctx0 else None,
+                claude_md_files=list(files),
+            )
+        )
+        return {"allow": True, "claude_md_files": list(files), "repo_root_selected": repo_root}
+
+    hooks["pre_reasoning_repo_root_from_messages"] = create_hook(
+        name="pre_reasoning_repo_root_from_messages",
+        callback=repo_root_from_messages_hook,
+        phase=HookPhase.PRE_REASONING,
+        priority=90,
+    )
+
+    # Repo-aware CLAUDE.md selection (per-file nearest ancestor)
+    # - Updates active workspace context repo_root (and optional claude_md_files)
+    # - Optionally enforces presence of CLAUDE.md for write/edit operations
+    async def repo_root_from_tool_args_hook(context: HookContext):
+        import os
+        from pathlib import Path
+
+        meta = context.state or {}
+        tool_name = meta.get("tool_name") or meta.get("tool")
+        tool_args = meta.get("tool_args") or {}
+
+        # Only try when args looks like a dict
+        if not isinstance(tool_args, dict):
+            return {"allow": True}
+
+        try:
+            from core.harness.context.claude_md import find_nearest_claude_md_root, load_claude_md
+            from core.harness.kernel.execution_context import get_active_workspace_context, set_active_workspace_context, ActiveWorkspaceContext
+        except Exception:
+            return {"allow": True}
+
+        # Extract likely file paths from tool args
+        PATH_KEYS = {"path", "file", "file_path", "filepath", "filename", "target_path", "dest_path", "src_path"}
+        LIST_KEYS = {"paths", "file_paths", "files"}
+
+        candidates = []
+        for k, v in list(tool_args.items()):
+            kk = str(k or "").strip().lower()
+            if kk in PATH_KEYS and isinstance(v, str):
+                candidates.append(v)
+            elif kk in LIST_KEYS and isinstance(v, list):
+                for x in v:
+                    if isinstance(x, str):
+                        candidates.append(x)
+
+        # If repo_root is already explicitly provided, prefer it.
+        explicit_repo_root = None
+        for k in ("repo_root", "directory", "workspace_root"):
+            if isinstance(tool_args.get(k), str) and str(tool_args.get(k)).strip():
+                explicit_repo_root = str(tool_args.get(k)).strip()
+                break
+
+        roots = []
+        for p in candidates:
+            p0 = str(p or "").strip()
+            if not p0.startswith("/"):
+                continue
+            r = find_nearest_claude_md_root(p0)
+            if r:
+                roots.append(r)
+
+        roots = list(dict.fromkeys([r for r in roots if r]))  # dedup preserve order
+
+        # Nothing to do
+        if explicit_repo_root or not roots:
+            return {"allow": True, "repo_root_selected": explicit_repo_root or None}
+
+        # Choose: single root => use it; multiple => use workspace root if present, and pass all CLAUDE.md files
+        selected_root = roots[0] if len(roots) == 1 else None
+        claude_files = []
+        for r in roots:
+            try:
+                p = str(Path(r) / "CLAUDE.md")
+                if Path(p).is_file():
+                    claude_files.append(p)
+            except Exception:
+                continue
+
+        if not selected_root:
+            # best-effort workspace fallback: first common parent that has CLAUDE.md, else keep current repo_root
+            try:
+                # simplest: use common parent of all roots
+                parents = [Path(r).resolve() for r in roots]
+                common = parents[0]
+                for p in parents[1:]:
+                    while common not in p.parents and common != p:
+                        common = common.parent
+                if (common / "CLAUDE.md").is_file():
+                    selected_root = str(common)
+            except Exception:
+                selected_root = None
+
+        wctx = get_active_workspace_context()
+        # If we have CLAUDE.md files, persist them for downstream prompt assembly even if selected_root is None.
+        if claude_files:
+            selected_root = selected_root or (getattr(wctx, "repo_root", None) if wctx else None) or roots[0]
+            set_active_workspace_context(
+                ActiveWorkspaceContext(
+                    repo_root=str(selected_root) if selected_root else None,
+                    toolset=getattr(wctx, "toolset", None) if wctx else None,
+                    claude_md_files=claude_files or None,
+                )
+            )
+
+        # Optional enforcement: require all touched paths to have a nearest CLAUDE.md root
+        enforce = os.getenv("AIPLAT_ENFORCE_CLAUDE_MD", "false").strip().lower() in ("1", "true", "yes", "y", "on")
+        if enforce:
+            # If multiple roots and no CLAUDE.md found for some path, deny.
+            missing = []
+            for p in candidates:
+                p0 = str(p or "").strip()
+                if not p0.startswith("/"):
+                    continue
+                if not find_nearest_claude_md_root(p0):
+                    missing.append(p0)
+            if missing:
+                return {"allow": False, "reason": f"CLAUDE.md is required for touched paths but not found: {missing[:3]}"}
+
+            # Also block if selected repo_root's CLAUDE.md is blocked by policy
+            try:
+                if selected_root:
+                    _c, _p, d = load_claude_md(str(selected_root))
+                    if getattr(d, "action", "none") in {"block", "approval_required"}:
+                        return {"allow": False, "reason": f"CLAUDE.md blocked by policy under {selected_root}"}
+            except Exception:
+                return {"allow": False, "reason": "CLAUDE.md enforcement failed during tool selection"}
+
+        return {"allow": True, "repo_root_selected": selected_root, "claude_md_files": claude_files}
+
+    hooks["pre_approval_check_repo_root_from_tool_args"] = create_hook(
+        name="pre_approval_check_repo_root_from_tool_args",
+        callback=repo_root_from_tool_args_hook,
+        phase=HookPhase.PRE_APPROVAL_CHECK,
+        priority=90,
+    )
+
     # Session hooks (lightweight defaults)
     async def session_start_hook(context: HookContext):
         context.state = context.state or {}
@@ -295,5 +484,84 @@ def get_default_hooks() -> Dict[str, Hook]:
         )
     except Exception:
         pass
+
+    # Contract enforcement: require project-level CLAUDE.md (server-side).
+    # This makes project guidelines effective in the execution chain, not just in IDEs.
+    async def enforce_claude_md_hook(context: HookContext):
+        import os
+        from pathlib import Path
+
+        enforce = os.getenv("AIPLAT_ENFORCE_CLAUDE_MD", "false").strip().lower() in ("1", "true", "yes", "y", "on")
+        if not enforce:
+            return {"allow": True}
+
+        try:
+            from core.harness.kernel.execution_context import get_active_workspace_context
+            from core.harness.kernel.execution_context import set_active_workspace_context, ActiveWorkspaceContext
+            from core.harness.context.claude_md import load_claude_md, infer_claude_md_files_from_text
+
+            wctx = get_active_workspace_context()
+            repo_root = getattr(wctx, "repo_root", None) if wctx else None
+            # If no repo_root is provided, try infer from loop state/task/messages (best-effort).
+            if not (isinstance(repo_root, str) and repo_root.strip()):
+                try:
+                    st = (context.state or {}).get("state")  # LoopState (best-effort)
+                    ctx = getattr(st, "context", None) if st is not None else None
+                    task = str((ctx or {}).get("task") or "") if isinstance(ctx, dict) else ""
+                    msgs = (ctx or {}).get("messages") if isinstance(ctx, dict) else []
+                    tail = []
+                    if isinstance(msgs, list):
+                        for m in msgs[-8:]:
+                            if isinstance(m, dict):
+                                tail.append(str(m.get("content") or ""))
+                    text = "\n".join([task] + tail).strip()
+                    files = infer_claude_md_files_from_text(text) if text else []
+                    if files:
+                        # use common parent as repo_root
+                        try:
+                            import pathlib
+
+                            parents = [pathlib.Path(f).resolve().parent for f in files]
+                            common = parents[0]
+                            for p in parents[1:]:
+                                while common not in p.parents and common != p:
+                                    common = common.parent
+                            repo_root = str(common)
+                        except Exception:
+                            repo_root = str(Path(files[0]).resolve().parent)
+                        set_active_workspace_context(
+                            ActiveWorkspaceContext(
+                                repo_root=str(repo_root),
+                                toolset=getattr(wctx, "toolset", None) if wctx else None,
+                                claude_md_files=list(files),
+                            )
+                        )
+                except Exception:
+                    pass
+            # Still no repo_root -> allow (backward compatible) but record
+            if not (isinstance(repo_root, str) and repo_root.strip()):
+                return {"allow": True, "claude_md": {"enforced": True, "skipped": "no_repo_root"}}
+
+            content, used_path, decision = load_claude_md(str(repo_root))
+            if not used_path or not Path(used_path).is_file():
+                return {"allow": False, "reason": f"CLAUDE.md is required but not found under repo_root={repo_root}"}
+            if not (content or "").strip():
+                return {"allow": False, "reason": f"CLAUDE.md is required but empty: {used_path}"}
+            action = getattr(decision, "action", "none")
+            if action in {"block", "approval_required"}:
+                pol = getattr(decision, "policy", None)
+                findings = getattr(decision, "findings", None) or []
+                return {"allow": False, "reason": f"CLAUDE.md blocked by policy={pol}, findings={findings}", "metadata": {"file": used_path}}
+            return {"allow": True, "claude_md": {"enforced": True, "file": used_path, "sha256": getattr(decision, 'sha256', None)}}
+        except Exception as e:
+            # Fail closed when enforcement is enabled (safer default).
+            return {"allow": False, "reason": f"CLAUDE.md enforcement failed: {e}"}
+
+    hooks["pre_contract_check_claude_md"] = create_hook(
+        name="pre_contract_check_claude_md",
+        callback=enforce_claude_md_hook,
+        phase=HookPhase.PRE_CONTRACT_CHECK,
+        priority=95,
+    )
     
     return hooks

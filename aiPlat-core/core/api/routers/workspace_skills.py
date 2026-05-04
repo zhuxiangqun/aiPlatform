@@ -10,14 +10,15 @@ from typing import Any, Annotated, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from core.api.deps.rbac import actor_from_http, rbac_guard
+from core.api.deps import actor_from_http, rbac_guard
 from core.api.utils.governance import gate_error_envelope, governance_links, ui_url
 from core.api.utils.run_contract import wrap_execution_result_as_run_summary
 from core.apps.skills.registry import get_skill_registry
 from core.harness.integration import get_harness, KernelRuntime
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.harness.kernel.types import ExecutionRequest
-from core.schemas import RunStatus, SkillCreateRequest, SkillExecuteRequest
+from core.schemas_run import RunStatus
+from core.schemas_skills import SkillCreateRequest, SkillExecuteRequest
 from core.utils.ids import new_prefixed_id
 
 router = APIRouter()
@@ -620,7 +621,7 @@ async def update_workspace_skill(skill_id: str, request: dict, http_request: Req
     mgr = _ws_skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
-    from core.schemas import SkillUpdateRequest
+    from core.schemas_skills import SkillUpdateRequest
 
     deny = await rbac_guard(http_request=http_request, payload=request or {}, action="update", resource_type="skill", resource_id=str(skill_id))
     if deny:

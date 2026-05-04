@@ -4,7 +4,7 @@ import { CheckCircle2, Eye, RefreshCw, XCircle, ExternalLink, Play } from 'lucid
 
 import { approvalsApi, type ApprovalRequestSummary } from '../../../../services';
 import { Badge, Button, Card, CardContent, CardHeader, Modal, Table, toast } from '../../../../components/ui';
-import { toastGateError } from '../../../../utils/governanceError';
+import { toastGateError } from '../../../../components/ui';
 
 const Approvals: React.FC = () => {
   const [items, setItems] = useState<ApprovalRequestSummary[]>([]);

@@ -13,7 +13,32 @@ export { monitoringApi } from './monitoringApi';
 export { modelApi } from './modelApi';
 
 // 核心能力层 API
-export { agentApi, skillApi, workspaceSkillApi, memoryApi, knowledgeApi, harnessApi, toolApi, learningApi, approvalsApi, jobApi, skillPackApi, runApi, auditApi, policyApi, gatePolicyApi, quotaApi, gatewayDlqApi, opsApi, pluginApi, promptApi } from './coreApi';
+export {
+  agentApi,
+  workspaceAgentApi,
+  skillApi,
+  workspaceSkillApi,
+  workspaceSkillInstallerApi,
+  memoryApi,
+  knowledgeApi,
+  harnessApi,
+  toolApi,
+  learningApi,
+  approvalsApi,
+  jobApi,
+  skillPackApi,
+  runApi,
+  auditApi,
+  policyApi,
+  gatePolicyApi,
+  quotaApi,
+  mcpApi,
+  workspaceMcpApi,
+  gatewayDlqApi,
+  opsApi,
+  pluginApi,
+  promptApi,
+} from './coreApi';
 export { gatewayAdminApi } from './coreApi';
 
 // Legacy monitoring API (for layer metrics)
@@ -63,6 +88,8 @@ export type {
   RunEvent,
   AuditLogEntry,
   TenantPolicy,
+  McpServer,
+  WorkspaceSkillInstallerPlan,
 } from './coreApi';
 
 // 平台服务层 & 应用接入层 API

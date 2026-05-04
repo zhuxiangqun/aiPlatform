@@ -5,7 +5,7 @@ from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
-from core.api.deps.rbac import actor_from_http, rbac_guard
+from core.api.deps import actor_from_http, rbac_guard
 from core.harness.integration import KernelRuntime
 from core.harness.kernel.runtime import get_kernel_runtime
 
@@ -431,4 +431,3 @@ async def export_ops_bundle_zip(
         media_type="application/zip",
         headers={"Content-Disposition": f'attachment; filename=\"{fname}\"'},
     )
-

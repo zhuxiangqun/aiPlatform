@@ -170,16 +170,34 @@ export interface AppSessionListResponse {
   total: number;
 }
 
+const normalizeAppSession = (raw: any): AppSession => ({
+  id: String(raw?.id || raw?.session_id || ''),
+  channel: String(raw?.channel || raw?.channel_id || ''),
+  channel_type: String(raw?.channel_type || raw?.channel || raw?.channel_id ? 'api' : 'api'),
+  user_id: String(raw?.user_id || ''),
+  agent_id: String(raw?.agent_id || raw?.metadata?.agent_id || ''),
+  status: (String(raw?.status || 'active') as 'active' | 'ended' | 'timeout'),
+  message_count: Number(raw?.message_count || 0),
+  created_at: String(raw?.created_at || raw?.updated_at || ''),
+  updated_at: String(raw?.updated_at || raw?.last_message_at || raw?.created_at || ''),
+});
+
 export const appSessionApi = {
   list: async (params?: { status?: string; channel?: string }) => {
     const query = new URLSearchParams();
     if (params?.status) query.set('status', params.status);
     if (params?.channel) query.set('channel', params.channel);
     const qs = query.toString();
-    return apiClient.get<AppSessionListResponse>(`/app/sessions${qs ? '?' + qs : ''}`);
+    const res = await apiClient.get<AppSessionListResponse>(`/app/sessions${qs ? '?' + qs : ''}`);
+    return {
+      ...res,
+      sessions: Array.isArray((res as any)?.sessions) ? (res as any).sessions.map(normalizeAppSession) : [],
+      total: Number((res as any)?.total || 0),
+    };
   },
   get: async (id: string) => {
-    return apiClient.get<AppSession>(`/app/sessions/${id}`);
+    const res = await apiClient.get<any>(`/app/sessions/${id}`);
+    return normalizeAppSession(res);
   },
   end: async (id: string) => {
     return apiClient.post<{ status: string }>(`/app/sessions/${id}/end`);

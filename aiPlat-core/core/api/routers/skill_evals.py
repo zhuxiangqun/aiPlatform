@@ -10,7 +10,7 @@ from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 
-from core.api.deps.rbac import actor_from_http, rbac_guard
+from core.api.deps import actor_from_http, rbac_guard
 from core.api.utils.governance import ui_url
 from core.governance.changeset import record_changeset
 from core.harness.kernel.runtime import get_kernel_runtime

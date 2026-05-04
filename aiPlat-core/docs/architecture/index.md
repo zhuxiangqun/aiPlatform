@@ -8,6 +8,52 @@
 - **As-Is（当前实现）**：核心执行主路径以 **Harness Loop（ReActLoop/PlanExecuteLoop）** 为主；LangGraph 子系统已存在并用于部分图执行/收敛评估，但尚未作为唯一主路径统一收敛。
 - **To-Be（目标演进）**：逐步收敛为 **Graph-first（LangGraph StateGraph）** 作为主编排，Loop 作为图节点策略之一，并具备可持久化 checkpoint 与 replay/resume 语义。
 
+## aiPlat-core 分层职责（Runtime / Policy / Agent / Skill / Facade）
+
+`aiPlat-core` 不是简单的“模型调用集合”或“技能仓库”，而是以统一运行时为基础，组织 Agent、Skill、Memory、Context、Queue、Run/Event 等能力，形成可执行、可追踪、可扩展的 AI 核心层。
+
+建议将 `aiPlat-core` 理解为五层结构：
+
+1. `Harness Runtime`
+   负责统一执行内核，包括 run/event/wait、上下文装配、registry、syscall、队列与运行时集成。
+2. `Internal Policy / Service`
+   负责问题分析、检索路由、回答策略、会话上下文整理等领域通用决策。
+3. `Agent`
+   负责会话/任务编排，连接上下文、策略层与执行能力层。
+4. `Skill`
+   负责单一职责、明确输入输出的执行能力。
+5. `API Facade`
+   负责对外入口、请求校验、身份补全、payload 封装。
+
+该分层的核心目标是：
+- 将“运行时共性机制”与“业务语义决策”分离；
+- 将“会话协调”与“能力执行”分离；
+- 将“对外协议层”与“核心执行层”分离。
+
+## 各层边界（MUST / MUST NOT）
+
+### Harness Runtime
+- MUST：提供统一 run/event/wait/context/runtime 能力。
+- MUST：作为 Agent、Skill、Memory、Tool/MCP 的统一执行内核。
+- MUST NOT：承载资料问答、视频问答、多资料比较等业务语义决策。
+
+### Internal Policy / Service
+- MUST：提供问题分析、检索路由、回答策略、会话级领域决策。
+- SHOULD：保持低副作用、可测试、可解释。
+- MUST NOT：替代 Skill 承担底层执行细节。
+
+### Agent
+- MUST：作为会话/任务编排器，负责上下文协调、策略调用、能力调度与结果整合。
+- MUST NOT：直接实现复杂底层检索、索引、切片、存储细节。
+
+### Skill
+- MUST：提供单一职责、明确输入输出、可复用的执行能力。
+- MUST NOT：承担系统级高层策略决策。
+
+### API Facade
+- MUST：保持薄入口，负责请求校验、身份透传、执行请求组装。
+- MUST NOT：内嵌核心业务策略与领域决策。
+
 ---
 
 ## 一、整体架构图

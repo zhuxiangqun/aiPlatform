@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from core.governance.changeset import record_changeset
 from core.harness.integration import KernelRuntime
 from core.harness.kernel.runtime import get_kernel_runtime
-from core.schemas import AdapterCreateRequest, AdapterUpdateRequest, ModelUpdateRequest
+from core.schemas_adapters import AdapterCreateRequest, AdapterUpdateRequest, ModelUpdateRequest
 
 router = APIRouter()
 
@@ -282,4 +282,3 @@ async def get_model_distribution(adapter_id: str, rt: RuntimeDep = Depends(get_k
         raise HTTPException(status_code=503, detail="AdapterManager not initialized")
     distribution = await am.get_model_distribution(adapter_id)
     return {"distribution": distribution}
-

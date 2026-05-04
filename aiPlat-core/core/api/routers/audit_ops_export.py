@@ -4,7 +4,7 @@ from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
-from core.api.deps.rbac import rbac_guard
+from core.api.deps import rbac_guard
 from core.harness.integration import KernelRuntime
 from core.harness.kernel.runtime import get_kernel_runtime
 
@@ -74,4 +74,3 @@ async def export_audit_logs_csv(
 
     data, filename = await OpsExporter(execution_store=store).export_audit_logs_csv(tenant_id=tenant_id, limit=limit)
     return Response(content=data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename="{filename}"'})
-

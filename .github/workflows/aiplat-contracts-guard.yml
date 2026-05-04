@@ -31,6 +31,12 @@ jobs:
         run: |
           python ./aiPlat-core/scripts/ci/check_contracts_guard.py links
 
+      - name: System architecture docs guard
+        run: |
+          test -f ./docs/architecture/system-architecture-contract.md
+          test -f ./docs/guides/PR_ARCHITECTURE_CHECKLIST.md
+          test -f ./.github/pull_request_template.md
+
       - name: Contracts binding check (PR only)
         if: ${{ github.event_name == 'pull_request' }}
         env:
@@ -38,6 +44,80 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           python ./aiPlat-core/scripts/ci/check_contracts_guard.py binding --base "$BASE_SHA" --head "$HEAD_SHA"
+
+      - name: Architecture contract guard (PR only)
+        if: ${{ github.event_name == 'pull_request' }}
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          CHANGED="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+          echo "Changed files (base=$BASE_SHA head=$HEAD_SHA):"
+          echo "$CHANGED"
+          echo
+
+          has_change () { echo "$CHANGED" | grep -E -q "$1"; }
+
+          # Doc update predicates
+          SYS_CONTRACT_UPDATED=false
+          AUTH_SPEC_UPDATED=false
+          RUN_SPEC_UPDATED=false
+          SESSION_SPEC_UPDATED=false
+          CORE_BOUNDARY_UPDATED=false
+
+          if has_change '^docs/architecture/system-architecture-contract\.md$'; then SYS_CONTRACT_UPDATED=true; fi
+          if has_change '^规范-platform-鉴权与身份透传\.md$'; then AUTH_SPEC_UPDATED=true; fi
+          if has_change '^规范-core-run_id-trace_id-request_id\.md$'; then RUN_SPEC_UPDATED=true; fi
+          if has_change '^规范-app-session_id与conversation_key\.md$'; then SESSION_SPEC_UPDATED=true; fi
+          if has_change '^aiPlat-core/docs/contracts/01-architecture-contract\.md$|^aiPlat-core/docs/architecture/index\.md$'; then CORE_BOUNDARY_UPDATED=true; fi
+
+          # 1) Auth / tenant / gateway / identity changes must update auth spec or system contract
+          if has_change '^aiPlat-platform/(api|auth|gateway|tenants)/'; then
+            if [ "$AUTH_SPEC_UPDATED" != "true" ] && [ "$SYS_CONTRACT_UPDATED" != "true" ]; then
+              echo "ERROR: platform auth/tenant/gateway changed, but auth spec or system contract not updated."
+              echo "Please update one of:"
+              echo "- 规范-platform-鉴权与身份透传.md"
+              echo "- docs/architecture/system-architecture-contract.md"
+              exit 1
+            fi
+          fi
+
+          # 2) Run/trace/request-id related runtime changes must update run spec or system contract
+          if has_change '^aiPlat-core/core/(harness|services/execution_store\.py|harness/|api/routers)/'; then
+            if [ "$RUN_SPEC_UPDATED" != "true" ] && [ "$SYS_CONTRACT_UPDATED" != "true" ]; then
+              echo "ERROR: core runtime/run-trace surface changed, but run spec or system contract not updated."
+              echo "Please update one of:"
+              echo "- 规范-core-run_id-trace_id-request_id.md"
+              echo "- docs/architecture/system-architecture-contract.md"
+              exit 1
+            fi
+          fi
+
+          # 3) Session/conversation contract changes must update session spec or system contract
+          if has_change '^aiPlat-app/|^aiPlat-platform/|^aiPlat-core/core/api/routers/conversations\.py'; then
+            if has_change 'conversation|session|conversations|scope'; then
+              if [ "$SESSION_SPEC_UPDATED" != "true" ] && [ "$SYS_CONTRACT_UPDATED" != "true" ]; then
+                echo "ERROR: session/conversation related code changed, but session spec or system contract not updated."
+                echo "Please update one of:"
+                echo "- 规范-app-session_id与conversation_key.md"
+                echo "- docs/architecture/system-architecture-contract.md"
+                exit 1
+              fi
+            fi
+          fi
+
+          # 4) Core boundary changes (harness/agents/skills) should update core boundary contract or system contract
+          if has_change '^aiPlat-core/core/(harness|apps/agents|engine/skills)/'; then
+            if [ "$CORE_BOUNDARY_UPDATED" != "true" ] && [ "$SYS_CONTRACT_UPDATED" != "true" ]; then
+              echo "ERROR: core boundary surface changed (harness/agents/skills), but core boundary contract not updated."
+              echo "Please update one of:"
+              echo "- aiPlat-core/docs/contracts/01-architecture-contract.md"
+              echo "- aiPlat-core/docs/architecture/index.md"
+              echo "- docs/architecture/system-architecture-contract.md"
+              exit 1
+            fi
+          fi
 
       - name: Contracts acceptance tests
         working-directory: ./aiPlat-core

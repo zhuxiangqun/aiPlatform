@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { RefreshCw, Save, ToggleLeft, ToggleRight, History, Eye } from 'lucide-react';
 import { Button, Card, CardContent, CardHeader, Modal, Table, toast } from '../../../components/ui';
 import { pluginApi } from '../../../services';
-import { toastGateError } from '../../../utils/governanceError';
+import { toastGateError } from '../../../components/ui';
 
 const Plugins: React.FC = () => {
   const [loading, setLoading] = useState(false);
