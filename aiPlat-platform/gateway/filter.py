@@ -38,7 +38,12 @@ class Filter(Callable[[FilterContext], FilterResult]):
 
 
 class AuthFilter(Filter):
-    """认证过滤器"""
+    """认证预过滤器 — 仅检查 Authorization header 存在性。
+
+    注意：此过滤器不验证 token 有效性、不解析 JWT、不提取身份。
+    实际的身份解析和权限校验由 _resolve_identity() 统一执行（单一权威）。
+    使用 FilterChain 的路由必须额外调用 _resolve_identity() 完成真正认证。
+    """
 
     def __init__(self):
         super().__init__("auth", order=10)
@@ -47,6 +52,7 @@ class AuthFilter(Filter):
         api_key = context.headers.get("Authorization", "").replace("Bearer ", "")
         if not api_key:
             return FilterResult(allowed=False, error="Missing authorization")
+        # Token validation is delegated to _resolve_identity() — the single authority
         return FilterResult(allowed=True)
 
 

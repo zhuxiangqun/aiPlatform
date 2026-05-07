@@ -1,0 +1,535 @@
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { CheckCircle, XCircle, Loader2, Clock, Download } from 'lucide-react';
+import type { BuilderSession, PipelineStageConfig } from '../../services';
+
+interface PipelineProps {
+  session: BuilderSession;
+  teamStages?: PipelineStageConfig[];
+  onRegenerate?: (stageKey: string) => void;
+  onApprove?: () => void;
+  onReject?: (stageKey: string) => void;
+  onRollback?: (stageKey: string) => void;
+  loading?: boolean;
+}
+
+// --- dynamic stage list built from team config (NOT hardcoded) ---
+
+interface VisibleStage {
+  key: string;
+  label: string;
+  desc: string;
+}
+
+function buildStages(teamStages?: PipelineStageConfig[], session?: BuilderSession): VisibleStage[] {
+  const raw = session as Record<string, unknown> | undefined;
+  const stages: VisibleStage[] = (teamStages || []).map((s) => ({
+    key: s.output_artifact,
+    label: s.agent_name,
+    desc: (s as Record<string, unknown>).phase_description as string || s.phase || s.output_artifact,
+  }));
+  // Insert test_plan stage if any artifact has test_script (structural detection)
+  const testPlanEntry = Object.entries(raw || {}).find(([, v]) => isTestPlanArtifact(v));
+  if (testPlanEntry) {
+    const testingIdx = stages.findIndex((s) => {
+      const val = raw?.[s.key];
+      return isTestReportArtifact(val);
+    });
+    if (testingIdx >= 0 && !stages.some((s) => isTestPlanArtifact(raw?.[s.key]))) {
+      const hasReport = Object.values(raw || {}).some((v) => isTestReportArtifact(v));
+      const phaseStr = (raw?.phase as string) || '';
+      stages.splice(testingIdx, 0, {
+        key: testPlanEntry[0],
+        label: '测试用例',
+        desc: hasReport ? '已确认，测试已执行' :
+              phaseStr.includes('awaiting_test_plan') ? '待确认' : '已生成',
+      });
+    }
+  }
+  return stages;
+}
+
+const ElapsedTimer: React.FC = () => {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const start = Date.now();
+    const timer = setInterval(() => setElapsed(Math.floor((Date.now() - start) / 1000)), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const mins = Math.floor(elapsed / 60);
+  const secs = elapsed % 60;
+  return (
+    <div className="text-[10px] text-gray-500 text-center">
+      {mins > 0 ? `已运行 ${mins}分${secs}秒` : `已运行 ${secs}秒`}
+    </div>
+  );
+};
+
+// --- helpers ---
+
+const getStageStatus = (key: string, session: BuilderSession, visible: VisibleStage[]) => {
+  if (session.phase === 'failed') return 'failed';
+  const raw = session as Record<string, unknown>;
+  // HITL awaiting — show as "awaiting" not "passed"
+  if (session.phase?.includes('awaiting')) {
+    const hitlKey = session.phase.includes('architecture') ? 'architecture' :
+      session.phase.includes('test_report') ? 'test_report' : 'test_plan';
+    if (key === hitlKey) return 'awaiting';
+  }
+  const val = raw[key];
+  if (val != null) {
+    if (typeof val === 'object' && 'recommendation' in val) {
+      const tr = val as { recommendation?: string };
+      if (tr.recommendation === 'APPROVED') return 'passed';
+      return 'partial';
+    }
+    return 'passed';
+  }
+  if (session.phase === 'executing') {
+    const currentIdx = raw['_current_stage_idx'] as number | undefined;
+    if (currentIdx != null && currentIdx >= 0 && visible[currentIdx]?.key === key) return 'running';
+  }
+  return 'waiting';
+};
+
+// Structural artifact type detection — uses artifact shape, not key name
+const isTestReportArtifact = (val: unknown): val is { pass_rate?: number; test_cases?: unknown[]; recommendation?: string; issues?: unknown[] } =>
+  typeof val === 'object' && val != null && 'pass_rate' in val;
+
+const isCodeArtifact = (val: unknown): val is { files?: unknown[] } =>
+  typeof val === 'object' && val != null && ('files' in val || 'component_files' in val);
+
+const isPRDArtifact = (val: unknown): boolean =>
+  typeof val === 'object' && val != null && ('sections' in val || 'acceptance_criteria' in val || 'features' in val);
+
+const isTestPlanArtifact = (val: unknown): val is { test_script?: string; test_cases_count?: number } =>
+  typeof val === 'object' && val != null && 'test_script' in val;
+
+const hasArtifact = (key: string, session: BuilderSession): boolean => {
+  const raw = session as Record<string, unknown>;
+  return raw[key] != null;
+};
+
+const statusIcon = (status: string) => {
+  if (status === 'passed') return <CheckCircle className="w-5 h-5 text-green-400" />;
+  if (status === 'failed') return <XCircle className="w-5 h-5 text-red-400" />;
+  if (status === 'running') return <Loader2 className="w-5 h-5 text-primary animate-spin" />;
+  if (status === 'partial') return <Clock className="w-5 h-5 text-yellow-400" />;
+  if (status === 'awaiting') return <Clock className="w-5 h-5 text-amber-400" />;
+  return <Clock className="w-5 h-5 text-gray-600" />;
+};
+
+const statusLabel = (status: string) => {
+  if (status === 'passed') return '已完成';
+  if (status === 'failed') return '失败';
+  if (status === 'running') return '执行中';
+  if (status === 'partial') return '未通过';
+  if (status === 'awaiting') return '待确认';
+  return '等待中';
+};
+
+const statusColor = (status: string) => {
+  if (status === 'passed') return 'bg-green-500/10 text-green-300';
+  if (status === 'failed') return 'bg-red-500/10 text-red-300';
+  if (status === 'running') return 'bg-primary/10 text-primary';
+  if (status === 'partial') return 'bg-yellow-500/10 text-yellow-300';
+  if (status === 'awaiting') return 'bg-amber-500/10 text-amber-300';
+  return 'bg-gray-500/10 text-gray-400';
+};
+
+// --- structured output viewer ---
+
+const StructuredViewer: React.FC<{ stageKey: string; data: unknown }> = ({ stageKey, data }) => {
+  const val = data as Record<string, unknown> | null;
+  if (!val) return null;
+
+  const stories = (val.user_stories as Array<Record<string, unknown>>) || [];
+  const constraints = (val.constraints as string[]) || [];
+  const components = (val.components as Array<Record<string, unknown>>) || [];
+  const dataModel = (val.data_model as Record<string, Record<string, string>>) || {};
+  const apiContracts = (val.api_contracts as Array<Record<string, unknown>>) || [];
+  const testCases = (val.test_cases as Array<Record<string, unknown>>) || [];
+  const techStack = (val.tech_stack as Record<string, string>) || {};
+  const files = (val.files as Array<Record<string, unknown>>) || [];
+  const rawOutput = typeof val.raw_output === 'string' ? val.raw_output : null;
+
+  const isPRD = stories.length > 0;
+  const isArch = components.length > 0 || Object.keys(dataModel).length > 0 || apiContracts.length > 0;
+  const isTestPlan = testCases.length > 0;
+  const isCode = files.length > 0;
+  const hasContent = isPRD || isArch || isTestPlan || isCode || Boolean(rawOutput);
+  if (!hasContent) return null;
+
+  return (
+    <details className="mt-2 group">
+      <summary className="text-[10px] text-gray-500 cursor-pointer hover:text-gray-300">查看产出详情</summary>
+      <div className="mt-1 p-2 rounded bg-dark-hover text-[10px] text-gray-400 max-h-40 overflow-y-auto space-y-2">
+        {isPRD && (
+          <>
+            <div className="text-gray-300 font-medium mb-1">PRD · {stories.length} 个 User Stories</div>
+            {stories.map((us: Record<string, unknown>, i: number) => (
+              <details key={i} className="ml-1">
+                <summary className="cursor-pointer text-gray-200">
+                  <span className="text-primary">{us.id as string}</span> {(us.description as string || '').slice(0, 70)}
+                </summary>
+                <div className="ml-3 mt-1 text-gray-500">
+                  {(us.acceptance_criteria as string[] || []).map((ac: string, j: number) => (
+                    <div key={j}>AC{j+1}: {ac}</div>
+                  ))}
+                </div>
+              </details>
+            ))}
+            {constraints.length > 0 && (
+              <div className="ml-1 mt-1">
+                <span className="text-gray-300">约束：</span>
+                {constraints.map((c: string, i: number) => (
+                  <div key={i} className="ml-2 text-gray-500">{c}</div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+        {isTestPlan && (
+          <div>
+            <div className="text-gray-300 font-medium mb-1">测试用例 ({testCases.length})</div>
+            {testCases.map((tc: Record<string, unknown>, i: number) => (
+              <div key={i} className="ml-1 mb-1">
+                <span className="text-primary">{tc.id as string}</span>
+                <span className="text-gray-200 ml-1">{(tc.description as string || '').slice(0, 60)}</span>
+                <span className="text-gray-500 ml-1">— {(tc.expected as string || '').slice(0, 40)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {isArch && (
+          <>
+            {components.length > 0 && (
+              <div>
+                <div className="text-gray-300 font-medium mb-1">组件 ({components.length})</div>
+                {components.map((c: Record<string, unknown>, i: number) => (
+                  <div key={i} className="ml-2 mb-1">
+                    <span className="text-gray-100">{c.name as string}</span>
+                    <span className="text-gray-500 ml-1">— {(c.responsibility as string || '').slice(0, 60)}</span>
+                    {(c.dependencies as string[])?.length > 0 && (
+                      <span className="text-[9px] text-blue-400 ml-1">[{(c.dependencies as string[]).join(', ')}]</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {Object.keys(dataModel).length > 0 && (
+              <div>
+                <div className="text-gray-300 font-medium mb-1">数据模型</div>
+                {Object.entries(dataModel).map(([entity, fields]) => (
+                  <div key={entity} className="ml-2 mb-1">
+                    <span className="text-gray-100">{entity}</span>
+                    <span className="text-gray-500 ml-1">{Object.entries(fields || {}).map(([k, v]) => `${k}: ${v}`).join(', ')}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {apiContracts.length > 0 && (
+              <div>
+                <div className="text-gray-300 font-medium mb-1">API 契约 ({apiContracts.length})</div>
+                {apiContracts.map((api: Record<string, unknown>, i: number) => (
+                  <div key={i} className="ml-2 mb-1">
+                    <span className={`font-mono ${api.method === 'GET' ? 'text-green-400' : 'text-yellow-400'}`}>
+                      {(api.method as string || 'GET').padEnd(6)}
+                    </span>
+                    <span className="text-gray-200 ml-1">{api.path as string}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {Object.keys(techStack).length > 0 && (
+              <div><span className="text-gray-300">技术栈：</span>{Object.entries(techStack).map(([k, v]) => `${k}: ${v}`).join(', ')}</div>
+            )}
+          </>
+        )}
+        {isCode && (
+          <div>
+            <div className="text-gray-300 font-medium mb-1">文件 ({files.length})</div>
+            {files.map((f: Record<string, unknown>, i: number) => (
+              <div key={i} className="ml-2">
+                <span className="font-mono">{f.path as string}</span>
+                <span className="ml-1">({((f.content as string) || '').length} 字符)</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {rawOutput && !isPRD && !isArch && !isTestPlan && !isCode && (
+          <pre className="whitespace-pre-wrap break-all text-[9px]">{(rawOutput || '').slice(0, 1500)}</pre>
+        )}
+      </div>
+    </details>
+  );
+};
+
+// --- main component ---
+
+export const BuilderPipeline: React.FC<PipelineProps> = ({ session, teamStages, onRegenerate, onApprove, onReject, onRollback, loading }) => {
+  const passRate = session.test_report?.pass_rate ?? 0;
+  const rec = session.test_report?.recommendation;
+  const visible = buildStages(teamStages, session);
+  const [previewStage, setPreviewStage] = useState<VisibleStage | null>(null);
+  const [previewData, setPreviewData] = useState<Record<string, unknown> | null>(null);
+
+  const cols = visible.length <= 2 ? 'lg:grid-cols-2' : visible.length <= 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-4';
+  return (
+    <div className="space-y-4">
+      <div className={`grid grid-cols-1 ${cols} gap-3`}>
+        {visible.map((stage, idx) => {
+          const status = getStageStatus(stage.key, session, visible);
+          const hasContent = hasArtifact(stage.key, session);
+          const artifact = (session as Record<string, unknown>)[stage.key];
+
+          return (
+            <motion.div
+              key={stage.key}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.1 }}
+              className="rounded-lg border border-dark-border bg-dark-card p-4"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <div className="text-sm font-semibold text-gray-100">{stage.label}</div>
+                  <div className="text-xs text-gray-500">{stage.desc}</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {statusIcon(status)}
+                  <span className={`text-xs px-2 py-0.5 rounded ${statusColor(status)}`}>
+                    {statusLabel(status)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="rounded-lg bg-dark-border overflow-hidden mb-3" style={{ height: 10 }}>
+                <div
+                  className={`h-full rounded-lg transition-all duration-1000 ${
+                    status === 'passed' ? 'bg-green-500' :
+                    status === 'running' ? 'bg-cyan-500' :
+                    status === 'partial' ? 'bg-yellow-500' :
+                    'bg-transparent'
+                  }`}
+                  style={{ width: status === 'running' ? '66%' : status === 'passed' ? '100%' : status === 'partial' ? '100%' : '0%' }}
+                />
+              </div>
+
+              {status === 'running' && (
+                <div className="flex items-center justify-between mb-3">
+                  <ElapsedTimer />
+                  <span className="text-[10px] text-cyan-400 font-medium">LLM 推理中…</span>
+                </div>
+              )}
+
+              {hasContent && (
+                <div className="text-xs text-gray-400 space-y-1">
+                  {(() => {
+                    const val = (session as Record<string, unknown>)[stage.key] as Record<string, unknown> | null;
+                    if (!val) return null;
+                    if (isTestReportArtifact(val) && session.test_report) {
+                      return <>
+                        <div>测试用例: {session.test_report.test_cases?.length || 0}</div>
+                        <div className="flex items-center gap-1">通过率:<span className={passRate >= 0.8 ? 'text-green-400' : 'text-red-400'}>{(passRate * 100).toFixed(0)}%</span></div>
+                      </>;
+                    }
+                    const comps = (val as Record<string, unknown>).components as Array<Record<string, unknown>> || [];
+                    const dm = (val as Record<string, unknown>).data_model as Record<string, unknown> || {};
+                    const apis = (val as Record<string, unknown>).api_contracts as Array<Record<string, unknown>> || [];
+                    const f = (val as Record<string, unknown>).files as Array<Record<string, unknown>> || [];
+                    const tc = (val as Record<string, unknown>).test_cases as Array<Record<string, unknown>> || [];
+                    const rawOutput = typeof (val as Record<string, unknown>).raw_output === 'string' ? (val as Record<string, unknown>).raw_output : null;
+                    return <>
+                      {comps.length > 0 && <div>组件: {comps.length} 个</div>}
+                      {Object.keys(dm).length > 0 && <div>数据模型: {Object.keys(dm).length} 个实体</div>}
+                      {apis.length > 0 && <div>API 契约: {apis.length} 个</div>}
+                      {tc.length > 0 && <div>测试用例: {tc.length} 条</div>}
+                      {f.length > 0 && <div>文件: {f.length} 个</div>}
+                      {rawOutput && <div className="text-gray-500 italic">LLM 原始输出</div>}
+                    </>;
+                  })()}
+                </div>
+              )}
+
+              {hasContent && !isCodeArtifact(artifact) && (
+                <StructuredViewer stageKey={stage.key} data={artifact} />
+              )}
+              {hasContent && isCodeArtifact(artifact) && (
+                <div className="text-[10px] text-gray-500 mt-2">
+                  代码已生成，保存至 aiPlat-app/generated/{session.session_id}/ 目录
+                </div>
+              )}
+
+              {hasContent && status !== 'running' && !isCodeArtifact(artifact) && (
+                <>
+                  <button
+                    className="mt-2 flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 cursor-pointer"
+                    onClick={() => {
+                      const artifact = (session as Record<string, unknown>)[stage.key];
+                      const json = JSON.stringify(artifact, null, 2);
+                      const blob = new Blob([json], { type: 'application/json' });
+                      const url = URL.createObjectURL(blob);
+                      a.href = url;
+                      a.download = `${stage.key}_${session.session_id}.json`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                  >
+                    <Download className="w-3 h-3" /> 下载
+                  </button>
+                  <button
+                    className="mt-1 flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 cursor-pointer"
+                    onClick={() => {
+                      setPreviewStage(stage);
+                      setPreviewData((session as Record<string, unknown>)[stage.key] as Record<string, unknown>);
+                    }}
+                  >
+                    🔍 预览
+                  </button>
+                </>
+              )}
+
+              {hasContent && status !== 'running' && !isPRDArtifact(artifact) && (
+                <button
+                  className="mt-1 flex items-center gap-1 text-[10px] text-amber-400 hover:text-amber-300 cursor-pointer"
+                  onClick={() => onRegenerate?.(stage.key)}
+                  title="将清空本阶段及所有下游产物，重新生成"
+                >
+                  🔄 重新生成（含下游）
+                </button>
+              )}
+
+              {/* HITL buttons — shown on the stage that is awaiting approval */}
+              {session.phase.includes('awaiting') && (
+                (() => {
+                  const hitlKey =
+                    session.phase.includes('architecture') ? 'architecture' :
+                    session.phase.includes('test_report') ? 'test_report' :
+                    session.phase.includes('test_plan') ? 'test_plan' : '';
+                  if (stage.key !== hitlKey) return null;
+                  return (
+                    <div className="mt-2 space-y-1">
+                      {session.phase.includes('test_report') ? (
+                        <button className="w-full text-[10px] px-2 py-1 rounded bg-primary/20 text-primary hover:bg-primary/30 disabled:opacity-50"
+                          onClick={() => onApprove?.()} disabled={loading}>
+                          {loading ? '⏳ 执行中…' : '🔧 开始自动修复'}
+                        </button>
+                      ) : (
+                        <>
+                          <button className="w-full text-[10px] px-2 py-1 rounded bg-green-500/20 text-green-300 hover:bg-green-500/30 disabled:opacity-50"
+                            onClick={() => onApprove?.()} disabled={loading}>
+                            {loading ? '⏳ 执行中…' : '✅ 确认并继续'}
+                          </button>
+                          <button className="w-full text-[10px] px-2 py-1 rounded bg-red-500/20 text-red-300 hover:bg-red-500/30 disabled:opacity-50"
+                            onClick={() => onReject?.(stage.key)} disabled={loading}>
+                            ✕ 驳回
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  );
+                })()
+              )}
+
+              {/* Rollback — completed non-PRD stages */}
+              {hasContent && status !== 'running' && !isPRDArtifact(artifact) && !session.phase.includes('awaiting') && (
+                <button
+                  className="mt-1 flex items-center gap-1 text-[10px] text-gray-500 hover:text-gray-300 cursor-pointer"
+                  onClick={() => onRollback?.(stage.key)}
+                  title="回退本阶段及下游"
+                >
+                  ↩ 回退
+                </button>
+              )}
+
+              {!hasContent && status === 'waiting' && (
+                <div className="text-xs text-gray-500 italic">等待上游完成...</div>
+              )}
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {session.test_report && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className={`rounded-lg border p-4 ${rec === 'APPROVED' ? 'border-green-500/30 bg-green-500/5' : 'border-yellow-500/30 bg-yellow-500/5'}`}
+        >
+          <div className="flex items-center gap-2 mb-2">
+            {rec === 'APPROVED' ? (
+              <CheckCircle className="w-5 h-5 text-green-400" />
+            ) : (
+              <XCircle className="w-5 h-5 text-red-400" />
+            )}
+            <span className={`font-semibold ${rec === 'APPROVED' ? 'text-green-300' : 'text-red-300'}`}>
+              {rec === 'APPROVED' ? '全部测试通过 — 应用已就绪' : `测试未通过（通过率 ${(passRate * 100).toFixed(0)}%）— 已自动回退修复`}
+            </span>
+          </div>
+          {(session.test_report?.issues?.length ?? 0) > 0 && (
+            <div className="mt-2 space-y-1">
+              {session.test_report.issues.map((issue: any, i: number) => {
+                const text = typeof issue === 'string' ? issue : (issue.title || issue.description || issue.message || '');
+                const sev = issue.severity || '';
+                return (
+                  <div key={i} className="text-xs text-gray-400 flex items-start gap-1">
+                    <span className={`${sev === 'P0' ? 'text-red-400' : 'text-yellow-400'} shrink-0 mt-0.5`}>
+                      {sev ? `[${sev}]` : '!'}
+                    </span>
+                    <span>{text}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {session.test_report.results?.some((r: { passed: boolean }) => !r.passed) && (
+            <div className="mt-3 space-y-1">
+              <div className="text-xs text-gray-500 mb-1">失败详情：</div>
+              {session.test_report.results
+                .filter((r: { passed: boolean }) => !r.passed)
+                .map((r) => (
+                  <div key={r.test_case_id} className="text-xs bg-dark-card rounded p-2 border border-dark-border">
+                    <div className="text-red-300">{r.test_case_id}</div>
+                    <div className="text-gray-500 mt-1">
+                      <div>期望: {session.test_report?.test_cases?.find((tc: { id: string }) => tc.id === r.test_case_id)?.expected || '—'}</div>
+                      <div>实际: {r.actual || r.error || '—'}</div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+        </motion.div>
+      )}
+
+      {session.iteration > 0 && (
+        <div className="text-xs text-gray-500 text-center">
+          已迭代 {session.iteration} 次
+          {session.error ? ` · ${session.error}` : ''}
+        </div>
+      )}
+
+      {/* ── Preview Modal ── */}
+      {previewStage && previewData && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center" onClick={() => { setPreviewStage(null); setPreviewData(null); }}>
+          <motion.div
+            initial={{ scale: 0.95 }} animate={{ scale: 1 }}
+            className="bg-dark-card border border-dark-border rounded-xl p-6 w-full max-w-3xl max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-gray-100">{previewStage.label} · 产出预览</h2>
+              <button
+                className="text-gray-500 hover:text-gray-300 text-sm"
+                onClick={() => { setPreviewStage(null); setPreviewData(null); }}
+              >✕</button>
+            </div>
+            <pre className="text-xs text-gray-300 whitespace-pre-wrap break-all bg-dark-hover rounded p-4 max-h-[70vh] overflow-y-auto">
+              {JSON.stringify(previewData, null, 2)}
+            </pre>
+          </motion.div>
+        </div>
+      )}
+    </div>
+  );
+};

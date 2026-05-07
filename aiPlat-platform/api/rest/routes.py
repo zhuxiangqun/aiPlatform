@@ -630,7 +630,7 @@ async def _core_request(
         headers["X-AIPLAT-ACTOR-ROLE"] = identity.actor_role
     if extra_headers:
         headers.update(extra_headers)
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    async with httpx.AsyncClient(timeout=300.0) as client:
         try:
             resp = await client.request(method.upper(), f"{_core_base_url()}{path}", headers=headers, params=params, json=json_body)
         except httpx.HTTPError as e:
@@ -1090,7 +1090,7 @@ if _HAS_MULTIPART:
                     pass
             raise HTTPException(status_code=502, detail=detail)
         except Exception as e:
-            raise HTTPException(status_code=500, detail={"message": "kb_upload_failed", "error": str(e)})
+            raise HTTPException(status_code=500, detail={"message": "kb_upload_failed", "error": str(e), "exception_type": type(e).__name__})
 else:
     @app.post("/kb/collections/{collection_id}/documents/upload", response_model=Dict[str, Any])
     @app.post("/platform/kb/collections/{collection_id}/documents/upload", response_model=Dict[str, Any])
@@ -1548,7 +1548,7 @@ async def analysis_batches_create(req: AnalysisBatchCreateRequest, request: Requ
         output_obj=req.output or {},
     )
     if not batch_id:
-        raise HTTPException(status_code=500, detail="analysis_batch_create_failed")
+        raise HTTPException(status_code=500, detail={"message": "analysis_batch_create_failed", "error": "persist returned None"})
     return {"status": "created", "batch_id": batch_id}
 
 
@@ -2262,6 +2262,18 @@ async def api_v1_agents_list(request: Request, limit: int = 100, offset: int = 0
     return data
 
 
+@app.get("/platform/workspace/agents")
+async def platform_workspace_agents_list(request: Request, limit: int = 200, offset: int = 0):
+    """Agent pool for team assembly — delegates to core workspace agents."""
+    identity = _resolve_identity(request)
+    return await _core_request(
+        "GET",
+        "/api/core/workspace/agents",
+        identity=identity,
+        params={"limit": int(limit), "offset": int(offset)},
+    )
+
+
 @app.post("/api/v1/agents")
 async def api_v1_agents_create(request: Request, body: Dict[str, Any]):
     identity = _resolve_identity(request)
@@ -2496,6 +2508,288 @@ async def resume_tenant(tenant_id: str):
     t["status"] = "active"
     platform_store.upsert_tenant(t)
     return {"status": "ok"}
+
+
+# ━━━ Builder Pipeline ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+class BuilderSessionCreateReq(BaseModel):
+    requirement: str = ""
+
+
+class BuilderChatReq(BaseModel):
+    message: str
+
+
+class BuilderConfirmReq(BaseModel):
+    pass
+
+
+@app.post("/platform/builder/sessions", response_model=Dict[str, Any])
+async def create_builder_session(req: BuilderSessionCreateReq, request: Request):
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:write")
+    payload = {
+        "requirement": req.requirement,
+        "tenant_id": identity.tenant_id,
+        "user_id": identity.actor_id,
+    }
+    return await _core_request("POST", "/api/core/builder/sessions", identity=identity, json_body=payload)
+
+
+@app.post("/platform/builder/sessions/{session_id}/chat", response_model=Dict[str, Any])
+async def builder_chat(session_id: str, req: BuilderChatReq, request: Request):
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:read")
+    payload = {"message": req.message}
+    return await _core_request(
+        "POST", f"/api/core/builder/sessions/{session_id}/chat",
+        identity=identity, json_body=payload,
+    )
+
+
+@app.post("/platform/builder/sessions/{session_id}/confirm", response_model=Dict[str, Any])
+async def builder_confirm(session_id: str, request: Request):
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:write")
+    return await _core_request(
+        "POST", f"/api/core/builder/sessions/{session_id}/confirm",
+        identity=identity,
+    )
+
+
+@app.post("/platform/builder/sessions/{session_id}/start", response_model=Dict[str, Any])
+async def builder_start_pipeline(session_id: str, request: Request):
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:write")
+    return await _core_request(
+        "POST", f"/api/core/builder/sessions/{session_id}/start",
+        identity=identity,
+    )
+
+
+@app.get("/platform/builder/sessions/{session_id}", response_model=Dict[str, Any])
+async def builder_get_state(session_id: str, request: Request):
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:read")
+    return await _core_request(
+        "GET", f"/api/core/builder/sessions/{session_id}",
+        identity=identity,
+    )
+
+
+# ━━━ Builder Teams ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+class TeamAssembleReq(BaseModel):
+    model_config = {"extra": "ignore"}
+    name: str = ""
+    description: str = ""
+    stages: Any = []
+    max_tokens_per_run: int = 50000
+
+
+@app.post("/platform/builder/teams", response_model=Dict[str, Any])
+async def create_builder_team(req: TeamAssembleReq, request: Request):
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:write")
+    return await _core_request("POST", "/api/core/builder/teams", identity=identity, json_body=req.model_dump())
+
+
+@app.get("/platform/builder/teams", response_model=Dict[str, Any])
+async def list_builder_teams(request: Request):
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:read")
+    return await _core_request("GET", "/api/core/builder/teams", identity=identity)
+
+
+@app.get("/platform/builder/teams/{team_id}", response_model=Dict[str, Any])
+async def get_builder_team(team_id: str, request: Request):
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:read")
+    return await _core_request("GET", f"/api/core/builder/teams/{team_id}", identity=identity)
+
+
+@app.delete("/platform/builder/teams/{team_id}", response_model=Dict[str, Any])
+async def delete_builder_team(team_id: str, request: Request):
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:write")
+    return await _core_request("DELETE", f"/api/core/builder/teams/{team_id}", identity=identity)
+
+
+@app.put("/platform/builder/teams/{team_id}", response_model=Dict[str, Any])
+async def update_builder_team(team_id: str, request: Request):
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:write")
+    body = await request.json() if await request.body() else {}
+    return await _core_request("PUT", f"/api/core/builder/teams/{team_id}", identity=identity, json_body=body)
+
+
+@app.post("/platform/builder/teams/{team_id}/run", response_model=Dict[str, Any])
+async def run_builder_team(team_id: str, request: Request):
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:write")
+    body = await request.json() if await request.body() else {}
+    return await _core_request("POST", f"/api/core/builder/teams/{team_id}/run", identity=identity, json_body=body)
+
+
+@app.post("/platform/builder/teams/{team_id}/approve", response_model=Dict[str, Any])
+async def approve_builder_team(team_id: str, request: Request):
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:write")
+    return await _core_request("POST", f"/api/core/builder/teams/{team_id}/approve", identity=identity)
+
+
+@app.post("/platform/builder/teams/{team_id}/reject", response_model=Dict[str, Any])
+async def reject_builder_team(team_id: str, request: Request):
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:write")
+    body = await request.json() if await request.body() else {"feedback": ""}
+    return await _core_request("POST", f"/api/core/builder/teams/{team_id}/reject", identity=identity, json_body=body)
+
+
+@app.get("/platform/builder/teams/{team_id}/state", response_model=Dict[str, Any])
+async def get_builder_team_state(team_id: str, request: Request):
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:read")
+    return await _core_request("GET", f"/api/core/builder/teams/{team_id}/state", identity=identity)
+
+
+# ━━━ Builder Projects ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+class ProjectCreateReq(BaseModel):
+    name: str = ""
+    description: str = ""
+    team_id: str = ""
+
+
+@app.post("/platform/builder/projects", response_model=Dict[str, Any])
+async def create_project(req: ProjectCreateReq, request: Request):
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:write")
+    return await _core_request("POST", "/api/core/builder/projects", identity=identity, json_body=req.model_dump())
+
+
+@app.get("/platform/builder/projects", response_model=Dict[str, Any])
+async def list_projects(request: Request):
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:read")
+    return await _core_request("GET", "/api/core/builder/projects", identity=identity)
+
+
+@app.get("/platform/builder/projects/{project_id}", response_model=Dict[str, Any])
+async def get_project(project_id: str, request: Request):
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:read")
+    return await _core_request("GET", f"/api/core/builder/projects/{project_id}", identity=identity)
+
+
+@app.delete("/platform/builder/projects/{project_id}", response_model=Dict[str, Any])
+async def delete_project(project_id: str, request: Request):
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:write")
+    return await _core_request("DELETE", f"/api/core/builder/projects/{project_id}", identity=identity)
+
+
+@app.post("/platform/builder/projects/{project_id}/chat", response_model=Dict[str, Any])
+async def project_chat(project_id: str, request: Request):
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:read")
+    body = await request.json() if await request.body() else {"message": ""}
+    return await _core_request("POST", f"/api/core/builder/projects/{project_id}/chat", identity=identity, json_body=body)
+
+
+@app.post("/platform/builder/projects/{project_id}/confirm", response_model=Dict[str, Any])
+async def project_confirm(project_id: str, request: Request):
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:write")
+    return await _core_request("POST", f"/api/core/builder/projects/{project_id}/confirm", identity=identity)
+
+
+@app.post("/platform/builder/projects/{project_id}/start", response_model=Dict[str, Any])
+async def project_start(project_id: str, request: Request):
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:write")
+    body = await request.json() if await request.body() else {}
+    return await _core_request("POST", f"/api/core/builder/projects/{project_id}/start", identity=identity, json_body=body)
+
+
+@app.post("/platform/builder/projects/{project_id}/approve", response_model=Dict[str, Any])
+async def project_approve(project_id: str, request: Request):
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:write")
+    return await _core_request("POST", f"/api/core/builder/projects/{project_id}/approve", identity=identity)
+
+
+@app.post("/platform/builder/projects/{project_id}/reject", response_model=Dict[str, Any])
+async def project_reject(project_id: str, request: Request):
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:write")
+    body = await request.json() if await request.body() else {"feedback": ""}
+    return await _core_request("POST", f"/api/core/builder/projects/{project_id}/reject", identity=identity, json_body=body)
+
+
+@app.post("/platform/builder/projects/{project_id}/rollback/{stage_id:path}", response_model=Dict[str, Any])
+async def project_rollback(project_id: str, stage_id: str, request: Request):
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:write")
+    return await _core_request("POST", f"/api/core/builder/projects/{project_id}/rollback/{stage_id}", identity=identity)
+
+
+@app.post("/platform/builder/projects/{project_id}/fix", response_model=Dict[str, Any])
+async def start_fix_pipeline(project_id: str, request: Request):
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:write")
+    return await _core_request("POST", f"/api/core/builder/projects/{project_id}/fix", identity=identity)
+
+
+@app.get("/platform/builder/projects/{project_id}/state", response_model=Dict[str, Any])
+async def get_project_state(project_id: str, request: Request):
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:read")
+    return await _core_request("GET", f"/api/core/builder/projects/{project_id}/state", identity=identity)
+
+
+@app.get("/platform/builder/projects/{project_id}/deploy", response_model=None)
+async def download_deploy_package(project_id: str, request: Request):
+    """Proxy for deploy zip download — return raw file."""
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:read")
+    # Use httpx directly to stream the file
+    import httpx
+    url = f"{_core_base_url()}/api/core/builder/projects/{project_id}/deploy"
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.get(url, headers=dict(request.headers))
+        if resp.status_code >= 400:
+            raise HTTPException(status_code=resp.status_code, detail=resp.text)
+        from fastapi.responses import Response
+        return Response(content=resp.content, media_type=resp.headers.get("content-type", "application/zip"),
+                        headers={"Content-Disposition": resp.headers.get("content-disposition", "")})
+
+
+# ━━━ Agent Insights ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+@app.get("/platform/builder/agent-insight/{agent_id}", response_model=Dict[str, Any])
+async def get_agent_insight(agent_id: str, request: Request):
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:read")
+    return await _core_request("GET", f"/api/core/builder/agent-insight/{agent_id}", identity=identity)
+
+
+@app.get("/platform/builder/agent-insights", response_model=Dict[str, Any])
+async def get_all_insights(request: Request):
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:read")
+    return await _core_request("GET", "/api/core/builder/agent-insights", identity=identity)
+
+
+@app.post("/platform/builder/agent-insights/refresh", response_model=Dict[str, Any])
+async def refresh_insights(request: Request):
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:write")
+    return await _core_request("POST", "/api/core/builder/agent-insights/refresh", identity=identity)
 
 
 if __name__ == "__main__":

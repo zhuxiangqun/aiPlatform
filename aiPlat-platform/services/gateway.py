@@ -50,7 +50,7 @@ class GatewayService:
             result = await handler(path, method, headers, body)
             return result
         except Exception as e:
-            return {"error": str(e), "status": 500}
+            return {"error": str(e), "status": 500, "exception_type": type(e).__name__}
 
     def get_stats(self) -> dict[str, Any]:
         """获取统计"""
