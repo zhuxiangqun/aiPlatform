@@ -550,7 +550,16 @@ async def sys_skill_call(
 
     # (span already started above)
     try:
+        # §5.19: refuse retry on non-idempotent write skills
+        cfg = getattr(skill, "_config", None)
+        is_idempotent = bool(getattr(cfg, "idempotent", True))
         retries = int(os.getenv("AIPLAT_SKILL_RETRIES", "0") or "0")
+        if retries > 0 and not is_idempotent:
+            skill_name = getattr(cfg, "name", None) or getattr(skill, "name", "unknown")
+            raise RuntimeError(
+                f"Skill '{skill_name}' has idempotent=false but AIPLAT_SKILL_RETRIES={retries}. "
+                f"Cannot safely retry a non-idempotent skill. Set idempotent=true or AIPLAT_SKILL_RETRIES=0."
+            )
         result = await res_gate.run(_run, retries=retries, timeout_seconds=timeout_seconds)
         end_ts = time.time()
         await trace_gate.end(span, success=bool(getattr(result, "success", True)))
@@ -614,6 +623,13 @@ async def sys_skill_call(
                 )
             except Exception:
                 pass
+        # Curator: record call for frequency tracking + lifecycle management
+        try:
+            from core.apps.skills.curator import get_skill_curator
+            curator = get_skill_curator()
+            curator.record_call(skill_name) if skill_name else None
+        except Exception:
+            pass
         return result
     except Exception:
         end_ts = time.time()

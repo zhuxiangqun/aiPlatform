@@ -25,21 +25,25 @@ class EpisodicMemory:
     def __init__(
         self,
         update_interval: int = 5,
-        max_summary_length: int = 500
+        max_summary_length: int = 500,
+        max_messages: int = 200,
+        ttl_seconds: float = 86400 * 7.0,  # 7 days default TTL
     ):
         self._update_interval = update_interval
         self._max_summary_length = max_summary_length
+        self._max_messages = max_messages
+        self._ttl_seconds = ttl_seconds
         self._summary = ""
         self._message_count = 0
         self._full_messages: List[Dict] = []
-    
+
     async def add_interaction(
         self,
         user_message: str,
         assistant_message: str,
         tool_calls: Optional[List[Dict]] = None
     ):
-        """Add an interaction to the session"""
+        """Add an interaction to the session with auto-eviction."""
         self._full_messages.append({
             "user": user_message,
             "assistant": assistant_message,
@@ -47,6 +51,10 @@ class EpisodicMemory:
             "timestamp": datetime.utcnow().isoformat()
         })
         self._message_count += 1
+
+        # Auto-evict: keep only the most recent max_messages
+        if len(self._full_messages) > self._max_messages:
+            self._full_messages = self._full_messages[-self._max_messages:]
     
     async def should_update(self) -> bool:
         """Check if summary should be updated"""

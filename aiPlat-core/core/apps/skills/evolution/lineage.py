@@ -34,7 +34,8 @@ class VersionLineage:
         parent_version: Optional[str],
         evolution_type: EvolutionType,
         trigger: str,
-        content: str
+        content: str,
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> SkillVersion:
         """Create a new version"""
         # Get next version number
@@ -59,7 +60,8 @@ class VersionLineage:
             evolution_type=evolution_type,
             trigger=trigger,
             content_hash=self._compute_hash(content),
-            created_at=datetime.utcnow()
+            created_at=datetime.utcnow(),
+            metadata=metadata or {},
         )
         
         # Store version

@@ -105,6 +105,9 @@ class BaseLoop(ILoop):
             else:
                 stop_reason = "stopped"
 
+            # Persist stop_reason for observability (MUST be in output event)
+            self._current_state.context["_stop_reason"] = stop_reason
+
             # Post-loop hook
             await self._trigger_hook(HookPhase.POST_LOOP, {"state": self._current_state})
             await self._trigger_hook(HookPhase.STOP, {"state": self._current_state, "reason": stop_reason})
@@ -592,7 +595,11 @@ DONE: final_answer
                 "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
                 "run_id": state.context.get("_run_id") or state.context.get("run_id"),
             }
-            response = await sys_llm_generate(self._model, prompt, trace_context=trace_ctx)
+            response = await sys_llm_generate(self._model, prompt,
+                trace_context=trace_ctx,
+                model_name=self._config.model_name)
+            # Persist this interaction to MemoryManager for cross-turn memory
+            await self._try_save_interaction(state, prompt, getattr(response, "content", str(response)))
             # Track token usage (best-effort) for compaction budgets.
             try:
                 usage = getattr(response, "usage", None)
@@ -605,6 +612,13 @@ DONE: final_answer
                 pass
             return response.content
         except Exception as e:
+            # Track consecutive LLM failures for observability
+            cf = state.context.get("_consecutive_llm_failures", 0) + 1
+            state.context["_consecutive_llm_failures"] = cf
+            state.context["_last_action_reason"] = f"llm_call_failed:#{cf}"
+            max_cf = state.context.get("_max_consecutive_llm_failures", int(os.getenv("AIPLAT_MAX_CONSECUTIVE_LLM_FAILURES", "3") or "3"))
+            if cf >= max_cf:
+                state.context["_stop_reason"] = "llm_failure_exhausted"
             return f"Model error: {e}"
 
     async def _load_run_state_for_prompt(self, state: LoopState) -> None:
@@ -826,6 +840,56 @@ DONE: final_answer
         except Exception:
             pass
 
+    async def _try_save_interaction(self, state: LoopState, user_msg: str, assistant_msg: str) -> None:
+        """Persist interaction to MemoryManager for cross-turn context building."""
+        try:
+            from core.harness.memory.manager import get_memory_manager
+            ns = state.context.get("_agent_namespace", "default")
+            mgr = get_memory_manager(namespace=ns)
+            if mgr:
+                # Classify stability: "high" (decision/recommendation → SQLite),
+                # "medium" (normal conversation), "low" (tool call → Working only)
+                stability = "medium"
+                low = assistant_msg.lower()
+                if any(w in low for w in ("approved", "rejected", "recommend", "decision", "agree")):
+                    stability = "high"
+                elif any(w in low for w in ("tool_output", "executed successfully", "result:", "exit 0", "pass_rate")):
+                    stability = "low"
+                await mgr.save_interaction(
+                    user_message=user_msg[:3000],
+                    assistant_message=assistant_msg[:3000],
+                    stability=stability,
+                )
+        except Exception:
+            pass
+
+    async def _try_inject_memory_reminders(self, state: LoopState) -> None:
+        """Bridge: inject MemoryManager reminders into the message loop.
+
+        When MemoryManager is available (wired at server startup), its
+        SystemReminders are injected as user-role messages for the agent.
+        Fallback: uses local state metrics (retry count, stagnation).
+
+        This is a lightweight integration hook. Full 3-tier memory integration
+        (Working/Episodic/Semantic in loop context assembly) is To-Be per design docs.
+        """
+        try:
+            from core.harness.memory.manager import get_memory_manager
+            ns = state.context.get("_agent_namespace", "default")
+            mgr = get_memory_manager(namespace=ns)
+            if mgr is None:
+                return
+            reminders = await mgr.get_reminders()
+            if not reminders:
+                return
+            for reminder_text in reminders:
+                state.context.setdefault("messages", []).insert(0, {
+                    "role": "user",
+                    "content": str(reminder_text),
+                })
+        except Exception:
+            pass
+
     async def _maybe_compact_messages(self, state: LoopState) -> None:
         """
         When token budget pressure is high, compact older messages into a summary.
@@ -834,9 +898,16 @@ DONE: final_answer
         - Preserve identifiers (UUIDs, hashes, filenames)
         - Keep recent turns verbatim
         - Best-effort; fail-open to no compaction
+
+        NOTE: 5-level ContextCompression (70%→80%→85%→90%→99%) is now the
+        primary compaction path. Legacy single-threshold compaction serves as
+        fallback when the 5-level module is unavailable or raises.
         """
         import os
         import re
+
+        # MemoryManager bridge: inject system reminders if available
+        await self._try_inject_memory_reminders(state)
 
         if os.getenv("AIPLAT_ENABLE_CONTEXT_COMPACTION", "false").lower() not in ("1", "true", "yes", "y"):
             return
@@ -850,9 +921,40 @@ DONE: final_answer
         if max_tokens <= 0:
             return
 
-        threshold = float(os.getenv("AIPLAT_CONTEXT_COMPACTION_THRESHOLD", "0.8") or "0.8")
+        threshold = float(os.getenv("AIPLAT_CONTEXT_COMPACTION_THRESHOLD", "0.90") or "0.90")
         if (used_tokens / max_tokens) < threshold:
             return
+
+        # Try 5-level ContextCompression as primary path
+        try:
+            from core.harness.memory.compression import ContextCompression
+            comp = ContextCompression()
+            ratio = used_tokens / max(1, max_tokens)
+            state_obj = type("State", (), {
+                "usage_ratio": ratio,
+                "token_usage": int(used_tokens),
+                "token_limit": int(max_tokens),
+                "message_count": len(msgs),
+            })()
+            with_priority = []
+            for msg in msgs:
+                p = str(msg.get("priority") or msg.get("metadata", {}).get("priority", "medium"))
+                msg_with_p = dict(msg, priority=p)
+                with_priority.append(msg_with_p)
+            result = await comp.compress(with_priority, state_obj)
+            # Strip injected priority keys after compression
+            clean = [{k: v for k, v in m.items() if k != "priority"} for m in result]
+            state.context["messages"] = clean
+            state.metadata["compaction_stats"] = {
+                "level": "5-level",
+                "before": len(msgs),
+                "after": len(result),
+                "ratio": round(ratio, 2),
+            }
+            return
+        except Exception:
+            # fallback: legacy single-threshold compaction below
+            pass
 
         protect_last_n = int(os.getenv("AIPLAT_CONTEXT_COMPACTION_PROTECT_LAST_N", "6") or "6")
         protect_last_n = max(2, min(protect_last_n, 50))
@@ -881,7 +983,15 @@ DONE: final_answer
             f"需要保留的标识符（如出现过）：{', '.join(ids_list) if ids_list else '(none)'}\n\n"
             "历史对话（将被压缩）：\n"
             + "\n".join([f"{m.get('role','user')}: {m.get('content','')}" for m in head if isinstance(m, dict)])
-            + "\n\n输出格式：直接输出摘要文本（不要加额外标题）。"
+            + "\n\n输出格式（使用以下结构）：\n"
+            + "活跃任务：（当前正在执行的任务，原样保留用户指令）\n"
+            + "已完成操作：（编号列表，每项包含工具名+结果）\n"
+            + "当前状态：（关键变量值、打开的文件、运行中的进程）\n"
+            + "阻碍事项：（未解决的问题、需要人工决策的事项）\n"
+            + "关键决策：（已做出的重要决定及理由）\n"
+            + "待处理：（用户尚未回应的问题或请求）\n"
+            + "关键文件：（涉及的文件路径列表）\n"
+            + "遗留工作：（接下来需要完成的事项）"
         )
 
         trace_ctx = {

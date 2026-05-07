@@ -178,4 +178,25 @@ async def persist_evaluation(
             )
     except Exception:
         pass
+
+    # Regression → auto-rollback bridge: REJECTED + functionality < 5.0 triggers rollback
+    try:
+        if not report.get("pass") and report.get("recommendation") == "REJECTED":
+            score = report.get("score") if isinstance(report.get("score"), dict) else {}
+            if score.get("functionality", 0) < 5.0:
+                import os
+                if os.getenv("AIPLAT_AUTO_ROLLBACK_ON_REGRESSION", "true").lower() not in ("0", "false", "no"):
+                    from core.learning.autorollback import auto_rollback_regression
+                    from core.harness.infrastructure.approval import ApprovalManager
+                    await auto_rollback_regression(
+                        store=execution_store,
+                        approval_manager=ApprovalManager(),
+                        agent_id=target_id or "",
+                        min_samples=3,
+                        error_rate_delta_threshold=0.2,
+                        require_approval=False,
+                    )
+    except Exception:
+        pass
+
     return {"artifact_id": art.artifact_id, "version": version}

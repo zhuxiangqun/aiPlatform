@@ -24,6 +24,20 @@ from .lineage import get_version_lineage, VersionLineage
 logger = logging.getLogger(__name__)
 
 
+# Module-level prediction cache — bridge from EvolutionEngine to _exec_test_runner
+_latest_predictions: Dict[str, Any] = {}
+
+
+def get_latest_predictions(skill_id: str = "") -> Dict[str, Any]:
+    """Read predictions from the most recent evolution for cross-round verification."""
+    if skill_id and skill_id in _latest_predictions:
+        return _latest_predictions[skill_id]
+    # Return the most recent prediction across all skills
+    if _latest_predictions:
+        return list(_latest_predictions.values())[-1]
+    return {}
+
+
 class EvolutionEngine:
     """Skill evolution engine"""
     
@@ -71,19 +85,55 @@ class EvolutionEngine:
         evolution_type = self._determine_evolution_type(trigger_type, context)
         
         try:
-            # Create new version
+            # Create new version with edit prediction contract (AHE-style)
+            # "I predict this version will fix [X], and may cause regressions in [Y]"
+            predicted_fixes = context.get("predicted_fixes") or []
+            predicted_regressions = context.get("predicted_regressions") or []
+            if not predicted_fixes:
+                # Derive from trigger context
+                reason = context.get("reason", "")
+                if trigger_type == TriggerType.FIX:
+                    predicted_fixes = [f"resolve: {reason[:80]}"]
+                elif trigger_type == TriggerType.CAPTURED:
+                    predicted_fixes = [f"capture: {reason[:80]}"]
+                elif trigger_type == TriggerType.DERIVED:
+                    predicted_fixes = [f"improve token efficiency for: {reason[:80]}"]
+
             new_version = await self._lineage.create_version(
                 skill_id=skill_id,
                 parent_version=lineage[-1].version if lineage else None,
                 evolution_type=evolution_type,
                 trigger=f"{trigger_type.value}: {context.get('reason', '')}",
-                content=context.get("content", "")
+                content=context.get("content", ""),
+                metadata={
+                    "predicted_fixes": predicted_fixes,
+                    "predicted_regressions": predicted_regressions,
+                    "evolution_round": self._state.get("evolution_round", 0) + 1,
+                    "trigger_type": trigger_type.value,
+                },
             )
 
             # Update last evolution time
             self._last_evolution_time[skill_id] = datetime.utcnow()
 
             logger.info(f"Evolution completed for skill {skill_id}: {new_version.version}")
+
+            # Auto-enable new version in SkillRegistry so the evolved skill is used immediately
+            try:
+                from core.apps.skills.registry import SkillRegistry
+                registry = SkillRegistry()
+                registry.enable(skill_id, str(new_version.version))
+                registry.set_active_version(skill_id, str(new_version.version))
+                logger.info(f"Auto-enabled {skill_id} v{new_version.version} in SkillRegistry")
+                # Bridge: store predictions for cross-round verification by _exec_test_runner
+                _latest_predictions[skill_id] = {
+                    "predicted_fixes": predicted_fixes,
+                    "predicted_regressions": predicted_regressions,
+                    "version": str(new_version.version),
+                    "evolution_round": (self._state.get("evolution_round", 0) or 0) + 1,
+                }
+            except Exception:
+                pass  # best-effort: new version exists in lineage even if registry update fails
 
             # Phase 6.5 (optional): record learning artifact (best-effort; no behavior change).
             if os.getenv("AIPLAT_RECORD_LEARNING_ARTIFACTS", "false").lower() in ("1", "true", "yes", "y"):

@@ -41,6 +41,7 @@ class LoopConfig:
     timeout: int = 60
     stop_on_error: bool = True
     enable_feedback: bool = True
+    model_name: str = ""
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 

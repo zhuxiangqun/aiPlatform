@@ -37,11 +37,17 @@ class BuildContextResult:
 
 
 class MemoryManager:
-    """Unified memory manager with three-layer architecture"""
-    
-    def __init__(self, config: Optional[MemoryConfig] = None):
+    """Unified memory manager with three-layer architecture.
+
+    Supports namespace-based isolation: each agent can use its own namespace
+    to keep memories separate (e.g., 'architect', 'programmer', 'qa').
+    """
+
+    def __init__(self, config: Optional[MemoryConfig] = None, namespace: str = "default"):
         self._config = config or MemoryConfig()
-        
+        self.namespace = namespace
+        self._persist_callback = None  # injected by service layer for SQLite persistence
+
         # Initialize layers
         self._working = WorkingMemory(
             max_tokens=self._config.working_tokens,
@@ -122,25 +128,60 @@ class MemoryManager:
             token_count=int(total_tokens),
             reminder=reminder
         )
+
+    async def get_reminders(self, token_usage_ratio: float = 0.0, consecutive_reads: int = 0,
+                            tool_failed: bool = False) -> List[str]:
+        """Lightweight reminder check without full context assembly.
+
+        Used by the agent execution loop as a bridge hook.
+        Returns a list of reminder strings (empty if no reminders triggered).
+        """
+        if not self._reminders:
+            return []
+        exec_state = {
+            "token_usage_ratio": token_usage_ratio,
+            "consecutive_reads": consecutive_reads,
+            "tool_failed": tool_failed,
+        }
+        reminder = await self._reminders.check_and_inject(exec_state)
+        return [reminder] if reminder else []
     
     async def save_interaction(
         self,
         user_message: str,
         assistant_message: str,
-        tool_calls: Optional[List[Dict]] = None
+        tool_calls: Optional[List[Dict]] = None,
+        stability: str = "medium",
     ):
-        """Save an interaction to memory"""
-        # Save to working memory
+        """Save an interaction to memory.
+
+        Args:
+            stability: "high" (stable fact/decision → SQLite), "medium" (normal),
+                       "low" (transient tool output → Working only, skip Episodic).
+        """
+        # Save to working memory (all stability levels)
         self._working.add("user", user_message)
         self._working.add("assistant", assistant_message)
-        
-        # Save to episodic memory
-        await self._episodic.add_interaction(user_message, assistant_message, tool_calls)
-        
+
+        # Episodic: skip low-stability (transient tool output, debug traces)
+        if stability != "low":
+            await self._episodic.add_interaction(user_message, assistant_message, tool_calls)
+
         # Update episodic summary if needed
-        if await self._episodic.should_update():
+        if stability != "low" and await self._episodic.should_update():
             summary = await self._episodic.update_summary()
             logger.info(f"Updated episodic summary: {summary.summary[:100]}")
+
+        # Bridge to SQLite: only high-stability (stable facts, decisions)
+        if self._persist_callback and stability == "high":
+            try:
+                await self._persist_callback(
+                    namespace=self.namespace,
+                    user_message=user_message,
+                    assistant_message=assistant_message,
+                )
+            except Exception:
+                pass
     
     async def capture_to_semantic(
         self,
@@ -182,16 +223,25 @@ class MemoryManager:
         }
 
 
-# Global manager instance
-_memory_manager: Optional[MemoryManager] = None
+# Per-namespace memory managers
+_memory_managers: Dict[str, MemoryManager] = {}
+_default_manager: Optional[MemoryManager] = None
 
 
-def get_memory_manager(config: Optional[MemoryConfig] = None) -> MemoryManager:
-    """Get global memory manager"""
-    global _memory_manager
-    if _memory_manager is None:
-        _memory_manager = MemoryManager(config)
-    return _memory_manager
+def get_memory_manager(config: Optional[MemoryConfig] = None, namespace: str = "default") -> MemoryManager:
+    """Get memory manager for a namespace.
+
+    When namespace='default', returns the legacy singleton (backward compat).
+    Other namespaces get their own isolated MemoryManager instance.
+    """
+    global _default_manager, _memory_managers
+    if namespace == "default" or not namespace:
+        if _default_manager is None:
+            _default_manager = MemoryManager(config, namespace="default")
+        return _default_manager
+    if namespace not in _memory_managers:
+        _memory_managers[namespace] = MemoryManager(config, namespace=namespace)
+    return _memory_managers[namespace]
 
 
 __all__ = [

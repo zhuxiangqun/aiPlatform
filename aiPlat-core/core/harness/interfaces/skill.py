@@ -16,6 +16,9 @@ class SkillConfig:
     output_schema: Dict[str, Any] = field(default_factory=dict)
     timeout: int = 60
     metadata: Dict[str, Any] = field(default_factory=dict)
+    effects: List[Dict[str, Any]] = field(default_factory=list)
+    idempotent: bool = True
+    rollback_available: bool = False
 
 
 @dataclass
@@ -35,6 +38,7 @@ class SkillResult:
     output: Any = None
     error: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
+    priority: str = "medium"
 
 
 class ISkill(ABC):
@@ -100,3 +104,15 @@ class ISkill(ABC):
             Dict: Output schema
         """
         pass
+
+
+# ── Skill loader protocol (dependency inversion for harness→apps) ──
+
+from typing import Callable, Optional as OptionalType
+
+SkillLoader = Callable[[str], OptionalType[ISkill]]
+"""Protocol: skill loader takes a skill name and returns an ISkill instance.
+
+Allows the harness to use skills without importing from core.apps.skills.
+The actual loader is injected at engine construction time.
+"""

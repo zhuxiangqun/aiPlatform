@@ -37,7 +37,7 @@ class LLMConfig:
     model: str
     temperature: float = 0.7
     max_tokens: int = 4096
-    timeout: int = 30
+    timeout: int = 300
     max_retries: int = 3
     api_key: Optional[str] = None
     base_url: Optional[str] = None
@@ -212,25 +212,30 @@ def create_adapter(
         ILLMAdapter: Adapter instance
     """
     import importlib
-    if provider == "openai":
+    adapter: ILLMAdapter
+    if provider in ("openai", "deepseek"):
         OpenAIAdapter = importlib.import_module(f"{__package__}.openai_adapter").OpenAIAdapter
-        return OpenAIAdapter(api_key=api_key, model=model, base_url=base_url, **kwargs)
-    
+        adapter = OpenAIAdapter(api_key=api_key, model=model, base_url=base_url, **kwargs)
+
     elif provider == "anthropic":
         AnthropicAdapter = importlib.import_module(f"{__package__}.anthropic_adapter").AnthropicAdapter
-        return AnthropicAdapter(api_key=api_key, model=model, **kwargs)
-    
+        adapter = AnthropicAdapter(api_key=api_key, model=model, **kwargs)
+
     elif provider == "local":
         LocalAdapter = importlib.import_module(f"{__package__}.local_adapter").LocalAdapter
-        return LocalAdapter(base_url=base_url or "http://localhost:8000", model=model, **kwargs)
+        adapter = LocalAdapter(model=model, base_url=base_url, **kwargs)
 
     elif provider == "mock":
         MockAdapter = importlib.import_module(f"{__package__}.mock_adapter").MockAdapter
-        return MockAdapter(model=model, **kwargs)
+        adapter = MockAdapter(model=model, **kwargs)
 
     elif provider == "scripted":
         ScriptedAdapter = importlib.import_module(f"{__package__}.scripted_adapter").ScriptedAdapter
-        return ScriptedAdapter(model=model, **kwargs)
-    
+        adapter = ScriptedAdapter(model=model, **kwargs)
+
     else:
         raise ValueError(f"Unknown provider: {provider}")
+
+    # Attach model_name for auto-discovery by ModelRouter via sys_llm_generate
+    adapter.model_name = model
+    return adapter

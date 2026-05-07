@@ -5,9 +5,10 @@ Provides enhanced SkillRegistry with version management, enable/disable,
 and binding statistics.
 """
 
+import math
 import threading
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 from datetime import datetime
 
 from .base import BaseSkill, SkillMetadata, TextGenerationSkill, CodeGenerationSkill, DataAnalysisSkill, create_skill
@@ -48,6 +49,11 @@ class SkillRegistry:
         self._binding_stats: Dict[str, SkillBindingStats] = {}
         self._stats_override: Dict[str, Dict[str, Any]] = {}
         self._lock = threading.RLock()
+        # Adaptive skill routing (SkillRouter: arXiv:2603.22455)
+        self.SKILL_EMBED_THRESHOLD = 500
+        self._body_vectors: Dict[str, List[float]] = {}
+        self._body_idf: Dict[str, float] = {}
+        self._body_vocab: List[str] = []
 
     def seed_data(self, data: Dict[str, Dict[str, Any]] = None) -> None:
         """Seed the registry with built-in skill instances.
@@ -142,6 +148,19 @@ class SkillRegistry:
                 meta["auto_trigger_allowed"] = bool(contract.get("auto_trigger_allowed"))
                 meta["requires_approval"] = bool(contract.get("requires_approval"))
                 meta["contract_digest"] = digest
+                # Verify integrity: if this skill was previously registered, check digest hasn't changed
+                existing = self._skills.get(name)
+                if existing:
+                    existing_cfg = getattr(existing, "get_config", lambda: None)()
+                    existing_meta = getattr(existing_cfg, "metadata", {}) or {} if existing_cfg else {}
+                    stored_digest = existing_meta.get("contract_digest")
+                    if stored_digest and stored_digest != digest:
+                        import logging
+                        logging.getLogger("aiplat.skills").warning(
+                            "Skill integrity warning: contract digest changed for '%s' (version=%s). "
+                            "Stored: %s..., Computed: %s...",
+                            name, version, stored_digest[:16], digest[:16]
+                        )
                 setattr(cfg, "metadata", meta)
             except Exception:
                 pass
@@ -155,6 +174,8 @@ class SkillRegistry:
             self._add_version(name, version, cfg)
             self._enabled[name] = True
             self._binding_stats[name] = SkillBindingStats(skill_id=name)
+            # Invalidate body vectors cache — new skill may push count past threshold
+            self._invalidate_body_vectors()
 
     def get(self, name: str) -> Optional[BaseSkill]:
         """Get skill by name"""
@@ -485,6 +506,113 @@ class _GenericSkill(BaseSkill):
             return SkillResult(success=True, output={"text": response.content}, metadata={"model": response.model, "skill": self._config.name})
         except Exception as e:
             return SkillResult(success=False, error=str(e))
+
+    # ── Adaptive Skill Routing (SkillRouter-style, §5.4) ─────────────────
+
+    def _ensure_body_vectors(self):
+        """Lazy-build TF-IDF body vectors when skill count exceeds threshold.
+
+        Only activated when len(self._skills) >= SKILL_EMBED_THRESHOLD.
+        After first build, subsequent calls are no-ops until invalidated.
+        """
+        if len(self._skills) < self.SKILL_EMBED_THRESHOLD:
+            return
+        if self._body_vectors:
+            return  # already computed
+
+        # Build vocabulary: tokenize all skill bodies
+        body_texts: Dict[str, str] = {}
+        df: Dict[str, Set[str]] = {}  # term → set of skill names containing it
+        for name, skill in self._skills.items():
+            text = f"{skill.get_config().name} {skill.get_config().description}"
+            body = getattr(skill.get_config(), "body", None) or ""
+            if body:
+                text += " " + str(body)[:5000]  # cap body for TF-IDF
+            tokens = _tokenize(text)
+            body_texts[name] = " ".join(tokens)
+            for t in set(tokens):
+                df.setdefault(t, set()).add(name)
+
+        self._body_vocab = sorted(df.keys())
+        n = len(self._skills)
+
+        # Compute IDF
+        self._body_idf = {
+            term: math.log((n + 1) / (len(docs) + 1)) + 1.0
+            for term, docs in df.items()
+        }
+
+        # Compute TF-IDF vectors for each skill
+        for name, text in body_texts.items():
+            tokens = _tokenize(text)
+            tf = _compute_tf(tokens)
+            vec = [tf.get(term, 0.0) * self._body_idf.get(term, 1.0) for term in self._body_vocab]
+            norm = math.sqrt(sum(v * v for v in vec))
+            if norm > 0:
+                vec = [v / norm for v in vec]
+            self._body_vectors[name] = vec
+
+    def _invalidate_body_vectors(self):
+        """Clear cached body vectors (called on register)."""
+        self._body_vectors.clear()
+        self._body_idf.clear()
+        self._body_vocab.clear()
+
+    def get_candidates(self, query: str, limit: int = 10) -> List[str]:
+        """Get top-K skill candidates for a query, adaptive to skill pool size.
+
+        ≤ SKILL_EMBED_THRESHOLD skills → metadata-based (name + description)
+        > SKILL_EMBED_THRESHOLD  skills → body TF-IDF cosine similarity
+
+        The body-based path is zero-dependency TF-IDF (pure Python math) and
+        activates automatically when the pool crosses the threshold.
+        """
+        self._ensure_body_vectors()
+
+        if self._body_vectors:
+            return self._retrieve_by_body(query, limit)
+
+        # Small pool: metadata-based (name + description substring scan)
+        candidates = []
+        q = query.lower()
+        for name, skill in self._skills.items():
+            cfg = skill.get_config()
+            text = f"{cfg.name} {cfg.description}".lower()
+            score = 1.0 if q in text else 0.0
+            candidates.append((name, score))
+        candidates.sort(key=lambda x: -x[1])
+        return [c[0] for c in candidates[:limit]]
+
+    def _retrieve_by_body(self, query: str, limit: int) -> List[str]:
+        """TF-IDF cosine similarity retrieval using precomputed body vectors."""
+        tokens = _tokenize(query)
+        tf = _compute_tf(tokens)
+        qv = [tf.get(t, 0.0) * self._body_idf.get(t, 1.0) for t in self._body_vocab]
+        qn = math.sqrt(sum(v * v for v in qv))
+        if qn > 0:
+            qv = [v / qn for v in qv]
+
+        scores = []
+        for name, sv in self._body_vectors.items():
+            dot = sum(a * b for a, b in zip(qv, sv))
+            scores.append((name, dot))
+        scores.sort(key=lambda x: -x[1])
+        return [s[0] for s in scores[:limit]]
+
+
+def _tokenize(text: str) -> List[str]:
+    """Tokenize text into lowercase alphanumeric tokens."""
+    import re
+    return re.findall(r'[a-zA-Z0-9_\u4e00-\u9fff]{2,}', str(text).lower())
+
+
+def _compute_tf(tokens: List[str]) -> Dict[str, float]:
+    """Compute normalized term frequency."""
+    tf: Dict[str, float] = {}
+    for t in tokens:
+        tf[t] = tf.get(t, 0.0) + 1.0
+    total = max(len(tokens), 1)
+    return {t: c / total for t, c in tf.items()}
 
 
 # Global registry

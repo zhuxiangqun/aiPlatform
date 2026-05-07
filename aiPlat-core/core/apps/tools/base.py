@@ -849,9 +849,11 @@ class ToolRegistry:
                     tool.set_tracer(tracer)
 
     def register(self, tool: BaseTool) -> None:
-        """Register a tool"""
+        """Register a tool. Raises ValueError if a tool with the same name already exists."""
         with self._lock:
             name = tool.get_name()
+            if name in self._tools:
+                raise ValueError(f"Tool name collision: '{name}' is already registered. Tool names MUST be globally unique.")
             if self._permission_manager is not None and hasattr(tool, "set_permission_manager"):
                 tool.set_permission_manager(self._permission_manager)
             if self._tracer is not None and hasattr(tool, "set_tracer"):

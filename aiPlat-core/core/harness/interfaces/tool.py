@@ -36,6 +36,7 @@ class ToolResult:
     error: Optional[str] = None
     latency: float = 0.0
     metadata: Dict[str, Any] = field(default_factory=dict)
+    priority: str = "medium"  # §5.21: context budget priority
 
 
 class ITool(ABC):

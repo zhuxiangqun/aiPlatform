@@ -9,12 +9,16 @@ from enum import Enum
 
 
 class AgentStatus(Enum):
-    """Agent status enumeration"""
-    IDLE = "idle"
+    """Agent lifecycle states (spec: CREATED→INITIALIZING→READY→RUNNING→PAUSED→STOPPED→TERMINATED/ERROR)"""
+    CREATED = "created"         # Initial state (alias: IDLE)
+    IDLE = "idle"               # Backward compat alias for CREATED
     INITIALIZING = "initializing"
+    READY = "ready"             # Initialized but not yet running
     RUNNING = "running"
     PAUSED = "paused"
-    COMPLETED = "completed"
+    STOPPED = "stopped"         # Explicitly stopped before completion
+    COMPLETED = "completed"     # Backward compat alias for TERMINATED
+    TERMINATED = "terminated"   # Final terminal state
     ERROR = "error"
 
 

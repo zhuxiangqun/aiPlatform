@@ -282,6 +282,9 @@ async def resume_and_execute_compiled_graph(run_id: str, request: dict, rt: Runt
         async def generate(self, prompt):
             return type("R", (), {"content": "DONE"})
 
+    # Known exception to §5.7: compiled_graphs is a compilation artifact (not engine orchestration).
+    # The router needs direct access to create_compiled_react_graph for trace/replay only.
+    # This does not bypass pipeline orchestration (which stays in builder_project_service).
     from core.harness.execution.langgraph.compiled_graphs import create_compiled_react_graph
     from core.harness.execution.langgraph.core import GraphConfig
 

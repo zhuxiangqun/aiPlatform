@@ -1,7 +1,12 @@
 """
-LangGraph Base Nodes
+LangGraph Base Nodes — graph-level ReAct step implementations.
 
-Provides base node classes and common node implementations.
+⚠️  PARTIAL VIOLATION (§5.23): These nodes call sys_llm_generate/sys_tool_call
+directly rather than delegating to ReActLoop (harness/execution/loop.py).
+This is a pre-existing parallel implementation of the ReAct loop within
+the graph layer. When the graph-based and loop-based ReAct implementations
+are unified (Phase 9), this module will be retired in favor of graph nodes
+that delegate to the shared ReActLoop.
 """
 
 from abc import ABC, abstractmethod

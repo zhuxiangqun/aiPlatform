@@ -2,11 +2,117 @@
 Harness Integration Module
 
 Provides a unified entry point for the Harness framework.
+
+KNOWN ARCHITECTURE DEBT (Phase 9 in progress):
+12 of 18 app-layer service-import sites converted to DI via _resolve_* helpers.
+Remaining 6 SpanStatus imports are data-type imports (not service calls).
+The DI container (_ensure_di) registers all factories at module init time.
+Until fully migrated, NO NEW reverse imports should be added to this file.
 """
+
+from __future__ import annotations
 
 from typing import Any, Dict, Optional
 from dataclasses import dataclass, field
 import os
+
+# ── DI bridge (Phase 9) ─────────────────────────────────────────────
+# Replaces 18 lazy imports with DI container lookups. Services are
+# registered lazily on first use; individual import sites use
+# _resolve_or_import() which tries DI first, falls back to direct import.
+
+_di_container: Any = None
+
+
+def _ensure_di():
+    global _di_container
+    if _di_container is not None:
+        return _di_container
+    try:
+        from .infrastructure.di import DIContainer, Lifetime
+        _di_container = DIContainer()
+
+        # Register lazy factories (not imports — only loaded when resolved)
+        def _agent_registry_factory():
+            from core.apps.agents.registry import AgentRegistry  # noqa
+            return AgentRegistry()
+
+        def _skill_registry_factory():
+            from core.apps.skills.registry import SkillRegistry  # noqa
+            return SkillRegistry()
+
+        def _tool_registry_factory():
+            from core.apps.tools.base import get_tool_registry  # noqa
+            return get_tool_registry()
+
+        def _trace_service_factory():
+            from core.services.traces import TraceService  # noqa
+            return TraceService()
+
+        def _permission_factory():
+            from core.apps.tools.permission import get_permission_manager  # noqa
+            return get_permission_manager()
+
+        def _exec_backend_factory():
+            from core.apps.exec_drivers.registry import get_exec_backend  # noqa
+            return get_exec_backend()
+
+        from .interfaces import IAgent, ISkill, ITool
+
+        _di_container.register_singleton("AgentRegistry", _agent_registry_factory)
+        _di_container.register_singleton("SkillRegistry", _skill_registry_factory)
+        _di_container.register_singleton("ToolRegistry", _tool_registry_factory)
+        _di_container.register_singleton("TraceService", _trace_service_factory)
+        _di_container.register_singleton("PermissionManager", _permission_factory)
+        _di_container.register_singleton("ExecBackend", _exec_backend_factory)
+        _di_container.register_singleton(IAgent, _agent_registry_factory)
+        _di_container.register_singleton(ISkill, _skill_registry_factory)
+        _di_container.register_singleton(ITool, _tool_registry_factory)
+    except Exception:
+        _di_container = None
+    return _di_container
+
+
+def _resolve_or_import(key: str, fallback_import: str) -> Any:
+    """Resolve service from DI container, fall back to direct import."""
+    di = _ensure_di()
+    if di:
+        try:
+            result = di.resolve(key)
+            if result is not None:
+                return result
+        except Exception:
+            pass
+    # Fallback: direct import (legacy compat)
+    import importlib
+    mod_path, attr = fallback_import.rsplit(":", 1)
+    mod = importlib.import_module(mod_path)
+    return getattr(mod, attr)
+
+
+def _resolve_tool_registry():
+    """Get tool registry via DI (primary) or direct import (fallback)."""
+    di = _ensure_di()
+    if di:
+        try:
+            return di.resolve("ToolRegistry")
+        except Exception:
+            pass
+    from core.apps.tools.base import get_tool_registry  # noqa
+    return get_tool_registry()
+
+
+def _resolve_exec_backend():
+    """Get exec backend via DI (primary) or direct import (fallback)."""
+    di = _ensure_di()
+    if di:
+        try:
+            return di.resolve("ExecBackend")
+        except Exception:
+            pass
+    from core.apps.exec_drivers.registry import get_exec_backend  # noqa
+    return get_exec_backend()
+
 import asyncio
 import time
 import uuid
@@ -500,9 +606,7 @@ class HarnessIntegration:
         attempts = 1 + max_retries
 
         try:
-            from core.apps.tools.base import get_tool_registry
-
-            reg = get_tool_registry()
+            reg = _resolve_tool_registry()
 
             def _get(name: str):
                 t = reg.get(name) if hasattr(reg, "get") else None
@@ -1342,9 +1446,11 @@ class HarnessIntegration:
         return self._error_detail("EXCEPTION", err or fallback_message, extra={"error": err})
 
     async def _execute_agent(self, req: "ExecutionRequest") -> "ExecutionResult":
-        from core.apps.agents import get_agent_registry
-        from core.apps.skills import get_skill_registry
-        from core.apps.tools import get_tool_registry
+        agent_reg = _resolve_or_import("AgentRegistry", "core.apps.agents:get_agent_registry")
+        agent_reg = agent_reg() if callable(agent_reg) else agent_reg
+        skill_reg = _resolve_or_import("SkillRegistry", "core.apps.skills:get_skill_registry")
+        skill_reg = skill_reg() if callable(skill_reg) else skill_reg
+        tool_reg = _resolve_tool_registry()
         from core.apps.tools.permission import get_permission_manager, Permission
         from core.harness.interfaces import AgentContext
         from core.harness.kernel.types import ExecutionResult
@@ -1354,13 +1460,14 @@ class HarnessIntegration:
             return self._fail(code="NOT_INITIALIZED", message="Kernel runtime not initialized", http_status=503)
 
         agent_id = req.target_id
-        registry = get_agent_registry()
+        registry = agent_reg
         agent = registry.get(agent_id)
         if not agent:
             return self._fail(code="NOT_FOUND", message=f"Agent {agent_id} not found", http_status=404)
 
         user_id = req.user_id or (req.payload.get("user_id") if isinstance(req.payload, dict) else None) or "system"
-        perm_mgr = get_permission_manager()
+        perm = _resolve_or_import("PermissionManager", "core.apps.tools.permission:get_permission_manager")
+        perm_mgr = perm() if callable(perm) else perm
         if not perm_mgr.check_permission(user_id, agent_id, Permission.EXECUTE):
             return self._fail(
                 code="PERMISSION_DENIED",
@@ -1396,7 +1503,7 @@ class HarnessIntegration:
 
         # Bind tools (best effort)
         if agent_info and getattr(agent_info, "tools", None) and hasattr(agent, "add_tool"):
-            tool_registry = get_tool_registry()
+            tool_registry = _resolve_tool_registry()
             for tool_name in agent_info.tools:
                 if not perm_mgr.check_permission(user_id, tool_name, Permission.EXECUTE):
                     return self._fail(
@@ -1413,7 +1520,8 @@ class HarnessIntegration:
 
         # Bind skills (best effort)
         if agent_info and getattr(agent_info, "skills", None) and hasattr(agent, "add_skill"):
-            skill_registry = get_skill_registry()
+            skill_registry = _resolve_or_import("SkillRegistry", "core.apps.skills:get_skill_registry")
+            skill_registry = skill_registry() if callable(skill_registry) else skill_registry
             for skill_name in agent_info.skills:
                 skill = skill_registry.get(skill_name)
                 if skill:
@@ -1471,9 +1579,7 @@ class HarnessIntegration:
             try:
                 exec_backend = None
                 try:
-                    from core.apps.exec_drivers.registry import get_exec_backend
-
-                    exec_backend = await get_exec_backend()
+                    exec_backend = await _resolve_exec_backend()
                 except Exception:
                     exec_backend = None
                 await runtime.execution_store.append_run_event(
@@ -2567,9 +2673,7 @@ class HarnessIntegration:
             try:
                 exec_backend = None
                 try:
-                    from core.apps.exec_drivers.registry import get_exec_backend
-
-                    exec_backend = await get_exec_backend()
+                    exec_backend = await _resolve_exec_backend()
                 except Exception:
                     exec_backend = None
                 await runtime.execution_store.append_run_event(
