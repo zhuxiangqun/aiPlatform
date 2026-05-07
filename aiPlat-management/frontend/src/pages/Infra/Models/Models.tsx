@@ -27,6 +27,7 @@ const Models: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [searchText, setSearchText] = useState('');
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [editingModel, setEditingModel] = useState<Model | null>(null);
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; model: Model | null }>({ open: false, model: null });
 
   const fetchModels = async () => {
@@ -75,6 +76,11 @@ const Models: React.FC = () => {
     } catch (error) {
       toast.error('删除失败');
     }
+  };
+
+  const handleEdit = (model: Model) => {
+    setEditingModel(model);
+    setAddModalOpen(true);
   };
 
   const handleTestConnectivity = async (model: Model) => {
@@ -175,11 +181,12 @@ const Models: React.FC = () => {
           >
             <Network size={16} />
           </button>
-          {record.source === 'external' && (
+          {(
             <>
               <button
                 className="p-1.5 rounded-lg text-gray-500 hover:bg-dark-hover transition-colors"
-                title="配置"
+                title="编辑"
+                onClick={() => handleEdit(record)}
               >
                 <Settings size={16} />
               </button>
@@ -219,9 +226,10 @@ const Models: React.FC = () => {
 
       <AddModelModal
         open={addModalOpen}
-        onClose={() => setAddModalOpen(false)}
-        onSuccess={fetchModels}
+        onClose={() => { setAddModalOpen(false); setEditingModel(null); }}
+        onSuccess={() => { fetchModels(); setEditingModel(null); }}
         providers={providers}
+        editingModel={editingModel}
       />
 
       <motion.div

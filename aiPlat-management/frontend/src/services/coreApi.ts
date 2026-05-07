@@ -11,6 +11,9 @@ export interface Agent {
   name: string;
   agent_type: string;
   status: string;
+  description?: string;
+  category?: string;
+  tags?: string[];
   skills?: string[];
   tools?: string[];
   metadata: Record<string, unknown>;

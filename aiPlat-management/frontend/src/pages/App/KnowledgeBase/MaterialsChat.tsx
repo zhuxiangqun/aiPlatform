@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Card, CardContent, CardHeader, Textarea, toast } from '../../../components/ui';
 import { kbApi, KBConversation } from '../../../services/kbApi';
-import { runApi } from '../../../services/coreApi';
+import { runApi } from '../../../services';
 
 const _fmtMs = (ms: any) => {
   const n = Number(ms);

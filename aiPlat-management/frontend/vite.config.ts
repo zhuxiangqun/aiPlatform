@@ -29,11 +29,13 @@ export default defineConfig({
       '/api/core': {
         target: 'http://localhost:8002',
         changeOrigin: true,
+        timeout: 600000,
       },
       '/api/platform': {
         target: 'http://localhost:8003',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
+        timeout: 600000,
       },
       '/api/app': {
         target: 'http://localhost:8004',

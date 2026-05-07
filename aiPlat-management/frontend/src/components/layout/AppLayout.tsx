@@ -25,6 +25,8 @@ import {
   User,
   Bell,
   ChevronDown,
+  FolderOpen,
+  BarChart3,
   Wrench,
   Activity,
   Plug,
@@ -78,6 +80,7 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
     { key: '/core/learning/releases', icon: Layers, label: 'Release候选' },
     { key: '/core/learning/rollouts', icon: Settings, label: 'Rollouts/Metrics' },
     { key: '/core/approvals', icon: ShieldCheck, label: '审批中心' },
+    { key: '/core/agent-insight', icon: BarChart3, label: 'Agent能力' },
   ]},
   { divider: true },
   { group: 'workspace', label: '应用库', items: [
@@ -86,6 +89,7 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
     { key: '/workspace/skills-lint', icon: ShieldCheck, label: 'Skill巡检' },
     { key: '/workspace/skill-marketplace', icon: ShoppingBag, label: 'Skill市场/安装器' },
     { key: '/workspace/mcp', icon: Package, label: 'MCP库' },
+    { key: '/workspace/teams', icon: Users, label: '团队组装' },
   ]},
   { divider: true },
   { group: 'platform', label: '平台服务层', items: [
@@ -98,6 +102,8 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
     { key: '/app/channels', icon: MessageSquare, label: '渠道管理' },
     { key: '/app/sessions', icon: MessageSquare, label: '会话管理' },
     { key: '/app/kb', icon: Database, label: '知识库' },
+    { key: '/app/builder', icon: Wrench, label: '需求驱动开发' },
+    { key: '/app/projects', icon: FolderOpen, label: '项目工作台' },
   ]},
 ];
 

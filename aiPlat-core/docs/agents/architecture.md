@@ -11,7 +11,7 @@
 > - ✅ RAGAgent import 修复 + _model 属性修复
 >
 > **仍需注意（As-Is）**：
-> - ConversationalAgent 保留 execute() override（对话模式不需要 Loop，直接调 model）
+> - ConversationalAgent 保留 execute() override（对话模式不需要 Loop，通过 `sys_llm_generate()` 调用模型）
 > - Skill 版本回滚语义与 fork 执行模式已落地在执行层，但“技能目录化/manifest 化”仍属于 To-Be（详见 skills 文档）
 
 > Agent 的核心架构设计，包括类型体系、生命周期、配置管理与执行模型

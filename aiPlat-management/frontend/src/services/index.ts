@@ -94,6 +94,10 @@ export type {
 
 // 平台服务层 & 应用接入层 API
 export { gatewayApi, authApi, tenantApi, channelApi, appSessionApi } from './platformAppApi';
+export { builderApi } from './builderApi';
+export { builderTeamApi } from './builderTeamApi';
+export { projectApi } from './builderTeamApi';
+export { insightApi } from './builderTeamApi';
 
-// Types - Platform & App
-export type { GatewayRoute, GatewayRouteListResponse, AuthUser, AuthUserListResponse, TenantInfo, TenantListResponse, Channel, ChannelListResponse, AppSession, AppSessionListResponse } from './platformAppApi';
+export type { ProjectItem, ProjectRun } from './builderTeamApi';
+export type { AgentInsight } from './builderTeamApi';

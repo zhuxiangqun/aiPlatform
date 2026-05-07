@@ -46,7 +46,7 @@ export interface Provider {
   id: string;
   name: string;
   type: 'local' | 'external';
-  requiresApiKey: boolean;
+  requires_api_key: boolean;
   capabilities: string[];
 }
 
@@ -121,6 +121,13 @@ export const modelApi = {
 
   getProviders: async (): Promise<{ providers: Provider[] }> => {
     return apiClient.get<{ providers: Provider[] }>('/infra/models/providers');
+  },
+
+  getProviderModels: async (): Promise<{ providers: Record<string, Array<{
+    name: string; display: string; type: string;
+    temperature: number; max_tokens: number; top_p: number;
+  }>> }> => {
+    return apiClient.get('/infra/models/provider-models');
   },
 };
 

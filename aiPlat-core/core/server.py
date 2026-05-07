@@ -1065,6 +1065,10 @@ from core.api.routers.channel_adapters import router as channel_adapters_router 
 from core.api.routers.catalog import router as catalog_router  # noqa: E402
 from core.api.routers.gate_policies import router as gate_policies_router  # noqa: E402
 from core.api.routers.code_intel import router as code_intel_router  # noqa: E402
+from core.api.routers.builder_pipeline import router as builder_pipeline_router  # noqa: E402
+from core.api.routers.builder_teams import router as builder_teams_router  # noqa: E402
+from core.api.routers.builder_projects import router as builder_projects_router  # noqa: E402
+from core.api.routers.chat import router as chat_router  # noqa: E402
 from core.api.routers.health import router as health_router  # noqa: E402
 from core.api.routers.ops_exports import router as ops_exports_router  # noqa: E402
 from core.api.routers.root import router as root_router  # noqa: E402
@@ -1114,6 +1118,10 @@ api_router.include_router(channel_adapters_router)
 api_router.include_router(catalog_router)
 api_router.include_router(gate_policies_router)
 api_router.include_router(code_intel_router)
+api_router.include_router(builder_pipeline_router)
+api_router.include_router(builder_teams_router)
+api_router.include_router(builder_projects_router)
+api_router.include_router(chat_router)
 api_router.include_router(health_router)
 api_router.include_router(ops_exports_router)
 api_router.include_router(root_router)

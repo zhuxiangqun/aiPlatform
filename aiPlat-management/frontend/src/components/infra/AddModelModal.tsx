@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 
-import { modelApi, type Provider } from '../../services';
+import { modelApi, type Provider, type Model } from '../../services';
 import { Alert, Button, Input, Modal, Select, Textarea, toast } from '../ui';
 
 interface AddModelModalProps {
@@ -8,9 +8,10 @@ interface AddModelModalProps {
   onClose: () => void;
   onSuccess: () => void;
   providers: Provider[];
+  editingModel?: Model | null;
 }
 
-const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess, providers }) => {
+const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess, providers, editingModel }) => {
   const [loading, setLoading] = useState(false);
   const [testLoading, setTestLoading] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
@@ -29,15 +30,60 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
   const [topP, setTopP] = useState('1.0');
 
   const providerOptions = useMemo(
-    () => providers.map((p) => ({ value: p.id, label: `${p.name}${p.requiresApiKey ? ' (需要 API Key)' : ''}` })),
+    () => providers.map((p) => ({ value: p.id, label: `${p.name}${p.requires_api_key ? ' (需要 API Key)' : ''}` })),
     [providers]
   );
   const selectedProviderInfo = useMemo(() => providers.find((p) => p.id === provider), [providers, provider]);
 
+  // Provider-level base config
+  const PROVIDER_BASE: Record<string, { baseUrl: string; apiKeyEnv: string }> = {
+    deepseek: { baseUrl: 'https://api.deepseek.com/v1', apiKeyEnv: 'AIPLAT_LLM_API_KEY' },
+    openai: { baseUrl: 'https://api.openai.com/v1', apiKeyEnv: 'OPENAI_API_KEY' },
+    anthropic: { baseUrl: 'https://api.anthropic.com/v1', apiKeyEnv: 'ANTHROPIC_API_KEY' },
+    local: { baseUrl: 'http://localhost:11434/v1', apiKeyEnv: '' },
+  };
+
+  // Dynamic model catalog from backend
+  const [providerModels, setProviderModels] = useState<Record<string, Array<{
+    name: string; display: string; type: string; temperature: number; max_tokens: number; top_p: number;
+  }>>>({});
+  const modelsForProvider = providerModels[provider] || [];
+  const modelOptions = modelsForProvider.map((m) => ({ value: m.name, label: m.display }));
+  const [selectedModel, setSelectedModel] = useState('');
+
+  const _initialized = useMemo(() => Object.keys(providerModels).length > 0, [providerModels]);
+
+  // Load dynamic model catalog from backend
   useEffect(() => {
-    if (!open) return;
+    modelApi.getProviderModels().then((data) => {
+      if (data.providers) setProviderModels(data.providers);
+    }).catch(() => {});
+  }, []);
+
+  // Initialize form on open (editing → pre-fill, new → reset)
+  useEffect(() => {
+    if (!open || !_initialized) return;
+    if (editingModel) {
+      const catalogModels = providerModels[editingModel.provider || ''] || [];
+      const catalog = catalogModels.find((m) => m.name === editingModel.name);
+      setProvider(editingModel.provider || '');
+      setSelectedModel(catalog ? catalog.name : (editingModel.name || ''));
+      setName(catalog ? catalog.name : (editingModel.name || ''));
+      setDisplayName(catalog ? catalog.display : (editingModel.displayName || ''));
+      setType(catalog ? catalog.type : (editingModel.type || 'chat'));
+      setDescription(editingModel.description || '');
+      setTags((editingModel.tags || []).join(', '));
+      setBaseUrl(editingModel.config?.baseUrl || PROVIDER_BASE[editingModel.provider || '']?.baseUrl || '');
+      setApiKeyEnv(editingModel.config?.apiKeyEnv || PROVIDER_BASE[editingModel.provider || '']?.apiKeyEnv || '');
+      setTemperature(String(catalog?.temperature ?? editingModel.config?.temperature ?? 0.7));
+      setMaxTokens(String(catalog?.max_tokens ?? editingModel.config?.maxTokens ?? 2048));
+      setTopP(String(catalog?.top_p ?? editingModel.config?.topP ?? 1.0));
+      setTestResult(null);
+      return;
+    }
     setTestResult(null);
     setProvider('');
+    setSelectedModel('');
     setName('');
     setDisplayName('');
     setType('chat');
@@ -48,7 +94,31 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
     setTemperature('0.7');
     setMaxTokens('2048');
     setTopP('1.0');
-  }, [open]);
+  }, [open, _initialized, editingModel]);
+
+  useEffect(() => {
+    if (!provider) return;
+    const base = PROVIDER_BASE[provider];
+    if (base) {
+      setBaseUrl(base.baseUrl);
+      setApiKeyEnv(base.apiKeyEnv);
+    }
+    const models = modelsForProvider;
+    if (models.length > 0 && !selectedModel) {
+      setSelectedModel(models[0].name);
+    }
+  }, [provider, modelsForProvider]);
+
+  useEffect(() => {
+    const model = modelsForProvider.find((m) => m.name === selectedModel);
+    if (!model) return;
+    setName(model.name);
+    setDisplayName(model.display);
+    setType(model.type || 'chat');
+    setTemperature(String(model.temperature ?? 0.7));
+    setMaxTokens(String(model.max_tokens ?? 2048));
+    setTopP(String(model.top_p ?? 1.0));
+  }, [selectedModel, modelsForProvider]);
 
   const handleTestConnectivity = async () => {
     if (!baseUrl.trim()) return toast.warning('请输入 baseUrl');
@@ -71,7 +141,7 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
     if (!name.trim()) return toast.error('请输入模型 name');
     if (!displayName.trim()) return toast.error('请输入模型 displayName');
     if (!baseUrl.trim()) return toast.error('请输入 baseUrl');
-    if (selectedProviderInfo?.requiresApiKey && !apiKeyEnv.trim()) return toast.error('该 Provider 需要 apiKeyEnv');
+    if (selectedProviderInfo?.requires_api_key && !apiKeyEnv.trim()) return toast.error('该 Provider 需要 apiKeyEnv');
 
     setLoading(true);
     try {
@@ -94,8 +164,10 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
         },
       };
 
-      await modelApi.add(modelData as any);
-      toast.success('模型添加成功');
+      await (editingModel
+        ? modelApi.update(editingModel.id, modelData as any)
+        : modelApi.add(modelData as any));
+      toast.success(editingModel ? '模型已更新' : '模型添加成功');
       onSuccess();
       onClose();
     } catch (e: any) {
@@ -109,7 +181,7 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
     <Modal
       open={open}
       onClose={onClose}
-      title="添加模型"
+      title={editingModel ? '编辑模型' : '添加模型'}
       width={760}
       footer={
         <>
@@ -123,8 +195,12 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
 
         {selectedProviderInfo && (
           <Alert type="info" title={selectedProviderInfo.name}>
-            {selectedProviderInfo.requiresApiKey ? '该 Provider 需要配置 API Key 环境变量（apiKeyEnv）' : '该 Provider 不需要 API Key'}
+            {selectedProviderInfo.requires_api_key ? '该 Provider 需要配置 API Key 环境变量（apiKeyEnv）' : '该 Provider 不需要 API Key'}
           </Alert>
+        )}
+
+        {providerModels.length > 0 && (
+          <Select label="选择模型" value={selectedModel} onChange={setSelectedModel} options={modelOptions} placeholder="选择模型" />
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

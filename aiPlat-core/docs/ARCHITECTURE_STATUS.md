@@ -62,12 +62,12 @@
 
 ### 决策 2：Agent 执行路径
 
-**决策**：方案A — Harness Loop 驱动。**主要 Agent（ReAct/PlanExecute/MultiAgent/RAG 等）**通过 `BaseAgent.execute() → self._loop.run(state, config)` 执行；**ConversationalAgent** 作为对话简化路径可保留 `execute()` override（直接调用 model.generate），但必须在文档中明确标注其“非 Loop 驱动”的合理性与边界。
+**决策**：方案A — Harness Loop 驱动。**主要 Agent（ReAct/PlanExecute/MultiAgent/RAG 等）**通过 `BaseAgent.execute() → self._loop.run(state, config)` 执行；**ConversationalAgent** 作为对话简化路径可保留 `execute()` override（通过 `sys_llm_generate()` 调用模型），但必须在文档中明确标注其“非 Loop 驱动”的合理性与边界。
 
 **影响**：
 - ReActAgent 的自建推理循环迁移到 ReActLoop._reason/_act/_observe
 - PlanExecuteAgent 的自建规划逻辑迁移到 PlanExecuteLoop
-- ConversationalAgent 作为对话简化路径保留 override：直接调 model.generate()（不走 Loop）
+- ConversationalAgent 作为对话简化路径保留 override：通过 `sys_llm_generate()` 调用模型（不走 Loop）
 - BaseAgent._loop 不再是死代码
 
 **证据**：
@@ -398,7 +398,7 @@ ReActAgent 和 PlanExecuteAgent 的 `execute()` 委托给 `BaseAgent.execute()`�
 | LangGraph import | ✅ | 移除错误 `from langgraph.nodes import Node` |
 | AgentState 重名 | ✅ | harness/state.py AgentState→AgentLifecycleState（保留别名） |
 | RAGAgent | ✅ | 修复 import bug（AgentContext）、self._llm_adapter→self._model、context.query→context.variables |
-| ConversationalAgent | ⚠️ | 保留 execute() override（对话模式不需要 Loop）；直接调 model.generate() |
+| ConversationalAgent | ⚠️ | 保留 execute() override（对话模式不需要 Loop）；通过 `sys_llm_generate()` 调用模型 |
 
 **证据（抽样）**：
 - Coordination 模式接入：

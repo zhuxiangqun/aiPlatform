@@ -49,6 +49,8 @@ export AIPLAT_LLM_API_KEY="${AIPLAT_LLM_API_KEY:-${DEEPSEEK_API_KEY:-}}"
 export AIPLAT_LLM_MODEL="${AIPLAT_LLM_MODEL:-deepseek-chat}"
 export AIPLAT_DOC_LLM_MODEL="${AIPLAT_DOC_LLM_MODEL:-${AIPLAT_LLM_MODEL}}"
 export AIPLAT_AGENT_MODEL="${AIPLAT_AGENT_MODEL:-deepseek-reasoner}"
+# Builder Pipeline: 单次流水线 token 预算（防止费用过高）
+export AIPLAT_BUILDER_MAX_TOKENS="${AIPLAT_BUILDER_MAX_TOKENS:-50000}"
 if [ -z "${AIPLAT_LLM_API_KEY:-}" ]; then
   echo "提示：未检测到 DeepSeek API Key。请先设置 DEEPSEEK_API_KEY 或 AIPLAT_LLM_API_KEY。"
 fi

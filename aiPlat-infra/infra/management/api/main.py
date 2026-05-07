@@ -900,6 +900,17 @@ def create_app() -> FastAPI:
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
+    @app.get("/api/infra/models/provider-models")
+    async def get_provider_models():
+        """Get available models per provider (dynamic catalog)."""
+        import json, os
+        path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "data", "provider_models.json")
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return {"providers": data}
+        except Exception as e:
+            return {"providers": {}, "error": str(e)}
     @app.get("/api/infra/models/local")
     async def scan_local_models(endpoint: Optional[str] = None):
         """Scan local Ollama models."""

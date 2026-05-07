@@ -78,35 +78,22 @@ const Agents: React.FC = () => {
       ),
     },
     {
-      title: '类型',
-      dataIndex: 'agent_type',
-      key: 'agent_type',
-      width: 100,
-      render: (type: string) => {
-        const cfg = typeConfig[type] || { color: 'bg-dark-hover text-gray-300', text: type };
-        return (
-          <span className={`inline-flex px-2 py-1 rounded-md text-xs font-medium border ${cfg.color}`}>
-            {cfg.text}
-          </span>
-        );
-      },
+      title: '分类',
+      dataIndex: 'category',
+      key: 'category',
+      width: 90,
+      render: (cat: string) => (
+        <span className="text-xs text-gray-400">{cat || '-'}</span>
+      ),
     },
     {
-      title: '状态',
-      dataIndex: 'status',
-      key: 'status',
-      width: 100,
-      render: (status: string) => {
-        const cfg = statusConfig[status] || { color: 'bg-dark-hover text-gray-300', text: status };
-        const colorClass = cfg.color === 'success' ? 'bg-success-light text-green-300' :
-          cfg.color === 'error' ? 'bg-error-light text-red-300' :
-            'bg-dark-hover text-gray-300';
-        return (
-          <span className={`inline-flex px-2 py-1 rounded-md text-xs font-medium ${colorClass}`}>
-            {cfg.text}
-          </span>
-        );
-      },
+      title: '功能描述',
+      dataIndex: 'description',
+      key: 'description',
+      ellipsis: true,
+      render: (desc: string) => (
+        <span className="text-xs text-gray-500">{desc || '-'}</span>
+      ),
     },
     {
       title: 'ID',

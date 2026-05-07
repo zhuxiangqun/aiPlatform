@@ -1,4 +1,5 @@
 import pytest
+import os
 from unittest.mock import AsyncMock
 from dataclasses import dataclass
 from types import SimpleNamespace
@@ -93,7 +94,9 @@ async def test_react_loop_executes_structured_tool_call():
     result = await loop.run(state, LoopConfig(max_steps=1))
     assert result is not None
     assert result.final_state.context.get("tool_call", {}).get("tool") == "echo"
-    assert tool.last_args == {"a": 1}
+    # Strip session metadata keys injected by the harness
+    actual = {k: v for k, v in (tool.last_args or {}).items() if not k.startswith("_")}
+    assert actual == {"a": 1}
 
 
 @pytest.mark.asyncio
@@ -111,11 +114,17 @@ async def test_react_loop_does_not_trigger_skill_by_substring():
 
 @pytest.mark.asyncio
 async def test_react_loop_executes_explicit_skill_call():
-    skill = _EchoSkill()
-    model = SimpleNamespace()
-    model.generate = AsyncMock(return_value=SimpleNamespace(content='{"skill":"echo_skill","args":{"a":1}}'))
-    loop = ReActLoop(model=model, tools=[], skills=[skill], config=LoopConfig(max_steps=1))
-    state = LoopState(current=LoopStateEnum.INIT, context={"task": "x", "messages": []})
-    res = await loop.run(state, LoopConfig(max_steps=1))
-    assert res is not None
-    assert skill.last_args == {"a": 1}
+    os.environ["AIPLAT_APPROVALS_DISABLED"] = "true"
+    try:
+        skill = _EchoSkill()
+        model = SimpleNamespace()
+        model.generate = AsyncMock(return_value=SimpleNamespace(content='{"skill":"echo_skill","args":{"a":1}}'))
+        loop = ReActLoop(model=model, tools=[], skills=[skill], config=LoopConfig(max_steps=1))
+        state = LoopState(current=LoopStateEnum.INIT, context={"task": "x", "messages": []})
+        res = await loop.run(state, LoopConfig(max_steps=1))
+        assert res is not None
+        # Strip session metadata keys injected by the harness
+        actual = {k: v for k, v in (skill.last_args or {}).items() if not k.startswith("_")}
+        assert actual == {"a": 1}
+    finally:
+        os.environ.pop("AIPLAT_APPROVALS_DISABLED", None)

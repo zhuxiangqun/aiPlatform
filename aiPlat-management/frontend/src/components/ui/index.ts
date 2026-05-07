@@ -15,3 +15,4 @@ export { ToastProvider, useToast, toast } from './Toast';
 export { extractGateEnvelope, toastGateError } from './gateError';
 export { Drawer } from './Drawer';
 export { NotificationProvider, useNotifications, NotificationBellButton, notify } from './NotificationCenter';
+export { ChatWidget } from './ChatWidget';

@@ -99,7 +99,7 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                 method=method,
                 headers=headers,
             )
-            with urllib.request.urlopen(req, timeout=30) as resp:
+            with urllib.request.urlopen(req, timeout=600) as resp:
                 data = resp.read()
                 self.send_response(resp.status)
                 self.send_header("Content-Type", resp.headers.get("Content-Type", "application/octet-stream"))

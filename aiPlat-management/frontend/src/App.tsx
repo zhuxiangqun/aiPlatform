@@ -31,6 +31,7 @@ const CoreSkills = lazy(() => import('./pages/Core/Skills/Skills'));
 const CoreSkillsRollouts = lazy(() => import('./pages/Core/Skills/Rollouts'));
 const CorePrompts = lazy(() => import('./pages/Core/Prompts'));
 const CoreTools = lazy(() => import('./pages/Core/Tools/Tools'));
+const WorkspaceTeams = lazy(() => import('./pages/App/Builder/TeamAssemblyPage'));
 const CorePlugins = lazy(() => import('./pages/Core/Plugins'));
 const CoreMCP = lazy(() => import('./pages/Core/MCP/MCP'));
 const CoreMemory = lazy(() => import('./pages/Core/Memory/Memory'));
@@ -53,6 +54,11 @@ const AppChannels = lazy(() => import('./pages/App/Channels/Channels'));
 const AppSessions = lazy(() => import('./pages/App/Sessions/Sessions'));
 const AppKnowledgeBase = lazy(() => import('./pages/App/KnowledgeBase/KnowledgeBase'));
 const AppMaterialsChat = lazy(() => import('./pages/App/KnowledgeBase/MaterialsChat'));
+const AppBuilder = lazy(() => import('./pages/App/Builder/BuilderPage'));
+const AppTeamAssembly = lazy(() => import('./pages/App/Builder/TeamAssemblyPage'));
+const AgentInsightPage = lazy(() => import('./pages/App/Builder/AgentInsightPage'));
+const AppProjects = lazy(() => import('./pages/App/Builder/ProjectsPage'));
+const AppProjectDetail = lazy(() => import('./pages/App/Builder/ProjectDetailPage'));
 const DiagnosticsHome = lazy(() => import('./pages/Diagnostics/Diagnostics'));
 const DiagnosticsDoctor = lazy(() => import('./pages/Diagnostics/Doctor'));
 const DiagnosticsTraces = lazy(() => import('./pages/Diagnostics/Traces/Traces'));
@@ -110,11 +116,14 @@ const router = createBrowserRouter([
       { path: 'workspace/skills-lint', element: withSuspense(WorkspaceSkillLint) },
       { path: 'workspace/skill-marketplace', element: withSuspense(WorkspaceSkillMarketplace) },
       { path: 'workspace/mcp', element: withSuspense(WorkspaceMCP) },
+      { path: 'workspace/teams', element: withSuspense(WorkspaceTeams) },
       { path: 'core/learning/artifacts', element: withSuspense(CoreLearningArtifacts) },
       { path: 'core/learning/artifacts/:artifactId', element: withSuspense(CoreLearningArtifactDetail) },
       { path: 'core/learning/releases', element: withSuspense(CoreReleases) },
       { path: 'core/learning/rollouts', element: withSuspense(CoreLearningRollouts) },
       { path: 'core/approvals', element: withSuspense(CoreApprovals) },
+      { path: 'core/agent-insight', element: withSuspense(AgentInsightPage) },
+      { path: 'core/agent-insight/:agentId', element: withSuspense(AgentInsightPage) },
       { path: 'platform/gateway', element: withSuspense(PlatformGateway) },
       { path: 'platform/auth', element: withSuspense(PlatformAuth) },
       { path: 'platform/tenant', element: withSuspense(PlatformTenant) },
@@ -122,6 +131,10 @@ const router = createBrowserRouter([
       { path: 'app/sessions', element: withSuspense(AppSessions) },
       { path: 'app/kb', element: withSuspense(AppKnowledgeBase) },
       { path: 'app/kb/chat/:sessionId', element: withSuspense(AppMaterialsChat) },
+      { path: 'app/builder', element: withSuspense(AppBuilder) },
+      { path: 'app/builder/team', element: withSuspense(AppTeamAssembly) },
+      { path: 'app/projects', element: withSuspense(AppProjects) },
+      { path: 'app/projects/:id', element: withSuspense(AppProjectDetail) },
       { path: 'diagnostics', element: withSuspense(DiagnosticsHome) },
       { path: 'diagnostics/doctor', element: withSuspense(DiagnosticsDoctor) },
       { path: 'diagnostics/traces', element: withSuspense(DiagnosticsTraces) },

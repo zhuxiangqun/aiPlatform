@@ -26,6 +26,12 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
   const [modelOptions, setModelOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [selectedModel, setSelectedModel] = useState<string>('');
   const [defaultToolset, setDefaultToolset] = useState<string>('workspace_default');
+  // Pipeline/Builder configuration fields
+  const [generateTestPlan, setGenerateTestPlan] = useState(false);
+  const [autoHitl, setAutoHitl] = useState(false);
+  const [phaseDescription, setPhaseDescription] = useState('');
+  const [hitlAfterExecute, setHitlAfterExecute] = useState(false);
+  const [hitlAfterPhase, setHitlAfterPhase] = useState('');
 
   // Disambiguation wizard
   const [wizOpen, setWizOpen] = useState(false);
@@ -45,6 +51,13 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       setConfigText(agent.metadata?.config ? JSON.stringify(agent.metadata.config, null, 2) : (agent as any)?.config ? JSON.stringify((agent as any).config, null, 2) : '');
       setMemoryConfigText((agent as any)?.memory_config ? JSON.stringify((agent as any).memory_config, null, 2) : '');
       setSopText('');
+      // Pipeline config fields from metadata
+      const md = (agent as any)?.metadata || {};
+      setGenerateTestPlan(Boolean(md.generate_test_plan));
+      setAutoHitl(Boolean(md.auto_hitl));
+      setPhaseDescription(String(md.phase_description || ''));
+      setHitlAfterExecute(Boolean(md.hitl_after_execute));
+      setHitlAfterPhase(String(md.hitl_after_phase || ''));
       fetchOptions();
       fetchSop();
       // init selectedModel from config if possible
@@ -317,6 +330,11 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       else delete (metadata as any).description;
       if (defaultToolset && defaultToolset !== 'workspace_default') metadata.toolset = defaultToolset;
       else delete (metadata as any).toolset;
+      metadata.generate_test_plan = generateTestPlan;
+      metadata.auto_hitl = autoHitl;
+      metadata.phase_description = phaseDescription.trim() || undefined;
+      metadata.hitl_after_execute = hitlAfterExecute;
+      metadata.hitl_after_phase = hitlAfterPhase.trim() || undefined;
 
       await workspaceAgentApi.update(agent.id, { name: name.trim() || undefined, config, memory_config, metadata });
 
@@ -387,6 +405,29 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       <div className="space-y-4">
         <Input label="名称（显示名）" value={name} onChange={(e: any) => setName(e.target.value)} />
         <Input label="描述（可选）" value={description} onChange={(e: any) => setDescription(e.target.value)} />
+
+        {/* ── 流水线配置 ── */}
+        <details className="mt-2">
+          <summary className="text-sm font-medium text-gray-300 cursor-pointer hover:text-gray-200">⚙️ 流水线配置</summary>
+          <div className="mt-2 ml-2 space-y-2 p-2 rounded bg-dark-hover/30">
+            <Input label="阶段描述（phase_description）" value={phaseDescription} onChange={(e: any) => setPhaseDescription(e.target.value)} placeholder="如：系统架构设计" />
+            <div className="flex items-center gap-2 mt-1">
+              <input type="checkbox" checked={generateTestPlan} onChange={(e) => setGenerateTestPlan(e.target.checked)} className="w-4 h-4" />
+              <span className="text-xs text-gray-400">自动生成测试计划（generate_test_plan）</span>
+            </div>
+            <div className="flex items-center gap-2 mt-1">
+              <input type="checkbox" checked={autoHitl} onChange={(e) => setAutoHitl(e.target.checked)} className="w-4 h-4" />
+              <span className="text-xs text-gray-400">自动启用 HITL 确认（auto_hitl）</span>
+            </div>
+            <div className="flex items-center gap-2 mt-1">
+              <input type="checkbox" checked={hitlAfterExecute} onChange={(e) => setHitlAfterExecute(e.target.checked)} className="w-4 h-4" />
+              <span className="text-xs text-gray-400">执行后暂停（hitl_after_execute）</span>
+            </div>
+            {hitlAfterExecute && (
+              <Input label="执行后暂停阶段名（hitl_after_phase）" value={hitlAfterPhase} onChange={(e: any) => setHitlAfterPhase(e.target.value)} placeholder="如：awaiting_test_report_review" />
+            )}
+          </div>
+        </details>
 
         <div>
           <div className="text-sm font-medium text-gray-300 mb-2">默认 Toolset（运行时工具集）</div>

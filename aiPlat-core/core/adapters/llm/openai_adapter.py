@@ -196,26 +196,28 @@ class OpenAIAdapter(BaseLLMAdapter, RetryableAdapterMixin):
     def _build_messages(self, messages: List[Dict[str, str]]) -> List[Any]:
         """Convert messages to LangChain format"""
         try:
-            from langchain.schema import HumanMessage, SystemMessage, AIMessage
-            
-            lc_messages = []
-            for msg in messages:
-                role = msg.get("role", "user")
-                content = msg.get("content", "")
-                
-                if role == "system":
-                    lc_messages.append(SystemMessage(content=content))
-                elif role == "user":
-                    lc_messages.append(HumanMessage(content=content))
-                elif role == "assistant":
-                    lc_messages.append(AIMessage(content=content))
-                else:
-                    lc_messages.append(HumanMessage(content=content))
-            
-            return lc_messages
-            
+            from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
         except ImportError:
-            return messages
+            try:
+                from langchain.schema import HumanMessage, SystemMessage, AIMessage
+            except ImportError:
+                return messages
+
+        lc_messages = []
+        for msg in messages:
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
+
+            if role == "system":
+                lc_messages.append(SystemMessage(content=content))
+            elif role == "user":
+                lc_messages.append(HumanMessage(content=content))
+            elif role == "assistant":
+                lc_messages.append(AIMessage(content=content))
+            else:
+                lc_messages.append(HumanMessage(content=content))
+
+        return lc_messages
 
 
 class AzureOpenAIAdapter(OpenAIAdapter):

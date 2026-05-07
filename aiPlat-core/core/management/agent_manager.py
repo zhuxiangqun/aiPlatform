@@ -33,6 +33,9 @@ class AgentInfo:
     updated_at: datetime
     version: str = "1.0.0"
     metadata: Dict[str, Any] = field(default_factory=dict)
+    category: str = ""
+    tags: List[str] = field(default_factory=list)
+    phase: str = ""
 
 
 @dataclass
@@ -183,6 +186,12 @@ class AgentManager:
                     if not isinstance(config, dict):
                         config = {}
 
+                    category = str(fm.get("category") or "")
+                    tags = fm.get("tags") or []
+                    if not isinstance(tags, list):
+                        tags = []
+                    phase = str(fm.get("phase") or "")
+
                     metadata = dict(fm)
                     metadata.setdefault("filesystem", {})
                     if isinstance(metadata["filesystem"], dict):
@@ -203,6 +212,9 @@ class AgentManager:
                         updated_at=now,
                         version=version,
                         metadata=metadata,
+                        category=category,
+                        tags=tags,
+                        phase=phase,
                     )
                     self._stats.setdefault(agent_id, AgentStats())
                     self._skill_bindings.setdefault(agent_id, [])
@@ -383,17 +395,23 @@ class AgentManager:
         self,
         agent_type: Optional[str] = None,
         status: Optional[str] = None,
+        category: Optional[str] = None,
+        tags: Optional[List[str]] = None,
         limit: int = 100,
         offset: int = 0
     ) -> List[AgentInfo]:
         """List agents with filters"""
         agents = list(self._agents.values())
-        
+
         if agent_type:
             agents = [a for a in agents if a.type == agent_type]
         if status:
             agents = [a for a in agents if a.status == status]
-        
+        if category:
+            agents = [a for a in agents if a.category == category]
+        if tags:
+            agents = [a for a in agents if any(t in a.tags for t in tags)]
+
         return agents[offset:offset + limit]
 
     def get_agent_ids(self) -> List[str]:
@@ -466,6 +484,23 @@ class AgentManager:
                     "required_tools": agent.tools or [],
                     "config": agent.config or {},
                     "protected": (agent.metadata or {}).get("protected", fm.get("protected", False)),
+                    "category": agent.category or fm.get("category", ""),
+                    "tags": agent.tags or fm.get("tags", []),
+                    "phase": agent.phase or fm.get("phase", ""),
+                    "output_artifact": (agent.metadata or {}).get("output_artifact") or fm.get("output_artifact", ""),
+                    "generate_test_plan": (agent.metadata or {}).get("generate_test_plan", fm.get("generate_test_plan", False)),
+                    "test_result_key": (agent.metadata or {}).get("test_result_key") or fm.get("test_result_key") or "test_report",
+                    "uses_code_skill": (agent.metadata or {}).get("uses_code_skill", fm.get("uses_code_skill", False)),
+                    "code_target": (agent.metadata or {}).get("code_target") or fm.get("code_target") or "backend",
+                    "prompt_extra": (agent.metadata or {}).get("prompt_extra") or fm.get("prompt_extra") or "",
+                    "failure_strategy": (agent.metadata or {}).get("failure_strategy") or fm.get("failure_strategy") or "fail_pipeline",
+                    "fallback_result_key": (agent.metadata or {}).get("fallback_result_key") or fm.get("fallback_result_key", ""),
+                    "retry_llm_on_rate_limit": (agent.metadata or {}).get("retry_llm_on_rate_limit", fm.get("retry_llm_on_rate_limit", True)),
+                    "max_consecutive_llm_failures": (agent.metadata or {}).get("max_consecutive_llm_failures") or fm.get("max_consecutive_llm_failures", 3),
+                    "auto_hitl": (agent.metadata or {}).get("auto_hitl", fm.get("auto_hitl", False)),
+                    "phase_description": (agent.metadata or {}).get("phase_description") or fm.get("phase_description", ""),
+                    "hitl_after_execute": (agent.metadata or {}).get("hitl_after_execute", fm.get("hitl_after_execute", False)),
+                    "hitl_after_phase": (agent.metadata or {}).get("hitl_after_phase") or fm.get("hitl_after_phase", ""),
                 })
                 header = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True).strip()
                 agent_md_path.write_text(f"---\n{header}\n---\n{body.lstrip()}", encoding="utf-8")

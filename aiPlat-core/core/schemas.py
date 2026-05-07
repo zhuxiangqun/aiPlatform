@@ -85,6 +85,13 @@ __all__ = [
     "FeedbackConfigUpdateRequest",
     # diagnostics
     "DiagnosticsPromptAssembleRequest",
+    # builder
+    "BuilderSessionCreateRequest",
+    "BuilderChatRequest",
+    "BuilderConfirmRequest",
+    "BuilderRejectRequest",
+    "BuilderSessionStateResponse",
+    "BuilderChatResponse",
 ]
 
 
@@ -162,6 +169,12 @@ _EXPORTS: Dict[str, Tuple[str, str]] = {
     "FeedbackConfigUpdateRequest": ("core.schemas_harness", "FeedbackConfigUpdateRequest"),
     # diagnostics
     "DiagnosticsPromptAssembleRequest": ("core.schemas_diagnostics", "DiagnosticsPromptAssembleRequest"),
+    # builder
+    "BuilderSessionCreateRequest": ("core.schemas_builder", "BuilderSessionCreateRequest"),
+    "BuilderChatRequest": ("core.schemas_builder", "BuilderChatRequest"),
+    "BuilderConfirmRequest": ("core.schemas_builder", "BuilderConfirmRequest"),
+    "BuilderSessionStateResponse": ("core.schemas_builder", "BuilderSessionStateResponse"),
+    "BuilderChatResponse": ("core.schemas_builder", "BuilderChatResponse"),
 }
 
 
