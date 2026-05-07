@@ -716,3 +716,27 @@ def query(
 
     answer = f"识别到 {y} 年投资预算条目 {len(items)} 条。"
     return {"answer": answer, "items": items, "citations": citations, "tenant_id": st.tenant_id, "collection_id": collection_id}
+
+
+def load_doc_kinds(*, tenant_id: str, doc_ids: List[str]) -> List[str]:
+    """Load document 'kind' metadata for a list of document IDs.
+    
+    Lives in the service layer (allowed to use KBSqlite). Agents should call
+    this function instead of directly accessing KBSqlite (violates §5.9).
+    """
+    if not doc_ids:
+        return []
+    try:
+        from .storage import get_tenant_storage
+        st = get_tenant_storage(tenant_id)
+        db = KBSqlite(st.db_path)
+        db.ensure_schema()
+        with db.connect() as conn:
+            placeholders = ",".join(["?"] * len(doc_ids))
+            rows = conn.execute(
+                f"SELECT doc_id, kind FROM documents WHERE tenant_id=? AND doc_id IN ({placeholders})",
+                (tenant_id, *doc_ids),
+            ).fetchall()
+        return [str(dict(r).get("kind") or "").strip().lower() for r in rows if str(dict(r).get("kind") or "").strip()]
+    except Exception:
+        return []

@@ -73,8 +73,8 @@ class BaseAgent(IAgent):
                 model=config.model,
                 base_url=config.metadata.get("base_url"),
             )
-        
-        self._status = AgentStatus.IDLE
+        self._status = AgentStatus.READY
+
 
     async def execute(self, context: AgentContext) -> AgentResult:
         """Execute agent with given context"""

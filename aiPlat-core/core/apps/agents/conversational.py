@@ -71,64 +71,27 @@ class ConversationalAgent(BaseAgent):
             self._memory = create_memory(mem_config)
 
     async def execute(self, context: AgentContext) -> AgentResult:
-        """Execute conversational agent"""
+        """Execute via shared ReAct loop (§5.22: delegates to BaseAgent)."""
         self._status = AgentStatus.RUNNING
         
         try:
-            # Add to conversation history
             for msg in context.messages:
                 self._conversation_history.append(msg)
-            
-            # Trim history if needed
             if len(self._conversation_history) > self._conv_config.max_history:
                 self._conversation_history = self._conversation_history[-self._conv_config.max_history:]
-            
-            # Build messages for model
-            messages = self._build_messages(context)
-            
-            # Get response from model
-            if not self._model:
-                return AgentResult(
-                    success=False,
-                    error="No model configured"
-                )
-            from ...harness.syscalls.llm import sys_llm_generate
 
-            response = await sys_llm_generate(self._model, messages)
-            
-            # Add response to history
-            self._conversation_history.append({
-                "role": "assistant",
-                "content": response.content
-            })
-            
-            # Update memory if enabled
-            if self._memory:
-                from ...harness.infrastructure.langchain import MemoryMessage
-                await self._memory.add_message(MemoryMessage(
-                    content=response.content,
-                    type="ai"
-                ))
-            
+            # Inject history into context so the shared loop can use it
+            context.variables["_conversation_history"] = list(self._conversation_history)
+
+            result = await super().execute(context)
+
+            if result.success and result.output:
+                self._conversation_history.append({"role": "assistant", "content": result.output})
             self._turn_count += 1
-            
-            return AgentResult(
-                success=True,
-                output=response.content,
-                token_usage=response.usage,
-                metadata={
-                    "turns": self._turn_count,
-                    "history_length": len(self._conversation_history)
-                }
-            )
-            
+            return result
         except Exception as e:
             self._status = AgentStatus.ERROR
-            return AgentResult(
-                success=False,
-                error=str(e),
-                metadata={"exception": type(e).__name__}
-            )
+            return AgentResult(success=False, error=str(e), metadata={"exception": type(e).__name__})
 
     def _build_messages(self, context: AgentContext) -> List[Dict[str, str]]:
         """Build message list including system prompt and history"""

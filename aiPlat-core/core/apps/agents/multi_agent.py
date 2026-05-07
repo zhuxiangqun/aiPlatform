@@ -137,7 +137,13 @@ class MultiAgent(ConfigurableAgent):
         return pattern
 
     async def execute(self, context: AgentContext) -> AgentResult:
-        """Execute multi-agent coordination using Harness patterns"""
+        """Execute multi-agent coordination using Harness patterns.
+
+        Note (§5.22 To-Be): Uses coordination patterns (Pipeline/FanOut/ExpertPool)
+        with direct agent.execute() calls. Should be refactored to use the shared
+        ReAct loop + AgentMessageBus (harness/interfaces/messaging.py) for
+        inter-agent communication instead of direct method calls.
+        """
         self._status = AgentStatus.RUNNING
         
         try:
@@ -150,9 +156,10 @@ class MultiAgent(ConfigurableAgent):
             if self._sub_agents and self._pattern:
                 # Build wrapper agents that work with the pattern interface
                 class _PatternAgentAdapter:
-                    def __init__(self, agent, ctx):
+                    def __init__(self, agent, ctx, msg_bus=None):
                         self._agent = agent
                         self._ctx = ctx
+                        self._bus = msg_bus
                     
                     async def execute(self, task_input):
                         agent_ctx = AgentContext(
@@ -163,10 +170,34 @@ class MultiAgent(ConfigurableAgent):
                             tools=self._ctx.tools,
                             skills=self._ctx.skills,
                         )
+                        # AgentMessage protocol: send TASK_ASSIGN before execution
+                        agent_id = getattr(self._agent, '_agent_id', 'unknown')
+                        if self._bus:
+                            import uuid
+                            from core.harness.interfaces.messaging import AgentMessage, AgentMessageType
+                            msg = AgentMessage(
+                                msg_id=str(uuid.uuid4())[:8],
+                                type=AgentMessageType.TASK_ASSIGN,
+                                sender_id="coordinator",
+                                receiver_id=agent_id,
+                                payload={"task": str(task_input)[:500]},
+                            )
+                            self._bus.send(msg)
                         result = await self._agent.execute(agent_ctx)
+                        if self._bus:
+                            msg_type = AgentMessageType.RESULT if getattr(result, 'success', False) else AgentMessageType.ERROR
+                            self._bus.send(AgentMessage(
+                                msg_id=str(uuid.uuid4())[:8],
+                                type=msg_type,
+                                sender_id=agent_id,
+                                receiver_id="coordinator",
+                                payload={"output": str(getattr(result, 'output', ''))[:1000], "success": getattr(result, 'success', False)},
+                            ))
                         return result
                 
-                adapters = [_PatternAgentAdapter(a, context) for a in self._sub_agents]
+                from core.harness.interfaces.messaging import AgentMessageBus
+                msg_bus = AgentMessageBus()
+                adapters = [_PatternAgentAdapter(a, context, msg_bus) for a in self._sub_agents]
                 
                 coord_ctx = CoordinationContext(
                     task=task,
@@ -192,6 +223,7 @@ class MultiAgent(ConfigurableAgent):
                         "pattern": self._multi_config.coordination_pattern,
                         "total_agents": len(self._sub_agents),
                         "errors": result.errors,
+                        "messages": [m.to_dict() for m in msg_bus._sent],
                         **result.metadata
                     }
                 )
@@ -216,20 +248,55 @@ class MultiAgent(ConfigurableAgent):
                 metadata={"exception": type(e).__name__}
             )
 
+    def _create_adapter(self, agent: BaseAgent, context: AgentContext, msg_bus: Any = None):
+        """Create a PatternAgentAdapter with optional message bus for observability."""
+        from core.harness.interfaces.messaging import AgentMessageBus
+        bus = msg_bus or AgentMessageBus()
+
+        class _Adapter:
+            def __init__(self, a, ctx, b):
+                self._agent = a
+                self._ctx = ctx
+                self._bus = b
+
+            async def execute(self, task_input):
+                agent_ctx = AgentContext(
+                    session_id=self._ctx.session_id,
+                    user_id=self._ctx.user_id,
+                    messages=[{"role": "user", "content": str(task_input)}],
+                    variables=self._ctx.variables.copy(),
+                    tools=self._ctx.tools,
+                    skills=self._ctx.skills,
+                )
+                import uuid
+                from core.harness.interfaces.messaging import AgentMessage, AgentMessageType
+                aid = getattr(self._agent, '_agent_id', 'unknown')
+                self._bus.send(AgentMessage(
+                    msg_id=str(uuid.uuid4())[:8],
+                    type=AgentMessageType.TASK_ASSIGN,
+                    sender_id="coordinator",
+                    receiver_id=aid,
+                    payload={"task": str(task_input)[:500]},
+                ))
+                result = await self._agent.execute(agent_ctx)
+                msg_type = AgentMessageType.RESULT if getattr(result, 'success', False) else AgentMessageType.ERROR
+                self._bus.send(AgentMessage(
+                    msg_id=str(uuid.uuid4())[:8],
+                    type=msg_type,
+                    sender_id=aid,
+                    receiver_id="coordinator",
+                    payload={"output": str(getattr(result, 'output', ''))[:1000], "success": getattr(result, 'success', False)},
+                ))
+                return result
+
+        return _Adapter(agent, context, bus), bus
+
     async def _execute_parallel(self, context: AgentContext) -> AgentResult:
-        """Fallback parallel execution"""
+        """Parallel execution with message bus observability."""
         import asyncio
-        tasks = []
-        for agent in self._sub_agents:
-            agent_context = AgentContext(
-                session_id=context.session_id,
-                user_id=context.user_id,
-                messages=context.messages.copy(),
-                variables=context.variables.copy(),
-                tools=[t.name for t in self._tools if hasattr(t, 'name')],
-            )
-            tasks.append(agent.execute(agent_context))
-        
+        from core.harness.interfaces.messaging import AgentMessageBus
+        msg_bus = AgentMessageBus()
+        tasks = [self._create_adapter(a, context, msg_bus)[0].execute(context.messages[-1].get("content", "") if context.messages else "") for a in self._sub_agents]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         successful = [r for r in results if isinstance(r, AgentResult) and r.success]
         
@@ -241,16 +308,21 @@ class MultiAgent(ConfigurableAgent):
         return AgentResult(
             success=len(successful) > 0,
             output=combined_output,
-            metadata={"total_agents": len(self._sub_agents), "successful": len(successful), "pattern": "parallel"}
+            metadata={"total_agents": len(self._sub_agents), "successful": len(successful), "pattern": "parallel", "messages": [m.to_dict() for m in msg_bus._sent]}
         )
 
     async def _execute_sequential(self, context: AgentContext) -> AgentResult:
-        """Fallback sequential execution"""
+        """Sequential execution with message bus observability."""
+        from core.harness.interfaces.messaging import AgentMessageBus
+        msg_bus = AgentMessageBus()
         results = []
-        for i, agent in enumerate(self._sub_agents):
-            if i > 0:
-                context.variables["previous_results"] = results[-1]
-            result = await agent.execute(context)
+        for agent in self._sub_agents:
+            if results:
+                prev_summary = MultiAgent.summarize_subagent_result(results[-1])
+                context.variables["previous_results"] = prev_summary
+            adapter, _ = self._create_adapter(agent, context, msg_bus)
+            task = context.messages[-1].get("content", "") if context.messages else ""
+            result = await adapter.execute(task)
             results.append(result)
             if not result.success:
                 break
@@ -263,32 +335,28 @@ class MultiAgent(ConfigurableAgent):
         return AgentResult(
             success=all(r.success for r in results),
             output=combined_output,
-            metadata={"total_steps": len(results), "pattern": "sequential"}
+            metadata={"total_steps": len(results), "pattern": "sequential", "messages": [m.to_dict() for m in msg_bus._sent]}
         )
 
     async def _execute_hierarchical(self, context: AgentContext) -> AgentResult:
-        """Fallback hierarchical execution"""
+        """Hierarchical execution with message bus observability."""
         import asyncio
-        
+        from core.harness.interfaces.messaging import AgentMessageBus
+
         if not self._sub_agents:
             return AgentResult(success=False, error="No sub-agents")
-        
-        coordinator = self._sub_agents[0]
-        workers = self._sub_agents[1:]
-        
-        coord_result = await coordinator.execute(context)
+
+        msg_bus = AgentMessageBus()
+        coordinator, workers = self._sub_agents[0], self._sub_agents[1:]
+        task = context.messages[-1].get("content", "") if context.messages else ""
+
+        coord_adapter, _ = self._create_adapter(coordinator, context, msg_bus)
+        coord_result = await coord_adapter.execute(task)
         if not coord_result.success:
             return coord_result
-        
-        worker_context = AgentContext(
-            session_id=context.session_id,
-            user_id=context.user_id,
-            messages=[{"role": "user", "content": coord_result.output}],
-            variables=context.variables.copy(),
-        )
-        
-        tasks = [agent.execute(worker_context) for agent in workers]
-        worker_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        worker_tasks = [self._create_adapter(w, context, msg_bus)[0].execute(str(coord_result.output)) for w in workers]
+        worker_results = await asyncio.gather(*worker_tasks, return_exceptions=True)
         
         final_result = "\n".join([
             f"Worker {i+1}: {r.output if hasattr(r, 'output') else str(r)}"
@@ -298,7 +366,7 @@ class MultiAgent(ConfigurableAgent):
         return AgentResult(
             success=True,
             output=final_result,
-            metadata={"coordinator": coordinator.get_config().name, "workers": len(workers), "pattern": "hierarchical"}
+            metadata={"coordinator": getattr(coordinator, '_name', 'coordinator'), "workers": len(workers), "pattern": "hierarchical", "messages": [m.to_dict() for m in msg_bus._sent]}
         )
 
     def add_sub_agent(self, agent: BaseAgent) -> None:
@@ -317,6 +385,25 @@ class MultiAgent(ConfigurableAgent):
     def get_sub_agents(self) -> List[BaseAgent]:
         """Get all sub-agents"""
         return self._sub_agents
+
+    @staticmethod
+    def summarize_subagent_result(result: AgentResult) -> str:
+        """Condense subagent output to a ~1-2K token summary (avoids context bloat)."""
+        if not result.success:
+            return f"Subagent failed: {str(result.error or 'unknown')[:200]}"
+        output = result.output
+        if isinstance(output, str):
+            return output[:1000]
+        if isinstance(output, dict):
+            parts = []
+            if "answer" in output:
+                parts.append(str(output["answer"])[:800])
+            if output.get("sources"):
+                parts.append(f"Sources: {len(output['sources'])} files")
+            if output.get("errors"):
+                parts.append(f"Errors: {len(output['errors'])}")
+            return "\n".join(parts) if parts else "Subagent completed successfully"
+        return "Subagent completed"
 
 
 class SwarmAgent(MultiAgent):

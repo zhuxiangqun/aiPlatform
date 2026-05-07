@@ -104,7 +104,8 @@ def create_selected_adapter(*, model_name: str) -> Any:
 
     # Next priority: global default routing stored in ExecutionStore (set by Onboarding)
     default_llm = None if provider_env else _load_default_llm_from_store()
-    selected_model = model_env or (default_llm.get("model") if default_llm else "") or model_name
+    # model_name (explicit parameter) > model_env (global) > store default
+    selected_model = model_name or model_env or (default_llm.get("model") if default_llm else "") or "gpt-4"
 
     # Provider resolution
     provider = _norm_provider(provider_env or "openai")
@@ -118,7 +119,7 @@ def create_selected_adapter(*, model_name: str) -> Any:
             or os.getenv("DEEPSEEK_BASE_URL")
             or "https://api.deepseek.com/v1"
         )
-        api_key = os.getenv("AIPLAT_LLM_API_KEY") or os.getenv("DEEPSEEK_API_KEY") or ""
+        api_key = os.getenv("AIPLAT_LLM_API_KEY") or ""
         # If user kept default model_name (gpt-4), map to deepseek-chat by default.
         if selected_model in ("gpt-4", "gpt-4o", "gpt-3.5-turbo"):
             selected_model = "deepseek-chat"

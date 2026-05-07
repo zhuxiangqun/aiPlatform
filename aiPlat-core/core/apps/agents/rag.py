@@ -61,42 +61,39 @@ class RAGAgent(BaseAgent):
         context: AgentContext,
         params: Optional[Dict[str, Any]] = None,
     ) -> AgentResult:
+        """Execute via shared ReAct loop (§5.22: delegates to BaseAgent).
+
+        Retrieval is done here (pre-loop), then the loop handles generation
+        using the retrieved context injected into context.variables.
+        """
         params = params or {}
         query = params.get("query") or context.variables.get("query", "")
         if not query and context.messages:
             query = context.messages[-1].get("content", "")
-        
+
         if not query:
-            return AgentResult(
-                success=False,
-                output=None,
-                error="No query provided",
-                metadata={"agent": self._name},
-            )
-        
+            return AgentResult(success=False, output=None, error="No query provided", metadata={"agent": self._name})
+
         try:
             retrieval_results = await self._retrieve(query)
             context_text = self._build_context(retrieval_results)
-            prompt = self._build_prompt(query, context_text)
-            response = await self._generate(prompt, context)
-            
-            return AgentResult(
-                success=True,
-                output=response,
-                metadata={
-                    "agent": self._name,
-                    "query": query,
-                    "context_length": len(context_text),
-                    "sources": [r.entry.id for r in retrieval_results],
-                },
-            )
+            # Inject retrieved context so the shared loop can use it
+            context.variables["_retrieved_context"] = context_text
+            context.variables["_rag_query"] = query
+            context.variables["_rag_sources"] = [r.entry.id for r in retrieval_results]
+
+            result = await super().execute(context)
+            if result.metadata is None:
+                result.metadata = {}
+            result.metadata.update({
+                "agent": self._name,
+                "query": query,
+                "context_length": len(context_text),
+                "sources": [r.entry.id for r in retrieval_results],
+            })
+            return result
         except Exception as e:
-            return AgentResult(
-                success=False,
-                output=None,
-                error=str(e),
-                metadata={"agent": self._name},
-            )
+            return AgentResult(success=False, output=None, error=str(e), metadata={"agent": self._name})
     
     async def _retrieve(self, query: str) -> List[KnowledgeResult]:
         knowledge_query = KnowledgeQuery(
@@ -157,21 +154,8 @@ Context:
 
 Question: {query}
 
-Please provide a comprehensive answer based on the context above. If the context doesn't contain enough information to answer the question, please say so."""
-    
-    async def _generate(
-        self,
-        prompt: str,
-        context: AgentContext,
-    ) -> str:
-        if self._model is None:
-            return "LLM model not configured. Please provide a valid LLM adapter."
-        from ...harness.syscalls.llm import sys_llm_generate
+Please provide a comprehensive answer based on the context above."""
 
-        response = await sys_llm_generate(self._model, [{"role": "user", "content": prompt}])
-        
-        return response.content
-    
     async def add_knowledge(
         self,
         content: str,

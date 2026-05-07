@@ -107,6 +107,8 @@ async def _audit_execute(
 async def list_agents(
     agent_type: Optional[str] = None,
     status: Optional[str] = None,
+    category: Optional[str] = None,
+    tags: Optional[str] = None,
     limit: int = 100,
     offset: int = 0,
     rt: RuntimeDep = None,
@@ -115,10 +117,14 @@ async def list_agents(
     mgr = _agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Agent manager not available")
-    agents = await mgr.list_agents(agent_type, status, limit, offset)
+    tag_list = [t.strip() for t in tags.split(",")] if tags else None
+    agents = await mgr.list_agents(agent_type, status, category, tag_list, limit, offset)
     return {
         "agents": [
-            {"id": a.id, "name": a.name, "agent_type": a.type, "status": a.status, "skills": a.skills, "tools": a.tools, "metadata": a.metadata}
+            {"id": a.id, "name": a.name, "description": a.metadata.get("description", ""),
+             "agent_type": a.type, "status": a.status,
+             "category": a.category, "tags": a.tags, "phase": a.phase,
+             "skills": a.skills, "tools": a.tools, "metadata": a.metadata}
             for a in agents
         ],
         "total": mgr.get_agent_count().get("total", 0),

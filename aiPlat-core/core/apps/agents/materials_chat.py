@@ -7,10 +7,10 @@ from .base import BaseAgent, AgentMetadata
 from ...apps.document_intelligence.answer_strategy import choose_answer_strategy
 from ...apps.document_intelligence.question_analysis import analyze_question
 from ...apps.document_intelligence.retrieval_policy import choose_retrieval_policy
-from ...apps.multimodal_kb.db import KBSqlite
-from ...apps.multimodal_kb.storage import get_tenant_storage
-from ...harness.interfaces import AgentConfig, AgentContext, AgentResult, AgentStatus, SkillContext
+from ...apps.document_intelligence.strategy_resolver import resolve_strategy as _resolve_strategy
+from ...harness.interfaces import AgentConfig, AgentContext, AgentResult, AgentStatus
 from ...apps.skills import get_skill_registry
+from ...harness.syscalls.skill import sys_skill_call
 from ...harness.kernel.runtime import get_kernel_runtime
 from ...services.conversations import ConversationService
 
@@ -24,66 +24,8 @@ def _build_turn_summary(question: str, answer: str) -> str:
 
 
 def _load_doc_kinds(*, tenant_id: str, doc_ids: List[str]) -> List[str]:
-    if not doc_ids:
-        return []
-    try:
-        st = get_tenant_storage(tenant_id)
-        db = KBSqlite(st.db_path)
-        db.ensure_schema()
-        with db.connect() as conn:
-            placeholders = ",".join(["?"] * len(doc_ids))
-            rows = conn.execute(
-                f"SELECT doc_id, kind FROM documents WHERE tenant_id=? AND doc_id IN ({placeholders})",
-                (tenant_id, *doc_ids),
-            ).fetchall()
-        return [str(dict(r).get("kind") or "").strip().lower() for r in rows if str(dict(r).get("kind") or "").strip()]
-    except Exception:
-        return []
-
-
-def _resolve_strategy(
-    *,
-    doc_count: int,
-    intent: str,
-    mode: str,
-    route: str,
-    default_skill: str,
-) -> tuple[str, List[str]]:
-    mode0 = str(mode or "").strip().lower()
-    route0 = str(route or "").strip().lower()
-    if route0 == "video_fact_lookup":
-        return "video_fact_lookup", ["video_fact_lookup"]
-    if route0 == "video_window_query":
-        if intent == "summary":
-            return "video_summary", ["video_window_query"]
-        return "video_window_query", ["video_window_query"]
-    if route0 == "multi_doc_query":
-        if intent == "compare":
-            return "multi_doc_compare", ["multi_doc_query"]
-        if intent == "summary":
-            return "multi_doc_summary", ["multi_doc_query"]
-        return "multi_doc_query", ["multi_doc_query"]
-    if route0 == "single_doc_query":
-        if intent == "summary":
-            return "single_doc_summary", [default_skill]
-        if intent == "evidence_trace":
-            return "single_doc_evidence_trace", [default_skill]
-        return "single_doc_query", [default_skill]
-    if mode0.startswith("video_window"):
-        if intent == "summary":
-            return "video_summary", ["video_window_query"]
-        return "video_window_query", ["video_window_query"]
-    if doc_count > 1:
-        if intent == "compare":
-            return "multi_doc_compare", ["multi_doc_query"]
-        if intent == "summary":
-            return "multi_doc_summary", ["multi_doc_query"]
-        return "multi_doc_query", ["multi_doc_query"]
-    if intent == "summary":
-        return "single_doc_summary", [default_skill]
-    if intent == "evidence_trace":
-        return "single_doc_evidence_trace", [default_skill]
-    return "single_doc_query", [default_skill]
+    """Load document kinds via multimodal_kb service (not direct SQL)."""
+    return load_doc_kinds(tenant_id=tenant_id, doc_ids=doc_ids)
 
 
 class MaterialsChatAgent(BaseAgent):
@@ -98,7 +40,19 @@ class MaterialsChatAgent(BaseAgent):
         )
 
     async def execute(self, context: AgentContext) -> AgentResult:
-        self._status = AgentStatus.RUNNING
+        """Execute grounded conversation with selected documents.
+
+        Internal Policy (analyze_question, retrieval_policy, answer_strategy) is
+        called pre-loop and injected as context for the skill call. The skill
+        execution now goes through sys_skill_call (Harness syscall boundary)
+        instead of direct skill.execute().
+
+        §5.22 To-Be: The full execute() should delegate to the shared ReAct loop
+        (self._loop.run()), with Internal Policy decisions injected via
+        Harness-managed context rather than agent making direct calls.
+        The DB access (doc_kinds lookup) and strategy resolution are already
+        extracted to service/internal-policy layers.
+        """
         try:
             vars0 = dict(context.variables or {})
             scope = dict(vars0.get("scope") or {})
@@ -162,8 +116,8 @@ class MaterialsChatAgent(BaseAgent):
             skill = registry.get(skill_name)
             if not skill:
                 return AgentResult(success=False, error=f"skill_not_found:{skill_name}")
-            sctx = SkillContext(session_id=session_id, user_id=user_id, variables={"tenant_id": tenant_id}, metadata={"tenant_id": tenant_id})
-            sres = await skill.execute(sctx, skill_params)
+            # Execute skill via Harness syscall boundary (not direct skill.execute())
+            sres = await sys_skill_call(skill, skill_params, user_id=user_id, session_id=session_id)
             if not sres.success:
                 return AgentResult(success=False, error=str(sres.error or f"{skill_name}_failed"))
             out = dict(sres.output or {})
