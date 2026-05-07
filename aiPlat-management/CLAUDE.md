@@ -34,6 +34,9 @@ language: zh-CN
 - 2~3 个可选方案
 - 推荐默认方案
 
+### 1.1 代码优先于设计文档（强制）
+设计文档（`docs/`）描述目标状态，代码才是当前真实状态。两者冲突时以代码为准，设计文档标注"已过期/已用不同方式实现"。审计/对比类任务必须先搜代码再做结论，禁止仅凭记忆或上次审计的印象做判断，每次结论必须附带代码搜索证据（命中文件路径+行号）。
+
 ---
 
 ## 2) Simplicity First：最小实现
@@ -71,6 +74,30 @@ language: zh-CN
 ### 5.2 UI 统一出口
 - UI 相关（toast / gateError 等）优先从 `components/ui` 出口引入
 - 避免散落在 `utils/*` 形成“非聚合点高枢纽”
+
+### 5.3 配置驱动：UI 组件不按 artifact key 做特殊分支（来自 core 设计原则延展）
+
+流水线产物的 key（如 `architecture`、`test_report`、`code`）是 `PipelineStageConfig.output_artifact` 配置出来的值，不同团队的流水线可能使用不同的 key。
+
+| 禁止 | 应使用 |
+|------|--------|
+| `key === 'test_report'` 来判断是否需要特殊显示 | 检查值本身的结构，如 `'recommendation' in val` |
+| `session.phase.includes('test_report')` 写死阶段名 | 检查 phase 字符串模式而非硬编码业务阶段名 |
+| `visible.findIndex` 推断当前执行阶段 | `raw['_current_stage_idx']` —— 引擎维护的执行指针 |
+
+**原则**：UI 对 pipeline state 的判断逻辑不应依赖"某个特定团队的 artifact key 叫什么"。需特殊处理时，依据 artifact 的**结构特征**（有没有 `recommendation` 字段、有没有 `pass_rate` 字段），而非 **key 的名称**。
+
+### 5.4 Management 层不应包含业务逻辑（来自 `docs/architecture-boundary.md`）
+
+Management 是横切管理平面，职责是**聚合展示、告警、诊断、转发**。
+
+- Management **不应包含**：业务逻辑实现、直接操作 Manager 类、与业务强耦合的数据存储操作
+- 需要新数据时：先在目标业务层（core/infra）增加管理 API，management 通过 HTTP adapter/aggregator 调用并聚合
+- Management 自身可拥有"管理面元数据"存储（告警规则、配置版本、审计日志），但不得替代业务层状态存储
+
+**设计文档依据**：
+- `docs/architecture-boundary.md` 二「aiPlat-management 层不应包含：业务逻辑实现」
+- `docs/architecture/system-architecture-contract.md` 1「Management 为横切管理平面，不参与业务调用链」
 
 ---
 

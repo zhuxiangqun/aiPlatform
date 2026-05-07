@@ -67,3 +67,4 @@ credentials/
 data/
 *.bin
 vector_index.bin
+aiPlat-app/generated/
