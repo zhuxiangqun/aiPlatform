@@ -490,6 +490,17 @@ class ReActLoop(BaseLoop):
         if not self._model:
             return "No model available"
 
+        # Preflight: estimate token pressure before sending request.
+        # Avoids "send → rejected → compress → resend" waste loop.
+        msgs = state.context.get("messages")
+        if isinstance(msgs, list) and len(msgs) > 6:
+            estimated_tokens = state.used_tokens or sum(
+                len(str(m.get("content", ""))).split() * 1.3 for m in msgs if isinstance(m, dict)
+            )
+            max_tokens = float(getattr(self._config, "max_tokens", 0) or 0)
+            if max_tokens > 0 and estimated_tokens / max_tokens > 0.80:
+                await self._maybe_compact_messages(state)
+
         # Optional: context compaction + memory injection (best-effort)
         try:
             await self._maybe_compact_messages(state)
@@ -1874,6 +1885,17 @@ DONE: final_answer
                     state.metadata["tool_failures"] = int(state.metadata.get("tool_failures", 0) or 0) + 1
                 await self._trigger_hook(HookPhase.POST_TOOL_USE, {"tool_name": tool_name, "result": result_output, "format": parsed.format})
                 await self._trigger_hook(HookPhase.POST_APPROVAL_CHECK, {"tool_name": tool_name, "allowed": True})
+                # Encode tool call as structured message in trajectory
+                tool_use_id = f"tu_{str(uuid.uuid4())[:8]}"
+                msg_list = state.context.setdefault("messages", [])
+                msg_list.append({"role": "assistant", "content": json.dumps({
+                    "type": "tool_use", "id": tool_use_id, "name": str(tool_name),
+                    "input": str(tool_args)[:500] if tool_args else {},
+                }, ensure_ascii=False)})
+                msg_list.append({"role": "user", "content": json.dumps({
+                    "type": "tool_result", "tool_use_id": tool_use_id, "name": str(tool_name),
+                    "success": ok, "output": str(result_output)[:1000],
+                }, ensure_ascii=False)})
                 return str(result_output)
         # ---- MCP lazy-load: try on-demand discovery before giving up ----
         try:

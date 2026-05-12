@@ -70,7 +70,6 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
     { key: '/core/skills', icon: Sparkles, label: 'Skill管理' },
     { key: '/core/skills-rollouts', icon: Layers, label: 'Skill灰度发布' },
     { key: '/core/prompts', icon: FileText, label: 'Prompt模板' },
-    { key: '/core/skill-packs', icon: Package, label: 'Skill Packs' },
     { key: '/core/plugins', icon: Package, label: '插件管理' },
     { key: '/core/tools', icon: Wrench, label: 'Tool管理' },
     { key: '/core/mcp', icon: Plug, label: 'MCP管理' },

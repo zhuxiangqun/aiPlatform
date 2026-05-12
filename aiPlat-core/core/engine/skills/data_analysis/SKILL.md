@@ -1,7 +1,7 @@
 ---
 name: data_analysis
 display_name: 数据分析
-description: 分析数据并提供洞察。引擎内置（engine）：仅核心能力层默认可用；对外（workspace）需白名单/审批后方可调用。
+description: 分析数据并提供洞察。触发条件：用户要求分析数据、统计报表、可视化、找规律。跳过条件：纯代码生成(code_generation)、文档查询(doc_query)时由对应 Skill 处理。
 category: analysis
 version: 1.0.0
 status: enabled

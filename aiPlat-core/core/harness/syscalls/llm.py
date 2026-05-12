@@ -169,6 +169,56 @@ def _try_inject_claude_md(messages: List[Message]) -> None:
         pass  # fail-open: injection is a best-effort enhancement
 
 
+def _classify_llm_error(error: Exception) -> Dict[str, Any]:
+    """Structured error classification — diagnose before retrying.
+
+    Returns {type, strategy, retry_safe, hint}. Inspired by Hermes classify_api_error().
+    """
+    msg = str(error).lower()
+    result = {"type": "unknown", "strategy": "retry", "retry_safe": True, "hint": str(error)[:200]}
+
+    if "429" in msg or "rate" in msg or "limit" in msg:
+        result.update(type="rate_limit", strategy="backoff", hint="rate limited — wait and retry")
+    elif "context_length" in msg or "reduce" in msg or "too long" in msg or "token" in msg:
+        result.update(type="context_overflow", strategy="compress", retry_safe=False,
+                       hint="context too long — compress history before retry")
+    elif "401" in msg or "unauthorized" in msg or "auth" in msg:
+        result.update(type="auth", strategy="fallback", retry_safe=False, hint="authentication failed")
+    elif "overloaded" in msg or "503" in msg or "unavailable" in msg:
+        result.update(type="server_overloaded", strategy="backoff", hint="server overloaded — backoff")
+    elif "invalid" in msg and "thinking" in msg:
+        result.update(type="thinking_signature", strategy="clear_thinking", hint="thinking signature invalid — clear and retry")
+    elif "truncat" in msg or "length" in msg:
+        result.update(type="truncated_output", strategy="continue", hint="output truncated — continue or reduce length")
+    elif "timeout" in msg or "timed" in msg:
+        result.update(type="timeout", strategy="backoff", hint="request timed out")
+    elif "empty" in msg or "null" in msg:
+        result.update(type="empty_response", strategy="retry_or_fallback", hint="empty response — retry or fallback")
+    elif "payload" in msg or "413" in msg:
+        result.update(type="payload_too_large", strategy="compress", retry_safe=False,
+                       hint="payload too large — compress before retry")
+
+    return result
+
+
+def _validate_response(response: Any) -> Optional[str]:
+    """Validate LLM response completeness. Returns error message or None if valid.
+
+    Checks: empty content, truncated tool calls, empty tool results, hallucinated tool names.
+    """
+    content = getattr(response, "content", None) or getattr(response, "text", None)
+    if not content and not hasattr(response, "tool_calls"):
+        return "empty_response: no content or tool calls returned"
+    if hasattr(response, "tool_calls") and response.tool_calls:
+        for tc in response.tool_calls:
+            if not getattr(tc, "id", None) or not getattr(tc, "name", None):
+                return "invalid_tool_call: missing id or name"
+    finish = getattr(response, "finish_reason", "") or getattr(response, "stop_reason", "")
+    if finish == "length":
+        return "truncated_output: finish_reason is length"
+    return None
+
+
 async def sys_llm_generate(
     model: Any,
     prompt: Union[str, List[Message]],

@@ -1,7 +1,7 @@
 ---
 name: chitchat
 display_name: 闲聊
-description: 处理日常闲聊和简单问答。引擎内置（engine）：仅核心能力层默认可用；对外（workspace）需白名单/审批后方可调用。
+description: 处理日常闲聊和简单问答。触发条件：用户消息为问候、闲聊、简单常识问题、非技术对话。跳过条件：涉及代码、数据、搜索等专业任务时由对应 Skill 处理。
 category: generation
 version: 1.0.0
 status: enabled

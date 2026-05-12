@@ -218,6 +218,7 @@ class PipelineStageConfig(BaseModel):
     max_consecutive_llm_failures: int = 3
     stage_timeout_seconds: int = 600
     sandbox: bool = False
+    sandbox_mode: str = "subprocess"  # "subprocess" | "docker"
     scoring_dimensions: List[Dict[str, Any]] = Field(default_factory=list)
     coverage_trace_fields: Dict[str, str] = Field(default_factory=lambda: {"components_key": "components", "api_contracts_key": "api_contracts", "data_model_key": "data_model", "files_key": "files", "test_cases_key": "test_cases"})
 

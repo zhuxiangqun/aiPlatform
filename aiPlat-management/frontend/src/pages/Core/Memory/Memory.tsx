@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, RotateCw, Search } from 'lucide-react';
+import { Plus, RotateCw, Search, Download, Upload, Eye } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Table, Button, Modal, toast } from '../../../components/ui';
+import { Table, Button, Modal, Input, toast } from '../../../components/ui';
+import { toastGateError } from '../../../components/ui';
 import { CreateSessionModal, SessionDetailModal, SearchMemoryModal, LongTermMemoryModal } from '../../../components/core';
 import { useMemoryStore } from '../../../stores';
 import type { MemorySession } from '../../../services';
+import { memoryApi } from '../../../services';
 
 const Memory: React.FC = () => {
   const { sessions, loading, selectedSession, fetchSessions, getDetail, deleteSession, clearSelectedSession, clearSearchResults } = useMemoryStore();
@@ -13,6 +15,16 @@ const Memory: React.FC = () => {
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [longTermOpen, setLongTermOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; sessionId: string | null }>({ open: false, sessionId: null });
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [importPreview, setImportPreview] = useState<any>(null);
+  const [importFile, setImportFile] = useState<any>(null);
+  const [importMerge, setImportMerge] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [inspectModalOpen, setInspectModalOpen] = useState(false);
+  const [inspectData, setInspectData] = useState<any>(null);
+  const [inspectNamespace, setInspectNamespace] = useState('');
+  const [inspectLoading, setInspectLoading] = useState(false);
 
   useEffect(() => {
     fetchSessions();
@@ -36,6 +48,57 @@ const Memory: React.FC = () => {
     } catch {
       toast.error('删除失败');
     }
+  };
+
+  const handleExport = async () => {
+    try {
+      const data = await memoryApi.exportAll();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `aiplat-memory-export-${(data as any).exported_at?.replace(/[:.]/g, '-') || Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('记忆导出完成');
+      setExportModalOpen(false);
+    } catch (e) { toastGateError(e, '导出失败'); }
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      setImportFile(data);
+      const validation = await memoryApi.validateImport({ data });
+      setImportPreview(validation);
+    } catch (e) { toastGateError(e, '文件解析失败'); }
+  };
+
+  const handleImport = async () => {
+    if (!importFile) return;
+    setImporting(true);
+    try {
+      await memoryApi.importFrom({ data: importFile, merge: importMerge });
+      toast.success('记忆导入完成');
+      setImportModalOpen(false);
+      setImportFile(null);
+      setImportPreview(null);
+      fetchSessions();
+    } catch (e) { toastGateError(e, '导入失败'); }
+    finally { setImporting(false); }
+  };
+
+  const handleInspect = async () => {
+    setInspectLoading(true);
+    try {
+      const data = await memoryApi.inspect(inspectNamespace || undefined);
+      setInspectData(data);
+      setInspectModalOpen(true);
+    } catch (e) { toastGateError(e, '检查失败'); }
+    finally { setInspectLoading(false); }
   };
 
   const columns = [
@@ -87,12 +150,14 @@ const Memory: React.FC = () => {
           <p className="text-sm text-gray-500 mt-1">管理AI代理的对话记忆与会话上下文</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button
-            icon={<Search className="w-4 h-4" />}
-            onClick={() => setSearchModalOpen(true)}
-          >
-            搜索
+          <Button icon={<Download className="w-4 h-4" />} onClick={() => setExportModalOpen(true)}>
+            导出
           </Button>
+          <Button icon={<Upload className="w-4 h-4" />} onClick={() => setImportModalOpen(true)}>
+            导入
+          </Button>
+          <Button icon={<Eye className="w-4 h-4" />} onClick={handleInspect} loading={inspectLoading}>检查</Button>
+          <Button icon={<Search className="w-4 h-4" />} onClick={() => setSearchModalOpen(true)}>搜索</Button>
           <Button onClick={() => setLongTermOpen(true)}>
             长期记忆
           </Button>
@@ -170,6 +235,76 @@ const Memory: React.FC = () => {
         open={longTermOpen}
         onClose={() => setLongTermOpen(false)}
       />
+
+      {/* Export Modal */}
+      <Modal open={exportModalOpen} onClose={() => setExportModalOpen(false)} title="导出全部记忆"
+        footer={<><Button onClick={() => setExportModalOpen(false)}>取消</Button><Button variant="primary" onClick={handleExport}>下载 JSON</Button></>}>
+        <p className="text-gray-400 text-sm">导出包含：情景记忆摘要、语义/长期记忆、L3 任务技能记忆。可用于实例迁移或备份。</p>
+      </Modal>
+
+      {/* Import Modal */}
+      <Modal open={importModalOpen} onClose={() => { setImportModalOpen(false); setImportFile(null); setImportPreview(null); }}
+        title="导入记忆" footer={importFile ? <><Button onClick={() => setImportModalOpen(false)}>取消</Button>
+        <Button variant="primary" onClick={handleImport} loading={importing}>{importMerge ? '合并导入' : '覆盖导入'}</Button></> : undefined}>
+        {!importFile ? (
+          <div className="space-y-3">
+            <p className="text-gray-400 text-sm">选择之前导出的 aiplat-memory-export-*.json 文件</p>
+            <input type="file" accept=".json" onChange={handleImportFile} className="text-sm text-gray-300" />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-gray-300">预览：</p>
+            <div className="text-xs text-gray-400 space-y-1">
+              <p>版本: {importPreview?.version || '?'}</p>
+              <p>语义记忆: {importPreview?.preview?.semantic_items || 0} 条</p>
+              <p>任务技能: {importPreview?.preview?.task_skills || 0} 条</p>
+              <p>情景摘要: {importPreview?.preview?.episodic_has_summary ? '有' : '无'}</p>
+              {importPreview?.warnings?.length > 0 && <p className="text-amber-400">⚠ {importPreview.warnings.join('; ')}</p>}
+            </div>
+            <label className="flex items-center gap-2 text-sm text-gray-300">
+              <input type="checkbox" checked={importMerge} onChange={(e) => setImportMerge(e.target.checked)} /> 合并模式（保留现有记忆）
+            </label>
+          </div>
+        )}
+      </Modal>
+
+      {/* Inspect Modal */}
+      <Modal open={inspectModalOpen} onClose={() => { setInspectModalOpen(false); setInspectData(null); setInspectNamespace(''); }}
+        title="记忆检查器" width="720px" footer={<Button onClick={() => setInspectModalOpen(false)}>关闭</Button>}>
+        <div className="space-y-4 max-h-96 overflow-y-auto">
+          <div className="flex items-center gap-2">
+            <Input placeholder="命名空间 (如 pm_agent)" value={inspectNamespace} onChange={(v: any) => setInspectNamespace(v?.target?.value || '')} style={{ maxWidth: 200 }} />
+            <Button size="sm" onClick={handleInspect} loading={inspectLoading}>刷新</Button>
+          </div>
+          {inspectData ? (
+            <div className="space-y-3 text-sm">
+              <div className="bg-dark-hover rounded p-3">
+                <span className="font-medium text-gray-200">当前工作记忆</span>
+                <p className="text-gray-400 text-xs">Token: {inspectData.working?.token_count}, 消息: {inspectData.working?.message_count}</p>
+              </div>
+              <div className="bg-dark-hover rounded p-3">
+                <span className="font-medium text-gray-200">情景记忆</span>
+                <p className="text-gray-400 text-xs">{inspectData.episodic?.summary || '(空)'}</p>
+              </div>
+              <div className="bg-dark-hover rounded p-3">
+                <span className="font-medium text-gray-200">语义记忆 ({inspectData.semantic?.total_items || 0} 条)</span>
+                {(inspectData.semantic?.items || []).slice(0, 10).map((item: any, i: number) => (
+                  <details key={i} className="text-xs text-gray-400 mt-1">
+                    <summary className="cursor-pointer">{item.key}</summary>
+                    <p className="ml-2">{item.content}</p>
+                  </details>
+                ))}
+              </div>
+              <div className="bg-dark-hover rounded p-3">
+                <span className="font-medium text-gray-200">技能记忆 ({inspectData.task_skills?.total || 0} 条)</span>
+                {(inspectData.task_skills?.skills || []).map((s: any, i: number) => (
+                  <p key={i} className="text-xs text-gray-400">ID: {s.skill_id} pass_rate: {s.pass_rate}</p>
+                ))}
+              </div>
+            </div>
+          ) : <p className="text-gray-500 text-sm">点击检查加载记忆数据</p>}
+        </div>
+      </Modal>
     </div>
   );
 };

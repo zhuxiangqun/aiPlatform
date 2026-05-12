@@ -264,9 +264,12 @@ class BuilderSessionService:
         try:
             json_str = extract_json(reply)
             if json_str:
-                return json.loads(json_str)
+                prd = json.loads(json_str)
+                missing = [f for f in ("user_stories", "scope") if not prd.get(f)]
+                if missing:
+                    return None
+                return prd
         except (json.JSONDecodeError, Exception):
             pass
-        return {"title": reply.split("\n")[0] if "\n" in reply else reply[:100],
-                "overview": reply[:500], "user_stories": [], "constraints": [], "scope": "组合"}
+        return None
 

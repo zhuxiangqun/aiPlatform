@@ -222,6 +222,10 @@ mkdir -p "$AIPLAT_HOME/tools"   # Plugin tool discovery (P2-12)
 mkdir -p "$AIPLAT_HOME/skills"  # Workspace skills
 mkdir -p "$AIPLAT_HOME/agents"  # AGENT.md role definitions
 mkdir -p "$AIPLAT_HOME/output"  # Pipeline deploy output
+mkdir -p "$AIPLAT_HOME/artifacts"     # ArtifactRegistry 版本化制品
+mkdir -p "$AIPLAT_HOME/task_skills"   # L3 TaskSkill 记忆持久化
+mkdir -p "$AIPLAT_HOME/auto_pipelines" # 自动审批流水线配置
+mkdir -p "$AIPLAT_HOME/hooks"         # 用户空间 Hook 脚本
 
 echo "============================================================"
 echo "  aiPlat-platform - 启动服务"

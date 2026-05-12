@@ -504,6 +504,12 @@ export const workspaceMcpApi = {
 
 // ==================== Skill API ====================
 
+/** Unified skill categories — single source of truth for all skill forms */
+export const SKILL_CATEGORIES = [
+  "general", "execution", "retrieval", "analysis", "generation", "transformation",
+  "reasoning", "coding", "search", "tool", "communication",
+] as const;
+
 export interface Skill {
   id: string;
   name: string;
@@ -990,6 +996,16 @@ export const workspaceSkillInstallerApi = {
       {}
     );
   },
+
+  catalog: async (params?: { category?: string; query?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.category) q.set('category', params.category);
+    if (params?.query) q.set('query', params.query);
+    const qs = q.toString();
+    return apiClient.get<{ catalog: any[]; source: string; total: number }>(
+      `/core/workspace/skills/installer/catalog${qs ? '?' + qs : ''}`
+    );
+  },
 };
 
 // ==================== Jobs / Cron (Roadmap-3) ====================
@@ -1357,6 +1373,23 @@ export const memoryApi = {
       query: data.query,
       limit: data.limit ?? 10,
     });
+  },
+
+  exportAll: async () => {
+    return apiClient.get<{ version: string; exported_at: string; memory: any; stats?: any }>('/core/memory/export');
+  },
+
+  importFrom: async (data: { data: any; merge?: boolean }) => {
+    return apiClient.post<{ status: string; summary: any }>('/core/memory/import', data);
+  },
+
+  validateImport: async (data: { data: any }) => {
+    return apiClient.post<{ valid: boolean; version: string; preview: any; warnings: string[] }>('/core/memory/import/validate', data);
+  },
+
+  inspect: async (namespace?: string) => {
+    const qs = namespace ? `?namespace=${encodeURIComponent(namespace)}` : '';
+    return apiClient.get<any>(`/core/memory/inspect${qs}`);
   },
 };
 

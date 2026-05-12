@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Modal, Button, Input, Select } from '../ui';
 import { useSkillStore } from '../../stores';
+import { SKILL_CATEGORIES as SKILL_CAT_NAMES } from '../../services';
 
 interface AddSkillModalProps {
   open: boolean;
@@ -8,19 +9,7 @@ interface AddSkillModalProps {
   onSuccess: () => void;
 }
 
-const SKILL_CATEGORIES = [
-  { value: 'general', label: '通用' },
-  { value: 'reasoning', label: '推理' },
-  { value: 'coding', label: '编程' },
-  { value: 'search', label: '搜索' },
-  { value: 'tool', label: '工具' },
-  { value: 'communication', label: '通信' },
-  { value: 'execution', label: '执行' },
-  { value: 'retrieval', label: '检索' },
-  { value: 'analysis', label: '分析' },
-  { value: 'generation', label: '生成' },
-  { value: 'transformation', label: '转换' },
-];
+const SKILL_CATEGORIES = SKILL_CAT_NAMES.map(v => ({ value: v, label: v }));
 
 const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess }) => {
   const [name, setName] = useState('');

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Plus, FolderOpen, Trash2, Clock, BarChart3, Users } from 'lucide-react';
 import { projectApi, builderTeamApi, type ProjectItem, type TeamConfig } from '../../../services';
 import { Card, CardHeader, CardContent, Button, Textarea, toast } from '../../../components/ui';
+import { toastGateError } from '../../../components/ui';
 
 const ProjectsPage: React.FC = () => {
   const nav = useNavigate();
@@ -38,13 +39,13 @@ const ProjectsPage: React.FC = () => {
       setShowNew(false); setName(''); setDesc(''); setTeamId('');
       refresh();
       toast.success('项目已创建');
-    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : '创建失败'); }
+    } catch (e) { toastGateError(e, '创建失败'); }
     finally { setCreating(false); }
   };
 
   const remove = async (id: string) => {
     if (!window.confirm('确定要删除这个项目吗？所有运行记录和产物将被永久删除。')) return;
-    try { await projectApi.delete(id); refresh(); } catch { toast.error('删除失败'); }
+    try { await projectApi.delete(id); refresh(); } catch (e: any) { toastGateError(e, '删除失败'); }
   };
 
   const latestRun = (p: ProjectItem) => p.runs?.[p.runs.length - 1];

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, RefreshCw, TrendingUp, TrendingDown, Minus, Zap } from 'lucide-react';
 import { insightApi, type AgentInsight } from '../../../services';
 import { Card, CardHeader, CardContent, Button, toast } from '../../../components/ui';
+import { toastGateError } from '../../../components/ui';
 
 function agentDisplayName(agentId: string): string {
   return agentId.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -39,7 +40,7 @@ const AgentInsightPage: React.FC = () => {
   useEffect(() => { load(); }, [load]);
 
   const refresh = async () => {
-    try { await insightApi.refresh(); toast.success('已刷新'); load(); } catch { toast.error('刷新失败'); }
+    try { await insightApi.refresh(); toast.success('已刷新'); load(); } catch (e: any) { toastGateError(e, '刷新失败'); }
   };
 
   const trend = (val: number) => {

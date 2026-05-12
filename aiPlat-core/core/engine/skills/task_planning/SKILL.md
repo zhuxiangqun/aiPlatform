@@ -1,7 +1,7 @@
 ---
 name: task_planning
 display_name: 任务规划
-description: 将目标拆解为可执行计划。引擎内置（engine）：仅核心能力层默认可用；对外（workspace）需白名单/审批后方可调用。
+description: 将目标拆解为可执行计划。触发条件：用户描述"怎么实现""拆一下""分几步"等需求。跳过条件：单步骤任务直接执行。
 category: execution
 version: 1.0.0
 status: enabled

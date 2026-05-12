@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { workspaceSkillApi } from '../../services';
+import { workspaceSkillApi, SKILL_CATEGORIES as SKILL_CAT_NAMES } from '../../services';
 import { Button, Input, Modal, Select, Textarea, toast } from '../ui';
 import { diagnosticsApi } from '../../services';
 import SkillWizardV2Modal, { type SkillWizardV2Value } from './SkillWizardV2Modal';
@@ -10,14 +10,7 @@ interface AddSkillModalProps {
   onSuccess: () => void;
 }
 
-const SKILL_CATEGORIES = [
-  { value: 'general', label: '通用' },
-  { value: 'execution', label: '执行' },
-  { value: 'retrieval', label: '检索' },
-  { value: 'analysis', label: '分析' },
-  { value: 'generation', label: '生成' },
-  { value: 'transformation', label: '转换' },
-];
+const SKILL_CATEGORIES = SKILL_CAT_NAMES.map(v => ({ value: v, label: v }));
 
 const SKILL_TEMPLATES: Record<
   string,

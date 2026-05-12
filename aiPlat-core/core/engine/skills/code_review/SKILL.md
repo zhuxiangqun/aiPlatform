@@ -1,7 +1,7 @@
 ---
 name: code_review
 display_name: 代码审查
-description: 审查代码质量并给出改进建议。引擎内置（engine）：仅核心能力层默认可用；对外（workspace）需白名单/审批后方可调用。
+description: 审查代码质量并给出改进建议。触发条件：用户要求审查代码、review PR、检查代码质量。跳过条件：代码生成由 code_generation 处理。
 category: analysis
 version: 1.0.0
 status: enabled

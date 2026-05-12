@@ -1,7 +1,7 @@
 ---
 name: information_search
 display_name: 信息检索
-description: 从知识库和互联网中检索相关信息。引擎内置（engine）：仅核心能力层默认可用；对外（workspace）需白名单/审批后方可调用。
+description: 从知识库和互联网中检索相关信息。触发条件：用户要求搜索、检索、查找资料。跳过条件：内部知识库查询由 knowledge_retrieval 处理。
 category: retrieval
 version: 1.0.0
 status: enabled

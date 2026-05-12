@@ -39,7 +39,7 @@ export {
   pluginApi,
   promptApi,
 } from './coreApi';
-export { gatewayAdminApi } from './coreApi';
+export { gatewayAdminApi, SKILL_CATEGORIES } from './coreApi';
 
 // Legacy monitoring API (for layer metrics)
 export { monitoringApi as layerMonitoringApi } from './apiClient';

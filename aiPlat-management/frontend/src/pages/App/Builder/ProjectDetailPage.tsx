@@ -6,6 +6,7 @@ import { projectApi, type ProjectItem, type ProjectRun, type BuilderSession } fr
 import { BuilderPipeline } from '../../../components/Builder/BuilderPipeline';
 import { ChatWidget } from '../../../components/ui/ChatWidget';
 import { Card, CardHeader, CardContent, Button, toast } from '../../../components/ui';
+import { toastGateError } from '../../../components/ui';
 
 const ProjectDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -108,7 +109,7 @@ const ProjectDetailPage: React.FC = () => {
                    requirement: '', iteration: s.iteration || 0, error: s.error || '',
                    prd: null, architecture: s.architecture || null, code: s.code || null,
                    test_report: s.test_report || null, messages: [] });
-    } catch { toast.error('启动失败'); }
+    } catch (e: any) { toastGateError(e, '启动失败'); }
     finally { setStarting(false); }
   }, [id]);
 
@@ -134,7 +135,7 @@ const ProjectDetailPage: React.FC = () => {
       } else {
         toast.success('AI已生成团队推荐');
       }
-    } catch { toast.error('推荐请求失败'); }
+    } catch (e: any) { toastGateError(e, '推荐请求失败'); }
     finally { setRecommending(false); }
   }, [id]);
 
@@ -161,18 +162,18 @@ const ProjectDetailPage: React.FC = () => {
     setPipelineLoading(true);
     projectApi.approve(id)
       .then(() => { toast.success('已提交，等待执行…'); setPipelineLoading(false); })
-      .catch((e) => { toast.error('操作失败: ' + (e?.message || 'unknown')); setPipelineLoading(false); });
+      .catch((e) => { toastGateError(e, '操作失败'); setPipelineLoading(false); });
   }, [id]);
 
   const rollbackStage = useCallback((stageId: string) => {
     if (!id) return;
-    projectApi.rollback(id, stageId).catch(() => toast.error('回退失败'));
-    if (stageId === 'prd') {
+    projectApi.rollback(id, stageId).catch((e: any) => toastGateError(e, '回退失败'));
+    if (stages.length > 0 && stageId === stages[0]?.output_artifact) {
       setPhase('dialogue');
       setSession(null);
       return;
     }
-  }, [id]);
+  }, [id, stages]);
 
   const startFix = useCallback(async () => {
     if (!id) return;
@@ -180,7 +181,7 @@ const ProjectDetailPage: React.FC = () => {
     try {
       await projectApi.startFix(id);
       await refreshState();
-    } catch { toast.error('启动修复失败'); }
+    } catch (e: any) { toastGateError(e, '启动修复失败'); }
     finally { setPipelineLoading(false); }
   }, [id]);
 
@@ -193,7 +194,7 @@ const ProjectDetailPage: React.FC = () => {
       setTestResult(result as Record<string, unknown>);
       if ((result as Record<string, unknown>).all_passed) toast.success('所有测试通过！');
       else toast.error('部分测试未通过');
-    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : '测试失败'); }
+    } catch (e) { toastGateError(e, '测试失败'); }
     finally { setTesting(false); }
   }, [id]);
 
@@ -205,7 +206,7 @@ const ProjectDetailPage: React.FC = () => {
       const result = await projectApi.deployToApp(id);
       setDeployResult(result as Record<string, unknown>);
       toast.success('部署成功！');
-    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : '部署失败'); }
+    } catch (e) { toastGateError(e, '部署失败'); }
     finally { setDeploying(false); }
   }, [id]);
 
@@ -213,7 +214,7 @@ const ProjectDetailPage: React.FC = () => {
   const [rejectFeedback, setRejectFeedback] = useState('');
   const rejectHITL = useCallback(() => {
     if (!id || !rejectFeedback.trim()) return;
-    projectApi.reject(id, rejectFeedback.trim()).catch(() => toast.error('驳回失败'));
+    projectApi.reject(id, rejectFeedback.trim()).catch((e: any) => toastGateError(e, '驳回失败'));
     setShowReject(false);
     setRejectFeedback('');
   }, [id, rejectFeedback]);
@@ -405,11 +406,14 @@ const ProjectDetailPage: React.FC = () => {
               onChange={(e) => { if (e.target.value) rollbackStage(e.target.value); e.target.value = ''; }}
               defaultValue="">
               <option value="">↩ 回退...</option>
-              <option value="prd">回退 PRD（需求对话）</option>
-              {session?.architecture && <option value="architect">回退架构设计</option>}
-              {(session as Record<string,unknown>).frontend_code && <option value="frontend_code">回退前端代码</option>}
-              {(session as Record<string,unknown>).backend_code && <option value="backend_code">回退后端代码</option>}
-              {(session as Record<string,unknown>).code && <option value="code">回退代码</option>}
+              {stages.filter(s => {
+                const key = (s as any).output_artifact || '';
+                return key && (session as Record<string,any>)?.[key];
+              }).map(s => (
+                <option key={(s as any).output_artifact} value={(s as any).output_artifact}>
+                  回退 {(s as any).agent_name || (s as any).agent_id || (s as any).output_artifact}
+                </option>
+              ))}
             </select>
             <Button variant="secondary" size="sm" onClick={() => {
               if (!id) return;

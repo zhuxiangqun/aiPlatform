@@ -1,7 +1,7 @@
 ---
 name: task_decomposition
 display_name: 任务分解
-description: 将复杂任务分解为子任务与依赖。引擎内置（engine）：仅核心能力层默认可用；对外（workspace）需白名单/审批后方可调用。
+description: 将复杂任务分解为子任务与依赖。触发条件：用户描述的任务过于复杂、多个步骤、有依赖关系。跳过条件：单步骤任务由 task_planning 处理。
 category: analysis
 version: 1.0.0
 status: enabled

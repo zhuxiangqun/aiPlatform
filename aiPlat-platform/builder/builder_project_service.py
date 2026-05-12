@@ -310,7 +310,7 @@ class BuilderProjectService:
         result = await core_chat(ChatContext(
             agent_name="planning_agent",
             session_id=f"{project_id}_plan",
-            user_input=f"请根据以下 PRD 推荐团队配置：\n\n{prd_json[:4000]}",
+            user_input=f"请根据以下 PRD 推荐团队配置：\n\n{prd_json[:8000]}",
             model=self._model,
         ))
 
@@ -326,6 +326,19 @@ class BuilderProjectService:
             recommendation = {"raw_reply": result.reply, "parse_error": True}
 
         if plan_stages:
+            # Validate that recommended agents exist in registry
+            try:
+                from core.api.core_facade import get_agent_frontmatter
+                unknown = []
+                for ps in plan_stages:
+                    aid = ps.get("agent_id", "")
+                    fm = get_agent_frontmatter(aid)
+                    if not fm:
+                        unknown.append(aid)
+                if unknown:
+                    recommendation["_warnings"] = [f"agent(s) not found in registry: {unknown}"]
+            except Exception:
+                pass
             proj["plan_stages"] = plan_stages
             proj["plan_stage_ids"] = [s.get("id", f"plan_stage_{i}") for i, s in enumerate(plan_stages)]
 
@@ -351,6 +364,7 @@ class BuilderProjectService:
             or []
         )
         result = []
+        warnings = []
         for i, s in enumerate(stages_raw):
             if not isinstance(s, dict):
                 continue
@@ -764,7 +778,6 @@ def _run_tests_for_project(project_id: str, deploy_dir: str) -> dict:
                 results["repo_tests"] = {"passed": False, "error": str(e)}
     if deploy_dir:
         results["e2e_smoke"] = {"passed": True, "reason": "deploy_directory_exists"}
-        results["all_passed"] = True
     return results
 
 

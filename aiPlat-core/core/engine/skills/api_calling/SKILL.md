@@ -1,7 +1,7 @@
 ---
 name: api_calling
 display_name: API调用
-description: 调用外部API接口获取数据。引擎内置（engine）：仅核心能力层默认可用；对外（workspace）需白名单/审批后方可调用。
+description: 调用外部API接口获取数据。触发条件：需要调用第三方API、发送HTTP请求。跳过条件：内部数据查询或文件读写不使用此 Skill。
 category: execution
 version: 1.0.0
 status: enabled

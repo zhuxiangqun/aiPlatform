@@ -1,21 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { workspaceSkillApi } from '../../services';
+import { workspaceSkillApi, SKILL_CATEGORIES as SKILL_CAT_NAMES } from '../../services';
 import type { Skill } from '../../services';
 import { Button, Input, Modal, Select, Textarea, toast } from '../ui';
 
-const SKILL_CATEGORIES = [
-  { value: 'general', label: '通用技能' },
-  { value: 'reasoning', label: '推理技能' },
-  { value: 'coding', label: '编程技能' },
-  { value: 'search', label: '搜索技能' },
-  { value: 'tool', label: '工具技能' },
-  { value: 'communication', label: '通信技能' },
-  { value: 'execution', label: '执行技能' },
-  { value: 'retrieval', label: '检索技能' },
-  { value: 'analysis', label: '分析技能' },
-  { value: 'generation', label: '生成技能' },
-  { value: 'transformation', label: '转换技能' },
-];
+const SKILL_CATEGORIES = SKILL_CAT_NAMES.map(v => ({ value: v, label: v }));
 
 interface EditSkillModalProps {
   open: boolean;

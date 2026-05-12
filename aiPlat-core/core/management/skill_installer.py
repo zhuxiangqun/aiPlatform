@@ -205,6 +205,79 @@ def _write_manifest(skill_dir: Path, *, source: Dict[str, Any]) -> None:
     p.write_text(json.dumps(data, ensure_ascii=False, sort_keys=True, indent=2), encoding="utf-8")
 
 
+def adapt_claude_plugin(root_dir: Path, target_skills_dir: Path, target_agents_dir: Path) -> Dict[str, Any]:
+    """拆解 Claude Code 插件包为 aiPlatform 组件。
+
+    识别目录结构：
+    - skills/*.md → 复制到 target_skills_dir
+    - agents/*.md  → 复制到 target_agents_dir
+    - hooks/*.py   → 复制到 ~/.aiplat/hooks/
+    - commands/*.md → 跳过（aiPlatform 无 slash command）
+    - mcp/*.json   → 记录为 manifest.mcp_hint
+
+    返回：{converted: [...], skipped: [...], mcp_hints: [...]}
+    """
+    import os
+    manifest = {"converted": [], "skipped": [], "mcp_hints": []}
+
+    # skills/ → ~/.aiplat/skills/
+    skills_src = root_dir / "skills"
+    if skills_src.is_dir():
+        target_skills_dir.mkdir(parents=True, exist_ok=True)
+        for item in skills_src.iterdir():
+            if item.suffix == ".md":
+                dest = target_skills_dir / item.name
+                if not dest.exists():
+                    shutil.copy2(item, dest)
+        manifest["converted"].append("skills")
+
+    # agents/ → ~/.aiplat/agents/
+    agents_src = root_dir / "agents"
+    if agents_src.is_dir():
+        target_agents_dir.mkdir(parents=True, exist_ok=True)
+        for item in agents_src.iterdir():
+            if item.is_dir():
+                dest_dir = target_agents_dir / item.name
+                agent_md = item / "AGENT.md"
+                if agent_md.is_file():
+                    if not dest_dir.exists():
+                        shutil.copytree(item, dest_dir)
+            elif item.suffix == ".md":
+                dest = target_agents_dir / item.name
+                if not dest.exists():
+                    shutil.copy2(item, dest)
+        manifest["converted"].append("agents")
+
+    # hooks/ → ~/.aiplat/hooks/
+    hooks_src = root_dir / "hooks"
+    if hooks_src.is_dir():
+        hooks_dest = Path(os.path.expanduser("~/.aiplat/hooks"))
+        hooks_dest.mkdir(parents=True, exist_ok=True)
+        for item in hooks_src.iterdir():
+            if item.suffix == ".py":
+                dest = hooks_dest / item.name
+                if not dest.exists():
+                    shutil.copy2(item, dest)
+        manifest["converted"].append("hooks")
+
+    # commands/ → skip
+    if (root_dir / "commands").is_dir():
+        manifest["skipped"].append({"component": "commands",
+            "reason": "aiPlatform 无 slash command 概念"})
+
+    # mcp/ → record as hint (manual registration needed)
+    mcp_src = root_dir / "mcp"
+    if mcp_src.is_dir():
+        for item in mcp_src.iterdir():
+            if item.suffix == ".json":
+                manifest["mcp_hints"].append(str(item.name))
+        if not manifest["mcp_hints"]:
+            manifest["skipped"].append({"component": "mcp",
+                "reason": "MCP server 配置已发现，需在管理界面手动注册"})
+
+    return manifest
+
+
 @dataclass
 class InstallResult:
     installed: List[str]

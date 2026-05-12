@@ -1,7 +1,7 @@
 ---
 name: code_generation
 display_name: 代码生成
-description: 根据需求描述生成代码。引擎内置（engine）：仅核心能力层默认可用；对外（workspace）需白名单/审批后方可调用。
+description: 根据需求描述生成代码（## FILE: 格式）。触发条件：用户要求写代码、生成项目、实现功能、修复Bug。跳过条件：纯文本生成(text_generation)、SQL查询(sql相关)、配置修改时由对应 Skill 处理。
 category: generation
 uses_code_skill: true
 version: 1.0.0

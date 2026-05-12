@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Badge, Button, Input, Modal, Select, Textarea, toast } from '../ui';
 import localSkillSpecV2Schema from '../../schemas/skillSpecV2.schema.json';
-import { workspaceSkillApi } from '../../services';
+import { workspaceSkillApi, SKILL_CATEGORIES as SKILL_CAT_NAMES } from '../../services';
 
 type SkillKind = 'rule' | 'executable';
 
 export type SkillWizardV2Value = {
-  name: string; // display name in UI (will map to display_name)
+  name: string;
   skill_id?: string;
   display_name?: string;
   description: string;
@@ -20,19 +20,7 @@ export type SkillWizardV2Value = {
   sop: string;
 };
 
-const CATEGORY_OPTIONS = [
-  { value: 'general', label: '通用' },
-  { value: 'execution', label: '执行' },
-  { value: 'retrieval', label: '检索' },
-  { value: 'analysis', label: '分析' },
-  { value: 'generation', label: '生成' },
-  { value: 'transformation', label: '转换' },
-  { value: 'reasoning', label: '推理' },
-  { value: 'coding', label: '编程' },
-  { value: 'search', label: '搜索' },
-  { value: 'tool', label: '工具' },
-  { value: 'communication', label: '通信' },
-];
+const CATEGORY_OPTIONS = SKILL_CAT_NAMES.map(v => ({ value: v, label: v }));
 
 type Schema = any;
 const getDefaultSop = (schema: Schema): string => {

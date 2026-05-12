@@ -26,6 +26,7 @@ class ToolConfig:
     timeout: int = 30
     retry: int = 0
     metadata: Dict[str, Any] = field(default_factory=dict)
+    is_concurrency_safe: bool = False  # True → read-only tools (Read/Grep/Glob) can run in parallel
 
 
 @dataclass

@@ -149,12 +149,16 @@ async def register_builtin_jobs() -> None:
 
     async def _skill_optimization():
         try:
-            from core.apps.skills.registry import get_skill_registry
-            reg = get_skill_registry()
-            if reg:
-                stats = {name: s.get("stats") for name, s in (getattr(reg, '_binding_stats', None) or {}).items()}
-                if stats:
-                    logger.debug(f"Skill optimization: {len(stats)} skills analyzed")
+            from core.apps.skills.curator import get_skill_curator
+            curator = get_skill_curator()
+            report = await curator.run_if_idle()
+            if report and (report.stale_count or report.archived_count or report.merged):
+                logger.info(
+                    "Curator run complete: active=%d stale=%d archived=%d merged=%d duration=%.1fs",
+                    report.active_count, report.stale_count,
+                    report.archived_count, len(report.merged),
+                    report.duration_seconds,
+                )
         except Exception as e:
             logger.debug(f"Skill optimization skipped: {e}")
 

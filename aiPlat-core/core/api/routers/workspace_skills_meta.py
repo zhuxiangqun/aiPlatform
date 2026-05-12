@@ -1409,3 +1409,55 @@ async def workspace_skills_installer_uninstall(skill_id: str, http_request: Requ
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"installer_uninstall_failed:{e}")
+
+
+@router.get("/workspace/skills/installer/catalog")
+async def workspace_skills_installer_catalog(
+    category: str = "",
+    query: str = "",
+    rt: RuntimeDep = Depends(get_kernel_runtime),
+):
+    """返回可安装的第三方 Skill 目录列表。
+
+    数据源：~/.aiplat/skills/catalog.yaml（用户空间，不入仓库）
+    每个条目包含 installed 字段——运行时对比已安装的 Workspace Skill 动态计算。
+    """
+    try:
+        import yaml as _yaml
+        catalog_path = os.path.expanduser("~/.aiplat/skills/catalog.yaml")
+        if not os.path.isfile(catalog_path):
+            return {"catalog": [], "source": "none"}
+
+        with open(catalog_path, "r", encoding="utf-8") as f:
+            data = _yaml.safe_load(f) or {}
+        items = data.get("catalog", [])
+
+        # 获取已安装的 Skill ID 列表
+        try:
+            from core.management.skill_manager import WorkspaceSkillManager
+            mgr = WorkspaceSkillManager()
+            installed_ids = {s.get("id") for s in (mgr.list_skills() or []) if isinstance(s, dict)}
+        except Exception:
+            installed_ids = set()
+
+        # 动态计算 installed 字段
+        for item in items:
+            if isinstance(item, dict):
+                item["installed"] = item.get("name", "") in installed_ids
+
+        # 分类过滤
+        if category:
+            items = [i for i in items if isinstance(i, dict) and i.get("category", "") == category]
+
+        # 关键词搜索
+        if query:
+            q = query.lower()
+            items = [i for i in items if isinstance(i, dict) and (
+                q in i.get("name", "").lower()
+                or q in i.get("description", "").lower()
+                or any(q in t.lower() for t in i.get("tags", []))
+            )]
+
+        return {"catalog": items, "source": catalog_path, "total": len(items)}
+    except Exception as e:
+        return {"catalog": [], "source": "none", "error": str(e)}

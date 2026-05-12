@@ -1,7 +1,7 @@
 ---
 name: text_generation
 display_name: 文本生成
-description: 根据提示生成各类文本内容。引擎内置（engine）：仅核心能力层默认可用；对外（workspace）需白名单/审批后方可调用。
+description: 根据提示生成各类文本内容。触发条件：用户要求生成文章、文案、摘要、邮件、对话回复等文本内容。跳过条件：涉及代码生成(code_generation)、数据分析(data_analysis)、翻译(translation)时由对应 Skill 处理。
 category: generation
 version: 1.0.0
 status: enabled

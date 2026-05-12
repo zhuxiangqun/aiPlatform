@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Badge, Button, Input, Modal, Select, Switch, Table, Tabs, Textarea, toast } from '../../../components/ui';
-import { workspaceSkillApi, workspaceSkillInstallerApi, type WorkspaceSkillInstallerPlan } from '../../../services';
+import { workspaceSkillApi, workspaceSkillInstallerApi, type WorkspaceSkillInstallerPlan, SKILL_CATEGORIES } from '../../../services';
 import { toastGateError } from '../../../components/ui';
 
 type SourceType = 'git' | 'path' | 'zip';
@@ -14,7 +14,13 @@ const SOURCE_OPTIONS = [
 
 const SkillMarketplace: React.FC = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'import' | 'installed'>('import');
+  const [activeTab, setActiveTab] = useState<'browse' | 'import' | 'installed'>('browse');
+  // Catalog state
+  const [catalog, setCatalog] = useState<any[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [catalogCategory, setCatalogCategory] = useState('');
+  const [catalogQuery, setCatalogQuery] = useState('');
+  // Import state
   const [sourceType, setSourceType] = useState<SourceType>('git');
   const [url, setUrl] = useState('');
   const [ref, setRef] = useState('');
@@ -59,6 +65,53 @@ const SkillMarketplace: React.FC = () => {
       setLoadingInstalled(false);
     }
   };
+
+  // Load catalog when browse tab is active
+  const loadCatalog = async () => {
+    setCatalogLoading(true);
+    try {
+      const params: any = {};
+      if (catalogCategory) params.category = catalogCategory;
+      if (catalogQuery.trim()) params.query = catalogQuery.trim();
+      const res = await workspaceSkillInstallerApi.catalog(params);
+      setCatalog((res as any).catalog || []);
+    } catch (e) {
+      setCatalog([]);
+    } finally {
+      setCatalogLoading(false);
+    }
+  };
+
+  // Auto-install from browse: fill form → switch to import → auto-plan
+  const onBrowseInstall = async (item: any) => {
+    setUrl(item.url || '');
+    setSourceType('git');
+    setActiveTab('import');
+    // Trigger plan after form state settles
+    setTimeout(async () => {
+      try {
+        setPlanning(true);
+        const headRes = await workspaceSkillInstallerApi.resolveHead(item.url);
+        const latestRef = (headRes as any).head_sha || '';
+        if (latestRef) setRef(latestRef);
+        const planRes = await workspaceSkillInstallerApi.plan({
+          source_type: 'git',
+          url: item.url,
+          ref: latestRef || undefined,
+          auto_detect_subdir: true,
+        });
+        setPlan(planRes);
+      } catch (e) {
+        toastGateError(e, '生成安装计划失败');
+      } finally {
+        setPlanning(false);
+      }
+    }, 200);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'browse') loadCatalog();
+  }, [activeTab === 'browse' ? catalogCategory + '|' + catalogQuery : null, activeTab === 'browse']);
 
   useEffect(() => {
     // Lazy load installed list only when user opens "已安装"
@@ -217,9 +270,67 @@ const SkillMarketplace: React.FC = () => {
       </div>
 
       <Tabs
-        defaultActiveKey="import"
-        onChange={(k) => setActiveTab((k as any) === 'installed' ? 'installed' : 'import')}
+        defaultActiveKey="browse"
+        onChange={(k) => setActiveTab((k as any) === 'import' ? 'import' : (k as any) === 'installed' ? 'installed' : 'browse')}
         tabs={[
+          {
+            key: 'browse',
+            label: '浏览',
+            children: (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <Input
+                    placeholder="搜索 Skill..."
+                    value={catalogQuery}
+                    onChange={(v: any) => setCatalogQuery(v?.target?.value || v || '')}
+                    style={{ maxWidth: 300 }}
+                  />
+                  <Select
+                    value={catalogCategory}
+                    onChange={(v: any) => setCatalogCategory(v || '')}
+                    options={[
+                      { value: '', label: '全部分类' },
+                      ...(SKILL_CATEGORIES || []).map((c: any) => ({ value: c, label: c })),
+                    ]}
+                  />
+                  <Button variant="secondary" loading={catalogLoading} onClick={loadCatalog}>刷新</Button>
+                </div>
+                {catalogLoading ? (
+                  <p className="text-sm text-gray-500">加载目录中...</p>
+                ) : catalog.length === 0 ? (
+                  <p className="text-sm text-gray-500">
+                    目录为空。将 Skill 条目添加到 ~/.aiplat/skills/catalog.yaml 即可在此浏览。
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {catalog.map((item: any, idx: number) => (
+                      <div key={idx} className="bg-dark-card border border-dark-border rounded-xl p-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-gray-100">{item.name}</span>
+                          {item.installed && <Badge variant="success">已安装</Badge>}
+                        </div>
+                        <p className="text-xs text-gray-400">{item.description}</p>
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <Badge variant="default">{item.category}</Badge>
+                          {item.official && <Badge variant="info">官方</Badge>}
+                          {(item.tags || []).slice(0, 3).map((t: string, ti: number) => (
+                            <span key={ti} className="text-gray-600">{t}</span>
+                          ))}
+                        </div>
+                        <Button
+                          size="sm"
+                          disabled={item.installed}
+                          onClick={() => onBrowseInstall(item)}
+                        >
+                          {item.installed ? '已安装' : '一键安装'}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ),
+          },
           {
             key: 'import',
             label: '导入',

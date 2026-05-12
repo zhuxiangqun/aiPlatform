@@ -143,6 +143,11 @@ class SkillCurator:
             call_count = meta.get("call_count", 0)
             pinned = meta.get("pinned", False)
 
+            # Builtin protection: never transition engine/builtin skills
+            if meta.get("scope") == "engine" or meta.get("builtin") or meta.get("bundled"):
+                report.active_count += 1
+                continue
+
             # Pinned protection: pinned skills never transition to stale/archived
             if pinned:
                 report.active_count += 1
@@ -291,6 +296,9 @@ class SkillCurator:
         entry = self._skill_dir / skill_id
         if not entry.exists():
             return
+
+        if target == SkillLifecycle.ARCHIVED:
+            self._archive_to_dir(skill_id)
         state_file = entry / ".curator_state.json"
         data = {"lifecycle": target.value, "transition_reason": reason, "transition_at": time.time()}
         if state_file.exists():
@@ -304,6 +312,41 @@ class SkillCurator:
                 json.dump(data, f, indent=2)
         except OSError:
             pass
+
+    def _archive_to_dir(self, skill_id: str) -> bool:
+        """Move a skill directory to .archive/ for reversible archival."""
+        import shutil
+        entry = self._skill_dir / skill_id
+        if not entry.exists():
+            return False
+        archive_root = self._skill_dir / ".archive"
+        archive_root.mkdir(parents=True, exist_ok=True)
+        target = archive_root / skill_id
+        if target.exists():
+            import shutil
+            shutil.rmtree(target)
+        shutil.move(str(entry), str(target))
+        return True
+
+    def restore_from_archive(self, skill_id: str) -> bool:
+        """Restore an archived skill back to the active directory."""
+        import shutil
+        archive_root = self._skill_dir / ".archive"
+        archived = archive_root / skill_id
+        if not archived.exists():
+            return False
+        target = self._skill_dir / skill_id
+        if target.exists():
+            shutil.rmtree(target)
+        shutil.move(str(archived), str(target))
+        state_file = target / ".curator_state.json"
+        data = {"lifecycle": "active", "restored_at": time.time()}
+        try:
+            with open(state_file, "w") as f:
+                json.dump(data, f, indent=2)
+        except OSError:
+            pass
+        return True
 
     def _load_state(self):
         path = Path(self._config.state_file)

@@ -57,6 +57,10 @@ class PipelineState(TypedDict, total=False):
     error: str
     output_dir: str
     context: Dict[str, Any]
+    # Generic task tracking: any Stage that produces sub-tasks
+    # (e.g. programmer working through functional_requirements one-at-a-time)
+    # can use task_list for progress tracking across sessions.
+    task_list: List[Dict[str, Any]]
 
 
 class PipelineEngine:
@@ -95,6 +99,23 @@ class PipelineEngine:
 
     async def approve(self, state: PipelineState) -> PipelineState:
         state = dict(state)
+        self._repair_message_integrity(state)
+
+        # Wake recovery: if current state has errors, fallback to last healthy checkpoint.
+        # Makes harness "cattle" — restartable from event log without losing progress.
+        if state.get("error") or state.get("phase") == "failed":
+            checkpoints = state.get("_checkpoints", [])
+            healthy = [c for c in checkpoints if isinstance(c, dict) and not c.get("error")]
+            if healthy:
+                last = healthy[-1]
+                state["error"] = ""
+                state["phase"] = BuilderSessionPhase.executing.value
+                state["_current_stage_idx"] = last.get("stage_idx", state.get("_current_stage_idx", 0))
+                state["tokens_used"] = last.get("tokens_used", state.get("tokens_used", 0))
+                state["iteration"] = last.get("iteration", state.get("iteration", 0))
+                state["_wake_recovered"] = True
+                state["_wake_recovered_from"] = last.get("name", "unknown")
+
         state["phase"] = BuilderSessionPhase.executing.value
         idx = state.get("_current_stage_idx", 0)
         # If current HITL stage has generate_test_plan, test plan means "same stage resume"
@@ -107,6 +128,60 @@ class PipelineEngine:
         result = await self._run_stages_from(idx + 1, state)
         await self._consolidate_auto_pipeline(result)
         return result
+
+    @staticmethod
+    def _repair_message_integrity(state: PipelineState) -> None:
+        """Scan message trajectory and repair broken tool_use/tool_result pairings.
+
+        After HITL pause/resume, the message sequence may contain:
+        - Orphan tool_result: a result without a preceding tool_use call
+        - Incomplete tool_use: a call produced but never got a result
+        - Duplicate tool_use ids: reuse of same id across multiple messages
+
+        This inserts repair markers so the Agent knows what was interrupted.
+        """
+        try:
+            msgs = state.get("messages") or state.get("context", {}).get("messages")
+            if not isinstance(msgs, list) or len(msgs) < 2:
+                return
+            seen_ids: set = set()
+            pending_ids: set = set()
+            import json as _json
+            for i, msg in enumerate(msgs):
+                if not isinstance(msg, dict):
+                    continue
+                try:
+                    content = _json.loads(str(msg.get("content", "")))
+                except Exception:
+                    continue
+                msg_type = content.get("type", "") if isinstance(content, dict) else ""
+                if msg_type == "tool_use":
+                    tuid = content.get("id", "")
+                    if tuid in seen_ids:
+                        msgs[i] = {"role": "user", "content": _json.dumps(
+                            {"type": "tool_result", "tool_use_id": tuid, "name": content.get("name", "?"),
+                             "success": False, "output": "[REPAIR: duplicate tool_use — prior result consumed]"},
+                            ensure_ascii=False)}
+                    seen_ids.add(tuid)
+                    pending_ids.add(tuid)
+                elif msg_type == "tool_result":
+                    tuid = content.get("tool_use_id", "")
+                    if tuid in pending_ids:
+                        pending_ids.discard(tuid)
+                    elif tuid not in seen_ids:
+                        msgs.insert(i, {"role": "assistant", "content": _json.dumps(
+                            {"type": "tool_use", "id": tuid, "name": content.get("name", "?"),
+                             "input": "[REPAIR: orphan tool_result — injected placeholder]"},
+                            ensure_ascii=False)})
+                        seen_ids.add(tuid)
+            if pending_ids:
+                repair_note = _json.dumps(
+                    {"type": "repair_note", "pending_tool_ids": list(pending_ids),
+                     "message": "[REPAIR: HITL pause interrupted these tool calls — results may be pending]"},
+                    ensure_ascii=False)
+                msgs.append({"role": "user", "content": repair_note})
+        except Exception:
+            pass
 
     def _upstream_output(self, state: PipelineState, include_outputs: set = set()) -> Dict[str, Any]:
         result: Dict[str, Any] = {}
@@ -310,7 +385,17 @@ class PipelineEngine:
         # Normal stage execution (includes code generation via ReActLoop)
         local_state = await self._exec_stage(stage, local_state)
         local_state[f"_stage_{stage.id}_done"] = True
+        # Auto-initialize task_list if stage output contains trackable sub-items
         artifact = local_state.get(stage.output_artifact)
+        if isinstance(artifact, dict) and not local_state.get("task_list"):
+            for sub_key in ("functional_requirements", "items", "tasks"):
+                if isinstance(artifact.get(sub_key), list):
+                    self._init_task_list(local_state, artifact)
+                    break
+        # Quick rule-based validation — lightweight Outcome Checker
+        quick_check = self._quick_validate(artifact, stage)
+        if quick_check:
+            local_state.setdefault("_quick_check_issues", []).extend(quick_check)
         cfg_fields = getattr(stage, 'coverage_trace_fields', None) or {}
         comp_key = cfg_fields.get("components_key", "components")
         files_key = cfg_fields.get("files_key", "files")
@@ -343,11 +428,16 @@ class PipelineEngine:
         return local_state, False
 
     async def _exec_stage(self, stage: PipelineStageConfig, state: PipelineState) -> PipelineState:
-        """Generic stage execution. Uses agent_type from PipelineStageConfig:
-        - non-react (conversational, rag, reflection, ...): routes through
-          core_chat() which auto-activates Memory/Trace/Skills
-        - react (default) or uses_code_skill: uses StageRunner for
-          direct ReAct loop execution with FILE: parsing support
+        """Generic stage execution with dynamic routing.
+
+        Execution mode is chosen by priority:
+        1. Sandbox (stage.sandbox=True) — isolated subprocess
+        2. Dynamic upgrade from react → plan/reflection based on signals:
+           - retry + errors → plan (structured repair)
+           - large task → plan (break down first)
+           - upstream errors → reflection (verify before proceed)
+        3. Static agent_type (conversational/rag/plan_execute/etc.) → core_chat
+        4. Default → react via StageRunner
         """
         state = dict(state)
         used = state.get("tokens_used", 0)
@@ -361,12 +451,28 @@ class PipelineEngine:
         prompt = self._build_prompt(stage, state)
 
         # ── Route: agent_type drives execution path ──
+        # Static config is the default; dynamic signals can upgrade the mode
         agent_type = getattr(stage, 'agent_type', '') or 'react'
+        if agent_type == 'react':
+            is_retry = state.get("_auto_retry_count", 0) > 0 or state.get("iteration", 0) > 1
+            has_errors = bool(state.get("issues") or state.get("_quick_check_issues"))
+            is_large = len(str(state.get("description", ""))) > 500
+            if is_retry and has_errors:
+                agent_type = 'plan'  # Retrying with errors → structured approach
+            elif is_large and state.get("iteration", 0) == 1:
+                agent_type = 'plan'  # Complex first-run → plan before execute
+            elif has_errors and not is_retry:
+                agent_type = 'reflection'  # Errors from upstream → verify before proceed
 
-        # Sandbox path: execute stage in isolated subprocess
+        # Sandbox path: execute stage in isolated subprocess or Docker container
         if getattr(stage, 'sandbox', False):
-            from core.harness.execution.sandbox import StageSandbox
-            sb = StageSandbox(timeout_seconds=getattr(stage, 'stage_timeout_seconds', 600))
+            from core.harness.execution.sandbox import create_sandbox
+            sb = create_sandbox(stage,
+                timeout_seconds=getattr(stage, 'stage_timeout_seconds', 600),
+                cpu_limit_seconds=300,
+                memory_limit_mb=1024,
+                max_processes=100,
+            )
             sandbox_result = await sb.execute(
                 stage_config={"id": stage.id, "agent_id": stage.agent_id, "agent_type": agent_type},
                 state_snapshot=dict(state),
@@ -522,8 +628,13 @@ class PipelineEngine:
         return state
 
     async def _tri_evaluate(self, stage: PipelineStageConfig, state: Dict, pytest_output: str) -> Dict:
-        passed = pytest_output.count("PASSED") if "PASSED" in pytest_output else pytest_output.count(" passed")
-        failed = pytest_output.count("FAILED") if "FAILED" in pytest_output else pytest_output.count(" failed")
+        # Parse pytest output structurally (e.g. "3 passed, 1 failed") instead of
+        # string counting to avoid false matches on log lines containing "PASSED"/"FAILED"
+        import re
+        m = re.search(r'(\d+)\s+passed', pytest_output)
+        passed = int(m.group(1)) if m else 0
+        m = re.search(r'(\d+)\s+failed', pytest_output)
+        failed = int(m.group(1)) if m else 0
         total = max(passed + failed, 1)
         pass_rate = passed / total
         upstream = self._upstream_output(state, include_outputs=set())
@@ -536,9 +647,11 @@ class PipelineEngine:
 
         dims: List[Dict[str, Any]] = stage.scoring_dimensions or []
         if not dims:
-            dims = [
-                {"name": "quality", "weight": 1.0, "description": "Overall output quality", "threshold": 6.0},
-            ]
+            raise ValueError(
+                f"Stage '{stage.id}': scoring_dimensions is required. "
+                f"Missing for agent '{stage.agent_id}'. "
+                f"Add scoring_dimensions to AGENT.md or set AIPLAT_EVAL_DIMENSIONS."
+            )
         dim_names = [d.get("name", "") for d in dims if d.get("name")]
         dim_lines = "; ".join(f"{d.get('name','')}({int(d.get('weight',0)*100)}%): {d.get('description','')}" for d in dims)
         primary_dim = dim_names[0] if dim_names else "overall"
@@ -602,6 +715,14 @@ APPROVED if pass_rate>=0.8 and {primary_dim}>=7.0""")
         report["score"] = score
         report.setdefault("pass_rate", pass_rate)
         report.setdefault("recommendation", "APPROVED" if report.get("pass") else "REJECTED")
+        # Track score history for convergence detection and meta-optimization feedback
+        state.setdefault("_score_history", []).append({
+            "iteration": state.get("iteration", 0),
+            "overall": score.get("overall", 0),
+            "pass_rate": pass_rate,
+            "recommendation": report.get("recommendation", ""),
+            "dimensions": {d.get("name", ""): score.get(d.get("name", 0)) for d in dims},
+        })
         return report
 
     async def _gen_test_plan(self, stage: PipelineStageConfig, state: PipelineState) -> PipelineState:
@@ -647,6 +768,14 @@ APPROVED if pass_rate>=0.8 and {primary_dim}>=7.0""")
                 state["error"] = f"max_retry_attempts ({max_attempts}) exceeded"
                 state["_last_action_reason"] = "retry_max_attempts"
                 break
+            # Convergence detection: score plateau for 4+ consecutive iterations
+            history = state.get("_score_history", [])
+            if len(history) >= 4:
+                recent = [h.get("overall", 0) for h in history[-4:]]
+                if max(recent) - min(recent) < 0.03:
+                    state["error"] = "score plateaued — meta-optimization unable to improve"
+                    state["_last_action_reason"] = "score_converged"
+                    break
             if _over_budget():
                 state["error"] = "token_budget_exhausted"
                 state["_last_action_reason"] = "retry_budget_exhausted"
@@ -672,6 +801,14 @@ APPROVED if pass_rate>=0.8 and {primary_dim}>=7.0""")
                 if isinstance(compare, dict) and compare.get("verdict") == "regressed":
                     state["error"] = "evaluation regressed"
                     state["_last_action_reason"] = "evaluation_regressed"
+                    break
+            # Meta-optimization: after 3+ retries still REJECTED, try config changes
+            report = state.get(stage.output_artifact)
+            if attempt >= 3 and isinstance(report, dict) and report.get("recommendation") == "REJECTED":
+                optimized = await self._meta_optimize(stage, report, state)
+                if optimized is None:
+                    state["error"] = "meta_optimize_failed"
+                    state["_last_action_reason"] = "meta_optimize_failed"
                     break
             eval_state = await self._exec_stage(stage, state)
             state.update(eval_state)
@@ -734,8 +871,12 @@ APPROVED if pass_rate>=0.8 and {primary_dim}>=7.0""")
         stage_hints = ""
         if stage.prompt_extra and stage.prompt_extra.strip():
             stage_hints = f"\n## Stage Instructions\n{stage.prompt_extra}"
+        progress_text = ""
+        progress = self._task_progress(state)
+        if progress and not progress.startswith("0/"):
+            progress_text = f"\n## Progress\n{progress}\nCheck `task_list` in the upstream output for details (passes=true|false)."
         return f"""You are {stage.agent_name or stage.id}.
-Complete your work based on upstream output.{fb}{constraint_text}{handoff_text}{iss}{agent_list}{stage_hints}
+Complete your work based on upstream output.{fb}{constraint_text}{handoff_text}{iss}{agent_list}{stage_hints}{progress_text}
 
 ## Upstream Artifacts
 {json.dumps(ctx, ensure_ascii=False, indent=2)}
@@ -840,13 +981,19 @@ Output JSON with artifact, confidence, issues, decision.
 
     async def _deploy_docker(self, deploy_dir: str, state: PipelineState) -> None:
         import subprocess
+        import logging
+        logger = logging.getLogger("aiplat.pipeline")
         try:
             subprocess.run(["docker", "--version"], capture_output=True, timeout=5)
             prefix = os.getenv("AIPLAT_DOCKER_IMAGE_PREFIX", "aiplat-")
-            subprocess.run(["docker", "build", "-t", f"{prefix}{state.get('session_id', 'proj')[:12]}", deploy_dir],
+            r = subprocess.run(["docker", "build", "-t", f"{prefix}{state.get('session_id', 'proj')[:12]}", deploy_dir],
                            capture_output=True, timeout=60)
-        except Exception:
-            pass
+            if r.returncode != 0:
+                logger.warning("Docker build failed: %s", getattr(r, 'stderr', ''))
+        except FileNotFoundError:
+            logger.warning("Docker not installed, skipping docker build")
+        except Exception as e:
+            logger.warning("Docker build failed: %s", e)
 
     @staticmethod
     def _collect_files(artifact: Dict) -> List[Dict[str, str]]:
@@ -1212,6 +1359,132 @@ Output JSON with artifact, confidence, issues, decision.
                 state["phase"] = BuilderSessionPhase.executing.value
                 state = await self._run_stages_from(0, state)
         return state
+
+    # ── Generic task tracking (engine-level — no business knowledge) ──
+
+    @staticmethod
+    def _init_task_list(state: PipelineState, source_artifact: dict, id_key: str = "id", name_key: str = "name") -> List[Dict]:
+        """Initialize task_list from a source artifact's sub-item list.
+
+        The engine does not know what 'functional_requirement' or 'acceptance_criteria'
+        means. It only sees a list of items, each with an id and name, and creates
+        tracking entries with passes=False.
+        """
+        items = source_artifact.get("functional_requirements") or source_artifact.get("items") or source_artifact.get("tasks") or []
+        if not isinstance(items, list):
+            items = []
+        task_list = []
+        for item in items:
+            if isinstance(item, dict):
+                task_list.append({
+                    "id": str(item.get(id_key, f"task_{len(task_list)}")),
+                    "name": str(item.get(name_key, item.get("description", "")))[:200],
+                    "passes": bool(item.get("passes", False)),
+                    "blocked": item.get("blocked", ""),
+                })
+        state["task_list"] = task_list
+        return task_list
+
+    @staticmethod
+    def _next_pending_task(state: PipelineState) -> Optional[Dict]:
+        """Return the first task with passes=False, or None if all done."""
+        task_list = state.get("task_list") or []
+        for t in task_list:
+            if isinstance(t, dict) and not t.get("passes") and not t.get("blocked"):
+                return t
+        return None
+
+    @staticmethod
+    def _mark_task_done(state: PipelineState, task_id: str) -> bool:
+        """Set passes=True for the given task_id. Returns True if found."""
+        task_list = state.get("task_list")
+        if not isinstance(task_list, list):
+            return False
+        for t in task_list:
+            if isinstance(t, dict) and str(t.get("id")) == str(task_id):
+                t["passes"] = True
+                return True
+        return False
+
+    @staticmethod
+    def _task_progress(state: PipelineState) -> str:
+        """Return a human-readable progress string like '3/12 tasks completed'."""
+        task_list = state.get("task_list") or []
+        total = len(task_list)
+        done = sum(1 for t in task_list if isinstance(t, dict) and t.get("passes"))
+        blocked = sum(1 for t in task_list if isinstance(t, dict) and t.get("blocked"))
+        parts = [f"{done}/{total} completed"]
+        if blocked:
+            parts.append(f"{blocked} blocked")
+        return ", ".join(parts)
+
+    @staticmethod
+    def _quick_validate(artifact: Any, stage: Any) -> List[str]:
+        """Lightweight rule-based output check — no LLM involved.
+
+        Returns a list of issue strings (empty = all clear). Checks generic
+        properties: non-empty, required fields for known patterns, format hints.
+        """
+        issues: List[str] = []
+        if not isinstance(artifact, dict):
+            return []  # non-dict outputs are validated by _parse_output
+        if not artifact:
+            issues.append(f"Stage '{getattr(stage, 'id', '?')}': output is empty dict — may indicate execution failed silently")
+        # Check for common "looks done but isn't" patterns
+        text = str(artifact).lower()
+        if "todo" in text or "fixme" in text or "hack" in text:
+            issues.append(f"Stage '{getattr(stage, 'id', '?')}': output contains TODO/FIXME/HACK markers — incomplete output?")
+        if isinstance(artifact.get("files"), list) and len(artifact["files"]) == 0 and getattr(stage, 'uses_code_skill', False):
+            issues.append(f"Stage '{getattr(stage, 'id', '?')}': uses_code_skill but produced 0 files — check generation output")
+        # Generic coverage check for any list field
+        list_fields = [k for k, v in artifact.items() if isinstance(v, list) and v]
+        empty_list_fields = [k for k, v in artifact.items() if isinstance(v, list) and not v]
+        if empty_list_fields and not list_fields:
+            issues.append(f"Stage '{getattr(stage, 'id', '?')}': list fields found empty: {empty_list_fields}")
+        return issues
+
+    async def _meta_optimize(self, stage: PipelineStageConfig, report: Dict, state: PipelineState) -> Optional[PipelineStageConfig]:
+        """Invoke lightweight Meta-Agent to diagnose and suggest config changes.
+
+        Called by _retry_loop after 3+ retries still REJECTED.
+        Modifies stage in-place; returns None if optimization failed.
+        """
+        score = report.get("score", {})
+        issues = report.get("issues", [])[:5]
+        history = state.get("_score_history", [])
+
+        diagnosis_prompt = f"""Stage {stage.id} (agent={stage.agent_id}) REJECTED after multiple retries.
+Current: agent_type={getattr(stage, 'agent_type', 'react')}, prompt_extra={json.dumps(str(getattr(stage, 'prompt_extra', ''))[:300])}
+Evaluation: overall={score.get('overall', '?')}, pass_rate={report.get('pass_rate', '?')}
+Dimension scores: {json.dumps({k: v for k, v in score.items() if k != 'overall'})}
+Issues: {json.dumps(issues, ensure_ascii=False)}
+Score history: {json.dumps([h.get('overall', 0) for h in history[-5:]]) if history else 'none'}
+Output ONLY this JSON (no preamble): {{"diagnosis":"<1 sentence>","suggested_prompt_extra":"<追加内容>","suggested_agent_type":"react|plan|reflection","enable_test_plan":false}}"""
+
+        try:
+            result_text = await self._stage_runner.run(diagnosis_prompt, state)
+            json_str = self._extract_json(result_text)
+            if not json_str:
+                return stage
+            changes = json.loads(json_str)
+            if not isinstance(changes, dict):
+                return stage
+
+            if changes.get("suggested_prompt_extra") and isinstance(changes["suggested_prompt_extra"], str):
+                extra = changes["suggested_prompt_extra"].strip()
+                current = getattr(stage, 'prompt_extra', '') or ''
+                if extra and extra not in current:
+                    stage.prompt_extra = current + "\n" + extra
+            if changes.get("suggested_agent_type") in ("plan", "reflection"):
+                stage.agent_type = changes["suggested_agent_type"]
+            if changes.get("enable_test_plan"):
+                stage.generate_test_plan = True
+
+            state["_meta_optimized"] = True
+            state["_meta_diagnosis"] = str(changes.get("diagnosis", ""))[:200]
+            return stage
+        except Exception:
+            return stage
 
     @staticmethod
     def _extract_keywords(text: str) -> List[str]:

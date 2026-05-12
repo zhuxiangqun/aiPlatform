@@ -25,11 +25,44 @@ class MemoryItem:
 
 class SemanticMemory:
     """Semantic memory - long-term knowledge storage"""
-    
+
     def __init__(self, store_type: str = "simple"):
         self._store_type = store_type
         self._items: Dict[str, MemoryItem] = {}
-    
+        if store_type == "sqlite":
+            self._init_sqlite()
+
+    def _init_sqlite(self) -> None:
+        import sqlite3
+        import os
+        db_path = os.path.expanduser("~/.aiplat/memory_semantic.sqlite3")
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
+        self._conn = sqlite3.connect(db_path)
+        self._conn.execute("""
+            CREATE TABLE IF NOT EXISTS semantic_memories (
+                key TEXT PRIMARY KEY,
+                content TEXT NOT NULL,
+                metadata_json TEXT DEFAULT '{}',
+                embedding BLOB,
+                created_at TEXT,
+                accessed_at TEXT,
+                access_count INTEGER DEFAULT 0
+            )
+        """)
+        self._conn.commit()
+        self._load_from_sqlite()
+
+    def _load_from_sqlite(self) -> None:
+        """Load existing memories from SQLite into the in-memory index."""
+        if not hasattr(self, "_conn"):
+            return
+        for row in self._conn.execute("SELECT key, content, metadata_json, embedding, access_count FROM semantic_memories"):
+            import json
+            emb = json.loads(row[3]) if row[3] else None
+            meta = json.loads(row[2]) if row[2] else {}
+            item = MemoryItem(id=row[0], content=row[1], embedding=emb, metadata=meta, access_count=row[4])
+            self._items[row[0]] = item
+
     async def store(
         self,
         key: str,
@@ -45,6 +78,16 @@ class SemanticMemory:
             metadata=metadata or {}
         )
         self._items[key] = item
+
+        if self._store_type == "sqlite" and hasattr(self, "_conn"):
+            import json
+            emb_json = json.dumps(embedding) if embedding else None
+            meta_json = json.dumps(metadata or {}, ensure_ascii=False)
+            self._conn.execute(
+                "INSERT OR REPLACE INTO semantic_memories(key, content, metadata_json, embedding, created_at, accessed_at, access_count) VALUES(?,?,?,?,?,?,?)",
+                (key, content, meta_json, emb_json, item.created_at.isoformat(), item.accessed_at.isoformat(), item.access_count),
+            )
+            self._conn.commit()
         return item
     
     async def retrieve(
@@ -102,6 +145,9 @@ class SemanticMemory:
         """Delete a memory"""
         if key in self._items:
             del self._items[key]
+            if self._store_type == "sqlite" and hasattr(self, "_conn"):
+                self._conn.execute("DELETE FROM semantic_memories WHERE key=?", (key,))
+                self._conn.commit()
             return True
         return False
     

@@ -16,6 +16,29 @@ from .base import BaseSkill, SkillMetadata, TextGenerationSkill, CodeGenerationS
 from ...harness.interfaces import SkillConfig, SkillResult
 
 
+_AI_PLAT_TOOL_MAP: Dict[str, Dict[str, Any]] = {
+    "read": {"available": True, "mapped_to": "sys_file_read"},
+    "write": {"available": True, "mapped_to": "sys_file_write"},
+    "edit": {"available": True, "mapped_to": "sys_file_edit"},
+    "glob": {"available": True, "mapped_to": "sys_glob"},
+    "grep": {"available": True, "mapped_to": "sys_code_search"},
+    "bash": {"available": False, "hint": "需要配置 MCP shell server"},
+    "browser": {"available": False, "hint": "需要配置 agent-browser MCP server"},
+    "web_search": {"available": True, "mapped_to": "MCP websearch server"},
+}
+
+
+def check_tool_compatibility(skill_body: str) -> Dict[str, Dict[str, Any]]:
+    """扫描 Skill SOP 中引用的工具，返回兼容性报告。
+
+    遍历 _AI_PLAT_TOOL_MAP，检查每个工具名是否在 Skill 的 body 中出现。
+    已可用 → {"available": true, "mapped_to": "xxx"}
+    不可用 → {"available": false, "hint": "需要配置 xxx"}
+    """
+    body_lower = skill_body.lower()
+    return {tool: info for tool, info in _AI_PLAT_TOOL_MAP.items() if tool in body_lower}
+
+
 @dataclass
 class SkillVersion:
     version: str
@@ -117,6 +140,8 @@ class SkillRegistry:
                             description = str(fm.get("description", ""))
                             enabled = str(fm.get("status", "enabled")) != "disabled"
                             uses_code_skill = bool(fm.get("uses_code_skill"))
+                            skip_conditions = fm.get("skip_when") or fm.get("skip_conditions") or []
+                            triggers = fm.get("triggers") or []
                             body = parts[2].strip()
                         except Exception:
                             pass
@@ -135,6 +160,13 @@ class SkillRegistry:
                     import importlib
                     skill_cls = importlib.import_module(f"{__package__}.apply_engine_skill_md_patch").ApplyEngineSkillMdPatchSkill
 
+                # Detect layered subdirectories for engine skills
+                layer_dirs: Dict[str, str] = {}
+                for sub in ("references", "assets", "scripts"):
+                    sub_path = _os.path.join(skill_dir, sub)
+                    if _os.path.isdir(sub_path):
+                        layer_dirs[sub] = _os.path.realpath(sub_path)
+
                 if skill_cls:
                     skill = skill_cls()
                     register_skill_factory(name, type(skill))
@@ -142,13 +174,28 @@ class SkillRegistry:
                         cfg = getattr(skill, "_config", None)
                         if cfg and hasattr(cfg, "metadata"):
                             cfg.metadata["uses_code_skill"] = True
+                    # Inject skip_conditions and triggers from SKILL.md frontmatter
+                    if skip_conditions or triggers:
+                        cfg = getattr(skill, "_config", None)
+                        if cfg and hasattr(cfg, "metadata"):
+                            if skip_conditions:
+                                cfg.metadata["skip_conditions"] = skip_conditions
+                            if triggers:
+                                cfg.metadata["triggers"] = triggers
+                    if layer_dirs:
+                        cfg = getattr(skill, "_config", None)
+                        if cfg and hasattr(cfg, "metadata"):
+                            cfg.metadata["layer_dirs"] = layer_dirs
                     self.register(skill)
                 else:
                     config = SkillConfig(
                         name=name,
                         description=description,
-                        metadata={"category": category, "body": body, "version": "1.0.0",
-                                  "uses_code_skill": uses_code_skill}
+                    metadata={"category": category, "body": body, "version": "1.0.0",
+                              "uses_code_skill": uses_code_skill,
+                              "skip_conditions": skip_conditions,
+                              "triggers": triggers,
+                              "layer_dirs": layer_dirs}
                     )
                     skill = _GenericSkill(config)
                     self.register(skill)
@@ -346,10 +393,17 @@ class SkillRegistry:
             if not description:
                 description = name.replace("_", " ").title()
 
+            # Detect layered subdirectories (references/assets/scripts)
+            layer_dirs: Dict[str, str] = {}
+            for sub in ("references", "assets", "scripts"):
+                sub_path = os.path.join(skills_dir, sub)
+                if os.path.isdir(sub_path):
+                    layer_dirs[sub] = os.path.realpath(sub_path)
+
             config = SC(
                 name=name,
                 description=description,
-                metadata={"category": category, "body": body},
+                metadata={"category": category, "body": body, "layer_dirs": layer_dirs} if layer_dirs else {"category": category, "body": body},
             )
             skill = GenSkill(config=config)
             self.register(skill)
@@ -438,6 +492,13 @@ class SkillRegistry:
             if not description:
                 description = name.replace("_", " ").title()
 
+            # Detect layered subdirectories (references/assets/scripts)
+            layer_dirs: Dict[str, str] = {}
+            for sub in ("references", "assets", "scripts"):
+                sub_path = _os.path.join(source_dir, sub)
+                if _os.path.isdir(sub_path):
+                    layer_dirs[sub] = _os.path.realpath(sub_path)
+
             config = SC(
                 name=name,
                 description=description,
@@ -447,6 +508,7 @@ class SkillRegistry:
                     "tags": tags,
                     "source_file": fullpath,
                     "imported_at": datetime.now().isoformat(),
+                    "layer_dirs": layer_dirs,
                 },
             )
             skill = GenSkill(config=config)

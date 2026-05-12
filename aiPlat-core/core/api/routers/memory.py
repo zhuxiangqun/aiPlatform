@@ -327,32 +327,87 @@ async def cleanup_memory(request: dict, rt: RuntimeDep = Depends(get_kernel_runt
 
 @router.get("/memory/export")
 async def export_memory(rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """Export memory data"""
+    """Export complete memory snapshot for migration or backup.
+
+    Returns all layers: Episodic, Semantic, TaskSkills (L3), Sessions.
+    Replaces the old session-count-only export.
+    """
     mm = _memory_mgr(rt)
     if not mm:
         raise HTTPException(status_code=503, detail="MemoryManager not initialized")
-    counts = mm.get_session_count()
-    stats = await mm.get_stats()
-    return {
-        "total_sessions": counts["total"],
-        "stats": {"active": counts["active"], "idle": counts["idle"], "ended": counts["ended"], "total_messages": stats.total_messages},
-    }
+    try:
+        data = await mm.export_all()
+        data["stats"] = {
+            "active_sessions": mm.get_session_count().get("active", 0),
+            "total_sessions": mm.get_session_count().get("total", 0),
+        }
+        return data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"export_failed: {e}")
 
 
 @router.post("/memory/import")
 async def import_memory(request: dict, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """Import memory data"""
+    """Import memory from a previously exported JSON snapshot.
+
+    Body: {data: <memory json>, merge: false}
+    Use merge=true to add to existing memory; merge=false (default) replaces.
+    """
     mm = _memory_mgr(rt)
     if not mm:
         raise HTTPException(status_code=503, detail="MemoryManager not initialized")
-    sessions = request.get("sessions", [])
-    imported = 0
-    for s in sessions:
-        agent_type = s.get("agent_type", "default")
-        user_id = s.get("user_id", "system")
-        await mm.create_session(agent_type=agent_type, user_id=user_id, metadata=s.get("metadata"))
-        imported += 1
-    return {"status": "imported", "sessions_imported": imported}
+    data = request.get("data")
+    if not data or not isinstance(data, dict):
+        raise HTTPException(status_code=400, detail="missing 'data' field with memory json")
+    merge = request.get("merge", False)
+    try:
+        summary = await mm.import_from(data, merge=merge)
+        return {"status": "imported", "summary": summary}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"import_failed: {e}")
+
+
+@router.post("/memory/import/validate")
+async def validate_import(request: dict, rt: RuntimeDep = Depends(get_kernel_runtime)):
+    """Dry-run validate a memory import without applying it.
+
+    Returns what would be restored: semantic_count, task_skills_count, version check.
+    """
+    data = request.get("data")
+    if not data or not isinstance(data, dict):
+        raise HTTPException(status_code=400, detail="missing 'data' field")
+    memory = data.get("memory", {})
+    version = data.get("version", "unknown")
+    warnings = []
+    if version != "1.0":
+        warnings.append(f"version mismatch: expected 1.0, got {version}")
+    return {
+        "valid": True,
+        "version": version,
+        "preview": {
+            "semantic_items": len(memory.get("semantic", [])),
+            "task_skills": len(memory.get("task_skills", [])),
+            "sessions": len(memory.get("sessions", [])),
+            "episodic_has_summary": bool(memory.get("episodic", {}).get("summary")),
+        },
+        "warnings": warnings,
+    }
+
+
+@router.get("/memory/inspect")
+async def inspect_memory(namespace: str = "", rt: RuntimeDep = Depends(get_kernel_runtime)):
+    """Inspect memory contents for diagnostics.
+
+    Returns human-readable snapshot of all memory layers.
+    Optional namespace filter for per-agent inspection.
+    """
+    mm = _memory_mgr(rt)
+    if not mm:
+        raise HTTPException(status_code=503, detail="MemoryManager not initialized")
+    try:
+        return await mm.inspect(namespace=namespace)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"inspect_failed: {e}")
 
 
 # ==================== Long-term Memory ====================

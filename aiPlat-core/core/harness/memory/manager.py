@@ -49,7 +49,7 @@ class MemoryConfig:
     working_tokens: int = 30000
     episodic_update_interval: int = 5
     max_messages: int = 20
-    vector_store_type: str = "simple"
+    vector_store_type: str = "sqlite"
     enable_compression: bool = True
     enable_reminders: bool = True
     use_llm_summary: bool = True
@@ -431,6 +431,124 @@ class MemoryManager:
                 continue
         hot.sort(key=lambda s: -s.pass_rate)
         return hot
+
+    async def export_all(self, namespace_filter: str = "") -> Dict[str, Any]:
+        """Serialize all memory layers into a portable JSON structure.
+
+        Returns a complete snapshot of Working, Episodic, Semantic, and
+        TaskSkill memories. Used for instance migration and backup.
+        """
+        import os as _os
+        import json as _json
+        import time as _time
+
+        result = {
+            "version": "1.0",
+            "exported_at": _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime()),
+            "system": "aiplat-core",
+            "memory": {
+                "episodic": {"summary": self._episodic.get_summary()},
+                "semantic": [],
+                "task_skills": [],
+                "sessions": [],
+            },
+        }
+
+        for key, item in self._semantic._items.items():
+            entry = {"key": key, "content": item.content, "metadata": item.metadata}
+            if namespace_filter and namespace_filter not in str(item.metadata.get("namespace", "")):
+                continue
+            result["memory"]["semantic"].append(entry)
+
+        skills_dir = _os.path.expanduser("~/.aiplat/task_skills")
+        if _os.path.isdir(skills_dir):
+            for fname in _os.listdir(skills_dir):
+                if fname.endswith(".json"):
+                    try:
+                        with open(_os.path.join(skills_dir, fname)) as f:
+                            result["memory"]["task_skills"].append(_json.load(f))
+                    except Exception:
+                        pass
+
+        return result
+
+    async def import_from(self, data: Dict[str, Any], merge: bool = False) -> Dict[str, Any]:
+        """Restore memory from a JSON export. merge=True: add to existing; merge=False: replace.
+
+        Returns summary of what was restored.
+        """
+        summary = {"semantic_restored": 0, "task_skills_restored": 0, "errors": []}
+        memory = data.get("memory", {})
+
+        if not merge:
+            self._episodic._full_messages = []
+            self._episodic._summary = ""
+            self._semantic._items.clear()
+
+        if memory.get("episodic", {}).get("summary"):
+            self._episodic._summary = str(memory["episodic"]["summary"])
+
+        for entry in memory.get("semantic", []):
+            try:
+                key = entry.get("key", "")
+                if key and key not in self._semantic._items:
+                    await self._semantic.store(
+                        key=key,
+                        content=entry.get("content", ""),
+                        metadata=entry.get("metadata"),
+                    )
+                    summary["semantic_restored"] += 1
+            except Exception as e:
+                summary["errors"].append(f"semantic:{key}:{e}")
+
+        import os as _os
+        skills_dir = _os.path.expanduser("~/.aiplat/task_skills")
+        for skill_data in memory.get("task_skills", []):
+            sid = skill_data.get("skill_id", "")
+            if not sid:
+                continue
+            try:
+                _os.makedirs(skills_dir, exist_ok=True)
+                skill_path = _os.path.join(skills_dir, f"{sid}.json")
+                if not merge or not _os.path.exists(skill_path):
+                    import json as _json
+                    with open(skill_path, "w") as f:
+                        _json.dump(skill_data, f, indent=2)
+                    summary["task_skills_restored"] += 1
+            except Exception as e:
+                summary["errors"].append(f"task_skill:{sid}:{e}")
+
+        return summary
+
+    async def inspect(self, namespace: str = "") -> Dict[str, Any]:
+        """Return human-readable snapshot of all memory layers for diagnostics.
+
+        When namespace is provided, return only memories tagged with that namespace.
+        """
+        result = {
+            "working": {"token_count": self._working.token_count, "message_count": self._working.message_count},
+            "episodic": {"summary": self._episodic.get_summary()},
+            "semantic": {"total_items": len(self._semantic._items), "items": []},
+            "task_skills": {"total": 0, "skills": []},
+        }
+        for key, item in self._semantic._items.items():
+            if namespace and namespace not in str(item.metadata.get("namespace", key)):
+                continue
+            result["semantic"]["items"].append({"key": key, "content": item.content[:200], "metadata": item.metadata})
+        import os as _os
+        import json as _json
+        skills_dir = _os.path.expanduser("~/.aiplat/task_skills")
+        if _os.path.isdir(skills_dir):
+            for fname in _os.listdir(skills_dir):
+                if fname.endswith(".json"):
+                    try:
+                        with open(_os.path.join(skills_dir, fname)) as f:
+                            sk = _json.load(f)
+                            result["task_skills"]["skills"].append({"skill_id": sk.get("skill_id"), "pass_rate": sk.get("pass_rate"), "name": sk.get("name")})
+                    except Exception:
+                        pass
+        result["task_skills"]["total"] = len(result["task_skills"]["skills"])
+        return result
     
     def _count_consecutive_reads(self, context: List[Dict]) -> int:
         """Count consecutive read operations"""

@@ -6,32 +6,22 @@ import { builderTeamApi, type AgentCatalogItem, type PipelineStageConfig, type T
 import { AgentCatalog } from '../../../components/Builder/AgentCatalog';
 import { TeamCanvas } from '../../../components/Builder/TeamCanvas';
 import { Card, CardHeader, CardContent, Button, toast, Select } from '../../../components/ui';
+import { toastGateError } from '../../../components/ui';
 
 let _idCounter = 0;
 
-/** Derive output artifact name from agent's role/phase */
-function outputFor(agentId: string, phase: string, agentOutput?: string): string {
+/** Derive output artifact name from agent's configured output_artifact field */
+function outputFor(_agentId: string, _phase: string, agentOutput?: string): string {
   if (agentOutput) return agentOutput;
-  // fallback: legacy auto-detection for agents without output_artifact
-  // Remove this block once all AGENT.md files define output_artifact
-  const id = agentId || '';
-  if (id.includes('backend')) return 'backend_code';
-  if (id.includes('frontend')) return 'frontend_code';
-  if (id.includes('architect')) return 'architecture';
-  if (id.includes('pm') || id.includes('product') || phase === 'planning') return 'prd';
-  if (id.includes('qa') || id.includes('test') || phase === 'testing') return 'test_report';
-  if (id.includes('programmer') || phase === 'development') return 'code';
-  return phase ? `${phase}_output` : 'artifact';
+  return _phase ? `${_phase}_output` : 'artifact';
 }
 
-/** Derive input artifacts from the stages added so far */
+/** Derive input artifacts from upstream stage outputs */
 function inputsFor(prevStages: PipelineStageConfig[]): string[] {
-  if (prevStages.length === 0) return ['prd'];
+  if (prevStages.length === 0) return [];
   const upstreamOutputs = prevStages
     .filter((s) => s.output_artifact)
     .map((s) => s.output_artifact);
-  // Always include 'prd' since most stages read the requirements
-  if (!upstreamOutputs.includes('prd')) upstreamOutputs.unshift('prd');
   return upstreamOutputs;
 }
 
@@ -92,8 +82,8 @@ const TeamAssemblyPage: React.FC = () => {
         name,
         description: `${name} — ${stages.length} 个角色`,
         stages: stages.map((s, i) => ({ ...s, order: i,
-          input_artifacts: i === 0 ? ['prd'] : ['prd'],
-          output_artifact: `stage_${i}_output`,
+          input_artifacts: inputsFor(stages.slice(0, i)),
+          output_artifact: s.output_artifact || `stage_${i}_output`,
         })),
       };
       if (editingTeamId) {
@@ -105,20 +95,20 @@ const TeamAssemblyPage: React.FC = () => {
       }
       clearBuilder();
       loadTeams();
-    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : '保存失败'); }
+    } catch (e) { toastGateError(e, '保存失败'); }
     finally { setSaving(false); }
   }, [stages, teamName, editingTeamId, loadTeams]);
 
   const deleteTeam = useCallback(async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    try { await builderTeamApi.deleteTeam(id); loadTeams(); } catch { toast.error('删除失败'); }
+    try { await builderTeamApi.deleteTeam(id); loadTeams(); } catch (e: any) { toastGateError(e, '删除失败'); }
   }, [loadTeams]);
 
   const editTeam = useCallback((team: TeamConfig) => {
     setEditingTeamId(team.team_id);
     setTeamName(team.name);
     setStages(team.stages.map((s, i) => ({ ...s, order: i,
-      input_artifacts: (s as Record<string, unknown>).input_artifacts as string[] || (i === 0 ? ['prd'] : ['prd']),
+      input_artifacts: (s as Record<string, unknown>).input_artifacts as string[] || [],
       output_artifact: (s as Record<string, unknown>).output_artifact as string || `stage_${i}_output`,
     })));
     setShowBuilder(true);
