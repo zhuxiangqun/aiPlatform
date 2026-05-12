@@ -49,6 +49,10 @@ class DiscoveredSkill:
     risk_level: Optional[str] = None
     # L2: SOP markdown body (SKILL.md without YAML frontmatter)
     sop_markdown: str = ""
+    # §5.19: Skill side effects declaration
+    effects: List[Dict[str, Any]] = field(default_factory=list)
+    idempotent: bool = True
+    rollback_available: bool = False
 
 
 class SKILLMD_parser:
@@ -96,6 +100,9 @@ class SKILLMD_parser:
             sop_markdown=sop_markdown or "",
             skill_dir=str(skill_dir.resolve()),
             skill_md_path=str(skill_md.resolve()),
+            effects=data.get("effects", []),
+            idempotent=bool(data.get("idempotent", True)),
+            rollback_available=bool(data.get("rollback_available", False)),
         )
 
 
@@ -106,16 +113,18 @@ class SkillDiscovery:
     Scans directories to find and load skills with SKILL.md metadata.
     """
     
-    def __init__(self, base_path: str):
+    def __init__(self, base_path: str, workspace_path: str = None):
         """
         Initialize discovery system.
-        
+
         Args:
-            base_path: Base directory to scan for skills
+            base_path: Base directory to scan for skills (engine seeds)
+            workspace_path: Optional workspace directory for user skills (~/.aiplat/skills/)
         """
         self.base_path = Path(base_path)
         self._parser = SKILLMD_parser()
         self._discovered: Dict[str, DiscoveredSkill] = {}
+        self._workspace_path = Path(workspace_path) if workspace_path else None
     
     async def discover(self) -> Dict[str, DiscoveredSkill]:
         """
@@ -129,21 +138,26 @@ class SkillDiscovery:
         
         self._discovered = {}
         
-        for item in self.base_path.iterdir():
-            if not item.is_dir():
-                continue
-            
-            # Skip hidden directories and special folders
-            if item.name.startswith('.') or item.name in ['__pycache__', 'scripts', 'references']:
-                continue
-            
-            skill_info = self._parser.parse(item)
-            if skill_info:
-                # Use absolute paths to avoid cwd-dependent loading behavior.
-                skill_info.handler_path = str((item / "handler.py").resolve())
-                skill_info.references_path = str((item / "references").resolve())
-                skill_info.scripts_path = str((item / "scripts").resolve())
-                self._discovered[skill_info.name] = skill_info
+        scan_dirs = [self.base_path]
+        if self._workspace_path and self._workspace_path.exists():
+            scan_dirs.append(self._workspace_path)
+
+        for scan_dir in scan_dirs:
+            for item in scan_dir.iterdir():
+                if not item.is_dir():
+                    continue
+                
+                # Skip hidden directories and special folders
+                if item.name.startswith('.') or item.name in ['__pycache__', 'scripts', 'references']:
+                    continue
+                
+                skill_info = self._parser.parse(item)
+                if skill_info:
+                    # Use absolute paths to avoid cwd-dependent loading behavior.
+                    skill_info.handler_path = str((item / "handler.py").resolve())
+                    skill_info.references_path = str((item / "references").resolve())
+                    skill_info.scripts_path = str((item / "scripts").resolve())
+                    self._discovered[skill_info.name] = skill_info
         
         return self._discovered
     

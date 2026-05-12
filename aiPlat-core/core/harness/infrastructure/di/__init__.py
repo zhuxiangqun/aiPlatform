@@ -198,12 +198,11 @@ def create_container() -> DIContainer:
 
 def create_container_with_defaults() -> DIContainer:
     """Create container with default registrations"""
-    from .config import get_config_manager
-    from .lifecycle import create_lifecycle_manager
-    from .hooks import HookManager
-    
+    from ..config import get_config_manager
+    from ..hooks import HookManager
+
     builder = ContainerBuilder()
-    
+
     builder.register_singleton(
         "config_manager",
         get_config_manager()

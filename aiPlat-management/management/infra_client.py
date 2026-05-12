@@ -64,23 +64,11 @@ class InfraAPIClient:
         """Get infrastructure metrics."""
         return await self._request("GET", "/api/infra/metrics")
     
-    async def diagnose(self) -> Dict[str, Any]:
-        """Diagnose infrastructure."""
-        return await self._request("GET", "/api/infra/diagnose")
 
     # ===== Managers (config/status/metrics) =====
 
-    async def list_managers(self) -> Dict[str, Any]:
-        """List all registered managers (infra internal modules)."""
-        return await self._request("GET", "/api/infra/managers")
 
-    async def get_manager_config(self, name: str) -> Dict[str, Any]:
-        """Get specific manager configuration."""
-        return await self._request("GET", f"/api/infra/managers/{name}/config")
 
-    async def update_manager_config(self, name: str, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Update specific manager configuration."""
-        return await self._request("PUT", f"/api/infra/managers/{name}/config", json={"config": config})
     
     # ===== Node Management =====
     

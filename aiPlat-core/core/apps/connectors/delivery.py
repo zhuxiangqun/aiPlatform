@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional
 class ConnectorDelivery:
     """
     PR-12: 统一 connector delivery（含 DLQ）
-    - 当前仅支持 webhook-like POST（Slack response_url / 通用 webhook）
+    - 当前仅支持 webhook-like POST（callback URL / 通用 webhook）
     - 失败时写入 connector_delivery_dlq，供运维重试
     """
 

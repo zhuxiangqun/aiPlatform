@@ -3,7 +3,7 @@ Universal Chat Service — reusable multi-turn conversation for any agent.
 
 Usage:
   svc = ChatService(model=llm_adapter)
-  sid = await svc.create_session(agent_id="pm_agent", system_prompt="...", initial_context={"requirement": "..."})
+  sid = await svc.create_session(agent_id="<agent_id>", system_prompt="...", initial_context={"requirement": "..."})
   resp = await svc.chat(sid, "Hello")
 """
 
@@ -59,7 +59,7 @@ class ChatService:
         reply = ""
         if self._model:
             from core.harness.syscalls.llm import sys_llm_generate
-            result = await sys_llm_generate(self._model, [{"role": "user", "content": full_prompt}])
+            result = await sys_llm_generate(self._model, [{"role": "user", "content": full_prompt}], trace_context={"source": "chat_service"})
             reply = result if isinstance(result, str) else getattr(result, "content", str(result))
 
         session["messages"].append({"role": "assistant", "content": reply})

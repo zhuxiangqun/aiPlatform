@@ -244,28 +244,69 @@ class AgentManager:
         return mapping.get(s, AgentStateEnum.READY.value)
     
     def _seed_data(self):
+        import os as _os
+        import yaml as _yaml
+
         now = datetime.utcnow()
-        demo_agents = [
-            ("react_agent", "ReAct助手", "react", AgentStateEnum.RUNNING.value, {"model": "gpt-4", "temperature": 0.7}, ["task_planning", "information_search"], ["search"]),
-            ("rag_agent", "RAG问答引擎", "rag", AgentStateEnum.RUNNING.value, {"model": "gpt-4", "temperature": 0.3}, ["knowledge_retrieval", "summarization"], ["search"]),
-            ("plan_agent", "任务规划器", "plan", AgentStateEnum.INITIALIZING.value, {"model": "gpt-4", "temperature": 0.5}, ["task_planning", "task_decomposition"], []),
-            ("tool_agent", "工具调用器", "tool", AgentStateEnum.RUNNING.value, {"model": "gpt-3.5-turbo", "temperature": 0.2}, ["api_calling"], ["search", "calculator"]),
-            ("conversational_agent", "对话代理", "conversational", AgentStateEnum.STOPPED.value, {"model": "gpt-3.5-turbo", "temperature": 0.8}, ["chitchat"], []),
-        ]
-        for agent_id, name, agent_type, status, config, skills, tools in demo_agents:
-            self._agents[agent_id] = AgentInfo(
-                id=agent_id, name=name, type=agent_type, status=self._normalize_status(status),
+
+        engine_agents_root = _os.path.join(
+            _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))),
+            "engine", "agents"
+        )
+
+        if not _os.path.isdir(engine_agents_root):
+            return
+
+        for dirname in sorted(_os.listdir(engine_agents_root)):
+            agent_dir = _os.path.join(engine_agents_root, dirname)
+            agent_md = _os.path.join(agent_dir, "AGENT.md")
+            if not _os.path.isfile(agent_md):
+                continue
+            try:
+                with open(agent_md, "r", encoding="utf-8") as f:
+                    raw = f.read()
+            except Exception:
+                continue
+
+            name = dirname
+            display_name = name.replace("_", " ").title()
+            agent_type = "react"
+            status = "ready"
+            config = {}
+            skills = []
+            tools = []
+
+            if raw.startswith("---"):
+                parts = raw.split("---", 2)
+                if len(parts) >= 3:
+                    try:
+                        fm = _yaml.safe_load(parts[1]) or {}
+                        name = str(fm.get("name", dirname))
+                        display_name = str(fm.get("display_name", display_name))
+                        agent_type = str(fm.get("agent_type", "react"))
+                        status = str(fm.get("status", "ready"))
+                        config = fm.get("config", {})
+                        skills = fm.get("skills", []) if isinstance(fm.get("skills"), list) else []
+                        tools = fm.get("tools", []) if isinstance(fm.get("tools"), list) else []
+                    except Exception:
+                        pass
+
+            if name in self._agents:
+                continue
+
+            self._agents[name] = AgentInfo(
+                id=name, name=display_name, type=agent_type, status=self._normalize_status(status),
                 config=config, skills=skills, tools=tools,
                 memory_config={"type": "short_term", "recall_count": 5},
                 created_at=now, updated_at=now, metadata={"version": "1.0.0"}
             )
-            self._stats[agent_id] = AgentStats(
+            self._stats[name] = AgentStats(
                 total_executions=0, success_count=0, failed_count=0, avg_duration_ms=0.0, success_rate=0.0
             )
-            self._skill_bindings[agent_id] = []
-            self._tool_bindings[agent_id] = []
-            self._execution_history[agent_id] = []
-            self._versions[agent_id] = [AgentVersion(version="v1.0.0", status="current", created_at=now, changes="Initial version")]
+            self._skill_bindings[name] = []
+            self._tool_bindings[name] = []
+            self._execution_history[name] = []
+            self._versions[name] = [AgentVersion(version="v1.0.0", status="current", created_at=now, changes="Initial version")]
         
         for agent_id, agent_info in self._agents.items():
             self._bridge_to_registry(agent_info)

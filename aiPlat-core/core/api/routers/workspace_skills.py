@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 from core.api.deps import actor_from_http, rbac_guard
 from core.api.utils.governance import gate_error_envelope, governance_links, ui_url
 from core.api.utils.run_contract import wrap_execution_result_as_run_summary
-from core.apps.skills.registry import get_skill_registry
+from core.api.core_facade import get_skill_registry
 from core.harness.integration import get_harness, KernelRuntime
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.harness.kernel.types import ExecutionRequest

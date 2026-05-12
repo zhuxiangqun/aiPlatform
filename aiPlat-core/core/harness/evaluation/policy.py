@@ -3,6 +3,11 @@ Evaluation policy (weights + thresholds)
 
 Used by evaluator workbench / auto-eval to keep scoring consistent and tunable.
 Persisted as a LearningArtifact(kind=evaluation_policy, target_type=system).
+
+Scoring dimensions are read from:
+  1. PipelineStageConfig.scoring_dimensions (pipeline context)
+  2. AIPLAT_EVAL_DIMENSIONS env var (JSON)
+  3. Legacy defaults in dimensions.py
 """
 
 from __future__ import annotations
@@ -10,11 +15,24 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
+from .dimensions import get_dimension_weights, get_dimension_thresholds
+
+
+def _build_default_weights() -> Dict[str, float]:
+    return get_dimension_weights()
+
+
+def _build_default_thresholds() -> Dict[str, Any]:
+    thresholds: Dict[str, Any] = {}
+    for name, val in get_dimension_thresholds().items():
+        thresholds[f"{name}_min"] = val
+    return thresholds
+
 
 DEFAULT_POLICY = {
     "schema_version": "0.1",
-    "thresholds": {"functionality_min": 7.0},
-    "weights": {"functionality": 0.55, "product_depth": 0.2, "design_ux": 0.15, "code_architecture": 0.1},
+    "thresholds": _build_default_thresholds(),
+    "weights": _build_default_weights(),
     # evidence capture anti-flaky controls (best-effort)
     # max_retries=1 means: 1 initial attempt + 1 retry on non-HTTP failures
     "evidence_capture": {"max_retries": 1},

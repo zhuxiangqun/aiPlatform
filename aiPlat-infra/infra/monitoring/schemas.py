@@ -1,11 +1,12 @@
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
+import os
 
 
 @dataclass
 class MetricConfig:
     enabled: bool = True
-    prefix: str = "ai_platform_infra"
+    prefix: str = os.getenv("AIPLAT_METRICS_PREFIX", "")
     labels: Dict[str, str] = field(default_factory=dict)
     export_interval: int = 60
 

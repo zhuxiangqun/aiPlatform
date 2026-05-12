@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict
 from datetime import datetime
@@ -5,7 +6,7 @@ from datetime import datetime
 
 @dataclass
 class FileConfig:
-    path: str = "/var/log/ai-platform/infra.log"
+    path: str = os.getenv("AIPLAT_LOG_PATH", "")
     max_size: str = "100MB"
     backup_count: int = 10
     encoding: str = "utf-8"

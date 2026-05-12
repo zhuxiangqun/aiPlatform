@@ -2,6 +2,10 @@
 Subagent Coordinator
 
 Coordinates task execution across multiple Subagents.
+
+Design: Each Subagent is a lightweight conversational agent with restricted
+tool permissions. The coordinator dispatches tasks and collects summarized
+results per §5.26 Subagent 摘要原则.
 """
 
 import asyncio
@@ -37,8 +41,13 @@ class SubagentResult:
 
 
 class SubagentCoordinator:
-    """Coordinates execution of Subagents"""
-    
+    """Coordinates execution of Subagents via conversational AI agents.
+
+    Each Subagent runs as a lightweight conversational agent with restricted
+    tool permissions. The coordinator creates agents, dispatches tasks, and
+    collects summarized results for the parent agent.
+    """
+
     def __init__(self):
         self._registry = None
         self._active_instances: Dict[str, SubagentInstance] = {}
@@ -80,65 +89,102 @@ class SubagentCoordinator:
         subagent_name: str,
         context: Optional[List[Dict]] = None
     ) -> SubagentResult:
-        """Execute a single Subagent"""
+        """Execute a single Subagent via a conversational AI agent.
+
+        Creates a lightweight conversational agent from the subagent config,
+        binds allowed tools, executes the task, and returns a summarized
+        result (max ~800 chars per §5.26 Subagent 摘要原则).
+        """
         start_time = datetime.utcnow()
-        
         try:
             instance = await self.create_instance(
                 name=subagent_name,
                 session_id=f"task-{datetime.utcnow().timestamp()}"
             )
-            
             instance.state = "running"
             instance.started_at = datetime.utcnow().isoformat()
-            
-            # Add system prompt
+
+            # Build conversation context from system prompt + task
+            messages: List[Dict[str, str]] = []
             if instance.config.system_prompt:
-                instance.add_message("system", instance.config.system_prompt)
-            
-            # Add task context
+                messages.append({"role": "system", "content": instance.config.system_prompt})
             if context:
                 for msg in context:
-                    instance.add_message(msg.get("role", "user"), msg.get("content", ""))
-            
-            # Add the actual task
-            instance.add_message("user", task)
-            
-            # Check tool permissions
-            available_tools = instance.config.allowed_tools
-            denied_tools = instance.config.denied_tools
-            
-            logger.info(f"Executing Subagent '{subagent_name}' with tools: {available_tools}")
-            logger.info(f"Denied tools: {denied_tools}")
-            
-            # Simulate execution (in real implementation, this would call the LLM)
-            # Placeholder: Just acknowledge the task
-            output = f"[Subagent: {subagent_name}] Task received. Available tools: {available_tools}"
-            
-            instance.state = "completed"
-            instance.completed_at = datetime.utcnow().isoformat()
-            
-            duration = int((datetime.utcnow() - start_time).total_seconds() * 1000)
-            
-            return SubagentResult(
-                subagent_name=subagent_name,
-                success=True,
-                output=output,
-                tool_calls=instance.tool_calls,
-                tokens_used=instance.tokens_used,
-                duration_ms=duration
+                    messages.append({
+                        "role": msg.get("role", "user"),
+                        "content": str(msg.get("content", "")),
+                    })
+            messages.append({"role": "user", "content": task})
+
+            # Create agent and bind allowed tools
+            from core.api.core_facade import create_agent, get_tool_registry
+            agent = create_agent(
+                agent_type="conversational",
+                config={
+                    "name": f"subagent-{subagent_name}",
+                    "timeout": instance.config.timeout,
+                    "max_tokens": instance.config.max_context_tokens,
+                },
+                system_prompt=instance.config.system_prompt,
             )
-            
+
+            available_tools = instance.config.allowed_tools[:]
+            tool_registry = get_tool_registry()
+            for tool_name in available_tools:
+                if instance.config.can_use_tool(tool_name):
+                    tool = tool_registry.get(tool_name) if hasattr(tool_registry, "get") else None
+                    if tool and hasattr(agent, "add_tool"):
+                        agent.add_tool(tool)
+
+            # Execute and collect output
+            from core.harness.interfaces.agent import AgentContext
+            agent_ctx = AgentContext(
+                session_id=f"subagent-{subagent_name}",
+                user_id="subagent_coordinator",
+                messages=messages,
+            )
+            result = await agent.execute(agent_ctx)
+
+            if result.success:
+                output = result.output or ""
+                if isinstance(output, dict):
+                    output = output.get("content", str(output))
+                # Summarize per §5.26: parent needs concise summary, not full output
+                summarized = self._summarize_output(str(output), max_chars=800)
+                duration = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+                instance.state = "completed"
+                instance.completed_at = datetime.utcnow().isoformat()
+                return SubagentResult(
+                    subagent_name=subagent_name,
+                    success=True,
+                    output=summarized,
+                    tokens_used=getattr(result, "tokens_used", 0) or 0,
+                    duration_ms=duration,
+                )
+            else:
+                duration = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+                instance.state = "error"
+                return SubagentResult(
+                    subagent_name=subagent_name,
+                    success=False,
+                    error=str(getattr(result, "error", "Agent execution failed")),
+                    duration_ms=duration,
+                )
         except Exception as e:
             logger.error(f"Subagent '{subagent_name}' failed: {e}")
             duration = int((datetime.utcnow() - start_time).total_seconds() * 1000)
-            
             return SubagentResult(
                 subagent_name=subagent_name,
                 success=False,
                 error=str(e),
-                duration_ms=duration
+                duration_ms=duration,
             )
+
+    @staticmethod
+    def _summarize_output(output: str, max_chars: int = 800) -> str:
+        if len(output) <= max_chars:
+            return output
+        return output[:max_chars] + f"\n\n... [truncated from {len(output)} chars]"
     
     async def execute_parallel(
         self,

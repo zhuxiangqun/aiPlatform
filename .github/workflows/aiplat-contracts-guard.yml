@@ -119,6 +119,15 @@ jobs:
             fi
           fi
 
+      - name: Architecture guard (grep-level)
+        run: |
+          bash ./scripts/architecture_guard.sh
+
+      - name: Constitution tests (cross-layer)
+        run: |
+          python -m pip install pytest
+          python -m pytest tests/constitution/ -v --tb=short
+
       - name: Contracts acceptance tests
         working-directory: ./aiPlat-core
         run: |
@@ -163,3 +172,9 @@ jobs:
             core/tests/unit/test_exec_drivers/test_capabilities.py \
             core/tests/integration/test_phaseR1_prompt_assembler_layers_cache.py \
             core/tests/integration/test_phaseR1_prompt_mode.py
+
+      - name: E2E smoke test (warn-only)
+        continue-on-error: true
+        run: |
+          python -m pip install pytest requests
+          python e2e_smoke.py || echo "::warning::E2E smoke test failed"

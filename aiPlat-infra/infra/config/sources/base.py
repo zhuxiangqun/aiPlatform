@@ -2,6 +2,7 @@
 ConfigSource Base - 配置源抽象基类及实现
 """
 
+import os
 from abc import ABC
 from typing import Any, Callable, Dict, Optional
 import threading

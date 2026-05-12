@@ -182,26 +182,42 @@ class ReflectionGraph:
 
     def _build_critic_prompt(self, task: str, output: str, feedback: List[str]) -> str:
         """Build the critic prompt based on configuration."""
-        dimension_descriptions = {
-            EvaluationDimension.FACTUALITY: "事实准确性",
-            EvaluationDimension.COMPLETENESS: "逻辑完整性",
-            EvaluationDimension.CLARITY: "表达清晰度",
-            EvaluationDimension.FORMAT: "格式规范性",
+        import os, json
+
+        default_descriptions = {
+            "FACTUALITY": "事实准确性",
+            "COMPLETENESS": "逻辑完整性",
+            "CLARITY": "表达清晰度",
+            "FORMAT": "格式规范性",
         }
-        
+        env_descs = os.getenv("AIPLAT_EVAL_DIMENSION_LABELS", "")
+        if env_descs:
+            try:
+                default_descriptions.update(json.loads(env_descs))
+            except json.JSONDecodeError:
+                pass
+
+        dimension_descriptions = {
+            EvaluationDimension.FACTUALITY: default_descriptions.get("FACTUALITY", "factuality"),
+            EvaluationDimension.COMPLETENESS: default_descriptions.get("COMPLETENESS", "completeness"),
+            EvaluationDimension.CLARITY: default_descriptions.get("CLARITY", "clarity"),
+            EvaluationDimension.FORMAT: default_descriptions.get("FORMAT", "format"),
+        }
+
         dimension_lines = "\n".join(
             f"- {dimension_descriptions.get(d, d.value)}"
             for d in self._config.evaluation_dimensions
         )
-        
+
         previous_feedback = ""
         if feedback:
             previous_feedback = f"\n之前的改进建议：\n" + "\n".join(f"- {f}" for f in feedback)
-        
-        prompt = f"""你是一个质量检查专家。检查以下回答的质量：
-{dimension_lines}
 
-{previous_feedback}
+        prompt_template = os.getenv("AIPLAT_EVAL_CRITIC_TEMPLATE",
+            """你是一个质量检查专家。检查以下回答的质量：
+{dimensions}
+
+{previous}
 
 原始任务：{task}
 
@@ -217,8 +233,13 @@ class ReflectionGraph:
 回复格式：
 STATUS: PASS 或 REJECTED
 SCORES: factuality=X.X completeness=X.X clarity=X.X format=X.X
-FEEDBACK: 具体改进建议（每行一条）
-"""
+FEEDBACK: 具体改进建议（每行一条）""")
+        prompt = prompt_template.format(
+            dimensions=dimension_lines,
+            previous=previous_feedback,
+            task=task,
+            output=output,
+        )
         return prompt
 
     def _build_executor_prompt(self, task: str, previous_output: str, feedback: List[str]) -> str:
@@ -253,7 +274,7 @@ Please improve the output to address all the issues mentioned above."""
         
         messages = (
             PromptAssembler().assemble(prompt).messages
-            if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y")
+            if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "true").lower() in ("1", "true", "yes", "y")
             else [{"role": "user", "content": prompt}]
         )
         result = await self._executor.run({"messages": messages, "context": state.context})
@@ -331,7 +352,7 @@ Please improve the output to address all the issues mentioned above."""
         
         messages = (
             PromptAssembler().assemble(prompt).messages
-            if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y")
+            if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "true").lower() in ("1", "true", "yes", "y")
             else [{"role": "user", "content": prompt}]
         )
         result = await self._critic.run({"messages": messages, "context": state.context})

@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any
 
@@ -14,7 +15,7 @@ class FileConfig:
 @dataclass
 class ObjectConfig:
     type: str = "s3"
-    bucket: str = "ai-platform-bucket"
+    bucket: str = os.getenv("AIPLAT_STORAGE_BUCKET", "")
     region: str = "us-east-1"
     access_key: str = ""
     secret_key: str = ""
@@ -23,7 +24,7 @@ class ObjectConfig:
 
 @dataclass
 class TempConfig:
-    path: str = "/tmp/ai-platform"
+    path: str = os.getenv("AIPLAT_STORAGE_PATH", "")
     max_size: str = "1GB"
     cleanup_interval: int = 3600
 

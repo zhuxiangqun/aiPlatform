@@ -33,7 +33,7 @@ def get_real_storage_info() -> Dict[str, Any]:
         }
         
         dirs_to_check = [
-            {"path": "/Users/apple/workdata/person/zy/aiPlatform", "name": "aiPlatform"},
+            {"path": os.getcwd(), "name": "workspace"},
             {"path": "/tmp", "name": "tmp"},
         ]
         

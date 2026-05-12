@@ -4,6 +4,7 @@ Adapter Manager - Manages LLM adapters
 Provides adapter configuration and monitoring operations.
 """
 
+import os
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any
 from datetime import datetime
@@ -152,7 +153,7 @@ class AdapterManager:
             rate_limit=rate_limit or {
                 "rpm": 60,
                 "tpm": 90000,
-                "daily_quota": 1000000
+                "daily_quota": int(os.getenv("AIPLAT_DEFAULT_DAILY_QUOTA", "0"))
             },
             retry_config={
                 "enabled": True,

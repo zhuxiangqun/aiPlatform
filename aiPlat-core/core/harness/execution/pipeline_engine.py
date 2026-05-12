@@ -7,12 +7,14 @@ Canonical location: harness/execution/pipeline_engine.py (CLAUDE.md §5.23).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Any, Dict, List, Optional, Set, Tuple, TypedDict
 
 import asyncio
+import hashlib
 import json
 import os
 import time
+from datetime import datetime, timezone
 
 from core.schemas_builder import (
     BuilderSessionPhase,
@@ -30,15 +32,16 @@ from .langgraph.stage_runner import StageRunner
 
 
 class PipelineState(TypedDict, total=False):
+    """Pipeline execution state.
+
+    All artifact keys (e.g., 'prd', 'architecture', 'frontend_code', etc.)
+    are accessed via config.stages[i].output_artifact and stored dynamically
+    in this dict at runtime. The TypedDict only declares framework-level fields.
+    Artifact keys are entirely config-driven per CLAUDE.md §5.29.
+    """
     session_id: str
     phase: str
     description: str
-    prd: Optional[Dict[str, Any]]
-    architecture: Optional[Dict[str, Any]]
-    code: Optional[Dict[str, Any]]
-    test_plan: Optional[Dict[str, Any]]
-    test_report: Optional[Dict[str, Any]]
-    security_report: Optional[Dict[str, Any]]
     iteration: int
     qa_retry: int
     max_iterations: int
@@ -60,8 +63,17 @@ class PipelineEngine:
     def __init__(self, config: PipelineConfig, model: Any = None, skill_loader: Any = None):
         self._config = config
         self._model = model
+        if self._model is None:
+            self._model = self._load_default_model()
         self._skill_loader = skill_loader
-        self._stage_runner = StageRunner(model=model)
+        self._stage_runner = StageRunner(model=self._model, pipeline_config=config)
+
+    @staticmethod
+    def _load_default_model() -> Any:
+        import os
+        from core.harness.utils.model_injection import create_selected_adapter
+        model_name = os.getenv("AIPLAT_BUILDER_MODEL", "deepseek-chat")
+        return create_selected_adapter(model_name=model_name)
 
     async def initialize(self, project_id: str, requirement: str,
                          prd_data: Optional[Dict] = None) -> PipelineState:
@@ -76,20 +88,49 @@ class PipelineEngine:
             "output_dir": output_dir, "issues": [], "context": {},
         }
         if prd_data:
-            state["prd"] = prd_data
+            # Use first stage's output_artifact as the PRD key (config-driven)
+            prd_key = self._config.stages[0].output_artifact if self._config.stages else ""
+            state[prd_key] = prd_data
         return await self._run_stages_from(0, state)
 
     async def approve(self, state: PipelineState) -> PipelineState:
         state = dict(state)
+        state["phase"] = BuilderSessionPhase.executing.value
         idx = state.get("_current_stage_idx", 0)
-        if state.get("phase") == BuilderSessionPhase.awaiting_test_plan_approval.value:
-            return await self._run_stages_from(idx, state)
-        return await self._run_stages_from(idx + 1, state)
+        # If current HITL stage has generate_test_plan, test plan means "same stage resume"
+        if idx >= 0 and idx < len(self._config.stages):
+            cur_stage = self._config.stages[idx]
+            if cur_stage.generate_test_plan and state.get("phase") == (cur_stage.hitl_phase or ""):
+                result = await self._run_stages_from(idx, state)
+                await self._consolidate_auto_pipeline(result)
+                return result
+        result = await self._run_stages_from(idx + 1, state)
+        await self._consolidate_auto_pipeline(result)
+        return result
+
+    def _upstream_output(self, state: PipelineState, include_outputs: set = set()) -> Dict[str, Any]:
+        result: Dict[str, Any] = {}
+        for s in self._config.stages:
+            if not include_outputs or s.output_artifact in include_outputs:
+                val = state.get(s.output_artifact)
+                if isinstance(val, dict) and val:
+                    result[s.output_artifact] = val
+        return result
+
+    def _find_hitl_stage_index(self, state: PipelineState) -> int:
+        idx = state.get("_current_stage_idx")
+        if idx is not None and 0 <= idx < len(self._config.stages):
+            return idx
+        phase = state.get("phase", "")
+        for i, s in enumerate(self._config.stages):
+            if (s.hitl_phase and s.hitl_phase == phase) or (s.hitl_after_phase and s.hitl_after_phase == phase):
+                return i
+        return 0
 
     async def reject(self, state: PipelineState, feedback: str) -> PipelineState:
         state = dict(state)
         state["_reject_feedback"] = feedback
-        idx = state.get("_current_stage_idx", 0)
+        idx = self._find_hitl_stage_index(state)
         for i in range(idx, len(self._config.stages)):
             state[self._config.stages[i].output_artifact] = None
             state.pop(f"_stage_{self._config.stages[i].id}_done", None)
@@ -98,13 +139,16 @@ class PipelineEngine:
         state["phase"] = BuilderSessionPhase.executing.value
         state["qa_retry"] = 0
         state["_stagnation_count"] = 0
+        state["tokens_used"] = 0
+        state.pop("error", None)
+        state.pop("_last_action_reason", None)
         return await self._run_stages_from(idx, state)
 
     async def rollback(self, state: PipelineState, stage_id: str) -> PipelineState:
         state = dict(state)
         target_idx = -1
         for i, s in enumerate(self._config.stages):
-            if s.id == stage_id:
+            if s.id == stage_id or s.output_artifact == stage_id:
                 target_idx = i
                 break
         if target_idx < 0:
@@ -114,117 +158,252 @@ class PipelineEngine:
             state.pop(f"_stage_{self._config.stages[i].id}_done", None)
             if self._config.stages[i].generate_test_plan:
                 state[self._config.stages[i].test_result_key] = None
-        state["_current_stage_idx"] = target_idx
         state["phase"] = BuilderSessionPhase.executing.value
-        state["_reject_feedback"] = ""
         state["_stagnation_count"] = 0
         state["qa_retry"] = 0
+        state["tokens_used"] = 0
+        state.pop("error", None)
         return await self._run_stages_from(target_idx, state)
+
+    def get_stages(self) -> List[PipelineStageConfig]:
+        """Public getter for pipeline stages. Platform uses this instead of
+        accessing engine._config.stages directly."""
+        return list(self._config.stages)
+
+    async def resume_from(self, start_idx: int, state: PipelineState) -> PipelineState:
+        """Public wrapper for _run_stages_from. Platform uses this instead of
+        calling the private method directly."""
+        return await self._run_stages_from(start_idx, state)
 
     async def _run_stages_from(self, start_idx: int, state: PipelineState) -> PipelineState:
         state = dict(state)
-        for idx in range(start_idx, len(self._config.stages)):
+        stages = self._config.stages
+        # Compute dependency layers for parallel execution (P0-3)
+        layers = self._compute_dependency_layers(stages, start_idx)
+        for layer in layers:
+            if not layer:
+                continue
+            # Check if pipeline is already failed before executing layer
             if state.get("phase") == BuilderSessionPhase.failed.value:
                 state.setdefault("_last_action_reason", "phase_failed")
                 break
-            if state.get("tokens_used", 0) >= state.get("tokens_budget", 99999999):
-                state["error"] = f"token_budget_exhausted ({state['tokens_used']})"
-                state["_last_action_reason"] = "budget_exhausted"
-                break
-
-            state["_current_stage_idx"] = idx
-            stage = self._config.stages[idx]
-            graph_trace = state.setdefault("_graph_trace", [])
-            graph_trace.append({"node": stage.id, "status": "started", "ts": time.time()})
-
-            existing = state.get(stage.output_artifact)
-            if existing and (not isinstance(existing, dict) or len(existing) > 0):
-                if stage.retry_target_id and not self._check_done(stage, state):
-                    pass
-                else:
-                    state[f"_stage_{stage.id}_done"] = True
-                    state["_last_action_reason"] = f"skip:{stage.output_artifact}_exists"
-                    graph_trace.append({"node": stage.id, "status": "skipped", "reason": f"{stage.output_artifact}_exists", "ts": time.time()})
+            # Execute all stages in this layer in parallel
+            results = await asyncio.gather(
+                *[self._exec_single_stage(stages[i], i, state) for i in layer],
+                return_exceptions=True,
+            )
+            # Merge results and check for HITL
+            paused = False
+            for i, result in enumerate(results):
+                if isinstance(result, Exception):
+                    idx = layer[i]
+                    state["_last_action_reason"] = f"stage_{idx}_error:{result}"
                     continue
-
-            if stage.generate_test_plan and not state.get(stage.output_artifact):
-                state = await self._gen_test_plan(stage, state)
-                if state.get("phase") in (BuilderSessionPhase.awaiting_test_plan_approval.value,):
-                    graph_trace.append({"node": stage.id, "status": "paused", "phase": "awaiting_test_plan_approval", "ts": time.time()})
-                    self._snapshot(state, f"stage_{stage.id}_test_plan")
-                    return state
-
-            if stage.generate_test_plan and state.get(stage.output_artifact):
-                state = await self._exec_test_runner(stage, state)
-                self._snapshot(state, f"stage_{stage.id}_output")
-                state[f"_stage_{stage.id}_done"] = True
-                graph_trace.append({"node": stage.id, "status": "completed", "ts": time.time()})
-                continue
-
-            if stage.uses_code_skill:
-                state = await self._exec_code_generation(stage, state)
-                self._snapshot(state, f"stage_{stage.id}_output")
-                state[f"_stage_{stage.id}_done"] = True
-                graph_trace.append({"node": stage.id, "status": "completed", "ts": time.time()})
-                if state.get("phase") == BuilderSessionPhase.failed.value:
-                    graph_trace.append({"node": stage.id, "status": "failed", "reason": "phase_failed", "ts": time.time()})
-                    break
-                continue
-
-            state = await self._exec_stage(stage, state)
-            state[f"_stage_{stage.id}_done"] = True
-            artifact = state.get(stage.output_artifact)
-            graph_trace.append({"node": stage.id, "status": "completed", "ts": time.time(), "metrics": {
-                "artifact_fields": list(artifact.keys())[:5] if isinstance(artifact, dict) else [],
-                "components_count": len(artifact.get("components", [])) if isinstance(artifact, dict) else 0,
-                "files_count": len(artifact.get("files", [])) if isinstance(artifact, dict) else 0,
-                "test_cases_count": len(artifact.get("test_cases", [])) if isinstance(artifact, dict) else 0,
-            }})
-
-            if state.get("phase") == BuilderSessionPhase.failed.value:
-                graph_trace.append({"node": stage.id, "status": "failed", "reason": "phase_failed", "ts": time.time()})
-                break
-
-            if stage.hitl_after_execute and state.get(stage.output_artifact):
-                state["phase"] = stage.hitl_after_phase or BuilderSessionPhase.awaiting_test_report_review.value
-                graph_trace.append({"node": stage.id, "status": "paused", "phase": state["phase"], "ts": time.time()})
-                self._snapshot(state, f"stage_{stage.id}_done")
+                if result is None:
+                    continue
+                r_state, r_paused = result
+                state.update(r_state)
+                if r_paused:
+                    paused = True
+            if paused:
                 return state
 
-            if stage.hitl:
-                hitl_phase = stage.hitl_phase
-                if not hitl_phase:
-                    hitl_phase = (BuilderSessionPhase.awaiting_test_plan_approval.value
-                                  if stage.generate_test_plan
-                                  else BuilderSessionPhase.awaiting_architecture_approval.value)
-                state["phase"] = hitl_phase
-                graph_trace.append({"node": stage.id, "status": "paused", "phase": hitl_phase, "ts": time.time()})
-                self._snapshot(state, f"stage_{stage.id}_done")
-                return state
-
-        if state.get("phase") not in (
-            BuilderSessionPhase.failed.value,
-            BuilderSessionPhase.awaiting_architecture_approval.value,
-            BuilderSessionPhase.awaiting_test_plan_approval.value,
-            BuilderSessionPhase.awaiting_test_report_review.value,
-        ):
+        if state.get("phase") == BuilderSessionPhase.executing.value:
             state["phase"] = BuilderSessionPhase.done.value
         self._snapshot(state, "final_state")
+        # Crystallize successful pipeline execution into a reusable Skill
+        await self._crystallize_skill(state)
+        # Notify PushManager on pipeline completion
+        try:
+            from core.harness.feedback_loops.push import get_push_manager
+            pm = get_push_manager()
+            if pm:
+                pm.push(event={"type": "pipeline_complete", "phase": state.get("phase"),
+                    "session_id": state.get("session_id")})
+        except Exception:
+            pass
         return state
 
+    def _compute_dependency_layers(
+        self, stages: List[PipelineStageConfig], start_idx: int
+    ) -> List[List[int]]:
+        """Topologically sort stages into dependency layers for parallel execution."""
+        artifact_to_idx: Dict[str, int] = {}
+        for i, s in enumerate(stages):
+            if s.output_artifact:
+                artifact_to_idx[s.output_artifact] = i
+
+        in_degree: Dict[int, int] = {}
+        graph: Dict[int, List[int]] = {}
+        for i in range(start_idx, len(stages)):
+            graph[i] = []
+            in_degree[i] = 0
+
+        for i in range(start_idx, len(stages)):
+            s = stages[i]
+            deps = s.depends_on if s.depends_on else []
+            if not deps and i > start_idx:
+                # Default: depends on previous stage
+                deps = [stages[i - 1].output_artifact] if stages[i - 1].output_artifact else []
+            for dep_artifact in deps:
+                dep_idx = artifact_to_idx.get(dep_artifact)
+                if dep_idx is not None and dep_idx < i:
+                    graph.setdefault(dep_idx, []).append(i)
+                    in_degree[i] = in_degree.get(i, 0) + 1
+
+        layers: List[List[int]] = []
+        remaining = set(range(start_idx, len(stages)))
+        while remaining:
+            current = sorted([i for i in remaining if in_degree.get(i, 0) == 0])
+            if not current:
+                # Cycle or all remaining have unsatisfied deps; sequential fallback
+                current = sorted(remaining)
+            layers.append(current)
+            for n in current:
+                remaining.discard(n)
+                for child in graph.get(n, []):
+                    in_degree[child] = max(0, in_degree.get(child, 1) - 1)
+            if current == sorted(remaining):
+                remaining.clear()
+
+        return layers
+
+    async def _exec_single_stage(
+        self, stage: PipelineStageConfig, idx: int, state: PipelineState
+    ) -> Optional[Tuple[PipelineState, bool]]:
+        """Execute a single pipeline stage. Returns (updated_state, is_paused)."""
+        import copy
+        local_state = dict(state)
+        local_state["_current_stage_idx"] = idx
+        graph_trace: List[Dict] = []
+        local_state.setdefault("_graph_trace", [])
+        local_state["_graph_trace"] = list(local_state["_graph_trace"])  # shallow copy for parallel safety
+
+        # Skip if already done
+        existing = local_state.get(stage.output_artifact)
+        if existing and (not isinstance(existing, dict) or len(existing) > 0):
+            if not (stage.retry_target_id and not self._check_done(stage, local_state)):
+                graph_trace.append({"node": stage.id, "status": "skipped", "reason": f"{stage.output_artifact}_exists", "ts": time.time()})
+                local_state[f"_stage_{stage.id}_done"] = True
+                local_state["_last_action_reason"] = f"skip:{stage.output_artifact}_exists"
+                return local_state, False
+
+        graph_trace.append({"node": stage.id, "status": "started", "ts": time.time()})
+        local_state["_graph_trace"] = local_state.get("_graph_trace", []) + graph_trace
+
+        # Test plan generation
+        if stage.generate_test_plan and not local_state.get(stage.output_artifact):
+            local_state = await self._gen_test_plan(stage, local_state)
+            if local_state.get("phase") == stage.hitl_phase:
+                graph_trace.append({"node": stage.id, "status": "paused", "phase": stage.hitl_phase, "ts": time.time()})
+                self._snapshot(local_state, f"stage_{stage.id}_test_plan")
+                return local_state, True
+
+        # Test execution
+        if stage.generate_test_plan and local_state.get(stage.output_artifact) and not local_state.get("_qa_done"):
+            local_state = await self._exec_test_runner(stage, local_state)
+            self._snapshot(local_state, f"stage_{stage.id}_output")
+            local_state[f"_stage_{stage.id}_done"] = True
+            graph_trace.append({"node": stage.id, "status": "completed", "ts": time.time()})
+            return local_state, False
+
+        # Normal stage execution (includes code generation via ReActLoop)
+        local_state = await self._exec_stage(stage, local_state)
+        local_state[f"_stage_{stage.id}_done"] = True
+        artifact = local_state.get(stage.output_artifact)
+        cfg_fields = getattr(stage, 'coverage_trace_fields', None) or {}
+        comp_key = cfg_fields.get("components_key", "components")
+        files_key = cfg_fields.get("files_key", "files")
+        tests_key = cfg_fields.get("test_cases_key", "test_cases")
+        graph_trace.append({"node": stage.id, "status": "completed", "ts": time.time(), "metrics": {
+            "artifact_fields": list(artifact.keys())[:5] if isinstance(artifact, dict) else [],
+            "components_count": len(artifact.get(comp_key, [])) if isinstance(artifact, dict) else 0,
+            "files_count": len(artifact.get(files_key, [])) if isinstance(artifact, dict) else 0,
+            "test_cases_count": len(artifact.get(tests_key, [])) if isinstance(artifact, dict) else 0,
+        }})
+
+        if local_state.get("phase") == BuilderSessionPhase.failed.value:
+            graph_trace.append({"node": stage.id, "status": "failed", "reason": "phase_failed", "ts": time.time()})
+            return local_state, True
+
+        # HITL checks
+        if stage.hitl_after_execute and local_state.get(stage.output_artifact):
+            local_state["phase"] = stage.hitl_after_phase or BuilderSessionPhase.paused.value
+            graph_trace.append({"node": stage.id, "status": "paused", "phase": local_state["phase"], "ts": time.time()})
+            self._snapshot(local_state, f"stage_{stage.id}_done")
+            return local_state, True
+
+        if stage.hitl:
+            hitl_phase = stage.hitl_phase or BuilderSessionPhase.paused.value
+            local_state["phase"] = hitl_phase
+            graph_trace.append({"node": stage.id, "status": "paused", "phase": hitl_phase, "ts": time.time()})
+            self._snapshot(local_state, f"stage_{stage.id}_done")
+            return local_state, True
+
+        return local_state, False
+
     async def _exec_stage(self, stage: PipelineStageConfig, state: PipelineState) -> PipelineState:
-        """Generic stage execution via StageRunner -> ReActLoop (dumb loop)."""
+        """Generic stage execution. Uses agent_type from PipelineStageConfig:
+        - non-react (conversational, rag, reflection, ...): routes through
+          core_chat() which auto-activates Memory/Trace/Skills
+        - react (default) or uses_code_skill: uses StageRunner for
+          direct ReAct loop execution with FILE: parsing support
+        """
         state = dict(state)
-        state["iteration"] = state.get("iteration", 0) + 1
         used = state.get("tokens_used", 0)
-        budget = state.get("tokens_budget", 99999999)
+        budget = state.get("tokens_budget", self._config.max_tokens_per_run or 100000)
+        if used >= budget:
+            state["error"] = f"token_budget_exhausted ({used}/{budget})"
+            state["_last_action_reason"] = "budget_exhausted"
+            return state
+        state["iteration"] = state.get("iteration", 0) + 1
         print(f"    [stage] {stage.id} (iter {state['iteration']}, {used}/{budget} tokens)")
         prompt = self._build_prompt(stage, state)
-        result_text = await self._stage_runner.run(prompt, state)
+
+        # ── Route: agent_type drives execution path ──
+        agent_type = getattr(stage, 'agent_type', '') or 'react'
+
+        # Sandbox path: execute stage in isolated subprocess
+        if getattr(stage, 'sandbox', False):
+            from core.harness.execution.sandbox import StageSandbox
+            sb = StageSandbox(timeout_seconds=getattr(stage, 'stage_timeout_seconds', 600))
+            sandbox_result = await sb.execute(
+                stage_config={"id": stage.id, "agent_id": stage.agent_id, "agent_type": agent_type},
+                state_snapshot=dict(state),
+            )
+            if sandbox_result.success:
+                result_text = sandbox_result.output
+            else:
+                state["error"] = sandbox_result.error or "sandbox_execution_failed"
+                state["_last_action_reason"] = "sandbox_failed"
+                return state
+        elif not stage.uses_code_skill and agent_type != 'react':
+            # Intent-driven path: core_chat() auto-activates Memory/Trace/Skills
+            import uuid as _uuid
+            from core.api.intents import core_chat, ChatContext
+            result = await core_chat(ChatContext(
+                agent_name=stage.agent_id,
+                session_id=f"{state.get('project_id', 'pipeline')}_stage_{stage.id}",
+                user_input=prompt,
+            ))
+            result_text = result.reply
+            state["_stage_trace_id"] = result.trace_id
+        else:
+            # ReAct loop path (code generation, default): direct StageRunner
+            result_text = await self._stage_runner.run(prompt, state, stage=stage)
+        state["step_count"] = state.get("step_count", 0)  # carried from stage_runner via shared state dict
         parsed = self._parse_output(result_text)
-        artifact = parsed.artifact if isinstance(parsed.artifact, dict) else {}
-        state[stage.output_artifact] = artifact
-        state["issues"] = [i.model_dump() for i in parsed.issues]
+        if stage.uses_code_skill:
+            files = self._extract_files_delimiter(str(result_text))
+            if files:
+                state[stage.output_artifact] = {"files": files}
+            else:
+                state[stage.output_artifact] = {"raw_output": str(result_text)}
+            state["issues"] = []
+        else:
+            artifact = parsed.artifact if isinstance(parsed.artifact, dict) else {}
+            state[stage.output_artifact] = artifact
+            state["issues"] = [i.model_dump() for i in parsed.issues]
         self._snapshot(state, f"stage_{stage.id}_output")
         if artifact:
             self._persist_files(artifact, state.get("output_dir", ""))
@@ -246,9 +425,10 @@ class PipelineEngine:
             test_report = await self._tri_evaluate(stage, state, pytest_output="")
             state[result_key] = test_report
             return state
-        test_dir = os.path.join(output_dir, "test")
+        test_dir = os.path.join(output_dir, os.getenv("AIPLAT_TEST_DIR", "test"))
         os.makedirs(test_dir, exist_ok=True)
-        with open(os.path.join(test_dir, "test_api.py"), "w", encoding="utf-8") as f:
+        test_file = os.getenv("AIPLAT_TEST_FILE", "test_api.py")
+        with open(os.path.join(test_dir, test_file), "w", encoding="utf-8") as f:
             f.write(script)
         with open(os.path.join(test_dir, "__init__.py"), "w") as f:
             f.write("")
@@ -266,11 +446,13 @@ class PipelineEngine:
                     pass
         try:
             from core.harness.syscalls.tool import sys_tool_call
-            from core.apps.tools.code import CodeExecutionTool
+            from core.apps.tools.code import CodeExecutionTool  # noqa: allowed — data type (class) import
             exec_tool = CodeExecutionTool()
+            test_cmd = os.getenv("AIPLAT_TEST_COMMAND",
+                f"pytest {test_dir} -v --tb=short")
             exec_args = {
-                "language": "python",
-                "code": f"import subprocess, sys; r = subprocess.run([sys.executable, '-m', 'pytest', '{test_dir}', '-v', '--tb=short'], capture_output=True, text=True, timeout=60, cwd='{output_dir}'); print(r.stdout[-3000:]); print('STDERR:', r.stderr[-500:] if r.stderr else '')",
+                "language": os.getenv("AIPLAT_TEST_LANGUAGE", "python"),
+                "code": f"import subprocess, sys; cmd = [sys.executable, '-m'] + '{test_cmd}'.split(); r = subprocess.run(cmd, capture_output=True, text=True, timeout=60, cwd='{output_dir}'); print(r.stdout[-3000:]); print('STDERR:', r.stderr[-500:] if r.stderr else '')",
                 "timeout": 60000,
             }
             result = await sys_tool_call(exec_tool, exec_args, user_id="system", session_id=str(state.get("session_id", "engine")))
@@ -287,10 +469,21 @@ class PipelineEngine:
             if baseline and isinstance(baseline, dict):
                 compare = await pairwise_judge(baseline, test_report, eval_count=eval_count)
                 predictions = state.get("_predicted_fixes_and_regressions", {})
+                if predictions:
+                    try:
+                        from core.harness.evaluation.compare import verify_prediction
+                        state["_prediction_verification"] = await verify_prediction(predictions, test_report)
+                    except Exception:
+                        pass
                 if not predictions:
                     try:
-                        from core.apps.skills.evolution.engine import get_latest_predictions
-                        predictions = get_latest_predictions()
+                        from core.harness.integration import _ensure_di
+                        di = _ensure_di()
+                        if di:
+                            from core.apps.skills.evolution.engine import get_latest_predictions
+                            predictions = get_latest_predictions()
+                        else:
+                            predictions = {}
                     except Exception:
                         predictions = {}
                 test_report["_compare"] = {"verdict": compare.verdict, "stop_recommendation": compare.stop_recommendation,
@@ -304,15 +497,25 @@ class PipelineEngine:
                     "evidence_count": eval_count, "uncertainty": "high"}
         except Exception:
             pass
-        arch = state.get("architecture") or {}
+        upstream = self._upstream_output(state, include_outputs=set())
+        # Config-driven: find the architecture stage (not the QA stage)
+        arch_key = ""
+        for s in self._config.stages:
+            if s.output_artifact and s.output_artifact != stage.output_artifact and not s.uses_code_skill and not s.generate_test_plan:
+                arch_key = s.output_artifact
+        arch = upstream.get(arch_key, {})
         code_files = sum(len((state.get(s.output_artifact) or {}).get("files", [])) for s in self._config.stages if s.uses_code_skill)
+        cfg_fields = getattr(stage, 'coverage_trace_fields', None) or {}
+        comp_key = cfg_fields.get("components_key", "components")
+        api_key = cfg_fields.get("api_contracts_key", "api_contracts")
+        data_key = cfg_fields.get("data_model_key", "data_model")
         test_report["_coverage_trace"] = {
-            "components_designed": len(arch.get("components") or []),
-            "api_contracts_defined": len(arch.get("api_contracts") or []),
-            "data_entities_defined": len(arch.get("data_model") or {}),
+            "components_designed": len(arch.get(comp_key) or []),
+            "api_contracts_defined": len(arch.get(api_key) or []),
+            "data_entities_defined": len(arch.get(data_key) or {}),
             "files_implemented": code_files,
             "test_cases_produced": len(test_report.get("test_cases") or []),
-            "cascade": {"components_to_files": round(code_files / max(len(arch.get("components") or []), 1), 2),
+            "cascade": {"components_to_files": round(code_files / max(len(arch.get(comp_key) or []), 1), 2),
                          "files_to_tests": round(len(test_report.get("test_cases") or []) / max(code_files, 1), 2)},
         }
         state[result_key] = test_report
@@ -323,26 +526,51 @@ class PipelineEngine:
         failed = pytest_output.count("FAILED") if "FAILED" in pytest_output else pytest_output.count(" failed")
         total = max(passed + failed, 1)
         pass_rate = passed / total
-        prd = state.get("prd") or {}
+        upstream = self._upstream_output(state, include_outputs=set())
+        # Config-driven: find the first stage's output as requirements source
+        prd_key = self._config.stages[0].output_artifact if self._config.stages else ""
+        prd = upstream.get(prd_key, {}) if prd_key else {}
         code = self._collect_upstream_code(state)
         code_summary = [{"path": f.get("path", ""), "lines": len((f.get("content") or f.get("code") or "").split("\n"))}
                         for f in self._collect_files(code)[:30]]
-        eval_prompt = f"""You are a TriAgent Evaluator. Evaluate based on requirements, code, and test results.
+
+        dims: List[Dict[str, Any]] = stage.scoring_dimensions or []
+        if not dims:
+            dims = [
+                {"name": "quality", "weight": 1.0, "description": "Overall output quality", "threshold": 6.0},
+            ]
+        dim_names = [d.get("name", "") for d in dims if d.get("name")]
+        dim_lines = "; ".join(f"{d.get('name','')}({int(d.get('weight',0)*100)}%): {d.get('description','')}" for d in dims)
+        primary_dim = dim_names[0] if dim_names else "overall"
+        score_example = {d.get("name", ""): 8.0 for d in dims}
+        score_example["overall"] = 7.5
+
+        eval_template = os.getenv("AIPLAT_EVAL_TEMPLATE",
+            """You are a TriAgent Evaluator. Evaluate based on requirements, code, and test results.
 
 ## Requirements
-{json.dumps(self._truncate(prd, 2500), ensure_ascii=False, indent=2)}
+{prd}
 
 ## Code Files
-{json.dumps(code_summary, ensure_ascii=False, indent=2)}
+{code_summary}
 
 ## Pytest Output
-{pytest_output[:3500] if pytest_output else '(no tests executed)'}
+{pytest_output}
 
 ## Scoring (0-10)
-functionality(55%): Code meets PRD; product_depth(20%): Edge cases; design_ux(15%): API quality; code_architecture(10%): Maintainability
+{dim_lines}
 
-Output ONLY JSON: {{"pass":true,"score":{{"functionality":8.5,"product_depth":6.0,"design_ux":7.0,"code_architecture":7.5,"overall":7.5}},"pass_rate":{pass_rate},"test_cases":[],"issues":[],"recommendation":"APPROVED"}}
-APPROVED if pass_rate>=0.8 and functionality>=7.0"""
+Output ONLY JSON: {{"pass":true,"score":{score_example},"pass_rate":{pass_rate},"test_cases":[],"issues":[],"recommendation":"APPROVED"}}
+APPROVED if pass_rate>=0.8 and {primary_dim}>=7.0""")
+        eval_prompt = eval_template.format(
+            prd=json.dumps(self._summarize_artifact(prd), ensure_ascii=False, indent=2),
+            code_summary=json.dumps(code_summary, ensure_ascii=False, indent=2),
+            pytest_output=pytest_output[:3500] if pytest_output else '(no tests executed)',
+            dim_lines=dim_lines,
+            score_example=json.dumps(score_example),
+            pass_rate=pass_rate,
+            primary_dim=primary_dim,
+        )
         result_text = await self._stage_runner.run(eval_prompt, state)
         report = {}
         json_str = self._extract_json(result_text)
@@ -353,78 +581,42 @@ APPROVED if pass_rate>=0.8 and functionality>=7.0"""
                 pass
         if not isinstance(report, dict) or not report:
             issues = [l.strip()[:120] for l in pytest_output.split("\n") if "FAILED" in l or "Error" in l]
-            report = {"pass": pass_rate >= 0.8, "score": {"functionality": pass_rate * 10, "product_depth": 0.0, "design_ux": 0.0, "code_architecture": 0.0, "overall": pass_rate * 10},
+            fallback_score = {d.get("name", ""): pass_rate * 10 for d in dims if d.get("name")}
+            fallback_score["overall"] = pass_rate * 10
+            report = {"pass": pass_rate >= 0.8, "score": fallback_score,
                 "pass_rate": pass_rate, "test_cases": [], "issues": [{"severity": "P1", "description": i} for i in issues[:10]],
                 "recommendation": "APPROVED" if pass_rate >= 0.8 else "REJECTED"}
         score = report.get("score") if isinstance(report.get("score"), dict) else {}
         try:
-            functionality = float(score.get("functionality", 0))
+            primary_val = float(score.get(primary_dim, 0))
         except (TypeError, ValueError):
-            functionality = 0.0
-        if report.get("pass") is True and functionality < 7.0:
+            primary_val = 0.0
+        primary_threshold = dims[0].get("threshold", 7.0) if dims else 7.0
+        if report.get("pass") is True and primary_val < primary_threshold:
             report["pass"] = False
         if "overall" not in score and score:
-            dims = ["functionality", "product_depth", "design_ux", "code_architecture"]
-            vals = [float(score.get(k, 0)) for k in dims if score.get(k) is not None]
-            score["overall"] = round(sum(vals) / len(vals), 2) if vals else 0.0
+            vals = [float(score.get(d.get("name", ""), 0)) for d in dims if score.get(d.get("name")) is not None]
+            weights = [d.get("weight", 0) for d in dims if score.get(d.get("name")) is not None]
+            total_w = sum(weights) or 1.0
+            score["overall"] = round(sum(v * w for v, w in zip(vals, weights)) / total_w, 2) if vals else 0.0
         report["score"] = score
         report.setdefault("pass_rate", pass_rate)
         report.setdefault("recommendation", "APPROVED" if report.get("pass") else "REJECTED")
         return report
 
-    async def _exec_code_generation(self, stage: PipelineStageConfig, state: PipelineState) -> PipelineState:
-        state = dict(state)
-        proj_structure = (state.get("architecture") or {}).get("project_structure")
-        skill = None
-        if self._skill_loader:
-            skill = self._skill_loader("code_generation")
-        if skill is None:
-            from core.apps.skills.base import CodeGenerationSkill
-            skill = CodeGenerationSkill()
-        from core.harness.interfaces import SkillContext
-        if proj_structure:
-            section = stage.code_target
-            target_structure = proj_structure.get(section) or proj_structure
-        else:
-            target_structure = state.get("architecture")
-        prompt = self._build_prompt(stage, state)
-        result = await skill.execute(SkillContext(
-            session_id=state.get("session_id", ""), user_id="system",
-            variables={"project_structure": json.dumps(target_structure, ensure_ascii=False),
-                       "prompt": prompt},
-            metadata={"stage_id": stage.id, "agent_id": stage.agent_id},
-        ), {"prompt": prompt, "project_structure": target_structure})
-        if not result.success:
-            state["phase"] = BuilderSessionPhase.failed.value
-            state["error"] = f"CodeGeneration failed: {result.error}"
-            return state
-        output = result.output or {}
-        code_text = output.get("code", "")
-        files = self._extract_files_delimiter(code_text)
-        if not files:
-            parsed = self._parse_output(code_text)
-            state[stage.output_artifact] = parsed.artifact if isinstance(parsed.artifact, dict) else {}
-        else:
-            state[stage.output_artifact] = {"files": files, "skills_created": [], "agents_created": [], "tools_created": []}
-        state["issues"] = []
-        self._persist_files(state.get(stage.output_artifact) or {}, state.get("output_dir", ""))
-        return state
-
     async def _gen_test_plan(self, stage: PipelineStageConfig, state: PipelineState) -> PipelineState:
         state = dict(state)
-        prd = state.get("prd") or {}
-        prompt = f"""Generate pytest test script from PRD.
-
-## PRD
-{json.dumps(self._truncate(prd, 2000), ensure_ascii=False, indent=2)}
-
-Output ## FILE: format with pytest code. No JSON."""
-        result = await self._stage_runner.run(prompt, state)
+        prompt = self._build_prompt(stage, state)
+        result = await self._stage_runner.run(prompt, state, stage=stage)
         parsed = self._parse_output(result)
-        artifact = parsed.artifact if isinstance(parsed.artifact, dict) else {"test_script": result}
-        state[stage.output_artifact] = artifact
+        artifact = parsed.artifact if isinstance(parsed.artifact, dict) else {"test_cases": [], "pass_rate": 0, "recommendation": "REJECTED"}
+        if "test_cases" in artifact:
+            state[stage.test_result_key or stage.output_artifact] = artifact
+        else:
+            artifact = {"test_cases": [], "pass_rate": 0, "recommendation": "REJECTED"}
+            state[stage.output_artifact] = artifact
         if stage.hitl:
-            state["phase"] = BuilderSessionPhase.awaiting_test_plan_approval.value
+            state["phase"] = stage.hitl_phase
             self._snapshot(state, f"stage_{stage.id}_test_plan")
         return state
 
@@ -511,7 +703,7 @@ Output ## FILE: format with pytest code. No JSON."""
         for artifact_name in stage.input_artifacts:
             val = state.get(artifact_name)
             if val:
-                ctx[artifact_name] = self._truncate(val, 3000)
+                ctx[artifact_name] = self._summarize_artifact(val)
                 if isinstance(val, dict) and val.get("constraints"):
                     parts = "\n".join(f"- {c}" for c in val["constraints"])
                     if parts:
@@ -602,11 +794,16 @@ Output JSON with artifact, confidence, issues, decision.
         return await self._run_stages_from(self._config.stages.index(target), state)
 
     async def assemble_deploy(self, state: PipelineState) -> str:
+        strategy = self._config.deploy_strategy
         output_dir = state.get("output_dir", "")
         deploy_dir = os.path.join(output_dir, "deploy")
         os.makedirs(deploy_dir, exist_ok=True)
+        if strategy == "manifest":
+            return await self._deploy_manifest(state, deploy_dir)
         all_code = self._collect_upstream_code(state)
-        for f in self._collect_files(all_code):
+        files = self._collect_files(all_code)
+        has_dockerfile = any(f.get("path", "").endswith("Dockerfile") for f in files)
+        for f in files:
             path = f.get("path", "")
             content = f.get("content", "")
             if path and content:
@@ -614,11 +811,42 @@ Output JSON with artifact, confidence, issues, decision.
                 os.makedirs(os.path.dirname(full), exist_ok=True)
                 with open(full, "w", encoding="utf-8") as fh:
                     fh.write(content)
-        with open(os.path.join(deploy_dir, "Dockerfile"), "w") as f:
-            f.write("FROM python:3.11-slim\nWORKDIR /app\nCOPY . .\nRUN pip install -r requirements.txt\nCMD [\"python\", \"main.py\"]")
-        with open(os.path.join(deploy_dir, "requirements.txt"), "w") as f:
-            f.write("fastapi\nuvicorn\n")
+        if not has_dockerfile:
+            dockerfile_template = os.getenv("AIPLAT_DEPLOY_DOCKERFILE_TEMPLATE", "")
+            if dockerfile_template:
+                with open(os.path.join(deploy_dir, "Dockerfile"), "w") as f:
+                    f.write(dockerfile_template)
+        if strategy == "docker":
+            await self._deploy_docker(deploy_dir, state)
         return deploy_dir
+
+    async def _deploy_manifest(self, state: PipelineState, deploy_dir: str) -> str:
+        import json
+        import yaml
+        services = {}
+        for s in self._config.stages:
+            if s.uses_code_skill and state.get(s.output_artifact):
+                svc_name = s.code_target or s.output_artifact
+                services[svc_name] = {"source": s.output_artifact, "files": []}
+        manifest = {
+            "version": "1.0",
+            "project": state.get("session_id", ""),
+            "services": services,
+            "phase": state.get("phase", ""),
+        }
+        with open(os.path.join(deploy_dir, "manifest.yaml"), "w") as f:
+            yaml.safe_dump(manifest, f, default_flow_style=False)
+        return deploy_dir
+
+    async def _deploy_docker(self, deploy_dir: str, state: PipelineState) -> None:
+        import subprocess
+        try:
+            subprocess.run(["docker", "--version"], capture_output=True, timeout=5)
+            prefix = os.getenv("AIPLAT_DOCKER_IMAGE_PREFIX", "aiplat-")
+            subprocess.run(["docker", "build", "-t", f"{prefix}{state.get('session_id', 'proj')[:12]}", deploy_dir],
+                           capture_output=True, timeout=60)
+        except Exception:
+            pass
 
     @staticmethod
     def _collect_files(artifact: Dict) -> List[Dict[str, str]]:
@@ -628,6 +856,28 @@ Output JSON with artifact, confidence, issues, decision.
                 files.append({"path": f.get("path", ""), "content": f.get("content", "")})
         return files
 
+    def _store_artifacts(self, session_id: str, state: PipelineState) -> None:
+        """Persist pipeline artifacts to ArtifactRegistry for versioned retrieval."""
+        try:
+            from core.harness.artifacts.registry import get_artifact_registry
+            reg = get_artifact_registry()
+            for s in self._config.stages:
+                val = state.get(s.output_artifact)
+                if not isinstance(val, dict):
+                    continue
+                files = self._collect_files(val)
+                if files:
+                    reg.store(
+                        project_id=session_id,
+                        name=s.output_artifact,
+                        files=files,
+                        session_id=session_id,
+                        tags=["pipeline_crystal", s.id],
+                        metadata={"agent_id": s.agent_id},
+                    )
+        except Exception:
+            pass
+
     def _collect_upstream_code(self, state: PipelineState) -> Dict[str, Any]:
         all_code = {}
         for s in self._config.stages:
@@ -635,10 +885,6 @@ Output JSON with artifact, confidence, issues, decision.
                 artifact = state[s.output_artifact]
                 if isinstance(artifact, dict):
                     all_code = {**all_code, **artifact}
-        for legacy_key in ("code", "backend_code", "frontend_code"):
-            val = state.get(legacy_key)
-            if val and isinstance(val, dict):
-                all_code = {**all_code, **val}
         return all_code
 
     @staticmethod
@@ -660,13 +906,14 @@ Output JSON with artifact, confidence, issues, decision.
             files.append({"path": m.group(1).strip(), "content": m.group(2).strip()})
         return files
 
-    def _parse_output(self, raw: str) -> AgentOutput:
-        json_str = self._extract_json(raw)
+    @staticmethod
+    def _parse_output(raw: str) -> AgentOutput:
+        json_str = PipelineEngine._extract_json(raw)
         if json_str:
             try:
                 data = json.loads(json_str)
                 artifact = data.get("artifact") if isinstance(data.get("artifact"), dict) else data
-                issues = [Issue(severity=IssueSeverity(i.get("severity", "P1")),
+                issues = [Issue(severity=IssueSeverity(i.get("severity", "P1")) if i.get("severity") in {"P0","P1","P2"} else "P1",
                                 description=i.get("description", ""),
                                 target_agent=i.get("target_agent", ""),
                                 suggestion=i.get("suggestion", ""))
@@ -715,13 +962,323 @@ Output JSON with artifact, confidence, issues, decision.
                     pass
 
     @staticmethod
-    def _truncate(obj: Any, max_chars: int = 3000) -> Any:
-        s = json.dumps(obj, ensure_ascii=False, default=str)
-        if len(s) > max_chars:
-            truncated = json.loads(s[:max_chars] + '..."')
-            return truncated
-        return obj
+    def _summarize_artifact(val: Any, max_chars: int = 8000) -> Dict[str, Any]:
+        """Structured 7-section summary template (OpenCode pattern).
 
-    async def run_auto(self, session_id: str, requirement: str = "",
-                        prd_data: Optional[Dict] = None) -> PipelineState:
-        return await self.initialize(session_id, requirement, prd_data=prd_data)
+        Sections: goal, artifacts, quality, key_decisions, next_steps,
+        critical_context, relevant_files.
+        """
+        if not isinstance(val, dict):
+            s = str(val)[:max_chars // 2] if val else "{}"
+            return {"summary": s, "artifact_keys": []}
+        raw = json.dumps(val, ensure_ascii=False, default=str)
+        if len(raw) <= max_chars:
+            return val
+
+        files = val.get("files", []) if isinstance(val.get("files"), list) else []
+        file_list = [
+            {"path": f.get("path", ""), "purpose": f.get("description", "")[:80]}
+            for f in files[:20]
+        ]
+
+        tests_data = val.get("test_results", {}) or {}
+        pass_count = tests_data.get("passed", 0) if isinstance(tests_data, dict) else 0
+        fail_count = tests_data.get("failed", 0) if isinstance(tests_data, dict) else 0
+        total_count = pass_count + fail_count
+        pass_rate = f"{pass_count}/{total_count}" if total_count > 0 else "N/A"
+
+        issues = val.get("issues", []) if isinstance(val.get("issues"), list) else []
+        p0 = sum(1 for i in issues if isinstance(i, dict) and str(i.get("severity", "")).upper() == "P0")
+        p1 = sum(1 for i in issues if isinstance(i, dict) and str(i.get("severity", "")).upper() == "P1")
+
+        return {
+            "goal": str(val.get("phase_description", "") or val.get("description", "") or "")[:200],
+            "artifacts_produced": {
+                "keys": list(val.keys())[:20],
+                "total_size_chars": len(raw),
+                "file_count": len(files),
+            },
+            "quality_assessment": {
+                "tests_run": pass_rate,
+                "confidence": val.get("confidence", "N/A") if isinstance(val, dict) else "N/A",
+                "issues_found": f"{len(issues)} (P0:{p0}, P1:{p1})" if issues else "none",
+            },
+            "key_decisions": val.get("decisions", []) if isinstance(val.get("decisions"), list) else [],
+            "next_steps": val.get("next_steps", []) if isinstance(val.get("next_steps"), list) else [],
+            "critical_context": str(val.get("known_issues", "") or val.get("notes", "") or "")[:500],
+            "relevant_files": file_list,
+        }
+
+    async def _crystallize_skill(self, state: PipelineState) -> Optional[str]:
+        """Crystallize successful pipeline execution into a reusable Skill.
+
+        Extracts agent_sequence, artifacts, pass_rate, and keywords from state,
+        writes a Skill YAML to ~/.aiplat/skills/auto/, and saves L3 task skill
+        memory via MemoryManager.
+        """
+        try:
+            agent_sequence = [s.agent_id or s.id for s in self._config.stages if s.agent_id or s.id]
+
+            artifacts: List[str] = []
+            artifact_keys: Dict[str, Any] = {}
+            pass_rate = 0.0
+            issues_total = 0
+            for s in self._config.stages:
+                val = state.get(s.output_artifact)
+                if isinstance(val, dict):
+                    artifacts.append(s.output_artifact)
+                    artifact_keys[s.output_artifact] = {
+                        "size_chars": len(json.dumps(val, ensure_ascii=False, default=str)),
+                        "file_count": len(val.get("files", []) if isinstance(val.get("files"), list) else []),
+                    }
+                tests_data = val.get("test_results", {}) if isinstance(val, dict) else {}
+                if isinstance(tests_data, dict):
+                    p = tests_data.get("passed", 0)
+                    f = tests_data.get("failed", 0)
+                    total = p + f
+                    if total > 0:
+                        pass_rate = p / total
+                    issues_total += len(tests_data.get("issues", []) if isinstance(tests_data.get("issues"), list) else [])
+
+            if pass_rate < 0.01 and issues_total > 0:
+                total = sum(1 for s in self._config.stages if s.generate_test_plan)
+                runner_total = sum(
+                    (state.get(s.test_result_key, {}).get("test_results", {}).get("passed", 0) if isinstance(state.get(s.test_result_key, {}), dict) else 0) +
+                    (state.get(s.test_result_key, {}).get("test_results", {}).get("failed", 0) if isinstance(state.get(s.test_result_key, {}), dict) else 0)
+                    for s in self._config.stages if s.generate_test_plan
+                )
+                if runner_total > 0:
+                    runner_passed = sum(
+                        state.get(s.test_result_key, {}).get("test_results", {}).get("passed", 0) if isinstance(state.get(s.test_result_key, {}), dict) else 0
+                        for s in self._config.stages if s.generate_test_plan
+                    )
+                    pass_rate = runner_passed / runner_total
+
+            description = str(state.get("description", ""))
+            keywords = self._extract_keywords(description)
+
+            sid = state.get("session_id", "")
+            skill_id = f"pipeline_{hashlib.md5(sid.encode()).hexdigest()[:8]}" if sid else f"pipeline_{hashlib.md5(json.dumps(agent_sequence).encode()).hexdigest()[:8]}"
+
+            agent_label = " + ".join(agent_sequence[:4])
+            name = f"Auto: {agent_label}" if agent_sequence else f"Auto: Pipeline {skill_id}"
+
+            created_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+            skills_dir = os.path.expanduser("~/.aiplat/skills/auto")
+            os.makedirs(skills_dir, exist_ok=True)
+            skill_path = os.path.join(skills_dir, f"{skill_id}.md")
+
+            frontmatter = {
+                "type": "rule",
+                "category": "pipeline_crystal",
+                "source_pipeline_id": sid,
+                "agent_sequence": agent_sequence,
+                "artifacts": artifacts,
+                "pass_rate": round(pass_rate, 3),
+                "prompt_keywords": keywords,
+                "created_at": created_at,
+            }
+
+            lines = ["---"]
+            for k, v in frontmatter.items():
+                lines.append(f"{k}: {v}")
+            lines.append("---")
+            lines.append("")
+            lines.append(f"# {name}")
+            lines.append("")
+            lines.append("## Agent Sequence")
+            for i, ag in enumerate(agent_sequence, 1):
+                lines.append(f"{i}. {ag}")
+            lines.append("")
+            lines.append("## Artifacts Produced")
+            for art in artifacts:
+                info = artifact_keys.get(art, {})
+                lines.append(f"- `{art}` ({info.get('file_count', 0)} files, {info.get('size_chars', 0)} chars)")
+            lines.append("")
+            lines.append(f"## Quality: {pass_rate:.1%} pass rate | {issues_total} issues")
+            lines.append("")
+            lines.append("## Suggested Scenarios")
+            if keywords:
+                lines.append(f"Keywords: {', '.join(keywords)}")
+
+            with open(skill_path, "w", encoding="utf-8") as f:
+                f.write("\n".join(lines) + "\n")
+
+            try:
+                from core.harness.memory.manager import get_memory_manager, TaskSkill
+                mm = get_memory_manager(namespace=state.get("session_id", "default"))
+                task_skill = TaskSkill(
+                    skill_id=skill_id,
+                    name=name,
+                    pipeline_id=sid,
+                    agent_sequence=agent_sequence,
+                    artifacts=artifacts,
+                    pass_rate=round(pass_rate, 3),
+                    keywords=keywords,
+                    artifacts_keys=artifact_keys,
+                    created_at=created_at,
+                )
+                await mm.save_task_skill(task_skill)
+            except Exception:
+                pass
+
+            # Store pipeline artifacts in ArtifactRegistry for versioned retrieval
+            self._store_artifacts(sid, state)
+
+            return skill_path
+        except Exception:
+            return None
+
+    async def _accept_plan_stages(self, plan_stages: List[Dict], state: PipelineState) -> PipelineState:
+        """Accept AI-recommended stages JSON and write PipelineStageConfig.
+
+        Validates that each stage has required fields (id, agent_id, output_artifact),
+        then replaces self._config.stages and clears old artifacts from state.
+        Returns updated state with new stage config applied.
+        """
+        new_stages: List[PipelineStageConfig] = []
+        for i, ps in enumerate(plan_stages):
+            sid = ps.get("id") or f"plan_stage_{i}"
+            new_stages.append(PipelineStageConfig(
+                id=sid,
+                agent_id=ps.get("agent_id", ""),
+                output_artifact=ps.get("output_artifact", f"plan_artifact_{i}"),
+                description=ps.get("description", ""),
+                generate_test_plan=ps.get("generate_test_plan", False),
+                uses_code_skill=ps.get("uses_code_skill", False),
+                hitl=ps.get("hitl", True),
+                order=ps.get("order", i),
+                prompt_extra=ps.get("prompt_extra", ""),
+                agent_type=ps.get("agent_type", "react"),
+                test_result_key=ps.get("test_result_key", f"test_results_{i}"),
+            ))
+        old_stages = self._config.stages
+        self._config.stages = new_stages
+        state = dict(state)
+        for s in old_stages:
+            state.pop(s.output_artifact, None)
+            state.pop(f"_stage_{s.id}_done", None)
+            state.pop(s.test_result_key, None)
+        state["_plan_stage_ids"] = [s.id for s in new_stages]
+        state["_last_action_reason"] = "plan_accepted"
+        return state
+
+    def _rollback_to_plan(self, state: PipelineState) -> PipelineState:
+        """Rollback execution to planning recommended state.
+
+        Clears all artifacts, resets retry counters, sets phase to executing
+        with _current_stage_idx = 0 so pipeline restarts from first stage.
+        """
+        state = dict(state)
+        for s in self._config.stages:
+            state.pop(s.output_artifact, None)
+            state.pop(f"_stage_{s.id}_done", None)
+            state.pop(s.test_result_key, None)
+            if s.retry_target_id:
+                state.pop(s.retry_target_id, None)
+        state["iteration"] = 0
+        state["qa_retry"] = 0
+        state["tokens_used"] = 0
+        state["_current_stage_idx"] = 0
+        state["_prev_failing_ids"] = []
+        state["_stagnation_count"] = 0
+        state["_auto_retry_count"] = 0
+        state["error"] = ""
+        state["phase"] = BuilderSessionPhase.executing.value
+        state["_last_action_reason"] = "rolled_back_to_plan"
+        return state
+
+    async def _auto_sop_pipeline(
+        self, project_id: str, requirement: str, plan_stages: List[Dict],
+        prd_data: Optional[Dict] = None
+    ) -> PipelineState:
+        """Full automatic SOP pipeline: plan → accept → execute → evaluate → crystallize.
+
+        Covers all stages without human intervention. Used when auto_approve is
+        true or when the same pipeline pattern has been previously approved.
+        """
+        state = await self.initialize(project_id, requirement, prd_data)
+        state = await self._accept_plan_stages(plan_stages, state)
+        state["_auto_approve"] = True
+        state["phase"] = BuilderSessionPhase.executing.value
+        state = await self._run_stages_from(0, state)
+        if state.get("error") and not state.get("phase") == BuilderSessionPhase.done.value:
+            rollback_threshold = getattr(self._config, 'rollback_threshold', 0.5)
+            total = len(self._config.stages)
+            completed = sum(1 for s in self._config.stages if state.get(f"_stage_{s.id}_done"))
+            if total > 0 and completed / total < rollback_threshold:
+                state = self._rollback_to_plan(state)
+                state["phase"] = BuilderSessionPhase.executing.value
+                state = await self._run_stages_from(0, state)
+        return state
+
+    @staticmethod
+    def _extract_keywords(text: str) -> List[str]:
+        """Extract technical framework keywords from requirement text.
+
+        Only includes technology-agnostic framework/tool names, NOT business domain terms.
+        Business keywords (e-commerce, healthcare, finance, etc.) must be declared
+        by the Skill author in its SKILL.md frontmatter, not inferred by the engine.
+        """
+        import re
+        tech_patterns = [
+            r"(?:fastapi|flask|django|express|spring|rails|laravel)",
+            r"(?:react|vue|angular|next\.?js|nuxt|svelte)",
+            r"(?:postgres|mysql|mongodb|redis|sqlite|mariadb)",
+            r"(?:docker|kubernetes|k8s|terraform)",
+            r"(?:python|typescript|javascript|go|rust|java|kotlin|swift)",
+            r"(?:rest|graphql|grpc|websocket|soap)",
+        ]
+        kw = set()
+        text_lower = text.lower()
+        for p in tech_patterns:
+            m = re.findall(p, text_lower)
+            for x in m:
+                kw.add(x.lower().replace("-", "").replace(".", ""))
+        return sorted(kw)[:10]
+
+    async def _consolidate_auto_pipeline(self, state: PipelineState) -> None:
+        """After HITL approval, persist pipeline config and artifacts for future auto-runs.
+
+        When the same pipeline pattern (agent_sequence + keywords) is detected
+        in a future run, the system auto-approves via state['_auto_approve'] = True.
+        """
+        try:
+            sid = state.get("session_id", "")
+            agent_seq = [s.agent_id or s.id for s in self._config.stages if s.agent_id or s.id]
+            desc = str(state.get("description", ""))
+            keywords = self._extract_keywords(desc)
+            fingerprint = hashlib.sha256(
+                (json.dumps(agent_seq, sort_keys=True) + ":" + json.dumps(keywords, sort_keys=True)).encode()
+            ).hexdigest()[:12]
+
+            auto_dir = os.path.expanduser("~/.aiplat/auto_pipelines")
+            os.makedirs(auto_dir, exist_ok=True)
+
+            pipeline_json = {
+                "fingerprint": fingerprint,
+                "session_id": sid,
+                "agent_sequence": agent_seq,
+                "keywords": keywords,
+                "stages": [
+                    {
+                        "id": s.id,
+                        "agent_id": s.agent_id,
+                        "output_artifact": s.output_artifact,
+                        "generate_test_plan": s.generate_test_plan,
+                        "uses_code_skill": s.uses_code_skill,
+                        "hitl": False,
+                    }
+                    for s in self._config.stages
+                ],
+                "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            }
+            config_path = os.path.join(auto_dir, f"{fingerprint}.json")
+            with open(config_path, "w", encoding="utf-8") as f:
+                json.dump(pipeline_json, f, indent=2)
+
+            state["_auto_approve"] = True
+            state["_consolidated_fingerprint"] = fingerprint
+        except Exception:
+            pass

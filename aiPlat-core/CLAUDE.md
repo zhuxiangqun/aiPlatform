@@ -473,7 +473,7 @@ Tool/Skill 在返回结果时 MAY 附加 `priority` 字段：
 3. **每个阶段执行 MUST 产生 trace 事件**：`_graph_trace` 数组记录每个阶段的 `started` / `completed` / `skipped` / `paused` / `failed` 状态和时间戳。
 4. **评估函数 MUST 是纯函数**：`_tri_evaluate`、`pairwise_judge` 等评估函数 MUST NOT 写 `state`。基线存取、对比结果写入等状态副作用由外层 `_exec_test_runner`（状态管理层）负责。评估函数只接收输入参数，返回计算结果。
 4. **禁止在引擎层新增 `_call_llm` 调用点**：所有 LLM 调用 MUST 通过 `ReActLoop._reason()` 路径，获取统一的 Hook 拦截、注入检测、token 追踪。`_call_llm` 已于 Phase D 删除。
-5. **代码生成和测试执行的 syscall 通道**：`_exec_code_generation` 通过 `SkillLoader` 依赖注入调用 `CodeGenerationSkill`；`_exec_test_runner` 通过 `sys_tool_call` 调用 `CodeExecutionTool`。两者均已走 Harness 的标准 syscall/loginjection 通道。
+5. **代码生成和测试执行的 syscall 通道**：代码生成通过 `StageRunner.run()` → `ReActLoop` → `sys_skill_call` 调用 `CodeGenerationSkill`；测试执行通过 `sys_tool_call` 调用工具。两者均已走 Harness 的标准 syscall/injection 通道。
 
 **设计文档依据**：
 - 本规约 §5.5（通用引擎原则）、§5.22（Agent 类型实现约束）
@@ -483,7 +483,7 @@ Tool/Skill 在返回结果时 MAY 附加 `priority` 字段：
 **当前实现状态（四阶段全部完成）**：
 - 通用 LLM 路径 → `StageRunner` → `ReActLoop` ✅
 - `_gen_test_plan` / `_tri_evaluate` → `StageRunner` → `ReActLoop` ✅
-- `_exec_code_generation` → `SkillLoader` → `CodeGenerationSkill` ✅
+- 代码生成 → `StageRunner.run()` → `ReActLoop` → `sys_skill_call(CodeGenerationSkill)` ✅
 - `_exec_test_runner` → `sys_tool_call` → Harness syscall 通道 ✅
 - `_call_llm` → 已删除 ✅
 - Graph trace 事件在每个阶段出入口记录 ✅
@@ -514,14 +514,15 @@ Tool/Skill 在返回结果时 MAY 附加 `priority` 字段：
 
 | 级别 | 触发阈值 | 动作 |
 |------|---------|------|
-| WARNING | 90% | 仅监控，不压缩 |
-| REPLACE | 92% | 替换旧工具输出为摘要 |
-| PRUNE | 94% | 裁剪旧消息（priority 排序：low 先删、high 保留） |
-| AGGRESSIVE | 96% | 激进压缩（只保留 system + 最后 2 条） |
-| EMERGENCY | 98% | 紧急压缩（仅保留 system + 最后 1 条） |
+| NORMAL | < 70% | 不压缩，返回原始 context |
+| WARNING | 70-80% | 仅监控，不压缩 |
+| REPLACE | 80-85% | 替换旧工具输出为摘要 |
+| PRUNE | 85-90% | 裁剪旧消息（priority 排序：low 先删、high 保留） |
+| AGGRESSIVE | 90-99% | 激进压缩（只保留 system + 最后 2 条） |
+| EMERGENCY | ≥ 99% | 紧急压缩（仅保留 system + 最后 1 条） |
 
 **设计原理**：
-- 压缩触发阈值从 70% 提升到 90%（减少不必要的压缩，更多上下文保留细节）
+- 压缩触发阈值从 70% 开始（以 token_usage/token_limit 比例计算）
 - 5 级压缩已作为 `_maybe_compact_messages` 的主路径（单阈值 fallback 仅供异常时使用）
 - CLAUDE.md 永不压缩：每次 LLM 调用前从磁盘重读，注入为 system 消息头部
 
@@ -616,6 +617,162 @@ AGENT.md 瘦身到核心内容（<100 行）。超过 100 行时，拆分为：
 **设计文档依据**：
 - `core/docs/memory/index.md`
 - `core/docs/harness/context.md`
+
+---
+
+## 5.29 内核无关应用原则（强制）
+
+**core 层（Harness 内核）必须对应用完全无知。** 任何业务概念、角色定义、阶段语义都必须通过配置字段表达，不能硬编码到引擎层。
+
+### 违规范例（禁止）
+
+```
+❌ state.get("architecture")              → ✓ state[stage.output_artifact]
+❌ state.get("prd")                       → ✓ 同上
+❌ state.get("test_report")               → ✓ state[stage.test_result_key]
+❌ if 'backend' in agent_id: ...          → ✓ stage.uses_code_skill 字段
+❌ if agent_id == "architect_agent": ...  → ✓ 从 PipelineStageConfig 字段读取
+❌ if phase == 'design': ...             → ✓ stage.hitl_phase 配置
+❌ if phase == "awaiting_architecture_approval": ...  → ✓ 检查 stage.hitl_phase
+❌ ["pm_agent","architect_agent","programmer_agent","qa_agent"]  → ✓ 团队配置驱动
+❌ functionality(55%)/code_architecture(10%): ... → ✓ PipelineStageConfig.scoring_dimensions
+❌ 整段角色 SOP prompt 写在 core 里        → ✓ 放在 AGENT.md 的 SOP body 中
+❌ 硬编码 Python/Docker/FastAPI 部署模板    → ✓ 移入 Skill 或靠 artifact 内容动态生成
+```
+
+### 自查方法（审计时逐条检查）
+
+1. `grep -rn 'state\.get\("具体业务键名"\)' core/harness/` — 每处都是违规
+2. `grep -rn 'if.*==.*phase\|if.*in.*agent_id' core/harness/` — 禁止字符串匹配
+3. 新增引擎行为 → 能否用已有 PipelineStageConfig 字段表达？不能 → 新增字段
+4. 新增 prompt 文本 → 是否属于"角色 SOP"？是 → 移入 AGENT.md
+
+### 允许的唯一例外
+
+以下硬编码是"引擎通用配置"而非"业务知识"，允许：
+
+```
+✓ PipelineEngine._config.max_tokens_per_run     (通用令牌预算)
+✓ PipelineEngine._config.max_retry_attempts      (通用重试限制)
+✓ PipelineEngine._config.stages[i].hitl          (通用 HITL 开关)
+✓ 引擎内部的 checkpoint/快照/回退/图追踪           (通用可靠性机制)
+✓ 模型适配器的 provider/model/temperature 字段    (通用模型参数)
+```
+
+### 当前已知违规（截至 2026-05）
+
+- `builder_session.py:238-240`: `session.get("architecture"/"code"/"test_report")` 硬编码 artifact key（KNOWN_DEBT——需重构 BuilderSessionStateResponse 为通用 artifacts dict）
+- `schemas_builder.py:29-31`: `BuilderSessionPhase` 业务枚举保留用于向后兼容（`awaiting_*` 名称，引擎已不再使用它们做行为分叉）
+- `agent_insight_service.py:70`: 度量层使用业务枚举值（已标注为允许的例外——度量层本质上是业务聚合）
+
+已修复（上轮）：
+- `state.get("architecture"/"prd")` → 配置驱动 upstream_output ✅
+- `_tri_evaluate` 评分维度 → stage.scoring_dimensions ✅
+- `assemble_deploy` 模板 → 环境变量驱动 ✅
+- `_semantic_output` agent-id 匹配 → AGENT.md frontmatter ✅
+- `builder_roles.py` 角色 prompt → AGENT.md 文件加载 ✅
+
+**设计文档依据**：
+- 根 `CLAUDE.md` §8
+- `docs/design/kernel_orchestrator/` Phase 9 设计
+
+---
+
+## 5.30 接线交付规范（强制——防止基础设施脱节）
+
+§5.29 确保了"引擎不包含应用知识"。本规范确保"实现了的能力被真正使用"。
+
+### 五条防复发原则
+
+**1. 消费者必须显式声明**
+
+每个新增的 `core/harness/*` 公共方法必须在注释中标注其**调用者**（至少 1 个生产代码调用者，不能只是测试）。零调用者的方法 = 待接线或死代码。
+
+**2. 集成测试优先于单元测试**
+
+单元测试（86 个）覆盖了每个零件的可用性。但新功能合入前**必须跑全路径 E2E 测试**（新建项目→PM→Arch→FE→BE→QA）。零件可用 ≠ 系统正确。
+
+**3. Feature Flag 禁止遮掩未接线**
+
+`AIPLAT_ENABLE_XXX=false` 这类 flag 禁止用于"功能实现了但没接线"的情况。Feature flag 的唯一合法用途是 A/B 测试或灰度发布。
+
+**4. 全局单例必需跨进程一致**
+
+任何在 `core/` 中定义为全局单例（`get_*_registry()`）的模块，必须在所有消费该模块的进程中做初始化（seed/load）。平台进程导入 core 模块 ≠ SkillRegistry 自动有内容。
+
+**5. 不可重复建设——优先接线而非重实现**
+
+当发现已有基础设施（ContextAssembler、MemoryManager、RetryManager）能解决问题时，优先接线而非在调用方重新实现一份简化版。先问"能不能接上已有设施"，再问"要不要新建"。
+
+**6. 新建文件必须立即接线（强制——防止批量创建后遗忘）**
+
+- **禁止**：同时创建 3 个以上 .py 文件而不在其中任何一个中添加 caller。
+- **必须**：新建一个文件 → 立即将其接入至少 1 个生产代码调用路径 → 用 grep 验证 caller 存在 → 再建下一个文件。
+- **必须**：每完成一个文件的 create + wire 后，立即运行验证命令（见规则 7），确认通过后再继续。
+- 违反本条：造成"创建了文件但没人调用"的模式。上轮审计中 5 个新文件零调用者（file.py/code.py/artifacts/cron.py/sandbox.py）即为违反本条的直接后果——创建速度优先于接线完整性。
+
+**7. 新建文件后必须运行 caller 验证（强制——不可跳过）**
+
+每次 `write/edit` 创建新模块（含新的公共函数/类）后，必须立即运行以下验证，并确认输出不为空：
+
+```bash
+# 验证命令：确认新模块有至少 1 个非自身、非测试的调用者
+grep -rl '<新公共符号名>' <模块所在目录>/ --include='*.py' \
+  | grep -v __pycache__ \
+  | grep -v "$(basename <新文件路径>)" \
+  | grep -v '/tests/' \
+  | sort -u
+```
+
+- 输出为空 → **立即接线，不得继续创建下一个文件。**
+- 输出只有测试文件 → **需要生产代码 caller，不得继续。**
+- 同一轮对话结束时，所有新建文件的汇总 caller 检查也必须在最终验证中通过。
+
+**8. 接线完成度的自动化验证（每次实施结束必须执行）**
+
+在每次实施完成后，作为最终验证步骤之一，统计本轮所有新建文件的 caller：
+
+```bash
+for f in <本轮新建文件列表>; do
+  symbols=$(python3 -c "
+import ast, sys
+tree = ast.parse(open('$f').read())
+funcs = [n.name for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))]
+print('|'.join(funcs[:5]))
+" 2>/dev/null)
+  for sym in $(echo "$symbols" | tr '|' ' '); do
+    count=$(grep -rl "$sym" core/ --include='*.py' 2>/dev/null | grep -v "$(basename $f)" | grep -v __pycache__ | grep -v '/tests/' | wc -l)
+    [ "$count" -eq 0 ] && echo "  ❌ $f::$sym — 0 callers"
+  done
+done
+```
+
+任何 `❌` = 实施未完成，不得声称该阶段已完成。
+
+### 自查清单（审计时逐条检查）
+
+1. 新增的方法有没有至少 1 个非测试的生产调用者？
+2. 有没有用 `AIPLAT_ENABLE_*=false` 来遮掩未完成的功能？
+3. 如果有全局单例，是否在 platform/core 两个进程中都初始化了？
+4. 有没有重复实现已有基础设施的情况？
+
+### 典型案例（已修复——作为反面教材）
+
+```
+❌ ContextAssembler.assemble()       → 实现了但只 1 个 caller，只用 metadata
+❌ MemoryManager.build_context()     → 实现了但被用错参数
+❌ Orchestrator.plan()               → 实现了但 AIPLAT_ENABLE_ORCHESTRATOR=false
+❌ FeedbackLoops (3 modules)         → 实现了但 harness.start() 从未调用
+❌ AgentMessageBus.receive()         → 实现了但只 send 不 receive
+❌ PipelineEngine._summarize_artifact → 实现了但和 ContextAssembler 做同一件事
+
+✓ 修复：ContextAssembler schemas wired、build_context fixed、Orchestrator enabled、
+         feedback loops activated、receive/drain added
+```
+
+**设计文档依据**：
+- 根 `CLAUDE.md` §9
+- 本规约 §5.29
 
 ---
 

@@ -1,16 +1,13 @@
 """
-EngineRouter (Phase 5.1 — fallback chain enabled).
+EngineRouter (Phase 9 — plan-aware routing).
 
 Fallback order: graph -> loop -> quick
   - graph: LangGraph-based execution (CompiledGraph)
   - loop:  ReActLoop-based execution (default)
   - quick: stripped-down single-pass LLM call
 
-Phase 5.0 constraints (preserved):
-  - Default routing unchanged (loop-first).
-  - Fallback only triggers on explicit failure.
-
-Opt-in via AIPLAT_ENABLE_ENGINE_FALLBACK=true env var.
+Phase 9: ExecutionPlan-aware routing. When a plan is available, the router
+injects plan metadata into the agent context for step-by-step execution.
 """
 
 from __future__ import annotations
@@ -21,6 +18,7 @@ from typing import Any, Dict, Optional, Tuple
 
 from .engines.base import EngineDecision
 from .engines.loop_engine import LoopEngine
+from ..kernel.types import ExecutionPlan
 
 
 class EngineRouter:
@@ -28,26 +26,67 @@ class EngineRouter:
 
     def __init__(self) -> None:
         self._loop_engine = LoopEngine()
+        from .engines.plan_engine import PlanEngine
+        from .engines.quick_engine import QuickEngine
+        self._plan_engine = PlanEngine(fallback=self._loop_engine)
+        self._quick_engine = QuickEngine()
+        self._graph_engine = None  # lazy: LangGraph may not be installed
 
-    def route_agent(self, *, agent_id: str, payload: Dict[str, Any]) -> Tuple[Any, EngineDecision]:
+    def route_agent(
+        self,
+        *,
+        agent_id: str,
+        payload: Dict[str, Any],
+        plan: Optional[ExecutionPlan] = None,
+    ) -> Tuple[Any, EngineDecision]:
         now = time.time()
         fallback_enabled = os.getenv("AIPLAT_ENABLE_ENGINE_FALLBACK", "").lower() in ("1", "true", "yes")
 
+        if plan and plan.steps:
+            engine, engine_key, chain = self._plan_engine, "plan", ["plan", "loop", "quick"]
+        else:
+            # Agent-type → graph-type routing (P1-5: previously only reachable via fallback)
+            agent_type = payload.get("agent_type", "") if isinstance(payload, dict) else ""
+            if agent_type in ("multi_agent", "multi-agent", "reflection"):
+                if self._graph_engine is None:
+                    try:
+                        from .engines.graph_engine import GraphEngine
+                        self._graph_engine = GraphEngine()
+                    except Exception:
+                        pass
+                if self._graph_engine is not None:
+                    engine, engine_key, chain = self._graph_engine, "graph", ["graph", "loop", "quick"]
+                else:
+                    engine, engine_key, chain = self._loop_engine, "loop", ["loop", "quick"]
+            else:
+                msg_list = payload.get("messages", []) if isinstance(payload, dict) else []
+                if len(msg_list) == 1 and len(str(msg_list[0].get("content", "") or "")) < 100:
+                    engine, engine_key, chain = self._quick_engine, "quick", ["quick", "loop"]
+                else:
+                    engine, engine_key, chain = self._loop_engine, "loop", ["loop", "quick"]
+
+        if not fallback_enabled:
+            chain = [engine_key]
+
         decision = EngineDecision(
-            engine="loop",
-            explain="EngineRouter: default loop engine" if not fallback_enabled
-                    else "EngineRouter: loop-first with graph->loop->quick fallback chain",
-            fallback_chain=["loop"] if not fallback_enabled else ["graph", "loop", "quick"],
+            engine=engine_key,
+            explain=f"EngineRouter: {engine_key} engine" if not fallback_enabled
+                    else f"EngineRouter: {engine_key}-first with {chain} fallback chain",
+            fallback_chain=chain,
             fallback_trace=[{
-                "engine": "loop",
+                "engine": engine_key,
                 "status": "selected",
-                "reason": "primary engine (loop-first)" if not fallback_enabled
-                         else "primary engine (loop-first with fallback)",
+                "reason": f"primary engine ({engine_key}-first)" if not fallback_enabled
+                         else f"primary engine ({engine_key}-first with fallback)",
                 "ts": now,
             }],
-            metadata={"agent_id": agent_id},
+            metadata={
+                "agent_id": agent_id,
+                "plan_available": plan is not None and bool(plan.steps) if plan else False,
+                "plan_steps": len(plan.steps) if plan and plan.steps else 0,
+            },
         )
-        return self._loop_engine, decision
+        return engine, decision
 
     async def execute_with_fallback(
         self,
@@ -56,9 +95,19 @@ class EngineRouter:
         decision: EngineDecision,
     ) -> Any:
         """Execute agent with fallback chain. Returns AgentResult or raises."""
-        engines = {
+        engines: Dict[str, Any] = {
+            "plan": self._plan_engine,
             "loop": self._loop_engine,
+            "quick": self._quick_engine,
         }
+        if self._graph_engine is None:
+            try:
+                from .engines.graph_engine import GraphEngine
+                self._graph_engine = GraphEngine()
+            except Exception:
+                pass
+        if self._graph_engine is not None:
+            engines["graph"] = self._graph_engine
         last_error: Optional[Exception] = None
 
         for engine_key in decision.fallback_chain:

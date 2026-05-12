@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Callable
 import asyncio
+import json
 import os
 import time
 import re
@@ -23,7 +24,7 @@ from ..interfaces.loop import (
 from ..infrastructure.hooks import HookManager, HookPhase, HookContext
 from .tool_calling import parse_action_call, parse_tool_call
 from ..syscalls import sys_llm_generate, sys_skill_call, sys_tool_call
-from ..assembly import PromptAssembler
+from ..assembly import PromptAssembler, ContextAssembler, ContextSource
 from ..kernel.runtime import get_kernel_runtime
 from ..restatement.run_state import (
     default_run_state,
@@ -182,7 +183,7 @@ class BaseLoop(ILoop):
         if max_tokens > 0 and (used_tokens / max_tokens) > 0.8:
             # If advanced compaction is enabled, let the loop implementation handle it
             # (e.g., ReActLoop._maybe_compact_messages) rather than dropping turns here.
-            if os.getenv("AIPLAT_ENABLE_CONTEXT_COMPACTION", "false").lower() in ("1", "true", "yes", "y"):
+            if True:  # always enable 5-level compaction (has its own threshold guards)
                 state.metadata["control_action"] = state.metadata.get("control_action") or "context_pressure"
                 state.metadata["context_pressure"] = True
                 return
@@ -256,6 +257,14 @@ class ReActLoop(BaseLoop):
         self._approval_manager = approval_manager
         self._current_node = "reason"
 
+    def _update_streak(self, action_result: Any) -> None:
+        """Track consecutive 'not found' failures for stagnation detection."""
+        self._not_found_streak = getattr(self, '_not_found_streak', 0)
+        if action_result and "not found" in str(action_result).lower():
+            self._not_found_streak += 1
+        else:
+            self._not_found_streak = 0
+
     def set_model(self, model: Any) -> None:
         self._model = model
 
@@ -280,7 +289,7 @@ class ReActLoop(BaseLoop):
         if not self._approval_manager:
             return
         try:
-            from ...infrastructure.approval import ApprovalContext, RequestStatus
+            from ..infrastructure.approval import ApprovalContext, RequestStatus
             user_id = context.get("user_id", "system")
             session_id = context.get("session_id", "default")
             approval_ctx = ApprovalContext(
@@ -378,10 +387,22 @@ class ReActLoop(BaseLoop):
         except Exception:
             pass
 
+        # Auto-detect final output / stagnation
+        parsed = parse_action_call(reasoning) if reasoning else None
+        if parsed and parsed.kind == "none" and len(str(reasoning or "").strip()) > 200:
+            state.context["output"] = reasoning
+            state.current = LoopStateEnum.FINISHED
+            return state
+        if getattr(self, '_not_found_streak', 0) >= 3 and len(str(reasoning or "").strip()) > 20:
+            state.context["output"] = reasoning
+            state.current = LoopStateEnum.FINISHED
+            return state
+
         state.current = LoopStateEnum.ACTING
         await self._trigger_hook(HookPhase.PRE_ACT, state.context)
         action_result = await self._act(state)
         state.context["action_result"] = action_result
+        self._update_streak(action_result)
         await self._trigger_hook(HookPhase.POST_ACT, state.context)
 
         # If a syscall requested pause (approval_required / policy_denied), stop here.
@@ -393,6 +414,7 @@ class ReActLoop(BaseLoop):
         await self._trigger_hook(HookPhase.PRE_OBSERVE, state.context)
         observation = await self._observe(state)
         state.context["observation"] = observation
+        state.context.setdefault("_observations", []).append(observation)
         await self._trigger_hook(HookPhase.POST_OBSERVE, state.context)
 
         # Optional: auto-complete todo items from explicit markers in logs/results.
@@ -468,9 +490,62 @@ class ReActLoop(BaseLoop):
         if not self._model:
             return "No model available"
 
-        # Optional: context compaction (best-effort)
+        # Optional: context compaction + memory injection (best-effort)
         try:
             await self._maybe_compact_messages(state)
+            from ..memory.manager import get_memory_manager
+            try:
+                mgr = get_memory_manager()
+                task = state.context.get("task", "")
+                sys_prompt = state.context.get("system_prompt", "")
+                mem_ctx = await mgr.build_context(current_query=task, system_prompt=sys_prompt)
+                if mem_ctx and (mem_ctx.working_context or mem_ctx.messages):
+                    state.context.setdefault("_memory_context", {
+                        "working": str(mem_ctx.working_context)[:2000] if mem_ctx.working_context else "",
+                        "episodic": str(mem_ctx.episodic_summary)[:1000] if mem_ctx.episodic_summary else "",
+                        "semantic": str(mem_ctx.relevant_memories)[:1000] if mem_ctx.relevant_memories else "",
+                        "messages": mem_ctx.messages,
+                        "token_count": mem_ctx.token_count,
+                    })
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+        # Drain AgentMessageBus before reasoning (P1: wire feedback/coordination messages)
+        try:
+            from ..interfaces.messaging import get_message_bus
+            bus = get_message_bus()
+            agent_id = state.context.get("agent_id", "") or getattr(self._config, 'name', 'react_agent')
+            messages = bus.drain(agent_id)
+            if messages:
+                state.context.setdefault("_bus_messages", []).extend(str(m)[:200] for m in messages)
+            # Check for pending requests that need responses
+            requests = bus.collect_requests(agent_id)
+            if requests:
+                state.context.setdefault("_bus_requests", []).extend(
+                    {"request_id": r.msg_id, "sender": r.sender_id, "payload": r.payload}
+                    for r in requests[:3])
+        except Exception:
+            pass
+
+        # Inject memory context + bus messages into prompt assembly
+        mem_hints = ""
+        try:
+            mem = state.context.get("_memory_context")
+            if mem:
+                parts = []
+                if mem.get("working"): parts.append(f"Working Memory: {mem['working']}")
+                if mem.get("episodic"): parts.append(f"Recent: {mem['episodic']}")
+                if mem.get("semantic"): parts.append(f"Relevant: {mem['semantic']}")
+                mem_hints = "\n".join(parts)
+        except Exception:
+            pass
+        bus_hints = ""
+        try:
+            bus_msgs = state.context.get("_bus_messages", [])
+            if bus_msgs:
+                bus_hints = "\n".join(f"[Bus] {m}" for m in bus_msgs[-3:])
         except Exception:
             pass
 
@@ -494,6 +569,36 @@ class ReActLoop(BaseLoop):
             state.context["tools_desc_stats"] = tools_desc_stats
             state.metadata["skills_desc_stats"] = skills_desc_stats
             state.context["skills_desc_stats"] = skills_desc_stats
+        except Exception:
+            pass
+
+        # ── ContextAssembler: token budget + source attribution (Phase 9) ──
+        try:
+            from ..assembly import BudgetSpec
+            sources = [
+                ContextSource(key="tools_desc", origin="system", token_estimate=len(tools_desc) // 4, priority="high"),
+                ContextSource(key="skills_desc", origin="skill", token_estimate=len(skills_desc) // 4, priority="medium"),
+                ContextSource(key="history", origin="system", token_estimate=len(history) // 4, priority="medium"),
+            ]
+            tool_schemas = [{"name": getattr(t, "name", str(t)), "desc": str(getattr(getattr(t, '_config', None), 'description', ''))[:200]} for t in (self._tools or [])]
+            skill_schemas = [{"name": getattr(s, "name", str(s)), "desc": str(getattr(getattr(s, '_config', None), 'description', ''))[:200]} for s in (self._skills or [])]
+            assembly_result = ContextAssembler().assemble(
+                messages=state.context.get("messages", []),
+                session_id=state.context.get("session_id"),
+                user_id=state.context.get("user_id"),
+                budgets=BudgetSpec(token_budget=self._config.max_tokens or 100_000),
+                sources=sources,
+                tool_schemas=tool_schemas,
+                skill_schemas=skill_schemas,
+                metadata={"step_count": int(getattr(state, "step_count", 0) or 0)},
+            )
+            state.context["_context_assembly"] = {
+                "estimated_tokens": assembly_result.context.estimated_tokens(),
+                "over_budget": assembly_result.context.is_over_budget(),
+                "compact_needed": assembly_result.context.compact_needed(),
+                "prompt_version": assembly_result.context.prompt_version,
+                "meta": assembly_result.metadata,
+            }
         except Exception:
             pass
 
@@ -542,7 +647,7 @@ class ReActLoop(BaseLoop):
         except Exception:
             pass
 
-        if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y"):
+        if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "true").lower() in ("1", "true", "yes", "y"):
             prompt = PromptAssembler().build_react_reasoning_messages(
                 task=task,
                 history=history,
@@ -558,6 +663,8 @@ class ReActLoop(BaseLoop):
 
 History:
 {history}
+{mem_hints}
+{bus_hints}
 
 Available tools:
 {tools_desc}
@@ -612,6 +719,39 @@ DONE: final_answer
                 pass
             return response.content
         except Exception as e:
+            # P3-15: Session overflow fallback — retry with emergency compression
+            err_msg = str(e).lower()
+            overflow_keywords = [
+                "context_length", "too long", "reduce the length",
+                "token limit", "max tokens", "context window",
+                "too many tokens", "truncat",
+            ]
+            if any(kw in err_msg for kw in overflow_keywords) and not state.context.get("_overflow_retried"):
+                state.context["_overflow_retried"] = True
+                state.context["_last_action_reason"] = "context_overflow_compressing"
+                try:
+                    from core.harness.memory.compression import ContextCompression, ContextState
+                    comp = ContextCompression()
+                    msgs = state.context.get("messages", [])
+                    est_tokens = len(json.dumps(msgs, default=str)) // 4 if msgs else 0
+                    cs = ContextState(token_usage=est_tokens, token_limit=est_tokens * 2, message_count=len(msgs))
+                    compressed = await comp._emergency_compress(msgs) if msgs else []
+                    if compressed:
+                        # Rebuild a minimal prompt from compressed messages
+                        system_text = "\n".join(
+                            m.get("content", "")[:500] for m in compressed
+                            if m.get("role") == "system"
+                        )
+                        last_text = "\n".join(
+                            m.get("content", "")[:300] for m in compressed
+                            if m.get("role") != "system"
+                        )
+                        emergency_prompt = f"{system_text}\n\n## Context (compressed)\n{last_text}\n\n## Current Task\n{state.context.get('task', '')}\n\nRespond with DONE: ..."
+                        response = await sys_llm_generate(self._model, emergency_prompt,
+                            trace_context=trace_ctx, model_name=self._config.model_name)
+                        return response.content if hasattr(response, "content") else str(response)
+                except Exception:
+                    pass
             # Track consecutive LLM failures for observability
             cf = state.context.get("_consecutive_llm_failures", 0) + 1
             state.context["_consecutive_llm_failures"] = cf
@@ -856,10 +996,41 @@ DONE: final_answer
                 elif any(w in low for w in ("tool_output", "executed successfully", "result:", "exit 0", "pass_rate")):
                     stability = "low"
                 await mgr.save_interaction(
-                    user_message=user_msg[:3000],
-                    assistant_message=assistant_msg[:3000],
+                    user_message=user_msg,
+                    assistant_message=assistant_msg,
                     stability=stability,
                 )
+                # Capture high-stability interactions to semantic memory
+                # for cross-session retrieval (P1-6: previously unwired).
+                if stability == "high":
+                    try:
+                        await mgr.capture_to_semantic(
+                            content=f"User: {user_msg[:500]}\nAssistant: {assistant_msg[:500]}",
+                            metadata={"source": "loop_interaction"},
+                        )
+                    except Exception:
+                        pass
+            # Feed into ProductionFeedbackLoop for analytics (P3-3 wiring)
+            try:
+                from core.harness.feedback_loops.prod import get_production_feedback
+                pfb = get_production_feedback()
+                if pfb:
+                    await pfb.record(
+                        session_id=state.context.get("session_id", "default"),
+                        feedback_type="interaction",
+                        content={"user": user_msg[:500], "assistant": assistant_msg[:500]},
+                        metadata={"stability": stability},
+                    )
+            except Exception:
+                pass
+            # Feed interaction into local feedback loop (P1-7 wiring)
+            try:
+                from core.harness.feedback_loops.local import get_local_feedback
+                fb = get_local_feedback()
+                if fb:
+                    fb.emit("interaction", {"user": user_msg[:500], "assistant": assistant_msg[:500], "stability": stability})
+            except Exception:
+                pass
         except Exception:
             pass
 
@@ -909,8 +1080,7 @@ DONE: final_answer
         # MemoryManager bridge: inject system reminders if available
         await self._try_inject_memory_reminders(state)
 
-        if os.getenv("AIPLAT_ENABLE_CONTEXT_COMPACTION", "false").lower() not in ("1", "true", "yes", "y"):
-            return
+        # Always attempt compaction; 5-level thresholds decide whether to act.
 
         msgs = state.context.get("messages")
         if not isinstance(msgs, list) or len(msgs) < 8:
@@ -1122,31 +1292,39 @@ DONE: final_answer
             "chars_total": 0,
         }
 
-        try:
-            from core.apps.skills import get_skill_registry
-
-            reg = get_skill_registry()
-            names = reg.list_skills()
-        except Exception:
-            names = []
-
-        stats["skills_total"] = len(names)
-        if not names:
+        stats["skills_total"] = len(self._skills or [])
+        if not self._skills:
             return "No skills available (use skill_find to discover)", stats
 
         lines: List[str] = []
-        for name in sorted([str(x) for x in names]):
+        for skill in sorted(self._skills, key=lambda s: str(getattr(s, 'name', getattr(getattr(s, '_config', None), 'name', '')) or '')):
+            try:
+                name = getattr(skill, 'name', None) or (getattr(skill._config, 'name', '') if hasattr(skill, '_config') else '')
+            except Exception:
+                name = str(skill)
+            name = str(name or '')
             # best-effort: hide denied skills (OpenCode behavior)
             try:
-                from core.apps.tools.skill_tools import resolve_skill_permission
-
-                if resolve_skill_permission(name) == "deny":
+                perm_denied = False
+                try:
+                    from core.harness.integration import _ensure_di
+                    di = _ensure_di()
+                    if di:
+                        r = di.resolve("SkillPermissionResolver")
+                        if r and isinstance(r, dict):
+                            perm_denied = r["resolve"](name) == "deny"
+                except Exception: pass
+                if not perm_denied:
+                    try:
+                        from core.apps.tools.skill_tools import resolve_skill_permission
+                        perm_denied = resolve_skill_permission(name) == "deny"
+                    except Exception: pass
+                if perm_denied:
                     continue
             except Exception:
                 pass
             try:
-                s = reg.get(name)  # type: ignore[name-defined]
-                cfg = s.get_config() if s else None
+                cfg = getattr(skill, '_config', None) or (skill.get_config() if hasattr(skill, 'get_config') else None)
                 desc = str(getattr(cfg, "description", "") or "")
                 meta = dict(getattr(cfg, "metadata", {}) or {}) if cfg is not None else {}
                 kind = str(meta.get("skill_kind") or "rule")
@@ -1176,247 +1354,39 @@ DONE: final_answer
 
         return "\n".join(lines), stats
 
-    async def _act(self, state: LoopState) -> str:
-        """Acting phase - execute tool or skill."""
-        reasoning = state.context.get("reasoning", "")
-        parsed = parse_action_call(reasoning)
-        # --- routing candidates snapshot (router-time) ---
-        routing_decision_id = f"rtd_{uuid.uuid4().hex[:16]}"
-        state.context["_routing_decision_id"] = routing_decision_id
+    # ── Action execution helpers (extracted from _act() per P1-6) ──
 
-        def _coding_policy_profile_for_skill(skill_obj: Any) -> str:
-            """
-            Determine effective coding policy profile for a selected skill.
-            Default off; can be enabled via env:
-            - AIPLAT_CODING_POLICY_PROFILE_WORKSPACE
-            - AIPLAT_CODING_POLICY_PROFILE_ENGINE
-            """
-            try:
-                config = getattr(skill_obj, "_config", None) or getattr(skill_obj, "get_config", lambda: None)()
-                meta = getattr(config, "metadata", None) if config is not None else None
-                meta = meta if isinstance(meta, dict) else {}
-                category = str(meta.get("category") or getattr(config, "category", "") or "").lower()
-                tags = meta.get("tags") or []
-                tags = [str(t).lower() for t in tags] if isinstance(tags, list) else []
-                is_coding = (category == "coding") or ("coding" in tags) or ("code" in tags)
-                if not is_coding:
-                    return "off"
-                scope = str(state.context.get("skill_scope") or "engine").lower()
-                if scope == "workspace":
-                    return os.getenv("AIPLAT_CODING_POLICY_PROFILE_WORKSPACE", "off").strip().lower()
-                return os.getenv("AIPLAT_CODING_POLICY_PROFILE_ENGINE", "off").strip().lower()
-            except Exception:
+    def _init_routing_id(self, state: LoopState) -> str:
+        routing_id = f"rtd_{uuid.uuid4().hex[:16]}"
+        state.context["_routing_decision_id"] = routing_id
+        return routing_id
+
+    def _coding_policy_profile_for_skill(self, skill_obj: Any, state: LoopState) -> str:
+        try:
+            config = getattr(skill_obj, "_config", None) or getattr(skill_obj, "get_config", lambda: None)()
+            meta = getattr(config, "metadata", None) if config is not None else None
+            meta = meta if isinstance(meta, dict) else {}
+            is_coding = bool(meta.get("uses_code_skill"))
+            if not is_coding:
                 return "off"
+            scope = str(state.context.get("skill_scope") or "engine").lower()
+            if scope == "workspace":
+                return os.getenv("AIPLAT_CODING_POLICY_PROFILE_WORKSPACE", "off").strip().lower()
+            return os.getenv("AIPLAT_CODING_POLICY_PROFILE_ENGINE", "off").strip().lower()
+        except Exception:
+            return "off"
 
-        async def _emit_routing_decision(*, selected_kind: str, selected_name: str = "", query_excerpt: str = "") -> None:
-            """Emit decision-level routing event as funnel denominator."""
-            try:
-                runtime = get_kernel_runtime()
-                store = getattr(runtime, "execution_store", None) if runtime else None
-                if store is None:
-                    return
-                qx = str(query_excerpt or "").strip()
-                if not qx:
-                    # best-effort: last user message then task
-                    try:
-                        msgs = state.context.get("messages") if isinstance(state.context.get("messages"), list) else []
-                        for m in reversed(msgs):
-                            if isinstance(m, dict) and str(m.get("role") or "").lower() == "user":
-                                qx = str(m.get("content") or "").strip()
-                                break
-                    except Exception:
-                        qx = ""
-                    if not qx:
-                        qx = str(state.context.get("task") or "").strip()
-                end_ts = time.time()
-                await store.add_syscall_event(
-                    {
-                        "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
-                        "run_id": state.context.get("_run_id") or state.context.get("run_id"),
-                        "tenant_id": state.context.get("tenant_id"),
-                        "kind": "routing",
-                        "name": "routing_decision",
-                        "status": "decision",
-                        "start_time": end_ts,
-                        "end_time": end_ts,
-                        "duration_ms": 0.0,
-                        "args": {
-                            "routing_decision_id": routing_decision_id,
-                            "step_count": int(getattr(state, "step_count", 0) or 0),
-                            "selected_kind": str(selected_kind),
-                            "selected_name": str(selected_name or ""),
-                            "selected_skill_id": str(selected_name or "") if str(selected_kind) == "skill" else "",
-                            "coding_policy_profile": str(state.context.get("_coding_policy_profile") or "off"),
-                            "query_excerpt": qx[:220],
-                        },
-                        "created_at": end_ts,
-                    }
-                )
-            except Exception:
+    async def _emit_routing_decision(
+        self, state: LoopState, routing_decision_id: str,
+        selected_kind: str, selected_name: str = "", query_excerpt: str = "",
+    ) -> None:
+        try:
+            runtime = get_kernel_runtime()
+            store = getattr(runtime, "execution_store", None) if runtime else None
+            if store is None:
                 return
-
-        async def _emit_skill_candidates_snapshot(*, selected_kind: str, selected_name: str = "") -> None:
-            """
-            Emit candidates even when no skill is invoked (tool chosen / no action).
-            Stored as syscall_events(kind=routing, name=skill_candidates_snapshot) so it joins funnel aggregation.
-            """
-            try:
-                runtime = get_kernel_runtime()
-                store = getattr(runtime, "execution_store", None) if runtime else None
-                if store is None:
-                    return
-
-                # best-effort query text from current task + last user message
-                q = ""
-                try:
-                    msgs = state.context.get("messages") if isinstance(state.context.get("messages"), list) else []
-                    for m in reversed(msgs):
-                        if isinstance(m, dict) and str(m.get("role") or "").lower() == "user":
-                            q = str(m.get("content") or "").strip()
-                            break
-                except Exception:
-                    q = ""
-                if not q:
-                    q = str(state.context.get("task") or "").strip()
-                if not q:
-                    return
-
-                def _norm(s: str) -> str:
-                    s0 = str(s or "").lower().strip()
-                    s0 = re.sub(r"[\s\-\._/]+", " ", s0)
-                    s0 = re.sub(r"[^\w\u4e00-\u9fff ]+", "", s0)
-                    return s0.strip()
-
-                def _tokenize(s: str) -> set[str]:
-                    s0 = _norm(s)
-                    if not s0:
-                        return set()
-                    toks = set()
-                    for w in s0.split():
-                        if len(w) >= 2:
-                            toks.add(w)
-                    for seg in re.findall(r"[\u4e00-\u9fff]{2,}", s0):
-                        for i in range(0, max(0, len(seg) - 1)):
-                            toks.add(seg[i : i + 2])
-                    return toks
-
-                qt = _tokenize(q)
-                if not qt:
-                    return
-
-                candidates: List[Dict[str, Any]] = []
-
-                async def _scan_mgr(mgr: Any, scope0: str) -> None:
-                    if mgr is None:
-                        return
-                    try:
-                        skills = await mgr.list_skills(None, None, 400, 0)
-                    except Exception:
-                        skills = []
-                    for s in skills or []:
-                        try:
-                            sid = str(getattr(s, "id", "") or "")
-                            nm = str(getattr(s, "name", "") or "")
-                            desc = str(getattr(s, "description", "") or "")
-                            meta = getattr(s, "metadata", None)
-                            meta = meta if isinstance(meta, dict) else {}
-                            skill_kind = str(meta.get("skill_kind") or "rule")
-                            tc = meta.get("trigger_conditions") or meta.get("trigger_keywords") or []
-                            kw = meta.get("keywords") if isinstance(meta.get("keywords"), dict) else {}
-                            blob = " ".join(
-                                [
-                                    nm,
-                                    desc,
-                                    " ".join([str(x) for x in (tc or [])]),
-                                    " ".join([str(x) for x in (kw.get("objects") or [])]),
-                                    " ".join([str(x) for x in (kw.get("actions") or [])]),
-                                    " ".join([str(x) for x in (kw.get("constraints") or [])]),
-                                ]
-                            )
-                            st = _tokenize(blob)
-                            if not st:
-                                continue
-                            inter = qt & st
-                            if not inter:
-                                continue
-                            score = float(len(inter))
-                            for t in (tc or [])[:10]:
-                                tt = str(t or "").strip()
-                                if tt and tt in q:
-                                    score += 3.0
-                                    break
-                            # permission hints (best-effort)
-                            perm = None
-                            exec_perm = None
-                            try:
-                                from core.apps.tools.skill_tools import resolve_skill_permission, resolve_executable_skill_permission
-
-                                perm = resolve_skill_permission(nm)
-                                if skill_kind == "executable":
-                                    exec_perm = resolve_executable_skill_permission(nm)
-                            except Exception:
-                                perm = None
-                                exec_perm = None
-                            candidates.append(
-                                {
-                                    "skill_id": sid,
-                                    "name": nm,
-                                    "scope": scope0,
-                                    "skill_kind": skill_kind,
-                                    "score": score,
-                                    "overlap": sorted(list(inter))[:12],
-                                    "perm": perm,
-                                    "exec_perm": exec_perm,
-                                }
-                            )
-                        except Exception:
-                            continue
-
-                await _scan_mgr(getattr(runtime, "workspace_skill_manager", None), "workspace")
-                await _scan_mgr(getattr(runtime, "skill_manager", None), "engine")
-                candidates.sort(key=lambda x: float(x.get("score") or 0.0), reverse=True)
-                top = candidates[:8]
-                end_ts = time.time()
-                await store.add_syscall_event(
-                    {
-                        "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
-                        "run_id": state.context.get("_run_id") or state.context.get("run_id"),
-                        "tenant_id": state.context.get("tenant_id"),
-                        "kind": "routing",
-                        "name": "skill_candidates_snapshot",
-                        "status": "snapshot",
-                        "start_time": end_ts,
-                        "end_time": end_ts,
-                        "duration_ms": 0.0,
-                        "args": {
-                            "routing_decision_id": routing_decision_id,
-                            "step_count": int(getattr(state, "step_count", 0) or 0),
-                            "selected_kind": selected_kind,
-                            "selected_name": selected_name,
-                            "coding_policy_profile": str(state.context.get("_coding_policy_profile") or "off"),
-                            "query_excerpt": q[:220],
-                            "candidates": top,
-                        },
-                        "created_at": end_ts,
-                    }
-                )
-                # return top candidates for explain computation
-                return top
-            except Exception:
-                return []
-
-        async def _emit_routing_explain(*, selected_kind: str, selected_name: str, candidates_top: List[Dict[str, Any]], result_status: str = "", result_error: str = "") -> None:
-            """
-            Emit decision explain event. This is a higher-level, merged view that makes
-            "why tool/no_action/why not top1" debuggable without joining many streams.
-            """
-            try:
-                runtime = get_kernel_runtime()
-                store = getattr(runtime, "execution_store", None) if runtime else None
-                if store is None:
-                    return
-                # best-effort query excerpt
-                qx = ""
+            qx = str(query_excerpt or "").strip()
+            if not qx:
                 try:
                     msgs = state.context.get("messages") if isinstance(state.context.get("messages"), list) else []
                     for m in reversed(msgs):
@@ -1427,259 +1397,401 @@ DONE: final_answer
                     qx = ""
                 if not qx:
                     qx = str(state.context.get("task") or "").strip()
+            end_ts = time.time()
+            await store.add_syscall_event({
+                "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
+                "run_id": state.context.get("_run_id") or state.context.get("run_id"),
+                "tenant_id": state.context.get("tenant_id"),
+                "kind": "routing", "name": "routing_decision", "status": "decision",
+                "start_time": end_ts, "end_time": end_ts, "duration_ms": 0.0,
+                "args": {
+                    "routing_decision_id": routing_decision_id,
+                    "step_count": int(getattr(state, "step_count", 0) or 0),
+                    "selected_kind": str(selected_kind),
+                    "selected_name": str(selected_name or ""),
+                    "selected_skill_id": str(selected_name or "") if str(selected_kind) == "skill" else "",
+                    "coding_policy_profile": str(state.context.get("_coding_policy_profile") or "off"),
+                    "query_excerpt": qx[:220],
+                },
+                "created_at": end_ts,
+            })
+        except Exception:
+            pass
 
-                # compute ranks/scores
-                sel_id = str(selected_name or "")
-                top1 = candidates_top[0] if candidates_top and isinstance(candidates_top[0], dict) else {}
-                top1_id = str(top1.get("skill_id") or top1.get("name") or "")
-                top1_score = float(top1.get("score") or 0.0) if top1 else None
-                sel_rank = None
-                sel_score = None
-                for idx, c in enumerate(candidates_top or []):
-                    if not isinstance(c, dict):
-                        continue
-                    cid = str(c.get("skill_id") or c.get("name") or "")
-                    if cid == sel_id:
-                        sel_rank = idx
-                        sel_score = float(c.get("score") or 0.0)
+    async def _emit_skill_candidates_snapshot(
+        self, state: LoopState, routing_decision_id: str,
+        selected_kind: str, selected_name: str = "",
+    ) -> list:
+        try:
+            runtime = get_kernel_runtime()
+            store = getattr(runtime, "execution_store", None) if runtime else None
+            if store is None:
+                return []
+            q = ""
+            try:
+                msgs = state.context.get("messages") if isinstance(state.context.get("messages"), list) else []
+                for m in reversed(msgs):
+                    if isinstance(m, dict) and str(m.get("role") or "").lower() == "user":
+                        q = str(m.get("content") or "").strip()
                         break
-                gap = None
-                try:
-                    if top1_score is not None and sel_score is not None:
-                        gap = float(top1_score - sel_score)
-                except Exception:
-                    gap = None
+            except Exception:
+                q = ""
+            if not q:
+                q = str(state.context.get("task") or "").strip()
+            if not q:
+                return []
 
-                # top1 gate hints (permission-based; best-effort)
-                top1_gate = None
+            def _norm(s: str) -> str:
+                s0 = str(s or "").lower().strip()
+                s0 = re.sub(r"[\s\-\._/]+", " ", s0)
+                s0 = re.sub(r"[^\w\u4e00-\u9fff ]+", "", s0)
+                return s0.strip()
+
+            def _tokenize(s: str) -> set:
+                s0 = _norm(s)
+                if not s0:
+                    return set()
+                toks = set()
+                for w in s0.split():
+                    if len(w) >= 2:
+                        toks.add(w)
+                for seg in re.findall(r"[\u4e00-\u9fff]{2,}", s0):
+                    for i in range(0, max(0, len(seg) - 1)):
+                        toks.add(seg[i:i + 2])
+                return toks
+
+            qt = _tokenize(q)
+            if not qt:
+                return []
+            candidates: list = []
+
+            async def _scan_mgr(mgr, scope0):
+                if mgr is None:
+                    return
+                try:
+                    skills = await mgr.list_skills(None, None, 400, 0)
+                except Exception:
+                    skills = []
+                for s in skills or []:
+                    try:
+                        sid = str(getattr(s, "id", "") or "")
+                        nm = str(getattr(s, "name", "") or "")
+                        desc = str(getattr(s, "description", "") or "")
+                        meta = getattr(s, "metadata", None)
+                        meta = meta if isinstance(meta, dict) else {}
+                        skill_kind = str(meta.get("skill_kind") or "rule")
+                        tc = meta.get("trigger_conditions") or meta.get("trigger_keywords") or []
+                        kw = meta.get("keywords") if isinstance(meta.get("keywords"), dict) else {}
+                        blob = " ".join([nm, desc,
+                            " ".join([str(x) for x in (tc or [])]),
+                            " ".join([str(x) for x in (kw.get("objects") or [])]),
+                            " ".join([str(x) for x in (kw.get("actions") or [])]),
+                            " ".join([str(x) for x in (kw.get("constraints") or [])])])
+                        st = _tokenize(blob)
+                        if not st:
+                            continue
+                        inter = qt & st
+                        if not inter:
+                            continue
+                        score = float(len(inter))
+                        for t in (tc or [])[:10]:
+                            if str(t or "").strip() and str(t).strip() in q:
+                                score += 3.0
+                                break
+                        perm = None; exec_perm = None
+                        try:
+                            # DI: resolve_skill_permission via SkillPermissionResolver (see integration.py _ensure_di), resolve_executable_skill_permission
+                            perm = resolve_skill_permission(nm)
+                            if skill_kind == "executable":
+                                exec_perm = resolve_executable_skill_permission(nm)
+                        except Exception:
+                            pass
+                        candidates.append({
+                            "skill_id": sid, "name": nm, "scope": scope0, "skill_kind": skill_kind,
+                            "score": score, "overlap": sorted(list(inter))[:12],
+                            "perm": perm, "exec_perm": exec_perm,
+                        })
+                    except Exception:
+                        continue
+
+            await _scan_mgr(getattr(runtime, "workspace_skill_manager", None), "workspace")
+            await _scan_mgr(getattr(runtime, "skill_manager", None), "engine")
+            candidates.sort(key=lambda x: float(x.get("score") or 0.0), reverse=True)
+            top = candidates[:8]
+            end_ts = time.time()
+            await store.add_syscall_event({
+                "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
+                "run_id": state.context.get("_run_id") or state.context.get("run_id"),
+                "tenant_id": state.context.get("tenant_id"),
+                "kind": "routing", "name": "skill_candidates_snapshot", "status": "snapshot",
+                "start_time": end_ts, "end_time": end_ts, "duration_ms": 0.0,
+                "args": {
+                    "routing_decision_id": routing_decision_id,
+                    "step_count": int(getattr(state, "step_count", 0) or 0),
+                    "selected_kind": selected_kind, "selected_name": selected_name,
+                    "coding_policy_profile": str(state.context.get("_coding_policy_profile") or "off"),
+                    "query_excerpt": q[:220], "candidates": top,
+                },
+                "created_at": end_ts,
+            })
+            return top
+        except Exception:
+            return []
+
+    async def _emit_routing_strict_eval(
+        self, state: LoopState, routing_decision_id: str,
+        selected_kind: str, selected_name: str, candidates_top: list,
+    ) -> None:
+        try:
+            runtime = get_kernel_runtime()
+            store = getattr(runtime, "execution_store", None) if runtime else None
+            if store is None:
+                return
+            thr = float(os.getenv("AIPLAT_ROUTING_STRICT_MIN_SCORE", "3.0") or "3.0")
+            eligible = None
+            gated_top1_reason = None
+            top1 = candidates_top[0] if candidates_top and isinstance(candidates_top[0], dict) else None
+            if top1 is not None:
                 try:
                     if str(top1.get("perm") or "") == "deny":
-                        top1_gate = "permission_deny"
+                        gated_top1_reason = "permission_deny"
                     elif str(top1.get("skill_kind") or "") == "executable" and str(top1.get("exec_perm") or "") == "ask":
-                        top1_gate = "approval_required"
+                        gated_top1_reason = "approval_required"
                 except Exception:
-                    top1_gate = None
-
-                end_ts = time.time()
-                await store.add_syscall_event(
-                    {
-                        "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
-                        "run_id": state.context.get("_run_id") or state.context.get("run_id"),
-                        "tenant_id": state.context.get("tenant_id"),
-                        "kind": "routing",
-                        "name": "routing_explain",
-                        "status": "explain",
-                        "start_time": end_ts,
-                        "end_time": end_ts,
-                        "duration_ms": 0.0,
-                        "args": {
-                            "routing_decision_id": routing_decision_id,
-                            "step_count": int(getattr(state, "step_count", 0) or 0),
-                            "selected_kind": str(selected_kind),
-                            "selected_name": sel_id,
-                            "selected_skill_id": sel_id if str(selected_kind) == "skill" else "",
-                            "coding_policy_profile": str(state.context.get("_coding_policy_profile") or "off"),
-                            "query_excerpt": qx[:220],
-                            "candidates_top": (candidates_top or [])[:5],
-                            "top1_skill_id": top1_id,
-                            "top1_score": top1_score,
-                            "top1_gate_hint": top1_gate,
-                            "selected_rank": sel_rank,
-                            "selected_score": sel_score,
-                            "score_gap": gap,
-                            "result_status": str(result_status or ""),
-                            "result_error": str(result_error or ""),
-                        },
-                        "created_at": end_ts,
-                    }
-                )
-            except Exception:
-                return
-
-        async def _emit_routing_strict_eval(*, selected_kind: str, selected_name: str, candidates_top: List[Dict[str, Any]]) -> None:
-            """
-            Strict miss-rate evaluation (Iteration 4.1).
-            Definition (MVP, env configurable):
-            - Determine eligible_top1: first candidate that is not gated by permission:
-              - perm != deny
-              - if skill_kind==executable: exec_perm != ask
-            - strict_eligible = eligible_top1 exists AND eligible_top1.score >= threshold
-            - outcome:
-              - if strict_eligible:
-                - selected_kind != skill => miss_tool / miss_no_action
-                - selected_kind == skill and selected != eligible_top1 => misroute
-                - selected_kind == skill and selected == eligible_top1 => hit
-              - else: no_eligible
-            """
-            try:
-                runtime = get_kernel_runtime()
-                store = getattr(runtime, "execution_store", None) if runtime else None
-                if store is None:
-                    return
-                thr = float(os.getenv("AIPLAT_ROUTING_STRICT_MIN_SCORE", "3.0") or "3.0")
-                # compute eligible top1
-                eligible = None
-                gated_top1_reason = None
-                top1 = candidates_top[0] if candidates_top and isinstance(candidates_top[0], dict) else None
-                if top1 is not None:
-                    try:
-                        if str(top1.get("perm") or "") == "deny":
-                            gated_top1_reason = "permission_deny"
-                        elif str(top1.get("skill_kind") or "") == "executable" and str(top1.get("exec_perm") or "") == "ask":
-                            gated_top1_reason = "approval_required"
-                    except Exception:
-                        gated_top1_reason = None
-                for c in candidates_top or []:
-                    if not isinstance(c, dict):
-                        continue
-                    try:
-                        if str(c.get("perm") or "") == "deny":
-                            continue
-                        if str(c.get("skill_kind") or "") == "executable" and str(c.get("exec_perm") or "") == "ask":
-                            continue
-                        eligible = c
-                        break
-                    except Exception:
-                        continue
-
-                eligible_id = str((eligible or {}).get("skill_id") or (eligible or {}).get("name") or "")
+                    pass
+            for c in candidates_top or []:
+                if not isinstance(c, dict):
+                    continue
                 try:
-                    eligible_score = float((eligible or {}).get("score") or 0.0) if eligible else None
+                    if str(c.get("perm") or "") == "deny":
+                        continue
+                    if str(c.get("skill_kind") or "") == "executable" and str(c.get("exec_perm") or "") == "ask":
+                        continue
+                    eligible = c
+                    break
                 except Exception:
-                    eligible_score = None
-                strict_eligible = bool(eligible_id and eligible_score is not None and float(eligible_score) >= thr)
-                sel_kind = str(selected_kind or "")
-                sel_name = str(selected_name or "")
-                outcome = "no_eligible"
-                if strict_eligible:
-                    if sel_kind != "skill":
-                        outcome = "miss_tool" if sel_kind == "tool" else "miss_no_action"
-                    else:
-                        outcome = "hit" if sel_name == eligible_id else "misroute"
+                    continue
+            eligible_id = str((eligible or {}).get("skill_id") or (eligible or {}).get("name") or "")
+            eligible_score = float((eligible or {}).get("score") or 0.0) if eligible else None
+            strict_eligible = bool(eligible_id and eligible_score is not None and float(eligible_score) >= thr)
+            sel_kind = str(selected_kind or "")
+            sel_name = str(selected_name or "")
+            outcome = "no_eligible"
+            if strict_eligible:
+                if sel_kind != "skill":
+                    outcome = "miss_tool" if sel_kind == "tool" else "miss_no_action"
+                else:
+                    outcome = "hit" if sel_name == eligible_id else "misroute"
+            end_ts = time.time()
+            await store.add_syscall_event({
+                "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
+                "run_id": state.context.get("_run_id") or state.context.get("run_id"),
+                "tenant_id": state.context.get("tenant_id"),
+                "kind": "routing", "name": "routing_strict_eval", "status": "eval",
+                "start_time": end_ts, "end_time": end_ts, "duration_ms": 0.0,
+                "args": {
+                    "routing_decision_id": routing_decision_id,
+                    "step_count": int(getattr(state, "step_count", 0) or 0),
+                    "coding_policy_profile": str(state.context.get("_coding_policy_profile") or "off"),
+                    "threshold": thr, "selected_kind": sel_kind, "selected_name": sel_name,
+                    "selected_skill_id": sel_name if sel_kind == "skill" else "",
+                    "eligible_top1_skill_id": eligible_id, "eligible_top1_score": eligible_score,
+                    "eligible_top1_exists": bool(eligible_id), "strict_eligible": strict_eligible,
+                    "strict_outcome": outcome, "gated_top1_reason": gated_top1_reason,
+                },
+                "created_at": end_ts,
+            })
+        except Exception:
+            pass
 
-                end_ts = time.time()
-                await store.add_syscall_event(
-                    {
-                        "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
-                        "run_id": state.context.get("_run_id") or state.context.get("run_id"),
-                        "tenant_id": state.context.get("tenant_id"),
-                        "kind": "routing",
-                        "name": "routing_strict_eval",
-                        "status": "eval",
-                        "start_time": end_ts,
-                        "end_time": end_ts,
-                        "duration_ms": 0.0,
-                        "args": {
-                            "routing_decision_id": routing_decision_id,
-                            "step_count": int(getattr(state, "step_count", 0) or 0),
-                            "coding_policy_profile": str(state.context.get("_coding_policy_profile") or "off"),
-                            "threshold": thr,
-                            "selected_kind": sel_kind,
-                            "selected_name": sel_name,
-                            "selected_skill_id": sel_name if sel_kind == "skill" else "",
-                            "eligible_top1_skill_id": eligible_id,
-                            "eligible_top1_score": eligible_score,
-                            "eligible_top1_exists": bool(eligible_id),
-                            "strict_eligible": strict_eligible,
-                            "strict_outcome": outcome,
-                            "gated_top1_reason": gated_top1_reason,
-                        },
-                        "created_at": end_ts,
-                    }
-                )
-            except Exception:
+    async def _emit_routing_explain(
+        self, state: LoopState, routing_decision_id: str,
+        selected_kind: str, selected_name: str, candidates_top: list,
+        result_status: str = "", result_error: str = "",
+    ) -> None:
+        try:
+            runtime = get_kernel_runtime()
+            store = getattr(runtime, "execution_store", None) if runtime else None
+            if store is None:
                 return
+            qx = ""
+            try:
+                msgs = state.context.get("messages") if isinstance(state.context.get("messages"), list) else []
+                for m in reversed(msgs):
+                    if isinstance(m, dict) and str(m.get("role") or "").lower() == "user":
+                        qx = str(m.get("content") or "").strip()
+                        break
+            except Exception:
+                qx = ""
+            if not qx:
+                qx = str(state.context.get("task") or "").strip()
+            sel_id = str(selected_name or "")
+            top1 = candidates_top[0] if candidates_top and isinstance(candidates_top[0], dict) else {}
+            top1_id = str(top1.get("skill_id") or top1.get("name") or "")
+            top1_score = float(top1.get("score") or 0.0) if top1 else None
+            sel_rank = None; sel_score = None
+            for idx, c in enumerate(candidates_top or []):
+                if not isinstance(c, dict):
+                    continue
+                if str(c.get("skill_id") or c.get("name") or "") == sel_id:
+                    sel_rank = idx
+                    sel_score = float(c.get("score") or 0.0)
+                    break
+            gap = None
+            try:
+                if top1_score is not None and sel_score is not None:
+                    gap = float(top1_score - sel_score)
+            except Exception:
+                pass
+            top1_gate = None
+            try:
+                if str(top1.get("perm") or "") == "deny":
+                    top1_gate = "permission_deny"
+                elif str(top1.get("skill_kind") or "") == "executable" and str(top1.get("exec_perm") or "") == "ask":
+                    top1_gate = "approval_required"
+            except Exception:
+                pass
+            end_ts = time.time()
+            await store.add_syscall_event({
+                "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
+                "run_id": state.context.get("_run_id") or state.context.get("run_id"),
+                "tenant_id": state.context.get("tenant_id"),
+                "kind": "routing", "name": "routing_explain", "status": "explain",
+                "start_time": end_ts, "end_time": end_ts, "duration_ms": 0.0,
+                "args": {
+                    "routing_decision_id": routing_decision_id,
+                    "step_count": int(getattr(state, "step_count", 0) or 0),
+                    "selected_kind": str(selected_kind), "selected_name": sel_id,
+                    "selected_skill_id": sel_id if str(selected_kind) == "skill" else "",
+                    "coding_policy_profile": str(state.context.get("_coding_policy_profile") or "off"),
+                    "query_excerpt": qx[:220], "candidates_top": (candidates_top or [])[:5],
+                    "top1_skill_id": top1_id, "top1_score": top1_score, "top1_gate_hint": top1_gate,
+                    "selected_rank": sel_rank, "selected_score": sel_score, "score_gap": gap,
+                    "result_status": str(result_status or ""), "result_error": str(result_error or ""),
+                },
+                "created_at": end_ts,
+            })
+        except Exception:
+            pass
 
-        if not parsed:
-            await _emit_routing_decision(selected_kind="none")
-            top = await _emit_skill_candidates_snapshot(selected_kind="none")
-            await _emit_routing_strict_eval(selected_kind="none", selected_name="", candidates_top=top)
-            await _emit_routing_explain(selected_kind="none", selected_name="", candidates_top=top, result_status="no_action", result_error="")
-            return "No action to execute"
+    async def _emit_no_action(self, state: LoopState, routing_decision_id: str) -> None:
+        await self._emit_routing_decision(state, routing_decision_id, "none")
+        top = await self._emit_skill_candidates_snapshot(state, routing_decision_id, "none")
+        await self._emit_routing_strict_eval(state, routing_decision_id, "none", "", top)
+        await self._emit_routing_explain(state, routing_decision_id, "none", "", top, "no_action", "")
 
-        if parsed.kind == "skill":
-            skill_name = parsed.name
-            skill_args = parsed.args
-            state.context["skill_call"] = {"skill": skill_name, "args": skill_args, "format": parsed.format}
-            prof = "off"
-            for skill in self._skills:
-                name = ""
-                if hasattr(skill, "name"):
-                    name = str(getattr(skill, "name", "") or "")
-                elif hasattr(skill, "_config") and getattr(skill, "_config", None) is not None:
-                    name = str(getattr(skill._config, "name", "") or "")
-                if name.strip().lower() == skill_name.strip().lower():
-                    prof = _coding_policy_profile_for_skill(skill)
-                    state.context["_coding_policy_profile"] = prof
-                    await _emit_routing_decision(selected_kind="skill", selected_name=str(skill_name))
-                    top = await _emit_skill_candidates_snapshot(selected_kind="skill", selected_name=str(skill_name))
-                    await _emit_routing_strict_eval(selected_kind="skill", selected_name=str(skill_name), candidates_top=top)
-                    from ..interfaces import SkillContext
-                    await self._trigger_hook(HookPhase.PRE_SKILL_USE, {"skill": skill_name, "skill_args": skill_args, "format": parsed.format})
-                    try:
-                        skill_context = SkillContext(
-                            session_id=state.context.get("session_id", "default"),
-                            user_id=state.context.get("user_id", "system"),
-                            variables=skill_args,
-                        )
-                        result = await sys_skill_call(
-                            skill,
-                            skill_args,
-                            context=skill_context,
-                            user_id=skill_context.user_id,
-                            session_id=skill_context.session_id,
-                            trace_context={
-                                "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
-                                "run_id": state.context.get("_run_id") or state.context.get("run_id"),
-                                "tenant_id": state.context.get("tenant_id"),
-                                "routing_decision_id": routing_decision_id,
-                                "coding_policy_profile": prof,
-                                "routing_candidates_emitted": True,
-                            },
-                        )
-                        # Standardized approval/policy states for skills (P1)
-                        if getattr(result, "error", None) == "approval_required":
-                            state.context["error"] = "approval_required"
-                            state.context["approval"] = getattr(result, "metadata", {}) or {}
-                            state.metadata["pause_requested"] = True
-                            result_output = "Approval required"
-                        elif getattr(result, "error", None) == "policy_denied":
-                            state.context["error"] = "policy_denied"
-                            state.context["policy"] = getattr(result, "metadata", {}) or {}
-                            state.metadata["pause_requested"] = True
-                            result_output = "POLICY_DENIED"
-                        else:
-                            result_output = result.output if hasattr(result, 'output') else str(result)
-                    except Exception as e:
-                        result_output = f"Skill error: {e}"
-                    # explain with execution outcome (best-effort)
-                    try:
-                        st = "success" if getattr(result, "success", False) else "failed"
-                        await _emit_routing_explain(
-                            selected_kind="skill",
-                            selected_name=str(skill_name),
-                            candidates_top=top,
-                            result_status=st,
-                            result_error=str(getattr(result, "error", "") or ""),
-                        )
-                    except Exception:
-                        pass
-                    await self._trigger_hook(HookPhase.POST_SKILL_USE, {"skill": skill_name, "result": result_output, "format": parsed.format})
-                    return str(result_output)
-            return f"Skill not found: {skill_name}"
+    async def _try_file_syscall(self, tool_name: str, tool_args: dict, state: LoopState):
+        """Dispatch file/code syscalls as a fallback when no registered tool matches."""
+        name = str(tool_name).strip().lower()
+        try:
+            if name == "read" or name == "sys_file_read":
+                from core.harness.syscalls.file import sys_file_read
+                path = str((tool_args or {}).get("path", "") or (tool_args or {}).get("filePath", ""))
+                result = await sys_file_read(path, trace_context={"source": "loop_fallback"})
+                return json.dumps(result, ensure_ascii=False)
+            elif name == "write" or name == "sys_file_write":
+                from core.harness.syscalls.file import sys_file_write
+                path = str((tool_args or {}).get("path", "") or (tool_args or {}).get("filePath", ""))
+                content = str((tool_args or {}).get("content", ""))
+                result = await sys_file_write(path, content, trace_context={"source": "loop_fallback"})
+                return json.dumps(result, ensure_ascii=False)
+            elif name == "edit" or name == "sys_file_edit":
+                from core.harness.syscalls.file import sys_file_edit
+                path = str((tool_args or {}).get("path", "") or (tool_args or {}).get("filePath", ""))
+                old_str = str((tool_args or {}).get("old_string", "") or (tool_args or {}).get("oldString", ""))
+                new_str = str((tool_args or {}).get("new_string", "") or (tool_args or {}).get("newString", ""))
+                result = await sys_file_edit(path, old_str, new_str, trace_context={"source": "loop_fallback"})
+                return json.dumps(result, ensure_ascii=False)
+            elif name in ("glob", "sys_glob"):
+                from core.harness.syscalls.code import sys_glob
+                pattern = str((tool_args or {}).get("pattern", "") or (tool_args or {}).get("glob", ""))
+                result = await sys_glob(pattern, trace_context={"source": "loop_fallback"})
+                return json.dumps(result, ensure_ascii=False)
+            elif name in ("grep", "codesearch", "sys_code_search", "search"):
+                from core.harness.syscalls.code import sys_code_search
+                pattern = str((tool_args or {}).get("pattern", "") or (tool_args or {}).get("query", ""))
+                include = str((tool_args or {}).get("include", "") or (tool_args or {}).get("fileTypes", ""))
+                result = await sys_code_search(pattern, include=include, trace_context={"source": "loop_fallback"})
+                return json.dumps(result, ensure_ascii=False)
+        except Exception:
+            pass
+        return None
 
+    async def _dispatch_skill_call(
+        self, state: LoopState, parsed: Any, routing_decision_id: str
+    ) -> str:
+        skill_name = parsed.name
+        skill_args = parsed.args
+        state.context["skill_call"] = {"skill": skill_name, "args": skill_args, "format": parsed.format}
+        prof = "off"
+        for skill in self._skills:
+            name = ""
+            if hasattr(skill, "name"):
+                name = str(getattr(skill, "name", "") or "")
+            elif hasattr(skill, "_config") and getattr(skill, "_config", None) is not None:
+                name = str(getattr(skill._config, "name", "") or "")
+            if name.strip().lower() == skill_name.strip().lower():
+                prof = self._coding_policy_profile_for_skill(skill, state)
+                state.context["_coding_policy_profile"] = prof
+                await self._emit_routing_decision(state, routing_decision_id, "skill", str(skill_name))
+                top = await self._emit_skill_candidates_snapshot(state, routing_decision_id, "skill", str(skill_name))
+                await self._emit_routing_strict_eval(state, routing_decision_id, "skill", str(skill_name), top)
+                from ..interfaces import SkillContext
+                await self._trigger_hook(HookPhase.PRE_SKILL_USE, {"skill": skill_name, "skill_args": skill_args, "format": parsed.format})
+                try:
+                    skill_context = SkillContext(
+                        session_id=state.context.get("session_id", "default"),
+                        user_id=state.context.get("user_id", "system"),
+                        variables=skill_args,
+                    )
+                    result = await sys_skill_call(
+                        skill, skill_args, context=skill_context,
+                        user_id=skill_context.user_id, session_id=skill_context.session_id,
+                        trace_context={
+                            "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
+                            "run_id": state.context.get("_run_id") or state.context.get("run_id"),
+                            "tenant_id": state.context.get("tenant_id"),
+                            "routing_decision_id": routing_decision_id,
+                            "coding_policy_profile": prof,
+                            "routing_candidates_emitted": True,
+                        },
+                    )
+                    if getattr(result, "error", None) == "approval_required":
+                        state.context["error"] = "approval_required"
+                        state.context["approval"] = getattr(result, "metadata", {}) or {}
+                        state.metadata["pause_requested"] = True
+                        result_output = "Approval required"
+                    elif getattr(result, "error", None) == "policy_denied":
+                        state.context["error"] = "policy_denied"
+                        state.context["policy"] = getattr(result, "metadata", {}) or {}
+                        state.metadata["pause_requested"] = True
+                        result_output = "POLICY_DENIED"
+                    else:
+                        result_output = result.output if hasattr(result, 'output') else str(result)
+                except Exception as e:
+                    result_output = f"Skill error: {e}"
+                try:
+                    st = "success" if getattr(result, "success", False) else "failed"
+                    await self._emit_routing_explain(state, routing_decision_id, "skill", str(skill_name), top, st, str(getattr(result, "error", "") or ""))
+                except Exception:
+                    pass
+                await self._trigger_hook(HookPhase.POST_SKILL_USE, {"skill": skill_name, "result": result_output, "format": parsed.format})
+                return str(result_output)
+        return f"Skill not found: {skill_name}"
+
+    async def _dispatch_tool_call(
+        self, state: LoopState, parsed: Any, routing_decision_id: str
+    ) -> str:
         tool_name = parsed.name
         tool_args = parsed.args
         state.context["tool_call"] = {"tool": tool_name, "args": tool_args, "format": parsed.format}
         state.context["_coding_policy_profile"] = "off"
-        await _emit_routing_decision(selected_kind="tool", selected_name=str(tool_name))
-        top = await _emit_skill_candidates_snapshot(selected_kind="tool", selected_name=str(tool_name))
-        await _emit_routing_strict_eval(selected_kind="tool", selected_name=str(tool_name), candidates_top=top)
-        await _emit_routing_explain(selected_kind="tool", selected_name=str(tool_name), candidates_top=top, result_status="tool_selected", result_error="")
-
+        await self._emit_routing_decision(state, routing_decision_id, "tool", str(tool_name))
+        top = await self._emit_skill_candidates_snapshot(state, routing_decision_id, "tool", str(tool_name))
+        await self._emit_routing_strict_eval(state, routing_decision_id, "tool", str(tool_name), top)
+        await self._emit_routing_explain(state, routing_decision_id, "tool", str(tool_name), top, "tool_selected", "")
         for tool in self._tools:
             if str(getattr(tool, 'name', '')).strip().lower() == str(tool_name).strip().lower():
-                # Approval hooks (may block)
                 approval_results = await self._trigger_hook(
                     HookPhase.PRE_APPROVAL_CHECK,
                     {"tool_name": tool_name, "tool_args": tool_args, "context": state.context},
@@ -1688,12 +1800,9 @@ DONE: final_answer
                 if deny:
                     await self._trigger_hook(HookPhase.POST_APPROVAL_CHECK, {"tool_name": tool_name, "allowed": False, "reason": deny.get("reason")})
                     return f"Denied: {deny.get('reason', 'approval denied')}"
-
                 self._approval_check(tool_name, state.context)
                 await self._trigger_hook(HookPhase.PRE_TOOL_USE, {"tool_name": tool_name, "tool_args": tool_args, "format": parsed.format})
                 try:
-                    # If we are resuming an approval-required tool call, attach the approval_request_id
-                    # so PolicyGate can validate and allow execution.
                     approval_meta = state.context.get("approval") if isinstance(state.context.get("approval"), dict) else {}
                     approval_req_id = approval_meta.get("approval_request_id")
                     if approval_req_id:
@@ -1703,8 +1812,7 @@ DONE: final_answer
                         except Exception:
                             pass
                     result = await sys_tool_call(
-                        tool,
-                        tool_args,
+                        tool, tool_args,
                         user_id=state.context.get("user_id", "system"),
                         session_id=state.context.get("session_id", "default"),
                         trace_context={
@@ -1715,7 +1823,6 @@ DONE: final_answer
                             "coding_policy_profile": str(state.context.get("_coding_policy_profile") or "off"),
                         },
                     )
-                    # Standardized syscall result handling
                     if getattr(result, "error", None) == "approval_required":
                         state.context["error"] = "approval_required"
                         state.context["approval"] = getattr(result, "metadata", {}) or {}
@@ -1725,7 +1832,6 @@ DONE: final_answer
                     elif getattr(result, "error", None) == "policy_denied":
                         state.context["error"] = "policy_denied"
                         state.context["policy"] = getattr(result, "metadata", {}) or {}
-                        # Claude Code-like: provide retry guidance and optionally allow the loop to continue
                         denied_count = int(state.metadata.get("policy_denied", 0) or 0) + 1
                         state.metadata["policy_denied"] = denied_count
                         auto_retry = os.getenv("AIPLAT_POLICY_DENIED_AUTO_RETRY", "true").lower() in ("1", "true", "yes", "y")
@@ -1753,7 +1859,6 @@ DONE: final_answer
                 except Exception as e:
                     result_output = f"Tool error: {e}"
                     ok = False
-                # explain with execution outcome (best-effort)
                 try:
                     if getattr(result, "error", None) == "approval_required":
                         st = "approval_required"
@@ -1761,25 +1866,56 @@ DONE: final_answer
                         st = "policy_denied"
                     else:
                         st = "success" if ok else "failed"
-                    await _emit_routing_explain(
-                        selected_kind="tool",
-                        selected_name=str(tool_name),
-                        candidates_top=top,
-                        result_status=st,
-                        result_error=str(getattr(result, "error", "") or ""),
-                    )
+                    await self._emit_routing_explain(state, routing_decision_id, "tool", str(tool_name), top, st, str(getattr(result, "error", "") or ""))
                 except Exception:
                     pass
-                # Record tool stats for observability-driven control
                 state.metadata["tool_calls"] = int(state.metadata.get("tool_calls", 0) or 0) + 1
                 if not ok:
                     state.metadata["tool_failures"] = int(state.metadata.get("tool_failures", 0) or 0) + 1
                 await self._trigger_hook(HookPhase.POST_TOOL_USE, {"tool_name": tool_name, "result": result_output, "format": parsed.format})
                 await self._trigger_hook(HookPhase.POST_APPROVAL_CHECK, {"tool_name": tool_name, "allowed": True})
                 return str(result_output)
-
+        # ---- MCP lazy-load: try on-demand discovery before giving up ----
+        try:
+            from core.apps.mcp.runtime import MCPRuntime
+            rt = MCPRuntime()
+            if hasattr(rt, '_registered') and rt._registered:
+                from core.apps.tools.base import get_tool_registry
+                tr = get_tool_registry()
+                found = await rt.search_and_register(str(tool_name), tr)
+                if found:
+                    for tool in self._tools:
+                        if str(getattr(tool, 'name', '')).strip().lower() == str(found).strip().lower():
+                            result = await sys_tool_call(
+                                tool, tool_args,
+                                user_id=state.context.get("user_id", "system"),
+                                session_id=state.context.get("session_id", "default"),
+                                trace_context={
+                                    "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
+                                    "run_id": state.context.get("_run_id") or state.context.get("run_id"),
+                                },
+                            )
+                            state.metadata["tool_calls"] = int(state.metadata.get("tool_calls", 0) or 0) + 1
+                            return getattr(result, 'output', str(result)) if hasattr(result, 'output') else str(result)
+        except Exception:
+            pass
+        # ---- File/Code syscall fallback ----
+        file_result = await self._try_file_syscall(tool_name, tool_args, state)
+        if file_result is not None:
+            return str(file_result)
         return f"Tool not found: {tool_name}"
 
+    async def _act(self, state: LoopState) -> str:
+        """Acting phase — execute tool or skill (thin orchestrator, P1-6)."""
+        reasoning = state.context.get("reasoning", "")
+        parsed = parse_action_call(reasoning)
+        routing_decision_id = self._init_routing_id(state)
+        if not parsed:
+            await self._emit_no_action(state, routing_decision_id)
+            return "No action to execute"
+        if parsed.kind == "skill":
+            return await self._dispatch_skill_call(state, parsed, routing_decision_id)
+        return await self._dispatch_tool_call(state, parsed, routing_decision_id)
     async def _observe(self, state: LoopState) -> str:
         """Observing phase"""
         return state.context.get("action_result", "")
@@ -1840,7 +1976,7 @@ class PlanExecuteLoop(BaseLoop):
         state.current = LoopStateEnum.REASONING
         
         if self._model:
-            if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y"):
+            if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "true").lower() in ("1", "true", "yes", "y"):
                 prompt = PromptAssembler().build_plan_execute_plan_messages(task=state.context.get("task", ""))
             else:
                 prompt = (
@@ -1958,7 +2094,7 @@ class PlanExecuteLoop(BaseLoop):
             # Fall back to model for this step
             if step_result is None and self._model:
                 try:
-                    if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y"):
+                    if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "true").lower() in ("1", "true", "yes", "y"):
                         prompt = PromptAssembler().build_plan_execute_step_messages(
                             action=action,
                             task=state.context.get("task", ""),

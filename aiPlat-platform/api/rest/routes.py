@@ -168,7 +168,10 @@ def _resolve_identity(request: Request) -> Identity:
         )
 
     # 3) default fallback
-    return Identity(request_id=request_id, tenant_id="default", actor_id="anonymous", scopes=[], auth_type="anonymous")
+    scopes: List[str] = []
+    if os.getenv("AIPLAT_PLATFORM_DEV_MODE", "false").lower() in ("1", "true", "yes", "y"):
+        scopes = ["kb:read", "kb:write", "admin"]
+    return Identity(request_id=request_id, tenant_id="default", actor_id="anonymous", scopes=scopes, auth_type="anonymous")
 
 
 def _core_base_url() -> str:
@@ -2524,272 +2527,145 @@ class BuilderChatReq(BaseModel):
 class BuilderConfirmReq(BaseModel):
     pass
 
+# Builder endpoints moved to platform-local router
+from api.routers.builder import router as builder_router  # noqa: E402
+from api.routers.policy import router as policy_router  # noqa: E402
+from api.routers.ops_exports import router as ops_exports_router  # noqa: E402
+from api.routers.chat import router as chat_router  # noqa: E402
+from api.routers.conversations import router as conversations_router  # noqa: E402
+from api.routers.permissions import router as permissions_router  # noqa: E402
+from api.routers.quota import router as quota_router  # noqa: E402
+from api.routers.tenant_policies import router as tenant_policies_router  # noqa: E402
+app.include_router(builder_router)
+app.include_router(policy_router)
+app.include_router(ops_exports_router)
+app.include_router(chat_router)
+app.include_router(conversations_router)
+app.include_router(permissions_router)
+app.include_router(quota_router)
+app.include_router(tenant_policies_router)
+# Remaining forbidden routes migrated from core
+from api.routers.change_control import router as change_control_router  # noqa: E402
+from api.routers.approvals import router as approvals_router  # noqa: E402
+from api.routers.onboarding import router as onboarding_router  # noqa: E402
+from api.routers.gate_policies import router as gate_policies_router  # noqa: E402
+app.include_router(change_control_router)
+app.include_router(approvals_router)
+app.include_router(onboarding_router)
+app.include_router(gate_policies_router)
+# Channels and sessions management — migrated from aiPlat-app
+from api.routers.channels import router as channels_router  # noqa: E402
+app.include_router(channels_router)
+# Gateway routes — migrated from aiPlat-core
+from api.routers.gateway import router as gateway_router  # noqa: E402
+app.include_router(gateway_router)
 
-@app.post("/platform/builder/sessions", response_model=Dict[str, Any])
-async def create_builder_session(req: BuilderSessionCreateReq, request: Request):
+
+# ━━━ MCP Servers ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+@app.get("/api/v1/mcp/servers", response_model=Dict[str, Any])
+async def list_mcp_servers(request: Request, scope: str = "workspace"):
     identity = _resolve_identity(request)
-    _require_scope(identity, "kb:write")
-    payload = {
-        "requirement": req.requirement,
-        "tenant_id": identity.tenant_id,
-        "user_id": identity.actor_id,
-    }
-    return await _core_request("POST", "/api/core/builder/sessions", identity=identity, json_body=payload)
+    _require_scope(identity, "mcp:read")
+    params = {"scope": scope} if scope else None
+    return await _core_request("GET", f"/api/core/mcp/{scope}/servers", identity=identity, params=params)
 
 
-@app.post("/platform/builder/sessions/{session_id}/chat", response_model=Dict[str, Any])
-async def builder_chat(session_id: str, req: BuilderChatReq, request: Request):
+@app.post("/api/v1/mcp/servers", response_model=Dict[str, Any])
+async def register_mcp_server(request: Request):
     identity = _resolve_identity(request)
-    _require_scope(identity, "kb:read")
-    payload = {"message": req.message}
-    return await _core_request(
-        "POST", f"/api/core/builder/sessions/{session_id}/chat",
-        identity=identity, json_body=payload,
-    )
+    _require_scope(identity, "mcp:write")
+    body = await request.json()
+    scope = body.pop("scope", "workspace")
+    return await _core_request("POST", f"/api/core/mcp/{scope}/servers", identity=identity, json_body=body)
 
 
-@app.post("/platform/builder/sessions/{session_id}/confirm", response_model=Dict[str, Any])
-async def builder_confirm(session_id: str, request: Request):
+@app.post("/api/v1/mcp/servers/{name}/enable", response_model=Dict[str, Any])
+async def enable_mcp_server(name: str, request: Request, scope: str = "workspace"):
     identity = _resolve_identity(request)
-    _require_scope(identity, "kb:write")
-    return await _core_request(
-        "POST", f"/api/core/builder/sessions/{session_id}/confirm",
-        identity=identity,
-    )
+    _require_scope(identity, "mcp:write")
+    return await _core_request("POST", f"/api/core/mcp/{scope}/servers/{name}/enable", identity=identity)
 
 
-@app.post("/platform/builder/sessions/{session_id}/start", response_model=Dict[str, Any])
-async def builder_start_pipeline(session_id: str, request: Request):
+@app.post("/api/v1/mcp/servers/{name}/disable", response_model=Dict[str, Any])
+async def disable_mcp_server(name: str, request: Request, scope: str = "workspace"):
     identity = _resolve_identity(request)
-    _require_scope(identity, "kb:write")
-    return await _core_request(
-        "POST", f"/api/core/builder/sessions/{session_id}/start",
-        identity=identity,
-    )
+    _require_scope(identity, "mcp:write")
+    return await _core_request("POST", f"/api/core/mcp/{scope}/servers/{name}/disable", identity=identity)
 
 
-@app.get("/platform/builder/sessions/{session_id}", response_model=Dict[str, Any])
-async def builder_get_state(session_id: str, request: Request):
+@app.get("/api/v1/mcp/servers/{name}/tools", response_model=Dict[str, Any])
+async def list_mcp_server_tools(name: str, request: Request, scope: str = "workspace"):
     identity = _resolve_identity(request)
-    _require_scope(identity, "kb:read")
-    return await _core_request(
-        "GET", f"/api/core/builder/sessions/{session_id}",
-        identity=identity,
-    )
+    _require_scope(identity, "mcp:read")
+    return await _core_request("GET", f"/api/core/mcp/{scope}/servers/{name}/tools", identity=identity)
 
 
-# ━━━ Builder Teams ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-
-class TeamAssembleReq(BaseModel):
-    model_config = {"extra": "ignore"}
-    name: str = ""
-    description: str = ""
-    stages: Any = []
-    max_tokens_per_run: int = 50000
-
-
-@app.post("/platform/builder/teams", response_model=Dict[str, Any])
-async def create_builder_team(req: TeamAssembleReq, request: Request):
+@app.get("/api/v1/mcp/servers/{name}/policy-check", response_model=Dict[str, Any])
+async def check_mcp_server_policy(name: str, request: Request, scope: str = "workspace"):
     identity = _resolve_identity(request)
-    _require_scope(identity, "kb:write")
-    return await _core_request("POST", "/api/core/builder/teams", identity=identity, json_body=req.model_dump())
+    _require_scope(identity, "mcp:read")
+    return await _core_request("GET", f"/api/core/mcp/{scope}/servers/{name}/policy-check", identity=identity)
 
 
-@app.get("/platform/builder/teams", response_model=Dict[str, Any])
-async def list_builder_teams(request: Request):
+# ━━━ Plugins ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+@app.get("/api/v1/plugins", response_model=Dict[str, Any])
+async def list_plugins(request: Request, status: str = "active"):
     identity = _resolve_identity(request)
-    _require_scope(identity, "kb:read")
-    return await _core_request("GET", "/api/core/builder/teams", identity=identity)
+    _require_scope(identity, "plugins:read")
+    params = {"status": status} if status else None
+    return await _core_request("GET", "/api/core/plugins", identity=identity, params=params)
 
 
-@app.get("/platform/builder/teams/{team_id}", response_model=Dict[str, Any])
-async def get_builder_team(team_id: str, request: Request):
+@app.put("/api/v1/plugins", response_model=Dict[str, Any])
+async def install_or_update_plugin(request: Request):
     identity = _resolve_identity(request)
-    _require_scope(identity, "kb:read")
-    return await _core_request("GET", f"/api/core/builder/teams/{team_id}", identity=identity)
+    _require_scope(identity, "plugins:write")
+    body = await request.json()
+    from registry.plugin_validator import validate_plugin_manifest
+    errors = validate_plugin_manifest(body)
+    if errors:
+        raise HTTPException(400, detail={"code": "plugin_validation_failed", "errors": errors})
+    return await _core_request("PUT", "/api/core/plugins", identity=identity, json_body=body)
 
 
-@app.delete("/platform/builder/teams/{team_id}", response_model=Dict[str, Any])
-async def delete_builder_team(team_id: str, request: Request):
+@app.post("/api/v1/plugins/{plugin_id}/enable", response_model=Dict[str, Any])
+async def enable_plugin(plugin_id: str, request: Request):
     identity = _resolve_identity(request)
-    _require_scope(identity, "kb:write")
-    return await _core_request("DELETE", f"/api/core/builder/teams/{team_id}", identity=identity)
+    _require_scope(identity, "plugins:write")
+    return await _core_request("POST", f"/api/core/plugins/{plugin_id}/enable", identity=identity)
 
 
-@app.put("/platform/builder/teams/{team_id}", response_model=Dict[str, Any])
-async def update_builder_team(team_id: str, request: Request):
+@app.post("/api/v1/plugins/{plugin_id}/disable", response_model=Dict[str, Any])
+async def disable_plugin(plugin_id: str, request: Request):
     identity = _resolve_identity(request)
-    _require_scope(identity, "kb:write")
-    body = await request.json() if await request.body() else {}
-    return await _core_request("PUT", f"/api/core/builder/teams/{team_id}", identity=identity, json_body=body)
+    _require_scope(identity, "plugins:write")
+    return await _core_request("POST", f"/api/core/plugins/{plugin_id}/disable", identity=identity)
 
 
-@app.post("/platform/builder/teams/{team_id}/run", response_model=Dict[str, Any])
-async def run_builder_team(team_id: str, request: Request):
+@app.get("/api/v1/plugins/{plugin_id}/versions", response_model=Dict[str, Any])
+async def list_plugin_versions(plugin_id: str, request: Request):
     identity = _resolve_identity(request)
-    _require_scope(identity, "kb:write")
-    body = await request.json() if await request.body() else {}
-    return await _core_request("POST", f"/api/core/builder/teams/{team_id}/run", identity=identity, json_body=body)
+    _require_scope(identity, "plugins:read")
+    return await _core_request("GET", f"/api/core/plugins/{plugin_id}/versions", identity=identity)
 
 
-@app.post("/platform/builder/teams/{team_id}/approve", response_model=Dict[str, Any])
-async def approve_builder_team(team_id: str, request: Request):
+@app.post("/api/v1/plugins/{plugin_id}/rollback", response_model=Dict[str, Any])
+async def rollback_plugin(plugin_id: str, request: Request):
     identity = _resolve_identity(request)
-    _require_scope(identity, "kb:write")
-    return await _core_request("POST", f"/api/core/builder/teams/{team_id}/approve", identity=identity)
+    _require_scope(identity, "plugins:write")
+    return await _core_request("POST", f"/api/core/plugins/{plugin_id}/rollback", identity=identity)
 
 
-@app.post("/platform/builder/teams/{team_id}/reject", response_model=Dict[str, Any])
-async def reject_builder_team(team_id: str, request: Request):
+@app.post("/api/v1/plugins/{plugin_id}/run", response_model=Dict[str, Any])
+async def run_plugin_async(plugin_id: str, request: Request):
     identity = _resolve_identity(request)
-    _require_scope(identity, "kb:write")
-    body = await request.json() if await request.body() else {"feedback": ""}
-    return await _core_request("POST", f"/api/core/builder/teams/{team_id}/reject", identity=identity, json_body=body)
-
-
-@app.get("/platform/builder/teams/{team_id}/state", response_model=Dict[str, Any])
-async def get_builder_team_state(team_id: str, request: Request):
-    identity = _resolve_identity(request)
-    _require_scope(identity, "kb:read")
-    return await _core_request("GET", f"/api/core/builder/teams/{team_id}/state", identity=identity)
-
-
-# ━━━ Builder Projects ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-
-class ProjectCreateReq(BaseModel):
-    name: str = ""
-    description: str = ""
-    team_id: str = ""
-
-
-@app.post("/platform/builder/projects", response_model=Dict[str, Any])
-async def create_project(req: ProjectCreateReq, request: Request):
-    identity = _resolve_identity(request)
-    _require_scope(identity, "kb:write")
-    return await _core_request("POST", "/api/core/builder/projects", identity=identity, json_body=req.model_dump())
-
-
-@app.get("/platform/builder/projects", response_model=Dict[str, Any])
-async def list_projects(request: Request):
-    identity = _resolve_identity(request)
-    _require_scope(identity, "kb:read")
-    return await _core_request("GET", "/api/core/builder/projects", identity=identity)
-
-
-@app.get("/platform/builder/projects/{project_id}", response_model=Dict[str, Any])
-async def get_project(project_id: str, request: Request):
-    identity = _resolve_identity(request)
-    _require_scope(identity, "kb:read")
-    return await _core_request("GET", f"/api/core/builder/projects/{project_id}", identity=identity)
-
-
-@app.delete("/platform/builder/projects/{project_id}", response_model=Dict[str, Any])
-async def delete_project(project_id: str, request: Request):
-    identity = _resolve_identity(request)
-    _require_scope(identity, "kb:write")
-    return await _core_request("DELETE", f"/api/core/builder/projects/{project_id}", identity=identity)
-
-
-@app.post("/platform/builder/projects/{project_id}/chat", response_model=Dict[str, Any])
-async def project_chat(project_id: str, request: Request):
-    identity = _resolve_identity(request)
-    _require_scope(identity, "kb:read")
-    body = await request.json() if await request.body() else {"message": ""}
-    return await _core_request("POST", f"/api/core/builder/projects/{project_id}/chat", identity=identity, json_body=body)
-
-
-@app.post("/platform/builder/projects/{project_id}/confirm", response_model=Dict[str, Any])
-async def project_confirm(project_id: str, request: Request):
-    identity = _resolve_identity(request)
-    _require_scope(identity, "kb:write")
-    return await _core_request("POST", f"/api/core/builder/projects/{project_id}/confirm", identity=identity)
-
-
-@app.post("/platform/builder/projects/{project_id}/start", response_model=Dict[str, Any])
-async def project_start(project_id: str, request: Request):
-    identity = _resolve_identity(request)
-    _require_scope(identity, "kb:write")
-    body = await request.json() if await request.body() else {}
-    return await _core_request("POST", f"/api/core/builder/projects/{project_id}/start", identity=identity, json_body=body)
-
-
-@app.post("/platform/builder/projects/{project_id}/approve", response_model=Dict[str, Any])
-async def project_approve(project_id: str, request: Request):
-    identity = _resolve_identity(request)
-    _require_scope(identity, "kb:write")
-    return await _core_request("POST", f"/api/core/builder/projects/{project_id}/approve", identity=identity)
-
-
-@app.post("/platform/builder/projects/{project_id}/reject", response_model=Dict[str, Any])
-async def project_reject(project_id: str, request: Request):
-    identity = _resolve_identity(request)
-    _require_scope(identity, "kb:write")
-    body = await request.json() if await request.body() else {"feedback": ""}
-    return await _core_request("POST", f"/api/core/builder/projects/{project_id}/reject", identity=identity, json_body=body)
-
-
-@app.post("/platform/builder/projects/{project_id}/rollback/{stage_id:path}", response_model=Dict[str, Any])
-async def project_rollback(project_id: str, stage_id: str, request: Request):
-    identity = _resolve_identity(request)
-    _require_scope(identity, "kb:write")
-    return await _core_request("POST", f"/api/core/builder/projects/{project_id}/rollback/{stage_id}", identity=identity)
-
-
-@app.post("/platform/builder/projects/{project_id}/fix", response_model=Dict[str, Any])
-async def start_fix_pipeline(project_id: str, request: Request):
-    identity = _resolve_identity(request)
-    _require_scope(identity, "kb:write")
-    return await _core_request("POST", f"/api/core/builder/projects/{project_id}/fix", identity=identity)
-
-
-@app.get("/platform/builder/projects/{project_id}/state", response_model=Dict[str, Any])
-async def get_project_state(project_id: str, request: Request):
-    identity = _resolve_identity(request)
-    _require_scope(identity, "kb:read")
-    return await _core_request("GET", f"/api/core/builder/projects/{project_id}/state", identity=identity)
-
-
-@app.get("/platform/builder/projects/{project_id}/deploy", response_model=None)
-async def download_deploy_package(project_id: str, request: Request):
-    """Proxy for deploy zip download — return raw file."""
-    identity = _resolve_identity(request)
-    _require_scope(identity, "kb:read")
-    # Use httpx directly to stream the file
-    import httpx
-    url = f"{_core_base_url()}/api/core/builder/projects/{project_id}/deploy"
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.get(url, headers=dict(request.headers))
-        if resp.status_code >= 400:
-            raise HTTPException(status_code=resp.status_code, detail=resp.text)
-        from fastapi.responses import Response
-        return Response(content=resp.content, media_type=resp.headers.get("content-type", "application/zip"),
-                        headers={"Content-Disposition": resp.headers.get("content-disposition", "")})
-
-
-# ━━━ Agent Insights ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-
-@app.get("/platform/builder/agent-insight/{agent_id}", response_model=Dict[str, Any])
-async def get_agent_insight(agent_id: str, request: Request):
-    identity = _resolve_identity(request)
-    _require_scope(identity, "kb:read")
-    return await _core_request("GET", f"/api/core/builder/agent-insight/{agent_id}", identity=identity)
-
-
-@app.get("/platform/builder/agent-insights", response_model=Dict[str, Any])
-async def get_all_insights(request: Request):
-    identity = _resolve_identity(request)
-    _require_scope(identity, "kb:read")
-    return await _core_request("GET", "/api/core/builder/agent-insights", identity=identity)
-
-
-@app.post("/platform/builder/agent-insights/refresh", response_model=Dict[str, Any])
-async def refresh_insights(request: Request):
-    identity = _resolve_identity(request)
-    _require_scope(identity, "kb:write")
-    return await _core_request("POST", "/api/core/builder/agent-insights/refresh", identity=identity)
+    _require_scope(identity, "plugins:execute")
+    body = await request.json()
+    return await _core_request("POST", f"/api/core/plugins/{plugin_id}/run", identity=identity, json_body=body)
 
 
 if __name__ == "__main__":

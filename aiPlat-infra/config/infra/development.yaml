@@ -8,7 +8,7 @@ database:
   type: postgres
   host: localhost
   port: 5432
-  name: ai_platform_dev
+  name: ${AIPLAT_DB_NAME:}
   user: ${DB_USER:postgres}
   password: ${DB_PASSWORD:postgres}
   
@@ -47,8 +47,8 @@ messaging:
   hosts:
     - localhost:6379
   
-  topic_prefix: "aiplat-dev"
-  client_id: "aiplat-dev-client"
+  topic_prefix: "${AIPLAT_MSG_TOPIC_PREFIX:}"
+  client_id: "${AIPLAT_MSG_CLIENT_ID:}"
   
   redis:
     db: 0
@@ -74,7 +74,7 @@ monitoring:
   port: 9090
   
   metrics:
-    prefix: ai_platform_infra_dev
+    prefix: ${AIPLAT_METRICS_PREFIX:}
     labels:
       env: development
       service: infra

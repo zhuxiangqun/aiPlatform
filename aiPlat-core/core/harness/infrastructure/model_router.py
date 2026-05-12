@@ -13,6 +13,7 @@ from infra for model metadata.
 
 from __future__ import annotations
 
+import os
 import asyncio
 import time
 from dataclasses import dataclass, field
@@ -92,6 +93,20 @@ class ModelRouter:
         candidates = [c for c in candidates if c.name not in tried]
 
         if not candidates:
+            # Fallback to infra layer's model registry (Phase A wiring)
+            from .infra_bridge import list_infra_models, get_infra_model_source
+            infra_models = list_infra_models()
+            if infra_models:
+                for im in infra_models:
+                    if im.get("name") == model_name or task_purpose:
+                        candidates.append(ModelEntry(
+                            name=im.get("name", model_name),
+                            provider=im.get("provider", "deepseek"),
+                            api_key_env=im.get("api_key_env", "DEEPSEEK_API_KEY"),
+                            description=im.get("description", ""),
+                        ))
+                if candidates:
+                    return candidates[0]
             return None
 
         return candidates[0]

@@ -17,10 +17,6 @@ from importlib import import_module
 from typing import Any
 
 __all__ = [
-    "HeartbeatMonitor",
-    "heartbeat_monitor",
-    "AgentStatus",
-    "AgentHeartbeat",
     "AgentLifecycleState",
     "AgentState",
     "AgentStateEnum",
@@ -29,7 +25,6 @@ __all__ = [
     "create_harness",
     "get_harness",
     "coordination",
-    "observability",
     "feedback_loops",
     "memory",
     "knowledge",
@@ -42,11 +37,6 @@ _LAZY_ATTRS = {
     "AgentLifecycleState": ("core.harness.state", "AgentLifecycleState"),
     "AgentState": ("core.harness.state", "AgentState"),
     "AgentStateEnum": ("core.harness.state", "AgentStateEnum"),
-    # heartbeat
-    "HeartbeatMonitor": ("core.harness.heartbeat_monitor", "HeartbeatMonitor"),
-    "heartbeat_monitor": ("core.harness.heartbeat_monitor", "heartbeat_monitor"),
-    "AgentStatus": ("core.harness.heartbeat_monitor", "AgentStatus"),
-    "AgentHeartbeat": ("core.harness.heartbeat_monitor", "AgentHeartbeat"),
     # integration
     "HarnessConfig": ("core.harness.integration", "HarnessConfig"),
     "HarnessIntegration": ("core.harness.integration", "HarnessIntegration"),
@@ -54,7 +44,6 @@ _LAZY_ATTRS = {
     "get_harness": ("core.harness.integration", "get_harness"),
     # namespaces
     "coordination": ("core.harness", "coordination"),
-    "observability": ("core.harness", "observability"),
     "feedback_loops": ("core.harness", "feedback_loops"),
     "memory": ("core.harness", "memory"),
     "knowledge": ("core.harness", "knowledge"),

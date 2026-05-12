@@ -48,6 +48,17 @@ export interface TeamConfig {
   max_stagnation: number;
 }
 
+export interface BuilderSession {
+  session_id: string;
+  phase: string;
+  iteration?: number;
+  stepCount?: number;
+  tokens_used?: number;
+  tokens_budget?: number;
+  error?: string;
+  [key: string]: any;  // artifact keys are config-driven
+}
+
 export const builderTeamApi = {
   /** Simple list of all workspace agents (for catalog browsing) */
   listAgents: async (category?: string) => {
@@ -174,6 +185,13 @@ export const projectApi = {
       `/platform/builder/projects/${projectId}/start`
     );
   },
+  recommendTeam: async (projectId: string) => {
+    return apiClient.post<{
+      project_id: string;
+      recommendation: { team_name?: string; reasoning?: string; stages: Array<Record<string, unknown>>; parse_error?: boolean; raw_reply?: string };
+      trace_id: string;
+    }>(`/platform/builder/projects/${projectId}/recommend-team`);
+  },
   approve: async (projectId: string) => {
     return apiClient.post<{ project_id: string; phase: string }>(`/platform/builder/projects/${projectId}/approve`);
   },
@@ -196,6 +214,20 @@ export const projectApi = {
   startFix: async (projectId: string) => {
     return apiClient.post<{ project_id: string; phase: string }>(
       `/platform/builder/projects/${projectId}/fix`
+    );
+  },
+
+  /** Run tests (E2E smoke + repo tests) on a completed project. */
+  test: async (projectId: string) => {
+    return apiClient.post<{ project_id: string; all_passed: boolean; e2e_smoke: Record<string, unknown>; repo_tests: Record<string, unknown> }>(
+      `/platform/builder/projects/${projectId}/test`
+    );
+  },
+
+  /** Deploy the project to aiPlat-app. */
+  deployToApp: async (projectId: string) => {
+    return apiClient.post<{ ok: boolean; project_id: string; deploy_dir: string; app_url: string }>(
+      `/platform/builder/projects/${projectId}/deploy-to-app`
     );
   },
 };

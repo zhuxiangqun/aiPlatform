@@ -61,32 +61,68 @@ class EpisodicMemory:
         return self._message_count >= self._update_interval
     
     async def update_summary(self, llm_callable=None) -> SessionSummary:
-        """Generate new summary using LLM"""
-        # In real implementation, this would call the LLM
-        # For now, create a basic summary
-        
+        """Generate new summary using LLM (primary) or rule-based (fallback)."""
         if not self._full_messages:
             return SessionSummary(summary="No interactions yet")
-        
-        # Simple summary generation
+
+        if llm_callable is not None:
+            try:
+                return await self._llm_summary(llm_callable)
+            except Exception:
+                pass
+        return self._rule_summary()
+
+    async def _llm_summary(self, llm_callable) -> SessionSummary:
+        recent = self._full_messages[-self._update_interval:]
+        lines = []
+        for m in recent:
+            lines.append(f"User: {str(m.get('user', ''))[:300]}")
+            lines.append(f"Assistant: {str(m.get('assistant', ''))[:300]}")
+        prompt = f"""Summarize this conversation session in 2-3 sentences.
+Focus on: what was accomplished, key decisions made, and remaining work.
+
+{chr(10).join(lines)}
+
+Return a JSON object with keys: summary, key_points (list of strings), tasks (list of strings), decisions (list of strings)."""
+        response = await llm_callable(prompt)
+        import json
+        try:
+            json_str = response
+            if isinstance(response, dict):
+                data = response
+            else:
+                # Try to extract JSON from response
+                text = str(response)
+                start = text.find("{")
+                end = text.rfind("}")
+                if start >= 0 and end > start:
+                    data = json.loads(text[start:end + 1])
+                else:
+                    raise ValueError("No JSON found in LLM response")
+            return SessionSummary(
+                summary=str(data.get("summary", ""))[:self._max_summary_length],
+                key_points=[str(p)[:200] for p in (data.get("key_points") or [])[:3]],
+                tasks=[str(t)[:200] for t in (data.get("tasks") or [])[:3]],
+                decisions=[str(d)[:200] for d in (data.get("decisions") or [])[:3]],
+                updated_at=datetime.utcnow(),
+            )
+        except Exception:
+            raise
+
+    def _rule_summary(self) -> SessionSummary:
         user_messages = [m["user"] for m in self._full_messages[-self._update_interval:]]
         assistant_messages = [m["assistant"] for m in self._full_messages[-self._update_interval:]]
-        
+
         summary_text = f"Session with {len(user_messages)} interactions. "
         if user_messages:
             summary_text += f"Last user query: {user_messages[-1][:100]}..."
-        
-        new_summary = SessionSummary(
+
+        return SessionSummary(
             summary=summary_text[:self._max_summary_length],
             key_points=self._extract_key_points(assistant_messages),
             tasks=self._extract_tasks(user_messages),
-            updated_at=datetime.utcnow()
+            updated_at=datetime.utcnow(),
         )
-        
-        self._summary = new_summary.summary
-        self._message_count = 0
-        
-        return new_summary
     
     def get_summary(self) -> str:
         """Get current summary"""

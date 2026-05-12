@@ -5,7 +5,7 @@ database:
   type: postgres
   host: localhost
   port: 5432
-  name: ai_platform
+  name: ${AIPLAT_DB_NAME:}
   user: ${DB_USER}
   password: ${DB_PASSWORD}
   
@@ -88,7 +88,7 @@ cache:
   
   default_ttl: 3600
   max_entries: 10000
-  key_prefix: "ai-platform:"
+  key_prefix: "${AIPLAT_CACHE_KEY_PREFIX:}"
   
   lazy_init: true
 
@@ -102,7 +102,7 @@ logging:
     - file
   
   file:
-    path: /var/log/ai-platform/infra.log
+    path: ${AIPLAT_LOG_PATH:}
     max_size: 100MB
     backup_count: 10
 
@@ -112,7 +112,7 @@ monitoring:
   port: 9090
   
   metrics:
-    prefix: ai_platform_infra
+    prefix: ${AIPLAT_METRICS_PREFIX:}
     labels:
       env: development
       service: infra
@@ -140,7 +140,7 @@ compute:
   
   gpu:
     enabled: true
-    default_type: nvidia
+    default_type: ${AIPLAT_GPU_DEFAULT_TYPE:}
   
   scheduler:
     strategy: fifo
@@ -167,8 +167,8 @@ messaging:
   hosts:
     - localhost:6379
   
-  topic_prefix: "aiplat"
-  client_id: "aiplat-client"
+  topic_prefix: "${AIPLAT_MSG_TOPIC_PREFIX:}"
+  client_id: "${AIPLAT_MSG_CLIENT_ID:}"
   
   redis:
     db: 0
@@ -177,7 +177,7 @@ messaging:
   
   # Kafka 配置（高吞吐量）
   # kafka:
-  #   consumer_group: "aiplat-consumer"
+  #   consumer_group: "${AIPLAT_KAFKA_CONSUMER_GROUP:}"
   #   auto_offset_reset: "latest"
   #   enable_auto_commit: true
   #   session_timeout_ms: 10000

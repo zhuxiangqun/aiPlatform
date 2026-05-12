@@ -440,31 +440,61 @@ class SkillManager:
         return None
     
     def _seed_data(self):
+        import os as _os
+        import yaml as _yaml
+
         now = datetime.utcnow()
-        demo_skills = [
-            ("text_generation", "文本生成", "generation", "根据提示生成各类文本内容", "enabled"),
-            ("code_generation", "代码生成", "generation", "根据需求描述生成代码", "disabled"),
-            ("data_analysis", "数据分析", "analysis", "分析数据并提供洞察", "enabled"),
-            ("task_planning", "任务规划", "execution", "根据目标拆解为可执行的子任务步骤", "enabled"),
-            ("information_search", "信息检索", "retrieval", "从知识库和互联网中检索相关信息", "enabled"),
-            ("knowledge_retrieval", "知识召回", "retrieval", "从向量数据库中召回相关文档片段", "enabled"),
-            ("summarization", "内容摘要", "transformation", "将长文本压缩为简洁的摘要", "enabled"),
-            ("task_decomposition", "任务分解", "analysis", "将复杂任务分解为简单子任务", "enabled"),
-            ("api_calling", "API调用", "execution", "调用外部API接口获取数据", "enabled"),
-            ("chitchat", "闲聊", "generation", "处理日常闲聊和简单问答", "enabled"),
-            ("code_review", "代码审查", "analysis", "审查代码质量并给出改进建议", "enabled"),
-            ("translation", "多语言翻译", "transformation", "在多语言之间进行翻译", "enabled"),
-        ]
-        for skill_id, name, skill_type, desc, status in demo_skills:
-            self._skills[skill_id] = SkillInfo(
-                id=skill_id, name=name, type=skill_type, description=desc,
+
+        engine_skills_root = _os.path.join(
+            _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))),
+            "engine", "skills"
+        )
+
+        if not _os.path.isdir(engine_skills_root):
+            return
+
+        for dirname in sorted(_os.listdir(engine_skills_root)):
+            skill_dir = _os.path.join(engine_skills_root, dirname)
+            skill_md = _os.path.join(skill_dir, "SKILL.md")
+            if not _os.path.isfile(skill_md):
+                continue
+            try:
+                with open(skill_md, "r", encoding="utf-8") as f:
+                    raw = f.read()
+            except Exception:
+                continue
+
+            name = dirname
+            display_name = name.replace("_", " ").title()
+            skill_type = "general"
+            description = ""
+            status = "enabled"
+
+            if raw.startswith("---"):
+                parts = raw.split("---", 2)
+                if len(parts) >= 3:
+                    try:
+                        fm = _yaml.safe_load(parts[1]) or {}
+                        name = str(fm.get("name", dirname))
+                        display_name = str(fm.get("display_name", display_name))
+                        skill_type = str(fm.get("category", "general"))
+                        description = str(fm.get("description", ""))
+                        status = "enabled" if str(fm.get("status", "enabled")) != "disabled" else "disabled"
+                    except Exception:
+                        pass
+
+            if name in self._skills:
+                continue
+
+            self._skills[name] = SkillInfo(
+                id=name, name=display_name, type=skill_type, description=description,
                 status=status, input_schema={}, output_schema={},
                 config={"version": "1.0.0"}, dependencies=[],
                 version="1.0.0", created_at=now, updated_at=now, created_by="system"
             )
-            self._stats[skill_id] = SkillStats()
-            self._executions[skill_id] = []
-            self._versions[skill_id] = [SkillVersion(version="1.0.0", status="current", created_at=now, changes="初始版本")]
+            self._stats[name] = SkillStats()
+            self._executions[name] = []
+            self._versions[name] = [SkillVersion(version="1.0.0", status="current", created_at=now, changes="初始版本")]
         self._bound_agents = {}  # skill_id -> [agent_ids]
         
         for skill_id, skill_info in self._skills.items():
@@ -497,37 +527,11 @@ class SkillManager:
             sop_override = metadata.get("sop") or None
 
         def _tmpl_for(name_or_category: str) -> Dict[str, Any]:
-            n = (name_or_category or "").strip().lower()
-            # minimal templates by category
-            if n in {"retrieval"}:
-                return {
-                    "input_schema": {"query": {"type": "string", "required": True, "description": "检索问题/关键词"}, "top_k": {"type": "integer", "required": False, "description": "召回数量（默认 5）"}, "filters": {"type": "object", "required": False, "description": "过滤条件"}},
-                    "output_schema": {"passages": {"type": "array", "required": True, "description": "召回片段（含文本与元信息）"}},
-                    "config": {"timeout_seconds": 60, "max_concurrent": 10, "retry_count": 2},
-                    "sop": "1. 解析 query 与 filters，确定数据域/权限。\n2. 执行召回（top_k）。\n3. 输出 passages（带元信息），供上游引用证据。",
-                }
-            if n in {"analysis"}:
-                return {
-                    "input_schema": {"input": {"type": "string", "required": True, "description": "待分析内容"}, "constraints": {"type": "object", "required": False, "description": "约束（口径/指标/维度）"}},
-                    "output_schema": {"summary": {"type": "string", "required": True, "description": "结论摘要"}, "details": {"type": "string", "required": False, "description": "分析细节"}},
-                    "config": {"timeout_seconds": 120, "max_concurrent": 10, "retry_count": 1},
-                    "sop": "1. 明确分析目标与口径。\n2. 提取关键信息与假设。\n3. 给出结论与可验证依据，必要时输出步骤/推导。",
-                }
-            if n in {"generation"}:
-                return {
-                    "input_schema": {"prompt": {"type": "string", "required": True, "description": "生成指令/要点"}, "style": {"type": "string", "required": False, "description": "风格/语气"}, "format": {"type": "string", "required": False, "description": "输出格式要求"}},
-                    "output_schema": {"text": {"type": "string", "required": True, "description": "生成文本"}},
-                    "config": {"timeout_seconds": 60, "max_concurrent": 10, "retry_count": 1},
-                    "sop": "1. 复述目标与输出格式。\n2. 按要求生成。\n3. 自检（完整性/一致性/敏感信息）。",
-                }
-            if n in {"execution"}:
-                return {
-                    "input_schema": {"action": {"type": "string", "required": True, "description": "要执行的动作（业务语义）"}, "params": {"type": "object", "required": False, "description": "动作参数"}, "dry_run": {"type": "boolean", "required": False, "description": "是否仅生成执行计划（默认 true）"}},
-                    "output_schema": {"plan": {"type": "object", "required": False, "description": "工具调用计划（推荐：tool_name + arguments）"}, "result": {"type": "string", "required": False, "description": "执行结果/说明"}},
-                    "config": {"timeout_seconds": 120, "max_concurrent": 5, "retry_count": 0},
-                    "sop": "1. 校验输入与权限边界。\n2. 生成工具调用计划（plan）。\n3. 若允许执行，交由 Agent 调用 MCP 工具；否则输出计划与下一步。",
-                }
-            # fallback
+            """Provide a single generic template for new skills.
+
+            Specific schemas and SOPs should be defined in SKILL.md files,
+            not hardcoded per category in the management layer.
+            """
             return {
                 "input_schema": {"input": {"type": "string", "required": True}},
                 "output_schema": {"output": {"type": "string", "required": True}},
@@ -1493,35 +1497,10 @@ class SkillManager:
         )
 
         if not norm_examples:
-            if category in {"retrieval"}:
-                norm_examples = [
-                    {
-                        "title": "检索（JSON）",
-                        "content": json.dumps({"query": "请填写你的检索问题", "top_k": 5, "filters": {}}, ensure_ascii=False, indent=2),
-                    },
-                    {"title": "检索（文本）", "content": "请检索：<你的问题>"},
-                ]
-            elif category in {"generation"}:
-                norm_examples = [
-                    {"title": "生成（文本）", "content": "请生成：<你要生成的内容>（请说明风格/长度/格式）"},
-                    {
-                        "title": "生成（JSON）",
-                        "content": json.dumps({"prompt": "写一段产品介绍", "style": "专业", "format": "markdown"}, ensure_ascii=False, indent=2),
-                    },
-                ]
-            elif category in {"execution"}:
-                norm_examples = [
-                    {
-                        "title": "执行计划（JSON）",
-                        "content": json.dumps({"action": "请填写要执行的动作", "params": {}, "dry_run": True}, ensure_ascii=False, indent=2),
-                    },
-                    {"title": "执行（文本）", "content": "请执行以下动作：<动作描述>（如涉及写入请先 dry_run 并二次确认）"},
-                ]
-            else:
-                norm_examples = [
-                    {"title": "通用（文本）", "content": "请完成以下任务：\n<描述你的需求>"},
-                    {"title": "通用（JSON）", "content": json.dumps({"message": "请完成以下任务：<描述你的需求>"}, ensure_ascii=False, indent=2)},
-                ]
+            norm_examples = [
+                {"title": "通用（文本）", "content": "请完成以下任务：\n<描述你的需求>"},
+                {"title": "通用（JSON）", "content": json.dumps({"input": "请完成以下任务：<描述你的需求>"}, ensure_ascii=False, indent=2)},
+            ]
 
         return {
             "skill_id": skill_id,

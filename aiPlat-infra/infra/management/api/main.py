@@ -1,12 +1,12 @@
 """
 Infrastructure Management API
 
-This is the REST API entry point for aiPlat-infra layer.
-Provides all infrastructure management endpoints.
+This is the REST API entry point for the infrastructure layer.
 """
 
-from typing import Dict, Any, Optional, List
+import os
 from fastapi import FastAPI, HTTPException, Query
+from typing import Dict, Any, Optional, List
 from pydantic import BaseModel, Field
 from datetime import datetime
 
@@ -51,28 +51,28 @@ class ConfigUpdateRequest(BaseModel):
 
 class NodeCreateRequest(BaseModel):
     name: str
-    ip: str = "10.0.0.1"
-    gpu_model: str = "A100"
+    ip: str = ""
+    gpu_model: str = ""
     gpu_count: int = 0
-    driver_version: str = "535.54.03"
+    driver_version: str = ""
     labels: Dict[str, str] = Field(default_factory=dict)
 
 
 class ServiceDeployRequest(BaseModel):
     name: str
-    namespace: str = "ai-prod"
-    type: str = "LLM"
+    namespace: str = "default"
+    type: str = ""
     image: str
     replicas: int = 1
     gpu_count: int = 0
-    gpu_type: str = "A100"
+    gpu_type: str = ""
     config: Dict[str, Any] = Field(default_factory=dict)
 
 
 class QuotaCreateRequest(BaseModel):
     name: str
     gpu_quota: int
-    team: str
+    label: str = ""
 
 
 _infra_manager: Optional[InfraManager] = None
@@ -90,13 +90,27 @@ def get_infra_manager() -> InfraManager:
         _infra_manager.register("scheduler", SchedulerManager())
         _infra_manager.register("monitoring", MonitoringManager())
         _infra_manager.register("model", ModelManager())
+        from infra.management.llm.manager import LLMManager
+        _infra_manager.register("llm", LLMManager())
+        from infra.management.cost.manager import CostManager
+        _infra_manager.register("cost", CostManager())
+        from infra.management.cache.manager import CacheManager
+        _infra_manager.register("cache", CacheManager())
+        from infra.management.vector.manager import VectorManager
+        _infra_manager.register("vector", VectorManager())
+        from infra.management.database.manager import DatabaseManager
+        _infra_manager.register("database", DatabaseManager())
+        from infra.management.messaging.manager import MessagingManager
+        _infra_manager.register("messaging", MessagingManager())
+        from infra.management.resources.manager import ResourcesManager
+        _infra_manager.register("resources", ResourcesManager())
     return _infra_manager
 
 
 def create_app() -> FastAPI:
-    """Create FastAPI application for aiPlat-infra."""
+    """Create FastAPI application for infra management."""
     app = FastAPI(
-        title="aiPlat-infra API",
+        title=os.getenv("AIPLAT_INFRA_API_TITLE", "Infra Management API"),
         description="Infrastructure Layer API - Node, Service, Storage, Network, Scheduler, Monitoring, Model",
         version="0.1.0",
     )
@@ -119,7 +133,7 @@ def create_app() -> FastAPI:
     async def root():
         """Root endpoint - API info."""
         return {
-            "name": "aiPlat-infra",
+            "name": os.getenv("AIPLAT_INFRA_API_NAME", "infra"),
             "version": "0.1.0",
             "description": "Infrastructure Layer API",
             "docs": "/docs",
@@ -620,7 +634,7 @@ def create_app() -> FastAPI:
                     "name": q.name,
                     "gpuQuota": q.gpu_quota,
                     "gpuUsed": q.gpu_used,
-                    "team": q.team,
+                    "label": q.label,
                     "status": q.status
                 }
                 for q in quotas
@@ -1221,7 +1235,7 @@ def create_app() -> FastAPI:
             if not node_mgr:
                 raise HTTPException(status_code=404, detail="Node manager not found")
             
-            result = await node_mgr.upgrade_driver(request.version, request.nodes)
+            result = await node_mgr.upgrade_driver_batch(request.version, request.nodes)
             return {
                 "status": "success",
                 "message": f"Driver upgrade to {request.version} initiated",
@@ -1465,7 +1479,7 @@ def create_app() -> FastAPI:
     class TaskCreateRequest(BaseModel):
         name: str
         gpu_count: int = 1
-        gpu_type: str = "A100"
+        gpu_type: str = ""
         queue: str = "default"
         priority: int = 50
         config: Optional[Dict[str, Any]] = None

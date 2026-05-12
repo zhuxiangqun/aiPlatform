@@ -57,6 +57,22 @@ def _ensure_di():
             from core.apps.exec_drivers.registry import get_exec_backend  # noqa
             return get_exec_backend()
 
+        def _subagent_coordinator_factory():
+            from core.apps.agents.subagent.coordinator import get_subagent_coordinator  # noqa
+            return get_subagent_coordinator()
+
+        def _skill_permission_resolver_factory():
+            from core.apps.tools.skill_tools import resolve_skill_permission, resolve_executable_skill_permission  # noqa
+            return {"resolve": resolve_skill_permission, "resolve_exec": resolve_executable_skill_permission}
+
+        def _skill_curator_factory():
+            from core.apps.skills.curator import get_skill_curator  # noqa
+            return get_skill_curator()
+
+        def _evolution_engine_factory():
+            from core.apps.skills.evolution.engine import get_evolution_engine  # noqa
+            return get_evolution_engine()
+
         from .interfaces import IAgent, ISkill, ITool
 
         _di_container.register_singleton("AgentRegistry", _agent_registry_factory)
@@ -65,6 +81,10 @@ def _ensure_di():
         _di_container.register_singleton("TraceService", _trace_service_factory)
         _di_container.register_singleton("PermissionManager", _permission_factory)
         _di_container.register_singleton("ExecBackend", _exec_backend_factory)
+        _di_container.register_singleton("SubagentCoordinator", _subagent_coordinator_factory)
+        _di_container.register_singleton("SkillPermissionResolver", _skill_permission_resolver_factory)
+        _di_container.register_singleton("SkillCurator", _skill_curator_factory)
+        _di_container.register_singleton("EvolutionEngine", _evolution_engine_factory)
         _di_container.register_singleton(IAgent, _agent_registry_factory)
         _di_container.register_singleton(ISkill, _skill_registry_factory)
         _di_container.register_singleton(ITool, _tool_registry_factory)
@@ -125,7 +145,6 @@ from .interfaces import (
     ITool,
     ISkill,
     ILoop,
-    ICoordinator,
 )
 from .execution import (
     BaseLoop,
@@ -135,7 +154,6 @@ from .execution import (
 )
 from .coordination import (
     create_pattern,
-    create_coordinator,
     create_detector,
 )
 from .observability import (
@@ -158,6 +176,7 @@ from .memory import (
     SessionManager,
 )
 from .syscalls import sys_tool_call
+from core.harness.utils.llm_env import get_llm_api_key, get_llm_base_url
 
 
 @dataclass
@@ -578,8 +597,8 @@ class HarnessIntegration:
         # Build LLM adapter (same rules as auto-eval)
         provider = str(os.getenv("AIPLAT_AUTO_EVAL_LLM_PROVIDER") or os.getenv("LLM_PROVIDER") or "mock").strip().lower()
         model = str(os.getenv("AIPLAT_AUTO_EVAL_LLM_MODEL") or os.getenv("LLM_MODEL") or "mock").strip()
-        api_key = os.getenv("OPENAI_API_KEY") if provider == "openai" else (os.getenv("ANTHROPIC_API_KEY") if provider == "anthropic" else None)
-        base_url = os.getenv("OPENAI_BASE_URL") if provider == "openai" else None
+        api_key = get_llm_api_key(provider)
+        base_url = get_llm_base_url(provider)
         try:
             from core.adapters.llm.base import create_adapter as _mk
 
@@ -893,16 +912,18 @@ class HarnessIntegration:
         fake_run = {"id": run_id, "run_id": run_id, "trace_id": trace_id, "status": "completed", "task": f"canary_web:{req.target_id}"}
         msgs = build_auto_eval_prompt(run=fake_run, events=[], extra=extra, browser_evidence=browser_evidence if isinstance(browser_evidence, dict) else None)
         try:
-            resp = await llm.generate(msgs)
+            from core.harness.syscalls.llm import sys_llm_generate
+            resp = await sys_llm_generate(llm, msgs, trace_context={"trace_id": trace_id, "run_id": run_id})
             text = getattr(resp, "content", "") or ""
         except Exception as e:
             return self._fail(code="AUTO_EVAL_FAILED", message=f"auto_eval_failed:{e}", http_status=500, trace_id=trace_id, run_id=run_id)
 
         report, why = parse_json_report(text)
         if report is None:
+            from core.harness.evaluation.dimensions import build_default_score_schema
             report = {
                 "pass": False,
-                "score": {"functionality": 0, "product_depth": 0, "design_ux": 0, "code_architecture": 0, "overall": 0},
+                "score": build_default_score_schema(),
                 "issues": [{"severity": "P0", "title": "自动评估输出无法解析为 JSON", "expected": "LLM 输出符合约定 JSON 报告格式", "actual": f"{why}: {text[:800]}", "repro_steps": []}],
                 "positive_notes": [],
                 "next_actions_for_generator": [],
@@ -1451,7 +1472,7 @@ class HarnessIntegration:
         skill_reg = _resolve_or_import("SkillRegistry", "core.apps.skills:get_skill_registry")
         skill_reg = skill_reg() if callable(skill_reg) else skill_reg
         tool_reg = _resolve_tool_registry()
-        from core.apps.tools.permission import get_permission_manager, Permission
+        from core.apps.tools.permission import Permission  # noqa: allowed — data type (enum) import
         from core.harness.interfaces import AgentContext
         from core.harness.kernel.types import ExecutionResult
 
@@ -1779,15 +1800,54 @@ class HarnessIntegration:
             except Exception:
                 pass
 
-            # Phase 5.0: route via EngineRouter (behavior-preserving)
+            # Phase 5.2: optional Orchestrator planning (Phase 9: plan drives execution)
+            orchestrator_plan = None
+            execution_plan = None
+            if os.getenv("AIPLAT_ENABLE_ORCHESTRATOR", "true").lower() in ("1", "true", "yes", "y"):
+                try:
+                    from core.orchestration import Orchestrator
+
+                    orchestrator = Orchestrator()
+                    orchestrator_plan = await orchestrator.plan(
+                        agent_id=agent_id,
+                        model=getattr(agent, "_model", None),
+                        messages=payload.get("messages", []) if isinstance(payload, dict) else [],
+                        context=payload.get("context") if isinstance(payload, dict) else {},
+                        trace_context={"trace_id": trace_id, "run_id": execution_id},
+                    )
+                    execution_plan = orchestrator_plan.to_execution_plan()
+                except Exception:
+                    orchestrator_plan = None
+                    execution_plan = None
+
+            # Phase 9: inject plan into agent context for step-by-step execution
+            if execution_plan is not None and hasattr(agent, "context") and isinstance(getattr(agent, "context", None), dict):
+                try:
+                    agent.context.setdefault("_execution_plan", execution_plan.to_dict())
+                except Exception:
+                    pass
+
+            # Phase 5.0: route via EngineRouter (plan-aware in Phase 9)
+            engine_router = None
             try:
                 from core.harness.execution.router import EngineRouter
 
-                engine, decision = EngineRouter().route_agent(agent_id=agent_id, payload=payload if isinstance(payload, dict) else {})
+                engine_router = EngineRouter()
+                enriched_payload = dict(payload if isinstance(payload, dict) else {})
+                # Inject agent_type for GraphEngine routing (P1-5 fix)
+                try:
+                    agent_cfg = getattr(agent, 'config', None) or getattr(agent, '_config', None)
+                    if agent_cfg:
+                        enriched_payload["agent_type"] = getattr(agent_cfg, 'agent_type', '') or ''
+                except Exception:
+                    pass
+                engine, decision = engine_router.route_agent(
+                    agent_id=agent_id,
+                    payload=enriched_payload,
+                    plan=execution_plan,
+                )
             except Exception:
                 engine, decision = None, None
-
-            # Phase 6.7: optional LearningApplier (behavior-preserving; metadata-only)
             active_release = None
             if os.getenv("AIPLAT_ENABLE_LEARNING_APPLIER", "false").lower() in ("1", "true", "yes", "y"):
                 try:
@@ -1828,23 +1888,6 @@ class HarnessIntegration:
                     token = None
                     audit_token = None
 
-            # Phase 5.2: optional Orchestrator planning (plan-only; does NOT affect execution)
-            orchestrator_plan = None
-            if os.getenv("AIPLAT_ENABLE_ORCHESTRATOR", "false").lower() in ("1", "true", "yes", "y"):
-                try:
-                    from core.orchestration import Orchestrator
-
-                    orchestrator = Orchestrator()
-                    orchestrator_plan = await orchestrator.plan(
-                        agent_id=agent_id,
-                        model=getattr(agent, "_model", None),
-                        messages=payload.get("messages", []) if isinstance(payload, dict) else [],
-                        context=payload.get("context") if isinstance(payload, dict) else {},
-                        trace_context={"trace_id": trace_id, "run_id": execution_id},
-                    )
-                except Exception:
-                    orchestrator_plan = None
-
             try:
                 if engine is not None:
                     from core.harness.infrastructure.gates import TraceGate
@@ -1858,7 +1901,12 @@ class HarnessIntegration:
                         },
                     )
                     try:
-                        result = await engine.execute_agent(agent, context)  # type: ignore[attr-defined]
+                        # Use fallback chain if EngineRouter provided one, otherwise
+                        # call the primary engine directly.
+                        if engine_router is not None and decision is not None:
+                            result = await engine_router.execute_with_fallback(agent, context, decision)
+                        else:
+                            result = await engine.execute_agent(agent, context)  # type: ignore[attr-defined]
                     finally:
                         try:
                             await TraceGate().end(exec_span, success=bool(getattr(result, "success", False)))  # type: ignore[name-defined]
@@ -2132,17 +2180,18 @@ class HarnessIntegration:
             return self._fail(code="EXCEPTION", message=str(e), http_status=500, trace_id=trace_id, run_id=execution_id)
 
     async def _execute_skill(self, req: "ExecutionRequest") -> "ExecutionResult":
-        from core.apps.tools.permission import get_permission_manager, Permission
+        from core.apps.tools.permission import Permission  # noqa: data type (enum) — allowed
         from core.harness.kernel.types import ExecutionResult
 
         runtime = self._runtime
+        perm = _resolve_or_import("PermissionManager", "core.apps.tools.permission:get_permission_manager")
+        perm_mgr = perm() if callable(perm) else perm
         if runtime is None or runtime.skill_manager is None:
             return self._fail(code="NOT_INITIALIZED", message="Kernel runtime not initialized", http_status=503)
 
         skill_id = req.target_id
         user_id = req.user_id or (req.payload.get("context", {}) or {}).get("user_id", "system")
 
-        perm_mgr = get_permission_manager()
         if not perm_mgr.check_permission(user_id, skill_id, Permission.EXECUTE):
             return self._fail(
                 code="PERMISSION_DENIED",
@@ -2378,9 +2427,7 @@ class HarnessIntegration:
                 try:
                     exec_backend = None
                     try:
-                        from core.apps.exec_drivers.registry import get_exec_backend
-
-                        exec_backend = await get_exec_backend()
+                        exec_backend = await _resolve_exec_backend()
                     except Exception:
                         exec_backend = None
                     await runtime.execution_store.append_run_event(
@@ -2518,11 +2565,8 @@ class HarnessIntegration:
         )
 
     async def _execute_tool(self, req: "ExecutionRequest") -> "ExecutionResult":
-        from core.apps.tools import get_tool_registry
         from core.harness.kernel.types import ExecutionResult
-
-        runtime = self._runtime
-        registry = get_tool_registry()
+        registry = _resolve_tool_registry()
         tool = registry.get(req.target_id)
         if not tool:
             return self._fail(code="NOT_FOUND", message=f"Tool {req.target_id} not found", http_status=404)
@@ -2953,9 +2997,7 @@ class HarnessIntegration:
         try:
             exec_backend = None
             try:
-                from core.apps.exec_drivers.registry import get_exec_backend
-
-                exec_backend = await get_exec_backend()
+                exec_backend = await _resolve_exec_backend()
             except Exception:
                 exec_backend = None
             await runtime.execution_store.append_run_event(
@@ -3123,13 +3165,6 @@ class KernelRuntime:
         **kwargs,
     ):
         return create_pattern(pattern_type, **kwargs)
-    
-    def create_convergence_detector(
-        self,
-        detector_type: str = "exact",
-        **kwargs,
-    ):
-        return create_detector(detector_type, **kwargs)
     
     async def start(self):
         if self._config.enable_observability and self._monitoring:

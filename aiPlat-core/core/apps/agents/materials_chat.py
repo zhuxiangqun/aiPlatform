@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import re
+import json
 from typing import Any, Dict, List, Optional
 
 from .base import BaseAgent, AgentMetadata
@@ -13,6 +13,7 @@ from ...apps.skills import get_skill_registry
 from ...harness.syscalls.skill import sys_skill_call
 from ...harness.kernel.runtime import get_kernel_runtime
 from ...services.conversations import ConversationService
+from ...apps.multimodal_kb.service import load_doc_kinds
 
 
 def _build_turn_summary(question: str, answer: str) -> str:
@@ -24,8 +25,15 @@ def _build_turn_summary(question: str, answer: str) -> str:
 
 
 def _load_doc_kinds(*, tenant_id: str, doc_ids: List[str]) -> List[str]:
-    """Load document kinds via multimodal_kb service (not direct SQL)."""
     return load_doc_kinds(tenant_id=tenant_id, doc_ids=doc_ids)
+
+
+def _extract_answer_from_loop_output(output: Any) -> str:
+    if isinstance(output, dict):
+        return str(output.get("answer") or output.get("content") or output.get("output") or "")
+    if isinstance(output, str):
+        return output
+    return ""
 
 
 class MaterialsChatAgent(BaseAgent):
@@ -34,25 +42,13 @@ class MaterialsChatAgent(BaseAgent):
         self._metadata = AgentMetadata(
             name="MaterialsChatAgent",
             description="围绕选定资料进行连续对话的受约束 Agent",
-            version="1.0.0",
+            version="1.0.1",
             capabilities=["grounded_conversation", "multi_document_query", "session_memory"],
-            supported_loop_types=[],
+            supported_loop_types=["react"],
         )
+        self._skills: List[Any] = []
 
     async def execute(self, context: AgentContext) -> AgentResult:
-        """Execute grounded conversation with selected documents.
-
-        Internal Policy (analyze_question, retrieval_policy, answer_strategy) is
-        called pre-loop and injected as context for the skill call. The skill
-        execution now goes through sys_skill_call (Harness syscall boundary)
-        instead of direct skill.execute().
-
-        §5.22 To-Be: The full execute() should delegate to the shared ReAct loop
-        (self._loop.run()), with Internal Policy decisions injected via
-        Harness-managed context rather than agent making direct calls.
-        The DB access (doc_kinds lookup) and strategy resolution are already
-        extracted to service/internal-policy layers.
-        """
         try:
             vars0 = dict(context.variables or {})
             scope = dict(vars0.get("scope") or {})
@@ -116,12 +112,34 @@ class MaterialsChatAgent(BaseAgent):
             skill = registry.get(skill_name)
             if not skill:
                 return AgentResult(success=False, error=f"skill_not_found:{skill_name}")
-            # Execute skill via Harness syscall boundary (not direct skill.execute())
-            sres = await sys_skill_call(skill, skill_params, user_id=user_id, session_id=session_id)
-            if not sres.success:
-                return AgentResult(success=False, error=str(sres.error or f"{skill_name}_failed"))
-            out = dict(sres.output or {})
-            answer = str(out.get("answer") or "").strip()
+
+            if self._model is None and self._config.metadata.get("model"):
+                try:
+                    await self.initialize(self._config)
+                except Exception:
+                    pass
+
+            if self._model is not None:
+                self._skills = [skill]
+                task_message = (
+                    f"请使用技能 '{skill_name}' 检索并回答以下问题。\n"
+                    f"问题：{enhanced_question}\n"
+                    f"技能参数（JSON）：{json.dumps(skill_params, ensure_ascii=False)}\n"
+                    f"策略意图：{intent}\n"
+                    f"回答策略：{json.dumps(answer_strategy, ensure_ascii=False)}\n"
+                    f"\n直接调用技能并返回结果。"
+                )
+                context.messages = list(context.messages or []) + [{"role": "user", "content": task_message}]
+                result = await super().execute(context)
+                answer = _extract_answer_from_loop_output(result.output)
+                out = result.output if isinstance(result.output, dict) else {}
+            else:
+                response = await sys_skill_call(skill, skill_params, user_id=user_id, session_id=session_id)
+                if not response.success:
+                    return AgentResult(success=False, error=str(response.error or f"{skill_name}_failed"))
+                out = dict(response.output or {})
+                answer = str(out.get("answer") or "").strip()
+
             citations = list(out.get("citations") or [])
             turn_summary = _build_turn_summary(question, answer)
             mode = str(out.get("mode") or "").strip()

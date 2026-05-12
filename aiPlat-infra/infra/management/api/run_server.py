@@ -1,23 +1,25 @@
 #!/usr/bin/env python3
 """
-Run aiPlat-infra API Server
+Run Infra Management API Server
 
 This script starts the infrastructure layer API server.
 """
 
+import os
 import argparse
 import uvicorn
 
 
 def main():
-    """Run the aiPlat-infra API server."""
-    parser = argparse.ArgumentParser(description="aiPlat-infra API Server")
+    """Run the infra management API server."""
+    name = os.getenv("AIPLAT_INFRA_API_NAME", "infra")
+    parser = argparse.ArgumentParser(description=f"{name} Management API Server")
     parser.add_argument("--host", default="0.0.0.0", help="Host to bind to")
     parser.add_argument("--port", type=int, default=8001, help="Port to bind to")
     args = parser.parse_args()
     
     print(f"\n{'='*60}")
-    print("  aiPlat-infra - Infrastructure Layer API")
+    print(f"  {name} - Infrastructure Layer API")
     print(f"{'='*60}")
     print(f"  Version: 0.1.0")
     print(f"  Server: http://{args.host}:{args.port}")

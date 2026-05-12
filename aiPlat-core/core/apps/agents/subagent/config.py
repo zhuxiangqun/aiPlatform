@@ -101,67 +101,84 @@ class SubagentInstance:
         })
 
 
-# Built-in Subagent definitions
-BUILTIN_SUBAGENTS = {
+# Built-in Subagent definitions.
+# System prompts are loaded from AGENT.md files in ~/.aiplat/agents/builtin/.
+# Only structural metadata (tools, permissions) stays in code.
+# Override via AIPLAT_SUBAGENT_PROMPTS env var (JSON).
+
+import os as _os
+import json as _json
+
+
+def _load_subagent_prompt(name: str) -> str:
+    """Load system prompt from AGENT.md file."""
+    import os as __os
+    import yaml as __yaml
+    paths = [
+        __os.path.join(__os.path.expanduser("~/.aiplat"), "agents", "builtin", name, "AGENT.md"),
+        __os.path.join(__os.getenv("AIPLAT_HOME", __os.path.expanduser("~/.aiplat")), "agents", "builtin", name, "AGENT.md"),
+        __os.path.join(__os.getenv("AIPLAT_WORKSPACE_SEEDS", ""), "agents", "builtin", name, "AGENT.md"),
+    ]
+    for p in paths:
+        if __os.path.exists(p):
+            try:
+                with open(p, "r") as f:
+                    raw = f.read()
+                if raw.startswith("---"):
+                    parts = raw.split("---", 2)
+                    return parts[2].strip() if len(parts) >= 3 else raw.strip()
+                return raw.strip()
+            except Exception:
+                pass
+    return ""
+
+
+_DEFAULTS = {
     "secure-reviewer": SubagentConfig(
         name="secure-reviewer",
         description="安全审计专家，只读审查，不能修改任何文件",
         allowed_tools=["Read", "Grep", "Glob"],
         denied_tools=["Write", "Edit", "Bash"],
-        system_prompt="""你是一个安全审计专家。你的任务是：
-1. 检查认证和授权逻辑
-2. 识别 SQL 注入、XSS、CSRF 漏洞
-3. 检查硬编码的密钥和 Token
-4. 验证输入验证和输出编码
-
-⚠️ 你只有只读权限，发现问题后报告给主代理处理。"""
+        system_prompt=_load_subagent_prompt("secure-reviewer"),
     ),
     "debugger": SubagentConfig(
         name="debugger",
         description="代码调试专家，可修改但不能创建新文件",
         allowed_tools=["Read", "Edit"],
-        system_prompt="""你是一个调试专家。你的任务是：
-1. 分析代码问题
-2. 定位 Bug 根因
-3. 提供修复建议
-
-⚠️ 你可以编辑现有文件，但不能创建新文件。"""
+        system_prompt=_load_subagent_prompt("debugger"),
     ),
     "test-engineer": SubagentConfig(
         name="test-engineer",
         description="测试工程师，可创建文件",
         allowed_tools=["Read", "Write", "Bash"],
-        system_prompt="""你是一个测试工程师。你的任务是：
-1. 分析代码结构
-2. 编写单元测试
-3. 运行测试验证
-
-⚠️ 你可以创建新文件和运行命令。"""
+        system_prompt=_load_subagent_prompt("test-engineer"),
     ),
     "documentation-writer": SubagentConfig(
         name="documentation-writer",
         description="文档编写专家",
         allowed_tools=["Read", "Write"],
-        system_prompt="""你是一个技术文档作家。你的任务是：
-1. 理解代码功能
-2. 编写清晰的文档
-3. 生成示例代码
-
-⚠️ 你只能读取和写入文本文件。"""
+        system_prompt=_load_subagent_prompt("documentation-writer"),
     ),
     "performance-analyzer": SubagentConfig(
         name="performance-analyzer",
         description="性能分析专家",
         allowed_tools=["Read", "Grep"],
-        system_prompt="""你是一个性能分析专家。你的任务是：
-1. 分析代码性能瓶颈
-2. 识别 O(n²) 算法
-3. 找出 N+1 查询问题
-4. 提供优化建议
-
-⚠️ 你只有只读权限。"""
+        system_prompt=_load_subagent_prompt("performance-analyzer"),
     )
 }
+
+# Apply env-var overrides to system prompts
+_overrides_raw = _os.getenv("AIPLAT_SUBAGENT_PROMPTS", "")
+if _overrides_raw:
+    try:
+        _overrides = _json.loads(_overrides_raw)
+        for name, prompt in _overrides.items():
+            if name in _DEFAULTS:
+                _DEFAULTS[name].system_prompt = prompt
+    except (_json.JSONDecodeError, KeyError):
+        pass
+
+BUILTIN_SUBAGENTS = _DEFAULTS
 
 
 __all__ = [

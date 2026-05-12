@@ -10,7 +10,7 @@ from .schemas import CacheConfig
 class FileCacheClient(CacheClient):
     def __init__(self, config: CacheConfig):
         self.config = config
-        self._cache_dir = Path(config.key_prefix or "/tmp/ai-platform-cache")
+        self._cache_dir = Path(config.key_prefix or os.getenv("AIPLAT_CACHE_PATH", ""))
         self._cache_dir.mkdir(parents=True, exist_ok=True)
 
     def _get_path(self, key: str) -> Path:

@@ -15,7 +15,10 @@ from ...harness.interfaces import (
     AgentStatus,
 )
 from ...adapters.llm import ILLMAdapter
-from ...harness.infrastructure.langchain import MemoryConfig, create_memory, IMemory
+# Memory support removed (deprecated langchain adapter). Agents work without it.
+MemoryConfig = None
+create_memory = None
+IMemory = None
 
 
 @dataclass
@@ -63,7 +66,7 @@ class ConversationalAgent(BaseAgent):
         )
         
         # Initialize memory if enabled
-        if self._conv_config.enable_memory and not self._memory:
+        if self._conv_config.enable_memory and not self._memory and MemoryConfig:
             mem_config = MemoryConfig(
                 memory_type=self._conv_config.memory_type,
                 max_tokens=self._conv_config.max_history * 200

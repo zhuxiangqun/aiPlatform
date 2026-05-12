@@ -19,10 +19,3 @@ __all__ = [
     "CollectionConfig",
     "create_vector_store",
 ]
-
-try:
-    from .stores import MilvusStore, FaissStore, PineconeStore, ChromaStore
-
-    __all__.extend(["MilvusStore", "FaissStore", "PineconeStore", "ChromaStore"])
-except ImportError:
-    pass

@@ -1,5 +1,6 @@
 import asyncio
 import json
+import os
 import uuid
 from typing import Callable, Dict, Optional
 from datetime import datetime
@@ -106,7 +107,7 @@ class RedisClient(MessageClient):
         stream_name = self._get_channel_name(topic)
         self._handlers[stream_name] = handler
         
-        consumer_group = config.group_id if config else "aiplat-consumer"
+        consumer_group = config.group_id if config else os.getenv("AIPLAT_REDIS_CONSUMER_GROUP", "")
         self._consumer_groups[stream_name] = consumer_group
         
         try:
@@ -120,7 +121,7 @@ class RedisClient(MessageClient):
             self._running_tasks[stream_name] = task
 
     async def _consume_stream_messages(self, stream_name: str, config: Optional[ConsumerConfig] = None):
-        consumer_group = self._consumer_groups.get(stream_name, "aiplat-consumer")
+        consumer_group = self._consumer_groups.get(stream_name, os.getenv("AIPLAT_REDIS_CONSUMER_GROUP", ""))
         consumer_name = f"{consumer_group}-{uuid.uuid4().hex[:8]}"
         handler = self._handlers.get(stream_name)
         
@@ -208,7 +209,7 @@ class RedisClient(MessageClient):
         stream_name, redis_stream_id = self._pending_messages.pop(message_id)
         
         try:
-            await self._redis.xack(stream_name, self._consumer_groups.get(stream_name, "aiplat-consumer"), redis_stream_id)
+            await self._redis.xack(stream_name, self._consumer_groups.get(stream_name, os.getenv("AIPLAT_REDIS_CONSUMER_GROUP", "")), redis_stream_id)
         except Exception as e:
             print(f"Error acknowledging message: {e}")
 

@@ -11,7 +11,7 @@ class Message:
 
 @dataclass
 class ChatRequest:
-    model: str = "gpt-4"
+    model: str = ""
     messages: List[Message] = field(default_factory=list)
     temperature: float = 0.7
     max_tokens: Optional[int] = None
@@ -48,10 +48,10 @@ class EmbeddingResult:
 
 @dataclass
 class LLMConfig:
-    provider: str = "openai"
+    provider: str = ""
     api_key: str = ""
     base_url: Optional[str] = None
-    model: str = "gpt-4"
+    model: str = ""
     timeout: int = 30
     max_retries: int = 3
     temperature: float = 0.7

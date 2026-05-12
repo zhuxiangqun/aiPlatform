@@ -14,6 +14,7 @@ import json
 import os
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
+from core.harness.utils.llm_env import get_llm_api_key, get_llm_base_url
 
 
 @dataclass
@@ -122,7 +123,7 @@ class ModelRegistry:
                 cost_per_1k_input=0.00027, cost_per_1k_output=0.00110,
             ))
 
-        openai_key = os.getenv("OPENAI_API_KEY", "")
+        openai_key = get_llm_api_key("openai") or ""
         if openai_key:
             self.register(ModelEntry(
                 name="gpt-4o", provider="openai",

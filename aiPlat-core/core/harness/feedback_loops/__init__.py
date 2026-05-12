@@ -33,16 +33,16 @@ from .prod import (
     create_production_feedback,
     get_production_feedback,
 )
-from .evolution_trigger import (
-    EvolutionTriggerType,
-    EvolutionAction,
-    EvolutionTrigger,
-    EvolutionEvent,
-    EvolutionTriggerManager,
-    EvolutionEngine,
-    create_evolution_engine,
-    get_evolution_engine,
-)
+
+# evolution_trigger removed (dead duplicate of apps/skills/evolution/engine.py)
+
+# EvolutionEngine re-exported from canonical location (apps/skills/evolution/engine.py)
+from core.apps.skills.evolution.engine import EvolutionEngine  # noqa: data type (class) — allowed exception
+EvolutionTriggerType = None
+EvolutionAction = None  
+EvolutionTrigger = None
+EvolutionEvent = None
+EvolutionTriggerManager = EvolutionEngine  # for backward compat
 
 __all__ = [
     "FeedbackLevel",
@@ -70,12 +70,4 @@ __all__ = [
     "ProductionFeedbackLoop",
     "create_production_feedback",
     "get_production_feedback",
-    "EvolutionTriggerType",
-    "EvolutionAction",
-    "EvolutionTrigger",
-    "EvolutionEvent",
-    "EvolutionTriggerManager",
-    "EvolutionEngine",
-    "create_evolution_engine",
-    "get_evolution_engine",
 ]

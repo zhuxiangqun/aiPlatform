@@ -17,7 +17,7 @@ class TestDatabaseSchema:
         assert config.type == "postgres"
         assert config.host == "localhost"
         assert config.port == 5432
-        assert config.name == "ai_platform"
+        assert config.name == ""
         assert config.user == "postgres"
 
     def test_database_config_custom(self):

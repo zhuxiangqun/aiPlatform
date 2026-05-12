@@ -20,10 +20,10 @@ import os
 import hashlib
 import fnmatch
 
-from core.apps.tools.permission import get_permission_manager, Permission
+from core.apps.tools.permission import Permission  # noqa: data type (enum) — allowed exception
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.policy.engine import evaluate_tool_policy_snapshot, PolicyDecision as EngineDecision
-from core.apps.tools.skill_tools import resolve_skill_permission
+# DI: resolve_skill_permission via SkillPermissionResolver
 
 
 class PolicyDecision(str, Enum):

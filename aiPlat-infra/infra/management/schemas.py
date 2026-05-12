@@ -163,7 +163,7 @@ class QuotaInfo:
     name: str
     gpu_quota: int
     gpu_used: int
-    team: str
+    label: str
     status: str
     created_at: datetime
 

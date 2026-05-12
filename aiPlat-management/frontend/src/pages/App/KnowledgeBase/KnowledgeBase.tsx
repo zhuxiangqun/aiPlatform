@@ -173,7 +173,8 @@ const _citationAssetUrl = (citation: any) => {
   if (!raw) return '';
   return raw.startsWith('/platform/') ? `/api${raw}` : raw;
 };
-import { kbApi, KBAnalysisBatch, KBAnalysisRun, KBCollection, KBDocument, KBDocumentSource } from '../../../services/kbApi';
+import { kbApi } from "../../../services";
+import type { KBAnalysisBatch, KBAnalysisRun, KBCollection, KBDocument, KBDocumentSource } from "../../../services";
 
 type TabKey = 'collections' | 'documents' | 'query' | 'settings';
 

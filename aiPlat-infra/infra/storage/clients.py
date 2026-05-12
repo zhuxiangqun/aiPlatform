@@ -16,7 +16,7 @@ class LocalStorageClient(StorageClient, FileStorage):
         self._base_path = (
             Path(base_path)
             if base_path
-            else Path(tempfile.gettempdir()) / "ai-platform"
+            else Path(tempfile.gettempdir()) / os.getenv("AIPLAT_STORAGE_LOCAL_DIR", "data")
         )
         self._base_path.mkdir(parents=True, exist_ok=True)
 
@@ -116,7 +116,7 @@ class S3StorageClient(ObjectStorage):
         if not self._client:
             await self.connect()
         bucket = (
-            self.config.object.bucket if self.config.object else "ai-platform-bucket"
+            self.config.object.bucket if self.config.object else os.getenv("AIPLAT_STORAGE_BUCKET", "")
         )
         self._client.put_object(
             Bucket=bucket, Key=key, Body=data, ContentType=content_type
@@ -127,7 +127,7 @@ class S3StorageClient(ObjectStorage):
         if not self._client:
             await self.connect()
         bucket = (
-            self.config.object.bucket if self.config.object else "ai-platform-bucket"
+            self.config.object.bucket if self.config.object else os.getenv("AIPLAT_STORAGE_BUCKET", "")
         )
         response = self._client.get_object(Bucket=bucket, Key=key)
         return response["Body"].read()
@@ -136,7 +136,7 @@ class S3StorageClient(ObjectStorage):
         if not self._client:
             await self.connect()
         bucket = (
-            self.config.object.bucket if self.config.object else "ai-platform-bucket"
+            self.config.object.bucket if self.config.object else os.getenv("AIPLAT_STORAGE_BUCKET", "")
         )
         self._client.delete_object(Bucket=bucket, Key=key)
         return True
@@ -145,7 +145,7 @@ class S3StorageClient(ObjectStorage):
         if not self._client:
             await self.connect()
         bucket = (
-            self.config.object.bucket if self.config.object else "ai-platform-bucket"
+            self.config.object.bucket if self.config.object else os.getenv("AIPLAT_STORAGE_BUCKET", "")
         )
         response = self._client.list_objects_v2(Bucket=bucket, Prefix=prefix)
         return [obj["Key"] for obj in response.get("Contents", [])]
@@ -162,7 +162,7 @@ class S3StorageClient(ObjectStorage):
                 aws_secret_access_key=obj_config.secret_key if obj_config else "",
             )
         bucket = (
-            self.config.object.bucket if self.config.object else "ai-platform-bucket"
+            self.config.object.bucket if self.config.object else os.getenv("AIPLAT_STORAGE_BUCKET", "")
         )
         return self._client.generate_presigned_url(
             "get_object", Params={"Bucket": bucket, "Key": key}, ExpiresIn=expires
@@ -190,7 +190,7 @@ class GCSStorageClient(ObjectStorage):
         if not self._client:
             await self.connect()
         bucket = self._client.bucket(
-            self.config.object.bucket if self.config.object else "ai-platform-bucket"
+            self.config.object.bucket if self.config.object else os.getenv("AIPLAT_STORAGE_BUCKET", "")
         )
         blob = bucket.blob(key)
         blob.upload_from_string(data, content_type=content_type)
@@ -200,7 +200,7 @@ class GCSStorageClient(ObjectStorage):
         if not self._client:
             await self.connect()
         bucket = self._client.bucket(
-            self.config.object.bucket if self.config.object else "ai-platform-bucket"
+            self.config.object.bucket if self.config.object else os.getenv("AIPLAT_STORAGE_BUCKET", "")
         )
         blob = bucket.blob(key)
         return blob.download_as_bytes()
@@ -209,7 +209,7 @@ class GCSStorageClient(ObjectStorage):
         if not self._client:
             await self.connect()
         bucket = self._client.bucket(
-            self.config.object.bucket if self.config.object else "ai-platform-bucket"
+            self.config.object.bucket if self.config.object else os.getenv("AIPLAT_STORAGE_BUCKET", "")
         )
         blob = bucket.blob(key)
         blob.delete()
@@ -219,7 +219,7 @@ class GCSStorageClient(ObjectStorage):
         if not self._client:
             await self.connect()
         bucket = self._client.bucket(
-            self.config.object.bucket if self.config.object else "ai-platform-bucket"
+            self.config.object.bucket if self.config.object else os.getenv("AIPLAT_STORAGE_BUCKET", "")
         )
         return [blob.name for blob in bucket.list_blobs(prefix=prefix)]
 
@@ -229,7 +229,7 @@ class GCSStorageClient(ObjectStorage):
 
             asyncio.run(self.connect())
         bucket = self._client.bucket(
-            self.config.object.bucket if self.config.object else "ai-platform-bucket"
+            self.config.object.bucket if self.config.object else os.getenv("AIPLAT_STORAGE_BUCKET", "")
         )
         blob = bucket.blob(key)
         return blob.generate_signed_url(version="v4", expiration=expires)
@@ -250,7 +250,7 @@ class AzureStorageClient(ObjectStorage):
     async def upload(self, key: str, data: bytes, content_type: str) -> str:
         if not self._client:
             await self.connect()
-        container = self.config.object.bucket or "ai-platform-container"
+            container = self.config.object.bucket or os.getenv("AIPLAT_STORAGE_CONTAINER", "")
         blob_client = self._client.get_blob_client(container=container, blob=key)
         blob_client.upload_blob(data, content_type=content_type)
         return key
@@ -258,14 +258,14 @@ class AzureStorageClient(ObjectStorage):
     async def download(self, key: str) -> bytes:
         if not self._client:
             await self.connect()
-        container = self.config.object.bucket or "ai-platform-container"
+            container = self.config.object.bucket or os.getenv("AIPLAT_STORAGE_CONTAINER", "")
         blob_client = self._client.get_blob_client(container=container, blob=key)
         return blob_client.download_blob().readall()
 
     async def delete(self, key: str) -> bool:
         if not self._client:
             await self.connect()
-        container = self.config.object.bucket or "ai-platform-container"
+            container = self.config.object.bucket or os.getenv("AIPLAT_STORAGE_CONTAINER", "")
         blob_client = self._client.get_blob_client(container=container, blob=key)
         blob_client.delete_blob()
         return True
@@ -273,7 +273,7 @@ class AzureStorageClient(ObjectStorage):
     async def list_objects(self, prefix: str) -> List[str]:
         if not self._client:
             await self.connect()
-        container = self.config.object.bucket or "ai-platform-container"
+            container = self.config.object.bucket or os.getenv("AIPLAT_STORAGE_CONTAINER", "")
         container_client = self._client.get_container_client(container)
         return [
             blob.name for blob in container_client.list_blobs(name_starts_with=prefix)
@@ -284,9 +284,9 @@ class AzureStorageClient(ObjectStorage):
             import asyncio
 
             asyncio.run(self.connect())
+            container = self.config.object.bucket or os.getenv("AIPLAT_STORAGE_CONTAINER", "")
         from azure.storage.blob import generate_blob_sas, BlobSasPermissions
 
-        container = self.config.object.bucket or "ai-platform-container"
         account_name = self._client.account_name
         account_key = self._client.credential.account_key
         sas_token = generate_blob_sas(

@@ -4,6 +4,8 @@ Cache Manager
 Manages distributed cache with support for multiple backends.
 """
 
+import os
+
 from typing import Dict, Any, List, Optional
 from ..base import ManagementBase, Status, HealthStatus, Metrics
 from ..schemas import CacheStats
@@ -31,7 +33,7 @@ class CacheManager(ManagementBase):
             used_memory=0,
             hit_rate=0.0
         )
-        self._key_prefix = config.get("key_prefix", "aiplat:") if config else "aiplat:"
+        self._key_prefix = os.getenv("AIPLAT_CACHE_KEY_PREFIX", "")
         self._default_ttl = config.get("default_ttl", 3600) if config else 3600
     
     async def get_status(self) -> Status:

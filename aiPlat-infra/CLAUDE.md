@@ -42,6 +42,48 @@ language: zh-CN
 
 ---
 
+## 新增：基础设施无关应用原则（强制）
+
+**infra 层必须对应用完全无知。** 应能脱离 aiPlat 独立部署和使用。
+
+### 违规范例（禁止）
+
+```
+❌ {8002: "aiPlat-core", 5173: "frontend"}           → ✓ 运行时发现，不硬编码映射
+❌ {"cmdline": "vite", "type": "Frontend"}            → ✓ 不按业务角色分类进程
+❌ {"path": "/Users/apple/workdata/..."}                → ✓ 开发者路径绝不出现
+❌ gpu_model: str = "A100"                              → ✓ 默认值应为空字符串
+❌ namespace: str = "ai-prod"; type: str = "LLM"        → ✓ 默认值泛化
+❌ class QuotaInfo: team: str                           → ✓ 使用 generic label
+❌ ErrorCategory.BUSINESS                               → ✓ infra 不应有业务错误类别
+❌ "/etc/aiplat/infra.yaml"                             → ✓ 环境变量驱动
+❌ "ai-platform-bucket"; "/tmp/ai-platform"             → ✓ 通用默认名
+```
+
+### 自查方法
+
+1. grep 所有 .py 文件是否包含 `aiPlat`、`frontend`、`management` 等应用名
+2. 硬编码的端口号是否映射到特定服务名？
+3. 删除所有 `known_services`/`known_defaults`/`target_processes` 硬编码映射
+4. 所有默认值是否对任何 AI 基础设施都通用？
+
+### 已修复违规清单（historical — 2026-05 已验证）
+
+所有以下项目已在多轮审计中修复并验证：
+
+- `network/manager.py:50-54,102-108,420-425`: → `AIPLAT_PORT_SERVICES` 环境变量 ✅
+- `service/manager.py:21-27`: → `AIPLAT_TARGET_PROCESSES` 环境变量 ✅
+- `api/main.py`: `gpu_type="A100"` → `gpu_type=""`、`team` → `label` ✅
+- `scheduler/manager.py`: `team` → `label`、`gpu_type="A100"` → `""` ✅
+- `storage/schemas.py + clients.py`: → `AIPLAT_STORAGE_*` 环境变量 ✅
+- `cache/file_client.py`: → `AIPLAT_CACHE_PATH` 环境变量 ✅
+- `observability/schemas.py`: → `AIPLAT_SERVICE_NAME` 环境变量 ✅
+- `network/manager.py:148`: → `AIPLAT_NETWORK_SELECTOR` 环境变量 ✅
+- `monitoring/prometheus.py:73`: → `AIPLAT_METRICS_NAMESPACE` 环境变量 ✅
+- `messaging/schemas.py:69`: → `AIPLAT_MESSAGING_CLIENT_ID` 环境变量 ✅
+
+---
+
 ## 4) Goal-Driven Execution：验收闭环
 - 语法：`python -m py_compile <修改的文件>`
 - 单测：`pytest -q`（infra 层要求 100% 测试覆盖）
@@ -101,6 +143,64 @@ infra 不依赖任何内部包
 **设计文档依据**：
 - `../../docs/index.md` §设计原则、§Layer 0 边界规则
 - `../../docs/architecture/system-architecture-contract.md` §依赖方向
+
+---
+
+## 5.6 接线状态（强制透明度）
+
+**当前状态：aiPlat-infra 的 18 个能力模块 + 13 个管理器尚未被上层生产代码接入。**
+
+- `aiPlat-core/pyproject.toml` 不含 `aiplat-infra` 依赖项
+- `aiPlat-platform/pyproject.toml` 不含 `aiplat-infra` 依赖项
+- 全仓搜索 `from infra.` 的结果：**0 处匹配**
+
+Core 在 `core/harness/infrastructure/` 下自行实现了一套独立的基础设施层（ModelRouter、ModelRegistry、ApprovalManager 等），与 `aiPlat-infra/` 中的 LLM/Cache/Vector/Database 模块无交集。
+
+**接线方案（To-Be，需设计审批后启用）：**
+
+| 阶段 | 目标 | 内容 |
+|------|------|------|
+| A | 最小连接 | core 的 LLM 调用通过 infra 的 `LLMManager` 适配，验证跨包依赖 |
+| B | 能力迁移 | Vector/Database/Cache 模块替换 core 中新建的内存/SQLite 实现 |
+| C | 全面接管 | Messaging/Storage/Compute 模块接入；管理端接入 infra management API |
+
+**当前可用（内部自洽）：** 所有 18 个能力模块均可通过工厂函数独立使用（`create_llm_client()` 等），测试覆盖完备。infra management API 可独立启动（`python -m infra.management.api.run_server`）。
+
+### 5.7 应用名称硬编码状态（已清理）
+
+以下违规已在本次审计中修复：
+
+| 文件 | 修改内容 |
+|------|---------|
+| `management/network/manager.py` | 3 处硬编码端口→服务映射改为 `AIPLAT_PORT_SERVICES` 环境变量驱动 |
+| `management/service/manager.py` | `target_processes` 改为 `AIPLAT_TARGET_PROCESSES` 环境变量驱动 |
+| `management/api/main.py` | `gpu_type: str = "A100"` → `gpu_type: str = ""` |
+| `management/schemas.py` | `QuotaInfo.team` → `QuotaInfo.label` |
+| `management/scheduler/manager.py` | `team` 字段引用 → `label` + `gpu_type: "A100"` → `""` |
+| `storage/schemas.py` | `"ai-platform-bucket"` / `"/tmp/ai-platform"` → `AIPLAT_STORAGE_*` 环境变量 |
+| `storage/clients.py`（10 处） | `"ai-platform-bucket"` fallback → `AIPLAT_STORAGE_BUCKET` 环境变量 |
+| `cache/file_client.py` | `"/tmp/ai-platform-cache"` → `AIPLAT_CACHE_PATH` 环境变量 |
+| `observability/schemas.py` | `"ai-platform-infra"` → `AIPLAT_SERVICE_NAME` 环境变量 |
+| `management/network/manager.py:148` | `selector={"app": "ai-platform"}` → `AIPLAT_NETWORK_SELECTOR` 环境变量 |
+| `management/monitoring/prometheus.py:73` | `namespace: str = "aiplat"` → `os.getenv("AIPLAT_METRICS_NAMESPACE", "")` |
+| `messaging/schemas.py:69` | `client_id: str = "aiplat"` → `os.getenv("AIPLAT_MESSAGING_CLIENT_ID", "")` |
+| `messaging/schemas.py:42` | `consumer_group: str = "aiplat-consumer"` → `os.getenv("AIPLAT_KAFKA_CONSUMER_GROUP", "")` |
+| `messaging/redis_backend.py`（3 处） | `"aiplat-consumer"` → `os.getenv("AIPLAT_REDIS_CONSUMER_GROUP", "")` |
+| `management/cache/manager.py:34` | `key_prefix: "aiplat:"` → `os.getenv("AIPLAT_CACHE_KEY_PREFIX", "")` |
+| `management/monitoring/prometheus.py:176` | `namespace: "aiplat_infra"` → `os.getenv("AIPLAT_PROM_EXPORTER_NAMESPACE", "")` |
+| `management/service/manager.py:23` | 注释中的示例格式包含应用特定服务名 → 通用格式 |
+
+### 5.8 接线状态（待完成）
+
+以下模块已实现但未接入生产链路：
+
+| 模块 | 状态 | 待完成 |
+|------|------|--------|
+| MCP adapter | 工具发现但未注册到 ToolRegistry | 将 `discover_tools()` 结果注册到 ToolRegistry |
+| SubagentCoordinator | DI 已接线，但方法零调用者 | 接入 MultiAgent 执行路径 |
+| AgentMessageBus request/respond | 协议已实现，但从未被调用 | 接入 Pipeline 跨 Agent 通信 |
+
+**当前可用（内部自洽）：** 所有 18 个能力模块均可通过工厂函数独立使用，测试覆盖完备。
 
 ---
 

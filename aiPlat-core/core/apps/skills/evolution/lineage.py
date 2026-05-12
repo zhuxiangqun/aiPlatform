@@ -7,7 +7,7 @@ Manages Skill version history with DAG structure.
 import logging
 import uuid
 import hashlib
-from typing import Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 from datetime import datetime
 from dataclasses import asdict
 

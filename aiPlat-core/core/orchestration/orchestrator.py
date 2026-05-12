@@ -1,9 +1,10 @@
 """
-Orchestrator (Phase 5.2 - plan only).
+Orchestrator (Phase 9 — plan affects execution).
 
 Design:
 - Input: agent_id, user messages, and lightweight context
 - Output: OrchestratorPlan (steps + explain + version)
+- OrchestratorPlan now converts to kernel ExecutionPlan for Harness integration.
 
 Rules:
 - This module must remain side-effect free: do NOT execute tools/skills.
@@ -18,6 +19,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 from core.harness.syscalls.llm import sys_llm_generate
+from core.harness.kernel.types import ExecutionPlan, PlanStep as KernelPlanStep
 
 
 @dataclass
@@ -34,7 +36,7 @@ class PlanStep:
 class OrchestratorPlan:
     """Orchestrator output."""
 
-    version: str = "5.2"
+    version: str = "9.0"
     explain: str = ""
     steps: List[PlanStep] = field(default_factory=list)
     created_at: float = field(default_factory=lambda: time.time())
@@ -51,6 +53,22 @@ class OrchestratorPlan:
             ],
             "metadata": self.metadata or {},
         }
+
+    def to_execution_plan(self) -> ExecutionPlan:
+        return ExecutionPlan(
+            version=self.version,
+            explain=self.explain,
+            steps=[
+                KernelPlanStep(
+                    step=s.step,
+                    action=s.action,
+                    kind=s.kind,  # type: ignore[arg-type]
+                    args=s.args,
+                )
+                for s in self.steps
+            ],
+            metadata=self.metadata or {},
+        )
 
 
 class Orchestrator:

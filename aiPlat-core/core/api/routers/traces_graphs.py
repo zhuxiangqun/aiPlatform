@@ -7,7 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from core.api.utils.run_contract import wrap_execution_result_as_run_summary
-from core.apps.tools.permission import Permission, get_permission_manager
+from core.api.core_facade import get_permission_manager
+from core.apps.tools.permission import Permission  # noqa: data type
 from core.harness.integration import KernelRuntime, get_harness
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.harness.kernel.types import ExecutionRequest

@@ -4,6 +4,7 @@ Health Checker - 模型健康检查
 Performs connectivity and response tests for models.
 """
 
+import os
 import aiohttp
 from typing import Dict, Any
 from datetime import datetime

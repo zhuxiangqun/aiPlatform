@@ -13,11 +13,11 @@ from enum import Enum
 class CompressionLevel(Enum):
     """Compression level based on token usage"""
     NORMAL = (0, 0.70)
-    WARNING = (0.90, 0.92)
-    REPLACE = (0.92, 0.94)
-    PRUNE = (0.94, 0.96)
-    AGGRESSIVE = (0.96, 0.98)
-    EMERGENCY = (0.98, 1.0)
+    WARNING = (0.70, 0.80)
+    REPLACE = (0.80, 0.85)
+    PRUNE = (0.85, 0.90)
+    AGGRESSIVE = (0.90, 0.99)
+    EMERGENCY = (0.99, 1.0)
 
 
 @dataclass

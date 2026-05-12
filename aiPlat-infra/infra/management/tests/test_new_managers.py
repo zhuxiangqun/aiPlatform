@@ -53,7 +53,7 @@ class TestNodeManager:
         node = await manager.add_node({
             "name": "test-node-01",
             "ip": "10.0.0.1",
-            "gpu_model": "A100",
+            "gpu_model": "generic-gpu",
             "gpu_count": 4,
             "driver_version": "535.54.03"
         })
@@ -155,7 +155,7 @@ class TestServiceManager:
         """Create service manager"""
         config = {
             "kubernetes_api": "https://k8s-api.example.com",
-            "default_namespace": "ai-prod"
+            "default_namespace": "test-namespace"
         }
         from infra.management.service.manager import ServiceManager
         return ServiceManager(config)
@@ -171,7 +171,7 @@ class TestServiceManager:
         """Test deploy service"""
         service = await manager.deploy_service({
             "name": "test-service",
-            "namespace": "ai-prod",
+            "namespace": "test-namespace",
             "image": "vllm/vllm:latest",
             "replicas": 4,
             "gpu_count": 4
@@ -232,7 +232,7 @@ class TestSchedulerManager:
         quota = await manager.create_quota({
             "name": "test-quota",
             "gpu_quota": 8,
-            "team": "test-team"
+            "label": "test-label"
         })
         assert quota.name == "test-quota"
         assert quota.gpu_quota == 8

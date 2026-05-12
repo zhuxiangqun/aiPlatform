@@ -1,3 +1,4 @@
+import os
 import time
 from typing import Dict, List, Optional
 from .base import (
@@ -20,7 +21,7 @@ class PrometheusMetricsCollector(MetricsCollector):
         self._counters: Dict[str, Counter] = {}
         self._gauges: Dict[str, Gauge] = {}
         self._histograms: Dict[str, Histogram] = {}
-        self._prefix = config.metrics.prefix if config.metrics else "ai_platform"
+        self._prefix = os.getenv("AIPLAT_METRICS_PREFIX", "")
 
     def counter(self, name: str, **kwargs) -> Counter:
         full_name = f"{self._prefix}_{name}"

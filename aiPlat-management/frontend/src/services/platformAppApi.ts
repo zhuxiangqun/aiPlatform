@@ -137,19 +137,19 @@ export const channelApi = {
     if (params?.type) query.set('type', params.type);
     if (params?.status) query.set('status', params.status);
     const qs = query.toString();
-    return apiClient.get<ChannelListResponse>(`/app/channels${qs ? '?' + qs : ''}`);
+    return apiClient.get<ChannelListResponse>(`/platform/channels${qs ? '?' + qs : ''}`);
   },
   create: async (data: { name: string; type: string; config: Record<string, unknown> }) => {
-    return apiClient.post<Channel>('/app/channels', data);
+    return apiClient.post<Channel>('/platform/channels', data);
   },
   update: async (id: string, data: Partial<Channel>) => {
-    return apiClient.put<Channel>(`/app/channels/${id}`, data);
+    return apiClient.put<Channel>(`/platform/channels/${id}`, data);
   },
   delete: async (id: string) => {
-    return apiClient.delete<{ status: string }>(`/app/channels/${id}`);
+    return apiClient.delete<{ status: string }>(`/platform/channels/${id}`);
   },
   test: async (id: string) => {
-    return apiClient.post<{ success: boolean; message: string }>(`/app/channels/${id}/test`);
+    return apiClient.post<{ success: boolean; message: string }>(`/platform/channels/${id}/test`);
   },
 };
 
@@ -188,7 +188,7 @@ export const appSessionApi = {
     if (params?.status) query.set('status', params.status);
     if (params?.channel) query.set('channel', params.channel);
     const qs = query.toString();
-    const res = await apiClient.get<AppSessionListResponse>(`/app/sessions${qs ? '?' + qs : ''}`);
+    const res = await apiClient.get<AppSessionListResponse>(`/platform/sessions${qs ? '?' + qs : ''}`);
     return {
       ...res,
       sessions: Array.isArray((res as any)?.sessions) ? (res as any).sessions.map(normalizeAppSession) : [],
@@ -196,10 +196,10 @@ export const appSessionApi = {
     };
   },
   get: async (id: string) => {
-    const res = await apiClient.get<any>(`/app/sessions/${id}`);
+    const res = await apiClient.get<any>(`/platform/sessions/${id}`);
     return normalizeAppSession(res);
   },
   end: async (id: string) => {
-    return apiClient.post<{ status: string }>(`/app/sessions/${id}/end`);
+    return apiClient.post<{ status: string }>(`/platform/sessions/${id}/end`);
   },
 };

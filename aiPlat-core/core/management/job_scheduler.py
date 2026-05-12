@@ -430,16 +430,21 @@ class JobScheduler:
             return f"{base}{path2}"
 
         fmt = str(delivery.get("format") or "json").strip().lower()
-        if fmt == "slack":
-            # Slack Incoming Webhook requires a "text" field.
-            # Keep payload small and readable; include full json in "details" if needed via your relay.
-            status = str((run or {}).get("status") or "")
-            err = str((run or {}).get("error") or "")
-            job_id = str((job or {}).get("id") or "")
-            run_id = str((run or {}).get("id") or (run or {}).get("run_id") or "")
-            body: Dict[str, Any] = {
-                "text": f"[aiPlat] job_run {status}: {job_id} ({run_id}){(' - ' + err) if err else ''}",
-            }
+        # Build a generic webhook body from run status.
+        # Format-specific delivery (Slack, Discord, etc.) should be handled
+        # by the app layer's webhook delivery module (aiPlat-app/channels/webhook.py).
+        status = str((run or {}).get("status") or "")
+        err = str((run or {}).get("error") or "")
+        job_id = str((job or {}).get("id") or "")
+        run_id = str((run or {}).get("id") or (run or {}).get("run_id") or "")
+        body: Dict[str, Any] = {
+            "status": status,
+            "job_id": job_id,
+            "run_id": run_id,
+            "error": err if err else None,
+        }
+        if fmt == "slack" and os.getenv("AIPLAT_ENABLE_SLACK_WEBHOOK_FORMAT", "false").lower() in ("1", "true", "yes", "y"):
+            body = {"text": f"[job_run] {status}: {job_id} ({run_id}){(' - ' + err) if err else ''}"}
             try:
                 url = _public_url(f"/diagnostics/runs?run_id={run_id}")
                 if url:

@@ -18,6 +18,7 @@ from ...harness.interfaces import SkillContext, SkillResult
 from ...apps.tools.base import get_tool_registry
 from ...harness.syscalls import sys_skill_call
 from core.utils.ids import new_prefixed_id
+from core.harness.utils.llm_env import get_llm_api_key, get_llm_base_url
 
 
 @dataclass
@@ -205,9 +206,9 @@ class SkillExecutor:
                 model_name = params.get("model") or os.getenv("LLM_MODEL") or "gpt-4"
                 api_key = None
                 if provider == "openai":
-                    api_key = os.getenv("OPENAI_API_KEY")
+                    api_key = get_llm_api_key("openai")
                 elif provider == "anthropic":
-                    api_key = os.getenv("ANTHROPIC_API_KEY")
+                    api_key = get_llm_api_key("anthropic")
 
                 if model is None:
                     try:

@@ -4,6 +4,7 @@ LLM Adapter Base Module
 Provides base interface and common functionality for LLM adapters.
 """
 
+import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, AsyncIterator
@@ -200,42 +201,64 @@ def create_adapter(
     **kwargs
 ) -> ILLMAdapter:
     """
-    Factory function to create LLM adapter
-    
-    Args:
-        provider: Provider name ("openai", "anthropic", "local")
-        api_key: API key
-        model: Model name
-        base_url: Custom base URL
-        
-    Returns:
-        ILLMAdapter: Adapter instance
+    Factory function to create LLM adapter.
+
+    Uses aiPlat-infra LLM client as the primary implementation (via
+    InfraLLMAdapter wrapper). Falls back to core's adapters only when:
+    - AIPLAT_ENABLE_CORE_ADAPTER_FALLBACK env var is set to "true"
+    - Or provider is "mock" / "scripted" (not available in infra)
+
+    Supported infra providers: openai, deepseek, anthropic, local.
+    Core-only providers: mock, scripted.
     """
     import importlib
-    adapter: ILLMAdapter
-    if provider in ("openai", "deepseek"):
-        OpenAIAdapter = importlib.import_module(f"{__package__}.openai_adapter").OpenAIAdapter
-        adapter = OpenAIAdapter(api_key=api_key, model=model, base_url=base_url, **kwargs)
+    import os
 
-    elif provider == "anthropic":
-        AnthropicAdapter = importlib.import_module(f"{__package__}.anthropic_adapter").AnthropicAdapter
-        adapter = AnthropicAdapter(api_key=api_key, model=model, **kwargs)
+    # ── Primary path: infra LLM client (wrapped) ──
+    if provider not in ("mock", "scripted"):
+        try:
+            from infra.llm.factory import create_llm_client as _infra_create
+            from core.harness.infrastructure.infra_llm_adapter import InfraLLMAdapter
 
-    elif provider == "local":
-        LocalAdapter = importlib.import_module(f"{__package__}.local_adapter").LocalAdapter
-        adapter = LocalAdapter(model=model, base_url=base_url, **kwargs)
+            infra_config: Dict[str, Any] = {"provider": provider, "model": model}
+            if api_key:
+                infra_config["api_key"] = api_key
+            if base_url:
+                infra_config["base_url"] = base_url
+            if kwargs.get("temperature") is not None:
+                infra_config["temperature"] = float(kwargs["temperature"])
+            if kwargs.get("max_tokens") is not None:
+                infra_config["max_tokens"] = int(kwargs["max_tokens"])
 
+            client = _infra_create(infra_config)
+            adapter: ILLMAdapter = InfraLLMAdapter(client, provider=provider, model=model)
+            adapter.model_name = model  # type: ignore[attr-defined]
+            return adapter
+        except Exception:
+            if os.getenv("AIPLAT_ENABLE_CORE_ADAPTER_FALLBACK", "false").lower() not in ("1", "true", "yes", "y"):
+                raise RuntimeError(
+                    f"Infra LLM adapter unavailable for provider '{provider}'. "
+                    f"Set AIPLAT_ENABLE_CORE_ADAPTER_FALLBACK=true to use core's legacy adapters as fallback, "
+                    f"or ensure aiplat-infra is installed and configured."
+                )
+            # fall through to core adapters
+
+    # ── Fallback: core adapters (mock/scripted for testing, or opt-in via flag) ──
+    if provider in ("openai", "deepseek", "anthropic", "local"):
+        raise RuntimeError(
+            f"Core adapter for '{provider}' has been retired. "
+            f"LLM access now exclusively routes through aiplat-infra. "
+            f"Ensure 'aiplat-infra' is installed and configured, "
+            f"or set AIPLAT_ENABLE_CORE_ADAPTER_FALLBACK=true for backward compat."
+        )
     elif provider == "mock":
         MockAdapter = importlib.import_module(f"{__package__}.mock_adapter").MockAdapter
         adapter = MockAdapter(model=model, **kwargs)
-
     elif provider == "scripted":
         ScriptedAdapter = importlib.import_module(f"{__package__}.scripted_adapter").ScriptedAdapter
         adapter = ScriptedAdapter(model=model, **kwargs)
-
     else:
         raise ValueError(f"Unknown provider: {provider}")
 
-    # Attach model_name for auto-discovery by ModelRouter via sys_llm_generate
     adapter.model_name = model
     return adapter

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { RefreshCw, ExternalLink } from 'lucide-react';
 
 import { Badge, Button, Card, CardContent, CardHeader, Select, Table, toast } from '../../../components/ui';
-import { diagnosticsApi, onboardingApi } from '../../../services/apiClient';
+import { diagnosticsApi, onboardingApi } from '../../../services';
 import { toastGateError } from '../../../components/ui';
 
 const ExecBackends: React.FC = () => {

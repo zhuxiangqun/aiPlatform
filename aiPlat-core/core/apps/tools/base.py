@@ -4,6 +4,7 @@ Tool Base Module
 Provides base Tool class implementing ITool interface.
 """
 
+import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Awaitable

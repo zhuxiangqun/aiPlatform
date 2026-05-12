@@ -4,10 +4,11 @@ import json
 import os
 import urllib.request
 from typing import Any, Dict, List, Optional
+from core.harness.utils.llm_env import get_llm_api_key, get_llm_base_url
 
 
 def llm_enabled() -> bool:
-    api_key = (os.getenv("AIPLAT_LLM_API_KEY") or os.getenv("OPENAI_API_KEY") or "").strip()
+    api_key = (os.getenv("AIPLAT_LLM_API_KEY") or get_llm_api_key("openai") or "").strip()
     model = (
         os.getenv("AIPLAT_DOC_LLM_MODEL")
         or os.getenv("AIPLAT_LLM_MODEL")
@@ -20,7 +21,7 @@ def llm_enabled() -> bool:
 def _chat_completions_url() -> str:
     base = (
         os.getenv("AIPLAT_LLM_BASE_URL")
-        or os.getenv("OPENAI_BASE_URL")
+        or get_llm_base_url("openai")
         or "https://api.openai.com/v1"
     ).strip()
     if base.endswith("/"):
@@ -50,7 +51,7 @@ def chat_complete(
     轻量 OpenAI-compatible 调用。
     失败返回 None，调用方自行走 fallback。
     """
-    api_key = (os.getenv("AIPLAT_LLM_API_KEY") or os.getenv("OPENAI_API_KEY") or "").strip()
+    api_key = (os.getenv("AIPLAT_LLM_API_KEY") or get_llm_api_key("openai") or "").strip()
     if not api_key:
         return None
     model = _default_model()
@@ -97,28 +98,7 @@ def chat_complete(
 
 
 def extract_json_block(text: str) -> Optional[Dict[str, Any]]:
-    """
-    从 LLM 输出里尽量提取 JSON 对象。
-    """
-    raw = (text or "").strip()
-    if not raw:
-        return None
-    # 直接 JSON
-    try:
-        obj = json.loads(raw)
-        if isinstance(obj, dict):
-            return obj
-    except Exception:
-        pass
-    # ```json ... ```
-    start = raw.find("{")
-    end = raw.rfind("}")
-    if start >= 0 and end > start:
-        try:
-            obj = json.loads(raw[start : end + 1])
-            if isinstance(obj, dict):
-                return obj
-        except Exception:
-            return None
-    return None
+    """Extract JSON from LLM output. Delegates to the canonical facade."""
+    from core.api.core_facade import parse_json
+    return parse_json(text)
 

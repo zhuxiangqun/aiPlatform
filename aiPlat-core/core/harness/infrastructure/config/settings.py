@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional
 import os
 import json
 from pathlib import Path
+from core.harness.utils.llm_env import get_llm_api_key, get_llm_base_url
 
 
 @dataclass
@@ -100,9 +101,9 @@ class EnvConfigLoader(IConfigLoader):
             settings.default_max_tokens = int(tokens)
         
         # API keys
-        if api_key := os.getenv("OPENAI_API_KEY"):
+        if api_key := get_llm_api_key("openai"):
             settings.openai_api_key = api_key
-        if api_key := os.getenv("ANTHROPIC_API_KEY"):
+        if api_key := get_llm_api_key("anthropic"):
             settings.anthropic_api_key = api_key
         
         # Execution settings

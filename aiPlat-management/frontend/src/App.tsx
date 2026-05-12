@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
 import { Loader2 } from 'lucide-react';
 import AppLayout from './components/layout/AppLayout';
@@ -54,7 +54,6 @@ const AppChannels = lazy(() => import('./pages/App/Channels/Channels'));
 const AppSessions = lazy(() => import('./pages/App/Sessions/Sessions'));
 const AppKnowledgeBase = lazy(() => import('./pages/App/KnowledgeBase/KnowledgeBase'));
 const AppMaterialsChat = lazy(() => import('./pages/App/KnowledgeBase/MaterialsChat'));
-const AppBuilder = lazy(() => import('./pages/App/Builder/BuilderPage'));
 const AppTeamAssembly = lazy(() => import('./pages/App/Builder/TeamAssemblyPage'));
 const AgentInsightPage = lazy(() => import('./pages/App/Builder/AgentInsightPage'));
 const AppProjects = lazy(() => import('./pages/App/Builder/ProjectsPage'));
@@ -131,10 +130,12 @@ const router = createBrowserRouter([
       { path: 'app/sessions', element: withSuspense(AppSessions) },
       { path: 'app/kb', element: withSuspense(AppKnowledgeBase) },
       { path: 'app/kb/chat/:sessionId', element: withSuspense(AppMaterialsChat) },
-      { path: 'app/builder', element: withSuspense(AppBuilder) },
+      { path: 'app/builder', element: <Navigate to="/app/projects" replace /> },
       { path: 'app/builder/team', element: withSuspense(AppTeamAssembly) },
       { path: 'app/projects', element: withSuspense(AppProjects) },
       { path: 'app/projects/:id', element: withSuspense(AppProjectDetail) },
+      { path: 'app/studio', element: <Navigate to="/app/projects" replace /> },
+      { path: 'app/my-apps', element: <Navigate to="/app/projects" replace /> },
       { path: 'diagnostics', element: withSuspense(DiagnosticsHome) },
       { path: 'diagnostics/doctor', element: withSuspense(DiagnosticsDoctor) },
       { path: 'diagnostics/traces', element: withSuspense(DiagnosticsTraces) },

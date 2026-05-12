@@ -29,7 +29,7 @@ _CACHE: Optional[_ScanResult] = None
 _CACHE_TTL_SEC = 120.0
 
 
-def _repo_root() -> Path:
+def repo_root() -> Path:
     """
     Try to locate monorepo root so we can scan:
       - aiPlat-core
@@ -49,7 +49,7 @@ def _repo_root() -> Path:
     return Path.cwd()
 
 
-def _default_roots() -> List[str]:
+def default_roots() -> List[str]:
     return ["aiPlat-core", "aiPlat-management/frontend"]
 
 
@@ -153,12 +153,12 @@ def _resolve_js_relative(from_file: Path, spec: str) -> Optional[Path]:
     return None
 
 
-def _resolve_py_module(repo_root: Path, from_file: Path, mod: str) -> Optional[Path]:
-    # very lightweight resolver: map a.b.c to repo_root/**/a/b/c.py or a/b/c/__init__.py
+def _resolve_py_module(_repo_root: Path, from_file: Path, mod: str) -> Optional[Path]:
+    # very lightweight resolver: map a.b.c to _repo_root/**/a/b/c.py or a/b/c/__init__.py
     # We first try relative to repo root.
     rel = Path(*mod.split("."))
-    cand1 = repo_root / rel.with_suffix(".py")
-    cand2 = repo_root / rel / "__init__.py"
+    cand1 = _repo_root / rel.with_suffix(".py")
+    cand2 = _repo_root / rel / "__init__.py"
     if cand1.exists():
         return cand1
     if cand2.exists():
@@ -195,7 +195,7 @@ def _detect_issues(text: str) -> List[Dict[str, Any]]:
     return out
 
 
-def _build_graph(repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str, Any]], List[Dict[str, str]], List[Dict[str, Any]]]:
+def _build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str, Any]], List[Dict[str, str]], List[Dict[str, Any]]]:
     nodes: Dict[str, Dict[str, Any]] = {}
     edges: List[Dict[str, str]] = []
     issues: List[Dict[str, Any]] = []
@@ -213,12 +213,12 @@ def _build_graph(repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
 
     # Index by path for quick lookup
     for f in files:
-        rel = str(f.relative_to(repo_root))
+        rel = str(f.relative_to(_repo_root))
         nodes[rel] = {"id": rel, "path": rel, "ext": f.suffix.lower(), "out": [], "in": 0, "issue_count": 0}
 
     # Parse imports
     for f in files:
-        rel_from = str(f.relative_to(repo_root))
+        rel_from = str(f.relative_to(_repo_root))
         text = _read_text(f)
         file_issues = _detect_issues(text)
         if file_issues:
@@ -233,9 +233,9 @@ def _build_graph(repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
                 mod = m.group(2) or m.group(3)
                 if not mod:
                     continue
-                tgt = _resolve_py_module(repo_root, f, mod)
+                tgt = _resolve_py_module(_repo_root, f, mod)
                 if tgt and tgt.exists():
-                    rel_to = str(tgt.relative_to(repo_root))
+                    rel_to = str(tgt.relative_to(_repo_root))
                     if rel_to in nodes and rel_to != rel_from:
                         deps.add(rel_to)
         else:
@@ -246,7 +246,7 @@ def _build_graph(repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
                 if spec.startswith("."):
                     tgt = _resolve_js_relative(f, spec)
                     if tgt and tgt.exists():
-                        rel_to = str(tgt.relative_to(repo_root))
+                        rel_to = str(tgt.relative_to(_repo_root))
                         if rel_to in nodes and rel_to != rel_from:
                             deps.add(rel_to)
 
@@ -621,7 +621,7 @@ def _top_insights(
             blast_rank.append(
                 {
                     "path": p,
-                    "blast_count": len(_blast(nodes_dict, p)),
+                    "blast_count": len(blast(nodes_dict, p)),
                     "degree": int(it.get("degree") or 0),
                     "issue_count": int(it.get("issue_count") or 0),
                 }
@@ -666,7 +666,7 @@ def _top_hubs(
     tiny_nodes = {k: {"out": (v.get("out") or [])} for k, v in nodes.items()}
     for p, _, _, _ in deg_list[: max(1, int(compute_blast_for_top))]:
         try:
-            blast_counts[p] = len(_blast(tiny_nodes, p))
+            blast_counts[p] = len(blast(tiny_nodes, p))
         except Exception:
             blast_counts[p] = 0
 
@@ -774,7 +774,7 @@ def _health_by_root(*, roots: List[str], nodes: Dict[str, Dict[str, Any]], edges
     return out
 
 
-def _blast(nodes: Dict[str, Dict[str, Any]], start: str) -> List[str]:
+def blast(nodes: Dict[str, Dict[str, Any]], start: str) -> List[str]:
     # forward reachability
     if start not in nodes:
         return []
@@ -791,20 +791,20 @@ def _blast(nodes: Dict[str, Dict[str, Any]], start: str) -> List[str]:
     return out
 
 
-async def _get_scan(rt, roots: List[str]) -> _ScanResult:
+async def code_intel_scan(rt, roots: List[str]) -> _ScanResult:
     global _CACHE
     roots_key = ",".join(roots)
     now = time.time()
     if _CACHE and _CACHE.roots_key == roots_key and (now - _CACHE.created_at) < _CACHE_TTL_SEC:
         return _CACHE
 
-    repo_root = _repo_root()
-    abs_roots = [(repo_root / r).resolve() for r in roots]
-    nodes, edges, issues = _build_graph(repo_root, abs_roots)
+    _repo_root = repo_root()
+    abs_roots = [(_repo_root / r).resolve() for r in roots]
+    nodes, edges, issues = _build_graph(_repo_root, abs_roots)
     cycles = _count_cycles(nodes)
     health = _health_score(nodes=nodes, edges=edges, issues=issues, cycles_back_edges=cycles)
     stats = {
-        "repo_root": str(repo_root),
+        "_repo_root": str(_repo_root),
         "roots": [str(r) for r in roots],
         "files": len(nodes),
         "edges": len(edges),
@@ -832,8 +832,8 @@ async def scan_code_intel(
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
 
-    root_list = [x.strip() for x in (roots.split(",") if roots else _default_roots()) if x.strip()]
-    res = await _get_scan(rt, root_list)
+    root_list = [x.strip() for x in (roots.split(",") if roots else default_roots()) if x.strip()]
+    res = await code_intel_scan(rt, root_list)
     mode = str(mode or "file").strip().lower()
     if mode not in {"file", "folder", "layer"}:
         mode = "file"
@@ -904,15 +904,15 @@ async def scan_code_intel(
 
 @router.get("/diagnostics/code-intel/hubs")
 async def code_intel_hubs(roots: Optional[str] = None, limit: int = 30, rt=Depends(get_kernel_runtime)):
-    root_list = [x.strip() for x in (roots.split(",") if roots else _default_roots()) if x.strip()]
-    res = await _get_scan(rt, root_list)
+    root_list = [x.strip() for x in (roots.split(",") if roots else default_roots()) if x.strip()]
+    res = await code_intel_scan(rt, root_list)
     return {"status": "ok", "roots": root_list, "hubs": _top_hubs(nodes=res.nodes, issues=res.issues, limit=int(limit or 30), compute_blast_for_top=15)}
 
 
 @router.get("/diagnostics/code-intel/cycles")
 async def code_intel_cycles(roots: Optional[str] = None, limit: int = 30, rt=Depends(get_kernel_runtime)):
-    root_list = [x.strip() for x in (roots.split(",") if roots else _default_roots()) if x.strip()]
-    res = await _get_scan(rt, root_list)
+    root_list = [x.strip() for x in (roots.split(",") if roots else default_roots()) if x.strip()]
+    res = await code_intel_scan(rt, root_list)
     return {"status": "ok", "roots": root_list, "cycles": _top_cycles(nodes=res.nodes, edges=res.edges, limit=int(limit or 30))}
 
 
@@ -922,8 +922,8 @@ async def blast_radius(
     roots: Optional[str] = None,
     rt=Depends(get_kernel_runtime),
 ):
-    root_list = [x.strip() for x in (roots.split(",") if roots else _default_roots()) if x.strip()]
-    res = await _get_scan(rt, root_list)
+    root_list = [x.strip() for x in (roots.split(",") if roots else default_roots()) if x.strip()]
+    res = await code_intel_scan(rt, root_list)
     start = str(file).strip()
     out = _blast(res.nodes, start)
     return {"status": "ok", "file": start, "affected": out, "count": len(out)}

@@ -14,6 +14,7 @@ const ProjectsPage: React.FC = () => {
   const [desc, setDesc] = useState('');
   const [teamId, setTeamId] = useState('');
   const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -30,17 +31,20 @@ const ProjectsPage: React.FC = () => {
   useEffect(() => { refresh(); }, [refresh]);
 
   const create = async () => {
-    if (!name.trim()) { toast.error('请输入项目名称'); return; }
+    setCreating(true);
+    const projectName = name.trim() || desc.trim().slice(0, 30) || '新项目';
     try {
-      await projectApi.create({ name, description: desc, team_id: teamId });
+      await projectApi.create({ name: projectName, description: desc, team_id: teamId || undefined });
       setShowNew(false); setName(''); setDesc(''); setTeamId('');
       refresh();
       toast.success('项目已创建');
     } catch (e: unknown) { toast.error(e instanceof Error ? e.message : '创建失败'); }
+    finally { setCreating(false); }
   };
 
   const remove = async (id: string) => {
-    try { await projectApi.delete(id); refresh(); } catch { /* ignore */ }
+    if (!window.confirm('确定要删除这个项目吗？所有运行记录和产物将被永久删除。')) return;
+    try { await projectApi.delete(id); refresh(); } catch { toast.error('删除失败'); }
   };
 
   const latestRun = (p: ProjectItem) => p.runs?.[p.runs.length - 1];
@@ -64,28 +68,35 @@ const ProjectsPage: React.FC = () => {
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center" onClick={() => setShowNew(false)}>
           <motion.div
             initial={{ scale: 0.95 }} animate={{ scale: 1 }}
-            className="bg-dark-card border border-dark-border rounded-xl p-6 w-full max-w-md"
+            className="bg-dark-card border border-dark-border rounded-xl p-6 w-full max-w-lg"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-lg font-bold text-gray-100 mb-4">新建项目</h2>
+            <h2 className="text-lg font-bold text-gray-100 mb-2">新建项目</h2>
+            <p className="text-xs text-gray-500 mb-4">用自然语言描述你想要构建的应用，AI PM 将与你对话澄清需求，然后自动生成 PRD 并启动构建。</p>
             <div className="space-y-3">
-              <input className="w-full bg-dark-hover border border-dark-border rounded px-3 py-2 text-sm text-gray-200" placeholder="项目名称"
-                value={name} onChange={(e) => setName(e.target.value)} />
               <Textarea value={desc} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDesc(e.target.value)}
-                placeholder="例如：构建一个电商后台管理系统，支持商品 SKU 管理、库存预警、订单状态流转。PM Agent 将基于此与你多轮对话确认细节。" rows={4} />
-              <select className="w-full bg-dark-hover border border-dark-border rounded px-3 py-2 text-sm text-gray-200"
-                value={teamId} onChange={(e) => setTeamId(e.target.value)}>
-                <option value="">选择团队（可选）</option>
-                {teams.map((t) => (
-                  <option key={t.team_id} value={t.team_id}>
-                    {t.name} ({t.stages?.length || 0} 个角色)
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex justify-end gap-2 mt-4">
-              <Button variant="ghost" onClick={() => setShowNew(false)}>取消</Button>
-              <Button variant="primary" onClick={create}>创建</Button>
+                placeholder="例如：构建一个电商后台管理系统，支持商品 SKU 管理、库存预警、订单状态流转。需要用户登录、权限管理、操作日志。"
+                rows={4} />
+              <div className="flex gap-2">
+                <input className="flex-1 bg-dark-hover border border-dark-border rounded px-3 py-2 text-sm text-gray-200" placeholder="项目名称（留空自动提取）"
+                  value={name} onChange={(e) => setName(e.target.value)} />
+              </div>
+              <details className="text-xs text-gray-500">
+                <summary className="cursor-pointer text-gray-400">高级：选择团队</summary>
+                <select className="w-full bg-dark-hover border border-dark-border rounded px-3 py-2 text-sm text-gray-200 mt-2"
+                  value={teamId} onChange={(e) => setTeamId(e.target.value)}>
+                  <option value="">自动推荐（根据 PRD 智能组装）</option>
+                  {teams.map((t) => (
+                    <option key={t.team_id} value={t.team_id}>
+                      {t.name} ({t.stages?.length || 0} 角色)
+                    </option>
+                  ))}
+                </select>
+              </details>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="ghost" onClick={() => setShowNew(false)}>取消</Button>
+                <Button variant="primary" onClick={create} disabled={creating} loading={creating} icon={<Plus className="w-4 h-4" />}>开始构建</Button>
+              </div>
             </div>
           </motion.div>
         </div>

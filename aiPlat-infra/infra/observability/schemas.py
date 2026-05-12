@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
 
@@ -5,7 +6,7 @@ from typing import List, Optional, Dict, Any
 @dataclass
 class TracingConfig:
     enabled: bool = True
-    service_name: str = "ai-platform-infra"
+    service_name: str = os.getenv("AIPLAT_SERVICE_NAME", "")
     exporter: str = "otlp"
     endpoint: str = "http://localhost:4317"
     sample_rate: float = 1.0
@@ -30,7 +31,7 @@ class LoggingConfig:
 
 @dataclass
 class ResourceConfig:
-    service_name: str = "ai-platform-infra"
+    service_name: str = os.getenv("AIPLAT_SERVICE_NAME", "")
     service_version: str = "1.0.0"
     deployment_environment: str = "development"
 

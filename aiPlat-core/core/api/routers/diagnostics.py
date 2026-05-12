@@ -318,7 +318,7 @@ async def diagnostics_context_metrics_summary(window_hours: int = 24, top_n: int
 @router.get("/diagnostics/exec/backends")
 async def diagnostics_exec_backends():
     """Exec backend diagnostics."""
-    from core.apps.exec_drivers.registry import get_exec_backend, healthcheck_backends
+    from core.api.core_facade import get_exec_backend
 
     backend = await get_exec_backend()
     health = await healthcheck_backends()

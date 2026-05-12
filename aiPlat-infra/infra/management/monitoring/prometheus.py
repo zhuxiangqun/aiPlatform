@@ -4,6 +4,8 @@ Prometheus Metrics Exporter for Management Module
 Provides metrics export capability for Prometheus monitoring.
 """
 
+import os
+
 from typing import Dict, List, Optional
 from datetime import datetime
 import time
@@ -70,7 +72,7 @@ class PrometheusCollector:
     Collects and formats metrics from management modules for Prometheus scraping.
     """
     
-    def __init__(self, namespace: str = "aiplat"):
+    def __init__(self, namespace: str = os.getenv("AIPLAT_METRICS_NAMESPACE", "")):
         """
         Initialize collector.
         
@@ -171,7 +173,7 @@ class ManagementMetricsExporter:
     Provides Prometheus-compatible metric export from management modules.
     """
     
-    def __init__(self, namespace: str = "aiplat_infra"):
+    def __init__(self, namespace: str = os.getenv("AIPLAT_PROM_EXPORTER_NAMESPACE", "")):
         """
         Initialize exporter.
         

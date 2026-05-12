@@ -37,11 +37,6 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api/, ''),
         timeout: 600000,
       },
-      '/api/app': {
-        target: 'http://localhost:8004',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-      },
     },
   },
 })

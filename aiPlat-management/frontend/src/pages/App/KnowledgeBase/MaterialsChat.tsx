@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Card, CardContent, CardHeader, Textarea, toast } from '../../../components/ui';
-import { kbApi, KBConversation } from '../../../services/kbApi';
+import { kbApi } from '../../../services'
+import type { KBConversation } from '../../../services';
 import { runApi } from '../../../services';
 
 const _fmtMs = (ms: any) => {

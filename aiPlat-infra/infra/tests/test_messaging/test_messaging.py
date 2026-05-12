@@ -16,11 +16,11 @@ class TestMessagingSchemas:
         assert config.backend == "kafka"
         assert config.hosts == ["localhost"]
         assert config.topic_prefix == ""
-        assert config.client_id == "aiplat"
+        assert config.client_id == ""
 
     def test_kafka_options_defaults(self):
         options = KafkaOptions()
-        assert options.consumer_group == "aiplat-consumer"
+        assert options.consumer_group == ""
         assert options.auto_offset_reset == "latest"
         assert options.enable_auto_commit is True
 

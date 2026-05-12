@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CheckCircle, ArrowLeft, Play, Clock, BarChart3, Eye, Pencil, X } from 'lucide-react';
+import { CheckCircle, ArrowLeft, Play, Clock, BarChart3, Eye, Pencil, X, Rocket, TestTube, Check, Loader2 } from 'lucide-react';
 import { projectApi, type ProjectItem, type ProjectRun, type BuilderSession } from '../../../services';
 import { BuilderPipeline } from '../../../components/Builder/BuilderPipeline';
 import { ChatWidget } from '../../../components/ui/ChatWidget';
@@ -12,6 +12,7 @@ const ProjectDetailPage: React.FC = () => {
   const nav = useNavigate();
   const [project, setProject] = useState<ProjectItem | null>(null);
   const [phase, setPhase] = useState('idle');
+  const [stepCount, setStepCount] = useState(0);
   const [starting, setStarting] = useState(false);
   const [pipelineLoading, setPipelineLoading] = useState(false);
   const [prdReady, setPrdReady] = useState(false);
@@ -21,6 +22,12 @@ const ProjectDetailPage: React.FC = () => {
   const [showPrdDetail, setShowPrdDetail] = useState(false);
   const [editingPrd, setEditingPrd] = useState(false);
   const [chatKey, setChatKey] = useState(0);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<Record<string, unknown> | null>(null);
+  const [deploying, setDeploying] = useState(false);
+  const [deployResult, setDeployResult] = useState<Record<string, unknown> | null>(null);
+  const [recommending, setRecommending] = useState(false);
+  const [recommendedTeam, setRecommendedTeam] = useState<Record<string, unknown> | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -58,21 +65,22 @@ const ProjectDetailPage: React.FC = () => {
   // Poll pipeline state when executing (backend runs async)
   const pollRef = useRef<ReturnType<typeof setInterval>>();
   useEffect(() => {
-    if (phase !== 'executing' || !id) return;
+    if ((phase !== 'executing' && phase !== 'paused' && !phase.includes('approval')) || !id) return;
     pollRef.current = setInterval(async () => {
       try {
         const st = await projectApi.getState(id);
         const s = (st.state || {}) as Record<string, unknown>;
         if (s.phase) setPhase(s.phase as string);
-        setSession((prev) => prev ? {
-          ...prev,
-          ...(s as Record<string, unknown>),  // merge all artifact keys
-          iteration: (s.iteration || prev.iteration) as number,
-          error: (s.error || prev.error) as string,
-        } as BuilderSession : prev);
+        if (s.step_count != null) setStepCount(s.step_count as number);
+        else if (s.iteration != null) setStepCount(s.iteration as number);
+        // force re-render: always new object ref
+        setSession({ session_id: id as string, phase: (s.phase as string) || phase,
+          requirement: '', iteration: (s.iteration as number) || 0,
+          error: (s.error as string) || '', prd: null, messages: [],
+          ...(s as Record<string, unknown>) } as BuilderSession);
         if (st.runs) setRunHistory(st.runs);
         const p = s.phase as string || '';
-        if (p === 'done' || p === 'failed' || p.includes('awaiting')) {
+        if (p === 'done' || p === 'failed') {
           if (pollRef.current) clearInterval(pollRef.current);
         }
       } catch { /* retry next tick */ }
@@ -115,6 +123,21 @@ const ProjectDetailPage: React.FC = () => {
     }
   }, [id, confirmedPrd]);
 
+  const handleRecommendTeam = useCallback(async () => {
+    if (!id) return;
+    setRecommending(true);
+    try {
+      const resp = await projectApi.recommendTeam(id);
+      setRecommendedTeam(resp.recommendation);
+      if (resp.recommendation?.parse_error) {
+        toast.error('AI推荐解析失败，请查看原始回复');
+      } else {
+        toast.success('AI已生成团队推荐');
+      }
+    } catch { toast.error('推荐请求失败'); }
+    finally { setRecommending(false); }
+  }, [id]);
+
   const refreshState = async () => {
     if (!id) return;
     try {
@@ -133,29 +156,22 @@ const ProjectDetailPage: React.FC = () => {
     } catch { /* ignore */ }
   };
 
-  const approve = useCallback(async () => {
-    if (!id) return;
+  const approve = useCallback(() => {
+    if (!id) { toast.error('项目ID未加载'); return; }
     setPipelineLoading(true);
-    try {
-      await projectApi.approve(id);
-      await refreshState();
-    } catch { toast.error('操作失败'); }
-    finally { setPipelineLoading(false); }
+    projectApi.approve(id)
+      .then(() => { toast.success('已提交，等待执行…'); setPipelineLoading(false); })
+      .catch((e) => { toast.error('操作失败: ' + (e?.message || 'unknown')); setPipelineLoading(false); });
   }, [id]);
 
-  const rollbackStage = useCallback(async (stageId: string) => {
+  const rollbackStage = useCallback((stageId: string) => {
     if (!id) return;
-    setPipelineLoading(true);
-    try {
-      await projectApi.rollback(id, stageId);
-      if (stageId === 'prd') {
-        setPhase('dialogue');
-        setSession(null);
-        return;
-      }
-      await refreshState();
-    } catch { toast.error('回退失败'); }
-    finally { setPipelineLoading(false); }
+    projectApi.rollback(id, stageId).catch(() => toast.error('回退失败'));
+    if (stageId === 'prd') {
+      setPhase('dialogue');
+      setSession(null);
+      return;
+    }
   }, [id]);
 
   const startFix = useCallback(async () => {
@@ -168,35 +184,86 @@ const ProjectDetailPage: React.FC = () => {
     finally { setPipelineLoading(false); }
   }, [id]);
 
+  const handleTest = useCallback(async () => {
+    if (!id) return;
+    setTesting(true);
+    setPhase('testing');
+    try {
+      const result = await projectApi.test(id);
+      setTestResult(result as Record<string, unknown>);
+      if ((result as Record<string, unknown>).all_passed) toast.success('所有测试通过！');
+      else toast.error('部分测试未通过');
+    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : '测试失败'); }
+    finally { setTesting(false); }
+  }, [id]);
+
+  const handleDeploy = useCallback(async () => {
+    if (!id) return;
+    setDeploying(true);
+    setPhase('deploying');
+    try {
+      const result = await projectApi.deployToApp(id);
+      setDeployResult(result as Record<string, unknown>);
+      toast.success('部署成功！');
+    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : '部署失败'); }
+    finally { setDeploying(false); }
+  }, [id]);
+
   const [showReject, setShowReject] = useState(false);
   const [rejectFeedback, setRejectFeedback] = useState('');
-  const rejectHITL = useCallback(async () => {
+  const rejectHITL = useCallback(() => {
     if (!id || !rejectFeedback.trim()) return;
-    try {
-      await projectApi.reject(id, rejectFeedback.trim());
-      setShowReject(false);
-      setRejectFeedback('');
-      await refreshState();
-    } catch { toast.error('驳回失败'); }
+    projectApi.reject(id, rejectFeedback.trim()).catch(() => toast.error('驳回失败'));
+    setShowReject(false);
+    setRejectFeedback('');
   }, [id, rejectFeedback]);
 
   const stories = (confirmedPrd?.user_stories as Array<Record<string, unknown>>) || [];
   const constraints = (confirmedPrd?.constraints as string[]) || [];
 
   const teamLabel = project?.team_stages
-    ? project.team_stages.slice(0, 4).map(s => s.agent_name).join(' → ') +
-      (project.team_stages.length > 4 ? ` +${project.team_stages.length - 4}` : '')
+    ? project.team_stages.map(s => s.agent_name).join(' → ')
     : '';
+
+  const stages = project?.team_stages || [];
+  const totalStages = stages.length || 1;
+  const currentIdx = Math.max(0, Math.min(((session as Record<string, unknown>)?.['_current_stage_idx'] as number) ?? 0, totalStages - 1));
+  const maxSteps = 10;
+  const stageProgress = Math.min(100, Math.round((stepCount / maxSteps) * 100));
+  const segWidth = Math.round(100 / totalStages);
+  const fillWidth = currentIdx * segWidth + Math.round(stageProgress / 100 * segWidth);
+  const progressPct = Math.min(100, fillWidth);
+  const stepIdx = currentIdx;  // for backward compat in rendering
 
   if (phase === 'idle' || phase === 'dialogue') {
     return (
       <>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 space-y-4">
+        {/* ── Phase progress bar ── */}
+        <div className="flex items-center gap-1 bg-dark-card border border-dark-border rounded-lg p-2">
+          {stages.map((s, i) => (
+            <React.Fragment key={s.id || i}>
+              <span className={`flex-1 text-center text-[11px] px-1 py-1 rounded transition-colors ${
+                i < stepIdx ? 'bg-green-500/20 text-green-300' :
+                i === stepIdx ? 'bg-primary/20 text-primary font-semibold' :
+                'text-gray-600'
+              }`}>
+                {i < stepIdx ? '✓ ' : ''}{s.agent_name || s.id || `阶段${i+1}`}
+              </span>
+              {i < stages.length - 1 && <span className="text-gray-700 text-[10px]">→</span>}
+            </React.Fragment>
+          ))}
+        </div>
+        {/* ── Progress percentage ── */}
+        <div className="h-1.5 bg-dark-hover rounded-full overflow-hidden">
+          <div className="h-full bg-primary rounded-full transition-all duration-700" style={{ width: `${progressPct}%` }} />
+        </div>
+        <div className="text-[10px] text-gray-500 text-right">{progressPct}% ({currentIdx + 1}/{totalStages} 阶段{stepCount > 0 ? ` · 步 ${stepCount}/${maxSteps}` : ''})</div>
         <div className="flex items-center gap-3">
           <Button variant="ghost" onClick={() => nav('/app/projects')}><ArrowLeft className="w-4 h-4" /></Button>
-          <div><h1 className="text-lg font-bold text-gray-100">{project?.name || '项目'}</h1>
-          {teamLabel && <p className="text-[11px] text-gray-500 mt-0.5">团队：{teamLabel} ({project?.team_stages?.length || 0} 角色)</p>}
-          <p className="text-xs text-gray-500">{project?.description}</p></div>
+          <div><h1 className="text-lg font-bold text-gray-100 truncate max-w-lg">{project?.name || '项目'}</h1>
+          {teamLabel && <p className="text-[11px] text-gray-500 mt-0.5">团队：{teamLabel}</p>}
+          {project?.description && <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-1 max-w-md">{project?.description}</p>}</div>
         </div>
 
         {/* PRD summary card — shown when confirmed PRD exists */}
@@ -275,9 +342,26 @@ const ProjectDetailPage: React.FC = () => {
         </div>
 
         {prdReady && !editingPrd && (
-          <div className="p-4 rounded-lg border border-green-500/30 bg-green-500/5">
-            <div className="text-xs text-gray-400 mb-3">确认需求后启动流水线</div>
-            <Button variant="primary" onClick={confirmAndStart} loading={starting} icon={<Play className="w-4 h-4" />}>确认需求，开始构建</Button>
+          <div className="p-4 rounded-lg border border-green-500/30 bg-green-500/5 space-y-3">
+            <div className="text-xs text-gray-400">确认需求后启动流水线</div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="primary" onClick={confirmAndStart} loading={starting} icon={<Play className="w-4 h-4" />}>确认需求，开始构建</Button>
+              <Button variant="secondary" onClick={handleRecommendTeam} loading={recommending} icon={<Rocket className="w-4 h-4" />}>AI 推荐团队</Button>
+            </div>
+            {recommendedTeam && !recommendedTeam.parse_error && (
+              <div className="mt-3 p-3 rounded bg-dark-hover/20 border border-blue-500/30 text-xs">
+                {recommendedTeam.reasoning && <p className="text-blue-300 mb-2">{(recommendedTeam.reasoning as string)?.slice(0, 200)}</p>}
+                <p className="text-gray-400">推荐 {(recommendedTeam.stages as Array<Record<string, unknown>>)?.length || 0} 个阶段：</p>
+                <ul className="mt-1 space-y-0.5">
+                  {(recommendedTeam.stages as Array<Record<string, unknown>>)?.map((s: Record<string, unknown>, i: number) => (
+                    <li key={i} className="text-gray-300">
+                      <span className="text-gray-500">{String(s.order)}.</span> {String(s.agent_name || s.agent_id)} {s.hitl ? '🔒' : ''}
+                      <span className="text-gray-500 ml-1">{s.phase ? `· ${s.phase}` : ''}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         )}
       </motion.div>
@@ -289,9 +373,29 @@ const ProjectDetailPage: React.FC = () => {
   return (
     <>
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 space-y-4">
+      {/* ── Phase progress bar ── */}
+      <div className="flex items-center gap-1 bg-dark-card border border-dark-border rounded-lg p-2">
+        {stages.map((s, i) => (
+          <React.Fragment key={s.id || i}>
+            <span className={`flex-1 text-center text-[11px] px-1 py-1 rounded transition-colors ${
+              i < stepIdx ? 'bg-green-500/20 text-green-300' :
+              i === stepIdx ? 'bg-primary/20 text-primary font-semibold' :
+              'text-gray-600'
+            }`}>
+              {i < stepIdx ? '✓ ' : ''}{s.agent_name || s.id || `阶段${i+1}`}
+            </span>
+            {i < stages.length - 1 && <span className="text-gray-700 text-[10px]">→</span>}
+          </React.Fragment>
+        ))}
+      </div>
+      {/* ── Progress percentage ── */}
+      <div className="h-1.5 bg-dark-hover rounded-full overflow-hidden">
+        <div className="h-full bg-primary rounded-full transition-all duration-700" style={{ width: `${progressPct}%` }} />
+      </div>
+      <div className="text-[10px] text-gray-500 text-right">{progressPct}% ({currentIdx + 1}/{totalStages} 阶段{stepCount > 0 ? ` · 步 ${stepCount}/${maxSteps}` : ''})</div>
       <div className="flex items-center gap-3">
         <Button variant="ghost" onClick={() => nav('/app/projects')}><ArrowLeft className="w-4 h-4" /></Button>
-        <div><h1 className="text-lg font-bold text-gray-100">{project?.name || '项目'}</h1>
+        <div><h1 className="text-lg font-bold text-gray-100 truncate max-w-lg">{project?.name || '项目'}</h1>
         {teamLabel && <p className="text-[11px] text-gray-500 mt-0.5">团队：{teamLabel}</p>}</div>
       </div>
       <Card>
@@ -342,6 +446,61 @@ const ProjectDetailPage: React.FC = () => {
           />
         )}</CardContent>
       </Card>
+
+      {/* ── Test & Deploy panel ── */}
+      {session?.phase === 'done' && (
+        <div className="space-y-3">
+          {/* Test section */}
+          <div className="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-yellow-300 flex items-center gap-2">
+                  <TestTube className="w-4 h-4" />运行测试
+                </h3>
+                <p className="text-xs text-gray-400 mt-1">执行 E2E Smoke 测试和仓库测试</p>
+              </div>
+              <Button variant="secondary" onClick={handleTest} loading={testing} icon={<TestTube className="w-4 h-4" />}>
+                运行测试
+              </Button>
+            </div>
+            {testResult && (
+              <div className={`mt-3 p-3 rounded text-xs ${(testResult.all_passed as boolean) ? 'bg-green-500/10 text-green-300' : 'bg-red-500/10 text-red-300'}`}>
+                <p className="font-semibold mb-2">{(testResult.all_passed as boolean) ? '✓ 所有测试通过' : '✗ 部分测试未通过'}</p>
+                <details className="mt-1">
+                  <summary className="cursor-pointer text-gray-400">详细结果</summary>
+                  <pre className="mt-2 text-[11px] whitespace-pre-wrap font-mono">{JSON.stringify({ e2e: testResult.e2e_smoke, repo: testResult.repo_tests }, null, 2)}</pre>
+                </details>
+              </div>
+            )}
+          </div>
+
+          {/* Deploy section */}
+          <div className="p-4 rounded-lg border border-green-500/30 bg-green-500/5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-green-300 flex items-center gap-2">
+                  <Rocket className="w-4 h-4" />部署到 App
+                </h3>
+                <p className="text-xs text-gray-400 mt-1">一键部署到 aiPlat-app 应用层</p>
+              </div>
+              <Button variant="primary" onClick={handleDeploy} loading={deploying} icon={<Rocket className="w-4 h-4" />}>
+                部署
+              </Button>
+            </div>
+            {deployResult && (
+              <div className="mt-3 p-3 rounded text-xs bg-green-500/10 text-green-300">
+                <p className="font-semibold">✓ 部署成功</p>
+                <p className="mt-1">部署目录: {(deployResult.deploy_dir as string) || '-'}</p>
+                <p className="mt-1">
+                  App URL: <a href={(deployResult.app_url as string) || '#'} target="_blank" rel="noreferrer" className="text-primary underline">
+                    {String(deployResult.app_url || '-')}
+                  </a>
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </motion.div>
     <PrdDetailModal open={showPrdDetail} prd={confirmedPrd} onClose={() => setShowPrdDetail(false)} onEdit={startEditing} />
     </>

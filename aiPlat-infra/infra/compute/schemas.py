@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
+import os
 
 
 @dataclass
@@ -44,7 +45,7 @@ class TaskStatus:
 
 @dataclass
 class KubernetesConfig:
-    group: str = "ai-platform.io"
+    group: str = os.getenv("AIPLAT_K8S_CRD_GROUP", "")
     version: str = "v1"
     plural: str = "resources"
     namespace: str = "default"

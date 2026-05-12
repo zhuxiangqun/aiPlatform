@@ -8,6 +8,7 @@ from typing import Dict, Any, List, Optional
 from ..base import ManagementBase, Status, HealthStatus, Metrics, DiagnosisResult
 from ..schemas import ServiceInfo, ImageInfo
 from datetime import datetime
+import os
 import time
 
 
@@ -18,13 +19,24 @@ def get_real_processes() -> List[Dict[str, Any]]:
     try:
         import psutil
         
-        target_processes = [
-            {"name": "aiPlat-infra", "cmdline": "infra.management.api.run_server", "port": 8001, "type": "Infrastructure"},
-            {"name": "aiPlat-management", "cmdline": "uvicorn management.server", "port": 8000, "type": "Management"},
-            {"name": "frontend", "cmdline": "vite", "port": 5173, "type": "Frontend"},
-            {"name": "python", "cmdline": "python", "port": None, "type": "Python"},
-            {"name": "node", "cmdline": "node", "port": None, "type": "Node.js"},
-        ]
+        # Read target processes from AIPLAT_TARGET_PROCESSES env var.
+        # Format: "name:cmdline:port,name:cmdline:port,..."
+        raw = os.getenv("AIPLAT_TARGET_PROCESSES", "")
+        target_processes = []
+        if raw:
+            for entry in raw.split(","):
+                entry = entry.strip()
+                if not entry:
+                    continue
+                parts = entry.split(":")
+                if len(parts) >= 2:
+                    proc = {
+                        "name": parts[0].strip(),
+                        "cmdline": parts[1].strip(),
+                        "port": int(parts[2]) if len(parts) > 2 and parts[2].strip().isdigit() else None,
+                        "type": "Service",
+                    }
+                    target_processes.append(proc)
         
         for proc in psutil.process_iter(['pid', 'name', 'cmdline', 'memory_info', 'cpu_percent']):
             try:
@@ -89,7 +101,7 @@ class ServiceManager(ManagementBase):
                 replicas=1,
                 ready_replicas=1 if proc['status'] == 'Running' else 0,
                 gpu_count=0,
-                gpu_type="CPU",
+                gpu_type="",
                 status=proc['status'],
                 pods=[{
                     "name": f"{proc['name']}-{proc['pid']}",

@@ -139,10 +139,8 @@ class MultiAgent(ConfigurableAgent):
     async def execute(self, context: AgentContext) -> AgentResult:
         """Execute multi-agent coordination using Harness patterns.
 
-        Note (§5.22 To-Be): Uses coordination patterns (Pipeline/FanOut/ExpertPool)
-        with direct agent.execute() calls. Should be refactored to use the shared
-        ReAct loop + AgentMessageBus (harness/interfaces/messaging.py) for
-        inter-agent communication instead of direct method calls.
+        Uses coordination patterns (Pipeline/FanOut/ExpertPool) with
+        AgentMessageBus for inter-agent communication (TASK_ASSIGN/RESULT/ERROR).
         """
         self._status = AgentStatus.RUNNING
         
@@ -195,8 +193,8 @@ class MultiAgent(ConfigurableAgent):
                             ))
                         return result
                 
-                from core.harness.interfaces.messaging import AgentMessageBus
-                msg_bus = AgentMessageBus()
+                from core.harness.interfaces.messaging import get_message_bus
+                msg_bus = get_message_bus()
                 adapters = [_PatternAgentAdapter(a, context, msg_bus) for a in self._sub_agents]
                 
                 coord_ctx = CoordinationContext(
@@ -228,15 +226,43 @@ class MultiAgent(ConfigurableAgent):
                     }
                 )
             
-            # Fallback: use built-in execution if no pattern
-            if self._multi_config.coordination_pattern == "parallel":
-                result = await self._execute_parallel(context)
-            elif self._multi_config.coordination_pattern in ("sequential", "pipeline"):
-                result = await self._execute_sequential(context)
-            elif self._multi_config.coordination_pattern in ("hierarchical", "supervisor"):
-                result = await self._execute_hierarchical(context)
+            # Always use Coordination Patterns for execution.
+            # If no pattern was created, create one now from the coordination config.
+            if not self._pattern:
+                from core.harness.coordination.patterns import create_pattern
+                pattern_map = {
+                    "parallel": "fanout",
+                    "sequential": "pipeline",
+                    "pipeline": "pipeline",
+                    "hierarchical": "supervisor",
+                    "supervisor": "supervisor",
+                    "coordinated": "fanout",
+                }
+                pattern_type = pattern_map.get(
+                    self._multi_config.coordination_pattern, "fanout"
+                )
+                self._pattern = create_pattern(pattern_type)
+
+            if self._multi_config.coordination_pattern == "coordinated":
+                result = await self._execute_coordinated(context)
             else:
-                result = await self._execute_parallel(context)
+                from core.harness.coordination.patterns import CoordinationContext as PatContext, CoordinationResult as PatResult
+                pat_context = PatContext(
+                    task=context.messages[-1].get("content", "") if context.messages else "",
+                    agents=[self._create_adapter(a, context)[0] for a in self._sub_agents],
+                    state=context.variables,
+                    metadata={"coordination_pattern": self._multi_config.coordination_pattern},
+                )
+                result = await self._pattern.coordinate(pat_context)
+                if isinstance(result, PatResult):
+                    result = AgentResult(
+                        success=result.success,
+                        output="\n".join(str(o) for o in (result.outputs or [])),
+                        error="\n".join(result.errors) if result.errors else None,
+                        metadata=result.metadata,
+                    )
+                else:
+                    result = AgentResult(success=True, output=str(result))
             
             return result
             
@@ -250,8 +276,8 @@ class MultiAgent(ConfigurableAgent):
 
     def _create_adapter(self, agent: BaseAgent, context: AgentContext, msg_bus: Any = None):
         """Create a PatternAgentAdapter with optional message bus for observability."""
-        from core.harness.interfaces.messaging import AgentMessageBus
-        bus = msg_bus or AgentMessageBus()
+        from core.harness.interfaces.messaging import get_message_bus
+        bus = msg_bus or get_message_bus()
 
         class _Adapter:
             def __init__(self, a, ctx, b):
@@ -291,83 +317,26 @@ class MultiAgent(ConfigurableAgent):
 
         return _Adapter(agent, context, bus), bus
 
-    async def _execute_parallel(self, context: AgentContext) -> AgentResult:
-        """Parallel execution with message bus observability."""
-        import asyncio
-        from core.harness.interfaces.messaging import AgentMessageBus
-        msg_bus = AgentMessageBus()
-        tasks = [self._create_adapter(a, context, msg_bus)[0].execute(context.messages[-1].get("content", "") if context.messages else "") for a in self._sub_agents]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        successful = [r for r in results if isinstance(r, AgentResult) and r.success]
-        
-        combined_output = "\n\n".join([
-            f"Agent {i+1}: {r.output if hasattr(r, 'output') else str(r)}"
-            for i, r in enumerate(results)
-        ])
-        
-        return AgentResult(
-            success=len(successful) > 0,
-            output=combined_output,
-            metadata={"total_agents": len(self._sub_agents), "successful": len(successful), "pattern": "parallel", "messages": [m.to_dict() for m in msg_bus._sent]}
-        )
-
-    async def _execute_sequential(self, context: AgentContext) -> AgentResult:
-        """Sequential execution with message bus observability."""
-        from core.harness.interfaces.messaging import AgentMessageBus
-        msg_bus = AgentMessageBus()
-        results = []
-        for agent in self._sub_agents:
-            if results:
-                prev_summary = MultiAgent.summarize_subagent_result(results[-1])
-                context.variables["previous_results"] = prev_summary
-            adapter, _ = self._create_adapter(agent, context, msg_bus)
+    async def _execute_coordinated(self, context: AgentContext) -> AgentResult:
+        """Delegate to SubagentCoordinator (P1-3 wiring)."""
+        try:
+            from core.apps.agents.subagent.coordinator import get_subagent_coordinator
+            coordinator = get_subagent_coordinator()
             task = context.messages[-1].get("content", "") if context.messages else ""
-            result = await adapter.execute(task)
-            results.append(result)
-            if not result.success:
-                break
-        
-        combined_output = "\n".join([
-            f"Step {i+1}: {r.output if hasattr(r, 'output') else str(r)}"
-            for i, r in enumerate(results)
-        ])
-        
-        return AgentResult(
-            success=all(r.success for r in results),
-            output=combined_output,
-            metadata={"total_steps": len(results), "pattern": "sequential", "messages": [m.to_dict() for m in msg_bus._sent]}
-        )
-
-    async def _execute_hierarchical(self, context: AgentContext) -> AgentResult:
-        """Hierarchical execution with message bus observability."""
-        import asyncio
-        from core.harness.interfaces.messaging import AgentMessageBus
-
-        if not self._sub_agents:
-            return AgentResult(success=False, error="No sub-agents")
-
-        msg_bus = AgentMessageBus()
-        coordinator, workers = self._sub_agents[0], self._sub_agents[1:]
-        task = context.messages[-1].get("content", "") if context.messages else ""
-
-        coord_adapter, _ = self._create_adapter(coordinator, context, msg_bus)
-        coord_result = await coord_adapter.execute(task)
-        if not coord_result.success:
-            return coord_result
-
-        worker_tasks = [self._create_adapter(w, context, msg_bus)[0].execute(str(coord_result.output)) for w in workers]
-        worker_results = await asyncio.gather(*worker_tasks, return_exceptions=True)
-        
-        final_result = "\n".join([
-            f"Worker {i+1}: {r.output if hasattr(r, 'output') else str(r)}"
-            for i, r in enumerate(worker_results)
-        ])
-        
-        return AgentResult(
-            success=True,
-            output=final_result,
-            metadata={"coordinator": getattr(coordinator, '_name', 'coordinator'), "workers": len(workers), "pattern": "hierarchical", "messages": [m.to_dict() for m in msg_bus._sent]}
-        )
+            if not task:
+                task = context.variables.get("task", "")
+            subagent_names = [getattr(a, '_name', '') or getattr(getattr(a, '_config', None), 'name', '') or '' for a in self._sub_agents if a]
+            result = await coordinator.execute_coordinated(
+                task=task,
+                subagent_names=subagent_names,
+                context=context.variables.get("previous_results", []) if hasattr(context, 'variables') else None,
+            )
+            return AgentResult(
+                success=True, output=result,
+                metadata={"pattern": "coordinated", "coordinator": "SubagentCoordinator"})
+        except Exception:
+            return AgentResult(success=False, output="", error="SubagentCoordinator unavailable",
+                metadata={"pattern": "coordinated", "error": "SubagentCoordinator not reachable"})
 
     def add_sub_agent(self, agent: BaseAgent) -> None:
         """Add a sub-agent"""

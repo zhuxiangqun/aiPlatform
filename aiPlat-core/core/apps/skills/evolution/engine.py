@@ -120,8 +120,8 @@ class EvolutionEngine:
 
             # Auto-enable new version in SkillRegistry so the evolved skill is used immediately
             try:
-                from core.apps.skills.registry import SkillRegistry
-                registry = SkillRegistry()
+                from core.apps.skills import get_skill_registry
+                registry = get_skill_registry()
                 registry.enable(skill_id, str(new_version.version))
                 registry.set_active_version(skill_id, str(new_version.version))
                 logger.info(f"Auto-enabled {skill_id} v{new_version.version} in SkillRegistry")

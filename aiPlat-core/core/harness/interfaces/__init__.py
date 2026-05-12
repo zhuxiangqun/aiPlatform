@@ -36,7 +36,6 @@ from .loop import (
 )
 
 from .coordinator import (
-    ICoordinator,
     CoordinationResult,
     CoordinationConfig,
 )
@@ -69,7 +68,6 @@ __all__ = [
     "LoopResult",
     
     # Coordinator
-    "ICoordinator",
     "CoordinationResult",
     "CoordinationConfig",
 ]

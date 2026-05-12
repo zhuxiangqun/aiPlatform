@@ -14,7 +14,7 @@ from core.api.deps import actor_from_http, rbac_guard
 from core.api.utils.governance import governance_links
 from core.api.utils.run_contract import wrap_execution_result_as_run_summary
 from core.api.utils.skills_meta import load_skill_spec_v2_schema, permission_catalog, req_tenant_channel, schema_version, skill_governance_preview
-from core.apps.skills import get_skill_registry
+from core.api.core_facade import get_skill_registry
 from core.harness.integration import get_harness, KernelRuntime
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.harness.kernel.types import ExecutionRequest

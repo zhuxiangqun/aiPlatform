@@ -14,6 +14,7 @@ from core.harness.kernel.runtime import get_kernel_runtime
 from core.harness.kernel.types import ExecutionRequest
 from core.schemas_eval import AutoEvalRequest, EvidenceDiffRequest
 from core.schemas_run import RunStatus
+from core.harness.utils.llm_env import get_llm_api_key, get_llm_base_url
 
 router = APIRouter()
 
@@ -2516,10 +2517,10 @@ async def auto_run_evaluation(run_id: str, request: AutoEvalRequest, http_reques
     model = str(os.getenv("AIPLAT_AUTO_EVAL_LLM_MODEL") or os.getenv("LLM_MODEL") or "mock").strip()
     api_key = None
     if provider == "openai":
-        api_key = os.getenv("OPENAI_API_KEY")
+        api_key = get_llm_api_key("openai")
     elif provider == "anthropic":
-        api_key = os.getenv("ANTHROPIC_API_KEY")
-    base_url = os.getenv("OPENAI_BASE_URL") if provider == "openai" else None
+        api_key = get_llm_api_key("anthropic")
+    base_url = get_llm_base_url(provider)
     try:
         from core.adapters.llm.base import create_adapter as _mk
 
@@ -2554,7 +2555,7 @@ async def auto_run_evaluation(run_id: str, request: AutoEvalRequest, http_reques
         attempts = 1 + max_retries
 
         async def _collect_browser_evidence_once() -> Dict[str, Any]:
-            from core.apps.tools.base import get_tool_registry
+            from core.api.core_facade import get_tool_registry
             from core.harness.syscalls.tool import sys_tool_call
 
             reg = get_tool_registry()
@@ -2868,16 +2869,18 @@ async def auto_run_evaluation(run_id: str, request: AutoEvalRequest, http_reques
 
     msgs = build_auto_eval_prompt(run=run, events=events, extra=extra, browser_evidence=browser_evidence)
     try:
-        resp = await llm.generate(msgs)
+        from core.harness.syscalls.llm import sys_llm_generate
+        resp = await sys_llm_generate(llm, msgs)
         text = getattr(resp, "content", "") or ""
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"auto_eval_failed:{e}")
 
     report, why = parse_json_report(text)
     if report is None:
+        from core.harness.evaluation.dimensions import build_default_score_schema
         report = {
             "pass": False,
-            "score": {"functionality": 0, "product_depth": 0, "design_ux": 0, "code_architecture": 0, "overall": 0},
+            "score": build_default_score_schema(),
             "issues": [
                 {
                     "severity": "P0",

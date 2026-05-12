@@ -2,6 +2,7 @@
 Config Schemas - 配置数据模型定义
 """
 
+import os
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
@@ -34,7 +35,7 @@ class DatabaseConfig:
     type: str = "postgres"
     host: str = "localhost"
     port: int = 5432
-    name: str = "ai_platform"
+    name: str = os.getenv("AIPLAT_DB_NAME", "")
     user: str = "postgres"
     password: str = ""
     pool: PoolConfig = field(default_factory=PoolConfig)
@@ -46,9 +47,9 @@ class DatabaseConfig:
 class LLMConfig:
     """LLM配置"""
 
-    provider: str = "openai"
-    model: str = "gpt-4"
-    api_key_env: str = "OPENAI_API_KEY"
+    provider: str = ""
+    model: str = ""
+    api_key_env: str = ""
     timeout: int = 30
     max_retries: int = 3
     rate_limit: Optional[Dict[str, Any]] = None
@@ -81,7 +82,7 @@ class CacheConfig:
     db: int = 0
     default_ttl: int = 3600
     max_entries: int = 10000
-    key_prefix: str = "ai-platform:"
+    key_prefix: str = os.getenv("AIPLAT_CACHE_KEY_PREFIX", "")
     lazy_init: bool = True
 
 
@@ -103,7 +104,7 @@ class MonitoringConfig:
 
     enabled: bool = True
     port: int = 9090
-    prefix: str = "ai_platform_infra"
+    prefix: str = os.getenv("AIPLAT_METRICS_PREFIX", "")
     health_check_path: str = "/health"
     health_check_interval: int = 30
 

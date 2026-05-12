@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, AsyncIterator
 import os
 
 from .base import (
+from core.harness.utils.llm_env import get_llm_api_key, get_llm_base_url
     BaseLLMAdapter,
     LLMResponse,
     AdapterMetadata,
@@ -41,7 +42,7 @@ class OpenAIAdapter(BaseLLMAdapter, RetryableAdapterMixin):
         
         config = LLMConfig(
             model=model,
-            api_key=api_key or os.getenv("OPENAI_API_KEY"),
+            api_key=api_key or get_llm_api_key("openai"),
             base_url=base_url,
             **kwargs
         )

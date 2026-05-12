@@ -28,7 +28,7 @@ class ConfigLoader:
             os.path.join(base_dir, "..", "..", "..", "config", "infra", "default.yaml"),
             os.path.join(base_dir, "..", "..", "..", "config", "infra", "development.yaml"),
             os.path.join(base_dir, "..", "..", "..", "config", "infra", "production.yaml"),
-            "/etc/aiplat/infra.yaml",
+            os.getenv("AIPLAT_INFRA_CONFIG", ""),
         ]
         
         for path in search_paths:

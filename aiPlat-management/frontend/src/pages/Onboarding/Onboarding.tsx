@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { CheckCircle, AlertTriangle, RotateCw, Download } from 'lucide-react';
-import { onboardingApi, diagnosticsApi } from '../../services/apiClient';
+import { onboardingApi, diagnosticsApi } from '../../services';
 import { approvalsApi, policyApi } from '../../services';
 import { ActionableFixes } from '../../components/common/ActionableFixes';
 

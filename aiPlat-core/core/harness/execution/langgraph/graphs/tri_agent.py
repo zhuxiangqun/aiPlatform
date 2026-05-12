@@ -19,7 +19,6 @@ except ImportError:
     END = None
 
 from .react import ReActGraph, ReActGraphConfig
-from ..nodes import AgentState
 from ....assembly import PromptAssembler
 
 
@@ -176,7 +175,7 @@ class TriAgentGraph:
         prompt = f"Task: {state.task}\nAnalyze and create a detailed specification (spec.md)."
         messages = (
             PromptAssembler().assemble(prompt).messages
-            if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y")
+            if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "true").lower() in ("1", "true", "yes", "y")
             else [{"role": "user", "content": prompt}]
         )
         result = await self._planner.run({"messages": messages, "context": state.context})
@@ -194,7 +193,7 @@ class TriAgentGraph:
         prompt = f"Specification:\n{state.spec}\n\nImplement the code based on this spec."
         messages = (
             PromptAssembler().assemble(prompt).messages
-            if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y")
+            if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "true").lower() in ("1", "true", "yes", "y")
             else [{"role": "user", "content": prompt}]
         )
         result = await self._generator.run({"messages": messages, "context": state.context})
@@ -209,21 +208,29 @@ class TriAgentGraph:
         """Evaluator wrapper - validates results and creates feedback (feedback.md)"""
         metrics = self._extract_metrics_from_generated(state.generated)
         
-        eval_prompt = f"""Task: {state.task}
-Specification: {state.spec}
-Generated output: {state.generated}
+        import os
+        eval_template = os.getenv("AIPLAT_EVAL_TRIAGENT_TEMPLATE",
+            """Task: {task}
+Specification: {spec}
+Generated output: {generated}
 
 Evaluate the output against these criteria:
-1. Correctness: Test pass rate ≥ {self._get_threshold(EvaluationDimension.CORRECTNESS)*100}%
+1. Correctness: Test pass rate >= {correctness}%
 2. Performance: Response time, throughput meeting spec
 3. Maintainability: Code complexity and duplication within limits
 4. Security: No vulnerabilities or permission issues
 
-Respond with APPROVED if all criteria pass, or REJECTED: <reason> with specific feedback."""
+Respond with APPROVED if all criteria pass, or REJECTED: <reason> with specific feedback.""")
+        eval_prompt = eval_template.format(
+            task=state.task,
+            spec=state.spec,
+            generated=state.generated,
+            correctness=str(int(self._get_threshold(EvaluationDimension.CORRECTNESS) * 100)),
+        )
 
         messages = (
             PromptAssembler().assemble(eval_prompt).messages
-            if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y")
+            if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "true").lower() in ("1", "true", "yes", "y")
             else [{"role": "user", "content": eval_prompt}]
         )
         result = await self._evaluator.run({"messages": messages, "context": state.context})
@@ -328,7 +335,7 @@ Respond with APPROVED if all criteria pass, or REJECTED: <reason> with specific 
             plan_prompt = f"Task: {task}\nAnalyze and create spec."
             plan_messages = (
                 PromptAssembler().assemble(plan_prompt).messages
-                if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y")
+                if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "true").lower() in ("1", "true", "yes", "y")
                 else [{"role": "user", "content": plan_prompt}]
             )
             plan_result = await self._planner.run({"messages": plan_messages})
@@ -338,7 +345,7 @@ Respond with APPROVED if all criteria pass, or REJECTED: <reason> with specific 
             gen_prompt = f"Spec: {state.spec}\nImplement."
             gen_messages = (
                 PromptAssembler().assemble(gen_prompt).messages
-                if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y")
+                if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "true").lower() in ("1", "true", "yes", "y")
                 else [{"role": "user", "content": gen_prompt}]
             )
             generator_result = await self._generator.run({"messages": gen_messages})
@@ -348,7 +355,7 @@ Respond with APPROVED if all criteria pass, or REJECTED: <reason> with specific 
             eval_prompt = f"Task: {task}\nResult: {generated_result}\nEvaluate. Respond APPROVED or REJECTED."
             eval_messages = (
                 PromptAssembler().assemble(eval_prompt).messages
-                if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y")
+                if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "true").lower() in ("1", "true", "yes", "y")
                 else [{"role": "user", "content": eval_prompt}]
             )
             evaluator_result = await self._evaluator.run({"messages": eval_messages})

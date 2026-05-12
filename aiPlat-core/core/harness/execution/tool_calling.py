@@ -31,9 +31,6 @@ class ParsedActionCall:
     format: str  # json | action
 
 
-_JSON_FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.IGNORECASE | re.DOTALL)
-
-
 def _try_load_json(s: str) -> Optional[Any]:
     s = s.strip()
     if not s:
@@ -45,62 +42,9 @@ def _try_load_json(s: str) -> Optional[Any]:
 
 
 def _extract_json_candidate(text: str) -> Optional[str]:
-    """
-    尝试从文本中提取一个 JSON 候选（优先 fenced code block，其次尝试从第一个 { 或 [ 开始）。
-    """
-    m = _JSON_FENCE_RE.search(text)
-    if m:
-        return m.group(1).strip()
-
-    def _slice_first_json(s: str) -> Optional[str]:
-        """
-        从 s 中（假设以 { 或 [ 开头）截取第一个“括号平衡”的 JSON 子串。
-        处理常见情况：JSON 后面还跟了解释文本，导致 json.loads 失败。
-        """
-        s = s.lstrip()
-        if not s or s[0] not in "{[":
-            return None
-        stack = []
-        in_str = False
-        esc = False
-        for i, ch in enumerate(s):
-            if in_str:
-                if esc:
-                    esc = False
-                    continue
-                if ch == "\\":
-                    esc = True
-                    continue
-                if ch == '"':
-                    in_str = False
-                continue
-
-            if ch == '"':
-                in_str = True
-                continue
-
-            if ch in "{[":
-                stack.append(ch)
-            elif ch in "}]":
-                if not stack:
-                    return None
-                left = stack.pop()
-                if (left == "{" and ch != "}") or (left == "[" and ch != "]"):
-                    return None
-                if not stack:
-                    return s[: i + 1].strip()
-        return None
-
-    # Heuristic: find first { or [ and take the first balanced JSON span
-    i_obj = text.find("{")
-    i_arr = text.find("[")
-    candidates = [i for i in [i_obj, i_arr] if i >= 0]
-    if not candidates:
-        return None
-    start = min(candidates)
-    sliced = _slice_first_json(text[start:])
-    return sliced or text[start:].strip()
-
+    """Delegates to canonical JSON extraction via CoreFacade."""
+    from core.api.core_facade import extract_json_safe
+    return extract_json_safe(text)
 
 def _normalize_tool_call(obj: Any, raw: str) -> Optional[ParsedToolCall]:
     """

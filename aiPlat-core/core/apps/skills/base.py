@@ -4,6 +4,7 @@ Skill Base Module
 Provides base Skill class implementing ISkill interface.
 """
 
+import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Dict, List
@@ -108,7 +109,7 @@ class TextGenerationSkill(BaseSkill):
         try:
             from ...harness.syscalls.llm import sys_llm_generate
 
-            response = await sys_llm_generate(self._model, [{"role": "user", "content": prompt}])
+            response = await sys_llm_generate(self._model, [{"role": "user", "content": prompt}], trace_context={"source": "skill_base"})
             
             return SkillResult(
                 success=True,
@@ -155,45 +156,66 @@ class CodeGenerationSkill(BaseSkill):
         self._model = model
 
     async def execute(self, context: SkillContext, params: Dict[str, Any]) -> SkillResult:
-        """Execute code generation"""
-        if not self._model:
-            return SkillResult(
-                success=False,
-                error="No model configured"
-            )
-        
-        requirements = params.get("requirements", "")
+        """Execute code generation using best-available LLM via ModelRouter."""
         language = params.get("language", "python")
-        framework = params.get("framework", "")
-        
-        prompt = f"""Generate {language} code for the following requirements:
+        requirements = params.get("requirements", "")
 
-{requirements}
+        # Auto-select model: try ModelRouter, fall back to env config
+        model = self._model
+        if model is None:
+            model = await self._resolve_code_gen_model()
+        if model is None:
+            return SkillResult(success=False, error="No model configured for code generation")
 
-{f'Use {framework} framework.' if framework else ''}
+        msgs = [
+            {"role": "system", "content": f"You are a {language} expert. Output ONLY complete runnable code. No explanations, no markdown, no JSON wrappers. Use ## FILE: filename.py format to indicate file paths."},
+            {"role": "user", "content": f"Generate {language} code for:\n{str(requirements)[:4000]}\nOutput ONLY code with ## FILE: path headers. Output DONE: prefix before code."},
+        ]
 
-Only output the code, no explanations.
-"""
-        
         try:
             from ...harness.syscalls.llm import sys_llm_generate
 
-            response = await sys_llm_generate(self._model, [{"role": "user", "content": prompt}])
-            
-            return SkillResult(
-                success=True,
-                output={
-                    "code": response.content,
-                    "language": language
-                },
-                metadata={"framework": framework}
-            )
-            
+            response = await sys_llm_generate(model, msgs)
+            code = getattr(response, "content", "") or str(response)
+
+            # If DONE: prefix found, extract code after it
+            if "DONE:" in str(code):
+                code = str(code).split("DONE:", 1)[-1].strip()
+            if not code or len(code.strip()) < 10:
+                short_msgs = [{"role": "user", "content": f"Write {language} code for: {str(requirements)[:2000]}. Output with DONE: prefix."}]
+                res = await sys_llm_generate(model, short_msgs, trace_context={"source": "code_gen_retry"})
+                code = getattr(res, "content", "") or str(res)
+                if "DONE:" in str(code):
+                    code = str(code).split("DONE:", 1)[-1].strip()
+
+            return SkillResult(success=True, output={"code": code, "language": language})
+
         except Exception as e:
-            return SkillResult(
-                success=False,
-                error=str(e)
-            )
+            return SkillResult(success=False, error=str(e))
+
+    @staticmethod
+    async def _resolve_code_gen_model() -> Any:
+        import os
+        try:
+            from core.harness.infrastructure.model_router import get_model_router
+            router = get_model_router()
+            entry = await router.select(task_purpose="code_generation", task_complexity="high")
+            if entry and entry.provider:
+                api_key = os.getenv(entry.api_key_env, "") if entry.api_key_env else entry.api_key
+                from core.adapters.llm import create_adapter
+                return create_adapter(
+                    provider=entry.provider,
+                    model=entry.name,
+                    api_key=api_key,
+                    base_url=entry.base_url or None,
+                )
+        except Exception:
+            pass
+        try:
+            from core.harness.utils.model_injection import create_selected_adapter
+            return create_selected_adapter(model_name=os.getenv("AIPLAT_CODE_GEN_MODEL", "gpt-4o"))
+        except Exception:
+            return None
 
 
 class DataAnalysisSkill(BaseSkill):
@@ -249,7 +271,7 @@ Provide insights and analysis.
         try:
             from ...harness.syscalls.llm import sys_llm_generate
 
-            response = await sys_llm_generate(self._model, [{"role": "user", "content": prompt}])
+            response = await sys_llm_generate(self._model, [{"role": "user", "content": prompt}], trace_context={"source": "skill_base"})
             
             return SkillResult(
                 success=True,
@@ -267,24 +289,24 @@ Provide insights and analysis.
             )
 
 
+_skill_factory_registry: Dict[str, type] = {}
+
+
+def register_skill_factory(skill_type: str, factory_class: type) -> None:
+    """Register a skill factory class for a given skill type name.
+
+    Called during seed_data() so create_skill() can resolve types
+    without hardcoded if/elif chains.
+    """
+    _skill_factory_registry[skill_type] = factory_class
+
+
 def create_skill(
     skill_type: str,
     **kwargs
 ) -> BaseSkill:
-    """
-    Factory function to create skill
-    
-    Args:
-        skill_type: Type of skill ("text_generation", "code_generation", "data_analysis")
-        
-    Returns:
-        BaseSkill: Skill instance
-    """
-    if skill_type == "text_generation":
-        return TextGenerationSkill()
-    elif skill_type == "code_generation":
-        return CodeGenerationSkill()
-    elif skill_type == "data_analysis":
-        return DataAnalysisSkill()
-    else:
-        raise ValueError(f"Unknown skill type: {skill_type}")
+    """Factory function to create skill. Uses registry lookup, not hardcoded if/elif."""
+    factory = _skill_factory_registry.get(skill_type)
+    if factory:
+        return factory()
+    raise ValueError(f"Unknown skill type: {skill_type}")

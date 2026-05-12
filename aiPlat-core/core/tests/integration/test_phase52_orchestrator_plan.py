@@ -95,6 +95,6 @@ async def test_phase52_orchestrator_plan_persisted(tmp_path, monkeypatch):
     meta = rec.get("metadata") or {}
     plan = meta.get("orchestrator_plan")
     assert isinstance(plan, dict)
-    assert plan.get("version") == "5.2"
+    assert plan.get("version") == "9.0"
     assert isinstance(plan.get("steps"), list) and len(plan["steps"]) >= 1
 

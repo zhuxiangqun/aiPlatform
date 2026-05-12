@@ -70,7 +70,7 @@ async def export_audit_logs_csv(
     if deny:
         return deny
 
-    from core.apps.ops import OpsExporter
+    from core.api.services import OpsExporter
 
     data, filename = await OpsExporter(execution_store=store).export_audit_logs_csv(tenant_id=tenant_id, limit=limit)
     return Response(content=data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename="{filename}"'})

@@ -8,6 +8,8 @@ from typing import List, Optional, Dict, Any
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from .embedding import EmbeddingProvider, get_embedding_provider
+
 
 @dataclass
 class MemoryItem:
@@ -51,27 +53,45 @@ class SemanticMemory:
         top_k: int = 3,
         threshold: float = 0.5
     ) -> List[MemoryItem]:
-        """Retrieve relevant memories"""
-        # In real implementation, this would use vector similarity
-        # For now, simple keyword matching
+        """Retrieve relevant memories using vector similarity (primary) or keyword match (fallback)."""
+        vector_items = [(item, item.embedding) for item in self._items.values() if item.embedding]
+
+        if vector_items:
+            try:
+                from core.harness.memory.embedding import get_embedding_provider
+                provider = get_embedding_provider()
+                query_vec = await provider.embed_single(query)
+                if query_vec:
+                    scored = []
+                    for item, emb in vector_items:
+                        sim = EmbeddingProvider.cosine_similarity(query_vec, emb)
+                        scored.append((item, sim))
+                    scored.sort(key=lambda x: -x[1])
+                    results = []
+                    for item, sim in scored[:top_k]:
+                        if sim >= threshold:
+                            item.accessed_at = datetime.utcnow()
+                            item.access_count += 1
+                            results.append(item)
+                    if results:
+                        return results
+            except Exception:
+                pass
+
+        # Fallback: keyword matching
         results = []
         query_lower = query.lower()
         query_words = set(query_lower.split())
-        
+
         for item in self._items.values():
-            # Simple relevance score
             content_words = set(item.content.lower().split())
             overlap = len(query_words & content_words)
-            
             if overlap > 0:
                 item.accessed_at = datetime.utcnow()
                 item.access_count += 1
                 results.append((item, overlap))
-        
-        # Sort by relevance
+
         results.sort(key=lambda x: x[1], reverse=True)
-        
-        # Return top K above threshold
         return [item for item, score in results[:top_k] if score >= threshold]
     
     async def get(self, key: str) -> Optional[MemoryItem]:

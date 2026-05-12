@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aiplat-platform"
+version = "0.1.0"
+description = "AI Platform Layer - REST API, Auth, Tenants, API Gateway"
+requires-python = ">=3.10"
+dependencies = [
+    "aiplat-core",
+    "fastapi>=0.100.0",
+    "uvicorn>=0.23.0",
+    "pydantic>=2.0.0",
+]

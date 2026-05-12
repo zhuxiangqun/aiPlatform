@@ -4,6 +4,9 @@ Scheduler Manager
 Manages GPU resource quotas, scheduling policies, and task queues.
 """
 
+import os
+from datetime import datetime
+
 from typing import Dict, Any, List, Optional
 from ..base import ManagementBase, Status, HealthStatus, Metrics, DiagnosisResult
 from ..schemas import QuotaInfo, PolicyInfo, TaskInfo, AutoscalingPolicy
@@ -89,7 +92,7 @@ class SchedulerManager(ManagementBase):
                 name="system",
                 gpu_quota=gpu_info["total_gpus"],
                 gpu_used=0,
-                team="system",
+                label="system",
                 status="Active",
                 created_at=datetime.now()
             )
@@ -234,9 +237,9 @@ class SchedulerManager(ManagementBase):
     async def get_config(self) -> Dict[str, Any]:
         """Get scheduler configuration."""
         return {
-            "kubernetes_api": self._get_config_value("kubernetes_api", "https://k8s-api.example.com"),
+            "kubernetes_api": self._get_config_value("kubernetes_api", os.getenv("AIPLAT_K8S_API_URL", "")),
             "default_scheduler": self._get_config_value("default_scheduler", "default-scheduler"),
-            "gpu_scheduler": self._get_config_value("gpu_scheduler", "nvidia-gpu-scheduler"),
+            "gpu_scheduler": self._get_config_value("gpu_scheduler", os.getenv("AIPLAT_GPU_SCHEDULER", "")),
             "default_priority": self._get_config_value("default_priority", 0),
             "max_queue_size": self._get_config_value("max_queue_size", 1000)
         }
@@ -335,7 +338,7 @@ class SchedulerManager(ManagementBase):
             name=quota_name,
             gpu_quota=config.get("gpu_quota", 0),
             gpu_used=0,
-            team=config.get("team", ""),
+            label=config.get("label", ""),
             status="active",
             created_at=datetime.now()
         )
@@ -361,8 +364,8 @@ class SchedulerManager(ManagementBase):
             self._quotas[quota_id].gpu_quota = config.get("gpu_quota", old_quota)
             if "name" in config:
                 self._quotas[quota_id].name = config["name"]
-            if "team" in config:
-                self._quotas[quota_id].team = config["team"]
+            if "label" in config:
+                self._quotas[quota_id].label = config["label"]
             
             self._total_gpu_quota = self._total_gpu_quota - old_quota + self._quotas[quota_id].gpu_quota
             return self._quotas[quota_id]
@@ -501,7 +504,7 @@ class SchedulerManager(ManagementBase):
             id=f"task-{len(self._tasks) + 1}",
             name=task_name,
             gpu_count=config.get("gpu_count", 1),
-            gpu_type=config.get("gpu_type", "A100"),
+            gpu_type=config.get("gpu_type", ""),
             queue=config.get("queue", "default"),
             priority=config.get("priority", 0),
             status="pending",

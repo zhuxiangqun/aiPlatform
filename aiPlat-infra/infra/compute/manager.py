@@ -1,4 +1,5 @@
 import uuid
+import os
 from typing import List, Optional, Dict
 from .base import ComputeManager
 from .schemas import ResourceRequest, Allocation, Node, Task, TaskStatus, ComputeConfig
@@ -96,7 +97,7 @@ class KubernetesComputeManager(ComputeManager):
         client = self._get_client()
         api = client.CustomObjectsApi()
 
-        group = self.config.k8s.group or "ai-platform.io"
+        group = self.config.k8s.group or os.getenv("AIPLAT_K8S_CRD_GROUP", "")
         version = self.config.k8s.version or "v1"
         plural = self.config.k8s.plural or "resources"
 
@@ -171,7 +172,7 @@ class KubernetesComputeManager(ComputeManager):
         client = self._get_client()
         api = client.CustomObjectsApi()
 
-        group = self.config.k8s.group or "ai-platform.io"
+        group = self.config.k8s.group or os.getenv("AIPLAT_K8S_CRD_GROUP", "")
         version = self.config.k8s.version or "v1"
         plural = self.config.k8s.plural or "tasks"
 
@@ -202,7 +203,7 @@ class KubernetesComputeManager(ComputeManager):
         client = self._get_client()
         api = client.CustomObjectsApi()
 
-        group = self.config.k8s.group or "ai-platform.io"
+        group = self.config.k8s.group or os.getenv("AIPLAT_K8S_CRD_GROUP", "")
         version = self.config.k8s.version or "v1"
         plural = self.config.k8s.plural or "tasks"
 
@@ -224,7 +225,7 @@ class KubernetesComputeManager(ComputeManager):
         client = self._get_client()
         api = client.CustomObjectsApi()
 
-        group = self.config.k8s.group or "ai-platform.io"
+        group = self.config.k8s.group or os.getenv("AIPLAT_K8S_CRD_GROUP", "")
         version = self.config.k8s.version or "v1"
         plural = self.config.k8s.plural or "tasks"
 

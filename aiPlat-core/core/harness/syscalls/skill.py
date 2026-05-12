@@ -21,7 +21,7 @@ import time
 from core.harness.kernel.execution_context import get_active_release_context, get_active_request_context
 from core.harness.kernel.execution_context import set_active_approval_request_id, reset_active_approval_request_id
 from core.harness.kernel.execution_context import get_active_tenant_policy_context
-from core.apps.tools.skill_tools import resolve_executable_skill_permission
+# DI: resolve_executable_skill_permission via SkillPermissionResolver
 
 
 async def sys_skill_call(
@@ -56,6 +56,10 @@ async def sys_skill_call(
         str((trace_context or {}).get("coding_policy_profile") or "off").strip().lower()
         if isinstance(trace_context, dict)
         else "off"
+    )
+    # Config-driven: which coding profiles require contract gate enforcement.
+    strict_profiles = set(
+        os.getenv("AIPLAT_STRICT_CODING_PROFILES", "karpathy_v1").split(",")
     )
     # Approval layering policy: tenant policy override -> env fallback
     approval_layer_policy = str(os.getenv("AIPLAT_APPROVAL_LAYER_POLICY", "both") or "both").strip().lower()
@@ -315,14 +319,11 @@ async def sys_skill_call(
             # Goal: enforce Surgical + Goal-driven by requiring stable output contract.
             try:
                 require_contract = os.getenv("AIPLAT_CODING_POLICY_REQUIRE_CONTRACT", "true").lower() in ("1", "true", "yes", "y")
-                if require_contract and coding_profile == "karpathy_v1":
+                if require_contract and coding_profile in strict_profiles:
                     cfg = getattr(skill, "_config", None)
                     meta = getattr(cfg, "metadata", None) if cfg else None
                     meta = meta if isinstance(meta, dict) else {}
-                    cat = str(meta.get("category") or "").strip().lower()
-                    tags = meta.get("tags") or []
-                    tags = [str(t).strip().lower() for t in tags] if isinstance(tags, list) else []
-                    is_coding = (cat == "coding") or ("coding" in tags) or ("code" in tags)
+                    is_coding = bool(meta.get("uses_code_skill"))
                     if is_coding:
                         out_schema = {}
                         try:
@@ -340,7 +341,17 @@ async def sys_skill_call(
                 pass
 
             # Basic permission posture for executable skills
-            decision = resolve_executable_skill_permission(skill_name)
+            resolver = None; di = None
+            try:
+                from core.harness.integration import _ensure_di
+                di = _ensure_di()
+                if di: resolver = di.resolve("SkillPermissionResolver")
+            except Exception: pass
+            if resolver and isinstance(resolver, dict):
+                decision = resolver["resolve_exec"](skill_name)
+            else:
+                from core.apps.tools.skill_tools import resolve_executable_skill_permission
+                decision = resolve_executable_skill_permission(skill_name)
             if decision == "deny":
                 end_ts = time.time()
                 await trace_gate.end(span, success=False)
@@ -566,14 +577,11 @@ async def sys_skill_call(
 
         # ---- Diff Gate helper: capture change contract from coding skill output (best-effort) ----
         try:
-            if coding_profile == "karpathy_v1" and bool(getattr(result, "success", True)):
+            if coding_profile in strict_profiles and bool(getattr(result, "success", True)):
                 cfg = getattr(skill, "_config", None)
                 meta = getattr(cfg, "metadata", None) if cfg else None
                 meta = meta if isinstance(meta, dict) else {}
-                cat = str(meta.get("category") or "").strip().lower()
-                tags = meta.get("tags") or []
-                tags = [str(t).strip().lower() for t in tags] if isinstance(tags, list) else []
-                is_coding = (cat == "coding") or ("coding" in tags) or ("code" in tags)
+                is_coding = bool(meta.get("uses_code_skill"))
                 out = getattr(result, "output", None)
                 if is_coding and isinstance(out, dict):
                     cf = out.get("changed_files")
@@ -625,8 +633,15 @@ async def sys_skill_call(
                 pass
         # Curator: record call for frequency tracking + lifecycle management
         try:
-            from core.apps.skills.curator import get_skill_curator
-            curator = get_skill_curator()
+            curator = None
+            try:
+                from core.harness.integration import _ensure_di
+                di = _ensure_di()
+                if di: curator = di.resolve("SkillCurator")
+            except Exception: pass
+            if curator is None:
+                from core.apps.skills.curator import get_skill_curator
+                curator = get_skill_curator()
             curator.record_call(skill_name) if skill_name else None
         except Exception:
             pass

@@ -8,7 +8,34 @@ In standalone mode, monitors real network ports.
 from typing import Dict, Any, List, Optional
 from ..base import ManagementBase, Status, HealthStatus, Metrics, DiagnosisResult
 from datetime import datetime
+import os
 import time
+
+
+def _get_port_services() -> Dict[int, Dict[str, str]]:
+    """Read port→service mappings from AIPLAT_PORT_SERVICES env var.
+    
+    Format: "8002=core-api:core-service,8001=infra-api:infra-service,..."
+    Returns empty dict if not configured (no hardcoded defaults per infra CLAUDE.md).
+    """
+    raw = os.getenv("AIPLAT_PORT_SERVICES", "")
+    result: Dict[int, Dict[str, str]] = {}
+    if not raw:
+        return result
+    for entry in raw.split(","):
+        entry = entry.strip()
+        if not entry:
+            continue
+        try:
+            port_str, rest = entry.split("=", 1)
+            parts = rest.split(":")
+            result[int(port_str)] = {
+                "service": parts[0] if len(parts) > 0 else f"service-{port_str}",
+                "name": parts[1] if len(parts) > 1 else f"service-{port_str}",
+            }
+        except (ValueError, IndexError):
+            continue
+    return result
 
 
 def get_real_network_info() -> Dict[str, Any]:
@@ -47,12 +74,9 @@ def get_real_network_info() -> Dict[str, Any]:
     except Exception:
         pass
     
-    known_defaults = [
-        {"port": 8002, "address": "127.0.0.1", "process": "aiPlat-core"},
-        {"port": 8001, "address": "127.0.0.1", "process": "aiPlat-infra"},
-        {"port": 8000, "address": "127.0.0.1", "process": "aiPlat-management"},
-        {"port": 5173, "address": "127.0.0.1", "process": "frontend"},
-    ]
+    known_defaults = []
+    for port, svc in _get_port_services().items():
+        known_defaults.append({"port": port, "address": "127.0.0.1", "process": svc.get("name", f"service-{port}")})
     
     existing_ports = {p["port"] for p in result["listening_ports"]}
     for default in known_defaults:
@@ -99,13 +123,7 @@ class NetworkManager(ManagementBase):
         
         # Convert listening ports to ingress-like format
         self._ingresses = {}
-        known_services = {
-            8002: {"name": "aiPlat-core", "service": "core-api"},
-            8001: {"name": "aiPlat-infra", "service": "infra-api"},
-            8000: {"name": "aiPlat-management", "service": "management-api"},
-            5173: {"name": "frontend", "service": "frontend-dev"},
-            3000: {"name": "node-service", "service": "node-app"},
-        }
+        known_services = _get_port_services()
         
         for port_info in network_info.get("listening_ports", []):
             port = port_info["port"]
@@ -127,7 +145,7 @@ class NetworkManager(ManagementBase):
                 name="default-policy",
                 namespace="standalone",
                 policy_type="Ingress",
-                selector={"app": "ai-platform"},
+                selector={"app": os.getenv("AIPLAT_NETWORK_SELECTOR", "")},
                 status="Active"
             )
         }
@@ -417,12 +435,7 @@ class NetworkManager(ManagementBase):
         network_info = get_real_network_info()
         services = []
         
-        known_names = {
-            8002: "aiPlat-core",
-            8001: "aiPlat-infra",
-            8000: "aiPlat-management",
-            5173: "frontend",
-        }
+        known_names = {port: svc.get("name", f"service-{port}") for port, svc in _get_port_services().items()}
         
         for port_info in network_info.get("listening_ports", []):
             port = port_info["port"]

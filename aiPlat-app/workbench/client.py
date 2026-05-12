@@ -26,6 +26,8 @@ class WorkbenchClient:
             {"path": "/", "component": "Dashboard"},
             {"path": "/agents", "component": "AgentList"},
             {"path": "/skills", "component": "SkillList"},
+            {"path": "/plugins", "component": "PluginMarket"},
+            {"path": "/mcp", "component": "MCPServers"},
             {"path": "/sessions", "component": "SessionList"},
             {"path": "/settings", "component": "Settings"},
         ]

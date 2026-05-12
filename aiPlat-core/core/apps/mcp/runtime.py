@@ -10,7 +10,7 @@ Goal:
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set
 
 from core.apps.mcp.client import MCPClientConfig, MCPClientManager
@@ -19,10 +19,16 @@ from core.apps.mcp.adapter import MCPClientWrapper
 from core.policy.engine import evaluate_mcp_server, PolicyDecision
 
 
+# When total MCP tool descriptions exceed this budget (chars),
+# remaining tool descriptions are replaced with search hints.
+_MCP_TOOL_DESC_BUDGET: int = int(os.getenv("AIPLAT_MCP_TOOL_DESC_BUDGET", "4000") or "4000")
+
+
 @dataclass
 class MCPRuntimeServerState:
     server_name: str
     tool_names: List[str]
+    tool_descriptions: Dict[str, str] = field(default_factory=dict)
 
 
 class MCPRuntime:
@@ -187,6 +193,38 @@ class MCPRuntime:
         after = set(tool_registry.list_tools())
         added = sorted(list(after - before))
         self._registered[cfg.name] = MCPRuntimeServerState(server_name=cfg.name, tool_names=added)
+
+    def total_tool_descriptions_chars(self) -> int:
+        return sum(
+            sum(len(str(d)) for d in state.tool_descriptions.values())
+            for state in self._registered.values()
+        )
+
+    async def search_and_register(self, tool_name_hint: str, tool_registry: Any) -> Optional[str]:
+        """On-demand MCP tool discovery and registration.
+
+        When an agent calls a tool that doesn't exist in ToolRegistry,
+        search connected MCP servers by name similarity and register
+        the first match. Returns the registered tool name or None.
+        """
+        import difflib
+        hint_lower = tool_name_hint.lower().replace("mcp.", "")
+        for server_name, state in self._registered.items():
+            candidates = [(n, difflib.SequenceMatcher(None, hint_lower, n.lower()).ratio())
+                         for n in state.tool_names]
+            candidates.sort(key=lambda x: -x[1])
+            if candidates and candidates[0][1] > 0.3:
+                match_name = candidates[0][0]
+                if match_name not in tool_registry.list_tools():
+                    try:
+                        await self._wrapper.register_server_tools(
+                            server_name, tool_registry,
+                            allowed_tools=[match_name.split(".", 2)[-1]],
+                        )
+                        return match_name
+                    except Exception:
+                        pass
+        return None
 
     def _to_client_config(self, s: Any) -> MCPClientConfig:
         transport = str(getattr(s, "transport", "sse") or "sse").lower()

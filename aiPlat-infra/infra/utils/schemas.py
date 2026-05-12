@@ -17,7 +17,6 @@ class ErrorCategory(Enum):
     LLM_API = "llm_api"
     PARSING = "parsing"
     SYSTEM = "system"
-    BUSINESS = "business"
 
 
 class ErrorLevel(Enum):

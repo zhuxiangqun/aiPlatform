@@ -784,6 +784,25 @@ async def lifespan(app: FastAPI):
     except Exception:
         pass
 
+    # Seed ModelRegistry with built-in defaults
+    try:
+        from core.harness.infrastructure.model_registry import ModelEntry, get_model_registry
+        model_registry = get_model_registry()
+        if not model_registry.list_models():
+            model_registry.register(ModelEntry(
+                name="deepseek-chat", provider="deepseek",
+                api_key_env="DEEPSEEK_API_KEY",
+                description="DeepSeek Chat model (default)",
+            ))
+            if get_llm_api_key("openai"):
+                model_registry.register(ModelEntry(
+                    name="gpt-4o", provider="openai",
+                    api_key_env="OPENAI_API_KEY",
+                    description="GPT-4o model (code generation)",
+                ))
+    except Exception:
+        pass
+
     # Phase-1: wire application runtime into HarnessIntegration (single entry execute)
     try:
         from core.harness.kernel.runtime import set_kernel_runtime
@@ -821,6 +840,32 @@ async def lifespan(app: FastAPI):
     try:
         enable_jobs = os.getenv("AIPLAT_ENABLE_JOBS", "true").lower() in ("1", "true", "yes", "y")
         if enable_jobs and _execution_store is not None:
+            # Initialize SecretsManager for encrypted credential storage
+            from core.harness.infrastructure.secrets_manager import get_secrets_manager
+            get_secrets_manager()
+            # Discover user-defined tools from ~/.aiplat/tools/
+            try:
+                from core.apps.tools.discovery import get_tool_discovery
+                n = get_tool_discovery().register_all()
+            except Exception:
+                pass
+            # MCP server auto-connect
+            try:
+                from core.apps.tools.mcp_adapter import get_mcp_adapter
+                from core.apps.tools.base import get_tool_registry
+                adapter = await get_mcp_adapter()
+                tools = await adapter.discover_tools()
+                if tools:
+                    reg = get_tool_registry()
+                    for t in tools:
+                        try:
+                            from core.apps.tools.discovery import _make_discovery_tool
+                            reg.register(_make_discovery_tool(t))
+                        except Exception:
+                            pass
+                logger.info(f"MCP: discovered {len(tools)} tools, registered into ToolRegistry")
+            except Exception:
+                pass
             _job_scheduler = JobScheduler(
                 execution_store=_execution_store,
                 harness=get_harness(),
@@ -830,6 +875,15 @@ async def lifespan(app: FastAPI):
                 ),
             )
             await _job_scheduler.start()
+
+            # Self-evolution cron: background learning & optimization tasks
+            try:
+                from core.harness.scheduler.cron import get_cron_scheduler, register_builtin_jobs
+                cron_sched = get_cron_scheduler()
+                await register_builtin_jobs()
+                await cron_sched.start()
+            except Exception:
+                pass
 
             # Skill lint-scan cron (opt-out; graded enforcement is on enable, cron is for observability)
             try:
@@ -991,6 +1045,11 @@ async def lifespan(app: FastAPI):
     except Exception:
         pass
     try:
+        from core.harness.scheduler.cron import get_cron_scheduler
+        await get_cron_scheduler().stop()
+    except Exception:
+        pass
+    try:
         if _ops_prune_task is not None:
             _ops_prune_task.cancel()
     except Exception:
@@ -1021,8 +1080,6 @@ api_router = APIRouter(prefix="/api/core")
 
 # Incremental router split: routing observability endpoints live in a dedicated module.
 from core.api.routers.routing_observability import router as routing_observability_router  # noqa: E402
-from core.api.routers.approvals import router as approvals_router  # noqa: E402
-from core.api.routers.change_control import router as change_control_router  # noqa: E402
 from core.api.routers.autosmoke import router as autosmoke_router  # noqa: E402
 from core.api.routers.learning_releases import router as learning_releases_router  # noqa: E402
 from core.api.routers.plugins import router as plugins_router  # noqa: E402
@@ -1034,7 +1091,6 @@ from core.api.routers.workspace_skills_meta import router as workspace_skills_me
 from core.api.routers.engine_skills import router as engine_skills_router  # noqa: E402
 from core.api.routers.skill_packs import router as skill_packs_router  # noqa: E402
 from core.api.routers.packages_registry import router as packages_registry_router  # noqa: E402
-from core.api.routers.onboarding import router as onboarding_router  # noqa: E402
 from core.api.routers.jobs import router as jobs_router  # noqa: E402
 from core.api.routers.diagnostics import router as diagnostics_router  # noqa: E402
 from core.api.routers.diagnostics_repo import router as diagnostics_repo_router  # noqa: E402
@@ -1047,10 +1103,6 @@ from core.api.routers.syscalls import router as syscalls_router  # noqa: E402
 from core.api.routers.runs import router as runs_router  # noqa: E402
 from core.api.routers.traces_graphs import router as traces_graphs_router  # noqa: E402
 from core.api.routers.audit_ops_export import router as audit_ops_export_router  # noqa: E402
-from core.api.routers.policy import router as policy_router  # noqa: E402
-from core.api.routers.tenant_policies import router as tenant_policies_router  # noqa: E402
-from core.api.routers.quota import router as quota_router  # noqa: E402
-from core.api.routers.permissions import router as permissions_router  # noqa: E402
 from core.api.routers.memory import router as memory_router  # noqa: E402
 from core.api.routers.knowledge import router as knowledge_router  # noqa: E402
 from core.api.routers.adapters import router as adapters_router  # noqa: E402
@@ -1059,23 +1111,13 @@ from core.api.routers.evaluation_policies import router as evaluation_policies_r
 from core.api.routers.learning_misc import router as learning_misc_router  # noqa: E402
 from core.api.routers.tools import router as tools_router  # noqa: E402
 from core.api.routers.executions_trace import router as executions_trace_router  # noqa: E402
-from core.api.routers.gateway import router as gateway_router  # noqa: E402
-from core.api.routers.conversations import router as conversations_router  # noqa: E402
-from core.api.routers.channel_adapters import router as channel_adapters_router  # noqa: E402
 from core.api.routers.catalog import router as catalog_router  # noqa: E402
-from core.api.routers.gate_policies import router as gate_policies_router  # noqa: E402
 from core.api.routers.code_intel import router as code_intel_router  # noqa: E402
-from core.api.routers.builder_pipeline import router as builder_pipeline_router  # noqa: E402
-from core.api.routers.builder_teams import router as builder_teams_router  # noqa: E402
-from core.api.routers.builder_projects import router as builder_projects_router  # noqa: E402
-from core.api.routers.chat import router as chat_router  # noqa: E402
 from core.api.routers.health import router as health_router  # noqa: E402
-from core.api.routers.ops_exports import router as ops_exports_router  # noqa: E402
 from core.api.routers.root import router as root_router  # noqa: E402
+from core.harness.utils.llm_env import get_llm_api_key, get_llm_base_url
 
 api_router.include_router(routing_observability_router)
-api_router.include_router(approvals_router)
-api_router.include_router(change_control_router)
 api_router.include_router(autosmoke_router)
 api_router.include_router(learning_releases_router)
 api_router.include_router(plugins_router)
@@ -1087,7 +1129,6 @@ api_router.include_router(workspace_skills_meta_router)
 api_router.include_router(engine_skills_router)
 api_router.include_router(skill_packs_router)
 api_router.include_router(packages_registry_router)
-api_router.include_router(onboarding_router)
 api_router.include_router(jobs_router)
 api_router.include_router(diagnostics_router)
 api_router.include_router(diagnostics_repo_router)
@@ -1100,12 +1141,7 @@ api_router.include_router(syscalls_router)
 api_router.include_router(runs_router)
 api_router.include_router(traces_graphs_router)
 api_router.include_router(audit_ops_export_router)
-api_router.include_router(policy_router)
-api_router.include_router(tenant_policies_router)
-api_router.include_router(quota_router)
-api_router.include_router(permissions_router)
 api_router.include_router(memory_router)
-api_router.include_router(conversations_router)
 api_router.include_router(knowledge_router)
 api_router.include_router(adapters_router)
 api_router.include_router(harness_admin_router)
@@ -1113,17 +1149,9 @@ api_router.include_router(evaluation_policies_router)
 api_router.include_router(learning_misc_router)
 api_router.include_router(tools_router)
 api_router.include_router(executions_trace_router)
-api_router.include_router(gateway_router)
-api_router.include_router(channel_adapters_router)
 api_router.include_router(catalog_router)
-api_router.include_router(gate_policies_router)
 api_router.include_router(code_intel_router)
-api_router.include_router(builder_pipeline_router)
-api_router.include_router(builder_teams_router)
-api_router.include_router(builder_projects_router)
-api_router.include_router(chat_router)
 api_router.include_router(health_router)
-api_router.include_router(ops_exports_router)
 api_router.include_router(root_router)
 
 
@@ -1450,11 +1478,7 @@ def _is_approval_resolved_approved(approval_request_id: str) -> bool:
 
 
 # ==================== Gateway / Channels (Roadmap-3) ====================
-#
-# Moved to: core.api.routers.gateway
-
-
-# (migrated) Remaining /gateway/* endpoints moved to core.api.routers.gateway
+# (migrated) Gateway endpoints moved to aiPlat-platform/api/routers/gateway.py
 
 
 # ==================== Skill Packs + Long-term Memory (Roadmap-4 minimal) ====================

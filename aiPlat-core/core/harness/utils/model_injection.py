@@ -94,7 +94,7 @@ def _load_adapter_from_store(adapter_id: str) -> Optional[dict]:
 
 def create_selected_adapter(*, model_name: str) -> Any:
     """Create adapter based on env vars, with dev-friendly fallback to mock."""
-    from core.adapters.llm import create_adapter
+    from core.harness.utils.llm_env import get_llm_api_key, get_llm_base_url
 
     # Highest priority: explicit env overrides
     provider_env = os.getenv("AIPLAT_LLM_PROVIDER", "").strip()
@@ -132,15 +132,15 @@ def create_selected_adapter(*, model_name: str) -> Any:
         ad = _load_adapter_from_store(str(default_llm.get("adapter_id")))
         if ad:
             provider = _norm_provider(str(ad.get("provider") or provider))
-            base_url = str(ad.get("api_base_url") or base_url_env or os.getenv("OPENAI_BASE_URL") or "")
-            api_key = str(ad.get("api_key") or api_key_env or os.getenv("OPENAI_API_KEY") or "")
+            base_url = str(ad.get("api_base_url") or base_url_env or get_llm_base_url("openai") or "")
+            api_key = str(ad.get("api_key") or api_key_env or get_llm_api_key("openai") or "")
             # For OpenAI-compatible adapters, use openai provider
             if provider in {"openai", "deepseek"}:
                 provider = "openai"
             return create_adapter(provider=provider, api_key=api_key or None, model=selected_model, base_url=base_url or None)
 
-    base_url = base_url_env or os.getenv("OPENAI_BASE_URL")
-    api_key = (os.getenv("OPENAI_API_KEY") or api_key_env or "")
+    base_url = base_url_env or get_llm_base_url("openai")
+    api_key = (get_llm_api_key("openai") or api_key_env or "")
     if provider == "openai" and not api_key:
         provider = "mock"
     return create_adapter(provider=provider, api_key=api_key or None, model=selected_model, base_url=base_url)
@@ -201,7 +201,7 @@ def ensure_agent_model(agent: Any, *, model_name: str, force: bool = False) -> A
     # If current is openai but no api key, override to mock (prevents empty output).
     try:
         cur_provider = getattr(getattr(cur, "metadata", None), "provider", None)
-        api_key = os.getenv("OPENAI_API_KEY") or os.getenv("AIPLAT_LLM_API_KEY") or ""
+        api_key = get_llm_api_key("openai") or ""
         if cur_provider == "openai" and not api_key:
             _bind_model(agent, adapter)
             return adapter

@@ -5,12 +5,16 @@ Answers: "Did this optimization round actually improve, or regress?"
 
 Per §1.1: code lives in harness/evaluation — a core capability, not a team-specific one.
 Delegates LLM calls to StageRunner (per §5.23).
+
+Scoring dimensions are configurable. Per CLAUDE.md §5.29.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
+
+from .dimensions import get_scoring_dimensions, get_dimension_names
 
 
 @dataclass
@@ -45,17 +49,22 @@ async def pairwise_judge(
     baseline: Dict[str, Any],
     current: Dict[str, Any],
     eval_count: int = 1,
+    scoring_dimensions: Optional[List[Dict[str, Any]]] = None,
 ) -> CompareResult:
     """
-    Compare two evaluation reports using LLM.
+    Compare two evaluation reports.
 
     Args:
         baseline: The previous round's evaluation report (or first run's).
         current: The current round's evaluation report.
+        scoring_dimensions: optional overrides from PipelineStageConfig.scoring_dimensions
 
     Returns:
         CompareResult with verdict, stop recommendation, and improvement assessment.
     """
+    dims = get_scoring_dimensions(scoring_dimensions)
+    primary_dim = dims[0]["name"] if dims else "score"
+
     # Quick check: no baseline means always "improved" (first run)
     if not baseline or not isinstance(baseline, dict) or not baseline:
         return CompareResult(
@@ -71,8 +80,8 @@ async def pairwise_judge(
     # Extract key metrics without LLM (fast path)
     bl_score = baseline.get("score") if isinstance(baseline.get("score"), dict) else {}
     cr_score = current.get("score") if isinstance(current.get("score"), dict) else {}
-    bl_func = bl_score.get("functionality", 0)
-    cr_func = cr_score.get("functionality", 0)
+    bl_primary = bl_score.get(primary_dim, 0)
+    cr_primary = cr_score.get(primary_dim, 0)
     bl_overall = bl_score.get("overall") or 0
     cr_overall = cr_score.get("overall") or 0
     bl_pass = baseline.get("pass")
@@ -81,39 +90,54 @@ async def pairwise_judge(
     cr_issues = len(current.get("issues") or [])
 
     # Local code: data-driven stop/continue signals (no LLM cost)
-    func_improved = cr_func > bl_func + 0.5
-    func_regressed = cr_func < bl_func - 1.0
+    primary_improved = cr_primary > bl_primary + 0.5
+    primary_regressed = cr_primary < bl_primary - 1.0
     issues_reduced = cr_issues < bl_issues
     issues_worsened = cr_issues > bl_issues + 2
 
+    # Build dimension details for all configured dims
+    dimension_details: Dict[str, str] = {}
+    for d in dims:
+        name = d["name"]
+        bl_val = bl_score.get(name, 0)
+        cr_val = cr_score.get(name, 0)
+        if cr_val > bl_val + 0.5:
+            dimension_details[name] = "improved"
+        elif cr_val < bl_val - 1.0:
+            dimension_details[name] = "regressed"
+        else:
+            dimension_details[name] = "flat"
+    dimension_details["issues"] = "improved" if issues_reduced else ("worsened" if issues_worsened else "flat")
+    dimension_details["overall"] = f"{bl_overall}→{cr_overall}"
+
     # Derive stop recommendation from data
-    if func_regressed:
+    if primary_regressed:
         verdict = "regressed"
         stop_rec = "stop"
         headroom = "none"
         confidence = "high"
-        reason = f"Functionality regressed from {bl_func:.1f} to {cr_func:.1f}"
-    elif not func_improved and not issues_reduced:
+        reason = f"{primary_dim} regressed from {bl_primary:.1f} to {cr_primary:.1f}"
+    elif not primary_improved and not issues_reduced:
         verdict = "flat"
         headroom = "low"
-        if cr_pass and not func_regressed:
+        if cr_pass and not primary_regressed:
             stop_rec = "stop"  # flat + passing → good enough, stop
-            reason = f"No improvement detected (func={cr_func:.1f}, issues={cr_issues}, pass={cr_pass})"
+            reason = f"No improvement detected ({primary_dim}={cr_primary:.1f}, issues={cr_issues}, pass={cr_pass})"
         else:
             stop_rec = "review"
             reason = f"No improvement but still failing — may need different approach"
         confidence = "medium"
-    elif func_improved and cr_pass:
+    elif primary_improved and cr_pass:
         verdict = "improved"
         headroom = "medium"
         stop_rec = "stop"  # improved + passing → success
-        reason = f"Functionality improved from {bl_func:.1f} to {cr_func:.1f}, all passing"
+        reason = f"{primary_dim} improved from {bl_primary:.1f} to {cr_primary:.1f}, all passing"
         confidence = "high"
     else:
         verdict = "improved"
         headroom = "medium"
         stop_rec = "continue"
-        reason = f"Functionality improved ({bl_func:.1f}→{cr_func:.1f}) but not yet passing — continue"
+        reason = f"{primary_dim} improved ({bl_primary:.1f}→{cr_primary:.1f}) but not yet passing — continue"
         confidence = "medium"
 
     return CompareResult(
@@ -124,11 +148,7 @@ async def pairwise_judge(
         evidence_count=eval_count,
         uncertainty=_derive_uncertainty(eval_count),
         reason=reason,
-        dimension_details={
-            "functionality": "improved" if func_improved else ("regressed" if func_regressed else "flat"),
-            "issues": "improved" if issues_reduced else ("worsened" if issues_worsened else "flat"),
-            "overall": f"{bl_overall}→{cr_overall}",
-        },
+        dimension_details=dimension_details,
     )
 
 

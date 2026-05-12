@@ -176,17 +176,20 @@ class PlanningGraph:
 
     async def _decompose_wrapper(self, state: PlanningState) -> Dict[str, Any]:
         """Decompose task into sub-tasks."""
-        strategy_desc = {
+        import os
+        strategy_desc_map = {
             DecompositionStrategy.SEQUENTIAL: "按顺序依次执行",
             DecompositionStrategy.PARALLEL: "可并行同时执行",
             DecompositionStrategy.HIERARCHICAL: "分层逐级拆解",
-        }.get(self._config.strategy, "按顺序依次执行")
-        
-        prompt = f"""将以下任务分解为子任务。
+        }
+        strategy_desc = strategy_desc_map.get(self._config.strategy, "按顺序依次执行")
 
-任务：{state.task}
+        prompt_template = os.getenv("AIPLAT_PLANNING_TEMPLATE",
+            """将以下任务分解为子任务。
 
-分解策略：{strategy_desc}
+任务：{task}
+
+分解策略：{strategy}
 
 请按以下格式列出子任务：
 TASK_1: 子任务描述 [depends_on: 无]
@@ -196,10 +199,15 @@ TASK_3: 子任务描述 [depends_on: TASK_1]
 要求：
 - 每个子任务应有明确的输入和输出
 - 标注子任务之间的依赖关系
-- 子任务数量不超过 {self._config.max_total_steps} 个
-"""
+- 子任务数量不超过 {max_steps} 个
+""")
+        prompt = prompt_template.format(
+            task=state.task,
+            strategy=strategy_desc,
+            max_steps=str(self._config.max_total_steps),
+        )
 
-        if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y"):
+        if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "true").lower() in ("1", "true", "yes", "y"):
             messages = PromptAssembler().assemble(prompt).messages
         else:
             messages = [{"role": "user", "content": prompt}]
@@ -300,7 +308,7 @@ TASK_3: 子任务描述 [depends_on: TASK_1]
             try:
                 messages = (
                     PromptAssembler().assemble(prompt).messages
-                    if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y")
+                    if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "true").lower() in ("1", "true", "yes", "y")
                     else [{"role": "user", "content": prompt}]
                 )
                 result = await self._executor.run({"messages": messages, "context": state.context})
@@ -355,7 +363,7 @@ TASK_3: 子任务描述 [depends_on: TASK_1]
                 
                 messages = (
                     PromptAssembler().assemble(prompt).messages
-                    if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y")
+                    if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "true").lower() in ("1", "true", "yes", "y")
                     else [{"role": "user", "content": prompt}]
                 )
                 tasks.append(self._executor.run({"messages": messages, "context": state.context}))
@@ -413,7 +421,7 @@ TASK_3: 子任务描述 [depends_on: TASK_1]
                 
                 messages = (
                     PromptAssembler().assemble(prompt).messages
-                    if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y")
+                    if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "true").lower() in ("1", "true", "yes", "y")
                     else [{"role": "user", "content": prompt}]
                 )
                 tasks.append(self._executor.run({"messages": messages, "context": state.context}))

@@ -338,7 +338,7 @@ async def diagnostics_repo_changeset_record(request: RepoChangesetPreviewRequest
         raise
 
     # ==================== governance: approval when high-risk / non-local ====================
-    from core.apps.exec_drivers.registry import get_exec_backend
+    from core.api.core_facade import get_exec_backend
     from core.harness.infrastructure.approval.manager import ApprovalManager
     from core.harness.infrastructure.approval.types import ApprovalContext, ApprovalRule, RuleType
 
@@ -503,7 +503,7 @@ async def diagnostics_repo_git_branch(request: RepoGitBranchRequest):
         raise HTTPException(status_code=400, detail="branch_required")
     _validate_git_repo(repo_root)
 
-    from core.apps.exec_drivers.registry import get_exec_backend
+    from core.api.core_facade import get_exec_backend
     from core.harness.infrastructure.approval.manager import ApprovalManager
     from core.harness.infrastructure.approval.types import ApprovalContext, ApprovalRule, RuleType
 
@@ -635,7 +635,7 @@ async def diagnostics_repo_git_commit(request: RepoGitCommitRequest):
         raise HTTPException(status_code=400, detail="commit_message_required")
     _validate_git_repo(repo_root)
 
-    from core.apps.exec_drivers.registry import get_exec_backend
+    from core.api.core_facade import get_exec_backend
     from core.harness.infrastructure.approval.manager import ApprovalManager
     from core.harness.infrastructure.approval.types import ApprovalContext, ApprovalRule, RuleType
 

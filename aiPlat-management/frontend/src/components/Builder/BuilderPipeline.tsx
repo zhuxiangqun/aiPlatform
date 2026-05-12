@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle, XCircle, Loader2, Clock, Download } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, Clock, Download, Code, FileText } from 'lucide-react';
 import type { BuilderSession, PipelineStageConfig } from '../../services';
 
 interface PipelineProps {
@@ -19,6 +19,7 @@ interface VisibleStage {
   key: string;
   label: string;
   desc: string;
+  isTestStage: boolean;
 }
 
 function buildStages(teamStages?: PipelineStageConfig[], session?: BuilderSession): VisibleStage[] {
@@ -27,6 +28,7 @@ function buildStages(teamStages?: PipelineStageConfig[], session?: BuilderSessio
     key: s.output_artifact,
     label: s.agent_name,
     desc: (s as Record<string, unknown>).phase_description as string || s.phase || s.output_artifact,
+    isTestStage: !!(s as Record<string, unknown>).generate_test_plan,
   }));
   // Insert test_plan stage if any artifact has test_script (structural detection)
   const testPlanEntry = Object.entries(raw || {}).find(([, v]) => isTestPlanArtifact(v));
@@ -37,12 +39,12 @@ function buildStages(teamStages?: PipelineStageConfig[], session?: BuilderSessio
     });
     if (testingIdx >= 0 && !stages.some((s) => isTestPlanArtifact(raw?.[s.key]))) {
       const hasReport = Object.values(raw || {}).some((v) => isTestReportArtifact(v));
-      const phaseStr = (raw?.phase as string) || '';
       stages.splice(testingIdx, 0, {
         key: testPlanEntry[0],
         label: '测试用例',
         desc: hasReport ? '已确认，测试已执行' :
-              phaseStr.includes('awaiting_test_plan') ? '待确认' : '已生成',
+              raw?.phase === 'paused' || (typeof raw?.phase === 'string' && (raw.phase as string).includes('approval')) ? '待确认' : '已生成',
+        isTestStage: true,
       });
     }
   }
@@ -70,25 +72,29 @@ const ElapsedTimer: React.FC = () => {
 const getStageStatus = (key: string, session: BuilderSession, visible: VisibleStage[]) => {
   if (session.phase === 'failed') return 'failed';
   const raw = session as Record<string, unknown>;
-  // HITL awaiting — show as "awaiting" not "passed"
-  if (session.phase?.includes('awaiting')) {
-    const hitlKey = session.phase.includes('architecture') ? 'architecture' :
-      session.phase.includes('test_report') ? 'test_report' : 'test_plan';
-    if (key === hitlKey) return 'awaiting';
-  }
+  const currentIdx = raw['_current_stage_idx'] as number | undefined;
   const val = raw[key];
+  const isCurrent = currentIdx != null && currentIdx >= 0 && visible[currentIdx]?.key === key;
+
+  // HITL check first: current stage awaiting approval
+  if (isCurrent && (session.phase?.includes('approval') || session.phase === 'paused'))
+    return 'awaiting';
+
+  // Passed: has artifact
   if (val != null) {
     if (typeof val === 'object' && 'recommendation' in val) {
       const tr = val as { recommendation?: string };
       if (tr.recommendation === 'APPROVED') return 'passed';
-      return 'partial';
     }
-    return 'passed';
+    if (typeof val === 'object' || typeof val === 'string') {
+      const obj = val as Record<string, unknown>;
+      if (Object.keys(obj).length > 0) return 'passed';
+    }
   }
-  if (session.phase === 'executing') {
-    const currentIdx = raw['_current_stage_idx'] as number | undefined;
-    if (currentIdx != null && currentIdx >= 0 && visible[currentIdx]?.key === key) return 'running';
-  }
+
+  // Running
+  if (isCurrent && session.phase === 'executing') return 'running';
+
   return 'waiting';
 };
 
@@ -104,6 +110,11 @@ const isPRDArtifact = (val: unknown): boolean =>
 
 const isTestPlanArtifact = (val: unknown): val is { test_script?: string; test_cases_count?: number } =>
   typeof val === 'object' && val != null && 'test_script' in val;
+
+const isFlatFileDict = (val: unknown): boolean =>
+  typeof val === 'object' && val != null && !Array.isArray(val) &&
+  Object.keys(val as object).length > 0 &&
+  Object.values(val as object).every(v => typeof v === 'string' && v.length > 20);
 
 const hasArtifact = (key: string, session: BuilderSession): boolean => {
   const raw = session as Record<string, unknown>;
@@ -265,11 +276,112 @@ const StructuredViewer: React.FC<{ stageKey: string; data: unknown }> = ({ stage
   );
 };
 
+// ── Code file viewer with tabs ──
+
+const CodeFileViewer: React.FC<{ open: boolean; files: Record<string, string> | null; title: string; onClose: () => void }> = ({ open, files, title, onClose }) => {
+  const entries = Object.entries(files || {});
+  const [activeFile, setActiveFile] = useState(entries[0]?.[0] || '');
+
+  useEffect(() => {
+    if (entries.length > 0 && !entries.some(([k]) => k === activeFile)) {
+      setActiveFile(entries[0][0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [files]);
+
+  if (!open || entries.length === 0) return null;
+
+  const activeContent = (files?.[activeFile] || '')
+    .replace(/^## FILE:\s*\S+\s*\n?/, '')
+    .replace(/^```\w*\n/, '')
+    .replace(/\n```\s*$/, '');
+
+  const detectLang = (filename: string): string => {
+    const ext = filename.split('.').pop()?.toLowerCase() || '';
+    const map: Record<string, string> = { py: 'python', ts: 'typescript', tsx: 'typescript', js: 'javascript',
+      jsx: 'javascript', css: 'css', html: 'html', json: 'json', yaml: 'yaml', yml: 'yaml',
+      md: 'markdown', sql: 'sql', sh: 'bash', txt: 'text', dockerfile: 'dockerfile' };
+    return map[ext] || map[filename.toLowerCase()] || '';
+  };
+
+  const totalLines = activeContent.split('\n').length;
+  const totalChars = activeContent.length;
+
+  return (
+    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center" onClick={onClose}>
+      <motion.div
+        initial={{ scale: 0.95 }} animate={{ scale: 1 }}
+        className="bg-dark-card border border-dark-border rounded-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between p-4 border-b border-dark-border">
+          <div className="flex items-center gap-3">
+            <h2 className="text-base font-bold text-gray-100">{title}</h2>
+            <span className="text-[11px] text-gray-500">{entries.length} 个文件</span>
+          </div>
+          <button className="text-gray-500 hover:text-gray-300 text-lg leading-none" onClick={onClose}>✕</button>
+        </div>
+
+        <div className="flex gap-0 px-4 pt-2 overflow-x-auto border-b border-dark-border bg-dark-hover/50 shrink-0">
+          {entries.map(([name, content]) => (
+            <button
+              key={name}
+              onClick={() => setActiveFile(name)}
+              className={`flex items-center gap-1.5 px-3 py-2 text-xs whitespace-nowrap rounded-t transition-colors ${
+                name === activeFile
+                  ? 'bg-dark-card text-gray-100 border-t border-l border-r border-dark-border -mb-[1px]'
+                  : 'text-gray-500 hover:text-gray-300'
+              }`}
+            >
+              <FileText className="w-3 h-3" />
+              {name}
+              <span className="text-[10px] text-gray-600">({(content as string).length}字符)</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="flex-1 overflow-auto">
+          <div className="flex items-center justify-between px-4 py-1.5 text-[10px] text-gray-600 border-b border-dark-border/50 bg-dark-hover/30">
+            <span>{detectLang(activeFile) || 'text'} · {totalLines} 行 · {totalChars.toLocaleString()} 字符</span>
+            <button
+              className="text-primary hover:text-primary/80"
+              onClick={() => {
+                const blob = new Blob([activeContent], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = activeFile; a.click();
+                URL.revokeObjectURL(url);
+              }}
+            >
+              <Download className="w-3 h-3 inline mr-1" />下载此文件
+            </button>
+          </div>
+          <pre className="p-4 text-xs text-gray-300 font-mono leading-relaxed whitespace-pre overflow-auto max-h-[calc(90vh-160px)]">
+            {activeContent}
+          </pre>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
 // --- main component ---
 
+function getTestReport(session: Record<string, unknown>): Record<string, unknown> | undefined {
+  for (const key of Object.keys(session)) {
+    const val = session[key];
+    if (val && typeof val === 'object' && isTestReportArtifact(val as Record<string, unknown>)) {
+      return val as Record<string, unknown>;
+    }
+  }
+  return undefined;
+}
+
 export const BuilderPipeline: React.FC<PipelineProps> = ({ session, teamStages, onRegenerate, onApprove, onReject, onRollback, loading }) => {
-  const passRate = session.test_report?.pass_rate ?? 0;
-  const rec = session.test_report?.recommendation;
+  const raw = session as Record<string, unknown>;
+  const testReport = getTestReport(raw);
+  const passRate = (testReport?.pass_rate as number) ?? 0;
+  const rec = testReport?.recommendation as string | undefined;
   const visible = buildStages(teamStages, session);
   const [previewStage, setPreviewStage] = useState<VisibleStage | null>(null);
   const [previewData, setPreviewData] = useState<Record<string, unknown> | null>(null);
@@ -328,9 +440,9 @@ export const BuilderPipeline: React.FC<PipelineProps> = ({ session, teamStages, 
                   {(() => {
                     const val = (session as Record<string, unknown>)[stage.key] as Record<string, unknown> | null;
                     if (!val) return null;
-                    if (isTestReportArtifact(val) && session.test_report) {
+                    if (isTestReportArtifact(val) && testReport) {
                       return <>
-                        <div>测试用例: {session.test_report.test_cases?.length || 0}</div>
+                        <div>测试用例: {testReport?.test_cases?.length || 0}</div>
                         <div className="flex items-center gap-1">通过率:<span className={passRate >= 0.8 ? 'text-green-400' : 'text-red-400'}>{(passRate * 100).toFixed(0)}%</span></div>
                       </>;
                     }
@@ -356,8 +468,33 @@ export const BuilderPipeline: React.FC<PipelineProps> = ({ session, teamStages, 
                 <StructuredViewer stageKey={stage.key} data={artifact} />
               )}
               {hasContent && isCodeArtifact(artifact) && (
-                <div className="text-[10px] text-gray-500 mt-2">
-                  代码已生成，保存至 aiPlat-app/generated/{session.session_id}/ 目录
+                <div className="text-[10px] text-gray-500 mt-2 space-y-1">
+                  <div>代码已生成，保存至 aiPlat-app/generated/{session.session_id}/ 目录</div>
+                  {(() => {
+                    const val = (session as Record<string, unknown>)[stage.key] as Record<string, unknown> | null;
+                    if (isFlatFileDict(val)) {
+                      const keys = Object.keys(val as object);
+                      return (
+                        <div className="text-gray-400">
+                          {keys.slice(0, 5).map(k => <span key={k} className="mr-2 font-mono">{k}</span>)}
+                          {keys.length > 5 && <span className="text-gray-600">+{keys.length - 5} 个文件</span>}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                  <button
+                    className="flex items-center gap-1 text-blue-400 hover:text-blue-300 cursor-pointer"
+                    onClick={() => {
+                      const artifact = (session as Record<string, unknown>)[stage.key] as Record<string, unknown>;
+                      if (isFlatFileDict(artifact)) {
+                        setPreviewStage(stage);
+                        setPreviewData(artifact);
+                      }
+                    }}
+                  >
+                    <Code className="w-3 h-3" /> 预览代码
+                  </button>
                 </div>
               )}
 
@@ -370,6 +507,7 @@ export const BuilderPipeline: React.FC<PipelineProps> = ({ session, teamStages, 
                       const json = JSON.stringify(artifact, null, 2);
                       const blob = new Blob([json], { type: 'application/json' });
                       const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
                       a.href = url;
                       a.download = `${stage.key}_${session.session_id}.json`;
                       a.click();
@@ -401,31 +539,26 @@ export const BuilderPipeline: React.FC<PipelineProps> = ({ session, teamStages, 
               )}
 
               {/* HITL buttons — shown on the stage that is awaiting approval */}
-              {session.phase.includes('awaiting') && (
+              {(session.phase.includes('approval') || session.phase === 'paused') && (
                 (() => {
-                  const hitlKey =
-                    session.phase.includes('architecture') ? 'architecture' :
-                    session.phase.includes('test_report') ? 'test_report' :
-                    session.phase.includes('test_plan') ? 'test_plan' : '';
+                  // Config-driven: use _current_stage_idx to find the HITL stage's artifact key
+                  const currentIdx = ((session as Record<string, unknown>)?.['_current_stage_idx'] as number);
+                  const hitlKey = currentIdx != null && currentIdx >= 0 && currentIdx < visible.length
+                    ? visible[currentIdx].key
+                    : '';
                   if (stage.key !== hitlKey) return null;
                   return (
                     <div className="mt-2 space-y-1">
-                      {session.phase.includes('test_report') ? (
-                        <button className="w-full text-[10px] px-2 py-1 rounded bg-primary/20 text-primary hover:bg-primary/30 disabled:opacity-50"
-                          onClick={() => onApprove?.()} disabled={loading}>
-                          {loading ? '⏳ 执行中…' : '🔧 开始自动修复'}
+                      {stage.isTestStage ? (
+                        <button className="w-full text-[10px] px-2 py-1 rounded bg-primary/20 text-primary hover:bg-primary/30"
+                          onClick={() => onApprove?.()}>
+                          {loading ? '⏳ 执行中…' : '✅ 确认并执行测试'}
                         </button>
                       ) : (
-                        <>
-                          <button className="w-full text-[10px] px-2 py-1 rounded bg-green-500/20 text-green-300 hover:bg-green-500/30 disabled:opacity-50"
-                            onClick={() => onApprove?.()} disabled={loading}>
-                            {loading ? '⏳ 执行中…' : '✅ 确认并继续'}
-                          </button>
-                          <button className="w-full text-[10px] px-2 py-1 rounded bg-red-500/20 text-red-300 hover:bg-red-500/30 disabled:opacity-50"
-                            onClick={() => onReject?.(stage.key)} disabled={loading}>
-                            ✕ 驳回
-                          </button>
-                        </>
+                        <button className="w-full text-[10px] px-2 py-1 rounded bg-green-500/20 text-green-300 hover:bg-green-500/30"
+                          onClick={() => onApprove?.()}>
+                          ✅ 确认并继续
+                        </button>
                       )}
                     </div>
                   );
@@ -433,7 +566,7 @@ export const BuilderPipeline: React.FC<PipelineProps> = ({ session, teamStages, 
               )}
 
               {/* Rollback — completed non-PRD stages */}
-              {hasContent && status !== 'running' && !isPRDArtifact(artifact) && !session.phase.includes('awaiting') && (
+              {hasContent && status !== 'running' && !isPRDArtifact(artifact) && !(session.phase.includes('approval') || session.phase === 'paused') && (
                 <button
                   className="mt-1 flex items-center gap-1 text-[10px] text-gray-500 hover:text-gray-300 cursor-pointer"
                   onClick={() => onRollback?.(stage.key)}
@@ -451,7 +584,7 @@ export const BuilderPipeline: React.FC<PipelineProps> = ({ session, teamStages, 
         })}
       </div>
 
-      {session.test_report && (
+      {testReport && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -467,9 +600,9 @@ export const BuilderPipeline: React.FC<PipelineProps> = ({ session, teamStages, 
               {rec === 'APPROVED' ? '全部测试通过 — 应用已就绪' : `测试未通过（通过率 ${(passRate * 100).toFixed(0)}%）— 已自动回退修复`}
             </span>
           </div>
-          {(session.test_report?.issues?.length ?? 0) > 0 && (
+          {(testReport?.issues?.length ?? 0) > 0 && (
             <div className="mt-2 space-y-1">
-              {session.test_report.issues.map((issue: any, i: number) => {
+              {(testReport?.issues as any[])?.map((issue: any, i: number) => {
                 const text = typeof issue === 'string' ? issue : (issue.title || issue.description || issue.message || '');
                 const sev = issue.severity || '';
                 return (
@@ -483,16 +616,16 @@ export const BuilderPipeline: React.FC<PipelineProps> = ({ session, teamStages, 
               })}
             </div>
           )}
-          {session.test_report.results?.some((r: { passed: boolean }) => !r.passed) && (
+          {testReport?.results?.some((r: { passed: boolean }) => !r.passed) && (
             <div className="mt-3 space-y-1">
               <div className="text-xs text-gray-500 mb-1">失败详情：</div>
-              {session.test_report.results
+              {testReport.results
                 .filter((r: { passed: boolean }) => !r.passed)
                 .map((r) => (
                   <div key={r.test_case_id} className="text-xs bg-dark-card rounded p-2 border border-dark-border">
                     <div className="text-red-300">{r.test_case_id}</div>
                     <div className="text-gray-500 mt-1">
-                      <div>期望: {session.test_report?.test_cases?.find((tc: { id: string }) => tc.id === r.test_case_id)?.expected || '—'}</div>
+                      <div>期望: {testReport?.test_cases?.find((tc: { id: string }) => tc.id === r.test_case_id)?.expected || '—'}</div>
                       <div>实际: {r.actual || r.error || '—'}</div>
                     </div>
                   </div>
@@ -509,8 +642,15 @@ export const BuilderPipeline: React.FC<PipelineProps> = ({ session, teamStages, 
         </div>
       )}
 
-      {/* ── Preview Modal ── */}
-      {previewStage && previewData && (
+      {/* ── Code File Viewer (for flat {filename: content} dicts) ── */}
+      <CodeFileViewer open={!!previewStage && !!previewData && isFlatFileDict(previewData)}
+        files={previewData as Record<string, string>}
+        title={previewStage?.label ? `${previewStage.label} · 产出预览` : '产出预览'}
+        onClose={() => { setPreviewStage(null); setPreviewData(null); }}
+      />
+
+      {/* ── Preview Modal (fallback: raw JSON) ── */}
+      {previewStage && previewData && !isFlatFileDict(previewData) && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center" onClick={() => { setPreviewStage(null); setPreviewData(null); }}>
           <motion.div
             initial={{ scale: 0.95 }} animate={{ scale: 1 }}

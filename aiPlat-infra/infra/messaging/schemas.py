@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+import os
 
 
 @dataclass
@@ -38,7 +39,7 @@ class ProducerConfig:
 
 @dataclass
 class KafkaOptions:
-    consumer_group: str = "aiplat-consumer"
+    consumer_group: str = os.getenv("AIPLAT_KAFKA_CONSUMER_GROUP", "")
     auto_offset_reset: str = "latest"
     enable_auto_commit: bool = True
     session_timeout_ms: int = 10000
@@ -66,7 +67,7 @@ class MessagingConfig:
     backend: str
     hosts: List[str] = field(default_factory=lambda: ["localhost"])
     topic_prefix: str = ""
-    client_id: str = "aiplat"
+    client_id: str = os.getenv("AIPLAT_MESSAGING_CLIENT_ID", "")
     kafka: Optional[KafkaOptions] = None
     rabbitmq: Optional[RabbitMQOptions] = None
     redis: Optional[RedisOptions] = None

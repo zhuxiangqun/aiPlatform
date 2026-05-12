@@ -1,7 +1,7 @@
 """
 Knowledge System Module
 
-Provides knowledge management: types, retrieval, indexing, and evolution.
+Provides knowledge management: types, retrieval.
 """
 
 from .types import (
@@ -17,28 +17,12 @@ from .types import (
 from .retriever import (
     IRetriever,
     IEmbedder,
+    HashEmbedder,
+    InfraEmbedder,
     SimpleEmbedder,
     InMemoryRetriever,
     KnowledgeRetriever,
     create_retriever,
-)
-
-from .indexer import (
-    IndexType,
-    IndexConfig,
-    KeywordExtractor,
-    TextChunker,
-    KnowledgeIndexer,
-    create_indexer,
-)
-
-from .evolution import (
-    EvolutionType,
-    EvolutionStatus,
-    EvolutionTrigger,
-    EvolutionRecord,
-    KnowledgeEvolution,
-    create_evolution,
 )
 
 __all__ = [
@@ -51,20 +35,10 @@ __all__ = [
     "KnowledgeResult",
     "IRetriever",
     "IEmbedder",
+    "HashEmbedder",
+    "InfraEmbedder",
     "SimpleEmbedder",
     "InMemoryRetriever",
     "KnowledgeRetriever",
     "create_retriever",
-    "IndexType",
-    "IndexConfig",
-    "KeywordExtractor",
-    "TextChunker",
-    "KnowledgeIndexer",
-    "create_indexer",
-    "EvolutionType",
-    "EvolutionStatus",
-    "EvolutionTrigger",
-    "EvolutionRecord",
-    "KnowledgeEvolution",
-    "create_evolution",
 ]

@@ -6,6 +6,11 @@ ExecutionStore (SQLite)
 目标（P0 最小可用）：
 - 替代 core/server.py 的全局内存 dict（_agent_executions/_agent_history/_skill_executions）
 - 服务重启后仍可查询 execution_id 与 history
+
+DEPRECATED: tenant_quotas management should migrate to platform layer.
+Per architecture contract (docs/index.md §Layer 2): quota/billing belongs
+in platform, not in core's execution store. Core syscalls gate quota checks
+behind AIPLAT_ENABLE_SYSCALL_QUOTA (default false) as transitional mechanism.
 """
 
 from __future__ import annotations

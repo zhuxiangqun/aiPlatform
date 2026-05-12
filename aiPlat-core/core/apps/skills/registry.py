@@ -5,13 +5,14 @@ Provides enhanced SkillRegistry with version management, enable/disable,
 and binding statistics.
 """
 
+import os
 import math
 import threading
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set
 from datetime import datetime
 
-from .base import BaseSkill, SkillMetadata, TextGenerationSkill, CodeGenerationSkill, DataAnalysisSkill, create_skill
+from .base import BaseSkill, SkillMetadata, TextGenerationSkill, CodeGenerationSkill, DataAnalysisSkill, register_skill_factory
 from ...harness.interfaces import SkillConfig, SkillResult
 
 
@@ -49,6 +50,8 @@ class SkillRegistry:
         self._binding_stats: Dict[str, SkillBindingStats] = {}
         self._stats_override: Dict[str, Dict[str, Any]] = {}
         self._lock = threading.RLock()
+        # Cached SKILL.md body content (keyed by skill name)
+        self._body_cache: Dict[str, str] = {}
         # Adaptive skill routing (SkillRouter: arXiv:2603.22455)
         self.SKILL_EMBED_THRESHOLD = 500
         self._body_vectors: Dict[str, List[float]] = {}
@@ -56,74 +59,150 @@ class SkillRegistry:
         self._body_vocab: List[str] = []
 
     def seed_data(self, data: Dict[str, Dict[str, Any]] = None) -> None:
-        """Seed the registry with built-in skill instances.
-        
-        Creates real BaseSkill subclass instances for skills that have them,
-        and GenericSkill instances for skills that don't.
+        """Seed the registry with built-in skill instances from engine skills dir.
+
+        Skill metadata (name, display_name, category, description, enabled)
+        is loaded from SKILL.md files under core/engine/skills/<name>/,
+        NOT hardcoded in Python lists. See CLAUDE.md §5.29.
         """
-        builtin_skills = [
-            ("text_generation", "文本生成", "generation", "根据提示生成各类文本内容", True),
-            ("code_generation", "代码生成", "generation", "根据需求描述生成代码", False),
-            ("data_analysis", "数据分析", "analysis", "分析数据并提供洞察", True),
-            ("skill_eval_trigger", "技能触发评测", "ops", "对指定 Skill 进行触发评测（正负例）并产出指标", True),
-            ("skill_eval_quality", "技能质量评测", "ops", "对指定 Skill 执行质量做评测（用例+规则评分）并产出指标", True),
-            ("skill_apply_engine_skill_md_patch", "应用 Engine Skill 补丁", "ops", "应用 engine skill 的 SKILL.md 补丁（change-control 治理）", True),
-        ]
-        
-        generic_skills = [
-            ("task_planning", "任务规划", "execution", "根据目标拆解为可执行的子任务步骤", True),
-            ("information_search", "信息检索", "retrieval", "从知识库和互联网中检索相关信息", True),
-            ("knowledge_retrieval", "知识召回", "retrieval", "从向量数据库中召回相关文档片段", True),
-            ("summarization", "内容摘要", "transformation", "将长文本压缩为简洁的摘要", True),
-            ("task_decomposition", "任务分解", "analysis", "将复杂任务分解为简单子任务", True),
-            ("api_calling", "API调用", "execution", "调用外部API接口获取数据", True),
-            ("chitchat", "闲聊", "generation", "处理日常闲聊和简单问答", True),
-            ("code_review", "代码审查", "analysis", "审查代码质量并给出改进建议", True),
-            ("translation", "多语言翻译", "transformation", "在多语言之间进行翻译", True),
-        ]
-        
+        import os as _os
+        import yaml as _yaml
+
+        engine_skills_root = _os.path.join(
+            _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))),
+            "engine", "skills"
+        )
+
+        if not _os.path.isdir(engine_skills_root):
+            return
+
         _skill_type_map = {
             "text_generation": TextGenerationSkill,
             "code_generation": CodeGenerationSkill,
             "data_analysis": DataAnalysisSkill,
-            # NOTE: keep these lazy to avoid circular deps:
-            # registry -> eval_trigger -> tools.skill_tools -> registry
             "skill_eval_trigger": None,
             "skill_eval_quality": None,
             "skill_apply_engine_skill_md_patch": None,
         }
-        
+
         with self._lock:
-            for name, display_name, category, description, enabled in builtin_skills:
-                skill_cls = _skill_type_map.get(name)
+            for dirname in sorted(_os.listdir(engine_skills_root)):
+                skill_dir = _os.path.join(engine_skills_root, dirname)
+                skill_md = _os.path.join(skill_dir, "SKILL.md")
+                if not _os.path.isfile(skill_md):
+                    continue
+
+                try:
+                    with open(skill_md, "r", encoding="utf-8") as f:
+                        raw = f.read()
+                except Exception:
+                    continue
+
+                name = dirname
+                display_name = name.replace("_", " ").title()
+                category = "general"
+                description = ""
+                enabled = True
+                uses_code_skill = False
+                body = raw
+
+                if raw.startswith("---"):
+                    parts = raw.split("---", 2)
+                    if len(parts) >= 3:
+                        try:
+                            fm = _yaml.safe_load(parts[1]) or {}
+                            name = str(fm.get("name", dirname))
+                            display_name = str(fm.get("display_name", display_name))
+                            category = str(fm.get("category", "general"))
+                            description = str(fm.get("description", ""))
+                            enabled = str(fm.get("status", "enabled")) != "disabled"
+                            uses_code_skill = bool(fm.get("uses_code_skill"))
+                            body = parts[2].strip()
+                        except Exception:
+                            pass
+
+                if self.get(name) is not None:
+                    continue
+
+                skill_cls = _skill_type_map.get(name) if name in _skill_type_map else None
                 if skill_cls is None and name == "skill_eval_trigger":
                     import importlib
-                    skill_cls = importlib.import_module(f"{__package__}.eval_trigger").SkillEvalTriggerSkill  # type: ignore
+                    skill_cls = importlib.import_module(f"{__package__}.eval_trigger").SkillEvalTriggerSkill
                 if skill_cls is None and name == "skill_eval_quality":
                     import importlib
-                    skill_cls = importlib.import_module(f"{__package__}.eval_quality").SkillEvalQualitySkill  # type: ignore
+                    skill_cls = importlib.import_module(f"{__package__}.eval_quality").SkillEvalQualitySkill
                 if skill_cls is None and name == "skill_apply_engine_skill_md_patch":
                     import importlib
-                    skill_cls = importlib.import_module(f"{__package__}.apply_engine_skill_md_patch").ApplyEngineSkillMdPatchSkill  # type: ignore
+                    skill_cls = importlib.import_module(f"{__package__}.apply_engine_skill_md_patch").ApplyEngineSkillMdPatchSkill
+
                 if skill_cls:
                     skill = skill_cls()
+                    register_skill_factory(name, type(skill))
+                    if uses_code_skill:
+                        cfg = getattr(skill, "_config", None)
+                        if cfg and hasattr(cfg, "metadata"):
+                            cfg.metadata["uses_code_skill"] = True
                     self.register(skill)
-                    if not enabled:
-                        self.disable(name)
-            
-            for name, display_name, category, description, enabled in generic_skills:
-                config = SkillConfig(
-                    name=name,
-                    description=description,
-                    metadata={"category": category, "version": "1.0.0"}
-                )
-                skill = _GenericSkill(config)
-                self.register(skill)
+                else:
+                    config = SkillConfig(
+                        name=name,
+                        description=description,
+                        metadata={"category": category, "body": body, "version": "1.0.0",
+                                  "uses_code_skill": uses_code_skill}
+                    )
+                    skill = _GenericSkill(config)
+                    self.register(skill)
+
                 if not enabled:
                     self.disable(name)
 
+    def _pre_register_validate(self, skill: BaseSkill) -> None:
+        cfg = skill.get_config()
+        import logging
+        import os
+        logger = logging.getLogger("aiplat.skills")
+        strict = os.getenv("AIPLAT_SKILL_STRICT_VALIDATION", "false").lower() in ("1", "true", "yes")
+
+        def _fail(msg: str):
+            if strict:
+                raise ValueError(msg)
+            logger.warning("Skill registration advisory: %s", msg)
+
+        effects = list(getattr(cfg, "effects", []) or [])
+        if not effects:
+            _fail(
+                f"Skill '{cfg.name}': effects declaration missing. "
+                f"See CLAUDE.md §5.19. Set AIPLAT_SKILL_STRICT_VALIDATION=true to enforce."
+            )
+            return
+        for e in effects:
+            if "type" not in e:
+                _fail(f"Skill '{cfg.name}': effects[].type required")
+            if "idempotent" not in e:
+                _fail(f"Skill '{cfg.name}': effects[].idempotent required")
+        has_write = any(e.get("type") in ("write", "execute", "both") for e in effects)
+        if has_write and bool(getattr(cfg, "idempotent", True)):
+            _fail(
+                f"Skill '{cfg.name}': has write/execute effects but idempotent=true. "
+                f"Set idempotent=false or remove write effects."
+            )
+        meta = getattr(cfg, "metadata", {}) or {}
+        risk_level = str(meta.get("risk_level") or "low")
+        permissions = list(meta.get("permissions") or [])
+        if risk_level in ("high", "critical") and not permissions:
+            _fail(
+                f"Skill '{cfg.name}': risk_level={risk_level} requires explicit permissions"
+            )
+        for e in effects:
+            e_type = str(e.get("type") or "")
+            if e_type in ("write", "execute", "both") and not bool(e.get("rollback_available")):
+                _fail(
+                    f"Skill '{cfg.name}': effects[].type={e_type} requires rollback_available=true"
+                )
+
     def register(self, skill: BaseSkill) -> None:
         """Register a skill"""
+        self._pre_register_validate(skill)
         with self._lock:
             cfg = skill.get_config()
             name = cfg.name
@@ -181,6 +260,202 @@ class SkillRegistry:
         """Get skill by name"""
         return self._skills.get(name)
 
+    def get_body(self, name: str) -> str:
+        """Get cached SKILL.md body content for a skill."""
+        return self._body_cache.get(name, "")
+
+    def seed_for_platform(self) -> None:
+        """Seed skills for platform process: built-in + discovered workspace skills."""
+        self.seed_data()
+        try:
+            import os
+            workspace = os.path.expanduser(os.getenv("AIPLAT_WORKSPACE_SKILLS", "~/.aiplat/skills"))
+            from core.apps.skills.discovery import SkillDiscovery
+            discovery = SkillDiscovery(base_path="", workspace_path=workspace)
+            for name, skill in discovery._discovered.items():
+                if self.get(name) is None:
+                    from core.apps.skills.registry import _GenericSkill as GenSkill
+                    from core.harness.interfaces import SkillConfig as SC
+                    sc = SC(
+                        name=skill.name,
+                        description=skill.description or "",
+                        metadata={"category": skill.category or "general", "body": skill.sop_markdown or ""},
+                    )
+                    s = GenSkill(config=sc)
+                    self.register(s)
+        except Exception:
+            pass
+        # Folder scan fallback: auto-discover *.md files in ~/.aiplat/skills/
+        self.scan_folder(os.path.expanduser(os.getenv("AIPLAT_WORKSPACE_SKILLS", "~/.aiplat/skills")))
+
+    def scan_folder(self, skills_dir: str) -> int:
+        """Scan a folder for *.md files and auto-register them as Skills.
+
+        Each .md file becomes a rule-type Skill with:
+        - name = filename (without .md extension)
+        - body = file content (after YAML frontmatter if present)
+        - description = frontmatter 'description' field or auto-generated
+
+        This enables 'just drop a .md file' skill creation — no API
+        registration, no mandatory permissions/effects/version fields.
+
+        Args:
+            skills_dir: Path to a directory containing *.md skill files.
+
+        Returns:
+            int: Number of skills discovered and registered.
+        """
+        import os
+        import yaml as _yaml
+        from core.apps.skills.registry import _GenericSkill as GenSkill
+        from core.harness.interfaces import SkillConfig as SC
+
+        if not os.path.isdir(skills_dir):
+            return 0
+
+        count = 0
+        for fname in sorted(os.listdir(skills_dir)):
+            if not fname.endswith(".md"):
+                continue
+            fullpath = os.path.join(skills_dir, fname)
+            if not os.path.isfile(fullpath):
+                continue
+            try:
+                with open(fullpath, "r", encoding="utf-8") as f:
+                    raw = f.read()
+            except Exception:
+                continue
+
+            name = fname[:-3]  # strip .md
+            if self.get(name) is not None:
+                continue  # already registered
+
+            body = raw
+            description = ""
+            category = "general"
+            if raw.startswith("---"):
+                parts = raw.split("---", 2)
+                if len(parts) >= 3:
+                    try:
+                        fm = _yaml.safe_load(parts[1]) or {}
+                        description = str(fm.get("description", ""))
+                        category = str(fm.get("category", "general"))
+                    except Exception:
+                        pass
+                    body = parts[2].strip()
+            if not description:
+                description = name.replace("_", " ").title()
+
+            config = SC(
+                name=name,
+                description=description,
+                metadata={"category": category, "body": body},
+            )
+            skill = GenSkill(config=config)
+            self.register(skill)
+            count += 1
+
+        return count
+
+    def import_skills_from_dir(self, source_dir: str, auto_install_deps: bool = True) -> Dict[str, Any]:
+        """Batch import all .md skills from a directory (GenericAgent skill library).
+
+        Each .md file in the directory is parsed as a skill:
+        - YAML frontmatter → skill metadata (category, description, tags, effects)
+        - Body → skill content (SOP, instructions)
+        - If auto_install_deps=True and frontmatter declares requirements, pip install
+
+        Skills are classified by category frontmatter field, defaulting to 'general'.
+
+        Args:
+            source_dir: Path to directory containing .md skill files.
+            auto_install_deps: If True, auto-detect and pip install dependencies.
+
+        Returns:
+            Dict with keys: 'imported' (count), 'skipped' (count), 'errors' (list),
+            'categories' (dict of category→count).
+        """
+        import os as _os
+        import subprocess
+        import yaml as _yaml
+        from core.apps.skills.registry import _GenericSkill as GenSkill
+        from core.harness.interfaces import SkillConfig as SC
+
+        result = {"imported": 0, "skipped": 0, "errors": [], "categories": {}}
+
+        if not _os.path.isdir(source_dir):
+            return result
+
+        for fname in sorted(_os.listdir(source_dir)):
+            if not fname.endswith(".md"):
+                continue
+            fullpath = _os.path.join(source_dir, fname)
+            if not _os.path.isfile(fullpath):
+                continue
+            try:
+                with open(fullpath, "r", encoding="utf-8") as f:
+                    raw = f.read()
+            except Exception as e:
+                result["errors"].append(f"{fname}: read error: {e}")
+                continue
+
+            name = fname[:-3]
+            if self.get(name) is not None:
+                result["skipped"] += 1
+                continue
+
+            category = "general"
+            description = ""
+            tags = []
+            body = raw
+            if raw.startswith("---"):
+                parts = raw.split("---", 2)
+                if len(parts) >= 3:
+                    try:
+                        fm = _yaml.safe_load(parts[1]) or {}
+                        category = str(fm.get("category", "general"))
+                        description = str(fm.get("description", ""))
+                        tags = fm.get("tags", []) if isinstance(fm.get("tags"), list) else []
+
+                        if auto_install_deps and fm.get("requires"):
+                            deps = fm["requires"]
+                            if isinstance(deps, str):
+                                deps = [deps]
+                            if isinstance(deps, list):
+                                try:
+                                    subprocess.run(
+                                        ["pip", "install", *deps],
+                                        capture_output=True, timeout=60
+                                    )
+                                except Exception:
+                                    pass
+
+                    except Exception as e:
+                        result["errors"].append(f"{fname}: yaml parse error: {e}")
+                        continue
+                    body = parts[2].strip()
+
+            if not description:
+                description = name.replace("_", " ").title()
+
+            config = SC(
+                name=name,
+                description=description,
+                metadata={
+                    "category": category,
+                    "body": body,
+                    "tags": tags,
+                    "source_file": fullpath,
+                    "imported_at": datetime.now().isoformat(),
+                },
+            )
+            skill = GenSkill(config=config)
+            self.register(skill)
+            result["imported"] += 1
+            result["categories"][category] = result["categories"].get(category, 0) + 1
+
+        return result
+
     def get_version(self, name: str, version: str) -> Optional[SkillConfig]:
         """Get a specific version of a skill's config"""
         versions = self._versions.get(name, [])
@@ -221,7 +496,11 @@ class SkillRegistry:
                     setattr(skill, "_config", target.config)
                 except Exception:
                     pass
-                self._skills[name] = skill
+            self._skills[name] = skill
+            # Cache SKILL.md body content if available
+            body = (getattr(cfg, "body", None) or "").strip()
+            if body:
+                self._body_cache[name] = body
             return True
 
     def _add_version(self, name: str, version: str, config: SkillConfig) -> None:
@@ -340,173 +619,6 @@ class SkillRegistry:
         return result
 
 
-class _GenericSkill(BaseSkill):
-    """Generic skill for skills without a dedicated subclass.
-    
-    Represents skills that need an LLM adapter to execute but don't 
-    have specialized logic. Uses a prompt template derived from the
-    skill's description and category.
-    """
-    
-    def __init__(self, config: SkillConfig):
-        super().__init__(config)
-        self._model = None
-    
-    def set_model(self, model):
-        self._model = model
-    
-    async def execute(self, context, params):
-        if not self._model:
-            return SkillResult(
-                success=False,
-                error=f"No LLM adapter configured for skill '{self._config.name}'"
-            )
-
-        def _extract_json(text: str):
-            import json
-            import re
-
-            if not isinstance(text, str):
-                return None
-            s = text.strip()
-            # strip ```json ... ```
-            m = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", s, re.IGNORECASE)
-            if m:
-                s = m.group(1).strip()
-            # direct parse
-            try:
-                obj = json.loads(s)
-                return obj
-            except Exception:
-                pass
-            # find first {...} block (best-effort)
-            i = s.find("{")
-            j = s.rfind("}")
-            if i >= 0 and j > i:
-                try:
-                    return json.loads(s[i : j + 1])
-                except Exception:
-                    return None
-            return None
-
-        prompt = params.get("prompt", params.get("input", ""))
-        if not prompt:
-            # Prefer schema-driven prompt: feed the full params as JSON so SOP can reference fields.
-            prompt = f"Execute skill '{self._config.name}': {self._config.description}\nInput(JSON): {params}"
-
-        # Organization-level coding policy profile (Phase-1).
-        coding_profile = str((params or {}).get("_coding_policy_profile") or "").strip().lower()
-        policy_block = ""
-        if coding_profile == "karpathy_v1":
-            policy_block = (
-                "编码行为规范（karpathy_v1，必须遵循）：\n"
-                "1) 编码前思考：不要做未证实假设；遇到歧义/缺参，先在输出中列出需要确认的问题与可选方案。\n"
-                "2) 简洁优先：坚持最小可行实现；不要引入未经请求的抽象/架构/额外功能。\n"
-                "3) 精准修改：像外科手术一样，只改必须改的地方；避免无关格式化/无关文件改动。\n"
-                "4) 目标驱动：把任务转成可验证目标；在输出中给出验收标准（测试/复现步骤/检查清单）。\n"
-            )
-        
-        try:
-            sop = ""
-            try:
-                sop = (self._config.metadata or {}).get("sop_markdown", "") if hasattr(self._config, "metadata") else ""
-            except Exception:
-                sop = ""
-
-            allowed_tools = []
-            try:
-                # Prefer runtime context.tools, fallback to config metadata.tools.
-                if context and getattr(context, "tools", None):
-                    allowed_tools = list(getattr(context, "tools") or [])
-                else:
-                    allowed_tools = list((self._config.metadata or {}).get("tools", []) if hasattr(self._config, "metadata") else [])
-                allowed_tools = [str(t) for t in allowed_tools if str(t).strip()]
-            except Exception:
-                allowed_tools = []
-
-            system_parts = [
-                "你是一个可复用技能（Skill）执行器。",
-                f"技能名称：{self._config.name}",
-                f"技能描述：{self._config.description}",
-            ]
-            if policy_block:
-                system_parts.append(policy_block)
-            if sop:
-                system_parts.append("下面是该技能的SOP（必须严格遵循）：")
-                system_parts.append(sop)
-
-            # If output_schema exists, require strict JSON output with those top-level keys.
-            out_schema = {}
-            try:
-                out_schema = self._config.output_schema or {}
-            except Exception:
-                out_schema = {}
-            if isinstance(out_schema, dict) and out_schema:
-                keys = list(out_schema.keys())
-                system_parts.append("输出要求：你必须返回严格 JSON（不要输出任何额外文本/解释/代码块外内容）。")
-                system_parts.append(f"JSON 顶层字段必须包含：{keys}")
-                system_parts.append("如果某字段无法给出，请给出空值（空数组/空对象/空字符串），但不要遗漏字段。")
-
-            # If tools are available, run as a tool-capable ReAct agent (SkillTool-like orchestration).
-            if allowed_tools:
-                from ...apps.agents.react import create_react_agent
-                from ...harness.interfaces import AgentConfig, AgentContext
-
-                agent = create_react_agent(
-                    config=AgentConfig(
-                        name=f"skill-inline-{self._config.name}",
-                        model=str(getattr(self._model, "model", None) or "gpt-4"),
-                        metadata={"role": "skill-agent", "skill": self._config.name},
-                    ),
-                    model=self._model,
-                )
-
-                task = "\n".join(system_parts) + "\n\n用户输入：\n" + prompt
-                msgs = [{"role": "system", "content": "\n".join(system_parts)}, {"role": "user", "content": prompt}]
-                agent_ctx = AgentContext(
-                    session_id=getattr(context, "session_id", "skill"),
-                    user_id=getattr(context, "user_id", "system"),
-                    messages=[{"role": "user", "content": task}],
-                    variables={"messages": msgs, **(getattr(context, "variables", {}) or {})},
-                    tools=allowed_tools,
-                )
-                result = await agent.execute(agent_ctx)
-                if isinstance(out_schema, dict) and out_schema:
-                    parsed = _extract_json(str(result.output or ""))
-                    if isinstance(parsed, dict):
-                        return SkillResult(
-                            success=bool(result.success),
-                            output=parsed,
-                            error=result.error,
-                            metadata={"skill": self._config.name, "agent": result.metadata, "tools": allowed_tools, "parsed_json": True},
-                        )
-                    return SkillResult(
-                        success=False,
-                        output={"raw": result.output},
-                        error="json_parse_failed",
-                        metadata={"skill": self._config.name, "agent": result.metadata, "tools": allowed_tools},
-                    )
-                return SkillResult(success=bool(result.success), output={"text": result.output}, error=result.error, metadata={"skill": self._config.name, "agent": result.metadata, "tools": allowed_tools})
-
-            # Fallback: plain LLM generation (no tools)
-            from ...harness.syscalls.llm import sys_llm_generate
-
-            response = await sys_llm_generate(
-                self._model,
-                [
-                    {"role": "system", "content": "\n".join(system_parts)},
-                    {"role": "user", "content": prompt},
-                ],
-            )
-            if isinstance(out_schema, dict) and out_schema:
-                parsed = _extract_json(str(getattr(response, "content", "") or ""))
-                if isinstance(parsed, dict):
-                    return SkillResult(success=True, output=parsed, metadata={"model": getattr(response, "model", None), "skill": self._config.name, "parsed_json": True})
-                return SkillResult(success=False, output={"raw": getattr(response, "content", None)}, error="json_parse_failed", metadata={"model": getattr(response, "model", None), "skill": self._config.name})
-            return SkillResult(success=True, output={"text": response.content}, metadata={"model": response.model, "skill": self._config.name})
-        except Exception as e:
-            return SkillResult(success=False, error=str(e))
-
     # ── Adaptive Skill Routing (SkillRouter-style, §5.4) ─────────────────
 
     def _ensure_body_vectors(self):
@@ -622,3 +734,146 @@ _global_registry = SkillRegistry()
 def get_skill_registry() -> SkillRegistry:
     """Get global skill registry"""
     return _global_registry
+class _GenericSkill(BaseSkill):
+    """Generic skill for skills without a dedicated subclass.
+    
+    Represents skills that need an LLM adapter to execute but don't 
+    have specialized logic. Uses a prompt template derived from the
+    skill's description and category.
+    """
+    
+    def __init__(self, config: SkillConfig):
+        super().__init__(config)
+        self._model = None
+    
+    def set_model(self, model):
+        self._model = model
+    
+    async def execute(self, context, params):
+        if not self._model:
+            return SkillResult(
+                success=False,
+                error=f"No LLM adapter configured for skill '{self._config.name}'"
+            )
+
+        # Canonical JSON extraction via CoreFacade (replaces local _extract_json).
+        from core.api.core_facade import parse_json
+
+        prompt = params.get("prompt", params.get("input", ""))
+        if not prompt:
+            # Prefer schema-driven prompt: feed the full params as JSON so SOP can reference fields.
+            prompt = f"Execute skill '{self._config.name}': {self._config.description}\nInput(JSON): {params}"
+
+        # Organization-level coding policy profile (Phase-1).
+        coding_profile = str((params or {}).get("_coding_policy_profile") or "").strip().lower()
+        policy_block = ""
+        if coding_profile == "karpathy_v1":
+            policy_block = (
+                "编码行为规范（karpathy_v1，必须遵循）：\n"
+                "1) 编码前思考：不要做未证实假设；遇到歧义/缺参，先在输出中列出需要确认的问题与可选方案。\n"
+                "2) 简洁优先：坚持最小可行实现；不要引入未经请求的抽象/架构/额外功能。\n"
+                "3) 精准修改：像外科手术一样，只改必须改的地方；避免无关格式化/无关文件改动。\n"
+                "4) 目标驱动：把任务转成可验证目标；在输出中给出验收标准（测试/复现步骤/检查清单）。\n"
+            )
+        
+        try:
+            sop = ""
+            try:
+                sop = (self._config.metadata or {}).get("sop_markdown", "") if hasattr(self._config, "metadata") else ""
+            except Exception:
+                sop = ""
+
+            allowed_tools = []
+            try:
+                # Prefer runtime context.tools, fallback to config metadata.tools.
+                if context and getattr(context, "tools", None):
+                    allowed_tools = list(getattr(context, "tools") or [])
+                else:
+                    allowed_tools = list((self._config.metadata or {}).get("tools", []) if hasattr(self._config, "metadata") else [])
+                allowed_tools = [str(t) for t in allowed_tools if str(t).strip()]
+            except Exception:
+                allowed_tools = []
+
+            system_parts = [
+                "你是一个可复用技能（Skill）执行器。",
+                f"技能名称：{self._config.name}",
+                f"技能描述：{self._config.description}",
+            ]
+            if policy_block:
+                system_parts.append(policy_block)
+            if sop:
+                system_parts.append("下面是该技能的SOP（必须严格遵循）：")
+                system_parts.append(sop)
+
+            # If output_schema exists, require strict JSON output with those top-level keys.
+            out_schema = {}
+            try:
+                out_schema = self._config.output_schema or {}
+            except Exception:
+                out_schema = {}
+            if isinstance(out_schema, dict) and out_schema:
+                keys = list(out_schema.keys())
+                system_parts.append("输出要求：你必须返回严格 JSON（不要输出任何额外文本/解释/代码块外内容）。")
+                system_parts.append(f"JSON 顶层字段必须包含：{keys}")
+                system_parts.append("如果某字段无法给出，请给出空值（空数组/空对象/空字符串），但不要遗漏字段。")
+
+            # If tools are available, run as a tool-capable ReAct agent (SkillTool-like orchestration).
+            if allowed_tools:
+                from ...apps.agents.react import create_react_agent
+                from ...harness.interfaces import AgentConfig, AgentContext
+
+                agent = create_react_agent(
+                    config=AgentConfig(
+                        name=f"skill-inline-{self._config.name}",
+                        model=str(getattr(self._model, "model", None) or "gpt-4"),
+                        metadata={"role": "skill-agent", "skill": self._config.name},
+                    ),
+                    model=self._model,
+                )
+
+                task = "\n".join(system_parts) + "\n\n用户输入：\n" + prompt
+                msgs = [{"role": "system", "content": "\n".join(system_parts)}, {"role": "user", "content": prompt}]
+                agent_ctx = AgentContext(
+                    session_id=getattr(context, "session_id", "skill"),
+                    user_id=getattr(context, "user_id", "system"),
+                    messages=[{"role": "user", "content": task}],
+                    variables={"messages": msgs, **(getattr(context, "variables", {}) or {})},
+                    tools=allowed_tools,
+                )
+                result = await agent.execute(agent_ctx)
+                if isinstance(out_schema, dict) and out_schema:
+                    parsed = parse_json(str(result.output or ""))
+                    if isinstance(parsed, dict):
+                        return SkillResult(
+                            success=bool(result.success),
+                            output=parsed,
+                            error=result.error,
+                            metadata={"skill": self._config.name, "agent": result.metadata, "tools": allowed_tools, "parsed_json": True},
+                        )
+                    return SkillResult(
+                        success=False,
+                        output={"raw": result.output},
+                        error="json_parse_failed",
+                        metadata={"skill": self._config.name, "agent": result.metadata, "tools": allowed_tools},
+                    )
+                return SkillResult(success=bool(result.success), output={"text": result.output}, error=result.error, metadata={"skill": self._config.name, "agent": result.metadata, "tools": allowed_tools})
+
+            # Fallback: plain LLM generation (no tools)
+            from ...harness.syscalls.llm import sys_llm_generate
+
+            response = await sys_llm_generate(
+                self._model,
+                [
+                    {"role": "system", "content": "\n".join(system_parts)},
+                    {"role": "user", "content": prompt},
+                ],
+            )
+            if isinstance(out_schema, dict) and out_schema:
+                parsed = parse_json(str(getattr(response, "content", "") or ""))
+                if isinstance(parsed, dict):
+                    return SkillResult(success=True, output=parsed, metadata={"model": getattr(response, "model", None), "skill": self._config.name, "parsed_json": True})
+                return SkillResult(success=False, output={"raw": getattr(response, "content", None)}, error="json_parse_failed", metadata={"model": getattr(response, "model", None), "skill": self._config.name})
+            return SkillResult(success=True, output={"text": response.content}, metadata={"model": response.model, "skill": self._config.name})
+        except Exception as e:
+            return SkillResult(success=False, error=str(e))
+

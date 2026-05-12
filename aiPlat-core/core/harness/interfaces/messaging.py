@@ -8,6 +8,9 @@ message bus for agent-to-agent coordination.
 
 from __future__ import annotations
 
+import asyncio
+import time
+import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional
@@ -19,6 +22,8 @@ class AgentMessageType(Enum):
     RESULT = "result"
     ERROR = "error"
     CANCEL = "cancel"
+    REQUEST = "request"
+    RESPONSE = "response"
 
 
 @dataclass
@@ -53,15 +58,17 @@ class AgentMessage:
 
 
 class AgentMessageBus:
-    """Lightweight message bus for agent-to-agent communication.
+    """Message bus for agent-to-agent communication with request-response protocol.
 
-    Stores messages in memory. For production, replace with a persistent
-    queue backed by the execution store.
+    Supports broadcast (send/receive/drain) and point-to-point request/response
+    with timeout. Messages are stored in-memory; for production, replace with a
+    persistent queue.
     """
 
     def __init__(self):
-        self._inbox: Dict[str, List[AgentMessage]] = {}   # agent_id → messages
+        self._inbox: Dict[str, List[AgentMessage]] = {}
         self._sent: List[AgentMessage] = []
+        self._requests: Dict[str, asyncio.Future] = {}
 
     def send(self, msg: AgentMessage) -> None:
         target = msg.receiver_id or "broadcast"
@@ -77,10 +84,70 @@ class AgentMessageBus:
         return inbox
 
     def drain(self, agent_id: str) -> List[AgentMessage]:
-        """Consume and remove all messages for an agent."""
         msgs = self._inbox.pop(agent_id, [])
         return msgs
 
     def clear(self) -> None:
         self._inbox.clear()
         self._sent.clear()
+
+    async def request(
+        self,
+        target_agent: str,
+        sender_agent: str,
+        # TODO: integrate into pipeline Agent communication; currently 0 production callers (2026-05)
+        msg_type: str = "request",
+        payload: Optional[Dict[str, Any]] = None,
+        timeout: float = 30.0,
+    ) -> Optional[Dict[str, Any]]:
+        """Send a request to a specific agent and await its response.
+
+        Returns the response payload, or None on timeout.
+        """
+        request_id = str(uuid.uuid4())
+        self._requests[request_id] = asyncio.get_event_loop().create_future()
+        msg = AgentMessage(
+            msg_id=request_id,
+            type=AgentMessageType.REQUEST,
+            sender_id=sender_agent,
+            receiver_id=target_agent,
+            payload=dict(payload or {}, _request_id=request_id),
+        )
+        self.send(msg)
+        try:
+            return await asyncio.wait_for(self._requests[request_id], timeout=timeout)
+        except asyncio.TimeoutError:
+            self._requests.pop(request_id, None)
+            return None
+        finally:
+            self._requests.pop(request_id, None)
+
+    def respond(self, request_id: str, result: Dict[str, Any], sender_agent: str, target_agent: str) -> None:
+        """Respond to a pending request."""
+        future = self._requests.get(request_id)
+        if future is not None and not future.done():
+            future.set_result(result)
+        msg = AgentMessage(
+            msg_id=str(uuid.uuid4()),
+            type=AgentMessageType.RESPONSE,
+            sender_id=sender_agent,
+            receiver_id=target_agent,
+            payload=result,
+            parent_msg_id=request_id,
+        )
+        self.send(msg)
+
+    def collect_requests(self, agent_id: str) -> List[AgentMessage]:
+        """Collect pending REQUEST messages for an agent (non-destructive)."""
+        return self.receive(agent_id, AgentMessageType.REQUEST)
+
+
+_global_bus: Optional[AgentMessageBus] = None
+
+
+def get_message_bus() -> AgentMessageBus:
+    """Get or create the global shared AgentMessageBus singleton."""
+    global _global_bus
+    if _global_bus is None:
+        _global_bus = AgentMessageBus()
+    return _global_bus

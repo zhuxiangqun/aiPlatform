@@ -4,6 +4,7 @@ Core Layer API Client
 HTTP client for calling aiPlat-core layer API.
 """
 
+import os
 import httpx
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
@@ -46,6 +47,21 @@ class CoreAPIClient:
             transport=self.config.transport,
         )
         return self
+
+    async def _platform_req(self, method: str, path: str, **kwargs) -> Dict[str, Any]:
+        """Make HTTP request to platform API (Builder was moved to platform)."""
+        if not self._client:
+            self._client = httpx.AsyncClient(
+                base_url=self.config.base_url,
+                timeout=self.config.timeout,
+                transport=self.config.transport,
+            )
+        import os
+        platform_url = os.getenv("AIPLAT_PLATFORM_URL", "http://localhost:8003")
+        async with httpx.AsyncClient(base_url=platform_url, timeout=self.config.timeout) as pc:
+            resp = await pc.request(method, path, **kwargs)
+            resp.raise_for_status()
+            return resp.json()
     
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         if self._client:
@@ -1255,3 +1271,74 @@ class CoreAPIClient:
     async def update_feedback_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
         """Update feedback loop configuration."""
         return await self._request("PUT", "/api/core/harness/feedback/config", json=config)
+
+    # ===== Builder Projects (App Studio) — routed to platform (Builder moved from core to platform) =====
+
+    async def create_builder_session(self, requirement: str) -> Dict[str, Any]:
+        return await self._platform_req("POST", "/platform/builder/sessions", json={"requirement": requirement})
+
+    async def builder_chat(self, session_id: str, message: str) -> Dict[str, Any]:
+        return await self._platform_req("POST", f"/platform/builder/sessions/{session_id}/chat", json={"message": message})
+
+    async def builder_confirm(self, session_id: str) -> Dict[str, Any]:
+        return await self._platform_req("POST", f"/platform/builder/sessions/{session_id}/confirm")
+
+    async def builder_start(self, session_id: str) -> Dict[str, Any]:
+        return await self._platform_req("POST", f"/platform/builder/sessions/{session_id}/start")
+
+    async def get_builder_session(self, session_id: str) -> Dict[str, Any]:
+        return await self._platform_req("GET", f"/platform/builder/sessions/{session_id}")
+
+    async def list_projects(self, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        return await self._platform_req("GET", "/platform/builder/projects", params={"limit": limit, "offset": offset})
+
+    async def create_project(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._platform_req("POST", "/platform/builder/projects", json=body or {})
+
+    async def get_project(self, project_id: str) -> Dict[str, Any]:
+        return await self._platform_req("GET", f"/platform/builder/projects/{project_id}")
+
+    async def delete_project(self, project_id: str) -> Dict[str, Any]:
+        return await self._platform_req("DELETE", f"/platform/builder/projects/{project_id}")
+
+    async def project_chat(self, project_id: str, message: str) -> Dict[str, Any]:
+        return await self._platform_req("POST", f"/platform/builder/projects/{project_id}/chat", json={"message": message})
+
+    async def project_confirm(self, project_id: str) -> Dict[str, Any]:
+        return await self._platform_req("POST", f"/platform/builder/projects/{project_id}/confirm")
+
+    async def project_start(self, project_id: str) -> Dict[str, Any]:
+        return await self._platform_req("POST", f"/platform/builder/projects/{project_id}/start")
+
+    async def project_approve(self, project_id: str) -> Dict[str, Any]:
+        return await self._platform_req("POST", f"/platform/builder/projects/{project_id}/approve")
+
+    async def project_reject(self, project_id: str, feedback: str = "") -> Dict[str, Any]:
+        return await self._platform_req("POST", f"/platform/builder/projects/{project_id}/reject", json={"feedback": feedback})
+
+    async def project_rollback(self, project_id: str, stage_id: str) -> Dict[str, Any]:
+        return await self._platform_req("POST", f"/platform/builder/projects/{project_id}/rollback/{stage_id}")
+
+    async def project_fix(self, project_id: str) -> Dict[str, Any]:
+        return await self._platform_req("POST", f"/platform/builder/projects/{project_id}/fix")
+
+    async def get_project_state(self, project_id: str) -> Dict[str, Any]:
+        return await self._platform_req("GET", f"/platform/builder/projects/{project_id}/state")
+
+    async def get_project_deploy_url(self, project_id: str) -> str:
+        return f"http://localhost:8003/platform/builder/projects/{project_id}/deploy"
+
+    async def list_teams(self) -> Dict[str, Any]:
+        return await self._platform_req("GET", "/platform/builder/teams")
+
+    async def create_team(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._platform_req("POST", "/platform/builder/teams", json=body or {})
+
+    async def run_team(self, team_id: str, description: str = "") -> Dict[str, Any]:
+        return await self._platform_req("POST", f"/platform/builder/teams/{team_id}/run", json={"description": description})
+
+    async def list_workspace_agents(self) -> Dict[str, Any]:
+        return await self._request("GET", "/api/core/workspace/agents")
+
+    async def run_repo_tests(self) -> Dict[str, Any]:
+        return await self._request("POST", "/api/core/diagnostics/repo/tests/run", json={})

@@ -1,5 +1,9 @@
 """
 Coordination Module
+
+Multi-agent coordination via Patterns (primary) and Convergence Detectors.
+Coordinator classes (SimpleCoordinator, AdaptiveCoordinator, HierarchicalCoordinator)
+have been removed as dead code — use create_pattern() instead.
 """
 
 from .patterns import (
@@ -12,12 +16,6 @@ from .patterns import (
     ProducerReviewerPattern,
     SupervisorPattern,
     create_pattern,
-)
-from .coordinators.agent import (
-    SimpleCoordinator,
-    AdaptiveCoordinator,
-    HierarchicalCoordinator,
-    create_coordinator,
 )
 from .detector.convergence import (
     IConvergenceDetector,
@@ -39,10 +37,6 @@ __all__ = [
     "ProducerReviewerPattern",
     "SupervisorPattern",
     "create_pattern",
-    "SimpleCoordinator",
-    "AdaptiveCoordinator",
-    "HierarchicalCoordinator",
-    "create_coordinator",
     "IConvergenceDetector",
     "ConvergenceResult",
     "ExactMatchDetector",

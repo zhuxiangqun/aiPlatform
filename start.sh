@@ -64,6 +64,13 @@ export MKL_NUM_THREADS="${MKL_NUM_THREADS:-1}"
 # Dev: disable approval gates (avoid manual approve/replay loops during local MVP).
 export AIPLAT_APPROVALS_DISABLED="${AIPLAT_APPROVALS_DISABLED:-1}"
 
+# Infra: port→service mapping for network manager (was hardcoded, now env-driven).
+# Format: "port=service:name,port=service:name,..."
+export AIPLAT_PORT_SERVICES="${AIPLAT_PORT_SERVICES:-8002=core-api:aiPlat-core,8001=infra-api:aiPlat-infra,8000=management-api:aiPlat-management,8003=platform-api:aiPlat-platform,8004=app-api:aiPlat-app,5173=frontend-dev:frontend}"
+# Infra: target processes for service manager monitoring.
+# Format: "name:cmdline:port,name:cmdline:port,..."
+export AIPLAT_TARGET_PROCESSES="${AIPLAT_TARGET_PROCESSES:-aiPlat-core:uvicorn:8002,aiPlat-infra:uvicorn:8001,aiPlat-platform:uvicorn:8003,aiPlat-app:uvicorn:8004,aiPlat-management:uvicorn:8000,frontend:proxy_server.py:5173}"
+
 # Parser selection for KB ingest: auto|mineru|ocr
 export AIPLAT_KB_PARSER="${AIPLAT_KB_PARSER:-auto}"
 
@@ -210,6 +217,12 @@ ensure_venv
 ensure_deps
 ensure_video_deps
 
+# Ensure runtime data directories exist
+mkdir -p "$AIPLAT_HOME/tools"   # Plugin tool discovery (P2-12)
+mkdir -p "$AIPLAT_HOME/skills"  # Workspace skills
+mkdir -p "$AIPLAT_HOME/agents"  # AGENT.md role definitions
+mkdir -p "$AIPLAT_HOME/output"  # Pipeline deploy output
+
 echo "============================================================"
 echo "  aiPlat-platform - 启动服务"
 echo "============================================================"
@@ -295,6 +308,8 @@ mkdir -p "$(dirname "$AIPLAT_PLATFORM_DB_PATH")"
 echo "Platform DB: $AIPLAT_PLATFORM_DB_PATH"
 # DEV: allow management UI to use any apl_* api key without provisioning (MVP convenience).
 export AIPLAT_PLATFORM_DEV_ALLOW_ANY_API_KEY="${AIPLAT_PLATFORM_DEV_ALLOW_ANY_API_KEY:-1}"
+# DEV: grant anonymous users kb:read/kb:write scopes for local development.
+export AIPLAT_PLATFORM_DEV_MODE="${AIPLAT_PLATFORM_DEV_MODE:-true}"
 PYTHONPATH="$PROJECT_ROOT/aiPlat-platform" nohup "$PY" -m uvicorn api.rest.routes:app --host 0.0.0.0 --port 8003 > /tmp/aiplat-platform.log 2>&1 &
 PLATFORM_PID=$!
 echo "PID: $PLATFORM_PID"

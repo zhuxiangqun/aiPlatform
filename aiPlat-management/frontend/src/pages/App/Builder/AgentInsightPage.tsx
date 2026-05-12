@@ -5,17 +5,9 @@ import { ArrowLeft, RefreshCw, TrendingUp, TrendingDown, Minus, Zap } from 'luci
 import { insightApi, type AgentInsight } from '../../../services';
 import { Card, CardHeader, CardContent, Button, toast } from '../../../components/ui';
 
-const AGENT_NAMES: Record<string, string> = {
-  architect_agent: '系统架构师', programmer_agent: '程序员', pm_agent: '产品经理',
-  qa_agent: '测试经理', frontend_engineer: '前端工程师', backend_developer: '后端开发工程师',
-  devops_engineer: 'DevOps工程师', security_engineer: '安全工程师', database_engineer: '数据库工程师',
-  code_reviewer: '代码审查员', ai_engineer: 'AI工程师', sre_engineer: 'SRE工程师',
-  ui_designer: 'UI设计师', ux_researcher: 'UX研究员', accessibility_auditor: '可访问性审计师',
-  performance_tester: '性能测试工程师', api_tester: 'API测试工程师',
-  sprint_prioritizer: '迭代规划师', trend_researcher: '趋势研究员', feedback_synthesizer: '反馈整合分析师',
-  project_shepherd: '项目牧羊人', experiment_tracker: '实验追踪员',
-  sales_outreach: '销售拓展专员', support_responder: '客户支持专员', legal_compliance: '法律合规顾问',
-};
+function agentDisplayName(agentId: string): string {
+  return agentId.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
 
 const MetricCard: React.FC<{ label: string; value: number; suffix?: string; kids?: React.ReactNode }> = ({ label, value, suffix, kids }) => (
   <div className="p-3 rounded-lg border border-dark-border bg-dark-card">
@@ -74,7 +66,7 @@ const AgentInsightPage: React.FC = () => {
               onClick={() => nav(`/core/agent-insight/${id}`)}
             >
               <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-semibold text-gray-100">{AGENT_NAMES[id] || id}</span>
+                <span className="text-sm font-semibold text-gray-100">{agentDisplayName(id)}</span>
                 <Zap className={`w-4 h-4 ${ins.first_pass_rate >= 0.7 ? 'text-green-400' : ins.first_pass_rate >= 0.4 ? 'text-yellow-400' : 'text-red-400'}`} />
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs">
@@ -99,7 +91,7 @@ const AgentInsightPage: React.FC = () => {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 space-y-4 max-w-4xl mx-auto">
       <div className="flex items-center gap-3">
         <Button variant="ghost" onClick={() => nav('/core/agent-insight')}><ArrowLeft className="w-4 h-4" /></Button>
-        <h1 className="text-xl font-bold text-gray-100">{AGENT_NAMES[agentId] || agentId}</h1>
+        <h1 className="text-xl font-bold text-gray-100">{agentDisplayName(agentId)}</h1>
         <span className="text-xs text-gray-500">{agentId}</span>
       </div>
 

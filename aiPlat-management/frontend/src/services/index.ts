@@ -94,10 +94,15 @@ export type {
 
 // 平台服务层 & 应用接入层 API
 export { gatewayApi, authApi, tenantApi, channelApi, appSessionApi } from './platformAppApi';
-export { builderApi } from './builderApi';
 export { builderTeamApi } from './builderTeamApi';
 export { projectApi } from './builderTeamApi';
 export { insightApi } from './builderTeamApi';
 
 export type { ProjectItem, ProjectRun } from './builderTeamApi';
 export type { AgentInsight } from './builderTeamApi';
+export type { BuilderSession, PipelineStageConfig, AgentCatalogItem, TeamConfig } from './builderTeamApi';
+
+export type { GatewayRoute, AuthUser, TenantInfo, Channel, AppSession } from './platformAppApi';
+
+export { kbApi } from './kbApi';
+export type { KBConversation, KBAnalysisBatch, KBAnalysisRun, KBCollection, KBDocument, KBDocumentSource } from './kbApi';

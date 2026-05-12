@@ -6,6 +6,7 @@ v2: Added HITL approval phases, BugFixRecord, stagnation detection.
 
 from __future__ import annotations
 
+import os
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -15,13 +16,20 @@ from pydantic import BaseModel, Field
 # ── Enums ──────────────────────────────────────────────────────────
 
 class BuilderSessionPhase(str, Enum):
+    # ── Framework-level phases (application-agnostic) ──
     dialogue = "dialogue"
+    executing = "executing"
+    paused = "paused"
+    done = "done"
+    failed = "failed"
+    # ── Backward-compat business phase names (exception to §5.29) ──
+    # These exist because the management frontend, AGENT.md files, and
+    # platform session service still reference them by value. New code
+    # should use the framework-level 'paused' state + stage.hitl_phase.
+    # Removal plan: after AGENT.md migration and frontend decoupling.
     awaiting_architecture_approval = "awaiting_architecture_approval"
     awaiting_test_plan_approval = "awaiting_test_plan_approval"
     awaiting_test_report_review = "awaiting_test_report_review"
-    executing = "executing"
-    done = "done"
-    failed = "failed"
 
 
 class AgentDecision(str, Enum):
@@ -129,10 +137,7 @@ class TestReport(BaseModel):
     pass_rate: float = 0.0
     issues: List[str] = Field(default_factory=list)
     recommendation: TestRecommendation = TestRecommendation.REJECTED
-    score_functionality: float = 0.0
-    score_product_depth: float = 0.0
-    score_design_ux: float = 0.0
-    score_code_architecture: float = 0.0
+    scores: Dict[str, float] = Field(default_factory=dict)
     bug_fixes: List[BugFixRecord] = Field(default_factory=list)
 
 
@@ -154,40 +159,6 @@ class AgentOutput(BaseModel):
 
 # ── Pipeline state ─────────────────────────────────────────────────
 
-class BuilderState(BaseModel):
-    session_id: str = ""
-    phase: BuilderSessionPhase = BuilderSessionPhase.dialogue
-    requirement: str = ""
-    prd: Optional[PRDArtifact] = None
-    architecture: Optional[ArchitectureArtifact] = None
-    code: Optional[CodeArtifact] = None
-    test_report: Optional[TestReport] = None
-    iteration: int = 0
-    max_iterations: int = 3
-    issues: List[Issue] = Field(default_factory=list)
-    error: str = ""
-
-
-# ── API request / response models ──────────────────────────────────
-
-class BuilderSessionCreateRequest(BaseModel):
-    requirement: str = ""
-    tenant_id: str = ""
-    user_id: str = ""
-
-
-class BuilderChatRequest(BaseModel):
-    message: str
-
-
-class BuilderConfirmRequest(BaseModel):
-    pass
-
-
-class BuilderRejectRequest(BaseModel):
-    feedback: str = ""
-
-
 class BuilderSessionStateResponse(BaseModel):
     session_id: str
     phase: BuilderSessionPhase
@@ -208,6 +179,7 @@ class BuilderChatResponse(BaseModel):
     reply: str
     session_state: BuilderSessionStateResponse
     prd_ready: bool = False
+    trace_id: Optional[str] = None
 
 
 # ── Team Assembly schemas ─────────────────────────────────────────
@@ -224,6 +196,7 @@ class PipelineStageConfig(BaseModel):
     order: int = 0
     model: str = ""
     hitl: bool = False
+    agent_type: str = "react"  # react, conversational, rag, plan_execute, reflection, tool_using, multi_agent
     hitl_phase: str = ""
     hitl_after_execute: bool = False
     hitl_after_phase: str = ""
@@ -231,16 +204,22 @@ class PipelineStageConfig(BaseModel):
     generate_test_plan: bool = False
     test_result_key: str = "test_report"
     uses_code_skill: bool = False
-    code_target: str = "backend"
+    code_target: str = os.getenv("AIPLAT_DEFAULT_CODE_TARGET", "")
+    language: str = ""
     prompt_extra: str = ""
     phase_description: str = ""
     input_artifacts: List[str] = Field(default_factory=list)
+    depends_on: List[str] = Field(default_factory=list)
     output_artifact: str = ""
+    required_skills: List[str] = Field(default_factory=list)
     failure_strategy: str = "fail_pipeline"
     fallback_result_key: str = ""
     retry_llm_on_rate_limit: bool = True
     max_consecutive_llm_failures: int = 3
     stage_timeout_seconds: int = 600
+    sandbox: bool = False
+    scoring_dimensions: List[Dict[str, Any]] = Field(default_factory=list)
+    coverage_trace_fields: Dict[str, str] = Field(default_factory=lambda: {"components_key": "components", "api_contracts_key": "api_contracts", "data_model_key": "data_model", "files_key": "files", "test_cases_key": "test_cases"})
 
 
 class PipelineConfig(BaseModel):
@@ -249,6 +228,8 @@ class PipelineConfig(BaseModel):
     max_tokens_per_run: int = 100000
     max_stagnation: int = 3
     max_retry_attempts: int = 3
+    max_steps_per_stage: int = 10
+    deploy_strategy: str = "local"
 
 
 class TeamConfig(BaseModel):

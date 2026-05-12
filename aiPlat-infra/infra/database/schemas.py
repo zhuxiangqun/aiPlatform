@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Optional
+import os
 
 
 @dataclass
@@ -24,7 +25,7 @@ class DatabaseConfig:
     type: str = "postgres"
     host: str = "localhost"
     port: int = 5432
-    name: str = "ai_platform"
+    name: str = os.getenv("AIPLAT_DB_NAME", "")
     user: str = "postgres"
     password: str = ""
     pool: Optional[PoolConfig] = None

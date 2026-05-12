@@ -9,7 +9,7 @@ import yaml
 from pathlib import Path
 from typing import Dict, Any
 
-from management.api import dashboard, alerting, diagnostics, infra, core, audit, policies, onboarding
+from management.api import dashboard, alerting, diagnostics, infra, core, audit, policies, onboarding, studio
 from management.api.proxy import build_app_proxy_router, build_platform_proxy_router
 from management.api.alerting import router as alerting_router, alias_router as alerts_router
 from management.dashboard import DashboardAggregator, InfraAdapter, CoreAdapter, PlatformAdapter, AppAdapter
@@ -40,7 +40,6 @@ def get_default_config() -> Dict[str, Any]:
                 "infra": {"endpoint": "http://localhost:8001", "enabled": True},
                 "core": {"endpoint": "http://localhost:8002", "enabled": True},
                 "platform": {"endpoint": "http://localhost:8003", "enabled": True},
-                "app": {"endpoint": "http://localhost:8004", "enabled": True},
             },
             "monitoring": {"interval": 60},
             "dashboard": {"refresh_interval": 10},
@@ -115,6 +114,7 @@ def create_app() -> FastAPI:
     app.include_router(policies.router, prefix=api_prefix)
     app.include_router(build_platform_proxy_router(), prefix=api_prefix)
     app.include_router(build_app_proxy_router(), prefix=api_prefix)
+    app.include_router(studio.router, prefix=api_prefix)
     
     # 创建聚合器和适配器
     aggregator = DashboardAggregator()
@@ -159,6 +159,24 @@ def create_app() -> FastAPI:
     }
     app.state.alert_engine = AlertEngine()
     app.state.config_manager = ConfigManager()
+
+    # Start background alert evaluation loop
+    async def _alert_eval_loop():
+        import asyncio
+        while True:
+            try:
+                await asyncio.sleep(60)
+                if app.state.collectors:
+                    metrics = []
+                    for c in app.state.collectors.values():
+                        metrics.append(await c.collect())
+                    triggered = await app.state.alert_engine.evaluate(metrics)
+                    if triggered:
+                        app.state.active_alerts = {a.get("id", ""): a for a in triggered}
+            except Exception:
+                pass
+    import asyncio as _asyncio
+    _asyncio.ensure_future(_alert_eval_loop())
 
     # HTTP clients (configured by management.yaml)
     infra_ep = layers_config.get("infra", {}).get("endpoint", "http://localhost:8001")

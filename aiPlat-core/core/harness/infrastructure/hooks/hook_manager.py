@@ -2,6 +2,7 @@
 Hooks System Module
 """
 
+import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Callable, Optional
@@ -417,73 +418,6 @@ def get_default_hooks() -> Dict[str, Hook]:
         phase=HookPhase.SESSION_END,
         priority=100,
     )
-
-    # Approval check hook (baseline secret scan on write/edit tools).
-    try:
-        from .builtin import SecurityScanHook
-
-        scanner = SecurityScanHook(scan_on_write=True)
-
-        async def approval_scan_hook(context: HookContext):
-            meta = context.state or {}
-            tool_name = meta.get("tool_name") or meta.get("tool")
-            tool_args = meta.get("tool_args") or {}
-            # Tool scan allow/deny list (comma-separated, case-insensitive)
-            # - If allowlist is set: only scan tools in allowlist
-            # - Otherwise: scan default set (write, edit)
-            # - If denylist is set: exclude tools in denylist
-            import os
-
-            def _parse_list(v: str) -> List[str]:
-                return [x.strip().lower() for x in (v or "").split(",") if x.strip()]
-
-            allowlist = _parse_list(os.getenv("AIPLAT_SECURITY_SCAN_TOOL_ALLOWLIST", ""))
-            denylist = set(_parse_list(os.getenv("AIPLAT_SECURITY_SCAN_TOOL_DENYLIST", "")))
-            default_scan = set(_parse_list(os.getenv("AIPLAT_SECURITY_SCAN_TOOLS", "write,edit")))
-
-            name_norm = str(tool_name or "").strip().lower()
-            should_scan = (name_norm in allowlist) if allowlist else (name_norm in default_scan)
-            if name_norm in denylist:
-                should_scan = False
-
-            findings: List[Dict[str, Any]] = []
-            if should_scan:
-                findings = scanner.scan_tool_input(
-                    "Write" if name_norm == "write" else ("Edit" if name_norm == "edit" else str(tool_name)),
-                    tool_args if isinstance(tool_args, dict) else {},
-                )
-
-            # Write audit event into the execution context when provided
-            exec_ctx = meta.get("context")
-            if isinstance(exec_ctx, dict):
-                events = exec_ctx.setdefault("audit_events", [])
-                if isinstance(events, list):
-                    events.append(
-                        {
-                            "event": "security_scan",
-                            "tool_name": str(tool_name),
-                            "scanned": should_scan,
-                            "blocked": bool(findings),
-                            "findings": findings,
-                        }
-                    )
-            if findings:
-                return {
-                    "allow": False,
-                    "action": "deny",
-                    "reason": f"Security scan blocked potential secrets: {findings[0].get('type')}",
-                    "metadata": {"findings": findings},
-                }
-            return {"allow": True}
-
-        hooks["pre_approval_check"] = create_hook(
-            name="pre_approval_check",
-            callback=approval_scan_hook,
-            phase=HookPhase.PRE_APPROVAL_CHECK,
-            priority=80,
-        )
-    except Exception:
-        pass
 
     # Contract enforcement: require project-level CLAUDE.md (server-side).
     # This makes project guidelines effective in the execution chain, not just in IDEs.

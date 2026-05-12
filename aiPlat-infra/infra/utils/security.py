@@ -7,6 +7,7 @@ Security Utils - 安全工具
 import hashlib
 import secrets
 import base64
+import os
 from typing import Optional
 
 try:
@@ -85,7 +86,7 @@ class SecurityUtils:
         kdf = PBKDF2(
             algorithm=hashes.SHA256(),
             length=32,
-            salt=b"ai-platform-salt",
+            salt=os.environ.get("AIPLAT_CRYPTO_SALT", "").encode() or os.urandom(16),
             iterations=100000,
         )
         return base64.urlsafe_b64encode(kdf.derive(password.encode()))

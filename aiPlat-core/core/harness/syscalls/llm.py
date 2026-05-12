@@ -156,7 +156,7 @@ def _try_inject_claude_md(messages: List[Message]) -> None:
         ]
         for p in claude_paths:
             if p.exists():
-                text = p.read_text(encoding="utf-8")[:6000]
+                text = p.read_text(encoding="utf-8")[:12000]  # safety cap: never compressed, but keep reasonable
                 content_parts.append(f"[{p.name}] {text}")
 
         if content_parts:
@@ -195,11 +195,22 @@ async def sys_llm_generate(
         router = get_model_router()
         deployment = await router.select(model_name=model_name)
         if deployment and deployment.api_key_resolved:
+            api_key = deployment.api_key_resolved
+        elif deployment:
+            # Try SecretsManager as fallback (P2-10 wiring)
+            try:
+                from core.api.core_facade import get_secret
+                api_key = get_secret(deployment.api_key_env) or ""
+            except Exception:
+                api_key = ""
+        else:
+            api_key = ""
+        if deployment and api_key:
             try:
                 from core.adapters.llm.base import create_adapter
                 model = create_adapter(
                     provider=deployment.provider,
-                    api_key=deployment.api_key_resolved,
+                    api_key=api_key,
                     model=deployment.name,
                     base_url=deployment.base_url,
                 )
@@ -258,27 +269,32 @@ async def sys_llm_generate(
         raise RuntimeError("No model available for sys_llm_generate")
 
     prepared = ctx_gate.prepare_llm_args(prompt, context=trace_context or {})
+
+    # Normalize string prompts to message-list BEFORE guard so injection
+    # detection, special token filtering, and role normalization apply.
+    if isinstance(prepared, str):
+        prepared = [{"role": "user", "content": prepared}]
+
     message_guard_stats: Optional[Dict[str, Any]] = None
-    if isinstance(prepared, list):
-        try:
-            prepared, message_guard_stats = _guard_messages(prepared)
-            # §5.18: safety audit for injection alerts
-            if message_guard_stats and message_guard_stats.get("injection_alerts", 0) > 0:
-                try:
-                    runtime2 = get_kernel_runtime()
-                    store2 = getattr(runtime2, "execution_store", None) if runtime2 else None
-                    if store2 is not None:
-                        await store2.add_audit_log(
-                            action="safety_audit",
-                            kind="prompt_injection",
-                            payload={
-                                "alerts": message_guard_stats["injection_alerts"],
-                                "trace_id": (trace_context or {}).get("trace_id") if isinstance(trace_context, dict) else None,
-                            },
-                        )
-                except Exception:
-                    pass
-        except Exception:
+    try:
+        prepared, message_guard_stats = _guard_messages(prepared)
+        # §5.18: safety audit for injection alerts
+        if message_guard_stats and message_guard_stats.get("injection_alerts", 0) > 0:
+            try:
+                runtime2 = get_kernel_runtime()
+                store2 = getattr(runtime2, "execution_store", None) if runtime2 else None
+                if store2 is not None:
+                    await store2.add_audit_log(
+                        action="safety_audit",
+                        kind="prompt_injection",
+                        payload={
+                            "alerts": message_guard_stats["injection_alerts"],
+                            "trace_id": (trace_context or {}).get("trace_id") if isinstance(trace_context, dict) else None,
+                        },
+                    )
+            except Exception:
+                pass
+    except Exception:
             message_guard_stats = {"error": "message_guard_failed"}
 
     # §5.18: Refuse LLM call when prompt injection detected
@@ -298,77 +314,13 @@ async def sys_llm_generate(
             })
         raise RuntimeError(f"LLM call rejected: {message_guard_stats['injection_alerts']} prompt injection alert(s) detected")
 
-    # PR-12: Tenant quotas (best-effort). Block when already over daily budget.
-    try:
-        runtime = get_kernel_runtime()
-        store = getattr(runtime, "execution_store", None) if runtime else None
-        tid = getattr(_pr, "tenant_id", None)
-        if store is not None and tid:
-            quota_item = await store.get_tenant_quota(tenant_id=str(tid))
-            quota = quota_item.get("quota") if isinstance(quota_item, dict) else {}
-            daily = quota.get("daily") if isinstance(quota, dict) and isinstance(quota.get("daily"), dict) else {}
-            lim_tokens = daily.get("llm_total_tokens")
-            if lim_tokens is not None:
-                try:
-                    lim_i = int(lim_tokens)
-                except Exception:
-                    lim_i = None
-                if lim_i is not None:
-                    day = time.strftime("%Y-%m-%d", time.gmtime())
-                    cur = await store.get_tenant_usage(tenant_id=str(tid), day=str(day), metric_key="llm_total_tokens")
-                    if cur >= float(lim_i):
-                        reason = f"tenant quota exceeded: llm_total_tokens {cur}/{lim_i} (day={day})"
-                        try:
-                            await store.add_syscall_event(
-                                {
-                                    "trace_id": span.trace_id,
-                                    "span_id": getattr(span, "span_id", None),
-                                    "run_id": (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None,
-                                    "kind": "llm",
-                                    "name": "generate",
-                                    "status": "quota_exceeded",
-                                    "target_type": _ar.target_type if _ar else None,
-                                    "target_id": _ar.target_id if _ar else None,
-                                    "tenant_id": str(tid),
-                                    "user_id": getattr(_pr, "user_id", None),
-                                    "session_id": getattr(_pr, "session_id", None),
-                                    "start_time": start_ts,
-                                    "end_time": start_ts,
-                                    "duration_ms": 0.0,
-                                    "args": {"prompt_type": "messages" if isinstance(prepared, list) else "text"},
-                                    "error": reason,
-                                    "error_code": "QUOTA_EXCEEDED",
-                                }
-                            )
-                        except Exception:
-                            pass
-                        try:
-                            await store.add_audit_log(
-                                action="llm_quota_exceeded",
-                                status="denied",
-                                tenant_id=str(tid),
-                                actor_id=str(getattr(_pr, "user_id", None) or "system"),
-                                resource_type="llm",
-                                resource_id=str(getattr(getattr(model, "config", None), "model", None) or getattr(model, "model", None) or "default"),
-                                run_id=(trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None,
-                                trace_id=span.trace_id,
-                                detail={"reason": reason, "day": day, "limit": lim_i, "current": cur},
-                            )
-                        except Exception:
-                            pass
-                        await trace_gate.end(span, success=False)
-                        raise RuntimeError("quota_exceeded")
-    except Exception:
-        # fail-open if quota infra fails
-        pass
-
     # Phase 4 (optional): central prompt assembly + prompt_version for replay/audit.
     prompt_version = None
     prompt_meta: Dict[str, Any] = {}
     applied_prompt_revision_ids: List[str] = []
     prompt_revision_conflicts: List[Dict[str, Any]] = []
     ignored_prompt_revision_ids: List[str] = []
-    if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "false").lower() in ("1", "true", "yes", "y"):
+    if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "true").lower() in ("1", "true", "yes", "y"):
         try:
             from core.harness.assembly import PromptAssembler
             # Phase 6.8 (optional): apply published prompt revisions (behavior change, gated).
