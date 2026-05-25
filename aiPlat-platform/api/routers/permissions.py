@@ -11,7 +11,7 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, HTTPException
 
 from auth.deps import require_auth, require_admin
-from core.apps.tools.permission import Permission
+from core.api.core_facade import Permission
 from core.api.core_facade import get_permission_manager
 
 router = APIRouter(prefix="/platform/permissions", tags=["permissions"])

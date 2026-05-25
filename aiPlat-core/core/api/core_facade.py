@@ -941,6 +941,57 @@ def kb_get_ingest_fn() -> Any:
     return get_ingest_fn()
 
 
+def kb_get_tenant_storage(tenant_id: str) -> Any:
+    """Get the KB storage client for a given tenant."""
+    from core.apps.document_intelligence.kb_provider import get_tenant_storage
+    return get_tenant_storage(tenant_id)
+
+
+def kb_kind_category(kind: str) -> Any:
+    """Get the document category label for a given kind."""
+    from core.apps.document_intelligence.classifier import kind_category
+    return kind_category(kind)
+
+
+# Re-export from core.apps for platform backward compat
+from core.apps.document_intelligence.classifier import CATEGORY_LABELS  # noqa: E402
+
+
+def kb_llm_chat_complete(system_prompt: str, user_prompt: str, temperature: float = 0.1, max_tokens: int = 700) -> Any:
+    """Chat completion via KB LLM client."""
+    from core.apps.document_intelligence.llm_client import chat_complete
+    return chat_complete(system_prompt=system_prompt, user_prompt=user_prompt, temperature=temperature, max_tokens=max_tokens)
+
+
+def kb_llm_enabled() -> bool:
+    """Check if KB LLM client is configured."""
+    from core.apps.document_intelligence.llm_client import llm_enabled
+    return llm_enabled()
+
+
+def extract_json_block(text: str) -> Any:
+    """Extract JSON block from LLM output text."""
+    return parse_json(text)
+
+
+async def kb_summarize_document(*, tenant_id: str, collection_id: str, doc_id: str, profile: str = "key_points", **kwargs: Any) -> Any:
+    """Summarize a knowledge base document."""
+    from core.apps.document_intelligence.summarizer import summarize_document
+    return await summarize_document(tenant_id=tenant_id, collection_id=collection_id, doc_id=doc_id, profile=profile, **kwargs)
+
+
+from core.apps.tools.permission import Permission  # noqa: E402
+
+
+def get_agent_registry_facade() -> Any:
+    """Get the workspace AgentRegistry singleton."""
+    from core.apps.agents.discovery import get_agent_registry
+    return get_agent_registry()
+
+
+from core.apps.agents.discovery import AgentDiscovery, AgentLoader, AgentRegistry  # noqa: E402
+
+
 async def run_workspace_agent(
     agent_info: Any, user_message: str, *, max_steps: int = 10,
     toolset: str = "", session_id: str = "",
