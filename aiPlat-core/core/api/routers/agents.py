@@ -592,10 +592,14 @@ async def rollback_agent_version(agent_id: str, version: str, rt: RuntimeDep = N
 async def list_models():
     """List available LLM models grouped by provider (for agent editor dropdown)."""
     try:
-        from core.harness.infrastructure.model_registry import get_model_registry
+        from core.api.core_facade import get_model_registry
         registry = get_model_registry()
-        entries = registry.list_all_entries()
-        # Group by provider
+        # infra ModelManager returns models as list of objects
+        if hasattr(registry, '_models'):
+            entries = [{"name": m.name, "provider": m.provider, "enabled": m.enabled, "type": m.type.value if hasattr(m.type, 'value') else str(m.type)}
+                       for m in registry._models.values()]
+        else:
+            entries = registry.list_all_entries() if hasattr(registry, 'list_all_entries') else []
         groups: Dict[str, list] = {}
         for e in entries:
             provider = e.get("provider", "unknown")

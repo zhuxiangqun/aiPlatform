@@ -463,25 +463,8 @@ def seed_all_registries() -> None:
                 pass
     except Exception:
         pass
-    # Model registry — seed default models
-    try:
-        import os
-        from core.harness.infrastructure.model_registry import ModelEntry
-        reg = get_model_registry()
-        if not reg.list_models():
-            reg.register(ModelEntry(
-                name="deepseek-chat", provider="deepseek",
-                api_key_env="DEEPSEEK_API_KEY",
-                description="DeepSeek Chat model (default)",
-            ))
-            if get_llm_api_key("openai"):
-                reg.register(ModelEntry(
-                    name="gpt-4o", provider="openai",
-                    api_key_env="OPENAI_API_KEY",
-                    description="GPT-4o model (code generation)",
-                ))
-    except Exception:
-        pass
+
+    # Model registry now bridged to infra ModelManager (no local seed needed)
 
 
 def get_secret(name: str) -> Optional[str]:
