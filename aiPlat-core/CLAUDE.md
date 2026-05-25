@@ -112,8 +112,6 @@ language: zh-CN
 | `state["test_plan"]`（硬编码 key） | `state[stage.output_artifact]` |
 | `state["test_report"]`（硬编码 key） | `state[stage.test_result_key]` |
 
-**唯一的例外**：`_build_prompt` 中的 `prompt_extra` fallback 逻辑可以保留旧的 if/elif 用于向后兼容，但必须标注 `# fallback: legacy auto-detection`。一旦所有 AGENT.md 都配置了 `prompt_extra`，删除该 fallback。
-
 **规则 2：引擎与业务的边界**
 
 ```
