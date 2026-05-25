@@ -116,7 +116,7 @@ class ExecutionStoreConfig:
 
 
 class ExecutionStore:
-    CURRENT_SCHEMA_VERSION = 41
+    CURRENT_SCHEMA_VERSION = 42
 
     def __init__(self, config: ExecutionStoreConfig):
         self._config = config
@@ -1657,6 +1657,31 @@ class ExecutionStore:
                         conn.execute("CREATE INDEX IF NOT EXISTS idx_skill_eval_results_run ON skill_eval_results(run_id, query_index);")
                         _set_version(41)
                         current = 41
+
+                    # ---- Migration v42: entropy ledger (production readiness §10) ----
+                    if current < 42:
+                        conn.execute(
+                            """
+                            CREATE TABLE IF NOT EXISTS entropy_ledger (
+                              id TEXT PRIMARY KEY,
+                              project_id TEXT,
+                              agent_id TEXT,
+                              drift_type TEXT NOT NULL,
+                              severity TEXT DEFAULT 'warning',
+                              description TEXT,
+                              detected_at REAL NOT NULL,
+                              resolved_at REAL,
+                              drift_count INTEGER DEFAULT 1,
+                              source_file TEXT,
+                              source_line INTEGER
+                            );
+                            """
+                        )
+                        conn.execute("CREATE INDEX IF NOT EXISTS idx_entropy_project ON entropy_ledger(project_id, detected_at DESC);")
+                        conn.execute("CREATE INDEX IF NOT EXISTS idx_entropy_agent ON entropy_ledger(agent_id, detected_at DESC);")
+                        conn.execute("CREATE INDEX IF NOT EXISTS idx_entropy_unresolved ON entropy_ledger(project_id) WHERE resolved_at IS NULL;")
+                        _set_version(42)
+                        current = 42
 
                     # If legacy db exists with tables but without meta, upgrade meta to current
                     if current < self.CURRENT_SCHEMA_VERSION:

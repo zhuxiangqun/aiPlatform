@@ -1253,6 +1253,7 @@ from core.api.routers.variables import router as variables_router  # noqa: E402
 from core.api.routers.credentials import router as credentials_router  # noqa: E402
 from core.api.routers.workflow_templates import router as workflow_templates_router  # noqa: E402
 from core.api.routers.kb_eval import router as kb_eval_router  # noqa: E402
+from core.api.routers.entropy import router as entropy_router  # noqa: E402
 from core.harness.utils.llm_env import get_llm_api_key, get_llm_base_url
 
 api_router.include_router(routing_observability_router)
@@ -1297,6 +1298,7 @@ api_router.include_router(variables_router)
 api_router.include_router(credentials_router)
 api_router.include_router(workflow_templates_router)
 api_router.include_router(kb_eval_router)
+api_router.include_router(entropy_router)
 
 
 def _runtime_env() -> str:
