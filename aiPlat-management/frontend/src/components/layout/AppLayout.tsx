@@ -8,7 +8,7 @@ import {
   ChevronLeft, ChevronRight, Settings, LogOut, User,
   Bell, ChevronDown, FolderOpen, BarChart3, Wrench,
   Activity, Plug, Package, ShoppingBag, Box,
-  GitBranch, Globe, PenTool, Key, Rocket,
+  GitBranch, Globe, PenTool, Key, Rocket, BookOpen,
   type LucideIcon,
 } from 'lucide-react';
 import { NotificationBellButton, NotificationProvider, ToastProvider } from '../ui';
@@ -64,6 +64,7 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
     { key: '/core/skill-packs', icon: Package, label: 'Skill包管理' },
     { key: '/workspace/packages', icon: Box, label: '包管理' },
     { key: '/workspace/mcp', icon: Package, label: 'MCP库' },
+    { key: '/workspace/wiki', icon: BookOpen, label: 'Wiki知识库' },
     { key: '/workspace/teams', icon: Users, label: '团队组装' },
   ]},
   { divider: true },

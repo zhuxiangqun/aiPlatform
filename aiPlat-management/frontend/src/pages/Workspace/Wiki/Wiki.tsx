@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Button, Card, CardContent, CardHeader, Input, Textarea, toast } from '../../../components/ui';
-import { Search, BookOpen, Plus, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Search, BookOpen, Plus, AlertTriangle, RefreshCw, Database } from 'lucide-react';
 
 type TabKey = 'browse' | 'ingest' | 'query' | 'lint';
 type WikiPage = { title: string; category: string; tags: string[]; summary: string; related: string[]; contradictions: string[]; last_updated: string; path: string };
@@ -27,6 +27,10 @@ const WikiPage: React.FC = () => {
 
   // Lint state
   const [lintResult, setLintResult] = useState<any>(null);
+
+  // KB → Wiki conversion
+  const [converting, setConverting] = useState(false);
+  const [convertResult, setConvertResult] = useState<any>(null);
 
   // Create page state
   const [newTitle, setNewTitle] = useState('');
@@ -120,6 +124,18 @@ const WikiPage: React.FC = () => {
     } catch { toast.error('创建失败'); }
   };
 
+  const handleConvertKb = async () => {
+    setConverting(true); setConvertResult(null);
+    try {
+      const res = await fetch(`${API}/convert-from-kb`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tenant_id: 'default', limit: 50 }) });
+      const data = await res.json();
+      setConvertResult(data);
+      toast.success(`已转换 ${data.created} 个文档 → Wiki 页面`);
+      fetchPages();
+    } catch { toast.error('转换失败'); }
+    finally { setConverting(false); }
+  };
+
   useEffect(() => { if (tab === 'browse') fetchPages(); }, [tab, query, category]);
 
   const sourceBadge = (cat: string) => {
@@ -162,6 +178,14 @@ const WikiPage: React.FC = () => {
                 <Button variant="secondary" size="sm" onClick={fetchPages} loading={loading} className="w-full">
                   <RefreshCw className="w-3 h-3 mr-1" />刷新
                 </Button>
+                <Button variant="primary" size="sm" onClick={handleConvertKb} loading={converting} className="w-full">
+                  <Database className="w-3 h-3 mr-1" />从知识库导入
+                </Button>
+                {convertResult && (
+                  <div className="text-xs text-gray-400 mt-1">
+                    {convertResult.message || `${convertResult.created} 已创建, ${convertResult.skipped} 跳过`}
+                  </div>
+                )}
               </CardContent>
             </Card>
             <Card>
