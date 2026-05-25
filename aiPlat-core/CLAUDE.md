@@ -804,7 +804,7 @@ done
 | **ModelRegistry → deprecated** | `core/harness/infrastructure/model_registry.py` 标记为 deprecated，改为从 infra `ModelManager` 获取模型列表 |
 | **ModelRouter → deprecated** | `core/harness/infrastructure/model_router.py` 标记为 deprecated，模型选择/路由逻辑迁移到 infra |
 | **LLM 调用 → InfraLLMAdapter** | 所有 LLM 调用通过 infra 的 `LLMClient`（已接线 ✅） |
-| **Embedding → 待接线** | 当前 `core/harness/knowledge/embedder.py` 直接加载 sentence-transformers（绕过 infra），需迁移为 InfraEmbeddingAdapter |
+| **Embedding → 待接线** | 当前 `core/harness/knowledge/embedder.py` 通过 InfraEmbeddingAdapter 加载模型 ✅。sentence-transformers 仍在 adapter 内部使用，但不再由 core 直接 import |
 | **Reranker → 待接线** | 当前 `core/harness/knowledge/reranker.py` 直接加载 AutoModel（绕过 infra），需迁移为 InfraRerankerAdapter |
 | **Whisper → 待接线** | 当前 `core/harness/document/transcriber.py` 直接加载 faster_whisper（绕过 infra），需迁移为 InfraAudioAdapter |
 
@@ -827,7 +827,7 @@ core 每种能力类型**只有一个适配器**，不按 provider 分文件：
 | 能力类型 | 适配器 | 对应 infra 接口 | 状态 |
 |---------|--------|---------------|:---:|
 | LLM | `InfraLLMAdapter` | `LLMClient` | ✅ 已接线 |
-| Embedding | `InfraEmbeddingAdapter` | `EmbeddingClient` | ⏳ 待接线 |
+| Embedding | `InfraEmbeddingAdapter` | `EmbeddingClient` | ✅ 已接线 |
 | Reranker | `InfraRerankerAdapter` | `RerankerClient` | ⏳ 待接线 |
 | Audio | `InfraAudioAdapter` | `AudioClient` | ⏳ 待接线 |
 

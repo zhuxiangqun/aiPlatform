@@ -167,7 +167,7 @@ infra 不依赖任何内部包
 | **LLM 调用** | ✅ 已接线 | `InfraLLMAdapter` → infra `LLMClient` → provider API |
 | **模型列表** | ✅ 已接线 | `ModelManager.list_models()` 从 env vars + 本地扫描动态构建 |
 | **本地模型扫描** | ✅ 已接线 | Ollama、LM Studio、oMLX/vLLM 自动检测 |
-| **Embedding** | ⏳ 待接线 | core 仍直接加载 sentence-transformers（待迁移为 InfraEmbeddingAdapter） |
+| **Embedding** | ✅ 已接线 | `InfraEmbeddingAdapter` → core 通过统一模型配置加载 |
 | **Reranker** | ⏳ 待接线 | core 仍直接加载 AutoModel（待迁移为 InfraRerankerAdapter） |
 | **Whisper/STT** | ⏳ 待接线 | core 仍直接加载 faster_whisper（待迁移为 InfraAudioAdapter） |
 | **OCR** | ⏳ 待接线 | platform 仍直接加载 PaddleOCR/Tesseract（待迁移） |
