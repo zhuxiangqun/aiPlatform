@@ -50,6 +50,7 @@ const WorkspaceSkillMarketplace = lazy(() => import('./pages/Workspace/SkillMark
 const WorkspaceMarketplace = lazy(() => import('./pages/Workspace/Marketplace'));
 const WorkspacePackages = lazy(() => import('./pages/Workspace/Packages'));
 const WorkspaceMCP = lazy(() => import('./pages/Workspace/MCP/MCP'));
+const WorkspaceWiki = lazy(() => import('./pages/Workspace/Wiki/Wiki'));
 const CoreLearningArtifacts = lazy(() => import('./pages/Core/Learning/Artifacts'));
 const CoreLearningArtifactDetail = lazy(() => import('./pages/Core/Learning/Artifacts/ArtifactDetail'));
 const CoreApprovals = lazy(() => import('./pages/Core/Learning/Approvals'));
@@ -137,6 +138,7 @@ const router = createBrowserRouter([
       { path: 'workspace/marketplace', element: withSuspense(WorkspaceMarketplace) },
       { path: 'workspace/packages', element: withSuspense(WorkspacePackages) },
       { path: 'workspace/mcp', element: withSuspense(WorkspaceMCP) },
+      { path: 'workspace/wiki', element: withSuspense(WorkspaceWiki) },
       { path: 'workspace/teams', element: withSuspense(WorkspaceTeams) },
       { path: 'core/learning/artifacts', element: withSuspense(CoreLearningArtifacts) },
       { path: 'core/learning/artifacts/:artifactId', element: withSuspense(CoreLearningArtifactDetail) },
