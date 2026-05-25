@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
-import { Activity, GitBranch, Share2, Zap, Wrench, FolderSearch, Wand2 } from 'lucide-react';
+import { Activity, GitBranch, Share2, Zap, Wrench, FolderSearch, Wand2, ShieldCheck } from 'lucide-react';
 
-import { Card, CardContent, CardHeader, Badge } from '../../components/ui';
+import { Card, CardContent, CardHeader, Badge, Button, toast } from '../../components/ui';
 import { diagnosticsApi } from '../../services';
 
 type Health = {
@@ -27,6 +27,20 @@ const Diagnostics: React.FC = () => {
     app: null,
   });
   const [error, setError] = useState<string | null>(null);
+  const [auditResult, setAuditResult] = useState<any>(null);
+  const [auditRunning, setAuditRunning] = useState(false);
+
+  const runAudit = async () => {
+    setAuditRunning(true); setAuditResult(null);
+    try {
+      const res = await fetch('/api/core/entropy/audit');
+      const data = await res.json();
+      setAuditResult(data);
+      const pass = data.items?.filter((i:any) => i.result === '✅')?.length || 0;
+      toast.success(`${pass}/${data.items?.length || 11} 项通过`);
+    } catch (e: any) { toast.error(`审计失败: ${e?.message || e}`); }
+    finally { setAuditRunning(false); }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -108,6 +122,36 @@ const Diagnostics: React.FC = () => {
           );
         })}
       </div>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-primary" />
+              <span className="text-sm font-semibold text-gray-200">生产就绪审计</span>
+            </div>
+            <Button variant="primary" size="sm" loading={auditRunning} onClick={runAudit}>
+              🔍 一键审计
+            </Button>
+          </div>
+        </CardHeader>
+        {auditResult && (
+          <CardContent>
+            <div className="text-sm text-gray-500 mb-3">
+              总体: {auditResult.passed || 0}/{auditResult.total || 11} 通过 · {auditResult.verdict || ''}
+            </div>
+            <div className="space-y-1">
+              {(auditResult.items || []).map((item: any, idx: number) => (
+                <div key={idx} className="flex items-start gap-2 text-xs py-1">
+                  <span className="w-4 shrink-0">{item.result}</span>
+                  <span className="text-gray-300">{item.desc}</span>
+                  {item.detail && <span className="text-gray-500 ml-2">{item.detail}</span>}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        )}
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {items.map((it) => (
