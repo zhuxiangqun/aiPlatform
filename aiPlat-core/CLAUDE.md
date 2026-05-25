@@ -804,9 +804,10 @@ done
 | **ModelRegistry → deprecated** | `core/harness/infrastructure/model_registry.py` 标记为 deprecated，改为从 infra `ModelManager` 获取模型列表 |
 | **ModelRouter → deprecated** | `core/harness/infrastructure/model_router.py` 标记为 deprecated，模型选择/路由逻辑迁移到 infra |
 | **LLM 调用 → InfraLLMAdapter** | 所有 LLM 调用通过 infra 的 `LLMClient`（已接线 ✅） |
-| **Embedding → 待接线** | 当前 `core/harness/knowledge/embedder.py` 通过 InfraEmbeddingAdapter 加载模型 ✅。sentence-transformers 仍在 adapter 内部使用，但不再由 core 直接 import |
+| **Embedding → ✅** | `core/harness/knowledge/embedder.py` 通过 InfraEmbeddingAdapter 加载模型 ✅。sentence-transformers 仍在 adapter 内部使用，但不再由 core 直接 import |
 | **Reranker → ✅** | `core/harness/syscalls/retrieval.py` 使用 InfraRerankerAdapter（CrossEncoder） ✅ |
-| **Whisper → 待接线** | 当前 `core/harness/document/transcriber.py` 直接加载 faster_whisper（绕过 infra），需迁移为 InfraAudioAdapter |
+| **Whisper → ✅** | `core/harness/document/transcriber.py` 通过 InfraAudioAdapter 加载 ✅ |
+| **OCR → ✅** | `core/harness/document/ocr.py` 通过 InfraOCRAdapter 加载 ✅ |
 
 ### `core/harness/infrastructure/` 目录职责
 
@@ -829,7 +830,7 @@ core 每种能力类型**只有一个适配器**，不按 provider 分文件：
 | LLM | `InfraLLMAdapter` | `LLMClient` | ✅ 已接线 |
 | Embedding | `InfraEmbeddingAdapter` | `EmbeddingClient` | ✅ 已接线 |
 | Reranker | `InfraRerankerAdapter` | `RerankerClient` | ✅ 已接线（CrossEncoder through adapter） |
-| Audio | `InfraAudioAdapter` | `AudioClient` | ⏳ 待接线 |
+| Audio | `InfraAudioAdapter` | `AudioClient` | ✅ 已接线 |
 
 **禁止**：
 - ❌ `openai_adapter.py`、`anthropic_adapter.py`、`deepseek_adapter.py` 等 per-provider 适配器类
