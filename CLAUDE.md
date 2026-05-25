@@ -129,7 +129,7 @@ tests/constitution/test_infra_agnostic.py    ← Infra 去应用化
     core (Layer 1) = 消费模型
       ├─ InfraLLMAdapter（唯一通用 LLM 适配器）→ infra LLMClient → provider API ✅
       ├─ InfraEmbeddingAdapter（通用嵌入适配器）✅
-      ├─ InfraRerankerAdapter（通用重排适配器，待接线）
+      ├─ InfraRerankerAdapter: N/A（BM25 算法，不需 ML 模型）
       └─ InfraAudioAdapter（通用音频适配器，待接线）
     
     management (横切) = 展示模型列表

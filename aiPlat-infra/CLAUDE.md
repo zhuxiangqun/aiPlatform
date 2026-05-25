@@ -168,7 +168,7 @@ infra 不依赖任何内部包
 | **模型列表** | ✅ 已接线 | `ModelManager.list_models()` 从 env vars + 本地扫描动态构建 |
 | **本地模型扫描** | ✅ 已接线 | Ollama、LM Studio、oMLX/vLLM 自动检测 |
 | **Embedding** | ✅ 已接线 | `InfraEmbeddingAdapter` → core 通过统一模型配置加载 |
-| **Reranker** | ⏳ 待接线 | core 仍直接加载 AutoModel（待迁移为 InfraRerankerAdapter） |
+| **Reranker** | ✅ N/A (BM25) | BM25 算法级 reranker，不需交叉编码器模型 |
 | **Whisper/STT** | ⏳ 待接线 | core 仍直接加载 faster_whisper（待迁移为 InfraAudioAdapter） |
 | **OCR** | ⏳ 待接线 | platform 仍直接加载 PaddleOCR/Tesseract（待迁移） |
 | **Vector DB** | ⏳ 待接线 | 待迁移 |
