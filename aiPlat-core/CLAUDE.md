@@ -304,7 +304,7 @@ Harness 是 AI Runtime Kernel（"操作系统"），解决**"任务如何被执�
 - `core/docs/harness/context.md` §5级压缩策略、§System Reminders
 - `core/docs/contracts/04-prompt-context-contract.md`
 
-> **当前实现状态**：`MemoryManager` 三层架构已实现（`core/harness/memory/manager.py`），但未完全接入 Agent 执行循环（`loop.py` 使用独立的 `_maybe_compact_messages` 单阈值方案）。设计文档将此标注为 To-Be。`PipelineEngine._call_llm()` 已实现轻量级 System Reminder（user-role 注入驳回反馈、重试提醒、停滞提醒）。
+> **当前实现状态**：`MemoryManager` 三层架构已实现并接入 Agent 执行循环（`loop.py:545` 调用 `build_context`、`loop.py:1111` 调用 `get_reminders`、`loop.py:1042` 保存交互）。5 级 ContextCompression 为主压缩路径。`PipelineEngine._call_llm()` 已实现轻量级 System Reminder。
 
 ### 5.13 Engine vs Workspace 分离（来自 `core/docs/index.md` §Engine vs Workspace）
 
@@ -338,7 +338,7 @@ knowledge → services, models
 
 **规范要求**：Agent 之间通过消息通信（TASK_ASSIGN / PROGRESS_UPDATE / RESULT / ERROR / CANCEL），不直接调用对方方法。
 
-**当前状态（To-Be）**：`multi_agent.py` 使用直接 `agent.execute()` 调用，消息通信协议尚未实现。
+**当前状态**：`multi_agent.py` 通过 `SubagentCoordinator` 管理子agent，`AgentMessageBus` 提供跨 Agent 通信（TASK_ASSIGN/RESULT/ERROR）。
 
 **过渡期规则**：新增多 Agent 协作场景时，尽量通过 Subagent 模式（`docs/agents/subagent.md`）而非直接 `execute()`。
 
@@ -627,9 +627,10 @@ AGENT.md 瘦身到核心内容（<100 行）。超过 100 行时，拆分为：
 - 5 级 ContextCompression → 默认主路径
 - ConversationService → MaterialsChatAgent 每轮持久化
 
-**待完成的**（To-Be）：
-- `MemoryManager.build_context()` 注入 Working+Episodic → loop 上下文装配（`save_interaction` 已通，`build_context` 待接入）
-- Episodic LLM 摘要升级（当前规则匹配）
+**当前状态**：
+- `MemoryManager.build_context()` 已注入 Working+Episodic → loop 上下文 ✅
+- `save_interaction` 已通 ✅
+- Episodic LLM 摘要升级（当前规则匹配，可进一步优化）
 
 > 设计参考（Hermes Agent 记忆诊断）：记忆问题的根因往往是"放错层"——不要让 MEMORY.md 扛所有事。诊断原则：热记忆负责当前连续性，温记忆负责少量稳定事实，冷记忆负责历史检索，外挂记忆负责长期知识。当前系统通过 `_try_inject_claude_md()`（每次重读，永不压缩），优先保证稳定性而非容量。
 
@@ -780,7 +781,7 @@ done
 | 案例 | 原问题 | 当前状态 |
 |------|--------|:---:|
 | `ContextAssembler.assemble()` | 实现了但只 1 个 caller | ✅ 已修复（schemas wired, build_context 参数修复） |
-| `MemoryManager.build_context()` | 实现了但未接入执行循环 | ⚠️ To-Be（见 §5.28） |
+| `MemoryManager.build_context()` | 实现了但未接入执行循环 | ✅ 已接入（loop.py:545） |
 | `Orchestrator.plan()` | `AIPLAT_ENABLE_ORCHESTRATOR=false` | ✅ 已 enable |
 | `FeedbackLoops (3 modules)` | `harness.start()` 从未调用 | ✅ 已激活，drain wired |
 | `AgentMessageBus` | 只 send 不 receive | ✅ send wired, receive 故意不使用（bus 是通知层） |

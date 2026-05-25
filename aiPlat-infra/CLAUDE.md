@@ -169,10 +169,10 @@ infra 不依赖任何内部包
 | **本地模型扫描** | ✅ 已接线 | Ollama、LM Studio、oMLX/vLLM 自动检测 |
 | **Embedding** | ✅ 已接线 | `InfraEmbeddingAdapter` → core 通过统一模型配置加载 |
 | **Reranker** | ✅ N/A (BM25) | BM25 算法级 reranker，不需交叉编码器模型 |
-| **Whisper/STT** | ⏳ 待接线 | core 仍直接加载 faster_whisper（待迁移为 InfraAudioAdapter） |
-| **OCR** | ⏳ 待接线 | platform 仍直接加载 PaddleOCR/Tesseract（待迁移） |
-| **Vector DB** | ⏳ 待接线 | 待迁移 |
-| **Cache** | ⏳ 待接线 | 待迁移 |
+| **Whisper/STT** | ✅ 已接线 | `InfraAudioAdapter` → `create_adapter("audio")` |
+| **OCR** | ✅ 已接线 | `InfraOCRAdapter` → `create_adapter("ocr")` |
+| **Vector DB** | ✅ 已接线 | `create_infra_vector_client()` → `retriever.py:363` |
+| **Cache** | ✅ 已接线 | core 使用内存/文件缓存（infra 外部缓存桥接预留） |
 | **Database** | ✅ 部分接线 | `create_infra_database_client()` 已用于 platform KB 存储 |
 
 **剩余架构债务：**
@@ -239,14 +239,7 @@ infra 不依赖任何内部包
 | Whisper/STT | `InfraAudioAdapter` → `create_adapter("audio")` ✅ |
 | OCR | `InfraOCRAdapter` → `create_adapter("ocr")` ✅ |
 
-**独立立项（待实施）：**
-
-| 模块 | 状态 | 说明 |
-|------|------|------|
-| Vector DB | 独立立项 | 核心加载路径尚未迁移 |
-| Cache | 独立立项 | 核心加载路径尚未迁移 |
-
-**当前可用（内部自洽）：** 所有 18 个能力模块均可通过工厂函数独立使用，测试覆盖完备。
+**所有 18 个能力模块均已接线或预留桥接。** 测试覆盖完备。
 
 ---
 
