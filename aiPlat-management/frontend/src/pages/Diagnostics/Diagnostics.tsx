@@ -29,6 +29,7 @@ const Diagnostics: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [auditResult, setAuditResult] = useState<any>(null);
   const [auditRunning, setAuditRunning] = useState(false);
+  const [auditTab, setAuditTab] = useState('');
 
   const runAudit = async () => {
     setAuditRunning(true); setAuditResult(null);
@@ -128,27 +129,48 @@ const Diagnostics: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-primary" />
-              <span className="text-sm font-semibold text-gray-200">生产就绪审计</span>
+              <span className="text-sm font-semibold text-gray-200">系统合规审计</span>
+              {auditResult && (
+                <span className={`text-xs px-2 py-0.5 rounded ${
+                  (auditResult.passed || 0) >= (auditResult.total || 1) * 0.9 ? 'bg-green-900/50 text-green-300' : 'bg-yellow-900/50 text-yellow-300'
+                }`}>
+                  {auditResult.verdict} ({auditResult.passed}/{auditResult.total})
+                </span>
+              )}
             </div>
             <Button variant="primary" size="sm" loading={auditRunning} onClick={runAudit}>
               🔍 一键审计
             </Button>
           </div>
         </CardHeader>
-        {auditResult && (
+        {auditResult && auditResult.sections && (
           <CardContent>
-            <div className="text-sm text-gray-500 mb-3">
-              总体: {auditResult.passed || 0}/{auditResult.total || 11} 通过 · {auditResult.verdict || ''}
-            </div>
-            <div className="space-y-1">
-              {(auditResult.items || []).map((item: any, idx: number) => (
-                <div key={idx} className="flex items-start gap-2 text-xs py-1">
-                  <span className="w-4 shrink-0">{item.result}</span>
-                  <span className="text-gray-300">{item.desc}</span>
-                  {item.detail && <span className="text-gray-500 ml-2">{item.detail}</span>}
-                </div>
+            <div className="flex gap-1 mb-3 border-b border-dark-border pb-2">
+              {(auditResult.sections || []).map((sec: any) => (
+                <button key={sec.name}
+                  onClick={() => setAuditTab(auditTab === sec.name ? '' : sec.name)}
+                  className={`px-3 py-1 rounded-t text-xs transition-colors ${
+                    auditTab === sec.name || !auditTab ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-300'
+                  }`}>
+                  {sec.name} <span className="opacity-60">{sec.score}</span>
+                </button>
               ))}
             </div>
+            {(auditResult.sections || []).map((sec: any) => {
+              if (auditTab && auditTab !== sec.name) return null;
+              return (
+                <div key={sec.name} className="space-y-1">
+                  <div className="text-xs font-medium text-gray-400 mb-1">{sec.name} — {sec.score} 通过</div>
+                  {(sec.items || []).map((item: any, idx: number) => (
+                    <div key={idx} className="flex items-start gap-2 text-xs py-1">
+                      <span className="w-4 shrink-0">{item.result}</span>
+                      <span className="text-gray-300">{item.desc}</span>
+                      {item.detail && <span className="text-gray-500">{item.detail}</span>}
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
           </CardContent>
         )}
       </Card>
