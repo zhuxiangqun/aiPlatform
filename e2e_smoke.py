@@ -83,11 +83,11 @@ def main() -> int:
     route = _req("POST", f"{PLATFORM}/platform/gateway/routes", json_body={"name": "smoke-route", "path": "/smoke", "enabled": True})
     print(f"[platform] route created id={route.get('id')}")
 
-    # 3) app CRUD (sqlite)
-    ch = _req("POST", f"{APP}/app/channels", json_body={"name": "smoke-channel", "type": "webhook"})
+    # 3) app CRUD (sqlite) — migrated to platform proxy
+    ch = _req("POST", f"{PLATFORM}/app/channels", json_body={"name": "smoke-channel", "type": "webhook"})
     print(f"[app] channel created id={ch.get('id')}")
 
-    sess = _req("POST", f"{APP}/app/sessions", json_body={"channel_id": ch.get("id"), "user_id": str(u.get('id'))})
+    sess = _req("POST", f"{PLATFORM}/app/sessions", json_body={"channel_id": ch.get("id"), "user_id": str(u.get('id'))})
     print(f"[app] session created id={sess.get('id')}")
 
     # 4) agents CRUD via platform -> core workspace agents

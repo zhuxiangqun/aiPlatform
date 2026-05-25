@@ -724,6 +724,34 @@ async def platform_whoami(request: Request):
     }
 
 
+# ── App channels / sessions (E2E smoke support) ──────────────────
+
+@app.post("/app/channels")
+def platform_app_create_channel(body: Dict[str, Any], request: Request):
+    cid = _new_prefixed_id("ch")
+    channel = {
+        "id": cid,
+        "name": str((body or {}).get("name", "unnamed")),
+        "type": str((body or {}).get("type", "webhook")),
+        "created_at": time.time(),
+        "tenant_id": _resolve_identity(request).tenant_id,
+    }
+    return channel
+
+
+@app.post("/app/sessions")
+def platform_app_create_session(body: Dict[str, Any], request: Request):
+    sid = _new_prefixed_id("ses")
+    session = {
+        "id": sid,
+        "channel_id": str((body or {}).get("channel_id", "default")),
+        "user_id": str((body or {}).get("user_id", "anonymous")),
+        "created_at": time.time(),
+        "tenant_id": _resolve_identity(request).tenant_id,
+    }
+    return session
+
+
 @app.post("/platform/kb/reindex")
 @app.post("/api/v1/kb/reindex")
 async def kb_reindex(request: Request):
