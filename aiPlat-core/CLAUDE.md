@@ -506,7 +506,7 @@ Tool/Skill 在返回结果时 MAY 附加 `priority` 字段：
 - `langgraph/nodes/` 中 3 个文件（reason_node/act_node/observe_node）有直接 syscall 调用 → 已知例外（ReAct 图节点的并行实现，Phase 9 统一后 retire）
 
 **剩余架构债务（需单独立项，不在本节覆盖范围）**：
-- `integration.py` 反向依赖（harness→apps）→ Phase 9 kernel_orchestrator
+- `integration.py` 8 处 `from core.apps.*` 反向依赖（harness→apps），均为 lazy import。需通过 DI 容器消除 → Phase 9 kernel_orchestrator（独立立项）
 
 ### 5.24 扩展机制成本层次（参考 Claude Code 设计）
 
@@ -681,7 +681,7 @@ AGENT.md 瘦身到核心内容（<100 行）。超过 100 行时，拆分为：
 
 ### 当前已知违规（截至 2026-05）
 
-- `builder_session.py:238-240`: `session.get("architecture"/"code"/"test_report")` 硬编码 artifact key（KNOWN_DEBT——需重构 BuilderSessionStateResponse 为通用 artifacts dict）
+- `builder_session.py:238-240`: ~~`session.get("architecture"/"code"/"test_report")` 硬编码 artifact key（KNOWN_DEBT）~~ → ✅ 已修复：`BuilderSessionStateResponse` 已有通用 `artifacts: Dict` 字段，`builder_session.py` 已改为从 `session.get("artifacts", {})` 动态填充。typed 字段（architecture/code/test_report）保留向后兼容。
 - `schemas_builder.py:29-31`: `BuilderSessionPhase` 业务枚举保留用于向后兼容（`awaiting_*` 名称，引擎已不再使用它们做行为分叉）
 - `agent_insight_service.py:70`: 度量层使用业务枚举值（已标注为允许的例外——度量层本质上是业务聚合）
 
@@ -785,7 +785,7 @@ done
 | `Orchestrator.plan()` | `AIPLAT_ENABLE_ORCHESTRATOR=false` | ✅ 已 enable |
 | `FeedbackLoops (3 modules)` | `harness.start()` 从未调用 | ✅ 已激活，drain wired |
 | `AgentMessageBus` | 只 send 不 receive | ✅ send wired, receive 故意不使用（bus 是通知层） |
-| `PipelineEngine._summarize_artifact` | 与 ContextAssembler 重复 | ⚠️ 待合并 |
+| `PipelineEngine._summarize_artifact` | 与 ContextAssembler 重复 | ✅ 已验证——`_summarize_artifact` 做 artifact 截断，`ContextAssembler` 做 token 压缩，功能不重复 |
 
 **设计文档依据**：
 - 根 `CLAUDE.md` §9

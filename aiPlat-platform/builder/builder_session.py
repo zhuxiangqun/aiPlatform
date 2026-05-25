@@ -248,10 +248,7 @@ class BuilderSessionService:
             phase=BuilderSessionPhase(session["phase"]),
             requirement=session.get("requirement", ""),
             prd=_safe_construct(PRDArtifact, session.get("prd")),
-            # @backward-compat (KNOWN_DEBT): architecture/code/test_report are hardcoded artifact
-            # keys tied to the standard PM→Arch→FE→BE→QA pipeline. New teams with different
-            # output_artifact names will break here. Fix: redesign BuilderSessionStateResponse
-            # to use a generic artifacts dict keyed by stage.output_artifact.
+            artifacts=session.get("artifacts", {}),
             architecture=_safe_construct(ArchitectureArtifact, session.get("architecture")),
             code=_safe_construct(CodeArtifact, session.get("code")),
             test_report=_safe_construct(TestReport, session.get("test_report")),

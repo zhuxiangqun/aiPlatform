@@ -30,6 +30,26 @@ from typing import Any, Dict, List, Optional
 from .model_registry import ModelEntry, ModelRegistry, get_model_registry
 
 
+def _resolve_registry():
+    """Try infra ModelManager first, fall back to legacy ModelRegistry."""
+    try:
+        from infra.management.model.manager import ModelManager
+        mgr = ModelManager()
+        # Wrap infra ModelManager as legacy-compatible registry
+        registry_proxy = ModelRegistry()
+        for m in mgr._models.values():
+            registry_proxy.register(ModelEntry(
+                name=m.name, provider=m.provider,
+                api_key_env=m.config.api_key_env or "",
+                base_url=m.config.base_url or "",
+                enabled=m.enabled,
+                capabilities=m.capabilities or ["chat"],
+            ))
+        return registry_proxy
+    except Exception:
+        return get_model_registry()
+
+
 # ── Router configuration ──────────────────────────────────────────────
 
 @dataclass
@@ -53,7 +73,7 @@ class ModelRouter:
         registry: Optional[ModelRegistry] = None,
     ):
         self._config = config or RouterConfig()
-        self._registry = registry or get_model_registry()
+        self._registry = registry or _resolve_registry()
         self._fallback_history: Dict[str, List[str]] = {}
         self._load_persisted_state()  # model_name → tried deployments
 

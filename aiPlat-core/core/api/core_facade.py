@@ -84,9 +84,13 @@ def get_tool_registry() -> Any:
 
 
 def get_model_registry() -> Any:
-    """Get the global ModelRegistry singleton."""
-    from core.harness.infrastructure.model_registry import get_model_registry as _get
-    return _get()
+    """Get the global ModelRegistry singleton (bridged to infra ModelManager)."""
+    try:
+        from infra.management.model.manager import ModelManager
+        return ModelManager()
+    except Exception:
+        from core.harness.infrastructure.model_registry import get_model_registry as _get
+        return _get()
 
 
 def llm_generate(model: Any, prompt: Any, **kwargs: Any) -> Any:

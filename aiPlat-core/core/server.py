@@ -922,24 +922,8 @@ async def lifespan(app: FastAPI):
     except Exception:
         pass
 
-    # Seed ModelRegistry with built-in defaults
-    try:
-        from core.harness.infrastructure.model_registry import ModelEntry, get_model_registry
-        model_registry = get_model_registry()
-        if not model_registry.list_models():
-            model_registry.register(ModelEntry(
-                name="deepseek-chat", provider="deepseek",
-                api_key_env="DEEPSEEK_API_KEY",
-                description="DeepSeek Chat model (default)",
-            ))
-            if get_llm_api_key("openai"):
-                model_registry.register(ModelEntry(
-                    name="gpt-4o", provider="openai",
-                    api_key_env="OPENAI_API_KEY",
-                    description="GPT-4o model (code generation)",
-                ))
-    except Exception:
-        pass
+    # Model discovery now handled by infra ModelManager (env vars + local scan).
+    # The legacy ModelRegistry seed below is retired — infra is the single source of truth.
 
     # Phase-1: wire application runtime into HarnessIntegration (single entry execute)
     try:
