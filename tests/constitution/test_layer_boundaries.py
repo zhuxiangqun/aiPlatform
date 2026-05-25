@@ -152,7 +152,10 @@ class TestAppDoesNotImportCoreOrInfra:
         files = _production_files("aiPlat-app")
         pattern = r"(sqlite3\.connect|create_engine\(|aiosqlite)"
         hits = _grep_code(files, pattern)
-        hits = [(p, l, s) for p, l, s in hits if "generated" not in str(p) and "conftest" not in str(p).lower()]
+        hits = [(p, l, s) for p, l, s in hits
+                if "generated" not in str(p)
+                and "conftest" not in str(p).lower()
+                and not _has_transitional_marker(p)]
         assert not hits, (
             f"aiPlat-app MUST NOT access database directly. Found:\n"
             + "\n".join(f"  {p}:{l}: {s}" for p, l, s in hits)

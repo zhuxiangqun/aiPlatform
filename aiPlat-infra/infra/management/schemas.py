@@ -219,6 +219,8 @@ class ModelType(Enum):
     EMBEDDING = "embedding"
     IMAGE = "image"
     AUDIO = "audio"
+    RERANKER = "reranker"
+    OCR = "ocr"
 
 
 class ModelSource(Enum):

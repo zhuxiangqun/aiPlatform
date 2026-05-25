@@ -30,6 +30,14 @@ _ENV_MODEL_TEMPLATES = {
     ),
 }
 
+# Models that don't need an API key — detected from env vars or system capabilities
+_NON_API_MODEL_ENVS = {
+    "AIPLAT_EMBEDDING_MODEL": ("local-embedding", "embedding", "embedding", ["local", "embedding", "huggingface"]),
+    "AIPLAT_RERANK_MODEL": ("reranker", "reranker", "reranker", ["reranker", "search"]),
+    "AIPLAT_VIDEO_WHISPER_MODEL": ("whisper", "audio", "audio", ["whisper", "stt", "speech"]),
+    "AIPLAT_DOC_LLM_MODEL": ("openai_compatible", "chat", "chat", ["document", "chat"]),
+}
+
 
 def _models_from_env(api_key_env: str, provider: str, model_type: str,
                      base_url: str, capability: str, tags: List[str],
@@ -84,6 +92,115 @@ def _load_env_models() -> List[ModelInfo]:
     return all_models
 
 
+def _load_non_api_models() -> List[ModelInfo]:
+    """Discover models that don't need an API key (embedding, reranker, whisper, etc.)
+    — detected solely from their environment variables."""
+    import re
+    models: List[ModelInfo] = []
+    for env_name, (provider, mtype, capability, tags) in _NON_API_MODEL_ENVS.items():
+        val = os.getenv(env_name, "").strip()
+        if not val:
+            continue
+        for name in val.split(","):
+            name = name.strip()
+            if not name:
+                continue
+            safe_id = f"{provider}:{re.sub(r'[^a-zA-Z0-9_-]', '-', name.lower())}"
+            models.append(ModelInfo(
+                id=safe_id, name=name, provider=provider,
+                type=ModelType(mtype), source=ModelSource.CONFIG,
+                display_name=name, enabled=True,
+                description=f"Model from env {env_name}",
+                tags=list(tags), capabilities=[capability],
+                status=ModelStatus.AVAILABLE,
+                config=ModelConfig(),
+                stats=ModelStats(), created_at=datetime.now(), updated_at=datetime.now(),
+            ))
+    # AIPLAT_DOC_LLM_MODEL is a CHAT purpose variant, skip if already in chat models
+    return models
+
+
+def _detect_system_capability_models() -> List[ModelInfo]:
+    """Detect models from system capabilities (OCR engines, document parsers, etc.)
+    that don't have dedicated environment variables."""
+    import re
+    models: List[ModelInfo] = []
+
+    # PaddleOCR
+    try:
+        import paddleocr  # noqa: F401
+        models.append(ModelInfo(
+            id="paddleocr:default",
+            name="PaddleOCR", provider="paddleocr",
+            type=ModelType("ocr"), source=ModelSource.CONFIG,
+            display_name="PaddleOCR", enabled=True,
+            description="Chinese OCR engine (PaddlePaddle-based)",
+            tags=["ocr", "chinese", "document"], capabilities=["ocr"],
+            status=ModelStatus.AVAILABLE,
+            config=ModelConfig(), stats=ModelStats(),
+            created_at=datetime.now(), updated_at=datetime.now(),
+        ))
+    except ImportError:
+        pass
+
+    # Tesseract (pytesseract)
+    try:
+        import pytesseract  # noqa: F401
+        models.append(ModelInfo(
+            id="tesseract:default",
+            name="Tesseract OCR", provider="tesseract",
+            type=ModelType("ocr"), source=ModelSource.CONFIG,
+            display_name="Tesseract OCR", enabled=True,
+            description="Open-source OCR engine (chi_sim+eng)",
+            tags=["ocr", "tesseract", "document"], capabilities=["ocr"],
+            status=ModelStatus.AVAILABLE,
+            config=ModelConfig(), stats=ModelStats(),
+            created_at=datetime.now(), updated_at=datetime.now(),
+        ))
+    except ImportError:
+        pass
+
+    # MinerU
+    import subprocess as _sp
+    try:
+        result = _sp.run(["mineru", "--version"], capture_output=True, text=True, timeout=10)
+        if result.returncode == 0 or "mineru" in (result.stdout + result.stderr).lower():
+            models.append(ModelInfo(
+                id="mineru:default",
+                name="MinerU", provider="mineru",
+                type=ModelType("chat"), source=ModelSource.CONFIG,
+                display_name="MinerU", enabled=True,
+                description="Structure-driven PDF parser (table extraction, content list)",
+                tags=["document", "pdf", "parser"], capabilities=["doc-parser"],
+                status=ModelStatus.AVAILABLE,
+                config=ModelConfig(), stats=ModelStats(),
+                created_at=datetime.now(), updated_at=datetime.now(),
+            ))
+    except Exception:
+        pass
+
+    # Default sentence-transformers model (always available if installed)
+    try:
+        import sentence_transformers  # noqa: F401
+        default_embed = os.getenv("AIPLAT_EMBEDDING_MODEL", "")
+        if "all-MiniLM" not in default_embed.lower() and "all-minilm" not in default_embed.lower():
+            safe_id = f"local-embedding:all-minilm-l6-v2"
+            models.append(ModelInfo(
+                id=safe_id, name="all-MiniLM-L6-v2", provider="local-embedding",
+                type=ModelType.EMBEDDING, source=ModelSource.CONFIG,
+                display_name="all-MiniLM-L6-v2", enabled=True,
+                description="Default sentence-transformers embedding model (384-dim)",
+                tags=["local", "embedding", "sentence-transformers"], capabilities=["embedding"],
+                status=ModelStatus.AVAILABLE,
+                config=ModelConfig(base_url="sentence-transformers/all-MiniLM-L6-v2"),
+                stats=ModelStats(), created_at=datetime.now(), updated_at=datetime.now(),
+            ))
+    except ImportError:
+        pass
+
+    return models
+
+
 class ConfigLoader:
     """Model discovery loader — env vars + YAML config."""
 
@@ -123,8 +240,18 @@ class ConfigLoader:
         """Discover models: env vars first, then YAML model_discovery, then local_embedding."""
         models: List[ModelInfo] = []
 
-        # 1. Remote models from environment variables (primary source)
+        # 1. Remote chat models from environment variables (primary source)
         models.extend(_load_env_models())
+
+        # 2. Non-API models from env vars (embedding, reranker, whisper, doc_llm)
+        models.extend(_load_non_api_models())
+
+        # 3. System capability models (OCR, doc-parser, default embedder)
+        existing_names = {m.name for m in models}
+        for cap_model in _detect_system_capability_models():
+            if cap_model.name not in existing_names:
+                models.append(cap_model)
+                existing_names.add(cap_model.name)
 
         # 2. YAML model_discovery section (fallback if env not set)
         config = self._load_config()

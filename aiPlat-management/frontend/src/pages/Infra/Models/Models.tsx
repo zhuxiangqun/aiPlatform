@@ -242,6 +242,7 @@ const Models: React.FC = () => {
             value={sourceFilter}
             onChange={(v) => setSourceFilter(v || undefined)}
             options={[
+              { value: '', label: '所有来源' },
               { value: 'config', label: '内置' },
               { value: 'local', label: '本地' },
               { value: 'external', label: '自定义' },
@@ -252,6 +253,7 @@ const Models: React.FC = () => {
             value={statusFilter}
             onChange={(v) => setStatusFilter(v || undefined)}
             options={[
+              { value: '', label: '所有状态' },
               { value: 'available', label: '可用' },
               { value: 'unavailable', label: '不可用' },
               { value: 'error', label: '错误' },
