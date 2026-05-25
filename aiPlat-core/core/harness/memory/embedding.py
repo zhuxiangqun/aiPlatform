@@ -80,9 +80,9 @@ class EmbeddingProvider:
     async def _embed_transform(self, texts: List[str]) -> List[List[float]]:
         try:
             # Prefer InfraEmbeddingAdapter
-            from core.harness.infrastructure.infra_embedding_adapter import create_infra_embedding_adapter
+            from core.harness.infrastructure.base_model_adapter import create_adapter
             if self._model is None:
-                self._model = create_infra_embedding_adapter()
+                self._model = create_adapter("embedding")
             loop = asyncio.get_running_loop()
             embeddings = await loop.run_in_executor(
                 None, lambda: self._model.embed_batch_sync(texts)

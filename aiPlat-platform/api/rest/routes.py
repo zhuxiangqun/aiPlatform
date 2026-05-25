@@ -728,12 +728,13 @@ async def platform_whoami(request: Request):
 
 @app.post("/app/channels")
 def platform_app_create_channel(body: Dict[str, Any], request: Request):
+    from datetime import datetime as _dt
     cid = _new_prefixed_id("ch")
     channel = {
         "id": cid,
         "name": str((body or {}).get("name", "unnamed")),
         "type": str((body or {}).get("type", "webhook")),
-        "created_at": time.time(),
+        "created_at": _dt.utcnow().isoformat(),
         "tenant_id": _resolve_identity(request).tenant_id,
     }
     return channel
@@ -741,12 +742,13 @@ def platform_app_create_channel(body: Dict[str, Any], request: Request):
 
 @app.post("/app/sessions")
 def platform_app_create_session(body: Dict[str, Any], request: Request):
+    from datetime import datetime as _dt
     sid = _new_prefixed_id("ses")
     session = {
         "id": sid,
         "channel_id": str((body or {}).get("channel_id", "default")),
         "user_id": str((body or {}).get("user_id", "anonymous")),
-        "created_at": time.time(),
+        "created_at": _dt.utcnow().isoformat(),
         "tenant_id": _resolve_identity(request).tenant_id,
     }
     return session
