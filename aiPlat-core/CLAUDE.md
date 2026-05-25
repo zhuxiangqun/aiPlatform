@@ -777,20 +777,16 @@ done
 3. 如果有全局单例，是否在 platform/core 两个进程中都初始化了？
 4. 有没有重复实现已有基础设施的情况？
 
-### 典型案例（已修复——作为反面教材）
+### 典型案例（反面教材 + 当前状态）
 
-```
-❌ ContextAssembler.assemble()       → 实现了但只 1 个 caller，只用 metadata
-❌ MemoryManager.build_context()     → 实现了但尚未接入执行循环（待接入 §5.28）
-❌ Orchestrator.plan()               → 实现了但 AIPLAT_ENABLE_ORCHESTRATOR=false
-❌ FeedbackLoops (3 modules)         → 实现了但 harness.start() 从未调用
-❌ AgentMessageBus.receive()         → 实现了但只 send 不 receive
-❌ PipelineEngine._summarize_artifact → 实现了但和 ContextAssembler 做同一件事 (仍重复, 待合并)
-
-✓ 修复：ContextAssembler schemas wired、build_context 参数修复（接入执行循环待完成 §5.28）、Orchestrator enabled、
-         feedback loops activated、drain wired for observability (receive intentionally
-         not used — bus is notification layer, not execution dispatch)
-```
+| 案例 | 原问题 | 当前状态 |
+|------|--------|:---:|
+| `ContextAssembler.assemble()` | 实现了但只 1 个 caller | ✅ 已修复（schemas wired, build_context 参数修复） |
+| `MemoryManager.build_context()` | 实现了但未接入执行循环 | ⚠️ To-Be（见 §5.28） |
+| `Orchestrator.plan()` | `AIPLAT_ENABLE_ORCHESTRATOR=false` | ✅ 已 enable |
+| `FeedbackLoops (3 modules)` | `harness.start()` 从未调用 | ✅ 已激活，drain wired |
+| `AgentMessageBus` | 只 send 不 receive | ✅ send wired, receive 故意不使用（bus 是通知层） |
+| `PipelineEngine._summarize_artifact` | 与 ContextAssembler 重复 | ⚠️ 待合并 |
 
 **设计文档依据**：
 - 根 `CLAUDE.md` §9

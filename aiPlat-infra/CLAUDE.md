@@ -220,15 +220,31 @@ infra 不依赖任何内部包
 | `management/monitoring/prometheus.py:176` | `namespace: "aiplat_infra"` → `os.getenv("AIPLAT_PROM_EXPORTER_NAMESPACE", "")` |
 | `management/service/manager.py:23` | 注释中的示例格式包含应用特定服务名 → 通用格式 |
 
-### 5.8 接线状态（待完成）
+### 5.8 接线状态
 
-以下模块已实现但未接入生产链路：
+**已完成：**
+
+| 模块 | 说明 |
+|------|------|
+| LLM adapter | `InfraLLMAdapter` → infra `LLMClient` → provider API ✅ |
+| 模型管理 | `ModelManager.list_models()` 从 env vars + 本地扫描动态构建 ✅ |
+| 本地模型扫描 | Ollama / LM Studio / oMLX / vLLM 自动检测 ✅ |
+| 模型 YAML 列表 | 已废弃，替换为 `model_discovery` 动态发现 ✅ |
+| Database bridge | `create_infra_database_client()` 已用于 platform KB 存储 ✅ |
+
+**待完成：**
 
 | 模块 | 状态 | 待完成 |
 |------|------|--------|
 | MCP adapter | 工具发现但未注册到 ToolRegistry | 将 `discover_tools()` 结果注册到 ToolRegistry |
 | SubagentCoordinator | DI 已接线，但方法零调用者 | 接入 MultiAgent 执行路径 |
 | AgentMessageBus request/respond | 协议已实现，但从未被调用 | 接入 Pipeline 跨 Agent 通信 |
+| Embedding adapter | core 直接加载 sentence-transformers | 实现 InfraEmbeddingAdapter |
+| Reranker adapter | core 直接加载 AutoModel | 实现 InfraRerankerAdapter |
+| Whisper/STT adapter | core 直接加载 faster_whisper | 实现 InfraAudioAdapter |
+| OCR adapter | platform 直接加载 PaddleOCR/Tesseract | 实现 InfraOCRAdapter |
+| Vector DB | 待迁移 | + |
+| Cache | 待迁移 | + |
 
 **当前可用（内部自洽）：** 所有 18 个能力模块均可通过工厂函数独立使用，测试覆盖完备。
 
