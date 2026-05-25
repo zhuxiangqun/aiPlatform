@@ -2,7 +2,8 @@
 
 # aiPlat-platform 三层 + platform/app + 前端 启动脚本
 # 启动顺序:
-#   aiPlat-core (8002) → aiPlat-infra (8001) → aiPlat-platform (8003) → aiPlat-app (8004) → aiPlat-management (8000) → frontend (5173)
+#   aiPlat-infra (8001) → aiPlat-core (8002) → aiPlat-platform (8003) → aiPlat-app (8004) → aiPlat-management (8000) → frontend (5173)
+#   (infra MUST start first — core depends on infra for LLM model discovery and calls)
 
 set -e
 
@@ -66,9 +67,6 @@ export MKL_NUM_THREADS="${MKL_NUM_THREADS:-1}"
 
 # Dev: disable approval gates (avoid manual approve/replay loops during local MVP).
 export AIPLAT_APPROVALS_DISABLED="${AIPLAT_APPROVALS_DISABLED:-1}"
-
-# Dev: use core adapter fallback when infra LLM adapter unavailable.
-export AIPLAT_ENABLE_CORE_ADAPTER_FALLBACK="${AIPLAT_ENABLE_CORE_ADAPTER_FALLBACK:-true}"
 export AIPLAT_ENABLE_ORCHESTRATOR="${AIPLAT_ENABLE_ORCHESTRATOR:-false}"
 export PYTHONUNBUFFERED=1
 
@@ -77,7 +75,7 @@ export PYTHONUNBUFFERED=1
 export AIPLAT_PORT_SERVICES="${AIPLAT_PORT_SERVICES:-8002=core-api:aiPlat-core,8001=infra-api:aiPlat-infra,8000=management-api:aiPlat-management,8003=platform-api:aiPlat-platform,8004=app-api:aiPlat-app,5173=frontend-dev:frontend}"
 # Infra: target processes for service manager monitoring.
 # Format: "name:cmdline:port,name:cmdline:port,..."
-export AIPLAT_TARGET_PROCESSES="${AIPLAT_TARGET_PROCESSES:-aiPlat-core:uvicorn:8002,aiPlat-infra:uvicorn:8001,aiPlat-platform:uvicorn:8003,aiPlat-app:uvicorn:8004,aiPlat-management:uvicorn:8000,frontend:proxy_server.py:5173}"
+export AIPLAT_TARGET_PROCESSES="${AIPLAT_TARGET_PROCESSES:-aiPlat-infra:uvicorn:8001,aiPlat-core:uvicorn:8002,aiPlat-platform:uvicorn:8003,aiPlat-app:uvicorn:8004,aiPlat-management:uvicorn:8000,frontend:proxy_server.py:5173}"
 
 # Parser selection for KB ingest: auto|mineru|ocr
 export AIPLAT_KB_PARSER="${AIPLAT_KB_PARSER:-auto}"
@@ -271,9 +269,29 @@ if [ "${AIPLAT_ENABLE_MINERU_API:-0}" = "1" ]; then
   echo ""
 fi
 
-# ===== Step 1: aiPlat-core =====
+# ===== Step 1: aiPlat-infra =====
 echo "============================================================"
-echo "  Step 1/4: 启动 aiPlat-core (端口 8002)"
+echo "  Step 1/4: 启动 aiPlat-infra (端口 8001)"
+echo "============================================================"
+
+kill_port_if_any 8001
+
+cd "$PROJECT_ROOT/aiPlat-infra"
+PYTHONPATH="$PROJECT_ROOT/aiPlat-infra" nohup "$PY" -m uvicorn infra.management.api.main:create_app --host 0.0.0.0 --port 8001 --factory > "$AIPLAT_HOME/logs/infra.log" 2>&1 &
+INFRA_PID=$!
+echo "PID: $INFRA_PID"
+
+sleep 3
+for i in 1 2 3 4 5; do
+    curl -s http://localhost:8001/api/infra/health >/dev/null 2>&1 && echo "✓ aiPlat-infra 启动成功 (8001)" && break
+    echo "等待... ($i/5)"
+    sleep 1
+done
+
+# ===== Step 2: aiPlat-core =====
+echo ""
+echo "============================================================"
+echo "  Step 2/4: 启动 aiPlat-core (端口 8002)"
 echo "============================================================"
 
 kill_port_if_any 8002
@@ -294,30 +312,10 @@ for i in 1 2 3 4 5; do
     sleep 1
 done
 
-# ===== Step 2: aiPlat-infra =====
-echo ""
-echo "============================================================"
-echo "  Step 2/4: 启动 aiPlat-infra (端口 8001)"
-echo "============================================================"
-
-kill_port_if_any 8001
-
-cd "$PROJECT_ROOT/aiPlat-infra"
-PYTHONPATH="$PROJECT_ROOT/aiPlat-infra" nohup "$PY" -m uvicorn infra.management.api.main:create_app --host 0.0.0.0 --port 8001 --factory > "$AIPLAT_HOME/logs/infra.log" 2>&1 &
-INFRA_PID=$!
-echo "PID: $INFRA_PID"
-
-sleep 3
-for i in 1 2 3 4 5; do
-    curl -s http://localhost:8001/api/infra/health >/dev/null 2>&1 && echo "✓ aiPlat-infra 启动成功 (8001)" && break
-    echo "等待... ($i/5)"
-    sleep 1
-done
-
 # ===== Step 3: aiPlat-platform =====
 echo ""
 echo "============================================================"
-echo "  Step 3/6: 启动 aiPlat-platform (端口 8003)"
+echo "  Step 3/4: 启动 aiPlat-platform (端口 8003)"
 echo "============================================================"
 
 kill_port_if_any 8003
