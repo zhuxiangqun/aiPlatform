@@ -1,0 +1,11 @@
+layer: platform
+rationale: |
+  POC（概念验证）目录 — 非生产代码。包含早期原型和实验性功能：
+  - ocr.py: 多引擎 OCR（PaddleOCR + tesseract fallback）
+  - 其他 POC 模块
+
+  此目录的代码不参与 CI 架构守卫检查（已在 EXCEPT_10A 豁免）。
+  生产路径应使用 core/harness/document/ocr.py。
+notes: |
+  - ocr.py 中的 import pytesseract 是已知豁免（guard EXCEPT_10A）
+  - POC 代码目标是验证可行性后正式迁移到 Core 层

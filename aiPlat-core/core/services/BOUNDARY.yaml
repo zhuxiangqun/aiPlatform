@@ -1,0 +1,25 @@
+layer: core
+rationale: |
+  核心服务层 — 提供跨模块的持久化和业务服务：
+  - execution_store: SQLite 持久化（runs/memory/sessions）
+  - conversations: 对话会话管理
+  - memory_store: 长期记忆存储
+  - model_service: 模型管理
+
+  所有服务通过 get_*() 工厂方法访问，通过 Dependency Injection 注入。
+dependencies:
+  - core.schemas_builder
+  - core.harness                   # via DI container
+known_debt:
+  - file: "execution_store.py"
+    issue: "单体 9000+ 行文件，需要按域拆分（runs/memory/config/jobs）"
+    status: "planned"
+  - file: "execution_store.py"
+    issue: "Tenant CRUD 已完全移除 ✅ (2026-Q2)"
+    target: "aiPlat-platform/storage/sqlite.py"
+    status: "done"
+  - file: "execution_store.py"
+    issue: "~168 处裸 sqlite3.connect() → 全部改为 self._connect() 通过 infra_bridge ✅"
+    target: "infra_bridge.create_infra_database_client()"
+    status: "done"
+    note: "2026-05: 168 处 connect 全部替换为 self._connect()。row_factory 行保留为冗余 no-op，待下一轮清理。"

@@ -1,0 +1,15 @@
+layer: core
+rationale: |
+  符合 boundary-standard.md §3.1（Core层模块归属目录）。
+  Pipeline 引擎是通用执行基础设施——调度阶段顺序、
+  管理 HITL 暂停/恢复、控制 token 预算、持久化状态。
+  任何 AI 应用的流水线执行都需要这些能力。
+capabilities:
+  - PipelineEngine           # 通用流水线执行引擎
+  - run_agent_debate         # 对抗辩论循环 (TradingAgents 模式)
+  - render_stage_output      # Pydantic → Markdown 渲染器
+  - PipelineCondition        # 条件路由
+  - list_available_agents    # Agent 目录扫描
+  - recommend_team_stages    # LLM 团队推荐
+  - AgentDebateLoop          # 多 Agent 辩论
+  - StageRunner              # ReAct 阶段执行器

@@ -1,0 +1,19 @@
+layer: infra
+rationale: |
+  基础设施缓存层 — 提供统一的缓存抽象（Memory/Redis/File 三种后端）。
+  通过 factory.py 根据配置创建缓存客户端。
+
+  当前系统中有 4 处缓存使用点：
+  1. infra/cache/ — 基础设施级缓存（本目录，Memory/Redis/File）
+  2. core/harness/assembly/prompt_assembler.py — Prompt 层缓存（稳定化 key）
+  3. aiPlat-platform/kb/db.py — KB 专用 URL 缓存（url_cache 表）
+  4. aiPlat-core/core/services/execution_store.py — JSON 执行缓存
+
+  这 4 处服务于不同层级/不同范围，目前无统一抽象。长期应评估是否需要统一缓存接口。
+dependencies:
+  - infra.cache.schemas
+  - infra.redis  (optional, for Redis backend)
+known_debt:
+  - issue: "4 种缓存实现无统一抽象（infra cache / prompt cache / KB URL cache / execution cache）。各自独立维护，无统一 TTL、驱逐、监控"
+    status: "documented"
+    eta: "post-2026-Q3"

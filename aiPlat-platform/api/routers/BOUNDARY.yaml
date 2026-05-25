@@ -1,0 +1,15 @@
+layer: platform
+rationale: |
+  Platform REST API 路由实现。对外暴露 Platform 层业务端点：
+  - builder.py: Builder 项目管理（CRUD + 流水线控制）
+  - approvals.py: 审批流程代理
+  - change_control.py: 变更控制和治理
+  - channels.py: 渠道管理
+  - chat.py: 对话和知识库查询
+  - onboarding.py: 新手引导
+
+  所有路由通过 CoreFacade 访问 Core 能力，不直接操作 Harness 内部。
+dependencies:
+  - core.api.core_facade     # 唯一 Core 入口
+  - core.schemas_builder      # Pipeline 配置 schema
+known_debt: []

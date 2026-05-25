@@ -1,0 +1,12 @@
+layer: core
+rationale: |
+  LangGraph 层负责流水线阶段编排可视化、节点间 checkpoint、
+  条件边路由和 graph trace 事件。属于 Core 层的编排可视化基础设施，
+  不属于任何特定业务领域。
+
+  Per boundary-standard.md §5.23: LangGraph = 透明化，Harness = 执行。
+  两者职责不可混淆。Graph 层只做编排，不做执行；执行委托给 StageRunner。
+dependencies:
+  - core.harness.execution.pipeline_engine  # StageRunner
+  - core.schemas_builder                    # PipelineState, PipelineStageConfig
+known_debt: []

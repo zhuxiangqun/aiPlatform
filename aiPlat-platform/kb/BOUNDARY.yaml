@@ -1,0 +1,17 @@
+layer: platform
+rationale: |
+  符合 boundary-standard.md §3.2（存储实现归 Platform）。
+  SQLite 表结构、多租户文件布局、文档入库流水线、视频入库流水线、
+  异步任务队列是 KB 应用的具体实现。通过 kb_provider 回调与 Core 解耦。
+capabilities:
+  - KBSqlite                    # SQLite 知识库存储
+  - ingest_document             # 文档入库流水线（调 core parsers → 存 SQLite）
+  - enqueue_ingest              # 异步入库
+  - load_doc_kinds              # 批量加载文档类型
+  - preview_document            # 文档预览（解析不保存）
+  - get_tenant_storage          # 多租户文件布局
+known_debt:
+  - file: "intelligence/"
+    issue: "classifier/embeddings/query/video_retrieval/summarize 逻辑大部分已上移 core"
+    target: "见 intelligence/BOUNDARY.yaml"
+    status: "in_progress"

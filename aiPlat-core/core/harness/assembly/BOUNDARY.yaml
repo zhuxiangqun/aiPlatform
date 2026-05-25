@@ -1,0 +1,15 @@
+layer: core
+rationale: |
+  上下文装配层 — 构建发送给 LLM 的最终 prompt。
+  包含两个并行系统：
+  - ContextAssembler: token 预算管理、消息剪枝、压缩阈值
+  - PromptAssembler: 层级上下文装配、缓存、prompt 版本管理
+
+  两个系统同时激活（各自由独立 flag 控制），概念有重叠。
+dependencies:
+  - core.harness.memory
+  - core.harness.syscalls
+known_debt:
+  - file: "context_assembler.py + prompt_assembler.py"
+    issue: "重命名完成 ✅。ContextAssembler→TokenBudgetManager（token 预算+剪枝），PromptAssembler→MessageFormatter（消息格式化）。旧名保留为 backward-compat 别名。"
+    status: "done"

@@ -1,0 +1,11 @@
+layer: platform
+rationale: |
+  符合 boundary-standard.md §3.2（API 网关归 Platform）。
+  REST/GraphQL/WebSocket 端点定义、路由分发、身份解析、scope 检查。
+  不包含 AI 核心逻辑——所有 AI 操作委托给 Core。
+capabilities:
+  - REST API 端点 (40+ KB endpoints, builder, auth, tenants, gateway)
+  - _resolve_identity (JWT/API key → tenant/actor/scopes)
+  - _require_scope (权限检查)
+  - 请求验证与错误透传
+  - 多租户路由

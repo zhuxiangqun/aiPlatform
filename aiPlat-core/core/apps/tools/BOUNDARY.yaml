@@ -1,0 +1,14 @@
+layer: core
+rationale: |
+  Tool 系统 — 原子操作的注册、发现、执行和权限管理。
+  属于 Internal Policy 基础设施：
+  - ToolRegistry: 工具注册和发现
+  - ToolExecutor: 权限校验 + 沙箱执行
+  - PolicyGate / ApprovalGate: 双门禁控制
+
+  所有 Tool 调用走 sys_tool_call 通道，不可绕过 Syscall 边界。
+dependencies:
+  - core.harness.syscalls
+  - core.harness.infrastructure.gates
+  - core.harness.infrastructure.approval
+known_debt: []

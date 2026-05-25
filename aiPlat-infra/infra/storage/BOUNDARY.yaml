@@ -1,0 +1,12 @@
+layer: infra
+rationale: |
+  存储基础设施 — 多种存储后端的统一适配层：
+  - S3/minio: 对象存储
+  - 本地文件系统: 文件缓存
+  - 关系型数据库连接
+
+  禁止：包含应用特定的 bucket 名称、文件路径、业务数据 schema。
+  配置：通过环境变量 (AIPLAT_STORAGE_BUCKET, AIPLAT_STORAGE_PATH 等) 驱动。
+dependencies:
+  - infra.storage.schemas
+known_debt: []

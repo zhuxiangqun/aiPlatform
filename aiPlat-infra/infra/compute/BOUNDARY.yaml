@@ -1,0 +1,15 @@
+layer: infra
+rationale: |
+  计算基础设施 — Docker 沙箱和本地进程执行管理。
+  属于 Infra 层的计算编排能力：
+  - Sandbox: 隔离执行环境
+  - manager.py: 本地计算节点管理
+  - docker_executor: Docker 容器执行
+
+  所有配置通过环境变量驱动，不包含应用特定默认值。
+dependencies:
+  - infra.management.api      # 管理 API
+known_debt:
+  - file: "manager.py"
+    issue: "LocalComputeManager._init_local_nodes() 硬编码 demo 节点 (local-cpu-1, local-gpu-1)"
+    status: "planned"

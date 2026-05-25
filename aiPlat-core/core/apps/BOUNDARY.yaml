@@ -1,0 +1,12 @@
+layer: core
+rationale: |
+  符合 boundary-standard.md §3.1。Apps 层提供 Agent、Skill、Tool 的
+  具体实现和注册表。Harness 通过 DI 容器访问 apps，apps 不反向依赖 harness。
+capabilities:
+  - agents/                  # Agent 基类和具体类型实现
+  - skills/                  # Skill 注册表和执行器
+  - tools/                   # Tool 注册表和内置工具
+  - document_intelligence/   # Internal Policy (问题分析/检索策略/文档分类)
+  - mcp/                     # MCP 协议适配器
+  - evaluation/              # 评估/打分框架
+  - plugins/                 # 插件管理

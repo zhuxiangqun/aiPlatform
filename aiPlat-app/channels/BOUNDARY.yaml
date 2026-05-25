@@ -1,0 +1,11 @@
+layer: app
+rationale: |
+  App 层渠道适配器 — 将外部消息渠道的协议差异归一化为内部统一格式。
+  属于 boundary-standard.md §P3 决策树中的 App 专属领域：
+  消息格式归一化 + Webhook 签名验证。
+
+  禁止：直接 import Core/Platform/Infra 模块。
+  所有跨层调用通过 services/client.py 的 HTTP REST API。
+dependencies:
+  - aiPlat-app.services.client   # 唯一对 Platform 的接触点
+known_debt: []

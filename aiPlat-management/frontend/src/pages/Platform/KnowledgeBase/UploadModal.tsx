@@ -1,0 +1,329 @@
+import React, { useRef, useState } from 'react';
+import { Button, Input, Modal, toast } from '../../../components/ui';
+import { kbApi } from '../../../services';
+import { useKBStore } from '../../../stores';
+
+interface Props {
+  open: boolean;
+  onClose: () => void;
+  onComplete: () => void;
+}
+
+const ACCEPTED_TYPES: Record<string, { label: string; extensions: string[]; kind: string }> = {
+  pdf: { label: 'PDF 文档', extensions: ['.pdf'], kind: 'pdf' },
+  word: { label: 'Word 文档', extensions: ['.docx', '.doc'], kind: 'word' },
+  ppt: { label: 'PPT 演示', extensions: ['.pptx', '.ppt'], kind: 'ppt' },
+  markdown: { label: 'Markdown', extensions: ['.md', '.markdown'], kind: 'markdown' },
+  xlsx: { label: 'Excel 表格', extensions: ['.xlsx', '.xls'], kind: 'xlsx' },
+  csv: { label: 'CSV 数据表', extensions: ['.csv'], kind: 'csv' },
+  audio: { label: '音频', extensions: ['.mp3', '.wav', '.m4a', '.ogg', '.flac'], kind: 'audio' },
+  image: { label: '图片', extensions: ['.png', '.jpg', '.jpeg', '.bmp', '.webp'], kind: 'image' },
+  json: { label: 'JSON 数据', extensions: ['.json'], kind: 'json' },
+  video: { label: '视频', extensions: ['.mp4', '.mov', '.mkv', '.avi'], kind: 'video' },
+};
+
+type UploadMode = 'file' | 'url';
+type Step = 'input' | 'preview' | 'saving';
+
+export const UploadModal: React.FC<Props> = ({ open, onClose, onComplete }) => {
+  const { uploadDocument, uploadProgress } = useKBStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [step, setStep] = useState<Step>('input');
+  const [mode, setMode] = useState<UploadMode>('file');
+  const [file, setFile] = useState<File | null>(null);
+  const [kind, setKind] = useState<'pdf' | 'video' | 'word' | 'ppt' | 'markdown'>('pdf');
+  const [collectionId, setCollectionId] = useState('default');
+  const [url, setUrl] = useState('');
+  const [showSegments, setShowSegments] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const [preview, setPreview] = useState<any>(null);
+  const [tempFilePath, setTempFilePath] = useState('');
+  const [editedContent, setEditedContent] = useState('');
+
+  const reset = () => {
+    setStep('input');
+    setFile(null);
+    setUrl('');
+    setPreview(null);
+    setTempFilePath('');
+    setEditedContent('');
+    setLoading(false);
+    setShowSegments(false);
+  };
+
+  const handleClose = () => {
+    reset();
+    onClose();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setFile(f);
+    const ext = '.' + (f.name.split('.').pop() || '').toLowerCase();
+    for (const [k] of Object.entries(ACCEPTED_TYPES)) {
+      if (ACCEPTED_TYPES[k as keyof typeof ACCEPTED_TYPES].extensions.includes(ext)) {
+        setKind(k as typeof kind);
+        break;
+      }
+    }
+    e.target.value = '';
+  };
+
+  const handlePreview = async () => {
+    setLoading(true);
+    setPreview(null);
+    try {
+      let result: any;
+      if (mode === 'file' && file) {
+        result = await kbApi.previewDocument(file, kind, collectionId);
+      } else if (mode === 'url' && url.trim()) {
+        result = await kbApi.previewDocumentByUrl(url.trim(), collectionId);
+      } else {
+        toast.error('请选择文件或输入链接');
+        return;
+      }
+      setPreview(result);
+      setTempFilePath(result.temp_file_path || '');
+      const para = result?.elements?.find((e: any) => e.type === 'paragraph');
+      setEditedContent(para?.text || result?.elements?.[0]?.text || '');
+      setStep('preview');
+    } catch (e: any) {
+      toast.error(`预览失败：${e?.message || e}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    setLoading(true);
+    setStep('saving');
+    try {
+      const paraEl = preview?.elements?.find((e: any) => e.type === 'paragraph');
+      const originalText = paraEl?.text || preview?.elements?.[0]?.text || '';
+      const wasEdited = editedContent !== originalText;
+
+      if (wasEdited && editedContent.trim()) {
+        const baseUrl = (import.meta as any).env?.VITE_API_URL || '/api';
+        const form = new FormData();
+        const blob = new Blob([editedContent], { type: 'text/plain;charset=utf-8' });
+        form.append('file', blob, (file?.name || 'document') + '.edited.txt');
+        form.append('collection_id', collectionId);
+        const headers: Record<string, string> = {};
+        try {
+          const t = localStorage.getItem('active_tenant_id') || '';
+          if (t) headers['X-AIPLAT-TENANT-ID'] = t;
+          headers['X-AIPLAT-ACTOR-ID'] = localStorage.getItem('active_actor_id') || 'admin';
+          headers['X-AIPLAT-SCOPES'] = localStorage.getItem('active_scopes') || 'kb:read,kb:write';
+          const k = localStorage.getItem('active_api_key') || '';
+          if (k) headers['X-AIPLAT-API-KEY'] = k;
+        } catch {}
+        await fetch(`${baseUrl}/platform/documents/ingest`, { method: 'POST', body: form, headers });
+      } else if (tempFilePath) {
+        // Use cached preview results to avoid re-parsing (ffmpeg + whisper already done)
+        await kbApi.ingestDocumentByFilePath(tempFilePath, collectionId, kind);
+      } else if (mode === 'file' && file) {
+        await uploadDocument(file, kind, collectionId);
+      }
+      reset();
+      onComplete();
+    } catch (e: any) {
+      toast.error(`保存失败：${e?.message || e}`);
+      setStep('preview');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const allAccept = Object.values(ACCEPTED_TYPES).flatMap((t) => t.extensions).join(',');
+
+  // ── Preview step ──
+  if (step === 'preview' || step === 'saving') {
+    const els = preview?.elements || [];
+    const cls = preview?.classification || {};
+    const catLabel: Record<string, string> = {
+      budget_investment: '预算投资', technical_doc: '技术文档',
+      meeting_notes: '会议纪要', general: '通用',
+    };
+
+    return (
+      <Modal
+        open={open}
+        onClose={handleClose}
+        title="资料预览"
+        footer={
+          <div className="flex gap-2 justify-end">
+            <Button variant="secondary" onClick={() => setStep('input')} disabled={loading}>
+              返回修改
+            </Button>
+            <Button variant="primary" onClick={handleSave} loading={loading}>
+              保存到知识库
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4 text-sm">
+          <div className="flex flex-wrap gap-2">
+            <span className="px-2 py-1 rounded bg-dark-hover text-xs text-gray-300">
+              {preview?.kind?.toUpperCase()} · {preview?.parser}
+            </span>
+            <span className="px-2 py-1 rounded bg-dark-hover text-xs text-gray-300">
+              {preview?.element_count || 0} 个文本元素
+            </span>
+            {cls.content_category && (
+              <span className="px-2 py-1 rounded bg-primary/20 text-xs text-primary">
+                {catLabel[cls.content_category] || cls.content_category}
+              </span>
+            )}
+            {cls.tags?.length > 0 && cls.tags.slice(0, 5).map((t: string) => (
+              <span key={t} className="px-2 py-1 rounded bg-dark-hover text-xs text-gray-400">{t}</span>
+            ))}
+          </div>
+
+          <div className="text-xs text-gray-500">
+            {step === 'saving' ? '正在保存到知识库...' : '以下是解析出的核心内容，确认后点击"保存到知识库"'}
+          </div>
+
+          {(() => {
+            const para = els.find((e: any) => e.type === 'paragraph');
+            const segs = els.filter((e: any) => e.type === 'text');
+            return (
+              <div className="space-y-3">
+                {/* Editable transcript/content */}
+                {para && (
+                  <div className="rounded-lg border border-dark-border bg-dark-bg p-4">
+                    <textarea
+                      className="w-full h-[40vh] bg-transparent text-xs text-gray-300 leading-relaxed whitespace-pre-wrap resize-none outline-none border-none"
+                      value={editedContent}
+                      onChange={(e) => setEditedContent(e.target.value)}
+                      placeholder="编辑内容..."
+                    />
+                  </div>
+                )}
+                {!para && els.length > 0 && (
+                  <div className="rounded-lg border border-dark-border bg-dark-bg p-4">
+                    <textarea
+                      className="w-full h-[40vh] bg-transparent text-xs text-gray-300 leading-relaxed whitespace-pre-wrap resize-none outline-none border-none"
+                      value={editedContent}
+                      onChange={(e) => setEditedContent(e.target.value)}
+                      placeholder="编辑内容..."
+                    />
+                  </div>
+                )}
+
+                {/* Toggle for segment details */}
+                {segs.length > 0 && (
+                  <div>
+                    <button
+                      onClick={() => setShowSegments(!showSegments)}
+                      className="text-[10px] text-gray-500 hover:text-gray-300"
+                    >
+                      {showSegments ? '▾ 收起时间片段' : `▸ 展开时间片段 (${segs.length} 段)`}
+                    </button>
+                    {showSegments && (
+                      <div className="mt-2 space-y-1 max-h-[30vh] overflow-auto">
+                        {segs.map((el: any, i: number) => (
+                          <div key={i} className="flex gap-2 text-xs py-1">
+                            <span className="text-gray-600 font-mono w-16 shrink-0 text-right">
+                              {el.meta?.start_s != null ? `${el.meta.start_s.toFixed(1)}s` : ''}
+                            </span>
+                            <span className="text-gray-400">{el.text}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </div>
+      </Modal>
+    );
+  }
+
+  // ── Input step ──
+  return (
+    <Modal
+      open={open}
+      onClose={handleClose}
+      title="上传资料到知识库"
+      footer={
+        <div className="flex gap-2 justify-end">
+          <Button variant="secondary" onClick={handleClose} disabled={loading}>取消</Button>
+          <Button variant="primary" onClick={handlePreview} loading={loading}
+            disabled={(mode === 'file' && !file) || (mode === 'url' && !url.trim())}>
+            预览内容
+          </Button>
+        </div>
+      }
+    >
+      <div className="space-y-4">
+        <div className="flex rounded-lg bg-dark-bg p-0.5">
+          <button onClick={() => setMode('file')}
+            className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
+              mode === 'file' ? 'bg-dark-card text-gray-100 shadow' : 'text-gray-400 hover:text-gray-300'
+            }`}>上传文件</button>
+          <button onClick={() => setMode('url')}
+            className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
+              mode === 'url' ? 'bg-dark-card text-gray-100 shadow' : 'text-gray-400 hover:text-gray-300'
+            }`}>资料链接</button>
+        </div>
+
+        {mode === 'file' ? (
+          <div onClick={() => fileInputRef.current?.click()}
+            className="border-2 border-dashed border-dark-border rounded-xl p-8 text-center cursor-pointer hover:border-primary/50 transition-colors">
+            <input ref={fileInputRef} type="file" accept={allAccept} className="hidden" onChange={handleFileChange} />
+            {file ? (
+              <div>
+                <div className="text-2xl mb-2">📎</div>
+                <div className="text-sm text-gray-200">{file.name}</div>
+                <div className="text-xs text-gray-500 mt-1">{(file.size / 1024 / 1024).toFixed(1)} MB</div>
+              </div>
+            ) : (
+              <div>
+                <div className="text-3xl mb-2">📤</div>
+                <div className="text-sm text-gray-300">点击选择文件或拖拽到此处</div>
+                <div className="text-xs text-gray-500 mt-1">支持 PDF / Word / PPT / Markdown / 视频</div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <Input label="资料链接" value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://example.com/document.pdf" />
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="集合" value={collectionId}
+            onChange={(e) => setCollectionId(e.target.value)} placeholder="default" />
+          {file && (
+            <div>
+              <div className="text-[10px] text-gray-500 mb-1">识别类型</div>
+              <div className="h-10 flex items-center px-3 bg-dark-bg border border-dark-border rounded-lg text-sm text-gray-200">
+                {ACCEPTED_TYPES[kind]?.label || kind}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {uploadProgress && (
+          <div className="rounded-lg border border-dark-border bg-dark-card p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-gray-400">{uploadProgress.message}</span>
+              <span className="text-xs text-gray-500">{Math.round(uploadProgress.pct)}%</span>
+            </div>
+            <div className="h-2 bg-dark-bg rounded-full overflow-hidden">
+              <div className="h-full bg-primary rounded-full transition-all duration-500"
+                style={{ width: `${Math.min(100, uploadProgress.pct)}%` }} />
+            </div>
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+};

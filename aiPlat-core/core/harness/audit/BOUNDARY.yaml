@@ -1,0 +1,11 @@
+layer: core
+rationale: |
+  审计子系统 — 提供 AGENT.md 和运行时 prompt 的质量审计能力。
+  属于 Core 层的基础设施（Internal Policy），不包含业务知识。
+
+  - prompt_auditor.py: 静态和运行时 AGENT.md 质量检查
+  - parse_agent_md(): 统一的 AGENT.md 解析函数（消除 4 处重复实现）
+  - audit_agent_md(): 按 CLAUDE.md §5.27 标准评分
+dependencies:
+  - core.api.core_facade     # 唯一调用入口
+known_debt: []

@@ -1,0 +1,12 @@
+layer: infra
+rationale: |
+  LLM 基础设施 — 大语言模型提供商适配层。
+  封装不同 LLM 提供商的 API 差异，对上暴露统一接口：
+  - factory.py: LLM 客户端工厂
+  - openai_adapter / deepseek_adapter 等: 具体提供商适配
+
+  禁止：包含应用特定 prompt、业务逻辑、角色定义。
+  配置：通过环境变量 (AIPLAT_LLM_API_KEY, AIPLAT_LLM_MODEL 等) 驱动。
+dependencies:
+  - infra.llm.schemas
+known_debt: []

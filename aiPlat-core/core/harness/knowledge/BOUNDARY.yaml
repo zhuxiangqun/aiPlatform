@@ -1,0 +1,12 @@
+layer: core
+rationale: |
+  符合 boundary-standard.md §3.1（知识系统归 Core）。
+  Knowledge 类型体系、检索接口和实现、语义嵌入、向量存储桥接
+  是通用 RAG 基础设施。任何 AI 应用的检索增强生成都需要。
+capabilities:
+  - KnowledgeRetriever       # 高级检索门面
+  - InMemoryRetriever        # 内存检索
+  - VectorStoreRetriever     # 向量数据库检索
+  - SemanticEmbedder         # 语义嵌入
+  - IRetriever / IEmbedder   # 检索/嵌入抽象接口
+  - extract_keywords / score_text / ...  # 检索工具函数

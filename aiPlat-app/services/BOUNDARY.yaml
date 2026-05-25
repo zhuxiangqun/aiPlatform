@@ -1,0 +1,11 @@
+layer: app
+rationale: |
+  App 层服务 — 跨渠道共享的内部服务：
+  - client.py: Platform REST API 的 HTTP 封装（唯一跨层调用点）
+  - formatter.py: 内部格式 → 渠道特定格式适配
+
+  禁止在 services/ 中实现业务逻辑、AI 推理、数据持久化。
+  boundary-standard.md §P6: 只做 HTTP 请求/响应序列化。
+dependencies:
+  - aiPlat-platform  (via HTTP REST only, through client.py)
+known_debt: []

@@ -1,0 +1,17 @@
+layer: core
+rationale: |
+  符合 boundary-standard.md §3.1（Internal Policy 归 Core）。
+  问题分析、检索策略、回答策略、文档分类、文档摘要是通用的
+  AI 决策/分析能力。任何 RAG 系统都需要这些策略模块。
+capabilities:
+  - question_analysis     # 意图分析
+  - retrieval_policy      # 检索路由策略
+  - answer_strategy       # 回答模式策略
+  - strategy_resolver     # 策略解析器
+  - classify_document     # 文档自动分类
+  - kb_provider           # KB 回调桥接（依赖倒置）
+known_debt:
+  - file: "summarizer.py"
+    issue: "summarize_document 仍在 platform/kb/intelligence/summarize.py"
+    target: "core/apps/document_intelligence/summarizer.py"
+    status: "planned"

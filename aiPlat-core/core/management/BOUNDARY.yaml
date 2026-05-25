@@ -1,0 +1,9 @@
+layer: core
+rationale: |
+  管理命令层 — 提供 CLI 和运维管理接口（agent_manager, job_scheduler,
+  adapter_manager, metrics_collector 等）。管理 Agent/Skill/Tool 的生命周期、
+  调度后台任务、收集性能指标。不包含业务逻辑。
+dependencies:
+  - core.api.core_facade
+  - core.services.execution_store
+known_debt: []

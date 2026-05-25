@@ -1,0 +1,11 @@
+layer: core
+rationale: |
+  符合 boundary-standard.md §3.1（文档处理归 Core）。
+  文档解析（docx/pptx/md）、文本分块、视频帧抽取、语音转写、
+  图像 OCR 是通用文档/媒体处理能力。任何 AI 应用处理文档都需要。
+capabilities:
+  - parse_docx / parse_pptx / parse_markdown   # 文档解析
+  - chunk_document / fixed_size_chunks          # 文本分块
+  - probe_duration_ms / extract_audio / extract_keyframes  # 视频工具
+  - transcribe_audio                            # Whisper 语音转写
+  - ocr_keyframes                               # Tesseract OCR

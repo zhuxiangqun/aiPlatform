@@ -1,0 +1,12 @@
+layer: infra
+rationale: |
+  向量存储基础设施 — 多种向量数据库的统一适配层。
+  封装不同向量数据库的 API 差异，对上暴露统一接口：
+  - factory.py: 向量存储工厂（faiss/milvus/chroma/pinecone）
+  - schemas.py: 向量配置模型
+
+  禁止：包含应用特定的 collection 名称、embedding 维度默认值。
+  配置：通过环境变量 (AIPLAT_VECTOR_DIMENSION, AIPLAT_VECTOR_COLLECTION 等) 驱动。
+dependencies:
+  - infra.vector.schemas
+known_debt: []

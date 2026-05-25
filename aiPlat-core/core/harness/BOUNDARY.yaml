@@ -1,0 +1,8 @@
+layer: core
+rationale: |
+  符合 boundary-standard.md §3.1。Harness 是 AI Runtime Kernel,
+  提供 ReAct 循环、syscall 边界、内存管理、工具调度、上下文装配。
+  是整个系统的执行基础设施。
+known_debt:
+  - file: "assembly/"
+    issue: "ContextAssembler→TokenBudgetManager + PromptAssembler→MessageFormatter 重命名完成 ✅。旧名保留为 backward-compat 别名。"

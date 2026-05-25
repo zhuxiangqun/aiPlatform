@@ -1,0 +1,13 @@
+layer: core
+rationale: |
+  Core REST API 路由层。对外暴露 Core 自身能力（Agent/Skill/Tool CRUD、
+  执行管理、记忆系统、诊断等），不包含 Platform 层的业务路由。
+
+  路由通过 kernel_runtime / CoreFacade 访问引擎，不直接导入 Harness 内部模块。
+dependencies:
+  - core.api.core_facade         # 唯一对外入口
+  - core.harness.kernel.runtime  # KernelRuntime
+known_debt:
+  - file: "evaluation_policies.py"
+    issue: "使用 scope=(project) 作为学习制品的 scope 概念，已改名为 /scopes/{scope_id}/"
+    status: "done"

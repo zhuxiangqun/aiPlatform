@@ -1,0 +1,19 @@
+layer: platform
+rationale: |
+  符合 boundary-standard.md §3.2（Builder 项目管理归 Platform）。
+  项目 CRUD、会话编排、团队持久化、流水线状态管理是
+  Builder 应用的特定逻辑。不包含通用 AI 能力（AI 推理委托给 Core）。
+capabilities:
+  - create_project / list_projects / delete_project   # 项目 CRUD
+  - start_pipeline / approve_stage / rollback_stage    # 流水线编排
+  - recommend_team (→ delegates to core team_planner)  # 团队推荐（编排层）
+  - chat (PM dialogue → delegates to core_chat)        # PM 对话（编排层）
+known_debt:
+  - file: "builder_roles.py"
+    issue: "_load_agent_md / _role_agent_md_path 应在 core agent frontmatter 加载器"
+    target: "core/harness/execution/team_planner.py"
+    status: "planned"
+  - file: "builder_project_service.py"
+    issue: "_scan_agent_security 应在 core security module"
+    target: "core/harness/..."
+    status: "planned"

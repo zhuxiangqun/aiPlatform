@@ -1,0 +1,20 @@
+layer: platform
+rationale: |
+  符合 boundary-standard.md §3.2（检索编排路由归 Platform）。
+  本目录的 query.py 负责路由编排（选择检索模式、调用 Core retriever），
+  不实现检索算法（余弦相似度、关键词评分已在 Core）。
+  
+  LLM 调用部分（summarize/llm）是应用层编排，不包含模型加载和推理。
+known_debt:
+  - file: "summarize.py"
+    issue: "summarize_document 已迁移到 core/apps/document_intelligence/summarizer.py ✅"
+    target: "core/apps/document_intelligence/summarizer.py"
+    status: "done"
+    note: "2026-05: summarize_document 实现已搬至 Core。llm.py 中的 chat_complete/llm_enabled/extract_json_block 也已迁移到 core/apps/document_intelligence/llm_client.py。Platform 仅保留 re-export stub。"
+  - file: "llm.py"
+    issue: "chat_complete/llm_enabled/extract_json_block 已迁移到 core/apps/document_intelligence/llm_client.py ✅"
+    status: "done"
+  - file: "query.py"
+    issue: "部分检索编排可进一步精简——关键词回退逻辑已在 core utils 中"
+    target: "core/harness/knowledge/utils.py"
+    status: "in_progress"

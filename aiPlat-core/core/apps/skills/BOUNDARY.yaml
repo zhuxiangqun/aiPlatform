@@ -1,0 +1,16 @@
+layer: core
+rationale: |
+  Skill 系统 — 可复用能力单元的注册、发现、执行和评估。
+  属于 Internal Policy 基础设施（CLAUDE.md §5.10）：
+  - SkillRegistry: 全局注册和发现
+  - SkillExecutor: 沙箱化执行
+  - SkillEval: 质量评估和触发策略
+
+  新增 Skill 通过 frontmatter 声明，走 syscall 通道执行。
+dependencies:
+  - core.harness.syscalls
+  - core.harness.execution.sandbox
+known_debt:
+  - file: "types.py"
+    issue: "SkillCategory.UI_DEVELOPMENT 原名 FRONTEND（已改名），确保下游同步"
+    status: "done"
