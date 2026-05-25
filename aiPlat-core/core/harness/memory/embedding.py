@@ -70,6 +70,8 @@ class EmbeddingProvider:
             return await self._embed_transform(texts)
         elif self._backend == "api":
             return await self._embed_api(texts)
+        elif self._backend == "infra":
+            return await self._embed_infra(texts)
         elif self._backend == "simple":
             return self._embed_simple(texts)
         else:
@@ -110,6 +112,21 @@ class EmbeddingProvider:
         except Exception:
             pass
         return self._embed_simple(texts)
+
+    async def _embed_infra(self, texts: List[str]) -> List[List[float]]:
+        """Use infra layer embedding (via infra_bridge)."""
+        try:
+            from core.harness.infrastructure.infra_bridge import get_infra_embedding
+            results = []
+            for text in texts:
+                vec = await get_infra_embedding(text)
+                if vec:
+                    results.append(vec)
+                else:
+                    results.append(self._embed_simple([text])[0])
+            return results
+        except Exception:
+            return self._embed_simple(texts)
 
     def _embed_simple(self, texts: List[str]) -> List[List[float]]:
         import hashlib

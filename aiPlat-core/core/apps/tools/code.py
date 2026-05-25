@@ -39,7 +39,7 @@ class CodeExecutionTool(BaseTool):
         
         config = ToolConfig(
             name="code",
-            description="Execute code in a sandboxed environment",
+            description="在沙箱环境中执行代码",
             parameters={
                 "type": "object",
                 "properties": {

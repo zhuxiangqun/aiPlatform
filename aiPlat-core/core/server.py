@@ -47,6 +47,55 @@ import uuid
 from core.api.utils.skills_meta import skill_governance_preview as _skill_governance_preview
 
 
+def _run_agent_config_validation(agents_dir: str, scope: str = "engine") -> None:
+    """Validate all AGENT.md files in a directory at startup."""
+    import logging
+    _log = logging.getLogger(__name__)
+    try:
+        from core.management.agent_config_validator import validate_all_agents
+        errors, warnings = validate_all_agents(agents_dir)
+        label = f"[{scope} agents]"
+        for w in warnings:
+            _log.warning("%s %s: %s", label, w.agent, w.message)
+        for e in errors:
+            _log.error("%s %s: %s", label, e.agent, e.message)
+        if errors and os.environ.get("AIPLAT_STRICT_AGENT_CONFIG", "false").lower() in ("true", "1", "yes"):
+            raise RuntimeError(
+                f"{len(errors)} agent config error(s) in {scope} scope. "
+                f"Fix AGENT.md files or set AIPLAT_STRICT_AGENT_CONFIG=false."
+            )
+        if warnings:
+            _log.info("%s %d warning(s) found", label, len(warnings))
+    except RuntimeError:
+        raise
+    except Exception:
+        _log.warning("Agent config validation skipped for %s agents", scope, exc_info=True)
+
+
+def _run_skill_config_validation(skills_dir: str, scope: str = "engine") -> None:
+    """Validate all SKILL.md files in a directory at startup."""
+    import logging
+    _log = logging.getLogger(__name__)
+    try:
+        from core.management.skill_config_validator import validate_all_skills
+        errors, warnings = validate_all_skills(skills_dir)
+        label = f"[{scope} skills]"
+        for w in warnings:
+            _log.warning("%s %s: %s", label, w.skill, w.message)
+        for e in errors:
+            _log.error("%s %s: %s", label, e.skill, e.message)
+        if errors and os.environ.get("AIPLAT_STRICT_SKILL_CONFIG", "false").lower() in ("true", "1", "yes"):
+            raise RuntimeError(
+                f"{len(errors)} skill config error(s) in {scope} scope."
+            )
+        if warnings:
+            _log.info("%s %d warning(s) found", label, len(warnings))
+    except RuntimeError:
+        raise
+    except Exception:
+        _log.warning("Skill config validation skipped for %s skills", scope, exc_info=True)
+
+
 def _seed_default_permissions(
     perm_mgr: PermissionManager,
     tool_names: List[str],
@@ -70,7 +119,7 @@ def _seed_default_permissions(
             perm_mgr.grant_permission(user_id, name, Permission.EXECUTE, granted_by="bootstrap")
 
 
-def _create_llm_adapter(model_name: str = "gpt-4"):
+def _create_llm_adapter(model_name: str = "deepseek-chat"):
     """Create an LLM adapter instance from a model name.
     
     Uses AdapterManager if available, otherwise falls back to create_adapter().
@@ -83,7 +132,7 @@ def _create_llm_adapter(model_name: str = "gpt-4"):
         return None
 
 
-def _inject_model_into_agent(agent: object, model_name: str = "gpt-4"):
+def _inject_model_into_agent(agent: object, model_name: str = "deepseek-chat"):
     """Inject LLM adapter into an agent if it doesn't have one."""
     if hasattr(agent, '_model') and agent._model is None:
         adapter = _create_llm_adapter(model_name)
@@ -93,7 +142,7 @@ def _inject_model_into_agent(agent: object, model_name: str = "gpt-4"):
             agent._model = adapter
 
 
-def _inject_model_into_skill(skill: object, model_name: str = "gpt-4"):
+def _inject_model_into_skill(skill: object, model_name: str = "deepseek-chat"):
     """Inject LLM adapter into a skill if it doesn't have one."""
     if hasattr(skill, '_model') and skill._model is None:
         adapter = _create_llm_adapter(model_name)
@@ -436,6 +485,9 @@ async def lifespan(app: FastAPI):
 
     _agent_discovery = create_agent_discovery(agents_path)
     await _agent_discovery.discover()
+
+    # ── AGENT.md config validation ──
+    _run_agent_config_validation(agents_path, scope="engine")
     
     # Engine skills (SKILL.md): core/engine/skills
     try:
@@ -448,6 +500,9 @@ async def lifespan(app: FastAPI):
 
     _skill_discovery = create_discovery(skills_path)
     await _skill_discovery.discover()
+
+    # ── SKILL.md config validation ──
+    _run_skill_config_validation(skills_path, scope="engine")
     
     # Engine managers (core-only)
     _agent_manager = AgentManager(seed=False, scope="engine")
@@ -466,6 +521,38 @@ async def lifespan(app: FastAPI):
         _mcp_manager = MCPManager(scope="engine")
     except Exception:
         _mcp_manager = None
+
+    # Initialize KB knowledge providers (needed by materials_chat_agent)
+    try:
+        # Must be after _execution_store is created
+        from core.api.core_facade import set_knowledge_db, set_knowledge_providers
+        import os as _os2
+
+        # Use same DB path as platform
+        _kb_db_path = _os2.path.expanduser(
+            _os2.getenv("AIPLAT_KB_DB_PATH", "~/.aiplat/data/kb/aiplat_knowledge.sqlite3"))
+        _os2.makedirs(_os2.path.dirname(_kb_db_path), exist_ok=True)
+
+        # Minimal SQLite-backed KB provider
+        import sqlite3
+        _kb_conn = sqlite3.connect(_kb_db_path)
+        _kb_conn.execute("PRAGMA journal_mode=WAL")
+        _kb_conn.execute("PRAGMA busy_timeout=5000")
+
+        def _kb_load_doc_kinds(*, tenant_id: str, doc_ids: list) -> list:
+            if not doc_ids:
+                return []
+            placeholders = ",".join(["?" for _ in doc_ids])
+            rows = _kb_conn.execute(
+                f"SELECT doc_id, kind FROM documents WHERE tenant_id=? AND doc_id IN ({placeholders})",
+                (tenant_id, *doc_ids),
+            ).fetchall()
+            return [str(dict(r).get("kind") or "").strip().lower() for r in rows if str(dict(r).get("kind") or "").strip()]
+
+        from core.apps.document_intelligence.kb_provider import set_kb_load_doc_kinds_fn
+        set_kb_load_doc_kinds_fn(_kb_load_doc_kinds)
+    except Exception:
+        pass
 
     # Workspace seeds (user-facing). Best-effort materialization into ~/.aiplat (do NOT overwrite).
     # This ensures "workspace skills" can exist out-of-the-box while keeping engine minimal and stable.
@@ -564,6 +651,13 @@ async def lifespan(app: FastAPI):
     # Seed execution-layer registries with real instances
     skill_registry = get_skill_registry()
     skill_registry.seed_data()
+
+    # Initialize SubagentRegistry — ensures built-in agents are discoverable
+    try:
+        from core.apps.agents.subagent.registry import initialize_registry
+        await initialize_registry()
+    except Exception:
+        logging.getLogger("aiplat.server").warning("SubagentRegistry initialization failed", exc_info=True)
     
     # Register discovered skills into registry
     if _skill_discovery:
@@ -687,10 +781,26 @@ async def lifespan(app: FastAPI):
                 skill_registry.register(skill_obj)
             except Exception:
                 pass
-    
+
+    # ── Workspace AGENT.md config validation ──
+    try:
+        workspace_dir = Path.home() / ".aiplat" / "agents"
+        if workspace_dir.exists():
+            _run_agent_config_validation(str(workspace_dir), scope="workspace")
+    except Exception:
+        logging.getLogger(__name__).warning("Workspace agent config validation skipped", exc_info=True)
+
+    # ── Workspace SKILL.md config validation ──
+    try:
+        workspace_skills_dir = Path.home() / ".aiplat" / "skills"
+        if workspace_skills_dir.exists():
+            _run_skill_config_validation(str(workspace_skills_dir), scope="workspace")
+    except Exception:
+        logging.getLogger(__name__).warning("Workspace skill config validation skipped", exc_info=True)
+
     # Register discovered agents into registry
     if _agent_discovery:
-        from core.apps.agents import create_agent
+        from core.apps.agents import create_agent, get_agent_registry as _get_ag_reg
         from core.harness.interfaces import AgentConfig
         agent_registry = get_agent_registry()
         for agent_name, discovered in _agent_discovery._discovered.items():
@@ -698,17 +808,27 @@ async def lifespan(app: FastAPI):
                 if agent_registry.get(agent_name) is not None:
                     continue
                 agent_type = getattr(discovered, 'agent_type', 'base')
+                schema = getattr(discovered, 'config_schema', {}) or {}
                 agent_config = AgentConfig(
                     name=getattr(discovered, 'display_name', agent_name),
-                    model="gpt-4",
-                    metadata=getattr(discovered, 'config_schema', {}) or {}
+                    model=schema.get('model') or os.getenv("AIPLAT_DEFAULT_MODEL", "deepseek-chat"),
+                    metadata={
+                        **schema,
+                        'category': schema.get('category', ''),
+                        'phase': schema.get('phase', ''),
+                    }
                 )
                 agent_instance = create_agent(agent_type=agent_type, config=agent_config)
                 agent_registry.register(
                     agent_name,
                     agent_instance,
                     config=agent_config.metadata if isinstance(agent_config.metadata, dict) else {},
-                    metadata=discovered
+                    metadata=discovered,
+                    skills=schema.get('skills', schema.get('required_skills', [])),
+                    tools=schema.get('tools', schema.get('required_tools', [])),
+                    category=schema.get('category', ''),
+                    tags=getattr(discovered, 'tags', []),
+                    phase=schema.get('phase', ''),
                 )
             except Exception:
                 pass
@@ -756,6 +876,24 @@ async def lifespan(app: FastAPI):
         except Exception:
             pass
 
+    # ── Tool config validation: ensure all registered tools have descriptions ──
+    try:
+        empty_desc = []
+        for name in registry.list_tools():
+            tool = registry.get(name)
+            if tool:
+                desc = getattr(tool, 'description', '') or ''
+                if not desc.strip():
+                    empty_desc.append(name)
+        if empty_desc:
+            logging.getLogger(__name__).warning(
+                "Tools with empty descriptions: %s. "
+                "This wastes context budget as tools without descriptions are harder for LLMs to select.",
+                ", ".join(empty_desc)
+            )
+    except Exception:
+        pass
+
     # Seed default permissions so the system is usable out-of-the-box.
     # Can be disabled by setting AIPLAT_SEED_DEFAULT_PERMISSIONS=false
     seed_enabled = os.getenv("AIPLAT_SEED_DEFAULT_PERMISSIONS", "true").lower() in ("1", "true", "yes", "y")
@@ -771,7 +909,7 @@ async def lifespan(app: FastAPI):
                 tool_names=tool_names,
                 skill_names=skill_names,
                 agent_names=agent_names,
-                users=os.getenv("AIPLAT_DEFAULT_PERMISSION_USERS", "system,admin").split(","),
+                users=os.getenv("AIPLAT_DEFAULT_PERMISSION_USERS", "system,admin,anonymous").split(","),
             )
         except Exception:
             pass
@@ -852,7 +990,6 @@ async def lifespan(app: FastAPI):
             # MCP server auto-connect
             try:
                 from core.apps.tools.mcp_adapter import get_mcp_adapter
-                from core.apps.tools.base import get_tool_registry
                 adapter = await get_mcp_adapter()
                 tools = await adapter.discover_tools()
                 if tools:
@@ -882,6 +1019,18 @@ async def lifespan(app: FastAPI):
                 cron_sched = get_cron_scheduler()
                 await register_builtin_jobs()
                 await cron_sched.start()
+            except Exception:
+                pass
+
+            # Initialize artifact registry and embedding provider for cross-process availability
+            try:
+                from core.harness.artifacts.registry import get_artifact_registry
+                get_artifact_registry()
+            except Exception:
+                pass
+            try:
+                from core.harness.memory.embedding import get_embedding_provider
+                get_embedding_provider()
             except Exception:
                 pass
 
@@ -1070,8 +1219,8 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=os.getenv("AIPLAT_CORS_ORIGINS", "*").split(","),
+    allow_credentials=os.getenv("AIPLAT_CORS_CREDENTIALS", "false").lower() in ("1", "true", "yes"),
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -1101,6 +1250,7 @@ from core.api.routers.agents import router as agents_router  # noqa: E402
 from core.api.routers.workspace_agents import router as workspace_agents_router  # noqa: E402
 from core.api.routers.syscalls import router as syscalls_router  # noqa: E402
 from core.api.routers.runs import router as runs_router  # noqa: E402
+from core.api.routers.runs_eval import router as runs_eval_router  # noqa: E402
 from core.api.routers.traces_graphs import router as traces_graphs_router  # noqa: E402
 from core.api.routers.audit_ops_export import router as audit_ops_export_router  # noqa: E402
 from core.api.routers.memory import router as memory_router  # noqa: E402
@@ -1115,6 +1265,10 @@ from core.api.routers.catalog import router as catalog_router  # noqa: E402
 from core.api.routers.code_intel import router as code_intel_router  # noqa: E402
 from core.api.routers.health import router as health_router  # noqa: E402
 from core.api.routers.root import router as root_router  # noqa: E402
+from core.api.routers.variables import router as variables_router  # noqa: E402
+from core.api.routers.credentials import router as credentials_router  # noqa: E402
+from core.api.routers.workflow_templates import router as workflow_templates_router  # noqa: E402
+from core.api.routers.kb_eval import router as kb_eval_router  # noqa: E402
 from core.harness.utils.llm_env import get_llm_api_key, get_llm_base_url
 
 api_router.include_router(routing_observability_router)
@@ -1137,6 +1291,8 @@ api_router.include_router(personas_router)
 api_router.include_router(skill_evals_router)
 api_router.include_router(agents_router)
 api_router.include_router(workspace_agents_router)
+from core.api.routers.browser_test import router as browser_test_router  # noqa: E402
+api_router.include_router(browser_test_router)
 api_router.include_router(syscalls_router)
 api_router.include_router(runs_router)
 api_router.include_router(traces_graphs_router)
@@ -1153,6 +1309,10 @@ api_router.include_router(catalog_router)
 api_router.include_router(code_intel_router)
 api_router.include_router(health_router)
 api_router.include_router(root_router)
+api_router.include_router(variables_router)
+api_router.include_router(credentials_router)
+api_router.include_router(workflow_templates_router)
+api_router.include_router(kb_eval_router)
 
 
 def _runtime_env() -> str:
@@ -1498,6 +1658,27 @@ def _is_approval_resolved_approved(approval_request_id: str) -> bool:
 # Moved to: core.api.routers.ops_exports
 #
 # Root endpoint moved to: core.api.routers.root
+
+
+# ── Gateway execute (HTTP entry point for platform's internal agent/skill execution) ──
+from core.harness.kernel.types import ExecutionRequest  # noqa: E402
+from core.harness.integration import get_harness  # noqa: E402
+from core.api.utils.run_contract import wrap_execution_result_as_run_summary  # noqa: E402
+
+@app.post("/api/core/gateway/execute")
+async def gateway_execute(request: Request, body: Dict[str, Any] = None):
+    """Execute agent/skill/tool via HTTP — used by platform's conversations/kb modules."""
+    if not body:
+        raise HTTPException(status_code=400, detail="body_required")
+    exec_req = ExecutionRequest(
+        kind=body.get("kind", "agent"),
+        target_id=body.get("target_id", ""),
+        payload=body.get("payload", {}),
+        user_id=body.get("user_id", "system"),
+        session_id=body.get("session_id", "default"),
+    )
+    result = await get_harness().execute(exec_req)
+    return wrap_execution_result_as_run_summary(result)
 
 
 app.include_router(api_router)

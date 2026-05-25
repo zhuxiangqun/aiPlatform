@@ -1,17 +1,14 @@
 """
-Builder session service — manages requirement-driven development sessions.
-
-Handles:
-  - PM multi-turn dialogue
-  - PRD confirmation / locking
-  - Pipeline execution with HITL approval phases
-  - State retrieval for frontend polling
+@deprecated — Builder session service. Replaced by BuilderProjectService.
+All API routes now use BuilderProjectService (project-based, per-project state files).
+This file is retained for reference only. Not wired to any router.
+Use builder_project_service.py for all new development.
 """
-
 from __future__ import annotations
 
 import json
 import os
+import re
 import uuid
 from typing import Any, Dict, List, Optional
 
@@ -48,7 +45,7 @@ class BuilderSessionService:
     async def _restore_chat_history(self, session_id: str) -> List[Dict[str, str]]:
         """Restore conversation history from MemoryManager (survives restart)."""
         try:
-            from core.harness.memory.manager import get_memory_manager as _mem
+            from core.api.core_facade import get_memory_manager as _mem
             mgr = _mem()
             ctx = await mgr.build_context(current_query="", system_prompt="")
             if ctx and isinstance(ctx, dict):
@@ -106,7 +103,9 @@ class BuilderSessionService:
         session = self._sessions.get(session_id)
         if not session:
             raise ValueError(f"Session {session_id} not found")
-        if session["phase"] != BuilderSessionPhase.dialogue.value:
+        if not isinstance(session, dict):
+            raise ValueError("not in dialogue phase")
+        if session.get("phase") != BuilderSessionPhase.dialogue.value:
             raise ValueError("not in dialogue phase")
 
         # Restore conversation history from MemoryManager on first access (survives restart)
@@ -238,7 +237,11 @@ class BuilderSessionService:
 
         def _safe_construct(cls, data):
             try: return cls(**data) if data else None
-            except Exception: return None
+            except Exception as e:
+                import logging
+                logging.getLogger("aiplat.builder").warning(
+                    "Failed to construct %s from session data: %s", cls.__name__, str(e)[:200])
+                return None
 
         return BuilderSessionStateResponse(
             session_id=session_id,
@@ -261,15 +264,95 @@ class BuilderSessionService:
         )
 
     def _extract_prd_from_reply(self, reply: str) -> Optional[Dict[str, Any]]:
+        # Try JSON format first (backward compat)
         try:
             json_str = extract_json(reply)
             if json_str:
                 prd = json.loads(json_str)
                 missing = [f for f in ("user_stories", "scope") if not prd.get(f)]
-                if missing:
-                    return None
-                return prd
+                if not missing:
+                    return prd
+                # Also check for functional_requirements (alternate key)
+                if prd.get("functional_requirements") and prd.get("title"):
+                    return prd
         except (json.JSONDecodeError, Exception):
             pass
+
+        # Markdown format: parse structured markdown as PRD dict
+        if "## 项目名称" in reply or "## 项目背景" in reply:
+            return self._parse_markdown_prd(reply)
+
         return None
+
+    def _parse_markdown_prd(self, reply: str) -> Dict[str, Any]:
+        """Parse structured Markdown PRD into a dict."""
+        prd: Dict[str, Any] = {}
+
+        # Extract sections by ## headings
+        sections: Dict[str, str] = {}
+        current_key = ""
+        for line in reply.split("\n"):
+            m = re.match(r"^## (.+)", line)
+            if m:
+                current_key = m.group(1).strip()
+                sections[current_key] = ""
+            elif current_key:
+                sections[current_key] += line + "\n"
+
+        # Title
+        title_match = re.search(r"^# (.+)", reply, re.MULTILINE)
+        if title_match:
+            prd["title"] = title_match.group(1).strip()
+            if prd["title"].startswith("项目名称："):
+                prd["title"] = prd["title"][5:].strip()
+
+        # Background
+        bg = sections.get("项目背景", "").strip()
+        if bg:
+            prd["background"] = bg
+
+        # Goal
+        goal = sections.get("项目目标", "").strip()
+        if goal:
+            prd["goal"] = goal
+
+        # User roles → list
+        roles_section = sections.get("用户角色", "")
+        user_stories = []
+        for role_match in re.finditer(r"-\s*\*\*(.+?)\*\*[：:](.+)", roles_section or ""):
+            user_stories.append({"role": role_match.group(1).strip(),
+                                 "description": role_match.group(2).strip()})
+
+        # Functional requirements
+        func_section = sections.get("功能需求", "")
+        fr_items = []
+        for fr_match in re.finditer(
+            r"###\s*(.+?)\n(.*?)(?=\n###|\n##|\Z)", func_section or "", re.DOTALL
+        ):
+            fr_name = fr_match.group(1).strip()
+            fr_body = fr_match.group(2)
+            user_story_match = re.search(r"用户故事[：:]\s*(.+)", fr_body)
+            priority_match = re.search(r"优先级[：:]\s*(.+)", fr_body)
+            acs = re.findall(r"AC\d+:\s*(.+)", fr_body)
+            fr_items.append({
+                "id": fr_name.split(":", 1)[0].strip() if ":" in fr_name else fr_name,
+                "name": fr_name.split(":", 1)[1].strip() if ":" in fr_name else fr_name,
+                "description": user_story_match.group(1).strip() if user_story_match else "",
+                "acceptance_criteria": acs,
+                "priority": priority_match.group(1).strip() if priority_match else "P0",
+                "passes": False,
+            })
+        if fr_items:
+            prd["functional_requirements"] = fr_items
+
+        # Scope
+        scope = sections.get("范围", "").strip()
+        if scope:
+            prd["scope"] = scope
+
+        # Wrap in standard format for downstream compatibility
+        if not prd.get("user_stories"):
+            prd["user_stories"] = user_stories or fr_items
+
+        return prd if prd.get("title") else None
 

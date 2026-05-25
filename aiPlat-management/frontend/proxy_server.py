@@ -12,15 +12,19 @@ import sys
 import urllib.request
 import urllib.error
 
-CORE_URL = "http://localhost:8002"
+_opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+urllib.request.install_opener(_opener)
+
+CORE_URL = "http://localhost:8000"
+CORE_DIRECT_URL = "http://localhost:8002"  # for routes not proxied through management
 INFRA_URL = "http://localhost:8001"
 MGMT_URL = "http://localhost:8000"
-PLATFORM_PROXY_URL = MGMT_URL  # platform is accessed via management proxy: /api/platform/* -> management -> platform
-APP_PROXY_URL = MGMT_URL       # same for app: /api/app/* -> management -> app
+PLATFORM_PROXY_URL = MGMT_URL
+APP_PROXY_URL = MGMT_URL
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dist")
 
 PROXY_ROUTES = {
-    "/api/core": CORE_URL,
+    "/api/core": CORE_DIRECT_URL,  # most core API goes directly to core:8002
     "/api/infra": INFRA_URL,
     "/api/dashboard": MGMT_URL,
     "/api/alerting": MGMT_URL,
@@ -28,6 +32,7 @@ PROXY_ROUTES = {
     "/api/monitoring": MGMT_URL,
     "/api/platform": PLATFORM_PROXY_URL,
     "/api/app": APP_PROXY_URL,
+    "/api": MGMT_URL,  # catch-all for management APIs (approval, deploy, releases, etc.)
 }
 
 STATIC_EXTENSIONS = {'.html', '.js', '.css', '.json', '.png', '.jpg', '.jpeg', '.gif',
@@ -58,6 +63,7 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(content)))
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
             self.end_headers()
             self.wfile.write(content)
         except FileNotFoundError:
@@ -104,6 +110,13 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_response(resp.status)
                 self.send_header("Content-Type", resp.headers.get("Content-Type", "application/octet-stream"))
                 self.send_header("Access-Control-Allow-Origin", "*")
+                # Forward Content-Disposition (for file downloads) and Content-Length
+                cd = resp.headers.get("Content-Disposition", "")
+                if cd:
+                    self.send_header("Content-Disposition", cd)
+                cl = resp.headers.get("Content-Length", "")
+                if cl:
+                    self.send_header("Content-Length", cl)
                 self.end_headers()
                 self.wfile.write(data)
         except urllib.error.HTTPError as e:

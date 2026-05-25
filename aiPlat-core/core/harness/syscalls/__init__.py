@@ -14,13 +14,13 @@ from __future__ import annotations
 import importlib
 from typing import TYPE_CHECKING, Any
 
-__all__ = ["sys_llm_generate", "sys_tool_call", "sys_skill_call"]
+__all__ = ["sys_llm_generate", "sys_tool_call", "sys_skill_call", "sys_agent_call", "sys_workflow_call", "sys_kb_retrieve"]
 
 
 def __getattr__(name: str) -> Any:
     if name not in __all__:
         raise AttributeError(name)
-    for mod in ("llm", "tool", "skill"):
+    for mod in ("llm", "tool", "skill", "agent", "workflow", "retrieval"):
         m = importlib.import_module(f"{__name__}.{mod}")
         if hasattr(m, name):
             return getattr(m, name)

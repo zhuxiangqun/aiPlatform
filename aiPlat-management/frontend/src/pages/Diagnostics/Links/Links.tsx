@@ -199,7 +199,12 @@ const Links: React.FC = () => {
             <p className="text-sm text-gray-500 mt-1">输入任意 ID 联动查询（trace / executions / graph runs / lineage）</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="secondary" icon={<ArrowLeft size={16} />} onClick={() => navigate(-1)}>
+              <Button variant="secondary" icon={<ArrowLeft size={16} />} onClick={() => {
+                if (window.history.length > 1) { navigate(-1); return; }
+                const ref = document.referrer;
+                if (ref && ref.includes(window.location.host)) { window.location.href = ref; return; }
+                navigate('/workspace/agents');
+              }}>
               返回上一页
             </Button>
           </div>

@@ -1,6 +1,6 @@
 from typing import Dict, Any, Optional, Callable
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 import asyncio
 import time
@@ -50,7 +50,7 @@ class MetricCollector:
             return None
         values = self.values
         if window_seconds:
-            cutoff = datetime.now().timestamp() - window_seconds
+            cutoff = datetime.now(timezone.utc).timestamp() - window_seconds
             values = [v for v in values if v.timestamp.timestamp() > cutoff]
         if not values:
             return None
@@ -70,7 +70,7 @@ class MonitorTarget:
         self.interval = interval
         self.timeout = timeout
         self.status = MonitorStatus.HEALTHY
-        self.last_check = datetime.now()
+        self.last_check = datetime.now(timezone.utc)
         self.last_error: Optional[str] = None
 
     async def check(self) -> MonitorStatus:
@@ -87,7 +87,7 @@ class MonitorTarget:
         except Exception as e:
             self.status = MonitorStatus.UNHEALTHY
             self.last_error = str(e)
-        self.last_check = datetime.now()
+        self.last_check = datetime.now(timezone.utc)
         return self.status
 
 

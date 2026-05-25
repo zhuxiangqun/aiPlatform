@@ -18,11 +18,37 @@ from .retriever import (
     IRetriever,
     IEmbedder,
     HashEmbedder,
-    InfraEmbedder,
     SimpleEmbedder,
     InMemoryRetriever,
+    VectorStoreRetriever,
     KnowledgeRetriever,
     create_retriever,
+    create_vector_retriever,
+)
+
+from .sqlite_retriever import (
+    SqliteEmbeddingRetriever,
+    create_sqlite_retriever,
+)
+
+from .embedder import (
+    SemanticEmbedder,
+    create_default_embedder,
+)
+
+from .utils import (
+    extract_keywords,
+    score_text,
+    text_quality_score,
+    is_low_quality_video_ocr,
+    element_source,
+)
+
+from .callbacks import (
+    KBIngestCallback,
+    KBQueryCallback,
+    KBEnqueueIngestCallback,
+    KBLoadDocKindsCallback,
 )
 
 __all__ = [
@@ -36,9 +62,23 @@ __all__ = [
     "IRetriever",
     "IEmbedder",
     "HashEmbedder",
-    "InfraEmbedder",
     "SimpleEmbedder",
+    "SemanticEmbedder",
     "InMemoryRetriever",
+    "VectorStoreRetriever",
     "KnowledgeRetriever",
     "create_retriever",
+    "create_vector_retriever",
+    "create_sqlite_retriever",
+    "SqliteEmbeddingRetriever",
+    "create_default_embedder",
+    "extract_keywords",
+    "score_text",
+    "text_quality_score",
+    "is_low_quality_video_ocr",
+    "element_source",
+    "KBIngestCallback",
+    "KBQueryCallback",
+    "KBEnqueueIngestCallback",
+    "KBLoadDocKindsCallback",
 ]

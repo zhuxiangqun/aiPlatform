@@ -17,8 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from core.api.deps import rbac_guard
 from core.api.utils.governance import gate_error_envelope, governance_links
 from core.api.core_facade import record_changeset, new_change_id
-from core.harness.integration import KernelRuntime
-from core.harness.kernel.runtime import get_kernel_runtime
+from core.api.core_facade import KernelRuntime, get_kernel_runtime
 
 router = APIRouter(prefix="/platform/gate-policies", tags=["gate_policies"])
 
@@ -146,7 +145,7 @@ async def _create_gate_policy_approval_request(
     actor_role: Optional[str],
     operation_context: Dict[str, Any],
 ) -> str:
-    from core.harness.infrastructure.approval.types import ApprovalContext, ApprovalRule, RuleType
+    from core.api.core_facade import ApprovalContext, ApprovalRule, RuleType
 
     if not approval_manager:
         raise HTTPException(status_code=503, detail="Approval manager not available")

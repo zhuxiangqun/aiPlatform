@@ -1,3 +1,9 @@
+"""Skill pack management endpoints.
+
+⚠ BOUNDARY BLUR (cross-layer audit): skill pack publishing belongs in
+aiPlat-platform's API layer. Currently served from core's FastAPI server.
+Migration plan: move to platform/api/routers/.
+"""
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional

@@ -8,13 +8,14 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 
+from auth.deps import require_auth
 from core.api.deps import actor_from_http, rbac_guard
 from core.api.utils.governance import change_links, gate_error_envelope, ui_url
 from core.api.utils.run_contract import wrap_execution_result_as_run_summary
-from core.harness.kernel.runtime import get_kernel_runtime
+from core.api.core_facade import get_kernel_runtime
 
 
 router = APIRouter(prefix="/platform/approvals", tags=["approvals"])
@@ -47,6 +48,7 @@ async def list_approvals(
     order_dir: str = "desc",
     limit: int = 100,
     offset: int = 0,
+    _auth: str = Depends(require_auth),
 ):
     store = _store()
     if not store:
@@ -93,6 +95,7 @@ async def list_pending_approvals(
     order_dir: str = "desc",
     limit: int = 200,
     offset: int = 0,
+    _auth: str = Depends(require_auth),
 ):
     mgr = _approval_mgr()
     if not mgr:
@@ -155,7 +158,7 @@ async def list_pending_approvals(
 
 
 @router.get("/approvals/{request_id}")
-async def get_approval_request(request_id: str):
+async def get_approval_request(request_id: str, _auth: str = Depends(require_auth)):
     mgr = _approval_mgr()
     if not mgr:
         raise HTTPException(status_code=503, detail="ApprovalManager not initialized")
@@ -213,13 +216,13 @@ async def get_approval_request(request_id: str):
 
 
 @router.get("/approvals/{request_id}/audit")
-async def get_approval_audit(request_id: str):
+async def get_approval_audit(request_id: str, _auth: str = Depends(require_auth)):
     # backward-compatible alias
     return await get_approval_request(request_id)
 
 
 @router.post("/approvals/{request_id}/approve")
-async def approve_request(request_id: str, request: dict, http_request: Request):
+async def approve_request(request_id: str, request: dict, http_request: Request, _auth: str = Depends(require_auth)):
     mgr = _approval_mgr()
     if not mgr:
         raise HTTPException(status_code=503, detail="ApprovalManager not initialized")
@@ -238,7 +241,7 @@ async def approve_request(request_id: str, request: dict, http_request: Request)
         r0 = await mgr.get_request_async(str(request_id)) if hasattr(mgr, "get_request_async") else mgr.get_request(str(request_id))
         if r0 and getattr(r0, "expires_at", None) and getattr(r0, "status", None):
             from datetime import datetime
-            from core.harness.infrastructure.approval.types import RequestStatus
+            from core.api.core_facade import RequestStatus
 
             expired = False
             try:
@@ -300,7 +303,7 @@ async def approve_request(request_id: str, request: dict, http_request: Request)
 
 
 @router.post("/approvals/{request_id}/reject")
-async def reject_request(request_id: str, request: dict, http_request: Request):
+async def reject_request(request_id: str, request: dict, http_request: Request, _auth: str = Depends(require_auth)):
     mgr = _approval_mgr()
     if not mgr:
         raise HTTPException(status_code=503, detail="ApprovalManager not initialized")
@@ -355,7 +358,7 @@ async def reject_request(request_id: str, request: dict, http_request: Request):
 
 
 @router.post("/approvals/{request_id}/replay")
-async def replay_approval(request_id: str, request: dict, http_request: Request):
+async def replay_approval(request_id: str, request: dict, http_request: Request, _auth: str = Depends(require_auth)):
     """
     PR-08: Approval Hub replay
 
@@ -370,7 +373,7 @@ async def replay_approval(request_id: str, request: dict, http_request: Request)
     if not r:
         raise HTTPException(status_code=404, detail="Approval request not found")
 
-    from core.harness.infrastructure.approval.types import RequestStatus
+    from core.api.core_facade import RequestStatus
 
     if r.status not in (RequestStatus.APPROVED, RequestStatus.AUTO_APPROVED):
         change_id = None
@@ -420,8 +423,8 @@ async def replay_approval(request_id: str, request: dict, http_request: Request)
         }
         payload = {"input": tool_args, "context": ctx}
 
-        from core.harness.integration import get_harness
-        from core.harness.kernel.types import ExecutionRequest
+        from core.api.core_facade import get_harness
+        from core.api.core_facade import ExecutionRequest
         from core.utils.ids import new_prefixed_id
 
         exec_req = ExecutionRequest(
@@ -453,8 +456,8 @@ async def replay_approval(request_id: str, request: dict, http_request: Request)
         }
         payload = {"input": skill_args, "context": ctx}
 
-        from core.harness.integration import get_harness
-        from core.harness.kernel.types import ExecutionRequest
+        from core.api.core_facade import get_harness
+        from core.api.core_facade import ExecutionRequest
         from core.utils.ids import new_prefixed_id
 
         exec_req = ExecutionRequest(
@@ -475,17 +478,15 @@ async def replay_approval(request_id: str, request: dict, http_request: Request)
         if not isinstance(candidate_id, str) or not candidate_id:
             raise HTTPException(status_code=400, detail="missing_candidate_id")
         if op == "learning:publish_release":
-            from core.api.routers.learning_releases import publish_release_candidate
-
-            return await publish_release_candidate(
-                candidate_id=str(candidate_id),
+            from core.api.core_facade import publish_learning_release
+            return await publish_learning_release(
+                release_id=str(candidate_id),
                 request={"require_approval": True, "approval_request_id": str(request_id), "user_id": r.user_id},
                 http_request=http_request,
             )
-        from core.api.routers.learning_releases import rollback_release_candidate
-
-        return await rollback_release_candidate(
-            candidate_id=str(candidate_id),
+        from core.api.core_facade import rollback_learning_release
+        return await rollback_learning_release(
+            release_id=str(candidate_id),
             request={"require_approval": True, "approval_request_id": str(request_id), "user_id": r.user_id},
             http_request=http_request,
         )
@@ -494,10 +495,10 @@ async def replay_approval(request_id: str, request: dict, http_request: Request)
         plugin_id = meta.get("plugin_id")
         if not isinstance(plugin_id, str) or not plugin_id:
             raise HTTPException(status_code=400, detail="missing_plugin_id")
-        from core.api.routers.plugins import run_plugin
-
-        return await run_plugin(
+        from core.api.core_facade import run_plugin_action
+        return await run_plugin_action(
             plugin_id=str(plugin_id),
+            action="run",
             request={
                 "approval_request_id": str(request_id),
                 "run_id": meta.get("run_id"),
@@ -522,7 +523,7 @@ async def replay_approval(request_id: str, request: dict, http_request: Request)
 
     # Replay config publish/rollback (skill schema / permissions catalog).
     if op in ("config:publish", "config:rollback"):
-        from core.services.config_registry_store import ConfigRegistryKey, get_config_registry_store
+        from core.api.core_facade import ConfigRegistryKey, get_config_registry_store
 
         if not isinstance(opctx, dict):
             raise HTTPException(status_code=400, detail="missing_operation_context")

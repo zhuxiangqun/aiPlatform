@@ -89,7 +89,7 @@ const Jobs: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [createOpen, editOpen, kind]);
 
-  const setToolsetQuick = (toolset: 'safe_readonly' | 'workspace_default' | 'full') => {
+  const setToolsetQuick = (toolset: 'safe_readonly' | 'workspace_default' | 'browser' | 'full') => {
     try {
       const cur = optionsText?.trim() ? JSON.parse(optionsText) : {};
       const next = typeof cur === 'object' && cur ? cur : {};

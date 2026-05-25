@@ -63,16 +63,26 @@ class ModelRegistry:
         self._load_purpose_map()
 
     def _load_purpose_map(self):
-        """Read AiPlat-specific per-purpose model defaults from env."""
-        purposes = [
-            ("default", "AIPLAT_LLM_MODEL"),
-            ("document", "AIPLAT_DOC_LLM_MODEL"),
-            ("agent", "AIPLAT_AGENT_MODEL"),
-        ]
-        for purpose, env_var in purposes:
-            model = os.getenv(env_var, "").strip()
+        """Read model defaults via centralized get_default_model() (§12)."""
+        from core.harness.utils.model_injection import get_default_model
+        for purpose in ("default", "document", "agent"):
+            model = get_default_model(purpose=purpose)
             if model:
                 self._purpose_map[purpose] = model
+
+    def list_all_entries(self) -> List[Dict[str, Any]]:
+        """Return all registered model entries as serializable dicts."""
+        result = []
+        for name, entries in self._models.items():
+            for m in entries:
+                result.append({
+                    "name": m.name,
+                    "provider": m.provider,
+                    "capabilities": m.capabilities,
+                    "cost_per_1k_input": m.cost_per_1k_input,
+                    "cost_per_1k_output": m.cost_per_1k_output,
+                })
+        return result
 
     def get_default_for_purpose(self, purpose: str = "default") -> str:
         """Get the default model for a specific purpose.
@@ -82,7 +92,9 @@ class ModelRegistry:
             registry.get_default_for_purpose("document")  → "deepseek-chat"
             registry.get_default_for_purpose("default")   → "deepseek-chat"
         """
-        return self._purpose_map.get(purpose) or self._purpose_map.get("default", "deepseek-chat")
+        from core.harness.utils.model_injection import get_default_model
+        fallback = get_default_model(purpose) or get_default_model("default")
+        return self._purpose_map.get(purpose) or self._purpose_map.get("default") or fallback or ""
 
     def _load_defaults(self):
         """Load models from AIPLAT_MODELS env or hardcoded defaults."""
@@ -136,6 +148,10 @@ class ModelRegistry:
                 api_key_env="OPENAI_API_KEY",
                 cost_per_1k_input=0.00015, cost_per_1k_output=0.0006,
             ))
+
+    def list_models(self) -> List[str]:
+        """Return list of registered model names."""
+        return list(self._models.keys())
 
     def register(self, entry: ModelEntry) -> None:
         if entry.name not in self._models:

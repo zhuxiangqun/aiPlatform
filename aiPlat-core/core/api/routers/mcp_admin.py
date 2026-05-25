@@ -266,6 +266,13 @@ async def discover_workspace_mcp_tools(server_name: str, timeout_seconds: int = 
         if transport == "stdio":
             if not s.command:
                 raise HTTPException(status_code=400, detail="Missing MCP stdio command")
+            # Security: allowlist for MCP stdio commands
+            import os as _os
+            allowlist = (_os.getenv("AIPLAT_MCP_STDIO_ALLOWLIST", "") or "").strip()
+            if allowlist:
+                allowed = set(c.strip() for c in allowlist.split(",") if c.strip())
+                if s.command not in allowed:
+                    raise HTTPException(status_code=400, detail=f"MCP stdio command not in allowlist: {s.command}")
             proc = await asyncio.create_subprocess_exec(s.command, *(s.args or []), stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
             try:
                 init = {"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "clientInfo": {"name": "aiplat-core", "version": "1.0.0"}}}

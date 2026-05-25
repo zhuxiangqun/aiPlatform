@@ -7,8 +7,9 @@ Provides adapter for local/deployed models (vLLM, Ollama, etc.)
 from typing import Any, Dict, List, Optional, AsyncIterator
 import os
 
-from .base import (
 from core.harness.utils.llm_env import get_llm_api_key, get_llm_base_url
+
+from .base import (
     BaseLLMAdapter,
     LLMResponse,
     AdapterMetadata,

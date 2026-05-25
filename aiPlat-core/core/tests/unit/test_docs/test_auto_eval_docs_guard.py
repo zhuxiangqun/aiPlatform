@@ -34,8 +34,8 @@ def test_auto_eval_docs_guard_has_required_terms():
         "POST /runs/{run_id}/evaluate/auto",
         "GET /evaluation/policy/latest",
         "POST /evaluation/policy",
-        "GET /projects/{project_id}/evaluation/policy/latest",
-        "POST /projects/{project_id}/evaluation/policy",
+        "GET /scopes/{scope_id}/evaluation/policy/latest",
+        "POST /scopes/{scope_id}/evaluation/policy",
         "GET /runs/{run_id}/evidence_pack/latest",
         "POST /runs/{run_id}/evidence/diff",
         # request fields

@@ -13,13 +13,14 @@ import zipfile
 import os
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
+from auth.deps import require_auth
 from core.api.deps import actor_from_http
 from core.api.utils.governance import gate_error_envelope, governance_links, ui_url
 from core.api.core_facade import record_changeset, apply_autosmoke_result, mark_resource_pending
-from core.harness.kernel.runtime import get_kernel_runtime
+from core.api.core_facade import get_kernel_runtime
 
 
 router = APIRouter(prefix="/platform/change-control", tags=["change_control"])
@@ -45,7 +46,7 @@ def _workspace_managers():
 
 
 @router.get("/change-control/changes")
-async def list_change_controls(limit: int = 50, offset: int = 0, tenant_id: Optional[str] = None):
+async def list_change_controls(limit: int = 50, offset: int = 0, tenant_id: Optional[str] = None, _auth: str = Depends(require_auth)):
     """List Change Control items (derived from syscall_events changesets)."""
     store = _store()
     if not store:
@@ -74,7 +75,7 @@ async def list_change_controls(limit: int = 50, offset: int = 0, tenant_id: Opti
 
 
 @router.get("/change-control/changes/{change_id}")
-async def get_change_control(change_id: str, limit: int = 200, offset: int = 0, tenant_id: Optional[str] = None):
+async def get_change_control(change_id: str, limit: int = 200, offset: int = 0, tenant_id: Optional[str] = None, _auth: str = Depends(require_auth)):
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -104,7 +105,7 @@ async def get_change_control(change_id: str, limit: int = 200, offset: int = 0, 
 
 
 @router.post("/change-control/changes/{change_id}/autosmoke")
-async def autosmoke_change_control(change_id: str, http_request: Request):
+async def autosmoke_change_control(change_id: str, http_request: Request, _auth: str = Depends(require_auth)):
     """
     Trigger autosmoke for targets referenced by a change_id (best-effort).
     - Extract targets from latest changeset args.targets, or args.gate.targets.
@@ -149,7 +150,7 @@ async def autosmoke_change_control(change_id: str, http_request: Request):
         seen.add(t)
         uniq.append(t)
 
-    from core.harness.smoke import enqueue_autosmoke
+    from core.api.core_facade import enqueue_autosmoke
 
     results: list[Dict[str, Any]] = []
     wam, wsm, wmm = _workspace_managers()
@@ -225,7 +226,7 @@ async def autosmoke_change_control(change_id: str, http_request: Request):
 
 
 @router.post("/change-control/changes/{change_id}/apply-engine-skill-md-patch")
-async def apply_engine_skill_md_patch(change_id: str, http_request: Request):
+async def apply_engine_skill_md_patch(change_id: str, http_request: Request, _auth: str = Depends(require_auth)):
     """
     Apply an engine SKILL.md patch proposed by skill-eval change-control (sync run_job_once).
     Creates a dedicated job and runs it once (best-effort).
@@ -947,7 +948,7 @@ async def apply_engine_skill_md_patch(change_id: str, http_request: Request):
 
 
 @router.get("/change-control/changes/{change_id}/evidence")
-async def export_change_control_evidence(change_id: str, http_request: Request, format: str = "zip", limit: int = 500):
+async def export_change_control_evidence(change_id: str, http_request: Request, format: str = "zip", limit: int = 500, _auth: str = Depends(require_auth)):
     """
     Export an evidence pack for a change_id.
     format:

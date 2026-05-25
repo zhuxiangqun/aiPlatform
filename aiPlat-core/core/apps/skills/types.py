@@ -17,7 +17,7 @@ class SkillCategory(Enum):
     DOCUMENTATION = "documentation"
     RUNBOOK = "runbook"
     TESTING = "testing"
-    FRONTEND = "frontend"
+    UI_DEVELOPMENT = "ui_development"
     API_DESIGN = "api_design"
     GENERAL = "general"
     

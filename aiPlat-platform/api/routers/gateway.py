@@ -15,9 +15,7 @@ from fastapi.responses import JSONResponse
 
 from core.api.deps import actor_from_http, rbac_guard
 from core.api.utils.run_contract import normalize_run_status_v2
-from core.harness.integration import KernelRuntime
-from core.harness.kernel.types import ExecutionRequest
-from core.harness.kernel.runtime import get_kernel_runtime
+from core.api.core_facade import KernelRuntime, ExecutionRequest, get_kernel_runtime
 from core.schemas_gateway import GatewayExecuteRequest
 from core.schemas_run import RunStatus
 from core.utils.ids import new_prefixed_id
@@ -35,8 +33,7 @@ def _harness(rt: RuntimeDep):
     # Prefer runtime-provided harness (makes tests + multi-runtime setups deterministic).
     if rt is not None and getattr(rt, "harness", None) is not None:
         return getattr(rt, "harness")
-    from core.harness.integration import get_harness
-
+    from core.api.core_facade import get_harness
     return get_harness()
 
 

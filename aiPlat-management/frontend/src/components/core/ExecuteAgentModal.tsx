@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { agentApi, type Agent } from '../../services';
 import { Button, Modal, Textarea, toast } from '../ui';
-import { diagnosticsApi } from '../../services';
 import { toastGateError } from '../ui';
 
 interface ExecuteAgentModalProps {
@@ -13,53 +12,60 @@ interface ExecuteAgentModalProps {
 const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onClose }) => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ status: string; execution_id?: string; output?: unknown; error?: any; error_message?: string; error_detail?: any } | null>(null);
-  const [autoSmoke, setAutoSmoke] = useState(false);
+  const [result, setResult] = useState<any>(null);
+  const [compareResult, setCompareResult] = useState<any>(null);
+  const [forceReAct, setForceReAct] = useState(true);
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareModel, setCompareModel] = useState('deepseek-chat');
 
   const handleExecute = async () => {
     if (!agent) return;
     let parsedInput: Record<string, unknown> = {};
     if (input.trim()) {
-      try {
-        parsedInput = JSON.parse(input);
-      } catch {
-        parsedInput = { message: input };
-      }
+      try { parsedInput = JSON.parse(input); } catch { parsedInput = { message: input }; }
     }
     setLoading(true);
+    setResult(null);
+    setCompareResult(null);
     try {
-      const result = await agentApi.execute(agent.id, { input: parsedInput });
-      const status = String((result as any)?.status || 'ok');
-      const legacyStatus = String((result as any)?.legacy_status || '');
-      const execution_id = (result as any)?.execution_id ? String((result as any).execution_id) : undefined;
-      setResult({
-        status,
-        execution_id,
-        output: (result as any)?.output,
-        error: (result as any)?.error,
-        error_message: (result as any)?.error_message,
-        error_detail: (result as any)?.error_detail,
+      const result = await agentApi.execute(agent.id, {
+        input: parsedInput,
+        options: { force_react: forceReAct },
       });
-      if (legacyStatus === 'queued') toast.success('已排队');
-      else toast.success(status === 'completed' ? '执行成功' : `状态: ${status}`);
+      setResult(result);
+      toast.success((result as any)?.status === 'completed' ? '执行成功' : `状态: ${(result as any)?.status}`);
 
-      // 可选：自动触发全链路冒烟（用于你刚修改/新增 agent 后的快速验收）
-      if (autoSmoke) {
-        try {
-          const smoke = await diagnosticsApi.runE2ESmoke({ tenant_id: 'ops_smoke', actor_id: 'admin', agent_model: 'deepseek-reasoner' });
-          toast.success(smoke?.ok ? '全链路冒烟通过' : '全链路冒烟失败');
-        } catch (e: any) {
-          toast.error('全链路冒烟失败', String(e?.message || 'unknown'));
-        }
+      if (compareMode) {
+        // Run same prompt against comparison model
+        const compareRes = await agentApi.execute(agent.id, {
+          input: { ...parsedInput },
+          options: { force_react: forceReAct, _model: compareModel } as any,
+        });
+        setCompareResult(compareRes);
       }
     } catch (e: any) {
-      const msg = String(e?.message || e?.detail || '执行失败');
-      setResult({ status: 'failed', error: msg });
+      setResult({ status: 'failed', error: String(e?.message || '执行失败') });
       toastGateError(e, '执行失败');
     } finally {
       setLoading(false);
     }
   };
+
+  const renderResult = (res: any, label: string, color: string) => (
+    <div className="p-3 rounded-lg border bg-dark-card" style={{ borderColor: color + '40' }}>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-medium" style={{ color }}>{label}</span>
+        <span className={`text-xs px-1.5 py-0.5 rounded ${res?.status === 'completed' ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'}`}>
+          {res?.status || '?'}
+        </span>
+      </div>
+      {res?.duration_ms && <div className="text-[10px] text-gray-500 mb-1">{res.duration_ms}ms · {res?.metadata?.engine || '?'} · {res?.metadata?.loop_type || '?'}</div>}
+      {(res as any)?.error && <div className="text-xs text-red-300 mb-1">{String((res as any).error)}</div>}
+      {res?.output !== undefined && res?.output !== null && (
+        <pre className="text-xs text-gray-300 overflow-auto max-h-40 whitespace-pre-wrap">{typeof res.output === 'string' ? res.output.slice(0, 600) : JSON.stringify(res.output, null, 2).slice(0, 600)}</pre>
+      )}
+    </div>
+  );
 
   return (
     <Modal
@@ -82,60 +88,33 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
         placeholder="输入 JSON 或文本"
       />
 
-      <label className="mt-3 flex items-center gap-2 text-sm text-gray-400">
-        <input type="checkbox" checked={autoSmoke} onChange={(e) => setAutoSmoke(e.target.checked)} />
-        执行后自动运行全链路冒烟（会创建/清理资源）
-      </label>
+      <div className="flex flex-wrap items-center gap-4 mt-3">
+        <label className="flex items-center gap-2 text-sm text-gray-400">
+          <input type="checkbox" checked={forceReAct} onChange={(e) => setForceReAct(e.target.checked)} />
+          ReAct 模式
+        </label>
+        <label className="flex items-center gap-2 text-sm text-gray-400">
+          <input type="checkbox" checked={compareMode} onChange={(e) => setCompareMode(e.target.checked)} />
+          对比模式 (同时跑2个模型)
+        </label>
+        {compareMode && (
+          <select value={compareModel} onChange={(e) => setCompareModel(e.target.value)}
+            className="h-8 px-2 bg-dark-card border border-dark-border rounded text-xs text-gray-300">
+            <option value="deepseek-chat">deepseek-chat</option>
+            <option value="deepseek-reasoner">deepseek-reasoner</option>
+          </select>
+        )}
+      </div>
 
       {result && (
-        <div className="mt-4 p-4 rounded-lg border border-dark-border bg-dark-bg">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-100">执行结果（简版）</span>
-            <span
-              className={`text-xs px-2 py-0.5 rounded ${
-                result.status === 'completed' ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'
-              }`}
-            >
-              {result.status}
-            </span>
-          </div>
-
-          {((result as any).error || (result as any).error_detail || (result as any).error_message) && (
-            <div className="text-xs text-red-300 mb-2">
-              失败原因：
-              {(() => {
-                const errObj =
-                  (result as any).error_detail || (typeof (result as any).error === 'object' ? (result as any).error : null);
-                const errMsg =
-                  (result as any).error_message ||
-                  (typeof (result as any).error === 'string' ? (result as any).error : '') ||
-                  (errObj?.message ? String(errObj.message) : '');
-                const errCode = errObj?.code ? String(errObj.code) : '';
-                return `${errCode ? `[${errCode}] ` : ''}${errMsg}`;
-              })()}
+        <div className="mt-4 space-y-3">
+          {compareMode && compareResult ? (
+            <div className="grid grid-cols-2 gap-3">
+              {renderResult(result, `当前模型 (${(agent as any).config?.model || '?'})`, '#3b82f6')}
+              {renderResult(compareResult, `对比模型 (${compareModel})`, '#a855f7')}
             </div>
-          )}
-
-          {result.output !== undefined && result.output !== null && (
-            <pre className="text-xs text-gray-300 overflow-auto max-h-60 bg-dark-card border border-dark-border rounded-lg p-3">
-              {typeof result.output === 'string' ? result.output : JSON.stringify(result.output as object, null, 2)}
-            </pre>
-          )}
-
-          {result.execution_id && (
-            <div className="mt-3 flex items-center justify-between gap-2">
-              <div className="text-xs text-gray-400 break-all">execution_id: {result.execution_id}</div>
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  const url = `/diagnostics/links?execution_id=${encodeURIComponent(result.execution_id || '')}`;
-                  window.open(url, '_blank', 'noopener,noreferrer');
-                }}
-                disabled={loading}
-              >
-                查看诊断详情
-              </Button>
-            </div>
+          ) : (
+            renderResult(result, '执行结果', '#3b82f6')
           )}
         </div>
       )}

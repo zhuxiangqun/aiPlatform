@@ -212,8 +212,8 @@ class CodeGenerationSkill(BaseSkill):
         except Exception:
             pass
         try:
-            from core.harness.utils.model_injection import create_selected_adapter
-            return create_selected_adapter(model_name=os.getenv("AIPLAT_CODE_GEN_MODEL", "gpt-4o"))
+            from core.harness.utils.model_injection import create_selected_adapter, get_default_model
+            return create_selected_adapter(model_name=get_default_model(purpose="code_gen") or "deepseek-chat")
         except Exception:
             return None
 

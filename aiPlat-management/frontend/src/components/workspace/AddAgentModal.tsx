@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { workspaceAgentApi, workspaceSkillApi } from '../../services';
 import { modelApi, toolApi, type Model } from '../../services';
-import { Alert, Button, Input, Modal, Textarea, toast } from '../ui';
+import { workspaceMcpApi, workflowTemplateApi } from '../../services';
+import { Alert, Button, Input, Modal, Textarea, toast, MultiSelect } from '../ui';
 import { diagnosticsApi } from '../../services';
 
 interface AgentConfigTemplate {
@@ -46,11 +47,17 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
   const [description, setDescription] = useState('');
   const [skills, setSkills] = useState<string[]>([]);
   const [tools, setTools] = useState<string[]>([]);
+  const [mcpIds, setMcpIds] = useState<string[]>([]);
+  const [workflowIds, setWorkflowIds] = useState<string[]>([]);
+  const [agentIds, setAgentIds] = useState<string[]>([]);
   const [configText, setConfigText] = useState('');
   const [memoryConfigText, setMemoryConfigText] = useState('{\n  "type": "short_term",\n  "recall_count": 5\n}');
   const [sopText, setSopText] = useState('');
   const [skillOptions, setSkillOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [toolOptions, setToolOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [mcpOptions, setMcpOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [workflowOptions, setWorkflowOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [agentOptions, setAgentOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [modelOptions, setModelOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [selectedModel, setSelectedModel] = useState<string>('');
   const [autoSmoke, setAutoSmoke] = useState(true);
@@ -69,37 +76,15 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
       setDescription('');
       setSkills([]);
       setTools([]);
+      setMcpIds([]);
+      setWorkflowIds([]);
+      setAgentIds([]);
       setConfigText(JSON.stringify(AGENT_TYPE_TEMPLATES.base.config, null, 2));
       setMemoryConfigText('{\n  "type": "short_term",\n  "recall_count": 5\n}');
       setSopText('');
       fetchOptions();
     }
   }, [open]);
-
-  const detectAmbiguity = () => {
-    const text = `${name} ${description}`.toLowerCase();
-    const wantsFs = text.includes('目录') || text.includes('文件') || text.includes('仓库') || text.includes('代码库') || text.includes('文件夹') || text.includes('path');
-    const wantsBrowser = text.includes('浏览器') || text.includes('网页') || text.includes('爬取') || text.includes('自动化');
-    const wantsHttp = text.includes('api') || text.includes('接口') || text.includes('http') || text.includes('crm') || text.includes('工单');
-    const wantsDb = text.includes('数据库') || text.includes('sql');
-    const wantsWeb = text.includes('公网') || text.includes('搜索') || text.includes('查资料') || text.includes('外部信息');
-    const wantsWrite = text.includes('写入') || text.includes('更新') || text.includes('创建') || text.includes('删除') || text.includes('修改');
-    return { wantsFs, wantsBrowser, wantsHttp, wantsDb, wantsWeb, wantsWrite };
-  };
-
-  const openDisambiguationWizard = () => {
-    const a = detectAmbiguity();
-    setWizOpen(true);
-    setWizMode(a.wantsFs || a.wantsBrowser || a.wantsHttp || a.wantsDb || a.wantsWeb ? 'auto' : 'manual');
-    const src: string[] = [];
-    if (a.wantsFs) src.push('filesystem');
-    if (a.wantsHttp) src.push('http');
-    if (a.wantsDb) src.push('database');
-    if (a.wantsBrowser) src.push('browser');
-    if (a.wantsWeb) src.push('web');
-    setWizSources(src);
-    setWizMayWrite(a.wantsWrite);
-  };
 
   const fetchOptions = async () => {
     try {
@@ -121,6 +106,24 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
         .map((id) => ({ value: id, label: `${id}（未在 Tool 列表中找到）` }));
       setSkillOptions([...baseSkillOptions, ...missingSkillOptions]);
       setToolOptions([...baseToolOptions, ...missingToolOptions]);
+
+      try {
+        const mcpRes = await workspaceMcpApi.listServers();
+        const mcpList = (mcpRes as any).servers || [];
+        setMcpOptions(mcpList.map((s: any) => ({ value: s.name || s.id, label: `${s.name || s.id} (MCP)` })));
+      } catch { /* ignore */ }
+
+      try {
+        const wfRes = await workflowTemplateApi.list();
+        const wfList = (wfRes as any).templates || [];
+        setWorkflowOptions(wfList.map((w: any) => ({ value: w.name, label: `${w.label || w.name} (Workflow)` })));
+      } catch { /* ignore */ }
+
+      try {
+        const agentRes = await workspaceAgentApi.list({ limit: 200 });
+        const agentList = (agentRes as any).agents || [];
+        setAgentOptions(agentList.filter((a: any) => a.name).map((a: any) => ({ value: a.id || a.name, label: `${a.name || a.id} (Agent)` })));
+      } catch { /* ignore */ }
 
       const models = ((modelRes as any).models || []) as Model[];
       const modelOpts = models.map((m) => ({ value: m.name, label: m.displayName || m.name }));
@@ -291,7 +294,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
       const metadata: Record<string, unknown> = {};
       if (description.trim()) metadata.description = description.trim();
 
-      const created = await workspaceAgentApi.create({ name: name.trim(), agent_type: selectedType, config, skills, tools, memory_config, metadata });
+      const created = await workspaceAgentApi.create({ name: name.trim(), agent_type: selectedType, config, skills, tools, mcp_ids: mcpIds, workflow_ids: workflowIds, agent_ids: agentIds, memory_config, metadata });
       const agentId = String((created as any).id || '');
       // SOP is optional; best-effort write after create.
       if (agentId && sopText.trim()) {
@@ -372,27 +375,6 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
               ))}
             </select>
           </div>
-          <div className="flex items-end justify-end">
-            <Button variant="primary" onClick={openDisambiguationWizard} disabled={loading}>
-              生成向导（推荐）
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => {
-                const a = detectAmbiguity();
-                // open wizard when content indicates possible auto mode needs
-                const hinted = a.wantsFs || a.wantsBrowser || a.wantsHttp || a.wantsDb || a.wantsWeb || a.wantsWrite;
-                if (hinted) {
-                  openDisambiguationWizard();
-                } else {
-                  applySmartGenerate();
-                }
-              }}
-              disabled={loading}
-            >
-              快速生成
-            </Button>
-          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -409,40 +391,16 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
               <option value="tool">工具型 - 工具调用</option>
             </select>
           </div>
-
-          <div>
-            <div className="text-sm font-medium text-gray-300 mb-2">绑定技能（多选）</div>
-            <select
-              multiple
-              value={skills}
-              onChange={(e) => setSkills(Array.from(e.target.selectedOptions).map((o) => (o as any).value))}
-              className="w-full h-28 px-3 py-2 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100"
-            >
-              {skillOptions.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-            <div className="text-xs text-gray-500 mt-1">按住 Ctrl/Cmd 可多选</div>
-          </div>
         </div>
 
-        <div>
-          <div className="text-sm font-medium text-gray-300 mb-2">绑定工具（多选）</div>
-          <select
-            multiple
-            value={tools}
-            onChange={(e) => setTools(Array.from(e.target.selectedOptions).map((o) => (o as any).value))}
-            className="w-full h-28 px-3 py-2 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100"
-          >
-            {toolOptions.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <MultiSelect label="绑定技能" options={skillOptions} selected={skills} onChange={setSkills} />
+          <MultiSelect label="绑定工具" options={toolOptions} selected={tools} onChange={setTools} />
         </div>
+
+        {mcpOptions.length > 0 && <MultiSelect label="绑定 MCP" options={mcpOptions} selected={mcpIds} onChange={setMcpIds} hint="MCP 服务器提供的工具会全局注册到工具池" />}
+        {workflowOptions.length > 0 && <MultiSelect label="绑定 Workflow" options={workflowOptions} selected={workflowIds} onChange={setWorkflowIds} />}
+        {agentOptions.length > 0 && <MultiSelect label="绑定子 Agent" options={agentOptions} selected={agentIds} onChange={setAgentIds} hint="当前 Agent 可以将任务委派给选中的子 Agent" />}
 
         {template && (
           <Alert type="info" title={template.name}>

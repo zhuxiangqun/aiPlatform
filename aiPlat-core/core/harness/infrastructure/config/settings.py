@@ -15,7 +15,7 @@ from core.harness.utils.llm_env import get_llm_api_key, get_llm_base_url
 class Settings:
     """Application settings"""
     # Model settings
-    default_model: str = "gpt-4"
+    default_model: str = os.getenv("AIPLAT_DEFAULT_MODEL", "")
     default_temperature: float = 0.7
     default_max_tokens: int = 4096
     

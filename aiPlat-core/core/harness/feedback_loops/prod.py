@@ -1,6 +1,6 @@
 from typing import Dict, Any, Optional, Callable, List
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 import json
 import asyncio
@@ -63,11 +63,11 @@ class ProdFeedbackStore:
         storage_type: FeedbackStorageType = FeedbackStorageType.SESSION,
     ) -> StoredFeedback:
         feedback = StoredFeedback(
-            id=f"fb_{datetime.now().timestamp()}",
+            id=f"fb_{datetime.now(timezone.utc).timestamp()}",
             session_id=session_id,
             feedback_type=feedback_type,
             content=content,
-            timestamp=datetime.now(),
+            timestamp=datetime.now(timezone.utc),
             metadata=metadata or {},
             environment=self.config.environment,
             storage_type=storage_type,
@@ -98,6 +98,9 @@ class ProdFeedbackStore:
             if feedback_type:
                 result = [f for f in result if f.feedback_type == feedback_type]
             return result[-limit:]
+        elif self.config.storage_backend == StorageBackend.FILE:
+            return await self._retrieve_from_file(session_id, feedback_type, limit)
+        # DB and S3: not yet implemented — return empty
         return []
 
     async def delete(self, feedback_id: str) -> bool:
@@ -111,7 +114,7 @@ class ProdFeedbackStore:
     async def cleanup(self, older_than_days: Optional[int] = None):
         if not older_than_days:
             older_than_days = self.config.max_retention_days
-        cutoff = datetime.now().timestamp() - (older_than_days * 86400)
+        cutoff = datetime.now(timezone.utc).timestamp() - (older_than_days * 86400)
         self._memory_store = [
             f for f in self._memory_store
             if f.timestamp.timestamp() > cutoff
@@ -123,15 +126,58 @@ class ProdFeedbackStore:
         path = Path(self.config.storage_path)
         path.mkdir(parents=True, exist_ok=True)
         file_path = path / f"{feedback.id}.json"
-        with open(file_path, "w") as f:
-            json.dump({
-                "id": feedback.id,
-                "session_id": feedback.session_id,
-                "feedback_type": feedback.feedback_type,
-                "content": feedback.content,
-                "timestamp": feedback.timestamp.isoformat(),
-                "metadata": feedback.metadata,
-            }, f)
+
+        def _write():
+            with open(file_path, "w") as f:
+                json.dump({
+                    "id": feedback.id,
+                    "session_id": feedback.session_id,
+                    "feedback_type": feedback.feedback_type,
+                    "content": feedback.content,
+                    "timestamp": feedback.timestamp.isoformat(),
+                    "metadata": feedback.metadata,
+                }, f)
+
+        await asyncio.to_thread(_write)
+
+    async def _retrieve_from_file(
+        self,
+        session_id: Optional[str] = None,
+        feedback_type: Optional[str] = None,
+        limit: int = 100,
+    ) -> List[StoredFeedback]:
+        if not self.config.storage_path:
+            return []
+        path = Path(self.config.storage_path)
+        if not path.is_dir():
+            return []
+
+        def _read():
+            results = []
+            for fpath in sorted(path.glob("*.json"), reverse=True):
+                try:
+                    with open(fpath) as f:
+                        data = json.load(f)
+                    fb = StoredFeedback(
+                        id=data.get("id", ""),
+                        session_id=data.get("session_id", ""),
+                        feedback_type=data.get("feedback_type", ""),
+                        content=data.get("content"),
+                        timestamp=datetime.fromisoformat(data.get("timestamp", "")),
+                        metadata=data.get("metadata", {}),
+                    )
+                    if session_id and fb.session_id != session_id:
+                        continue
+                    if feedback_type and fb.feedback_type != feedback_type:
+                        continue
+                    results.append(fb)
+                    if len(results) >= limit:
+                        break
+                except Exception:
+                    continue
+            return results
+
+        return await asyncio.to_thread(_read)
 
     async def _store_to_db(self, feedback: StoredFeedback):
         pass

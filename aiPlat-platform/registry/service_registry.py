@@ -2,7 +2,7 @@
 Service Registry - 服务注册中心
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from pydantic import BaseModel
 from enum import Enum
@@ -24,8 +24,8 @@ class ServiceInstance(BaseModel):
     status: ServiceStatus = ServiceStatus.HEALTHY
     metadata: Dict[str, Any] = {}
     version: str = "1.0.0"
-    registered_at: datetime = datetime.now()
-    last_heartbeat: datetime = datetime.now()
+    registered_at: datetime = datetime.now(timezone.utc)
+    last_heartbeat: datetime = datetime.now(timezone.utc)
 
 
 class ServiceRegistry:
@@ -84,7 +84,7 @@ class ServiceRegistry:
         with self._lock:
             if service_name in self._services and instance_id in self._services[service_name]:
                 instance = self._services[service_name][instance_id]
-                instance.last_heartbeat = datetime.now()
+                instance.last_heartbeat = datetime.now(timezone.utc)
                 instance.status = ServiceStatus.HEALTHY
                 return True
         return False

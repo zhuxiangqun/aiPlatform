@@ -6,7 +6,7 @@ Provides core functionality for LangGraph-based execution.
 
 from typing import Any, Dict, List, Optional, Callable, TypedDict
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 import asyncio
 import uuid
@@ -62,7 +62,7 @@ class ExecutionTrace:
     
     def __init__(self, graph_id: str):
         self.graph_id = graph_id
-        self.start_time = datetime.now()
+        self.start_time = datetime.now(timezone.utc)
         self.end_time: Optional[datetime] = None
         self.nodes_executed: List[str] = []
         self.transitions: List[Dict[str, Any]] = []
@@ -73,7 +73,7 @@ class ExecutionTrace:
         self.transitions.append({
             "node": node_name,
             "success": result.success,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "output_type": type(result.output).__name__,
         })
     
@@ -81,15 +81,15 @@ class ExecutionTrace:
         self.checkpoints.append({
             "step": len(self.nodes_executed),
             "state": dict(state),
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         })
     
     def finalize(self):
-        self.end_time = datetime.now()
+        self.end_time = datetime.now(timezone.utc)
     
     @property
     def duration_ms(self) -> float:
-        end = self.end_time or datetime.now()
+        end = self.end_time or datetime.now(timezone.utc)
         return (end - self.start_time).total_seconds() * 1000
     
     @property
@@ -291,7 +291,7 @@ class CompiledGraph:
                 state.setdefault("errors", []).append({
                     "node": current_node,
                     "error": str(e),
-                    "timestamp": datetime.now().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 })
                 break
         

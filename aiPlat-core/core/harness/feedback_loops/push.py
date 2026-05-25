@@ -1,9 +1,8 @@
 from typing import Dict, Any, Optional, Callable, List, Awaitable
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 import asyncio
-import aiohttp
 
 
 class PushDestination(Enum):
@@ -104,7 +103,7 @@ class PushManager:
             return False
 
         message = PushMessage(
-            id=f"push_{target_name}_{datetime.now().timestamp()}",
+            id=f"push_{target_name}_{datetime.now(timezone.utc).timestamp()}",
             target=target,
             payload=payload,
         )
@@ -123,7 +122,7 @@ class PushManager:
     ):
         payload = {
             "event_type": event_type,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "data": data,
         }
         await self.push(target_name, payload)
@@ -161,7 +160,7 @@ class PushManager:
 
         if success:
             message.status = PushStatus.SENT
-            message.sent_at = datetime.now()
+            message.sent_at = datetime.now(timezone.utc)
         else:
             if message.retry_attempts < target.retry_count:
                 message.status = PushStatus.RETRYING
@@ -173,6 +172,7 @@ class PushManager:
 
     async def _send_webhook(self, target: PushTarget, payload: Dict[str, Any]) -> bool:
         try:
+            import aiohttp
             async with aiohttp.ClientSession() as session:
                 async with session.post(
                     target.endpoint,

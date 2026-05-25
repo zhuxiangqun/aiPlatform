@@ -52,7 +52,7 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
         }
       }
 
-      const res = await workspaceSkillApi.execute(skill.id, { input: payload, options: { toolset } });
+      const res = await workspaceSkillApi.execute(skill.id, { input: payload, options: { ...((payload.options || {}) as Record<string, unknown>), toolset }, config: (payload.config || {}) as Record<string, unknown> });
       setResult(res as any);
       const status = String((res as any)?.status || '');
       const legacyStatus = String((res as any)?.legacy_status || '');
@@ -123,6 +123,7 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
             >
               <option value="safe_readonly">safe_readonly（只读）</option>
               <option value="workspace_default">workspace_default（默认）</option>
+              <option value="browser">browser（浏览器/HTTP）</option>
               <option value="full">full（全量/高风险）</option>
             </select>
             <div className="text-xs text-gray-500 mt-1">

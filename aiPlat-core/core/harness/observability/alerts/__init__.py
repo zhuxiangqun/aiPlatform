@@ -103,7 +103,7 @@ class AlertManager:
         if rule.name in self._suppressed and self._suppressed[rule.name]:
             return None
 
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         last_fire = self._last_fire_time.get(rule.name)
         if last_fire and (now - last_fire).total_seconds() < rule.cooldown_seconds:
             return None
@@ -147,7 +147,7 @@ class AlertManager:
         if not alert:
             return False
         alert.status = AlertStatus.ACKNOWLEDGED
-        alert.acknowledged_at = datetime.now()
+        alert.acknowledged_at = datetime.now(timezone.utc)
         return True
 
     def resolve(self, alert_id: str) -> bool:
@@ -155,14 +155,14 @@ class AlertManager:
         if not alert:
             return False
         alert.status = AlertStatus.RESOLVED
-        alert.resolved_at = datetime.now()
+        alert.resolved_at = datetime.now(timezone.utc)
         return True
 
     def suppress(self, rule_name: str, suppress: bool = True):
         self._suppressed[rule_name] = suppress
 
     def clear_resolved(self, older_than_seconds: int = 3600):
-        cutoff = datetime.now() - timedelta(seconds=older_than_seconds)
+        cutoff = datetime.now(timezone.utc) - timedelta(seconds=older_than_seconds)
         to_remove = []
         for alert in self._active_alerts.values():
             if alert.status == AlertStatus.RESOLVED and alert.resolved_at:

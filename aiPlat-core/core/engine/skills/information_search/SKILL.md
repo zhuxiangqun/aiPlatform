@@ -6,11 +6,15 @@ category: retrieval
 version: 1.0.0
 status: enabled
 protected: true
-execution_mode: inline
-executable: true
+execution_mode: prompt
 permissions:
   - "web:search"
   - "kb:query"
+effects:
+  - type: read
+    resources: ["filesystem:~/.aiplat"]
+    idempotent: true
+    rollback_available: false
 input_schema:
   query:
     type: string

@@ -52,18 +52,18 @@ async def get_latest_evaluation_policy(rt: RuntimeDep = None):
     return {"status": "ok", "item": items2[0]}
 
 
-@router.get("/projects/{project_id}/evaluation/policy/latest")
-async def get_latest_project_evaluation_policy(project_id: str, rt: RuntimeDep = None):
+@router.get("/scopes/{scope_id}/evaluation/policy/latest")
+async def get_latest_scoped_evaluation_policy(scope_id: str, rt: RuntimeDep = None):
     """
     Returns:
-      - item: latest project policy (may be None)
-      - merged: system/default merged with project override
+      - item: latest scoped policy (may be None)
+      - merged: system/default merged with scope override
     """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
-    pid = str(project_id)
-    # project
+    pid = str(scope_id)
+    # scope
     proj = await store.list_learning_artifacts(target_type="project", target_id=pid, kind="evaluation_policy", limit=10, offset=0)
     items = (proj or {}).get("items") if isinstance(proj, dict) else None
     proj_item = None
@@ -88,22 +88,22 @@ async def get_latest_project_evaluation_policy(project_id: str, rt: RuntimeDep =
     return {"status": "ok", "item": proj_item, "merged": merged}
 
 
-@router.post("/projects/{project_id}/evaluation/policy")
-async def upsert_project_evaluation_policy(
-    project_id: str,
+@router.post("/scopes/{scope_id}/evaluation/policy")
+async def upsert_scoped_evaluation_policy(
+    scope_id: str,
     request: UpsertProjectEvaluationPolicyRequest,
     http_request: Request,
     rt: RuntimeDep = None,
 ):
     """
-    Upsert project evaluation policy (partial or full). Body: { "policy": {...}, "mode": "merge"|"replace" }
-    - merge (default): deep-merge into current project policy
-    - replace: replace project policy payload entirely
+    Upsert scoped evaluation policy (partial or full). Body: { "policy": {...}, "mode": "merge"|"replace" }
+    - merge (default): deep-merge into current scoped policy
+    - replace: replace scoped policy payload entirely
     """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
-    pid = str(project_id)
+    pid = str(scope_id)
     body = request.dict(exclude_none=True) if hasattr(request, "dict") else {}
     deny = await rbac_guard(http_request=http_request, payload=body, action="update", resource_type="policy", resource_id=f"evaluation_policy:project:{pid}")
     if deny:

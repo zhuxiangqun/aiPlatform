@@ -5,7 +5,7 @@ Short-term Memory - 短期记忆
 import asyncio
 import uuid
 from collections import deque
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from .base import MemoryBase, MemoryEntry, MemoryScope, MemoryType
@@ -25,7 +25,7 @@ class ShortTermMemory(MemoryBase):
         """存储短期记忆"""
         async with self._lock:
             entry.id = entry.id or str(uuid.uuid4())
-            entry.expires_at = datetime.now().timestamp() + self.ttl
+            entry.expires_at = datetime.now(timezone.utc).timestamp() + self.ttl
             self._storage.append(entry)
             return entry.id
     

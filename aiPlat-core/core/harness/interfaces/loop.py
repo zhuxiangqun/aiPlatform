@@ -35,7 +35,7 @@ class LoopState:
 @dataclass
 class LoopConfig:
     """Loop configuration"""
-    max_steps: int = 10
+    max_steps: int = 20
     max_tokens: int = 8192
     budget: float = 1.0
     timeout: int = 60

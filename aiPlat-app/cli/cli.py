@@ -6,9 +6,14 @@ CLI - Command Line Interface
 
 import click
 from typing import Any, Callable, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from services.kb import get_kb_service
+
+
+# ══════════════════════════════════════════════════════════════════
+# CLI stubs — placeholder commands. Wire to platform API in Phase 3.
+# ══════════════════════════════════════════════════════════════════
 
 
 class CLI:

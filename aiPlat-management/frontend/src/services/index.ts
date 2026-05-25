@@ -16,6 +16,7 @@ export { modelApi } from './modelApi';
 export {
   agentApi,
   workspaceAgentApi,
+  modelsApi,
   skillApi,
   workspaceSkillApi,
   workspaceSkillInstallerApi,
@@ -38,11 +39,17 @@ export {
   opsApi,
   pluginApi,
   promptApi,
+  variablesApi,
+  credentialsApi,
+  workflowTemplateApi,
+  workflowApi,
+  appApi,
 } from './coreApi';
 export { gatewayAdminApi, SKILL_CATEGORIES } from './coreApi';
 
 // Legacy monitoring API (for layer metrics)
 export { monitoringApi as layerMonitoringApi } from './apiClient';
+export { browserTestApi } from './browserTestApi';
 
 // Types - Infrastructure
 export type { Node, GPU, NodeListResponse, AddNodeRequest } from './nodeApi';
@@ -105,4 +112,6 @@ export type { BuilderSession, PipelineStageConfig, AgentCatalogItem, TeamConfig 
 export type { GatewayRoute, AuthUser, TenantInfo, Channel, AppSession } from './platformAppApi';
 
 export { kbApi } from './kbApi';
-export type { KBConversation, KBAnalysisBatch, KBAnalysisRun, KBCollection, KBDocument, KBDocumentSource } from './kbApi';
+export type { KBConversation, KBAnalysisBatch, KBAnalysisRun, KBCollection, KBCategory, KBDocument, KBDocumentSource } from './kbApi';
+
+export { packagesApi } from './coreApi';

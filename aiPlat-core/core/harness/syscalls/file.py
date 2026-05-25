@@ -21,6 +21,9 @@ from core.harness.infrastructure.gates import PolicyGate, TraceGate, ResilienceG
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.harness.kernel.execution_context import get_active_workspace_context
 
+# Session-level file read cache: key=path, value=(timestamp, size_chars, first_200_chars)
+_read_cache: Dict[str, tuple] = {}
+
 
 def _resolve_workspace_root() -> str:
     try:
@@ -58,15 +61,32 @@ async def sys_file_read(
         if _is_outside_workspace(resolved, ws_root):
             return {"success": False, "error": "Access denied: path outside workspace", "path": path}
 
+        # Session cache: warn on repeated reads, prepend size hint
+        import time as _time
+        cached = _read_cache.get(resolved)
+        if cached:
+            ts, size, preview = cached
+            elapsed = _time.time() - ts
+            hint = f"[REPEAT READ: {path} ({size} chars, last read {elapsed:.0f}s ago). Preview: {preview}]\n\n"
+        else:
+            hint = ""
+
         with open(resolved, "r", encoding="utf-8", errors="replace") as f:
             content = f.read(max_chars)
 
+        # Update cache
+        preview_text = content[:200].replace("\n", " ").strip()
+        _read_cache[resolved] = (_time.time(), len(content), preview_text)
+
+        result_content = hint + content if hint else content
+        result_content = hint + content if hint else content
         return {
             "success": True,
-            "content": content,
+            "content": result_content,
             "path": resolved,
             "chars": len(content),
             "truncated": len(content) >= max_chars,
+            "repeat_read": bool(hint),
         }
     except PermissionError as e:
         return {"success": False, "error": str(e), "path": path}

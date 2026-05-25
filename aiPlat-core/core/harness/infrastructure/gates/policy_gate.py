@@ -20,7 +20,7 @@ import os
 import hashlib
 import fnmatch
 
-from core.apps.tools.permission import Permission  # noqa: data type (enum) — allowed exception
+from core.apps.tools.permission import Permission, get_permission_manager  # noqa: data type (enum) + permission manager — allowed exception
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.policy.engine import evaluate_tool_policy_snapshot, PolicyDecision as EngineDecision
 # DI: resolve_skill_permission via SkillPermissionResolver
@@ -208,6 +208,7 @@ class PolicyGate:
         return (True, f"risk_sample_hit:{rate}") if hit else (False, f"risk_sample_miss:{rate}")
 
     async def check_tool(self, *, user_id: str, tool_name: str, tool_args: Optional[Dict[str, Any]] = None) -> PolicyResult:
+        """Single-point permission enforcement for tool execution (§11)."""
         if self._disable_approvals:
             return PolicyResult(decision=PolicyDecision.ALLOW)
         perm_mgr = get_permission_manager()

@@ -54,7 +54,8 @@ class SubagentCoordinator:
     
     async def _get_registry(self):
         if self._registry is None:
-            self._registry = await get_subagent_registry()
+            self._registry = get_subagent_registry()
+            await self._registry.initialize()
         return self._registry
     
     async def create_instance(

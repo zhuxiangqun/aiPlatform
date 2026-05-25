@@ -57,7 +57,7 @@ language: zh-CN
 aiPlat-platform 是 **Layer 2（平台服务层）**，对外暴露 API，提供平台级服务。
 
 - **向上提供**：REST API、GraphQL API、WebSocket API
-- **向下依赖**：只能依赖 `aiPlat-core` 的 CoreFacade（唯一入口）
+- **向下依赖**：只能依赖 `aiPlat-core` 的 CoreFacade（唯一入口）。KNOWN_DEBT: kb/ 模块有 22 处直接 `from core.harness.*` / `from core.apps.*` import（文档解析委托 + 知识库检索），待通过 CoreFacade 统一暴露后消除。api/routers/ 中 1 处 Permission enum 类型导入保留。
 - **禁止直接依赖** `aiPlat-infra`
 - **禁止包含** AI 核心逻辑（Agent 执行、Skill 编排等）
 

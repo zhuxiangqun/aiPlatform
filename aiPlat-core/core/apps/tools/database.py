@@ -40,7 +40,7 @@ class DatabaseTool(BaseTool):
         
         config = ToolConfig(
             name="database",
-            description="Execute database queries",
+            description="执行数据库查询",
             parameters={
                 "type": "object",
                 "properties": {

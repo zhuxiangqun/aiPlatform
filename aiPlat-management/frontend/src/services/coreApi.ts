@@ -9,11 +9,13 @@ import { apiClient } from './apiClient';
 export interface Agent {
   id: string;
   name: string;
+  display_name?: string;
   agent_type: string;
   status: string;
   description?: string;
   category?: string;
   tags?: string[];
+  phase?: string;
   skills?: string[];
   tools?: string[];
   metadata: Record<string, unknown>;
@@ -25,6 +27,13 @@ export interface AgentListResponse {
   limit: number;
   offset: number;
 }
+
+// ── Models (for agent editor dropdowns) ──
+export const modelsApi = {
+  list: async () => {
+    return apiClient.get<{ models: { name: string; provider: string; capabilities: string[] }[]; by_provider: Record<string, { name: string; provider: string; capabilities: string[] }[]> }>('/core/models');
+  },
+};
 
 export const agentApi = {
   list: async (params?: { agent_type?: string; status?: string; limit?: number; offset?: number }) => {
@@ -41,11 +50,23 @@ export const agentApi = {
     return apiClient.get<Agent>(`/core/agents/${agentId}`);
   },
 
+  getSop: async (agentId: string) => {
+    return apiClient.get<{ agent_id: string; agent_md?: string; sop: string }>(`/core/agents/${agentId}/sop`);
+  },
+
+  getVersions: async (agentId: string) => {
+    return apiClient.get<{ agent_id: string; versions: { version: string; status: string; created_at: string; changes: string }[] }>(`/core/agents/${agentId}/versions`);
+  },
+
+  rollbackVersion: async (agentId: string, version: string) => {
+    return apiClient.post<{ status: string; version: string }>(`/core/agents/${agentId}/versions/${version}/rollback`, {});
+  },
+
   create: async (data: { name: string; agent_type: string; config?: Record<string, unknown>; skills?: string[]; tools?: string[] }) => {
     return apiClient.post<{ id: string; status: string; name: string }>('/core/agents', data);
   },
 
-  update: async (agentId: string, data: { config?: Record<string, unknown>; metadata?: Record<string, unknown> }) => {
+  update: async (agentId: string, data: { name?: string; status?: string; config?: Record<string, unknown>; skills?: string[]; tools?: string[]; mcp_ids?: string[]; workflow_ids?: string[]; agent_ids?: string[]; metadata?: Record<string, unknown> }) => {
     return apiClient.put<{ status: string; id: string }>(`/core/agents/${agentId}`, data);
   },
 
@@ -61,8 +82,8 @@ export const agentApi = {
     return apiClient.post<{ status: string; id: string }>(`/core/agents/${agentId}/stop`);
   },
 
-  execute: async (agentId: string, data: { messages?: unknown[]; input?: unknown; context?: Record<string, unknown>; options?: { toolset?: string } }) => {
-    return apiClient.post<{ execution_id: string; status: string; output?: unknown; error?: string }>(`/core/agents/${agentId}/execute`, data);
+  execute: async (agentId: string, data: { messages?: unknown[]; input?: unknown; context?: Record<string, unknown>; options?: { toolset?: string; force_react?: boolean; loop_engine?: string }; config?: Record<string, unknown> }) => {
+    return apiClient.post<{ execution_id: string; status: string; output?: unknown; error?: string; duration_ms?: number; metadata?: Record<string, unknown> }>(`/core/agents/${agentId}/execute`, data);
   },
 
   getHistory: async (agentId: string) => {
@@ -105,7 +126,7 @@ export const workspaceAgentApi = {
     return apiClient.get<AgentListResponse>(`/core/workspace/agents${qs ? '?' + qs : ''}`);
   },
 
-  create: async (data: { name: string; agent_type: string; config?: Record<string, unknown>; skills?: string[]; tools?: string[]; memory_config?: Record<string, unknown>; metadata?: Record<string, unknown> }) => {
+  create: async (data: { name: string; agent_type: string; config?: Record<string, unknown>; skills?: string[]; tools?: string[]; mcp_ids?: string[]; workflow_ids?: string[]; agent_ids?: string[]; memory_config?: Record<string, unknown>; metadata?: Record<string, unknown> }) => {
     return apiClient.post<{ id: string; status: string; name: string }>('/core/workspace/agents', data);
   },
 
@@ -125,7 +146,11 @@ export const workspaceAgentApi = {
     return apiClient.get<Agent>(`/core/workspace/agents/${agentId}`);
   },
 
-  update: async (agentId: string, data: { name?: string; config?: Record<string, unknown>; skills?: string[]; tools?: string[]; memory_config?: Record<string, unknown>; metadata?: Record<string, unknown> }) => {
+  toggleEnabled: async (agentId: string) => {
+    return apiClient.post<{ agent_id: string; enabled: boolean }>(`/core/workspace/agents/${agentId}/toggle-enabled`);
+  },
+
+  update: async (agentId: string, data: { name?: string; status?: string; config?: Record<string, unknown>; skills?: string[]; tools?: string[]; mcp_ids?: string[]; workflow_ids?: string[]; agent_ids?: string[]; memory_config?: Record<string, unknown>; metadata?: Record<string, unknown> }) => {
     return apiClient.put<{ status: string; id: string }>(`/core/workspace/agents/${agentId}`, data);
   },
 
@@ -143,8 +168,8 @@ export const workspaceAgentApi = {
     );
   },
 
-  execute: async (agentId: string, data: { messages?: unknown[]; input?: unknown; context?: Record<string, unknown>; options?: { toolset?: string } }) => {
-    return apiClient.post<{ execution_id: string; status: string; output?: unknown; error?: string }>(`/core/workspace/agents/${agentId}/execute`, data);
+  execute: async (agentId: string, data: { messages?: unknown[]; input?: unknown; context?: Record<string, unknown>; options?: { toolset?: string; force_react?: boolean; loop_engine?: string }; config?: Record<string, unknown> }) => {
+    return apiClient.post<{ execution_id: string; status: string; output?: unknown; error?: string; duration_ms?: number; metadata?: Record<string, unknown> }>(`/core/workspace/agents/${agentId}/execute`, data);
   },
 
   getSkills: async (agentId: string) => {
@@ -562,6 +587,10 @@ export const skillApi = {
     return apiClient.get<SkillDetail>(`/core/skills/${skillId}`);
   },
 
+  getSop: async (skillId: string) => {
+    return apiClient.get<{ skill_id: string; skill_md?: string; sop: string }>(`/core/skills/${skillId}/sop`);
+  },
+
   create: async (data: { name: string; description: string; category?: string }) => {
     return apiClient.post<{ id: string; status: string }>('/core/skills', data);
   },
@@ -587,7 +616,7 @@ export const skillApi = {
     return apiClient.post<{ status: string }>(`/core/skills/${skillId}/restore`);
   },
 
-  execute: async (skillId: string, data: { input?: Record<string, unknown>; context?: Record<string, unknown>; options?: { toolset?: string } }) => {
+  execute: async (skillId: string, data: { input?: Record<string, unknown>; context?: Record<string, unknown>; options?: { toolset?: string }; config?: Record<string, unknown> }) => {
     return apiClient.post<{ execution_id: string; status: string; output?: unknown; error?: string; duration_ms?: number }>(`/core/skills/${skillId}/execute`, data);
   },
 
@@ -715,7 +744,7 @@ export const workspaceSkillApi = {
     return apiClient.delete<{ status: string }>(`/core/workspace/skills/${skillId}${qs ? '?' + qs : ''}`);
   },
 
-  execute: async (skillId: string, data: { input?: Record<string, unknown>; context?: Record<string, unknown>; options?: { toolset?: string } }) => {
+  execute: async (skillId: string, data: { input?: Record<string, unknown>; context?: Record<string, unknown>; options?: { toolset?: string }; config?: Record<string, unknown> }) => {
     return apiClient.post<{ execution_id: string; status: string; output?: unknown; error?: string; duration_ms?: number }>(`/core/workspace/skills/${skillId}/execute`, data);
   },
 
@@ -1707,12 +1736,12 @@ export const runApi = {
   upsertEvaluationPolicy: async (policy: Record<string, unknown>) => {
     return apiClient.post<{ status: string; artifact_id: string; policy: any }>(`/core/evaluation/policy`, { policy });
   },
-  getLatestProjectEvaluationPolicy: async (projectId: string) => {
-    return apiClient.get<{ status: string; item: any | null; merged?: any }>(`/core/projects/${encodeURIComponent(projectId)}/evaluation/policy/latest`);
+  getLatestScopedEvaluationPolicy: async (scopeId: string) => {
+    return apiClient.get<{ status: string; item: any | null; merged?: any }>(`/core/scopes/${encodeURIComponent(scopeId)}/evaluation/policy/latest`);
   },
-  upsertProjectEvaluationPolicy: async (projectId: string, policy: Record<string, unknown>, mode: 'merge' | 'replace' = 'merge') => {
+  upsertScopedEvaluationPolicy: async (scopeId: string, policy: Record<string, unknown>, mode: 'merge' | 'replace' = 'merge') => {
     return apiClient.post<{ status: string; artifact_id: string; policy: any; change_id?: string; links?: any }>(
-      `/core/projects/${encodeURIComponent(projectId)}/evaluation/policy`,
+      `/core/scopes/${encodeURIComponent(scopeId)}/evaluation/policy`,
       { policy, mode }
     );
   },
@@ -1857,7 +1886,148 @@ export const gatePolicyApi = {
   remove: async (policyId: string) => {
     return apiClient.delete<{ status: string; deleted: string; default_id?: string }>(`/core/governance/gate-policies/${encodeURIComponent(policyId)}`);
   },
-  setDefault: async (policyId: string) => {
-    return apiClient.post<{ status: string; default_id: string }>(`/core/governance/gate-policies/${encodeURIComponent(policyId)}/set-default`, {});
+};
+
+// ── Variables API ──
+export const variablesApi = {
+  list: async (scope?: string) => {
+    const qs = scope ? `?scope=${scope}` : '';
+    return apiClient.get<{ variables: { id: string; name: string; value: string; scope: string; description: string }[]; total: number }>(`/core/variables${qs}`);
+  },
+  create: async (data: { name: string; value?: string; scope?: string; description?: string }) => {
+    return apiClient.post('/core/variables', data);
+  },
+  update: async (id: string, data: { name?: string; value?: string; scope?: string; description?: string }) => {
+    return apiClient.put(`/core/variables/${id}`, data);
+  },
+  delete: async (id: string) => {
+    return apiClient.delete(`/core/variables/${id}`);
+  },
+};
+
+// ── Credentials API ──
+export const credentialsApi = {
+  list: async () => {
+    return apiClient.get<{ credentials: { id: string; name: string; key: string; provider: string; tool_name: string }[]; total: number }>(`/core/credentials`);
+  },
+  create: async (data: { name: string; key: string; provider?: string; tool_name?: string }) => {
+    return apiClient.post('/core/credentials', data);
+  },
+  get: async (id: string, reveal?: boolean) => {
+    const qs = reveal ? '?reveal=true' : '';
+    return apiClient.get(`/core/credentials/${id}${qs}`);
+  },
+  update: async (id: string, data: { name?: string; key?: string; provider?: string; tool_name?: string }) => {
+    return apiClient.put(`/core/credentials/${id}`, data);
+  },
+  delete: async (id: string) => {
+    return apiClient.delete(`/core/credentials/${id}`);
+  },
+};
+
+// ── Workflow Templates API ──
+export const workflowTemplateApi = {
+  list: async () => {
+    return apiClient.get<{ templates: { name: string; label: string; description: string; stage_count: number; updated_at: string }[]; total: number }>('/core/workflow/templates');
+  },
+  save: async (data: { name: string; description?: string; stages: any[] }) => {
+    return apiClient.post<{ status: string; name: string; version: string }>('/core/workflow/templates', data);
+  },
+  load: async (name: string) => {
+    return apiClient.get<{ name: string; description: string; stages: any[]; version: string }>(`/core/workflow/templates/${name}`);
+  },
+  delete: async (name: string) => {
+    return apiClient.delete(`/core/workflow/templates/${name}`);
+  },
+};
+
+export const workflowApi = {
+  list: async () => {
+    return apiClient.get<{ workflows: any[]; total: number }>('/platform/workflows');
+  },
+  get: async (id: string) => {
+    return apiClient.get<any>(`/platform/workflows/${id}`);
+  },
+  create: async (data: { name: string; description?: string; nodes?: any[]; edges?: any[] }) => {
+    return apiClient.post<any>('/platform/workflows', data);
+  },
+  update: async (id: string, data: { name?: string; description?: string; nodes?: any[]; edges?: any[] }) => {
+    return apiClient.put<any>(`/platform/workflows/${id}`, data);
+  },
+  delete: async (id: string) => {
+    return apiClient.delete(`/platform/workflows/${id}`);
+  },
+  execute: async (id: string, data?: { name?: string }) => {
+    return apiClient.post<any>(`/platform/workflows/${id}/execute`, data || {});
+  },
+  getRuns: async (id: string) => {
+    return apiClient.get<{ runs: any[]; total: number }>(`/platform/workflows/${id}/runs`);
+  },
+  getRunState: async (projectId: string) => {
+    return apiClient.get<any>(`/platform/builder/projects/${projectId}/state`);
+  },
+  getLatestEvent: async (runId: string) => {
+    return apiClient.get<{ event: any }>(`/platform/workflows/runs/${runId}/events/latest`);
+  },
+  listEvents: async (runId: string) => {
+    return apiClient.get<{ events: any[]; total: number }>(`/platform/workflows/runs/${runId}/events`);
+  },
+  publishVersion: async (id: string, data?: { name?: string }) => {
+    return apiClient.post<any>(`/platform/workflows/${id}/publish`, data || {});
+  },
+  listVersions: async (id: string) => {
+    return apiClient.get<{ versions: any[]; total: number; latest_version: number }>(`/platform/workflows/${id}/versions`);
+  },
+  restoreVersion: async (id: string, versionId: string) => {
+    return apiClient.post<any>(`/platform/workflows/${id}/restore/${versionId}`);
+  },
+  stopRun: async (workflowId: string, projectId: string) => {
+    return apiClient.post<any>(`/platform/workflows/${workflowId}/stop`, { project_id: projectId });
+  },
+  toggleEnabled: async (id: string) => {
+    return apiClient.post<any>(`/platform/workflows/${id}/toggle-enabled`);
+  },
+};
+
+export const appApi = {
+  list: async () => {
+    return apiClient.get<{ apps: any[] }>('/platform/apps');
+  },
+  get: async (id: string) => {
+    return apiClient.get<any>(`/platform/apps/${id}`);
+  },
+  create: async (data: { name: string; workflow_id: string; mode?: string; description?: string }) => {
+    return apiClient.post<any>('/platform/apps', data);
+  },
+  delete: async (id: string) => {
+    return apiClient.delete(`/platform/apps/${id}`);
+  },
+  chat: async (id: string, message: string) => {
+    return apiClient.post<any>(`/platform/apps/${id}/chat`, { message });
+  },
+  run: async (id: string, input: string) => {
+    return apiClient.post<any>(`/platform/apps/${id}/run`, { input });
+  },
+};
+
+// ── Packages API ──
+export const packagesApi = {
+  list: async () => {
+    return apiClient.get<{ packages: { name: string; versions: number; installed: boolean }[]; total: number }>('/core/packages');
+  },
+  listVersions: async (pkgName: string) => {
+    return apiClient.get<{ versions: { version: string; created_at: number; size: number; hash: string }[] }>(`/core/packages/${pkgName}/versions`);
+  },
+  publish: async (pkgName: string, data: { source_path: string }) => {
+    return apiClient.post<{ status: string; version: string }>(`/core/packages/${pkgName}/publish`, data);
+  },
+  install: async (pkgName: string, data: { version?: string }) => {
+    return apiClient.post<{ status: string; output: any }>(`/core/packages/${pkgName}/install`, data);
+  },
+  uninstall: async (pkgName: string) => {
+    return apiClient.post<{ status: string }>(`/core/packages/${pkgName}/uninstall`, {});
+  },
+  listInstalls: async () => {
+    return apiClient.get<{ installs: { name: string; version: string; installed_at: number }[] }>('/core/packages/installs');
   },
 };

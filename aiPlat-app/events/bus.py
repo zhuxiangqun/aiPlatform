@@ -5,7 +5,7 @@ Event Bus - 事件总线
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Callable, Optional, Dict, List
 from dataclasses import dataclass, field
 from enum import Enum
@@ -27,7 +27,7 @@ class Event:
     tenant_id: str = "default"
     trace_id: Optional[str] = None
     source: str = ""
-    timestamp: datetime = field(default_factory=datetime.now)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 

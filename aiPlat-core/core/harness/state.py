@@ -4,7 +4,7 @@ Agent State Definitions
 
 from enum import Enum
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 
 
@@ -38,7 +38,7 @@ class AgentLifecycleState:
         if self.metadata is None:
             self.metadata = {}
         if self.created_at is None:
-            self.created_at = datetime.now().timestamp()
+            self.created_at = datetime.now(timezone.utc).timestamp()
         if self.updated_at is None:
             self.updated_at = self.created_at
     
@@ -61,7 +61,7 @@ class AgentLifecycleState:
             agent_id=self.agent_id,
             status=new_status,
             created_at=self.created_at,
-            updated_at=datetime.now().timestamp(),
+            updated_at=datetime.now(timezone.utc).timestamp(),
             error=self.error,
             metadata=self.metadata
         )

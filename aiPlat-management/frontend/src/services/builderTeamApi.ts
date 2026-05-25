@@ -9,6 +9,7 @@ export interface AgentCatalogItem {
   tags: string[];
   phase: string;
   output_artifact?: string;
+  hitl_phase?: string;
   protected: boolean;
   scope: string;
 }
@@ -108,18 +109,6 @@ export const builderTeamApi = {
     );
   },
 
-  /** Approve current HITL stage */
-  approve: async (teamId: string) => {
-    return apiClient.post<{ team_id: string; phase: string }>(
-      `/platform/builder/teams/${teamId}/approve`
-    );
-  },
-
-  /** Reject current HITL stage */
-  reject: async (teamId: string, feedback: string) => {
-    return apiClient.post<{ team_id: string; phase: string }>(`/platform/builder/teams/${teamId}/reject`, { feedback });
-  },
-
   /** Manually rollback a stage */
   rollback: async (teamId: string, stageId: string) => {
     return apiClient.post<{ team_id: string; phase: string }>(`/platform/builder/teams/${teamId}/rollback/${stageId}`);
@@ -163,7 +152,7 @@ export const projectApi = {
   list: async () => {
     return apiClient.get<{ projects: ProjectItem[]; total: number }>('/platform/builder/projects');
   },
-  create: async (data: { name: string; description: string; team_id: string }) => {
+  create: async (data: { name: string; description: string; team_id?: string }) => {
     return apiClient.post<ProjectItem>('/platform/builder/projects', data);
   },
   get: async (projectId: string) => {
@@ -229,6 +218,16 @@ export const projectApi = {
     return apiClient.post<{ ok: boolean; project_id: string; deploy_dir: string; app_url: string }>(
       `/platform/builder/projects/${projectId}/deploy-to-app`
     );
+  },
+
+  /** Get pipeline health report with per-stage dimensional scores. */
+  getHealthReport: async (projectId: string) => {
+    return apiClient.get<{
+      project_id: string; overall_score: number;
+      dimensions: Array<{ name: string; display_name: string; score: number; max_score: number; weight: number }>;
+      stages: Array<{ stage_id: string; agent_id: string; overall_score: number; verdict: string; dimensions: Array<any> }>;
+      trend: Array<{ run_id: string; score: number; timestamp: string }>;
+    }>(`/platform/builder/projects/${projectId}/health-report`);
   },
 };
 

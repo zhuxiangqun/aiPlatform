@@ -90,6 +90,7 @@
 #### 系统整体架构规范（跨层契约）
 
 - [系统整体架构规范（System Architecture Contract）](architecture/system-architecture-contract.md)
+- [Core ↔ Platform 边界判断标准（权威）](architecture/boundary-standard.md)
 - [规范：aiPlat-platform 鉴权与身份透传](../规范-platform-鉴权与身份透传.md)
 - [规范：core run_id / trace_id / request_id](../规范-core-run_id-trace_id-request_id.md)
 - [规范：app session_id 与 conversation_key](../规范-app-session_id与conversation_key.md)

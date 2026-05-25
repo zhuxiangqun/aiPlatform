@@ -459,6 +459,9 @@ class PackageManager:
         kept: List[Dict[str, Any]] = []
         for item in record.get("applied") or []:
             dst = Path(str(item.get("dst") or ""))
+            if ".." in str(dst):
+                logging.getLogger("package_manager").warning("Skipping path with '..': %s", dst)
+                continue
             expected = str(item.get("sha256") or "")
             if not dst.exists():
                 continue

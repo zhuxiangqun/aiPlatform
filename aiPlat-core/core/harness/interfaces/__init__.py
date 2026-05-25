@@ -25,6 +25,7 @@ from .skill import (
     SkillConfig,
     SkillContext,
     SkillResult,
+    SkillStreamEvent,
 )
 
 from .loop import (
@@ -59,6 +60,7 @@ __all__ = [
     "SkillConfig",
     "SkillContext",
     "SkillResult",
+    "SkillStreamEvent",
     
     # Loop
     "ILoop",

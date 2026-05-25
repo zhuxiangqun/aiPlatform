@@ -78,6 +78,24 @@ class PRDArtifact(BaseModel):
     scope: str = ""
 
 
+class ISCMetric(BaseModel):
+    """Ideal State Criterion — a single verifiable completion standard."""
+    id: str  # ISC-01, ISC-02, ...
+    name: str
+    criteria: str  # How to verify this ISC is met
+    verification_method: str = "manual"  # manual | test | llm_eval | code_review
+
+
+class ISAArtifact(BaseModel):
+    """Ideal State Artifact — upgraded PRD with verifiable completion standards."""
+    title: str
+    target_state: str = ""  # What "done" looks like
+    isc_list: List[ISCMetric] = Field(default_factory=list)  # Ideal State Criteria
+    alignment_score: float = 0.0  # 0.0-1.0, set during QA evaluation
+    current_state_summary: str = ""
+    gap_analysis: str = ""
+
+
 class ComponentSpec(BaseModel):
     name: str
     responsibility: str
@@ -163,6 +181,12 @@ class BuilderSessionStateResponse(BaseModel):
     session_id: str
     phase: BuilderSessionPhase
     requirement: str = ""
+    # Generic artifacts dict keyed by stage.output_artifact (Phase 3 generalization)
+    artifacts: Dict[str, Any] = Field(default_factory=dict)
+    # @backward-compat: kept for existing frontend teams using standard pipeline.
+    # @deprecated: use artifacts dict keyed by stage.output_artifact instead.
+    # Migration plan: after frontend decouples from typed fields (ETA 2026-Q3),
+    # remove these four fields and keep only the generic 'artifacts' dict.
     prd: Optional[PRDArtifact] = None
     architecture: Optional[ArchitectureArtifact] = None
     code: Optional[CodeArtifact] = None
@@ -180,6 +204,14 @@ class BuilderChatResponse(BaseModel):
     session_state: BuilderSessionStateResponse
     prd_ready: bool = False
     trace_id: Optional[str] = None
+
+
+class BuilderChatRequest(BaseModel):
+    message: str
+
+
+class BuilderSessionCreateRequest(BaseModel):
+    requirement: str = ""
 
 
 # ── Team Assembly schemas ─────────────────────────────────────────
@@ -202,8 +234,8 @@ class PipelineStageConfig(BaseModel):
     hitl_after_phase: str = ""
     retry_target_id: str = ""
     generate_test_plan: bool = False
-    test_result_key: str = "test_report"
-    uses_code_skill: bool = False
+    test_result_key: str = "test_report"  # DEFAULT_TEST_RESULT_KEY — changed via AGENT.md frontmatter
+    uses_file_output: bool = False
     code_target: str = os.getenv("AIPLAT_DEFAULT_CODE_TARGET", "")
     language: str = ""
     prompt_extra: str = ""
@@ -218,9 +250,33 @@ class PipelineStageConfig(BaseModel):
     max_consecutive_llm_failures: int = 3
     stage_timeout_seconds: int = 600
     sandbox: bool = False
-    sandbox_mode: str = "subprocess"  # "subprocess" | "docker"
+    sandbox_mode: str = "subprocess"
+    sandbox_cpu_limit_seconds: int = 300
+    sandbox_memory_limit_mb: int = 1024
+    sandbox_max_processes: int = 100
+    # Phase 10 — declarative execution mode (replaces if/elif chains in engine)
+    execution_mode: str = "code_first"   # "code_first" | "tdd" | "plan_only"
+    review_gate: str = "quick"           # "none" | "quick" | "llm" | "hitl" — default quick for safety
+    tdd_enforce: bool = False
+    context_isolation: str = "shared"   # "shared" | "isolated"
+    eval_model: str = ""  # dedicated evaluator model (empty = fallback to stage.model or AIPLAT_EVAL_MODEL)
+    deviation_tolerance: float = 0.0  # [0.0, 10.0] Accept output when overall score >= this (0=disabled)
+    failure_mode_constraints: List[Dict[str, Any]] = Field(default_factory=list)
+    # [{failure_type, constraint_action, max_escalation}] — targeted recovery per failure type
+    # Empty list = use system DEFAULT_FAILURE_MODE_CONSTRAINTS
+    enable_query_rewrite: bool = False  # rewrite ambiguous follow-up queries before retrieval
     scoring_dimensions: List[Dict[str, Any]] = Field(default_factory=list)
     coverage_trace_fields: Dict[str, str] = Field(default_factory=lambda: {"components_key": "components", "api_contracts_key": "api_contracts", "data_model_key": "data_model", "files_key": "files", "test_cases_key": "test_cases"})
+    # Debate pattern: stage uses adversarial multi-agent debate (TradingAgents-inspired)
+    debate_participants: List[Dict[str, Any]] = Field(default_factory=list)
+    debate_max_rounds: int = 3
+    debate_manager_agent: str = ""
+    # Node-type-specific config from workflow canvas (llm/code/http/condition)
+    node_config: Dict[str, Any] = Field(default_factory=dict)
+    node_type: str = "agent"  # "agent" | "llm" | "code" | "http" | "condition" | "knowledge" | "tool" | "list" | "assigner" | "template" | "loop" | "aggregator"
+    # Render config: inject upstream outputs as Markdown into stage prompt
+    render_upstream: bool = False
+    render_schema_fields: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 class PipelineConfig(BaseModel):
@@ -308,8 +364,41 @@ class ProjectCreateRequest(BaseModel):
     name: str = ""
     description: str = ""
     team_id: str = ""
+    stages: List[Dict[str, Any]] = Field(default_factory=list)  # pre-built workflow stages
 
 
 class ProjectListResponse(BaseModel):
     projects: List[Project] = Field(default_factory=list)
     total: int = 0
+
+
+# ── Health Report (Phase R2: quality scoring across dimensions) ──
+
+class HealthDimension(BaseModel):
+    """Single quality dimension score."""
+    name: str
+    display_name: str = ""
+    score: float = 0.0
+    max_score: float = 10.0
+    weight: float = 1.0
+    pass_threshold: float = 7.0
+    issues_count: int = 0
+
+
+class StageHealthReport(BaseModel):
+    """Per-stage health report."""
+    stage_id: str
+    agent_id: str = ""
+    dimensions: List[HealthDimension] = Field(default_factory=list)
+    overall_score: float = 0.0
+    verdict: str = "pending"  # passed | partial | failed | pending
+
+
+class ProjectHealthReport(BaseModel):
+    """Aggregated health report for a project."""
+    project_id: str
+    overall_score: float = 0.0  # 0-100
+    dimensions: List[HealthDimension] = Field(default_factory=list)
+    stages: List[StageHealthReport] = Field(default_factory=list)
+    trend: List[Dict[str, Any]] = Field(default_factory=list)  # [{run_id, score, timestamp}]
+    updated_at: str = ""

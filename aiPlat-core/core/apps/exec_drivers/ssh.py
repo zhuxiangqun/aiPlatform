@@ -69,6 +69,24 @@ class SSHExecDriver(ExecDriver):
         if not target:
             return ExecResult(ok=False, exit_code=1, error="ssh_not_configured")
 
+        # Security: reject code containing known-dangerous patterns.
+        # This driver executes arbitrary Python on a remote SSH host.
+        # Only allow code from trusted internal sources (sandbox, skill executor).
+        import re as _re
+        _dangerous = [
+            _re.compile(r"os\.system\s*\("),
+            _re.compile(r"subprocess\."),
+            _re.compile(r"__import__\s*\("),
+            _re.compile(r"open\s*\(.+['\"]w"),
+            _re.compile(r"shutil\.rmtree"),
+            _re.compile(r"eval\s*\("),
+            _re.compile(r"exec\s*\("),
+        ]
+        for p in _dangerous:
+            if p.search(code):
+                return ExecResult(ok=False, exit_code=1,
+                    error=f"ssh_exec_driver_rejected_dangerous_pattern")
+
         # Execute python via base64 to avoid shell quoting pitfalls.
         b64 = base64.b64encode(code.encode("utf-8")).decode("ascii")
         remote = f"python3 -c {shlex.quote('import base64;exec(base64.b64decode(' + repr(b64) + ').decode())')}"

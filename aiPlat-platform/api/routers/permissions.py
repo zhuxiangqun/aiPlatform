@@ -8,22 +8,24 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
-from core.api.core_facade import Permission, get_permission_manager
+from auth.deps import require_auth, require_admin
+from core.apps.tools.permission import Permission
+from core.api.core_facade import get_permission_manager
 
 router = APIRouter(prefix="/platform/permissions", tags=["permissions"])
 
 
 @router.get("/permissions/stats")
-async def get_permission_stats():
+async def get_permission_stats(_auth: str = Depends(require_auth)):
     """Get permission statistics"""
     perm_mgr = get_permission_manager()
     return perm_mgr.get_stats()
 
 
 @router.get("/permissions/users/{user_id}")
-async def get_user_permissions(user_id: str):
+async def get_user_permissions(user_id: str, _auth: str = Depends(require_auth)):
     """Get all permissions for a user (resource_id -> permissions)."""
     perm_mgr = get_permission_manager()
     tools = perm_mgr.get_user_tools(user_id)
@@ -34,7 +36,7 @@ async def get_user_permissions(user_id: str):
 
 
 @router.get("/permissions/resources/{resource_id}")
-async def get_resource_permissions(resource_id: str):
+async def get_resource_permissions(resource_id: str, _auth: str = Depends(require_auth)):
     """Get all users who have permissions on a resource."""
     perm_mgr = get_permission_manager()
     users = perm_mgr.get_tool_users(resource_id)
@@ -45,7 +47,7 @@ async def get_resource_permissions(resource_id: str):
 
 
 @router.post("/permissions/grant")
-async def grant_permission(request: Dict[str, Any]):
+async def grant_permission(request: Dict[str, Any], _auth: str = Depends(require_admin)):
     """Grant permission to a user for a resource (tool/skill/agent)."""
     user_id = request.get("user_id")
     resource_id = request.get("resource_id") or request.get("tool_name")
@@ -63,7 +65,7 @@ async def grant_permission(request: Dict[str, Any]):
 
 
 @router.post("/permissions/revoke")
-async def revoke_permission(request: Dict[str, Any]):
+async def revoke_permission(request: Dict[str, Any], _auth: str = Depends(require_admin)):
     """Revoke permission from a user for a resource (tool/skill/agent)."""
     user_id = request.get("user_id")
     resource_id = request.get("resource_id") or request.get("tool_name")

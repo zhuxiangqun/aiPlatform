@@ -63,15 +63,6 @@ class NodeRegistry(INodeRegistry):
         return list(self._nodes.keys())
 
 
-# Global registry
-_global_registry = NodeRegistry()
-
-
-def get_node_registry() -> NodeRegistry:
-    """Get global node registry"""
-    return _global_registry
-
-
 def register_node(
     name: str,
     description: str,

@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
 import { Loader2 } from 'lucide-react';
 import AppLayout from './components/layout/AppLayout';
@@ -34,6 +34,12 @@ const CoreTools = lazy(() => import('./pages/Core/Tools/Tools'));
 const WorkspaceTeams = lazy(() => import('./pages/App/Builder/TeamAssemblyPage'));
 const CorePlugins = lazy(() => import('./pages/Core/Plugins'));
 const CoreMCP = lazy(() => import('./pages/Core/MCP/MCP'));
+const WorkflowsPage = lazy(() => import('./pages/Core/Workflows/WorkflowsPage'));
+const WorkflowCanvas = lazy(() => import('./pages/Builder/WorkflowCanvas'));
+const WorkflowRunPage = lazy(() => import('./pages/Core/Workflows/WorkflowRunPage'));
+const CoreResources = lazy(() => import('./pages/Core/Resources/Resources'));
+const CoreVariables = lazy(() => import('./pages/Core/Variables/Variables'));
+const CoreCredentials = lazy(() => import('./pages/Core/Credentials/Credentials'));
 const CoreMemory = lazy(() => import('./pages/Core/Memory/Memory'));
 const CoreJobs = lazy(() => import('./pages/Core/Jobs/Jobs'));
 const CoreSkillPacks = lazy(() => import('./pages/Core/SkillPacks'));
@@ -41,6 +47,8 @@ const WorkspaceAgents = lazy(() => import('./pages/Workspace/Agents/Agents'));
 const WorkspaceSkills = lazy(() => import('./pages/Workspace/Skills/Skills'));
 const WorkspaceSkillLint = lazy(() => import('./pages/Workspace/Skills/LintDashboard'));
 const WorkspaceSkillMarketplace = lazy(() => import('./pages/Workspace/SkillMarketplace/SkillMarketplace'));
+const WorkspaceMarketplace = lazy(() => import('./pages/Workspace/Marketplace'));
+const WorkspacePackages = lazy(() => import('./pages/Workspace/Packages'));
 const WorkspaceMCP = lazy(() => import('./pages/Workspace/MCP/MCP'));
 const CoreLearningArtifacts = lazy(() => import('./pages/Core/Learning/Artifacts'));
 const CoreLearningArtifactDetail = lazy(() => import('./pages/Core/Learning/Artifacts/ArtifactDetail'));
@@ -52,10 +60,12 @@ const PlatformAuth = lazy(() => import('./pages/Platform/Auth/Auth'));
 const PlatformTenant = lazy(() => import('./pages/Platform/Tenant/Tenant'));
 const AppChannels = lazy(() => import('./pages/App/Channels/Channels'));
 const AppSessions = lazy(() => import('./pages/App/Sessions/Sessions'));
-const AppKnowledgeBase = lazy(() => import('./pages/App/KnowledgeBase/KnowledgeBase'));
-const AppMaterialsChat = lazy(() => import('./pages/App/KnowledgeBase/MaterialsChat'));
+const AppKnowledgeBase = lazy(() => import('./pages/Platform/KnowledgeBase'));
+const AppMaterialsChat = lazy(() => import('./pages/Platform/KnowledgeBase/MaterialsChat'));
 const AppTeamAssembly = lazy(() => import('./pages/App/Builder/TeamAssemblyPage'));
 const AgentInsightPage = lazy(() => import('./pages/App/Builder/AgentInsightPage'));
+const AppsPage = lazy(() => import('./pages/App/Builder/AppsPage'));
+const AppChatPage = lazy(() => import('./pages/App/Builder/AppChatPage'));
 const AppProjects = lazy(() => import('./pages/App/Builder/ProjectsPage'));
 const AppProjectDetail = lazy(() => import('./pages/App/Builder/ProjectDetailPage'));
 const DiagnosticsHome = lazy(() => import('./pages/Diagnostics/Diagnostics'));
@@ -70,6 +80,9 @@ const DiagnosticsAudit = lazy(() => import('./pages/Diagnostics/Audit/Audit'));
 const DiagnosticsPolicies = lazy(() => import('./pages/Diagnostics/Policies/Policies'));
 const DiagnosticsSyscalls = lazy(() => import('./pages/Diagnostics/Syscalls'));
 const DiagnosticsSmoke = lazy(() => import('./pages/Diagnostics/Smoke/Smoke'));
+const DiagnosticsBrowserTest = lazy(() => import('./pages/Diagnostics/BrowserTest/BrowserTestPanel'));
+const ReleasesPage = lazy(() => import('./pages/Releases/ReleasesPage'));
+const ApprovalCenter = lazy(() => import('./pages/Management/ApprovalCenter'));
 const DiagnosticsOps = lazy(() => import('./pages/Diagnostics/Ops'));
 const DiagnosticsRepo = lazy(() => import('./pages/Diagnostics/Repo'));
 const DiagnosticsChangeControl = lazy(() => import('./pages/Diagnostics/ChangeControl'));
@@ -107,6 +120,13 @@ const router = createBrowserRouter([
       { path: 'core/tools', element: withSuspense(CoreTools) },
       { path: 'core/plugins', element: withSuspense(CorePlugins) },
       { path: 'core/mcp', element: withSuspense(CoreMCP) },
+      { path: 'core/workflows', element: withSuspense(WorkflowsPage) },
+      { path: 'core/workflows/new', element: withSuspense(WorkflowCanvas) },
+      { path: 'core/workflows/:id/edit', element: withSuspense(WorkflowCanvas) },
+      { path: 'core/workflows/:id/runs/:projectId', element: withSuspense(WorkflowRunPage) },
+      { path: 'core/resources', element: withSuspense(CoreResources) },
+      { path: 'core/variables', element: withSuspense(CoreVariables) },
+      { path: 'core/credentials', element: withSuspense(CoreCredentials) },
       { path: 'core/memory', element: withSuspense(CoreMemory) },
       { path: 'core/skill-packs', element: withSuspense(CoreSkillPacks) },
       { path: 'core/jobs', element: withSuspense(CoreJobs) },
@@ -114,6 +134,8 @@ const router = createBrowserRouter([
       { path: 'workspace/skills', element: withSuspense(WorkspaceSkills) },
       { path: 'workspace/skills-lint', element: withSuspense(WorkspaceSkillLint) },
       { path: 'workspace/skill-marketplace', element: withSuspense(WorkspaceSkillMarketplace) },
+      { path: 'workspace/marketplace', element: withSuspense(WorkspaceMarketplace) },
+      { path: 'workspace/packages', element: withSuspense(WorkspacePackages) },
       { path: 'workspace/mcp', element: withSuspense(WorkspaceMCP) },
       { path: 'workspace/teams', element: withSuspense(WorkspaceTeams) },
       { path: 'core/learning/artifacts', element: withSuspense(CoreLearningArtifacts) },
@@ -128,14 +150,14 @@ const router = createBrowserRouter([
       { path: 'platform/tenant', element: withSuspense(PlatformTenant) },
       { path: 'app/channels', element: withSuspense(AppChannels) },
       { path: 'app/sessions', element: withSuspense(AppSessions) },
-      { path: 'app/kb', element: withSuspense(AppKnowledgeBase) },
-      { path: 'app/kb/chat/:sessionId', element: withSuspense(AppMaterialsChat) },
-      { path: 'app/builder', element: <Navigate to="/app/projects" replace /> },
+      { path: 'platform/kb', element: withSuspense(AppKnowledgeBase) },
+      { path: 'platform/kb/chat/:sessionId', element: withSuspense(AppMaterialsChat) },
       { path: 'app/builder/team', element: withSuspense(AppTeamAssembly) },
-      { path: 'app/projects', element: withSuspense(AppProjects) },
-      { path: 'app/projects/:id', element: withSuspense(AppProjectDetail) },
-      { path: 'app/studio', element: <Navigate to="/app/projects" replace /> },
-      { path: 'app/my-apps', element: <Navigate to="/app/projects" replace /> },
+      { path: 'app/builder/projects', element: withSuspense(AppProjects) },
+      { path: 'app/builder/projects/:id', element: withSuspense(AppProjectDetail) },
+      { path: 'app/builder', element: withSuspense(AppProjects) },
+      { path: 'app/apps', element: withSuspense(AppsPage) },
+      { path: 'app/apps/:id/chat', element: withSuspense(AppChatPage) },
       { path: 'diagnostics', element: withSuspense(DiagnosticsHome) },
       { path: 'diagnostics/doctor', element: withSuspense(DiagnosticsDoctor) },
       { path: 'diagnostics/traces', element: withSuspense(DiagnosticsTraces) },
@@ -155,6 +177,9 @@ const router = createBrowserRouter([
       { path: 'diagnostics/routing-dashboard', element: withSuspense(DiagnosticsRoutingDashboard) },
       { path: 'diagnostics/policy-debug', element: withSuspense(DiagnosticsPolicyDebug) },
       { path: 'diagnostics/smoke', element: withSuspense(DiagnosticsSmoke) },
+      { path: 'diagnostics/browser-test', element: withSuspense(DiagnosticsBrowserTest) },
+      { path: 'releases', element: withSuspense(ReleasesPage) },
+      { path: 'approval', element: withSuspense(ApprovalCenter) },
       { path: 'diagnostics/ops', element: withSuspense(DiagnosticsOps) },
       { path: 'diagnostics/context', element: withSuspense(DiagnosticsContext) },
       { path: 'diagnostics/capability-policy', element: withSuspense(DiagnosticsCapabilityPolicy) },

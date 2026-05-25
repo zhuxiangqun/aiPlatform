@@ -9,8 +9,6 @@ This module provides common services for aiPlat-core:
 - FileService: File lifecycle management for Agent communication
 """
 
-from .prompt_service import PromptService, PromptTemplate
-from .model_service import ModelService, ModelConfig, FormatAffinity
 from .trace_service import TraceService, TraceContext, DecayType
 from .context_service import (
     ContextService,
@@ -23,11 +21,6 @@ from .file_service import FileService
 from .execution_store import ExecutionStore, ExecutionStoreConfig, get_execution_store
 
 __all__ = [
-    "PromptService",
-    "PromptTemplate",
-    "ModelService",
-    "ModelConfig",
-    "FormatAffinity",
     "TraceService",
     "TraceContext",
     "DecayType",

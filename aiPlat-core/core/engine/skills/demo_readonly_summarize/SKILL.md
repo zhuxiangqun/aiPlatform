@@ -4,12 +4,16 @@ display_name: 只读摘要（示范）
 description: 对输入文本做结构化摘要（无副作用、可自动触发），用于验证 Skill Contract/路由/可观测闭环。
 category: transformation
 version: 0.1.0
-skill_kind: executable
+status: test_fixture
+execution_mode: prompt
 permissions:
   - read_only
-auto_trigger_allowed: true
-requires_approval: false
-trigger_conditions:
+effects:
+  - type: read
+    resources: ["filesystem:~/.aiplat"]
+    idempotent: true
+    rollback_available: false
+triggers:
   - 摘要
   - 总结
   - 梳理要点

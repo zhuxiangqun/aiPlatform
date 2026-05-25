@@ -90,9 +90,17 @@ class AGENTMD_PARSER:
                 tags=data.get('tags', []),
                 capabilities=data.get('capabilities', []),
                 supported_loop_types=data.get('supported_loop_types', ['react']),
-                required_skills=data.get('required_skills', []),
-                required_tools=data.get('required_tools', []),
-                config_schema=data.get('config_schema', {}),
+                required_skills=data.get('required_skills') or data.get('skills', []),
+                required_tools=data.get('required_tools') or data.get('tools', []),
+                config_schema=data.get('config_schema') or {
+                    'model': data.get('model', ''),
+                    'status': data.get('status', 'ready'),
+                    'category': data.get('category', ''),
+                    'phase': data.get('phase', ''),
+                    'protected': data.get('protected', False),
+                    'output_artifact': data.get('output_artifact', ''),
+                    'pipeline': data.get('pipeline', {}),
+                },
                 examples=data.get('examples', []),
             )
         except yaml.YAMLError:
@@ -267,12 +275,22 @@ class AgentRegistry:
         self._configs: Dict[str, Dict[str, Any]] = {}
         self._states: Dict[str, str] = {}
         self._metadata: Dict[str, DiscoveredAgent] = {}
-    
-    def register(self, name: str, agent: Any, config: Dict[str, Any], metadata: Optional[DiscoveredAgent] = None):
+        self._skills: Dict[str, List[str]] = {}
+        self._tools: Dict[str, List[str]] = {}
+        self._categories: Dict[str, str] = {}
+        self._tags: Dict[str, List[str]] = {}
+        self._phases: Dict[str, str] = {}
+
+    def register(self, name: str, agent: Any, config: Dict[str, Any],
+                 metadata: Optional[DiscoveredAgent] = None,
+                 skills: Optional[List[str]] = None,
+                 tools: Optional[List[str]] = None,
+                 category: str = "",
+                 tags: Optional[List[str]] = None,
+                 phase: str = ""):
         """Register an agent instance"""
         self._agents[name] = agent
         self._configs[name] = config
-        # Canonical execution-layer default state
         try:
             from core.harness.state import AgentStateEnum
             self._states[name] = AgentStateEnum.READY.value
@@ -280,6 +298,16 @@ class AgentRegistry:
             self._states[name] = "ready"
         if metadata:
             self._metadata[name] = metadata
+        if skills:
+            self._skills[name] = list(skills)
+        if tools:
+            self._tools[name] = list(tools)
+        if category:
+            self._categories[name] = category
+        if tags:
+            self._tags[name] = list(tags)
+        if phase:
+            self._phases[name] = phase
     
     def unregister(self, name: str):
         """Unregister an agent"""

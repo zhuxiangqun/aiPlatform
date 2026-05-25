@@ -4,16 +4,16 @@ import json
 from typing import Any, Dict, List, Optional
 
 from .base import BaseAgent, AgentMetadata
-from ...apps.document_intelligence.answer_strategy import choose_answer_strategy
-from ...apps.document_intelligence.question_analysis import analyze_question
-from ...apps.document_intelligence.retrieval_policy import choose_retrieval_policy
-from ...apps.document_intelligence.strategy_resolver import resolve_strategy as _resolve_strategy
-from ...harness.interfaces import AgentConfig, AgentContext, AgentResult, AgentStatus
-from ...apps.skills import get_skill_registry
-from ...harness.syscalls.skill import sys_skill_call
-from ...harness.kernel.runtime import get_kernel_runtime
-from ...services.conversations import ConversationService
-from ...apps.multimodal_kb.service import load_doc_kinds
+from core.apps.document_intelligence.answer_strategy import choose_answer_strategy
+from core.apps.document_intelligence.question_analysis import analyze_question
+from core.apps.document_intelligence.retrieval_policy import choose_retrieval_policy
+from core.apps.document_intelligence.strategy_resolver import resolve_strategy as _resolve_strategy
+from core.harness.interfaces import AgentConfig, AgentContext, AgentResult, AgentStatus
+from core.apps.skills import get_skill_registry
+from core.harness.syscalls.skill import sys_skill_call
+from core.harness.kernel.runtime import get_kernel_runtime
+from core.services.conversations import ConversationService
+from core.apps.document_intelligence.kb_provider import get_kb_load_doc_kinds_fn
 
 
 def _build_turn_summary(question: str, answer: str) -> str:
@@ -25,7 +25,7 @@ def _build_turn_summary(question: str, answer: str) -> str:
 
 
 def _load_doc_kinds(*, tenant_id: str, doc_ids: List[str]) -> List[str]:
-    return load_doc_kinds(tenant_id=tenant_id, doc_ids=doc_ids)
+    return get_kb_load_doc_kinds_fn()(tenant_id=tenant_id, doc_ids=doc_ids)
 
 
 def _extract_answer_from_loop_output(output: Any) -> str:
@@ -82,7 +82,7 @@ class MaterialsChatAgent(BaseAgent):
 
             enhanced_question = question
             turn_summaries = list((context_pack or {}).get("turn_summaries") or [])
-            analysis = analyze_question(
+            analysis = await analyze_question(
                 question=question,
                 scope=scope,
                 recent_turn_summaries=turn_summaries,
@@ -108,37 +108,126 @@ class MaterialsChatAgent(BaseAgent):
             else:
                 skill_params["doc_ids"] = doc_ids
 
+            # ── Retrieve document content via FTS5 + keyword search ──
+            retrieved_docs: str = ""
+            citations: list = []
+            try:
+                from core.api.core_facade import kb_retrieve
+                results = kb_retrieve(
+                    query=enhanced_question,
+                    doc_ids=doc_ids,
+                    collection_id=collection_id,
+                    tenant_id=tenant_id,
+                    top_k=int(retrieval_policy.get("top_k") or options.get("top_k") or 8),
+                )
+                if results:
+                    parts = []
+                    for r in results:
+                        loc = ""
+                        if r.get("start_s") is not None:
+                            loc = f"[{r['start_s']:.0f}s] "
+                        elif r.get("page_idx"):
+                            loc = f"[p{r['page_idx']}] "
+                        parts.append(f"{loc}{r['text']}")
+                    retrieved_docs = "\n\n---\n\n".join(parts)
+            except Exception:
+                pass
+            if retrieved_docs:
+                skill_params["doc_content"] = retrieved_docs
+
+            # ── Build citations from retrieved results ──
+            citations = []
+            for r in results:
+                ref = f"[doc:{r['doc_id'][:8]}]"
+                if r.get("start_s") is not None:
+                    ref += f" [{r['start_s']:.0f}s-{r.get('end_s', 0):.0f}s]"
+                elif r.get("page_idx"):
+                    ref += f" [p{r['page_idx']}]"
+                citations.append({"source": ref, "text": r["text"][:200]})
+
+            # ── Direct answer: if doc_content retrieved, use LLM (with streaming if available) ──
+            if retrieved_docs:
+                try:
+                    # Check for streaming queue in context
+                    stream_queue = vars0.get("_stream_queue")
+                    if stream_queue is not None:
+                        # Stream mode: push chunks to queue, collect full answer
+                        from core.harness.syscalls.llm import sys_llm_generate_stream
+                        answer_parts = []
+                        async for chunk in sys_llm_generate_stream(
+                            None,
+                            [
+                                {"role": "system", "content": "你是知识库问答助手。基于提供的文档内容，准确简洁地回答用户问题。如果文档内容不足以回答，请如实告知。请直接用中文回答，不需要JSON格式。"},
+                                {"role": "user", "content": f"文档内容：\n{retrieved_docs[:4000]}\n\n用户问题：{enhanced_question}\n\n请回答："},
+                            ],
+                            model_name="deepseek-chat",
+                            temperature=0.3,
+                            max_tokens=2000,
+                        ):
+                            if chunk:
+                                answer_parts.append(chunk)
+                                try:
+                                    stream_queue.append(chunk)
+                                except Exception:
+                                    pass
+                        answer = "".join(answer_parts).strip()
+                    else:
+                        from core.harness.syscalls.llm import sys_llm_generate
+                        resp = await sys_llm_generate(
+                            None,
+                            [
+                                {"role": "system", "content": "你是知识库问答助手。基于提供的文档内容，准确简洁地回答用户问题。如果文档内容不足以回答，请如实告知。请直接用中文回答，不需要JSON格式。"},
+                                {"role": "user", "content": f"文档内容：\n{retrieved_docs[:4000]}\n\n用户问题：{enhanced_question}\n\n请回答："},
+                            ],
+                            model_name="deepseek-chat",
+                            temperature=0.3,
+                            max_tokens=2000,
+                        )
+                        text = getattr(resp, 'content', '') or str(resp)
+                        answer = text.strip() if text and len(text) > 5 else ""
+                        if convo is not None and answer:
+                            try:
+                                await convo.append_conversation_assistant_message(
+                                    tenant_id=tenant_id, session_id=session_id, user_id=user_id,
+                                    content=answer, citations=citations, turn_summary=_build_turn_summary(question, answer),
+                                    strategy="direct_retrieve", mode="", intent=intent,
+                                    skills_used=["sys_kb_retrieve"],
+                                    analysis=analysis, retrieval_policy=retrieval_policy,
+                                    answer_strategy=answer_strategy, run_id=run_id,
+                                )
+                            except Exception:
+                                pass
+                        return AgentResult(
+                            success=True,
+                            output={"answer": answer, "citations": citations, "items": [],
+                                    "scope_applied": scope, "strategy": "direct_retrieve",
+                                    "skills_used": ["sys_kb_retrieve"], "turn_summary": _build_turn_summary(question, answer),
+                                    "intent": intent, "mode": "", "analysis": analysis,
+                                    "retrieval_policy": retrieval_policy, "answer_strategy": answer_strategy},
+                            metadata={"intent": intent, "strategy": "direct_retrieve", "doc_count": len(doc_ids)},
+                        )
+                except Exception:
+                    pass  # fall through to skill path
+
             registry = get_skill_registry()
             skill = registry.get(skill_name)
             if not skill:
                 return AgentResult(success=False, error=f"skill_not_found:{skill_name}")
 
-            if self._model is None and self._config.metadata.get("model"):
+            # Ensure skill has LLM adapter (prompt-mode skills need it)
+            if hasattr(skill, '_model') and skill._model is None:
                 try:
-                    await self.initialize(self._config)
+                    from core.server import _inject_model_into_skill
+                    _inject_model_into_skill(skill)
                 except Exception:
                     pass
 
-            if self._model is not None:
-                self._skills = [skill]
-                task_message = (
-                    f"请使用技能 '{skill_name}' 检索并回答以下问题。\n"
-                    f"问题：{enhanced_question}\n"
-                    f"技能参数（JSON）：{json.dumps(skill_params, ensure_ascii=False)}\n"
-                    f"策略意图：{intent}\n"
-                    f"回答策略：{json.dumps(answer_strategy, ensure_ascii=False)}\n"
-                    f"\n直接调用技能并返回结果。"
-                )
-                context.messages = list(context.messages or []) + [{"role": "user", "content": task_message}]
-                result = await super().execute(context)
-                answer = _extract_answer_from_loop_output(result.output)
-                out = result.output if isinstance(result.output, dict) else {}
-            else:
-                response = await sys_skill_call(skill, skill_params, user_id=user_id, session_id=session_id)
-                if not response.success:
-                    return AgentResult(success=False, error=str(response.error or f"{skill_name}_failed"))
-                out = dict(response.output or {})
-                answer = str(out.get("answer") or "").strip()
+            # Fast path: direct sys_skill_call (single LLM invocation, no ReAct loop overhead)
+            response = await sys_skill_call(skill, skill_params, user_id=user_id, session_id=session_id)
+            if not response.success:
+                return AgentResult(success=False, error=str(response.error or f"{skill_name}_failed"))
+            out = dict(response.output or {})
+            answer = str(out.get("answer") or "").strip()
 
             citations = list(out.get("citations") or [])
             turn_summary = _build_turn_summary(question, answer)
@@ -172,6 +261,14 @@ class MaterialsChatAgent(BaseAgent):
                     )
                 except Exception:
                     pass
+
+            # Bridge to MemoryManager for cross-session recall
+            try:
+                from core.harness.memory.manager import get_memory_manager
+                mm = get_memory_manager(namespace=f"kb_{session_id}")
+                await mm.save_interaction(question, answer, stability="high")
+            except Exception:
+                pass
 
             return AgentResult(
                 success=True,

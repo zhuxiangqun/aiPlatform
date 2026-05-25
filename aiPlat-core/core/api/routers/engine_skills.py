@@ -1236,3 +1236,15 @@ async def get_skill_derived(skill_id: str, rt: RuntimeDep = None):
     evolution = skill.metadata.get("evolution", {}) if skill.metadata else {}
     child_ids = evolution.get("child_skill_ids", [])
     return {"derived_skills": [{"id": c} for c in child_ids], "total": len(child_ids)}
+
+
+@router.get("/skills/{skill_id}/sop")
+async def get_skill_sop(skill_id: str, rt: RuntimeDep = None):
+    """Get skill SOP (SKILL.md body content)."""
+    mgr = _skill_mgr(rt)
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Skill manager not available")
+    sop_data = await mgr.get_skill_sop(skill_id)
+    if not sop_data:
+        raise HTTPException(status_code=404, detail=f"SOP not found for skill {skill_id}")
+    return sop_data

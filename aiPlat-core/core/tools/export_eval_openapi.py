@@ -77,8 +77,8 @@ def build_snapshot() -> Dict[str, Any]:
         ("POST", "/api/core/runs/{run_id}/evidence/diff"),
         ("GET", "/api/core/evaluation/policy/latest"),
         ("POST", "/api/core/evaluation/policy"),
-        ("GET", "/api/core/projects/{project_id}/evaluation/policy/latest"),
-        ("POST", "/api/core/projects/{project_id}/evaluation/policy"),
+        ("GET", "/api/core/scopes/{scope_id}/evaluation/policy/latest"),
+        ("POST", "/api/core/scopes/{scope_id}/evaluation/policy"),
     ]
 
     out: Dict[str, Any] = {

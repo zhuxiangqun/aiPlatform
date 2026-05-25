@@ -5,6 +5,7 @@ HTTP client for calling aiPlat-infra layer API.
 """
 
 import httpx
+import os
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
 from typing import Optional as _Optional
@@ -13,7 +14,7 @@ from typing import Optional as _Optional
 @dataclass
 class InfraAPIClientConfig:
     """Configuration for Infra API client."""
-    base_url: str = "http://localhost:8001"
+    base_url: str = ""
     timeout: float = 30.0
     transport: _Optional[httpx.BaseTransport] = None
 
@@ -23,6 +24,8 @@ class InfraAPIClient:
     
     def __init__(self, config: Optional[InfraAPIClientConfig] = None):
         self.config = config or InfraAPIClientConfig()
+        if not self.config.base_url:
+            self.config.base_url = os.getenv("AIPLAT_INFRA_URL", "http://localhost:8001")
         self._client: Optional[httpx.AsyncClient] = None
     
     async def __aenter__(self):

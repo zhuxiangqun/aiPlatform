@@ -4,6 +4,29 @@ import re
 from typing import Any, Dict, List, Optional
 
 
+async def _llm_classify_intent(question: str) -> str:
+    """Classify question intent via LLM (more accurate than regex for edge cases).
+    Falls back to regex on error."""
+    if len(question) < 5:
+        return _detect_intent(question)
+    try:
+        from core.harness.syscalls.llm import sys_llm_generate
+        prompt = (
+            "将以下用户问题分类为以下意图之一：fact_lookup, summary, compare, "
+            "evidence_trace, applicability_analysis, follow_up。"
+            "只输出意图名称，不要输出其他内容。\n\n问题：" + question
+        )
+        resp = await sys_llm_generate(
+            None, [{"role": "user", "content": prompt}],
+            model_name="deepseek-chat", temperature=0.0, max_tokens=20,
+        )
+        result = (getattr(resp, "content", "") or str(resp)).strip().lower()
+        valid = {"fact_lookup", "summary", "compare", "evidence_trace", "applicability_analysis", "follow_up"}
+        return result if result in valid else _detect_intent(question)
+    except Exception:
+        return _detect_intent(question)
+
+
 def _detect_intent(question: str) -> str:
     q = str(question or "").strip()
     if re.search(r"刚才|上面|前面|第二点|第三点|展开|继续说|重新回答|只看|基于刚才", q):
@@ -71,14 +94,14 @@ def _detect_answer_shape(intent: str, granularity: str) -> str:
     return "grounded_summary"
 
 
-def analyze_question(
+async def analyze_question(
     *,
     question: str,
     scope: Optional[Dict[str, Any]] = None,
     recent_turn_summaries: Optional[List[str]] = None,
     doc_kinds: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
-    intent = _detect_intent(question)
+    intent = await _llm_classify_intent(question)  # LLM first, regex fallback
     follow_up = _detect_follow_up(question, recent_turn_summaries)
     entity_sensitive = _detect_entity_sensitive(question)
     granularity = _detect_evidence_granularity(intent, question, entity_sensitive)

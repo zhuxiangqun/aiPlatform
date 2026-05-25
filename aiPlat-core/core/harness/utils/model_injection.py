@@ -1,7 +1,7 @@
 """
 Model injection helpers.
 
-统一处理 “给 agent/skill 注入 LLM adapter” 的逻辑，避免：
+统一处理 "给 agent/skill 注入 LLM adapter" 的逻辑，避免：
 - agent._model 被更新，但 agent._loop._model 仍旧为空（导致偶发失败）
 - skill 注入仍强制 openai 且无 key（导致执行链路不稳定）
 """
@@ -12,6 +12,23 @@ import os
 from typing import Any, Optional
 import json
 import sqlite3
+
+from core.adapters.llm.base import create_adapter
+
+
+def get_default_model(purpose: str = "default") -> str:
+    """Centralized default model selection — single source of truth (§12).
+
+    Resolution chain: purpose → dedicated env → generic env → SQLite store → hardcoded fallback.
+    All modules MUST use this function instead of reading AIPLAT_*_MODEL env vars directly.
+    """
+    if purpose in ("agent", "reasoning"):
+        return os.getenv("AIPLAT_AGENT_MODEL") or os.getenv("AIPLAT_DEFAULT_AGENT_MODEL") or os.getenv("AIPLAT_DEFAULT_MODEL", "")
+    if purpose == "document":
+        return os.getenv("AIPLAT_DOC_LLM_MODEL") or os.getenv("AIPLAT_LLM_MODEL") or os.getenv("AIPLAT_DEFAULT_CHAT_MODEL") or os.getenv("AIPLAT_DEFAULT_MODEL", "")
+    if purpose == "code_gen":
+        return os.getenv("AIPLAT_CODE_GEN_MODEL") or os.getenv("AIPLAT_LLM_MODEL") or os.getenv("AIPLAT_DEFAULT_MODEL", "")
+    return os.getenv("AIPLAT_DEFAULT_CHAT_MODEL") or os.getenv("AIPLAT_LLM_MODEL") or os.getenv("AIPLAT_DEFAULT_MODEL", "")
 
 
 def _norm_provider(p: str) -> str:
@@ -105,10 +122,10 @@ def create_selected_adapter(*, model_name: str) -> Any:
     # Next priority: global default routing stored in ExecutionStore (set by Onboarding)
     default_llm = None if provider_env else _load_default_llm_from_store()
     # model_name (explicit parameter) > model_env (global) > store default
-    selected_model = model_name or model_env or (default_llm.get("model") if default_llm else "") or "gpt-4"
+    selected_model = model_name or model_env or (default_llm.get("model") if default_llm else "") or get_default_model()
 
     # Provider resolution
-    provider = _norm_provider(provider_env or "openai")
+    provider = _norm_provider(provider_env or os.getenv("AIPLAT_DEFAULT_PROVIDER", ""))
 
     # Provider-specific defaults (OpenAI-compatible).
     if provider == "deepseek":
@@ -122,8 +139,8 @@ def create_selected_adapter(*, model_name: str) -> Any:
         api_key = os.getenv("AIPLAT_LLM_API_KEY") or ""
         # If user kept default model_name (gpt-4), map to deepseek-chat by default.
         if selected_model in ("gpt-4", "gpt-4o", "gpt-3.5-turbo"):
-            selected_model = "deepseek-chat"
-        # DeepSeek is OpenAI-compatible → use openai adapter.
+            selected_model = get_default_model()
+        # DeepSeek API is OpenAI-compatible — use openai adapter with DeepSeek base_url.
         return create_adapter(provider="openai", api_key=api_key or None, model=selected_model, base_url=base_url)
 
     # Generic providers
@@ -132,18 +149,20 @@ def create_selected_adapter(*, model_name: str) -> Any:
         ad = _load_adapter_from_store(str(default_llm.get("adapter_id")))
         if ad:
             provider = _norm_provider(str(ad.get("provider") or provider))
-            base_url = str(ad.get("api_base_url") or base_url_env or get_llm_base_url("openai") or "")
-            api_key = str(ad.get("api_key") or api_key_env or get_llm_api_key("openai") or "")
-            # For OpenAI-compatible adapters, use openai provider
+            base_url = str(ad.get("api_base_url") or base_url_env or get_llm_base_url("deepseek") or "")
+            api_key = str(ad.get("api_key") or api_key_env or get_llm_api_key("deepseek") or "")
             if provider in {"openai", "deepseek"}:
                 provider = "openai"
             return create_adapter(provider=provider, api_key=api_key or None, model=selected_model, base_url=base_url or None)
 
-    base_url = base_url_env or get_llm_base_url("openai")
-    api_key = (get_llm_api_key("openai") or api_key_env or "")
-    if provider == "openai" and not api_key:
-        provider = "mock"
-    return create_adapter(provider=provider, api_key=api_key or None, model=selected_model, base_url=base_url)
+    base_url = base_url_env or get_llm_base_url("deepseek")
+    api_key = (get_llm_api_key("deepseek") or api_key_env or "")
+    if not api_key:
+        raise RuntimeError(
+            "No API key configured for LLM. "
+            "Set AIPLAT_LLM_API_KEY or DEEPSEEK_API_KEY environment variable. "
+            "Without a valid API key, the pipeline cannot produce real outputs."
+        )
 
 
 def _bind_model(obj: Any, adapter: Any) -> None:

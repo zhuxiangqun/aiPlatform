@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Union
 
 import os
+import logging
 import time
 
 from core.harness.infrastructure.gates import TraceGate, ContextGate, ResilienceGate
@@ -134,13 +135,20 @@ def _guard_messages(messages: List[Message]) -> tuple[List[Message], Dict[str, A
 
 
 def _try_inject_claude_md(messages: List[Message]) -> None:
-    """Read CLAUDE.md from disk and inject as a system message header."""
+    """Read CLAUDE.md from disk and inject as a system message header.
+
+    Idempotent: skips injection if CLAUDE.md content already appears in messages
+    (prevents double injection when caller also injects via ReActLoop._reason).
+
+    Note: file reads are synchronous but small (<12KB per file). For large-scale
+    concurrent LLM calls, consider prefetching into a module-level cache.
+    """
     try:
         from pathlib import Path
         project_root = os.getenv("AIPLAT_PROJECT_ROOT") or os.getcwd()
         content_parts = []
 
-        # §5.27: SOUL.md — persona layer (loaded first, never includes project paths or rules)
+        # §5.27: SOUL.md — persona layer (loaded first)
         soul_path = Path(os.getenv("AIPLAT_HOME", str(Path.home() / ".aiplat"))) / "SOUL.md"
         if not soul_path.exists():
             soul_path = Path(project_root) / "SOUL.md"
@@ -156,17 +164,26 @@ def _try_inject_claude_md(messages: List[Message]) -> None:
         ]
         for p in claude_paths:
             if p.exists():
-                text = p.read_text(encoding="utf-8")[:12000]  # safety cap: never compressed, but keep reasonable
+                text = p.read_text(encoding="utf-8")[:12000]
                 content_parts.append(f"[{p.name}] {text}")
 
-        if content_parts:
-            guard = ("\n\n## 项目规则（每次从磁盘重读，永不压缩）\n\n" + "\n\n---\n\n".join(content_parts))
-            if messages and messages[0].get("role") == "system":
-                messages[0]["content"] = str(messages[0].get("content") or "") + guard
-            else:
-                messages.insert(0, {"role": "system", "content": guard})
+        if not content_parts:
+            return
+
+        guard = ("\n\n## 项目规则（每次从磁盘重读，永不压缩）\n\n" + "\n\n---\n\n".join(content_parts))
+
+        # Idempotent: check if guard content already present (prevent double injection)
+        existing_text = " ".join(str(m.get("content", "")) for m in messages[:3])
+        guard_snippet = guard[:200]
+        if guard_snippet in existing_text:
+            return  # already injected by caller (e.g. ReActLoop._try_inject_claude_md)
+
+        if messages and messages[0].get("role") == "system":
+            messages[0]["content"] = str(messages[0].get("content") or "") + guard
+        else:
+            messages.insert(0, {"role": "system", "content": guard})
     except Exception:
-        pass  # fail-open: injection is a best-effort enhancement
+        logging.getLogger("llm").debug("best-effort skipped", exc_info=True)
 
 
 def _classify_llm_error(error: Exception) -> Dict[str, Any]:
@@ -225,6 +242,9 @@ async def sys_llm_generate(
     *,
     trace_context: Optional[Dict[str, Any]] = None,
     model_name: str = "",
+    temperature: Optional[float] = None,
+    max_tokens: Optional[int] = None,
+    response_format: Optional[Dict[str, Any]] = None,
 ) -> Any:
     """
     Execute a model generation call.
@@ -235,6 +255,9 @@ async def sys_llm_generate(
         trace_context: Reserved for future tracing integration.
         model_name: Model name for Router deployment selection. If empty,
                     auto-extracted from adapter's model_name attribute.
+        temperature: Optional override for generation temperature.
+        max_tokens: Optional override for max tokens.
+        response_format: Optional response format (e.g. json_schema).
     """
     # Model routing: auto-detect model_name and route via ModelRouter
     deployment = None
@@ -264,9 +287,11 @@ async def sys_llm_generate(
                     model=deployment.name,
                     base_url=deployment.base_url,
                 )
-            except Exception:
+            except Exception as e:
+                import sys, traceback
+                print(f"[LLM DEBUG] create_adapter FAILED for '{model_name}': {e}", file=sys.stderr)
+                traceback.print_exc(file=sys.stderr)
                 deployment = None
-                pass  # fail-open: fall through to direct model
 
     # Phase 3: gates (best-effort, fail-open).
     trace_gate = TraceGate()
@@ -315,7 +340,7 @@ async def sys_llm_generate(
                     }
                 )
             except Exception:
-                pass
+                logging.getLogger("llm").debug("best-effort skipped", exc_info=True)
         raise RuntimeError("No model available for sys_llm_generate")
 
     prepared = ctx_gate.prepare_llm_args(prompt, context=trace_context or {})
@@ -343,7 +368,7 @@ async def sys_llm_generate(
                         },
                     )
             except Exception:
-                pass
+                logging.getLogger("llm").debug("best-effort skipped", exc_info=True)
     except Exception:
             message_guard_stats = {"error": "message_guard_failed"}
 
@@ -394,7 +419,7 @@ async def sys_llm_generate(
                         if isinstance(patch, dict) and patch:
                             prepared = _apply_prompt_patch(prepared, patch)
                 except Exception:
-                    pass
+                    logging.getLogger("llm").debug("best-effort skipped", exc_info=True)
             # Phase 6.12: aggregate audit info for the whole execution (best-effort).
             try:
                 record_prompt_revision_application(
@@ -403,7 +428,7 @@ async def sys_llm_generate(
                     conflicts=prompt_revision_conflicts,
                 )
             except Exception:
-                pass
+                logging.getLogger("llm").debug("best-effort skipped", exc_info=True)
 
             # Provide target identity for prompt caching keys (Roadmap-1).
             _ctx = get_active_release_context()
@@ -452,12 +477,22 @@ async def sys_llm_generate(
                 },
             )
     except Exception:
-        pass
+        logging.getLogger("llm").debug("best-effort skipped", exc_info=True)
     try:
         async def _call():
+            # Apply per-call overrides to model adapter config
+            if temperature is not None:
+                try: model._config.temperature = temperature
+                except: pass
+            if max_tokens is not None:
+                try: model._config.max_tokens = max_tokens
+                except: pass
+            if response_format is not None:
+                try: model._config.response_format = response_format
+                except: pass
             return await model.generate(prepared)  # type: ignore[misc]
 
-        retries = int(os.getenv("AIPLAT_LLM_RETRIES", "0") or "0")
+        retries = int(os.getenv("AIPLAT_LLM_RETRIES", "2") or "2")
         timeout_seconds = os.getenv("AIPLAT_LLM_TIMEOUT_SECONDS")
         timeout = float(timeout_seconds) if timeout_seconds else None
         result = await res_gate.run(_call, retries=retries, timeout_seconds=timeout)
@@ -481,7 +516,7 @@ async def sys_llm_generate(
                                 day = time.strftime("%Y-%m-%d", time.gmtime())
                                 await store.add_tenant_usage(tenant_id=str(tid), metric_key="llm_total_tokens", amount=total_f, day=day)
                 except Exception:
-                    pass
+                    logging.getLogger("llm").debug("best-effort skipped", exc_info=True)
                 await store.add_syscall_event(
                     {
                         "trace_id": span.trace_id,
@@ -513,7 +548,7 @@ async def sys_llm_generate(
                     }
                 )
             except Exception:
-                pass
+                logging.getLogger("llm").debug("best-effort skipped", exc_info=True)
         # Notify router of success
         if model_name and deployment:
             router.mark_success(model_name, deployment)
@@ -558,7 +593,7 @@ async def sys_llm_generate(
                     }
                 )
             except Exception:
-                pass
+                logging.getLogger("llm").debug("best-effort skipped", exc_info=True)
         raise
 
 
@@ -603,3 +638,61 @@ def _apply_prompt_patch(prompt: Union[str, List[Message]], patch: Dict[str, Any]
         return out
 
     return prompt
+
+
+async def sys_llm_generate_stream(
+    model: Any,
+    messages: List[Dict[str, str]],
+    *,
+    model_name: str = "",
+    temperature: Optional[float] = None,
+    max_tokens: Optional[int] = None,
+    response_format: Optional[Dict[str, Any]] = None,
+) -> AsyncIterator[str]:
+    """Streaming version of sys_llm_generate. Yields text chunks as they arrive.
+
+    Uses the adapter's stream_generate() method if available,
+    otherwise falls back to non-streaming generate().
+    """
+    from typing import AsyncIterator
+
+    if not model_name:
+        model_name = getattr(model, 'model_name', '') or getattr(model, '_model_name', '') or ''
+    if not model_name:
+        model_name = "deepseek-chat"
+
+    # Try streaming
+    try:
+        if hasattr(model, 'stream_generate'):
+            async for chunk in model.stream_generate(
+                messages,
+                config=_stream_config(model_name, temperature, max_tokens),
+            ):
+                yield chunk
+            return
+    except Exception:
+        pass
+
+    # Fallback: non-streaming
+    result = await sys_llm_generate(
+        model, messages,
+        model_name=model_name, temperature=temperature,
+        max_tokens=max_tokens or 2000,
+        response_format=response_format,
+    )
+    text = getattr(result, 'content', '') or str(result)
+    if text:
+        yield text
+
+
+def _stream_config(model_name: str, temperature: Optional[float], max_tokens: Optional[int]) -> Any:
+    """Build LLMConfig for streaming adapter."""
+    try:
+        from core.adapters.llm.base import LLMConfig
+        return LLMConfig(
+            model=model_name,
+            temperature=temperature or 0.7,
+            max_tokens=max_tokens or 2000,
+        )
+    except Exception:
+        return None

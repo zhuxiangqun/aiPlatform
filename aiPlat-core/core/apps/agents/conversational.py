@@ -50,6 +50,8 @@ class ConversationalAgent(BaseAgent):
         self._memory = memory
         self._turn_count = 0
         self._conversation_history: List[Dict[str, str]] = []
+        self._skills: List[Any] = []
+        self._tools: List[Any] = []
         
         super().__init__(
             config=config,
@@ -130,6 +132,14 @@ class ConversationalAgent(BaseAgent):
     def get_conversation_history(self) -> List[Dict[str, str]]:
         """Get conversation history"""
         return self._conversation_history.copy()
+
+    def add_tool(self, tool: Any) -> None:
+        """Add tool to agent (for skill/tool binding by core_chat)"""
+        self._tools.append(tool)
+
+    def add_skill(self, skill: Any) -> None:
+        """Add skill to agent (for required_skills binding by core_chat)"""
+        self._skills.append(skill)
 
     def get_turn_count(self) -> int:
         """Get number of turns"""

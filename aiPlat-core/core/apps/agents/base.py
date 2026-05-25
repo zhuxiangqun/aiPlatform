@@ -57,6 +57,8 @@ class BaseAgent(IAgent):
             loop_type=loop_type,
             config=loop_config or LoopConfig()
         )
+        self._skills: List[Any] = []
+        self._tools: List[Any] = []
 
     async def initialize(self, config: AgentConfig) -> None:
         """Initialize agent with configuration"""
@@ -127,13 +129,14 @@ class BaseAgent(IAgent):
                 )
             
             # Inject model, skills, and tools into the loop before running
+            resolved_tools = []
+            resolved_skills = []
             if self._loop:
                 if hasattr(self._loop, 'set_model') and self._model:
                     self._loop.set_model(self._model)
                 if hasattr(self._loop, 'set_tools') and hasattr(self, '_tools'):
                     from ...apps.tools.base import get_tool_registry
                     tool_registry = get_tool_registry()
-                    resolved_tools = []
                     for tool_name in context.tools if context.tools else []:
                         tool = tool_registry.get(tool_name)
                         if tool:
@@ -144,7 +147,6 @@ class BaseAgent(IAgent):
                 if hasattr(self._loop, 'set_skills') and hasattr(self, '_skills'):
                     from ...apps.skills import get_skill_registry
                     skill_registry = get_skill_registry()
-                    resolved_skills = []
                     for skill_name in context.skills if context.skills else []:
                         skill = skill_registry.get(skill_name)
                         if skill:
@@ -152,8 +154,36 @@ class BaseAgent(IAgent):
                     if hasattr(self, '_skills') and self._skills:
                         resolved_skills.extend(self._skills)
                     self._loop.set_skills(resolved_skills)
-                
-                result = await self._loop.run(state, LoopConfig())
+
+                # Fast path: agents with no tools AND no skills use direct syscall
+                # (avoids ReAct loop iterating max_steps with nothing to act on)
+                # Must still go through sys_llm_generate for injection guard + trace gate.
+                if not resolved_tools and not resolved_skills and hasattr(self, '_model') and self._model:
+                    from ...harness.syscalls.llm import sys_llm_generate
+                    messages = []
+                    conv_cfg = getattr(self, '_conv_config', None)
+                    if conv_cfg and getattr(conv_cfg, 'system_prompt', ''):
+                        messages.append({"role": "system", "content": conv_cfg.system_prompt})
+                    elif context.variables.get("system_prompt"):
+                        messages.append({"role": "system", "content": str(context.variables["system_prompt"])})
+                    messages.extend(list(context.messages) if context.messages else [])
+                    if not messages:
+                        messages = [{"role": "user", "content": str(context.variables.get("task", ""))}]
+                    try:
+                        response = await sys_llm_generate(self._model, messages)
+                        output = getattr(response, 'content', str(response))
+                        self._status = AgentStatus.COMPLETED
+                        return AgentResult(success=True, output=output, metadata={
+                            "loop_type": "direct_syscall", "steps": 0, "loop_state": "completed",
+                        })
+                    except Exception as e:
+                        self._status = AgentStatus.ERROR
+                        return AgentResult(success=False, output=None, error=str(e), metadata={
+                            "loop_type": "direct_syscall", "steps": 0, "loop_state": "error",
+                            "exception": type(e).__name__,
+                        })
+
+                result = await self._loop.run(state, self._loop._config if hasattr(self._loop, '_config') else LoopConfig())
 
                 # Include a minimal loop checkpoint snapshot when paused (for resume).
                 loop_snapshot = None
@@ -232,6 +262,14 @@ class BaseAgent(IAgent):
         """Get model adapter"""
         return self._model
 
+    def add_skill(self, skill: Any) -> None:
+        """Add skill to agent. Every agent subclass gets this for free."""
+        self._skills.append(skill)
+
+    def add_tool(self, tool: Any) -> None:
+        """Add tool to agent. Every agent subclass gets this for free."""
+        self._tools.append(tool)
+
 
 class ConfigurableAgent(BaseAgent):
     """
@@ -309,15 +347,23 @@ def create_agent(
         "rag": "rag",
         "materials_chat": "materials_chat",
         "tool": "react",
+        "reflection": "plan_execute",
+        "review": "conversational",
         "base": "base",
     }
     
     resolved_type = type_map.get(agent_type, "base")
     
     if resolved_type == "react":
-        return ReActAgent(config=config, **kwargs)
+        agent = ReActAgent(config=config, **kwargs)
+        if agent_type == "tool":
+            agent._loop_type = "tool"
+        return agent
     elif resolved_type == "plan_execute":
-        return PlanExecuteAgent(config=config, **kwargs)
+        agent = PlanExecuteAgent(config=config, **kwargs)
+        if agent_type == "reflection":
+            agent._loop_type = "reflection"
+        return agent
     elif resolved_type == "conversational":
         return ConversationalAgent(config=config, **kwargs)
     elif resolved_type == "multi_agent":

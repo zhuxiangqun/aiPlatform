@@ -4,7 +4,7 @@ Long-term Memory - 长期记忆
 
 import asyncio
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from .base import MemoryBase, MemoryEntry, MemoryScope, MemoryType
@@ -26,7 +26,7 @@ class LongTermMemory(MemoryBase):
         async with self._lock:
             entry.id = entry.id or str(uuid.uuid4())
             if entry.expires_at is None:
-                entry.expires_at = datetime.now().timestamp() + self.ttl
+                entry.expires_at = datetime.now(timezone.utc).timestamp() + self.ttl
             
             self._storage[entry.id] = entry
             

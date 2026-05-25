@@ -196,7 +196,7 @@ class RetryableAdapterMixin:
 def create_adapter(
     provider: str,
     api_key: Optional[str] = None,
-    model: str = "gpt-4",
+    model: str = "deepseek-chat",
     base_url: Optional[str] = None,
     **kwargs
 ) -> ILLMAdapter:
@@ -218,17 +218,19 @@ def create_adapter(
     if provider not in ("mock", "scripted"):
         try:
             from infra.llm.factory import create_llm_client as _infra_create
+            from infra.llm.schemas import LLMConfig
             from core.harness.infrastructure.infra_llm_adapter import InfraLLMAdapter
 
-            infra_config: Dict[str, Any] = {"provider": provider, "model": model}
-            if api_key:
-                infra_config["api_key"] = api_key
+            infra_config = LLMConfig()
+            infra_config.provider = provider
+            infra_config.api_key = api_key or ""
+            infra_config.model = model
             if base_url:
-                infra_config["base_url"] = base_url
+                infra_config.base_url = base_url
             if kwargs.get("temperature") is not None:
-                infra_config["temperature"] = float(kwargs["temperature"])
+                infra_config.temperature = float(kwargs["temperature"])
             if kwargs.get("max_tokens") is not None:
-                infra_config["max_tokens"] = int(kwargs["max_tokens"])
+                infra_config.max_tokens = int(kwargs["max_tokens"])
 
             client = _infra_create(infra_config)
             adapter: ILLMAdapter = InfraLLMAdapter(client, provider=provider, model=model)
@@ -245,6 +247,14 @@ def create_adapter(
 
     # ── Fallback: core adapters (mock/scripted for testing, or opt-in via flag) ──
     if provider in ("openai", "deepseek", "anthropic", "local"):
+        if os.getenv("AIPLAT_ENABLE_CORE_ADAPTER_FALLBACK", "false").lower() in ("1", "true", "yes", "y"):
+            try:
+                from .openai_adapter import OpenAIAdapter
+                adapter = OpenAIAdapter(api_key=api_key, model=model, base_url=base_url, **kwargs)
+                adapter.model_name = model
+                return adapter
+            except Exception:
+                pass
         raise RuntimeError(
             f"Core adapter for '{provider}' has been retired. "
             f"LLM access now exclusively routes through aiplat-infra. "

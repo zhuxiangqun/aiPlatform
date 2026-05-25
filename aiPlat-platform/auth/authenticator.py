@@ -1,10 +1,13 @@
 """
 Authentication Service - 认证服务
+
+⚠ PERSISTENCE: API keys are in-memory only — restart loses all keys.
+SQLite persistence is planned for Phase 4 (audit 2.3).
 """
 
 import hashlib
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, Any
 from pydantic import BaseModel
 
@@ -57,8 +60,8 @@ class Authenticator:
             "user_id": user_id,
             "tenant_id": tenant_id,
             "app_id": app_id,
-            "created_at": datetime.now(),
-            "expires_at": datetime.now() + timedelta(days=expires_days),
+            "created_at": datetime.now(timezone.utc),
+            "expires_at": datetime.now(timezone.utc) + timedelta(days=expires_days),
             "active": True,
             "permissions": permissions or [],
         }
@@ -78,7 +81,7 @@ class Authenticator:
         if not key_data.get("active", False):
             return AuthResult(success=False, error="Key disabled")
 
-        if key_data.get("expires_at") and datetime.now() > key_data["expires_at"]:
+        if key_data.get("expires_at") and datetime.now(timezone.utc) > key_data["expires_at"]:
             return AuthResult(success=False, error="Key expired")
 
         return AuthResult(

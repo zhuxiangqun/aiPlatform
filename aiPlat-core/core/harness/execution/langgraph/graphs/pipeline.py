@@ -21,7 +21,7 @@ from .core import GraphBuilder, CompiledGraph, GraphConfig, GraphState
 class PipelineGraph:
     """Execute a pipeline subset as a named graph for trace observability."""
 
-    def __init__(self, stages: List[PipelineStageConfig], name: str = "builder_pipeline"):
+    def __init__(self, stages: List[PipelineStageConfig], name: str = "pipeline"):
         self._stages = list(stages)
         self._name = name
 

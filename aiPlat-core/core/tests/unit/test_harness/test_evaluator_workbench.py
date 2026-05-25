@@ -7,7 +7,9 @@ def test_evaluator_workbench_threshold_gate():
     report = {"pass": True, "score": {"functionality": 6}}
     ok, _ = validate_report(report)
     assert ok is True
-    gated = apply_threshold_gate(report, EvaluatorThresholds(functionality_min=7))
+    dims = [{"name": "functionality", "threshold_min": 7.0}]
+    thresholds = EvaluatorThresholds.from_dimensions(dims)
+    gated = apply_threshold_gate(report, thresholds, dims=dims)
     assert gated["pass"] is False
     assert isinstance(gated.get("issues"), list)
 

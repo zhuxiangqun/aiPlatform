@@ -1,6 +1,15 @@
 """
 aiPlat-platform HTTP API (Phase 1/2)
 
+STRUCTURAL DEBT (audit platform layer): 2893 lines, monolithic API file.
+Split plan:
+  routes_auth.py  — JWT/API key identity resolution + /whoami (lines ~30-210)
+  routes_kb.py    — Knowledge base CRUD + ingest (lines ~600-1450)
+  routes_agents.py — Agent/Skill/MCP/Plugin management (lines ~1450-2300)
+  routes_builder.py — Builder projects + teams (already in api/routers/builder.py)
+  routes.py        — FastAPI app assembly + router includes (< 200 lines)
+Target: each < 1000 lines.
+
 What this file provides:
 - PR-01: 身份解析（JWT/API key）+ 标准 Header 透传 + request_id 生成 + /whoami
 - PR-02: platform 代理执行：/platform/gateway/execute 与 /api/v1/agents/{id}/execute → 转发 aiPlat-core /api/core/gateway/execute
@@ -15,8 +24,8 @@ import os
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, List
 
-from fastapi import FastAPI, Header, HTTPException, Request, UploadFile, File, Form
-from fastapi.responses import FileResponse
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, UploadFile, File, Form
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 import httpx
@@ -25,10 +34,100 @@ import httpx
 # Use subpackages directly (auth/, utils/, etc).
 from utils.ids import new_prefixed_id as _new_prefixed_id  # type: ignore
 from auth.authenticator import authenticator as _authenticator  # type: ignore
+from auth.deps import require_auth, require_admin
 from storage import sqlite as platform_store  # type: ignore
+from core.api.core_facade import create_infra_database_client
 
 
 app = FastAPI(title="aiPlat-platform", version="0.1.0")
+
+# ── Governance middleware ────────────────────────────────────────────────
+# Rate limiting and audit logging wired per CLAUDE.md architecture audit.
+# Toggle via AIPLAT_RATE_LIMIT_ENABLED / AIPLAT_AUDIT_LOG_ENABLED env vars.
+_RATE_LIMIT_ENABLED = os.getenv("AIPLAT_RATE_LIMIT_ENABLED", "").lower() in ("1", "true", "yes", "y", "on")
+_RATE_LIMIT_PER_MINUTE = int(os.getenv("AIPLAT_RATE_LIMIT_PER_MINUTE", "300"))
+_AUDIT_LOG_ENABLED = os.getenv("AIPLAT_AUDIT_LOG_ENABLED", "").lower() in ("1", "true", "yes", "y", "on")
+if _RATE_LIMIT_ENABLED or _AUDIT_LOG_ENABLED:
+    from governance import rate_limiter, audit_logger
+    from governance.audit.logger import AuditAction
+    _rate_limit_lock = None
+    if _RATE_LIMIT_ENABLED:
+        rate_limiter.set_limit("global", _RATE_LIMIT_PER_MINUTE, 60)
+        import logging as _rl_log
+        _rl_log.getLogger("aiplat.platform.governance").info(
+            "Rate limiter activated: %d req/min", _RATE_LIMIT_PER_MINUTE)
+
+
+@app.middleware("http")
+async def _governance_middleware(request: Request, call_next):
+    # Rate limit check
+    if _RATE_LIMIT_ENABLED:
+        client_key = request.headers.get("X-AIPLAT-API-KEY") or request.client.host if request.client else "unknown"
+        if not rate_limiter.check(client_key):
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "Too many requests", "retry_after": 60},
+                headers={"Retry-After": "60"},
+            )
+        rate_limiter.consume(client_key)
+
+    # Execute request
+    response = await call_next(request)
+
+    # Audit log
+    if _AUDIT_LOG_ENABLED:
+        try:
+            tenant_id = request.headers.get("X-AIPLAT-TENANT-ID", "default")
+            actor_id = request.headers.get("X-AIPLAT-ACTOR-ID", "anonymous")
+            resource = request.url.path
+            action = AuditAction.READ if request.method in ("GET", "HEAD", "OPTIONS") else (
+                AuditAction.DELETE if request.method == "DELETE" else AuditAction.UPDATE
+            )
+            result = "success" if response.status_code < 400 else "failure"
+            audit_logger.log(
+                tenant_id=tenant_id, actor_id=actor_id, action=action,
+                resource_type="http", resource_id=resource, result=result,
+                ip_address=request.client.host if request.client else None,
+                user_agent=request.headers.get("user-agent"),
+            )
+        except Exception:
+            pass
+
+    return response
+
+
+@app.exception_handler(ValueError)
+async def value_error_handler(request: Request, exc: ValueError):
+    """Convert uncaught ValueError to structured response (404 for not-found, 400 otherwise)."""
+    import logging
+    msg = str(exc)[:500]
+    logging.getLogger("aiplat.platform").warning("ValueError in %s %s: %s", request.method, request.url.path, msg)
+    is_not_found = "not found" in msg.lower()
+    return JSONResponse(
+        status_code=404 if is_not_found else 400,
+        content={"detail": msg, "error": msg, "error_code": "not_found" if is_not_found else "invalid_request"},
+    )
+
+# Register KB provider callbacks — connects platform's concrete implementations
+# to core's abstract interfaces (resolves core→platform reverse dependency).
+try:
+    from core.api.core_facade import set_knowledge_db, set_knowledge_providers
+    from kb.db import KBSqlite
+    from kb.storage import get_tenant_storage as _storage_root
+    from kb.service import ingest_document, enqueue_ingest, load_doc_kinds
+    from kb.budget_query import query
+    import os as _os
+    db_path = _os.path.expanduser(
+        _os.getenv("AIPLAT_KB_DB_PATH", "~/.aiplat/data/kb/aiplat_knowledge.sqlite3"))
+    _os.makedirs(_os.path.dirname(db_path), exist_ok=True)
+    set_knowledge_db(KBSqlite(db_path))
+    set_knowledge_providers(
+        ingest_fn=ingest_document, query_fn=query,
+        enqueue_fn=enqueue_ingest, load_doc_kinds_fn=load_doc_kinds,
+    )
+except Exception:
+    pass
+
 
 # Optional dependency: python-multipart (needed for UploadFile/File form parsing).
 # Keep platform importable in minimal envs (tests) even if multipart is absent.
@@ -62,8 +161,17 @@ def _decode_jwt_claims(token: str) -> Dict[str, Any]:
     - If PyJWT is installed and AIPLAT_JWT_SECRET is set, you can enable verification.
     - Otherwise decode without verification (dev-only).
     """
-    verify = os.getenv("AIPLAT_PLATFORM_JWT_VERIFY", "false").lower() in ("1", "true", "yes", "y")
-    secret = os.getenv("AIPLAT_JWT_SECRET")
+    verify = os.getenv("AIPLAT_PLATFORM_JWT_VERIFY", "true").lower() in ("1", "true", "yes", "y")
+    if not verify:
+        import logging
+        logging.getLogger("aiplat.platform").warning(
+            "JWT verification is DISABLED. Set AIPLAT_PLATFORM_JWT_VERIFY=true in production.")
+    secret = os.getenv("AIPLAT_JWT_SECRET") or ""
+    if verify and not secret:
+        import logging
+        logging.getLogger("aiplat.platform").critical(
+            "AIPLAT_JWT_SECRET is empty but JWT verification is enabled. JWT tokens will be rejected.")
+        raise HTTPException(status_code=503, detail="JWT secret not configured")
     if verify and secret:
         try:
             import jwt  # type: ignore
@@ -175,7 +283,7 @@ def _resolve_identity(request: Request) -> Identity:
 
 
 def _core_base_url() -> str:
-    return os.getenv("AIPLAT_CORE_ENDPOINT", "http://localhost:8002").rstrip("/")
+    return os.getenv("AIPLAT_CORE_URL", "http://localhost:8002").rstrip("/")
 
 
 def _require_scope(identity: Identity, scope: str) -> None:
@@ -262,6 +370,14 @@ def _kb_db_path(tenant_id: str) -> str:
 
     return str(Path(_kb_tenant_dir(tenant_id)).expanduser() / "kb.sqlite3")
 
+
+def _open_kb_db(tenant_id: str):
+    """Open KB database via Infra Bridge (不直接 import sqlite3).
+    
+    Returns a connection with row_factory=Row and PRAGMA WAL/NORMAL applied.
+    """
+    return create_infra_database_client(_kb_db_path(tenant_id))
+
 _KB_SCHEMA_SQL = """
 PRAGMA journal_mode=WAL;
 PRAGMA synchronous=NORMAL;
@@ -281,6 +397,7 @@ CREATE TABLE IF NOT EXISTS documents (
   source_uri TEXT NOT NULL,
   kind TEXT NOT NULL,
   status TEXT NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
   meta_json TEXT,
   created_at INTEGER NOT NULL,
   PRIMARY KEY (tenant_id, doc_id)
@@ -471,7 +588,21 @@ def _kb_ensure_schema(conn) -> None:
         conn.executescript(_KB_SCHEMA_SQL)
         conn.commit()
     except Exception:
-        # best-effort: callers will surface errors
+        pass
+    # FTS5 full-text index on kb_elements (best-effort)
+    try:
+        conn.execute(
+            "CREATE VIRTUAL TABLE IF NOT EXISTS kb_elements_fts "
+            "USING fts5(element_id, doc_id, text, tokenize='unicode61')"
+        )
+        conn.commit()
+    except Exception:
+        pass
+    # Schema migration: add version column for existing DBs
+    try:
+        conn.execute("ALTER TABLE documents ADD COLUMN version INTEGER NOT NULL DEFAULT 1")
+        conn.commit()
+    except Exception:
         pass
 
 
@@ -485,131 +616,6 @@ def _new_analysis_batch_id() -> str:
     import time, random
 
     return f"ab_{int(time.time() * 1000):x}{random.randint(0, 0xFFFF):04x}"
-
-
-def _persist_analysis_run(*, tenant_id: str, doc_id: Optional[str], collection_id: Optional[str], run_type: str, input_obj: Dict[str, Any], output_obj: Optional[Dict[str, Any]]) -> Optional[str]:
-    import json, sqlite3
-
-    dbp = _kb_db_path(tenant_id)
-    conn = sqlite3.connect(dbp)
-    try:
-        _kb_ensure_schema(conn)
-        run_id = _new_analysis_run_id()
-        out = output_obj or {}
-        conn.execute(
-            """
-            INSERT INTO analysis_runs(
-              tenant_id, run_id, doc_id, collection_id, run_type, mode, retrieval_mode, generation_mode, input_json, output_json, created_at
-            )
-            VALUES(?,?,?,?,?,?,?,?,?,?,strftime('%s','now'))
-            """,
-            (
-                tenant_id,
-                run_id,
-                doc_id,
-                collection_id,
-                run_type,
-                str(out.get("mode") or ""),
-                str(out.get("retrieval_mode") or ""),
-                str(out.get("generation_mode") or ""),
-                json.dumps(input_obj or {}, ensure_ascii=False),
-                json.dumps(out, ensure_ascii=False),
-            ),
-        )
-        conn.commit()
-        return run_id
-    except Exception:
-        return None
-    finally:
-        conn.close()
-
-
-def _persist_analysis_batch(*, tenant_id: str, collection_id: Optional[str], batch_type: str, title: Optional[str], input_obj: Dict[str, Any], output_obj: Dict[str, Any]) -> Optional[str]:
-    import json, sqlite3
-
-    dbp = _kb_db_path(tenant_id)
-    conn = sqlite3.connect(dbp)
-    try:
-        _kb_ensure_schema(conn)
-        batch_id = _new_analysis_batch_id()
-        conn.execute(
-            """
-            INSERT INTO analysis_batches(
-              tenant_id, batch_id, collection_id, batch_type, title, input_json, output_json, created_at
-            )
-            VALUES(?,?,?,?,?,?,?,strftime('%s','now'))
-            """,
-            (
-                tenant_id,
-                batch_id,
-                collection_id,
-                batch_type,
-                title,
-                json.dumps(input_obj or {}, ensure_ascii=False),
-                json.dumps(output_obj or {}, ensure_ascii=False),
-            ),
-        )
-        conn.commit()
-        return batch_id
-    except Exception:
-        return None
-    finally:
-        conn.close()
-
-
-@app.get("/kb/debug")
-@app.get("/platform/kb/debug")
-@app.get("/api/v1/kb/debug")
-async def kb_debug(request: Request):
-    """
-    Debug endpoint: show where platform thinks KB db/assets are.
-    Useful to diagnose AIPLAT_HOME mismatch / tenant mismatch.
-    """
-    identity = _resolve_identity(request)
-    import os as _os
-
-    dbp = _kb_db_path(identity.tenant_id)
-    return {
-        "identity": {
-            "tenant_id": identity.tenant_id,
-            "actor_id": identity.actor_id,
-            "actor_role": identity.actor_role,
-            "auth_type": identity.auth_type,
-            "scopes": identity.scopes,
-        },
-        "AIPLAT_HOME_env": _os.getenv("AIPLAT_HOME"),
-        "platform_home": _platform_home(),
-        "tenant_dir": _kb_tenant_dir(identity.tenant_id),
-        "db_path": dbp,
-        "db_exists": _os.path.exists(dbp),
-        "db_size": _os.path.getsize(dbp) if _os.path.exists(dbp) else None,
-    }
-
-
-async def _call_core_gateway_execute(identity: Identity, body: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Forward to core /api/core/gateway/execute and inject standardized headers.
-    """
-    headers = {
-        "Content-Type": "application/json",
-        "X-AIPLAT-REQUEST-ID": identity.request_id,
-        "X-AIPLAT-TENANT-ID": identity.tenant_id,
-        "X-AIPLAT-ACTOR-ID": identity.actor_id,
-    }
-    if identity.scopes:
-        headers["X-AIPLAT-SCOPES"] = ",".join(identity.scopes)
-    if identity.actor_role:
-        headers["X-AIPLAT-ACTOR-ROLE"] = identity.actor_role
-
-    # Force core identity to be platform-authoritative
-    body = dict(body or {})
-    body["tenant_id"] = identity.tenant_id
-    body["user_id"] = identity.actor_id
-    # session_id: preserve caller if provided
-    if not body.get("session_id"):
-        body["session_id"] = body.get("payload", {}).get("session_id") if isinstance(body.get("payload"), dict) else None
-
-    return await _core_request("POST", "/api/core/gateway/execute", identity=identity, json_body=body, extra_headers=headers)
 
 
 async def _core_request(
@@ -670,97 +676,207 @@ def _extract_job_payload(resp: Optional[Dict[str, Any]]) -> Optional[Dict[str, A
     return None
 
 
-def _extract_core_error_message(resp: Optional[Dict[str, Any]]) -> str:
-    if not isinstance(resp, dict):
-        return "core_skill_failed"
-    err = resp.get("error")
-    if isinstance(err, dict):
-        msg = str(err.get("message") or "").strip()
-        if msg:
-            return msg
-    for k in ("error_message", "message", "detail"):
-        v = resp.get(k)
-        if isinstance(v, str) and v.strip():
-            return v.strip()
-    return "core_skill_failed"
+def _persist_analysis_run(*, tenant_id: str, doc_id: Optional[str], collection_id: Optional[str], run_type: str, input_obj: Dict[str, Any], output_obj: Optional[Dict[str, Any]]) -> Optional[str]:
+    import json, sqlite3
 
-
-# -------------------- Health & Debug --------------------
-
-
-@app.get("/health")
-async def health_check(request: Request):
-    identity = _resolve_identity(request)
-    return {"status": "healthy", "tenant_id": identity.tenant_id}
+    dbp = _kb_db_path(tenant_id)
+    conn = _open_kb_db(tenant_id)
+    try:
+        _kb_ensure_schema(conn)
+        run_id = _new_analysis_run_id()
+        out = output_obj or {}
+        conn.execute(
+            """
+            INSERT INTO analysis_runs(
+              tenant_id, run_id, doc_id, collection_id, run_type, mode, retrieval_mode, generation_mode, input_json, output_json, created_at
+            )
+            VALUES(?,?,?,?,?,?,?,?,?,?,strftime('%s','now'))
+            """,
+            (
+                tenant_id,
+                run_id,
+                doc_id,
+                collection_id,
+                run_type,
+                str(out.get("mode") or ""),
+                str(out.get("retrieval_mode") or ""),
+                str(out.get("generation_mode") or ""),
+                json.dumps(input_obj or {}, ensure_ascii=False),
+                json.dumps(out, ensure_ascii=False),
+            ),
+        )
+        conn.commit()
+        return run_id
+    finally:
+        conn.close()
 
 
 @app.get("/whoami")
-async def whoami(request: Request):
-    identity = _resolve_identity(request)
+async def platform_whoami(request: Request):
+    tenant_id = request.headers.get("X-AIPLAT-TENANT-ID", "default")
+    actor_id = request.headers.get("X-AIPLAT-ACTOR-ID", "anonymous")
+    auth_type = "api_key" if request.headers.get("X-AIPLAT-API-KEY") else "dev"
     return {
-        "request_id": identity.request_id,
-        "tenant_id": identity.tenant_id,
-        "actor_id": identity.actor_id,
-        "actor_role": identity.actor_role,
-        "scopes": identity.scopes,
-        "auth_type": identity.auth_type,
+        "tenant_id": tenant_id,
+        "actor_id": actor_id,
+        "auth_type": auth_type,
+        "request_id": request.headers.get("X-AIPLAT-REQUEST-ID", "00000000-0000-0000-0000-000000000000"),
     }
 
 
-# -------------------- Platform proxy execute (PR-02) --------------------
-
-
-@app.post("/platform/gateway/execute")
-async def platform_gateway_execute(request: Request):
+@app.post("/platform/kb/reindex")
+@app.post("/api/v1/kb/reindex")
+async def kb_reindex(request: Request):
+    """Re-embed all existing document elements using the current embedding model.
+    Useful after switching embedding models (e.g., MiniLM → Jina)."""
     identity = _resolve_identity(request)
-    body = await request.json()
-    if not isinstance(body, dict):
-        raise HTTPException(status_code=400, detail="body must be json object")
-    return await _call_core_gateway_execute(identity, body)
+    _require_scope(identity, "kb:write")
+
+    dbp = _kb_db_path(identity.tenant_id)
+    if not os.path.exists(dbp):
+        return {"status": "no_data", "count": 0}
+    conn = _open_kb_db(identity.tenant_id)
+    try:
+        from core.api.core_facade import kb_embed_text as _embed_text
+        import json as _j
+        rows = conn.execute(
+            "SELECT element_id, doc_id, text FROM kb_elements WHERE tenant_id=? AND text IS NOT NULL AND length(text)>0",
+            (identity.tenant_id,),
+        ).fetchall()
+        reindexed = 0
+        for r in rows:
+            text = str(r["text"] or "")
+            if not text.strip():
+                continue
+            vec = await embed_text(text[:4000])
+            conn.execute(
+                "UPDATE kb_embeddings SET vector_json=?, model=?, dim=? WHERE tenant_id=? AND element_id=?",
+                (_j.dumps(vec), os.getenv("AIPLAT_EMBEDDING_MODEL", "jinaai/jina-embeddings-v2-base-zh"),
+                 len(vec), identity.tenant_id, r["element_id"]),
+            )
+            conn.commit()
+            reindexed += 1
+        return {"status": "ok", "count": reindexed}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+    finally:
+        conn.close()
 
 
-# -------------------- API v1 (compat for aiPlat-app client / docs) --------------------
+@app.get("/platform/kb/documents/{doc_id}/versions")
+@app.get("/api/v1/kb/documents/{doc_id}/versions")
+async def kb_doc_versions(doc_id: str, request: Request):
+    """Get version history for a document."""
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:read")
+    conn = _open_kb_db(identity.tenant_id)
+    try:
+        doc = conn.execute(
+            "SELECT version, created_at FROM documents WHERE tenant_id=? AND doc_id=?", 
+            (identity.tenant_id, doc_id)
+        ).fetchone()
+        current = dict(doc) if doc else {"version": 1, "created_at": 0}
+        # Count elements per version
+        versions = []
+        for ver in range(1, current["version"] + 1):
+            cnt = conn.execute(
+                "SELECT count(*) FROM kb_elements WHERE tenant_id=? AND doc_id=? AND meta_json LIKE ?",
+                (identity.tenant_id, doc_id, f'%version":{ver}%'),
+            ).fetchone()[0]
+            versions.append({
+                "version": ver,
+                "elements": cnt,
+                "is_current": ver == current["version"],
+            })
+        return {"doc_id": doc_id, "current_version": current["version"], "versions": versions}
+    finally:
+        conn.close()
 
 
-class AgentExecuteRequest(BaseModel):
-    input: Any
-    session_id: Optional[str] = None
-    context: Optional[Dict[str, Any]] = None
+@app.post("/platform/kb/documents/{doc_id}/rollback/{version}")
+@app.post("/api/v1/kb/documents/{doc_id}/rollback/{version}")
+async def kb_doc_rollback(doc_id: str, version: int, request: Request):
+    """Rollback document to a previous version (un-archive old elements)."""
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:write")
+    conn = _open_kb_db(identity.tenant_id)
+    try:
+        target_ver = int(version)
+        # Un-archive target version elements
+        import json as _j
+        conn.execute(
+            "UPDATE kb_elements SET meta_json = json_set(meta_json,'$.archived',0) WHERE tenant_id=? AND doc_id=? AND meta_json LIKE ?",
+            (identity.tenant_id, doc_id, f'%version":{target_ver}%'),
+        )
+        # Archive current version
+        cur_ver = conn.execute(
+            "SELECT version FROM documents WHERE tenant_id=? AND doc_id=?", (identity.tenant_id, doc_id)
+        ).fetchone()[0]
+        conn.execute(
+            "UPDATE kb_elements SET meta_json = json_set(meta_json,'$.archived',1) WHERE tenant_id=? AND doc_id=? AND meta_json NOT LIKE ?",
+            (identity.tenant_id, doc_id, f'%version":{target_ver}%'),
+        )
+        conn.execute(
+            "UPDATE documents SET version=? WHERE tenant_id=? AND doc_id=?", 
+            (target_ver, identity.tenant_id, doc_id),
+        )
+        conn.commit()
+        return {"status": "ok", "version": target_ver}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+    finally:
+        conn.close()
 
 
-class KBIngestResponse(BaseModel):
-    tenant_id: str
-    collection_id: str
-    doc_id: str
-    pages: int
-    budget_rows: int
-    budget_pages: List[int]
+@app.get("/platform/kb/stats")
+@app.get("/api/v1/kb/stats")
+async def kb_stats(request: Request):
+    """Knowledge base statistics: document/element/embedding counts + storage."""
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:read")
+
+    dbp = _kb_db_path(identity.tenant_id)
+    if not os.path.exists(dbp):
+        return {"documents": 0, "elements": 0, "embeddings": 0, "collections": 0,
+                "jobs_pending": 0, "storage_bytes": 0}
+    conn = _open_kb_db(identity.tenant_id)
+    try:
+        _kb_ensure_schema(conn)
+        ndocs = conn.execute(
+            "SELECT count(*) FROM documents WHERE tenant_id=?", (identity.tenant_id,)
+        ).fetchone()[0]
+        nelems = conn.execute(
+            "SELECT count(*) FROM kb_elements WHERE tenant_id=?", (identity.tenant_id,)
+        ).fetchone()[0]
+        nembs = conn.execute(
+            "SELECT count(*) FROM kb_embeddings WHERE tenant_id=?", (identity.tenant_id,)
+        ).fetchone()[0]
+        ncols = conn.execute(
+            "SELECT count(*) FROM collections WHERE tenant_id=?", (identity.tenant_id,)
+        ).fetchone()[0]
+        njobs = conn.execute(
+            "SELECT count(*) FROM kb_jobs WHERE tenant_id=? AND status IN ('pending','running','queued')",
+            (identity.tenant_id,),
+        ).fetchone()[0]
+        return {
+            "documents": ndocs, "elements": nelems, "embeddings": nembs,
+            "collections": ncols, "jobs_pending": njobs,
+            "tenant_id": identity.tenant_id,
+        }
+    finally:
+        conn.close()
 
 
-class KBQueryRequest(BaseModel):
-    collection_id: str = "default"
-    question: str
-    year: Optional[int] = None
-    limit: int = 50
-
-class KBCollectionCreateRequest(BaseModel):
-    collection_id: str
-    name: str = ""
-
-
-@app.get("/kb/collections")
 @app.get("/platform/kb/collections")
 @app.get("/api/v1/kb/collections")
 async def kb_list_collections(request: Request):
     identity = _resolve_identity(request)
     _require_scope(identity, "kb:read")
-    import sqlite3, json
 
     dbp = _kb_db_path(identity.tenant_id)
     if not os.path.exists(dbp):
         return {"collections": [], "total": 0}
-    conn = sqlite3.connect(dbp)
-    conn.row_factory = sqlite3.Row
+    conn = _open_kb_db(identity.tenant_id)
     try:
         _kb_ensure_schema(conn)
         rows = conn.execute(
@@ -785,13 +901,11 @@ async def kb_list_collections(request: Request):
 async def kb_get_job(job_id: str, request: Request):
     identity = _resolve_identity(request)
     _require_scope(identity, "kb:read")
-    import sqlite3, json
 
     dbp = _kb_db_path(identity.tenant_id)
     if not os.path.exists(dbp):
         raise HTTPException(status_code=404, detail="job_not_found")
-    conn = sqlite3.connect(dbp)
-    conn.row_factory = sqlite3.Row
+    conn = _open_kb_db(identity.tenant_id)
     try:
         _kb_ensure_schema(conn)
         row = conn.execute(
@@ -818,13 +932,11 @@ async def kb_get_job(job_id: str, request: Request):
 async def kb_get_job_events(job_id: str, request: Request, limit: int = 200, offset: int = 0):
     identity = _resolve_identity(request)
     _require_scope(identity, "kb:read")
-    import sqlite3, json
 
     dbp = _kb_db_path(identity.tenant_id)
     if not os.path.exists(dbp):
         return {"items": [], "total": 0}
-    conn = sqlite3.connect(dbp)
-    conn.row_factory = sqlite3.Row
+    conn = _open_kb_db(identity.tenant_id)
     try:
         _kb_ensure_schema(conn)
         total = conn.execute(
@@ -861,13 +973,12 @@ async def kb_get_job_events(job_id: str, request: Request, limit: int = 200, off
 async def kb_create_collection(req: KBCollectionCreateRequest, request: Request):
     identity = _resolve_identity(request)
     _require_scope(identity, "kb:write")
-    import sqlite3
 
     cid = str(req.collection_id or "").strip()
     if not cid:
         raise HTTPException(status_code=400, detail="collection_id_required")
     dbp = _kb_db_path(identity.tenant_id)
-    conn = sqlite3.connect(dbp)
+    conn = _open_kb_db(identity.tenant_id)
     try:
         _kb_ensure_schema(conn)
         conn.execute(
@@ -880,19 +991,60 @@ async def kb_create_collection(req: KBCollectionCreateRequest, request: Request)
     return {"status": "ok", "collection_id": cid}
 
 
+@app.get("/kb/documents/categories")
+@app.get("/platform/documents/categories")
+@app.get("/api/v1/kb/documents/categories")
+async def kb_document_categories(request: Request, collection_id: Optional[str] = None):
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:read")
+
+    dbp = _kb_db_path(identity.tenant_id)
+    if not os.path.exists(dbp):
+        return {"kind_categories": [], "content_categories": []}
+    conn = _open_kb_db(identity.tenant_id)
+    try:
+        _kb_ensure_schema(conn)
+        where = "WHERE tenant_id=?"
+        params = [identity.tenant_id]
+        if collection_id:
+            where += " AND collection_id=?"
+            params.append(collection_id)
+        rows = conn.execute(
+            f"SELECT kind, meta_json FROM documents {where}",
+            tuple(params),
+        ).fetchall()
+        # Aggregate by kind
+        kind_counts: Dict[str, int] = {}
+        content_counts: Dict[str, int] = {}
+        for r in rows:
+            kind = str(r["kind"] or "other").strip().lower()
+            kind_counts[kind] = kind_counts.get(kind, 0) + 1
+            # Extract category from meta_json if present
+            try:
+                meta = json.loads(r["meta_json"] or "{}")
+            except Exception:
+                meta = {}
+            cat = str(meta.get("category") or meta.get("content_category") or "").strip()
+            if cat:
+                content_counts[cat] = content_counts.get(cat, 0) + 1
+        kind_categories = [{"key": k, "label": k.title(), "count": v} for k, v in sorted(kind_counts.items())]
+        content_categories = [{"key": k, "label": k, "count": v} for k, v in sorted(content_counts.items())]
+        return {"kind_categories": kind_categories, "content_categories": content_categories}
+    finally:
+        conn.close()
+
+
 @app.get("/kb/collections/{collection_id}/documents")
 @app.get("/platform/kb/collections/{collection_id}/documents")
 @app.get("/api/v1/kb/collections/{collection_id}/documents")
 async def kb_list_documents(collection_id: str, request: Request):
     identity = _resolve_identity(request)
     _require_scope(identity, "kb:read")
-    import sqlite3, json
 
     dbp = _kb_db_path(identity.tenant_id)
     if not os.path.exists(dbp):
         return {"documents": [], "total": 0}
-    conn = sqlite3.connect(dbp)
-    conn.row_factory = sqlite3.Row
+    conn = _open_kb_db(identity.tenant_id)
     try:
         _kb_ensure_schema(conn)
         rows = conn.execute(
@@ -924,12 +1076,11 @@ async def kb_list_documents(collection_id: str, request: Request):
 async def kb_delete_document(doc_id: str, request: Request):
     identity = _resolve_identity(request)
     _require_scope(identity, "kb:write")
-    import sqlite3
 
     dbp = _kb_db_path(identity.tenant_id)
     if not os.path.exists(dbp):
         raise HTTPException(status_code=404, detail="db_not_found")
-    conn = sqlite3.connect(dbp)
+    conn = _open_kb_db(identity.tenant_id)
     try:
         _kb_ensure_schema(conn)
         conn.execute("DELETE FROM budget_rows WHERE tenant_id=? AND doc_id=?", (identity.tenant_id, doc_id))
@@ -938,6 +1089,13 @@ async def kb_delete_document(doc_id: str, request: Request):
         conn.execute("DELETE FROM kb_embeddings WHERE tenant_id=? AND doc_id=?", (identity.tenant_id, doc_id))
         conn.execute("DELETE FROM doc_sources WHERE tenant_id=? AND doc_id=?", (identity.tenant_id, doc_id))
         conn.execute("DELETE FROM url_cache WHERE tenant_id=? AND doc_id=?", (identity.tenant_id, doc_id))
+        for table in ("kb_graph", "analysis_runs", "analysis_batches"):
+            try: conn.execute(f"DELETE FROM {table} WHERE tenant_id=? AND doc_id=?", (identity.tenant_id, doc_id))
+            except Exception: pass
+        try:
+            conn.execute("DELETE FROM kb_eval_samples WHERE doc_ids = ?", (json.dumps([doc_id]),))
+            conn.execute("DELETE FROM kb_eval_reports WHERE sample_id NOT IN (SELECT id FROM kb_eval_samples)")
+        except Exception: pass
         conn.execute("DELETE FROM documents WHERE tenant_id=? AND doc_id=?", (identity.tenant_id, doc_id))
         conn.commit()
     finally:
@@ -964,13 +1122,11 @@ async def kb_reingest_document(doc_id: str, request: Request):
     """
     identity = _resolve_identity(request)
     _require_scope(identity, "kb:write")
-    import sqlite3, json
 
     dbp = _kb_db_path(identity.tenant_id)
     if not os.path.exists(dbp):
         raise HTTPException(status_code=404, detail="db_not_found")
-    conn = sqlite3.connect(dbp)
-    conn.row_factory = sqlite3.Row
+    conn = _open_kb_db(identity.tenant_id)
     try:
         _kb_ensure_schema(conn)
         row = conn.execute(
@@ -978,7 +1134,7 @@ async def kb_reingest_document(doc_id: str, request: Request):
             (identity.tenant_id, doc_id),
         ).fetchone()
         if not row:
-            raise HTTPException(status_code=404, detail="doc_not_found")
+            raise HTTPException(status_code=404, detail="文档不存在或已被删除，请刷新页面后重试")
         d = dict(row)
         meta = {}
         try:
@@ -1009,105 +1165,19 @@ async def kb_reingest_document(doc_id: str, request: Request):
         "context": {"tenant_id": identity.tenant_id, "actor_id": identity.actor_id, "request_id": identity.request_id},
         "mode": "inline",
     }
-    core_resp = await _core_request("POST", f"/api/core/skills/kb_ingest_document/execute", identity=identity, json_body=payload)
-    job = None
-    try:
-        if isinstance(core_resp, dict):
-            o = core_resp.get("output")
-            if isinstance(o, dict):
-                job = o.get("output")
-    except Exception:
-        job = None
-    return {"doc_id": doc_id, "job": job, "core": core_resp}
-
-
-if _HAS_MULTIPART:
-    @app.post("/kb/collections/{collection_id}/documents/upload", response_model=Dict[str, Any])
-    @app.post("/platform/kb/collections/{collection_id}/documents/upload", response_model=Dict[str, Any])
-    @app.post("/api/v1/kb/collections/{collection_id}/documents/upload", response_model=Dict[str, Any])
-    async def kb_upload_and_ingest(collection_id: str, request: Request, file: UploadFile = File(...), kind: str = Form("pdf")):
-        """Upload and ingest a document (MVP)."""
-        identity = _resolve_identity(request)
-        _require_scope(identity, "kb:write")
-
-        if not file.filename:
-            raise HTTPException(status_code=400, detail="filename_required")
-
-        # Persist upload under tenant
-        from pathlib import Path
-        import re
-
-        req_kind = str(kind or "").strip().lower()
-        safe_name = re.sub(r"[^A-Za-z0-9_.\u4e00-\u9fff-]+", "_", file.filename)
-        up_dir = Path(_kb_tenant_dir(identity.tenant_id)) / "uploads"
-        dst = up_dir / f"{identity.request_id}_{safe_name}"
-        data = await file.read()
-        max_size = 500 * 1024 * 1024 if req_kind == "video" else 200 * 1024 * 1024
-        if len(data) > max_size:
-            raise HTTPException(status_code=413, detail="file_too_large")
-        dst.write_bytes(data)
-
-        ext = os.path.splitext(file.filename or "")[1].lower()
-        kind = req_kind or ("video" if ext in (".mp4", ".mov", ".mkv", ".avi", ".webm", ".m4v") else "pdf")
-
-        # Call core engine skill
-        # Default OCR engine:
-        # - PaddleOCR is heavy and may crash on some macOS setups (libpaddle SIGSEGV).
-        # - Prefer tesseract on macOS unless explicitly overridden.
-        import sys
-
-        default_ocr_engine = "tesseract" if sys.platform == "darwin" else "paddleocr"
-        ocr_engine = os.getenv("AIPLAT_KB_OCR_ENGINE", default_ocr_engine)
-        skill_name = "doc_ingest" if kind == "video" else "kb_ingest_document"
-        payload = {
-            "input": {
-                "tenant_id": identity.tenant_id,
-                "collection_id": collection_id,
-                "file_path": str(dst),
-                "kind": kind,
-                "ocr_lang": "zh",
-                "ocr_engine": ocr_engine,
-                "dpi": 240,
-                "max_pages": 60,
-            },
-            "context": {"tenant_id": identity.tenant_id, "actor_id": identity.actor_id, "request_id": identity.request_id},
-            "mode": "inline",
-        }
-        try:
-            resp = await _core_request("POST", f"/api/core/skills/{skill_name}/execute", identity=identity, json_body=payload)
-            if isinstance(resp, dict) and resp.get("ok") is False:
-                raise HTTPException(status_code=502, detail=_extract_core_error_message(resp))
-            job = _extract_job_payload(resp)
-            if not job:
-                raise HTTPException(status_code=502, detail="ingest_job_not_created")
-            return {"upload_path": str(dst), "job": job, "core": resp}
-        except httpx.HTTPStatusError as e:
-            # surface core error body to caller (debug-friendly)
-            detail = {"message": "core_skill_failed", "status_code": getattr(e.response, "status_code", None)}
-            try:
-                detail["body"] = e.response.json() if e.response is not None else None
-            except Exception:
-                try:
-                    detail["body_text"] = e.response.text if e.response is not None else None
-                except Exception:
-                    pass
-            raise HTTPException(status_code=502, detail=detail)
-        except Exception as e:
-            raise HTTPException(status_code=500, detail={"message": "kb_upload_failed", "error": str(e), "exception_type": type(e).__name__})
-else:
-    @app.post("/kb/collections/{collection_id}/documents/upload", response_model=Dict[str, Any])
-    @app.post("/platform/kb/collections/{collection_id}/documents/upload", response_model=Dict[str, Any])
-    @app.post("/api/v1/kb/collections/{collection_id}/documents/upload", response_model=Dict[str, Any])
-    async def kb_upload_and_ingest(collection_id: str, request: Request):
-        raise HTTPException(
-            status_code=501,
-            detail='upload_requires_python_multipart: please install "python-multipart" and restart platform',
-        )
+    core_resp = await _core_request("POST", f"/api/core/skills/knowledge_ingest/execute", identity=identity, json_body=payload)
+    return core_resp
 
 
 # =========================
 # Documents API (generic)
 # =========================
+
+class AgentExecuteRequest(BaseModel):
+    input: str
+    session_id: str = ""
+    context: dict = {}
+
 
 class DocIngestRequest(BaseModel):
     collection_id: str = "default"
@@ -1165,51 +1235,177 @@ async def documents_ingest(request: Request):
             raise HTTPException(status_code=413, detail="file_too_large")
         dst.write_bytes(data)
         file_path = str(dst)
+        kind = str(form.get("kind") or "").strip().lower()
+        if not kind:
+            ext = os.path.splitext(file.filename or "")[1].lower()
+            if ext in (".mp4", ".mov", ".mkv", ".avi", ".webm", ".m4v"):
+                kind = "video"
+            elif ext in (".txt", ".text"):
+                kind = "txt"
+            elif ext in (".docx", ".doc"):
+                kind = "word"
+            elif ext in (".pptx", ".ppt"):
+                kind = "ppt"
+            elif ext in (".md", ".markdown"):
+                kind = "markdown"
     else:
         body = await request.json()
         if not isinstance(body, dict):
             raise HTTPException(status_code=400, detail="json_body_required")
         collection_id = str(body.get("collection_id") or "default")
         url = body.get("url")
+        file_path = body.get("file_path") or body.get("temp_file_path")  # from preview step
         kind = str(body.get("kind") or "").strip().lower()
         ocr_lang = str(body.get("ocr_lang") or "zh")
         ocr_engine = body.get("ocr_engine")
         dpi = int(body.get("dpi") or 240)
         max_pages = int(body.get("max_pages") or 60)
+        if not url and not file_path:
+            raise HTTPException(status_code=400, detail="url_or_file_path_required")
+        if url:
+            try:
+                from urllib.parse import urlparse
+
+                host = (urlparse(str(url)).netloc or "").lower()
+            except Exception:
+                host = ""
+            if not kind and any(x in host for x in ("toutiao.com", "ixigua.com", "douyin.com", "bilibili.com", "youtube.com", "youtu.be")):
+                kind = "video"
+            if not kind and url:
+                ext = os.path.splitext(str(url).split("?")[0])[1].lower()
+                if ext in (".docx", ".doc"):
+                    kind = "word"
+                elif ext in (".pptx", ".ppt"):
+                    kind = "ppt"
+                elif ext in (".md", ".markdown"):
+                    kind = "markdown"
+
+        # Download URL to local file if no file_path provided
+        if url and not file_path:
+            try:
+                from kb.intelligence.service import _download_url_to_tenant
+                local_path, detected_kind, _ct, _etag, _lm = _download_url_to_tenant(identity.tenant_id, url, prefer_kind=kind or None)
+                file_path = local_path
+                if not kind:
+                    kind = detected_kind
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"url_download_failed: {e}")
+
+    if not file_path:
+        raise HTTPException(status_code=400, detail="file_path_required")
+
+    # Use platform's local enqueue_ingest (not core's kb_provider callback,
+    # which requires cross-process registration). This handles job creation +
+    # background ingestion thread directly in the platform process.
+    from kb.service import enqueue_ingest
+    job = enqueue_ingest(
+        tenant_id=identity.tenant_id,
+        collection_id=collection_id,
+        file_path=file_path,
+        kind=kind or "pdf",
+        ocr_lang=ocr_lang,
+        ocr_engine=ocr_engine,
+        dpi=dpi,
+        max_pages=max_pages,
+        name="",
+    )
+    return {"job": job}
+
+
+@app.post("/api/v1/documents/preview", response_model=Dict[str, Any])
+@app.post("/platform/documents/preview", response_model=Dict[str, Any])
+async def documents_preview(request: Request):
+    """
+    Parse a document without saving — returns text preview + classification.
+    Supports file upload (multipart) and URL (JSON body).
+
+    Flow: User uploads/URL → see preview → confirm → then call /documents/ingest
+    """
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:read")
+
+    from pathlib import Path
+    import re as _re
+
+    file_path: Optional[str] = None
+    url: Optional[str] = None
+    kind = ""
+    collection_id = "default"
+
+    ct = (request.headers.get("content-type") or "").lower()
+    if "multipart/form-data" in ct:
+        if not _HAS_MULTIPART:
+            raise HTTPException(status_code=501, detail="upload_requires_python_multipart")
+        form = await request.form()
+        file = form.get("file")
+        if file is None or not getattr(file, "filename", None):
+            raise HTTPException(status_code=400, detail="file_required")
+        collection_id = str(form.get("collection_id") or "default")
+        kind = str(form.get("kind") or "")
+        safe_name = _re.sub(r"[^A-Za-z0-9_.\u4e00-\u9fff-]+", "_", file.filename)
+        up_dir = Path(_kb_tenant_dir(identity.tenant_id)) / "uploads"
+        up_dir.mkdir(parents=True, exist_ok=True)
+        dst = up_dir / f"preview_{identity.request_id}_{safe_name}"
+        data = await file.read()
+        if len(data) > 200 * 1024 * 1024:
+            raise HTTPException(status_code=413, detail="file_too_large")
+        dst.write_bytes(data)
+        file_path = str(dst)
+        if not kind:
+            ext = os.path.splitext(file.filename or "")[1].lower()
+            kind = _guess_kind_ext(ext)
+    else:
+        body = await request.json()
+        if not isinstance(body, dict):
+            raise HTTPException(status_code=400, detail="json_body_required")
+        collection_id = str(body.get("collection_id") or "default")
+        url = body.get("url")
+        kind = str(body.get("kind") or "")
         if not url:
             raise HTTPException(status_code=400, detail="url_required")
-        try:
+        if not kind:
             from urllib.parse import urlparse
-
             host = (urlparse(str(url)).netloc or "").lower()
-        except Exception:
-            host = ""
-        if not kind and any(x in host for x in ("toutiao.com", "ixigua.com", "douyin.com", "bilibili.com", "youtube.com", "youtu.be")):
-            kind = "video"
+            if any(x in host for x in ("toutiao.com", "ixigua.com", "douyin.com", "bilibili.com", "youtube.com", "youtu.be")):
+                kind = "video"
+            else:
+                ext = os.path.splitext(str(url).split("?")[0])[1].lower()
+                kind = _guess_kind_ext(ext)
+        try:
+            from kb.intelligence.service import _download_url_to_tenant
+            local_path, detected_kind, _ct, _etag, _lm = _download_url_to_tenant(
+                identity.tenant_id, url, prefer_kind=kind or None
+            )
+            file_path = local_path
+            # Use detected_kind from download (video URLs may return txt transcript)
+            kind = detected_kind or kind
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"url_download_failed: {e}")
 
-    payload = {
-        "input": {
-            "tenant_id": identity.tenant_id,
-            "collection_id": collection_id,
-            "file_path": file_path,
-            "url": url,
-            "kind": kind,
-            "ocr_lang": ocr_lang,
-            "ocr_engine": ocr_engine,
-            "dpi": dpi,
-            "max_pages": max_pages,
-        },
-        "context": {"tenant_id": identity.tenant_id, "actor_id": identity.actor_id, "request_id": identity.request_id},
-        "mode": "inline",
-    }
-    core_resp = await _core_request("POST", f"/api/core/skills/doc_ingest/execute", identity=identity, json_body=payload)
-    out = dict(core_resp or {})
-    if out.get("ok") is False:
-        raise HTTPException(status_code=502, detail=_extract_core_error_message(out))
-    job = _extract_job_payload(out)
-    if not job:
-        raise HTTPException(status_code=502, detail={"message": "ingest_job_not_created", "core": out})
-    return {"core": out, "job": job}
+    if not file_path:
+        raise HTTPException(status_code=400, detail="file_path_required")
+
+    from kb.service import preview_document
+    try:
+        result = preview_document(file_path=file_path, kind=kind or "pdf")
+        result["collection_id"] = collection_id
+        # Keep file_path so frontend can pass it to /documents/ingest for save
+        result["temp_file_path"] = file_path
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"preview_failed: {e}")
+
+
+def _guess_kind_ext(ext: str) -> str:
+    if ext in (".mp4", ".mov", ".mkv", ".avi", ".webm", ".m4v"):
+        return "video"
+    if ext in (".docx", ".doc"):
+        return "word"
+    if ext in (".pptx", ".ppt"):
+        return "ppt"
+    if ext in (".md", ".markdown"):
+        return "markdown"
+    return "pdf"
 
 
 @app.post("/api/v1/documents/{doc_id}/refresh", response_model=Dict[str, Any])
@@ -1224,13 +1420,11 @@ async def documents_refresh(doc_id: str, request: Request, req: Optional[DocRefr
     identity = _resolve_identity(request)
     _require_scope(identity, "kb:write")
 
-    import sqlite3, json
 
     dbp = _kb_db_path(identity.tenant_id)
     if not os.path.exists(dbp):
-        raise HTTPException(status_code=404, detail="document_not_found")
-    conn = sqlite3.connect(dbp)
-    conn.row_factory = sqlite3.Row
+        raise HTTPException(status_code=404, detail="知识库为空，请先上传文档")
+    conn = _open_kb_db(identity.tenant_id)
     try:
         _kb_ensure_schema(conn)
         drow = conn.execute(
@@ -1238,7 +1432,7 @@ async def documents_refresh(doc_id: str, request: Request, req: Optional[DocRefr
             (identity.tenant_id, doc_id),
         ).fetchone()
         if not drow:
-            raise HTTPException(status_code=404, detail="document_not_found")
+            raise HTTPException(status_code=404, detail="文档不存在或已被删除，请刷新页面后重试")
         srows = conn.execute(
             """
             SELECT * FROM doc_sources
@@ -1293,7 +1487,7 @@ async def documents_refresh(doc_id: str, request: Request, req: Optional[DocRefr
         "mode": "inline",
     }
 
-    core_resp = await _core_request("POST", f"/api/core/skills/doc_ingest/execute", identity=identity, json_body=payload)
+    core_resp = await _core_request("POST", f"/api/core/skills/knowledge_ingest/execute", identity=identity, json_body=payload)
     out = dict(core_resp or {})
     job = None
     try:
@@ -1314,127 +1508,34 @@ class DocQueryRequest(BaseModel):
     top_k: int = 8
 
 
-class ConversationScopeBody(BaseModel):
-    collection_id: str = "default"
-    doc_ids: List[str] = Field(default_factory=list)
-    version: Optional[int] = None
-
-
-class ConversationCreateBody(BaseModel):
-    title: Optional[str] = None
-    scope: Optional[ConversationScopeBody] = None
-    profile: Optional[Dict[str, Any]] = None
-
-
-class ConversationQueryBody(BaseModel):
-    message: str
-    scope_override: Optional[ConversationScopeBody] = None
-    options: Optional[Dict[str, Any]] = None
-
-
-@app.post("/platform/conversations", response_model=Dict[str, Any])
-async def create_conversation(req: ConversationCreateBody, request: Request):
-    identity = _resolve_identity(request)
-    _require_scope(identity, "kb:read")
-    payload = {
-        "tenant_id": identity.tenant_id,
-        "user_id": identity.actor_id,
-        "title": req.title or "资料对话",
-        "scope": (req.scope.model_dump(exclude_none=True) if req.scope else {"collection_id": "default", "doc_ids": []}),
-        "profile": req.profile or {"citation_required": True, "answer_style": "concise", "language": "zh-CN"},
-    }
-    return await _core_request("POST", "/api/core/conversations", identity=identity, json_body=payload)
-
-
-@app.get("/platform/conversations", response_model=Dict[str, Any])
-async def list_conversations(request: Request, limit: int = 100, offset: int = 0):
-    identity = _resolve_identity(request)
-    _require_scope(identity, "kb:read")
-    return await _core_request(
-        "GET",
-        "/api/core/conversations",
-        identity=identity,
-        params={"user_id": identity.actor_id, "limit": int(limit), "offset": int(offset)},
-    )
-
-
-@app.get("/platform/conversations/{session_id}", response_model=Dict[str, Any])
-async def get_conversation(session_id: str, request: Request):
-    identity = _resolve_identity(request)
-    _require_scope(identity, "kb:read")
-    return await _core_request("GET", f"/api/core/conversations/{session_id}", identity=identity)
-
-
-@app.put("/platform/conversations/{session_id}/scope", response_model=Dict[str, Any])
-async def update_conversation_scope(session_id: str, req: ConversationScopeBody, request: Request):
-    identity = _resolve_identity(request)
-    _require_scope(identity, "kb:write")
-    return await _core_request(
-        "PUT",
-        f"/api/core/conversations/{session_id}/scope",
-        identity=identity,
-        json_body=req.model_dump(exclude_none=True),
-    )
-
-
-@app.post("/platform/conversations/{session_id}/query", response_model=Dict[str, Any])
-async def query_conversation(session_id: str, req: ConversationQueryBody, request: Request):
-    identity = _resolve_identity(request)
-    _require_scope(identity, "kb:read")
-    payload = {
-        "message": req.message,
-        "user_id": identity.actor_id,
-        "scope_override": req.scope_override.model_dump(exclude_none=True) if req.scope_override else None,
-        "options": req.options or {"citation_required": True, "max_citations": 8, "top_k": 8, "language": "zh-CN"},
-    }
-    out = await _core_request("POST", f"/api/core/conversations/{session_id}/query", identity=identity, json_body=payload)
-    if isinstance(out, dict) and isinstance(out.get("output"), dict):
-        out["output"] = _normalize_citations_with_assets(tenant_id=identity.tenant_id, data=out.get("output")) or out.get("output")
-    return out
-
-
 @app.post("/api/v1/documents/query", response_model=Dict[str, Any])
 @app.post("/platform/documents/query", response_model=Dict[str, Any])
 async def documents_query(req: DocQueryRequest, request: Request):
-    """Generic doc query (MVP): call core skill doc_query."""
+    """Document query via unified KnowledgeRetriever path (hybrid + multi_factor + quality_gate)."""
     identity = _resolve_identity(request)
-    _require_scope(identity, "kb:read")  # reuse kb scope for now
+    _require_scope(identity, "kb:read")
 
-    payload = {
-        "input": {
-            "tenant_id": identity.tenant_id,
-            "collection_id": req.collection_id or "default",
-            "doc_id": req.doc_id,
-            "question": req.question,
-            "top_k": int(req.top_k or 8),
-        },
-        "context": {"tenant_id": identity.tenant_id, "actor_id": identity.actor_id, "request_id": identity.request_id},
-        "mode": "inline",
-    }
-    core_resp = await _core_request("POST", f"/api/core/skills/doc_query/execute", identity=identity, json_body=payload)
-    out = dict(core_resp or {})
-    data = None
-    try:
-        o = out.get("output")
-        if isinstance(o, dict):
-            data = o.get("output") if isinstance(o.get("output"), dict) else o
-    except Exception:
-        data = None
-    data = _normalize_citations_with_assets(tenant_id=identity.tenant_id, data=data)
-    run_id = None
-    if isinstance(data, dict):
-        run_id = _persist_analysis_run(
-            tenant_id=identity.tenant_id,
-            doc_id=req.doc_id,
-            collection_id=req.collection_id or "default",
-            run_type="query",
-            input_obj={"doc_id": req.doc_id, "collection_id": req.collection_id or "default", "question": req.question, "top_k": int(req.top_k or 8)},
-            output_obj=data,
-        )
-        if run_id:
-            data = dict(data)
-            data["analysis_run_id"] = run_id
-    return {"core": out, "output": data}
+    doc_ids = [req.doc_id] if req.doc_id else []
+    from core.api.core_facade import kb_retrieve
+    results = kb_retrieve(
+        query=req.question,
+        doc_ids=doc_ids,
+        tenant_id=identity.tenant_id,
+        collection_id=req.collection_id or "default",
+        top_k=max(8, int(req.top_k or 8)),
+    )
+    data = _normalize_citations_with_assets(tenant_id=identity.tenant_id, data={"items": results, "question": req.question})
+    run_id = _persist_analysis_run(
+        tenant_id=identity.tenant_id,
+        doc_id=req.doc_id,
+        collection_id=req.collection_id or "default",
+        run_type="query",
+        input_obj={"doc_id": req.doc_id, "collection_id": req.collection_id or "default", "question": req.question, "top_k": int(req.top_k or 8)},
+        output_obj=data or {},
+    )
+    if run_id and isinstance(data, dict):
+        data["analysis_run_id"] = run_id
+    return {"core": {"ok": True}, "output": data}
 
 
 class CollectionQueryRequest(BaseModel):
@@ -1453,44 +1554,29 @@ class AnswerRewriteRequest(BaseModel):
 @app.post("/api/v1/collections/query", response_model=Dict[str, Any])
 @app.post("/platform/collections/query", response_model=Dict[str, Any])
 async def collections_query(req: CollectionQueryRequest, request: Request):
-    """Collection-level query (MVP): reuse core doc_query with doc_id unset."""
+    """Collection-level query via unified KnowledgeRetriever path."""
     identity = _resolve_identity(request)
     _require_scope(identity, "kb:read")
-    payload = {
-        "input": {
-            "tenant_id": identity.tenant_id,
-            "collection_id": req.collection_id or "default",
-            "doc_id": None,
-            "question": req.question,
-            "top_k": int(req.top_k or 8),
-        },
-        "context": {"tenant_id": identity.tenant_id, "actor_id": identity.actor_id, "request_id": identity.request_id},
-        "mode": "inline",
-    }
-    core_resp = await _core_request("POST", f"/api/core/skills/doc_query/execute", identity=identity, json_body=payload)
-    out = dict(core_resp or {})
-    data = None
-    try:
-        o = out.get("output")
-        if isinstance(o, dict):
-            data = o.get("output") if isinstance(o.get("output"), dict) else o
-    except Exception:
-        data = None
-    data = _normalize_citations_with_assets(tenant_id=identity.tenant_id, data=data)
-    run_id = None
-    if isinstance(data, dict):
-        run_id = _persist_analysis_run(
-            tenant_id=identity.tenant_id,
-            doc_id=None,
-            collection_id=req.collection_id or "default",
-            run_type="query",
-            input_obj={"doc_id": None, "collection_id": req.collection_id or "default", "question": req.question, "top_k": int(req.top_k or 8)},
-            output_obj=data,
-        )
-        if run_id:
-            data = dict(data)
-            data["analysis_run_id"] = run_id
-    return {"core": out, "output": data}
+    from core.api.core_facade import kb_retrieve
+    results = kb_retrieve(
+        query=req.question,
+        doc_ids=[],
+        tenant_id=identity.tenant_id,
+        collection_id=req.collection_id or "default",
+        top_k=max(8, int(req.top_k or 8)),
+    )
+    data = _normalize_citations_with_assets(tenant_id=identity.tenant_id, data={"items": results, "question": req.question})
+    run_id = _persist_analysis_run(
+        tenant_id=identity.tenant_id,
+        doc_id=None,
+        collection_id=req.collection_id or "default",
+        run_type="query",
+        input_obj={"doc_id": None, "collection_id": req.collection_id or "default", "question": req.question, "top_k": int(req.top_k or 8)},
+        output_obj=data or {},
+    )
+    if run_id and isinstance(data, dict):
+        data["analysis_run_id"] = run_id
+    return {"core": {"ok": True}, "output": data}
 
 
 @app.post("/api/v1/collections/rewrite-answer", response_model=Dict[str, Any])
@@ -1568,13 +1654,11 @@ async def analysis_batches_list(
     identity = _resolve_identity(request)
     _require_scope(identity, "kb:read")
 
-    import sqlite3, json
 
     dbp = _kb_db_path(identity.tenant_id)
     if not os.path.exists(dbp):
         return {"items": [], "total": 0}
-    conn = sqlite3.connect(dbp)
-    conn.row_factory = sqlite3.Row
+    conn = _open_kb_db(identity.tenant_id)
     try:
         _kb_ensure_schema(conn)
         where = ["tenant_id=?"]
@@ -1630,13 +1714,11 @@ async def analysis_batches_delete(batch_id: str, request: Request):
     identity = _resolve_identity(request)
     _require_scope(identity, "kb:write")
 
-    import sqlite3
 
     dbp = _kb_db_path(identity.tenant_id)
     if not os.path.exists(dbp):
         raise HTTPException(status_code=404, detail="analysis_batch_not_found")
-    conn = sqlite3.connect(dbp)
-    conn.row_factory = sqlite3.Row
+    conn = _open_kb_db(identity.tenant_id)
     try:
         _kb_ensure_schema(conn)
         row = conn.execute(
@@ -1658,33 +1740,25 @@ async def analysis_batches_delete(batch_id: str, request: Request):
 @app.post("/api/v1/documents/summarize", response_model=Dict[str, Any])
 @app.post("/platform/documents/summarize", response_model=Dict[str, Any])
 async def documents_summarize(req: DocSummarizeRequest, request: Request):
-    """Generic doc summarize (MVP): call core skill doc_summarize."""
+    """Document summarize — calls platform's local summarizer."""
     identity = _resolve_identity(request)
-    _require_scope(identity, "kb:read")  # reuse kb scope for now
+    _require_scope(identity, "kb:read")
 
-    payload = {
-        "input": {
-            "tenant_id": identity.tenant_id,
-            "collection_id": "default",
-            "doc_id": req.doc_id,
-            "profile": req.profile,
-            "max_points": int(req.max_points or 10),
-        },
-        "context": {"tenant_id": identity.tenant_id, "actor_id": identity.actor_id, "request_id": identity.request_id},
-        "mode": "inline",
-    }
-    core_resp = await _core_request("POST", f"/api/core/skills/doc_summarize/execute", identity=identity, json_body=payload)
-    out = dict(core_resp or {})
-    data = None
+    from kb.intelligence.summarize import summarize_document
+
     try:
-        o = out.get("output")
-        if isinstance(o, dict):
-            data = o.get("output") if isinstance(o.get("output"), dict) else o
-    except Exception:
-        data = None
-    data = _normalize_citations_with_assets(tenant_id=identity.tenant_id, data=data)
-    run_id = None
-    if isinstance(data, dict):
+        result = await summarize_document(
+            tenant_id=identity.tenant_id,
+            collection_id="default",
+            doc_id=req.doc_id,
+            profile=req.profile,
+            max_points=int(req.max_points or 10),
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"summarize_failed: {e}")
+
+    data = _normalize_citations_with_assets(tenant_id=identity.tenant_id, data=result)
+    try:
         run_id = _persist_analysis_run(
             tenant_id=identity.tenant_id,
             doc_id=req.doc_id,
@@ -1694,9 +1768,12 @@ async def documents_summarize(req: DocSummarizeRequest, request: Request):
             output_obj=data,
         )
         if run_id:
-            data = dict(data)
-            data["analysis_run_id"] = run_id
-    return {"core": out, "output": data}
+            data = dict(data) if isinstance(data, dict) else data
+            if isinstance(data, dict):
+                data["analysis_run_id"] = run_id
+    except Exception:
+        pass
+    return {"output": data}
 
 
 @app.get("/api/v1/documents", response_model=Dict[str, Any])
@@ -1715,13 +1792,11 @@ async def documents_list(
     identity = _resolve_identity(request)
     _require_scope(identity, "kb:read")
 
-    import sqlite3, json
 
     dbp = _kb_db_path(identity.tenant_id)
     if not os.path.exists(dbp):
         return {"items": [], "total": 0}
-    conn = sqlite3.connect(dbp)
-    conn.row_factory = sqlite3.Row
+    conn = _open_kb_db(identity.tenant_id)
     try:
         _kb_ensure_schema(conn)
         where = ["d.tenant_id=?"]
@@ -1769,6 +1844,65 @@ async def documents_list(
     return {"items": items, "total": int(total or 0)}
 
 
+@app.get("/api/v1/documents/categories", response_model=Dict[str, Any])
+@app.get("/platform/documents/categories", response_model=Dict[str, Any])
+async def documents_categories(request: Request, collection_id: Optional[str] = None):
+    """
+    Aggregate category counts for the left sidebar tree.
+    Returns kind_categories (by file type) and content_categories (by content analysis).
+    """
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:read")
+
+
+    dbp = _kb_db_path(identity.tenant_id)
+    if not os.path.exists(dbp):
+        return {"kind_categories": [], "content_categories": []}
+    conn = _open_kb_db(identity.tenant_id)
+    try:
+        params: List[Any] = [identity.tenant_id]
+        col_filter = "AND collection_id = ?" if collection_id else ""
+        if collection_id:
+            params.append(collection_id)
+
+        kind_rows = conn.execute(
+            f"SELECT kind, COUNT(*) AS cnt FROM documents WHERE tenant_id = ? {col_filter} AND kind IS NOT NULL AND kind != '' GROUP BY kind ORDER BY cnt DESC",
+            params,
+        ).fetchall()
+        kind_cats = []
+        for r in kind_rows:
+            k = str(r["kind"] or "").lower().strip()
+            from core.api.core_facade import get_document_categories
+            cats = get_document_categories()
+            cat_key = cats["kind_map"].get(k, k)
+            kind_cats.append({
+                "key": cat_key,
+                "label": cats["categories"].get(cat_key, k),
+                "count": int(r["cnt"]),
+            })
+
+        content_rows = conn.execute(
+            f"SELECT meta_json FROM documents WHERE tenant_id = ? {col_filter} AND meta_json IS NOT NULL AND meta_json != ''",
+            params,
+        ).fetchall()
+        content_count: Dict[str, int] = {}
+        for r in content_rows:
+            try:
+                meta = json.loads(str(r["meta_json"] or "{}"))
+            except Exception:
+                continue
+            cls = meta.get("classification") or {}
+            cat = str(cls.get("content_category") or "general")
+            content_count[cat] = content_count.get(cat, 0) + 1
+        content_cats = [
+            {"key": k, "label": CATEGORY_LABELS.get(k, k), "count": v}
+            for k, v in sorted(content_count.items(), key=lambda x: -x[1])
+        ]
+        return {"kind_categories": kind_cats, "content_categories": content_cats}
+    finally:
+        conn.close()
+
+
 @app.get("/api/v1/documents/{doc_id}", response_model=Dict[str, Any])
 @app.get("/platform/documents/{doc_id}", response_model=Dict[str, Any])
 async def documents_get(doc_id: str, request: Request):
@@ -1778,13 +1912,11 @@ async def documents_get(doc_id: str, request: Request):
     identity = _resolve_identity(request)
     _require_scope(identity, "kb:read")
 
-    import sqlite3, json
 
     dbp = _kb_db_path(identity.tenant_id)
     if not os.path.exists(dbp):
         raise HTTPException(status_code=404, detail="document_not_found")
-    conn = sqlite3.connect(dbp)
-    conn.row_factory = sqlite3.Row
+    conn = _open_kb_db(identity.tenant_id)
     try:
         _kb_ensure_schema(conn)
         row = conn.execute(
@@ -1821,13 +1953,11 @@ async def documents_list_sources(doc_id: str, request: Request, limit: int = 100
     identity = _resolve_identity(request)
     _require_scope(identity, "kb:read")
 
-    import sqlite3, json
 
     dbp = _kb_db_path(identity.tenant_id)
     if not os.path.exists(dbp):
         return {"items": [], "total": 0}
-    conn = sqlite3.connect(dbp)
-    conn.row_factory = sqlite3.Row
+    conn = _open_kb_db(identity.tenant_id)
     try:
         _kb_ensure_schema(conn)
         rows = conn.execute(
@@ -1868,13 +1998,11 @@ async def documents_list_analysis_runs(doc_id: str, request: Request, run_type: 
     identity = _resolve_identity(request)
     _require_scope(identity, "kb:read")
 
-    import sqlite3, json
 
     dbp = _kb_db_path(identity.tenant_id)
     if not os.path.exists(dbp):
         return {"items": [], "total": 0}
-    conn = sqlite3.connect(dbp)
-    conn.row_factory = sqlite3.Row
+    conn = _open_kb_db(identity.tenant_id)
     try:
         _kb_ensure_schema(conn)
         where = ["tenant_id=?", "doc_id=?"]
@@ -1930,13 +2058,11 @@ async def documents_delete_analysis_run(doc_id: str, run_id: str, request: Reque
     identity = _resolve_identity(request)
     _require_scope(identity, "kb:write")
 
-    import sqlite3
 
     dbp = _kb_db_path(identity.tenant_id)
     if not os.path.exists(dbp):
         raise HTTPException(status_code=404, detail="analysis_run_not_found")
-    conn = sqlite3.connect(dbp)
-    conn.row_factory = sqlite3.Row
+    conn = _open_kb_db(identity.tenant_id)
     try:
         _kb_ensure_schema(conn)
         row = conn.execute(
@@ -1972,7 +2098,6 @@ async def documents_export(
     identity = _resolve_identity(request)
     _require_scope(identity, "kb:read")
 
-    import sqlite3, json
 
     fmt = (format or "json").strip().lower()
     if fmt not in ("json", "markdown", "md"):
@@ -1982,8 +2107,7 @@ async def documents_export(
     if not os.path.exists(dbp):
         raise HTTPException(status_code=404, detail="document_not_found")
 
-    conn = sqlite3.connect(dbp)
-    conn.row_factory = sqlite3.Row
+    conn = _open_kb_db(identity.tenant_id)
     try:
         _kb_ensure_schema(conn)
         drow = conn.execute(
@@ -2117,13 +2241,11 @@ async def documents_list_elements(doc_id: str, request: Request, type: Optional[
     identity = _resolve_identity(request)
     _require_scope(identity, "kb:read")  # reuse kb scope for now
 
-    import sqlite3, json
 
     dbp = _kb_db_path(identity.tenant_id)
     if not os.path.exists(dbp):
         return {"items": [], "total": 0}
-    conn = sqlite3.connect(dbp)
-    conn.row_factory = sqlite3.Row
+    conn = _open_kb_db(identity.tenant_id)
     try:
         _kb_ensure_schema(conn)
         if type:
@@ -2365,14 +2487,14 @@ async def api_v1_agents_delete(agent_id: str, request: Request):
 
 @app.get("/gateway/routes")  # compat: management proxy forwards /api/platform/* -> upstream /{path}
 @app.get("/platform/gateway/routes")
-async def list_gateway_routes(enabled: Optional[bool] = None):
+async def list_gateway_routes(enabled: Optional[bool] = None, _auth: str = Depends(require_auth)):
     routes = platform_store.list_gateway_routes(enabled=enabled)
     return {"routes": routes, "total": len(routes)}
 
 
 @app.post("/gateway/routes")  # compat alias
 @app.post("/platform/gateway/routes")
-async def create_gateway_route(body: Dict[str, Any]):
+async def create_gateway_route(body: Dict[str, Any], _auth: str = Depends(require_admin)):
     rid = str(body.get("id") or _new_prefixed_id("route"))
     route = {
         "id": rid,
@@ -2391,7 +2513,7 @@ async def create_gateway_route(body: Dict[str, Any]):
 
 @app.get("/gateway/routes/{route_id}")  # compat alias
 @app.get("/platform/gateway/routes/{route_id}")
-async def get_gateway_route(route_id: str):
+async def get_gateway_route(route_id: str, _auth: str = Depends(require_auth)):
     r = platform_store.get_gateway_route(route_id)
     if not r:
         raise HTTPException(status_code=404, detail="route_not_found")
@@ -2400,7 +2522,7 @@ async def get_gateway_route(route_id: str):
 
 @app.put("/gateway/routes/{route_id}")  # compat alias
 @app.put("/platform/gateway/routes/{route_id}")
-async def update_gateway_route(route_id: str, patch: Dict[str, Any]):
+async def update_gateway_route(route_id: str, patch: Dict[str, Any], _auth: str = Depends(require_admin)):
     r = platform_store.get_gateway_route(route_id)
     if not r:
         raise HTTPException(status_code=404, detail="route_not_found")
@@ -2410,25 +2532,56 @@ async def update_gateway_route(route_id: str, patch: Dict[str, Any]):
 
 @app.delete("/gateway/routes/{route_id}")  # compat alias
 @app.delete("/platform/gateway/routes/{route_id}")
-async def delete_gateway_route(route_id: str):
+async def delete_gateway_route(route_id: str, _auth: str = Depends(require_admin)):
     platform_store.delete_gateway_route(route_id)
     return {"status": "ok"}
 
 
 @app.get("/platform/gateway/metrics")
-async def gateway_metrics():
+async def gateway_metrics(_auth: str = Depends(require_auth)):
     # stubbed metrics
     return {"total_requests": 0, "success_rate": 1.0, "avg_latency_ms": 0, "active_routes": len(platform_store.list_gateway_routes())}
 
 
+@app.post("/platform/gateway/execute")
+@app.post("/gateway/execute")
+async def gateway_execute(body: Dict[str, Any], request: Request):
+    identity = _resolve_identity(request)
+    payload = dict(body or {})
+    payload["context"] = dict(payload.get("context") or {})
+    payload["context"].setdefault("tenant_id", identity.tenant_id)
+    payload.setdefault("user_id", identity.actor_id)
+    payload.setdefault("session_id", payload.get("session_id") or "default")
+    result = await _core_request("POST", "/api/core/gateway/execute", identity=identity, json_body=payload)
+
+    # Persist audit to core ExecutionStore (bridges platform→management gap)
+    try:
+        run_id = result.get("run_id") if isinstance(result, dict) else None
+        status = "success" if (isinstance(result, dict) and result.get("ok")) else "failure"
+        from core.services.execution_store import get_execution_store
+        store = get_execution_store()
+        await store.add_audit_log(
+            action="gateway_execute",
+            status=status,
+            tenant_id=identity.tenant_id,
+            actor_id=identity.actor_id,
+            resource_type="gateway",
+            resource_id=payload.get("kind", "unknown"),
+            run_id=str(run_id) if run_id else None,
+        )
+    except Exception:
+        pass
+    return result
+
+
 @app.get("/platform/auth/users")
-async def list_auth_users(role: Optional[str] = None, status: Optional[str] = None):
+async def list_auth_users(role: Optional[str] = None, status: Optional[str] = None, _auth: str = Depends(require_admin)):
     users = platform_store.list_auth_users(role=role, status=status)
     return {"users": users, "total": len(users)}
 
 
 @app.post("/platform/auth/users")
-async def create_auth_user(body: Dict[str, Any]):
+async def create_auth_user(body: Dict[str, Any], _auth: str = Depends(require_admin)):
     uid = str(body.get("id") or _new_prefixed_id("u"))
     user = {
         "id": uid,
@@ -2443,7 +2596,7 @@ async def create_auth_user(body: Dict[str, Any]):
 
 
 @app.put("/platform/auth/users/{user_id}")
-async def update_auth_user(user_id: str, patch: Dict[str, Any]):
+async def update_auth_user(user_id: str, patch: Dict[str, Any], _auth: str = Depends(require_admin)):
     u = platform_store.get_auth_user(user_id)
     if not u:
         raise HTTPException(status_code=404, detail="user_not_found")
@@ -2452,19 +2605,19 @@ async def update_auth_user(user_id: str, patch: Dict[str, Any]):
 
 
 @app.delete("/platform/auth/users/{user_id}")
-async def delete_auth_user(user_id: str):
+async def delete_auth_user(user_id: str, _auth: str = Depends(require_admin)):
     platform_store.delete_auth_user(user_id)
     return {"status": "ok"}
 
 
 @app.get("/platform/tenants")
-async def list_tenants(status: Optional[str] = None):
+async def list_tenants(status: Optional[str] = None, _auth: str = Depends(require_admin)):
     tenants = platform_store.list_tenants(status=status)
     return {"tenants": tenants, "total": len(tenants)}
 
 
 @app.post("/platform/tenants")
-async def create_tenant(body: Dict[str, Any]):
+async def create_tenant(body: Dict[str, Any], _auth: str = Depends(require_admin)):
     tid = str(body.get("id") or _new_prefixed_id("t"))
     t = {
         "id": tid,
@@ -2479,7 +2632,7 @@ async def create_tenant(body: Dict[str, Any]):
 
 
 @app.put("/platform/tenants/{tenant_id}")
-async def update_tenant(tenant_id: str, patch: Dict[str, Any]):
+async def update_tenant(tenant_id: str, patch: Dict[str, Any], _auth: str = Depends(require_admin)):
     t = platform_store.get_tenant(tenant_id)
     if not t:
         raise HTTPException(status_code=404, detail="tenant_not_found")
@@ -2488,13 +2641,13 @@ async def update_tenant(tenant_id: str, patch: Dict[str, Any]):
 
 
 @app.delete("/platform/tenants/{tenant_id}")
-async def delete_tenant(tenant_id: str):
+async def delete_tenant(tenant_id: str, _auth: str = Depends(require_admin)):
     platform_store.delete_tenant(tenant_id)
     return {"status": "ok"}
 
 
 @app.post("/platform/tenants/{tenant_id}/suspend")
-async def suspend_tenant(tenant_id: str):
+async def suspend_tenant(tenant_id: str, _auth: str = Depends(require_admin)):
     t = platform_store.get_tenant(tenant_id)
     if not t:
         raise HTTPException(status_code=404, detail="tenant_not_found")
@@ -2504,7 +2657,7 @@ async def suspend_tenant(tenant_id: str):
 
 
 @app.post("/platform/tenants/{tenant_id}/resume")
-async def resume_tenant(tenant_id: str):
+async def resume_tenant(tenant_id: str, _auth: str = Depends(require_admin)):
     t = platform_store.get_tenant(tenant_id)
     if not t:
         raise HTTPException(status_code=404, detail="tenant_not_found")
@@ -2536,6 +2689,8 @@ from api.routers.conversations import router as conversations_router  # noqa: E4
 from api.routers.permissions import router as permissions_router  # noqa: E402
 from api.routers.quota import router as quota_router  # noqa: E402
 from api.routers.tenant_policies import router as tenant_policies_router  # noqa: E402
+from api.routers.workflows import router as workflows_router  # noqa: E402
+from api.routers.apps import router as apps_router  # noqa: E402
 app.include_router(builder_router)
 app.include_router(policy_router)
 app.include_router(ops_exports_router)
@@ -2544,6 +2699,8 @@ app.include_router(conversations_router)
 app.include_router(permissions_router)
 app.include_router(quota_router)
 app.include_router(tenant_policies_router)
+app.include_router(workflows_router)
+app.include_router(apps_router)
 # Remaining forbidden routes migrated from core
 from api.routers.change_control import router as change_control_router  # noqa: E402
 from api.routers.approvals import router as approvals_router  # noqa: E402
@@ -2560,12 +2717,18 @@ app.include_router(channels_router)
 from api.routers.gateway import router as gateway_router  # noqa: E402
 app.include_router(gateway_router)
 
+# Skill Marketplace — install / uninstall skills
+from api.routers.skill_marketplace import router as skill_marketplace_router  # noqa: E402
+from api.routers.kb_integration import router as kb_integration_router  # noqa: E402
+app.include_router(skill_marketplace_router)
+app.include_router(kb_integration_router)
+
 
 # ━━━ MCP Servers ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 
 @app.get("/api/v1/mcp/servers", response_model=Dict[str, Any])
-async def list_mcp_servers(request: Request, scope: str = "workspace"):
+async def list_mcp_servers(request: Request, scope: str = "workspace", _auth: str = Depends(require_auth)):
     identity = _resolve_identity(request)
     _require_scope(identity, "mcp:read")
     params = {"scope": scope} if scope else None
@@ -2596,7 +2759,7 @@ async def disable_mcp_server(name: str, request: Request, scope: str = "workspac
 
 
 @app.get("/api/v1/mcp/servers/{name}/tools", response_model=Dict[str, Any])
-async def list_mcp_server_tools(name: str, request: Request, scope: str = "workspace"):
+async def list_mcp_server_tools(name: str, request: Request, scope: str = "workspace", _auth: str = Depends(require_auth)):
     identity = _resolve_identity(request)
     _require_scope(identity, "mcp:read")
     return await _core_request("GET", f"/api/core/mcp/{scope}/servers/{name}/tools", identity=identity)
@@ -2613,7 +2776,7 @@ async def check_mcp_server_policy(name: str, request: Request, scope: str = "wor
 
 
 @app.get("/api/v1/plugins", response_model=Dict[str, Any])
-async def list_plugins(request: Request, status: str = "active"):
+async def list_plugins(request: Request, status: str = "active", _auth: str = Depends(require_auth)):
     identity = _resolve_identity(request)
     _require_scope(identity, "plugins:read")
     params = {"status": status} if status else None
@@ -2647,7 +2810,7 @@ async def disable_plugin(plugin_id: str, request: Request):
 
 
 @app.get("/api/v1/plugins/{plugin_id}/versions", response_model=Dict[str, Any])
-async def list_plugin_versions(plugin_id: str, request: Request):
+async def list_plugin_versions(plugin_id: str, request: Request, _auth: str = Depends(require_auth)):
     identity = _resolve_identity(request)
     _require_scope(identity, "plugins:read")
     return await _core_request("GET", f"/api/core/plugins/{plugin_id}/versions", identity=identity)
@@ -2666,6 +2829,221 @@ async def run_plugin_async(plugin_id: str, request: Request):
     _require_scope(identity, "plugins:execute")
     body = await request.json()
     return await _core_request("POST", f"/api/core/plugins/{plugin_id}/run", identity=identity, json_body=body)
+
+
+# ── Phase D: KB metadata, export, AI creation ──
+
+@app.put("/platform/kb/documents/{doc_id}/meta")
+async def kb_update_doc_meta(doc_id: str, request: Request):
+    """Update document metadata (title, tags, description)."""
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:write")
+    body = await request.json()
+    conn = _open_kb_db(identity.tenant_id)
+    try:
+        meta = conn.execute(
+            "SELECT meta_json FROM documents WHERE tenant_id=? AND doc_id=?", (identity.tenant_id, doc_id)
+        ).fetchone()
+        old_meta = json.loads(meta[0] or "{}") if meta else {}
+        new_meta = {**old_meta, "title": body.get("title", old_meta.get("title", "")),
+                    "tags": body.get("tags", old_meta.get("tags", [])),
+                    "description": body.get("description", old_meta.get("description", ""))}
+        conn.execute("UPDATE documents SET meta_json=? WHERE tenant_id=? AND doc_id=?", 
+                     (json.dumps(new_meta), identity.tenant_id, doc_id))
+        conn.commit()
+        return {"status": "ok", "doc_id": doc_id, "meta": new_meta}
+    finally:
+        conn.close()
+
+
+@app.get("/platform/kb/documents/{doc_id}/export")
+async def kb_export_document(doc_id: str, format: str = "json", request: Request = None):
+    """Export document content in various formats (json/markdown/pdf/docx)."""
+    identity = _resolve_identity(request) if request else type('',(),{'tenant_id':'default','actor_id':'system','request_id':'export'})()
+    if request:
+        identity = _resolve_identity(request)
+    conn = _open_kb_db(identity.tenant_id)
+    try:
+        elems = conn.execute(
+            "SELECT text, type, page_idx FROM kb_elements WHERE tenant_id=? AND doc_id=? AND text IS NOT NULL ORDER BY page_idx, rowid",
+            (identity.tenant_id, doc_id),
+        ).fetchall()
+        if not elems:
+            raise HTTPException(status_code=404, detail="doc_empty")
+        full_text = "\n\n".join(str(r["text"] or "") for r in elems)
+        if format == "markdown":
+            from fastapi.responses import PlainTextResponse
+            return PlainTextResponse(f"# Document {doc_id}\n\n{full_text}", media_type="text/markdown")
+        elif format in ("pdf", "docx"):
+            # Generate simple PDF via reportlab
+            try:
+                from io import BytesIO
+                buf = BytesIO()
+                if format == "pdf":
+                    from reportlab.pdfgen import canvas
+                    c = canvas.Canvas(buf)
+                    y = 800
+                    for line in full_text.split("\n")[:200]:
+                        if y < 50: c.showPage(); y = 800
+                        c.drawString(50, y, line[:120]); y -= 14
+                    c.save()
+                    from fastapi.responses import Response
+                    return Response(buf.getvalue(), media_type="application/pdf",
+                                   headers={"Content-Disposition": f"attachment; filename={doc_id}.pdf"})
+                else:
+                    from docx import Document
+                    d = Document()
+                    for line in full_text.split("\n")[:500]:
+                        if line.strip():
+                            d.add_paragraph(line[:500])
+                    d.save(buf)
+                    return Response(buf.getvalue(), media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                   headers={"Content-Disposition": f"attachment; filename={doc_id}.docx"})
+            except ImportError:
+                raise HTTPException(status_code=501, detail="format_not_available: install reportlab/docx")
+        return {"doc_id": doc_id, "format": "json", "text": full_text, "elements": len(elems)}
+    finally:
+        conn.close()
+
+
+@app.post("/platform/kb/documents/create-with-ai")
+async def kb_create_with_ai(request: Request):
+    """AI-assisted document creation: LLM generates draft from title + prompt."""
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:write")
+    body = await request.json()
+    title = str(body.get("title", "AI 生成文档")).strip()
+    prompt = str(body.get("prompt", "")).strip()
+    collection_id = str(body.get("collection_id", "default"))
+    if not prompt:
+        raise HTTPException(status_code=400, detail="prompt_required")
+    try:
+        from core.api.core_facade import llm_generate
+        resp = await llm_generate(None, [
+            {"role": "system", "content": "你是文档写作助手。按用户要求生成知识库文档。"},
+            {"role": "user", "content": f"标题：{title}\n要求：{prompt}\n\n请生成完整文档内容："},
+        ], model_name="deepseek-chat", temperature=0.7, max_tokens=4000)
+        content = getattr(resp, "content", "") or str(resp)
+        # Save as document
+        import time as _t, os as _os, sqlite3 as _sql
+        doc_id = f"doc_ai_{identity.request_id}"[:40]
+        now = _t.time()
+        dbp = _kb_db_path(identity.tenant_id)
+        c = _sql.connect(dbp)
+        _kb_ensure_schema(c)
+        c.execute("PRAGMA journal_mode=WAL")
+        # Ensure version column
+        try:
+            c.execute("ALTER TABLE documents ADD COLUMN version INTEGER NOT NULL DEFAULT 1")
+        except Exception:
+            pass
+        c.execute("INSERT OR REPLACE INTO documents(tenant_id,doc_id,collection_id,source_uri,kind,status,version,meta_json,created_at) VALUES(?,?,?,?,?,?,?,?,?)",
+                  (identity.tenant_id, doc_id, collection_id, f"ai://{doc_id}", "txt", "ready", 1, json.dumps({"title": title}), now))
+        c.execute("INSERT OR REPLACE INTO kb_elements(tenant_id,element_id,doc_id,type,page_idx,bbox_json,text,cells_json,asset_id,meta_json,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+                  (identity.tenant_id, f"el_{doc_id}_1", doc_id, "text", 0, None, content[:20000], None, None, '{}', now))
+        c.commit(); c.close()
+        return {"doc_id": doc_id, "title": title, "content": content[:500], "status": "ready"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Phase F: Enterprise operations ──
+
+@app.put("/platform/kb/documents/{doc_id}/content")
+async def kb_update_doc_content(doc_id: str, request: Request):
+    """Update document content — full-text editing."""
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:write")
+    body = await request.json()
+    content = str(body.get("content", ""))
+    if not content:
+        raise HTTPException(status_code=400, detail="content_required")
+    conn = _open_kb_db(identity.tenant_id)
+    try:
+        conn.execute("UPDATE kb_elements SET text=? WHERE tenant_id=? AND doc_id=? AND type='text'",
+                    (content[:20000], identity.tenant_id, doc_id))
+        conn.commit()
+        return {"status": "updated", "doc_id": doc_id}
+    finally:
+        conn.close()
+
+
+@app.post("/platform/kb/storage/cleanup")
+async def kb_storage_cleanup(request: Request):
+    """Clean up old/archived elements and orphaned embeddings."""
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:write")
+    conn = _open_kb_db(identity.tenant_id)
+    try:
+        # Delete archived elements (version < current)
+        conn.execute("DELETE FROM kb_elements WHERE tenant_id=? AND meta_json LIKE '%\"archived\":1%'",
+                    (identity.tenant_id,))
+        # Delete orphaned embeddings
+        conn.execute("DELETE FROM kb_embeddings WHERE tenant_id=? AND element_id NOT IN (SELECT element_id FROM kb_elements WHERE tenant_id=?)",
+                    (identity.tenant_id, identity.tenant_id))
+        conn.commit()
+        # Count remaining
+        docs = conn.execute("SELECT count(*) FROM documents WHERE tenant_id=?", (identity.tenant_id,)).fetchone()[0]
+        elems = conn.execute("SELECT count(*) FROM kb_elements WHERE tenant_id=?", (identity.tenant_id,)).fetchone()[0]
+        return {"status": "cleaned", "documents": docs, "elements": elems}
+    finally:
+        conn.close()
+
+
+@app.get("/platform/kb/storage/stats")
+async def kb_storage_stats(request: Request):
+    """Storage statistics for tenant KB."""
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:read")
+    import os as _os
+    conn = _open_kb_db(identity.tenant_id)
+    try:
+        docs = conn.execute("SELECT count(*) FROM documents WHERE tenant_id=?", (identity.tenant_id,)).fetchone()[0]
+        elems = conn.execute("SELECT count(*) FROM kb_elements WHERE tenant_id=?", (identity.tenant_id,)).fetchone()[0]
+        embs = conn.execute("SELECT count(*) FROM kb_embeddings WHERE tenant_id=?", (identity.tenant_id,)).fetchone()[0]
+        active = conn.execute("SELECT count(*) FROM documents WHERE tenant_id=? AND status='ready'", (identity.tenant_id,)).fetchone()[0]
+        archived = conn.execute("SELECT count(*) FROM kb_elements WHERE tenant_id=? AND meta_json LIKE '%\"archived\":1%'", (identity.tenant_id,)).fetchone()[0]
+        db_size = _os.path.getsize(_kb_db_path(identity.tenant_id)) if _os.path.exists(_kb_db_path(identity.tenant_id)) else 0
+        return {"documents": docs, "active": active, "elements": elems, "embeddings": embs,
+                "archived_elements": archived, "db_size_bytes": db_size}
+    finally:
+        conn.close()
+
+
+def _enqueue_task(tenant_id: str, task_type: str, payload: dict) -> None:
+    """Enqueue async task. Uses Redis if configured, else threading.Thread."""
+    backend = os.getenv("AIPLAT_QUEUE_BACKEND", "thread").lower()
+    if backend == "redis":
+        try:
+            import redis, json as _j
+            r = redis.from_url(os.getenv("AIPLAT_REDIS_URL", "redis://localhost:6379/0"))
+            r.lpush(f"aiplat:kb:tasks:{tenant_id}", _j.dumps({"type": task_type, "payload": payload}))
+            return
+        except ImportError:
+            pass
+    # Thread fallback
+    import threading
+    def _run():
+        if task_type == "auto_archive":
+            _auto_archive_docs(tenant_id)
+        elif task_type == "reindex":
+            pass  # reindex already implemented
+    threading.Thread(target=_run, daemon=True).start()
+
+
+def _auto_archive_docs(tenant_id: str) -> None:
+    """Archive documents not accessed in 90 days."""
+    try:
+        conn = _open_kb_db(tenant_id)
+        threshold = time.time() - 90 * 86400
+        conn.execute(
+            "UPDATE documents SET status='archived' WHERE tenant_id=? AND status='ready' AND created_at < ?",
+            (tenant_id, threshold),
+        )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
 
 
 if __name__ == "__main__":

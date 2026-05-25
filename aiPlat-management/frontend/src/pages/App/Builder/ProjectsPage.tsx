@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Plus, FolderOpen, Trash2, Clock, BarChart3, Users } from 'lucide-react';
 import { projectApi, builderTeamApi, type ProjectItem, type TeamConfig } from '../../../services';
-import { Card, CardHeader, CardContent, Button, Textarea, toast } from '../../../components/ui';
+import { Card, CardContent, Button, Textarea, toast } from '../../../components/ui';
 import { toastGateError } from '../../../components/ui';
 
 const ProjectsPage: React.FC = () => {
@@ -137,6 +137,8 @@ const ProjectsPage: React.FC = () => {
                     <span>{p.team_name || `${p.team_stages.length} 个角色`}</span>
                   </div>
                 )}
+
+                <div className="text-xs text-gray-600 font-mono">{p.project_id}</div>
 
                 {run ? (
                   <div className="space-y-1.5 text-xs">

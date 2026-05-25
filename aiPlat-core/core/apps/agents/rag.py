@@ -11,7 +11,7 @@ import asyncio
 
 from .base import BaseAgent, AgentMetadata
 from ...harness.interfaces import AgentResult, AgentConfig, AgentContext
-from ...harness.knowledge import KnowledgeRetriever, KnowledgeQuery, KnowledgeResult
+from ...harness.knowledge import KnowledgeRetriever, KnowledgeResult
 
 
 @dataclass
@@ -41,7 +41,7 @@ class RAGAgent(BaseAgent):
     ):
         super().__init__(config, model=model)
         self._rag_config = rag_config or RAGConfig()
-        self._retriever = retriever or KnowledgeRetriever()
+        self._retriever = retriever or self._create_retriever()
         self._name = "rag_agent"
         self._description = "Retrieval-Augmented Generation Agent"
         self._metadata = AgentMetadata(
@@ -51,6 +51,27 @@ class RAGAgent(BaseAgent):
             capabilities=["retrieval", "generation", "knowledge_qa"],
             supported_loop_types=["rag", "retrieval_first"],
         )
+
+    def _create_retriever(self) -> KnowledgeRetriever:
+        import os
+        backend = os.getenv("AIPLAT_VECTOR_BACKEND", "")
+        common_kw = dict(
+            retrieval_strategy="hybrid",
+            rerank_enabled=True,
+            rerank_method="multi_factor",
+            rerank_top_k=self._rag_config.rerank_top_k,
+            quality_gate_enabled=True,
+        )
+        if not backend:
+            return KnowledgeRetriever(**common_kw)
+        try:
+            from ...harness.knowledge import create_vector_retriever
+            retriever = create_vector_retriever(backend=backend)
+            for k, v in common_kw.items():
+                setattr(retriever, f"_{k}", v)
+            return retriever
+        except Exception:
+            return KnowledgeRetriever(**common_kw)
     
     @property
     def metadata(self) -> AgentMetadata:
@@ -96,37 +117,11 @@ class RAGAgent(BaseAgent):
             return AgentResult(success=False, output=None, error=str(e), metadata={"agent": self._name})
     
     async def _retrieve(self, query: str) -> List[KnowledgeResult]:
-        knowledge_query = KnowledgeQuery(
-            query=query,
-            limit=self._rag_config.top_k,
-            min_relevance=self._rag_config.min_relevance,
-        )
-        
         results = await self._retriever.search(query, limit=self._rag_config.top_k)
-        
         if self._rag_config.rerank:
-            results = self._rerank_results(query, results)
             results = results[:self._rag_config.rerank_top_k]
-        
         return results
     
-    def _rerank_results(
-        self,
-        query: str,
-        results: List[KnowledgeResult],
-    ) -> List[KnowledgeResult]:
-        def relevance_score(result: KnowledgeResult) -> float:
-            query_words = set(query.lower().split())
-            content_words = set(result.entry.content.lower().split())
-            overlap = len(query_words & content_words)
-            return overlap / len(query_words) if query_words else 0
-        
-        sorted_results = sorted(
-            results,
-            key=lambda r: r.score + relevance_score(r) * 0.1,
-            reverse=True,
-        )
-        return sorted_results
     
     def _build_context(self, results: List[KnowledgeResult]) -> str:
         context_parts = []

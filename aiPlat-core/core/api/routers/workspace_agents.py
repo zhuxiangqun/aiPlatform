@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import os
 import time
 from datetime import datetime
 from typing import Any, Annotated, Dict, List, Optional
@@ -9,10 +11,8 @@ from fastapi.responses import JSONResponse
 
 from core.api.deps import actor_from_http, rbac_guard
 from core.api.utils.governance import gate_error_envelope, ui_url
-from core.api.utils.run_contract import wrap_execution_result_as_run_summary
-from core.harness.integration import KernelRuntime, get_harness
+from core.harness.integration import KernelRuntime
 from core.harness.kernel.runtime import get_kernel_runtime
-from core.harness.kernel.types import ExecutionRequest
 from core.schemas_agents import AgentCreateRequest, AgentUpdateRequest
 
 router = APIRouter()
@@ -135,10 +135,13 @@ async def list_workspace_agents(
     agents = await mgr.list_agents(agent_type, status, category, tag_list, limit, offset)
     return {
         "agents": [
-            {"id": a.id, "name": a.name, "description": a.metadata.get("description", ""),
+            {"id": a.id, "name": a.name,
+             "display_name": a.metadata.get("display_name", a.name) if isinstance(a.metadata, dict) else a.name,
+             "description": a.metadata.get("description", ""),
              "agent_type": a.type, "status": a.status,
              "category": a.category, "tags": a.tags, "phase": a.phase,
              "output_artifact": a.metadata.get("output_artifact", ""),
+             "config": a.config,
              "skills": a.skills, "tools": a.tools, "metadata": a.metadata}
             for a in agents
         ],
@@ -160,6 +163,9 @@ async def create_workspace_agent(request: AgentCreateRequest, http_request: Requ
             config=request.config,
             skills=request.skills,
             tools=request.tools,
+            mcp_ids=request.mcp_ids,
+            workflow_ids=request.workflow_ids,
+            agent_ids=request.agent_ids,
             memory_config=request.memory_config,
             metadata=request.metadata,
         )
@@ -340,9 +346,13 @@ async def update_workspace_agent(agent_id: str, request: AgentUpdateRequest, htt
     agent = await mgr.update_agent(
         agent_id,
         name=request.name,
+        status=request.status,
         config=request.config,
         skills=request.skills,
         tools=request.tools,
+        mcp_ids=request.mcp_ids,
+        workflow_ids=request.workflow_ids,
+        agent_ids=request.agent_ids,
         memory_config=request.memory_config,
         metadata=request.metadata,
     )
@@ -489,6 +499,123 @@ async def unbind_workspace_agent_tool(agent_id: str, tool_id: str, rt: RuntimeDe
     return {"status": "unbound"}
 
 
+# ── MCP server bindings ──
+
+@router.get("/workspace/agents/{agent_id}/mcp")
+async def get_workspace_agent_mcp(agent_id: str, rt: RuntimeDep = None):
+    mgr = _ws_agent_mgr(rt)
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    agent = await mgr.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    return {"mcp_ids": agent.mcp_ids, "total": len(agent.mcp_ids)}
+
+
+@router.post("/workspace/agents/{agent_id}/mcp")
+async def bind_workspace_agent_mcp(agent_id: str, request: dict, rt: RuntimeDep = None):
+    mgr = _ws_agent_mgr(rt)
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    agent = await mgr.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    mcp_ids = (request or {}).get("mcp_ids", [])
+    await mgr.update_agent(agent_id, mcp_ids=mcp_ids)
+    return {"status": "bound", "mcp_ids": mcp_ids}
+
+
+@router.delete("/workspace/agents/{agent_id}/mcp/{mcp_id}")
+async def unbind_workspace_agent_mcp(agent_id: str, mcp_id: str, rt: RuntimeDep = None):
+    mgr = _ws_agent_mgr(rt)
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    agent = await mgr.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    new_mcp = [m for m in agent.mcp_ids if m != mcp_id]
+    await mgr.update_agent(agent_id, mcp_ids=new_mcp)
+    return {"status": "unbound"}
+
+
+# ── Workflow bindings ──
+
+@router.get("/workspace/agents/{agent_id}/workflows")
+async def get_workspace_agent_workflows(agent_id: str, rt: RuntimeDep = None):
+    mgr = _ws_agent_mgr(rt)
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    agent = await mgr.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    return {"workflow_ids": agent.workflow_ids, "total": len(agent.workflow_ids)}
+
+
+@router.post("/workspace/agents/{agent_id}/workflows")
+async def bind_workspace_agent_workflows(agent_id: str, request: dict, rt: RuntimeDep = None):
+    mgr = _ws_agent_mgr(rt)
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    agent = await mgr.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    workflow_ids = (request or {}).get("workflow_ids", [])
+    await mgr.update_agent(agent_id, workflow_ids=workflow_ids)
+    return {"status": "bound", "workflow_ids": workflow_ids}
+
+
+@router.delete("/workspace/agents/{agent_id}/workflows/{workflow_id}")
+async def unbind_workspace_agent_workflow(agent_id: str, workflow_id: str, rt: RuntimeDep = None):
+    mgr = _ws_agent_mgr(rt)
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    agent = await mgr.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    new_wf = [w for w in agent.workflow_ids if w != workflow_id]
+    await mgr.update_agent(agent_id, workflow_ids=new_wf)
+    return {"status": "unbound"}
+
+
+# ── Sub-agent bindings ──
+
+@router.get("/workspace/agents/{agent_id}/agents")
+async def get_workspace_agent_sub_agents(agent_id: str, rt: RuntimeDep = None):
+    mgr = _ws_agent_mgr(rt)
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    agent = await mgr.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    return {"agent_ids": agent.agent_ids, "total": len(agent.agent_ids)}
+
+
+@router.post("/workspace/agents/{agent_id}/agents")
+async def bind_workspace_agent_sub_agents(agent_id: str, request: dict, rt: RuntimeDep = None):
+    mgr = _ws_agent_mgr(rt)
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    agent = await mgr.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    agent_ids = (request or {}).get("agent_ids", [])
+    await mgr.update_agent(agent_id, agent_ids=agent_ids)
+    return {"status": "bound", "agent_ids": agent_ids}
+
+
+@router.delete("/workspace/agents/{agent_id}/agents/{sub_agent_id}")
+async def unbind_workspace_agent_sub_agent(agent_id: str, sub_agent_id: str, rt: RuntimeDep = None):
+    mgr = _ws_agent_mgr(rt)
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    agent = await mgr.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    new_ids = [a for a in agent.agent_ids if a != sub_agent_id]
+    await mgr.update_agent(agent_id, agent_ids=new_ids)
+    return {"status": "unbound"}
+
+
 # ==================== execute / history / versions ====================
 
 
@@ -506,28 +633,57 @@ async def execute_workspace_agent(agent_id: str, request: dict, http_request: Re
     if deny:
         return deny
 
-    # autosmoke verified gate (graded): block execute when enforce is enabled and agent is not verified.
     try:
         from core.governance.gating import autosmoke_enforce
     except Exception:
-        autosmoke_enforce = None  # type: ignore
+        autosmoke_enforce = None
 
     if autosmoke_enforce and autosmoke_enforce(store=_store(rt)):
         if not _is_verified(getattr(agent, "metadata", None)):
             raise HTTPException(status_code=403, detail=_autosmoke_gate_error(message="smoke must pass before execute"))
 
-    ctx0 = payload.get("context") if isinstance(payload.get("context"), dict) else {}
-    user_id = payload.get("user_id") or (ctx0.get("actor_id") if isinstance(ctx0, dict) else None) or "system"
-    session_id = payload.get("session_id") or (ctx0.get("session_id") if isinstance(ctx0, dict) else None) or "default"
+    # Extract user message and config from payload
+    inp = payload.get("input") if isinstance(payload, dict) else None
+    if isinstance(inp, str) and inp.strip():
+        user_message = inp.strip()
+    elif isinstance(inp, dict):
+        user_message = str(inp.get("message") or inp.get("prompt") or inp.get("task") or "")
+    else:
+        user_message = str(payload.get("message") or payload.get("prompt") or payload.get("task") or "")
 
-    exec_req = ExecutionRequest(kind="agent", target_id=agent_id, payload=payload, user_id=str(user_id), session_id=str(session_id))
-    result = await get_harness().execute(exec_req)
-    resp = wrap_execution_result_as_run_summary(result)
+    user_config: dict = {}
+    if isinstance(inp, dict):
+        user_config = dict(inp.get("config") or {})
+    if isinstance(payload.get("config"), dict):
+        user_config.update(payload["config"])
+    opts = payload.get("options") if isinstance(payload.get("options"), dict) else {}
+
+    # Delegate to CoreFacade
+    from core.api.core_facade import run_workspace_agent
+    resp = await run_workspace_agent(
+        agent_info=agent,
+        user_message=user_message,
+        max_steps=int(user_config.get("max_steps", 10)),
+        toolset=str(opts.get("toolset", "")),
+        session_id=str(payload.get("session_id", "") or f"ws-{agent_id}"),
+    )
+
     try:
         await _audit_execute(rt, http_request=http_request, payload=payload, resource_type="agent", resource_id=str(agent_id), resp=resp)
     except Exception:
         pass
-    return JSONResponse(status_code=200 if resp.get("ok") else int(getattr(result, "http_status", 500) or 500), content=resp)
+    return JSONResponse(status_code=200 if resp.get("ok") else 500, content=resp)
+
+
+@router.post("/workspace/agents/{agent_id}/toggle-enabled")
+async def toggle_agent_enabled(agent_id: str, rt: RuntimeDep = None):
+    mgr = _ws_agent_mgr(rt)
+    if not mgr:
+        raise HTTPException(status_code=500, detail="agent manager not available")
+    result = await mgr.toggle_enabled(agent_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="agent not found")
+    return {"agent_id": agent_id, "enabled": result}
 
 
 @router.get("/workspace/agents/{agent_id}/history")
@@ -573,3 +729,35 @@ async def rollback_workspace_agent_version(agent_id: str, version: str, rt: Runt
     if not ok:
         raise HTTPException(status_code=404, detail=f"Agent or version {version} not found")
     return {"status": "rolled_back", "version": version}
+
+
+# ── reload ──
+
+
+def _reload_workspace_managers(rt: Optional[KernelRuntime]) -> None:
+    try:
+        from core.workspace.reload import rebuild_workspace_managers
+
+        out = rebuild_workspace_managers(
+            engine_agent_manager=getattr(rt, "agent_manager", None) if rt else None,
+            engine_skill_manager=getattr(rt, "skill_manager", None) if rt else None,
+            engine_mcp_manager=getattr(rt, "mcp_manager", None) if rt else None,
+        )
+        if rt is not None:
+            setattr(rt, "workspace_agent_manager", out.get("workspace_agent_manager"))
+            setattr(rt, "workspace_skill_manager", out.get("workspace_skill_manager"))
+            setattr(rt, "workspace_mcp_manager", out.get("workspace_mcp_manager"))
+    except Exception:
+        return
+
+
+@router.post("/workspace/agents/{agent_id}/reload")
+async def reload_workspace_agent(agent_id: str, rt: RuntimeDep = None):
+    _reload_workspace_managers(rt)
+    mgr = _ws_agent_mgr(rt)
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    a = await mgr.get_agent(agent_id)
+    if not a:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    return {"status": "reloaded", "agent_id": agent_id}

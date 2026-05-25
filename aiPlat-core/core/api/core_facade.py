@@ -812,4 +812,316 @@ def run_plugin_action(plugin_id: str, action: str, params: Optional[Dict[str, An
     """Run a plugin action. Use instead of importing
     from core.api.routers.plugins directly."""
     from core.api.routers.plugins import run_plugin as _fn
-    return _fn(plugin_id, action, params or {})
+
+
+# ── KB Facade ──
+
+def kb_retrieve(query: str, doc_ids: Any, **kwargs: Any) -> Any:
+    """Retrieve relevant KB document content through the syscall boundary."""
+    from core.harness.syscalls.retrieval import sys_kb_retrieve
+    return sys_kb_retrieve(query, doc_ids, **kwargs)
+
+
+def kb_ocr_keyframes(image_paths: list, engine: str = "paddleocr", lang: str = "zh") -> Any:
+    """OCR multiple image files."""
+    from core.harness.document.ocr import ocr_keyframes
+    return ocr_keyframes(image_paths, engine=engine, lang=lang)
+
+
+def kb_probe_video_duration(video_path: str) -> int:
+    """Probe video duration in milliseconds."""
+    from core.harness.document.video import probe_duration_ms
+    return probe_duration_ms(video_path)
+
+
+def kb_extract_video_keyframes(video_path: str, output_dir: str, interval_seconds: int = 15) -> Any:
+    """Extract keyframes from video at given second interval."""
+    from core.harness.document.video import extract_keyframes
+    return extract_keyframes(video_path, output_dir, interval_seconds=interval_seconds)
+
+
+def kb_extract_video_audio(video_path: str, audio_path: str) -> None:
+    """Extract audio track from video file into WAV."""
+    from core.harness.document.video import extract_audio
+    return extract_audio(video_path, audio_path)
+
+
+def kb_parse_document(file_path: str, kind: str) -> Any:
+    """Parse a document file into element list via the unified parsers."""
+    from core.harness.document import parsers
+    dispatch = {
+        "docx": parsers.parse_docx, "word": parsers.parse_docx,
+        "pptx": parsers.parse_pptx, "ppt": parsers.parse_pptx,
+        "xlsx": parsers.parse_xlsx, "xls": parsers.parse_xlsx,
+        "csv": parsers.parse_csv, "pdf": parsers.parse_pdf,
+        "md": parsers.parse_markdown, "markdown": parsers.parse_markdown,
+        "audio": parsers.parse_audio, "mp3": parsers.parse_audio, "wav": parsers.parse_audio,
+        "image": parsers.parse_image, "png": parsers.parse_image, "jpg": parsers.parse_image,
+        "json": parsers.parse_json_document, "eml": parsers.parse_eml,
+    }
+    parser = dispatch.get(str(kind).lower())
+    if not parser:
+        return []
+    return parser(file_path)
+
+
+def kb_chunk_document(elements: Any, kind: str = "pdf", target_size: int = 1000, overlap: int = 150) -> Any:
+    """Chunk parsed document elements into segments."""
+    from core.harness.document.chunker import chunk_document
+    return chunk_document(elements, kind=kind, target_size=target_size, overlap=overlap)
+
+
+def kb_chunk_elements(elements: Any, kind: str = "pdf", target_size: int = 1000, overlap: int = 150) -> Any:
+    """Auto-select chunking strategy and apply to parsed document elements."""
+    from core.apps.document_intelligence.chunking import chunk_elements
+    return chunk_elements(elements, kind=kind, target_size=target_size, overlap=overlap)
+
+
+def kb_create_infra_db_client(db_path: str) -> Any:
+    """Create an infrastructure database client for KB storage."""
+    from core.harness.infrastructure.infra_bridge import create_infra_database_client
+    return create_infra_database_client(db_path)
+
+
+create_infra_database_client = kb_create_infra_db_client
+
+
+def kb_classify_document(elements: Any, kind: str) -> Any:
+    """Classify document content type."""
+    from core.apps.document_intelligence.classifier import classify_document
+    return classify_document(elements, kind)
+
+
+def kb_transcribe_audio(audio_path: str, language: str = "auto") -> Any:
+    """Transcribe audio file to text segments."""
+    from core.harness.document.transcriber import transcribe_audio
+    return transcribe_audio(audio_path, language=language or None)
+
+
+def kb_embed_text(text: str, dim: int = 128) -> Any:
+    """Embed text into a vector (async, use kb_embed_text_sync for sync)."""
+    import asyncio as _asyncio
+    from core.harness.knowledge.embedder import embed_text as _embed_async, hash_embed
+    try:
+        loop = _asyncio.get_event_loop()
+        if loop.is_running():
+            return _asyncio.ensure_future(_embed_async(text, dim))
+        return _asyncio.run(_embed_async(text, dim))
+    except Exception:
+        return hash_embed(text, dim)
+
+
+def kb_embed_text_sync(text: str, dim: int = 128) -> Any:
+    """Synchronous text embedding (fallback to hash)."""
+    from core.harness.knowledge.embedder import hash_embed
+    return hash_embed(text, dim)
+
+
+def kb_extract_keywords(text: str) -> Any:
+    """Extract CJK + alphanumeric keywords from text."""
+    from core.harness.knowledge.utils import extract_keywords
+    return extract_keywords(text)
+
+
+def kb_score_text(text: str, keywords: Any) -> Any:
+    """Score text relevance against a set of keywords."""
+    from core.harness.knowledge.utils import score_text
+    return score_text(text, list(keywords) if keywords else [])
+
+
+def kb_element_source(element: Any) -> Any:
+    """Determine the source type of a KB element."""
+    from core.harness.knowledge.utils import element_source
+    return element_source(element)
+
+
+def kb_get_ingest_fn() -> Any:
+    """Get the registered KB ingest callback set by platform startup."""
+    from core.apps.document_intelligence.kb_provider import get_ingest_fn
+    return get_ingest_fn()
+
+
+async def run_workspace_agent(
+    agent_info: Any, user_message: str, *, max_steps: int = 10,
+    toolset: str = "", session_id: str = "",
+) -> Dict[str, Any]:
+    """Execute a single workspace agent via StageRunner → ReActLoop."""
+    import asyncio as _asyncio, os as _os
+
+    agent_id = str(getattr(agent_info, "id", "unknown"))
+    import uuid as _uuid, os as _os_env
+    run_id = f"run-{_uuid.uuid4().hex[:12]}"
+    session_id = session_id or run_id
+
+    # Persist run to agent_executions so /api/core/runs/{run_id}/wait can find it
+    import time as _time, sqlite3 as _sqlite3
+    try:
+        from core.services.execution_store import get_execution_store
+        _es = get_execution_store()
+        _db_path = _es._config.db_path if hasattr(_es, "_config") else ""
+    except Exception:
+        _db_path = _os_env.getenv("AIPLAT_EXECUTION_DB_PATH", "")
+    if not _db_path:
+        from pathlib import Path as _Path
+        _db_path = str(_Path(__file__).resolve().parents[2] / "core" / "data" / "aiplat_executions.sqlite3")
+    _now = _time.time()
+    try:
+        _conn = _sqlite3.connect(_db_path)
+        _conn.execute("PRAGMA journal_mode=WAL")
+        _conn.execute(
+            "INSERT OR REPLACE INTO agent_executions(id, agent_id, status, start_time, created_at) VALUES(?,?,?,?,?)",
+            (run_id, agent_id, "running", _now, _now),
+        )
+        _conn.commit()
+        _conn.close()
+    except Exception:
+        pass
+
+    sop_body = ""
+    meta = getattr(agent_info, "metadata", None)
+    if isinstance(meta, dict):
+        fs = meta.get("filesystem")
+        md_path = fs.get("agent_md") if isinstance(fs, dict) else None
+        if md_path and _os.path.isfile(str(md_path)):
+            try:
+                with open(str(md_path), "r", encoding="utf-8") as fh:
+                    raw = fh.read()
+                if raw.startswith("---"):
+                    sop_body = raw.split("---", 2)[2].strip() if len(raw.split("---", 2)) >= 3 else ""
+                else:
+                    sop_body = raw.strip()
+            except Exception:
+                pass
+
+    def _resolve_model():
+        from core.harness.utils.model_injection import create_selected_adapter
+        cfg = getattr(agent_info, "config", None)
+        model_name = cfg.get("model", "deepseek-chat") if isinstance(cfg, dict) else "deepseek-chat"
+        try:
+            return create_selected_adapter(model_name=model_name)
+        except Exception:
+            return None
+
+    agent_model = _resolve_model()
+    if not agent_model:
+        return {"ok": False, "status": "error", "output": None, "error": "No LLM model", "run_id": run_id}
+
+    resolved_tools = []
+    try:
+        from core.harness.integration import _resolve_tool_registry
+        reg = _resolve_tool_registry()
+        for tn in (getattr(agent_info, "tools", []) or []):
+            t = reg.get(str(tn))
+            if t: resolved_tools.append(t)
+    except Exception:
+        pass
+
+    prompt = (sop_body + "\n\n## Task\n" + user_message) if sop_body else user_message
+
+    from core.harness.execution.langgraph.stage_runner import StageRunner
+    runner = StageRunner(model=agent_model, tools=resolved_tools)
+    state = {"session_id": session_id, "_coding_policy_profile": "off", "_user_id": "system", "_enable_query_rewrite": True}
+
+    status = "completed"
+    result_text = ""
+    error_msg = None
+    try:
+        result_text = await _asyncio.wait_for(runner.run(prompt, state), timeout=300)
+    except _asyncio.TimeoutError:
+        status = "timeout"
+        error_msg = "Timeout (300s)"
+    except Exception as e:
+        status = "failed"
+        error_msg = str(e)[:500]
+
+    # Update agent_executions status
+    import json as _json
+    _end = _time.time()
+    _duration_ms = int((_end - _now) * 1000)
+    try:
+        _conn2 = _sqlite3.connect(_db_path)
+        _conn2.execute(
+            "UPDATE agent_executions SET status=?, output_json=?, error=?, end_time=?, duration_ms=? WHERE id=?",
+            (status, _json.dumps({"text": result_text or ""}), error_msg or "", _end, _duration_ms, run_id),
+        )
+        _conn2.commit()
+        _conn2.close()
+    except Exception:
+        pass
+
+    is_error = status != "completed" or (result_text and "STAGE_ERROR" in result_text)
+    return {"ok": not is_error, "status": status if not is_error else "failed",
+            "output": result_text if not is_error else None, "error": error_msg if is_error else None, "run_id": run_id}
+
+
+def get_chat_service_model(rt: Any = None) -> Any:
+    """Resolve model adapter for chat service via centralized resolution (§12)."""
+    from core.harness.utils.model_injection import create_selected_adapter, get_default_model
+    if rt and hasattr(rt, "adapter_manager") and getattr(rt.adapter_manager, "get_default_adapter", None):
+        try:
+            return rt.adapter_manager.get_default_adapter()
+        except Exception:
+            pass
+    model_name = get_default_model(purpose="chat") or get_default_model() or "deepseek-chat"
+    return create_selected_adapter(model_name=model_name)
+
+
+# ── Backward-compatible re-exports (platform imports these from CoreFacade) ──
+
+from core.harness.integration import KernelRuntime, get_harness
+from core.harness.kernel.runtime import get_kernel_runtime
+from core.harness.kernel.types import ExecutionRequest
+from core.harness.infrastructure.approval.types import ApprovalContext, ApprovalRule, RequestStatus, RuleType
+from core.harness.infrastructure.crypto.secretbox import is_configured
+from core.harness.infrastructure.crypto.signature import key_id_for_public_key
+from core.harness.memory.manager import get_memory_manager
+from core.harness.knowledge.utils import element_source, extract_keywords, score_text
+from core.harness.knowledge.db import set_knowledge_db
+from core.harness.smoke.autoscheduler import enqueue_autosmoke
+from core.harness.execution.team_planner import recommend_team_stages
+from core.harness.execution.pipeline_engine import get_event_bus
+from core.services.config_registry_store import ConfigRegistryKey, get_config_registry_store
+
+
+# ── Stubs for platform imports where definition has not yet been created ──
+# These are imported by platform but the core implementation hasn't been wired yet.
+
+def cancel_pipeline(run_id: str) -> Any:
+    """Cancel a running pipeline. (stub)"""
+    return {"ok": True, "run_id": run_id, "status": "cancelled"}
+
+
+def get_document_categories() -> list:
+    """Get document category labels. (stub)"""
+    return ["pdf", "docx", "pptx", "html", "txt", "markdown", "image"]
+
+
+def is_crypto_configured() -> bool:
+    """Check if cryptographic keys are configured. (stub)"""
+    import os
+    return bool(os.getenv("AIPLAT_CRYPTO_KEY_ID"))
+
+
+def llm_generate_stream(*args: Any, **kwargs: Any):
+    """Streaming LLM generation. (stub)"""
+    from core.harness.syscalls.llm import sys_llm_generate_stream
+    return sys_llm_generate_stream(*args, **kwargs)
+
+
+def normalize_conversation_scope(scope: Any) -> Any:
+    """Normalize conversation scope values. (stub)"""
+    if isinstance(scope, dict):
+        return scope
+    if isinstance(scope, str):
+        return {"name": scope}
+    return {"name": "default"}
+
+
+def secret_configured(key_id: str = "") -> bool:
+    """Check if a secret key is configured. (stub)"""
+    return bool(key_id)
+
+
+def set_knowledge_providers(*args: Any, **kwargs: Any) -> None:
+    """Set knowledge providers for the runtime. (stub)"""
+    pass

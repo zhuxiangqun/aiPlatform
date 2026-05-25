@@ -105,3 +105,15 @@ tests/constitution/test_infra_agnostic.py    ← Infra 去应用化
    - infra 不允许硬编码服务名映射、业务进程标签、开发者本地路径、GPU 型号等
 9. **接线完成度（强制——新建文件必须立即接线）**：任何新增的 core 基础设施模块必须至少有一个生产代码调用者（非测试）。零调用者的模块必须在合并时标注为"待接线"或"待删除"。禁止用 feature flag=false 来掩盖未接线。全局单例（`get_*_registry()`）必须在所有消费进程中做初始化。**禁止批量创建 3 个以上文件而不逐个接线**：新建一个→接一个→grep 验证 caller→再建下一个。每轮实施结束时必须跑 caller 验证脚本，任何新建文件 0 caller = 实施未完成。详细自检命令见 `aiPlat-core/CLAUDE.md` §5.30 规则 6-8。
 
+10. **API 入口唯一性（强制——防并行实现）**：同一能力的多个 API 端点，底层必须收敛到同一个的核心函数。**禁止**出现"两个 UI 入口做同一件事但调用不同的检索路径"、"三个 API 端点各自实现了自己的 RRF 融合"这类并行实现。**必须**：
+    - 每项能力在 CoreFacade 中暴露唯一公共接口
+    - 所有 HTTP 端点、CLI 入口、外部集成全部通过该接口调用
+    - 新增能力前先搜已有实现：`grep -rn 'def <capability_name>'` 确认没有重复
+    - 底层能力升级后必须确认所有入口都已收敛到统一路径（不能只有 MaterialsChat 受益，而问答 Tab 还走老路）
+
+11. **审批单次检查（强制——防多重门禁）**：同一请求对同一资源的权限检查，整个调用链中只能执行一次，且由 PolicyGate（`sys_tool_call` / `sys_skill_call` 内）作为唯一执行点。**禁止**：RBAC guard 在 HTTP 层检查一遍 → Gateway 在调用层再查一遍 → PolicyGate 在 syscall 层又查一遍 → BaseTool 内部再自查一遍。**必须**：上游层只做身份注入（JWT → tenant/actor/scopes），不做权限判断。权限判断统一委托给 PolicyGate。
+
+12. **模型解析中心化（强制——防环境变量碎片化）**：模型名称的解析（model_name → adapter）必须通过统一的 `get_default_model(purpose)` 函数，**禁止**各模块直接读取 `AIPLAT_DOC_LLM_MODEL`、`AIPLAT_CODE_GEN_MODEL`、`AIPLAT_LLM_MODEL` 等环境变量做独立判断。全局只有一个解析链：`purpose 参数 → 专用 env → 通用 env → SQLite store → 系统默认`。
+
+13. **架构审计覆盖并行实现（强制——防漏检）**：`architecture_guard.sh` 必须包含"相同函数签名多定义"检测。每新增一个 `def <name>(query, ...)` 且与已有函数签名高度相似（参数名匹配 ≥3 个），视为并行实现警告。
+

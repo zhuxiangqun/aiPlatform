@@ -104,9 +104,9 @@ language: zh-CN
 
 | ❌ 禁止 | ✅ 应使用 |
 |---------|----------|
-| `if 'architect' in stage.agent_id` | `if stage.uses_code_skill` |
+| `if 'architect' in stage.agent_id` | `if stage.uses_file_output` |
 | `if phase == 'development'` | 阶段配置的布尔/枚举字段 |
-| `if 'code' in stage.output_artifact` | `if stage.uses_code_skill` |
+| `if 'code' in stage.output_artifact` | `if stage.uses_file_output` |
 | `if 'frontend' in stage.agent_id` | 阶段配置字段（如 `code_target`） |
 | `if 'backend' in stage.agent_id` | 同上 |
 | `state["test_plan"]`（硬编码 key） | `state[stage.output_artifact]` |
@@ -127,7 +127,7 @@ language: zh-CN
 │  业务层（AGENT.md / PipelineStageConfig）      │
 │  → agent 的 prompt 指令（prompt_extra）       │
 │  → 是否生成中间产物（generate_test_plan）       │
-│  → 是否触发代码生成技能（uses_code_skill）       │
+│  → 是否触发代码生成技能（uses_file_output）       │
 │  → 产出物/结果存储的 key（output_artifact,       │
 │    test_result_key）                          │
 │  → 是否暂停等待人工审批（hitl）                 │
@@ -171,7 +171,7 @@ language: zh-CN
 | ❌ 重复建设 | ✅ 应复用的已有能力 |
 |-----------|-------------------|
 | 引擎里代理 `agent_id` 字符串匹配来注入业务指令 | `PipelineStageConfig.prompt_extra`（从 AGENT.md 加载） |
-| 引擎里根据 `phase` / `output_artifact` 字符串猜阶段类型 | `PipelineStageConfig.uses_code_skill` / `generate_test_plan` 等布尔字段 |
+| 引擎里根据 `phase` / `output_artifact` 字符串猜阶段类型 | `PipelineStageConfig.uses_file_output` / `generate_test_plan` 等布尔字段 |
 | rollback / reject / fix 各自写清空逻辑 | 共用 `PipelineStageConfig.output_artifact` / `test_result_key` 定位产物 key |
 | 引擎里新建硬编码状态 key | 复用 `stage.output_artifact` 或新增 `PipelineStageConfig` 字段 |
 
@@ -243,11 +243,24 @@ Harness 是 AI Runtime Kernel（"操作系统"），解决**"任务如何被执�
 2. 是否有清晰稳定的输入输出边界？
 3. 是否会被多个 Agent / API 独立复用？
 4. 是否需要独立的权限、灰度、观测、治理？
-5. 是否属于"执行单元"而非"高层决策逻辑"？
+5. 是否属于执行单元而非高层决策逻辑？
 
 **当前 Internal Policy（不得 Skill 化）**：`question_analysis` / `retrieval_policy` / `answer_strategy`。这些是决策逻辑，应放在 `core/apps/*` 下作为 internal policy module。
 
-**Skill 类型**：规则型（纯 prompt）vs 可执行型（含脚本）。`find/load` 接口自动判别。
+**Skill 嵌套调用禁止**：Skill MUST NOT 直接调用 `sys_skill_call` 执行另一个 Skill。Skill 组合应由 Agent 层面编排或通过 Internal Policy 实现。SkillExecutor (`apps/skills/executor.py`) 是唯一例外——它是执行基础设施（负责参数校验、超时控制、执行指标记录），不是业务 Skill。代码级检查：`tests/constitution/test_skill_policy_boundary.py::TestNoSkillToSkillNesting`。
+
+**Skill 可调用 Tool，不可调用 Skill**：Skill 的 `execute()` 方法内可通过 `sys_tool_call` 获取外部数据或执行原子操作，但禁止调用 `sys_skill_call` 执行另一个 Skill。Skill 之间的组合编排由 Agent 在 ReActLoop 层面完成。
+
+**Skill 的两种执行方式**：
+
+| 路径 | 入口 | 机制 | 场景 |
+|------|------|------|------|
+| **Agent 调用** | `ReActLoop → sys_skill_call` | PolicyGate → SkillExecutor → 执行 Skill | Agent 推理中需要某个能力 |
+| **独立执行** | `SkillExecutor.execute(name, params)` | 创建临时 ConversationalAgent，注入 SKILL.md SOP 作为 system prompt → LLM 生成 | 子任务、批处理、测试、无上游 Agent |
+
+`disabled` Skill（`status: disabled`）不参与执行——`SkillRegistry` 不会返回 disabled 实例。
+
+**Skill 类型**：纯 prompt（当前全部 24 个 engine 内置 Skill）vs Python 类（架构支持但当前 0 个实例）。纯 prompt Skill 通过 LLM 理解 SOP 执行；Python 类 Skill（通过 `handler.py` 注册）由 `SkillExecutor` 检测到后直接调用其 `execute()` 方法。
 
 **安全门槛**：permissions + provenance + integrity 三重校验。
 
@@ -444,6 +457,8 @@ Tool/Skill 在返回结果时 MAY 附加 `priority` 字段：
 - 新增 Agent 类型时，必须检查是否可以通过调整 prompt + 工具集 + 状态 schema 实现
 - 8 种预定义类型（ReAct / Plan-Execute / Conversational / Tool-Using / RAG / Multi-Agent / Reflection / Planning）已覆盖当前所有场景
 
+> **Agent 类型 vs 实现类**：`create_agent()` 工厂通过 7 个核心实现类（`ReActAgent`, `ConversationalAgent`, `PlanExecuteAgent`, `RAGAgent`, `MultiAgent`, `MaterialsChatAgent`, `BaseAgent`）实例化所有 ~49 种 AGENT.md 声明的角色和全部 10 种工厂类型（tool/reflection/review 通过 `loop_type` 参数在同类型上衍生）。实现类与角色定义是 N:1 映射，每个角色不独立对应一个 Python 类。
+
 ### 5.23 LangGraph = 透明化，Harness = 执行（强制架构边界）
 
 **核心原则**：LangGraph 解决"执行过程如何被看见"，Harness 解决"任务如何被执行"。两者职责不可混淆。
@@ -485,10 +500,11 @@ Tool/Skill 在返回结果时 MAY 附加 `priority` 字段：
 - `_gen_test_plan` / `_tri_evaluate` → `StageRunner` → `ReActLoop` ✅
 - 代码生成 → `StageRunner.run()` → `ReActLoop` → `sys_skill_call(CodeGenerationSkill)` ✅
 - `_exec_test_runner` → `sys_tool_call` → Harness syscall 通道 ✅
-- `_call_llm` → 已删除 ✅
+- `_call_llm` → 已从 engine 删除 ✅ (仍存在于 `memory/manager.py:217` 作为 episodic 摘要的本地函数)
 - Graph trace 事件在每个阶段出入口记录 ✅
 - 结构化 checkpoint：`_snapshot()` 写入 `state["_checkpoints"]` + 磁盘文件 ✅
-- PipelineEngine 内 0 处直接 `sys_llm_generate` / `sys_tool_call` 调用 ✅
+- PipelineEngine 内 0 处直接 `sys_llm_generate` 调用 ✅
+- PipelineEngine 内 1 处直接 `sys_tool_call` 调用 (`_exec_test_runner:915`) — 已知例外：test runner 调用 `CodeExecutionTool` 执行 pytest
 - `langgraph/nodes/` 中 3 个文件（reason_node/act_node/observe_node）有直接 syscall 调用 → 已知例外（ReAct 图节点的并行实现，Phase 9 统一后 retire）
 
 **剩余架构债务（需单独立项，不在本节覆盖范围）**：
@@ -509,6 +525,11 @@ Tool/Skill 在返回结果时 MAY 附加 `priority` 字段：
 1. 新增能力时，从 Hook 开始判断，逐级向上。只有当前级别不满足才升级。
 2. 一个 MCP 服务的工具描述可能占几千 token，接五六个 MCP 光工具列表就吃掉 10% 上下文。优先合并而非堆叠。
 3. CLAUDE.md 是"永不压缩"的特殊上下文——每次都从磁盘重读（`_try_inject_claude_md`），不随上下文压缩消失（参考 Claude Code 设计）。
+4. MCP 暴露的 Tool 在 `server.py` 启动时通过 `_make_discovery_tool()` 注册到 `ToolRegistry`，继承 `BaseTool`，Agent 调用时经过标准 `sys_tool_call → PolicyGate` 路径，与本地 Tool 权限一视同仁。MCP Server 自身的连接策略由 `mcp_admin.py` 独立管理。
+
+**Hook 定位**：Hook (`harness/infrastructure/hooks/`) 用于**确定性、无需 LLM 介入的事件响应**（如日志记录、预处理、注入检测）。Hook 在 `ReActLoop` 的 6 个生命周期 phase 触发 (`SESSION_START / PRE_LOOP / PRE_CONTRACT_CHECK / POST_CONTRACT_CHECK / POST_LOOP / STOP`)，Token 成本为 0，不经过 ReAct 推理循环。Hook 不是 Skill 的替代品——如果逻辑需要 LLM 判断，应升级为 Skill。
+
+**选择规则**：能用 Hook 解决的不上 Skill。Hook → 确定性、无 LLM 参与的响应（日志、格式清洗、注入检测）。Skill → 需要 LLM 判断或复杂内部逻辑。
 
 ### 5.25 上下文压缩阈值（参考 Claude Code 5 级策略）
 
@@ -630,7 +651,7 @@ AGENT.md 瘦身到核心内容（<100 行）。超过 100 行时，拆分为：
 ❌ state.get("architecture")              → ✓ state[stage.output_artifact]
 ❌ state.get("prd")                       → ✓ 同上
 ❌ state.get("test_report")               → ✓ state[stage.test_result_key]
-❌ if 'backend' in agent_id: ...          → ✓ stage.uses_code_skill 字段
+❌ if 'backend' in agent_id: ...          → ✓ stage.uses_file_output 字段
 ❌ if agent_id == "architect_agent": ...  → ✓ 从 PipelineStageConfig 字段读取
 ❌ if phase == 'design': ...             → ✓ stage.hitl_phase 配置
 ❌ if phase == "awaiting_architecture_approval": ...  → ✓ 检查 stage.hitl_phase
@@ -760,14 +781,15 @@ done
 
 ```
 ❌ ContextAssembler.assemble()       → 实现了但只 1 个 caller，只用 metadata
-❌ MemoryManager.build_context()     → 实现了但被用错参数
+❌ MemoryManager.build_context()     → 实现了但尚未接入执行循环（待接入 §5.28）
 ❌ Orchestrator.plan()               → 实现了但 AIPLAT_ENABLE_ORCHESTRATOR=false
 ❌ FeedbackLoops (3 modules)         → 实现了但 harness.start() 从未调用
 ❌ AgentMessageBus.receive()         → 实现了但只 send 不 receive
-❌ PipelineEngine._summarize_artifact → 实现了但和 ContextAssembler 做同一件事
+❌ PipelineEngine._summarize_artifact → 实现了但和 ContextAssembler 做同一件事 (仍重复, 待合并)
 
-✓ 修复：ContextAssembler schemas wired、build_context fixed、Orchestrator enabled、
-         feedback loops activated、receive/drain added
+✓ 修复：ContextAssembler schemas wired、build_context 参数修复（接入执行循环待完成 §5.28）、Orchestrator enabled、
+         feedback loops activated、drain wired for observability (receive intentionally
+         not used — bus is notification layer, not execution dispatch)
 ```
 
 **设计文档依据**：

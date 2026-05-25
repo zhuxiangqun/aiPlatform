@@ -5,7 +5,7 @@ Session Management - 会话管理
 import asyncio
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 from .short_term import ConversationMemory
@@ -24,7 +24,7 @@ class Session:
     
     def is_expired(self, ttl: int = 3600) -> bool:
         """检查是否过期"""
-        return datetime.now().timestamp() - self.updated_at > ttl
+        return datetime.now(timezone.utc).timestamp() - self.updated_at > ttl
     
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -57,7 +57,7 @@ class SessionManager:
         """创建新会话"""
         async with self._lock:
             session_id = str(uuid.uuid4())
-            now = datetime.now().timestamp()
+            now = datetime.now(timezone.utc).timestamp()
             
             session = Session(
                 id=session_id,
@@ -100,7 +100,7 @@ class SessionManager:
             if not session:
                 return False
             
-            session.updated_at = datetime.now().timestamp()
+            session.updated_at = datetime.now(timezone.utc).timestamp()
             
             if state:
                 session.state.update(state)

@@ -2,12 +2,32 @@
 Knowledge Manager - Manages knowledge collections
 
 Provides knowledge base management operations.
+Backed by the shared KB SQLite (same DB used by platform).
 """
+from __future__ import annotations
 
+import os
+import sqlite3
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any
 from datetime import datetime
-import uuid
+from typing import Any, Dict, List, Optional
+
+from core.utils.ids import new_prefixed_id
+
+
+def _kb_db_path(tenant_id: str = "default") -> str:
+    base = os.path.expanduser(os.getenv("AIPLAT_KB_TENANTS_DIR", "~/.aiplat/kb/tenants"))
+    return os.path.join(base, tenant_id or "default", "kb.sqlite3")
+
+
+def _kb_connect(tenant_id: str = "default"):
+    path = _kb_db_path(tenant_id)
+    if not os.path.exists(path):
+        return None
+    conn = sqlite3.connect(path)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.row_factory = sqlite3.Row
+    return conn
 
 
 @dataclass
@@ -264,24 +284,39 @@ class KnowledgeManager:
         similarity_threshold: float = 0.75,
         filters: Optional[Dict[str, Any]] = None
     ) -> List[SearchResult]:
-        """Search in collection"""
-        # Placeholder implementation
-        results = [
-            SearchResult(
-                content=f"Result {i} for query: {query}",
-                score=0.95 - i *0.1,
-                metadata={"document_id": f"doc-{i}", "source": f"source-{i}"}
-            )
-            for i in range(min(top_k, 5))
-        ]
-        
-        return results
-    
+        """Search in collection via CoreFacade.kb_retrieve (unified KnowledgeRetriever path)."""
+        try:
+            from core.api.core_facade import kb_retrieve
+            conn = _kb_connect("default")
+            doc_ids = []
+            if conn:
+                rows = conn.execute(
+                    "SELECT doc_id FROM documents WHERE tenant_id=? AND collection_id=?",
+                    ("default", collection_id),
+                ).fetchall()
+                doc_ids = [r["doc_id"] for r in rows]
+                conn.close()
+            if not doc_ids:
+                return []
+            results = kb_retrieve(query=query, doc_ids=doc_ids, collection_id=collection_id, top_k=top_k)
+            return [
+                SearchResult(
+                    content=r["text"][:2000],
+                    score=float(r.get("score", 0.0)),
+                    metadata={"doc_id": r["doc_id"], "element_id": r["element_id"], "type": r.get("type", "text")},
+                )
+                for r in results
+            ]
+        except Exception:
+            return []
+
     def get_collection_count(self) -> Dict[str, int]:
-        """Get collection count"""
-        return {
-            "total": len(self._collections),
-            "active": sum(1 for c in self._collections.values() if c.status == "active"),
-            "indexing": sum(1 for c in self._collections.values() if c.status == "indexing"),
-            "error": sum(1 for c in self._collections.values() if c.status == "error")
-        }
+        """Get collection count from real DB."""
+        conn = _kb_connect("default")
+        if not conn:
+            return {"total": 0, "active": 0, "indexing": 0, "error": 0}
+        try:
+            total = conn.execute("SELECT count(*) FROM collections WHERE tenant_id=?", ("default",)).fetchone()[0]
+            return {"total": total, "active": total, "indexing": 0, "error": 0}
+        finally:
+            conn.close()

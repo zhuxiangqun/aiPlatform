@@ -5,7 +5,7 @@ Tracks and stores agent execution traces.
 """
 
 from typing import Dict, Any, Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 from .types import AgentTrace
 import json
 import os
@@ -35,7 +35,7 @@ class TraceTracker:
             self.current_trace.tool_calls.append({
                 "tool": tool_name,
                 "input": tool_input,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             })
     
     def record_tool_result(self, tool_name: str, result: Dict[str, Any]):
@@ -44,7 +44,7 @@ class TraceTracker:
             self.current_trace.tool_results.append({
                 "tool": tool_name,
                 "result": result,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             })
     
     def end_trace(

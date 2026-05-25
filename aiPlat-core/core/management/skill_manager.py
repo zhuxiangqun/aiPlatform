@@ -1021,6 +1021,18 @@ class SkillManager:
     async def get_skill(self, skill_id: str) -> Optional[SkillInfo]:
         """Get skill by ID"""
         return self._skills.get(skill_id)
+
+    async def get_skill_sop(self, skill_id: str) -> Optional[dict]:
+        """Get skill SOP content from SKILL.md."""
+        md = self._find_skill_md(skill_id)
+        if not md:
+            return None
+        try:
+            raw = md.read_text(encoding="utf-8")
+            _, body = self._split_front_matter(raw)
+            return {"skill_id": skill_id, "skill_md": str(md), "sop": body or ""}
+        except Exception:
+            return None
     
     async def list_skills(
         self,
@@ -1575,7 +1587,7 @@ class SkillManager:
             if skill and hasattr(skill, 'set_model'):
                 try:
                     from core.adapters.llm import create_adapter
-                    model = create_adapter(provider="openai", model="gpt-4o")
+                    model = create_adapter(provider="openai", model="deepseek-chat")
                     skill.set_model(model)
                 except Exception:
                     pass

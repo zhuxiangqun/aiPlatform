@@ -14,7 +14,7 @@ from management.request_context import get_forward_headers
 @dataclass
 class CoreAPIClientConfig:
     """Configuration for Core API client."""
-    base_url: str = "http://localhost:8002"
+    base_url: str = ""
     timeout: float = 30.0
     transport: Optional[httpx.BaseTransport] = None
 
@@ -38,6 +38,8 @@ class CoreAPIClient:
     
     def __init__(self, config: Optional[CoreAPIClientConfig] = None):
         self.config = config or CoreAPIClientConfig()
+        if not self.config.base_url:
+            self.config.base_url = os.getenv("AIPLAT_CORE_URL", "http://localhost:8002")
         self._client: Optional[httpx.AsyncClient] = None
     
     async def __aenter__(self):
@@ -45,24 +47,29 @@ class CoreAPIClient:
             base_url=self.config.base_url,
             timeout=self.config.timeout,
             transport=self.config.transport,
+            trust_env=False,
         )
         return self
 
     async def _platform_req(self, method: str, path: str, **kwargs) -> Dict[str, Any]:
         """Make HTTP request to platform API (Builder was moved to platform)."""
-        if not self._client:
-            self._client = httpx.AsyncClient(
-                base_url=self.config.base_url,
-                timeout=self.config.timeout,
-                transport=self.config.transport,
-            )
         import os
         platform_url = os.getenv("AIPLAT_PLATFORM_URL", "http://localhost:8003")
-        async with httpx.AsyncClient(base_url=platform_url, timeout=self.config.timeout) as pc:
-            resp = await pc.request(method, path, **kwargs)
-            resp.raise_for_status()
-            return resp.json()
-    
+        try:
+            async with httpx.AsyncClient(base_url=platform_url, timeout=self.config.timeout, trust_env=False) as pc:
+                resp = await pc.request(method, path, **kwargs)
+                resp.raise_for_status()
+                return resp.json()
+        except httpx.HTTPStatusError as e:
+            detail = {}
+            try:
+                detail = e.response.json()
+            except Exception:
+                detail = {"raw": str(e.response.text)[:500]}
+            raise CoreAPIError(status_code=e.response.status_code, payload=detail) from e
+        except httpx.RequestError as e:
+            raise CoreAPIError(status_code=503, payload={"error": f"platform_unreachable: {e}"}) from e
+
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         if self._client:
             await self._client.aclose()
@@ -74,6 +81,7 @@ class CoreAPIClient:
                 base_url=self.config.base_url,
                 timeout=self.config.timeout,
                 transport=self.config.transport,
+                trust_env=False,
             )
         
         # PR-01: forward tenant/actor identity headers (best-effort).
@@ -104,6 +112,7 @@ class CoreAPIClient:
                 base_url=self.config.base_url,
                 timeout=self.config.timeout,
                 transport=self.config.transport,
+                trust_env=False,
             )
 
         # PR-01: forward tenant/actor identity headers (best-effort).
@@ -266,11 +275,11 @@ class CoreAPIClient:
     async def upsert_evaluation_policy(self, body: Dict[str, Any]) -> Dict[str, Any]:
         return await self._request("POST", "/api/core/evaluation/policy", json=body or {})
 
-    async def get_latest_project_evaluation_policy(self, project_id: str) -> Dict[str, Any]:
-        return await self._request("GET", f"/api/core/projects/{project_id}/evaluation/policy/latest")
+    async def get_latest_scoped_evaluation_policy(self, scope_id: str) -> Dict[str, Any]:
+        return await self._request("GET", f"/api/core/scopes/{scope_id}/evaluation/policy/latest")
 
-    async def upsert_project_evaluation_policy(self, project_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
-        return await self._request("POST", f"/api/core/projects/{project_id}/evaluation/policy", json=body or {})
+    async def upsert_scoped_evaluation_policy(self, scope_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/scopes/{scope_id}/evaluation/policy", json=body or {})
 
     # ===== Diagnostics: E2E smoke =====
     async def run_e2e_smoke(self, body: Dict[str, Any]) -> Dict[str, Any]:
@@ -711,6 +720,24 @@ class CoreAPIClient:
     async def get_agent_skills(self, agent_id: str) -> Dict[str, Any]:
         """Get skills bound to agent."""
         return await self._request("GET", f"/api/core/agents/{agent_id}/skills")
+
+    async def get_agent_sop(self, agent_id: str) -> Dict[str, Any]:
+        """Get agent SOP (AGENT.md body)."""
+        return await self._request("GET", f"/api/core/agents/{agent_id}/sop")
+
+    async def list_models(self, *, provider: Optional[str] = None, status: Optional[str] = None) -> Dict[str, Any]:
+        params: Dict[str, Any] = {}
+        if provider: params["provider"] = provider
+        if status: params["status"] = status
+        return await self._request("GET", "/api/core/models", params=params)
+
+    async def get_agent_versions(self, agent_id: str) -> Dict[str, Any]:
+        """Get agent version history."""
+        return await self._request("GET", f"/api/core/agents/{agent_id}/versions")
+
+    async def rollback_agent_version(self, agent_id: str, version: str) -> Dict[str, Any]:
+        """Rollback agent to a previous version."""
+        return await self._request("POST", f"/api/core/agents/{agent_id}/versions/{version}/rollback")
     
     async def bind_agent_skills(self, agent_id: str, skill_ids: List[str]) -> Dict[str, Any]:
         """Bind skills to agent."""
@@ -837,6 +864,45 @@ class CoreAPIClient:
 
     async def get_workspace_agent_tools(self, agent_id: str) -> Dict[str, Any]:
         return await self._request("GET", f"/api/core/workspace/agents/{agent_id}/tools")
+
+    async def get_workspace_agent_sop(self, agent_id: str) -> Dict[str, Any]:
+        return await self._request("GET", f"/api/core/workspace/agents/{agent_id}/sop")
+
+    # ── MCP bindings ──
+
+    async def get_workspace_agent_mcp(self, agent_id: str) -> Dict[str, Any]:
+        return await self._request("GET", f"/api/core/workspace/agents/{agent_id}/mcp")
+
+    async def bind_workspace_agent_mcp(self, agent_id: str, mcp_ids: List[str]) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/workspace/agents/{agent_id}/mcp", json={"mcp_ids": mcp_ids})
+
+    async def unbind_workspace_agent_mcp(self, agent_id: str, mcp_id: str) -> Dict[str, Any]:
+        return await self._request("DELETE", f"/api/core/workspace/agents/{agent_id}/mcp/{mcp_id}")
+
+    async def get_workspace_agent_execution_help(self, agent_id: str) -> Dict[str, Any]:
+        return await self._request("GET", f"/api/core/workspace/agents/{agent_id}/execution-help")
+
+    # ── Workflow bindings ──
+
+    async def get_workspace_agent_workflows(self, agent_id: str) -> Dict[str, Any]:
+        return await self._request("GET", f"/api/core/workspace/agents/{agent_id}/workflows")
+
+    async def bind_workspace_agent_workflows(self, agent_id: str, workflow_ids: List[str]) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/workspace/agents/{agent_id}/workflows", json={"workflow_ids": workflow_ids})
+
+    async def unbind_workspace_agent_workflow(self, agent_id: str, workflow_id: str) -> Dict[str, Any]:
+        return await self._request("DELETE", f"/api/core/workspace/agents/{agent_id}/workflows/{workflow_id}")
+
+    # ── Sub-agent bindings ──
+
+    async def get_workspace_agent_sub_agents(self, agent_id: str) -> Dict[str, Any]:
+        return await self._request("GET", f"/api/core/workspace/agents/{agent_id}/agents")
+
+    async def bind_workspace_agent_sub_agents(self, agent_id: str, agent_ids: List[str]) -> Dict[str, Any]:
+        return await self._request("POST", f"/api/core/workspace/agents/{agent_id}/agents", json={"agent_ids": agent_ids})
+
+    async def unbind_workspace_agent_sub_agent(self, agent_id: str, sub_agent_id: str) -> Dict[str, Any]:
+        return await self._request("DELETE", f"/api/core/workspace/agents/{agent_id}/agents/{sub_agent_id}")
 
     async def bind_workspace_agent_tools(self, agent_id: str, tool_ids: List[str]) -> Dict[str, Any]:
         return await self._request("POST", f"/api/core/workspace/agents/{agent_id}/tools", json={"tool_ids": tool_ids})
@@ -1272,6 +1338,14 @@ class CoreAPIClient:
         """Update feedback loop configuration."""
         return await self._request("PUT", "/api/core/harness/feedback/config", json=config)
 
+    # ===== Tools =====
+
+    async def list_tools(self, *, limit: int = 100, offset: int = 0, available_only: bool = False) -> Dict[str, Any]:
+        params: Dict[str, Any] = {"limit": int(limit), "offset": int(offset)}
+        if available_only:
+            params["available_only"] = str(available_only).lower()
+        return await self._request("GET", "/api/core/tools", params=params)
+
     # ===== Builder Projects (App Studio) — routed to platform (Builder moved from core to platform) =====
 
     async def create_builder_session(self, requirement: str) -> Dict[str, Any]:
@@ -1326,7 +1400,8 @@ class CoreAPIClient:
         return await self._platform_req("GET", f"/platform/builder/projects/{project_id}/state")
 
     async def get_project_deploy_url(self, project_id: str) -> str:
-        return f"http://localhost:8003/platform/builder/projects/{project_id}/deploy"
+        base = os.getenv("AIPLAT_PLATFORM_URL", "http://localhost:8003")
+        return f"{base}/platform/builder/projects/{project_id}/deploy"
 
     async def list_teams(self) -> Dict[str, Any]:
         return await self._platform_req("GET", "/platform/builder/teams")
@@ -1336,9 +1411,6 @@ class CoreAPIClient:
 
     async def run_team(self, team_id: str, description: str = "") -> Dict[str, Any]:
         return await self._platform_req("POST", f"/platform/builder/teams/{team_id}/run", json={"description": description})
-
-    async def list_workspace_agents(self) -> Dict[str, Any]:
-        return await self._request("GET", "/api/core/workspace/agents")
 
     async def run_repo_tests(self) -> Dict[str, Any]:
         return await self._request("POST", "/api/core/diagnostics/repo/tests/run", json={})

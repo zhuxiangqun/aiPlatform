@@ -22,7 +22,7 @@ from core.schemas_builder import (
     PipelineStageConfig,
     PRDArtifact,
 )
-from core.api.core_facade import create_pipeline_session, apply_agent_md_to_stage, validate_pipeline_stages
+from core.api.core_facade import create_pipeline_session, apply_agent_md_to_stage, validate_pipeline_stages, extract_json
 from builder.builder_team_service import BuilderTeamService
 
 import re
@@ -36,17 +36,41 @@ _DANGEROUS_PATTERNS = [
     (re.compile(r"<\|im_start\|>|<\|im_end\|>", re.IGNORECASE), "contains model control tokens"),
 ]
 
+_log = logging.getLogger("aiplat.builder.project_service")
+
 def _scan_agent_security(agent_id: str, sop_body: str) -> None:
     for pattern, description in _DANGEROUS_PATTERNS:
         if pattern.search(sop_body):
             _log.warning("Security: AGENT.md '%s' %s. Body will be stripped.", agent_id, description)
             raise ValueError(f"AGENT.md '{agent_id}' contains dangerous content: {description}")
 
-_log = logging.getLogger("aiplat.builder.project_service")
+_AIPLAT_PM_AGENT = os.getenv("AIPLAT_PM_AGENT", "pm_agent")
+
+_AIPLAT_CHAT_NOT_IN_DIALOGUE = os.getenv(
+    "AIPLAT_CHAT_NOT_IN_DIALOGUE", "Project is not in dialogue phase")
+_AIPLAT_CHAT_NO_MODEL = os.getenv(
+    "AIPLAT_CHAT_NO_MODEL", "LLM model not loaded. Check API key configuration.")
+_AIPLAT_CHAT_ERROR_PREFIX = os.getenv(
+    "AIPLAT_CHAT_ERROR_PREFIX", "Chat error: ")
+
+_AIPLAT_PRD_SECTION_REQUIREMENTS = os.getenv("AIPLAT_PRD_SECTION_REQUIREMENTS", "功能需求")
+_AIPLAT_PRD_SECTION_SCOPE = os.getenv("AIPLAT_PRD_SECTION_SCOPE", "范围")
+_AIPLAT_PRD_SECTION_METRICS = os.getenv("AIPLAT_PRD_SECTION_METRICS", "成功指标")
+_AIPLAT_PRD_SECTION_ACCEPTANCE = os.getenv("AIPLAT_PRD_SECTION_ACCEPTANCE", "验收标准")
+_AIPLAT_PRD_SECTION_ISA = os.getenv("AIPLAT_PRD_SECTION_ISA", "ISA 对齐")
+_AIPLAT_PRD_TITLE_PREFIX = os.getenv("AIPLAT_PRD_TITLE_PREFIX", "项目名称：")
+
+_AIPLAT_NO_PRD = os.getenv(
+    "AIPLAT_NO_PRD", "No PRD data available. Complete the PM dialogue first.")
 
 _PROJECTS_FILE = os.path.join(
     os.path.expanduser(os.getenv("AIPLAT_HOME", "~/.aiplat")),
     "projects.json",
+)
+
+_BUILDER_STATES_DIR = os.path.join(
+    os.path.expanduser(os.getenv("AIPLAT_HOME", "~/.aiplat")),
+    "builder_states",
 )
 
 
@@ -57,8 +81,9 @@ def _semantic_output(agent_id: str, phase: str) -> str:
         fm = get_agent_frontmatter(agent_id)
         if fm.get("output_artifact"):
             return fm["output_artifact"]
-    except Exception:
-        pass
+    except Exception as e:
+        logging.getLogger("aiplat.builder").warning(
+            "Failed to get agent frontmatter for %s: %s", agent_id, str(e)[:200])
     return phase or "artifact"
 
 
@@ -82,8 +107,9 @@ def _parse_team_stages(stages_raw: list) -> list:
     for s in (stages_raw or []):
         try:
             stages.append(PipelineStageConfig(**s) if isinstance(s, dict) else s)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.getLogger("aiplat.builder").warning(
+                "Failed to parse team stage: %s", str(e)[:200])
     return stages
 
 
@@ -94,11 +120,13 @@ class BuilderProjectService:
         if self._model is None:
             from core.api.core_facade import get_default_model
             self._model = get_default_model()
-        self._team_service = team_service or BuilderTeamService(model)
+        self._team_service = team_service or BuilderTeamService(self._model)
         self._seed_registries()
         self._projects: Dict[str, Dict[str, Any]] = {}
-        self._sessions: Dict[str, Any] = {}
+        self._sessions: Dict[str, Dict[str, Any]] = {}
+        self._pipeline_sessions: Dict[str, Any] = {}
         self._runs: Dict[str, Dict[str, Any]] = {}
+        self._phases: Dict[str, str] = {}  # dialogue | executing
         self._load_projects()
 
     @staticmethod
@@ -113,23 +141,33 @@ class BuilderProjectService:
             if os.path.exists(_PROJECTS_FILE):
                 with open(_PROJECTS_FILE, "r", encoding="utf-8") as f:
                     data = json.load(f)
+                seen_ids = set()
                 for item in data.get("projects", []):
                     pid = item.get("project_id", "")
-                    if pid:
+                    if pid and pid not in seen_ids:
                         self._projects[pid] = item
+                        seen_ids.add(pid)
         except Exception as e:
             _log.warning("Failed to load projects from %s: %s", _PROJECTS_FILE, e)
 
     def _save_projects(self) -> None:
         try:
             os.makedirs(os.path.dirname(_PROJECTS_FILE), exist_ok=True)
+            # Deduplicate by project_id before saving
+            seen = set()
+            deduped = []
+            for p in list(self._projects.values()):
+                pid = p.get("project_id", "")
+                if pid not in seen:
+                    deduped.append(p)
+                    seen.add(pid)
             data = {
-                "projects": list(self._projects.values()),
+                "projects": deduped,
                 "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
             }
             tmp = _PROJECTS_FILE + ".tmp"
             with open(tmp, "w", encoding="utf-8") as f:
-                json.dump(data, f, ensure_ascii=False, indent=2, default=str)
+                json.dump(data, f, ensure_ascii=False, indent=2)
             os.replace(tmp, _PROJECTS_FILE)
         except Exception as e:
             _log.error("Failed to save projects to %s (project data may be lost on restart): %s", _PROJECTS_FILE, e)
@@ -160,7 +198,12 @@ class BuilderProjectService:
         now = time.strftime("%Y-%m-%dT%H:%M:%S")
 
         stages: List[PipelineStageConfig] = []
-        if req.team_id:
+        if req.stages:
+            # Pre-built workflow stages from canvas/editor
+            for s in req.stages:
+                if isinstance(s, dict):
+                    stages.append(PipelineStageConfig(**s))
+        elif req.team_id:
             team = await self._team_service.get_team(req.team_id)
             if team:
                 stages = team.stages
@@ -196,16 +239,23 @@ class BuilderProjectService:
 
     async def list_projects(self) -> List[Project]:
         self._reload_if_stale()
+        # Batch-load all teams to avoid N+1 per-project queries
+        team_ids = list({data.get("team_id", "") for data in self._projects.values() if data.get("team_id")})
+        team_map: Dict[str, str] = {}
+        for tid in team_ids:
+            try:
+                team = await self._team_service.get_team(tid)
+                if team:
+                    team_map[tid] = team.name
+            except Exception:
+                pass
+
         projects: List[Project] = []
         for pid, data in self._projects.items():
             runs_data = data.get("runs", [])
             latest = runs_data[-1] if runs_data else None
-            team_name = ""
             team_id = data.get("team_id", "")
-            if team_id:
-                team = await self._team_service.get_team(team_id)
-                if team:
-                    team_name = team.name
+            team_name = team_map.get(team_id, "")
             projects.append(Project(
                 project_id=data["project_id"],
                 name=data["name"],
@@ -223,75 +273,144 @@ class BuilderProjectService:
         return self._projects.get(project_id)
 
     async def delete_project(self, project_id: str) -> bool:
-        if project_id in self._projects:
-            del self._projects[project_id]
-            self._save_projects()
-            return True
-        return False
+        if project_id not in self._projects:
+            return False
+        import shutil
+        home = os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
+        # Output directories may use legacy "bare ID" or new "name-ID" format
+        dirs_to_check = [
+            (os.path.join(home, "output"), project_id),
+            (os.path.join(os.getenv("AIPLAT_APP_DEPLOY_DIR", os.path.expanduser("~/.aiplat/apps")), ""), project_id),
+        ]
+        for base_dir, pid in dirs_to_check:
+            try:
+                if not os.path.isdir(base_dir):
+                    continue
+                for entry in os.listdir(base_dir):
+                    full = os.path.join(base_dir, entry)
+                    if entry.endswith(f"-{pid}") or entry == pid:
+                        try:
+                            if os.path.isdir(full):
+                                shutil.rmtree(full)
+                            elif os.path.isfile(full):
+                                os.remove(full)
+                        except OSError:
+                            pass
+            except OSError:
+                pass
+        for state_file in [
+            os.path.join(home, "builder_states", f"{project_id}.json"),
+            os.path.join(home, "builder_states", f"{project_id}_chat.json"),
+        ]:
+            try:
+                if os.path.isfile(state_file):
+                    os.remove(state_file)
+            except OSError:
+                pass
+        del self._projects[project_id]
+        self._save_projects()
+        return True
 
     async def chat(self, project_id: str, message: str) -> Dict[str, Any]:
-        """PM dialogue — delegates to BuilderSessionService internally."""
-        from builder.builder_session import BuilderSessionService
+        """PM dialogue — directly managed through self._sessions (chat dicts only)."""
+        from core.api.intents import core_chat, ChatContext
 
-        if not hasattr(self, '_chat_svc'):
-            self._chat_svc: Dict[str, BuilderSessionService] = {}
+        session = self._sessions.get(project_id)
+        if not session:
+            session = self._load_chat_session(project_id)
+            if session:
+                self._sessions[project_id] = session
 
-        if project_id not in self._chat_svc:
-            svc = BuilderSessionService(model=self._model)
-            proj = self._projects.get(project_id, {})
-            await svc.create_session(
-                requirement=proj.get("description", ""),
-                tenant_id="default", user_id="system",
-            )
-            keys = list(svc._sessions.keys())
-            if keys:
-                svc._sessions[project_id] = svc._sessions.pop(keys[0])
-                svc._sessions[project_id]["session_id"] = project_id
-            self._chat_svc[project_id] = svc
+        if not isinstance(session, dict):
+            return {"reply": _AIPLAT_CHAT_NOT_IN_DIALOGUE, "prd_ready": False, "trace_id": "", "session_state": {}}
 
-        svc = self._chat_svc[project_id]
+        if not session or session.get("phase") != BuilderSessionPhase.dialogue.value:
+            return {"reply": _AIPLAT_CHAT_NOT_IN_DIALOGUE, "prd_ready": False, "trace_id": "", "session_state": {}}
+
         if not self._model:
-            return {"reply": "LLM 模型未加载，请检查服务器配置（api_key / 环境变量 DEEPSEEK_API_KEY）", "prd_ready": False, "trace_id": "", "session_state": {}}
+            return {"reply": _AIPLAT_CHAT_NO_MODEL, "prd_ready": False, "trace_id": "", "session_state": {}}
+
+        session["messages"].append({"role": "user", "content": message})
+
         try:
-            resp = await svc.chat(project_id, message)
-            return {"reply": resp.reply, "prd_ready": resp.prd_ready, "trace_id": resp.trace_id,
-                    "session_state": resp.session_state.model_dump() if hasattr(resp.session_state, 'model_dump') else {}}
+            result = await core_chat(ChatContext(
+                agent_name=_AIPLAT_PM_AGENT,
+                session_id=project_id,
+                user_input=message,
+                model=self._model,
+            ))
+            reply = result.reply
+            session["messages"].append({"role": "assistant", "content": reply})
+            prd_ready = "<!-- PRD_READY -->" in str(reply)
+            if prd_ready:
+                # Try JSON first (backward compat), then Markdown
+                draft = None
+                try:
+                    json_str = extract_json(reply)
+                    if json_str:
+                        draft = json.loads(json_str)
+                        if not (draft.get("user_stories") or draft.get("functional_requirements")):
+                            draft = None
+                except Exception:
+                    pass
+                # Fallback: parse Markdown PRD
+                if not draft and "## 项目名称" in str(reply):
+                    draft = self._parse_markdown_prd(reply)
+                if draft:
+                    session["prd"] = draft
+                    # Also save to project directly so PRD survives session loss/overwrite
+                    proj = self._projects.get(project_id, {})
+                    if proj:
+                        proj["confirmed_prd"] = draft
+                        self._save_projects()
+            self._save_chat_session(project_id)
+            return {"reply": reply, "prd_ready": prd_ready, "trace_id": result.trace_id, "session_state": {}}
         except Exception as e:
-            import traceback
-            print(f"[builder_project] chat error: {e}")
-            traceback.print_exc()
-            return {"reply": f"对话出错：{str(e)[:200]}", "prd_ready": False, "trace_id": "", "session_state": {}}
+            return {"reply": f"{_AIPLAT_CHAT_ERROR_PREFIX}{str(e)[:200]}", "prd_ready": False, "trace_id": "", "session_state": {}}
 
     async def confirm_prd(self, project_id: str, prd_data: Any = None) -> Dict[str, Any]:
+        session = self._sessions.get(project_id)
+        if not session:
+            session = self._load_chat_session(project_id)
+            if session:
+                self._sessions[project_id] = session
+        if not isinstance(session, dict):
+            session = {}
         if not prd_data:
-            chat_svc = getattr(self, '_chat_svc', {}).get(project_id)
-            if chat_svc:
-                chat_session = chat_svc._sessions.get(project_id, {})
-                prd_data = chat_session.get("prd")
+            prd_data = session.get("prd") if isinstance(session, dict) else None
+        # Last resort: extract PRD from last assistant message in session
+        if not prd_data and isinstance(session, dict):
+            msgs = session.get("messages", [])
+            for m in reversed(msgs):
+                if m.get("role") == "assistant":
+                    content = m.get("content", "")
+                    if "<!-- PRD_READY -->" in content or "## 项目名称" in content:
+                        draft = self._parse_markdown_prd(content)
+                        if draft:
+                            prd_data = draft
+                            session["prd"] = draft
+                        break
 
         proj = self._projects.get(project_id, {})
-        if prd_data:
-            proj["confirmed_prd"] = prd_data
-            self._save_projects()
+        if not prd_data:
+            raise ValueError(_AIPLAT_NO_PRD)
 
-        from builder.builder_session import BuilderSessionService
-        svc = BuilderSessionService(model=self._model)
-        try:
-            await svc.confirm_requirements(project_id)
-        except Exception:
-            pass
+        proj["confirmed_prd"] = prd_data
+        self._save_projects()
+
+        # Transition session phase from dialogue to executing
+        if session:
+            session["phase"] = BuilderSessionPhase.executing.value
         return {"phase": BuilderSessionPhase.executing.value, "prd": prd_data}
 
     async def recommend_team(self, project_id: str) -> Dict[str, Any]:
         """Use Planning Agent to analyze PRD and recommend a team configuration.
 
-        Calls core_chat("planning_agent") with the PRD as context. The Planning
-        Agent outputs a structured JSON with recommended stages. After successful
-        recommendation, plan_stages are persisted to the project for downstream
-        pipeline consumption (auto-accept on pipeline start).
+        Delegates to core/harness/execution/team_planner.recommend_team_stages()
+        for the AI inference (boundary-standard.md §决策树: agent discovery → Core).
+        Platform-specific logic (team creation, project association) stays here.
         """
-        from core.api.intents import core_chat, ChatContext
-        from core.api.core_facade import extract_json
+        from core.api.core_facade import recommend_team_stages
 
         proj = self._projects.get(project_id)
         if not proj:
@@ -299,64 +418,81 @@ class BuilderProjectService:
 
         prd = proj.get("confirmed_prd")
         if not prd:
-            chat_svc = getattr(self, '_chat_svc', {}).get(project_id)
-            if chat_svc:
-                chat_session = chat_svc._sessions.get(project_id, {})
-                prd = chat_session.get("prd")
+            session = self._sessions.get(project_id)
+            if not session:
+                session = self._load_chat_session(project_id)
+                if session:
+                    self._sessions[project_id] = session
+            prd = (session or {}).get("prd") if isinstance(session, dict) else None
         if not prd:
-            raise ValueError("No PRD available. Complete the PM dialogue first.")
+            # Fallback: use project description as a minimal requirement
+            desc = proj.get("description", "")
+            if not desc:
+                raise ValueError("No PRD or project description available. Complete the PM dialogue first.")
+            prd = {"title": proj.get("name", "New Project"), "description": desc,
+                   "functional_requirements": [], "user_stories": []}
 
-        prd_json = json.dumps(prd, ensure_ascii=False, indent=2)
-        result = await core_chat(ChatContext(
-            agent_name="planning_agent",
-            session_id=f"{project_id}_plan",
-            user_input=f"请根据以下 PRD 推荐团队配置：\n\n{prd_json[:8000]}",
-            model=self._model,
-        ))
+        # Delegate AI inference to core team_planner (boundary-standard.md §决策树)
+        rec = await recommend_team_stages(requirement=prd, model=self._model)
 
-        recommendation = {}
-        plan_stages = []
-        try:
-            json_str = extract_json(result.reply)
-            if json_str:
-                from json import loads
-                recommendation = loads(json_str)
-                plan_stages = self._parse_plan_stages(recommendation)
-        except Exception:
-            recommendation = {"raw_reply": result.reply, "parse_error": True}
+        recommendation = {
+            "team_name": rec.team_name,
+            "reasoning": rec.reasoning,
+            "raw_reply": rec.raw_reply,
+        }
+        plan_stages = rec.stages
 
         if plan_stages:
-            # Validate that recommended agents exist in registry
-            try:
-                from core.api.core_facade import get_agent_frontmatter
-                unknown = []
-                for ps in plan_stages:
-                    aid = ps.get("agent_id", "")
-                    fm = get_agent_frontmatter(aid)
-                    if not fm:
-                        unknown.append(aid)
-                if unknown:
-                    recommendation["_warnings"] = [f"agent(s) not found in registry: {unknown}"]
-            except Exception:
-                pass
             proj["plan_stages"] = plan_stages
             proj["plan_stage_ids"] = [s.get("id", f"plan_stage_{i}") for i, s in enumerate(plan_stages)]
+
+            # Auto-create team from plan_stages so pipeline can start immediately
+            if not proj.get("team_id"):
+                try:
+                    from core.schemas_builder import PipelineStageConfig, TeamAssembleRequest
+                    team_stages = []
+                    for ps in plan_stages:
+                        team_stages.append(PipelineStageConfig(
+                            id=ps.get("id", f"stage_{len(team_stages)}"),
+                            agent_id=ps.get("agent_id", ""),
+                            agent_name=ps.get("agent_name", ps.get("agent_id", "")),
+                            phase=ps.get("phase", ""),
+                            order=ps.get("order", len(team_stages)),
+                            uses_file_output=bool(ps.get("uses_file_output") or ps.get("uses_code_skill", False)),
+                            hitl=bool(ps.get("hitl", False)),
+                            hitl_phase=ps.get("hitl_phase", ""),
+                            output_artifact=ps.get("output_artifact", ""),
+                            generate_test_plan=bool(ps.get("generate_test_plan", False)),
+                            test_result_key=ps.get("test_result_key", "test_report"),
+                            agent_type=ps.get("agent_type", "react"),
+                        ))
+                    if team_stages:
+                        team_req = TeamAssembleRequest(
+                            name=recommendation.get("team_name", f"团队-{project_id}"),
+                            description=recommendation.get("reasoning", ""),
+                            stages=team_stages,
+                        )
+                        team = await self._team_service.create_team(team_req)
+                        proj["team_id"] = team.team_id
+                        proj["team_stages"] = [s.model_dump() if hasattr(s, 'model_dump') else s for s in team_stages]
+                        self._save_projects()
+                        recommendation["_team_created"] = True
+                        recommendation["_team_id"] = team.team_id
+                except Exception as e:
+                    recommendation["_team_create_failed"] = str(e)[:200]
 
         return {
             "project_id": project_id,
             "recommendation": recommendation,
             "plan_stages": plan_stages,
             "plan_stage_ids": proj.get("plan_stage_ids", []),
-            "trace_id": result.trace_id,
+            "trace_id": getattr(rec, 'trace_id', '') or '',
         }
 
     @staticmethod
     def _parse_plan_stages(recommendation: Dict) -> List[Dict]:
-        """Parse AI recommendation into structured pipeline stages.
-
-        Supports: {stages: [...]}, {team: {stages: [...]}}, {plan: {stages: [...]}}.
-        Each stage must have at minimum: agent_id.
-        """
+        """UNUSED static utility — retained for future API compat.
+        Actual parsing is done inline in recommend_team()."""
         stages_raw = (
             recommendation.get("stages")
             or recommendation.get("team", {}).get("stages")
@@ -375,7 +511,7 @@ class BuilderProjectService:
                 "output_artifact": s.get("output_artifact") or s.get("output") or f"plan_artifact_{i}",
                 "description": s.get("description") or s.get("role") or "",
                 "generate_test_plan": s.get("generate_test_plan", False),
-                "uses_code_skill": s.get("uses_code_skill", False),
+                "uses_file_output": s.get("uses_file_output", False),
                 "hitl": s.get("hitl", True),
                 "order": s.get("order", i),
                 "prompt_extra": s.get("prompt_extra") or s.get("sop") or "",
@@ -386,6 +522,68 @@ class BuilderProjectService:
     def _validate_pipeline_stages(self, stages: List[PipelineStageConfig]) -> Dict[str, Any]:
         """Validate pipeline stages — delegates to CoreFacade."""
         return validate_pipeline_stages(stages)
+
+    @staticmethod
+    def _parse_markdown_prd(reply: str) -> Dict[str, Any]:
+        """Parse structured Markdown PRD into a dict for session storage."""
+        prd: Dict[str, Any] = {}
+        # Strip PRD_READY marker if present (appears before the # heading)
+        clean = reply.replace("<!-- PRD_READY -->", "").strip()
+        title_match = re.search(r"^# (.+)", clean, re.MULTILINE)
+        if title_match:
+            prd["title"] = title_match.group(1).strip()
+            if prd["title"].startswith(_AIPLAT_PRD_TITLE_PREFIX):
+                prd["title"] = prd["title"][5:].strip()
+        # Extract sections by ## headings
+        sections: Dict[str, str] = {}
+        current_key = ""
+        for line in clean.split("\n"):
+            m = re.match(r"^## (.+)", line)
+            if m:
+                current_key = m.group(1).strip()
+                sections[current_key] = ""
+            elif current_key:
+                sections[current_key] += line + "\n"
+        # Functional requirements count as user_stories
+        func_section = sections.get(_AIPLAT_PRD_SECTION_REQUIREMENTS, "")
+        fr_items = []
+        for fr_match in re.finditer(r"###\s*(.+?)\n(.*?)(?=\n###|\n##|\Z)", func_section or "", re.DOTALL):
+            fr_name = fr_match.group(1).strip()
+            fr_body = fr_match.group(2)
+            user_story_match = re.search(r"用户故事[：:]\s*(.+)", fr_body)
+            acs = re.findall(r"AC\d+:\s*(.+)", fr_body)
+            fr_items.append({
+                "id": fr_name.split(":", 1)[0].strip() if ":" in fr_name else fr_name,
+                "name": fr_name.split(":", 1)[1].strip() if ":" in fr_name else fr_name,
+                "description": user_story_match.group(1).strip() if user_story_match else "",
+                "acceptance_criteria": acs,
+            })
+        if fr_items:
+            prd["functional_requirements"] = fr_items
+            prd["user_stories"] = fr_items
+        scope = sections.get(_AIPLAT_PRD_SECTION_SCOPE, "").strip()
+        if scope:
+            prd["scope"] = scope
+        # ISA upgrade: extract success metrics and target state
+        metrics_section = sections.get(_AIPLAT_PRD_SECTION_METRICS, "") or sections.get(_AIPLAT_PRD_SECTION_ACCEPTANCE, "")
+        if metrics_section.strip():
+            isc_list = []
+            for isc_match in re.finditer(r"###?\s*(ISC-\d+)[：:]\s*(.+?)\n(.*?)(?=\n###|\n##|\Z)", metrics_section, re.DOTALL):
+                isc_id = isc_match.group(1).strip()
+                isc_name = isc_match.group(2).strip()
+                isc_body = isc_match.group(3)
+                verify = re.search(r"验证方式[：:]\s*(.+)", isc_body)
+                isc_list.append({
+                    "id": isc_id, "name": isc_name,
+                    "criteria": isc_body.strip()[:200],
+                    "verification_method": verify.group(1).strip() if verify else "manual",
+                })
+            if isc_list:
+                prd["isc_list"] = isc_list
+        target_state = sections.get("目标状态", "") or sections.get(_AIPLAT_PRD_SECTION_ISA, "")
+        if target_state.strip():
+            prd["target_state"] = target_state.strip()[:500]
+        return prd if prd.get("title") else {}
 
     async def start_pipeline(self, project_id: str) -> Dict[str, Any]:
         proj = self._projects.get(project_id)
@@ -416,8 +614,8 @@ class BuilderProjectService:
                             if cfg.get("model") and not s.model:
                                 s.model = cfg["model"]
                             apply_agent_md_to_stage(s, s.agent_id)
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            _log.warning("Failed to load AGENT.md config for '%s': %s", s.agent_id, e)
 
                 # Remap old generic output names to semantic names
                 for s in stages:
@@ -435,21 +633,47 @@ class BuilderProjectService:
                 stages.append(PipelineStageConfig(**s))
 
         if not stages:
-            raise ValueError("No team stages configured. Please create a team first.")
+            # Auto-trigger team recommendation if no team configured
+            try:
+                await self.recommend_team(project_id)
+                # Re-read project after recommendation (team_id + team_stages now set)
+                proj = self._projects.get(project_id, {})
+                team_id = proj.get("team_id", "")
+                if team_id:
+                    team = await self._team_service.get_team(team_id)
+                    if team and team.stages:
+                        stages = [PipelineStageConfig(**s.model_dump()) if hasattr(s, 'model_dump') else PipelineStageConfig(**s) for s in team.stages]
+                        proj["team_stages"] = [s.model_dump() if hasattr(s, 'model_dump') else s for s in stages]
+                        self._save_projects()
+            except Exception as e:
+                _log.warning("Auto team recommend failed for %s: %s", project_id, e)
+
+        if not stages:
+            raise ValueError("No team stages configured. Unable to auto-recommend a team. Please click 'AI 推荐团队' first.")
 
         max_tokens = int(os.getenv("AIPLAT_BUILDER_MAX_TOKENS", "100000"))
         max_retry = int(os.getenv("AIPLAT_BUILDER_MAX_RETRY", "3"))
         config = PipelineConfig(stages=stages, max_tokens_per_run=max_tokens, max_retry_attempts=max_retry)
         diagnostics = self._validate_pipeline_stages(config.stages)
-        session = create_pipeline_session(config=config, model=self._model, skill_loader=_create_skill_loader())
-        self._sessions[project_id] = session
 
+        # Extract PRD from chat session before pipeline takes over
         prd_data = proj.get("confirmed_prd")
         if not prd_data:
-            chat_svc = getattr(self, '_chat_svc', {}).get(project_id)
-            if chat_svc:
-                chat_session = chat_svc._sessions.get(project_id, {})
+            chat_session = self._sessions.get(project_id, {})
+            if isinstance(chat_session, dict):
                 prd_data = chat_session.get("prd")
+
+        pipeline_session = create_pipeline_session(config=config, model=self._model, skill_loader=_create_skill_loader())
+        self._pipeline_sessions[project_id] = pipeline_session
+
+        # Register event bus listener — writes pipeline state to singleton _runs for frontend polling
+        from core.api.core_facade import get_event_bus
+        from api.routers.builder import _svc as builder_singleton
+        _runs_singleton = builder_singleton._runs
+        def _on_event(pid: str, evt: str, data: dict):
+            if pid == project_id:
+                _runs_singleton[pid] = dict(data.get("state", data))
+        get_event_bus().on(_on_event)
 
         # Run synchronously — proxy timeout is 600s, Architect takes 20-60s.
         requirement = proj.get("description", "")
@@ -465,7 +689,7 @@ class BuilderProjectService:
 
         state = {"phase": "executing"}
         try:
-            state = await session.start(project_id, requirement, prd_data=prd_data)
+            state = await pipeline_session.start(project_id, requirement, prd_data=prd_data, project_name=proj.get("name", ""))
             # Config-driven: use stage.test_result_key (default "test_report" for backward compat)
             test_key = "test_report"
             for s in (proj.get("team_stages") or []):
@@ -482,11 +706,14 @@ class BuilderProjectService:
             self._runs[project_id] = state
             # Persist pipeline state so approve works after restart
             self._save_pipeline_state(project_id, state)
+            # Trigger deploy assembly if pipeline completed (non-HITL auto pipelines)
+            await self._save_state(project_id, state)
         except Exception as e:
             run_record = proj["runs"][-1]
             run_record["error"] = str(e)[:200]
             run_record["phase"] = "failed"
-            self._runs[project_id] = {"phase": "failed", "error": str(e)[:200]}
+            state = {"phase": "failed", "error": str(e)[:200]}
+            self._runs[project_id] = state
         finally:
             proj["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
             self._save_projects()
@@ -497,8 +724,15 @@ class BuilderProjectService:
     async def _save_state(self, project_id: str, state: dict):
         """Save pipeline state and trigger deploy assembly if completed."""
         self._runs[project_id] = state
+        # Embed episodic memory state for restart survival
+        try:
+            from core.api.core_facade import get_memory_manager
+            mgr = get_memory_manager()
+            state["_episodic"] = mgr.export_episodic_state()
+        except Exception:
+            pass
         self._save_pipeline_state(project_id, state)
-        session = self._sessions.get(project_id)
+        session = self._pipeline_sessions.get(project_id)
         # Config-driven: find test result key from session stages
         test_key = "test_report"
         if session:
@@ -515,7 +749,7 @@ class BuilderProjectService:
                     self._save_projects()
 
     async def approve_stage(self, project_id: str) -> Dict[str, Any]:
-        session = self._sessions.get(project_id)
+        session = self._pipeline_sessions.get(project_id)
         if not session:
             session = self._rebuild_session(project_id)
             if not session:
@@ -530,7 +764,7 @@ class BuilderProjectService:
         return {"project_id": project_id, "phase": state.get("phase", "executing")}
 
     async def start_fix(self, project_id: str) -> Dict[str, Any]:
-        session = self._sessions.get(project_id)
+        session = self._pipeline_sessions.get(project_id)
         if not session:
             session = self._rebuild_session(project_id)
             if not session:
@@ -547,7 +781,7 @@ class BuilderProjectService:
         return {"project_id": project_id, "phase": state.get("phase", "executing")}
 
     async def reject_stage(self, project_id: str, feedback: str) -> Dict[str, Any]:
-        session = self._sessions.get(project_id)
+        session = self._pipeline_sessions.get(project_id)
         if not session:
             session = self._rebuild_session(project_id)
             if not session:
@@ -562,7 +796,7 @@ class BuilderProjectService:
         return {"project_id": project_id, "phase": state.get("phase", "executing")}
 
     async def rollback_stage(self, project_id: str, stage_id: str) -> Dict[str, Any]:
-        session = self._sessions.get(project_id)
+        session = self._pipeline_sessions.get(project_id)
         if not session:
             session = self._rebuild_session(project_id)
             if not session:
@@ -583,7 +817,7 @@ class BuilderProjectService:
 
     async def resume_from_stage(self, project_id: str, stage_id: str) -> Dict[str, Any]:
         """Resume pipeline from a specific stage without clearing artifacts."""
-        session = self._sessions.get(project_id)
+        session = self._pipeline_sessions.get(project_id)
         if not session:
             session = self._rebuild_session(project_id)
             if not session:
@@ -611,8 +845,18 @@ class BuilderProjectService:
         proj = self._projects.get(project_id, {})
         proj["confirmed_prd"] = None
         self._save_projects()
+        # Clean up pipeline state files to prevent ghost recovery
+        for fname in (f"{project_id}.json", f"{project_id}_chat.json"):
+            fpath = os.path.join(_BUILDER_STATES_DIR, fname)
+            try:
+                if os.path.exists(fpath):
+                    os.remove(fpath)
+            except OSError:
+                pass
+        # Clear in-memory state
         self._runs[project_id] = {}
         self._sessions.pop(project_id, None)
+        self._pipeline_sessions.pop(project_id, None)
         return {"project_id": project_id, "phase": "dialogue"}
 
     async def get_deploy_dir(self, project_id: str) -> Optional[str]:
@@ -621,12 +865,35 @@ class BuilderProjectService:
         return proj.get("deploy_dir") or None
 
     async def get_project_state(self, project_id: str) -> Dict[str, Any]:
-        state = self._runs.get(project_id)
+        # Merge all pipeline_events' states for complete picture (single source of truth)
+        import json
+        from storage.sqlite import list_pipeline_events
+        events = list_pipeline_events(project_id)
+        state: Dict[str, Any] = {}
+        phase = "idle"
+        for ev in events:
+            try:
+                st = json.loads(ev.get("state_json", "{}"))
+                state.update(st)
+                if st.get("phase"):
+                    phase = st["phase"]
+            except Exception:
+                pass
+        state["phase"] = state.get("phase", phase)
         if not state or state.get("phase") == "failed":
             persisted = self._load_pipeline_state(project_id)
             if persisted:
                 self._runs[project_id] = persisted  # recovery
                 state = persisted
+                # Restore episodic memory from persisted state
+                episodic = state.get("_episodic")
+                if isinstance(episodic, dict):
+                    try:
+                        from core.api.core_facade import get_memory_manager
+                        mgr = get_memory_manager()
+                        mgr.import_episodic_state(episodic)
+                    except Exception:
+                        pass
         if not state:
             state = {}
         proj = self._projects.get(project_id, {})
@@ -638,17 +905,60 @@ class BuilderProjectService:
             "runs": proj.get("runs", []),
         }
 
-    # ── Pipeline state persistence ─────────────────────────────────
+    # ── Pipeline state persistence (per-project files, survives restart) ──
 
     def _save_pipeline_state(self, project_id: str, state: Dict[str, Any]) -> None:
-        proj = self._projects.get(project_id, {})
-        if proj:
-            proj["pipeline_state"] = dict(state)
-            self._save_projects()
+        """Save pipeline state to dedicated JSON file (not projects.json).
+        
+        Using per-project files avoids concurrent write hazards on the shared
+        projects.json and enables full session recovery after restart.
+        """
+        os.makedirs(_BUILDER_STATES_DIR, exist_ok=True)
+        state_file = os.path.join(_BUILDER_STATES_DIR, f"{project_id}.json")
+        try:
+            with open(state_file + ".tmp", "w", encoding="utf-8") as f:
+                json.dump(dict(state), f, ensure_ascii=False, indent=2, default=str)
+            os.replace(state_file + ".tmp", state_file)
+        except Exception as e:
+            _log.warning("Failed to save pipeline state for %s: %s", project_id, e)
+
+    def _save_chat_session(self, project_id: str) -> None:
+        """Persist chat session (messages, prd, phase) to survive restart.
+        
+        Stored alongside pipeline state in builder_states/."""
+        session = self._sessions.get(project_id)
+        if not session or not isinstance(session, dict):
+            return
+        os.makedirs(_BUILDER_STATES_DIR, exist_ok=True)
+        chat_file = os.path.join(_BUILDER_STATES_DIR, f"{project_id}_chat.json")
+        try:
+            with open(chat_file + ".tmp", "w", encoding="utf-8") as f:
+                json.dump(dict(session), f, ensure_ascii=False, indent=2, default=str)
+            os.replace(chat_file + ".tmp", chat_file)
+        except Exception as e:
+            _log.warning("Failed to save chat session for %s: %s", project_id, e)
+
+    def _load_chat_session(self, project_id: str) -> Optional[Dict[str, Any]]:
+        """Load persisted chat session from disk, if it exists."""
+        chat_file = os.path.join(_BUILDER_STATES_DIR, f"{project_id}_chat.json")
+        try:
+            if os.path.exists(chat_file):
+                with open(chat_file, "r", encoding="utf-8") as f:
+                    return json.load(f)
+        except Exception:
+            pass
+        return None
 
     def _load_pipeline_state(self, project_id: str) -> Optional[Dict[str, Any]]:
-        proj = self._projects.get(project_id, {})
-        return proj.get("pipeline_state")
+        """Load pipeline state from per-project JSON file."""
+        state_file = os.path.join(_BUILDER_STATES_DIR, f"{project_id}.json")
+        try:
+            if os.path.exists(state_file):
+                with open(state_file, "r", encoding="utf-8") as f:
+                    return json.load(f)
+        except Exception as e:
+            _log.warning("Failed to load pipeline state for %s: %s", project_id, str(e)[:200])
+        return None
 
     def _rebuild_session(self, project_id: str) -> Optional[Any]:
         """Rebuild PipelineSession and state from persisted project data (for crash recovery)."""
@@ -668,8 +978,9 @@ class BuilderProjectService:
         for s in stages:
             try:
                 apply_agent_md_to_stage(s, s.agent_id)
-            except Exception:
-                pass
+            except Exception as e:
+                _log.warning("Failed to apply AGENT.md config for agent %s in project %s: %s",
+                    s.agent_id, project_id, str(e)[:200])
 
         if not stages:
             return None
@@ -678,7 +989,7 @@ class BuilderProjectService:
         max_retry = int(os.getenv("AIPLAT_BUILDER_MAX_RETRY", "3"))
         config = PipelineConfig(stages=stages, max_tokens_per_run=max_tokens, max_retry_attempts=max_retry)
         session = create_pipeline_session(config=config, model=self._model, skill_loader=_create_skill_loader())
-        self._sessions[project_id] = session
+        self._pipeline_sessions[project_id] = session
         return session
 
     async def get_graph(self, project_id: str) -> Dict[str, Any]:
@@ -716,13 +1027,13 @@ class BuilderProjectService:
     async def run_tests(self, project_id: str) -> Dict[str, Any]:
         """Run E2E smoke + repo tests for a completed project pipeline."""
         proj = self._projects.get(project_id, {})
-        deploy_dir = proj.get("deploy_dir", "") or self.get_deploy_dir(project_id)
+        deploy_dir = proj.get("deploy_dir", "") or await self.get_deploy_dir(project_id)
         return _run_tests_for_project(project_id, deploy_dir or "")
 
     async def deploy_to_app(self, project_id: str) -> Dict[str, Any]:
         """Deploy pipeline output to the app layer."""
         proj = self._projects.get(project_id, {})
-        deploy_dir = proj.get("deploy_dir", "") or self.get_deploy_dir(project_id)
+        deploy_dir = proj.get("deploy_dir", "") or await self.get_deploy_dir(project_id)
         return _deploy_to_app_for_project(project_id, deploy_dir or "", proj)
 
     async def get_agent_insight(self, agent_id: str) -> Dict[str, Any]:
@@ -749,6 +1060,50 @@ class BuilderProjectService:
         result["ok"] = True
         return result
 
+    async def get_health_report(self, project_id: str) -> Dict[str, Any]:
+        """Build health report from pipeline state, aggregating per-stage dimensional scores."""
+        state = self._runs.get(project_id)
+        if not state:
+            state = self._load_pipeline_state(project_id) or {}
+        proj = self._projects.get(project_id, {})
+        stages = []
+        all_dims: Dict[str, Dict] = {}
+        for s in (proj.get("team_stages") or []):
+            sid = s.get("id") if isinstance(s, dict) else getattr(s, "id", "")
+            hr = state.get(f"_health_report_{sid}") if sid else None
+            if isinstance(hr, dict):
+                stages.append(hr)
+                for d in (hr.get("dimensions") or []):
+                    dname = d.get("name", "")
+                    if dname not in all_dims:
+                        all_dims[dname] = dict(d)
+                        all_dims[dname]["score"] = 0.0
+                    all_dims[dname]["score"] += d.get("score", 0)
+        # Average dimension scores across stages
+        n = max(len(stages), 1)
+        dim_list = []
+        total_score = 0.0
+        for d in all_dims.values():
+            d["score"] = round(d["score"] / n, 1)
+            total_score += d["score"] * d.get("weight", 1.0)
+            dim_list.append(d)
+        total_weight = sum(d.get("weight", 1.0) for d in dim_list) or 1.0
+        overall = round(total_score / total_weight * 10, 1)
+        # Build trend from run history
+        trend = []
+        for run in (proj.get("runs") or [])[-20:]:
+            if isinstance(run, dict) and run.get("pass_rate"):
+                trend.append({"run_id": run.get("run_id", ""), "score": round(float(run.get("pass_rate", 0)) * 100, 1),
+                              "timestamp": run.get("started_at", "")})
+        return {
+            "project_id": project_id,
+            "overall_score": overall,
+            "dimensions": dim_list,
+            "stages": stages,
+            "trend": trend,
+            "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        }
+
 
 def _stage_status_for_graph(stage, graph_trace: List[Dict], idx: int, current_idx: int, state: Dict) -> str:
     for t in reversed(graph_trace):
@@ -769,6 +1124,8 @@ def _run_tests_for_project(project_id: str, deploy_dir: str) -> dict:
     results: dict = {"all_passed": False, "e2e_smoke": None, "repo_tests": None}
     if deploy_dir and os.path.isdir(deploy_dir):
         test_dir = os.path.join(deploy_dir, "tests")
+        if not os.path.isdir(test_dir):
+            test_dir = os.path.join(deploy_dir, "test")
         if os.path.isdir(test_dir):
             try:
                 r = subprocess.run(["python", "-m", "pytest", test_dir, "-q"], capture_output=True, text=True, timeout=60)

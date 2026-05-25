@@ -6,10 +6,14 @@ category: analysis
 version: 1.0.0
 status: enabled
 protected: true
-execution_mode: inline
-executable: true
+execution_mode: prompt
 permissions:
   - "llm:generate"
+effects:
+  - type: read
+    resources: ["filesystem:~/.aiplat"]
+    idempotent: true
+    rollback_available: false
 input_schema:
   code:
     type: string

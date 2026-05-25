@@ -72,7 +72,7 @@ class ContextAssemblyResult:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
-class ContextAssembler:
+class TokenBudgetManager:
 
     def assemble(
         self,

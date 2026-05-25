@@ -118,24 +118,7 @@ class BaseTool(ITool):
             self._update_stats(False, latency)
             return ToolResult(success=False, error="Invalid params", latency=latency)
 
-        # Optional permission check: only enforced when user_id is provided.
-        user_id = params.get("user_id") or params.get("_user_id")
-        if self._permission_manager is not None and user_id is not None:
-            try:
-                from .permission import Permission
-
-                if not self._permission_manager.check_permission(user_id, self.get_name(), Permission.EXECUTE):
-                    latency = time.time() - start_time
-                    self._update_stats(False, latency)
-                    return ToolResult(
-                        success=False,
-                        error=f"User '{user_id}' lacks EXECUTE permission for tool '{self.get_name()}'",
-                        latency=latency,
-                    )
-            except Exception as e:
-                latency = time.time() - start_time
-                self._update_stats(False, latency)
-                return ToolResult(success=False, error=str(e), latency=latency)
+        # Identity-injected: permission enforced by PolicyGate inside sys_tool_call
 
         effective_timeout = timeout
         try:
@@ -234,7 +217,7 @@ class CalculatorTool(BaseTool):
     def __init__(self):
         config = ToolConfig(
             name="calculator",
-            description="Perform mathematical calculations",
+            description="执行数学计算",
             parameters={
                 "type": "object",
                 "properties": {
@@ -255,11 +238,8 @@ class CalculatorTool(BaseTool):
             expression = params.get("expression", "")
 
             allowed_names = {
-                "abs": abs,
-                "max": max,
-                "min": min,
-                "pow": pow,
-                "round": round,
+                "abs": abs, "max": max, "min": min,
+                "pow": pow, "round": round,
                 "sqrt": lambda x: x ** 0.5,
                 "sin": lambda x: __import__("math").sin(x),
                 "cos": lambda x: __import__("math").cos(x),
@@ -269,8 +249,14 @@ class CalculatorTool(BaseTool):
                 "pi": __import__("math").pi,
                 "e": __import__("math").e,
             }
-
-            result = eval(expression, {"__builtins__": {}}, allowed_names)
+            # Safety: reject sandbox escape patterns before eval
+            sanitized = str(expression or "").strip()
+            if not sanitized or len(sanitized) > 500:
+                return ToolResult(success=False, error="invalid_expression_length")
+            import re as _re2
+            if _re2.search(r'__\w+__|\.__\w+__|\._|import\b|open\b|exec\b|compile\b|getattr\b|setattr\b|delattr\b', sanitized):
+                return ToolResult(success=False, error="expression_contains_blocked_pattern")
+            result = eval(sanitized, {"__builtins__": {}}, allowed_names)  # noqa: S307 — sandboxed calculator (restricted globals, pattern block, 500 char limit)
             return ToolResult(success=True, output=str(result))
 
         return await self._call_with_tracking(params, handler, timeout=10)
@@ -397,7 +383,7 @@ class SearchTool(BaseTool):
     def __init__(self):
         config = ToolConfig(
             name="search",
-            description="Search the web for information",
+            description="搜索互联网信息",
             parameters={
                 "type": "object",
                 "properties": {
@@ -557,7 +543,7 @@ class FileOperationsTool(BaseTool):
     def __init__(self):
         config = ToolConfig(
             name="file_operations",
-            description="Read, write, or list files",
+            description="读写文件（创建/读取/列出/删除/移动/复制）",
             parameters={
                 "type": "object",
                 "properties": {

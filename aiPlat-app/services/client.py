@@ -2,9 +2,14 @@
 API Client - API 客户端
 
 封装与 platform 层通信的 HTTP 客户端。
+
+⚠ I/O: Primary methods use synchronous requests.Session for backward compat.
+For async contexts, use async_get/async_post/async_put/async_delete which
+use httpx internally. Prefer async methods in new code.
 """
 
 from typing import Any, Optional, Dict
+import os
 import requests
 from datetime import datetime
 
@@ -12,7 +17,8 @@ from datetime import datetime
 class APIClient:
     """API 客户端"""
 
-    def __init__(self, base_url: str = "http://localhost:8003", api_key: str = ""):
+    def __init__(self, base_url: str = "", api_key: str = ""):
+        self.base_url = base_url or os.environ.get("AIPLAT_PLATFORM_URL", "http://localhost:8003")
         self.base_url = base_url
         self.api_key = api_key
         self._session = requests.Session()
@@ -94,6 +100,33 @@ class APIClient:
         if resp.status_code == 200:
             return resp.json()
         return {"error": resp.text}
+
+    # ── Async methods (httpx) ─────────────────────────────────────────
+
+    async def _async_request(self, method: str, path: str, data: Optional[dict] = None, params: Optional[dict] = None) -> dict:
+        import httpx
+        url = f"{self.base_url}{path}"
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                headers = {k: v for k, v in self._headers.items() if k.lower() != "content-type"}
+                resp = await client.request(method, url, json=data, params=params, headers=headers)
+                if resp.status_code == 200:
+                    return resp.json()
+                return {"error": resp.text, "status_code": resp.status_code}
+        except Exception as e:
+            return {"error": str(e), "status_code": 500}
+
+    async def async_get(self, path: str, params: Optional[dict] = None) -> dict:
+        return await self._async_request("GET", path, params=params)
+
+    async def async_post(self, path: str, data: dict) -> dict:
+        return await self._async_request("POST", path, data=data)
+
+    async def async_put(self, path: str, data: dict) -> dict:
+        return await self._async_request("PUT", path, data=data)
+
+    async def async_delete(self, path: str) -> dict:
+        return await self._async_request("DELETE", path)
 
     def health_check(self) -> dict:
         return self.get("/health")

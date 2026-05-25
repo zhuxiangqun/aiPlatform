@@ -70,7 +70,7 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
       setSelectedModel(catalog ? catalog.name : (editingModel.name || ''));
       setName(catalog ? catalog.name : (editingModel.name || ''));
       setDisplayName(catalog ? catalog.display : (editingModel.displayName || ''));
-      setType(catalog ? catalog.type : (editingModel.type || 'chat'));
+      setType((catalog ? catalog.type : (editingModel.type || 'chat')) as 'chat' | 'embedding' | 'rerank');
       setDescription(editingModel.description || '');
       setTags((editingModel.tags || []).join(', '));
       setBaseUrl(editingModel.config?.baseUrl || PROVIDER_BASE[editingModel.provider || '']?.baseUrl || '');
@@ -114,7 +114,7 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
     if (!model) return;
     setName(model.name);
     setDisplayName(model.display);
-    setType(model.type || 'chat');
+    setType((model.type || 'chat') as 'chat' | 'embedding' | 'rerank');
     setTemperature(String(model.temperature ?? 0.7));
     setMaxTokens(String(model.max_tokens ?? 2048));
     setTopP(String(model.top_p ?? 1.0));
@@ -199,7 +199,7 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
           </Alert>
         )}
 
-        {providerModels.length > 0 && (
+        {Object.keys(providerModels).length > 0 && (
           <Select label="选择模型" value={selectedModel} onChange={setSelectedModel} options={modelOptions} placeholder="选择模型" />
         )}
 

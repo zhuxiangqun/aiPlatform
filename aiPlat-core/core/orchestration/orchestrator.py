@@ -1,31 +1,33 @@
 """
-Orchestrator (Phase 9 — plan affects execution).
+Orchestrator (Phase 10 — full chain planning + DAG generation).
+
+Upgraded from Phase 9: now supports intent analysis, thinking chain generation,
+capability-to-agent mapping, and DAG output for PipelineEngine consumption.
 
 Design:
-- Input: agent_id, user messages, and lightweight context
-- Output: OrchestratorPlan (steps + explain + version)
-- OrchestratorPlan now converts to kernel ExecutionPlan for Harness integration.
+- Input: user intent text (natural language)
+- Process: analyze_intent → plan_chain → map_capabilities → build_dag
+- Output: DAG (directed acyclic graph of execution nodes)
 
-Rules:
-- This module must remain side-effect free: do NOT execute tools/skills.
-- LLM usage is allowed for planning, via sys_llm_generate syscall.
+Side-effect free per docs/design/kernel_orchestrator/04-security-and-audit.md.
 """
-
 from __future__ import annotations
 
 import json
+import os
 import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from core.harness.syscalls.llm import sys_llm_generate
-from core.harness.kernel.types import ExecutionPlan, PlanStep as KernelPlanStep
+from core.harness.kernel.types import DAG, DAGNode, ExecutionPlan, PlanStep as KernelPlanStep
+from .intent_analyzer import analyze_intent, StructuredIntent
+from .chain_planner import plan_chain, ChainStep
+from .capability_mapper import map_capabilities
 
 
 @dataclass
 class PlanStep:
     """A single plan step (machine-friendly)."""
-
     step: int
     action: str
     kind: str = "instruction"  # instruction|tool|skill|llm
@@ -34,16 +36,16 @@ class PlanStep:
 
 @dataclass
 class OrchestratorPlan:
-    """Orchestrator output."""
-
-    version: str = "9.0"
+    """Orchestrator output — now with DAG support."""
+    version: str = "10.0"
     explain: str = ""
     steps: List[PlanStep] = field(default_factory=list)
+    dag: Optional[DAG] = None
     created_at: float = field(default_factory=lambda: time.time())
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        result: Dict[str, Any] = {
             "version": self.version,
             "explain": self.explain,
             "created_at": self.created_at,
@@ -53,6 +55,9 @@ class OrchestratorPlan:
             ],
             "metadata": self.metadata or {},
         }
+        if self.dag:
+            result["dag"] = self.dag.to_dict()
+        return result
 
     def to_execution_plan(self) -> ExecutionPlan:
         return ExecutionPlan(
@@ -60,8 +65,7 @@ class OrchestratorPlan:
             explain=self.explain,
             steps=[
                 KernelPlanStep(
-                    step=s.step,
-                    action=s.action,
+                    step=s.step, action=s.action,
                     kind=s.kind,  # type: ignore[arg-type]
                     args=s.args,
                 )
@@ -72,81 +76,125 @@ class OrchestratorPlan:
 
 
 class Orchestrator:
-    """
-    Phase 5.2 minimal orchestrator.
+    """Phase 10 orchestrator — intent → chain → capabilities → DAG."""
 
-    It asks an LLM for a plan in strict JSON format. If parsing fails, returns a fallback plan.
-    """
+    async def plan_intent(self, *, intent_text: str, model: Any = None) -> OrchestratorPlan:
+        """Full planning pipeline: intent analysis → chain → capabilities → DAG."""
+        # Step 1: Analyze intent
+        intent = analyze_intent(intent_text)
+
+        # Step 2: Generate thinking chain
+        chain = await plan_chain(intent, model=model)
+
+        # Step 3: Map capabilities to agents
+        agent_map = await map_capabilities(chain, model=model)
+
+        # Step 4: Build DAG with execution modes
+        dag = self._build_dag(intent, chain, agent_map)
+
+        # Step 5: Generate step plan (legacy format for backward compat)
+        steps = self._chain_to_steps(chain)
+
+        explain = (
+            f"领域: {intent.domain}, 复杂度: {intent.complexity}, "
+            f"阶段: {' → '.join(f'{s.role}({agent_map.get(s.id, s.id)})' for s in chain)}"
+        )
+
+        return OrchestratorPlan(
+            explain=explain,
+            steps=steps,
+            dag=dag,
+            metadata={
+                "intent": intent.to_dict(),
+                "agent_map": agent_map,
+                "chain": [{"id": s.id, "role": s.role, "depends_on": s.depends_on} for s in chain],
+            },
+        )
+
+    def _build_dag(self, intent: StructuredIntent, chain: List[ChainStep], agent_map: Dict[str, str]) -> DAG:
+        """Construct DAG from chain and agent mapping."""
+        complexity = intent.complexity
+        nodes = []
+
+        # Config-driven role→mode mapping (AIPLAT_DAG_ROLE_MODES env var, JSON)
+        role_modes: Dict[str, str] = {}
+        try:
+            raw = os.getenv("AIPLAT_DAG_ROLE_MODES", "")
+            if raw:
+                role_modes = json.loads(raw)
+        except Exception:
+            pass
+
+        # Config-driven role→gate mapping (AIPLAT_DAG_ROLE_GATES env var, JSON)
+        role_gates: Dict[str, str] = {}
+        try:
+            raw = os.getenv("AIPLAT_DAG_ROLE_GATES", "")
+            if raw:
+                role_gates = json.loads(raw)
+        except Exception:
+            pass
+
+        for step in chain:
+            agent_id = agent_map.get(step.id, step.id)
+            step_role = (step.role or "").strip()
+            # Execution mode: config-driven role→mode lookup
+            mode = role_modes.get(step_role, "code_first")
+            # Review gate: config-driven role→gate lookup
+            gate = role_gates.get(step_role, "none")
+            # Complexity override: upgrade gate level for high-complexity
+            if complexity == "high" and gate in ("quick", "none"):
+                gate = "llm"
+
+            nodes.append(DAGNode(
+                id=step.id,
+                role=step.role,
+                agent_id=agent_id,
+                depends_on=list(step.depends_on),
+                execution_mode=mode,
+                review_gate=gate,
+                tdd_enforce=(mode == "tdd"),
+                context_isolation="isolated" if complexity == "high" else "shared",
+            ))
+        return DAG(
+            nodes=nodes,
+            explain=f"Auto-generated DAG for {intent.domain} (complexity={complexity})",
+            created_at=time.time(),
+            metadata={"intent": intent.to_dict()},
+        )
+
+    def _chain_to_steps(self, chain: List[ChainStep]) -> List[PlanStep]:
+        """Convert chain to legacy step format for backward compatibility."""
+        return [
+            PlanStep(step=i + 1, kind="skill", action=s.id,
+                     args={"role": s.role, "depends_on": s.depends_on})
+            for i, s in enumerate(chain)
+        ]
+
+    # ── Legacy API (kept for Harness integration backward compat) ──
 
     async def plan(
-        self,
-        *,
-        agent_id: str,
-        model: Any,
-        messages: List[Dict[str, str]],
+        self, *, agent_id: str, model: Any, messages: List[Dict[str, str]],
         context: Optional[Dict[str, Any]] = None,
         trace_context: Optional[Dict[str, Any]] = None,
     ) -> OrchestratorPlan:
+        """Legacy plan() — delegates to plan_intent using last message as intent.
+        Kept for backward compatibility with integration.py's _execute_agent()."""
         task = ""
         if messages:
             task = str(messages[-1].get("content", "") or "")
-
-        prompt = (
-            "你是编排器（Orchestrator）。你只能输出执行计划，不允许执行任何工具/技能。\n"
-            "请根据用户任务生成 JSON 计划，格式必须严格符合：\n"
-            "{\n"
-            '  "explain": "为什么这样拆解（简短）",\n'
-            '  "steps": [\n'
-            '    {"step": 1, "kind": "instruction", "action": "..."},\n'
-            '    {"step": 2, "kind": "tool", "action": "tool_name", "args": {...}},\n'
-            '    {"step": 3, "kind": "skill", "action": "skill_name", "args": {...}}\n'
-            "  ]\n"
-            "}\n"
-            "约束：\n"
-            "- steps 不超过 8 条\n"
-            "- kind 只能是 instruction/tool/skill/llm\n"
-            "- tool/skill 步骤只描述，不执行\n"
-            f"\nAgent: {agent_id}\n"
-            f"Task: {task}\n"
-        )
-
-        try:
-            resp = await sys_llm_generate(model, prompt, trace_context=trace_context)
-            raw = (getattr(resp, "content", "") or "").strip()
-            data = json.loads(raw)
-            explain = str(data.get("explain", "") or "")
-            steps_in = data.get("steps") or []
-            steps: List[PlanStep] = []
-            for i, s in enumerate(steps_in, start=1):
-                if not isinstance(s, dict):
-                    continue
-                steps.append(
-                    PlanStep(
-                        step=int(s.get("step") or i),
-                        kind=str(s.get("kind") or "instruction"),
-                        action=str(s.get("action") or ""),
-                        args=s.get("args") if isinstance(s.get("args"), dict) else {},
-                    )
-                )
-            if not steps:
-                raise ValueError("empty plan")
-
+        if not task:
             return OrchestratorPlan(
-                explain=explain,
-                steps=steps[:8],
-                metadata={
-                    "agent_id": agent_id,
-                    "context_keys": sorted(list((context or {}).keys()))[:50],
-                },
-            )
-        except Exception as e:
-            # Fallback: 2-step minimal plan
-            return OrchestratorPlan(
-                explain=f"Fallback plan (parse_failed): {e}",
+                explain="No task to plan",
                 steps=[
                     PlanStep(step=1, kind="instruction", action="理解任务与约束"),
-                    PlanStep(step=2, kind="instruction", action="按既有 LoopEngine 执行（无额外编排）"),
+                    PlanStep(step=2, kind="instruction", action="按既有 LoopEngine 执行"),
                 ],
-                metadata={"agent_id": agent_id, "fallback": True},
             )
-
+        try:
+            return await self.plan_intent(intent_text=task, model=model)
+        except Exception:
+            return OrchestratorPlan(
+                explain="Fallback plan",
+                steps=[PlanStep(step=1, kind="instruction", action="按既有 LoopEngine 执行")],
+                metadata={"fallback": True},
+            )

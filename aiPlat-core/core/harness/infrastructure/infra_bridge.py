@@ -4,9 +4,23 @@ This is Phase A of the infra wiring plan — creates a minimal connection point
 so core can optionally use infra's provider chain. Primary LLM path now flows
 through core/adapters/llm/base.py::create_adapter() → InfraLLMAdapter.
 
-Per CLAUDE.md §5.30: every module must have at least 1 production caller.
-Callers: model_router.py (get_infra_model_source/list_infra_models),
-         memory/semantic.py (create_infra_vector_client/get_infra_embedding).
+## Wiring Status (Per CLAUDE.md §5.30, every module must have ≥1 caller)
+
+✅ WIRED:
+  create_infra_database_client() → aiPlat-platform/storage/sqlite.py, aiPlat-platform/kb/db.py
+  create_infra_vector_client()   → core memory/semantic.py
+  get_infra_model_source()       → model_router.py (list_infra_models)
+  list_infra_models()            → model_router.py
+
+⚠ NOT YET WIRED:
+  get_infra_embedding()          → embedding flows through memory/embedding.py::EmbeddingProvider
+                                   (wire when infra-based embedding preferred over local sentence-transformers)
+
+⚠ FULL INFRA CAPABILITIES NOT IN PRODUCTION PATH:
+  aiPlat-infra has 18 capability modules (LLM/Cache/Vector/Database/Messaging/Storage/
+  Compute/Memory/HTTP/Logging/Config/DI/Network/Monitoring/MCP/Observability/Utils/Management).
+  Only 4 are bridged here. Core maintains parallel infrastructure in core/harness/infrastructure/.
+  See aiPlat-infra/CLAUDE.md §5.6 for full wiring plan.
 """
 
 from __future__ import annotations
@@ -68,39 +82,51 @@ def list_infra_models() -> List[Dict[str, Any]]:
         model_mgr = mgr.get("model")
         if model_mgr is None:
             return []
-        return getattr(model_mgr, "list_models", lambda: [])()
+        fn = getattr(model_mgr, "list_models", None)
+        if fn is None:
+            return []
+        import inspect as _inspect
+        result = fn()
+        if _inspect.iscoroutine(result):
+            import asyncio as _asyncio
+            try:
+                loop = _asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
+            if loop and loop.is_running():
+                import concurrent.futures as _futures
+                with _futures.ThreadPoolExecutor(max_workers=1) as pool:
+                    future = pool.submit(_asyncio.run, result)
+                    return future.result(timeout=5)
+            else:
+                return _asyncio.run(result)
+        return result
     except Exception:
         return []
 
 
-def create_infra_vector_client(backend: str = "chroma") -> Optional[Any]:
+def create_infra_vector_client(backend: str = "faiss") -> Optional[Any]:
     """Create a vector store client backed by infra's factory.
 
     Args:
-        backend: "chroma", "faiss", "milvus", or "pinecone"
+        backend: "faiss", "milvus", "chroma", or "pinecone"
 
-    Returns a client object with .insert(vectors, metadata) and
-    .search(query_vector, top_k) -> List[Dict] methods.
-
-    Caller: can be used by core/harness/memory/semantic.py or
-    core/apps/knowledge/ as a VectorStore backend.
+    Returns a VectorStore with .add(vectors, metadata) and
+    .search(query_vector, top_k) methods, or None on failure.
     """
     if not _check_infra_available():
         return None
     try:
-        from infra.vector.factory import create_vector_client
-        config: Dict[str, Any] = {"backend": backend, "dimension": int(os.getenv("AIPLAT_VECTOR_DIMENSION", "1536"))}
-        if backend == "chroma":
-            config["collection_name"] = os.getenv("AIPLAT_CHROMA_COLLECTION", "")
-        elif backend == "faiss":
-            config["index_type"] = os.getenv("AIPLAT_FAISS_INDEX", "HNSW")
-        elif backend == "milvus":
-            config["collection_name"] = os.getenv("AIPLAT_MILVUS_COLLECTION", "")
-        elif backend == "pinecone":
-            config["api_key"] = os.getenv("PINECONE_API_KEY", "")
-            config["environment"] = os.getenv("PINECONE_ENVIRONMENT", "")
-            config["index_name"] = os.getenv("PINECONE_INDEX", "")
-        client = create_vector_client(config)
+        from infra.vector.schemas import VectorConfig, CollectionConfig, IndexConfig
+        from infra.vector.factory import create_vector_store
+        dim = int(os.getenv("AIPLAT_VECTOR_DIMENSION", "1536"))
+        config = VectorConfig(
+            type=backend,
+            dimension=dim,
+            collection=CollectionConfig(name=os.getenv("AIPLAT_VECTOR_COLLECTION", "aiplat_knowledge")),
+            index=IndexConfig(type=os.getenv("AIPLAT_FAISS_INDEX", "IndexHNSW")),
+        )
+        client = create_vector_store(config)
         return client
     except Exception:
         logger.debug(f"Failed to create infra vector client ({backend})", exc_info=True)
@@ -128,3 +154,36 @@ async def get_infra_embedding(text: str) -> Optional[List[float]]:
     except Exception:
         logger.debug("Failed to generate embedding via infra", exc_info=True)
         return None
+
+
+def create_infra_database_client(db_path: str) -> Any:
+    """创建数据库连接，通过 Infra Bridge 模式返回。
+
+    Platform 层不应直接 import sqlite3，而应通过此函数获取
+    数据库连接。连接已配置 WAL 模式、normal synchronous、
+    并设置 row_factory 为 sqlite3.Row。
+
+    Args:
+        db_path: 数据库文件路径（如 "data/aiplat_platform.sqlite3"）
+
+    Returns:
+        sqlite3.Connection（符合 DatabasePort Protocol），
+        已配置 row_factory=sqlite3.Row、PRAGMA journal_mode=WAL。
+
+    callers: aiPlat-platform/storage/sqlite.py, aiPlat-platform/kb/db.py
+    """
+    import sqlite3
+
+    path = db_path
+    if not os.path.isabs(path):
+        path = os.path.join(os.getcwd(), path)
+
+    parent = os.path.dirname(path)
+    if parent and not os.path.exists(parent):
+        os.makedirs(parent, exist_ok=True)
+
+    conn = sqlite3.connect(path)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA synchronous=NORMAL")
+    return conn

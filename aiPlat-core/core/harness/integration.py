@@ -2574,6 +2574,8 @@ class HarnessIntegration:
         payload = req.payload or {}
         input_data = payload.get("input", {}) if isinstance(payload, dict) else {}
 
+        runtime = getattr(self, "_runtime", None)
+
         # Phase R2: apply workspace context for toolset gating.
         workspace_token = None
         request_token = None

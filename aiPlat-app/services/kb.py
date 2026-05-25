@@ -24,8 +24,9 @@ class KBService:
         if not p.is_file():
             return {"error": f"file_not_found:{p}"}
         with p.open("rb") as f:
-            files = {"file": (p.name, f, "application/pdf")}
-            return self._client.post_multipart(f"/api/v1/kb/collections/{collection_id}/documents/upload", files=files)
+            files = {"file": (p.name, f, "application/octet-stream")}
+            form = {"collection_id": collection_id, "kind": "pdf"}
+            return self._client.post_multipart("/api/v1/documents/ingest", form=form, files=files)
 
     def query(self, *, collection_id: str, question: str, year: Optional[int] = None, limit: int = 50) -> Dict[str, Any]:
         payload: Dict[str, Any] = {"collection_id": collection_id, "question": question, "limit": int(limit)}

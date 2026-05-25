@@ -1593,7 +1593,14 @@ async def list_workspace_skill_revisions(skill_id: str, limit: int = 50, offset:
     try:
         fs = skill.metadata.get("filesystem") if isinstance(skill.metadata, dict) else None
         if isinstance(fs, dict) and fs.get("skill_dir"):
-            skill_dir = Path(str(fs.get("skill_dir")))
+            raw = str(fs.get("skill_dir"))
+            candidate = Path(raw).resolve()
+            allowed_base = Path(os.path.expanduser("~/.aiplat/skills")).resolve()
+            try:
+                candidate.relative_to(allowed_base)
+            except ValueError:
+                raise HTTPException(status_code=400, detail=f"skill_dir outside allowed base: {raw}")
+            skill_dir = candidate
     except Exception:
         skill_dir = None
     if skill_dir is None:

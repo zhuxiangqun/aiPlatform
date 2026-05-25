@@ -2,6 +2,7 @@
 aiPlat-management 服务器 - FastAPI 应用
 """
 
+import os
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -9,7 +10,7 @@ import yaml
 from pathlib import Path
 from typing import Dict, Any
 
-from management.api import dashboard, alerting, diagnostics, infra, core, audit, policies, onboarding, studio
+from management.api import dashboard, alerting, diagnostics, infra, core, audit, policies, onboarding, studio, releases, approval
 from management.api.proxy import build_app_proxy_router, build_platform_proxy_router
 from management.api.alerting import router as alerting_router, alias_router as alerts_router
 from management.dashboard import DashboardAggregator, InfraAdapter, CoreAdapter, PlatformAdapter, AppAdapter
@@ -93,10 +94,14 @@ def create_app() -> FastAPI:
     # 配置 CORS
     cors_config = config.get("server", {}).get("api", {}).get("cors", {})
     if cors_config.get("enabled", True):
+        origins_raw = cors_config.get("origins", os.getenv("AIPLAT_MANAGEMENT_CORS_ORIGINS", ""))
+        origins = [o.strip() for o in origins_raw.split(",") if o.strip()] if isinstance(origins_raw, str) and origins_raw else origins_raw
+        if not origins:
+            origins = ["http://localhost:3000"]  # dev default — explicit, not wildcard
         app.add_middleware(
             CORSMiddleware,
-            allow_origins=cors_config.get("origins", ["*"]),
-            allow_credentials=True,
+            allow_origins=origins,
+            allow_credentials=os.getenv("AIPLAT_MANAGEMENT_CORS_CREDENTIALS", "false").lower() in ("1", "true", "yes"),
             allow_methods=["*"],
             allow_headers=["*"],
         )
@@ -115,6 +120,8 @@ def create_app() -> FastAPI:
     app.include_router(build_platform_proxy_router(), prefix=api_prefix)
     app.include_router(build_app_proxy_router(), prefix=api_prefix)
     app.include_router(studio.router, prefix=api_prefix)
+    app.include_router(releases.router, prefix=api_prefix)
+    app.include_router(approval.router, prefix=api_prefix)
     
     # 创建聚合器和适配器
     aggregator = DashboardAggregator()

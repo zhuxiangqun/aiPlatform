@@ -15,8 +15,7 @@ async def test_execution_store_global_settings_and_tenants(tmp_path):
     assert got is not None
     assert got["value"]["adapter_id"] == "a1"
 
-    t = await store.upsert_tenant(tenant_id="default", name="default")
-    assert t["tenant_id"] == "default"
-    ls = await store.list_tenants(limit=10, offset=0)
-    assert ls["total"] >= 1
+    # Tenants migrated to aiPlat-platform/storage/sqlite.py (2026-Q2)
+    # tenant CRUD tests removed from execution_store scope
+
 

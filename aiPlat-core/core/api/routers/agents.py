@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from datetime import datetime
 from typing import Any, Annotated, Dict, List, Optional
 
@@ -31,6 +32,12 @@ def _store(rt: Optional[KernelRuntime]):
 
 def _agent_mgr(rt: Optional[KernelRuntime]):
     return getattr(rt, "agent_manager", None) if rt else None
+
+
+def _resolve_skill_names(skill_ids: List[str]) -> Dict[str, str]:
+    """Stub: skill name resolution is done client-side via skillApi.
+    Returns IDs as-is; frontend maps them to display names from skill list."""
+    return {sid: sid for sid in skill_ids}
 
 
 def _approval_mgr(rt: Optional[KernelRuntime]):
@@ -121,10 +128,17 @@ async def list_agents(
     agents = await mgr.list_agents(agent_type, status, category, tag_list, limit, offset)
     return {
         "agents": [
-            {"id": a.id, "name": a.name, "description": a.metadata.get("description", ""),
+            {"id": a.id, "name": a.name,
+             "display_name": a.metadata.get("display_name", a.name) if isinstance(a.metadata, dict) else a.name,
+             "description": a.metadata.get("description", "") if isinstance(a.metadata, dict) else "",
              "agent_type": a.type, "status": a.status,
-             "category": a.category, "tags": a.tags, "phase": a.phase,
-             "skills": a.skills, "tools": a.tools, "metadata": a.metadata}
+             "category": a.category or (a.metadata.get("category", "") if isinstance(a.metadata, dict) else ""),
+             "tags": a.tags or (a.metadata.get("tags", []) if isinstance(a.metadata, dict) else []),
+             "phase": a.phase or (a.metadata.get("phase", "") if isinstance(a.metadata, dict) else ""),
+             "config": a.config,
+             "skills": a.skills,
+             "skill_names": _resolve_skill_names(a.skills),
+             "tools": a.tools, "metadata": a.metadata}
             for a in agents
         ],
         "total": mgr.get_agent_count().get("total", 0),
@@ -162,13 +176,31 @@ async def get_agent(agent_id: str, rt: RuntimeDep = None):
     return {
         "id": agent.id,
         "name": agent.name,
+        "display_name": agent.metadata.get("display_name", agent.name) if isinstance(agent.metadata, dict) else agent.name,
+        "description": agent.metadata.get("description", "") if isinstance(agent.metadata, dict) else "",
         "agent_type": agent.type,
         "status": agent.status,
+        "category": agent.category or (agent.metadata.get("category", "") if isinstance(agent.metadata, dict) else ""),
+        "tags": agent.tags or (agent.metadata.get("tags", []) if isinstance(agent.metadata, dict) else []),
+        "phase": agent.phase or (agent.metadata.get("phase", "") if isinstance(agent.metadata, dict) else ""),
         "config": agent.config,
         "skills": agent.skills,
+        "skill_names": _resolve_skill_names(agent.skills),
         "tools": agent.tools,
         "metadata": agent.metadata,
     }
+
+
+@router.get("/agents/{agent_id}/sop")
+async def get_agent_sop(agent_id: str, rt: RuntimeDep = None):
+    """Get agent SOP (Markdown) from AGENT.md body."""
+    mgr = _agent_mgr(rt)
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Agent manager not available")
+    data = await mgr.get_agent_sop(agent_id)
+    if not data:
+        raise HTTPException(status_code=404, detail="SOP not found")
+    return data
 
 
 @router.put("/agents/{agent_id}")
@@ -180,6 +212,7 @@ async def update_agent(agent_id: str, request: AgentUpdateRequest, rt: RuntimeDe
         agent = await mgr.update_agent(
             agent_id,
             name=request.name,
+            status=request.status,
             config=request.config,
             skills=request.skills,
             tools=request.tools,
@@ -551,3 +584,36 @@ async def rollback_agent_version(agent_id: str, version: str, rt: RuntimeDep = N
     if not ok:
         raise HTTPException(status_code=404, detail=f"Agent or version {version} not found")
     return {"status": "rolled_back", "version": version}
+
+
+# ── Models catalog (for agent editor dropdowns) ──
+
+@router.get("/models")
+async def list_models():
+    """List available LLM models grouped by provider (for agent editor dropdown)."""
+    try:
+        from core.harness.infrastructure.model_registry import get_model_registry
+        registry = get_model_registry()
+        entries = registry.list_all_entries()
+        # Group by provider
+        groups: Dict[str, list] = {}
+        for e in entries:
+            provider = e.get("provider", "unknown")
+            groups.setdefault(provider, []).append(e)
+        return {"models": entries, "by_provider": groups}
+    except Exception:
+        # Fallback: return models from env vars
+        models = []
+        for env_var, default_name in [
+            ("AIPLAT_LLM_MODEL", "deepseek-chat"),
+            ("AIPLAT_AGENT_MODEL", "deepseek-reasoner"),
+        ]:
+            name = os.getenv(env_var, default_name)
+        models.append({"name": name, "provider": "deepseek"})
+        return {"models": models, "by_provider": {"deepseek": models}}
+
+@router.get("/approvals/pending")
+async def list_pending_approvals(request: Request):
+    """兼容端点 — 返回空审批列表（新审批系统由 management 审批中心接管）"""
+    _ = request
+    return {"items": [], "total": 0}

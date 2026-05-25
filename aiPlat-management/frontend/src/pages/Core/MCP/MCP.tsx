@@ -1,274 +1,161 @@
-import React, { useEffect, useState } from 'react';
-import { Copy, Info, RotateCw } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Badge, Table, Switch, Button, Modal, toast } from '../../../components/ui';
-import { useMcpStore } from '../../../stores';
-import type { McpServer } from '../../../services';
+import { RotateCw, Server, Wrench, Power, PowerOff } from 'lucide-react';
+import { Button, Modal, toast, Badge } from '../../../components/ui';
+import { mcpApi, workspaceMcpApi } from '../../../services';
 import { toastGateError } from '../../../components/ui';
 
+interface MCPTool {
+  name: string;
+  description?: string;
+  input_schema?: Record<string, unknown>;
+}
+
+interface MCPServer {
+  name: string;
+  url?: string;
+  enabled: boolean;
+  tools?: MCPTool[];
+}
+
 const MCP: React.FC = () => {
-  const { servers, loading, fetchServers, setServerEnabled } = useMcpStore();
-  const [detailModal, setDetailModal] = useState<{ open: boolean; server: McpServer | null }>({ open: false, server: null });
+  const [servers, setServers] = useState<MCPServer[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [detailServer, setDetailServer] = useState<MCPServer | null>(null);
+  const [detailTools, setDetailTools] = useState<MCPTool[]>([]);
+  const [toolsLoading, setToolsLoading] = useState(false);
 
-  useEffect(() => {
-    fetchServers();
-  }, [fetchServers]);
-
-  const copyText = async (text: string) => {
-    if (!text) return;
+  const fetchServers = async () => {
+    setLoading(true);
     try {
-      await navigator.clipboard.writeText(text);
-      toast.success('已复制');
+      const [engineRes, wsRes] = await Promise.all([
+        mcpApi.listServers().catch(() => ({ servers: [] })),
+        workspaceMcpApi.listServers().catch(() => ({ servers: [] })),
+      ]);
+      const engineServers = ((engineRes as any)?.servers || []).map((s: any) => ({ ...s, scope: 'engine' }));
+      const wsServers = ((wsRes as any)?.servers || []).map((s: any) => ({ ...s, scope: 'workspace' }));
+      setServers([...engineServers, ...wsServers]);
     } catch {
-      toast.error('复制失败');
+      setServers([]);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleToggle = async (s: McpServer) => {
+  useEffect(() => { fetchServers(); }, []);
+
+  const handleToggle = async (srv: MCPServer) => {
     try {
-      await setServerEnabled(s.name, !s.enabled);
-      toast.success(!s.enabled ? '已启用' : '已禁用');
+      if (srv.enabled) {
+        await mcpApi.disableServer(srv.name);
+      } else {
+        await mcpApi.enableServer(srv.name);
+      }
+      toast.success(srv.enabled ? '已禁用' : '已启用');
+      fetchServers();
     } catch (e: any) {
       toastGateError(e, '操作失败');
     }
   };
 
-  const columns = [
-    {
-      title: '名称',
-      dataIndex: 'name',
-      key: 'name',
-      render: (name: string, record: McpServer) => (
-        <button
-          className="font-medium text-gray-100 text-left hover:underline"
-          onClick={() => setDetailModal({ open: true, server: record })}
-          title="查看详情"
-        >
-          {name}
-        </button>
-      ),
-    },
-    {
-      title: 'Transport',
-      dataIndex: 'transport',
-      key: 'transport',
-      width: 120,
-      render: (v: string) => <span className="text-gray-400">{v || '-'}</span>,
-    },
-    {
-      title: 'risk_level',
-      key: 'risk_level',
-      width: 120,
-      render: (_: unknown, record: McpServer) => {
-        const pol: any = (record as any)?.metadata?.policy || {};
-        const v = pol?.risk_level;
-        return <span className="text-gray-400">{v || '-'}</span>;
-      },
-    },
-    {
-      title: 'approval',
-      key: 'approval',
-      width: 120,
-      align: 'center' as const,
-      render: (_: unknown, record: McpServer) => {
-        const pol: any = (record as any)?.metadata?.policy || {};
-        const v = pol?.approval_required;
-        return <span className="text-gray-400">{v === true ? 'required' : v === false ? 'no' : '-'}</span>;
-      },
-    },
-    {
-      title: 'prod_allowed',
-      key: 'prod_allowed',
-      width: 120,
-      align: 'center' as const,
-      render: (_: unknown, record: McpServer) => {
-        const pol: any = (record as any)?.metadata?.policy || {};
-        const v = pol?.prod_allowed;
-        return <span className="text-gray-400">{v === true ? 'true' : v === false ? 'false' : '-'}</span>;
-      },
-    },
-    {
-      title: '状态',
-      key: 'enabled',
-      width: 160,
-      align: 'center' as const,
-      render: (_: unknown, record: McpServer) => (
-        <div className="flex items-center justify-center gap-2">
-          <Badge variant={(record.enabled ? 'success' : 'warning') as any}>{record.enabled ? 'enabled' : 'disabled'}</Badge>
-          <Switch checked={record.enabled} onChange={() => handleToggle(record)} />
-        </div>
-      ),
-    },
-    {
-      title: 'allowed_tools',
-      key: 'allowed_tools',
-      width: 140,
-      align: 'center' as const,
-      render: (_: unknown, record: McpServer) => (
-        <span className="text-gray-400">{(record.allowed_tools || []).length}</span>
-      ),
-    },
-    {
-      title: 'tool_risk',
-      key: 'tool_risk',
-      width: 120,
-      align: 'center' as const,
-      render: (_: unknown, record: McpServer) => {
-        const pol: any = (record as any)?.metadata?.policy || {};
-        const tr = pol?.tool_risk;
-        const count = tr && typeof tr === 'object' ? Object.keys(tr).length : 0;
-        return <span className="text-gray-400">{count || '-'}</span>;
-      },
-    },
-    {
-      title: '操作',
-      key: 'actions',
-      width: 90,
-      align: 'center' as const,
-      render: (_: unknown, record: McpServer) => (
-        <button
-          onClick={() => setDetailModal({ open: true, server: record })}
-          className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors"
-          title="详情"
-        >
-          <Info className="w-4 h-4" />
-        </button>
-      ),
-    },
-  ];
-
-  const server = detailModal.server as any;
-  const fs = server?.metadata?.filesystem || {};
-  const pol = server?.metadata?.policy || {};
+  const handleDiscover = async (srv: MCPServer) => {
+    setDetailServer(srv);
+    setToolsLoading(true);
+    try {
+      const res = await workspaceMcpApi.discoverTools(srv.name);
+      setDetailTools((res as any)?.tools || []);
+    } catch {
+      setDetailTools([]);
+    } finally {
+      setToolsLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-100 tracking-tight">MCP 管理</h1>
-          <p className="text-sm text-gray-500 mt-1">管理 MCP Server（目录化配置：server.yaml / policy.yaml）</p>
+          <p className="text-sm text-gray-400 mt-1">管理 MCP (Model Context Protocol) 服务器 — 连接外部工具到 Agent 和工作流</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button icon={<RotateCw className="w-4 h-4" />} onClick={fetchServers} loading={loading}>
-            刷新
-          </Button>
-        </div>
+        <Button icon={<RotateCw className="w-4 h-4" />} onClick={fetchServers} loading={loading}>
+          刷新
+        </Button>
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-dark-card rounded-xl border border-dark-border overflow-hidden"
-      >
-        <Table
-          columns={columns}
-          data={servers}
-          rowKey="name"
-          loading={loading}
-          emptyText="暂无 MCP Server"
-        />
-      </motion.div>
-
-      <Modal
-        open={detailModal.open}
-        onClose={() => setDetailModal({ open: false, server: null })}
-        title={`MCP Server 详情：${detailModal.server?.name || ''}`}
-        width={860}
-        footer={<Button onClick={() => setDetailModal({ open: false, server: null })}>关闭</Button>}
-      >
-        <div className="space-y-3 text-sm text-gray-300">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <div className="text-xs text-gray-500">name</div>
-              <div className="flex items-center justify-between gap-2">
-                <code className="text-xs bg-dark-hover px-1.5 py-0.5 rounded break-all">{String(detailModal.server?.name || '-')}</code>
-                {detailModal.server?.name && (
-                  <Button variant="ghost" icon={<Copy className="w-4 h-4" />} onClick={() => copyText(String(detailModal.server?.name || ''))}>
-                    复制
-                  </Button>
-                )}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs text-gray-500">enabled</div>
-              <div>{detailModal.server?.enabled ? 'true' : 'false'}</div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <div className="text-xs text-gray-500">transport</div>
-              <div>{detailModal.server?.transport || '-'}</div>
-            </div>
-            <div>
-              <div className="text-xs text-gray-500">url</div>
-              <div className="break-all">{detailModal.server?.url || '-'}</div>
-            </div>
-          </div>
-
-          <div>
-            <div className="text-xs text-gray-500">allowed_tools</div>
-            <div className="text-gray-400 break-all">{(detailModal.server?.allowed_tools || []).join(', ') || '-'}</div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="p-3 bg-dark-bg rounded-lg">
-              <div className="text-xs text-gray-400 mb-1">policy.risk_level</div>
-              <div className="text-sm text-gray-200">{String(pol?.risk_level ?? '-')}</div>
-            </div>
-            <div className="p-3 bg-dark-bg rounded-lg">
-              <div className="text-xs text-gray-400 mb-1">policy.approval_required</div>
-              <div className="text-sm text-gray-200">{pol?.approval_required === true ? 'true' : pol?.approval_required === false ? 'false' : '-'}</div>
-            </div>
-            <div className="p-3 bg-dark-bg rounded-lg">
-              <div className="text-xs text-gray-400 mb-1">policy.prod_allowed</div>
-              <div className="text-sm text-gray-200">{pol?.prod_allowed === true ? 'true' : pol?.prod_allowed === false ? 'false' : '-'}</div>
-            </div>
-            <div className="p-3 bg-dark-bg rounded-lg">
-              <div className="text-xs text-gray-400 mb-1">policy.tool_risk</div>
-              <pre className="text-xs bg-dark-hover rounded p-2 overflow-auto max-h-40">{JSON.stringify(pol?.tool_risk || {}, null, 2)}</pre>
-            </div>
-          </div>
-
-          <div>
-            <div className="text-xs text-gray-500">filesystem.server_dir</div>
-            <div className="flex items-center justify-between gap-2">
-              <code className="text-xs bg-dark-hover px-1.5 py-0.5 rounded break-all">{String(fs.server_dir || '-')}</code>
-              {fs.server_dir && (
-                <Button variant="ghost" icon={<Copy className="w-4 h-4" />} onClick={() => copyText(String(fs.server_dir))}>
-                  复制
-                </Button>
-              )}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs text-gray-500">filesystem.server_yaml</div>
-            <div className="flex items-center justify-between gap-2">
-              <code className="text-xs bg-dark-hover px-1.5 py-0.5 rounded break-all">{String(fs.server_yaml || '-')}</code>
-              {fs.server_yaml && (
-                <Button variant="ghost" icon={<Copy className="w-4 h-4" />} onClick={() => copyText(String(fs.server_yaml))}>
-                  复制
-                </Button>
-              )}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs text-gray-500">filesystem.policy_yaml</div>
-            <div className="flex items-center justify-between gap-2">
-              <code className="text-xs bg-dark-hover px-1.5 py-0.5 rounded break-all">{String(fs.policy_yaml || '-')}</code>
-              {fs.policy_yaml && (
-                <Button variant="ghost" icon={<Copy className="w-4 h-4" />} onClick={() => copyText(String(fs.policy_yaml))}>
-                  复制
-                </Button>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <div className="text-xs text-gray-500">原始 metadata</div>
-            <pre className="text-xs bg-dark-hover rounded p-2 overflow-auto max-h-48">{JSON.stringify(detailModal.server?.metadata || {}, null, 2)}</pre>
-          </div>
+      {loading ? (
+        <div className="text-center py-12 text-gray-500">加载中...</div>
+      ) : servers.length === 0 ? (
+        <div className="text-center py-12 text-gray-500 border border-dashed border-dark-border rounded-xl">
+          <Server className="w-12 h-12 mx-auto mb-3 text-gray-600" />
+          <p className="text-sm">暂无 MCP 服务器</p>
+          <p className="text-xs text-gray-600 mt-1">MCP 服务器通过配置文件定义，添加后在此管理启用/禁用和工具发现</p>
         </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {servers.map((srv) => (
+            <motion.div
+              key={srv.name}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="p-4 rounded-xl bg-dark-card border border-dark-border hover:border-primary/30 transition-colors"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Server className="w-5 h-5 text-blue-400" />
+                  <span className="text-sm font-medium text-gray-100">{srv.name}</span>
+                  <span className="text-[10px] text-gray-600 bg-dark-bg px-1.5 py-0.5 rounded">{(srv as any).scope || 'engine'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`px-2 py-0.5 rounded text-xs ${srv.enabled ? 'bg-green-900/50 text-green-300' : 'bg-gray-700/50 text-gray-400'}`}>
+                    {srv.enabled ? '已启用' : '已禁用'}
+                  </span>
+                  <button onClick={() => handleToggle(srv)} className="p-1.5 rounded hover:bg-dark-hover" title={srv.enabled ? '禁用' : '启用'}>
+                    {srv.enabled ? <PowerOff className="w-4 h-4 text-amber-400" /> : <Power className="w-4 h-4 text-green-400" />}
+                  </button>
+                  <button onClick={() => handleDiscover(srv)} className="p-1.5 rounded hover:bg-dark-hover" title="发现工具">
+                    <Wrench className="w-4 h-4 text-gray-400" />
+                  </button>
+                </div>
+              </div>
+              {srv.url && <div className="text-xs text-gray-500 mb-2 font-mono truncate">{srv.url}</div>}
+              {srv.tools && srv.tools.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {srv.tools.slice(0, 6).map((t) => (
+                    <Badge key={t.name} variant="default" className="text-[10px]">{t.name}</Badge>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          ))}
+        </div>
+      )}
+
+      {/* Detail Modal */}
+      <Modal
+        open={!!detailServer}
+        onClose={() => { setDetailServer(null); setDetailTools([]); }}
+        title={`${detailServer?.name || ''} — 工具列表`}
+        width={700}
+        footer={<Button onClick={() => { setDetailServer(null); setDetailTools([]); }}>关闭</Button>}
+      >
+        {toolsLoading ? (
+          <div className="text-center py-8 text-gray-500">发现工具中...</div>
+        ) : detailTools.length > 0 ? (
+          <div className="space-y-2">
+            {detailTools.map((t, i) => (
+              <div key={i} className="p-3 rounded-lg bg-dark-bg border border-dark-border">
+                <div className="flex items-center gap-2">
+                  <Wrench className="w-4 h-4 text-amber-400" />
+                  <span className="text-sm text-gray-100 font-medium">{t.name}</span>
+                </div>
+                {t.description && <p className="text-xs text-gray-400 mt-1">{t.description}</p>}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-sm text-gray-500 py-4 text-center">暂无工具 — 服务器可能未连接或未配置工具</div>
+        )}
       </Modal>
     </div>
   );

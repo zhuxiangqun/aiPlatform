@@ -29,7 +29,7 @@ class WebFetchTool(BaseTool):
         
         config = ToolConfig(
             name="webfetch",
-            description="Fetch web page content",
+            description="抓取网页内容",
             parameters={
                 "type": "object",
                 "properties": {

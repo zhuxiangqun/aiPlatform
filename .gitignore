@@ -67,7 +67,6 @@ credentials/
 data/
 *.bin
 vector_index.bin
-aiPlat-app/generated/
 download/
 .aiplat/output/
 .aiplat/model_router_state.json

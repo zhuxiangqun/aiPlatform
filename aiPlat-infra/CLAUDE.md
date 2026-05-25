@@ -150,9 +150,9 @@ infra 不依赖任何内部包
 
 **当前状态：aiPlat-infra 的 18 个能力模块 + 13 个管理器尚未被上层生产代码接入。**
 
-- `aiPlat-core/pyproject.toml` 不含 `aiplat-infra` 依赖项
-- `aiPlat-platform/pyproject.toml` 不含 `aiplat-infra` 依赖项
-- 全仓搜索 `from infra.` 的结果：**0 处匹配**
+- `aiPlat-core/pyproject.toml` 已包含 `aiplat-infra` 依赖项
+- `aiPlat-platform/pyproject.toml` 不直接包含 `aiplat-infra` 依赖项（通过 core 间接使用）
+- Core 通过 `infra_bridge.py`、`infra_llm_adapter.py`、`retriever.py`、`base.py` 等 4 个文件接入 infra（合法方向）
 
 Core 在 `core/harness/infrastructure/` 下自行实现了一套独立的基础设施层（ModelRouter、ModelRegistry、ApprovalManager 等），与 `aiPlat-infra/` 中的 LLM/Cache/Vector/Database 模块无交集。
 

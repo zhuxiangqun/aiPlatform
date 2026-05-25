@@ -10,11 +10,11 @@ import os
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from .base import BaseSkill
 from .registry import get_skill_registry, SkillRegistry
-from ...harness.interfaces import SkillContext, SkillResult
+from ...harness.interfaces import SkillContext, SkillResult, SkillStreamEvent
 from ...apps.tools.base import get_tool_registry
 from ...harness.syscalls import sys_skill_call
 from core.utils.ids import new_prefixed_id
@@ -121,6 +121,26 @@ class SkillExecutor:
 
         effective_timeout = timeout or self._default_timeout
 
+        # Workflow check: if SKILL.md has steps:, execute as multi-step pipeline
+        workflow_steps = None
+        try:
+            cfg = getattr(skill, '_config', None)
+            meta = getattr(cfg, 'metadata', None) if cfg else None
+            workflow_steps = meta.get('steps') if isinstance(meta, dict) else None
+        except Exception:
+            pass
+        if isinstance(workflow_steps, list) and workflow_steps:
+            from .skill_workflow_runner import get_workflow_runner
+            runner = get_workflow_runner()
+            result = await runner.execute_workflow(workflow_steps, params, context, timeout)
+            record.status = "success" if result.success else "failed"
+            record.end_time = time.time()
+            record.latency = record.end_time - record.start_time
+            record.output = result.output if result.success else None
+            record.error = result.error
+            self._registry.record_execution(skill_name, success=result.success, latency=record.latency)
+            return result
+
         try:
             is_valid = await skill.validate(params)
             if not is_valid:
@@ -172,6 +192,54 @@ class SkillExecutor:
             record.error = str(e)
             self._registry.record_execution(skill_name, success=False, latency=record.latency)
             return SkillResult(success=False, error=str(e))
+
+    async def execute_stream(
+        self,
+        skill_name: str,
+        params: Dict[str, Any],
+        context: Optional[SkillContext] = None,
+        timeout: Optional[float] = None,
+    ) -> AsyncGenerator[SkillStreamEvent, None]:
+        """Execute skill with streaming output."""
+        skill = self._registry.get(skill_name)
+        if skill is None:
+            yield SkillStreamEvent(event_type="done", data=SkillResult(success=False, error=f"Skill not found: {skill_name}"), progress=1.0)
+            return
+        execution_id = new_prefixed_id("run")
+        record = ExecutionRecord(
+            execution_id=execution_id,
+            skill_name=skill_name,
+            status="running",
+            input_params=params,
+            start_time=time.time(),
+        )
+        self._executions[execution_id] = record
+        if context is None:
+            context = SkillContext(session_id=execution_id, user_id="system")
+        try:
+            async for event in skill.execute_stream(context, params):
+                yield event
+                if event.event_type == "done":
+                    result = event.data if isinstance(event.data, SkillResult) else SkillResult(success=True, output=event.data)
+                    record.status = "success" if result.success else "failed"
+                    record.end_time = time.time()
+                    record.latency = record.end_time - record.start_time
+                    record.output = result.output if result.success else None
+                    record.error = result.error
+                    self._registry.record_execution(skill_name, success=result.success, latency=record.latency)
+                    return
+        except asyncio.TimeoutError:
+            record.status = "timeout"
+            record.end_time = time.time()
+            record.latency = record.end_time - record.start_time
+            record.error = "timeout"
+            yield SkillStreamEvent(event_type="done", data=SkillResult(success=False, error=f"timeout: {timeout}s"), progress=1.0)
+        except Exception as e:
+            record.status = "failed"
+            record.end_time = time.time()
+            record.latency = record.end_time - record.start_time
+            record.error = str(e)
+            yield SkillStreamEvent(event_type="done", data=SkillResult(success=False, error=str(e)), progress=1.0)
     
     async def _execute_fork(
         self,
@@ -203,7 +271,7 @@ class SkillExecutor:
                 # Prefer skill-injected model if available; otherwise create from environment.
                 model = getattr(skill, "_model", None)
                 provider = params.get("provider") or os.getenv("LLM_PROVIDER") or "openai"
-                model_name = params.get("model") or os.getenv("LLM_MODEL") or "gpt-4"
+                model_name = params.get("model") or os.getenv("AIPLAT_LLM_MODEL") or os.getenv("LLM_MODEL") or "deepseek-chat"
                 api_key = None
                 if provider == "openai":
                     api_key = get_llm_api_key("openai")

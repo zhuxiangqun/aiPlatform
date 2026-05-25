@@ -24,7 +24,7 @@ class ParsedToolCall:
 
 @dataclass(frozen=True)
 class ParsedActionCall:
-    kind: str  # tool | skill
+    kind: str  # tool | skill | agent | workflow
     name: str
     args: Dict[str, Any]
     raw: str
@@ -172,6 +172,38 @@ def parse_action_call(text: str) -> Optional[ParsedActionCall]:
                     kind="skill",
                     name=skill_name.strip(),
                     args=parsed_args,
+                    raw=candidate,
+                    format="json",
+                )
+
+            # Agent delegation ({"agent": "name", "args": {...}})
+            agent_name = obj.get("agent") or obj.get("agent_name")
+            if isinstance(agent_name, str) and agent_name.strip():
+                agent_args = obj.get("args") if obj.get("args") is not None else obj.get("agent_args")
+                if agent_args is None:
+                    agent_args = obj.get("task")
+                if isinstance(agent_args, str):
+                    agent_args = {"task": agent_args}
+                elif not isinstance(agent_args, dict):
+                    agent_args = {"task": str(agent_args)}
+                return ParsedActionCall(
+                    kind="agent",
+                    name=agent_name.strip(),
+                    args=agent_args,
+                    raw=candidate,
+                    format="json",
+                )
+
+            # Workflow trigger
+            workflow_name = obj.get("workflow") or obj.get("workflow_id")
+            if isinstance(workflow_name, str) and workflow_name.strip():
+                wf_args = obj.get("args") or obj.get("workflow_args") or {}
+                if not isinstance(wf_args, dict):
+                    wf_args = {"input": str(wf_args)}
+                return ParsedActionCall(
+                    kind="workflow",
+                    name=workflow_name.strip(),
+                    args=wf_args,
                     raw=candidate,
                     format="json",
                 )

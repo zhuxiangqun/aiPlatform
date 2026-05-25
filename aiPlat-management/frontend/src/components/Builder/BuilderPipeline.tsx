@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle, XCircle, Loader2, Clock, Download, Code, FileText } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, Clock, Download, Code, FileText, Bug } from 'lucide-react';
 import type { BuilderSession, PipelineStageConfig } from '../../services';
+import InteractivePipelineDAG from './InteractivePipelineDAG';
 
 interface PipelineProps {
   session: BuilderSession;
@@ -27,8 +28,8 @@ function buildStages(teamStages?: PipelineStageConfig[], session?: BuilderSessio
   const stages: VisibleStage[] = (teamStages || []).map((s) => ({
     key: s.output_artifact,
     label: s.agent_name,
-    desc: (s as Record<string, unknown>).phase_description as string || s.phase || s.output_artifact,
-    isTestStage: !!(s as Record<string, unknown>).generate_test_plan,
+    desc: (s as unknown as Record<string, unknown>).phase_description as string || s.phase || s.output_artifact,
+    isTestStage: !!(s as unknown as Record<string, unknown>).generate_test_plan,
   }));
   // Insert test_plan stage if any artifact has test_script (structural detection)
   const testPlanEntry = Object.entries(raw || {}).find(([, v]) => isTestPlanArtifact(v));
@@ -150,7 +151,7 @@ const statusColor = (status: string) => {
 
 // --- structured output viewer ---
 
-const StructuredViewer: React.FC<{ stageKey: string; data: unknown }> = ({ stageKey, data }) => {
+const StructuredViewer: React.FC<{ stageKey: string; data: unknown }> = ({ data }) => {
   const val = data as Record<string, unknown> | null;
   if (!val) return null;
 
@@ -377,7 +378,7 @@ function getTestReport(session: Record<string, unknown>): Record<string, unknown
   return undefined;
 }
 
-export const BuilderPipeline: React.FC<PipelineProps> = ({ session, teamStages, onRegenerate, onApprove, onReject, onRollback, loading }) => {
+export const BuilderPipeline: React.FC<PipelineProps> = ({ session, teamStages, onRegenerate, onApprove, onReject: _onReject, onRollback, loading }) => {
   const raw = session as Record<string, unknown>;
   const testReport = getTestReport(raw);
   const passRate = (testReport?.pass_rate as number) ?? 0;
@@ -389,6 +390,16 @@ export const BuilderPipeline: React.FC<PipelineProps> = ({ session, teamStages, 
   const cols = visible.length <= 2 ? 'lg:grid-cols-2' : visible.length <= 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-4';
   return (
     <div className="space-y-4">
+      {/* Interactive Pipeline DAG */}
+      <InteractivePipelineDAG
+        session={session}
+        teamStages={teamStages}
+        onStageClick={(key) => {
+          const el = document.getElementById(`stage-${key}`);
+          el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }}
+      />
+
       <div className={`grid grid-cols-1 ${cols} gap-3`}>
         {visible.map((stage, idx) => {
           const status = getStageStatus(stage.key, session, visible);
@@ -398,6 +409,7 @@ export const BuilderPipeline: React.FC<PipelineProps> = ({ session, teamStages, 
           return (
             <motion.div
               key={stage.key}
+              id={`stage-${stage.key}`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.1 }}
@@ -421,10 +433,10 @@ export const BuilderPipeline: React.FC<PipelineProps> = ({ session, teamStages, 
                   className={`h-full rounded-lg transition-all duration-1000 ${
                     status === 'passed' ? 'bg-green-500' :
                     status === 'running' ? 'bg-cyan-500' :
-                    status === 'partial' ? 'bg-yellow-500' :
+                    status === 'awaiting' ? 'bg-yellow-500' :
                     'bg-transparent'
                   }`}
-                  style={{ width: status === 'running' ? '66%' : status === 'passed' ? '100%' : status === 'partial' ? '100%' : '0%' }}
+                  style={{ width: status === 'running' ? '66%' : status === 'passed' ? '100%' : status === 'awaiting' ? '100%' : '0%' }}
                 />
               </div>
 
@@ -442,7 +454,7 @@ export const BuilderPipeline: React.FC<PipelineProps> = ({ session, teamStages, 
                     if (!val) return null;
                     if (isTestReportArtifact(val) && testReport) {
                       return <>
-                        <div>测试用例: {testReport?.test_cases?.length || 0}</div>
+                        <div>测试用例: {(testReport?.test_cases as Array<unknown> | undefined)?.length || 0}</div>
                         <div className="flex items-center gap-1">通过率:<span className={passRate >= 0.8 ? 'text-green-400' : 'text-red-400'}>{(passRate * 100).toFixed(0)}%</span></div>
                       </>;
                     }
@@ -469,7 +481,7 @@ export const BuilderPipeline: React.FC<PipelineProps> = ({ session, teamStages, 
               )}
               {hasContent && isCodeArtifact(artifact) && (
                 <div className="text-[10px] text-gray-500 mt-2 space-y-1">
-                  <div>代码已生成，保存至 aiPlat-app/generated/{session.session_id}/ 目录</div>
+                  <div>代码已生成，保存至 ~/.aiplat/output/{session.session_id}/ 目录</div>
                   {(() => {
                     const val = (session as Record<string, unknown>)[stage.key] as Record<string, unknown> | null;
                     if (isFlatFileDict(val)) {
@@ -538,6 +550,17 @@ export const BuilderPipeline: React.FC<PipelineProps> = ({ session, teamStages, 
                 </button>
               )}
 
+              {/* Step Debug: open execute modal for this stage's agent */}
+              {!stage.isTestStage && (
+                <button
+                  className="mt-1 flex items-center gap-1 text-[10px] text-purple-400 hover:text-purple-300 cursor-pointer"
+                  onClick={() => onRollback?.(stage.key)}
+                  title="单独调试此阶段对应的 Agent"
+                >
+                  <Bug className="w-3 h-3 inline" /> 单步调试
+                </button>
+              )}
+
               {/* HITL buttons — shown on the stage that is awaiting approval */}
               {(session.phase.includes('approval') || session.phase === 'paused') && (
                 (() => {
@@ -600,7 +623,7 @@ export const BuilderPipeline: React.FC<PipelineProps> = ({ session, teamStages, 
               {rec === 'APPROVED' ? '全部测试通过 — 应用已就绪' : `测试未通过（通过率 ${(passRate * 100).toFixed(0)}%）— 已自动回退修复`}
             </span>
           </div>
-          {(testReport?.issues?.length ?? 0) > 0 && (
+          {((testReport?.issues as Array<unknown> | undefined)?.length ?? 0) > 0 && (
             <div className="mt-2 space-y-1">
               {(testReport?.issues as any[])?.map((issue: any, i: number) => {
                 const text = typeof issue === 'string' ? issue : (issue.title || issue.description || issue.message || '');
@@ -616,16 +639,16 @@ export const BuilderPipeline: React.FC<PipelineProps> = ({ session, teamStages, 
               })}
             </div>
           )}
-          {testReport?.results?.some((r: { passed: boolean }) => !r.passed) && (
+          {(testReport?.results as Array<{ passed: boolean }> | undefined)?.some((r) => !r.passed) && (
             <div className="mt-3 space-y-1">
               <div className="text-xs text-gray-500 mb-1">失败详情：</div>
-              {testReport.results
-                .filter((r: { passed: boolean }) => !r.passed)
+              {(testReport?.results as Array<{ passed: boolean; test_case_id: string; actual?: string; error?: string }>)
+                .filter((r) => !r.passed)
                 .map((r) => (
                   <div key={r.test_case_id} className="text-xs bg-dark-card rounded p-2 border border-dark-border">
                     <div className="text-red-300">{r.test_case_id}</div>
                     <div className="text-gray-500 mt-1">
-                      <div>期望: {testReport?.test_cases?.find((tc: { id: string }) => tc.id === r.test_case_id)?.expected || '—'}</div>
+                      <div>期望: {(testReport?.test_cases as Array<{ id: string; expected?: string }> | undefined)?.find((tc) => tc.id === r.test_case_id)?.expected || '—'}</div>
                       <div>实际: {r.actual || r.error || '—'}</div>
                     </div>
                   </div>
@@ -635,7 +658,7 @@ export const BuilderPipeline: React.FC<PipelineProps> = ({ session, teamStages, 
         </motion.div>
       )}
 
-      {session.iteration > 0 && (
+      {(session.iteration ?? 0) > 0 && (
         <div className="text-xs text-gray-500 text-center">
           已迭代 {session.iteration} 次
           {session.error ? ` · ${session.error}` : ''}

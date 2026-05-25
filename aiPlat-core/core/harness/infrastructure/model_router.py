@@ -98,12 +98,15 @@ class ModelRouter:
             infra_models = list_infra_models()
             if infra_models:
                 for im in infra_models:
-                    if im.get("name") == model_name or task_purpose:
+                    im_name = im.get("name") if isinstance(im, dict) else getattr(im, "name", None)
+                    im_provider = im.get("provider") if isinstance(im, dict) else getattr(im, "provider", "deepseek")
+                    im_api_key = im.get("api_key_env") if isinstance(im, dict) else getattr(im, "api_key_env", "DEEPSEEK_API_KEY")
+                    im_desc = im.get("description") if isinstance(im, dict) else getattr(im, "description", "")
+                    if im_name == model_name or task_purpose:
                         candidates.append(ModelEntry(
-                            name=im.get("name", model_name),
-                            provider=im.get("provider", "deepseek"),
-                            api_key_env=im.get("api_key_env", "DEEPSEEK_API_KEY"),
-                            description=im.get("description", ""),
+                            name=im_name or model_name,
+                            provider=im_provider or "deepseek",
+                            api_key_env=im_api_key or "DEEPSEEK_API_KEY",
                         ))
                 if candidates:
                     return candidates[0]

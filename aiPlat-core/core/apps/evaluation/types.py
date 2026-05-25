@@ -5,7 +5,7 @@ Evaluation Module Types
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 from enum import Enum
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class TraceGrade(Enum):
@@ -41,7 +41,7 @@ class BenchmarkResult:
     avg_latency_ms: float
     avg_tokens: int
     task_results: List[TaskResult] = field(default_factory=list)
-    executed_at: str = field(default_factory=lambda: datetime.now().isoformat())
+    executed_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     
     @property
     def success_rate(self) -> float:
@@ -78,7 +78,7 @@ class AgentTrace:
     safety_score: float = 0.0
     tool_accuracy: float = 0.0
     grade: Optional[TraceGrade] = None
-    created_at: str = field(default_factory=lambda: datetime.now().isoformat())
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     
     def to_dict(self) -> Dict[str, Any]:
         return {

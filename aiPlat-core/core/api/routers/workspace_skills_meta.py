@@ -1,3 +1,10 @@
+"""Workspace skills governance + installer + meta endpoints.
+
+⚠ BOUNDARY BLUR (cross-layer audit): marketplace/workspace management endpoints
+belong in aiPlat-platform's API layer, not in core. These are served from core's
+FastAPI server for historical reasons. Migration plan: move to platform/api/routers/
+and proxy through platform's API gateway.
+"""
 from __future__ import annotations
 
 import json

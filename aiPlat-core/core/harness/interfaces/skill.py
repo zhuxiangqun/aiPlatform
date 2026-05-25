@@ -4,7 +4,7 @@ ISkill Interface - Skill Contract Definition
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, Optional, List, AsyncGenerator
 
 
 @dataclass
@@ -41,6 +41,15 @@ class SkillResult:
     priority: str = "medium"
 
 
+@dataclass
+class SkillStreamEvent:
+    """A single event yielded during streaming skill execution."""
+    event_type: str  # "chunk" | "progress" | "status" | "done"
+    data: Any = None
+    progress: float = 0.0  # 0.0-1.0
+    message: str = ""
+
+
 class ISkill(ABC):
     """
     Skill Interface - Core contract for skill implementations
@@ -52,15 +61,17 @@ class ISkill(ABC):
     async def execute(self, context: SkillContext, params: Dict[str, Any]) -> SkillResult:
         """
         Execute skill with given context and parameters
-        
-        Args:
-            context: Skill execution context
-            params: Skill parameters
-            
-        Returns:
-            SkillResult: Execution result
         """
-        pass
+
+    async def execute_stream(
+        self, context: SkillContext, params: Dict[str, Any]
+    ) -> AsyncGenerator[SkillStreamEvent, None]:
+        """
+        Execute skill with streaming output. Default falls back to execute().
+        Override for skills that can produce incremental output.
+        """
+        result = await self.execute(context, params)
+        yield SkillStreamEvent(event_type="done", data=result, progress=1.0)
 
     @abstractmethod
     async def validate(self, params: Dict[str, Any]) -> bool:

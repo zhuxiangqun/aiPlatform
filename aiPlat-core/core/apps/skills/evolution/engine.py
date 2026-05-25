@@ -6,6 +6,7 @@ Main engine for Skill auto-evolution.
 
 import logging
 import os
+import threading
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 from dataclasses import dataclass
@@ -25,16 +26,18 @@ logger = logging.getLogger(__name__)
 
 
 # Module-level prediction cache — bridge from EvolutionEngine to _exec_test_runner
+# Protected by _predictions_lock for concurrent access from async pipeline stages.
 _latest_predictions: Dict[str, Any] = {}
+_predictions_lock = threading.Lock()
 
 
 def get_latest_predictions(skill_id: str = "") -> Dict[str, Any]:
     """Read predictions from the most recent evolution for cross-round verification."""
-    if skill_id and skill_id in _latest_predictions:
-        return _latest_predictions[skill_id]
-    # Return the most recent prediction across all skills
-    if _latest_predictions:
-        return list(_latest_predictions.values())[-1]
+    with _predictions_lock:
+        if skill_id and skill_id in _latest_predictions:
+            return dict(_latest_predictions[skill_id])
+        if _latest_predictions:
+            return dict(list(_latest_predictions.values())[-1])
     return {}
 
 
@@ -126,7 +129,8 @@ class EvolutionEngine:
                 registry.set_active_version(skill_id, str(new_version.version))
                 logger.info(f"Auto-enabled {skill_id} v{new_version.version} in SkillRegistry")
                 # Bridge: store predictions for cross-round verification by _exec_test_runner
-                _latest_predictions[skill_id] = {
+                with _predictions_lock:
+                    _latest_predictions[skill_id] = {
                     "predicted_fixes": predicted_fixes,
                     "predicted_regressions": predicted_regressions,
                     "version": str(new_version.version),

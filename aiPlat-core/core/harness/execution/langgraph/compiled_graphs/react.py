@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional
 from ..core import GraphBuilder, GraphConfig, NodeResult, CompiledGraph
 from ...tool_calling import parse_action_call
 from ....syscalls import sys_llm_generate, sys_tool_call
-from ....assembly import PromptAssembler
+from ....assembly import MessageFormatter
 
 
 def _build_reason_prompt(state: Dict[str, Any]) -> str:
@@ -26,7 +26,7 @@ def _build_reason_prompt(state: Dict[str, Any]) -> str:
         for msg in messages[-5:]
     ])
     if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "true").lower() in ("1", "true", "yes", "y"):
-        return PromptAssembler().build_langgraph_reason_messages(
+        return MessageFormatter().build_langgraph_reason_messages(
             history=history,
             reasoning=str(state.get("reasoning", "") or ""),
             action=str(state.get("action", "") or ""),
@@ -137,7 +137,7 @@ def create_compiled_react_graph(
         observation = state.get("observation", "")
         if model and observation:
             if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "true").lower() in ("1", "true", "yes", "y"):
-                prompt = PromptAssembler().build_langgraph_observe_messages(
+                prompt = MessageFormatter().build_langgraph_observe_messages(
                     observation=str(observation)
                 )
             else:

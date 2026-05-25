@@ -1,6 +1,7 @@
 export { Button } from './Button';
 export { Card, CardHeader, CardContent } from './Card';
 export { Input, Textarea, Select } from './Input';
+export { MultiSelect } from './MultiSelect';
 export { Table } from './Table';
 export { Modal } from './Modal';
 export { Badge, Tag } from './Badge';

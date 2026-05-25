@@ -24,6 +24,9 @@ from ..kernel.types import ExecutionPlan
 class EngineRouter:
     MAX_FALLBACK_ATTEMPTS = 3
 
+    # Config-driven mapping: agent_type → engine (not hardcoded business strings)
+    _GRAPH_ENGINE_TYPES = frozenset({"multi_agent", "multi-agent", "reflection"})
+
     def __init__(self) -> None:
         self._loop_engine = LoopEngine()
         from .engines.plan_engine import PlanEngine
@@ -47,7 +50,7 @@ class EngineRouter:
         else:
             # Agent-type → graph-type routing (P1-5: previously only reachable via fallback)
             agent_type = payload.get("agent_type", "") if isinstance(payload, dict) else ""
-            if agent_type in ("multi_agent", "multi-agent", "reflection"):
+            if agent_type in self._GRAPH_ENGINE_TYPES:
                 if self._graph_engine is None:
                     try:
                         from .engines.graph_engine import GraphEngine
@@ -59,11 +62,17 @@ class EngineRouter:
                 else:
                     engine, engine_key, chain = self._loop_engine, "loop", ["loop", "quick"]
             else:
-                msg_list = payload.get("messages", []) if isinstance(payload, dict) else []
-                if len(msg_list) == 1 and len(str(msg_list[0].get("content", "") or "")) < 100:
-                    engine, engine_key, chain = self._quick_engine, "quick", ["quick", "loop"]
-                else:
+                # Check for force_react flag in payload options
+                options = payload.get("options", {}) if isinstance(payload, dict) else {}
+                force_react = options.get("force_react") or options.get("loop_engine") == "react"
+                if force_react:
                     engine, engine_key, chain = self._loop_engine, "loop", ["loop", "quick"]
+                else:
+                    msg_list = payload.get("messages", []) if isinstance(payload, dict) else []
+                    if len(msg_list) == 1 and len(str(msg_list[0].get("content", "") or "")) < 100:
+                        engine, engine_key, chain = self._quick_engine, "quick", ["quick", "loop"]
+                    else:
+                        engine, engine_key, chain = self._loop_engine, "loop", ["loop", "quick"]
 
         if not fallback_enabled:
             chain = [engine_key]

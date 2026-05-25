@@ -4,7 +4,7 @@ Memory Base Classes - 记忆系统基类
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -34,14 +34,14 @@ class MemoryEntry:
     metadata: Dict[str, Any] = field(default_factory=dict)
     embeddings: Optional[List[float]] = None
     importance: float = 0.5           # 重要性 0-1
-    timestamp: float = field(default_factory=lambda: datetime.now().timestamp())
+    timestamp: float = field(default_factory=lambda: datetime.now(timezone.utc).timestamp())
     expires_at: Optional[float] = None
     
     def is_expired(self) -> bool:
         """检查是否过期"""
         if self.expires_at is None:
             return False
-        return datetime.now().timestamp() > self.expires_at
+        return datetime.now(timezone.utc).timestamp() > self.expires_at
     
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""

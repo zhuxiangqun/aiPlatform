@@ -8,7 +8,7 @@ and an error handler for consistent error processing.
 from typing import Optional, Any, Dict
 from enum import Enum
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class ErrorSeverity(Enum):
@@ -45,7 +45,7 @@ class CoreError(Exception):
         self.error_code = error_code or self.error_code
         self.severity = severity or self.severity
         self.error_id = str(uuid.uuid4())
-        self.timestamp = datetime.now().isoformat()
+        self.timestamp = datetime.now(timezone.utc).isoformat()
         self.cause = cause
 
     def __str__(self) -> str:
@@ -355,7 +355,7 @@ class ErrorHandler:
                 "severity": "medium",
                 "category": "unknown",
                 "details": context or {},
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "cause": None,
             }
         return response

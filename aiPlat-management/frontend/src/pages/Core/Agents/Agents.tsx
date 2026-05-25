@@ -1,24 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { RotateCw, PlayCircle, PauseCircle, Trash2, Zap, Pencil } from 'lucide-react';
+import React, { useState } from 'react';
+import { RotateCw, PlayCircle, PauseCircle, Trash2, Zap, Pencil, MessageSquare } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Table, Select, Button, Modal, toast } from '../../../components/ui';
-import { EditAgentModal, ExecuteAgentModal, AgentDetailModal } from '../../../components/core';
+import { EditAgentModal, ExecuteAgentModal, AgentDetailModal, ChatPanel } from '../../../components/core';
 import { useAgentStore } from '../../../stores';
-import type { Agent } from '../../../services';
-
-const statusConfig: Record<string, { color: string; text: string }> = {
-  running: { color: 'success', text: '运行中' },
-  idle: { color: 'default', text: '空闲' },
-  stopped: { color: 'error', text: '已停止' },
-  error: { color: 'error', text: '错误' },
-};
-
-const typeConfig: Record<string, { color: string; text: string }> = {
-  base: { color: 'bg-blue-50 text-blue-700 border-blue-200', text: '基础' },
-  react: { color: 'bg-green-50 text-green-300 border-green-200', text: 'ReAct' },
-  plan: { color: 'bg-amber-50 text-amber-700 border-amber-200', text: '规划型' },
-  tool: { color: 'bg-purple-50 text-purple-700 border-purple-200', text: '工具型' },
-};
+import { agentApi, type Agent } from '../../../services';
 
 const Agents: React.FC = () => {
   const { agents, loading, fetchAgents, startAgent, stopAgent, deleteAgent } = useAgentStore();
@@ -28,11 +14,38 @@ const Agents: React.FC = () => {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const [chatAgent, setChatAgent] = useState<Agent | null>(null);
+  const [testAllRunning, setTestAllRunning] = useState(false);
+  const [testAllResults, setTestAllResults] = useState<{ agentId: string; status: string; ok: boolean }[]>([]);
+  const [testAllOpen, setTestAllOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; agent: Agent | null }>({ open: false, agent: null });
 
-  useEffect(() => {
+  React.useEffect(() => {
     fetchAgents();
   }, [fetchAgents]);
+
+  const handleChatOpen = (agent: Agent) => {
+    setChatAgent(agent);
+    setSelectedAgent(agent);
+  };
+
+  const handleTestAll = async () => {
+    setTestAllRunning(true);
+    setTestAllOpen(true);
+    setTestAllResults([]);
+    const runnable = agents.filter(a => a.status === 'running' || a.status === 'ready');
+    const results: { agentId: string; status: string; ok: boolean }[] = [];
+    for (const a of runnable) {
+      try {
+        const r: any = await agentApi.execute(a.id, { input: { message: 'Say hello in one sentence.' } });
+        results.push({ agentId: a.display_name || a.name || a.id, status: (r as any)?.status || '?', ok: (r as any)?.status === 'completed' });
+      } catch (e: any) {
+        results.push({ agentId: a.display_name || a.name || a.id, status: 'error', ok: false });
+      }
+      setTestAllResults([...results]);
+    }
+    setTestAllRunning(false);
+  };
 
   const handleStart = async (agent: Agent) => {
     try {
@@ -70,8 +83,9 @@ const Agents: React.FC = () => {
       key: 'name',
       render: (name: string, record: Agent) => (
         <button
-          onClick={() => { setSelectedAgent(record); setDetailModalOpen(true); }}
-          className="text-primary hover:text-primary-hover font-medium"
+          onClick={() => { handleChatOpen(record); }}
+          className="text-primary hover:text-primary-hover font-medium cursor-pointer"
+          title="点击打开对话面板"
         >
           {name}
         </button>
@@ -81,9 +95,18 @@ const Agents: React.FC = () => {
       title: '分类',
       dataIndex: 'category',
       key: 'category',
-      width: 90,
+      width: 70,
       render: (cat: string) => (
         <span className="text-xs text-gray-400">{cat || '-'}</span>
+      ),
+    },
+    {
+      title: '模型',
+      dataIndex: 'config',
+      key: 'model',
+      width: 140,
+      render: (cfg: Record<string, any>) => (
+        <span className="text-xs text-gray-300 font-mono">{(cfg as any)?.model || (cfg?.model) || '-'}</span>
       ),
     },
     {
@@ -113,6 +136,13 @@ const Agents: React.FC = () => {
         const isProtected = Boolean((record as any)?.metadata?.protected === true || (record as any)?.protected === true);
         return (
         <div className="flex items-center justify-center gap-1">
+          <button
+            onClick={() => handleChatOpen(record)}
+            className="p-1.5 rounded-lg text-blue-400 hover:bg-blue-500/10 transition-colors"
+            title="打开对话"
+          >
+            <MessageSquare className="w-4 h-4" />
+          </button>
           {!isProtected && (
             <button
               onClick={() => { setSelectedAgent(record); setEditModalOpen(true); }}
@@ -165,7 +195,9 @@ const Agents: React.FC = () => {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
+      {/* Left: Agent List */}
+      <div className="flex-1 overflow-y-auto space-y-6 p-6">
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -173,6 +205,9 @@ const Agents: React.FC = () => {
           <p className="text-sm text-gray-400 mt-1">管理AI代理的创建、配置、启停与执行</p>
         </div>
         <div className="flex items-center gap-3">
+          <Button icon={<Zap className="w-4 h-4" />} onClick={handleTestAll} loading={testAllRunning} variant="primary">
+            {testAllRunning ? '测试中...' : '测试全部 Agent'}
+          </Button>
           <Select
             value={typeFilter}
             onChange={(v) => setTypeFilter(v || undefined)}
@@ -258,6 +293,30 @@ const Agents: React.FC = () => {
         agent={selectedAgent}
         onClose={() => setDetailModalOpen(false)}
       />
+
+      <Modal open={testAllOpen} onClose={() => { setTestAllOpen(false); setTestAllResults([]); }} title="Agent 批量测试结果" width={600}
+        footer={<Button onClick={() => { setTestAllOpen(false); setTestAllResults([]); }}>关闭</Button>}>
+        <div className="space-y-1 max-h-96 overflow-auto">
+          {testAllResults.map((r, i) => (
+            <div key={i} className="flex items-center justify-between py-1.5 px-2 rounded text-sm bg-dark-card border border-dark-border">
+              <span className="text-gray-300">{r.agentId}</span>
+              <span className={`text-xs px-2 py-0.5 rounded ${r.ok ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'}`}>{r.status}</span>
+            </div>
+          ))}
+          {testAllRunning && <div className="text-xs text-gray-500 py-2 text-center">⏳ 测试中...</div>}
+          {!testAllRunning && testAllResults.length > 0 && (
+            <div className="text-xs text-gray-500 pt-2">
+              {testAllResults.filter(r => r.ok).length}/{testAllResults.length} 通过
+            </div>
+          )}
+        </div>
+      </Modal>
+      </div>
+
+      {/* Right: Chat Panel */}
+      {chatAgent && (
+        <ChatPanel agent={chatAgent} onClose={() => setChatAgent(null)} />
+      )}
     </div>
   );
 };

@@ -7,6 +7,12 @@ export type KBCollection = {
   doc_count?: number;
 };
 
+export type KBCategory = {
+  key: string;
+  label: string;
+  count: number;
+};
+
 export type KBDocument = {
   doc_id: string;
   collection_id: string;
@@ -88,6 +94,14 @@ export const kbApi = {
     return apiClient.get<{ collections: KBCollection[]; total: number }>('/platform/kb/collections');
   },
 
+  getStats: async () => {
+    return apiClient.get<{ documents: number; elements: number; embeddings: number; collections: number; jobs_pending: number; tenant_id: string }>('/platform/kb/stats');
+  },
+
+  reindex: async () => {
+    return apiClient.post<{ status: string; count: number }>('/platform/kb/reindex', {});
+  },
+
   createCollection: async (collection_id: string, name: string) => {
     return apiClient.post<{ status: string; collection_id: string }>('/platform/kb/collections', { collection_id, name });
   },
@@ -116,6 +130,13 @@ export const kbApi = {
     q.set('limit', String(limit));
     q.set('offset', String(offset));
     return apiClient.get<{ items: KBDocument[]; total: number }>(`/platform/documents?${q.toString()}`);
+  },
+
+  fetchCategories: async (collection_id?: string) => {
+    const q = collection_id ? `?collection_id=${encodeURIComponent(collection_id)}` : '';
+    return apiClient.get<{ kind_categories: KBCategory[]; content_categories: KBCategory[] }>(
+      `/platform/documents/categories${q}`
+    );
   },
 
   getDocument: async (doc_id: string) => {
@@ -207,13 +228,15 @@ export const kbApi = {
     return apiClient.delete<{ status: string; batch_id: string }>(`/platform/analysis-batches/${encodeURIComponent(batch_id)}`);
   },
 
-  uploadDocument: async (collection_id: string, file: File, kind: 'pdf' | 'video' = 'pdf') => {
-    // Must use multipart. Management backend proxies /api/platform/* to platform.
+  uploadDocument: async (collection_id: string, file: File, kind: 'pdf' | 'video' | 'word' | 'ppt' | 'markdown' = 'pdf') => {
+    // Use ingest endpoint which properly handles all file types (video, audio, pdf, etc.)
+    // via async pipeline: ffmpeg extraction → whisper transcription → keyframe OCR → embed
     const baseUrl = (import.meta as any).env?.VITE_API_URL || '/api';
-    const url = `${baseUrl}/platform/kb/collections/${encodeURIComponent(collection_id)}/documents/upload`;
+    const url = `${baseUrl}/platform/documents/ingest`;
     const form = new FormData();
     form.append('file', file, file.name);
     form.append('kind', kind);
+    form.append('collection_id', collection_id);
 
     const headers: Record<string, string> = {};
     try {
@@ -243,6 +266,52 @@ export const kbApi = {
       throw err;
     }
     return resp.json();
+  },
+
+  previewDocument: async (file: File, kind: string, collection_id: string) => {
+    const baseUrl = (import.meta as any).env?.VITE_API_URL || '/api';
+    const url = `${baseUrl}/platform/documents/preview`;
+    const form = new FormData();
+    form.append('file', file, file.name);
+    form.append('kind', kind);
+    form.append('collection_id', collection_id);
+    const headers: Record<string, string> = {};
+    try {
+      const tenantId = localStorage.getItem('active_tenant_id') || '';
+      const actorId = localStorage.getItem('active_actor_id') || 'admin';
+      const actorRole = localStorage.getItem('active_actor_role') || 'admin';
+      const scopes = localStorage.getItem('active_scopes') || 'kb:read,kb:write';
+      const apiKey = localStorage.getItem('active_api_key') || '';
+      if (tenantId.trim()) headers['X-AIPLAT-TENANT-ID'] = tenantId.trim();
+      if (actorId.trim()) headers['X-AIPLAT-ACTOR-ID'] = actorId.trim();
+      if (actorRole.trim()) headers['X-AIPLAT-ACTOR-ROLE'] = actorRole.trim();
+      if (scopes.trim()) headers['X-AIPLAT-SCOPES'] = scopes.trim();
+      if (apiKey.trim()) headers['X-AIPLAT-API-KEY'] = apiKey.trim();
+    } catch { /* ignore */ }
+    const resp = await fetch(url, { method: 'POST', body: form, headers });
+    if (!resp.ok) {
+      const payload: any = await resp.json().catch(() => null);
+      const msg = payload?.detail || payload?.message || `HTTP error! status: ${resp.status}`;
+      const err: any = new Error(String(msg));
+      err.status = resp.status;
+      throw err;
+    }
+    return resp.json();
+  },
+
+  previewDocumentByUrl: async (url: string, collection_id: string) => {
+    return apiClient.post<any>('/platform/documents/preview', {
+      url,
+      collection_id,
+    });
+  },
+
+  ingestDocumentByFilePath: async (file_path: string, collection_id: string, kind: string) => {
+    return apiClient.post<any>('/platform/documents/ingest', {
+      collection_id,
+      file_path,
+      kind,
+    });
   },
 
   ingestDocumentByUrl: async (
@@ -296,5 +365,42 @@ export const kbApi = {
     payload: { message: string; scope_override?: KBConversationScope | null; options?: Record<string, any> }
   ) => {
     return apiClient.post<any>(`/platform/conversations/${encodeURIComponent(sessionId)}/query`, payload);
+  },
+
+  // ── Eval ──
+  listEvalSamples: async (limit = 50, offset = 0) => {
+    return apiClient.get<any>(`/core/kb-eval/samples?limit=${limit}&offset=${offset}`);
+  },
+  createEvalSample: async (data: { question: string; ground_truth: string; doc_ids: string[]; tags: string[] }) => {
+    return apiClient.post<any>('/core/kb-eval/samples', data);
+  },
+  deleteEvalSample: async (id: string) => {
+    return apiClient.delete<any>(`/core/kb-eval/samples/${id}`);
+  },
+  runEval: async (body: { tag?: string; sample_ids?: string[] }) => {
+    return apiClient.post<any>('/core/kb-eval/run', body);
+  },
+  listEvalReports: async (limit = 50, offset = 0) => {
+    return apiClient.get<any>(`/core/kb-eval/reports?limit=${limit}&offset=${offset}`);
+  },
+
+  // ── Tools ──
+  createWithAi: async (title: string, prompt: string, collection_id = 'default') => {
+    return apiClient.post<any>('/platform/kb/documents/create-with-ai', { title, prompt, collection_id });
+  },
+  cleanupStorage: async () => {
+    return apiClient.post<any>('/platform/kb/storage/cleanup', {});
+  },
+  getStorageStats: async () => {
+    return apiClient.get<any>('/platform/kb/storage/stats');
+  },
+  updateDocMeta: async (docId: string, meta: any) => {
+    return apiClient.put<any>(`/platform/kb/documents/${docId}/meta`, meta);
+  },
+  updateDocContent: async (docId: string, content: string) => {
+    return apiClient.put<any>(`/platform/kb/documents/${docId}/content`, { content });
+  },
+  getDocVersions: async (docId: string) => {
+    return apiClient.get<any>(`/platform/kb/documents/${docId}/versions`);
   },
 };

@@ -21,7 +21,7 @@ async def _proxy(request: Request, upstream_base: str, upstream_path: str) -> Re
 
     url = f"{upstream_base}{upstream_path}"
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=600.0, trust_env=False) as client:
             r = await client.request(method, url, params=params, content=body, headers=headers)
         return Response(content=r.content, status_code=r.status_code, media_type=r.headers.get("content-type"))
     except httpx.RequestError as e:

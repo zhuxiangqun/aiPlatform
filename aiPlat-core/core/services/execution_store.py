@@ -7,10 +7,20 @@ ExecutionStore (SQLite)
 - 替代 core/server.py 的全局内存 dict（_agent_executions/_agent_history/_skill_executions）
 - 服务重启后仍可查询 execution_id 与 history
 
-DEPRECATED: tenant_quotas management should migrate to platform layer.
-Per architecture contract (docs/index.md §Layer 2): quota/billing belongs
-in platform, not in core's execution store. Core syscalls gate quota checks
-behind AIPLAT_ENABLE_SYSCALL_QUOTA (default false) as transitional mechanism.
+DEPRECATED: migrate to platform layer — tenant_quotas management should live in platform.
+Per architecture contract (docs/index.md §Layer 2).
+
+SPLIT PLAN (audit 2026-05):
+  9007 lines — target: per-entity modules ≤ 1000 lines each.
+  ─────────
+  - execution_store_runs.py      (~2000 lines): run CRUD, status transitions, run summaries
+  - execution_store_memory.py    (~1500 lines): agent memory tables, memory CRUD, FTS
+  - execution_store_skills.py    (~1500 lines): skill execution log, evals, tests
+  - execution_store_config.py    (~1500 lines): config_registry CRUD (tables, assets)
+  - execution_store_jobs.py      (~1500 lines): job queue, scheduler, dispatcher
+  - execution_store.py            (~ 500 lines): base class, connection pool, migration bootstrap
+  ─────────
+  Status: planned, not started. Tracked in core/services/BOUNDARY.yaml.
 """
 
 from __future__ import annotations
@@ -23,6 +33,8 @@ import sqlite3
 import time
 import uuid
 import anyio
+
+from .execution_store_schema import ALL_TABLES
 
 
 def _json_dumps(obj: Any) -> str:
@@ -123,6 +135,8 @@ class ExecutionStore:
             def _init_sync():
                 conn = sqlite3.connect(db_path)
                 try:
+                    from .execution_store_schema import execute_schema
+                    execute_schema(conn)
                     conn.execute("PRAGMA journal_mode=WAL;")
                     conn.execute("PRAGMA foreign_keys=ON;")
 

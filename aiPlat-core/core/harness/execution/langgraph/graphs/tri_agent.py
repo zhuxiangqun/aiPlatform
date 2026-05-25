@@ -19,7 +19,7 @@ except ImportError:
     END = None
 
 from .react import ReActGraph, ReActGraphConfig
-from ....assembly import PromptAssembler
+from ....assembly import MessageFormatter
 
 
 class EvaluationDimension(Enum):
@@ -174,7 +174,7 @@ class TriAgentGraph:
         """Planner wrapper - creates specification (spec.md)"""
         prompt = f"Task: {state.task}\nAnalyze and create a detailed specification (spec.md)."
         messages = (
-            PromptAssembler().assemble(prompt).messages
+            MessageFormatter().assemble(prompt).messages
             if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "true").lower() in ("1", "true", "yes", "y")
             else [{"role": "user", "content": prompt}]
         )
@@ -192,7 +192,7 @@ class TriAgentGraph:
         """Generator wrapper - implements code (sprint-report.md)"""
         prompt = f"Specification:\n{state.spec}\n\nImplement the code based on this spec."
         messages = (
-            PromptAssembler().assemble(prompt).messages
+            MessageFormatter().assemble(prompt).messages
             if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "true").lower() in ("1", "true", "yes", "y")
             else [{"role": "user", "content": prompt}]
         )
@@ -229,7 +229,7 @@ Respond with APPROVED if all criteria pass, or REJECTED: <reason> with specific 
         )
 
         messages = (
-            PromptAssembler().assemble(eval_prompt).messages
+            MessageFormatter().assemble(eval_prompt).messages
             if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "true").lower() in ("1", "true", "yes", "y")
             else [{"role": "user", "content": eval_prompt}]
         )
@@ -334,7 +334,7 @@ Respond with APPROVED if all criteria pass, or REJECTED: <reason> with specific 
             
             plan_prompt = f"Task: {task}\nAnalyze and create spec."
             plan_messages = (
-                PromptAssembler().assemble(plan_prompt).messages
+                MessageFormatter().assemble(plan_prompt).messages
                 if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "true").lower() in ("1", "true", "yes", "y")
                 else [{"role": "user", "content": plan_prompt}]
             )
@@ -344,7 +344,7 @@ Respond with APPROVED if all criteria pass, or REJECTED: <reason> with specific 
             
             gen_prompt = f"Spec: {state.spec}\nImplement."
             gen_messages = (
-                PromptAssembler().assemble(gen_prompt).messages
+                MessageFormatter().assemble(gen_prompt).messages
                 if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "true").lower() in ("1", "true", "yes", "y")
                 else [{"role": "user", "content": gen_prompt}]
             )
@@ -354,7 +354,7 @@ Respond with APPROVED if all criteria pass, or REJECTED: <reason> with specific 
             generated_result = state.generated
             eval_prompt = f"Task: {task}\nResult: {generated_result}\nEvaluate. Respond APPROVED or REJECTED."
             eval_messages = (
-                PromptAssembler().assemble(eval_prompt).messages
+                MessageFormatter().assemble(eval_prompt).messages
                 if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "true").lower() in ("1", "true", "yes", "y")
                 else [{"role": "user", "content": eval_prompt}]
             )

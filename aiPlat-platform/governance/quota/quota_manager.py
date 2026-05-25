@@ -2,7 +2,7 @@
 Quota Manager - 配额管理
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from pydantic import BaseModel
 
@@ -15,7 +15,7 @@ class Quota(BaseModel):
     max_api_keys: int = 10
     max_concurrent_runs: int = 5
     monthly_tokens: int = 1_000_000
-    updated_at: datetime = datetime.now()
+    updated_at: datetime = datetime.now(timezone.utc)
 
 
 class QuotaUsage(BaseModel):

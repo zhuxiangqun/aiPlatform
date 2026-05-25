@@ -10,7 +10,7 @@ function agentDisplayName(agentId: string): string {
   return agentId.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
-const MetricCard: React.FC<{ label: string; value: number; suffix?: string; kids?: React.ReactNode }> = ({ label, value, suffix, kids }) => (
+const MetricCard: React.FC<{ label: string; value: string | number; suffix?: string; kids?: React.ReactNode }> = ({ label, value, suffix, kids }) => (
   <div className="p-3 rounded-lg border border-dark-border bg-dark-card">
     <div className="text-xs text-gray-500 mb-1">{label}</div>
     <div className="text-xl font-bold text-gray-100">{value}{suffix || ''}</div>

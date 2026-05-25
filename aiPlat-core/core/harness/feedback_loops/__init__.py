@@ -36,8 +36,8 @@ from .prod import (
 
 # evolution_trigger removed (dead duplicate of apps/skills/evolution/engine.py)
 
-# EvolutionEngine re-exported from canonical location (apps/skills/evolution/engine.py)
-from core.apps.skills.evolution.engine import EvolutionEngine  # noqa: data type (class) — allowed exception
+# EvolutionEngine + get_evolution_engine re-exported from canonical location
+from core.apps.skills.evolution.engine import EvolutionEngine, get_evolution_engine  # noqa: data type (class) — allowed exception
 EvolutionTriggerType = None
 EvolutionAction = None  
 EvolutionTrigger = None

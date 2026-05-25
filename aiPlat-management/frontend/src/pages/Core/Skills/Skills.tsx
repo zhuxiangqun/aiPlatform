@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Copy, Info, RotateCw, RotateCcw, Trash2, Pencil, Play } from 'lucide-react';
+import { Info, RotateCw, RotateCcw, Trash2, Pencil, Play } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Badge, Table, Select, Switch, Button, Modal, toast } from '../../../components/ui';
-import { EditSkillModal, ExecuteSkillModal } from '../../../components/core';
+import { EditSkillModal, ExecuteSkillModal, SkillDetailModal } from '../../../components/core';
 import { useSkillStore } from '../../../stores';
 import type { Skill } from '../../../services';
 import { toastGateError } from '../../../components/ui';
@@ -31,7 +31,7 @@ const Skills: React.FC = () => {
   const [editSkill, setEditSkill] = useState<Skill | null>(null);
   const [executeSkill, setExecuteSkill] = useState<Skill | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; skill: Skill | null; hard: boolean }>({ open: false, skill: null, hard: false });
-  const [detailModal, setDetailModal] = useState<{ open: boolean; skill: Skill | null }>({ open: false, skill: null });
+  const [detailSkillId, setDetailSkillId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSkills();
@@ -70,16 +70,6 @@ const Skills: React.FC = () => {
     }
   };
 
-  const copyText = async (text: string) => {
-    if (!text) return;
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success('已复制');
-    } catch {
-      toast.error('复制失败');
-    }
-  };
-
   const filteredSkills = skills.filter(s => {
     if (categoryFilter && s.category !== categoryFilter) return false;
     if (enabledOnly && !s.enabled) return false;
@@ -98,8 +88,8 @@ const Skills: React.FC = () => {
       render: (name: string, record: Skill) => (
         <button
           className="font-medium text-gray-100 text-left hover:underline"
-          onClick={() => setDetailModal({ open: true, skill: record })}
-          title="查看详情"
+           onClick={() => setDetailSkillId(record.id)}
+           title="查看详情"
         >
           {name}
         </button>
@@ -126,8 +116,20 @@ const Skills: React.FC = () => {
       },
     },
     {
-      title: '状态',
-      key: 'status',
+      title: '上架状态',
+      dataIndex: 'status',
+      key: 'listing_status',
+      width: 130,
+      align: 'center' as const,
+      render: (s: string) => {
+        const labels: Record<string, string> = { draft: '草稿', ready: '待审核', published: '已发布', listed: '已上架', deprecated: '已废弃' };
+        const colors: Record<string, string> = { draft: '#888', ready: '#f59e0b', published: '#3b82f6', listed: '#10b981', deprecated: '#6b7280' };
+        return <span className="text-xs" style={{ color: colors[s] || '#888' }}>{labels[s] || s || '-'}</span>;
+      },
+    },
+    {
+      title: '启用',
+      key: 'enabled',
       width: 170,
       align: 'center' as const,
       render: (_: unknown, record: Skill) => {
@@ -164,7 +166,7 @@ const Skills: React.FC = () => {
         return (
           <div className="flex items-center justify-center gap-1">
           <button
-            onClick={() => setDetailModal({ open: true, skill: record })}
+          onClick={() => setDetailSkillId(record.id)}
             className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors"
             title="详情"
           >
@@ -246,9 +248,12 @@ const Skills: React.FC = () => {
             value={statusFilter || undefined}
             onChange={(v) => setStatusFilter(v || '')}
             options={[
-              { value: 'enabled', label: 'enabled' },
-              { value: 'disabled', label: 'disabled' },
-              { value: 'deprecated', label: 'deprecated' },
+              { value: '', label: '全部状态' },
+              { value: 'draft', label: '草稿' },
+              { value: 'ready', label: '待审核' },
+              { value: 'published', label: '已发布' },
+              { value: 'listed', label: '已上架' },
+              { value: 'deprecated', label: '已废弃' },
             ]}
             placeholder="状态筛选"
           />
@@ -304,85 +309,12 @@ const Skills: React.FC = () => {
         </p>
       </Modal>
 
-      {/* Detail Modal */}
-      <Modal
-        open={detailModal.open}
-        onClose={() => setDetailModal({ open: false, skill: null })}
-        title={`Skill 详情：${detailModal.skill?.name || ''}`}
-        width={820}
-        footer={<Button onClick={() => setDetailModal({ open: false, skill: null })}>关闭</Button>}
-      >
-        <div className="space-y-3 text-sm text-gray-300">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <div className="text-xs text-gray-500">skill_id</div>
-              <div className="flex items-center justify-between gap-2">
-                <code className="text-xs bg-dark-hover px-1.5 py-0.5 rounded break-all">{String(detailModal.skill?.id || '-')}</code>
-                {detailModal.skill?.id && (
-                  <Button variant="ghost" icon={<Copy className="w-4 h-4" />} onClick={() => copyText(String(detailModal.skill?.id || ''))}>
-                    复制
-                  </Button>
-                )}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs text-gray-500">status</div>
-              <div>{detailModal.skill?.status || (detailModal.skill?.enabled ? 'enabled' : 'disabled')}</div>
-            </div>
-          </div>
-
-          <div>
-            <div className="text-xs text-gray-500">filesystem.skill_dir</div>
-            <div className="flex items-center justify-between gap-2">
-              <code className="text-xs bg-dark-hover px-1.5 py-0.5 rounded break-all">
-                {String((detailModal.skill as any)?.metadata?.filesystem?.skill_dir || '-')}
-              </code>
-              {((detailModal.skill as any)?.metadata?.filesystem?.skill_dir) && (
-                <Button
-                  variant="ghost"
-                  icon={<Copy className="w-4 h-4" />}
-                  onClick={() => copyText(String((detailModal.skill as any)?.metadata?.filesystem?.skill_dir))}
-                >
-                  复制
-                </Button>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <div className="text-xs text-gray-500">filesystem.skill_md</div>
-            <div className="flex items-center justify-between gap-2">
-              <code className="text-xs bg-dark-hover px-1.5 py-0.5 rounded break-all">
-                {String((detailModal.skill as any)?.metadata?.filesystem?.skill_md || '-')}
-              </code>
-              {((detailModal.skill as any)?.metadata?.filesystem?.skill_md) && (
-                <Button
-                  variant="ghost"
-                  icon={<Copy className="w-4 h-4" />}
-                  onClick={() => copyText(String((detailModal.skill as any)?.metadata?.filesystem?.skill_md))}
-                >
-                  复制
-                </Button>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <div className="text-xs text-gray-500">provenance</div>
-              <pre className="text-xs bg-dark-hover rounded p-2 overflow-auto max-h-40">
-                {JSON.stringify((detailModal.skill as any)?.metadata?.provenance || {}, null, 2)}
-              </pre>
-            </div>
-            <div>
-              <div className="text-xs text-gray-500">integrity</div>
-              <pre className="text-xs bg-dark-hover rounded p-2 overflow-auto max-h-40">
-                {JSON.stringify((detailModal.skill as any)?.metadata?.integrity || {}, null, 2)}
-              </pre>
-            </div>
-          </div>
-        </div>
-      </Modal>
+      {/* Skill Detail Modal */}
+      <SkillDetailModal
+        open={!!detailSkillId}
+        skillId={detailSkillId}
+        onClose={() => setDetailSkillId(null)}
+      />
 
       <EditSkillModal
         open={editModalOpen}

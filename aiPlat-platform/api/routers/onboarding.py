@@ -11,12 +11,12 @@ import time
 import uuid
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 
+from auth.deps import require_auth, require_admin
 from core.api.deps import actor_from_http
 from core.api.utils.governance import gate_error_envelope, ui_url
-from core.api.core_facade import record_changeset
-from core.harness.kernel.runtime import get_kernel_runtime
+from core.api.core_facade import record_changeset, get_kernel_runtime, RequestStatus, ApprovalContext, ApprovalRule, RuleType
 from core.schemas_onboarding import (
     OnboardingAutosmokeConfigRequest,
     OnboardingContextConfigRequest,
@@ -27,6 +27,8 @@ from core.schemas_onboarding import (
     OnboardingStrongGateRequest,
     OnboardingTrustedSkillKeysRequest,
 )
+
+from storage import sqlite as platform_store  # tenant CRUD now lives in Platform
 
 
 router = APIRouter(prefix="/platform/onboarding", tags=["onboarding"])
@@ -50,7 +52,7 @@ def _is_approval_resolved_approved(approval_request_id: str) -> bool:
     mgr = _approval_manager()
     if not approval_request_id or not mgr:
         return False
-    from core.harness.infrastructure.approval.types import RequestStatus
+    # use top-level facade imports
 
     r = mgr.get_request(str(approval_request_id))
     if not r:
@@ -63,7 +65,7 @@ async def _require_onboarding_approval(*, operation: str, user_id: str, details:
     Onboarding operations are global-impact changes (default routing/policies),
     so by default they should go through approvals.
     """
-    from core.harness.infrastructure.approval.types import ApprovalContext, ApprovalRule, RuleType
+    # use top-level facade imports for ApprovalContext, ApprovalRule, RuleType
 
     mgr = _approval_manager()
     if not mgr:
@@ -95,15 +97,15 @@ async def _require_onboarding_approval(*, operation: str, user_id: str, details:
 
 
 @router.get("/onboarding/state")
-async def get_core_onboarding_state():
+async def get_core_onboarding_state(_auth: str = Depends(require_auth)):
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
     default_llm = await store.get_global_setting(key="default_llm")
     autosmoke = await store.get_global_setting(key="autosmoke")
-    tenants = await store.list_tenants(limit=50, offset=0)
+    tenants = platform_store.list_tenants(limit=50, offset=0)  # migrated from execution_store
     try:
-        from core.harness.infrastructure.crypto import is_configured as secret_configured
+        from core.api.core_facade import is_crypto_configured as secret_configured
 
         secrets = {"configured": bool(secret_configured())}
     except Exception:
@@ -117,7 +119,7 @@ async def get_core_onboarding_state():
 
 
 @router.post("/onboarding/evidence/runs")
-async def create_onboarding_evidence(request: Dict[str, Any], http_request: Request):
+async def create_onboarding_evidence(request: Dict[str, Any], http_request: Request, _auth: str = Depends(require_auth)):
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -210,7 +212,7 @@ async def create_onboarding_evidence(request: Dict[str, Any], http_request: Requ
 
 
 @router.get("/onboarding/evidence/runs")
-async def list_onboarding_evidence(http_request: Request, step_key: Optional[str] = None, limit: int = 100, offset: int = 0):
+async def list_onboarding_evidence(http_request: Request, step_key: Optional[str] = None, limit: int = 100, offset: int = 0, _auth: str = Depends(require_auth)):
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -220,7 +222,7 @@ async def list_onboarding_evidence(http_request: Request, step_key: Optional[str
 
 
 @router.get("/onboarding/evidence/runs/{evidence_id}")
-async def get_onboarding_evidence(evidence_id: str, http_request: Request):
+async def get_onboarding_evidence(evidence_id: str, http_request: Request, _auth: str = Depends(require_auth)):
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -233,7 +235,7 @@ async def get_onboarding_evidence(evidence_id: str, http_request: Request):
 
 
 @router.post("/onboarding/default-llm")
-async def set_default_llm(request: OnboardingDefaultLLMRequest):
+async def set_default_llm(request: OnboardingDefaultLLMRequest, _auth: str = Depends(require_auth)):
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -339,7 +341,7 @@ async def set_default_llm(request: OnboardingDefaultLLMRequest):
 
 
 @router.post("/onboarding/init-tenant")
-async def init_default_tenant(request: OnboardingInitTenantRequest):
+async def init_default_tenant(request: OnboardingInitTenantRequest, _auth: str = Depends(require_auth)):
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -392,7 +394,7 @@ async def init_default_tenant(request: OnboardingInitTenantRequest):
             )
 
     try:
-        tenant = await store.upsert_tenant(tenant_id=request.tenant_id, name=request.tenant_name)
+        tenant = platform_store.upsert_tenant_by_id(tenant_id=request.tenant_id, name=request.tenant_name)
     except Exception as e:
         try:
             await record_changeset(
@@ -449,7 +451,7 @@ async def init_default_tenant(request: OnboardingInitTenantRequest):
 
 
 @router.post("/onboarding/autosmoke")
-async def set_autosmoke_config(request: OnboardingAutosmokeConfigRequest):
+async def set_autosmoke_config(request: OnboardingAutosmokeConfigRequest, _auth: str = Depends(require_auth)):
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -543,7 +545,7 @@ async def set_autosmoke_config(request: OnboardingAutosmokeConfigRequest):
 
 
 @router.post("/onboarding/exec-backend")
-async def set_exec_backend(request: OnboardingExecBackendRequest):
+async def set_exec_backend(request: OnboardingExecBackendRequest, _auth: str = Depends(require_auth)):
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -612,13 +614,13 @@ async def set_exec_backend(request: OnboardingExecBackendRequest):
 
 
 @router.post("/onboarding/trusted-skill-keys")
-async def set_trusted_skill_keys(request: OnboardingTrustedSkillKeysRequest):
+async def set_trusted_skill_keys(request: OnboardingTrustedSkillKeysRequest, _auth: str = Depends(require_auth)):
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
     keys_in = request.keys if isinstance(request.keys, list) else []
     keys_out: list[dict] = []
-    from core.harness.infrastructure.crypto.signature import key_id_for_public_key
+    from core.api.core_facade import key_id_for_public_key
 
     for it in keys_in:
         if not isinstance(it, dict):
@@ -694,7 +696,7 @@ async def set_trusted_skill_keys(request: OnboardingTrustedSkillKeysRequest):
 
 
 @router.post("/onboarding/context-config")
-async def set_context_config(request: OnboardingContextConfigRequest):
+async def set_context_config(request: OnboardingContextConfigRequest, _auth: str = Depends(require_auth)):
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -786,13 +788,13 @@ async def set_context_config(request: OnboardingContextConfigRequest):
 
 
 @router.get("/onboarding/secrets/status")
-async def get_secrets_status():
+async def get_secrets_status(_auth: str = Depends(require_auth)):
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
     st = await store.get_adapter_secrets_status()
     try:
-        from core.harness.infrastructure.crypto.secretbox import is_configured
+        from core.api.core_facade import is_crypto_configured as is_configured
 
         st["encryption_configured"] = bool(is_configured())
     except Exception:
@@ -801,7 +803,7 @@ async def get_secrets_status():
 
 
 @router.post("/onboarding/secrets/migrate")
-async def migrate_secrets(request: OnboardingSecretsMigrateRequest):
+async def migrate_secrets(request: OnboardingSecretsMigrateRequest, _auth: str = Depends(require_auth)):
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -885,7 +887,7 @@ async def migrate_secrets(request: OnboardingSecretsMigrateRequest):
 
 
 @router.post("/onboarding/strong-gate")
-async def set_strong_gate(request: OnboardingStrongGateRequest):
+async def set_strong_gate(request: OnboardingStrongGateRequest, _auth: str = Depends(require_auth)):
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -936,7 +938,7 @@ async def set_strong_gate(request: OnboardingStrongGateRequest):
             )
 
     try:
-        await store.upsert_tenant(tenant_id=tenant_id, name=tenant_id)
+        platform_store.upsert_tenant_by_id(tenant_id=tenant_id, name=tenant_id)
     except Exception:
         pass
 

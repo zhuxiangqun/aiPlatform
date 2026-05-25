@@ -53,6 +53,7 @@ class MemoryConfig:
     enable_compression: bool = True
     enable_reminders: bool = True
     use_llm_summary: bool = True
+    model: Any = None  # injected by caller for episodic LLM summarization
 
 
 @dataclass
@@ -70,7 +71,7 @@ class MemoryManager:
     """Unified memory manager with three-layer architecture.
 
     Supports namespace-based isolation: each agent can use its own namespace
-    to keep memories separate (e.g., 'architect', 'programmer', 'qa').
+    to keep memories separate (e.g., 'agent_a', 'agent_b', 'agent_c').
     """
 
     def __init__(self, config: Optional[MemoryConfig] = None, namespace: str = "default"):
@@ -95,9 +96,16 @@ class MemoryManager:
     async def build_context(
         self,
         current_query: str,
-        system_prompt: str
+        system_prompt: str,
+        *,
+        skip_system_messages: bool = False,
     ) -> BuildContextResult:
-        """Build complete context from all memory layers"""
+        """Build complete context from all memory layers.
+
+        When skip_system_messages=True, the caller handles system-level injection
+        (CLAUDE.md, project context) separately — only memory-layer context
+        (working/episodic/semantic) is assembled here.
+        """
         
         # 1. Retrieve relevant semantic memories
         relevant_memories = await self._semantic.retrieve(current_query)
@@ -109,7 +117,9 @@ class MemoryManager:
         working_context = self._working.get_context()
         
         # 4. Build messages list
-        messages = [{"role": "system", "content": system_prompt}]
+        messages: list = []
+        if not skip_system_messages:
+            messages.append({"role": "system", "content": system_prompt})
         
         # Add semantic memories as context
         if relevant_memories:
@@ -124,6 +134,26 @@ class MemoryManager:
                 "role": "system",
                 "content": f"## Session Summary\n{episodic_summary}"
             })
+
+        # Inject user profile from semantic memory (auto-extracted via ProfileBuilder)
+        try:
+            profiles = await self._semantic.retrieve("user_profile preferences constraints", k=1)
+            for p in profiles:
+                if hasattr(p, 'metadata') and isinstance(p.metadata, dict):
+                    if p.metadata.get("tag") == "user_profile":
+                        import json as _json
+                        data = _json.loads(p.content) if isinstance(p.content, str) else p.content
+                        prefs = data.get("preferences", []) if isinstance(data, dict) else []
+                        constraints = data.get("constraints", []) if isinstance(data, dict) else []
+                        if prefs or constraints:
+                            from core.harness.memory.profile_builder import UserProfile
+                            profile = UserProfile.from_dict(data)
+                            msg = profile.to_system_message()
+                            if msg:
+                                messages.append({"role": "system", "content": msg})
+                        break
+        except Exception:
+            pass
         
         # Add working memory
         messages.extend(working_context)
@@ -132,7 +162,7 @@ class MemoryManager:
         messages.append({"role": "user", "content": current_query})
         
         # 5. Check compression
-        total_tokens = sum(len(m.get("content", "").split()) * 1.3 for m in messages)
+        total_tokens = sum(self._estimate_tokens(str(m.get("content", ""))) for m in messages)
         state = ContextState(
             token_usage=int(total_tokens),
             token_limit=self._config.working_tokens,
@@ -206,13 +236,9 @@ class MemoryManager:
             if self._config.use_llm_summary:
                 async def _call_llm(prompt: str):
                     from ..syscalls.llm import sys_llm_generate
-                    try:
-                        from ..execution.loop import _default_model
-                        model = _default_model() if callable(_default_model) else None
-                    except Exception:
-                        model = None
+                    model = self._config.model if hasattr(self._config, 'model') and self._config.model else None
                     if model is None:
-                        raise RuntimeError("No model available for episodic summary")
+                        raise RuntimeError("No model available for episodic summary — set MemoryConfig.model")
                     resp = await sys_llm_generate(model, prompt)
                     return getattr(resp, "content", str(resp))
                 llm_callable = _call_llm
@@ -228,7 +254,25 @@ class MemoryManager:
                     assistant_message=assistant_message,
                 )
             except Exception:
-                pass
+                logging.getLogger("manager").debug("best-effort skipped", exc_info=True)
+
+    def export_episodic_state(self) -> Dict[str, Any]:
+        """Export episodic memory for persistence (survives restart)."""
+        return {
+            "summary": self._episodic._summary,
+            "message_count": self._episodic._message_count,
+            "full_messages": self._episodic._full_messages[-500:],  # cap at 500
+        }
+
+    def import_episodic_state(self, state: Dict[str, Any]) -> None:
+        """Restore episodic memory from persisted state."""
+        if not state or not isinstance(state, dict):
+            return
+        self._episodic._summary = str(state.get("summary", "") or "")
+        self._episodic._message_count = int(state.get("message_count", 0) or 0)
+        messages = state.get("full_messages")
+        if isinstance(messages, list):
+            self._episodic._full_messages = messages
     
     async def capture_to_semantic(
         self,
@@ -296,38 +340,39 @@ class MemoryManager:
         self, keywords: List[str], min_pass_rate: float = 0.7, limit: int = 5,
         query_text: str = "",
     ) -> List[TaskSkill]:
-        """Find task skills matching given keywords (primary) or semantic similarity (fallback).
-
-        Hot skills (pass_rate >= 85%) are prioritized and returned first.
-        Cold skills (pass_rate < 70%) are indexed only — not loaded by default.
-
-        When query_text is provided and keyword overlap is insufficient,
-        falls back to embedding-based semantic similarity via EmbeddingProvider.
-        """
         import os as _os
         import json as _json
         skills_dir = _os.path.expanduser("~/.aiplat/task_skills")
         if not _os.path.isdir(skills_dir):
             return []
+
+        # Load skill files via asyncio.to_thread to avoid blocking event loop
+        import asyncio as _asyncio
+        def _load_skills() -> List[Dict]:
+            results: List[Dict] = []
+            for fname in _os.listdir(skills_dir):
+                if not fname.endswith(".json"):
+                    continue
+                fpath = _os.path.join(skills_dir, fname)
+                try:
+                    with open(fpath) as f:
+                        results.append(_json.load(f))
+                except Exception:
+                    continue
+            return results
+        all_data = await _asyncio.to_thread(_load_skills)
+
         results: List[TaskSkill] = []
         kw_lower = {k.lower() for k in keywords}
-        for fname in _os.listdir(skills_dir):
-            if not fname.endswith(".json"):
+        for data in all_data:
+            skill_kws = {k.lower() for k in data.get("keywords", [])}
+            overlap = len(kw_lower & skill_kws)
+            if overlap == 0:
                 continue
-            fpath = _os.path.join(skills_dir, fname)
-            try:
-                with open(fpath) as f:
-                    data = _json.load(f)
-                skill_kws = {k.lower() for k in data.get("keywords", [])}
-                overlap = len(kw_lower & skill_kws)
-                if overlap == 0:
-                    continue
-                pr = data.get("pass_rate", 0) or 0
-                if pr < min_pass_rate:
-                    continue
-                results.append(self._build_task_skill(data))
-            except Exception:
+            pr = data.get("pass_rate", 0) or 0
+            if pr < min_pass_rate:
                 continue
+            results.append(self._build_task_skill(data))
 
         # Embedding fallback: if keyword match returned too few, try semantic similarity
         if len(results) < limit and query_text and len(query_text.strip()) > 10:
@@ -337,13 +382,8 @@ class MemoryManager:
                 query_vec = await provider.embed_single(query_text)
                 if query_vec:
                     scored: List[tuple] = []
-                    for fname in _os.listdir(skills_dir):
-                        if not fname.endswith(".json"):
-                            continue
-                        fpath = _os.path.join(skills_dir, fname)
+                    for data in all_data:
                         try:
-                            with open(fpath) as f:
-                                data = _json.load(f)
                             pr = data.get("pass_rate", 0) or 0
                             if pr < min_pass_rate:
                                 continue
@@ -373,7 +413,7 @@ class MemoryManager:
                             if len(results) >= limit:
                                 break
             except Exception:
-                pass
+                logging.getLogger("manager").debug("best-effort skipped", exc_info=True)
 
         results.sort(key=lambda s: (-s.pass_rate, -len(s.keywords)))
         return results[:limit]
@@ -468,7 +508,7 @@ class MemoryManager:
                         with open(_os.path.join(skills_dir, fname)) as f:
                             result["memory"]["task_skills"].append(_json.load(f))
                     except Exception:
-                        pass
+                        logging.getLogger("manager").debug("best-effort skipped", exc_info=True)
 
         return result
 
@@ -546,10 +586,19 @@ class MemoryManager:
                             sk = _json.load(f)
                             result["task_skills"]["skills"].append({"skill_id": sk.get("skill_id"), "pass_rate": sk.get("pass_rate"), "name": sk.get("name")})
                     except Exception:
-                        pass
+                        logging.getLogger("manager").debug("best-effort skipped", exc_info=True)
         result["task_skills"]["total"] = len(result["task_skills"]["skills"])
         return result
     
+    @staticmethod
+    def _estimate_tokens(text: str) -> int:
+        try:
+            import tiktoken
+            enc = tiktoken.get_encoding("cl100k_base")
+            return len(enc.encode(text))
+        except Exception:
+            return max(1, int(len(text) / 3.5))
+
     def _count_consecutive_reads(self, context: List[Dict]) -> int:
         """Count consecutive read operations"""
         reads = 0

@@ -1,8 +1,12 @@
 """
 Tenant Manager - 租户管理
+
+⚠ PERSISTENCE: Tenants are in-memory only — restart loses all data.
+SQLite persistence is planned for Phase 4 (audit 2.3).
 """
 
-from datetime import datetime
+import os
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from enum import Enum
 from pydantic import BaseModel
@@ -36,8 +40,8 @@ class Tenant(BaseModel):
     status: TenantStatus = TenantStatus.ACTIVE
     quota: TenantQuota = TenantQuota()
     config: TenantConfig = TenantConfig()
-    created_at: datetime = datetime.now()
-    updated_at: datetime = datetime.now()
+    created_at: datetime = datetime.now(timezone.utc)
+    updated_at: datetime = datetime.now(timezone.utc)
 
 
 class TenantStats(BaseModel):
@@ -62,7 +66,7 @@ class TenantManager:
             return
         self._initialized = True
         self._tenants: Dict[str, Tenant] = {}
-        self._default_tenant_id = "default"
+        self._default_tenant_id = os.getenv("AIPLAT_DEFAULT_TENANT", "default")
 
     def create_tenant(self, tenant_id: str, name: str, **kwargs) -> Tenant:
         """创建租户"""
@@ -91,7 +95,7 @@ class TenantManager:
         for key, value in kwargs.items():
             if hasattr(tenant, key):
                 setattr(tenant, key, value)
-        tenant.updated_at = datetime.now()
+        tenant.updated_at = datetime.now(timezone.utc)
         return tenant
 
     def delete_tenant(self, tenant_id: str) -> bool:

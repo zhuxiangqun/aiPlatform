@@ -220,8 +220,20 @@ const WorkspaceSkills: React.FC = () => {
       },
     },
     {
-      title: '状态',
-      key: 'status',
+      title: '上架状态',
+      dataIndex: 'status',
+      key: 'listing_status',
+      width: 130,
+      align: 'center' as const,
+      render: (s: string) => {
+        const labels: Record<string, string> = { draft: '草稿', ready: '待审核', published: '已发布', listed: '已上架', deprecated: '已废弃' };
+        const colors: Record<string, string> = { draft: '#888', ready: '#f59e0b', published: '#3b82f6', listed: '#10b981', deprecated: '#6b7280' };
+        return <span className="text-xs" style={{ color: colors[s] || '#888' }}>{labels[s] || s || '-'}</span>;
+      },
+    },
+    {
+      title: '启用',
+      key: 'enabled',
       width: 140,
       align: 'center' as const,
       render: (_: unknown, record: Skill) => {
@@ -364,9 +376,11 @@ const WorkspaceSkills: React.FC = () => {
             onChange={(v: string) => setStatusFilter(v)}
             options={[
               { value: '', label: '全部状态' },
-              { value: 'enabled', label: 'enabled' },
-              { value: 'disabled', label: 'disabled' },
-              { value: 'deprecated', label: 'deprecated' },
+              { value: 'draft', label: '草稿 (draft)' },
+              { value: 'ready', label: '待审核 (ready)' },
+              { value: 'published', label: '已发布 (published)' },
+              { value: 'listed', label: '已上架 (listed)' },
+              { value: 'deprecated', label: '已废弃 (deprecated)' },
             ]}
           />
         </div>

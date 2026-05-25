@@ -66,7 +66,7 @@ class TestBuilderSchemaValidation:
         )
         assert stage.agent_type == "react"
         assert stage.hitl is False
-        assert stage.uses_code_skill is False
+        assert stage.uses_file_output is False
         assert stage.generate_test_plan is False
         assert stage.failure_strategy == "fail_pipeline"
 
@@ -93,3 +93,177 @@ class TestBuilderSchemaValidation:
         result = validate_pipeline_stages(stages)
         assert result["valid"] is False
         assert len(result["errors"]) >= 1
+
+
+class TestBuilderPipelineE2E:
+    """E2E smoke tests for the full Builder pipeline lifecycle."""
+
+    @pytest.fixture
+    def service(self):
+        """Create BuilderProjectService with mock model."""
+        import os
+        os.environ.setdefault("AIPLAT_ENABLE_CORE_ADAPTER_FALLBACK", "true")
+        from unittest.mock import MagicMock
+        from builder.builder_project_service import BuilderProjectService
+
+        mock_model = MagicMock()
+        mock_model.model_name = "deepseek-chat"
+        mock_model.generate = MagicMock()
+
+        svc = BuilderProjectService(team_service=None)
+        svc._model = mock_model
+        return svc
+
+    def test_prd_markdown_parsing(self):
+        """Verify _parse_markdown_prd extracts title, FRs, and scope."""
+        from builder.builder_project_service import BuilderProjectService
+
+        test_prd = """
+# 项目名称：测试项目
+## 项目背景
+背景内容
+## 功能需求
+### FR-01: 测试功能
+- **用户故事**：作为用户，我想测试
+- **优先级**：P0
+- **验收标准**：
+  - AC1: 正向验证
+  - AC2: 异常验证
+## 范围
+新增Agent
+"""
+        result = BuilderProjectService._parse_markdown_prd(test_prd)
+        assert result, "Markdown PRD parsing must return non-empty dict"
+        assert result.get("title") == "测试项目"
+        assert len(result.get("functional_requirements", [])) >= 1
+        assert result.get("user_stories"), "Must have user_stories for backward compat"
+        assert result.get("scope"), "Must extract scope"
+
+    def test_confirm_prd_saves_prd_from_messages(self, service):
+        """confirm_prd() must find PRD in session messages and save to project."""
+        import asyncio
+
+        service._sessions["test_prj"] = {
+            "phase": "dialogue",
+            "messages": [
+                {"role": "user", "content": "requirement"},
+                {"role": "assistant", "content": "<!-- PRD_READY -->\n# 项目名称：消息PRD\n\n## 功能需求\n### FR-01: 测试\n- **用户故事**：作为用户\n- **验收标准**：\n  - AC1: 测试\n## 范围\nSkill"},
+            ],
+        }
+        service._projects["test_prj"] = {"project_id": "test_prj", "description": "test"}
+
+        result = asyncio.run(service.confirm_prd("test_prj"))
+
+        proj = service._projects.get("test_prj", {})
+        assert proj.get("confirmed_prd"), f"PRD must be saved. Result: {result}"
+        assert proj["confirmed_prd"].get("title") == "消息PRD"
+        assert result.get("phase") == "executing"
+
+    def test_session_type_safety_on_chat(self, service):
+        """chat() must handle non-dict session without crashing (returns friendly message)."""
+        # Simulate PipelineSession overwriting the session
+        service._sessions["test_prj2"] = object()
+        service._phases["test_prj2"] = "executing"
+
+        import asyncio
+
+        async def _test():
+            return await service.chat("test_prj2", "hello")
+
+        result = asyncio.run(_test())
+        reply = result.get("reply", "")
+        assert "项目不在对话阶段" in reply or "not in dialogue" in reply.lower(), \
+            f"Expected friendly rejection, got: {reply}"
+
+    def test_recommend_team_no_name_error(self):
+        """recommend_team() return must not use undefined 'result.trace_id'."""
+        import re
+        with open("aiPlat-platform/builder/builder_project_service.py", "r") as f:
+            source = f.read()
+        func_match = re.search(
+            r'async def recommend_team.*?(?=\n    def |\n    async def |\n@staticmethod|\Z)',
+            source, re.DOTALL
+        )
+        assert func_match, "Could not find recommend_team function"
+        func_body = func_match.group(0)
+        assert 'result.trace_id' not in func_body, \
+            "BUG: recommend_team() uses 'result.trace_id' (undefined variable)"
+
+    def test_error_propagates_to_get_state(self, service):
+        """When pipeline fails, get_project_state() must expose phase=failed + error."""
+        service._projects["test_prj"] = {
+            "project_id": "test_prj", "description": "test",
+            "team_stages": [], "runs": [],
+        }
+        service._runs["test_prj"] = {"phase": "failed", "error": "LLM rate limit exceeded"}
+
+        import asyncio
+
+        async def _test():
+            return await service.get_project_state("test_prj")
+
+        result = asyncio.run(_test())
+        assert result["phase"] == "failed", f"Expected phase 'failed', got {result['phase']}"
+        assert result["state"]["error"] == "LLM rate limit exceeded", \
+            f"Expected error in state, got {result['state'].get('error')}"
+
+    def test_start_pipeline_no_stages_returns_error(self, service):
+        """start_pipeline() with no team stages should raise ValueError with clear message."""
+        service._projects["test_prj2"] = {
+            "project_id": "test_prj2", "description": "test",
+            "team_stages": [], "runs": [],
+        }
+        service._sessions["test_prj2"] = {"phase": "dialogue", "messages": [], "prd": {"title": "test"}}
+
+        import asyncio
+
+        async def _test():
+            try:
+                await service.start_pipeline("test_prj2")
+                return None
+            except ValueError as e:
+                return str(e)
+
+        error = asyncio.run(_test())
+        assert error is not None, "Expected ValueError for no stages"
+        assert "No team stages" in error, f"Expected clear error message, got: {error}"
+
+    def test_start_pipeline_returns_failed_on_execution_error(self, service):
+        """start_pipeline() must return phase=failed when pipeline execution crashes."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+        from core.schemas_builder import PipelineConfig, PipelineStageConfig
+
+        # Setup minimal valid project with 1 stage
+        service._projects["test_prj3"] = {
+            "project_id": "test_prj3", "description": "test",
+            "team_stages": [
+                {"id": "pm", "agent_id": "pm_agent", "output_artifact": "prd",
+                 "agent_type": "conversational", "uses_file_output": False,
+                 "scoring_dimensions": [], "generate_test_plan": False,
+                 "test_result_key": "", "prompt_extra": "", "failure_strategy": "fail_pipeline"}
+            ],
+            "runs": [{"run_id": "r1", "project_id": "test_prj3", "phase": "executing",
+                      "pass_rate": 0, "tokens_used": 0, "iteration": 0, "error": "",
+                      "started_at": "", "finished_at": ""}],
+        }
+        service._sessions["test_prj3"] = {"phase": "dialogue", "messages": [], "prd": {"title": "test"}}
+
+        import asyncio
+
+        async def _test():
+            # Mock create_pipeline_session to return a session that crashes on start
+            with patch('builder.builder_project_service.create_pipeline_session') as mock_create:
+                mock_session = MagicMock()
+                mock_session.start = AsyncMock(side_effect=RuntimeError("LLM API timeout"))
+                mock_session.get_stages = MagicMock(return_value=[])
+                mock_session.assemble_deploy = MagicMock(return_value=None)
+                mock_create.return_value = mock_session
+
+                result = await service.start_pipeline("test_prj3")
+                return result
+
+        result = asyncio.run(_test())
+        assert result["phase"] == "failed", \
+            f"H1 BUG: expected phase 'failed', got '{result['phase']}'. Error not propagated to API response."
+        assert result["state"].get("error") == "LLM API timeout", \
+            f"Expected error message, got: {result['state'].get('error')}"

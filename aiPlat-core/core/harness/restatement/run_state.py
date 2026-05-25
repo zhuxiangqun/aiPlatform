@@ -272,7 +272,7 @@ def restate_next_step(
         if not str(cur.get("next_step") or "").strip():
             cur = auto_next_step_from_todo(cur)
             if not str(cur.get("next_step") or "").strip():
-                cur["next_step"] = "继续执行下一步：优先完成核心路径，再补齐边界情况与测试。"
+                cur["next_step"] = "Continue execution: complete core path first, then handle edge cases and testing."
     cur["updated_at"] = time.time()
     cur["updated_by"] = {"source": source, "step_count": int(step_count)}
     return cur

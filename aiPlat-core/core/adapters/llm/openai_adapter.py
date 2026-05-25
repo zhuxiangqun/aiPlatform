@@ -7,8 +7,9 @@ Provides OpenAI API adapter implementation.
 from typing import Any, Dict, List, Optional, AsyncIterator
 import os
 
-from .base import (
 from core.harness.utils.llm_env import get_llm_api_key, get_llm_base_url
+
+from .base import (
     BaseLLMAdapter,
     LLMResponse,
     AdapterMetadata,
@@ -27,7 +28,7 @@ class OpenAIAdapter(BaseLLMAdapter, RetryableAdapterMixin):
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model: str = "gpt-4",
+        model: str = "deepseek-chat",
         base_url: Optional[str] = None,
         **kwargs
     ):
@@ -140,12 +141,8 @@ class OpenAIAdapter(BaseLLMAdapter, RetryableAdapterMixin):
                 finish_reason=response.choices[0].finish_reason or "stop",
             )
             
-        except Exception as e:
-            return LLMResponse(
-                content="",
-                model=config.model,
-                metadata={"error": str(e)},
-            )
+        except Exception:
+            raise
 
     async def stream_generate(
         self,

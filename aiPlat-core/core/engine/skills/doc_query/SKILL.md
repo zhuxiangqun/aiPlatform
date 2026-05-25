@@ -1,38 +1,32 @@
 ---
 name: doc_query
-display_name: 资料对话查询
-description: 通用资料查询（MVP）：基于已解析写入 kb_elements 的内容进行检索，返回匹配片段与引用信息，供上层对话生成/总结使用。
-category: document
+display_name: 文档查询
+description: 单文档查询：根据用户问题从指定文档中检索相关内容并生成回答。支持 PDF、Word、PPT、Markdown、视频转录。
+category: knowledge
 version: 0.1.0
-skill_kind: executable
+status: enabled
+execution_mode: prompt
 permissions:
-  - doc:read
-auto_trigger_allowed: true
-requires_approval: false
-trigger_conditions:
-  - 查询资料
-  - 问答文档
-  - 总结要点
-input_schema:
-  type: object
-  properties:
-    tenant_id: {type: string, description: 租户ID（默认 default）}
-    collection_id: {type: string, description: 集合ID（默认 default）}
-    doc_id: {type: string, description: 可选：指定文档ID；缺省则按 collection_id 检索}
-    question: {type: string, description: 用户问题}
-    top_k: {type: integer, description: 返回片段数量（默认 8）}
-  required: [question]
-output_schema:
-  type: object
-  properties:
-    answer: {type: string}
-    items:
-      type: array
-      items: {type: object}
-    citations:
-      type: array
-      items: {type: object}
-    tenant_id: {type: string}
-    collection_id: {type: string}
-    doc_id: {type: string}
+  - kb:read
+effects:
+  - type: read
+    resources: ["kb:documents"]
+    idempotent: true
+    rollback_available: false
 ---
+你是一个知识库文档查询助手。你的任务是根据用户的问题，从指定的知识库文档中检索相关内容，并生成准确、简洁的回答。
+
+## 可用参数
+- `query`：用户的查询问题
+- `doc_id`：要检索的文档 ID
+- `collection_id`：文档所属集合
+- `top_k`：返回结果数量（默认 5）
+
+## 工作流程
+1. 理解用户问题，提取关键检索词
+2. 从指定文档中检索最相关的文本片段
+3. 基于检索结果生成回答，务必注明引用来源
+4. 如果检索结果不足以回答问题，如实告知
+
+## 输出格式
+用中文回答，简洁明了。如果需要引用原文，使用引号标注。

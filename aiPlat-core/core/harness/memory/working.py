@@ -37,6 +37,7 @@ class WorkingMemory:
         )
         self._messages.append(message)
         self._token_estimate += self._estimate_tokens(content)
+        self._ensure_within_limit()
     
     def get_context(self) -> List[Dict[str, Any]]:
         """Get current context as message list"""
@@ -53,6 +54,17 @@ class WorkingMemory:
         """Clear all messages"""
         self._messages.clear()
         self._token_estimate = 0
+
+    def snapshot(self) -> Dict[str, Any]:
+        import copy
+        return {
+            "messages": copy.deepcopy(list(self._messages)),
+            "token_estimate": self._token_estimate,
+        }
+
+    def restore(self, snap: Dict[str, Any]) -> None:
+        self._messages = deque(snap.get("messages", []), maxlen=self._max_messages)
+        self._token_estimate = snap.get("token_estimate", 0)
     
     @property
     def token_count(self) -> int:
@@ -70,9 +82,14 @@ class WorkingMemory:
             self._token_estimate -= self._estimate_tokens(oldest.content)
     
     def _estimate_tokens(self, text: str) -> int:
-        """Estimate token count"""
-        words = text.split()
-        return int(len(words) * 1.3)
+        """Estimate token count. ~3.5 chars per token on average for mixed CJK/English.
+        Falls back to tiktoken if available (preferred: ~30x more accurate)."""
+        try:
+            import tiktoken
+            enc = tiktoken.get_encoding("cl100k_base")
+            return len(enc.encode(text))
+        except Exception:
+            return max(1, int(len(text) / 3.5))
 
 
 __all__ = ["WorkingMemory", "Message"]

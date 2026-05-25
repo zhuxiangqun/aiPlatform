@@ -92,3 +92,64 @@ class ExecutionResult:
     http_status: int = 200
     trace_id: Optional[str] = None
     run_id: Optional[str] = None
+
+
+# ── DAG Types (Phase 10 — orchestrated pipeline execution) ──
+
+@dataclass
+class DAGNode:
+    """A single node in a directed acyclic execution graph."""
+    id: str
+    role: str = ""          # generic role label (config-driven via AGENT.md)
+    agent_id: str = ""      # matched agent from registry or capability mapper
+    depends_on: List[str] = field(default_factory=list)  # node IDs this depends on
+    execution_mode: str = "code_first"  # "code_first" | "tdd" | "plan_only"
+    review_gate: str = "none"         # "none" | "quick" | "llm" | "hitl"
+    tdd_enforce: bool = False
+    context_isolation: str = "shared" # "shared" | "isolated"
+    status: str = "pending"           # pending | executing | completed | failed | skipped
+
+
+@dataclass
+class DAG:
+    """Directed acyclic execution graph."""
+    nodes: List[DAGNode] = field(default_factory=list)
+    explain: str = ""
+    created_at: float = 0.0
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def topological_order(self) -> List[List[DAGNode]]:
+        """Return layers of nodes that can execute in parallel."""
+        indeg: Dict[str, int] = {n.id: 0 for n in self.nodes}
+        out_edges: Dict[str, List[str]] = {n.id: [] for n in self.nodes}
+        for n in self.nodes:
+            for dep in n.depends_on:
+                if dep in indeg:
+                    indeg[n.id] += 1
+                    out_edges[dep].append(n.id)
+        layers: List[List[DAGNode]] = []
+        ready = {n.id for n in self.nodes if indeg[n.id] == 0}
+        visited: set = set()
+        while ready:
+            layer = [n for n in self.nodes if n.id in ready and n.id not in visited]
+            layers.append(layer)
+            visited.update(ready)
+            next_ready: set = set()
+            for nid in ready:
+                for out_id in out_edges.get(nid, []):
+                    indeg[out_id] -= 1
+                    if indeg[out_id] == 0:
+                        next_ready.add(out_id)
+            ready = next_ready
+        return layers
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "explain": self.explain,
+            "created_at": self.created_at,
+            "nodes": [{"id": n.id, "role": n.role, "agent_id": n.agent_id,
+                        "depends_on": n.depends_on, "execution_mode": n.execution_mode,
+                        "review_gate": n.review_gate, "tdd_enforce": n.tdd_enforce,
+                        "context_isolation": n.context_isolation} for n in self.nodes],
+            "metadata": self.metadata,
+        }

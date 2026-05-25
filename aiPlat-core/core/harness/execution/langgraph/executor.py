@@ -61,25 +61,34 @@ class LangGraphExecutor(IGraphExecutor):
         initial_state: Dict[str, Any],
         config: ExecutorConfig
     ) -> Any:
-        """Execute graph with config"""
-        try:
-            # Check if graph has run method
-            if hasattr(graph, 'run'):
-                result = await asyncio.wait_for(
-                    graph.run(initial_state),
-                    timeout=config.timeout
-                )
-                return result
-            else:
-                raise ValueError("Graph does not have run method")
-                
-        except asyncio.TimeoutError:
-            raise ExecutionTimeoutError(f"Execution timed out after {config.timeout}s")
-        except Exception as e:
-            if config.max_retries > 1:
-                # Retry logic could be added here
-                pass
-            raise ExecutionError(str(e))
+        """Execute graph with config and retry logic."""
+        last_error = None
+        for attempt in range(max(1, config.max_retries)):
+            try:
+                if hasattr(graph, 'run'):
+                    result = await asyncio.wait_for(
+                        graph.run(initial_state),
+                        timeout=config.timeout
+                    )
+                    return result
+                else:
+                    raise ValueError("Graph does not have run method")
+            except asyncio.TimeoutError:
+                if attempt < config.max_retries - 1:
+                    await asyncio.sleep(2 ** attempt)
+                    continue
+                raise ExecutionTimeoutError(f"Execution timed out after {config.timeout}s")
+            except Exception as e:
+                last_error = e
+                if attempt < config.max_retries - 1:
+                    import logging
+                    logging.getLogger("langgraph.executor").debug(
+                        "Graph execution attempt %d failed, retrying: %s", attempt + 1, e
+                    )
+                    await asyncio.sleep(2 ** attempt)
+                    continue
+                raise ExecutionError(str(e))
+        raise ExecutionError(str(last_error or "unknown"))
 
 
 class ExecutionTimeoutError(Exception):

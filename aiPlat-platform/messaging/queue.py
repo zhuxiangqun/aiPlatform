@@ -81,10 +81,11 @@ class MessageQueue:
         """消费消息"""
         if topic not in self._queues:
             return None
+        import queue as _queue
         try:
             message = self._queues[topic].get(timeout=timeout)
             return message
-        except:
+        except _queue.Empty:
             return None
 
     def _notify_subscribers(self, topic: str, message: Message) -> None:

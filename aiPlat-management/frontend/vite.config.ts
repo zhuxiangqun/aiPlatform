@@ -26,8 +26,33 @@ export default defineConfig({
         target: 'http://localhost:8000',
         changeOrigin: true,
       },
-      '/api/core': {
+      '/api/core/kb-eval': {
         target: 'http://localhost:8002',
+        changeOrigin: true,
+        timeout: 600000,
+      },
+      '/api/core/workflow': {
+        target: 'http://localhost:8002',
+        changeOrigin: true,
+        timeout: 600000,
+      },
+      '/api/core/packages': {
+        target: 'http://localhost:8002',
+        changeOrigin: true,
+        timeout: 600000,
+      },
+      '/api/core/skill-packs': {
+        target: 'http://localhost:8002',
+        changeOrigin: true,
+        timeout: 600000,
+      },
+      '/api/core/workspace/skills/installer': {
+        target: 'http://localhost:8002',
+        changeOrigin: true,
+        timeout: 600000,
+      },
+      '/api/core': {
+        target: 'http://localhost:8000',
         changeOrigin: true,
         timeout: 600000,
       },

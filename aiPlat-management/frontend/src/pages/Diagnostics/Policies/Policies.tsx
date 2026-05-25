@@ -208,7 +208,7 @@ const Policies: React.FC = () => {
   const setGateDefault = async (pid: string) => {
     setGateLoading(true);
     try {
-      const res = await gatePolicyApi.setDefault(pid);
+      const res = await (gatePolicyApi as any).setDefault(pid);
       setGateDefaultId(res.default_id);
       toast.success('已设置默认 Gate Policy');
       await loadGatePolicies();

@@ -6,7 +6,7 @@ Implements ILoop interface with ReAct (Reasoning + Acting) execution pattern.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Callable
+from typing import Any, Dict, List, Optional, Callable, Tuple
 import asyncio
 import json
 import os
@@ -256,6 +256,9 @@ class ReActLoop(BaseLoop):
         self._tools = tools or []
         self._approval_manager = approval_manager
         self._current_node = "reason"
+        self._quality_history: List[Any] = []
+        self._iters_since_skill: int = 0
+        self._iters_since_memory: int = 0
 
     def _update_streak(self, action_result: Any) -> None:
         """Track consecutive 'not found' failures for stagnation detection."""
@@ -264,6 +267,28 @@ class ReActLoop(BaseLoop):
             self._not_found_streak += 1
         else:
             self._not_found_streak = 0
+
+    def _detect_quality_drift(self, reasoning: str, state: LoopState) -> Tuple[bool, str]:
+        if not isinstance(reasoning, str) or not reasoning.strip():
+            return False, ""
+        try:
+            from core.harness.evaluation.drift_detector import DriftDetector
+            snapshot = DriftDetector.capture_snapshot(reasoning, state.step_count)
+            self._quality_history.append(snapshot)
+            if len(self._quality_history) > DriftDetector.WINDOW_SIZE * 2:
+                self._quality_history = self._quality_history[-DriftDetector.WINDOW_SIZE * 2:]
+            return DriftDetector.check_drift(self._quality_history)
+        except Exception:
+            return False, ""
+
+    async def _anti_divergence_action(self, reason: str, state: LoopState) -> str:
+        prev = state.context.get("_drift_injection_count", 0)
+        if prev >= 2:
+            return "terminate"
+        state.context["_drift_injection_count"] = prev + 1
+        correction = f"SYSTEM REMINDER: quality decline detected ({reason}). Re-evaluate your approach."
+        state.context.setdefault("messages", []).append({"role": "user", "content": correction})
+        return "continue"
 
     def set_model(self, model: Any) -> None:
         self._model = model
@@ -341,6 +366,14 @@ class ReActLoop(BaseLoop):
             reasoning = await self._reason(state)
             state.context["reasoning"] = reasoning
             await self._trigger_hook(HookPhase.POST_REASONING, state.context)
+            drift, reason = self._detect_quality_drift(reasoning, state)
+            if drift:
+                state.context["_reasoning_drift"] = reason
+                action_result = await self._anti_divergence_action(reason, state)
+                if action_result == "terminate":
+                    state.context["_stop_reason"] = reason
+                    state.current = LoopStateEnum.ERROR
+                    return state
 
         # Parse TODO_DONE markers from reasoning too (more "seamless")
         try:
@@ -537,6 +570,20 @@ class ReActLoop(BaseLoop):
                 state.context.setdefault("_bus_requests", []).extend(
                     {"request_id": r.msg_id, "sender": r.sender_id, "payload": r.payload}
                     for r in requests[:3])
+        except Exception:
+            pass
+
+        # Query rewrite: resolve pronouns and implicit references via conversational RAG (§03)
+        try:
+            enable_qr = state.context.get("_enable_query_rewrite") or os.getenv("AIPLAT_ENABLE_QUERY_REWRITE", "").lower() in ("1", "true", "yes")
+            if enable_qr:
+                current_query = state.context.get("task", "")
+                history = state.context.get("messages", [])
+                from core.harness.knowledge.query_rewriter import rewrite_with_history
+                rewritten = await rewrite_with_history(current_query, history, self._model)
+                if rewritten and rewritten != current_query:
+                    state.context["_original_query"] = current_query
+                    state.context["task"] = rewritten
         except Exception:
             pass
 
@@ -1155,25 +1202,7 @@ DONE: final_answer
                 ids.add(h)
         ids_list = sorted(list(ids))[:50]
 
-        summary_prompt = (
-            "你是一个对话压缩器。请将以下历史对话压缩为一段“可继续执行任务”的摘要。\n"
-            "强制要求：\n"
-            "1) 保留关键结论、进行中的计划、未解决的问题。\n"
-            "2) 严格保留并逐字输出任何标识符（UUID/哈希/文件名/路径/ID）。\n"
-            "3) 不要编造不存在的事实。\n\n"
-            f"需要保留的标识符（如出现过）：{', '.join(ids_list) if ids_list else '(none)'}\n\n"
-            "历史对话（将被压缩）：\n"
-            + "\n".join([f"{m.get('role','user')}: {m.get('content','')}" for m in head if isinstance(m, dict)])
-            + "\n\n输出格式（使用以下结构）：\n"
-            + "活跃任务：（当前正在执行的任务，原样保留用户指令）\n"
-            + "已完成操作：（编号列表，每项包含工具名+结果）\n"
-            + "当前状态：（关键变量值、打开的文件、运行中的进程）\n"
-            + "阻碍事项：（未解决的问题、需要人工决策的事项）\n"
-            + "关键决策：（已做出的重要决定及理由）\n"
-            + "待处理：（用户尚未回应的问题或请求）\n"
-            + "关键文件：（涉及的文件路径列表）\n"
-            + "遗留工作：（接下来需要完成的事项）"
-        )
+        summary_prompt = self._build_compaction_prompt(ids_list, head)
 
         trace_ctx = {
             "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
@@ -1193,6 +1222,12 @@ DONE: final_answer
         state.metadata["control_action"] = "compact_context_summary"
         state.metadata["compacted_messages"] = True
         state.metadata["compaction_stats"] = {"before": len(msgs), "after": len(state.context["messages"]), "preserved_ids": len(ids_list)}
+
+    def _build_compaction_prompt(self, ids_list: list, head: list) -> str:
+        """Build compaction prompt from template (§8: engine code must not contain business SOP)."""
+        from core.harness.assembly.compaction_prompt import get_compaction_prompt
+        history_lines = [f"{m.get('role','user')}: {m.get('content','')}" for m in head if isinstance(m, dict)]
+        return get_compaction_prompt(identifiers=ids_list, history_lines=history_lines)
 
     def _build_tools_desc(self) -> tuple[str, Dict[str, Any]]:
         """
@@ -1935,6 +1970,8 @@ DONE: final_answer
         if not parsed:
             await self._emit_no_action(state, routing_decision_id)
             return "No action to execute"
+        self._iters_since_skill += 1
+        self._iters_since_memory += 1
         if parsed.kind == "skill":
             return await self._dispatch_skill_call(state, parsed, routing_decision_id)
         return await self._dispatch_tool_call(state, parsed, routing_decision_id)

@@ -51,7 +51,19 @@ const WorkspaceMCP: React.FC = () => {
     },
     { title: 'Transport', dataIndex: 'transport', key: 'transport', width: 120, render: (v: string) => <span className="text-gray-400">{v || '-'}</span> },
     {
-      title: '状态',
+      title: '上架状态',
+      dataIndex: 'status',
+      key: 'listing_status',
+      width: 120,
+      align: 'center' as const,
+      render: (s: string) => {
+        const labels: Record<string, string> = { draft: '草稿', ready: '待审核', published: '已发布', listed: '已上架', deprecated: '已废弃' };
+        const colors: Record<string, string> = { draft: '#888', ready: '#f59e0b', published: '#3b82f6', listed: '#10b981', deprecated: '#6b7280' };
+        return <span className="text-xs" style={{ color: colors[s] || '#888' }}>{labels[s] || s || '-'}</span>;
+      },
+    },
+    {
+      title: '启用',
       key: 'enabled',
       width: 160,
       align: 'center' as const,

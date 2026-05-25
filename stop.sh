@@ -8,7 +8,9 @@ echo "  aiPlat-platform - 停止服务"
 echo "============================================================"
 
 # 读取 PID 文件
-[ -f /tmp/aiplat.pids ] && PIDS=$(cat /tmp/aiplat.pids)
+AIPLAT_HOME="${AIPLAT_HOME:-$PWD/.aiplat}"
+PID_FILE="$AIPLAT_HOME/logs/pids.txt"
+[ -f "$PID_FILE" ] && PIDS=$(cat "$PID_FILE")
 
 # 停止所有进程
 for pid in $PIDS; do
@@ -38,7 +40,7 @@ for port in 8010 8002 8001 8003 8004 8000 5173; do
 done
 
 # 清理
-rm -f /tmp/aiplat.pids /tmp/aiplat-*.log
+rm -f "$PID_FILE"
 
 echo ""
 echo "============================================================"

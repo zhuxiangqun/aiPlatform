@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { RotateCw, AlertTriangle, CheckCircle, Clock, ChevronRight, BarChart3 } from 'lucide-react';
-import { dashboardApi, alertingApi } from '../../services';
+import { RotateCw, AlertTriangle, CheckCircle, Clock, ChevronRight, BarChart3, Users, Zap, Wrench } from 'lucide-react';
+import { dashboardApi, alertingApi, agentApi, skillApi, toolApi } from '../../services';
 
 interface LayerStatus {
   status: 'healthy' | 'degraded' | 'unhealthy' | 'reserved';
@@ -43,15 +43,24 @@ const Overview: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [overviewData, setOverviewData] = useState<OverviewData | null>(null);
   const [recentAlerts, setRecentAlerts] = useState<AlertData[]>([]);
+  const [capabilities, setCapabilities] = useState({ agents: 0, skills: 0, tools: 0 });
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [statusData, metricsData, alertsData] = await Promise.all([
+      const [statusData, metricsData, alertsData, agentRes, skillRes, toolRes] = await Promise.all([
         dashboardApi.getStatus(),
         dashboardApi.getMetrics(),
         alertingApi.getAlerts(),
+        agentApi.list().catch(() => ({ agents: [], total: 0 })),
+        skillApi.list({ limit: 500 }).catch(() => ({ skills: [], total: 0 })),
+        toolApi.list({ limit: 200 }).catch(() => ({ tools: [], total: 0 })),
       ]);
+      setCapabilities({
+        agents: (agentRes as any)?.total || (agentRes as any)?.agents?.length || 0,
+        skills: (skillRes as any)?.total || (skillRes as any)?.skills?.length || 0,
+        tools: (toolRes as any)?.total || (toolRes as any)?.tools?.length || 0,
+      });
       
       const infraMetrics = (metricsData as any)?.infra || {};
       const compute = infraMetrics?.compute || {};
@@ -230,6 +239,70 @@ const Overview: React.FC = () => {
             </motion.div>
           );
         })}
+      </div>
+
+      {/* Capability Summary */}
+      <div className="grid grid-cols-3 gap-4">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-dark-card rounded-xl border border-dark-border p-4 cursor-pointer hover:border-primary/30 transition-colors"
+          onClick={() => navigate('/core/agents')}
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <Users className="w-4 h-4 text-blue-400" />
+            <span className="text-sm text-gray-400">Agent</span>
+          </div>
+          <div className="text-2xl font-bold text-gray-100">{capabilities.agents}</div>
+          <div className="text-xs text-gray-500 mt-1">核心能力层 + 应用层</div>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="bg-dark-card rounded-xl border border-dark-border p-4 cursor-pointer hover:border-primary/30 transition-colors"
+          onClick={() => navigate('/core/skills')}
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <Zap className="w-4 h-4 text-amber-400" />
+            <span className="text-sm text-gray-400">Skill</span>
+          </div>
+          <div className="text-2xl font-bold text-gray-100">{capabilities.skills}</div>
+          <div className="text-xs text-gray-500 mt-1">引擎内置 + 工作区</div>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-dark-card rounded-xl border border-dark-border p-4 cursor-pointer hover:border-primary/30 transition-colors"
+          onClick={() => navigate('/core/tools')}
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <Wrench className="w-4 h-4 text-purple-400" />
+            <span className="text-sm text-gray-400">Tool</span>
+          </div>
+          <div className="text-2xl font-bold text-gray-100">{capabilities.tools}</div>
+          <div className="text-xs text-gray-500 mt-1">内置 + MCP 工具</div>
+        </motion.div>
+      </div>
+
+      {/* Quick Links */}
+      <div className="flex flex-wrap gap-3">
+        {[
+          { label: '项目工作台', path: '/app/projects', icon: '🏗️' },
+          { label: 'Workflow 画布', path: '/core/workflow-canvas', icon: '🎨' },
+          { label: 'Agent 管理', path: '/core/agents', icon: '🤖' },
+          { label: '资源管理', path: '/core/resources', icon: '📦' },
+        ].map(link => (
+          <button
+            key={link.path}
+            onClick={() => navigate(link.path)}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-dark-card border border-dark-border text-sm text-gray-300 hover:border-primary/30 hover:text-gray-100 transition-colors"
+          >
+            <span>{link.icon}</span>
+            <span>{link.label}</span>
+          </button>
+        ))}
       </div>
 
       {/* Stats Row */}

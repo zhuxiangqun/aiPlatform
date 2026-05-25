@@ -288,7 +288,7 @@ const Runs: React.FC = () => {
     if (!pid) return;
     try {
       const obj = JSON.parse(projectPolicyText || '{}');
-      const res: any = await runApi.upsertProjectEvaluationPolicy(pid, obj, 'merge');
+      const res: any = await runApi.upsertScopedEvaluationPolicy(pid, obj, 'merge');
       toast.success('已保存项目策略');
       if (res?.links?.change_control_ui) toast.info(`变更控制：${res.links.change_control_ui}`);
       await loadProjectPolicy();
@@ -301,7 +301,7 @@ const Runs: React.FC = () => {
     const pid = evalProjectId.trim();
     if (!pid) return;
     try {
-      const res: any = await runApi.getLatestProjectEvaluationPolicy(pid);
+      const res: any = await runApi.getLatestScopedEvaluationPolicy(pid);
       setProjectPolicy(res?.item || null);
       if (res?.item?.payload) setProjectPolicyText(JSON.stringify(res.item.payload, null, 2));
       if (res?.merged) setProjectMergedPolicyText(JSON.stringify(res.merged, null, 2));

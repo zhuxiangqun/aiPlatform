@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, Save, Trash2, Users, Eye, Pencil, X } from 'lucide-react';
+import { Plus, Save, Trash2, Eye, Pencil, X } from 'lucide-react';
 import { builderTeamApi, type AgentCatalogItem, type PipelineStageConfig, type TeamConfig } from '../../../services';
 import { AgentCatalog } from '../../../components/Builder/AgentCatalog';
 import { TeamCanvas } from '../../../components/Builder/TeamCanvas';
@@ -26,7 +25,6 @@ function inputsFor(prevStages: PipelineStageConfig[]): string[] {
 }
 
 const TeamAssemblyPage: React.FC = () => {
-  const nav = useNavigate();
   const [stages, setStages] = useState<PipelineStageConfig[]>([]);
   const [teamName, setTeamName] = useState('');
   const [saving, setSaving] = useState(false);
@@ -46,13 +44,13 @@ const TeamAssemblyPage: React.FC = () => {
   useEffect(() => { loadTeams(); }, [loadTeams]);
 
   const addAgent = useCallback((agent: AgentCatalogItem) => {
-    const raw = agent as Record<string, unknown>;
+    const raw = agent as unknown as Record<string, unknown>;
     const agentId = (agent.agent_id || raw.id || 'unknown') as string;
     const displayName = (agent.display_name || raw.name || agentId) as string;
     const desc = (agent.description || '') as string;
     const id = `${agentId}_${++_idCounter}`;
     setStages((prev) => {
-      const output = outputFor(agentId, agent.phase || '', (agent as Record<string, unknown>).output_artifact as string);
+      const output = outputFor(agentId, agent.phase || '', (agent as unknown as Record<string, unknown>).output_artifact as string);
       return [...prev, {
         id,
         agent_id: agentId,
@@ -101,15 +99,16 @@ const TeamAssemblyPage: React.FC = () => {
 
   const deleteTeam = useCallback(async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!window.confirm('确定要删除此团队配置吗？此操作不可撤销。')) return;
     try { await builderTeamApi.deleteTeam(id); loadTeams(); } catch (e: any) { toastGateError(e, '删除失败'); }
   }, [loadTeams]);
 
   const editTeam = useCallback((team: TeamConfig) => {
     setEditingTeamId(team.team_id);
     setTeamName(team.name);
-    setStages(team.stages.map((s, i) => ({ ...s, order: i,
-      input_artifacts: (s as Record<string, unknown>).input_artifacts as string[] || [],
-      output_artifact: (s as Record<string, unknown>).output_artifact as string || `stage_${i}_output`,
+      setStages(team.stages.map((s, i) => ({ ...s, order: i,
+        input_artifacts: (s as unknown as Record<string, unknown>).input_artifacts as string[] || [],
+        output_artifact: (s as unknown as Record<string, unknown>).output_artifact as string || `stage_${i}_output`,
     })));
     setShowBuilder(true);
     setViewingTeam(null);
@@ -166,9 +165,9 @@ const TeamAssemblyPage: React.FC = () => {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-dark-border text-left">
-                  <th className="py-3 px-4 text-xs font-medium text-gray-500">名称</th>
-                  <th className="py-3 px-4 text-xs font-medium text-gray-500 hidden md:table-cell">描述</th>
-                  <th className="py-3 px-4 text-xs font-medium text-gray-500">角色</th>
+                  <th className="py-3 px-4 text-xs font-medium text-gray-500" style={{width:'25%',minWidth:'160px'}}>名称</th>
+                  <th className="py-3 px-4 text-xs font-medium text-gray-500" style={{width:'25%',minWidth:'160px'}}>描述</th>
+                  <th className="py-3 px-4 text-xs font-medium text-gray-500 min-w-[280px]">角色</th>
                   <th className="py-3 px-4 text-xs font-medium text-gray-500 w-28">操作</th>
                 </tr>
               </thead>
@@ -180,7 +179,7 @@ const TeamAssemblyPage: React.FC = () => {
                         {t.name}
                       </button>
                     </td>
-                    <td className="py-3 px-4 hidden md:table-cell">
+                    <td className="py-3 px-4">
                       <span className="text-xs text-gray-500 line-clamp-1">{t.description || '-'}</span>
                     </td>
                     <td className="py-3 px-4">

@@ -1,18 +1,36 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CheckCircle, ArrowLeft, Play, Clock, BarChart3, Eye, Pencil, X, Rocket, TestTube, Check, Loader2 } from 'lucide-react';
+import { CheckCircle, ArrowLeft, BarChart3, Play, Eye, Pencil, X, Rocket, TestTube, Clock } from 'lucide-react';
 import { projectApi, type ProjectItem, type ProjectRun, type BuilderSession } from '../../../services';
 import { BuilderPipeline } from '../../../components/Builder/BuilderPipeline';
 import { ChatWidget } from '../../../components/ui/ChatWidget';
 import { Card, CardHeader, CardContent, Button, toast } from '../../../components/ui';
 import { toastGateError } from '../../../components/ui';
 
+const Phase = {
+  idle: 'idle',
+  dialogue: 'dialogue',
+  executing: 'executing',
+  paused: 'paused',
+  done: 'done',
+  failed: 'failed',
+  testing: 'testing',
+  deploying: 'deploying',
+} as const;
+
+const POLLABLE_PHASES: Set<string> = new Set([Phase.executing, Phase.paused]);
+const TERMINAL_PHASES: Set<string> = new Set([Phase.done, Phase.failed]);
+const DIALOGUE_PHASES: Set<string> = new Set([Phase.idle, Phase.dialogue]);
+
+function isPollable(p: string) { return POLLABLE_PHASES.has(p) || p.includes('approval'); }
+function isTerminal(p: string) { return TERMINAL_PHASES.has(p); }
+
 const ProjectDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const nav = useNavigate();
   const [project, setProject] = useState<ProjectItem | null>(null);
-  const [phase, setPhase] = useState('idle');
+  const [phase, setPhase] = useState<string>(Phase.idle);
   const [stepCount, setStepCount] = useState(0);
   const [starting, setStarting] = useState(false);
   const [pipelineLoading, setPipelineLoading] = useState(false);
@@ -29,6 +47,21 @@ const ProjectDetailPage: React.FC = () => {
   const [deployResult, setDeployResult] = useState<Record<string, unknown> | null>(null);
   const [recommending, setRecommending] = useState(false);
   const [recommendedTeam, setRecommendedTeam] = useState<Record<string, unknown> | null>(null);
+  const [healthReport, setHealthReport] = useState<Record<string, any> | null>(null);
+
+  // Derived state — must precede callbacks that reference them
+  const teamLabel = project?.team_stages
+    ? project.team_stages.map(s => s.agent_name).join(' → ')
+    : '';
+  const stages = project?.team_stages || [];
+  const totalStages = stages.length || 1;
+  const currentIdx = Math.max(0, Math.min(((session as Record<string, unknown>)?.['_current_stage_idx'] as number) ?? 0, totalStages - 1));
+  const maxSteps = 10;
+  const stageProgress = Math.min(100, Math.round((stepCount / maxSteps) * 100));
+  const segWidth = Math.round(100 / totalStages);
+  const fillWidth = currentIdx * segWidth + Math.round(stageProgress / 100 * segWidth);
+  const progressPct = Math.min(100, fillWidth);
+  const stepIdx = currentIdx;
 
   useEffect(() => {
     if (!id) return;
@@ -37,7 +70,7 @@ const ProjectDetailPage: React.FC = () => {
         const p = await projectApi.get(id);
         setProject(p);
         setRunHistory(p.runs || []);
-        const raw = p as Record<string, unknown>;
+        const raw = p as unknown as Record<string, unknown>;
         if (raw.confirmed_prd) {
           setConfirmedPrd(raw.confirmed_prd as Record<string, unknown>);
           setPrdReady(true);
@@ -47,7 +80,7 @@ const ProjectDetailPage: React.FC = () => {
           const st = await projectApi.getState(id);
           const s = (st.state || {}) as Record<string, unknown>;
           const pPhase = s.phase as string || '';
-          if (pPhase && !['idle', 'dialogue'].includes(pPhase)) {
+          if (pPhase && !DIALOGUE_PHASES.has(pPhase)) {
             setPhase(pPhase);
             setSession({
               session_id: id, phase: pPhase as BuilderSession['phase'],
@@ -58,15 +91,15 @@ const ProjectDetailPage: React.FC = () => {
               ...(s as Record<string, unknown>),  // include all artifact keys (prd, backend_code, frontend_code, test_plan)
             } as BuilderSession);
           }
-        } catch { /* getState may not be available */ }
-      } catch { nav('/app/projects'); }
+        } catch { /* getState may not be available on brand new projects */ }
+      } catch { toast.error('项目加载失败，请返回重试'); nav('/app/projects'); }
     })();
   }, [id]);
 
   // Poll pipeline state when executing (backend runs async)
   const pollRef = useRef<ReturnType<typeof setInterval>>();
   useEffect(() => {
-    if ((phase !== 'executing' && phase !== 'paused' && !phase.includes('approval')) || !id) return;
+    if (!isPollable(phase) || !id) return;
     pollRef.current = setInterval(async () => {
       try {
         const st = await projectApi.getState(id);
@@ -81,10 +114,10 @@ const ProjectDetailPage: React.FC = () => {
           ...(s as Record<string, unknown>) } as BuilderSession);
         if (st.runs) setRunHistory(st.runs);
         const p = s.phase as string || '';
-        if (p === 'done' || p === 'failed') {
+        if (isTerminal(p)) {
           if (pollRef.current) clearInterval(pollRef.current);
         }
-      } catch { /* retry next tick */ }
+      } catch { /* retry next tick — transient network error */ }
     }, 2000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [phase, id]);
@@ -102,16 +135,16 @@ const ProjectDetailPage: React.FC = () => {
     try {
       await projectApi.confirm(id, confirmedPrd || undefined);
       const result = await projectApi.start(id);
-      const newPhase = result.phase || 'executing';
+      const newPhase = result.phase || Phase.executing;
       setPhase(newPhase);
       const s = result.state || {};
       setSession({ session_id: id, phase: newPhase as BuilderSession['phase'],
-                   requirement: '', iteration: s.iteration || 0, error: s.error || '',
-                   prd: null, architecture: s.architecture || null, code: s.code || null,
-                   test_report: s.test_report || null, messages: [] });
+                   requirement: '', iteration: (s as Record<string, unknown>).iteration as number || 0,
+                   error: (s as Record<string, unknown>).error as string || '',
+                   messages: [], ...(s as Record<string, unknown>) });
     } catch (e: any) { toastGateError(e, '启动失败'); }
     finally { setStarting(false); }
-  }, [id]);
+  }, [id, confirmedPrd]);
 
   const startEditing = useCallback(async () => {
     setEditingPrd(true);
@@ -144,7 +177,7 @@ const ProjectDetailPage: React.FC = () => {
     try {
       const st = await projectApi.getState(id);
       const s = (st.state || {}) as Record<string, unknown>;
-      const p = s.phase as string || 'executing';
+      const p = s.phase as string || Phase.executing;
       setPhase(p);
       setRunHistory(st.runs || []);
       setSession({
@@ -154,41 +187,40 @@ const ProjectDetailPage: React.FC = () => {
         prd: null, messages: [],
         ...(s as Record<string, unknown>),
       } as BuilderSession);
-    } catch { /* ignore */ }
+    } catch { /* transient — polling will retry */ }
   };
 
   const approve = useCallback(() => {
     if (!id) { toast.error('项目ID未加载'); return; }
     setPipelineLoading(true);
     projectApi.approve(id)
-      .then(() => { toast.success('已提交，等待执行…'); setPipelineLoading(false); })
-      .catch((e) => { toastGateError(e, '操作失败'); setPipelineLoading(false); });
+      .then(() => { toast.success('已提交，等待执行…'); return refreshState(); })
+      .catch((e) => { toastGateError(e, '操作失败'); })
+      .finally(() => setPipelineLoading(false));
   }, [id]);
 
   const rollbackStage = useCallback((stageId: string) => {
     if (!id) return;
-    projectApi.rollback(id, stageId).catch((e: any) => toastGateError(e, '回退失败'));
-    if (stages.length > 0 && stageId === stages[0]?.output_artifact) {
-      setPhase('dialogue');
-      setSession(null);
-      return;
-    }
-  }, [id, stages]);
-
-  const startFix = useCallback(async () => {
-    if (!id) return;
     setPipelineLoading(true);
-    try {
-      await projectApi.startFix(id);
-      await refreshState();
-    } catch (e: any) { toastGateError(e, '启动修复失败'); }
-    finally { setPipelineLoading(false); }
-  }, [id]);
+    projectApi.rollback(id, stageId)
+      .then(() => {
+        if (stages.length > 0 && stageId === stages[0]?.output_artifact) {
+          setPhase(Phase.dialogue);
+          setSession(null);
+          setPrdReady(false);
+          setConfirmedPrd(null);
+          setEditingPrd(false);
+        }
+        return refreshState();
+      })
+      .catch((e: any) => toastGateError(e, '回退失败'))
+      .finally(() => setPipelineLoading(false));
+  }, [id, stages]);
 
   const handleTest = useCallback(async () => {
     if (!id) return;
     setTesting(true);
-    setPhase('testing');
+    setPhase(Phase.testing);
     try {
       const result = await projectApi.test(id);
       setTestResult(result as Record<string, unknown>);
@@ -201,7 +233,7 @@ const ProjectDetailPage: React.FC = () => {
   const handleDeploy = useCallback(async () => {
     if (!id) return;
     setDeploying(true);
-    setPhase('deploying');
+    setPhase(Phase.deploying);
     try {
       const result = await projectApi.deployToApp(id);
       setDeployResult(result as Record<string, unknown>);
@@ -214,29 +246,21 @@ const ProjectDetailPage: React.FC = () => {
   const [rejectFeedback, setRejectFeedback] = useState('');
   const rejectHITL = useCallback(() => {
     if (!id || !rejectFeedback.trim()) return;
-    projectApi.reject(id, rejectFeedback.trim()).catch((e: any) => toastGateError(e, '驳回失败'));
-    setShowReject(false);
-    setRejectFeedback('');
-  }, [id, rejectFeedback]);
+    projectApi.reject(id, rejectFeedback.trim())
+      .then(() => {
+        refreshState();
+        toast.success('已驳回');
+      })
+      .catch((e: any) => toastGateError(e, '驳回失败'))
+      .finally(() => {
+        setShowReject(false);
+        setRejectFeedback('');
+      });
+  }, [id, rejectFeedback, refreshState]);
 
   const stories = (confirmedPrd?.user_stories as Array<Record<string, unknown>>) || [];
-  const constraints = (confirmedPrd?.constraints as string[]) || [];
 
-  const teamLabel = project?.team_stages
-    ? project.team_stages.map(s => s.agent_name).join(' → ')
-    : '';
-
-  const stages = project?.team_stages || [];
-  const totalStages = stages.length || 1;
-  const currentIdx = Math.max(0, Math.min(((session as Record<string, unknown>)?.['_current_stage_idx'] as number) ?? 0, totalStages - 1));
-  const maxSteps = 10;
-  const stageProgress = Math.min(100, Math.round((stepCount / maxSteps) * 100));
-  const segWidth = Math.round(100 / totalStages);
-  const fillWidth = currentIdx * segWidth + Math.round(stageProgress / 100 * segWidth);
-  const progressPct = Math.min(100, fillWidth);
-  const stepIdx = currentIdx;  // for backward compat in rendering
-
-  if (phase === 'idle' || phase === 'dialogue') {
+  if (DIALOGUE_PHASES.has(phase)) {
     return (
       <>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 space-y-4">
@@ -351,7 +375,7 @@ const ProjectDetailPage: React.FC = () => {
             </div>
             {recommendedTeam && !recommendedTeam.parse_error && (
               <div className="mt-3 p-3 rounded bg-dark-hover/20 border border-blue-500/30 text-xs">
-                {recommendedTeam.reasoning && <p className="text-blue-300 mb-2">{(recommendedTeam.reasoning as string)?.slice(0, 200)}</p>}
+                {(recommendedTeam.reasoning as string) && <p className="text-blue-300 mb-2">{(recommendedTeam.reasoning as string)?.slice(0, 200)}</p>}
                 <p className="text-gray-400">推荐 {(recommendedTeam.stages as Array<Record<string, unknown>>)?.length || 0} 个阶段：</p>
                 <ul className="mt-1 space-y-0.5">
                   {(recommendedTeam.stages as Array<Record<string, unknown>>)?.map((s: Record<string, unknown>, i: number) => (
@@ -444,15 +468,57 @@ const ProjectDetailPage: React.FC = () => {
             teamStages={project?.team_stages}
             onRegenerate={(key) => rollbackStage(key)}
             onApprove={approve}
-            onReject={(key) => { setShowReject(true); }}
+            onReject={() => { setShowReject(true); }}
             onRollback={(key) => rollbackStage(key)}
             loading={pipelineLoading}
           />
         )}</CardContent>
       </Card>
 
+      {/* ── Health Report panel ── */}
+      {session?.phase === Phase.done && (
+        <div className="p-4 rounded-lg border border-blue-500/30 bg-blue-500/5 mb-3">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold text-blue-300 flex items-center gap-2">
+              <BarChart3 className="w-4 h-4" />流水线健康报告
+            </h3>
+            <Button variant="ghost" size="sm" onClick={async () => {
+              if (!id) return;
+              try { const r = await projectApi.getHealthReport(id); setHealthReport(r as any); } catch {}
+            }}>
+              刷新
+            </Button>
+          </div>
+          {healthReport ? (
+            <div className="space-y-2 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl font-bold text-blue-300">{healthReport.overall_score}</span>
+                <span className="text-gray-400">/100 综合评分</span>
+              </div>
+              {healthReport.dimensions?.map((d: any) => (
+                <div key={d.name} className="flex items-center gap-2">
+                  <span className="w-20 text-gray-400 truncate">{d.display_name || d.name}</span>
+                  <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
+                    <div className="h-full bg-blue-500 rounded-full" style={{ width: `${Math.min(100, (d.score/d.max_score)*100)}%` }} />
+                  </div>
+                  <span className="w-8 text-right">{d.score}</span>
+                </div>
+              ))}
+              {healthReport.stages?.map((s: any) => (
+                <div key={s.stage_id} className="flex items-center gap-1 text-gray-500">
+                  <span className={`w-2 h-2 rounded-full ${s.verdict === 'passed' ? 'bg-green-400' : s.verdict === 'partial' ? 'bg-yellow-400' : 'bg-red-400'}`} />
+                  <span>{s.agent_id}: {s.overall_score}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-gray-500">点击刷新加载健康报告</p>
+          )}
+        </div>
+      )}
+
       {/* ── Test & Deploy panel ── */}
-      {session?.phase === 'done' && (
+      {session?.phase === Phase.done && (
         <div className="space-y-3">
           {/* Test section */}
           <div className="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/5">

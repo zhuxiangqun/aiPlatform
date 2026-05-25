@@ -38,11 +38,14 @@ export PATH="$VENV_DIR/bin:$PATH"
 # 统一数据目录（KB/执行记录等），确保 core/platform/app 使用同一份持久化路径。
 # 默认放在项目目录下，避免不同用户/不同启动方式导致写到不同的 ~/.aiplat。
 export AIPLAT_HOME="${AIPLAT_HOME:-$PROJECT_ROOT/.aiplat}"
+export AIPLAT_PROJECT_ROOT="${AIPLAT_PROJECT_ROOT:-$PROJECT_ROOT}"
+export AIPLAT_KB_TENANTS_DIR="${AIPLAT_KB_TENANTS_DIR:-$AIPLAT_HOME/kb/tenants}"
+mkdir -p "$AIPLAT_HOME/logs"
 
-# 统一外部 LLM 默认走 DeepSeek。
+# 统一 LLM 配置（可通过 .env / .env.local 覆盖为其他 provider）。
 # - 通用/对话/重写类默认使用 deepseek-chat
 # - Agent/推理类默认使用 deepseek-reasoner
-# - 若显式传入 AIPLAT_LLM_*，仍以显式配置为准
+# - Python 代码中已消除硬编码 fallback，全部由这些环境变量驱动
 export AIPLAT_LLM_PROVIDER="${AIPLAT_LLM_PROVIDER:-deepseek}"
 export AIPLAT_LLM_BASE_URL="${AIPLAT_LLM_BASE_URL:-${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}}"
 export AIPLAT_LLM_API_KEY="${AIPLAT_LLM_API_KEY:-${DEEPSEEK_API_KEY:-}}"
@@ -64,6 +67,11 @@ export MKL_NUM_THREADS="${MKL_NUM_THREADS:-1}"
 # Dev: disable approval gates (avoid manual approve/replay loops during local MVP).
 export AIPLAT_APPROVALS_DISABLED="${AIPLAT_APPROVALS_DISABLED:-1}"
 
+# Dev: use core adapter fallback when infra LLM adapter unavailable.
+export AIPLAT_ENABLE_CORE_ADAPTER_FALLBACK="${AIPLAT_ENABLE_CORE_ADAPTER_FALLBACK:-true}"
+export AIPLAT_ENABLE_ORCHESTRATOR="${AIPLAT_ENABLE_ORCHESTRATOR:-false}"
+export PYTHONUNBUFFERED=1
+
 # Infra: port→service mapping for network manager (was hardcoded, now env-driven).
 # Format: "port=service:name,port=service:name,..."
 export AIPLAT_PORT_SERVICES="${AIPLAT_PORT_SERVICES:-8002=core-api:aiPlat-core,8001=infra-api:aiPlat-infra,8000=management-api:aiPlat-management,8003=platform-api:aiPlat-platform,8004=app-api:aiPlat-app,5173=frontend-dev:frontend}"
@@ -81,6 +89,10 @@ export AIPLAT_MINERU_LANG="${AIPLAT_MINERU_LANG:-ch}"
 export AIPLAT_MINERU_TIMEOUT_SECONDS="${AIPLAT_MINERU_TIMEOUT_SECONDS:-1800}"
 export AIPLAT_VIDEO_TRANSCRIBE_LANG="${AIPLAT_VIDEO_TRANSCRIBE_LANG:-auto}"
 export AIPLAT_VIDEO_OCR_LANG="${AIPLAT_VIDEO_OCR_LANG:-eng+chi_sim}"
+
+# Browser automation (browser_automation / e2e_test agents)
+# 设置为 false 可看到浏览器窗口操作过程，true 则后台无头运行
+export BROWSER_USE_HEADLESS="${BROWSER_USE_HEADLESS:-false}"
 
 # Tesseract language data path (macOS Homebrew defaults). Needed for chi_sim OCR.
 if [ -z "${TESSDATA_PREFIX:-}" ]; then
@@ -165,8 +177,12 @@ ensure_deps () {
   "$PY" -m pip install $PIP_FLAGS --no-warn-script-location -e "$PROJECT_ROOT/aiPlat-management[dev]"
   # platform upload endpoints require multipart parsing
   "$PY" -m pip install $PIP_FLAGS --no-warn-script-location python-multipart
-  # OCR runtime deps (used by core/apps/multimodal_kb_poc/ocr.py when engine=tesseract)
+  # Browser test case generator/executor (Excel I/O)
+  "$PY" -m pip install $PIP_FLAGS --no-warn-script-location openpyxl
+  # OCR runtime deps (used by aiPlat-platform/kb/poc/ocr.py when engine=tesseract)
   "$PY" -m pip install $PIP_FLAGS --no-warn-script-location pillow pytesseract
+  # PDF rendering dep for OCR pipeline
+  "$PY" -m pip install $PIP_FLAGS --no-warn-script-location pymupdf
   # Optional: MinerU parser (structure-driven). Enable by default for better table extraction.
   # Set AIPLAT_ENABLE_MINERU=0 to skip.
   if [ "${AIPLAT_ENABLE_MINERU:-1}" = "1" ]; then
@@ -241,7 +257,7 @@ if [ "${AIPLAT_ENABLE_MINERU_API:-0}" = "1" ]; then
   echo "  Step 0/6: 启动 mineru-api (端口 8010)"
   echo "============================================================"
   kill_port_if_any 8010
-  nohup "$VENV_DIR/bin/mineru-api" --host 127.0.0.1 --port 8010 > /tmp/aiplat-mineru-api.log 2>&1 &
+  nohup "$VENV_DIR/bin/mineru-api" --host 127.0.0.1 --port 8010 > "$AIPLAT_HOME/logs/mineru-api.log" 2>&1 &
   MINERU_API_PID=$!
   echo "PID: $MINERU_API_PID"
   # Make core reuse this mineru-api by default in this mode.
@@ -267,7 +283,7 @@ cd "$PROJECT_ROOT/aiPlat-core/core"
 export AIPLAT_EXECUTION_DB_PATH="${AIPLAT_EXECUTION_DB_PATH:-$PROJECT_ROOT/aiPlat-core/core/data/aiplat_executions.sqlite3}"
 mkdir -p "$(dirname "$AIPLAT_EXECUTION_DB_PATH")"
 echo "Execution DB: $AIPLAT_EXECUTION_DB_PATH"
-PYTHONPATH="$PROJECT_ROOT/aiPlat-core" nohup "$PY" -m uvicorn server:app --host 0.0.0.0 --port 8002 > /tmp/aiplat-core.log 2>&1 &
+PYTHONPATH="$PROJECT_ROOT/aiPlat-core" nohup "$PY" -m uvicorn server:app --host 0.0.0.0 --port 8002 > "$AIPLAT_HOME/logs/core.log" 2>&1 &
 CORE_PID=$!
 echo "PID: $CORE_PID"
 
@@ -287,7 +303,7 @@ echo "============================================================"
 kill_port_if_any 8001
 
 cd "$PROJECT_ROOT/aiPlat-infra"
-PYTHONPATH="$PROJECT_ROOT/aiPlat-infra" nohup "$PY" -m uvicorn infra.management.api.main:create_app --host 0.0.0.0 --port 8001 --factory > /tmp/aiplat-infra.log 2>&1 &
+PYTHONPATH="$PROJECT_ROOT/aiPlat-infra" nohup "$PY" -m uvicorn infra.management.api.main:create_app --host 0.0.0.0 --port 8001 --factory > "$AIPLAT_HOME/logs/infra.log" 2>&1 &
 INFRA_PID=$!
 echo "PID: $INFRA_PID"
 
@@ -314,7 +330,20 @@ echo "Platform DB: $AIPLAT_PLATFORM_DB_PATH"
 export AIPLAT_PLATFORM_DEV_ALLOW_ANY_API_KEY="${AIPLAT_PLATFORM_DEV_ALLOW_ANY_API_KEY:-1}"
 # DEV: grant anonymous users kb:read/kb:write scopes for local development.
 export AIPLAT_PLATFORM_DEV_MODE="${AIPLAT_PLATFORM_DEV_MODE:-true}"
-PYTHONPATH="$PROJECT_ROOT/aiPlat-platform" nohup "$PY" -m uvicorn api.rest.routes:app --host 0.0.0.0 --port 8003 > /tmp/aiplat-platform.log 2>&1 &
+# KB: enable semantic embedding (sentence-transformers) instead of hash-based non-semantic vectors
+export AIPLAT_EMBED_BACKEND="${AIPLAT_EMBED_BACKEND:-transform}"
+export AIPLAT_EMBEDDING_MODEL="${AIPLAT_EMBEDDING_MODEL:-jinaai/jina-embeddings-v2-base-zh}"
+export AIPLAT_KB_TENANTS_DIR="${AIPLAT_KB_TENANTS_DIR:-$AIPLAT_HOME/kb/tenants}"
+# KB optional features: set to enable advanced capabilities
+# export AIPLAT_KB_VISION_ENABLED=true        # Vision LLM image description
+# export AIPLAT_VECTOR_DB=chroma              # Chroma vector DB backend (or milvus)
+# export AIPLAT_RERANK_MODEL=jinaai/jina-reranker-v2-base-multilingual  # Cross-Encoder reranker
+# export AIPLAT_VIDEO_WHISPER_MODEL=base      # Whisper model size (tiny/base/small/medium/large)
+# export AIPLAT_OBJ_STORE_ENDPOINT=localhost:9000  # MinIO object storage
+# export AIPLAT_QUEUE_BACKEND=redis           # Redis message queue (default: thread)
+# export AIPLAT_REDIS_URL=redis://localhost:6379/0
+# export AIPLAT_CHROMA_PATH=~/.aiplat/data/chroma  # Chroma persistence path
+PYTHONPATH="$PROJECT_ROOT/aiPlat-platform" nohup "$PY" -m uvicorn api.rest.routes:app --host 0.0.0.0 --port 8003 > "$AIPLAT_HOME/logs/platform.log" 2>&1 &
 PLATFORM_PID=$!
 echo "PID: $PLATFORM_PID"
 
@@ -337,7 +366,7 @@ cd "$PROJECT_ROOT/aiPlat-app"
 export AIPLAT_APP_DB_PATH="${AIPLAT_APP_DB_PATH:-$PROJECT_ROOT/aiPlat-app/data/aiplat_app.sqlite3}"
 mkdir -p "$(dirname "$AIPLAT_APP_DB_PATH")"
 echo "App DB: $AIPLAT_APP_DB_PATH"
-PYTHONPATH="$PROJECT_ROOT/aiPlat-app" nohup "$PY" -m uvicorn api.rest.routes:app --host 0.0.0.0 --port 8004 > /tmp/aiplat-app.log 2>&1 &
+PYTHONPATH="$PROJECT_ROOT/aiPlat-app" nohup "$PY" -m uvicorn api.rest.routes:app --host 0.0.0.0 --port 8004 > "$AIPLAT_HOME/logs/app.log" 2>&1 &
 APP_PID=$!
 echo "PID: $APP_PID"
 
@@ -353,7 +382,7 @@ PIDS="$CORE_PID $INFRA_PID $PLATFORM_PID $APP_PID"
 if [ -n "${MINERU_API_PID:-}" ]; then
   PIDS="$PIDS $MINERU_API_PID"
 fi
-echo "$PIDS" > /tmp/aiplat.pids
+echo "$PIDS" > "$AIPLAT_HOME/logs/pids.txt"
 
 # ===== Step 5: aiPlat-management =====
 echo ""
@@ -364,7 +393,7 @@ echo "============================================================"
 kill_port_if_any 8000
 
 cd "$PROJECT_ROOT/aiPlat-management"
-nohup "$PY" -m uvicorn management.server:create_app --host 0.0.0.0 --port 8000 --factory > /tmp/aiplat-management.log 2>&1 &
+nohup "$PY" -m uvicorn management.server:create_app --host 0.0.0.0 --port 8000 --factory > "$AIPLAT_HOME/logs/management.log" 2>&1 &
 MGMT_PID=$!
 echo "PID: $MGMT_PID"
 
@@ -429,7 +458,7 @@ if [ "$NEED_BUILD" = "1" ]; then
     npx vite build 2>&1 | tail -3
 fi
 
-nohup "$PY" "$PROJECT_ROOT/aiPlat-management/frontend/proxy_server.py" > /tmp/aiplat-frontend.log 2>&1 &
+nohup "$PY" "$PROJECT_ROOT/aiPlat-management/frontend/proxy_server.py" > "$AIPLAT_HOME/logs/frontend.log" 2>&1 &
 FRONTEND_PID=$!
 echo "PID: $FRONTEND_PID"
 
@@ -441,7 +470,7 @@ for i in 1 2 3 4 5; do
 done
 
 # 保存 PID
-echo -e "$CORE_PID\n$INFRA_PID\n$PLATFORM_PID\n$APP_PID\n$MGMT_PID\n$FRONTEND_PID" > /tmp/aiplat.pids
+echo -e "$CORE_PID\n$INFRA_PID\n$PLATFORM_PID\n$APP_PID\n$MGMT_PID\n$FRONTEND_PID" > "$AIPLAT_HOME/logs/pids.txt"
 
 echo ""
 echo "============================================================"

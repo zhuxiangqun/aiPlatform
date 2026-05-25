@@ -14,7 +14,6 @@ from ...harness.interfaces import (
     AgentContext,
     AgentResult,
     AgentStatus,
-    ICoordinator,
     CoordinationConfig,
     CoordinationResult,
 )

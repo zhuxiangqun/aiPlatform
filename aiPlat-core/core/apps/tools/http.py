@@ -5,10 +5,17 @@ Provides HTTP request capabilities for agents.
 """
 
 import asyncio
+import os
 from typing import Any, Dict, List, Optional
 
 from ...harness.interfaces import ToolConfig, ToolResult
 from .base import BaseTool
+
+
+def _resolve_secret(value: str) -> str:
+    if value and value.startswith("$"):
+        return os.getenv(value[1:], value)
+    return value
 
 
 class HTTPClientTool(BaseTool):
@@ -31,7 +38,7 @@ class HTTPClientTool(BaseTool):
         
         config = ToolConfig(
             name="http",
-            description="Make HTTP requests to external APIs",
+            description="发送 HTTP 请求调用外部 API",
             parameters={
                 "type": "object",
                 "properties": {
@@ -107,9 +114,23 @@ class HTTPClientTool(BaseTool):
             )
         
         timeout = aiohttp.ClientTimeout(total=timeout_ms / 1000)
+        # Auth support injected from pipeline node_config
+        auth_type = params.get('auth_type', 'none')
+        if auth_type == 'basic':
+            import base64
+            user = _resolve_secret(params.get('auth_user', ''))
+            pwd = _resolve_secret(params.get('auth_pass', ''))
+            headers['Authorization'] = 'Basic ' + base64.b64encode(f'{user}:{pwd}'.encode()).decode()
+        elif auth_type == 'bearer':
+            token = _resolve_secret(params.get('auth_token', ''))
+            headers['Authorization'] = 'Bearer ' + token
+        elif auth_type == 'apikey':
+            key_name = params.get('auth_key_name', 'X-API-Key')
+            key_value = _resolve_secret(params.get('auth_key_value', ''))
+            headers[key_name] = key_value
         
         try:
-            async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with aiohttp.ClientSession(timeout=timeout, trust_env=True) as session:
                 async with session.request(
                     method=method,
                     url=url,

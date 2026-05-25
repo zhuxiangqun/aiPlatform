@@ -17,7 +17,7 @@ pipeline:
   auto_hitl: false
   phase_description: 通用推理执行
 config:
-  model: gpt-4
+  model: deepseek-reasoner
 ---
 
 # ReAct助手（Engine）

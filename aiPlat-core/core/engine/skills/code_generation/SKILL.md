@@ -1,16 +1,20 @@
 ---
 name: code_generation
 display_name: 代码生成
-description: 根据需求描述生成代码（## FILE: 格式）。触发条件：用户要求写代码、生成项目、实现功能、修复Bug。跳过条件：纯文本生成(text_generation)、SQL查询(sql相关)、配置修改时由对应 Skill 处理。
+description: "根据需求描述生成代码（## FILE: 格式）。触发条件：用户要求写代码、生成项目、实现功能、修复Bug。跳过条件：纯文本生成(text_generation)、SQL查询(sql相关)、配置修改时由对应 Skill 处理。"
 category: generation
-uses_code_skill: true
+uses_file_output: true
 version: 1.0.0
-status: disabled
+status: enabled
 protected: true
-execution_mode: inline
-executable: true
+execution_mode: handler
 permissions:
   - "llm:generate"
+effects:
+  - type: write
+    resources: ["filesystem:~"]
+    idempotent: false
+    rollback_available: false
 input_schema:
   requirement:
     type: string

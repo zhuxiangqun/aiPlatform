@@ -5,7 +5,7 @@ Usage (assumes services are running):
   python3 e2e_smoke.py
 
 Environment:
-  AIPLAT_CORE_ENDPOINT=http://localhost:8002
+  AIPLAT_CORE_URL=http://localhost:8002
   AIPLAT_PLATFORM_ENDPOINT=http://localhost:8003
   AIPLAT_APP_ENDPOINT=http://localhost:8004
   AIPLAT_MANAGEMENT_ENDPOINT=http://localhost:8000
@@ -27,7 +27,7 @@ def _env(name: str, default: str) -> str:
     return os.getenv(name, default).rstrip("/")
 
 
-CORE = _env("AIPLAT_CORE_ENDPOINT", "http://localhost:8002")
+CORE = _env("AIPLAT_CORE_URL", "http://localhost:8002")
 PLATFORM = _env("AIPLAT_PLATFORM_ENDPOINT", "http://localhost:8003")
 APP = _env("AIPLAT_APP_ENDPOINT", "http://localhost:8004")
 MGMT = _env("AIPLAT_MANAGEMENT_ENDPOINT", "http://localhost:8000")
@@ -118,7 +118,7 @@ def main() -> int:
         raise RuntimeError(f"agent create returned no id: {created}")
     print(f"[agent] created id={agent_id}")
 
-    agents = _req("GET", f"{PLATFORM}/api/v1/agents", params={"limit": 50})
+    agents = _req("GET", f"{PLATFORM}/api/v1/agents", params={"limit": 200})
     if not any(a.get("id") == agent_id for a in (agents.get("agents") or [])):
         raise RuntimeError("agent not found in list")
     print(f"[agent] list ok total={agents.get('total')}")

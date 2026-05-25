@@ -174,11 +174,9 @@ class McpAdapter:
     async def discover_tools(self) -> List[Dict[str, Any]]:
         """Discover all tools from all connected MCP servers.
 
-        TODO: register discovered tools into ToolRegistry so agents can call them.
-        Currently results are discarded at the caller (server.py:856).
-
-        Returns list of tool defs with keys: id, name, description,
-        parameters, server_name.
+        Discovered tools are registered into ToolRegistry by the caller
+        (server.py:856) via _make_discovery_tool() so agents can call them
+        through the standard sys_tool_call → PolicyGate path.
         """
         all_tools: List[Dict[str, Any]] = []
         for name, client in self._servers.items():

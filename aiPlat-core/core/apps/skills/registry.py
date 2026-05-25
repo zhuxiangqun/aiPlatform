@@ -10,40 +10,62 @@ import math
 import threading
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set
-from datetime import datetime
+from datetime import datetime, timezone
 
 from .base import BaseSkill, SkillMetadata, TextGenerationSkill, CodeGenerationSkill, DataAnalysisSkill, register_skill_factory
 from ...harness.interfaces import SkillConfig, SkillResult
 
 
-_AI_PLAT_TOOL_MAP: Dict[str, Dict[str, Any]] = {
-    "read": {"available": True, "mapped_to": "sys_file_read"},
-    "write": {"available": True, "mapped_to": "sys_file_write"},
-    "edit": {"available": True, "mapped_to": "sys_file_edit"},
-    "glob": {"available": True, "mapped_to": "sys_glob"},
-    "grep": {"available": True, "mapped_to": "sys_code_search"},
-    "bash": {"available": False, "hint": "需要配置 MCP shell server"},
-    "browser": {"available": False, "hint": "需要配置 agent-browser MCP server"},
-    "web_search": {"available": True, "mapped_to": "MCP websearch server"},
+# Generic tool name patterns for compatibility scanning.
+# These are regex-ish keywords found in Skill SOP bodies — the actual
+# tool availability is determined dynamically via ToolRegistry.query().
+_TOOL_SCAN_PATTERNS: Dict[str, str] = {
+    "read": "file read",
+    "write": "file write",
+    "edit": "file edit",
+    "glob": "file pattern search",
+    "grep": "code search",
+    "bash": "shell command",
+    "browser": "web browser",
+    "web_search": "web search",
 }
 
 
 def check_tool_compatibility(skill_body: str) -> Dict[str, Dict[str, Any]]:
-    """扫描 Skill SOP 中引用的工具，返回兼容性报告。
+    """Scan Skill SOP body for referenced tools and return availability via ToolRegistry.
 
-    遍历 _AI_PLAT_TOOL_MAP，检查每个工具名是否在 Skill 的 body 中出现。
-    已可用 → {"available": true, "mapped_to": "xxx"}
-    不可用 → {"available": false, "hint": "需要配置 xxx"}
+    Dynamically queries ToolRegistry for each detected tool name — no hardcoded
+    availability map. Unknown tools show as unavailable with a hint.
     """
     body_lower = skill_body.lower()
-    return {tool: info for tool, info in _AI_PLAT_TOOL_MAP.items() if tool in body_lower}
+    result: Dict[str, Dict[str, Any]] = {}
+    try:
+        from core.apps.tools.base import get_tool_registry
+        reg = get_tool_registry()
+        all_tools = {t.lower(): t for t in (reg.list_tools() if hasattr(reg, 'list_tools') else [])}
+    except Exception:
+        all_tools = {}
+
+    for keyword, description in _TOOL_SCAN_PATTERNS.items():
+        if keyword not in body_lower:
+            continue
+        # Check if any registered tool name contains this keyword
+        matched = [t for t in all_tools if keyword in t.lower()]
+        if matched:
+            result[keyword] = {"available": True, "mapped_to": matched[0],
+                                "all_matches": matched[:5]}
+        else:
+            result[keyword] = {"available": False,
+                                "hint": f"需要配置支持 {description} 的 MCP server 或 tool"}
+
+    return result
 
 
 @dataclass
 class SkillVersion:
     version: str
     config: SkillConfig
-    created_at: str = field(default_factory=lambda: datetime.now().isoformat())
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     is_active: bool = True
 
 
@@ -126,7 +148,7 @@ class SkillRegistry:
                 category = "general"
                 description = ""
                 enabled = True
-                uses_code_skill = False
+                uses_file_output = False
                 body = raw
 
                 if raw.startswith("---"):
@@ -139,7 +161,15 @@ class SkillRegistry:
                             category = str(fm.get("category", "general"))
                             description = str(fm.get("description", ""))
                             enabled = str(fm.get("status", "enabled")) != "disabled"
-                            uses_code_skill = bool(fm.get("uses_code_skill"))
+                            uses_file_output = bool(fm.get("uses_file_output"))
+                            version = str(fm.get("version", "1.0.0"))
+                            execution_mode = str(fm.get("execution_mode", "inline"))
+                            protected = bool(fm.get("protected", False))
+                            executable = bool(fm.get("executable", False))
+                            permissions = fm.get("permissions") or []
+                            input_schema = fm.get("input_schema") or {}
+                            output_schema = fm.get("output_schema") or {}
+                            effects = fm.get("effects") or []
                             skip_conditions = fm.get("skip_when") or fm.get("skip_conditions") or []
                             triggers = fm.get("triggers") or []
                             body = parts[2].strip()
@@ -160,6 +190,21 @@ class SkillRegistry:
                     import importlib
                     skill_cls = importlib.import_module(f"{__package__}.apply_engine_skill_md_patch").ApplyEngineSkillMdPatchSkill
 
+                # Code-First Skills: auto-discover handler.py in skill directory
+                handler_path = _os.path.join(skill_dir, "handler.py")
+                if skill_cls is None and _os.path.isfile(handler_path):
+                    try:
+                        import importlib.util as _iu
+                        spec = _iu.spec_from_file_location(f"skill_handler_{name}", handler_path)
+                        if spec and spec.loader:
+                            handler_mod = _iu.module_from_spec(spec)
+                            spec.loader.exec_module(handler_mod)
+                            build_fn = getattr(handler_mod, 'build_skill', None)
+                            if callable(build_fn):
+                                skill_cls = type(build_fn())  # use returned instance's class
+                    except Exception:
+                        pass
+
                 # Detect layered subdirectories for engine skills
                 layer_dirs: Dict[str, str] = {}
                 for sub in ("references", "assets", "scripts"):
@@ -170,10 +215,10 @@ class SkillRegistry:
                 if skill_cls:
                     skill = skill_cls()
                     register_skill_factory(name, type(skill))
-                    if uses_code_skill:
+                    if uses_file_output:
                         cfg = getattr(skill, "_config", None)
                         if cfg and hasattr(cfg, "metadata"):
-                            cfg.metadata["uses_code_skill"] = True
+                            cfg.metadata["uses_file_output"] = True
                     # Inject skip_conditions and triggers from SKILL.md frontmatter
                     if skip_conditions or triggers:
                         cfg = getattr(skill, "_config", None)
@@ -186,13 +231,37 @@ class SkillRegistry:
                         cfg = getattr(skill, "_config", None)
                         if cfg and hasattr(cfg, "metadata"):
                             cfg.metadata["layer_dirs"] = layer_dirs
+                    # Inject additional frontmatter fields
+                    cfg = getattr(skill, "_config", None)
+                    if cfg and hasattr(cfg, "metadata"):
+                        if execution_mode:
+                            cfg.metadata["execution_mode"] = execution_mode
+                        if protected:
+                            cfg.metadata["protected"] = protected
+                        if executable:
+                            cfg.metadata["executable"] = executable
+                        if permissions:
+                            cfg.metadata["permissions"] = permissions
+                        if input_schema:
+                            cfg.metadata["input_schema"] = input_schema
+                        if output_schema:
+                            cfg.metadata["output_schema"] = output_schema
+                        if effects:
+                            cfg.metadata["effects"] = effects
                     self.register(skill)
                 else:
                     config = SkillConfig(
                         name=name,
                         description=description,
-                    metadata={"category": category, "body": body, "version": "1.0.0",
-                              "uses_code_skill": uses_code_skill,
+                    metadata={"category": category, "body": body, "version": version,
+                              "uses_file_output": uses_file_output,
+                              "execution_mode": execution_mode,
+                              "protected": protected,
+                              "executable": executable,
+                              "permissions": permissions,
+                              "input_schema": input_schema,
+                              "output_schema": output_schema,
+                              "effects": effects,
                               "skip_conditions": skip_conditions,
                               "triggers": triggers,
                               "layer_dirs": layer_dirs}
@@ -400,12 +469,37 @@ class SkillRegistry:
                 if os.path.isdir(sub_path):
                     layer_dirs[sub] = os.path.realpath(sub_path)
 
+            # Code-First Skills: auto-discover handler.py alongside .md file
+            skill_cls = None
+            handler_path = os.path.join(skills_dir, "handler.py") if os.path.isfile(os.path.join(skills_dir, "handler.py")) else None
+            if not handler_path:
+                base = os.path.splitext(fullpath)[0]
+                hp = f"{base}.py"
+                if os.path.isfile(hp):
+                    handler_path = hp
+            if handler_path and os.path.isfile(handler_path):
+                try:
+                    import importlib.util as _iu
+                    spec = _iu.spec_from_file_location(f"ws_skill_{name}", handler_path)
+                    if spec and spec.loader:
+                        mod = _iu.module_from_spec(spec)
+                        spec.loader.exec_module(mod)
+                        build_fn = getattr(mod, 'build_skill', None)
+                        if callable(build_fn):
+                            skill_cls = type(build_fn())
+                except Exception:
+                    pass
+
             config = SC(
                 name=name,
                 description=description,
                 metadata={"category": category, "body": body, "layer_dirs": layer_dirs} if layer_dirs else {"category": category, "body": body},
             )
-            skill = GenSkill(config=config)
+            if skill_cls:
+                skill = skill_cls()
+                skill._config = config
+            else:
+                skill = GenSkill(config=config)
             self.register(skill)
             count += 1
 
@@ -507,7 +601,7 @@ class SkillRegistry:
                     "body": body,
                     "tags": tags,
                     "source_file": fullpath,
-                    "imported_at": datetime.now().isoformat(),
+                    "imported_at": datetime.now(timezone.utc).isoformat(),
                     "layer_dirs": layer_dirs,
                 },
             )
@@ -887,7 +981,7 @@ class _GenericSkill(BaseSkill):
                 agent = create_react_agent(
                     config=AgentConfig(
                         name=f"skill-inline-{self._config.name}",
-                        model=str(getattr(self._model, "model", None) or "gpt-4"),
+                        model=str(getattr(self._model, "model", None) or "deepseek-chat"),
                         metadata={"role": "skill-agent", "skill": self._config.name},
                     ),
                     model=self._model,

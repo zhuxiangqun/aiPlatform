@@ -6,10 +6,14 @@ category: ops
 version: 1.0.0
 status: enabled
 protected: true
-execution_mode: inline
-executable: true
+execution_mode: prompt
 permissions:
   - "fs:write"
+effects:
+  - type: write
+    resources: ["filesystem:~/.aiplat"]
+    idempotent: true
+    rollback_available: false
 input_schema:
   skill_id:
     type: string

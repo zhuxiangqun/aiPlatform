@@ -63,7 +63,11 @@ def _safe_load_yaml_dict(yaml_text: str) -> Dict[str, Any]:
         if isinstance(data, dict):
             return dict(data)
     except Exception:
-        pass
+        import logging
+        logging.getLogger(__name__).warning(
+            "YAML parse error in skill/config frontmatter (returning {}): %s",
+            str(yaml_text)[:120], exc_info=True
+        )
     return {}
 
 

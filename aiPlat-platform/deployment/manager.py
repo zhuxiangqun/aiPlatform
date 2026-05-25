@@ -2,7 +2,7 @@
 Deployment Manager - 部署管理（控制面）
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from pydantic import BaseModel
 from enum import Enum
@@ -36,8 +36,8 @@ class Deployment(BaseModel):
     environment: str = "production"
     canary_percent: int = 0
     created_by: str = ""
-    created_at: datetime = datetime.now()
-    updated_at: datetime = datetime.now()
+    created_at: datetime = datetime.now(timezone.utc)
+    updated_at: datetime = datetime.now(timezone.utc)
     metadata: Dict[str, Any] = {}
 
 
@@ -84,7 +84,7 @@ class DeploymentManager:
         deployment = self._deployments.get(deployment_id)
         if deployment:
             deployment.status = status
-            deployment.updated_at = datetime.now()
+            deployment.updated_at = datetime.now(timezone.utc)
         return deployment
 
     def rollback(self, deployment_id: str) -> bool:
@@ -92,7 +92,7 @@ class DeploymentManager:
         deployment = self._deployments.get(deployment_id)
         if deployment and deployment.status == DeploymentStatus.HEALTHY:
             deployment.status = DeploymentStatus.ROLLING_BACK
-            deployment.updated_at = datetime.now()
+            deployment.updated_at = datetime.now(timezone.utc)
             return True
         return False
 

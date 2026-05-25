@@ -200,6 +200,13 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
             pass
 
     if not system_prompt:
+        import logging
+        logging.getLogger("core.intents").warning(
+            "AGENT.md not found or empty for agent '%s'. Using bare-minimum fallback prompt. "
+            "Agent behavior will be unpredictable. "
+            "Create AGENT.md at ~/.aiplat/agents/%s/AGENT.md with SOP instructions.",
+            ctx.agent_name, ctx.agent_name,
+        )
         system_prompt = f"You are {ctx.agent_name}. Respond helpfully."
 
     # ── 2. MemoryManager: load conversation history ──
@@ -226,6 +233,10 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
         required = frontmatter.get("required_skills") if frontmatter else None
         if required:
             skills_used = [s for s in required if isinstance(s, str)]
+        elif not system_prompt.strip():
+            # Fallback: load from SkillRegistry directly when AGENT.md is missing
+            # (agent may still benefit from universally available skills)
+            pass
     except Exception:
         pass
 
@@ -241,17 +252,12 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
         model=model,
         system_prompt=system_prompt,
     )
-    for skill_name in skills_used:
-        try:
-            if hasattr(agent, "add_skill"):
-                agent.add_skill(skill_name)
-        except Exception:
-            pass
-
+    # Skills passed via context.skills — BaseAgent.execute() resolves from registry
     agent_ctx = AgentContext(
         session_id=ctx.session_id,
         user_id=ctx.user_id,
         messages=message_history,
+        skills=list(skills_used),
     )
     result = await agent.execute(agent_ctx)
 
@@ -262,7 +268,12 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
         else:
             reply = str(result.output) if result.output else ""
     else:
-        reply = f"Agent error: {result.error}"
+        error_detail = result.error or "Unknown error (agent execution failed)"
+        if hasattr(result, 'metadata') and isinstance(result.metadata, dict):
+            extra = result.metadata.get("error_detail") or result.metadata
+        else:
+            extra = ""
+        reply = f"Agent error: {error_detail}{' — ' + str(extra) if extra else ''}"
 
     # ── 5. MemoryManager: save interaction ──
     try:
@@ -301,7 +312,7 @@ async def core_execute(ctx: ExecuteContext) -> ExecuteResult:
     import uuid as _uuid
 
     from core.api.core_facade import create_pipeline_session, validate_pipeline_stages
-    from core.schemas_builder import PipelineConfig
+    from core.schemas_builder import BuilderSessionPhase, PipelineConfig
 
     trace_id = f"exec_{_uuid.uuid4().hex[:12]}"
 
@@ -322,7 +333,7 @@ async def core_execute(ctx: ExecuteContext) -> ExecuteResult:
     )
 
     return ExecuteResult(
-        success=bool(state.get("phase") != "failed"),
+        success=bool(state.get("phase") != BuilderSessionPhase.failed.value),
         output=state,
         trace_id=trace_id,
         metadata={

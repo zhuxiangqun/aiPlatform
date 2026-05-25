@@ -12,9 +12,9 @@ import asyncio
 import os
 import re
 from core.harness.kernel.execution_context import ActiveChangeContract, set_active_change_contract
-from typing import Any, Dict, Optional
+from typing import Any, AsyncGenerator, Dict, Optional
 
-from ..interfaces import SkillContext
+from ..interfaces import SkillContext, SkillResult
 from core.harness.infrastructure.gates import TraceGate, ContextGate, ResilienceGate, PolicyGate, PolicyDecision
 from core.harness.kernel.runtime import get_kernel_runtime
 import time
@@ -323,7 +323,7 @@ async def sys_skill_call(
                     cfg = getattr(skill, "_config", None)
                     meta = getattr(cfg, "metadata", None) if cfg else None
                     meta = meta if isinstance(meta, dict) else {}
-                    is_coding = bool(meta.get("uses_code_skill"))
+                    is_coding = bool(meta.get("uses_file_output"))
                     if is_coding:
                         out_schema = {}
                         try:
@@ -346,7 +346,7 @@ async def sys_skill_call(
                 from core.harness.integration import _ensure_di
                 di = _ensure_di()
                 if di: resolver = di.resolve("SkillPermissionResolver")
-            except Exception: pass
+            except Exception: pass  # noqa: allowed — DI best-effort
             if resolver and isinstance(resolver, dict):
                 decision = resolver["resolve_exec"](skill_name)
             else:
@@ -581,7 +581,7 @@ async def sys_skill_call(
                 cfg = getattr(skill, "_config", None)
                 meta = getattr(cfg, "metadata", None) if cfg else None
                 meta = meta if isinstance(meta, dict) else {}
-                is_coding = bool(meta.get("uses_code_skill"))
+                is_coding = bool(meta.get("uses_file_output"))
                 out = getattr(result, "output", None)
                 if is_coding and isinstance(out, dict):
                     cf = out.get("changed_files")
@@ -638,7 +638,7 @@ async def sys_skill_call(
                 from core.harness.integration import _ensure_di
                 di = _ensure_di()
                 if di: curator = di.resolve("SkillCurator")
-            except Exception: pass
+            except Exception: pass  # noqa: allowed — DI best-effort
             if curator is None:
                 from core.apps.skills.curator import get_skill_curator
                 curator = get_skill_curator()
@@ -675,9 +675,57 @@ async def sys_skill_call(
                             "coding_policy_profile": coding_profile,
                         },
                         "error": "skill_error",
-                        "error_code": "SKILL_ERROR",
+                         "error_code": "SKILL_ERROR",
                     }
                 )
             except Exception:
                 pass
         raise
+
+
+async def sys_skill_call_stream(
+    skill: Any,
+    params: Dict[str, Any],
+    *,
+    context: Optional[SkillContext] = None,
+    user_id: str = "system",
+    session_id: str = "default",
+    timeout_seconds: Optional[float] = None,
+    trace_context: Optional[Dict[str, Any]] = None,
+) -> AsyncGenerator[SkillStreamEvent, None]:
+    """Execute a skill call with streaming output."""
+    from ..interfaces import SkillStreamEvent
+
+    trace_gate = TraceGate()
+    ctx_gate = ContextGate()
+
+    skill_name = str(getattr(skill, "name", "") or getattr(getattr(skill, "_config", None), "name", "") or "unknown")
+    span = await trace_gate.start(
+        "sys.skill.call_stream",
+        attributes={
+            "skill": skill_name,
+            "trace_id": (trace_context or {}).get("trace_id") if isinstance(trace_context, dict) else None,
+        },
+    )
+
+    try:
+        ctx = (
+            context
+            if context is not None
+            else SkillContext(session_id=session_id, user_id=user_id)
+        )
+        ctx = await ctx_gate.check(ctx)
+        cfg = getattr(skill, "_config", None)
+        is_idempotent = bool(getattr(cfg, "idempotent", True))
+        if not is_idempotent:
+            yield SkillStreamEvent(event_type="status", data=None, progress=0.1, message=f"non-idempotent:{skill_name}")
+
+        async for event in skill.execute_stream(ctx, params):
+            yield event
+
+    except asyncio.TimeoutError:
+        yield SkillStreamEvent(event_type="done", data=SkillResult(success=False, error=f"timeout: {timeout_seconds}s"), progress=1.0)
+    except Exception as e:
+        yield SkillStreamEvent(event_type="done", data=SkillResult(success=False, error=str(e)), progress=1.0)
+    finally:
+        await trace_gate.end(span, success=True)

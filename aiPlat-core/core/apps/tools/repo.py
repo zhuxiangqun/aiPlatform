@@ -70,7 +70,7 @@ class RepoTool(BaseTool):
     def __init__(self, timeout: int = 20000):
         config = ToolConfig(
             name="repo",
-            description="Repo-aware git workflow tool: status/diff/log/ls-files/add/checkout/commit",
+            description="Git 仓库操作（状态/差异/日志/添加/检出/提交）",
             parameters={
                 "type": "object",
                 "properties": {

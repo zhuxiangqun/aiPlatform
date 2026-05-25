@@ -4,12 +4,16 @@ display_name: 双层审批写文件（示范）
 description: 同时触发 skill 审批与 tool(file_operations) 审批，用于验证“分层审批策略”配置是否生效（skill_only / tool_only / both）。
 category: execution
 version: 0.1.0
-skill_kind: executable
+status: test_fixture
+execution_mode: prompt
 permissions:
   - tool:file_write
-auto_trigger_allowed: false
-requires_approval: true
-trigger_conditions:
+effects:
+  - type: write
+    resources: ["filesystem:~/.aiplat"]
+    idempotent: true
+    rollback_available: false
+triggers:
   - 双层审批
   - 写文件审批策略
 input_schema:

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Wrench, Palette, Shield, Briefcase, BarChart3, Headphones, ShoppingCart, Search, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Wrench, Palette, Shield, Briefcase, BarChart3, Headphones, ShoppingCart, Search, ChevronDown } from 'lucide-react';
 import { builderTeamApi, type AgentCatalogItem } from '../../services';
 import { Card, CardHeader, CardContent, toast, Button } from '../../components/ui';
 
@@ -19,7 +19,7 @@ interface Props {
 }
 
 const AgentItem: React.FC<{ agent: AgentCatalogItem; onAdd: (a: AgentCatalogItem) => void }> = ({ agent, onAdd }) => {
-  const displayName = agent.display_name || (agent as Record<string, unknown>).name as string || agent.agent_id;
+  const displayName = agent.display_name || (agent as unknown as Record<string, unknown>).name as string || agent.agent_id;
   const desc = (agent.description || '') as string;
   const tags = agent.tags || [];
 
@@ -120,7 +120,7 @@ export const AgentCatalog: React.FC<Props> = ({ onAdd }) => {
 
   const filtered = search.trim()
     ? agents.filter((a) => {
-        const name = (a.display_name || (a as Record<string, unknown>).name || a.agent_id) as string;
+        const name = (a.display_name || (a as unknown as Record<string, unknown>).name || a.agent_id) as string;
         return name.includes(search) ||
           (a.tags || []).some((t: string) => t.includes(search)) ||
           ((a.description || '') as string).includes(search);

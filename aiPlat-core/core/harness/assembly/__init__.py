@@ -1,29 +1,34 @@
 """
-Phase 9: Prompt/Context assembly (Kernel-side).
+Assembly — token budget management and message formatting for LLM context.
 
-Goal:
-- Centralize how prompts/messages are built and versioned, so engines/agents
-  do not each implement their own prompt logic.
-- ContextAssembler now provides full PromptContext with token budgeting,
-  compaction, and source attribution.
+TokenBudgetManager (formerly ContextAssembler):
+  Token budget allocation, source attribution, message pruning, compression thresholds.
+
+MessageFormatter (formerly PromptAssembler):
+  Layer-based context assembly, stable caching, final message structure for LLM consumption.
+
+Call order in loop.py:595-671: TokenBudgetManager → MessageFormatter (pipeline, not parallel).
 """
 
-from .prompt_assembler import PromptAssembler, PromptAssemblyResult
+from .prompt_assembler import MessageFormatter, PromptAssemblyResult
 from .context_assembler import (
     BudgetSpec,
-    ContextAssembler,
+    TokenBudgetManager,
     ContextAssemblyResult,
     ContextSource,
     PromptContext,
 )
 
 __all__ = [
-    "PromptAssembler",
+    "MessageFormatter",
     "PromptAssemblyResult",
-    "ContextAssembler",
+    "TokenBudgetManager",
     "ContextAssemblyResult",
     "BudgetSpec",
     "ContextSource",
     "PromptContext",
 ]
 
+# Backward-compat aliases
+ContextAssembler = TokenBudgetManager
+PromptAssembler = MessageFormatter

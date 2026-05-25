@@ -10,7 +10,9 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional, List
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+
+from auth.deps import require_auth
 
 router = APIRouter(prefix="/platform", tags=["channels"])
 
@@ -27,7 +29,7 @@ def _now() -> float:
 
 
 @router.get("/channels")
-async def list_channels(status: Optional[str] = None):
+async def list_channels(status: Optional[str] = None, _auth: str = Depends(require_auth)):
     items = list(_channels.values())
     if status:
         items = [c for c in items if c.get("status") == status]
@@ -36,7 +38,7 @@ async def list_channels(status: Optional[str] = None):
 
 
 @router.post("/channels")
-async def create_channel(body: Dict[str, Any]):
+async def create_channel(body: Dict[str, Any], _auth: str = Depends(require_auth)):
     cid = str(body.get("id") or body.get("name") or "")
     if not cid:
         from core.utils.ids import new_prefixed_id
@@ -59,7 +61,7 @@ async def create_channel(body: Dict[str, Any]):
 
 
 @router.get("/channels/{channel_id}")
-async def get_channel(channel_id: str):
+async def get_channel(channel_id: str, _auth: str = Depends(require_auth)):
     ch = _channels.get(channel_id)
     if not ch:
         raise HTTPException(status_code=404, detail="channel_not_found")
@@ -67,7 +69,7 @@ async def get_channel(channel_id: str):
 
 
 @router.put("/channels/{channel_id}")
-async def update_channel(channel_id: str, patch: Dict[str, Any]):
+async def update_channel(channel_id: str, patch: Dict[str, Any], _auth: str = Depends(require_auth)):
     ch = _channels.get(channel_id)
     if not ch:
         raise HTTPException(status_code=404, detail="channel_not_found")
@@ -77,13 +79,13 @@ async def update_channel(channel_id: str, patch: Dict[str, Any]):
 
 
 @router.delete("/channels/{channel_id}")
-async def delete_channel(channel_id: str):
+async def delete_channel(channel_id: str, _auth: str = Depends(require_auth)):
     _channels.pop(channel_id, None)
     return {"status": "ok"}
 
 
 @router.post("/channels/{channel_id}/test")
-async def test_channel(channel_id: str):
+async def test_channel(channel_id: str, _auth: str = Depends(require_auth)):
     ch = _channels.get(channel_id)
     if not ch:
         raise HTTPException(status_code=404, detail="channel_not_found")
@@ -94,7 +96,7 @@ async def test_channel(channel_id: str):
 
 
 @router.get("/sessions")
-async def list_sessions(status: Optional[str] = None):
+async def list_sessions(status: Optional[str] = None, _auth: str = Depends(require_auth)):
     items = list(_sessions.values())
     if status:
         items = [s for s in items if s.get("status") == status]
@@ -103,7 +105,7 @@ async def list_sessions(status: Optional[str] = None):
 
 
 @router.get("/sessions/{session_id}")
-async def get_session(session_id: str):
+async def get_session(session_id: str, _auth: str = Depends(require_auth)):
     s = _sessions.get(session_id)
     if not s:
         raise HTTPException(status_code=404, detail="session_not_found")
@@ -111,7 +113,7 @@ async def get_session(session_id: str):
 
 
 @router.post("/sessions")
-async def create_session(body: Dict[str, Any]):
+async def create_session(body: Dict[str, Any], _auth: str = Depends(require_auth)):
     sid = str(body.get("id") or "")
     if not sid:
         from core.utils.ids import new_prefixed_id
@@ -132,7 +134,7 @@ async def create_session(body: Dict[str, Any]):
 
 
 @router.post("/sessions/{session_id}/end")
-async def end_session(session_id: str):
+async def end_session(session_id: str, _auth: str = Depends(require_auth)):
     s = _sessions.get(session_id)
     if not s:
         raise HTTPException(status_code=404, detail="session_not_found")

@@ -1,17 +1,19 @@
 """
 Universal Chat Service — reusable multi-turn conversation for any agent.
-
-Usage:
-  svc = ChatService(model=llm_adapter)
-  sid = await svc.create_session(agent_id="<agent_id>", system_prompt="...", initial_context={"requirement": "..."})
-  resp = await svc.chat(sid, "Hello")
+Sessions are in-memory only (no persistence across restarts).
 """
 
 from __future__ import annotations
 
 import json
+import os
 import uuid
 from typing import Any, Dict, List, Optional
+
+_CHAT_REPLY_PROMPT = os.getenv(
+    "AIPLAT_CHAT_REPLY_PROMPT",
+    "Based on the above conversation history and context, provide a helpful response.",
+)
 
 
 class ChatService:
@@ -54,7 +56,7 @@ class ChatService:
 ## 上下文
 {json.dumps(ctx, ensure_ascii=False, indent=2)}
 
-请基于以上信息回复用户。
+{_CHAT_REPLY_PROMPT}
 """
         reply = ""
         if self._model:

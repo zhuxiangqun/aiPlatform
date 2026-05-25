@@ -31,13 +31,18 @@ class ToolConfig:
 
 @dataclass
 class ToolResult:
-    """Tool execution result"""
+    """Tool execution result — compatible with Browser Use ActionResult pattern."""
     success: bool
     output: Any = None
     error: Optional[str] = None
     latency: float = 0.0
     metadata: Dict[str, Any] = field(default_factory=dict)
     priority: str = "medium"  # §5.21: context budget priority
+    # Browser Use compatible fields
+    extracted_content: Optional[str] = None  # Structured extracted data for agent reasoning
+    long_term_memory: Optional[str] = None   # Info to remember across steps
+    is_done: bool = False                    # Signal task completion
+    attachments: List[str] = field(default_factory=list)  # File paths, screenshots, etc.
 
 
 class ITool(ABC):

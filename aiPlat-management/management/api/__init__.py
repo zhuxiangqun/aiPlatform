@@ -15,6 +15,7 @@ from .diagnostics import router as diagnostics_router
 from .infra import router as infra_router
 from .core import router as core_router
 from .onboarding import router as onboarding_router
+from .releases import router as releases_router
 
 __all__ = [
     "dashboard_router",
@@ -24,4 +25,5 @@ __all__ = [
     "infra_router",
     "core_router",
     "onboarding_router",
+    "releases_router",
 ]

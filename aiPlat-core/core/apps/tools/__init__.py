@@ -42,6 +42,7 @@ from .browser import BrowserTool
 from .database import DatabaseTool
 from .code import CodeExecutionTool
 from .webfetch import WebFetchTool
+from .kb_tools import KBIngestTool, KBQueryTool
 
 __all__ = [
     # Base tools
@@ -59,6 +60,8 @@ __all__ = [
     "DatabaseTool",
     "CodeExecutionTool",
     "WebFetchTool",
+    "KBIngestTool",
+    "KBQueryTool",
     # Permissions
     "Permission",
     "PermissionEntry",

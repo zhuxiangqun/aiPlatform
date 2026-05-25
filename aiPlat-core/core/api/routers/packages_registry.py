@@ -1,3 +1,9 @@
+"""Package registry endpoints.
+
+⚠ BOUNDARY BLUR (cross-layer audit): package registry publishing belongs in
+aiPlat-platform's API layer. Currently served from core's FastAPI server.
+Migration plan: move to platform/api/routers/.
+"""
 from __future__ import annotations
 
 import hashlib
@@ -22,7 +28,6 @@ from core.mcp.runtime_sync import sync_mcp_runtime
 from core.schemas_packages import PackageInstallRequest, PackagePublishRequest, PackageUninstallRequest
 from core.workspace.reload import rebuild_workspace_managers_into_runtime
 
-
 router = APIRouter()
 
 
@@ -35,157 +40,24 @@ def _store():
     return getattr(rt, "execution_store", None) if rt else None
 
 
-def _approval_manager():
-    rt = _rt()
-    return getattr(rt, "approval_manager", None) if rt else None
-
-
-def _job_scheduler():
-    rt = _rt()
-    return getattr(rt, "job_scheduler", None) if rt else None
-
-
-def _pkg_managers():
-    rt = _rt()
-    if not rt:
-        return None, None
-    return getattr(rt, "workspace_package_manager", None), getattr(rt, "package_manager", None)
-
-
-def _workspace_managers():
-    rt = _rt()
-    if not rt:
-        return None, None, None
-    return (
-        getattr(rt, "workspace_agent_manager", None),
-        getattr(rt, "workspace_skill_manager", None),
-        getattr(rt, "workspace_mcp_manager", None),
-    )
-
-
-def _engine_mcp_manager():
-    rt = _rt()
-    return getattr(rt, "mcp_manager", None) if rt else None
-
-
-def _sha256_file(p: Path) -> str:
-    h = hashlib.sha256()
-    with p.open("rb") as f:
-        for chunk in iter(lambda: f.read(1024 * 1024), b""):
-            h.update(chunk)
-    return h.hexdigest()
-
-
-def _packages_registry_dir() -> Path:
-    return (Path.home() / ".aiplat" / "registry" / "packages").resolve()
-
-
-def _is_approval_resolved_approved(approval_request_id: str) -> bool:
-    mgr = _approval_manager()
-    if not approval_request_id or not mgr:
-        return False
-    from core.harness.infrastructure.approval.types import RequestStatus
-
-    r = mgr.get_request(str(approval_request_id))
-    if not r:
-        return False
-    return r.status in (RequestStatus.APPROVED, RequestStatus.AUTO_APPROVED)
-
-
-async def _require_package_approval(*, operation: str, user_id: str, details: str, metadata: Dict[str, Any]) -> str:
-    from core.harness.infrastructure.approval.types import ApprovalContext, ApprovalRule, RuleType
-
-    mgr = _approval_manager()
-    if not mgr:
-        raise HTTPException(status_code=503, detail="Approval manager not available")
-    rule = ApprovalRule(
-        rule_id=f"packages_{operation}",
-        rule_type=RuleType.SENSITIVE_OPERATION,
-        name=f"Packages {operation} 审批",
-        description=f"{operation} package 需要审批",
-        priority=1,
-        metadata={"sensitive_operations": [f"packages:{operation}"]},
-    )
-    mgr.register_rule(rule)
-    ctx = ApprovalContext(
-        user_id=user_id,
-        operation=f"packages:{operation}",
-        operation_context={"details": details},
-        metadata=metadata or {},
-    )
-    req = mgr.create_request(ctx, rule=rule)
+@router.get("/packages")
+async def list_packages():
+    store = _store()
+    if not store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    # Query distinct package names from versions table
+    import sqlite3
+    db_path = store._config.db_path
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
     try:
-        await mgr._persist(req)  # type: ignore[attr-defined]
-    except Exception:
-        pass
-    return req.request_id
-
-
-def _find_filesystem_package(pkg_name: str):
-    workspace_pkg_mgr, engine_pkg_mgr = _pkg_managers()
-    p = workspace_pkg_mgr.get_package(pkg_name) if workspace_pkg_mgr else None
-    if not p and engine_pkg_mgr:
-        p = engine_pkg_mgr.get_package(pkg_name)
-    return p
-
-
-def _build_bundle_dir_for_package(pkg: Dict[str, Any], out_bundle_dir: Path) -> None:
-    """
-    Build a normalized bundle directory for publishing.
-    Prefers <package_dir>/bundle when present; otherwise materializes from source dirs.
-    """
-    pkg_dir = Path(str(pkg.get("package_dir") or ""))
-    existing_bundle = pkg_dir / "bundle"
-    if existing_bundle.exists() and existing_bundle.is_dir():
-        shutil.copytree(existing_bundle, out_bundle_dir, dirs_exist_ok=True)
-        return
-
-    repo_root = Path(__file__).resolve().parent.parent.parent  # aiPlat-core/core
-    engine_agents = (repo_root / "engine" / "agents").resolve()
-    engine_skills = (repo_root / "engine" / "skills").resolve()
-    engine_mcps = (repo_root / "engine" / "mcps").resolve()
-    wk_agents = (Path.home() / ".aiplat" / "agents").resolve()
-    wk_skills = (Path.home() / ".aiplat" / "skills").resolve()
-    wk_mcps = (Path.home() / ".aiplat" / "mcps").resolve()
-    wk_hooks = (Path.home() / ".aiplat" / "hooks").resolve()
-
-    (out_bundle_dir / "agents").mkdir(parents=True, exist_ok=True)
-    (out_bundle_dir / "skills").mkdir(parents=True, exist_ok=True)
-    (out_bundle_dir / "mcps").mkdir(parents=True, exist_ok=True)
-    (out_bundle_dir / "hooks").mkdir(parents=True, exist_ok=True)
-
-    resources = pkg.get("resources") or []
-    if not isinstance(resources, list):
-        resources = []
-    for r in resources:
-        if not isinstance(r, dict):
-            continue
-        kind = str(r.get("kind") or "")
-        rid = str(r.get("id") or "")
-        scope = str(r.get("scope") or "engine").lower()
-        if not kind or not rid:
-            continue
-        if kind == "agent":
-            src = (engine_agents / rid) if scope == "engine" else (wk_agents / rid)
-            dst = out_bundle_dir / "agents" / rid
-            if src.exists() and src.is_dir():
-                shutil.copytree(src, dst, dirs_exist_ok=True)
-        elif kind == "skill":
-            src = (engine_skills / rid) if scope == "engine" else (wk_skills / rid)
-            dst = out_bundle_dir / "skills" / rid
-            if src.exists() and src.is_dir():
-                shutil.copytree(src, dst, dirs_exist_ok=True)
-        elif kind == "mcp":
-            src = (engine_mcps / rid) if scope == "engine" else (wk_mcps / rid)
-            dst = out_bundle_dir / "mcps" / rid
-            if src.exists() and src.is_dir():
-                shutil.copytree(src, dst, dirs_exist_ok=True)
-        elif kind == "hook":
-            src = wk_hooks / f"{rid}.py"
-            dst = out_bundle_dir / "hooks" / f"{rid}.py"
-            if src.exists() and src.is_file():
-                dst.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(src, dst)
+        rows = conn.execute(
+            "SELECT package_name, COUNT(*) as cnt FROM package_versions GROUP BY package_name ORDER BY package_name"
+        ).fetchall()
+        packages = [{"name": r["package_name"], "versions": r["cnt"], "installed": False} for r in rows]
+        return {"packages": packages, "total": len(packages)}
+    finally:
+        conn.close()
 
 
 @router.get("/packages/{pkg_name}/versions")

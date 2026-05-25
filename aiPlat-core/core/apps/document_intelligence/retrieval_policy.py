@@ -19,12 +19,14 @@ def choose_retrieval_policy(
     if doc_count == 1 and dominant_doc_kind in ("video", "mixed_video") and intent == "summary":
         return {
             "route": "video_window_query",
-            "skill_name": "doc_query",
+            "skill_name": "knowledge_query",
             "top_k": 4,
             "granularity": "coarse",
             "window_ms": 60000,
             "step_ms": 30000,
             "needs_aggregation": True,
+            "retrieval_strategy": "vector_only",
+            "rerank_enabled": True,
             "reason": "summary question on single video scope",
         }
 
@@ -44,7 +46,7 @@ def choose_retrieval_policy(
         if intent == "compare":
             return {
                 "route": "multi_doc_query",
-                "skill_name": "multi_doc_query",
+                "skill_name": "knowledge_query",
                 "top_k": 8,
                 "granularity": "mixed",
                 "needs_aggregation": True,
@@ -53,7 +55,7 @@ def choose_retrieval_policy(
         if intent == "summary":
             return {
                 "route": "multi_doc_query",
-                "skill_name": "multi_doc_query",
+                "skill_name": "knowledge_query",
                 "top_k": 8,
                 "granularity": "coarse",
                 "needs_aggregation": True,
@@ -65,6 +67,11 @@ def choose_retrieval_policy(
             "top_k": 8,
             "granularity": granularity,
             "needs_aggregation": granularity != "fine",
+            "retrieval_strategy": "hybrid",
+            "rerank_enabled": True,
+            "rerank_top_k": 5,
+            "quality_gate_enabled": True,
+            "quality_threshold": 0.3,
             "reason": "default multi-doc policy",
         }
 

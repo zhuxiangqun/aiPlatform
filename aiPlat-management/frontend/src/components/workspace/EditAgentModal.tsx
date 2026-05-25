@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { workspaceAgentApi, workspaceSkillApi } from '../../services';
-import { modelApi, toolApi, type Model } from '../../services';
+import { workspaceAgentApi, workspaceSkillApi, modelsApi } from '../../services';
+import { toolApi } from '../../services';
+import { workspaceMcpApi, workflowTemplateApi } from '../../services';
 import type { Agent } from '../../services';
-import { Alert, Button, Input, Modal, Textarea, toast } from '../ui';
+import { Alert, Button, Input, Modal, Textarea, toast, MultiSelect } from '../ui';
 
 interface EditAgentModalProps {
   open: boolean;
@@ -15,6 +16,9 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
   const [loading, setLoading] = useState(false);
   const [skills, setSkills] = useState<string[]>([]);
   const [tools, setTools] = useState<string[]>([]);
+  const [mcpIds, setMcpIds] = useState<string[]>([]);
+  const [workflowIds, setWorkflowIds] = useState<string[]>([]);
+  const [agentIds, setAgentIds] = useState<string[]>([]);
   const [configText, setConfigText] = useState('');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -23,6 +27,9 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
   const [sopLoading, setSopLoading] = useState(false);
   const [skillOptions, setSkillOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [toolOptions, setToolOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [mcpOptions, setMcpOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [workflowOptions, setWorkflowOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [agentOptions, setAgentOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [modelOptions, setModelOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [selectedModel, setSelectedModel] = useState<string>('');
   const [defaultToolset, setDefaultToolset] = useState<string>('workspace_default');
@@ -40,6 +47,8 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
   const [wizMayWrite, setWizMayWrite] = useState(false);
   const [wizToolset, setWizToolset] = useState<string>('workspace_default');
   const [genWarnings, setGenWarnings] = useState<string[]>([]);
+  const [loopType, setLoopType] = useState<string>('react');
+  const [agentStatus, setAgentStatus] = useState<string>('draft');
 
   useEffect(() => {
     if (open && agent) {
@@ -48,9 +57,13 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       setDefaultToolset(String((agent as any)?.metadata?.toolset || 'workspace_default'));
       setSkills(agent.skills || []);
       setTools(agent.tools || []);
+      setMcpIds((agent as any)?.mcp_ids || []);
+      setWorkflowIds((agent as any)?.workflow_ids || []);
+      setAgentIds((agent as any)?.agent_ids || []);
       setConfigText(agent.metadata?.config ? JSON.stringify(agent.metadata.config, null, 2) : (agent as any)?.config ? JSON.stringify((agent as any).config, null, 2) : '');
       setMemoryConfigText((agent as any)?.memory_config ? JSON.stringify((agent as any).memory_config, null, 2) : '');
       setSopText('');
+      setAgentStatus(agent.status || 'draft');
       // Pipeline config fields from metadata
       const md = (agent as any)?.metadata || {};
       setGenerateTestPlan(Boolean(md.generate_test_plan));
@@ -64,6 +77,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       try {
         const cfg = (agent as any)?.config || {};
         if (cfg?.model) setSelectedModel(String(cfg.model));
+        setLoopType(String((agent as any)?.metadata?.loop_type || 'react'));
       } catch {
         // ignore
       }
@@ -167,17 +181,35 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
         setTools(selectedToolIds);
       }
 
-      // models from infra layer
       try {
-        const modelRes = await modelApi.list({ enabled: true, status: 'available' });
-        const models = ((modelRes as any).models || []) as Model[];
-        const modelOpts = models.map((m) => ({ value: m.name, label: m.displayName || m.name }));
+        const mcpRes = await workspaceMcpApi.listServers();
+        const mcpList = (mcpRes as any).servers || [];
+        setMcpOptions(mcpList.map((s: any) => ({ value: s.name || s.id, label: `${s.name || s.id} (MCP)` })));
+      } catch { /* ignore */ }
+      try {
+        const wfRes = await workflowTemplateApi.list();
+        setWorkflowOptions(((wfRes as any).templates || []).map((w: any) => ({ value: w.name, label: `${w.label || w.name} (Workflow)` })));
+      } catch { /* ignore */ }
+      try {
+        const agentRes = await workspaceAgentApi.list({ limit: 200 });
+        setAgentOptions(((agentRes as any).agents || []).filter((a: any) => a.name && a.id !== agent?.id)
+          .map((a: any) => ({ value: a.id || a.name, label: `${a.name || a.id} (Agent)` })));
+      } catch { /* ignore */ }
+
+      // models from core model registry
+      try {
+        const modelRes = await modelsApi.list();
+        const models = ((modelRes as any).models || []) as { name: string; provider: string; capabilities: string[] }[];
+        const modelOpts = models.map((m) => ({
+          value: m.name,
+          label: `${m.name} (${m.provider})${m.capabilities?.includes('reasoning') ? ' 🧠' : ''}`,
+        }));
         setModelOptions(modelOpts);
-        if (!selectedModel) {
-          const prefer = models.find((m) => (m.displayName || '').toLowerCase().includes('deepseek') && (m.displayName || '').toLowerCase().includes('reasoner'))
-            || models.find((m) => (m.name || '').toLowerCase().includes('deepseek') && (m.name || '').toLowerCase().includes('reasoner'));
-          const fallback = prefer?.name || models[0]?.name || '';
-          if (fallback) setSelectedModel(fallback);
+        if (!selectedModel && models.length > 0) {
+          const prefer = models.find((m) => m.name.includes('reasoner'))
+            || models.find((m) => m.capabilities?.includes('reasoning'))
+            || models[0];
+          setSelectedModel(prefer?.name || models[0]?.name || '');
         }
       } catch {
         setModelOptions([]);
@@ -233,7 +265,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
     const sys = [
       `你是“${nm}”。`,
       desc ? `职责与边界：${desc}` : '',
-      mode === 'auto' ? '你需要在回答前主动获取必要信息（通过已绑定工具/MCP），不要默认要求用户粘贴大段数据。' : '请先澄清目标与约束，再给出结构化输出。',
+      mode === 'auto' ? '你需要在回答前主动获取必要信息（通过工具/MCP/技能），必要时委派子Agent或触发Workflow，不要默认要求用户粘贴大段数据。' : '请先澄清目标与约束，再给出结构化输出。',
       '输出要求：给出结论、依据（如有）、以及下一步建议。',
       '如果缺少上下文，请提出需要的材料（文件/接口/数据范围）。',
       mayWrite ? '注意：涉及对外部系统写入/修改时，必须先二次确认并说明影响范围；必要时触发审批。' : '',
@@ -251,6 +283,9 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       sopLines.push('2. 若需要外部信息，明确需要哪些材料并让用户提供（或建议开启工具自动获取）。');
     }
     sopLines.push('3. 分析与处理：按优先级输出发现与建议（必要时分模块/分文件）。');
+    if (mcpIds.length > 0) sopLines.push('   - 可通过 MCP 服务器获取外部能力（工具自动注册到工具池）。');
+    if (workflowIds.length > 0) sopLines.push('   - 可触发已绑定的 Workflow 执行预定义流水线。');
+    if (agentIds.length > 0) sopLines.push('   - 可将子任务委派给已绑定的子 Agent（debugger/test-engineer等）。');
     sopLines.push('4. 汇总输出：结论 → 依据/引用 → 建议/下一步（含高/中/低优先级）。');
     sopLines.push('5. 自检：一致性、可执行性、风险与不确定性提示。');
 
@@ -335,8 +370,9 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       metadata.phase_description = phaseDescription.trim() || undefined;
       metadata.hitl_after_execute = hitlAfterExecute;
       metadata.hitl_after_phase = hitlAfterPhase.trim() || undefined;
+      metadata.loop_type = loopType;
 
-      await workspaceAgentApi.update(agent.id, { name: name.trim() || undefined, config, memory_config, metadata });
+      await workspaceAgentApi.update(agent.id, { name: name.trim() || undefined, status: agentStatus || undefined, config, skills: skills.length ? skills : undefined, tools: tools.length ? tools : undefined, mcp_ids: mcpIds.length ? mcpIds : undefined, workflow_ids: workflowIds.length ? workflowIds : undefined, agent_ids: agentIds.length ? agentIds : undefined, memory_config, metadata });
 
       // update SOP (best-effort; do not block binding changes)
       try {
@@ -404,6 +440,23 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
     >
       <div className="space-y-4">
         <Input label="名称（显示名）" value={name} onChange={(e: any) => setName(e.target.value)} />
+        <div className="mb-2">
+          <label className="block text-sm font-medium text-gray-300 mb-1">状态</label>
+          {['draft', 'ready'].includes(agentStatus) ? (
+            <select value={agentStatus} onChange={(e) => setAgentStatus(e.target.value)}
+              className="w-full h-10 px-3 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100">
+              <option value="draft">draft（草稿）</option>
+              <option value="ready">ready（就绪，提交审核）</option>
+            </select>
+          ) : (
+            <div className="w-full h-10 px-3 flex items-center bg-dark-card border border-dark-border rounded-lg text-sm text-gray-400">
+              {agentStatus === 'published' ? '已发布 — 需在审批中心操作' :
+               agentStatus === 'listed' ? '已上架 — 需在审批中心操作' :
+               agentStatus === 'deprecated' ? '已废弃 — 只读' :
+               `${agentStatus} — 需在审批中心操作`}
+            </div>
+          )}
+        </div>
         <Input label="描述（可选）" value={description} onChange={(e: any) => setDescription(e.target.value)} />
 
         {/* ── 流水线配置 ── */}
@@ -438,6 +491,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
           >
             <option value="workspace_default">workspace_default（默认）</option>
             <option value="safe_readonly">safe_readonly（只读）</option>
+            <option value="browser">browser（浏览器/HTTP）</option>
             <option value="full">full（全量/高风险）</option>
           </select>
           <div className="text-xs text-gray-500 mt-1">
@@ -493,49 +547,56 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <div className="text-sm font-medium text-gray-300 mb-2">绑定技能（多选）</div>
-            <select
-              multiple
-              value={skills}
-              onChange={(e) => setSkills(Array.from(e.target.selectedOptions).map((o) => (o as any).value))}
-              className="w-full h-28 px-3 py-2 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100"
-            >
-              {skillOptions.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-            <div className="text-xs text-gray-500 mt-1">按住 Ctrl/Cmd 可多选</div>
-          </div>
+          <MultiSelect label="绑定技能" options={skillOptions} selected={skills} onChange={setSkills} />
+          <MultiSelect label="绑定工具" options={toolOptions} selected={tools} onChange={setTools} />
+        </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {mcpOptions.length > 0 && <MultiSelect label="绑定 MCP" options={mcpOptions} selected={mcpIds} onChange={setMcpIds} />}
+          {workflowOptions.length > 0 && <MultiSelect label="绑定 Workflow" options={workflowOptions} selected={workflowIds} onChange={setWorkflowIds} />}
+        </div>
+
+        {agentOptions.length > 0 && (
+          <MultiSelect label="绑定子 Agent" options={agentOptions} selected={agentIds} onChange={setAgentIds} hint="当前 Agent 可以将任务委派给选中的子 Agent" />
+        )}
+
+        <div className="grid grid-cols-2 gap-4">
           <div>
-            <div className="text-sm font-medium text-gray-300 mb-2">绑定工具（多选）</div>
+            <div className="text-sm font-medium text-gray-300 mb-2">Agent 策略</div>
             <select
-              multiple
-              value={tools}
-              onChange={(e) => setTools(Array.from(e.target.selectedOptions).map((o) => (o as any).value))}
-              className="w-full h-28 px-3 py-2 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100"
+              value={loopType}
+              onChange={(e) => setLoopType(e.target.value)}
+              className="w-full h-10 px-3 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100"
             >
-              {toolOptions.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
+              <option value="react">ReAct (Reason + Act) — 透明推理循环</option>
+              <option value="function_call">Function Calling — 模型原生工具调用</option>
             </select>
+            <div className="text-xs text-gray-500 mt-1">
+              ReAct 适用于大多数模型；Function Calling 需要模型支持（GPT-4 / Claude）
+            </div>
           </div>
         </div>
 
         <Textarea label="配置（JSON）" value={configText} onChange={(e: any) => setConfigText(e.target.value)} rows={10} />
         <Textarea label="memory_config（JSON，可选）" value={memoryConfigText} onChange={(e: any) => setMemoryConfigText(e.target.value)} rows={6} />
-        <Textarea
-          label="SOP（Markdown，可选）"
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-sm font-medium text-gray-300">SOP（Markdown，可选）</span>
+            <button
+              onClick={(e) => { e.preventDefault(); applySmartGenerate?.(); }}
+              className="text-xs text-blue-400 hover:text-blue-300"
+              title="AI 根据 Agent 名称和描述自动生成 SOP"
+            >
+              🤖 AI 生成
+            </button>
+          </div>
+          <Textarea
           value={sopText}
           onChange={(e: any) => setSopText(e.target.value)}
           rows={10}
           placeholder={'例如：\n1. 澄清问题与范围。\n2. 调用 knowledge_retrieval 检索证据。\n3. 综合生成答案并引用证据。'}
-        />
+          />
+          </div>
         {sopLoading && <div className="text-xs text-gray-500">SOP 加载中...</div>}
         {genWarnings.length > 0 && (
           <Alert type="warning" title="自动生成提示">

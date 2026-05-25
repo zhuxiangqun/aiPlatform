@@ -63,7 +63,7 @@ async def pairwise_judge(
         CompareResult with verdict, stop recommendation, and improvement assessment.
     """
     dims = get_scoring_dimensions(scoring_dimensions)
-    primary_dim = dims[0]["name"] if dims else "score"
+    primary_dim = dims[0]["name"] if dims else "overall"
 
     # Quick check: no baseline means always "improved" (first run)
     if not baseline or not isinstance(baseline, dict) or not baseline:

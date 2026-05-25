@@ -132,7 +132,12 @@ def get_tool_discovery() -> ToolDiscovery:
 
 
 def _make_discovery_tool(d: dict) -> Any:
-    """Build a BaseTool-compatible object from a discovered tool dict."""
+    """Build a BaseTool-compatible object from a discovered tool dict.
+
+    Extracts MCP permission metadata from inputSchema if present.
+    Tool permissions are enforced by PolicyGate via the standard
+    sys_tool_call path — same as locally-registered Tools.
+    """
     from core.apps.tools.base import BaseTool
     class _DiscoveredTool(BaseTool):
         def __init__(self):
@@ -141,6 +146,11 @@ def _make_discovery_tool(d: dict) -> Any:
                 description=d.get("description", ""),
             )
             self._execute_fn = d.get("execute")
+            # Extract MCP permission metadata for future fine-grained control
+            params = d.get("parameters") or d.get("inputSchema") or {}
+            permissions = params.get("required_permissions", [])
+            if isinstance(permissions, list):
+                self._mcp_permissions = permissions
         async def execute(self, **params):
             if self._execute_fn:
                 return self._execute_fn(params)

@@ -18,11 +18,9 @@ from core.api.core_facade import create_agent
 _AGENT_MD_CACHE: Dict[str, Dict[str, Any]] = {}
 
 
-_AGENT_MD_CACHE: Dict[str, Dict[str, Any]] = {}
-
-
 def _role_agent_md_path(agent_name: str) -> str:
-    base = os.getenv("AIPLAT_WORKSPACE_SEEDS", os.path.join(os.path.dirname(__file__), "..", "workspace_seeds"))
+    base = os.getenv("AIPLAT_WORKSPACE_SEEDS",
+        os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "workspace_seeds"))
     return os.path.join(base, "agents", agent_name, "AGENT.md")
 
 

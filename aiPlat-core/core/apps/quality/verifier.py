@@ -184,7 +184,11 @@ class ResultVerifier:
             elif isinstance(value, (int, float, bool)):
                 expr = expr.replace(key, str(value))
         
-        return eval(expr, {"__builtins__": {}}, {})
+        # Safety: reject expressions with dangerous patterns
+        import re as _re3
+        if _re3.search(r'__\w+__|\.__\w+__|\._|import\b|open\b|exec\b|compile\b|getattr\b|setattr\b', str(expr)):
+            return False
+        return eval(expr, {"__builtins__": {}}, {})  # noqa: S307 — sandboxed quality expression (blocked patterns, restricted globals)
 
     def _flatten_dict(self, d: Any, parent_key: str = "", sep: str = ".") -> Dict[str, Any]:
         """Flatten nested dictionary"""

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import difflib
 import hashlib
+import json
 import time
 import uuid
 from typing import Any, Dict, List, Optional
@@ -916,6 +917,59 @@ async def diff_prompt_template(template_id: str, from_version: Optional[str] = N
         "diff_sha256": hashlib.sha256(diff_text.encode("utf-8")).hexdigest(),
         "diff": diff_text,
         "diff_len": len(diff_text),
+    }
+
+
+@router.post("/prompts/{template_id}/auto-optimize")
+async def auto_optimize_prompt_rollout(template_id: str):
+    """
+    Close the A/B testing loop: aggregate evaluation scores per version
+    and automatically adjust rollout weights toward the winning version.
+
+    Requires at least AIPLAT_AB_MIN_EVALS (default 5) evaluations per version.
+    """
+    store = _store()
+    if not store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    tpl = await store.get_prompt_template(template_id=str(template_id))
+    if not tpl:
+        raise HTTPException(status_code=404, detail="not_found")
+    md = _parse_prompt_metadata(tpl)
+    rel = md.get("release") if isinstance(md.get("release"), dict) else {}
+    rel = rel if isinstance(rel, dict) else {}
+    rollout = rel.get("rollout") if isinstance(rel.get("rollout"), list) else []
+    if not rollout:
+        return {
+            "template_id": template_id,
+            "optimized": False,
+            "reason": "no_rollout_configured",
+            "hint": "Configure rollout with multiple versions before auto-optimizing.",
+        }
+    try:
+        from core.harness.evaluation.ab_optimizer import EvalABOptimizer
+        EvalABOptimizer.ensure_tables()
+        new_rollout, report = EvalABOptimizer.compute_optimized_rollout(rollout, template_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Optimizer failed: {e}")
+    if new_rollout is None:
+        return {
+            "template_id": template_id,
+            "optimized": False,
+            "report": report,
+        }
+    rel["rollout"] = new_rollout
+    md["release"] = rel
+    patch = {"metadata_json": json.dumps(md, ensure_ascii=False)}
+    try:
+        await store.update_prompt_template_metadata(
+            template_id=str(template_id), patch=patch, merge=True
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update metadata: {e}")
+    return {
+        "template_id": template_id,
+        "optimized": True,
+        "report": report,
     }
 
 

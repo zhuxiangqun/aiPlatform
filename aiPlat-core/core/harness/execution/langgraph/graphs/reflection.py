@@ -21,7 +21,7 @@ except ImportError:
 
 from .react import ReActGraph, ReActGraphConfig
 import os
-from ....assembly import PromptAssembler
+from ....assembly import MessageFormatter
 
 
 class EvaluationDimension(Enum):
@@ -213,27 +213,22 @@ class ReflectionGraph:
         if feedback:
             previous_feedback = f"\n之前的改进建议：\n" + "\n".join(f"- {f}" for f in feedback)
 
-        prompt_template = os.getenv("AIPLAT_EVAL_CRITIC_TEMPLATE",
-            """你是一个质量检查专家。检查以下回答的质量：
-{dimensions}
-
-{previous}
-
-原始任务：{task}
-
-待检查的回答：
-{output}
-
-如果回答在所有维度都达标，回复 "PASS"。
-如果有问题，请：
-1. 列出每个维度的评分（0-1）
-2. 明确指出需要改进的地方
-3. 给出具体的改进建议
-
-回复格式：
-STATUS: PASS 或 REJECTED
-SCORES: factuality=X.X completeness=X.X clarity=X.X format=X.X
-FEEDBACK: 具体改进建议（每行一条）""")
+        dim_names = [d.value for d in self._config.evaluation_dimensions]
+        prompt_template = os.getenv("AIPLAT_EVAL_CRITIC_TEMPLATE") or (
+            "You are a quality evaluator. Check the following output against the criteria:\n"
+            "{dimensions}\n\n"
+            "{previous}"
+            "\n\nTask: {task}\n\n"
+            "Output to evaluate:\n{output}\n\n"
+            "If the output meets all criteria, reply PASS.\n"
+            "If issues found, provide:\n"
+            "1. Scores per dimension (0-1)\n"
+            "2. Specific improvement points\n"
+            "3. Actionable feedback\n\n"
+            "Format:\nSTATUS: PASS or REJECTED\n"
+            "SCORES: " + " ".join(f"{d}={{{{X}}}}" for d in dim_names) + "\n"
+            "FEEDBACK: improvement suggestions (one per line)"
+        )
         prompt = prompt_template.format(
             dimensions=dimension_lines,
             previous=previous_feedback,
@@ -273,7 +268,7 @@ Please improve the output to address all the issues mentioned above."""
             )
         
         messages = (
-            PromptAssembler().assemble(prompt).messages
+            MessageFormatter().assemble(prompt).messages
             if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "true").lower() in ("1", "true", "yes", "y")
             else [{"role": "user", "content": prompt}]
         )
@@ -351,7 +346,7 @@ Please improve the output to address all the issues mentioned above."""
         prompt = self._build_critic_prompt(state.task, state.executor_output, feedback)
         
         messages = (
-            PromptAssembler().assemble(prompt).messages
+            MessageFormatter().assemble(prompt).messages
             if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "true").lower() in ("1", "true", "yes", "y")
             else [{"role": "user", "content": prompt}]
         )

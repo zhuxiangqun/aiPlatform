@@ -338,10 +338,6 @@ class DockerSandbox(StageSandbox):
                 pass
 
 
-def should_use_sandbox(stage_config: Any) -> bool:
-    return bool(getattr(stage_config, "sandbox", False))
-
-
 def create_sandbox(stage_config: Any, **kwargs) -> StageSandbox:
     """Create the appropriate sandbox based on stage config.
 
@@ -358,6 +354,5 @@ __all__ = [
     "StageSandbox",
     "DockerSandbox",
     "SandboxResult",
-    "should_use_sandbox",
     "create_sandbox",
 ]

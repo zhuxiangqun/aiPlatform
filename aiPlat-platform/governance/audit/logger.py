@@ -2,7 +2,7 @@
 Audit Logger - 审计日志服务
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Any, Dict
 from pydantic import BaseModel
 from enum import Enum
@@ -32,7 +32,7 @@ class AuditLog(BaseModel):
     details: Dict[str, Any] = {}
     ip_address: Optional[str] = None
     user_agent: Optional[str] = None
-    timestamp: datetime = datetime.now()
+    timestamp: datetime = datetime.now(timezone.utc)
 
 
 class AuditLogger:
@@ -56,7 +56,7 @@ class AuditLogger:
         user_agent: Optional[str] = None,
     ) -> AuditLog:
         """记录审计日志"""
-        log_id = f"audit_{len(self._logs)}_{datetime.now().timestamp()}"
+        log_id = f"audit_{len(self._logs)}_{datetime.now(timezone.utc).timestamp()}"
 
         audit_log = AuditLog(
             id=log_id,

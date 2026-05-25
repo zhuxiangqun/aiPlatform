@@ -33,9 +33,13 @@ class AgentInfo:
     updated_at: datetime
     version: str = "1.0.0"
     metadata: Dict[str, Any] = field(default_factory=dict)
+    mcp_ids: List[str] = field(default_factory=list)
+    workflow_ids: List[str] = field(default_factory=list)
+    agent_ids: List[str] = field(default_factory=list)
     category: str = ""
     tags: List[str] = field(default_factory=list)
     phase: str = ""
+    enabled: bool = True
 
 
 @dataclass
@@ -175,8 +179,8 @@ class AgentManager:
                     status = str(fm.get("status") or AgentStateEnum.READY.value)
                     status = self._normalize_status(status)
 
-                    required_skills = fm.get("required_skills") or []
-                    required_tools = fm.get("required_tools") or []
+                    required_skills = fm.get("required_skills") or fm.get("skills") or []
+                    required_tools = fm.get("required_tools") or fm.get("tools") or []
                     if not isinstance(required_skills, list):
                         required_skills = []
                     if not isinstance(required_tools, list):
@@ -185,6 +189,8 @@ class AgentManager:
                     config = fm.get("config") or {}
                     if not isinstance(config, dict):
                         config = {}
+                    if not config.get("model"):
+                        config["model"] = fm.get("model") or "deepseek-chat"
 
                     category = str(fm.get("category") or "")
                     tags = fm.get("tags") or []
@@ -199,6 +205,10 @@ class AgentManager:
                         metadata["filesystem"]["agent_md"] = str(agent_md)
                         metadata["filesystem"]["source"] = str(base_dir)
 
+                    enabled_val = fm.get("enabled", True) if isinstance(fm, dict) else True
+                    if isinstance(enabled_val, str):
+                        enabled_val = enabled_val.lower() in ("1", "true", "yes", "y")
+
                     self._agents[agent_id] = AgentInfo(
                         id=agent_id,
                         name=display_name,
@@ -212,6 +222,7 @@ class AgentManager:
                         updated_at=now,
                         version=version,
                         metadata=metadata,
+                        enabled=enabled_val,
                         category=category,
                         tags=tags,
                         phase=phase,
@@ -286,8 +297,17 @@ class AgentManager:
                         agent_type = str(fm.get("agent_type", "react"))
                         status = str(fm.get("status", "ready"))
                         config = fm.get("config", {})
-                        skills = fm.get("skills", []) if isinstance(fm.get("skills"), list) else []
-                        tools = fm.get("tools", []) if isinstance(fm.get("tools"), list) else []
+                        if not isinstance(config, dict):
+                            config = {}
+                        if not config.get("model"):
+                            config["model"] = fm.get("model") or "deepseek-chat"
+                        skills = fm.get("skills") or fm.get("required_skills") or []
+                        skills = skills if isinstance(skills, list) else []
+                        tools = fm.get("tools") or fm.get("required_tools") or []
+                        tools = tools if isinstance(tools, list) else []
+                        category = str(fm.get("category") or "")
+                        tags = fm.get("tags") or []
+                        tags = tags if isinstance(tags, list) else []
                     except Exception:
                         pass
 
@@ -297,8 +317,13 @@ class AgentManager:
             self._agents[name] = AgentInfo(
                 id=name, name=display_name, type=agent_type, status=self._normalize_status(status),
                 config=config, skills=skills, tools=tools,
+                mcp_ids=fm.get("mcp_servers", []) if isinstance(fm.get("mcp_servers"), list) else [],
+                workflow_ids=fm.get("workflows", []) if isinstance(fm.get("workflows"), list) else [],
+                agent_ids=fm.get("agent_ids", []) if isinstance(fm.get("agent_ids"), list) else [],
                 memory_config={"type": "short_term", "recall_count": 5},
-                created_at=now, updated_at=now, metadata={"version": "1.0.0"}
+                created_at=now, updated_at=now,
+                metadata={"version": "1.0.0", "display_name": display_name, "description": fm.get("description", "")},
+                category=category, tags=tags, phase=phase, enabled=True,
             )
             self._stats[name] = AgentStats(
                 total_executions=0, success_count=0, failed_count=0, avg_duration_ms=0.0, success_rate=0.0
@@ -318,6 +343,9 @@ class AgentManager:
         config: Dict[str, Any],
         skills: Optional[List[str]] = None,
         tools: Optional[List[str]] = None,
+        mcp_ids: Optional[List[str]] = None,
+        workflow_ids: Optional[List[str]] = None,
+        agent_ids: Optional[List[str]] = None,
         memory_config: Optional[Dict[str, Any]] = None,
         metadata: Optional[Dict[str, Any]] = None
     ) -> AgentInfo:
@@ -335,6 +363,9 @@ class AgentManager:
             config=config,
             skills=skills or [],
             tools=tools or [],
+            mcp_ids=mcp_ids or [],
+            workflow_ids=workflow_ids or [],
+            agent_ids=agent_ids or [],
             memory_config=memory_config or {"type": "short_term", "recall_count": 5},
             created_at=now,
             updated_at=now,
@@ -352,6 +383,15 @@ class AgentManager:
         
         self._bridge_to_registry(agent)
 
+        # Auto-grant EXECUTE permission for system/admin on newly created workspace agents
+        try:
+            from core.apps.tools.permission import get_permission_manager, Permission
+            pm = get_permission_manager()
+            for uid in ("system", "admin"):
+                pm.grant_permission(uid, agent_id, Permission.EXECUTE, granted_by="auto_create")
+        except Exception:
+            pass
+
         # Materialize directory-based agent on filesystem (AGENT.md + skeleton).
         try:
             base_dir = self._resolve_agents_base_path()
@@ -368,6 +408,9 @@ class AgentManager:
                     "status": agent.status,
                     "required_skills": skills or [],
                     "required_tools": tools or [],
+                    "mcp_servers": mcp_ids or [],
+                    "workflows": workflow_ids or [],
+                    "agent_ids": agent_ids or [],
                     "config": config or {},
                 }
                 header = yaml.safe_dump(manifest, sort_keys=False, allow_unicode=True).strip()
@@ -386,6 +429,9 @@ class AgentManager:
 ## 权限与工具
 - required_tools：{tools or []}
 - required_skills：{skills or []}
+- mcp_servers：{mcp_ids or []}
+- workflows：{workflow_ids or []}
+- agent_ids：{agent_ids or []}
 """
                 agent_md_path.write_text(f"---\n{header}\n---\n{body.lstrip()}", encoding="utf-8")
 
@@ -411,22 +457,41 @@ class AgentManager:
             
             agent_config = AgentConfig(
                 name=agent_info.name,
-                model=agent_info.config.get("model", "gpt-4"),
+                model=agent_info.config.get("model", "deepseek-chat"),
                 temperature=agent_info.config.get("temperature", 0.7),
                 max_tokens=agent_info.config.get("max_tokens", 4096),
                 timeout=agent_info.config.get("timeout", 30),
                 max_retries=agent_info.config.get("max_retries", 3),
                 metadata=agent_info.config
             )
+
+            from core.apps.tools.base import get_tool_registry
+
+            tool_reg = get_tool_registry()
+            resolved_tools = []
+            for tn in (agent_info.tools or []):
+                t = tool_reg.get(tn)
+                if t:
+                    resolved_tools.append(t)
+
+            try:
+                agent_instance = create_agent(
+                    agent_type=agent_type,
+                    config=agent_config,
+                    tools=resolved_tools if resolved_tools else None
+                )
+            except TypeError:
+                agent_instance = create_agent(
+                    agent_type=agent_type,
+                    config=agent_config,
+                )
             
-            agent_instance = create_agent(
-                agent_type=agent_type,
-                config=agent_config
+            registry.register(agent_id, agent_instance, config=agent_info.config, metadata=agent_info.metadata, tools=agent_info.tools)
+        except Exception as e:
+            import logging
+            logging.getLogger("agent_manager").warning(
+                "_bridge_to_registry failed for %s (%s): %s", agent_info.id, agent_info.type, e
             )
-            
-            registry.register(agent_id, agent_instance, config=agent_info.config, metadata=agent_info.metadata)
-        except Exception:
-            pass
     
     async def get_agent(self, agent_id: str) -> Optional[AgentInfo]:
         """Get agent by ID"""
@@ -463,9 +528,13 @@ class AgentManager:
         self,
         agent_id: str,
         name: Optional[str] = None,
+        status: Optional[str] = None,
         config: Optional[Dict[str, Any]] = None,
         skills: Optional[List[str]] = None,
         tools: Optional[List[str]] = None,
+        mcp_ids: Optional[List[str]] = None,
+        workflow_ids: Optional[List[str]] = None,
+        agent_ids: Optional[List[str]] = None,
         memory_config: Optional[Dict[str, Any]] = None,
         metadata: Optional[Dict[str, Any]] = None
     ) -> Optional[AgentInfo]:
@@ -481,12 +550,20 @@ class AgentManager:
         
         if name:
             agent.name = name
+        if status and status in ("draft", "ready", "running", "stopped", "error", "published", "listed", "deprecated"):
+            agent.status = status
         if config:
             agent.config.update(config)
         if skills is not None:
             agent.skills = skills
         if tools is not None:
             agent.tools = tools
+        if mcp_ids is not None:
+            agent.mcp_ids = mcp_ids
+        if workflow_ids is not None:
+            agent.workflow_ids = workflow_ids
+        if agent_ids is not None:
+            agent.agent_ids = agent_ids
         if memory_config:
             agent.memory_config.update(memory_config)
         if metadata:
@@ -523,6 +600,9 @@ class AgentManager:
                     "status": agent.status,
                     "required_skills": agent.skills or [],
                     "required_tools": agent.tools or [],
+                    "mcp_servers": agent.mcp_ids or [],
+                    "workflows": agent.workflow_ids or [],
+                    "agent_ids": agent.agent_ids or [],
                     "config": agent.config or {},
                     "protected": (agent.metadata or {}).get("protected", fm.get("protected", False)),
                     "category": agent.category or fm.get("category", ""),
@@ -530,10 +610,14 @@ class AgentManager:
                     "phase": agent.phase or fm.get("phase", ""),
                     "output_artifact": (agent.metadata or {}).get("output_artifact") or fm.get("output_artifact", ""),
                     "generate_test_plan": (agent.metadata or {}).get("generate_test_plan", fm.get("generate_test_plan", False)),
-                    "test_result_key": (agent.metadata or {}).get("test_result_key") or fm.get("test_result_key") or "test_report",
-                    "uses_code_skill": (agent.metadata or {}).get("uses_code_skill", fm.get("uses_code_skill", False)),
-                    "code_target": (agent.metadata or {}).get("code_target") or fm.get("code_target") or "backend",
+                    "test_result_key": (agent.metadata or {}).get("test_result_key") or fm.get("test_result_key") or "test_report",  # default: PipelineStageConfig.test_result_key
+                    "uses_file_output": (agent.metadata or {}).get("uses_file_output") or (agent.metadata or {}).get("uses_code_skill") or fm.get("uses_file_output") or fm.get("uses_code_skill", False),
+                    "code_target": (agent.metadata or {}).get("code_target") or fm.get("code_target") or "",
                     "prompt_extra": (agent.metadata or {}).get("prompt_extra") or fm.get("prompt_extra") or "",
+                    "eval_model": (agent.metadata or {}).get("eval_model") or fm.get("eval_model", ""),
+                    "deviation_tolerance": (agent.metadata or {}).get("deviation_tolerance") if (agent.metadata or {}).get("deviation_tolerance") is not None else fm.get("deviation_tolerance", 0.0),
+                    "failure_mode_constraints": (agent.metadata or {}).get("failure_mode_constraints") or fm.get("failure_mode_constraints", []),
+                    "enable_query_rewrite": (agent.metadata or {}).get("enable_query_rewrite") if "enable_query_rewrite" in (agent.metadata or {}) else fm.get("enable_query_rewrite", False),
                     "failure_strategy": (agent.metadata or {}).get("failure_strategy") or fm.get("failure_strategy") or "fail_pipeline",
                     "fallback_result_key": (agent.metadata or {}).get("fallback_result_key") or fm.get("fallback_result_key", ""),
                     "retry_llm_on_rate_limit": (agent.metadata or {}).get("retry_llm_on_rate_limit", fm.get("retry_llm_on_rate_limit", True)),
@@ -594,15 +678,15 @@ class AgentManager:
 
     @staticmethod
     def _extract_sop_from_body(body: str) -> str:
-        """Extract the '## SOP' section content from markdown body."""
+        """Extract the '## SOP' section content from markdown body.
+        If no SOP section found, returns the entire body so caller can still view it."""
         import re
         text = body or ""
         m = re.search(r"(?m)^##\\s+SOP\\s*$", text)
         if not m:
-            return ""
+            return text.strip("\n").strip()
         start = m.end()
         rest = text[start:]
-        # find next H2 section
         m2 = re.search(r"(?m)^##\\s+[^\\n]+\\s*$", rest)
         sop = rest[: m2.start()] if m2 else rest
         return sop.strip("\n").strip()
@@ -662,6 +746,14 @@ class AgentManager:
         help_md = fm.get("execution_help")
         examples = fm.get("execution_examples")
         schema = fm.get("execution_input_schema")
+
+        # Fallback: read from agent.metadata if AGENT.md frontmatter doesn't have it
+        if not help_md and isinstance(getattr(agent, "metadata", None), dict):
+            help_md = agent.metadata.get("execution_help")
+        if not examples and isinstance(getattr(agent, "metadata", None), dict):
+            examples = agent.metadata.get("execution_examples")
+        if not schema and isinstance(getattr(agent, "metadata", None), dict):
+            schema = agent.metadata.get("execution_input_schema")
 
         # normalize examples
         norm_examples: list[dict] = []
@@ -788,6 +880,14 @@ class AgentManager:
         del self._tool_bindings[agent_id]
         del self._execution_history[agent_id]
         return True
+    
+    async def toggle_enabled(self, agent_id: str) -> Optional[bool]:
+        agent = self._agents.get(agent_id)
+        if not agent:
+            return None
+        agent.enabled = not agent.enabled
+        agent.updated_at = datetime.utcnow()
+        return agent.enabled
     
     async def start_agent(self, agent_id: str) -> bool:
         """Start agent"""

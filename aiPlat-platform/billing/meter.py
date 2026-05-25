@@ -2,7 +2,7 @@
 Billing Meter - 计费计量服务
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict
 from pydantic import BaseModel
 
@@ -16,7 +16,7 @@ class Usage(BaseModel):
     input_tokens: int = 0
     output_tokens: int = 0
     cost: float = 0.0
-    timestamp: datetime = datetime.now()
+    timestamp: datetime = datetime.now(timezone.utc)
 
 
 class Bill(BaseModel):

@@ -38,7 +38,7 @@ management:
       url: "http://localhost:8086"
       database: "aiplatform"
       username: "admin"
-      password: "password"
+      password: "${INFLUXDB_PASSWORD}"
       
     # Prometheus 配置（可选）
     prometheus:

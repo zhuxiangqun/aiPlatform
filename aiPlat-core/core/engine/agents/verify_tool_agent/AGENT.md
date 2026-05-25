@@ -4,7 +4,8 @@ display_name: verify_tool_agent
 description: 工具验证 Agent，负责 skill_load 调用和工具正确性验证。引擎内置（engine）。
 agent_type: tool
 version: 1.0.0
-status: initializing
+status: ready
+model: deepseek-reasoner
 protected: true
 category: quality
 tags: [verification, tool, validation]
