@@ -111,3 +111,31 @@ class DriftDetector:
             "output before proceeding. If you are unsure, acknowledge the uncertainty "
             "rather than amplifying potential errors."
         )
+
+    @classmethod
+    def record_entropy(cls, *, project_id: str = "", agent_id: str = "",
+                       drift_type: str = "", severity: str = "warning",
+                       description: str = "", source_file: str = "",
+                       source_line: int = 0) -> Optional[str]:
+        """Record a drift event in the entropy ledger for production readiness tracking."""
+        try:
+            import uuid, time, os, sqlite3
+            from core.services.execution_store import get_execution_store
+            store = get_execution_store()
+            db_path = store._config.db_path if hasattr(store, '_config') else ""
+            if not db_path or not os.path.exists(db_path):
+                return None
+            conn = sqlite3.connect(db_path)
+            try:
+                eid = f"ent_{uuid.uuid4().hex[:12]}"
+                conn.execute(
+                    "INSERT INTO entropy_ledger VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+                    (eid, project_id, agent_id, drift_type, severity,
+                     description, time.time(), None, 1, source_file, source_line),
+                )
+                conn.commit()
+                return eid
+            finally:
+                conn.close()
+        except Exception:
+            return None

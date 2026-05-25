@@ -288,6 +288,18 @@ class ReActLoop(BaseLoop):
         state.context["_drift_injection_count"] = prev + 1
         correction = f"SYSTEM REMINDER: quality decline detected ({reason}). Re-evaluate your approach."
         state.context.setdefault("messages", []).append({"role": "user", "content": correction})
+        # Auto-record entropy for production readiness tracking
+        try:
+            from core.harness.evaluation.drift_detector import DriftDetector
+            agent_id = state.context.get("_agent_id", "")
+            DriftDetector.record_entropy(
+                agent_id=str(agent_id),
+                drift_type="quality_drift",
+                severity="warning",
+                description=reason,
+            )
+        except Exception:
+            pass
         return "continue"
 
     def set_model(self, model: Any) -> None:
