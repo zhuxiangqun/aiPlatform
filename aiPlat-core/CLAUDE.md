@@ -837,6 +837,26 @@ core 每种能力类型**只有一个适配器**，不按 provider 分文件：
 - ❌ `base.py::create_adapter()` 中的 `if provider == "openai" → ... elif provider == "deepseek" → ...` 工厂分叉
 - 原因：违反开闭原则。新增一个模型提供商不应改 core 代码
 
+### Core Adapter 设计规则（强制——防止 boilerplate 复制）
+
+所有 core→infra 的模型 adapter 必须遵循：
+
+| 规则 | 说明 |
+|------|------|
+| **共享基类优先** | `BaseModelAdapter`（`core/harness/infrastructure/base_model_adapter.py`）提供模型名解析（`resolve_model_name(capability)`）、单例缓存（`get_cached_model()`）、统一工厂（`create_adapter(capability)`）。新建 adapter 只覆写 `_load_model()` + 业务接口 |
+| **能力类型注册** | 新增模型能力类型时：① `ModelType` enum 注册新值 ② `_MODEL_ENV_MAP` 注册 env var 映射 ③ `_MODEL_DEFAULTS` 注册默认值 ④ `_CAPABILITY_ADAPTERS` 注册工厂 |
+| **零复制原则** | 如果新建 adapter 时复制了另一个 adapter 超过 20% 的代码，先停下来，把共同逻辑提取到 `BaseModelAdapter` |
+| **优先使用统一工厂** | `create_adapter("embedding")` 替代 `create_infra_embedding_adapter()`。caller 不需要知道具体 adapter 类 |
+
+**当前 adapter 继承树**：
+```
+BaseModelAdapter
+  ├── InfraEmbeddingAdapter   (SentenceTransformer)
+  ├── InfraRerankerAdapter     (CrossEncoder)
+  ├── InfraAudioAdapter        (Whisper)
+  └── InfraOCRAdapter          (Tesseract/PaddleOCR)
+```
+
 **设计文档依据**：
 - 根 `CLAUDE.md` §12（模型解析中心化）、§14（模型管理层级）
 - `aiPlat-infra/CLAUDE.md` §5.6（接线状态）

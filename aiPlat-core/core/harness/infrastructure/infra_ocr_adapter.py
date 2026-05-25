@@ -1,8 +1,6 @@
 """
-InfraOCRAdapter — bridges core OCR to infra model management.
-
-Wraps pytesseract / PaddleOCR through a managed adapter
-consistent with other infra adapters.
+InfraOCRAdapter — OCR through infra model management.
+Inherits BaseModelAdapter for shared model resolution + caching.
 """
 
 from __future__ import annotations
@@ -10,13 +8,19 @@ from __future__ import annotations
 import os
 from typing import Any, Dict, List
 
+from .base_model_adapter import BaseModelAdapter
 
-class InfraOCRAdapter:
-    """OCR adapter through infra model management."""
 
-    def __init__(self, *, backend: str = ""):
+class InfraOCRAdapter(BaseModelAdapter):
+    capability = "ocr"
+
+    def __init__(self, *, model_name: str = "", backend: str = ""):
+        super().__init__(model_name=model_name)
         self._backend = backend or os.getenv("AIPLAT_VIDEO_OCR_BACKEND", "tesseract")
         self._lang = os.getenv("AIPLAT_VIDEO_OCR_LANG", "eng+chi_sim")
+
+    def _load_model(self, name: str) -> Any:
+        pass  # OCR engines loaded per-call
 
     def ocr_frame(self, image_path: str) -> str:
         if self._backend in ("tesseract", "auto"):
@@ -27,7 +31,6 @@ class InfraOCRAdapter:
                     return pytesseract.image_to_string(img, lang=self._lang) or ""
             except Exception:
                 pass
-
         if self._backend in ("paddleocr", "auto"):
             try:
                 from paddleocr import PaddleOCR
@@ -37,7 +40,6 @@ class InfraOCRAdapter:
                     return " ".join(line[1][0] for line in result[0])
             except Exception:
                 pass
-
         return ""
 
     def ocr_frames(self, frames: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -52,8 +54,8 @@ class InfraOCRAdapter:
         return out
 
 
-def create_infra_ocr_adapter() -> InfraOCRAdapter:
-    return InfraOCRAdapter()
+def create_infra_ocr_adapter(**kwargs) -> InfraOCRAdapter:
+    return InfraOCRAdapter(**kwargs)
 
 
 __all__ = ["InfraOCRAdapter", "create_infra_ocr_adapter"]
