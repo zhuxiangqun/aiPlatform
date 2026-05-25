@@ -1,0 +1,204 @@
+"""
+App service — publish workflows as apps (API / Chat / Webhook).
+"""
+from __future__ import annotations
+
+import hashlib
+import hmac
+import logging
+import secrets
+from typing import Any, Dict, List, Optional
+
+from core.utils.ids import new_prefixed_id
+from storage.sqlite import (
+    list_apps, get_app, create_app, delete_app,
+    create_webhook_secret, get_webhook_secret,
+    get_workflow, list_workflow_runs,
+)
+from storage import sqlite as platform_store
+
+_logger = logging.getLogger("aiplat.platform.app_service")
+
+
+class AppService:
+
+    async def publish(self, workflow_id: str, name: str, mode: str = "chat", description: str = "") -> Dict[str, Any]:
+        wf = get_workflow(workflow_id)
+        if not wf:
+            raise ValueError(f"workflow not found: {workflow_id}")
+        if not name.strip():
+            name = wf.get("name", "未命名") + (" Chat" if mode == "chat" else " API" if mode == "api" else " Webhook")
+        app_id = new_prefixed_id("app")
+        app = create_app(app_id, name.strip(), workflow_id, mode, description.strip())
+        if mode == "webhook":
+            secret = secrets.token_hex(24)
+            create_webhook_secret(app_id, secret)
+            app["webhook_secret"] = secret
+        return app
+
+    async def list(self) -> List[Dict[str, Any]]:
+        apps = list_apps()
+        for a in apps:
+            try:
+                wf = get_workflow(a["workflow_id"])
+                a["workflow_name"] = wf.get("name", "") if wf else ""
+            except:
+                a["workflow_name"] = ""
+        return apps
+
+    async def get(self, app_id: str) -> Optional[Dict[str, Any]]:
+        app = get_app(app_id)
+        if not app:
+            return None
+        try:
+            wf = get_workflow(app["workflow_id"])
+            app["workflow_name"] = wf.get("name", "") if wf else ""
+            app["nodes"] = (wf.get("nodes") or []) if wf else []
+            app["edges"] = (wf.get("edges") or []) if wf else []
+        except:
+            app["workflow_name"] = ""
+            app["nodes"] = []
+            app["edges"] = []
+        if app["mode"] == "webhook":
+            app["webhook_secret"] = get_webhook_secret(app_id) or ""
+        return app
+
+    async def delete(self, app_id: str) -> bool:
+        return delete_app(app_id)
+
+    async def _run_workflow(self, workflow_id: str, user_input: str, run_name: str = "") -> Dict[str, Any]:
+        """Run a workflow with user input injected into Start node."""
+        from builder.builder_workflow_service import WorkflowService
+        wfs = WorkflowService()
+        return await wfs.execute(workflow_id, launch_name=run_name or "")
+
+    def _build_stages_from_nodes(self, nodes: list, edges: list) -> list:
+        stages = []
+        for i, n in enumerate(nodes):
+            d = n.get("data", {}) or {}
+            cfg = d.get("config", {}) or {}
+            nt = d.get("type", "agent")
+            stages.append({
+                "id": n.get("id", f"n_{i}"),
+                "agent_id": cfg.get("agentId", nt),
+                "agent_name": d.get("label", "Node"),
+                "type": nt,
+                "order": i,
+                "depends_on": [e.get("source") for e in edges if e.get("target") == n.get("id")],
+                "config": cfg,
+                "node_type": nt,
+                "node_config": cfg,
+            })
+        return stages
+
+    async def run_api(self, app_id: str, inputs: Dict[str, Any]) -> Dict[str, Any]:
+        """API mode: sync execute and return output."""
+        app = get_app(app_id)
+        if not app:
+            raise ValueError(f"app not found: {app_id}")
+        wf = get_workflow(app["workflow_id"])
+        if not wf:
+            raise ValueError(f"workflow not found: {app['workflow_id']}")
+        nodes = wf.get("nodes") or []
+        edges = wf.get("edges") or []
+        user_input = str(inputs.get("input", inputs.get("message", "")))
+        stages = self._build_stages_from_nodes(nodes, edges)
+        from builder.builder_project_service import BuilderProjectService
+        from builder.builder_team_service import BuilderTeamService
+        from core.schemas_builder import ProjectCreateRequest
+        svc = BuilderProjectService(team_service=BuilderTeamService())
+        proj = await svc.create_project(ProjectCreateRequest(
+            name=f"{app['name']}-api-run",
+            description=f"API run for app {app_id}",
+            stages=stages,
+        ))
+        from storage.sqlite import record_workflow_run
+        record_workflow_run(app["workflow_id"], proj.project_id, f"api:{user_input[:30]}")
+        import threading
+        def _run():
+            import asyncio
+            loop = asyncio.new_event_loop()
+            try:
+                loop.run_until_complete(svc.start_pipeline(proj.project_id))
+            except Exception:
+                pass
+            finally:
+                loop.close()
+        threading.Thread(target=_run, daemon=True).start()
+        return {"run_id": proj.project_id, "app_id": app_id, "mode": "api"}
+
+    async def run_chat(self, app_id: str, message: str) -> Dict[str, Any]:
+        """Chat mode: execute workflow with conversation context."""
+        app = get_app(app_id)
+        if not app:
+            raise ValueError(f"app not found: {app_id}")
+        wf = get_workflow(app["workflow_id"])
+        if not wf:
+            raise ValueError(f"workflow not found: {app['workflow_id']}")
+        if not message.strip():
+            raise ValueError("message is required")
+        nodes = wf.get("nodes") or []
+        edges = wf.get("edges") or []
+        stages = self._build_stages_from_nodes(nodes, edges)
+        from builder.builder_project_service import BuilderProjectService
+        from builder.builder_team_service import BuilderTeamService
+        from core.schemas_builder import ProjectCreateRequest
+        svc = BuilderProjectService(team_service=BuilderTeamService())
+        proj = await svc.create_project(ProjectCreateRequest(
+            name=f"{app['name']}-chat",
+            description=f"Chat message: {message[:50]}",
+            stages=stages,
+        ))
+        from storage.sqlite import record_workflow_run
+        record_workflow_run(app["workflow_id"], proj.project_id, f"chat:{message[:30]}")
+        import threading
+        def _run():
+            import asyncio
+            loop = asyncio.new_event_loop()
+            try:
+                loop.run_until_complete(svc.start_pipeline(proj.project_id))
+            except Exception:
+                pass
+            finally:
+                loop.close()
+        threading.Thread(target=_run, daemon=True).start()
+        return {"run_id": proj.project_id, "app_id": app_id, "input": message, "mode": "chat"}
+
+    async def run_webhook(self, app_id: str, secret: str, body: Dict[str, Any]) -> Dict[str, Any]:
+        """Webhook mode: verify secret, execute async."""
+        stored = get_webhook_secret(app_id)
+        if not stored or not hmac.compare_digest(stored, secret):
+            raise ValueError("invalid webhook secret")
+        app = get_app(app_id)
+        if not app:
+            raise ValueError(f"app not found: {app_id}")
+        wf = get_workflow(app["workflow_id"])
+        if not wf:
+            raise ValueError(f"workflow not found: {app['workflow_id']}")
+        nodes = wf.get("nodes") or []
+        edges = wf.get("edges") or []
+        user_input = str(body.get("input", body.get("message", "")))
+        stages = self._build_stages_from_nodes(nodes, edges)
+        from builder.builder_project_service import BuilderProjectService
+        from builder.builder_team_service import BuilderTeamService
+        from core.schemas_builder import ProjectCreateRequest
+        svc = BuilderProjectService(team_service=BuilderTeamService())
+        proj = await svc.create_project(ProjectCreateRequest(
+            name=f"{app['name']}-webhook",
+            description=f"Webhook trigger",
+            stages=stages,
+        ))
+        from storage.sqlite import record_workflow_run
+        record_workflow_run(app["workflow_id"], proj.project_id, f"webhook:{user_input[:30]}")
+        import threading
+        def _run():
+            import asyncio
+            loop = asyncio.new_event_loop()
+            try:
+                loop.run_until_complete(svc.start_pipeline(proj.project_id))
+            except Exception:
+                pass
+            finally:
+                loop.close()
+        threading.Thread(target=_run, daemon=True).start()
+        return {"run_id": proj.project_id, "app_id": app_id, "mode": "webhook"}
