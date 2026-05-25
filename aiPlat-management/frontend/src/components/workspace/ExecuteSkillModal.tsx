@@ -12,7 +12,7 @@ interface ExecuteSkillModalProps {
 
 const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onClose }) => {
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ status: string; output?: unknown; error?: any; error_message?: string; error_detail?: any; duration_ms?: number } | null>(null);
+  const [result, setResult] = useState<{ status: string; output?: unknown; error?: any; error_message?: string; error_detail?: any; duration_ms?: number; tokens?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } } | null>(null);
   const [inputText, setInputText] = useState('');
   const [helpLoading, setHelpLoading] = useState(false);
   const [helpMarkdown, setHelpMarkdown] = useState<string>('');
@@ -196,6 +196,14 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
             <span className={`text-xs px-2 py-0.5 rounded ${result.status === 'completed' ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'}`}>
               {result.status}
             </span>
+            {result.tokens && (
+              <span className="text-xs text-gray-400 ml-3">
+                Token: {result.tokens.total_tokens?.toLocaleString() || '-'}
+                <span className="text-gray-500 ml-1">
+                  (Prompt {result.tokens.prompt_tokens?.toLocaleString() || '-'} + Output {result.tokens.completion_tokens?.toLocaleString() || '-'})
+                </span>
+              </span>
+            )}
           </div>
           {result.duration_ms != null && <div className="text-xs text-gray-400 mb-2">耗时: {result.duration_ms}ms</div>}
           {result.output !== undefined && result.output !== null && (

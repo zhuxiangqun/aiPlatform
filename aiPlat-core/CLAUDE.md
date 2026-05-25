@@ -798,6 +798,56 @@ done
 
 ---
 
+## 5.31 模型管理单一真相源（强制）
+
+**aiPlat-infra 的 ModelManager 是系统唯一的模型目录。** core 不再自行维护模型列表。
+
+### 核心规则
+
+| 规则 | 说明 |
+|------|------|
+| **禁止 core 自行加载模型** | core 不得直接 `import sentence_transformers`、`import faster_whisper`、`import PaddleOCR` 等加载模型。所有模型调用必须通过 infra 的适配器 |
+| **ModelRegistry → deprecated** | `core/harness/infrastructure/model_registry.py` 标记为 deprecated，改为从 infra `ModelManager` 获取模型列表 |
+| **ModelRouter → deprecated** | `core/harness/infrastructure/model_router.py` 标记为 deprecated，模型选择/路由逻辑迁移到 infra |
+| **LLM 调用 → InfraLLMAdapter** | 所有 LLM 调用通过 infra 的 `LLMClient`（已接线 ✅） |
+| **Embedding → 待接线** | 当前 `core/harness/knowledge/embedder.py` 直接加载 sentence-transformers（绕过 infra），需迁移为 InfraEmbeddingAdapter |
+| **Reranker → 待接线** | 当前 `core/harness/knowledge/reranker.py` 直接加载 AutoModel（绕过 infra），需迁移为 InfraRerankerAdapter |
+| **Whisper → 待接线** | 当前 `core/harness/document/transcriber.py` 直接加载 faster_whisper（绕过 infra），需迁移为 InfraAudioAdapter |
+
+### `core/harness/infrastructure/` 目录职责
+
+该目录的职责是**运行时基础设施服务**，**不包含模型管理**。
+
+| 模块 | 职责 | 状态 |
+|------|------|:---:|
+| `di/`, `hooks/`, `gates/`, `approval/`, `crypto/`, `config/`, `secrets/` | Harness 运行时服务（DI 容器、Hook 系统、Policy Gate、审批管理、加密签名、配置管理、密钥管理） | ✅ 合规 |
+| `infra_bridge.py` | 桥接 core→infra（ModelManager、LLM、Database、Vector） | ✅ 合规 |
+| `infra_llm_adapter.py` | 包装 infra LLMClient 为 core ILLMAdapter（**core 唯一 LLM 适配器**） | ✅ 合规 |
+| `model_registry.py` | **与 infra ModelManager 重复** | ⚠️ deprecated |
+| `model_router.py` | **与 infra 路由重复** | ⚠️ deprecated |
+
+### Core 侧：通用 Adapter，禁止 per-provider 类
+
+core 每种能力类型**只有一个适配器**，不按 provider 分文件：
+
+| 能力类型 | 适配器 | 对应 infra 接口 | 状态 |
+|---------|--------|---------------|:---:|
+| LLM | `InfraLLMAdapter` | `LLMClient` | ✅ 已接线 |
+| Embedding | `InfraEmbeddingAdapter` | `EmbeddingClient` | ⏳ 待接线 |
+| Reranker | `InfraRerankerAdapter` | `RerankerClient` | ⏳ 待接线 |
+| Audio | `InfraAudioAdapter` | `AudioClient` | ⏳ 待接线 |
+
+**禁止**：
+- ❌ `openai_adapter.py`、`anthropic_adapter.py`、`deepseek_adapter.py` 等 per-provider 适配器类
+- ❌ `base.py::create_adapter()` 中的 `if provider == "openai" → ... elif provider == "deepseek" → ...` 工厂分叉
+- 原因：违反开闭原则。新增一个模型提供商不应改 core 代码
+
+**设计文档依据**：
+- 根 `CLAUDE.md` §12（模型解析中心化）、§14（模型管理层级）
+- `aiPlat-infra/CLAUDE.md` §5.6（接线状态）
+
+---
+
 ## 6) 输出要求（每次提交给用户的结果必须包含）
 - 改动摘要（改了哪些文件，为什么）
 - 验证结果（跑了什么命令，是否通过）

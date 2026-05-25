@@ -197,90 +197,38 @@ mcp:
   
   servers: {}
   
-  timeout: 30
+   timeout: 30
+   
+   retry:
+     max_attempts: 3
+
+# 模型发现配置（启动时从环境变量 + 本地扫描动态构建模型列表）
+model_discovery:
+  # 从环境变量读取的 remote 模型（逗号分隔的 model_name 列表）
+  env_models:
+    - env: DEEPSEEK_API_KEY
+      provider: openai_compatible
+      base_url: https://api.deepseek.com
+      type: chat
+      capability: chat
+    - env: OPENAI_API_KEY
+      provider: openai_compatible
+      base_url: https://api.openai.com/v1
+      type: chat
+      capability: chat
+    - env: ANTHROPIC_API_KEY
+      provider: anthropic
+      base_url: https://api.anthropic.com
+      type: chat
+      capability: chat
   
-  retry:
-    max_attempts: 3
-
-# 模型配置
-models:
-  # DeepSeek 模型（主LLM）
-  - name: deepseek-reasoner
-    provider: deepseek
-    type: chat
-    display_name: DeepSeek Reasoner
-    api_key_env: DEEPSEEK_API_KEY
-    base_url: https://api.deepseek.com
-    enabled: true
-    description: "DeepSeek 推理模型，适合复杂推理任务"
-    tags:
-      - deepseek
-      - chat
-      - reasoning
-    capabilities:
-      - chat
-      - reasoning
-    
-  - name: deepseek-chat
-    provider: deepseek
-    type: chat
-    display_name: DeepSeek Chat
-    api_key_env: DEEPSEEK_API_KEY
-    base_url: https://api.deepseek.com
-    enabled: true
-    description: "DeepSeek 对话模型，快速响应"
-    tags:
-      - deepseek
-      - chat
-    capabilities:
-      - chat
-
-  # 本地 Embedding 模型
-  - name: all-mpnet-base-v2
-    provider: local-embedding
-    type: embedding
-    display_name: All-MPNet Base v2
-    enabled: true
-    description: "本地 Embedding 模型，768维，免费无需API"
-    tags:
-      - local
-      - embedding
-      - huggingface
-    capabilities:
-      - embedding
-
-  # OpenAI 模型（可选）
-  - name: gpt-4
-    provider: openai
-    type: chat
-    display_name: GPT-4
-    api_key_env: OPENAI_API_KEY
-    enabled: false
-    description: "OpenAI GPT-4 大型语言模型"
-    tags:
-      - openai
-      - chat
-    capabilities:
-      - chat
-      - function_call
-  
-  - name: text-embedding-ada-002
-    provider: openai
-    type: embedding
-    display_name: Ada Embeddings
-    api_key_env: OPENAI_API_KEY
-    enabled: false
-    description: "OpenAI 文本嵌入模型"
-    tags:
-      - openai
-      - embedding
-    capabilities:
-      - embedding
-
-# Ollama 配置
-ollama:
-  endpoint: http://localhost:11434
-  auto_scan: true
+  # 本地模型 endpoint 扫描（自动发现）
+  local_scan:
+    endpoints:
+      - http://localhost:11434  # Ollama
+      - http://localhost:1234   # LM Studio
+      - http://localhost:8000   # oMLX / vLLM / llama.cpp server
+    auto_scan: true
 
 # 本地 Embedding 模型配置
 local_embedding:

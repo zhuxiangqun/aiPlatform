@@ -7,6 +7,7 @@ import type { McpServer } from '../../../services';
 import AddMcpModal from '../../../components/workspace/AddMcpModal';
 import EditMcpModal from '../../../components/workspace/EditMcpModal';
 import { toastGateError } from '../../../components/ui';
+import ImportBar from '../../../components/workspace/ImportBar';
 
 const WorkspaceMCP: React.FC = () => {
   const { servers, loading, fetchServers, setServerEnabled } = useWorkspaceMcpStore();
@@ -126,6 +127,8 @@ const WorkspaceMCP: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      <ImportBar assetType="mcps" alsoScan={['agents', 'skills']} onImported={() => fetchServers()} />
 
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-dark-card rounded-xl border border-dark-border overflow-hidden">
         <Table columns={columns} data={servers} rowKey="name" loading={loading} emptyText="暂无 MCP Server" />

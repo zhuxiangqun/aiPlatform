@@ -1,6 +1,14 @@
 """
 Model Router — task-aware dynamic model selection with failure fallback.
 
+**DEPRECATED** as of 2026-05. Model selection, failover, and health tracking
+have been migrated to aiPlat-infra's ModelManager. This module is retained
+for backward compatibility only and will be removed in a future release.
+
+Use infra's ModelManager.list_models() and LLMClient for model access.
+
+--- (legacy code below, do not extend) ---
+
 Replaces the hardcoded single-model pattern in sys_llm_generate with a
 deployment-aware router that:
   1. Picks the best model for the current task

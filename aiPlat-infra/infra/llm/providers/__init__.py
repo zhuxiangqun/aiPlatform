@@ -1,6 +1,5 @@
-from .openai import OpenAIClient
+from .openai_compatible import OpenAICompatibleClient, OpenAIClient, DeepSeekClient
 from .anthropic import AnthropicClient
-from .deepseek import DeepSeekClient
 from .local import LocalLLMClient
 
-__all__ = ["OpenAIClient", "AnthropicClient", "DeepSeekClient", "LocalLLMClient"]
+__all__ = ["OpenAICompatibleClient", "OpenAIClient", "DeepSeekClient", "AnthropicClient", "LocalLLMClient"]

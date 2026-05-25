@@ -236,32 +236,17 @@ def create_adapter(
             adapter: ILLMAdapter = InfraLLMAdapter(client, provider=provider, model=model)
             adapter.model_name = model  # type: ignore[attr-defined]
             return adapter
-        except Exception:
-            if os.getenv("AIPLAT_ENABLE_CORE_ADAPTER_FALLBACK", "false").lower() not in ("1", "true", "yes", "y"):
-                raise RuntimeError(
-                    f"Infra LLM adapter unavailable for provider '{provider}'. "
-                    f"Set AIPLAT_ENABLE_CORE_ADAPTER_FALLBACK=true to use core's legacy adapters as fallback, "
-                    f"or ensure aiplat-infra is installed and configured."
-                )
-            # fall through to core adapters
+        except Exception as e:
+            # Infra unavailable — provide clear diagnostic
+            detail = str(e)[:200]
+            raise RuntimeError(
+                f"Infra LLM adapter unavailable for provider '{provider}'. "
+                f"Core→infra bridge requires aiplat-infra to be installed and the infra service running. "
+                f"Error detail: {detail}"
+            )
 
-    # ── Fallback: core adapters (mock/scripted for testing, or opt-in via flag) ──
-    if provider in ("openai", "deepseek", "anthropic", "local"):
-        if os.getenv("AIPLAT_ENABLE_CORE_ADAPTER_FALLBACK", "false").lower() in ("1", "true", "yes", "y"):
-            try:
-                from .openai_adapter import OpenAIAdapter
-                adapter = OpenAIAdapter(api_key=api_key, model=model, base_url=base_url, **kwargs)
-                adapter.model_name = model
-                return adapter
-            except Exception:
-                pass
-        raise RuntimeError(
-            f"Core adapter for '{provider}' has been retired. "
-            f"LLM access now exclusively routes through aiplat-infra. "
-            f"Ensure 'aiplat-infra' is installed and configured, "
-            f"or set AIPLAT_ENABLE_CORE_ADAPTER_FALLBACK=true for backward compat."
-        )
-    elif provider == "mock":
+    # ── mock / scripted (test only) ──
+    if provider == "mock":
         MockAdapter = importlib.import_module(f"{__package__}.mock_adapter").MockAdapter
         adapter = MockAdapter(model=model, **kwargs)
     elif provider == "scripted":

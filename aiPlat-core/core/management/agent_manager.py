@@ -1097,4 +1097,68 @@ class AgentManager:
         agent.version = version
         agent.updated_at = datetime.utcnow()
 
+    # ── Installer methods (workspace scope only) ────────────────────────
+
+    async def installer_install(self, *, source_type: str, url: Optional[str] = None,
+                                ref: Optional[str] = None, path: Optional[str] = None,
+                                agent_id: Optional[str] = None, subdir: Optional[str] = None,
+                                auto_detect_subdir: bool = True, allow_overwrite: bool = False,
+                                metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        scope = (self._scope or "engine").strip().lower()
+        if scope != "workspace":
+            raise PermissionError("installer_install_only_allowed_in_workspace_scope")
+        from core.management.asset_installer import AgentInstaller
+        base = self._resolve_agents_base_path()
+        base.mkdir(parents=True, exist_ok=True)
+        inst = AgentInstaller(target_base_dir=base)
+        st = str(source_type or "").strip().lower()
+        if st == "git":
+            res = inst.install_from_git(url=str(url or ""), ref=str(ref or ""),
+                asset_id=agent_id, subdir=subdir, auto_detect_subdir=bool(auto_detect_subdir),
+                allow_overwrite=bool(allow_overwrite), metadata=metadata)
+        elif st == "path":
+            res = inst.install_from_path(path=str(path or ""), asset_id=agent_id,
+                subdir=subdir, auto_detect_subdir=bool(auto_detect_subdir),
+                allow_overwrite=bool(allow_overwrite), metadata=metadata)
+        elif st == "zip":
+            res = inst.install_from_zip(zip_path=str(path or ""), asset_id=agent_id,
+                subdir=subdir, auto_detect_subdir=bool(auto_detect_subdir),
+                allow_overwrite=bool(allow_overwrite), metadata=metadata)
+        else:
+            raise ValueError("invalid_source_type")
+        self._load_directory_agents()
+        return {"installed": res.installed, "skipped": res.skipped, "base": str(base)}
+
+    async def installer_plan(self, *, source_type: str, url: Optional[str] = None,
+                             ref: Optional[str] = None, path: Optional[str] = None,
+                             agent_id: Optional[str] = None, subdir: Optional[str] = None,
+                             auto_detect_subdir: bool = True,
+                             metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        scope = (self._scope or "engine").strip().lower()
+        if scope != "workspace":
+            raise PermissionError("installer_plan_only_allowed_in_workspace_scope")
+        from core.management.asset_installer import AgentInstaller
+        base = self._resolve_agents_base_path()
+        inst = AgentInstaller(target_base_dir=base)
+        st = str(source_type or "").strip().lower()
+        if st == "git":
+            plan = inst.plan_from_git(url=str(url or ""), ref=str(ref or ""),
+                asset_id=agent_id, subdir=subdir, auto_detect_subdir=bool(auto_detect_subdir),
+                metadata=metadata)
+        elif st == "path":
+            plan = inst.plan_from_path(path=str(path or ""), asset_id=agent_id,
+                subdir=subdir, auto_detect_subdir=bool(auto_detect_subdir), metadata=metadata)
+        elif st == "zip":
+            plan = inst.plan_from_zip(zip_path=str(path or ""), asset_id=agent_id,
+                subdir=subdir, auto_detect_subdir=bool(auto_detect_subdir), metadata=metadata)
+        else:
+            raise ValueError("invalid_source_type")
+        return {"source": plan.source, "detected_subdir": plan.detected_subdir,
+                "agents": plan.assets, "warnings": plan.warnings,
+                "claude_plugin": plan.claude_plugin}
+
+    async def installer_resolve_head(self, *, url: str) -> Dict[str, Any]:
+        from core.management.asset_installer import resolve_remote_head_sha
+        return {"url": url, "sha": resolve_remote_head_sha(url)}
+
         return True

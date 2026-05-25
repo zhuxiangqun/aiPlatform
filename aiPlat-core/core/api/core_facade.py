@@ -1020,7 +1020,7 @@ async def run_workspace_agent(
 
     from core.harness.execution.langgraph.stage_runner import StageRunner
     runner = StageRunner(model=agent_model, tools=resolved_tools)
-    state = {"session_id": session_id, "_coding_policy_profile": "off", "_user_id": "system", "_enable_query_rewrite": True}
+    state = {"session_id": session_id, "_run_id": run_id, "_coding_policy_profile": "off", "_user_id": "system", "_enable_query_rewrite": True}
 
     status = "completed"
     result_text = ""
@@ -1049,9 +1049,23 @@ async def run_workspace_agent(
     except Exception:
         pass
 
+    # Query token usage from syscall_events for this run
+    tokens = None
+    try:
+        from core.services.execution_store import get_execution_store
+        store = get_execution_store()
+        cost = await store.get_run_cost_summary(run_id=run_id)
+        if cost.get("ok"):
+            tokens = cost.get("llm_tokens")
+    except Exception:
+        pass
+
     is_error = status != "completed" or (result_text and "STAGE_ERROR" in result_text)
-    return {"ok": not is_error, "status": status if not is_error else "failed",
+    resp = {"ok": not is_error, "status": status if not is_error else "failed",
             "output": result_text if not is_error else None, "error": error_msg if is_error else None, "run_id": run_id}
+    if tokens:
+        resp["tokens"] = tokens
+    return resp
 
 
 def get_chat_service_model(rt: Any = None) -> Any:

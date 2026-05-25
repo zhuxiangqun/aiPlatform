@@ -18,7 +18,7 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
   const [helpLoading, setHelpLoading] = useState(false);
   const [helpMarkdown, setHelpMarkdown] = useState<string>('');
   const [examples, setExamples] = useState<Array<{ title: string; content: string }>>([]);
-  const [result, setResult] = useState<{ status: string; execution_id?: string; output?: unknown; error?: any; error_message?: string; error_detail?: any; run_id?: string } | null>(null);
+  const [result, setResult] = useState<{ status: string; execution_id?: string; output?: unknown; error?: any; error_message?: string; error_detail?: any; run_id?: string; tokens?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } } | null>(null);
   const [toolset, setToolset] = useState<string>('workspace_default');
   const [showFlow, setShowFlow] = useState(false);
   const [stopping, setStopping] = useState(false);
@@ -133,7 +133,7 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
     try {
       const result = await workspaceAgentApi.execute(agent.id, { input: parsedInput, options: { ...((parsedInput.options || {}) as Record<string, unknown>), toolset }, config: (parsedInput.config || {}) as Record<string, unknown> });
       const status = String((result as any)?.status || 'ok');
-      setResult({ status, execution_id: String((result as any)?.execution_id || ''), run_id: String((result as any)?.run_id || (result as any)?.execution_id || ''), output: (result as any)?.output, error: (result as any)?.error });
+      setResult({ status, execution_id: String((result as any)?.execution_id || ''), run_id: String((result as any)?.run_id || (result as any)?.execution_id || ''), output: (result as any)?.output, error: (result as any)?.error, tokens: (result as any)?.tokens });
       if (status === 'completed') toast.success('执行成功'); else toast.success(`状态: ${status}`);
     } catch (e: any) { setResult({ status: 'failed', error: String(e?.message || e?.detail || '执行失败') }); toastGateError(e, '执行失败'); }
     finally { setLoading(false); }
@@ -312,6 +312,14 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
                     <span className={`text-xs px-2 py-0.5 rounded ${result.status === 'completed' ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'}`}>
                       {result.status}
                     </span>
+                    {result.tokens && (
+                      <span className="text-xs text-gray-400 ml-3">
+                        Token: {result.tokens.total_tokens?.toLocaleString() || '-'}
+                        <span className="text-gray-500 ml-1">
+                          (Prompt {result.tokens.prompt_tokens?.toLocaleString() || '-'} + Output {result.tokens.completion_tokens?.toLocaleString() || '-'})
+                        </span>
+                      </span>
+                    )}
                   </div>
                   {result.output !== undefined && result.output !== null && (
                     <pre className="text-xs text-gray-300 overflow-auto max-h-60 bg-dark-card border border-dark-border rounded-lg p-3">

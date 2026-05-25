@@ -515,4 +515,62 @@ async def disable_workspace_mcp_server(server_name: str):
     if store:
         await audit_event(store=store, kind="mcp_admin", name="workspace.mcp.disable", status="success", args={"server_name": server_name})
     await sync_mcp_runtime(mcp_manager=_mcp_manager(), workspace_mcp_manager=mgr)
+
+
+# ── MCP Installer endpoints (workspace scope) ──────────────────────
+
+@router.post("/workspace/mcps/installer/plan")
+async def workspace_mcps_installer_plan(request: dict, rt: RuntimeDep = None):
+    mgr = _workspace_mcp_manager()
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
+    try:
+        return await mgr.installer_plan(
+            source_type=str(request.get("source_type", "")),
+            url=request.get("url"),
+            ref=request.get("ref"),
+            path=request.get("path"),
+            mcp_id=request.get("mcp_id"),
+            subdir=request.get("subdir"),
+            auto_detect_subdir=bool(request.get("auto_detect_subdir", True)),
+            metadata=request.get("metadata"),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
+
+@router.post("/workspace/mcps/installer/install")
+async def workspace_mcps_installer_install(request: dict, rt: RuntimeDep = None):
+    mgr = _workspace_mcp_manager()
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
+    try:
+        return await mgr.installer_install(
+            source_type=str(request.get("source_type", "")),
+            url=request.get("url"),
+            ref=request.get("ref"),
+            path=request.get("path"),
+            mcp_id=request.get("mcp_id"),
+            subdir=request.get("subdir"),
+            auto_detect_subdir=bool(request.get("auto_detect_subdir", True)),
+            allow_overwrite=bool(request.get("allow_overwrite", False)),
+            metadata=request.get("metadata"),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
+
+@router.post("/workspace/mcps/installer/resolve-head")
+async def workspace_mcps_installer_resolve_head(request: dict, rt: RuntimeDep = None):
+    mgr = _workspace_mcp_manager()
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
+    try:
+        return await mgr.installer_resolve_head(url=str(request.get("url", "")))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return {"status": "disabled"}

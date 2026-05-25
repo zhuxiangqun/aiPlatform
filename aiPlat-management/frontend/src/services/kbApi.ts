@@ -383,6 +383,18 @@ export const kbApi = {
   listEvalReports: async (limit = 50, offset = 0) => {
     return apiClient.get<any>(`/core/kb-eval/reports?limit=${limit}&offset=${offset}`);
   },
+  reportsTimeSeries: async (days = 30) => {
+    return apiClient.get<any>(`/core/kb-eval/reports/series?days=${days}`);
+  },
+  compareReports: async (sessionA = '', sessionB = '') => {
+    return apiClient.get<any>(`/core/kb-eval/reports/compare?session_a=${sessionA}&session_b=${sessionB}`);
+  },
+  importEvalSamples: async (file: File) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await fetch('/api/core/kb-eval/samples/import', { method: 'POST', body: fd });
+    return res.json();
+  },
 
   // ── Tools ──
   createWithAi: async (title: string, prompt: string, collection_id = 'default') => {

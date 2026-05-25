@@ -47,6 +47,15 @@ async def get_run(run_id: str):
         raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
 
 
+@router.get("/runs/{run_id}/cost")
+async def get_run_cost(run_id: str, tenant_id: Optional[str] = None):
+    try:
+        client = get_core_client()
+        return await client.get_run_cost(run_id, tenant_id=tenant_id)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
 # ==================== Approvals ====================
 
 

@@ -1010,6 +1010,10 @@ def create_app() -> FastAPI:
         tags: Optional[List[str]] = None
         capabilities: Optional[List[str]] = None
         config: Optional[Dict[str, Any]] = None
+        id: Optional[str] = None
+        base_url: Optional[str] = None
+        api_key_env: Optional[str] = None
+        enabled: Optional[bool] = None
     
     @app.post("/api/infra/models")
     async def add_model(request: ModelCreateRequest):
@@ -1020,15 +1024,26 @@ def create_app() -> FastAPI:
                 raise HTTPException(status_code=404, detail="Model manager not found")
             
             from ..model import ModelInfo, ModelType, ModelSource, ModelStatus, ModelConfig
+            import uuid, re
             
             config_data = request.config or {}
+            # Allow flat fields as config fallbacks
+            if request.base_url and "baseUrl" not in config_data and "base_url" not in config_data:
+                config_data["base_url"] = request.base_url
+            if request.api_key_env:
+                config_data["api_key_env"] = request.api_key_env
+            
+            # Auto-generate id if not provided
+            model_id = request.id or f"external:{request.provider}:{re.sub(r'[^a-zA-Z0-9_-]', '-', request.name.lower())}--{uuid.uuid4().hex[:8]}"
+            
             model = ModelInfo(
+                id=model_id,
                 name=request.name,
                 display_name=request.displayName,
                 type=ModelType(request.type),
                 provider=request.provider,
                 source=ModelSource.EXTERNAL,
-                enabled=True,
+                enabled=request.enabled if request.enabled is not None else True,
                 status=ModelStatus.NOT_CONFIGURED,
                 config=ModelConfig(
                     temperature=config_data.get("temperature", 0.7),

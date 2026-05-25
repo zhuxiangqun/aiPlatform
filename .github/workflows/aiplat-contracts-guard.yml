@@ -173,6 +173,10 @@ jobs:
             core/tests/integration/test_phaseR1_prompt_assembler_layers_cache.py \
             core/tests/integration/test_phaseR1_prompt_mode.py
 
+      - name: RAG quality regression test
+        run: |
+          python scripts/rag_eval_cli.py --all --threshold 0.5 || echo "::warning::RAG eval below threshold — review KB quality"
+
       - name: E2E smoke test (warn-only)
         continue-on-error: true
         run: |

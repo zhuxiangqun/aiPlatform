@@ -1,36 +1,36 @@
-from typing import Optional
+from typing import Optional, Set
 from .schemas import LLMConfig
 from .base import LLMClient
 
+# Providers that use the OpenAI-compatible client (same API protocol)
+_OPENAI_COMPATIBLE_PROVIDERS: Set[str] = {
+    "openai", "deepseek", "qwen", "xai", "lmstudio", "omlx", "vllm",
+    "openai_compatible",
+}
+
 
 def create(config: Optional[LLMConfig] = None) -> LLMClient:
-    """创建 LLM 客户端（便捷函数）"""
+    """Shortcut for create_llm_client."""
     return create_llm_client(config)
 
 
 def create_llm_client(config: Optional[LLMConfig] = None) -> LLMClient:
     config = config or LLMConfig()
+    provider = (config.provider or "").lower()
 
-    if config.provider == "openai":
-        from .providers import OpenAIClient
-
-        return OpenAIClient(config)
-    elif config.provider == "anthropic":
+    if provider in _OPENAI_COMPATIBLE_PROVIDERS:
+        from .providers import OpenAICompatibleClient
+        return OpenAICompatibleClient(config)
+    elif provider == "anthropic":
         try:
             from .providers import AnthropicClient
-
             return AnthropicClient(config)
         except ImportError:
             raise ImportError(
-                "anthropic is required for Anthropic support. Install with: pip install anthropic"
+                "anthropic package required for Anthropic support. pip install anthropic"
             )
-    elif config.provider == "deepseek":
-        from .providers import DeepSeekClient
-
-        return DeepSeekClient(config)
-    elif config.provider == "local":
+    elif provider == "local":
         from .providers import LocalLLMClient
-
         return LocalLLMClient(config)
     else:
         raise ValueError(f"Unknown LLM provider: {config.provider}")

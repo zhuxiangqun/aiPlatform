@@ -10,6 +10,7 @@ import ExecuteAgentModal from '../../../components/workspace/ExecuteAgentModal';
 import AgentDetailModal from '../../../components/workspace/AgentDetailModal';
 import AgentVersionsModal from '../../../components/workspace/AgentVersionsModal';
 import AgentHistoryModal from '../../../components/workspace/AgentHistoryModal';
+import ImportBar from '../../../components/workspace/ImportBar';
 import { ChatPanel } from '../../../components/core';
 
 const WorkspaceAgents: React.FC = () => {
@@ -245,6 +246,8 @@ const WorkspaceAgents: React.FC = () => {
           <Button icon={<RotateCw className="w-4 h-4" />} onClick={() => fetchAgents({ agent_type: typeFilter, status: statusFilter })} loading={loading}>刷新</Button>
         </div>
       </div>
+
+      <ImportBar assetType="agents" alsoScan={['skills', 'mcps']} onImported={() => fetchAgents({})} />
 
       <div className="flex flex-wrap items-center gap-4">
         <div className="w-44">

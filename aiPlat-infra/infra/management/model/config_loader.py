@@ -1,7 +1,10 @@
 """
-Config Loader - 加载配置文件中的模型
+Config Loader — discovers models from environment variables + YAML config.
 
-Loads models from YAML configuration files.
+Sources (in priority order):
+1. Environment variables: AIPLAT_LLM_MODEL, AIPLAT_AGENT_MODEL, etc.
+2. YAML model_discovery section: provider + model lists
+3. Local_embedding fallback models
 """
 
 import os
@@ -12,40 +15,102 @@ from datetime import datetime
 from .schemas import ModelInfo, ModelType, ModelSource, ModelStatus, ModelConfig, ModelStats
 
 
+_ENV_MODEL_TEMPLATES = {
+    "DEEPSEEK_API_KEY": (
+        "openai_compatible", "chat", "https://api.deepseek.com", "chat", ["deepseek", "chat", "reasoning"],
+        ["AIPLAT_LLM_MODEL", "AIPLAT_AGENT_MODEL"],
+    ),
+    "OPENAI_API_KEY": (
+        "openai_compatible", "chat", "https://api.openai.com/v1", "chat", ["openai", "chat", "function_call"],
+        ["OPENAI_MODEL", "OPENAI_AGENT_MODEL", "AIPLAT_LLM_MODEL"],
+    ),
+    "ANTHROPIC_API_KEY": (
+        "anthropic", "chat", "https://api.anthropic.com", "chat", ["anthropic", "chat"],
+        ["ANTHROPIC_MODEL", "AIPLAT_LLM_MODEL"],
+    ),
+}
+
+
+def _models_from_env(api_key_env: str, provider: str, model_type: str,
+                     base_url: str, capability: str, tags: List[str],
+                     model_envs: List[str]) -> List[ModelInfo]:
+    """Build ModelInfo list from environment variables. api_key_env gates availability;
+       model_envs provide the actual model names."""
+    import re
+    api_key = os.getenv(api_key_env, "").strip()
+    if not api_key:
+        return []
+
+    seen = set()
+    for env_name in model_envs:
+        val = os.getenv(env_name, "").strip()
+        if not val:
+            continue
+        for name in val.split(","):
+            name = name.strip()
+            if not name or name in seen:
+                continue
+            seen.add(name)
+    # Also check AIPLAT_LLM_MODEL as fallback
+    if not seen:
+        for env_name in ["AIPLAT_LLM_MODEL", "AIPLAT_DOC_LLM_MODEL", "AIPLAT_CODE_GEN_MODEL", "AIPLAT_AGENT_MODEL"]:
+            val = os.getenv(env_name, "").strip()
+            if val and val not in seen:
+                seen.add(val)
+    if not seen:
+        return []
+
+    models = []
+    for name in seen:
+        safe_id = f"{provider}:{re.sub(r'[^a-zA-Z0-9_-]', '-', name.lower())}"
+        models.append(ModelInfo(
+            id=safe_id, name=name, provider=provider,
+            type=ModelType(model_type), source=ModelSource.CONFIG,
+            display_name=name, enabled=True,
+            description=f"Remote model ({provider}) — from env",
+            tags=tags[:], capabilities=[capability],
+            status=ModelStatus.AVAILABLE,
+            config=ModelConfig(api_key_env=api_key_env, base_url=base_url),
+            stats=ModelStats(), created_at=datetime.now(), updated_at=datetime.now(),
+        ))
+    return models
+
+
+def _load_env_models() -> List[ModelInfo]:
+    """Discover all remote models from environment variables."""
+    all_models: List[ModelInfo] = []
+    for env_key, (provider, mtype, url, cap, tags, model_envs) in _ENV_MODEL_TEMPLATES.items():
+        all_models.extend(_models_from_env(env_key, provider, mtype, url, cap, tags, model_envs))
+    return all_models
+
+
 class ConfigLoader:
-    """配置文件模型加载器"""
-    
+    """Model discovery loader — env vars + YAML config."""
+
     def __init__(self, config_path: str = None):
         if config_path is None:
             config_path = self._find_config_file()
         self.config_path = config_path
         self._config_cache = None
-    
+
     def _find_config_file(self) -> str:
-        """查找配置文件"""
         base_dir = os.path.dirname(__file__)
         search_paths = [
             os.path.join(base_dir, "..", "..", "..", "config", "infra", "default.yaml"),
             os.path.join(base_dir, "..", "..", "..", "config", "infra", "development.yaml"),
-            os.path.join(base_dir, "..", "..", "..", "config", "infra", "production.yaml"),
             os.getenv("AIPLAT_INFRA_CONFIG", ""),
         ]
-        
         for path in search_paths:
             if os.path.exists(path):
                 return path
-        
         return ""
-    
+
     def _load_config(self) -> Dict[str, Any]:
-        """加载配置文件"""
         if self._config_cache is not None:
             return self._config_cache
-        
         if not self.config_path or not os.path.exists(self.config_path):
             self._config_cache = {}
             return self._config_cache
-        
         try:
             with open(self.config_path, 'r', encoding='utf-8') as f:
                 self._config_cache = yaml.safe_load(f) or {}
@@ -53,124 +118,89 @@ class ConfigLoader:
         except Exception:
             self._config_cache = {}
             return self._config_cache
-    
+
     def load(self) -> List[ModelInfo]:
-        """加载配置文件中的模型"""
+        """Discover models: env vars first, then YAML model_discovery, then local_embedding."""
+        models: List[ModelInfo] = []
+
+        # 1. Remote models from environment variables (primary source)
+        models.extend(_load_env_models())
+
+        # 2. YAML model_discovery section (fallback if env not set)
         config = self._load_config()
-        models = []
-        
-        # 加载 models 配置
-        models_config = config.get("models", [])
-        for model_cfg in models_config:
-            model = self._parse_model_config(model_cfg, ModelSource.CONFIG)
-            if model:
-                models.append(model)
-        
-        # 加载本地 Embedding 模型
-        local_embedding_config = config.get("local_embedding", {})
-        if local_embedding_config.get("enabled", False):
-            for emb_model in local_embedding_config.get("models", []):
-                model = self._parse_local_embedding_config(emb_model)
+        discovery_cfg = config.get("model_discovery", {}).get("env_models", [])
+        existing_names = {m.name for m in models}
+        for item in discovery_cfg:
+            env_key = item.get("env", "")
+            api_key = os.getenv(env_key, "").strip()
+            if not api_key or env_key in {"DEEPSEEK_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY"}:
+                continue  # already handled above
+            provider = item.get("provider", "openai_compatible")
+            base_url = item.get("base_url", "")
+            mtype = item.get("type", "chat")
+            cap = item.get("capability", "chat")
+            model_name = provider
+            if model_name in existing_names:
+                continue
+            existing_names.add(model_name)
+            import re
+            safe_id = f"{provider}:{re.sub(r'[^a-zA-Z0-9_-]', '-', model_name.lower())}"
+            models.append(ModelInfo(
+                id=safe_id, name=model_name, provider=provider,
+                type=ModelType(mtype), source=ModelSource.CONFIG,
+                display_name=model_name.title(), enabled=True,
+                description=f"Remote model ({provider})",
+                tags=[provider, mtype], capabilities=[cap],
+                status=ModelStatus.AVAILABLE,
+                config=ModelConfig(api_key_env=env_key, base_url=base_url),
+                stats=ModelStats(), created_at=datetime.now(), updated_at=datetime.now(),
+            ))
+
+        # 3. Local embedding models
+        local_emb = config.get("local_embedding", {})
+        if local_emb.get("enabled", False):
+            for emb in local_emb.get("models", []):
+                model = self._parse_local_embedding_config(emb)
                 if model:
                     models.append(model)
-        
-        # 加载 Ollama 默认端点
-        ollama_config = config.get("ollama", {})
-        ollama_endpoint = ollama_config.get("endpoint", "http://localhost:11434")
-        ollama_auto_scan = ollama_config.get("auto_scan", True)
-        
-        # 存储配置供后续使用
-        self._ollama_endpoint = ollama_endpoint
-        self._ollama_auto_scan = ollama_auto_scan
-        
+
         return models
-    
-    def _parse_model_config(self, cfg: Dict[str, Any], source: ModelSource) -> ModelInfo:
-        """解析模型配置"""
-        name = cfg.get("name", "")
-        if not name:
-            return None
-        
-        provider = cfg.get("provider", "")
-        
-        # 生成 ID
-        model_id = f"{provider}:{name}" if provider else name
-        
-        # 解析类型
-        model_type = ModelType.CHAT
-        type_str = cfg.get("type", "chat")
-        try:
-            model_type = ModelType(type_str)
-        except ValueError:
-            pass
-        
-        # 解析配置
-        config = ModelConfig(
-            temperature=cfg.get("temperature", 0.7),
-            max_tokens=cfg.get("max_tokens", cfg.get("maxTokens", 2048)),
-            top_p=cfg.get("top_p", cfg.get("topP", 1.0)),
-            frequency_penalty=cfg.get("frequency_penalty", cfg.get("frequencyPenalty", 0.0)),
-            presence_penalty=cfg.get("presence_penalty", cfg.get("presencePenalty", 0.0)),
-            stop=cfg.get("stop", []),
-            api_key_env=cfg.get("api_key_env", cfg.get("apiKeyEnv")),
-            base_url=cfg.get("base_url", cfg.get("baseUrl")),
-        )
-        
-        model = ModelInfo(
-            id=model_id,
-            name=name,
-            display_name=cfg.get("display_name", cfg.get("displayName", name)),
-            type=model_type,
-            provider=provider,
-            source=source,
-            enabled=cfg.get("enabled", True),
-            status=ModelStatus.AVAILABLE if cfg.get("enabled", True) else ModelStatus.NOT_CONFIGURED,
-            config=config,
-            description=cfg.get("description", ""),
-            tags=cfg.get("tags", []),
-            capabilities=cfg.get("capabilities", ["chat"]),
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
-        )
-        
-        return model
-    
-    def _parse_local_embedding_config(self, cfg: Dict[str, Any]) -> ModelInfo:
-        """解析本地 Embedding 模型配置"""
-        name = cfg.get("name", "")
-        if not name:
-            return None
-        
-        model_id = f"local-embedding:{name}"
-        
-        model = ModelInfo(
-            id=model_id,
-            name=name,
-            display_name=cfg.get("name", name),
-            type=ModelType.EMBEDDING,
-            provider="local-embedding",
-            source=ModelSource.LOCAL,
-            enabled=cfg.get("enabled", True),
+
+    def _parse_local_embedding_config(self, config: Dict[str, Any]) -> ModelInfo:
+        import re
+        name = config.get("name", "")
+        safe_id = f"local-embedding:{re.sub(r'[^a-zA-Z0-9_-]', '-', name.lower())}"
+        return ModelInfo(
+            id=safe_id, name=name, provider="local-embedding",
+            type=ModelType.EMBEDDING, source=ModelSource.CONFIG,
+            display_name=config.get("display_name", name),
+            enabled=config.get("enabled", True),
+            description=config.get("description", f"Local embedding model: {name}"),
+            tags=config.get("tags", ["local", "embedding", "huggingface"]),
+            capabilities=config.get("capabilities", ["embedding"]),
             status=ModelStatus.AVAILABLE,
-            config=ModelConfig(
-                base_url=cfg.get("path", f"sentence-transformers/{name}"),
-            ),
-            description=f"本地 Embedding 模型，{cfg.get('dimension', 768)} 维",
-            tags=["local", "embedding", "huggingface"],
-            capabilities=["embedding"],
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
+            config=ModelConfig(base_url=f"sentence-transformers/{config.get('path', '')}"),
+            stats=ModelStats(), created_at=datetime.now(), updated_at=datetime.now(),
         )
-        
-        return model
-    
-    def get_ollama_config(self) -> Dict[str, Any]:
-        """获取 Ollama 配置"""
-        return {
-            "endpoint": getattr(self, "_ollama_endpoint", "http://localhost:11434"),
-            "auto_scan": getattr(self, "_ollama_auto_scan", True),
-        }
-    
-    def get_llm_config(self) -> Dict[str, Any]:
-        """获取 LLM 配置"""
-        return self._load_config().get("llm", {})
+
+    def get_local_scan_endpoints(self) -> List[str]:
+        """Get list of local model endpoints to scan."""
+        config = self._load_config()
+        local_scan = config.get("model_discovery", {}).get("local_scan", {})
+        endpoints = local_scan.get("endpoints", ["http://localhost:11434"])
+        auto = local_scan.get("auto_scan", True)
+        if not auto:
+            return []
+        # Allow override via env var
+        env_endpoints = os.getenv("AIPLAT_LOCAL_MODEL_ENDPOINTS", "")
+        if env_endpoints:
+            return [e.strip() for e in env_endpoints.split(",") if e.strip()]
+        return endpoints
+
+    def get_ollama_config(self) -> dict:
+        """Legacy Ollama config accessor."""
+        cfg = self._load_config()
+        scan = cfg.get("model_discovery", {}).get("local_scan", {})
+        endpoints = scan.get("endpoints", ["http://localhost:11434"])
+        return {"endpoint": endpoints[0] if endpoints else "http://localhost:11434",
+                "auto_scan": scan.get("auto_scan", True)}

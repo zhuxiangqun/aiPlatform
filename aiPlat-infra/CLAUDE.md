@@ -113,6 +113,18 @@ infra 内所有能力模块必须遵循：
 
 新模块必须在这三层分别落位，禁止跳过接口直接暴露实现类。
 
+#### 5.2.1 Provider 合并规则（强制）
+
+相同 API 协议的 provider 应复用同一个实现类，不应创建 per-provider 文件。
+
+| 协议 | 实现类 | 适用 provider |
+|------|--------|--------------|
+| OpenAI 兼容 | `openai_compatible.py` | OpenAI / DeepSeek / Qwen / xAI / LM Studio / oMLX / vLLM / llama.cpp server |
+| Anthropic 原生 | `anthropic.py` | Claude 系列 |
+| 本地直接加载 | `local.py` | llama_cpp 库、transformers 库 |
+
+新增一个 OpenAI 兼容的 provider 只需改配置（`base_url` + `api_key_env`），不需新增 Python 文件。
+
 ### 5.3 配置驱动（与系统设计原则对齐）
 
 - 所有模块通过配置初始化，不硬编码任何参数
@@ -148,23 +160,41 @@ infra 不依赖任何内部包
 
 ## 5.6 接线状态（强制透明度）
 
-**当前状态：aiPlat-infra 的 18 个能力模块 + 13 个管理器尚未被上层生产代码接入。**
+**接线进度（更新于 2026-05）：**
 
-- `aiPlat-core/pyproject.toml` 已包含 `aiplat-infra` 依赖项
-- `aiPlat-platform/pyproject.toml` 不直接包含 `aiplat-infra` 依赖项（通过 core 间接使用）
-- Core 通过 `infra_bridge.py`、`infra_llm_adapter.py`、`retriever.py`、`base.py` 等 4 个文件接入 infra（合法方向）
+| 能力 | 接线状态 | 详情 |
+|------|:---:|------|
+| **LLM 调用** | ✅ 已接线 | `InfraLLMAdapter` → infra `LLMClient` → provider API |
+| **模型列表** | ✅ 已接线 | `ModelManager.list_models()` 从 env vars + 本地扫描动态构建 |
+| **本地模型扫描** | ✅ 已接线 | Ollama、LM Studio、oMLX/vLLM 自动检测 |
+| **Embedding** | ⏳ 待接线 | core 仍直接加载 sentence-transformers（待迁移为 InfraEmbeddingAdapter） |
+| **Reranker** | ⏳ 待接线 | core 仍直接加载 AutoModel（待迁移为 InfraRerankerAdapter） |
+| **Whisper/STT** | ⏳ 待接线 | core 仍直接加载 faster_whisper（待迁移为 InfraAudioAdapter） |
+| **OCR** | ⏳ 待接线 | platform 仍直接加载 PaddleOCR/Tesseract（待迁移） |
+| **Vector DB** | ⏳ 待接线 | 待迁移 |
+| **Cache** | ⏳ 待接线 | 待迁移 |
+| **Database** | ✅ 部分接线 | `create_infra_database_client()` 已用于 platform KB 存储 |
 
-Core 在 `core/harness/infrastructure/` 下自行实现了一套独立的基础设施层（ModelRouter、ModelRegistry、ApprovalManager 等），与 `aiPlat-infra/` 中的 LLM/Cache/Vector/Database 模块无交集。
+**剩余架构债务：**
 
-**接线方案（To-Be，需设计审批后启用）：**
+`core/harness/infrastructure/model_registry.py` 和 `model_router.py` 与 infra `ModelManager` 功能重复，标注为 deprecated，待删除。
 
-| 阶段 | 目标 | 内容 |
-|------|------|------|
-| A | 最小连接 | core 的 LLM 调用通过 infra 的 `LLMManager` 适配，验证跨包依赖 |
-| B | 能力迁移 | Vector/Database/Cache 模块替换 core 中新建的内存/SQLite 实现 |
-| C | 全面接管 | Messaging/Storage/Compute 模块接入；管理端接入 infra management API |
+**已废弃的 YAML 模型列表：**
 
-**当前可用（内部自洽）：** 所有 18 个能力模块均可通过工厂函数独立使用（`create_llm_client()` 等），测试覆盖完备。infra management API 可独立启动（`python -m infra.management.api.run_server`）。
+`config/infra/default.yaml` 中的静态模型列表已移除，替换为 `model_discovery` 动态发现（env vars + 本地扫描）。模型不再硬编码在配置文件中。
+
+**Core 通过以下文件接入 infra（合法方向）：**
+
+- `core/harness/infrastructure/infra_bridge.py` — ModelManager / Database / Vector 桥接
+- `core/harness/infrastructure/infra_llm_adapter.py` — LLM 适配器
+- `core/harness/knowledge/retriever.py` — 检索器（部分使用 infra）
+- `core/adapters/llm/base.py` — LLM 适配器工厂
+
+**设计文档依据**：
+- `../../docs/index.md` §Layer 0 边界规则
+- `../../docs/architecture/system-architecture-contract.md` §依赖方向
+- 根 `CLAUDE.md` §14（模型管理层级）
+- `aiPlat-core/CLAUDE.md` §5.31（模型管理单一真相源）
 
 ### 5.7 应用名称硬编码状态（已清理）
 

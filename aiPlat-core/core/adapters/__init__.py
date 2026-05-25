@@ -1,7 +1,8 @@
 """
 Adapters Module
 
-Provides adapters for external services: LLM providers.
+All LLM calls route through InfraLLMAdapter (→ infra LLMClient).
+Per-provider adapter classes have been retired as of 2026-05.
 """
 
 from .llm import (
@@ -11,14 +12,6 @@ from .llm import (
     AdapterMetadata,
     LLMConfig,
     create_adapter,
-    OpenAIAdapter,
-    AzureOpenAIAdapter,
-    AnthropicAdapter,
-    ClaudeAdapter,
-    LocalAdapter,
-    OllamaAdapter,
-    VLLMAdapter,
-    create_local_adapter,
 )
 
 __all__ = [
@@ -28,12 +21,4 @@ __all__ = [
     "AdapterMetadata",
     "LLMConfig",
     "create_adapter",
-    "OpenAIAdapter",
-    "AzureOpenAIAdapter",
-    "AnthropicAdapter",
-    "ClaudeAdapter",
-    "LocalAdapter",
-    "OllamaAdapter",
-    "VLLMAdapter",
-    "create_local_adapter",
 ]

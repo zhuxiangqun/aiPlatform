@@ -1,11 +1,17 @@
 """
 Model Registry — unified model metadata for dynamic routing.
 
+**DEPRECATED** as of 2026-05. Model discovery, status, and routing have been
+migrated to aiPlat-infra's ModelManager. This module is retained for backward
+compatibility only and will be removed in a future release.
+
+Use `core.harness.infrastructure.infra_bridge.list_infra_models()` or
+`infra.management.model.manager.ModelManager.list_models()` instead.
+
+--- (legacy code below, do not extend) ---
+
 Models are configured via AIPLAT_MODELS env var (JSON array) or default.yaml.
 Each entry: {name, provider, api_key_env, base_url, capabilities, cost_per_1k_tokens}
-
-Per §5.1 (infra), models are discovered from infra and injected here by the
-service layer. This module defines the contract that core uses.
 """
 
 from __future__ import annotations

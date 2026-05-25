@@ -113,7 +113,34 @@ tests/constitution/test_infra_agnostic.py    ← Infra 去应用化
 
 11. **审批单次检查（强制——防多重门禁）**：同一请求对同一资源的权限检查，整个调用链中只能执行一次，且由 PolicyGate（`sys_tool_call` / `sys_skill_call` 内）作为唯一执行点。**禁止**：RBAC guard 在 HTTP 层检查一遍 → Gateway 在调用层再查一遍 → PolicyGate 在 syscall 层又查一遍 → BaseTool 内部再自查一遍。**必须**：上游层只做身份注入（JWT → tenant/actor/scopes），不做权限判断。权限判断统一委托给 PolicyGate。
 
-12. **模型解析中心化（强制——防环境变量碎片化）**：模型名称的解析（model_name → adapter）必须通过统一的 `get_default_model(purpose)` 函数，**禁止**各模块直接读取 `AIPLAT_DOC_LLM_MODEL`、`AIPLAT_CODE_GEN_MODEL`、`AIPLAT_LLM_MODEL` 等环境变量做独立判断。全局只有一个解析链：`purpose 参数 → 专用 env → 通用 env → SQLite store → 系统默认`。
+12. **模型解析中心化（强制——防环境变量碎片化）**：模型名称的解析必须通过统一的 `get_default_model(purpose)` 函数，**禁止**各模块直接读取 `AIPLAT_DOC_LLM_MODEL`、`AIPLAT_CODE_GEN_MODEL`、`AIPLAT_LLM_MODEL` 等环境变量做独立判断。全局只有一个解析链：`purpose 参数 → 专用 env → infra ModelManager.list_models() → 系统默认`。**模型发现、启用/禁用、健康状态均以 infra ModelManager 为唯一权威。** core 不得自行维护模型列表（`model_registry.py` 已废弃）。**禁止 core/平台绕过 infra 直接加载模型**：❌ `import sentence_transformers`（embedding）、❌ `import faster_whisper`（语音转文字）、❌ `import PaddleOCR`（OCR）、❌ `from transformers import AutoModel`（reranker）。
 
 13. **架构审计覆盖并行实现（强制——防漏检）**：`architecture_guard.sh` 必须包含"相同函数签名多定义"检测。每新增一个 `def <name>(query, ...)` 且与已有函数签名高度相似（参数名匹配 ≥3 个），视为并行实现警告。
+
+14. **模型管理层级（强制——防架构绕行）**：
+
+    ```
+    infra (Layer 0) = 唯一模型目录
+      ├─ 远程 API 模型（从 env vars 自动发现）
+      ├─ 本地模型（Ollama/LM Studio/oMLX/vLLM 自动扫描）
+      ├─ 健康检查（标记不可达模型）
+      └─ 启用/禁用管理
+    
+    core (Layer 1) = 消费模型
+      ├─ InfraLLMAdapter（唯一通用 LLM 适配器）→ infra LLMClient → provider API ✅
+      ├─ InfraEmbeddingAdapter（通用嵌入适配器，待接线）
+      ├─ InfraRerankerAdapter（通用重排适配器，待接线）
+      └─ InfraAudioAdapter（通用音频适配器，待接线）
+    
+    management (横切) = 展示模型列表
+      └─ 从 infra ModelManager 获取模型列表 ✅
+    ```
+    
+    **禁止** core 或 platform 自行维护模型注册表、自行加载模型文件、自行做模型路由。
+    
+    **Core 每种能力类型只有 1 个 Adapter**：LLM → InfraLLMAdapter，Embedding → InfraEmbeddingAdapter 等。
+    不按 provider 分文件（禁止 `openai_adapter.py`、`deepseek_adapter.py` 等 per-provider 类）。
+    
+    **Infra 相同协议合并 Provider**：OpenAI / DeepSeek / Qwen / LM Studio 均走 `openai_compatible.py`。
+    新增 OpenAI 兼容的模型提供商只需改配置，不需新代码。
 

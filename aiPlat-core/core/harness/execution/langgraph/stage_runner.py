@@ -124,13 +124,13 @@ class StageRunner:
                 "task": prompt,
                 "messages": [],
                 "_session_id": str(state.get("session_id", "")),
+                "_run_id": str(state.get("_run_id", "")),
                 "_user_id": "system",
                 "_coding_policy_profile": "off",
                 "_agent_id": str(s.agent_id or s.id) if s else "",
                 "_agent_namespace": str(s.agent_id or s.id) if s else "",
                 "_shared_state_board": state.get("_shared_state_board", []),
                 "_enable_query_rewrite": getattr(s, 'enable_query_rewrite', False) if s else False,
-                # Pass stage degradation config to loop for per-stage failure control
                 "_max_consecutive_llm_failures": getattr(s, 'max_consecutive_llm_failures', 3),
             },
         )

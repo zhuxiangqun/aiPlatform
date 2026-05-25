@@ -12,6 +12,7 @@ import EditSkillModal from '../../../components/workspace/EditSkillModal';
 import ExecuteSkillModal from '../../../components/workspace/ExecuteSkillModal';
 import SkillVersionsModal from '../../../components/workspace/SkillVersionsModal';
 import SkillExecutionsModal from '../../../components/workspace/SkillExecutionsModal';
+import ImportBar from '../../../components/workspace/ImportBar';
 
 const categoryConfig: Record<string, { color: string; text: string }> = {
   general: { color: 'bg-dark-hover text-gray-300 border-gray-200', text: '通用' },
@@ -342,6 +343,8 @@ const WorkspaceSkills: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      <ImportBar assetType="skills" alsoScan={['agents', 'mcps']} onImported={() => fetchSkills()} />
 
       {filterSkillIds && filterSkillIds.length > 0 && (
         <div className="bg-dark-card border border-dark-border rounded-xl p-3 flex items-center justify-between">

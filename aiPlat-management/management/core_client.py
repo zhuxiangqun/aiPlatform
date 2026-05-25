@@ -234,6 +234,12 @@ class CoreAPIClient:
     async def get_run(self, run_id: str) -> Dict[str, Any]:
         return await self._request("GET", f"/api/core/runs/{run_id}")
 
+    async def get_run_cost(self, run_id: str, *, tenant_id: Optional[str] = None) -> Dict[str, Any]:
+        params: Dict[str, Any] = {}
+        if tenant_id:
+            params["tenant_id"] = tenant_id
+        return await self._request("GET", f"/api/core/runs/{run_id}/cost", params=params)
+
     async def list_run_events(self, run_id: str, *, after_seq: int = 0, limit: int = 200) -> Dict[str, Any]:
         params: Dict[str, Any] = {"after_seq": int(after_seq), "limit": int(limit)}
         return await self._request("GET", f"/api/core/runs/{run_id}/events", params=params)

@@ -1,7 +1,9 @@
 """
 LLM Adapters Module
 
-Provides adapters for different LLM providers: OpenAI, Anthropic, Local models.
+All LLM calls route through InfraLLMAdapter (core/harness/infrastructure/infra_llm_adapter.py).
+Per-provider adapter classes (OpenAIAdapter, AnthropicAdapter, LocalAdapter) have been retired.
+Only mock/scripted adapters remain for testing purposes.
 """
 
 from __future__ import annotations
@@ -10,38 +12,17 @@ import importlib
 from typing import TYPE_CHECKING, Any
 
 __all__ = [
-    # Base
     "ILLMAdapter",
     "BaseLLMAdapter",
     "LLMResponse",
     "AdapterMetadata",
     "LLMConfig",
     "create_adapter",
-    
-    # OpenAI
-    "OpenAIAdapter",
-    "AzureOpenAIAdapter",
-    
-    # Anthropic
-    "AnthropicAdapter",
-    "ClaudeAdapter",
-    
-    # Local
-    "LocalAdapter",
-    "OllamaAdapter",
-    "VLLMAdapter",
-    "HuggingFaceTGIAdapter",
-    "create_local_adapter",
     "MockAdapter",
 ]
 
-
-# Avoid eager imports to reduce circular dependencies (adapters <-> agents <-> execution).
 _CANDIDATE_SUBMODULES = (
     "base",
-    "openai_adapter",
-    "anthropic_adapter",
-    "local_adapter",
     "mock_adapter",
     "scripted_adapter",
 )
@@ -63,7 +44,4 @@ def __dir__() -> list[str]:
 
 if TYPE_CHECKING:
     from .base import AdapterMetadata, BaseLLMAdapter, ILLMAdapter, LLMConfig, LLMResponse, create_adapter
-    from .anthropic_adapter import AnthropicAdapter, ClaudeAdapter
-    from .local_adapter import HuggingFaceTGIAdapter, LocalAdapter, OllamaAdapter, VLLMAdapter, create_local_adapter
     from .mock_adapter import MockAdapter
-    from .openai_adapter import AzureOpenAIAdapter, OpenAIAdapter

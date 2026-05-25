@@ -761,3 +761,61 @@ async def reload_workspace_agent(agent_id: str, rt: RuntimeDep = None):
     if not a:
         raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
     return {"status": "reloaded", "agent_id": agent_id}
+
+
+# ── Agent Installer endpoints (workspace scope) ──────────────────────
+
+@router.post("/workspace/agents/installer/plan")
+async def workspace_agents_installer_plan(request: dict, rt: RuntimeDep = None):
+    mgr = _ws_agent_mgr(rt)
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    try:
+        return await mgr.installer_plan(
+            source_type=str(request.get("source_type", "")),
+            url=request.get("url"),
+            ref=request.get("ref"),
+            path=request.get("path"),
+            agent_id=request.get("agent_id"),
+            subdir=request.get("subdir"),
+            auto_detect_subdir=bool(request.get("auto_detect_subdir", True)),
+            metadata=request.get("metadata"),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
+
+@router.post("/workspace/agents/installer/install")
+async def workspace_agents_installer_install(request: dict, http_request: Request, rt: RuntimeDep = None):
+    mgr = _ws_agent_mgr(rt)
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    try:
+        return await mgr.installer_install(
+            source_type=str(request.get("source_type", "")),
+            url=request.get("url"),
+            ref=request.get("ref"),
+            path=request.get("path"),
+            agent_id=request.get("agent_id"),
+            subdir=request.get("subdir"),
+            auto_detect_subdir=bool(request.get("auto_detect_subdir", True)),
+            allow_overwrite=bool(request.get("allow_overwrite", False)),
+            metadata=request.get("metadata"),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
+
+@router.post("/workspace/agents/installer/resolve-head")
+async def workspace_agents_installer_resolve_head(request: dict, rt: RuntimeDep = None):
+    mgr = _ws_agent_mgr(rt)
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    try:
+        return await mgr.installer_resolve_head(url=str(request.get("url", "")))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))

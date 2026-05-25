@@ -14,8 +14,8 @@ from datetime import datetime
 from .schemas import ModelInfo, ModelType, ModelSource, ModelStatus, ModelConfig
 from ..base import Status, HealthStatus
 from .storage import ExternalModelStorage
-from .ollama_scanner import OllamaScanner
 from .config_loader import ConfigLoader
+from .local_model_scanner import scan_local_models
 from .health_checker import HealthChecker
 
 
@@ -30,12 +30,11 @@ class ModelManager:
         # 初始化组件
         config_path = self.config.get("config_path")
         data_path = self.config.get("data_path")
-        ollama_endpoint = self.config.get("ollama_endpoint", "http://localhost:11434")
         
         self._config_loader = ConfigLoader(config_path)
         self._storage = ExternalModelStorage(data_path)
-        self._scanner = OllamaScanner(ollama_endpoint)
         self._health_checker = HealthChecker()
+        self._local_endpoints: List[str] = []
         
         # 加载所有模型
         self._load_all_models()
@@ -59,26 +58,22 @@ class ModelManager:
         await self._scan_local_models()
     
     async def _scan_local_models(self):
-        """扫描本地 Ollama 模型"""
+        """Scan local model endpoints (Ollama, LM Studio, oMLX, etc.)."""
         try:
-            ollama_config = self._config_loader.get_ollama_config()
-            if ollama_config.get("auto_scan", True):
-                endpoint = ollama_config.get("endpoint", "http://localhost:11434")
-                self._scanner.set_endpoint(endpoint)
-                local_models = await self._scanner.scan()
-                
-                for model in local_models:
-                    # 如果已存在同名模型，跳过
-                    if model.id not in self._models:
-                        self._models[model.id] = model
-                    else:
-                        # 更新本地模型状态
-                        existing = self._models[model.id]
-                        if existing.source == ModelSource.LOCAL:
-                            existing.status = model.status
-                            existing.config.base_url = model.config.base_url
+            endpoints = self._config_loader.get_local_scan_endpoints()
+            if not endpoints:
+                return
+            self._local_endpoints = endpoints
+            local_models = await scan_local_models(endpoints)
+            for model in local_models:
+                if model.id not in self._models:
+                    self._models[model.id] = model
+                else:
+                    existing = self._models[model.id]
+                    if existing.source == ModelSource.LOCAL:
+                        existing.status = model.status
+                        existing.config.base_url = model.config.base_url
         except Exception:
-            # Ollama 未运行时忽略错误
             pass
     
     # ===== 查询接口 =====
@@ -138,7 +133,7 @@ class ModelManager:
         model.updated_at = datetime.now()
         
         self._models[model.id] = model
-        await self._storage.save(list(self._models.values()))
+        self._storage.save(list(self._models.values()))
         
         return model
     
@@ -163,7 +158,7 @@ class ModelManager:
         model.updated_at = datetime.now()
         
         if model.source == ModelSource.EXTERNAL:
-            await self._storage.save(list(self._models.values()))
+            self._storage.save(list(self._models.values()))
         
         return model
     
@@ -177,7 +172,7 @@ class ModelManager:
             raise ValueError("Only external models can be deleted")
         
         del self._models[model_id]
-        await self._storage.save(list(self._models.values()))
+        self._storage.save(list(self._models.values()))
         
         return True
     
