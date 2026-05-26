@@ -226,3 +226,9 @@ def skill_impact(skill_id: str) -> Dict[str, Any]:
         "skills_depending": depending[:10],
         "exists": True,
     }
+
+
+def get_syscall_caller_counts() -> Dict[str, int]:
+    u"""Return per-syscall caller counts. Can be slow — call explicitly (not on hot path)."""
+    deps = build_skill_deps()
+    return {s: _count_syscall_callers(s) for s in deps.get("syscalls", {})}

@@ -21,6 +21,7 @@ _JS_IMPORT_RE = re.compile(
 # Module-level cache for build_graph results
 _CACHE: Optional[Any] = None
 _CACHE_ROOTS: Optional[str] = None
+_CACHE_LOCK = None
 
 
 @dataclass
@@ -179,12 +180,16 @@ def _detect_issues(text: str) -> List[Dict[str, Any]]:
 
 
 def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str, Any]], List[Dict[str, str]], List[Dict[str, Any]]]:
-    global _CACHE, _CACHE_ROOTS
+    global _CACHE, _CACHE_ROOTS, _CACHE_LOCK
+    if _CACHE_LOCK is None:
+        import threading as _th
+        _CACHE_LOCK = _th.Lock()
     roots_key = ";".join(str(r) for r in roots)
-    # Use cache if roots match
+    # Use cache if roots match (thread-safe read)
     import time as _t
-    if _CACHE and _CACHE_ROOTS == roots_key and _t.time() - _CACHE["_ts"] < 120:
-        return _CACHE["nodes"], _CACHE["edges"], _CACHE["issues"]
+    with _CACHE_LOCK:
+        if _CACHE and _CACHE_ROOTS == roots_key and _t.time() - _CACHE["_ts"] < 120:
+            return _CACHE["nodes"], _CACHE["edges"], _CACHE["issues"]
 
     nodes: Dict[str, Dict[str, Any]] = {}
     edges: List[Dict[str, str]] = []
@@ -228,17 +233,23 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
             edges.append({"from": rel_from, "to": rel_to})
             nodes[rel_from]["out"].append(rel_to)
             nodes[rel_to]["in"] += 1
-    # Save to cache
-    _CACHE = {"nodes": nodes, "edges": edges, "issues": issues, "_ts": _t.time()}
-    _CACHE_ROOTS = roots_key
+    # Save to cache (thread-safe write)
+    with _CACHE_LOCK:
+        _CACHE = {"nodes": nodes, "edges": edges, "issues": issues, "_ts": _t.time()}
+        _CACHE_ROOTS = roots_key
     return nodes, edges, issues
 
 
 def clear_cache():
     u"""Invalidate the code graph cache (called by hot-reload on file changes)."""
-    global _CACHE, _CACHE_ROOTS
-    _CACHE = None
-    _CACHE_ROOTS = None
+    global _CACHE, _CACHE_ROOTS, _CACHE_LOCK
+    if _CACHE_LOCK:
+        with _CACHE_LOCK:
+            _CACHE = None
+            _CACHE_ROOTS = None
+    else:
+        _CACHE = None
+        _CACHE_ROOTS = None
 
 
 def count_cycles(nodes: Dict[str, Dict[str, Any]]) -> int:
