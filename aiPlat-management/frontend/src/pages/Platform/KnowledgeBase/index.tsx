@@ -7,6 +7,7 @@ import { DocumentGrid } from './DocumentGrid';
 import { UploadModal } from './UploadModal';
 import { ChatPanel } from './ChatPanel';
 import WikiGraph from '../../../components/wiki/WikiGraph';
+import WikiListView from '../../../components/wiki/WikiListView';
 
 const WIKI_API = '/api/core/wiki';
 
@@ -598,28 +599,12 @@ const KnowledgeBasePage: React.FC = () => {
               )}
             </div>
           ) : (
-            <div className="space-y-2">
-              <div className="text-xs text-gray-500">{wikiPages.length} 个页面</div>
-              {wikiPages.map((p: any) => (
-                <div key={p.title} onClick={() => readWikiPage(p.title)} className="p-3 rounded-lg border border-dark-border bg-dark-card cursor-pointer hover:border-gray-600">
-                  <div className="flex items-center gap-2 mb-1">
-                    <BookOpen className="w-3 h-3 text-gray-400" />
-                    <span className="text-sm font-medium text-gray-200">{p.title}</span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${sourceBadge(p.category)}`}>{p.category}</span>
-                    {p.related && p.related.length > 0 && <span className="text-[10px] text-blue-500">↗ {p.related.length} 关联</span>}
-                    <div className="flex-1" />
-                    <button onClick={(e) => { e.stopPropagation(); handleWikiDelete(p.title); }}
-                      className="text-gray-600 hover:text-red-400 transition-colors" title="删除">
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </div>
-                  {p.summary && <div className="text-xs text-gray-500 line-clamp-1">{p.summary}</div>}
-                  <div className="flex gap-2 mt-1">{(p.tags || []).slice(0,3).map((t:string) => <span key={t} className="text-[10px] text-gray-600 bg-dark-bg px-1 rounded">{t}</span>)}
-                    {p.contradictions?.length > 0 && <span className="text-[10px] text-red-400"><AlertTriangle className="w-2 h-2 inline mr-0.5" />{p.contradictions.length}</span>}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <WikiListView
+              pages={wikiPages}
+              onSelect={(title: string) => readWikiPage(title)}
+              onDelete={handleWikiDelete}
+              sourceBadge={sourceBadge}
+            />
           )}
 
           {/* New page modal */}
