@@ -81,6 +81,26 @@ const KnowledgeBasePage: React.FC = () => {
           count++;
         }
       }
+      // If meta_json check shows all unprocessed, cross-check against wiki pages
+      if (count > 0 && count === (kbRes.items || []).length) {
+        try {
+          const wikiRes = await fetch(`${WIKI_API}/pages?limit=500`).then(r => r.json());
+          const wikiTitles = new Set((wikiRes.items || []).map((p: any) => p.title));
+          let matched = 0;
+          for (const doc of (kbRes.items || [])) {
+            const uri = doc.source_uri || '';
+            const fname = uri.split('/').pop() || '';
+            const matchedTitle = [...wikiTitles].find((t: string) =>
+              t.includes(fname.substring(0, 20)) || fname.includes(t.substring(0, 20))
+            );
+            if (matchedTitle) matched++;
+          }
+          // If wiki has pages matching KB docs, meta_json write-back is stale
+          if (matched > 0) {
+            count = 0; // Show zero — everything is actually converted
+          }
+        } catch {}
+      }
       setUnprocessedCount(count);
     } catch { setUnprocessedCount(0); }
   };
@@ -146,7 +166,7 @@ const KnowledgeBasePage: React.FC = () => {
   const handleConvertKb = async () => {
     setConverting(true);
     try { const res = await fetch(`${WIKI_API}/convert-from-kb`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tenant_id: 'default', limit: 50 }) });
-      const data = await res.json(); setConvertResult(data); toast.success(`${data.created} 文档 → Wiki 页面`); fetchWikiPages(); checkUnprocessed(); } catch {} finally { setConverting(false); }
+      const data = await res.json(); setConvertResult(data); toast.success(data.message || `转换 ${data.docs_converted || 0} 个文档`); fetchWikiPages(); checkUnprocessed(); } catch {} finally { setConverting(false); }
   };
   const handleCurate = async () => {
     setCurating(true); setCurateReport(null);

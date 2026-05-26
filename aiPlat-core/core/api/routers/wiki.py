@@ -113,17 +113,21 @@ async def ingest_text(body: WikiIngest):
 
 @router.post("/convert-from-kb")
 async def convert_from_kb(tenant_id: str = "default", collection_id: str = "default", limit: int = 50):
-    """Convert existing KB documents into Wiki pages.
+    u"""Convert existing KB documents into Wiki pages.
     
     Reads documents from the RAG knowledge base (SQLite), extracts titles and
     full text, and creates initial Wiki entity pages. Auto-detects related pages
     by shared keywords.
     """
-    import os, re, time as _time
+    import os, re, time as _time, logging
+    logger = logging.getLogger(__name__)
     from core.harness.knowledge.wiki_engine import write_page, _wiki_root
 
-    created = 0
+    docs_converted = 0
+    entities_created = 0
+    uploads_converted = 0
     skipped = 0
+    writeback_errors = 0
     errors = []
 
     try:
@@ -131,7 +135,7 @@ async def convert_from_kb(tenant_id: str = "default", collection_id: str = "defa
         kb_dir = os.path.expanduser(os.getenv("AIPLAT_KB_TENANTS_DIR", "~/.aiplat/kb/tenants"))
         kb_db = os.path.join(kb_dir, tenant_id, "kb.sqlite3")
         if not os.path.exists(kb_db):
-            return {"created": 0, "skipped": 0, "errors": ["KB database not found. Ensure documents are ingested into the knowledge base first."]}
+            return {"docs_converted": 0, "entities_created": 0, "uploads_converted": 0, "skipped": 0, "writeback_errors": 0, "errors": ["KB database not found. Ensure documents are ingested into the knowledge base first."]}
 
         import sqlite3, json as _json
         conn = sqlite3.connect(kb_db)
@@ -144,7 +148,7 @@ async def convert_from_kb(tenant_id: str = "default", collection_id: str = "defa
             ).fetchall()
 
             if not docs:
-                return {"created": 0, "skipped": 0, "errors": ["No documents found in KB. Ingest documents first via Knowledge Base page."]}
+                return {"docs_converted": 0, "entities_created": 0, "uploads_converted": 0, "skipped": 0, "writeback_errors": 0, "errors": ["No documents found in KB. Ingest documents first via Knowledge Base page."]}
 
             topic_keywords = {}  # Track shared keywords across documents for cross-linking
 
@@ -202,7 +206,7 @@ async def convert_from_kb(tenant_id: str = "default", collection_id: str = "defa
                 safe_title = re.sub(r"[<>:\"/\\|?*]", "_", title)[:120]
                 write_page(safe_title, body, category="entities", tags=tags, summary=summary,
                           source_articles=[f"kb:{doc_id}"])
-                created += 1
+                docs_converted += 1
 
                 # LLM curation: enhance with proper summary, entity extraction, auto-linking
                 try:
@@ -223,6 +227,7 @@ async def convert_from_kb(tenant_id: str = "default", collection_id: str = "defa
                         if safe_entity != safe_title and safe_entity not in topic_keywords:
                             write_page(safe_entity, f"Entity: {entity}\n\nSee: [[{safe_title}]]",
                                 category="entities", tags=[entity.lower()], related=[safe_title])
+                            entities_created += 1
                     # Mark contradictions
                     for con in curated.get("contradictions", [])[:3]:
                         from core.harness.knowledge.wiki_engine import read_page as _rpx
@@ -247,7 +252,9 @@ async def convert_from_kb(tenant_id: str = "default", collection_id: str = "defa
                         conn.execute("UPDATE documents SET meta_json=? WHERE doc_id=? AND tenant_id=?",
                                     (_json.dumps(meta, ensure_ascii=False), doc_id, tenant_id))
                         conn.commit()
-                except: pass
+                except Exception as e:
+                    writeback_errors += 1
+                    logger.warning(f"convert-from-kb: failed to write wiki_pages for doc {doc_id}: {e}")
 
             # Cross-link pages that share keywords
             for kw, titles in topic_keywords.items():
@@ -302,7 +309,7 @@ async def convert_from_kb(tenant_id: str = "default", collection_id: str = "defa
                 tags = list(set(kw.lower() for kw in re.findall(r'[\u4e00-\u9fff]{2,8}|[A-Z][a-zA-Z]{2,}', body[:5000])))[:8]
                 write_page(title, body[:50000], category="entities", tags=tags,
                           summary=body[:300].replace("\n", " "))
-                created += 1
+                uploads_converted += 1
                 # Mark as processed
                 try:
                     import sqlite3 as _sq
@@ -310,13 +317,21 @@ async def convert_from_kb(tenant_id: str = "default", collection_id: str = "defa
                     existing = c2.execute("SELECT 1 FROM documents WHERE doc_id LIKE ?", (f"%{fname[:20]}%",)).fetchone()
                     c2.close()
                 except: pass
-                if created >= limit * 2:
+                if uploads_converted >= limit * 2:
                     break
     except Exception as e:
         if not errors: errors.append(f"upload scan: {str(e)[:200]}")
 
-    return {"created": created, "skipped": skipped, "errors": errors,
-            "message": f"Converted {created} KB documents to Wiki pages. {skipped} skipped."}
+    total = docs_converted + entities_created + uploads_converted
+    return {
+        "docs_converted": docs_converted,
+        "entities_created": entities_created,
+        "uploads_converted": uploads_converted,
+        "skipped": skipped,
+        "writeback_errors": writeback_errors,
+        "errors": errors,
+        "message": f"转换 {docs_converted} 个文档 + {entities_created} 个实体 + {uploads_converted} 个孤立文件。{skipped} 个已跳过。{f'({writeback_errors} 写回失败)' if writeback_errors else ''}",
+    }
 
 
 @router.post("/curate")
