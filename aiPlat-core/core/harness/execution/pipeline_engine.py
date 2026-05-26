@@ -1309,6 +1309,14 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                 local_state.pop(stage.output_artifact, None)
             local_state[f"_input_hash_{stage.id}"] = current_hash
 
+            # Result cache: reuse output if same (stage_id, input_hash) seen before
+            cache_key = f"_cache_{stage.id}_{current_hash}"
+            cached = local_state.get(cache_key)
+            if cached and not local_state.get(stage.output_artifact):
+                # Restore cached output from previous run with identical inputs
+                local_state[stage.output_artifact] = cached
+                local_state["_last_action_reason"] = f"cache_hit:{stage.id}"
+
         # Skip if already done (but not for empty/error artifacts)
         existing = local_state.get(stage.output_artifact)
         if existing and (not isinstance(existing, dict) or len(existing) > 0):
@@ -1345,6 +1353,10 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             local_state = await self._dispatch_execute(stage, local_state)
         t_end = time.time()
         local_state[f"_stage_{stage.id}_done"] = True
+        # Cache result for future runs with identical inputs
+        input_hash = local_state.get(f"_input_hash_{stage.id}", "")
+        if input_hash and local_state.get(stage.output_artifact) is not None:
+            local_state[f"_cache_{stage.id}_{input_hash}"] = local_state[stage.output_artifact]
         artifact = local_state.get(stage.output_artifact)
         # Structured state board milestone — only key facts, no raw reasoning
         try:
