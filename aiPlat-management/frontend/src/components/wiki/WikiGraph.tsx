@@ -135,12 +135,12 @@ const WikiGraph: React.FC<WikiGraphProps> = ({ onSelectPage, exploreTitles, onEx
             const d = p.data;
             const color = CAT_COLORS[d.category] || '#3b82f6';
             return `
-              <div style="max-width:460px;padding:6px 4px;word-break:break-word;">
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-                  <div style="width:10px;height:10px;border-radius:50%;background:${color};box-shadow:0 0 8px ${color}66;flex-shrink:0;"></div>
-                  <div style="font-weight:600;font-size:13px;color:#e4e4e7;">${d.name}</div>
+              <div style="max-width:420px;overflow:hidden;white-space:normal;word-wrap:break-word;overflow-wrap:break-word;">
+                <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:4px;">
+                  <div style="width:10px;height:10px;border-radius:50%;background:${color};box-shadow:0 0 8px ${color}66;flex-shrink:0;margin-top:4px;"></div>
+                  <div style="font-weight:600;font-size:13px;color:#e4e4e7;line-height:1.4;max-width:380px;">${d.name}</div>
                 </div>
-                ${d.summary && d.summary.length > 20 ? `<div style="color:${color}99;font-size:11px;line-height:1.6;padding-left:18px;">${d.summary.slice(0, 200)}</div>` : ''}
+                ${d.summary && d.summary.length > 20 ? `<div style="color:${color}99;font-size:11px;line-height:1.6;padding-left:18px;max-width:390px;word-break:break-all;">${d.summary.slice(0, 180)}</div>` : ''}
               </div>`;
           }
           return `<span style="color:#71717a;font-size:11px">${p?.data?.source} → ${p?.data?.target}</span>`;
