@@ -143,6 +143,15 @@ async def convert_from_kb(tenant_id: str = "default", collection_id: str = "defa
                         title = str(meta["title"])[:120]
                 except: pass
 
+                # Skip if already converted
+                try:
+                    meta = _json.loads(doc.get("meta_json", "{}") or "{}")
+                    wiki_pages = meta.get("wiki_pages", [])
+                    if wiki_pages:
+                        skipped += 1
+                        continue
+                except: pass
+
                 # Read document elements (full text)
                 elements = conn.execute(
                     "SELECT text FROM kb_elements WHERE tenant_id=? AND doc_id=? ORDER BY page_idx, element_id",

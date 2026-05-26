@@ -41,6 +41,7 @@ const KnowledgeBasePage: React.FC = () => {
   const [wikiNewCategory, setWikiNewCategory] = useState('entities');
   const [convertResult, setConvertResult] = useState<any>(null);
   const [converting, setConverting] = useState(false);
+  const [unprocessedCount, setUnprocessedCount] = useState(0);
   const [lintResult, setLintResult] = useState<any>(null);
   const [lintLoading, setLintLoading] = useState(false);
 
@@ -61,7 +62,26 @@ const KnowledgeBasePage: React.FC = () => {
   useEffect(() => {
     fetchDocuments(undefined, activeCategory);
     fetchCategories();
+    checkUnprocessed();
   }, [activeCategory]);
+
+  const checkUnprocessed = async () => {
+    try {
+      const [kbRes, wikiRes] = await Promise.all([
+        fetch('/api/platform/documents?limit=1000').then(r => r.json()).catch(() => ({ items: [] })),
+        fetch(`${WIKI_API}/pages?limit=1000`).then(r => r.json()).catch(() => ({ items: [] })),
+      ]);
+      const wikiTitles = new Set((wikiRes.items || []).map((p: any) => p.title));
+      let count = 0;
+      for (const doc of (kbRes.items || [])) {
+        const meta = doc.meta_json ? (typeof doc.meta_json === 'string' ? JSON.parse(doc.meta_json) : doc.meta_json) : {};
+        const pages = meta.wiki_pages || [];
+        const hasWiki = pages.some((p: string) => wikiTitles.has(p));
+        if (!hasWiki) count++;
+      }
+      setUnprocessedCount(count);
+    } catch { setUnprocessedCount(0); }
+  };
 
   const handleUploadComplete = async () => {
     setUploadModalOpen(false);
@@ -191,6 +211,17 @@ const KnowledgeBasePage: React.FC = () => {
           <Button variant="primary" size="sm" onClick={() => setUploadModalOpen(true)}>上传资料</Button>
         </div>
       </div>
+
+      {unprocessedCount > 0 && (
+        <div className="flex items-center gap-3 p-3 rounded-lg bg-yellow-900/20 border border-yellow-900/40 text-sm">
+          <AlertTriangle className="w-4 h-4 text-yellow-400" />
+          <span className="text-yellow-300">{unprocessedCount} 个已有文档尚未关联 Wiki 页面</span>
+          <Button variant="primary" size="sm" onClick={handleConvertKb} loading={converting}>
+            批量转换全部
+          </Button>
+          {convertResult && <span className="text-xs text-gray-400">{convertResult.message}</span>}
+        </div>
+      )}
 
       {activeTab === 'documents' && (
         <>
