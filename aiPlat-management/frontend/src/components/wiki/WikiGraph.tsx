@@ -280,7 +280,13 @@ const WikiGraph: React.FC<WikiGraphProps> = ({ onSelectPage, exploreTitles, onEx
 
       {/* Graph canvas */}
       <div className="flex-1 min-h-0 rounded-lg border border-dark-border overflow-hidden"
-        style={fullscreen ? { position: 'fixed', inset: 0, zIndex: 50, borderRadius: 0 } : {}}>
+        style={fullscreen ? { position: 'fixed', inset: 0, zIndex: 50, borderRadius: 0, background: '#06070a' } : {}}>
+        {fullscreen && (
+          <button onClick={() => setFullscreen(false)}
+            className="absolute top-3 right-3 z-10 px-3 py-1.5 rounded bg-dark-card border border-dark-border text-xs text-gray-400 hover:text-white shadow-lg">
+            退出全屏
+          </button>
+        )}
         {loading && (
           <div className="flex items-center justify-center h-full bg-[#0a0b0f]">
             <div className="flex flex-col items-center gap-2">
