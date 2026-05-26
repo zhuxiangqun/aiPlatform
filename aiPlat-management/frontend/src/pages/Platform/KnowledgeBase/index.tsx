@@ -43,6 +43,7 @@ const KnowledgeBasePage: React.FC = () => {
   const [wikiNewCategory, setWikiNewCategory] = useState('entities');
   const [convertResult, setConvertResult] = useState<any>(null);
   const [converting, setConverting] = useState(false);
+  const [convertingSelected, setConvertingSelected] = useState(false);
   const [newPageOpen, setNewPageOpen] = useState(false);
   const [unprocessedCount, setUnprocessedCount] = useState(0);
   const [unprocessedDocs, setUnprocessedDocs] = useState<any[]>([]);
@@ -225,6 +226,19 @@ const KnowledgeBasePage: React.FC = () => {
       const res = await fetch(`${WIKI_API}/convert-from-kb`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const data = await res.json(); setConvertResult(data); toast.success(data.message || `转换 ${data.docs_converted || 0} 个文档`); fetchWikiPages(); checkUnprocessed(); setGraphRefreshKey(k => k + 1); } catch {} finally { setConverting(false); }
   };
+  const handleConvertSelected = async () => {
+    const unprocessedIds = new Set(unprocessedDocs.map((d: any) => d.doc_id));
+    const selected = Array.from(selectedDocIds).filter(id => unprocessedIds.has(id));
+    if (selected.length === 0) { toast('请先在文档列表中选中未转换的文档'); return; }
+    setConvertingSelected(true);
+    try {
+      const body = { tenant_id: 'default', limit: 50, doc_ids: selected };
+      const res = await fetch(`${WIKI_API}/convert-from-kb`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const data = await res.json(); setConvertResult(data);
+      toast.success(data.message || `转换 ${data.docs_converted || 0} 个文档`);
+      fetchWikiPages(); checkUnprocessed(); setGraphRefreshKey(k => k + 1);
+    } catch {} finally { setConvertingSelected(false); }
+  };
   const handleCurate = async () => {
     setCurating(true); setCurateReport(null);
     try {
@@ -319,13 +333,8 @@ const KnowledgeBasePage: React.FC = () => {
           <span className="text-yellow-300">{unprocessedCount} 个已有文档尚未关联 Wiki 页面</span>
           <div className="flex-1" />
           <Button variant="primary" size="sm"
-            onClick={() => {
-              const unprocessedIds = new Set(unprocessedDocs.map((d: any) => d.doc_id));
-              const selected = Array.from(selectedDocIds).filter(id => unprocessedIds.has(id));
-              if (selected.length === 0) { toast('请先在文档列表中选中未转换的文档'); return; }
-              handleConvertKb(selected);
-            }}
-            loading={converting}>
+            onClick={handleConvertSelected}
+            loading={convertingSelected}>
             转换选中 ({(() => {
               const unprocessedIds = new Set(unprocessedDocs.map((d: any) => d.doc_id));
               return Array.from(selectedDocIds).filter(id => unprocessedIds.has(id)).length;
