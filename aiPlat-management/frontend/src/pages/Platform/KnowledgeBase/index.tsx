@@ -78,39 +78,19 @@ const KnowledgeBasePage: React.FC = () => {
 
   const checkUnprocessed = async () => {
     try {
-      const [kbRes, wikiRes] = await Promise.all([
-        fetch('/api/platform/documents?limit=1000').then(r => r.json()).catch(() => ({ items: [] })),
-        fetch(`${WIKI_API}/pages?limit=500`).then(r => r.json()).catch(() => ({ items: [] })),
-      ]);
-      const kbItems = kbRes.items || [];
-      const wikiItems = wikiRes.items || [];
-      // Build sets: doc_ids + source_uri filenames from wiki pages
+      const res = await fetch(`${WIKI_API}/unprocessed-docs`).then(r => r.json());
+      const items = res.items || [];
+      setUnprocessedDocs(items);
+      setUnprocessedCount(items.length);
+      // Also build wikiDocIds for DocumentGrid
+      const wikiRes = await fetch(`${WIKI_API}/pages?limit=500`).then(r => r.json());
       const wikiDocIds = new Set<string>();
-      const wikiSourceNames = new Set<string>();
-      for (const p of wikiItems) {
+      for (const p of (wikiRes.items || [])) {
         for (const s of (p.source_articles || [])) {
           if (s.startsWith('kb:')) wikiDocIds.add(s.replace('kb:', ''));
-          // Also track filenames from upload: sources for fuzzy matching
-          const name = s.replace('kb:', '').replace('upload:', '');
-          if (name) wikiSourceNames.add(name);
         }
       }
-      const unprocessed: any[] = [];
-      const processedDocIds = new Set<string>();
-      for (const doc of kbItems) {
-        const uriFile = (doc.source_uri || '').split('/').pop() || '';
-        // Match by doc_id OR by source_uri filename (cross-system compatibility)
-        const matched = wikiDocIds.has(doc.doc_id) ||
-          [...wikiSourceNames].some(n => uriFile.includes(n.substring(0, 30)) || n.includes(uriFile.substring(0, 30)));
-        if (matched) {
-          processedDocIds.add(doc.doc_id);
-        } else {
-          unprocessed.push(doc);
-        }
-      }
-      setUnprocessedDocs(unprocessed);
-      setUnprocessedCount(unprocessed.length);
-      setWikiDocIds(processedDocIds);
+      setWikiDocIds(wikiDocIds);
     } catch { setUnprocessedCount(0); setUnprocessedDocs([]); }
   };
 

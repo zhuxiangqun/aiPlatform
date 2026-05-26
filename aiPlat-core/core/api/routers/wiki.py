@@ -83,6 +83,50 @@ async def delete_all_pages():
     return {"deleted": result["deleted"], "message": f"已清空 {result['deleted']} 个 Wiki 页面"}
 
 
+@router.get("/unprocessed-docs")
+async def get_unprocessed_docs(tenant_id: str = "default"):
+    u"""Return KB documents that don't have corresponding wiki pages.
+    
+    Cross-references wiki page source_articles (kb:doc_id) with
+    KB documents table. No platform auth required.
+    """
+    import os, json as _json, sqlite3 as _sq
+    from core.harness.knowledge.wiki_engine import search_pages
+    
+    kb_dir = os.path.expanduser(os.getenv("AIPLAT_KB_TENANTS_DIR", "~/.aiplat/kb/tenants"))
+    kb_db = os.path.join(kb_dir, tenant_id, "kb.sqlite3")
+    if not os.path.exists(kb_db):
+        return {"items": [], "total": 0}
+    
+    # Get all wiki-sourced KB doc_ids
+    wiki_pages = search_pages(limit=1000)
+    wiki_doc_ids = set()
+    for p in wiki_pages:
+        for s in (p.get("source_articles") or []):
+            if s.startswith("kb:"):
+                wiki_doc_ids.add(s.replace("kb:", ""))
+    
+    # Find KB docs not in wiki
+    conn = _sq.connect(kb_db)
+    conn.row_factory = _sq.Row
+    docs = conn.execute(
+        "SELECT doc_id, source_uri, kind, status FROM documents WHERE tenant_id=? AND status='ready'",
+        (tenant_id,)
+    ).fetchall()
+    
+    unprocessed = []
+    for d in docs:
+        if d["doc_id"] not in wiki_doc_ids:
+            unprocessed.append({
+                "doc_id": d["doc_id"],
+                "source_uri": d["source_uri"],
+                "kind": d["kind"],
+                "status": d["status"],
+            })
+    conn.close()
+    return {"items": unprocessed, "total": len(unprocessed)}
+
+
 @router.post("/pages")
 async def write_page(body: WikiPageWrite):
     from core.harness.knowledge.wiki_engine import write_page, auto_link_page, search_pages, update_page
