@@ -248,12 +248,18 @@ async def convert_from_kb(tenant_id: str = "default", collection_id: str = "defa
                     existing_titles = [p["title"] for p in existing] if existing else []
                     curated = await llm_curate_page(safe_title, body, existing_titles=existing_titles, source_doc_id=doc_id)
                     # Re-write with LLM-enhanced metadata
+                    old_title = safe_title
                     write_page(curated["title"], body,
                         category=curated.get("category", "entities"),
                         tags=curated.get("tags", tags),
                         related=curated.get("related", []),
                         summary=curated.get("summary", summary),
                         source_articles=[f"kb:{doc_id}"])
+                    # If LLM changed the title, delete the mechanically-created page
+                    if curated["title"] != old_title:
+                        from core.harness.knowledge.wiki_engine import delete_page as _delp
+                        try: _delp(old_title)
+                        except: pass
                     # Create knowledge atom pages
                     for atom in curated.get("knowledge_atoms", [])[:8]:
                         if not atom.get("title") or not atom.get("body"):
