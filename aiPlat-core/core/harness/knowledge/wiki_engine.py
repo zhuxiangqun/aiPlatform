@@ -158,7 +158,8 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
     # Merge with existing if updating
     if existing:
         tags = list(set((existing.get("tags") or []) + (tags or [])))
-        related = list(set((existing.get("related") or []) + (related or [])))
+        related = related if related is not None else list(set(
+            (existing.get("related") or [])))      # replace, not merge (enable dead link cleanup)
         contradictions = list(set((existing.get("contradictions") or []) + (contradictions or [])))
         source_articles = list(set((existing.get("source_articles") or []) + (source_articles or [])))
         summary = summary or existing.get("summary", "")
@@ -211,9 +212,14 @@ def update_page(title: str, **kwargs) -> bool:
 
     for key in ("summary", "category", "tags", "related", "contradictions", "source_articles"):
         if key in kwargs and kwargs[key] is not None:
-            existing[key] = kwargs[key]
+            value = kwargs[key]
+            # Filter dead links from related
+            if key == "related" and isinstance(value, list):
+                all_titles = set(p["title"] for p in search_pages(limit=1000))
+                value = [r for r in value if r in all_titles or r == title]
+            existing[key] = value
 
-    name = kwargs.get("title", title)
+    name = kwargs.get("new_title", kwargs.get("title", title))
     if name != title:
         existing["title"] = name
 

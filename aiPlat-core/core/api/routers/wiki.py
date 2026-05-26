@@ -451,7 +451,7 @@ async def curate_wiki():
                 continue
 
             update_page(p["title"],
-                        title=result.get("title"),
+                        new_title=result.get("title"),
                         category=result.get("category"),
                         tags=result.get("tags"),
                         summary=result.get("summary"),
