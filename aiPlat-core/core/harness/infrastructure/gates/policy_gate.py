@@ -41,6 +41,54 @@ class PolicyResult:
     policy_version: Optional[int] = None
 
 
+# ── Architecture boundary enforcement (§5.1, §5.29, §5.30) ──────
+
+# Layer definition: which directories belong to which layer
+_ARCH_LAYERS = {
+    "core": ["aiPlat-core/core/", "aiPlat-core/"],
+    "platform": ["aiPlat-platform/"],
+    "infra": ["aiPlat-infra/"],
+    "app": ["aiPlat-app/"],
+}
+
+# Which layers are PROTECTED — writes from other layers are denied
+_LAYER_PROTECTION = {
+    "core": ["platform", "app"],       # platform/app must not write to core/
+    "infra": ["core", "platform", "app"],  # no layer writes to infra except infra
+    "platform": [],                      # platform can be written by platform (own layer)
+}
+
+
+def _check_arch_boundary(filepath: str, tool_name: str) -> Optional[str]:
+    u"""Check if a file write crosses protected layer boundaries.
+
+    Returns: violation reason string if denied, None if allowed.
+    """
+    path = str(filepath)
+    # Determine which layer the file belongs to
+    target_layer = None
+    for layer, prefixes in _ARCH_LAYERS.items():
+        for prefix in prefixes:
+            if prefix in path:
+                target_layer = layer
+                break
+        if target_layer:
+            break
+
+    if not target_layer:
+        return None  # outside project scope — allow
+
+    # infra is fully protected — no external writes
+    if target_layer == "infra":
+        return f"architecture_violation: writing to infra/ layer is protected. Use infra-specific APIs."
+
+    # core is protected from platform/app
+    if target_layer == "core":
+        return f"architecture_violation: writing to core/ from non-core layer is forbidden. Use CoreFacade."
+
+    return None  # allowed
+
+
 class PolicyGate:
     def __init__(self) -> None:
         # Dev escape hatch: disable approvals entirely.
@@ -217,6 +265,17 @@ class PolicyGate:
                 decision=PolicyDecision.DENY,
                 reason=f"User '{user_id}' lacks EXECUTE permission for tool '{tool_name}'",
             )
+
+        # Architecture boundary check: deny cross-layer file writes
+        if tool_name and any(kw in str(tool_name).lower() for kw in ("file_write", "file_edit", "sys_file_write", "sys_file_edit")):
+            path = (tool_args or {}).get("path") or (tool_args or {}).get("file") or (tool_args or {}).get("filepath") or ""
+            if path and isinstance(path, str):
+                arch_violation = _check_arch_boundary(path, tool_name)
+                if arch_violation:
+                    return PolicyResult(
+                        decision=PolicyDecision.DENY,
+                        reason=arch_violation,
+                    )
 
         # PR-07: unify policy decisions via policy_engine（同步版）
         tenant_id = (tool_args or {}).get("_tenant_id") if isinstance(tool_args, dict) else None

@@ -136,3 +136,11 @@ class MCPClientConfig:
     transport: TransportType = TransportType.SSE
     timeout: int = 30000
     auth: Optional[Dict[str, Any]] = None
+
+
+@dataclass
+class MCPResourceContent:
+    """MCP Resource content (consolidated from infra/mcp/schemas.py)"""
+    uri: str = ""
+    mime_type: str = ""
+    content: Any = None

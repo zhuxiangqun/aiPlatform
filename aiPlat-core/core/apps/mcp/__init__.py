@@ -1,5 +1,10 @@
 """
-MCP Protocol Integration
+MCP Protocol Integration — Layer 1 (core)
+
+OWNERSHIP: aiPlat-core is the single owner of all MCP capability.
+Transport, protocol, tool adapter, server, and client are all managed here.
+The previous aiPlat-infra/infra/mcp layer was consolidated into this module
+(2026-05) — no duplicate exists in any other layer.
 
 Provides Model Context Protocol support for connecting to external tools
 and exposing local tools via MCP.
@@ -17,6 +22,7 @@ from .types import (
     MCPInitializeResult,
     MCPServerConfig,
     MCPClientConfig,
+    MCPResourceContent,
 )
 
 from .protocol import (
@@ -61,6 +67,7 @@ __all__ = [
     "MCPInitializeResult",
     "MCPServerConfig",
     "MCPClientConfig",
+    "MCPResourceContent",
     # Protocol
     "MCPProtocolHandler",
     "SSEHandler",
