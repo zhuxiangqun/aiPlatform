@@ -21,6 +21,7 @@ from core.harness.knowledge.code_graph import (
     count_cycles as _count_cycles,
     health_score as _health_score,
     blast,
+    ScanResult,
 )
 
 router = APIRouter()
@@ -467,7 +468,7 @@ def _health_by_root(*, roots: List[str], nodes: Dict[str, Dict[str, Any]], edges
     return out
 
 
-async def code_intel_scan(rt, roots: List[str]) -> _ScanResult:
+async def code_intel_scan(rt, roots: List[str]) -> ScanResult:
     roots_key = ",".join(roots)
 
     _repo_root = repo_root()
@@ -483,7 +484,7 @@ async def code_intel_scan(rt, roots: List[str]) -> _ScanResult:
         "cycles_back_edges": cycles,
         "issues": len(issues),
     }
-    return _ScanResult(created_at=now, roots_key=roots_key, stats=stats, nodes=nodes, edges=edges, issues=issues, health=health)
+    return ScanResult(created_at=time.time(), roots_key=roots_key, stats=stats, nodes=nodes, edges=edges, issues=issues, health=health)
 
 
 @router.get("/diagnostics/code-intel/scan")

@@ -7604,67 +7604,6 @@
           "render_schema_fields": []
         },
         {
-          "id": "programmer_frontend",
-          "agent_id": "programmer_agent",
-          "agent_name": "程序员",
-          "description": "",
-          "category": "",
-          "tags": [],
-          "phase": "development",
-          "order": 2,
-          "model": "",
-          "hitl": false,
-          "agent_type": "react",
-          "hitl_phase": "",
-          "hitl_after_execute": false,
-          "hitl_after_phase": "",
-          "retry_target_id": "",
-          "generate_test_plan": false,
-          "test_result_key": "",
-          "uses_file_output": true,
-          "code_target": "",
-          "language": "",
-          "prompt_extra": "",
-          "phase_description": "",
-          "input_artifacts": [],
-          "depends_on": [],
-          "output_artifact": "frontend_code",
-          "required_skills": [],
-          "failure_strategy": "fail_pipeline",
-          "fallback_result_key": "",
-          "retry_llm_on_rate_limit": true,
-          "max_consecutive_llm_failures": 3,
-          "stage_timeout_seconds": 600,
-          "sandbox": false,
-          "sandbox_mode": "subprocess",
-          "sandbox_cpu_limit_seconds": 300,
-          "sandbox_memory_limit_mb": 1024,
-          "sandbox_max_processes": 100,
-          "execution_mode": "code_first",
-          "review_gate": "quick",
-          "tdd_enforce": false,
-          "context_isolation": "shared",
-          "eval_model": "",
-          "deviation_tolerance": 0.0,
-          "failure_mode_constraints": [],
-          "enable_query_rewrite": false,
-          "scoring_dimensions": [],
-          "coverage_trace_fields": {
-            "components_key": "components",
-            "api_contracts_key": "api_contracts",
-            "data_model_key": "data_model",
-            "files_key": "files",
-            "test_cases_key": "test_cases"
-          },
-          "debate_participants": [],
-          "debate_max_rounds": 3,
-          "debate_manager_agent": "",
-          "node_config": {},
-          "node_type": "agent",
-          "render_upstream": false,
-          "render_schema_fields": []
-        },
-        {
           "id": "qa",
           "agent_id": "qa_agent",
           "agent_name": "测试经理",
@@ -7672,7 +7611,7 @@
           "category": "",
           "tags": [],
           "phase": "testing",
-          "order": 3,
+          "order": 2,
           "model": "",
           "hitl": true,
           "agent_type": "react",
@@ -7728,14 +7667,14 @@
       ],
       "runs": [
         {
-          "run_id": "run_fa6818c4",
+          "run_id": "run_dca984d7",
           "project_id": "test_prj2",
           "phase": "failed",
           "pass_rate": 0,
           "tokens_used": 0,
           "iteration": 0,
           "error": "PipelineSession.start() got an unexpected keyword argument 'project_name'",
-          "started_at": "2026-05-27T00:45:12",
+          "started_at": "2026-05-27T07:46:48",
           "finished_at": ""
         }
       ],
@@ -7769,25 +7708,11 @@
           "id": "programmer_backend"
         },
         {
-          "agent_id": "programmer_agent",
-          "agent_name": "程序员",
-          "agent_type": "react",
-          "phase": "development",
-          "order": 2,
-          "uses_file_output": true,
-          "hitl": false,
-          "hitl_phase": "",
-          "output_artifact": "frontend_code",
-          "generate_test_plan": false,
-          "test_result_key": "",
-          "id": "programmer_frontend"
-        },
-        {
           "agent_id": "qa_agent",
           "agent_name": "测试经理",
           "agent_type": "react",
           "phase": "testing",
-          "order": 3,
+          "order": 2,
           "uses_file_output": false,
           "hitl": true,
           "hitl_phase": "awaiting_test_plan_approval",
@@ -7800,11 +7725,10 @@
       "plan_stage_ids": [
         "architect",
         "programmer_backend",
-        "programmer_frontend",
         "qa"
       ],
-      "team_id": "team_c81bc396",
-      "updated_at": "2026-05-27T00:45:12"
+      "team_id": "team_b48714ff",
+      "updated_at": "2026-05-27T07:46:48"
     },
     {
       "project_id": "test_prj3",
@@ -7836,19 +7760,19 @@
           "finished_at": ""
         },
         {
-          "run_id": "run_644cae18",
+          "run_id": "run_61ffc68d",
           "project_id": "test_prj3",
           "phase": "failed",
           "pass_rate": 0,
           "tokens_used": 0,
           "iteration": 0,
           "error": "LLM API timeout",
-          "started_at": "2026-05-27T07:24:40",
+          "started_at": "2026-05-27T07:46:48",
           "finished_at": ""
         }
       ],
-      "updated_at": "2026-05-27T07:24:40"
+      "updated_at": "2026-05-27T07:46:48"
     }
   ],
-  "updated_at": "2026-05-27T07:24:40"
+  "updated_at": "2026-05-27T07:46:48"
 }
