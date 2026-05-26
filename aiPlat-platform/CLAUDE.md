@@ -105,3 +105,15 @@ platform → infra (禁止，应通过 core)
 - 改动摘要（改了哪些文件，为什么）
 - 验证结果（API 测试是否通过）
 - 改 API 契约时：说明变更内容和兼容性影响
+
+
+## 7) 近期架构变更（2026-05）
+
+### Wiki 自动策展
+- `_auto_wiki_update()` 已改为通过 `CoreFacade.wiki_auto_update()` 调用
+- 禁止直接 `from core.harness.knowledge.wiki_engine import ...`
+- 所有 Wiki 操作必须通过 CoreFacade facade 方法
+
+### MCP 归属
+- MCP（Model Context Protocol）已全部归入 aiPlat-core
+- platform 不直接管理 MCP 传输或客户端实现

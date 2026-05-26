@@ -247,3 +247,12 @@ infra 不依赖任何内部包
 - 改动摘要（改了哪些文件，为什么）
 - 验证结果（pytest 是否通过）
 - 新增后端/接口时：说明接口契约和配置结构
+
+
+## 7) 近期架构变更（2026-05）
+
+### MCP 已移出 infra
+- `aiPlat-infra/infra/mcp/` 整个目录已删除
+- MCP（Model Context Protocol）已全部归入 `aiPlat-core/core/apps/mcp/`
+- infra 层不再管理 MCP 传输、协议或客户端实现
+- 原因：MCP 是 core 的集成模式，不属于 infra 的基础设施能力
