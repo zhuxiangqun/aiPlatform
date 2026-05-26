@@ -11,6 +11,10 @@ through core/adapters/llm/base.py::create_adapter() → InfraLLMAdapter.
   create_infra_vector_client()   → core memory/semantic.py
   get_infra_model_source()       → model_router.py (list_infra_models)
   list_infra_models()            → model_router.py
+  NOTE: model_router.py uses these, but also handles deployment
+  resolution (API keys, provider routing) which infra doesn't yet
+  provide. Full migration blocked on infra ModelManager gaining
+  model SELECTION capability (currently only LISTING).
 
 ⚠ NOT YET WIRED:
   get_infra_embedding()          → embedding flows through memory/embedding.py::EmbeddingProvider

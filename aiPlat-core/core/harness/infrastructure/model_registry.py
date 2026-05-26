@@ -1,11 +1,19 @@
 """
 Model Registry — unified model metadata for dynamic routing.
 
-**DEPRECATED** as of 2026-05. Model discovery, status, and routing have been
-migrated to aiPlat-infra's ModelManager. This module is retained for backward
-compatibility only and will be removed in a future release.
+**DEPRECATED** as of 2026-05 — MIGRATION IN PROGRESS.
 
-Use `core.harness.infrastructure.infra_bridge.list_infra_models()` or
+Status: ACTIVE (used by 4 production callers — llm.py, core_facade.py,
+skills/base.py, model_router.py). Cannot be safely deleted until infra's
+ModelManager provides equivalent model SELECTION (not just listing).
+
+Migration path:
+  model_registry + model_router → infra ModelManager.select(model_name)
+  Currently: infra provides list_models(), but model_router handles
+  deployment resolution (API keys, provider routing) independently.
+
+Use `core.harness.infrastructure.infra_bridge.list_infra_models()` for
+model listing; use `get_model_registry()` for now until migration completes.
 `infra.management.model.manager.ModelManager.list_models()` instead.
 
 --- (legacy code below, do not extend) ---

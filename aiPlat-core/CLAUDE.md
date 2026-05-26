@@ -812,15 +812,15 @@ done
 
 ### `core/harness/infrastructure/` 目录职责
 
-该目录的职责是**运行时基础设施服务**，**不包含模型管理**。
+该目录的职责是**运行时基础设施服务**，**其中模型注册/路由正在迁移中**。
 
 | 模块 | 职责 | 状态 |
 |------|------|:---:|
 | `di/`, `hooks/`, `gates/`, `approval/`, `crypto/`, `config/`, `secrets/` | Harness 运行时服务（DI 容器、Hook 系统、Policy Gate、审批管理、加密签名、配置管理、密钥管理） | ✅ 合规 |
 | `infra_bridge.py` | 桥接 core→infra（ModelManager、LLM、Database、Vector） | ✅ 合规 |
 | `infra_llm_adapter.py` | 包装 infra LLMClient 为 core ILLMAdapter（**core 唯一 LLM 适配器**） | ✅ 合规 |
-| `model_registry.py` | **与 infra ModelManager 重复** | ⚠️ deprecated |
-| `model_router.py` | **与 infra 路由重复** | ⚠️ deprecated |
+| `model_registry.py` | 模型元数据存储。仍被 4 个调用者使用（llm.py, core_facade.py, skills/base.py, model_router.py） | ⚠️ 迁移中：infra 的 ModelManager 提供 list_models，但 model SELECTION（含 API key 解析、provider 路由）仍需 model_router |
+| `model_router.py` | 模型选择和部署解析。仍被 4 个调用者使用 | ⚠️ 迁移中：等 infra ModelManager 提供 select(model_name) 后迁移 |
 
 ### Core 侧：通用 Adapter，禁止 per-provider 类
 

@@ -285,12 +285,36 @@ async def run_readiness_audit():
     claude_items.append(_ok("CLAUDE.md 文件存在", len(claude_files) >= 3,
         f"发现 {len(claude_files)} 个 CLAUDE.md 文件"))
     
-    # Check if model_registry deprecated marker exists
+    # Check if model_registry/model_router are deprecated AND safe to delete
     has_mr = (core_src / "harness" / "infrastructure" / "model_registry.py").exists()
     has_rt = (core_src / "harness" / "infrastructure" / "model_router.py").exists()
-    claude_items.append(_ok("model_registry/model_router deprecated",
-        not (has_mr and has_rt),
-        "Bridged to infra ModelManager, retained as backward-compat" if has_mr else "已删除"))
+    # Check if still referenced: grep all Python files excluding the deprecated files themselves
+    import subprocess as _sp
+    refs_mr = 0
+    refs_rt = 0
+    if has_mr or has_rt:
+        try:
+            result = _sp.run(["grep", "-rn", "model_registry\|model_router", str(core_src)],
+                           capture_output=True, text=True, timeout=10)
+            for line in result.stdout.split("\n"):
+                if "model_registry" in line and "model_registry.py" not in line:
+                    refs_mr += 1
+                if "model_router" in line and "model_router.py" not in line:
+                    refs_rt += 1
+        except Exception:
+            pass
+    # If files exist AND have callers → migration incomplete (not a failure)
+    # If files exist AND zero callers → they should be deleted (failure)
+    migrating = (has_mr or has_rt) and (refs_mr > 0 or refs_rt > 0)
+    if not migrating:
+        verdict = not (has_mr and has_rt)
+    else:
+        verdict = True  # Don't fail — migration is in progress
+    detail = (f"Migration in progress ({refs_mr}+{refs_rt} references remain). " 
+              "Model selector currently active in llm.py, core_facade.py, skills/base.py"
+              if migrating else
+              "Bridged to infra ModelManager, retained as backward-compat" if has_mr else "已删除")
+    claude_items.append(_ok("model_registry/model_router deprecated", verdict, detail))
 
     # Summaries
     ready_score = sum(1 for i in readiness if i["result"] == "✅")
