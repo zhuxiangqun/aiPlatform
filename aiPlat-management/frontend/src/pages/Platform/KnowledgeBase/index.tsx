@@ -84,22 +84,33 @@ const KnowledgeBasePage: React.FC = () => {
       ]);
       const kbItems = kbRes.items || [];
       const wikiItems = wikiRes.items || [];
-      // Build set of KB doc_ids referenced by wiki pages via source_articles
+      // Build sets: doc_ids + source_uri filenames from wiki pages
       const wikiDocIds = new Set<string>();
+      const wikiSourceNames = new Set<string>();
       for (const p of wikiItems) {
         for (const s of (p.source_articles || [])) {
           if (s.startsWith('kb:')) wikiDocIds.add(s.replace('kb:', ''));
+          // Also track filenames from upload: sources for fuzzy matching
+          const name = s.replace('kb:', '').replace('upload:', '');
+          if (name) wikiSourceNames.add(name);
         }
       }
       const unprocessed: any[] = [];
+      const processedDocIds = new Set<string>();
       for (const doc of kbItems) {
-        if (!wikiDocIds.has(doc.doc_id)) {
+        const uriFile = (doc.source_uri || '').split('/').pop() || '';
+        // Match by doc_id OR by source_uri filename (cross-system compatibility)
+        const matched = wikiDocIds.has(doc.doc_id) ||
+          [...wikiSourceNames].some(n => uriFile.includes(n.substring(0, 30)) || n.includes(uriFile.substring(0, 30)));
+        if (matched) {
+          processedDocIds.add(doc.doc_id);
+        } else {
           unprocessed.push(doc);
         }
       }
       setUnprocessedDocs(unprocessed);
       setUnprocessedCount(unprocessed.length);
-      setWikiDocIds(wikiDocIds);
+      setWikiDocIds(processedDocIds);
     } catch { setUnprocessedCount(0); setUnprocessedDocs([]); }
   };
 
