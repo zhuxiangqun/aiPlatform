@@ -1204,14 +1204,12 @@ DONE: final_answer
 
         state.context["_graph_loaded"] = True
         return hints
+
+    async def _try_inject_memory_reminders(self, state: LoopState) -> None:
         """Bridge: inject MemoryManager reminders into the message loop.
 
         When MemoryManager is available (wired at server startup), its
         SystemReminders are injected as user-role messages for the agent.
-        Fallback: uses local state metrics (retry count, stagnation).
-
-        This is a lightweight integration hook. Full 3-tier memory integration
-        (Working/Episodic/Semantic in loop context assembly) is To-Be per design docs.
         """
         try:
             from core.harness.memory.manager import get_memory_manager

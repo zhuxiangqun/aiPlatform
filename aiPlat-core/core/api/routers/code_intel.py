@@ -26,21 +26,6 @@ from core.harness.knowledge.code_graph import (
 router = APIRouter()
 
 
-@dataclass
-class _ScanResult:
-    created_at: float
-    roots_key: str
-    stats: Dict[str, Any]
-    nodes: Dict[str, Dict[str, Any]]  # path -> node
-    edges: List[Dict[str, str]]  # {from,to}
-    issues: List[Dict[str, Any]]
-    health: Dict[str, Any]
-
-
-_CACHE: Optional[_ScanResult] = None
-_CACHE_TTL_SEC = 120.0
-
-
 def _is_aggregator_file(path: str) -> Tuple[bool, str]:
     """
     Heuristic: files that act as "wiring"/"barrel"/"router include" hubs.
@@ -483,11 +468,7 @@ def _health_by_root(*, roots: List[str], nodes: Dict[str, Dict[str, Any]], edges
 
 
 async def code_intel_scan(rt, roots: List[str]) -> _ScanResult:
-    global _CACHE
     roots_key = ",".join(roots)
-    now = time.time()
-    if _CACHE and _CACHE.roots_key == roots_key and (now - _CACHE.created_at) < _CACHE_TTL_SEC:
-        return _CACHE
 
     _repo_root = repo_root()
     abs_roots = [(_repo_root / r).resolve() for r in roots]
@@ -502,8 +483,7 @@ async def code_intel_scan(rt, roots: List[str]) -> _ScanResult:
         "cycles_back_edges": cycles,
         "issues": len(issues),
     }
-    _CACHE = _ScanResult(created_at=now, roots_key=roots_key, stats=stats, nodes=nodes, edges=edges, issues=issues, health=health)
-    return _CACHE
+    return _ScanResult(created_at=now, roots_key=roots_key, stats=stats, nodes=nodes, edges=edges, issues=issues, health=health)
 
 
 @router.get("/diagnostics/code-intel/scan")
@@ -616,5 +596,5 @@ async def blast_radius(
     root_list = [x.strip() for x in (roots.split(",") if roots else default_roots()) if x.strip()]
     res = await code_intel_scan(rt, root_list)
     start = str(file).strip()
-    out = _blast(res.nodes, start)
+    out = blast(res.nodes, start)
     return {"status": "ok", "file": start, "affected": out, "count": len(out)}
