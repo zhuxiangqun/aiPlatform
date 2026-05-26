@@ -82,18 +82,39 @@ const Diagnostics: React.FC = () => {
 
   const items = useMemo(() => [
     { title: 'Doctor', desc: '一键聚合诊断报告', href: '/diagnostics/doctor', icon: Activity },
-    { title: 'Code Intel', desc: '代码架构/影响面/风险扫描', href: '/diagnostics/code-intel', icon: FolderSearch },
-    { title: 'Syscalls', desc: 'syscall_events 检索（tool/llm/skill）', href: '/diagnostics/syscalls', icon: Zap },
-    { title: 'Runs', desc: 'run_id 维度的摘要与事件流', href: '/diagnostics/runs', icon: Share2 },
+    { title: 'Workflows', desc: '把评估/证据/门控串成一键流水线', href: '/diagnostics/workflows', icon: Wand2 },
+    { title: 'Context', desc: 'Prompt/context 组装诊断（cache/search/注入）', href: '/diagnostics/context', icon: Activity },
+    { title: 'Capability→Policy', desc: '从 skill capabilities 生成工具门禁策略', href: '/diagnostics/capability-policy', icon: Activity },
+    { title: 'Exec Backends', desc: '执行后端 health 与当前 backend', href: '/diagnostics/exec-backends', icon: Activity },
     { title: 'Traces', desc: '链路追踪与 spans 定位', href: '/diagnostics/traces', icon: Activity },
-    { title: 'Links', desc: '输入任意 ID 联动查询', href: '/diagnostics/links', icon: Share2 },
     { title: 'Graph Runs', desc: '执行 runs / checkpoints / 恢复', href: '/diagnostics/graphs', icon: GitBranch },
+    { title: 'Links', desc: '输入任意 ID 联动查询', href: '/diagnostics/links', icon: Share2 },
+    { title: 'Repo', desc: 'Repo 索引/全文搜索（gitignore-aware）', href: '/diagnostics/repo', icon: FolderSearch },
+    { title: 'Code Intel', desc: '代码架构/影响面/风险扫描', href: '/diagnostics/code-intel', icon: FolderSearch },
+    { title: 'Runs', desc: 'run_id 维度的摘要与事件流', href: '/diagnostics/runs', icon: Share2 },
     { title: 'Audit Logs', desc: '关键操作审计日志', href: '/diagnostics/audit', icon: Share2 },
-    { title: 'Repo', desc: 'Repo 索引/全文搜索', href: '/diagnostics/repo', icon: FolderSearch },
-    { title: 'E2E Smoke', desc: '生产级全链路冒烟', href: '/diagnostics/smoke', icon: Zap },
-    { title: 'Ops', desc: '导出 / DLQ / 配额', href: '/diagnostics/ops', icon: Wrench },
-    { title: 'Change Control', desc: '变更控制台', href: '/diagnostics/change-control', icon: GitBranch },
+    { title: 'Tenant Policies', desc: 'Policy-as-code 策略快照', href: '/diagnostics/policies', icon: Share2 },
+    { title: 'Policy Debug', desc: '策略评估调试（RBAC + Policy）', href: '/diagnostics/policy-debug', icon: Activity },
+    { title: 'Syscalls', desc: 'syscall_events 检索（tool/llm/skill）', href: '/diagnostics/syscalls', icon: Zap },
+    { title: 'Change Control', desc: '变更控制台（change_id / gates / approvals）', href: '/diagnostics/change-control', icon: GitBranch },
+    { title: 'E2E Smoke', desc: '生产级全链路冒烟（自动清理）', href: '/diagnostics/smoke', icon: Zap },
+    { title: 'Ops', desc: '导出（CSV）/ DLQ / 配额用量', href: '/diagnostics/ops', icon: Wrench },
   ], []);
+
+  // Compute recommended tools from both Layer Health guidance AND Audit guidance
+  const recommendedTools = useMemo(() => {
+    const tools = new Set<string>();
+    // From layer health: Doctor + Syscalls
+    if (unhealthyLayers.length > 0) {
+      tools.add('Doctor');
+      tools.add('Syscalls');
+    }
+    // From audit
+    for (const g of auditGuidance) {
+      tools.add(g.tool);
+    }
+    return tools;
+  }, [unhealthyLayers, auditGuidance]);
 
   // Count unhealthy/degraded layers
   const unhealthyLayers = (['infra', 'core', 'platform', 'app'] as const).filter(
@@ -325,7 +346,7 @@ const Diagnostics: React.FC = () => {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {items.map((it) => {
-            const isRecommended = auditGuidance.some(g => g.tool === it.title);
+            const isRecommended = recommendedTools.has(it.title);
             return (
               <Link key={it.href} to={it.href} className="block">
                 <Card hoverable className={isRecommended ? 'border-primary/50 bg-primary/5' : ''}>
