@@ -109,6 +109,37 @@ const KnowledgeBasePage: React.FC = () => {
     setUploadModalOpen(false);
     await fetchDocuments(undefined, activeCategory);
     await fetchCategories();
+    // Poll until all documents are ready (not ingesting)
+    pollDocumentReady();
+  };
+
+  const pollDocumentReady = () => {
+    let attempts = 0;
+    const maxAttempts = 30;
+    const poll = async () => {
+      try {
+        const res = await fetch('/api/platform/documents?limit=100').then(r => r.json());
+        const items = res.items || [];
+        const ingesting = items.filter((d: any) => d.status === 'ingesting');
+        if (ingesting.length === 0 && items.length > 0) {
+          // All documents ready — final refresh
+          await fetchDocuments(undefined, activeCategory);
+          checkUnprocessed();
+          return;
+        }
+        attempts++;
+        if (attempts < maxAttempts) {
+          if (attempts === 1) toast('文档处理中…');
+          setTimeout(poll, 2000);
+        } else {
+          toast('处理超时，请刷新页面查看');
+          await fetchDocuments(undefined, activeCategory);
+        }
+      } catch {
+        setTimeout(poll, 2000);
+      }
+    };
+    poll();
   };
 
   const refreshEvalSamples = async () => {
