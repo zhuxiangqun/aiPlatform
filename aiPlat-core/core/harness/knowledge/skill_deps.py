@@ -144,13 +144,35 @@ def build_skill_deps(skills_root: str = None) -> Dict[str, Any]:
         "skills": skill_deps,
         "syscalls": {k: sorted(v) for k, v in syscall_users.items()},
         "unknown_refs": unknown,
+        "unused_skills": sorted(set(skill_deps.keys()) - set(r for a in agent_refs.values() for r in a.get("required_skills", []))),
         "stats": {
             "total_skills": len(skill_deps),
             "total_agents": len(agent_refs),
             "total_syscalls_used": len(syscall_users),
             "unknown_references": len(unknown),
+            "unused_skills": len(set(skill_deps.keys()) - set(r for a in agent_refs.values() for r in a.get("required_skills", []))),
+            "syscall_caller_count": {s: _count_syscall_callers(s) for s in syscall_users},
         },
     }
+
+
+def _count_syscall_callers(syscall_name: str) -> int:
+    u"""Count non-loop.py, non-test Python importers of a syscall."""
+    import os, subprocess
+    try:
+        from pathlib import Path
+        core_root = Path(__file__).resolve().parents[3]
+        result = subprocess.run(
+            ["grep", "-rn", f"from.*import.*{syscall_name}|import.*{syscall_name}", str(core_root)],
+            capture_output=True, text=True, timeout=5
+        )
+        count = 0
+        for line in result.stdout.split('\n'):
+            if line and '/tests/' not in line and 'loop.py' not in line and 'skill_deps' not in line:
+                count += 1
+        return count
+    except Exception:
+        return -1
 
 
 def skill_impact(skill_id: str) -> Dict[str, Any]:

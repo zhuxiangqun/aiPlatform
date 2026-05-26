@@ -116,6 +116,8 @@ def _resolve_js_relative(from_file: Path, spec: str) -> Optional[Path]:
 
 
 def _resolve_py_module(_repo_root: Path, from_file: Path, mod: str) -> Optional[Path]:
+    if not mod or mod == '.':
+        return None
     rel = Path(*mod.split("."))
     cand1 = _repo_root / rel.with_suffix(".py")
     cand2 = _repo_root / rel / "__init__.py"
@@ -278,4 +280,6 @@ def build_context(task: str, roots: List[str] = None) -> Dict[str, Any]:
         "stats": {"files": len(nodes), "edges": len(edges), "issues": len(issues)},
         "health": health,
         "related": related_files,
+        "orphan_files": [p for p, n in nodes.items()
+                         if len(n.get("out", [])) == 0 and n.get("in", 0) == 0],
     }
