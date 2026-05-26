@@ -38,19 +38,16 @@ def wire_hot_reload():
     paths = [p.strip() for p in watch_paths.split(",") if p.strip() and os.path.exists(p.strip())]
 
     for p in paths:
-        def make_callback(path):
-            def on_change(filepath):
-                import logging
-                logger = logging.getLogger("hot_reload")
-                logger.info(f"file changed: {filepath}")
-                # Invalidate CodeIntel cache if it's a .py/.ts file
-                if filepath.endswith(('.py', '.ts', '.tsx')):
-                    try:
-                        from core.harness.knowledge.code_graph import clear_cache
-                        clear_cache()
-                    except Exception:
-                        pass
-            return on_change
-        watcher.watch(p, make_callback(p))
+        def _on_file_change(filepath):
+            import logging
+            logger = logging.getLogger("hot_reload")
+            logger.info(f"file changed: {filepath}")
+            if filepath.endswith(('.py', '.ts', '.tsx')):
+                try:
+                    from core.harness.knowledge.code_graph import clear_cache
+                    clear_cache()
+                except Exception:
+                    pass
+        watcher.watch(p, _on_file_change)
 
     watcher.start()

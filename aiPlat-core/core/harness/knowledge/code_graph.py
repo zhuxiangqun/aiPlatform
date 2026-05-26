@@ -346,8 +346,8 @@ def build_context(task: str, roots: List[str] = None) -> Dict[str, Any]:
 def _enrich_nodes_with_symbols(nodes, repo_root):
     u"""Add entity-level symbol counts and top symbols to file nodes.
 
-    Uses ast.parse (same approach as repo_map.py) for zero-dependency extraction.
-    Only processes .py files; JS/TS files get basic type hints.
+    NOTE: modifies nodes dict in-place (intentional — enrichment is idempotent
+    and operates on cached graph nodes for performance).
     """
     import ast
     for path, node in nodes.items():
