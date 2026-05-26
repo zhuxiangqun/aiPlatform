@@ -253,5 +253,50 @@ async def convert_from_kb(tenant_id: str = "default", collection_id: str = "defa
     except Exception as e:
         errors.append(str(e)[:500])
 
+    # Also scan uploads/ directory for files not yet in wiki
+    try:
+        uploads_dir = os.path.join(kb_dir, tenant_id, "uploads")
+        if os.path.exists(uploads_dir):
+            from core.harness.knowledge.wiki_engine import search_pages
+            existing_wiki = set(p["title"] for p in search_pages(limit=1000))
+
+            for fname in os.listdir(uploads_dir):
+                fpath = os.path.join(uploads_dir, fname)
+                if not os.path.isfile(fpath): continue
+                if fname.startswith("."): continue
+
+                title = os.path.splitext(fname)[0][:100]
+                title = re.sub(r"[<>:\"/\\|?*]", "_", title)
+                if title in existing_wiki: continue
+
+                # Try to read the file
+                try:
+                    with open(fpath, "rb") as fh:
+                        raw = fh.read(10000)
+                    try:
+                        body = raw.decode("utf-8")
+                    except:
+                        body = raw.decode("utf-8", errors="replace")
+                except:
+                    continue
+                if not body or len(body) < 50:
+                    continue
+
+                tags = list(set(kw.lower() for kw in re.findall(r'[\u4e00-\u9fff]{2,8}|[A-Z][a-zA-Z]{2,}', body[:5000])))[:8]
+                write_page(title, body[:50000], category="entities", tags=tags,
+                          summary=body[:300].replace("\n", " "))
+                created += 1
+                # Mark as processed
+                try:
+                    import sqlite3 as _sq
+                    c2 = _sq.connect(kb_db)
+                    existing = c2.execute("SELECT 1 FROM documents WHERE doc_id LIKE ?", (f"%{fname[:20]}%",)).fetchone()
+                    c2.close()
+                except: pass
+                if created >= limit * 2:
+                    break
+    except Exception as e:
+        if not errors: errors.append(f"upload scan: {str(e)[:200]}")
+
     return {"created": created, "skipped": skipped, "errors": errors,
             "message": f"Converted {created} KB documents to Wiki pages. {skipped} skipped."}
