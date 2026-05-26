@@ -1339,7 +1339,81 @@ async def documents_ingest(request: Request):
         max_pages=max_pages,
         name="",
     )
+
+    # Auto-trigger Wiki update: convert KB document into Wiki knowledge pages
+    # Fire-and-forget — don't block the ingest response
+    try:
+        import asyncio as _asyncio
+        doc_id = job.get("doc_id", "") if isinstance(job, dict) else ""
+        if doc_id:
+            _asyncio.create_task(_auto_wiki_update(doc_id, str(file_path)))
+    except Exception:
+        pass
+
     return {"job": job}
+
+
+async def _auto_wiki_update(doc_id: str, file_path: str):
+    """Background task: convert a newly ingested KB document into Wiki pages."""
+    try:
+        import os, re
+        from core.harness.knowledge.wiki_engine import write_page
+        from core.api.core_facade import kb_parse_document, kb_chunk_elements
+
+        # Read and parse the document
+        kind = os.path.splitext(file_path)[1].lstrip(".") or "txt"
+        elements = kb_parse_document(file_path, kind)
+        if not elements:
+            return
+
+        chunks = kb_chunk_elements(elements, kind=kind, target_size=1000, overlap=150)
+        if not chunks:
+            return
+
+        # Extract title from filename
+        title = os.path.basename(file_path).rsplit(".", 1)[0][:100] or doc_id[:60]
+        title = re.sub(r"[<>:\"/\\|?*]", "_", title)
+
+        # Build body from parsed text
+        body_parts = []
+        for ch in chunks:
+            text = str(ch.get("text", "") or "").strip()
+            if text:
+                body_parts.append(text)
+        body = "\n\n".join(body_parts)[:50000]
+
+        # Extract keywords for auto-tagging
+        import re as _re
+        keywords = _re.findall(r'[\u4e00-\u9fff]{2,8}|[A-Z][a-zA-Z]{2,}', body[:5000])
+        tags = list(set(kw.lower() for kw in keywords[:8]))
+
+        # Create wiki page
+        write_page(title, body, category="entities", tags=tags,
+                   summary=body[:300].replace("\n", " "),
+                   source_articles=[f"kb:{doc_id}"])
+
+        # Write back to KB document meta
+        import json
+        kb_dir = os.path.expanduser(os.getenv("AIPLAT_KB_TENANTS_DIR", "~/.aiplat/kb/tenants"))
+        kb_db = os.path.join(kb_dir, "default", "kb.sqlite3")
+        if os.path.exists(kb_db):
+            import sqlite3 as _sqlite3
+            conn = _sqlite3.connect(kb_db)
+            try:
+                row = conn.execute("SELECT meta_json FROM documents WHERE doc_id=?", (doc_id,)).fetchone()
+                if row:
+                    meta = json.loads(row[0] or "{}")
+                    wiki_pages = meta.get("wiki_pages", [])
+                    if title not in wiki_pages:
+                        wiki_pages.append(title)
+                        meta["wiki_pages"] = wiki_pages
+                        conn.execute("UPDATE documents SET meta_json=? WHERE doc_id=?",
+                                    (json.dumps(meta, ensure_ascii=False), doc_id))
+                        conn.commit()
+            finally:
+                conn.close()
+    except Exception:
+        pass  # Wiki update is best-effort, don't fail the ingest
 
 
 @app.post("/api/v1/documents/preview", response_model=Dict[str, Any])
