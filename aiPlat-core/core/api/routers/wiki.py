@@ -135,12 +135,12 @@ async def ingest_text(body: WikiIngest):
 
 
 @router.post("/convert-from-kb")
-async def convert_from_kb(tenant_id: str = "default", collection_id: str = "default", limit: int = 50):
+async def convert_from_kb(tenant_id: str = "default", collection_id: str = "default", limit: int = 50,
+                          doc_ids: List[str] = None):
     u"""Convert existing KB documents into Wiki pages.
     
-    Reads documents from the RAG knowledge base (SQLite), extracts titles and
-    full text, and creates initial Wiki entity pages. Auto-detects related pages
-    by shared keywords.
+    If doc_ids is provided, only those specific documents are converted.
+    Otherwise all documents matching tenant/collection are processed.
     """
     import os, re, time as _time, logging
     logger = logging.getLogger(__name__)
@@ -165,10 +165,15 @@ async def convert_from_kb(tenant_id: str = "default", collection_id: str = "defa
         conn.row_factory = sqlite3.Row
         try:
             # Read documents from 'documents' table
-            docs = conn.execute(
-                "SELECT doc_id, source_uri, kind, status, meta_json, created_at FROM documents WHERE tenant_id=? AND collection_id=? ORDER BY created_at DESC LIMIT ?",
-                (tenant_id, collection_id, limit)
-            ).fetchall()
+            if doc_ids and len(doc_ids) > 0:
+                placeholders = ','.join('?' * len(doc_ids))
+                sql = f"SELECT doc_id, source_uri, kind, status, meta_json, created_at FROM documents WHERE tenant_id=? AND collection_id=? AND doc_id IN ({placeholders}) ORDER BY created_at DESC LIMIT ?"
+                docs = conn.execute(sql, (tenant_id, collection_id, *doc_ids, limit)).fetchall()
+            else:
+                docs = conn.execute(
+                    "SELECT doc_id, source_uri, kind, status, meta_json, created_at FROM documents WHERE tenant_id=? AND collection_id=? ORDER BY created_at DESC LIMIT ?",
+                    (tenant_id, collection_id, limit)
+                ).fetchall()
 
             if not docs:
                 return {"docs_converted": 0, "entities_created": 0, "uploads_converted": 0, "skipped": 0, "writeback_errors": 0, "errors": ["No documents found in KB. Ingest documents first via Knowledge Base page."]}
@@ -300,7 +305,8 @@ async def convert_from_kb(tenant_id: str = "default", collection_id: str = "defa
     except Exception as e:
         errors.append(str(e)[:500])
 
-    # Also scan uploads/ directory for files not yet in wiki
+    # Also scan uploads/ directory for files not yet in wiki (skip when specific doc_ids given)
+    if not doc_ids:
     try:
         uploads_dir = os.path.join(kb_dir, tenant_id, "uploads")
         if os.path.exists(uploads_dir):
