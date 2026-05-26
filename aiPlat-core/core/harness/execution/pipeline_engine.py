@@ -1285,6 +1285,25 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
         local_state.setdefault("_graph_trace", [])
         local_state["_graph_trace"] = list(local_state["_graph_trace"])  # shallow copy for parallel safety
 
+        # Compute input hash for incremental execution
+        # Uses configured input_hash_keys or falls back to all upstream state keys
+        input_hash_keys = getattr(stage, 'input_hash_keys', []) or (
+            [s.output_artifact for s in self._config.stages[:idx]
+             if s.output_artifact and local_state.get(s.output_artifact)]
+            if idx > 0 else []
+        )
+        if input_hash_keys:
+            import hashlib, json
+            input_snapshot = {k: str(local_state.get(k, ""))[:500] for k in input_hash_keys}
+            current_hash = hashlib.sha256(
+                json.dumps(input_snapshot, sort_keys=True).encode()
+            ).hexdigest()[:16]
+            stored_hash = local_state.get(f"_input_hash_{stage.id}", "")
+            if stored_hash and stored_hash != current_hash:
+                # Inputs changed — force re-execution even if output exists
+                local_state.pop(stage.output_artifact, None)
+            local_state[f"_input_hash_{stage.id}"] = current_hash
+
         # Skip if already done (but not for empty/error artifacts)
         existing = local_state.get(stage.output_artifact)
         if existing and (not isinstance(existing, dict) or len(existing) > 0):

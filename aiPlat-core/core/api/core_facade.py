@@ -815,6 +815,74 @@ def wiki_retrieve(query: str, wiki_titles: list = None, **kwargs: Any) -> Any:
     return sys_wiki_retrieve(query, wiki_titles, **kwargs)
 
 
+def wiki_auto_update(doc_id: str, file_path: str) -> Dict[str, Any]:
+    u"""Convert a newly ingested KB document into Wiki knowledge pages.
+
+    Called by platform after document ingestion completes.
+    Complies with platform→core facade rule (§5.1).
+    """
+    import os, re
+    from core.harness.knowledge.wiki_engine import write_page
+    from core.api.core_facade import kb_parse_document, kb_chunk_elements
+
+    kind = os.path.splitext(file_path)[1].lstrip(".") or "txt"
+    elements = kb_parse_document(file_path, kind)
+    if not elements:
+        return {"status": "skipped", "reason": "no elements parsed"}
+
+    chunks = kb_chunk_elements(elements, kind=kind, target_size=1000, overlap=150)
+    if not chunks:
+        return {"status": "skipped", "reason": "no chunks"}
+
+    title = os.path.basename(file_path).rsplit(".", 1)[0][:100] or doc_id[:60]
+    title = re.sub(r"[<>:\"/\\|?*]", "_", title)
+    body_parts = [str(ch.get("text", "") or "").strip() for ch in chunks if str(ch.get("text", "") or "").strip()]
+    body = "\n\n".join(body_parts)[:50000]
+    keywords = re.findall(r'[\u4e00-\u9fff]{2,8}|[A-Z][a-zA-Z]{2,}', body[:5000])
+    tags = list(set(kw.lower() for kw in keywords[:8]))
+
+    write_page(title, body, category="entities", tags=tags,
+               summary=body[:300].replace("\n", " "),
+               source_articles=[f"kb:{doc_id}"])
+    return {"status": "created", "title": title, "chars": len(body)}
+
+
+def wiki_skill_deps() -> Dict[str, Any]:
+    u"""Return skill dependency graph (Agent→Skill→Syscall)."""
+    from core.harness.knowledge.skill_deps import build_skill_deps
+    return build_skill_deps()
+
+
+def wiki_skill_impact(skill_id: str) -> Dict[str, Any]:
+    u"""Return agents and downstream skills affected by a given skill."""
+    from core.harness.knowledge.skill_deps import skill_impact
+    return skill_impact(skill_id)
+
+
+def wiki_fts_index() -> int:
+    u"""Rebuild wiki FTS5 index. Returns count of indexed pages."""
+    from core.harness.knowledge.wiki_fts import fts_index_pages
+    return fts_index_pages()
+
+
+def wiki_fts_search(query: str, limit: int = 10) -> Any:
+    u"""Keyword search wiki pages via FTS5."""
+    from core.harness.knowledge.wiki_fts import fts_search
+    return fts_search(query, limit)
+
+
+def code_intel_context(task: str) -> Any:
+    u"""Return code graph context for a development task."""
+    from core.harness.syscalls.code_intel_syscall import sys_code_intel_context
+    return sys_code_intel_context(task)
+
+
+def code_intel_blast(file_path: str) -> Any:
+    u"""Return forward blast radius of a file."""
+    from core.harness.syscalls.code_intel_syscall import sys_code_intel_blast
+    return sys_code_intel_blast(file_path)
+
+
 def kb_ocr_keyframes(image_paths: list, engine: str = "paddleocr", lang: str = "zh") -> Any:
     """OCR multiple image files."""
     from core.harness.document.ocr import ocr_keyframes
