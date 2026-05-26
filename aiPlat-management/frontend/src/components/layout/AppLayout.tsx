@@ -27,6 +27,7 @@ interface MenuGroup {
 
 const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
   { key: '/overview', icon: LayoutDashboard, label: '平台总览' },
+  { key: '/system-overview', icon: Activity, label: '系统概览' },
   { key: '/alerts', icon: Bell, label: '告警中心' },
   { key: '/releases', icon: Rocket, label: '版本管理' },
   { key: '/diagnostics', icon: Activity, label: '可观测性' },

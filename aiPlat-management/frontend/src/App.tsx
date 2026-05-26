@@ -18,6 +18,7 @@ const withSuspense = (Component: React.LazyExoticComponent<React.FC>) => (
 );
 
 const Overview = lazy(() => import('./pages/Overview/Overview'));
+const SystemOverview = lazy(() => import('./pages/SystemOverview/SystemOverview'));
 const Alerts = lazy(() => import('./pages/Alerts/Alerts'));
 const InfraNodes = lazy(() => import('./pages/Infra/Nodes/Nodes'));
 const InfraModels = lazy(() => import('./pages/Infra/Models/Models'));
@@ -104,6 +105,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: withSuspense(Overview) },
       { path: 'overview', element: withSuspense(Overview) },
+      { path: 'system-overview', element: withSuspense(SystemOverview) },
       { path: 'alerts', element: withSuspense(Alerts) },
       { path: 'onboarding', element: withSuspense(Onboarding) },
       { path: 'infra/nodes', element: withSuspense(InfraNodes) },
