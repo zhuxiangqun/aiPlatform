@@ -27,7 +27,7 @@ class VectorManager(ManagementBase):
         """Get vector module status."""
         try:
             if not self._collections:
-                return Status.UNKNOWN
+                return Status.DISABLED
             
             healthy_collections = sum(
                 1 for c in self._collections.values()

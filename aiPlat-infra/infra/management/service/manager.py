@@ -129,7 +129,7 @@ class ServiceManager(ManagementBase):
                 self._refresh_services_from_processes()
             
             if not self._services:
-                return Status.UNKNOWN
+                return Status.DISABLED
             
             unhealthy_count = sum(
                 1 for service in self._services.values()

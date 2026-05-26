@@ -30,7 +30,7 @@ class DatabaseManager(ManagementBase):
         """Get database module status."""
         try:
             if not self._pools:
-                return Status.UNKNOWN
+                return Status.DISABLED
             
             healthy_pools = sum(
                 1 for pool in self._pools.values()

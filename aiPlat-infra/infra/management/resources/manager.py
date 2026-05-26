@@ -27,7 +27,7 @@ class ResourcesManager(ManagementBase):
         try:
             # Check if any nodes are available
             if not self._nodes:
-                return Status.UNKNOWN
+                return Status.DISABLED
             
             # Check node health
             healthy_count = sum(1 for node in self._nodes.values() if node.status == "healthy")

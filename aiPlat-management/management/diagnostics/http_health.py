@@ -19,7 +19,7 @@ def _to_status(value: str) -> HealthStatus:
     v = (value or "").lower()
     if v == "healthy":
         return HealthStatus.HEALTHY
-    if v == "degraded":
+    if v in ("degraded", "disabled"):
         return HealthStatus.DEGRADED
     return HealthStatus.UNHEALTHY
 

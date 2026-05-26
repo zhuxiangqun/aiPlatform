@@ -27,7 +27,7 @@ class LLMManager(ManagementBase):
         try:
             # Check if models are configured
             if not self._models:
-                return Status.UNKNOWN
+                return Status.DISABLED
             
             # Check model availability
             available_count = sum(1 for model in self._models.values() if model.get("enabled", False))

@@ -12,11 +12,12 @@ from datetime import datetime
 
 
 class Status(Enum):
-    """Module status enumeration"""
+    """Component health status."""
     HEALTHY = "healthy"
     DEGRADED = "degraded"
     UNHEALTHY = "unhealthy"
     UNKNOWN = "unknown"
+    DISABLED = "disabled"      # intentionally not configured — not a failure
 
 
 @dataclass

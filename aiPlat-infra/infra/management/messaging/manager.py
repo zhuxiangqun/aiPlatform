@@ -30,7 +30,7 @@ class MessagingManager(ManagementBase):
         """Get messaging module status."""
         try:
             if not self._queues:
-                return Status.UNKNOWN
+                return Status.DISABLED
             
             healthy_queues = sum(
                 1 for q in self._queues.values()
