@@ -1,14 +1,20 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, X, Maximize2, Minimize2 } from 'lucide-react';
 
 import { Input } from '../ui';
 
 const LazyECharts: any = React.lazy(() => import('echarts-for-react'));
 
 const CAT_COLORS: Record<string, string> = {
-  entities: '#4d9fff',
+  entities: '#3b82f6',
   topics: '#a855f7',
   contradictions: '#ef4444',
+};
+
+const CAT_GLOW: Record<string, string> = {
+  entities: 'rgba(59,130,246,0.4)',
+  topics: 'rgba(168,85,247,0.4)',
+  contradictions: 'rgba(239,68,68,0.4)',
 };
 
 interface GraphNode {
@@ -43,6 +49,7 @@ const WikiGraph: React.FC<WikiGraphProps> = ({ onSelectPage }) => {
   const [loading, setLoading] = useState(false);
   const [keyword, setKeyword] = useState('');
   const [error, setError] = useState('');
+  const [fullscreen, setFullscreen] = useState(false);
 
   const fetchGraph = useCallback(async (kw: string) => {
     setLoading(true);
@@ -75,85 +82,156 @@ const WikiGraph: React.FC<WikiGraphProps> = ({ onSelectPage }) => {
     const nodeCount = nodes.length;
     const edgeCount = edges.length;
 
-    const showLabels = nodeCount <= 80;
-    const edgeOpacity = edgeCount > 800 ? 0.05 : edgeCount > 400 ? 0.10 : 0.16;
-    const repulsion = Math.max(120, nodeCount < 60 ? 300 : nodeCount < 150 ? 220 : 160);
+    const showLabels = nodeCount <= 60;
+    const edgeOpacity = edgeCount > 800 ? 0.06 : edgeCount > 400 ? 0.10 : 0.18;
+    const repulsion = Math.max(200, nodeCount < 30 ? 500 : nodeCount < 80 ? 350 : 240);
 
     const categories = Object.keys(data.stats?.categories || {}).map((cat) => ({
       name: cat,
-      itemStyle: { color: CAT_COLORS[cat] || '#4d9fff' },
+      itemStyle: {
+        color: CAT_COLORS[cat] || '#3b82f6',
+        borderColor: CAT_COLORS[cat] || '#3b82f6',
+        borderWidth: 1.5,
+        shadowBlur: 10,
+        shadowColor: CAT_GLOW[cat] || 'rgba(59,130,246,0.3)',
+      },
     }));
     if (!categories.length) categories.push({ name: 'entities' });
 
+    const qLower = keyword.trim().toLowerCase();
+    const matchedIds = qLower
+      ? new Set(nodes.filter(n =>
+          n.id.toLowerCase().includes(qLower) ||
+          n.name.toLowerCase().includes(qLower) ||
+          (n.tags || []).some((t: string) => t.toLowerCase().includes(qLower))
+        ).map(n => n.id))
+      : new Set<string>();
+
     return {
-      backgroundColor: 'transparent',
+      backgroundColor: '#0a0b0f',
+      darkMode: true,
+      animationDurationUpdate: 600,
+      animationEasingUpdate: 'cubicInOut',
+      graphic: [
+        // Subtle radial gradient mask at edges
+        {
+          type: 'rect',
+          left: 0, top: 0, right: 0, bottom: 0,
+          style: { fill: 'transparent' },
+          z: -1,
+        },
+      ],
       tooltip: {
         trigger: 'item',
         confine: true,
+        borderColor: '#333',
+        borderWidth: 1,
+        backgroundColor: 'rgba(15, 15, 20, 0.95)',
+        textStyle: { color: '#d4d4d8' },
         formatter: (p: any) => {
           if (p?.dataType === 'node') {
             const d = p.data;
-            const tagsStr = (d.tags || []).slice(0, 5).map((t: string) =>
-              `<span style="background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:3px;margin-right:3px;font-size:10px">${t}</span>`
+            const color = CAT_COLORS[d.category] || '#3b82f6';
+            const tagsStr = (d.tags || []).slice(0, 6).map((t: string) =>
+              `<span style="background:${color}22;color:${color};padding:1px 6px;border-radius:3px;margin-right:4px;font-size:10px;border:1px solid ${color}33">${t}</span>`
             ).join('');
             return `
-              <div style="max-width:360px;white-space:normal;">
-                <div style="font-weight:600;font-size:13px;margin-bottom:4px">${d.name}</div>
-                ${d.summary ? `<div style="opacity:0.7;font-size:11px;margin-bottom:4px;line-height:1.4">${d.summary.slice(0, 120)}</div>` : ''}
-                <div style="font-size:10px;opacity:0.6">链接数: ${d.linkCount} | 分类: ${d.category}</div>
-                ${tagsStr ? `<div style="margin-top:4px">${tagsStr}</div>` : ''}
-                <div style="opacity:0.5;margin-top:6px;font-size:10px">点击查看详情</div>
+              <div style="max-width:400px;padding:4px 2px;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                  <div style="width:10px;height:10px;border-radius:50%;background:${color};box-shadow:0 0 8px ${color}66;flex-shrink:0;"></div>
+                  <div style="font-weight:600;font-size:13px;color:#e4e4e7;">${d.name}</div>
+                </div>
+                ${d.summary ? `<div style="color:${color}aa;font-size:11px;margin-bottom:6px;line-height:1.5;padding-left:18px;">${d.summary.slice(0, 150)}</div>` : ''}
+                <div style="padding-left:18px;display:flex;gap:12px;font-size:10px;color:#71717a;">
+                  <span>🔗 ${d.linkCount} 链接</span><span>📂 ${d.category}</span>${d.hasIssues ? '<span style="color:#ef4444">⚠ 有矛盾</span>' : ''}
+                </div>
+                ${tagsStr ? `<div style="margin-top:6px;padding-left:18px;">${tagsStr}</div>` : ''}
+                <div style="opacity:0.4;margin-top:8px;font-size:10px;padding-left:18px;">点击查看详情</div>
               </div>`;
           }
-          return `${p?.data?.source} → ${p?.data?.target}`;
+          return `<span style="color:#71717a;font-size:11px">${p?.data?.source} → ${p?.data?.target}</span>`;
         },
       },
-      legend: nodeCount > 0 ? [{ data: categories.map((c: any) => c.name), left: 8, top: 8, textStyle: { color: 'rgba(255,255,255,0.6)', fontSize: 10 } }] : undefined,
+      legend: nodeCount > 0 ? [{
+        data: categories.map((c: any) => c.name),
+        left: 12, top: 12,
+        textStyle: { color: '#71717a', fontSize: 10 },
+        itemWidth: 10, itemHeight: 10,
+        itemStyle: { borderWidth: 0 },
+        selectedMode: false,
+      }] : undefined,
       series: [
         {
           type: 'graph',
           layout: 'force',
           roam: true,
           draggable: true,
-          data: nodes,
+          data: nodes.map((n: any) => {
+            const isMatched = matchedIds.has(n.id);
+            const color = CAT_COLORS[n.category] || '#3b82f6';
+            return {
+              ...n,
+              symbolSize: isMatched ? n.symbolSize * 1.4 : n.symbolSize,
+              itemStyle: {
+                ...n.itemStyle,
+                color: n.itemStyle?.color || color,
+                borderColor: n.itemStyle?.borderColor || color,
+                borderWidth: isMatched ? 2.5 : 1.5,
+                shadowBlur: isMatched ? 20 : 8,
+                shadowColor: isMatched
+                  ? `${color}aa`
+                  : (CAT_GLOW[n.category] || 'rgba(59,130,246,0.3)'),
+                opacity: isMatched ? 1 : 0.85,
+              },
+            };
+          }),
           links: edges,
           categories: categories,
           force: {
             repulsion,
-            edgeLength: nodeCount < 60 ? [80, 250] : [40, 160],
-            gravity: 0.08,
+            edgeLength: nodeCount < 30 ? [100, 300] : [50, 180],
+            gravity: 0.06,
             layoutAnimation: true,
+            friction: 0.1,
           },
           label: {
             show: showLabels,
             position: 'right',
             fontSize: 10,
-            color: 'rgba(255,255,255,0.7)',
+            color: '#a1a1aa',
+            fontWeight: 500,
             formatter: (p: any) => {
               const name = String(p?.data?.name || '');
-              return name.length > 15 ? name.slice(0, 14) + '…' : name;
+              return name.length > 18 ? name.slice(0, 17) + '…' : name;
             },
           },
           labelLayout: { hideOverlap: true },
           lineStyle: {
             color: `rgba(255,255,255,${edgeOpacity})`,
-            width: 0.8,
-            curveness: 0.18,
+            width: 0.6,
+            curveness: 0.2,
+            opacity: edgeOpacity,
           },
           emphasis: {
             focus: 'adjacency',
-            label: { show: true },
-            lineStyle: { width: 2, opacity: 0.8 },
+            scale: 1.3,
+            label: { show: true, fontSize: 11 },
+            itemStyle: {
+              borderWidth: 2.5,
+              shadowBlur: 24,
+              shadowColor: 'rgba(255,255,255,0.3)',
+            },
+            lineStyle: { width: 2.5, opacity: 1, color: 'rgba(255,255,255,0.5)' },
           },
           blur: {
-            itemStyle: { opacity: 0.15 },
-            lineStyle: { opacity: 0.04 },
+            itemStyle: { opacity: 0.08 },
+            lineStyle: { opacity: 0.02 },
           },
           itemStyle: {},
         },
       ],
     };
-  }, [data]);
+  }, [data, keyword]);
 
   const onChartClick = useCallback(
     (params: any) => {
@@ -183,30 +261,43 @@ const WikiGraph: React.FC<WikiGraphProps> = ({ onSelectPage }) => {
             </button>
           )}
         </div>
-        <span className="text-[10px] text-gray-500 ml-auto">
+        <span className="text-[10px] text-gray-500">
           {data?.stats?.totalNodes != null ? `${data.stats.totalNodes} 节点 · ${data.stats.totalEdges} 边` : ''}
         </span>
+        <div className="flex-1" />
+        <button
+          onClick={() => setFullscreen(!fullscreen)}
+          className="text-gray-500 hover:text-gray-300 transition-colors"
+          title={fullscreen ? '退出全屏' : '全屏'}
+        >
+          {fullscreen ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
+        </button>
       </div>
 
       {/* Graph canvas */}
-      <div className="flex-1 min-h-0 bg-dark-card rounded-lg border border-dark-border overflow-hidden">
+      <div className="flex-1 min-h-0 rounded-lg border border-dark-border overflow-hidden"
+        style={fullscreen ? { position: 'fixed', inset: 0, zIndex: 50, borderRadius: 0 } : {}}>
         {loading && (
-          <div className="flex items-center justify-center h-full">
-            <span className="text-xs text-gray-500">加载中…</span>
+          <div className="flex items-center justify-center h-full bg-[#0a0b0f]">
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+              <span className="text-xs text-gray-500">加载知识图谱…</span>
+            </div>
           </div>
         )}
         {error && (
-          <div className="flex items-center justify-center h-full">
+          <div className="flex items-center justify-center h-full bg-[#0a0b0f]">
             <span className="text-xs text-red-400">{error}</span>
           </div>
         )}
         {!loading && !error && data && !data.nodes.length && (
-          <div className="flex items-center justify-center h-full">
+          <div className="flex flex-col items-center justify-center h-full bg-[#0a0b0f] gap-1">
             <span className="text-xs text-gray-500">暂无图谱数据</span>
+            <span className="text-[10px] text-gray-600">导入文档或新建 Wiki 页面后出现</span>
           </div>
         )}
         {!loading && !error && data && data.nodes.length > 0 && option && (
-          <React.Suspense fallback={<div className="flex items-center justify-center h-full"><span className="text-xs text-gray-500">加载图表…</span></div>}>
+          <React.Suspense fallback={<div className="flex items-center justify-center h-full bg-[#0a0b0f]"><span className="text-xs text-gray-500">加载图表…</span></div>}>
             <LazyECharts
               option={option}
               style={{ height: '100%', width: '100%' }}
@@ -222,7 +313,7 @@ const WikiGraph: React.FC<WikiGraphProps> = ({ onSelectPage }) => {
         <div className="flex items-center gap-3 mt-1.5 px-1 text-[10px] text-gray-600">
           {Object.entries(data.stats.categories || {}).map(([cat, count]) => (
             <span key={cat} className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full" style={{ background: CAT_COLORS[cat] || '#4d9fff' }} />
+              <span className="w-2 h-2 rounded-full" style={{ background: CAT_COLORS[cat] || '#3b82f6', boxShadow: `0 0 4px ${CAT_COLORS[cat] || '#3b82f6'}66` }} />
               {cat}: {count}
             </span>
           ))}
