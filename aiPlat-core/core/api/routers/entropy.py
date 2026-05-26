@@ -331,3 +331,44 @@ async def resolve_entropy(entry_id: str):
         finally:
             conn.close()
     return await _sync()
+
+
+@router.post("/eval/generate/{agent_id}")
+async def generate_eval_for_agent(agent_id: str):
+    import os, json as _json
+    from pathlib import Path as _Path
+    home = _Path(os.path.expanduser("~/.aiplat"))
+    agent_md = home / "agents" / agent_id / "AGENT.md"
+    if not agent_md.exists():
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    content = agent_md.read_text(encoding="utf-8")
+    has_scoring = "scoring_dimensions:" in content
+    trace_count = 0
+    recent_tools = []
+    try:
+        from core.services.execution_store import get_execution_store
+        store = get_execution_store()
+        await store.init()
+        import sqlite3
+        conn = sqlite3.connect(store._config.db_path)
+        try:
+            events = conn.execute("SELECT name FROM syscall_events WHERE kind='tool' ORDER BY created_at DESC LIMIT 500").fetchall()
+            trace_count = len(events)
+            seen = set()
+            for e in events:
+                if e[0] and e[0] not in seen:
+                    recent_tools.append(e[0]); seen.add(e[0])
+        finally:
+            conn.close()
+    except: pass
+    return {
+        "agent_id": agent_id, "has_scoring_dimensions": has_scoring,
+        "trace_count": trace_count, "recent_tools": recent_tools[:10],
+        "needs_generation": not has_scoring and trace_count > 0,
+        "action": "generate" if (not has_scoring and trace_count > 0) else "skip",
+        "message": (
+            "Ready for eval generation" if (not has_scoring and trace_count > 0)
+            else "Already has scoring_dimensions" if has_scoring
+            else "No execution traces yet"
+        ),
+    }

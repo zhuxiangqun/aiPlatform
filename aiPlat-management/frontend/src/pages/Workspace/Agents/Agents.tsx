@@ -191,6 +191,19 @@ const WorkspaceAgents: React.FC = () => {
           >
             <Pencil className="w-4 h-4" />
           </button>
+          <button
+            onClick={async () => {
+              try {
+                const res = await fetch(`/api/core/entropy/eval/generate/${record.id}`, { method: 'POST' });
+                const data = await res.json();
+                toast.info(data.message || '评估检查完成');
+              } catch { toast.error('检查失败'); }
+            }}
+            className="p-1.5 rounded-lg text-blue-400 hover:bg-blue-900/30 transition-colors"
+            title="生成评估指标"
+          >
+            <span className="text-xs">📊</span>
+          </button>
           <button onClick={() => handleStart(record)} className="p-1.5 rounded-lg text-success hover:bg-success-light transition-colors" title="启动">
             <PlayCircle className="w-4 h-4" />
           </button>
