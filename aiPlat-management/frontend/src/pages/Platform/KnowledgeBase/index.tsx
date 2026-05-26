@@ -32,6 +32,7 @@ const KnowledgeBasePage: React.FC = () => {
   // Wiki states
   const [wikiPages, setWikiPages] = useState<any[]>([]);
   const [wikiQuery, setWikiQuery] = useState('');
+  const [wikiViewMode, setWikiViewMode] = useState<'list' | 'tree'>('tree');
   const [wikiCategory, setWikiCategory] = useState('');
   const [wikiLoading, setWikiLoading] = useState(false);
   const [selectedPage, setSelectedPage] = useState<any>(null);
@@ -205,7 +206,9 @@ const KnowledgeBasePage: React.FC = () => {
           {selCount > 0 && (
             <Button variant="ghost" size="sm" onClick={clearSelection}>取消选中 ({selCount})</Button>
           )}
-          <Button variant="primary" size="sm" onClick={() => setUploadModalOpen(true)}>上传资料</Button>
+          {activeTab === 'documents' && (
+            <Button variant="primary" size="sm" onClick={() => setUploadModalOpen(true)}>上传资料</Button>
+          )}
         </div>
       </div>
 
@@ -444,6 +447,16 @@ const KnowledgeBasePage: React.FC = () => {
                   <option value="entities">实体</option>
                   <option value="topics">主题</option>
                 </select>
+                <div className="flex gap-1">
+                  <button onClick={() => setWikiViewMode('list')}
+                    className={`flex-1 text-[10px] px-2 py-1 rounded ${wikiViewMode === 'list' ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-gray-200'}`}>
+                    列表
+                  </button>
+                  <button onClick={() => setWikiViewMode('tree')}
+                    className={`flex-1 text-[10px] px-2 py-1 rounded ${wikiViewMode === 'tree' ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-gray-200'}`}>
+                    关系图
+                  </button>
+                </div>
                 <Button variant="secondary" size="sm" onClick={fetchWikiPages} loading={wikiLoading} className="w-full"><RefreshCw className="w-3 h-3 mr-1" />刷新</Button>
                 <Button variant="primary" size="sm" onClick={handleConvertKb} loading={converting} className="w-full"><Database className="w-3 h-3 mr-1" />从文档导入</Button>
                 {convertResult && <div className="text-xs text-gray-400">{convertResult.message}</div>}
@@ -464,21 +477,93 @@ const KnowledgeBasePage: React.FC = () => {
           </div>
           <div className="md:col-span-3">
             <div className="text-xs text-gray-500 mb-2">{wikiPages.length} 个页面</div>
-            <div className="space-y-2">
-              {wikiPages.map((p: any) => (
-                <div key={p.title} onClick={() => readWikiPage(p.title)} className="p-3 rounded-lg border border-dark-border bg-dark-card cursor-pointer hover:border-gray-600">
-                  <div className="flex items-center gap-2 mb-1">
-                    <BookOpen className="w-3 h-3 text-gray-400" />
-                    <span className="text-sm font-medium text-gray-200">{p.title}</span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${sourceBadge(p.category)}`}>{p.category}</span>
-                  </div>
-                  {p.summary && <div className="text-xs text-gray-500 line-clamp-1">{p.summary}</div>}
-                  <div className="flex gap-2 mt-1">{(p.tags || []).slice(0,3).map((t:string) => <span key={t} className="text-[10px] text-gray-600 bg-dark-bg px-1 rounded">{t}</span>)}
-                    {p.contradictions?.length > 0 && <span className="text-[10px] text-red-400"><AlertTriangle className="w-2 h-2 inline mr-0.5" />{p.contradictions.length}</span>}
-                  </div>
+            
+            {wikiViewMode === 'tree' && wikiPages.length > 0 ? (
+              /* Directory / link-graph view */
+              <div className="space-y-3">
+                {/* Category groups */}
+                {(() => {
+                  const grouped: Record<string, any[]> = {};
+                  wikiPages.forEach((p: any) => {
+                    const cat = p.category || 'other';
+                    if (!grouped[cat]) grouped[cat] = [];
+                    grouped[cat].push(p);
+                  });
+                  return Object.entries(grouped).map(([cat, pages]) => (
+                    <details key={cat} open className="rounded-lg border border-dark-border bg-dark-card">
+                      <summary className="px-3 py-2 text-xs font-medium text-gray-300 cursor-pointer hover:text-gray-200 flex items-center gap-2">
+                        <BookOpen className="w-3 h-3" />
+                        <span className={sourceBadge(cat)}>
+                          {cat.toUpperCase()}
+                        </span>
+                        <span className="text-gray-500">({pages.length} 页)</span>
+                      </summary>
+                      <div className="px-3 pb-2 space-y-1.5">
+                        {pages.map((p: any) => (
+                          <div key={p.title} className="group ml-4 border-l border-dark-border pl-3 py-1">
+                            <div className="flex items-center gap-1.5 cursor-pointer hover:text-gray-200 text-gray-300 text-xs"
+                              onClick={() => readWikiPage(p.title)}>
+                              <span className={p.related?.length > 0 ? 'text-blue-400' : 'text-gray-500'}>•</span>
+                              <span>{p.title}</span>
+                              {p.contradictions?.length > 0 && <AlertTriangle className="w-2.5 h-2.5 text-red-400" />}
+                            </div>
+                            {/* Show related links */}
+                            {p.related && p.related.length > 0 && (
+                              <div className="ml-3 mt-0.5 flex gap-1 flex-wrap">
+                                {p.related.slice(0, 5).map((r: string) => (
+                                  <span key={r} className="text-[10px] text-blue-500/60 bg-blue-900/10 px-1 rounded cursor-pointer hover:text-blue-400"
+                                    onClick={(e) => { e.stopPropagation(); readWikiPage(r); }}>
+                                    → {r}
+                                  </span>
+                                ))}
+                                {p.related.length > 5 && (
+                                  <span className="text-[10px] text-gray-600">+{p.related.length - 5}</span>
+                                )}
+                              </div>
+                            )}
+                            {p.summary && <div className="text-[10px] text-gray-600 line-clamp-1 ml-3">{p.summary}</div>}
+                            {/* Tags */}
+                            {p.tags?.length > 0 && (
+                              <div className="ml-3 mt-0.5 flex gap-1">
+                                {p.tags.slice(0,3).map((t:string) => (
+                                  <span key={t} className="text-[9px] text-gray-600 bg-dark-bg px-1 rounded">{t}</span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  ));
+                })()}
+                {/* Link density summary */}
+                <div className="text-[10px] text-gray-600 p-2 bg-dark-bg rounded">
+                  <span className="text-gray-400">
+                    {wikiPages.reduce((sum:number, p:any) => sum + (p.related?.length || 0), 0)} 条链接 /
+                    {wikiPages.length} 个页面 = 
+                    {wikiPages.length > 0 ? (wikiPages.reduce((sum:number, p:any) => sum + (p.related?.length || 0), 0) / wikiPages.length).toFixed(1) : '0'} 平均链接
+                  </span>
                 </div>
-              ))}
-            </div>
+              </div>
+            ) : (
+              /* Flat list view */
+              <div className="space-y-2">
+                {wikiPages.map((p: any) => (
+                  <div key={p.title} onClick={() => readWikiPage(p.title)} className="p-3 rounded-lg border border-dark-border bg-dark-card cursor-pointer hover:border-gray-600">
+                    <div className="flex items-center gap-2 mb-1">
+                      <BookOpen className="w-3 h-3 text-gray-400" />
+                      <span className="text-sm font-medium text-gray-200">{p.title}</span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${sourceBadge(p.category)}`}>{p.category}</span>
+                      {p.related && p.related.length > 0 && <span className="text-[10px] text-blue-500">↗ {p.related.length} 关联</span>}
+                    </div>
+                    {p.summary && <div className="text-xs text-gray-500 line-clamp-1">{p.summary}</div>}
+                    <div className="flex gap-2 mt-1">{(p.tags || []).slice(0,3).map((t:string) => <span key={t} className="text-[10px] text-gray-600 bg-dark-bg px-1 rounded">{t}</span>)}
+                      {p.contradictions?.length > 0 && <span className="text-[10px] text-red-400"><AlertTriangle className="w-2 h-2 inline mr-0.5" />{p.contradictions.length}</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -487,25 +572,123 @@ const KnowledgeBasePage: React.FC = () => {
         <Card>
           <CardHeader><div className="text-sm font-medium flex items-center justify-between">
             <span><AlertTriangle className="w-3 h-3 inline mr-1" />知识库健康检查</span>
-            {lintResult && <span className={`text-xs px-2 py-0.5 rounded ${lintResult.health_score >= 80 ? 'bg-green-900/50 text-green-300' : 'bg-yellow-900/50 text-yellow-300'}`}>得分: {lintResult.health_score}</span>}
+            {lintResult && (
+              <span className={`text-xs px-2 py-0.5 rounded font-semibold ${
+                lintResult.health_score >= 90 ? 'bg-green-900/50 text-green-300' :
+                lintResult.health_score >= 70 ? 'bg-yellow-900/50 text-yellow-300' :
+                'bg-red-900/50 text-red-300'
+              }`}>得分: {lintResult.health_score}</span>
+            )}
           </div></CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-4">
             <Button variant="primary" size="sm" onClick={runLint} loading={lintLoading}>执行健康检查</Button>
-            {lintResult && lintResult.issues && (
-              <div className="space-y-1 mt-3">
-                {lintResult.issues.map((issue: any, idx: number) => (
-                  <div key={idx} className="flex items-start gap-2 text-xs p-2 bg-dark-bg rounded">
-                    <AlertTriangle className="w-3 h-3 text-yellow-400 shrink-0 mt-0.5" />
-                    <div><span className="text-gray-300">[{issue.type}] {issue.page_a}</span>
-                      {issue.page_b && <span className="text-gray-500"> ↔ {issue.page_b}</span>}
-                      {issue.suggestion && <div className="text-blue-400">建议: {issue.suggestion}</div>}
-                      {issue.description && <div className="text-gray-500">{issue.description}</div>}
+            
+            {lintResult && lintResult.checks && (
+              <div className="space-y-3">
+                {/* Check summary */}
+                <div className="text-xs font-semibold text-gray-300 mb-1">检查项</div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {lintResult.checks.map((chk: any, idx: number) => (
+                    <div key={idx} className={`p-2 rounded border text-xs ${
+                      chk.pass ? 'border-green-900/40 bg-green-900/10' : 'border-yellow-900/40 bg-yellow-900/10'
+                    }`}>
+                      <div className="flex items-center gap-1.5">
+                        <span className={chk.pass ? 'text-green-400' : 'text-yellow-400'}>
+                          {chk.pass ? '✓' : '!'}
+                        </span>
+                        <span className="text-gray-300">{chk.name}</span>
+                      </div>
+                      <div className={`ml-4 text-[10px] ${chk.pass ? 'text-green-500' : 'text-yellow-500'}`}>
+                        {chk.pass ? '通过' : `${chk.count} 个问题`}
+                      </div>
                     </div>
-                  </div>
-                ))}
-                {lintResult.issues.length === 0 && <div className="text-xs text-green-400">✅ 知识库健康，无问题</div>}
+                  ))}
+                </div>
+
+                {/* Stats summary */}
+                {lintResult.stats && (
+                  <>
+                    <div className="text-xs font-semibold text-gray-300 mt-4 mb-1">统计摘要</div>
+                    <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+                      <div className="p-2 rounded bg-dark-bg text-center">
+                        <div className="text-lg font-semibold text-gray-200">{lintResult.total_pages}</div>
+                        <div className="text-[10px] text-gray-500">总页面</div>
+                      </div>
+                      <div className="p-2 rounded bg-dark-bg text-center">
+                        <div className="text-lg font-semibold text-gray-200">{lintResult.stats.pages_with_body}</div>
+                        <div className="text-[10px] text-gray-500">有内容</div>
+                      </div>
+                      <div className="p-2 rounded bg-dark-bg text-center">
+                        <div className="text-lg font-semibold text-gray-200">{lintResult.stats.total_links}</div>
+                        <div className="text-[10px] text-gray-500">总链接</div>
+                      </div>
+                      <div className="p-2 rounded bg-dark-bg text-center">
+                        <div className="text-lg font-semibold text-gray-200">{lintResult.stats.avg_links_per_page}</div>
+                        <div className="text-[10px] text-gray-500">平均链接</div>
+                      </div>
+                      <div className="p-2 rounded bg-dark-bg text-center">
+                        <div className="text-lg font-semibold text-gray-200">{lintResult.stats.orphan_pages}</div>
+                        <div className="text-[10px] text-gray-500">孤立页面</div>
+                      </div>
+                      <div className="p-2 rounded bg-dark-bg text-center">
+                        <div className="text-lg font-semibold text-gray-200">{lintResult.stats.dead_links}</div>
+                        <div className="text-[10px] text-gray-500">死链</div>
+                      </div>
+                    </div>
+
+                    {/* Categories */}
+                    {lintResult.stats.categories && (
+                      <div className="flex gap-2 flex-wrap">
+                        {Object.entries(lintResult.stats.categories).map(([cat, count]: any) => (
+                          <span key={cat} className="text-[10px] px-2 py-0.5 rounded-full bg-dark-hover text-gray-400">
+                            {cat}: {count}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Issues detail */}
+                {lintResult.issues && lintResult.issues.length > 0 && (
+                  <>
+                    <div className="text-xs font-semibold text-gray-300 mt-4 mb-1">
+                      详细问题 ({lintResult.issues.length})
+                    </div>
+                    <div className="space-y-1 max-h-64 overflow-y-auto">
+                      {lintResult.issues.map((issue: any, idx: number) => (
+                        <div key={idx} className={`flex items-start gap-2 text-xs p-2 rounded ${
+                          issue.severity === 'high' ? 'bg-red-900/10 border border-red-900/30' :
+                          issue.severity === 'medium' ? 'bg-yellow-900/10 border border-yellow-900/30' :
+                          'bg-dark-bg'
+                        }`}>
+                          <span className={`shrink-0 mt-0.5 ${
+                            issue.severity === 'high' ? 'text-red-400' :
+                            issue.severity === 'medium' ? 'text-yellow-400' :
+                            'text-gray-500'
+                          }`}>
+                            [{issue.check_type}]
+                          </span>
+                          <div className="min-w-0">
+                            <span className="text-gray-300">{issue.description}</span>
+                            <div className="text-gray-500 truncate">
+                              {issue.page_a}{issue.page_b ? ` ↔ ${issue.page_b}` : ''}
+                            </div>
+                            {issue.suggestion && <div className="text-blue-400 mt-0.5">建议: {issue.suggestion}</div>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {lintResult.issues && lintResult.issues.length === 0 && lintResult.total_pages > 0 && (
+                  <div className="text-xs text-green-400 mt-2">✅ 知识库健康，无问题</div>
+                )}
               </div>
             )}
+
+            {!lintResult && <div className="text-xs text-gray-500">点击上方按钮运行健康检查</div>}
           </CardContent>
         </Card>
       )}

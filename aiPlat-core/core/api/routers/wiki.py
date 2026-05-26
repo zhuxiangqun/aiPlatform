@@ -70,10 +70,8 @@ async def traverse_links(title: str, depth: int = 2):
 
 @router.get("/lint")
 async def lint_wiki():
-    from core.harness.knowledge.wiki_engine import detect_contradictions
-    issues = detect_contradictions()
-    return {"issues": issues, "total": len(issues),
-            "health_score": max(0, 100 - len(issues) * 5)}
+    from core.harness.knowledge.wiki_engine import wiki_health_report
+    return wiki_health_report()
 
 
 @router.post("/ingest")

@@ -26,6 +26,11 @@ export default defineConfig({
         target: 'http://localhost:8000',
         changeOrigin: true,
       },
+      '/api/core/wiki': {
+        target: 'http://localhost:8002',
+        changeOrigin: true,
+        timeout: 600000,
+      },
       '/api/core/kb-eval': {
         target: 'http://localhost:8002',
         changeOrigin: true,

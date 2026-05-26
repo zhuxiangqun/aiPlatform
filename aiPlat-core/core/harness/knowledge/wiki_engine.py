@@ -19,7 +19,7 @@ import os
 import re
 import json as _json
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -233,45 +233,199 @@ def traverse_links(start_title: str, depth: int = 2) -> List[Dict[str, Any]]:
 # ── Contradiction detection ────────────────────────────────────
 
 def detect_contradictions() -> List[Dict[str, Any]]:
-    """Find pages that have marked contradictions. Returns list with conflict details."""
+    """DEPRECATED: use wiki_health_report() for richer output."""
+    return wiki_health_report()["issues"]
+
+
+def wiki_health_report() -> Dict[str, Any]:
+    u"""Comprehensive wiki health report with categorized issues and stats.
+    
+    返回: {
+      health_score, total_pages, issues, stats, link_graph
+    }
+    """
     _ensure_dirs()
     root = _wiki_root()
-    conflicts: List[Dict[str, Any]] = []
     all_pages: Dict[str, Dict[str, Any]] = {}
+    issues: List[Dict[str, Any]] = []
 
     # Index all pages
-    for cat_dir in root.iterdir():
+    for cat_dir in sorted(root.iterdir()):
         if not cat_dir.is_dir() or cat_dir.name == "contradictions":
             continue
-        for md_file in cat_dir.glob("*.md"):
+        for md_file in sorted(cat_dir.glob("*.md")):
             page = read_page(md_file.stem, category=cat_dir.name)
             if page:
                 all_pages[page["title"]] = page
 
-    # Check for contradictions
+    # Stats
+    total_pages = len(all_pages)
+    categories: Dict[str, int] = {}
+    total_tags: Dict[str, int] = {}
+    total_related = 0
+    pages_with_body = 0
+    small_pages = 0  # < 200 chars body
+
+    for page in all_pages.values():
+        cat = page.get("category", "unknown")
+        categories[cat] = categories.get(cat, 0) + 1
+        for tag in page.get("tags", []):
+            total_tags[tag] = total_tags.get(tag, 0) + 1
+        total_related += len(page.get("related", []))
+        if page.get("body") and len(page["body"]) > 50:
+            pages_with_body += 1
+        if len(page.get("body", "")) < 200:
+            small_pages += 1
+
+    # 1. Marked contradictions
+    contradiction_count = 0
     for title, page in all_pages.items():
         for con in page.get("contradictions", []):
             if con in all_pages:
-                conflicts.append({
+                contradiction_count += 1
+                issues.append({
+                    "check_type": "contradiction",
+                    "severity": "high",
                     "page_a": title, "page_b": con,
-                    "severity": "unknown",
-                    "description": f"Marked contradiction between '{title}' and '{con}'",
+                    "description": "标注矛盾",
+                    "suggestion": f"合并或协调 '{title}' 和 '{con}' 中的矛盾信息",
                 })
 
-    # Find orphan pages (no incoming links)
+    # 2. Orphan pages (no incoming links, but links to others)
     all_linked: set = set()
     for page in all_pages.values():
         for rel in page.get("related", []):
             all_linked.add(rel)
+    orphan_count = 0
     for title, page in all_pages.items():
         if title not in all_linked and page.get("related", []):
-            conflicts.append({
+            orphan_count += 1
+            issues.append({
+                "check_type": "orphan",
+                "severity": "medium",
                 "page_a": title, "page_b": "",
-                "severity": "orphan",
-                "description": f"Page '{title}' links to others but has no incoming links",
+                "description": f"孤立页面（无入链）",
+                "suggestion": f"在相关页面中添加入站链接指向 '{title}'",
             })
 
-    return conflicts
+    # 3. Dead links (referenced pages that don't exist)
+    all_titles = set(all_pages.keys())
+    dead_link_count = 0
+    for title, page in all_pages.items():
+        for rel in page.get("related", []):
+            if rel not in all_titles:
+                dead_link_count += 1
+                issues.append({
+                    "check_type": "dead_link",
+                    "severity": "high",
+                    "page_a": title, "page_b": rel,
+                    "description": f"死链（'{rel}' 页面不存在）",
+                    "suggestion": f"创建 '{rel}' 页面或删除 '{title}' 中的死链接",
+                })
+
+    # 4. Stale pages (last_updated > 30 days ago)
+    stale_cutoff = (datetime.utcnow() - timedelta(days=30)).isoformat()
+    stale_count = 0
+    for title, page in all_pages.items():
+        lu = page.get("last_updated", "")
+        if lu and lu < stale_cutoff:
+            stale_count += 1
+            issues.append({
+                "check_type": "stale",
+                "severity": "low",
+                "page_a": title, "page_b": "",
+                "description": f"过期页面（超过30天未更新）",
+                "suggestion": "检查信息是否仍然准确，或添加reviewed标记",
+            })
+
+    # 5. Thin content
+    thin_count = 0
+    for title, page in all_pages.items():
+        body = page.get("body", "")
+        if len(body) < 100:
+            thin_count += 1
+            issues.append({
+                "check_type": "thin_content",
+                "severity": "low",
+                "page_a": title, "page_b": "",
+                "description": f"内容过短（{len(body)} 字符）",
+                "suggestion": "丰富页面内容，或考虑与相关页面合并",
+            })
+
+    # 6. Missing tags
+    no_tags_count = 0
+    for title, page in all_pages.items():
+        if not page.get("tags"):
+            no_tags_count += 1
+            issues.append({
+                "check_type": "no_tags",
+                "severity": "low",
+                "page_a": title, "page_b": "",
+                "description": "缺少标签",
+                "suggestion": "添加相关标签以提高可发现性",
+            })
+
+    # 7. Missing summary
+    no_summary_count = 0
+    for title, page in all_pages.items():
+        if not page.get("summary"):
+            no_summary_count += 1
+            issues.append({
+                "check_type": "no_summary",
+                "severity": "low",
+                "page_a": title, "page_b": "",
+                "description": "缺少摘要",
+                "suggestion": "添加页面摘要以便快速浏览",
+            })
+
+    # Penalty per issue weighted by severity
+    penalty = (
+        contradiction_count * 5 +
+        dead_link_count * 4 +
+        orphan_count * 3 +
+        stale_count * 1 +
+        thin_count * 1 +
+        no_tags_count * 1 +
+        no_summary_count * 1
+    )
+    base = max(0, 100 - penalty)
+    coverage = (pages_with_body / max(total_pages, 1)) * 10
+
+    # Build link graph adjacency
+    link_graph: Dict[str, List[str]] = {}
+    for title, page in all_pages.items():
+        link_graph[title] = page.get("related", [])
+
+    return {
+        "health_score": min(100, int(base + coverage)),
+        "total_pages": total_pages,
+        "stats": {
+            "categories": categories,
+            "top_tags": dict(sorted(total_tags.items(), key=lambda x: -x[1])[:15]),
+            "total_links": total_related,
+            "avg_links_per_page": round(total_related / max(total_pages, 1), 2),
+            "pages_with_body": pages_with_body,
+            "small_pages": small_pages,
+            "orphan_pages": orphan_count,
+            "dead_links": dead_link_count,
+            "stale_pages": stale_count,
+            "thin_pages": thin_count,
+            "no_tags": no_tags_count,
+            "no_summary": no_summary_count,
+            "contradictions": contradiction_count,
+        },
+        "issues": issues,
+        "link_graph": link_graph,
+        "checks": [
+            {"name": "矛盾检测", "pass": contradiction_count == 0, "count": contradiction_count, "severity": "high"},
+            {"name": "死链检测", "pass": dead_link_count == 0, "count": dead_link_count, "severity": "high"},
+            {"name": "孤立页面", "pass": orphan_count == 0, "count": orphan_count, "severity": "medium"},
+            {"name": "过期内容", "pass": stale_count == 0, "count": stale_count, "severity": "low"},
+            {"name": "内容完整度", "pass": thin_count == 0, "count": thin_count, "severity": "low"},
+            {"name": "标签覆盖", "pass": no_tags_count == 0, "count": no_tags_count, "severity": "low"},
+            {"name": "摘要覆盖", "pass": no_summary_count == 0, "count": no_summary_count, "severity": "low"},
+        ],
+    }
 
 
 def list_all_pages() -> List[Dict[str, Any]]:
