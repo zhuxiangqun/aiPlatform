@@ -17,8 +17,20 @@ import os
 from typing import Optional
 
 
+def _warn_missing_key():
+    """Issue startup warning if SECRET_KEY is not configured."""
+    import warnings
+    warnings.warn(
+        "AIPLAT_SECRET_KEY is not set. Secrets will be stored in plaintext (legacy mode). "
+        "Set AIPLAT_SECRET_KEY to a Fernet key (urlsafe base64 32 bytes) to enable encryption.",
+        RuntimeWarning,
+    )
+
+
 def _get_key() -> Optional[str]:
     k = (os.getenv("AIPLAT_SECRET_KEY") or "").strip()
+    if not k:
+        _warn_missing_key()
     return k or None
 
 
