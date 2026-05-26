@@ -50,6 +50,8 @@ const KnowledgeBasePage: React.FC = () => {
   const [wikiDocIds, setWikiDocIds] = useState<Set<string>>(new Set());
   const [lintResult, setLintResult] = useState<any>(null);
   const [lintLoading, setLintLoading] = useState(false);
+  const [proposals, setProposals] = useState<any[]>([]);
+  const [proposalsLoading, setProposalsLoading] = useState(false);
   const [curating, setCurating] = useState(false);
   const [curateReport, setCurateReport] = useState<any>(null);
   const [graphRefreshKey, setGraphRefreshKey] = useState(0);
@@ -159,7 +161,7 @@ const KnowledgeBasePage: React.FC = () => {
   useEffect(() => {
     if (activeTab === 'eval') { refreshEvalSamples(); loadTimeSeries(); }
     else if (activeTab === 'wiki') fetchWikiPages();
-    else if (activeTab === 'health') runLint();
+    else if (activeTab === 'health') { runLint(); fetchProposals(); }
   }, [activeTab]);
 
   // ── Wiki functions ──
@@ -244,6 +246,21 @@ const KnowledgeBasePage: React.FC = () => {
   const runLint = async () => {
     setLintLoading(true);
     try { const res = await fetch(`${WIKI_API}/lint`); setLintResult(await res.json()); } catch {} finally { setLintLoading(false); }
+  };
+  const fetchProposals = async () => {
+    setProposalsLoading(true);
+    try { const res = await fetch(`${WIKI_API}/proposals?status=pending`); setProposals((await res.json()).items || []); } catch {} finally { setProposalsLoading(false); }
+  };
+  const handleApproveProposal = async (id: string) => {
+    try {
+      const res = await fetch(`${WIKI_API}/proposals/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'approved' }) });
+      const data = await res.json();
+      toast.success(data?.execution?.message || '已执行');
+      fetchProposals(); fetchWikiPages(); setGraphRefreshKey(k => k + 1);
+    } catch { toast.error('审批失败'); }
+  };
+  const handleRejectProposal = async (id: string) => {
+    try { await fetch(`${WIKI_API}/proposals/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'rejected' }) }); fetchProposals(); } catch {}
   };
   const sourceBadge = (cat: string) => { const colors: Record<string, string> = { entities: 'bg-blue-50 text-blue-300', topics: 'bg-purple-50 text-purple-300' }; return colors[cat] || 'bg-dark-hover text-gray-300'; };
 
@@ -749,6 +766,40 @@ const KnowledgeBasePage: React.FC = () => {
           )}
             </div>
           )}
+
+            {/* Knowledge proposals */}
+            <div className="border-t border-dark-border pt-3 mt-2">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-xs font-semibold text-gray-300">📋 待审批提案</div>
+                <Button variant="ghost" size="sm" onClick={fetchProposals} loading={proposalsLoading} className="text-xs">刷新</Button>
+              </div>
+              {proposals.filter((p: any) => p.status === 'pending').length > 0 ? (
+                <div className="space-y-2">
+                  {proposals.filter((p: any) => p.status === 'pending').map((p: any) => (
+                    <div key={p.id} className="flex items-start gap-2 text-xs p-2 rounded bg-dark-bg border border-dark-border">
+                      <span className={`shrink-0 px-1 py-0.5 rounded text-[10px] ${
+                        p.action === 'merge' ? 'bg-purple-900/50 text-purple-300' :
+                        p.action === 'contradict' ? 'bg-red-900/50 text-red-300' :
+                        'bg-blue-900/50 text-blue-300'
+                      }`}>{p.action}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-gray-300">
+                          {p.action === 'merge' && <span>合并 "{p.from_title?.slice(0,20)}..." → "{p.to_title?.slice(0,20)}..."</span>}
+                          {p.action === 'contradict' && <span>标记矛盾 "{p.from_title?.slice(0,20)}..." ↔ "{p.to_title?.slice(0,20)}..."</span>}
+                        </div>
+                        {p.reason && <div className="text-gray-500 mt-0.5">{p.reason.slice(0, 80)}</div>}
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <Button variant="primary" size="sm" onClick={() => handleApproveProposal(p.id)} className="text-xs">批准</Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleRejectProposal(p.id)} className="text-xs">拒绝</Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-xs text-gray-500">暂无待审批提案</div>
+              )}
+            </div>
 
             {!lintResult && <div className="text-xs text-gray-500">点击上方按钮运行健康检查</div>}
           </CardContent>

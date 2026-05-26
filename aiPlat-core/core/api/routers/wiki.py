@@ -127,6 +127,33 @@ async def get_unprocessed_docs(tenant_id: str = "default"):
     return {"items": unprocessed, "total": len(unprocessed)}
 
 
+@router.get("/proposals")
+async def get_proposals(status: str = ""):
+    u"""List pending wiki knowledge proposals (merge/update/supplement/contradict)."""
+    from core.harness.knowledge.wiki_engine import load_proposals
+    proposals = load_proposals()
+    if status:
+        proposals = [p for p in proposals if p.get("status") == status]
+    return {"items": proposals, "total": len(proposals)}
+
+
+@router.put("/proposals/{proposal_id}")
+async def handle_proposal(proposal_id: str, body: Dict[str, Any]):
+    u"""Approve/reject a proposal. Body: {status: 'approved'|'rejected'}."""
+    from core.harness.knowledge.wiki_engine import update_proposal_status, apply_proposal
+    status = body.get("status", "")
+    if status not in ("approved", "rejected"):
+        raise HTTPException(status_code=400, detail="status must be 'approved' or 'rejected'")
+    ok = update_proposal_status(proposal_id, status)
+    if not ok:
+        raise HTTPException(status_code=404, detail="proposal not found")
+    result = {"proposal_id": proposal_id, "status": status}
+    # If approved, execute the proposal action
+    if status == "approved":
+        result["execution"] = apply_proposal(proposal_id)
+    return result
+
+
 @router.post("/pages")
 async def write_page(body: WikiPageWrite):
     from core.harness.knowledge.wiki_engine import write_page, auto_link_page, search_pages, update_page
@@ -506,6 +533,33 @@ async def curate_wiki():
             report["links_added"] += len(result.get("related", []))
             if result.get("title") != p["title"]:
                 report["titles_updated"] += 1
+            # Generate proposals for merge / update / supplement
+            import time as _t
+            for mc in result.get("merge_candidates", [])[:3]:
+                if mc.get("target") and mc["target"] in existing_titles:
+                    from core.harness.knowledge.wiki_engine import save_proposal
+                    save_proposal({
+                        "action": "merge",
+                        "from_title": p["title"],
+                        "to_title": mc["target"],
+                        "reason": str(mc.get("reason", "content overlap")),
+                        "source_doc": "",
+                        "status": "pending",
+                        "created_at": str(int(_t.time())),
+                    })
+            for con in result.get("contradictions", [])[:3]:
+                b_title = con.get("b", "") if isinstance(con, dict) else con
+                if b_title and b_title in existing_titles:
+                    from core.harness.knowledge.wiki_engine import save_proposal
+                    save_proposal({
+                        "action": "contradict",
+                        "from_title": p["title"],
+                        "to_title": b_title,
+                        "reason": str(con.get("detail", "conflicting claims") if isinstance(con, dict) else "conflicting claims"),
+                        "source_doc": "",
+                        "status": "pending",
+                        "created_at": str(int(_t.time())),
+                    })
         except Exception as e:
             report["errors"].append({"page": p["title"], "error": str(e)[:300]})
 

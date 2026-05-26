@@ -28,7 +28,7 @@ from typing import Any, Dict, List, Optional, Tuple
 FRONTMATTER_FIELDS = {
     "title": "", "category": "entities", "tags": [], "related": [],
     "contradictions": [], "source_articles": [], "last_updated": "",
-    "summary": "",
+    "summary": "", "version": "1", "stale_references": [],
 }
 
 def _wiki_root() -> Path:
@@ -147,7 +147,8 @@ def read_page(title_or_path: str, *, category: str = "entities") -> Optional[Dic
 
 def write_page(title: str, body: str, *, category: str = "entities", tags: List[str] = None,
                related: List[str] = None, contradictions: List[str] = None,
-               source_articles: List[str] = None, summary: str = "") -> str:
+               source_articles: List[str] = None, stale_references: List[str] = None,
+               version: str = "1", summary: str = "") -> str:
     """Create or update a wiki page. Returns the file path."""
     _ensure_dirs()
     root = _wiki_root()
@@ -162,6 +163,8 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
             (existing.get("related") or [])))      # replace, not merge (enable dead link cleanup)
         contradictions = list(set((existing.get("contradictions") or []) + (contradictions or [])))
         source_articles = list(set((existing.get("source_articles") or []) + (source_articles or [])))
+        stale_references = stale_references if stale_references is not None else (existing.get("stale_references") or [])
+        version = version or existing.get("version", "1")
         summary = summary or existing.get("summary", "")
 
     fm_lines = [
@@ -171,7 +174,9 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
         f"related: [{', '.join(related or [])}]",
         f"contradictions: [{', '.join(contradictions or [])}]",
         f"source_articles: [{', '.join(source_articles or [])}]",
+        f"stale_references: [{', '.join(stale_references or [])}]",
         f"last_updated: {now}",
+        f"version: {version or '1'}",
         f"summary: {summary[:500]}",
     ]
 
@@ -266,7 +271,6 @@ def delete_all_pages() -> Dict[str, Any]:
     root = _wiki_root()
     deleted = 0
 
-    # Delete all .md files
     for cat_dir in root.iterdir():
         if not cat_dir.is_dir() or cat_dir.name == "contradictions":
             continue
@@ -274,7 +278,6 @@ def delete_all_pages() -> Dict[str, Any]:
             md_file.unlink()
             deleted += 1
 
-    # Reset index.json
     idx_path = root / "index.json"
     idx_path.write_text(_json.dumps({"pages": {}, "last_updated": ""}, indent=2, ensure_ascii=False))
 
@@ -302,6 +305,161 @@ def delete_all_pages() -> Dict[str, Any]:
         pass
 
     return {"deleted": deleted}
+
+
+# ── Knowledge proposals (merge/update/supplement/contradict) ──────
+
+def _proposals_path() -> Path:
+    return _wiki_root() / "proposals.json"
+
+
+def load_proposals() -> List[Dict[str, Any]]:
+    u"""Load all proposals from disk."""
+    pp = _proposals_path()
+    if not pp.exists():
+        return []
+    try:
+        data = _json.loads(pp.read_text(encoding="utf-8"))
+        return data.get("proposals", [])
+    except Exception:
+        return []
+
+
+def save_proposal(proposal: Dict[str, Any]) -> str:
+    u"""Add or update a proposal. Returns the proposal id."""
+    pp = _proposals_path()
+    _ensure_dirs()
+    proposals = load_proposals()
+    pid = proposal.get("id") or f"prop_{int(time.time() * 1000):x}"
+    proposal["id"] = pid
+    # Update existing or append
+    for i, p in enumerate(proposals):
+        if p.get("id") == pid:
+            proposals[i] = proposal
+            break
+    else:
+        proposals.append(proposal)
+    pp.write_text(_json.dumps({"proposals": proposals, "last_updated": datetime.utcnow().isoformat()},
+                              indent=2, ensure_ascii=False))
+    return pid
+
+
+def update_proposal_status(proposal_id: str, status: str) -> bool:
+    u"""Update a proposal's status (pending→approved→rejected)."""
+    proposals = load_proposals()
+    for p in proposals:
+        if p.get("id") == proposal_id:
+            p["status"] = status
+            p["resolved_at"] = datetime.utcnow().isoformat()
+            pp = _proposals_path()
+            pp.write_text(_json.dumps({"proposals": proposals, "last_updated": datetime.utcnow().isoformat()},
+                                      indent=2, ensure_ascii=False))
+            return True
+    return False
+
+
+def apply_proposal(proposal_id: str) -> Dict[str, Any]:
+    u"""Execute an approved proposal: merge, update, supplement, or contrad.
+
+    Returns: {success: bool, message: str, action: str}
+    """
+    proposals = load_proposals()
+    prop = next((p for p in proposals if p.get("id") == proposal_id), None)
+    if not prop:
+        return {"success": False, "message": "proposal not found", "action": ""}
+    if prop.get("status") != "approved":
+        return {"success": False, "message": "proposal not yet approved", "action": ""}
+
+    action = prop.get("action", "")
+    from_title = prop.get("from_title", "")
+    to_title = prop.get("to_title", "")
+
+    if action == "merge":
+        return _execute_merge(prop, from_title, to_title)
+    elif action == "update":
+        return _execute_update(prop, from_title, to_title)
+    elif action == "supplement":
+        return _execute_supplement(prop, from_title, to_title)
+    elif action == "contradict":
+        return _execute_contradict(prop, from_title, to_title)
+    return {"success": False, "message": f"unknown action: {action}", "action": action}
+
+
+def _execute_merge(prop, from_title, to_title) -> Dict[str, Any]:
+    u"""Merge two pages: combine bodies, update links, delete merged page."""
+    from_page = read_page(from_title)
+    to_page = read_page(to_title)
+    if not from_page or not to_page:
+        return {"success": False, "message": "one or both pages not found", "action": "merge"}
+
+    merged_body = (to_page.get("body") or "") + "\n\n---\n\n合并自 [[{from_title}]]:\n\n".format(from_title=from_title) + (from_page.get("body") or "")
+    merged_tags = list(set((to_page.get("tags") or []) + (from_page.get("tags") or [])))
+    merged_related = list(set((to_page.get("related") or []) + (from_page.get("related") or []) + [from_title]))
+    merged_related = [r for r in merged_related if r != to_title]  # remove self-ref
+    merged_sources = list(set((to_page.get("source_articles") or []) + (from_page.get("source_articles") or [])))
+
+    write_page(to_title, merged_body[:50000],
+               category=to_page.get("category", "entities"),
+               tags=merged_tags[:10],
+               related=merged_related[:15],
+               summary=to_page.get("summary", "") or from_page.get("summary", ""),
+               source_articles=merged_sources)
+    # Redirect references from from_title to to_title in all pages
+    all_pages = search_pages(limit=1000)
+    updated = 0
+    for p in all_pages:
+        if from_title in (p.get("related") or []):
+            new_related = [to_title if r == from_title else r for r in p["related"]]
+            update_page(p["title"], related=new_related)
+            updated += 1
+    delete_page(from_title)
+    update_proposal_status(prop["id"], "resolved")
+    return {"success": True, "message": f"merged '{from_title}' into '{to_title}', updated {updated} references", "action": "merge"}
+
+
+def _execute_update(prop, from_title, to_title) -> Dict[str, Any]:
+    u"""Update existing page with new content from another page."""
+    to_page = read_page(to_title)
+    if not to_page:
+        return {"success": False, "message": "target page not found", "action": "update"}
+    from_page = read_page(from_title)
+    new_body = (from_page.get("body") or "") if from_page else (to_page.get("body") or "")
+    version = int(to_page.get("version", 1)) + 1
+    update_page(to_title, body=new_body, version=str(version))
+    # Mark stale references
+    all_pages = search_pages(limit=1000)
+    for p in all_pages:
+        if to_title in (p.get("related") or []):
+            stale = list(set((p.get("stale_references") or []) + [to_title]))
+            update_page(p["title"], stale_references=stale[:10])
+    update_proposal_status(prop["id"], "resolved")
+    return {"success": True, "message": f"updated '{to_title}' to v{version}, marked stale references", "action": "update"}
+
+
+def _execute_supplement(prop, from_title, to_title) -> Dict[str, Any]:
+    u"""Append new content to existing page body."""
+    to_page = read_page(to_title)
+    from_page = read_page(from_title)
+    if not to_page:
+        return {"success": False, "message": "target page not found", "action": "supplement"}
+    appendix = (from_page.get("body") or "") if from_page else ""
+    if appendix:
+        new_body = (to_page.get("body") or "") + "\n\n---\n\n补充内容 (来源: {from_title}):\n\n".format(from_title=from_title) + appendix
+        update_page(to_title, body=new_body[:50000])
+    update_proposal_status(prop["id"], "resolved")
+    return {"success": True, "message": f"supplemented '{to_title}'", "action": "supplement"}
+
+
+def _execute_contradict(prop, from_title, to_title) -> Dict[str, Any]:
+    u"""Mark contradiction between two pages."""
+    for t in [from_title, to_title]:
+        page = read_page(t)
+        if page:
+            other = to_title if t == from_title else from_title
+            contras = list(set((page.get("contradictions") or []) + [other]))
+            update_page(t, contradictions=contras[:10])
+    update_proposal_status(prop["id"], "resolved")
+    return {"success": True, "message": f"marked contradiction between '{from_title}' and '{to_title}'", "action": "contradict"}
 
 
 # ── Search ─────────────────────────────────────────────────────
