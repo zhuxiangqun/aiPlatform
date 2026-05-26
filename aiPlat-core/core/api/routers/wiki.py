@@ -187,6 +187,39 @@ async def convert_from_kb(tenant_id: str = "default", collection_id: str = "defa
                           source_articles=[f"kb:{doc_id}"])
                 created += 1
 
+                # LLM curation: enhance with proper summary, entity extraction, auto-linking
+                try:
+                    from core.harness.knowledge.wiki_engine import llm_curate_page, list_all_pages as _lap
+                    existing = _lap()
+                    existing_titles = [p["title"] for p in existing] if existing else []
+                    curated = await llm_curate_page(safe_title, body, existing_titles=existing_titles, source_doc_id=doc_id)
+                    # Re-write with LLM-enhanced metadata
+                    write_page(curated["title"], body,
+                        category=curated.get("category", "entities"),
+                        tags=curated.get("tags", tags),
+                        related=curated.get("related", []),
+                        summary=curated.get("summary", summary),
+                        source_articles=[f"kb:{doc_id}"])
+                    # Create entity pages
+                    for entity in curated.get("entities_found", [])[:5]:
+                        safe_entity = re.sub(r"[<>:\"/\\|?*]", "_", entity)[:120]
+                        if safe_entity != safe_title and safe_entity not in topic_keywords:
+                            write_page(safe_entity, f"Entity: {entity}\n\nSee: [[{safe_title}]]",
+                                category="entities", tags=[entity.lower()], related=[safe_title])
+                    # Mark contradictions
+                    for con in curated.get("contradictions", [])[:3]:
+                        from core.harness.knowledge.wiki_engine import read_page as _rpx
+                        old_page = _rpx(con.get("b", ""))
+                        if old_page:
+                            old_contradictions = set(old_page.get("contradictions", []))
+                            old_contradictions.add(safe_title)
+                            write_page(con.get("b", ""), old_page.get("body", ""),
+                                category=old_page.get("category", "entities"),
+                                tags=old_page.get("tags", []), related=old_page.get("related", []),
+                                contradictions=list(old_contradictions)[:10])
+                except Exception:
+                    pass  # LLM curation best-effort
+
                 # Write back to KB document: record linked wiki page
                 try:
                     meta = _json.loads(doc.get("meta_json", "{}") or "{}")

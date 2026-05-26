@@ -1392,6 +1392,40 @@ async def _auto_wiki_update(doc_id: str, file_path: str):
                    summary=body[:300].replace("\n", " "),
                    source_articles=[f"kb:{doc_id}"])
 
+        # LLM curation: read the page, extract entities, detect contradictions, auto-link
+        try:
+            from core.harness.knowledge.wiki_engine import llm_curate_page, list_all_pages, write_page as _wp, read_page as _rp
+            existing = list_all_pages()
+            existing_titles = [p["title"] for p in existing] if existing else []
+            curated = await llm_curate_page(title, body, existing_titles=existing_titles, source_doc_id=doc_id)
+            # Re-write page with LLM-enhanced metadata
+            _wp(curated["title"], body,
+                category=curated.get("category", "entities"),
+                tags=curated.get("tags", tags),
+                related=curated.get("related", []),
+                summary=curated.get("summary", body[:300].replace("\n", " ")),
+                source_articles=[f"kb:{doc_id}"])
+            # Create entity pages for found entities
+            for entity in curated.get("entities_found", [])[:5]:
+                safe_entity = re.sub(r"[<>:\"/\\|?*]", "_", entity)[:120]
+                if safe_entity != title and safe_entity not in existing_titles:
+                    _wp(safe_entity, f"Entity page for: {entity}\n\nSee also: [[{title}]]",
+                        category="entities", tags=[entity.lower()],
+                        related=[title])
+            # Mark contradictions
+            for con in curated.get("contradictions", [])[:3]:
+                old_page = _rp(con.get("b", ""))
+                if old_page:
+                    old_contradictions = set(old_page.get("contradictions", []))
+                    old_contradictions.add(title)
+                    _wp(con.get("b", ""), old_page.get("body", ""),
+                        category=old_page.get("category", "entities"),
+                        tags=old_page.get("tags", []),
+                        related=old_page.get("related", []),
+                        contradictions=list(old_contradictions)[:10])
+        except Exception:
+            pass  # LLM curation is best-effort
+
         # Write back to KB document meta
         import json
         kb_dir = os.path.expanduser(os.getenv("AIPLAT_KB_TENANTS_DIR", "~/.aiplat/kb/tenants"))

@@ -279,7 +279,78 @@ def list_all_pages() -> List[Dict[str, Any]]:
     return search_pages(limit=1000)
 
 
+# ── LLM-powered curation (knowledge editor logic) ───────────────
+
+async def llm_curate_page(title: str, body: str, *, existing_titles: List[str] = None,
+                           source_doc_id: str = "") -> Dict[str, Any]:
+    """Use LLM to read a new wiki page, extract entities, detect contradictions,
+    update related pages, and generate a proper summary.
+
+    Returns: { title, category, summary, tags, related, entities_found, contradictions, merge_candidates }
+    """
+    existing_titles = existing_titles or []
+    result: Dict[str, Any] = {
+        "title": title, "category": "entities", "summary": body[:300].replace("\n", " "),
+        "tags": [], "related": [], "entities_found": [], "contradictions": [], "merge_candidates": [],
+    }
+
+    # Build prompt for LLM
+    existing_list = "\n".join(f"- {t}" for t in existing_titles[:50]) if existing_titles else "(none)"
+    prompt = f"""You are a knowledge curator. Read the following new wiki page and analyze it.
+
+=== NEW PAGE ===
+Title: {title}
+Content (first 5000 chars):
+{body[:5000]}
+
+=== EXISTING WIKI PAGES ===
+{existing_list}
+
+=== TASKS ===
+1. Generate a 2-3 sentence summary (Chinese preferred, max 300 chars)
+2. Suggest the best category: entities, topics, or contradictions
+3. Extract 3-8 tags (keywords, lowercase)
+4. Identify 2-5 existing pages that this new page is related to (from the list above — choose titles that closely match on topic/concept)
+5. If the content discusses conflicting information between two entities, list the contradiction pair
+6. If this page is nearly identical to an existing page (same topic, same content), suggest it as a merge candidate
+
+=== OUTPUT FORMAT ===
+Reply with ONLY a JSON object (no markdown fences, no explanation):
+{{"summary":"...","category":"entities","tags":["tag1","tag2"],"related":["Existing Page Title"],"entities_found":["Entity1","Entity2"],"contradictions":[{{"a":"PageA","b":"PageB","detail":"why"}}],"merge_candidates":[{{"target":"PageTitle","reason":"duplicate content"}}]}}
+"""
+    try:
+        from core.harness.utils.model_injection import create_selected_adapter
+        model = create_selected_adapter(model_name="deepseek-chat")
+        messages = [
+            {"role": "system", "content": "You are a knowledge curation assistant. Reply with JSON only, no markdown fences."},
+            {"role": "user", "content": prompt},
+        ]
+        resp = await model.generate(messages, config=None)
+        content = resp.content if hasattr(resp, 'content') else str(resp)
+        # Parse JSON from response — try multiple extraction strategies
+        if content.startswith("```"):
+            # Strip markdown code fences
+            content = content.strip("`").strip()
+            if content.startswith("json"):
+                content = content[4:].strip()
+        # Find the outermost JSON object
+        json_match = re.search(r'\{[\s\S]*?\}', content)
+        if json_match:
+            data = _json.loads(json_match.group(0))
+            result["summary"] = str(data.get("summary", result["summary"]))[:500]
+            result["category"] = str(data.get("category", "entities"))
+            result["tags"] = list(data.get("tags", []))[:8]
+            result["related"] = [t for t in (data.get("related", []) or []) if t in existing_titles][:10]
+            result["entities_found"] = list(data.get("entities_found", []))[:10]
+            result["contradictions"] = list(data.get("contradictions", []))[:5]
+            result["merge_candidates"] = list(data.get("merge_candidates", []))[:3]
+    except Exception:
+        pass  # LLM is best-effort, fall through to mechanical defaults
+
+    return result
+
+
 __all__ = [
     "read_page", "write_page", "search_pages", "traverse_links",
-    "detect_contradictions", "list_all_pages", "_wiki_root",
+    "detect_contradictions", "list_all_pages", "llm_curate_page", "_wiki_root",
 ]
