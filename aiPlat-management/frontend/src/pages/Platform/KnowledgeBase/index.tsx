@@ -51,6 +51,7 @@ const KnowledgeBasePage: React.FC = () => {
   const [curateReport, setCurateReport] = useState<any>(null);
   const [graphRefreshKey, setGraphRefreshKey] = useState(0);
   const [wikiChatOpen, setWikiChatOpen] = useState(false);
+  const [exploreTitles, setExploreTitles] = useState<Set<string> | null>(null);
 
   const [evalSamples, setEvalSamples] = useState<any[]>([]);
   const [evalResult, setEvalResult] = useState<any>(null);
@@ -206,6 +207,15 @@ const KnowledgeBasePage: React.FC = () => {
       toast.success('已删除'); fetchWikiPages(); setSelectedPage(null); setGraphRefreshKey(k => k + 1);
     } catch { toast.error('删除失败'); }
   };
+  const handleExplore = async (title: string) => {
+    try {
+      const res = await fetch(`${WIKI_API}/traverse/${encodeURIComponent(title)}?depth=2`);
+      const data = await res.json();
+      const titles = new Set<string>((data.items || []).map((p: any) => p.title));
+      titles.add(title); setExploreTitles(titles);
+    } catch { toast.error('展开失败'); }
+  };
+  const handleExitExplore = () => { setExploreTitles(null); setSelectedPage(null); };
   const handleConvertKb = async (docIds?: string[]) => {
     setConverting(true);
     try {
@@ -566,17 +576,24 @@ const KnowledgeBasePage: React.FC = () => {
             <div className="flex-1 min-w-0">
           {wikiViewMode === 'graph' ? (
             <div className="flex-1 min-h-0 relative">
-              <WikiGraph key={graphRefreshKey} onSelectPage={(title: string) => readWikiPage(title)} />
+              <WikiGraph key={graphRefreshKey} onSelectPage={(title: string) => readWikiPage(title)}
+                exploreTitles={exploreTitles} onExitExplore={handleExitExplore} />
               {selectedPage && (
                 <div className="absolute top-2 right-2 w-80 max-h-[60%] overflow-auto bg-dark-card border border-dark-border rounded-lg shadow-lg z-10">
                   <div className="flex items-center justify-between p-2 border-b border-dark-border">
                     <span className="text-sm font-medium text-gray-200 truncate">{selectedPage.title}</span>
                     <div className="flex items-center gap-1">
+                      <button onClick={() => handleExplore(selectedPage.title)} className="text-gray-500 hover:text-blue-400 text-xs" title="探索关联">🔍</button>
                       <button onClick={() => handleWikiDelete(selectedPage.title)} className="text-gray-500 hover:text-red-400 text-xs" title="删除"><Trash2 className="w-3 h-3" /></button>
                       <button onClick={() => setSelectedPage(null)} className="text-gray-500 hover:text-gray-300 text-xs">✕</button>
                     </div>
                   </div>
                   <pre className="text-xs text-gray-300 whitespace-pre-wrap p-2 max-h-64 overflow-auto">{selectedPage.body || '(无正文)'}</pre>
+                  {(selectedPage.source_articles?.length > 0) && (
+                    <div className="px-2 pb-2 text-[10px] text-gray-500 border-t border-dark-border pt-1.5 mt-1">
+                      📎 来源: {(selectedPage.source_articles || []).filter((s: string) => s.startsWith('kb:')).join(', ').replace(/kb:/g, '') || '未知'}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

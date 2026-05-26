@@ -42,9 +42,11 @@ interface GraphData {
 
 interface WikiGraphProps {
   onSelectPage: (title: string) => void;
+  exploreTitles?: Set<string> | null;
+  onExitExplore?: () => void;
 }
 
-const WikiGraph: React.FC<WikiGraphProps> = ({ onSelectPage }) => {
+const WikiGraph: React.FC<WikiGraphProps> = ({ onSelectPage, exploreTitles, onExitExplore }) => {
   const [data, setData] = useState<GraphData | null>(null);
   const [loading, setLoading] = useState(false);
   const [keyword, setKeyword] = useState('');
@@ -108,7 +110,7 @@ const WikiGraph: React.FC<WikiGraphProps> = ({ onSelectPage }) => {
       : new Set<string>();
 
     return {
-      backgroundColor: '#0a0b0f',
+      backgroundColor: exploreTitles ? '#06070a' : '#0a0b0f',
       darkMode: true,
       animationDurationUpdate: 600,
       animationEasingUpdate: 'cubicInOut',
@@ -168,6 +170,7 @@ const WikiGraph: React.FC<WikiGraphProps> = ({ onSelectPage }) => {
           draggable: true,
           data: nodes.map((n: any) => {
             const isMatched = matchedIds.has(n.id);
+            const inExplore = !exploreTitles || exploreTitles.has(n.id);
             const color = CAT_COLORS[n.category] || '#3b82f6';
             return {
               ...n,
@@ -181,11 +184,16 @@ const WikiGraph: React.FC<WikiGraphProps> = ({ onSelectPage }) => {
                 shadowColor: isMatched
                   ? `${color}aa`
                   : (CAT_GLOW[n.category] || 'rgba(59,130,246,0.3)'),
-                opacity: isMatched ? 1 : 0.85,
+                opacity: inExplore ? (isMatched ? 1 : 0.85) : 0.06,
               },
             };
           }),
-          links: edges,
+          links: exploreTitles
+            ? edges.map((e: any) => ({
+                ...e,
+                lineStyle: { opacity: exploreTitles.has(e.source) && exploreTitles.has(e.target) ? 0.18 : 0.01, width: 0.3 },
+              }))
+            : edges,
           categories: categories,
           force: {
             repulsion,
@@ -265,6 +273,11 @@ const WikiGraph: React.FC<WikiGraphProps> = ({ onSelectPage }) => {
           {data?.stats?.totalNodes != null ? `${data.stats.totalNodes} 节点 · ${data.stats.totalEdges} 边` : ''}
         </span>
         <div className="flex-1" />
+        {exploreTitles && (
+          <button onClick={() => { onExitExplore?.(); }} className="text-[10px] px-2 py-0.5 rounded bg-primary/20 text-primary hover:bg-primary/30">
+            退出探索 · {exploreTitles.size} 个节点
+          </button>
+        )}
         <button
           onClick={() => setFullscreen(!fullscreen)}
           className="text-gray-500 hover:text-gray-300 transition-colors"
