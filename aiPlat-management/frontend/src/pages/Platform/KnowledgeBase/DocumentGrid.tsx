@@ -9,6 +9,7 @@ interface Props {
   loading: boolean;
   total: number;
   selectedDocIds: Set<string>;
+  wikiDocIds?: Set<string>;
 }
 
 const CAT_LABELS: Record<string, string> = {
@@ -37,7 +38,7 @@ const _elementPos = (el: any) => {
   return `p${el.page_idx ?? '-'}`;
 };
 
-export const DocumentGrid: React.FC<Props> = ({ documents, loading, total, selectedDocIds }) => {
+export const DocumentGrid: React.FC<Props> = ({ documents, loading, total, selectedDocIds, wikiDocIds }) => {
   const { toggleDocumentSelection, fetchDocuments, fetchCategories } = useKBStore();
   const [deleting, setDeleting] = useState<string | null>(null);
   const [detailDoc, setDetailDoc] = useState<KBDocument | null>(null);
@@ -159,19 +160,11 @@ export const DocumentGrid: React.FC<Props> = ({ documents, loading, total, selec
                       {(doc.element_count ?? 0) > 0 && <span className="text-[10px] text-gray-600">{doc.element_count} 元素</span>}
                     </div>
                     {/* Wiki pages generated from this document */}
-                    {((doc.meta?.wiki_pages || []) as string[]).length > 0 && (
+                    {wikiDocIds?.has(doc.doc_id) && (
                       <details className="mt-1.5" onClick={(e) => e.stopPropagation()}>
                         <summary className="text-[10px] text-blue-400 cursor-pointer hover:text-blue-300">
-                          📊 已生成 {(doc.meta?.wiki_pages || []).length} 个知识页面
+                          📊 已生成知识页面
                         </summary>
-                        <div className="ml-2 mt-0.5 text-[10px] text-gray-500 max-h-24 overflow-y-auto">
-                          {((doc.meta?.wiki_pages || []) as string[]).slice(0, 10).map((t: string) => (
-                            <div key={t} className="truncate">{t}</div>
-                          ))}
-                          {((doc.meta?.wiki_pages || []) as string[]).length > 10 && (
-                            <div className="text-gray-600">...还有 {((doc.meta?.wiki_pages || []) as string[]).length - 10} 个</div>
-                          )}
-                        </div>
                       </details>
                     )}
                   </div>

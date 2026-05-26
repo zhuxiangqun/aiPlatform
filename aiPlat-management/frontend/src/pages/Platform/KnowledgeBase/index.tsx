@@ -47,6 +47,7 @@ const KnowledgeBasePage: React.FC = () => {
   const [newPageOpen, setNewPageOpen] = useState(false);
   const [unprocessedCount, setUnprocessedCount] = useState(0);
   const [unprocessedDocs, setUnprocessedDocs] = useState<any[]>([]);
+  const [wikiDocIds, setWikiDocIds] = useState<Set<string>>(new Set());
   const [lintResult, setLintResult] = useState<any>(null);
   const [lintLoading, setLintLoading] = useState(false);
   const [curating, setCurating] = useState(false);
@@ -77,39 +78,28 @@ const KnowledgeBasePage: React.FC = () => {
 
   const checkUnprocessed = async () => {
     try {
-      const kbRes = await fetch('/api/platform/documents?limit=1000').then(r => r.json()).catch(() => ({ items: [] }));
-      const items = kbRes.items || [];
+      const [kbRes, wikiRes] = await Promise.all([
+        fetch('/api/platform/documents?limit=1000').then(r => r.json()).catch(() => ({ items: [] })),
+        fetch(`${WIKI_API}/pages?limit=500`).then(r => r.json()).catch(() => ({ items: [] })),
+      ]);
+      const kbItems = kbRes.items || [];
+      const wikiItems = wikiRes.items || [];
+      // Build set of KB doc_ids referenced by wiki pages via source_articles
+      const wikiDocIds = new Set<string>();
+      for (const p of wikiItems) {
+        for (const s of (p.source_articles || [])) {
+          if (s.startsWith('kb:')) wikiDocIds.add(s.replace('kb:', ''));
+        }
+      }
       const unprocessed: any[] = [];
-      for (const doc of items) {
-        const meta = doc.meta_json ? (typeof doc.meta_json === 'string' ? JSON.parse(doc.meta_json) : doc.meta_json) : {};
-        const pages = meta.wiki_pages || [];
-        if (!pages || pages.length === 0) {
+      for (const doc of kbItems) {
+        if (!wikiDocIds.has(doc.doc_id)) {
           unprocessed.push(doc);
         }
       }
-      // If all unprocessed, cross-check against wiki pages
-      if (unprocessed.length > 0 && unprocessed.length === items.length) {
-        try {
-          const wikiRes = await fetch(`${WIKI_API}/pages?limit=500`).then(r => r.json());
-          const wikiTitles = new Set((wikiRes.items || []).map((p: any) => p.title));
-          let matched = 0;
-          for (const doc of items) {
-            const uri = doc.source_uri || '';
-            const fname = uri.split('/').pop() || '';
-            const matchedTitle = [...wikiTitles].find((t: string) =>
-              t.includes(fname.substring(0, 20)) || fname.includes(t.substring(0, 20))
-            );
-            if (matchedTitle) matched++;
-          }
-          if (matched > 0) {
-            setUnprocessedDocs([]);
-            setUnprocessedCount(0);
-            return;
-          }
-        } catch {}
-      }
       setUnprocessedDocs(unprocessed);
       setUnprocessedCount(unprocessed.length);
+      setWikiDocIds(wikiDocIds);
     } catch { setUnprocessedCount(0); setUnprocessedDocs([]); }
   };
 
@@ -224,7 +214,8 @@ const KnowledgeBasePage: React.FC = () => {
       const body: any = { tenant_id: 'default', limit: 50 };
       if (docIds && docIds.length > 0) body.doc_ids = docIds;
       const res = await fetch(`${WIKI_API}/convert-from-kb`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      const data = await res.json(); setConvertResult(data); toast.success(data.message || `转换 ${data.docs_converted || 0} 个文档`); fetchWikiPages(); checkUnprocessed(); setGraphRefreshKey(k => k + 1); } catch {} finally { setConverting(false); }
+      const data = await res.json(); setConvertResult(data); toast.success(data.message || `转换 ${data.docs_converted || 0} 个文档`);
+      fetchWikiPages(); setTimeout(checkUnprocessed, 500); setGraphRefreshKey(k => k + 1); } catch {} finally { setConverting(false); }
   };
   const handleConvertSelected = async () => {
     const unprocessedIds = new Set(unprocessedDocs.map((d: any) => d.doc_id));
@@ -236,7 +227,7 @@ const KnowledgeBasePage: React.FC = () => {
       const res = await fetch(`${WIKI_API}/convert-from-kb`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const data = await res.json(); setConvertResult(data);
       toast.success(data.message || `转换 ${data.docs_converted || 0} 个文档`);
-      fetchWikiPages(); checkUnprocessed(); setGraphRefreshKey(k => k + 1);
+      fetchWikiPages(); setTimeout(checkUnprocessed, 500); setGraphRefreshKey(k => k + 1);
     } catch {} finally { setConvertingSelected(false); }
   };
   const handleCurate = async () => {
@@ -375,7 +366,7 @@ const KnowledgeBasePage: React.FC = () => {
           </div>
 
           <div className="flex-1 min-w-0">
-              <DocumentGrid documents={documents} loading={loading} total={totalDocuments} selectedDocIds={selectedDocIds} />
+              <DocumentGrid documents={documents} loading={loading} total={totalDocuments} selectedDocIds={selectedDocIds} wikiDocIds={wikiDocIds} />
             </div>
           </>
         )}
