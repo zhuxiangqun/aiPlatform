@@ -108,6 +108,7 @@ def build_skill_deps(skills_root: str = None) -> Dict[str, Any]:
             "deps": deps,
             "effects": fm.get("effects", []),
             "category": fm.get("category", ""),
+            "path": str(skill_dir),
         }
 
     # Scan agents
@@ -144,16 +145,35 @@ def build_skill_deps(skills_root: str = None) -> Dict[str, Any]:
         "skills": skill_deps,
         "syscalls": {k: sorted(v) for k, v in syscall_users.items()},
         "unknown_refs": unknown,
-        "unused_skills": sorted(set(skill_deps.keys()) - set(r for a in agent_refs.values() for r in a.get("required_skills", []))),
+        "unused_skills": _find_unused_skills(skill_deps, agent_refs),
         "stats": {
             "total_skills": len(skill_deps),
             "total_agents": len(agent_refs),
             "total_syscalls_used": len(syscall_users),
             "unknown_references": len(unknown),
-            "unused_skills": len(set(skill_deps.keys()) - set(r for a in agent_refs.values() for r in a.get("required_skills", []))),
+            "unused_skills": len(_find_unused_skills(skill_deps, agent_refs)),
             "syscall_caller_count": {s: _count_syscall_callers(s) for s in syscall_users},
         },
     }
+
+
+def _find_unused_skills(skill_deps, agent_refs) -> List[str]:
+    u"""Find skills with no Agent reference AND no Python handler class."""
+    agent_skills = set(r for a in agent_refs.values() for r in a.get("required_skills", []))
+    unused = []
+    for skill_id, info in skill_deps.items():
+        if skill_id in agent_skills:
+            continue
+        # Check for Python handler class
+        skill_path = info.get("path") or ""
+        has_handler = False
+        if skill_path:
+            handler_file = os.path.join(skill_path, "handler.py")
+            if os.path.isfile(handler_file):
+                has_handler = True
+        if not has_handler:
+            unused.append(skill_id)
+    return sorted(unused)
 
 
 def _count_syscall_callers(syscall_name: str) -> int:

@@ -280,6 +280,32 @@ def build_context(task: str, roots: List[str] = None) -> Dict[str, Any]:
         "stats": {"files": len(nodes), "edges": len(edges), "issues": len(issues)},
         "health": health,
         "related": related_files,
-        "orphan_files": [p for p, n in nodes.items()
-                         if len(n.get("out", [])) == 0 and n.get("in", 0) == 0],
+        "orphan_files": _find_orphans(nodes),
     }
+
+
+def _find_orphans(nodes):
+    u"""Find files with no imports and no dependents, excluding structural files."""
+    orphans = []
+    for p, n in nodes.items():
+        if len(n.get("out", [])) != 0 or n.get("in", 0) != 0:
+            continue
+        name = str(p)
+        # Skip package init and barrel exports
+        if name.endswith("__init__.py") or name.endswith("index.ts") or name.endswith("index.tsx"):
+            continue
+        # Skip config files
+        if ".config.js" in name or ".config.ts" in name:
+            continue
+        # Skip UI library files (re-exported through barrel)
+        if "/components/ui/" in name or "/components/common/" in name:
+            continue
+        # Skip pages subdirectory barrel exports
+        if "/pages/" in name and name.count("/") >= 3 and (name.endswith("/index.ts") or name.endswith("/index.tsx")):
+            continue
+        # Skip tailwind/postcss/eslint config
+        for kw in ["tailwind.config", "postcss.config", "eslint.config", "vite.config", "proxy_server"]:
+            if kw in name:
+                continue
+        orphans.append(name)
+    return orphans

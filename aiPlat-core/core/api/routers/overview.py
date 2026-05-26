@@ -26,13 +26,14 @@ async def system_overview() -> Dict[str, Any]:
         nodes, edges, issues = build_graph(repo, abs_roots)
         cycles = count_cycles(nodes)
         h = health_score(nodes=nodes, edges=edges, issues=issues, cycles_back_edges=cycles)
+        from core.harness.knowledge.code_graph import _find_orphans
         result["code_health"] = {
             "score": h["score"], "grade": h["grade"],
             "files": h["signals"]["files"], "edges": h["signals"]["edges"],
             "cycles": h["signals"]["cycles_back_edges"],
             "avg_degree": h["signals"]["avg_degree"],
             "issues": h["signals"]["issues"],
-            "orphan_files": len([p for p, n in nodes.items() if len(n.get("out", [])) == 0 and n.get("in", 0) == 0]),
+            "orphan_files": len(_find_orphans(nodes)),
         }
     except Exception:
         result["code_health"] = {"score": 0, "error": "unavailable"}
