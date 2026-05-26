@@ -319,8 +319,9 @@ Reply with ONLY a JSON object (no markdown fences, no explanation):
 {{"summary":"...","category":"entities","tags":["tag1","tag2"],"related":["Existing Page Title"],"entities_found":["Entity1","Entity2"],"contradictions":[{{"a":"PageA","b":"PageB","detail":"why"}}],"merge_candidates":[{{"target":"PageTitle","reason":"duplicate content"}}]}}
 """
     try:
-        from core.harness.utils.model_injection import create_selected_adapter
-        model = create_selected_adapter(model_name="deepseek-chat")
+        from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
+        model_name = best_model_for_purpose("wiki_curation")
+        model = create_selected_adapter(model_name=model_name)
         messages = [
             {"role": "system", "content": "You are a knowledge curation assistant. Reply with JSON only, no markdown fences."},
             {"role": "user", "content": prompt},

@@ -246,3 +246,102 @@ def ensure_skill_model(skill: Any, *, model_name: str, force: bool = False) -> A
         _bind_model(skill, adapter)
         return adapter
     return cur
+
+
+# ── Task-aware model selection (§model selection by purpose) ─────────────────
+
+PURPOSE_PROFILE: dict = {
+    "wiki_curation": {
+        "prefer": ["chat"],
+        "avoid": ["reasoning"],
+    },
+    "eval_code": {
+        "prefer": ["chat", "reasoning"],
+        "avoid": [],
+    },
+    "agent": {
+        "prefer": ["reasoning", "chat"],
+        "avoid": [],
+    },
+    "chat": {
+        "prefer": ["chat"],
+        "avoid": ["reasoning"],
+    },
+    "code_gen": {
+        "prefer": ["chat"],
+        "avoid": ["reasoning"],
+    },
+    "document": {
+        "prefer": ["chat"],
+        "avoid": ["reasoning"],
+    },
+}
+
+_DEFAULT_PROFILE = {"prefer": ["chat"], "avoid": []}
+
+
+def _select_from_infra(purpose: str) -> Optional[str]:
+    """Select the best model for a purpose from infra ModelManager by capability matching."""
+    try:
+        from infra.management.model.manager import ModelManager
+        mgr = ModelManager()
+        # Access pre-loaded models directly (they're populated in __init__ before
+        # async scanning; sync access avoids coroutine issues)
+        models = list(mgr._models.values()) if hasattr(mgr, "_models") else []
+    except Exception:
+        return None
+
+    if not models:
+        return None
+
+    profile = PURPOSE_PROFILE.get(purpose, _DEFAULT_PROFILE)
+    chat_models = [m for m in models if hasattr(m, 'type') and m.type.value == "chat" and m.enabled]
+
+    scored: list = []
+    for m in chat_models:
+        caps = set(m.capabilities or ["chat"])
+
+        # Must have at least one preferred capability
+        if not any(c in caps for c in profile["prefer"]):
+            continue
+
+        # Must not have any avoided capability
+        if any(c in caps for c in profile["avoid"]):
+            continue
+
+        score = 0
+        if m.source.value == "config":
+            score += 100  # Remote API > local
+        if "reasoning" in caps:
+            if profile["prefer"][0] == "reasoning":
+                score += 80  # Reasoning-required tasks: reasoning is a plus
+            else:
+                score -= 30  # Non-reasoning tasks: reasoning is unwanted overhead
+        else:
+            if profile["prefer"][0] != "reasoning":
+                score += 50  # Non-reasoning for non-reasoning tasks: cheaper, faster
+        if "function_call" in caps:
+            score += 20
+        if m.name == "deepseek-chat" and profile["prefer"][0] != "reasoning":
+            score += 30  # Preferred default for non-reasoning tasks
+
+        scored.append((score, m.name))
+
+    if not scored:
+        return None
+
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return scored[0][1]
+
+
+def best_model_for_purpose(purpose: str) -> str:
+    """Select the best LLM model for a given task purpose.
+
+    Resolution chain:
+      1. infra ModelManager — match by task profile (capability, cost, source)
+      2. get_default_model(purpose) — env var + system default (fallback)
+    """
+    selected = _select_from_infra(purpose)
+    if selected:
+        return selected
+    return get_default_model(purpose=purpose) or "deepseek-chat"
