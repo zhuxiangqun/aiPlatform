@@ -29,6 +29,7 @@ async def list_pages(
     category: str = "",
     tag: str = "",
     query: str = "",
+    source: str = "",
     limit: int = 100,
     offset: int = 0,
 ):
@@ -41,6 +42,11 @@ async def list_pages(
         if category:
             pages = [p for p in pages if p["category"] == category]
         pages = pages[offset:offset + limit]
+    # Filter by source_articles prefix
+    if source:
+        pages = [p for p in pages if any(
+            s.startswith(source + ":") for s in (p.get("source_articles") or [])
+        )]
     return {"items": pages, "total": len(pages)}
 
 
@@ -51,6 +57,15 @@ async def read_page(title: str, category: str = "entities"):
     if not page:
         raise HTTPException(status_code=404, detail="wiki_page_not_found")
     return page
+
+
+@router.delete("/pages/{title}")
+async def delete_page(title: str):
+    from core.harness.knowledge.wiki_engine import delete_page as _del
+    ok = _del(title)
+    if not ok:
+        raise HTTPException(status_code=404, detail="wiki_page_not_found")
+    return {"title": title, "status": "deleted"}
 
 
 @router.post("/pages")
@@ -87,10 +102,11 @@ async def lint_wiki():
 async def wiki_graph(
     category: str = "",
     keyword: str = "",
+    source: str = "",
     max_nodes: int = 300,
 ):
     from core.harness.knowledge.wiki_engine import build_graph
-    return build_graph(category=category, keyword=keyword, max_nodes=max_nodes)
+    return build_graph(category=category, keyword=keyword, source=source, max_nodes=max_nodes)
 
 
 @router.post("/ingest")
@@ -288,6 +304,7 @@ async def convert_from_kb(tenant_id: str = "default", collection_id: str = "defa
                 fpath = os.path.join(uploads_dir, fname)
                 if not os.path.isfile(fpath): continue
                 if fname.startswith("."): continue
+                if fname.startswith("preview_"): continue  # skip intermediate preview files
 
                 title = os.path.splitext(fname)[0][:100]
                 title = re.sub(r"[<>:\"/\\|?*]", "_", title)
@@ -308,7 +325,8 @@ async def convert_from_kb(tenant_id: str = "default", collection_id: str = "defa
 
                 tags = list(set(kw.lower() for kw in re.findall(r'[\u4e00-\u9fff]{2,8}|[A-Z][a-zA-Z]{2,}', body[:5000])))[:8]
                 write_page(title, body[:50000], category="entities", tags=tags,
-                          summary=body[:300].replace("\n", " "))
+                          summary=body[:300].replace("\n", " "),
+                          source_articles=[f"upload:{fname}"])
                 uploads_converted += 1
                 # Mark as processed
                 try:

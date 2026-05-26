@@ -195,6 +195,34 @@ def update_page(title: str, **kwargs) -> bool:
     return True
 
 
+def delete_page(title: str) -> bool:
+    u"""Delete a wiki page by title, removing from disk and index."""
+    found = None
+    cat_name = ""
+    for cat_dir in _wiki_root().iterdir():
+        if not cat_dir.is_dir() or cat_dir.name == "contradictions":
+            continue
+        md_path = cat_dir / f"{title}.md"
+        if md_path.exists():
+            found = md_path
+            cat_name = cat_dir.name
+            break
+    if not found:
+        return False
+
+    found.unlink()
+    # Remove from index
+    idx_path = _wiki_root() / "index.json"
+    if idx_path.exists():
+        try:
+            idx = _json.loads(idx_path.read_text(encoding="utf-8"))
+            idx.get("pages", {}).pop(title, None)
+            idx_path.write_text(_json.dumps(idx, indent=2, ensure_ascii=False))
+        except Exception:
+            pass
+    return True
+
+
 # ── Search ─────────────────────────────────────────────────────
 
 def search_pages(query: str = "", *, tags: List[str] = None, category: str = "",
@@ -466,7 +494,7 @@ def list_all_pages() -> List[Dict[str, Any]]:
 
 # ── Graph export (ECharts force-layout) ──────────────────────────
 
-def build_graph(*, category: str = "", keyword: str = "", max_nodes: int = 300) -> Dict[str, Any]:
+def build_graph(*, category: str = "", keyword: str = "", source: str = "", max_nodes: int = 300) -> Dict[str, Any]:
     u"""Build node/edge graph for ECharts force-layout visualization."""
     _ensure_dirs()
     root = _wiki_root()
@@ -486,6 +514,10 @@ def build_graph(*, category: str = "", keyword: str = "", max_nodes: int = 300) 
                      if kw in t.lower() or any(kw in tag.lower() for tag in p.get("tags", []))}
     if category:
         all_pages = {t: p for t, p in all_pages.items() if p.get("category", "") == category}
+
+    if source:
+        all_pages = {t: p for t, p in all_pages.items()
+                     if any(s.startswith(source + ":") for s in (p.get("source_articles") or []))}
 
     in_degree: Dict[str, int] = {t: 0 for t in all_pages}
     for p in all_pages.values():

@@ -48,7 +48,7 @@ const WikiGraph: React.FC<WikiGraphProps> = ({ onSelectPage }) => {
     setLoading(true);
     setError('');
     try {
-      let url = '/api/core/wiki/graph?max_nodes=400';
+      let url = '/api/core/wiki/graph?max_nodes=400&source=kb';
       if (kw.trim()) url += `&keyword=${encodeURIComponent(kw.trim())}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

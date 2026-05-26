@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Button, Card, CardContent, CardHeader, Input, Textarea, toast } from '../../../components/ui';
-import { BookOpen, Plus, AlertTriangle, Database } from 'lucide-react';
+import { BookOpen, Plus, AlertTriangle, Database, Trash2 } from 'lucide-react';
 import { useKBStore } from '../../../stores';
 import { kbApi } from '../../../services';
 import { DocumentGrid } from './DocumentGrid';
@@ -146,7 +146,7 @@ const KnowledgeBasePage: React.FC = () => {
   const fetchWikiPages = async () => {
     setWikiLoading(true);
     try {
-      let url = `${WIKI_API}/pages?limit=100`;
+      let url = `${WIKI_API}/pages?limit=100&source=kb`;
       if (wikiQuery) url += `&query=${encodeURIComponent(wikiQuery)}`;
       if (wikiCategory) url += `&category=${encodeURIComponent(wikiCategory)}`;
       const res = await fetch(url); setWikiPages((await res.json()).items || []);
@@ -162,6 +162,13 @@ const KnowledgeBasePage: React.FC = () => {
         body: JSON.stringify({ title: wikiNewTitle, body: wikiNewBody, category: wikiNewCategory, tags: wikiNewTags.split(',').map((s: string) => s.trim()).filter(Boolean), summary: wikiNewBody.slice(0, 200) }) });
       toast.success('页面已创建'); setWikiNewTitle(''); setWikiNewBody(''); setWikiNewTags(''); setNewPageOpen(false); fetchWikiPages();
     } catch { toast.error('创建失败'); }
+  };
+  const handleWikiDelete = async (title: string) => {
+    if (!confirm(`确定删除 "${title}"？`)) return;
+    try {
+      await fetch(`${WIKI_API}/pages/${encodeURIComponent(title)}`, { method: 'DELETE' });
+      toast.success('已删除'); fetchWikiPages(); setSelectedPage(null);
+    } catch { toast.error('删除失败'); }
   };
   const handleConvertKb = async () => {
     setConverting(true);
@@ -515,7 +522,10 @@ const KnowledgeBasePage: React.FC = () => {
                 <div className="absolute top-2 right-2 w-80 max-h-[60%] overflow-auto bg-dark-card border border-dark-border rounded-lg shadow-lg z-10">
                   <div className="flex items-center justify-between p-2 border-b border-dark-border">
                     <span className="text-sm font-medium text-gray-200 truncate">{selectedPage.title}</span>
-                    <button onClick={() => setSelectedPage(null)} className="text-gray-500 hover:text-gray-300 text-xs">✕</button>
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => handleWikiDelete(selectedPage.title)} className="text-gray-500 hover:text-red-400 text-xs" title="删除"><Trash2 className="w-3 h-3" /></button>
+                      <button onClick={() => setSelectedPage(null)} className="text-gray-500 hover:text-gray-300 text-xs">✕</button>
+                    </div>
                   </div>
                   <pre className="text-xs text-gray-300 whitespace-pre-wrap p-2 max-h-64 overflow-auto">{selectedPage.body || '(无正文)'}</pre>
                 </div>
@@ -531,6 +541,11 @@ const KnowledgeBasePage: React.FC = () => {
                     <span className="text-sm font-medium text-gray-200">{p.title}</span>
                     <span className={`text-[10px] px-1.5 py-0.5 rounded ${sourceBadge(p.category)}`}>{p.category}</span>
                     {p.related && p.related.length > 0 && <span className="text-[10px] text-blue-500">↗ {p.related.length} 关联</span>}
+                    <div className="flex-1" />
+                    <button onClick={(e) => { e.stopPropagation(); handleWikiDelete(p.title); }}
+                      className="text-gray-600 hover:text-red-400 transition-colors" title="删除">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
                   </div>
                   {p.summary && <div className="text-xs text-gray-500 line-clamp-1">{p.summary}</div>}
                   <div className="flex gap-2 mt-1">{(p.tags || []).slice(0,3).map((t:string) => <span key={t} className="text-[10px] text-gray-600 bg-dark-bg px-1 rounded">{t}</span>)}
