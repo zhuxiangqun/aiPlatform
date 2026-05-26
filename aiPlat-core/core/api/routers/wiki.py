@@ -291,11 +291,15 @@ async def convert_from_kb(tenant_id: str = "default", collection_id: str = "defa
                     pass  # LLM curation best-effort
 
                 # Write back to KB document: record linked wiki page
+                final_title = curated["title"] if curated.get("title") and curated["title"] != old_title else safe_title
                 try:
                     meta = _json.loads(doc["meta_json"] or "{}")
                     wiki_pages = meta.get("wiki_pages", [])
-                    if safe_title not in wiki_pages:
-                        wiki_pages.append(safe_title)
+                    # Remove old mechanical title if it differs from final
+                    if final_title != safe_title and safe_title in wiki_pages:
+                        wiki_pages.remove(safe_title)
+                    if final_title not in wiki_pages:
+                        wiki_pages.append(final_title)
                         meta["wiki_pages"] = wiki_pages
                         conn.execute("UPDATE documents SET meta_json=? WHERE doc_id=? AND tenant_id=?",
                                     (_json.dumps(meta, ensure_ascii=False), doc_id, tenant_id))
@@ -338,6 +342,20 @@ async def convert_from_kb(tenant_id: str = "default", collection_id: str = "defa
                     if not os.path.isfile(fpath): continue
                     if fname.startswith("."): continue
                     if fname.startswith("preview_"): continue  # skip intermediate preview files
+                    # Skip if this upload file is already a KB document with wiki pages
+                    try:
+                        kb_docs = conn.execute(
+                            "SELECT meta_json FROM documents WHERE source_uri LIKE ? AND tenant_id=?",
+                            (f"%{fname}%", tenant_id)
+                        ).fetchall()
+                        already_converted = False
+                        for kd in kb_docs:
+                            km = _json.loads(kd["meta_json"] or "{}")
+                            if km.get("wiki_pages"):
+                                already_converted = True
+                                break
+                        if already_converted: continue
+                    except: pass
 
                     title = os.path.splitext(fname)[0][:100]
                     title = re.sub(r"[<>:\"/\\|?*]", "_", title)
