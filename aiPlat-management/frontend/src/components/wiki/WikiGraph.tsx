@@ -165,9 +165,9 @@ const WikiGraph: React.FC<WikiGraphProps> = ({ onSelectPage }) => {
   );
 
   return (
-    <div className="flex flex-col h-full" style={{ minHeight: 'calc(100vh - 200px)' }}>
+    <div className="flex flex-col h-full">
       {/* Toolbar */}
-      <div className="flex items-center gap-2 mb-2 px-1">
+      <div className="flex items-center gap-2 mb-2 px-1 shrink-0">
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500" />
           <Input

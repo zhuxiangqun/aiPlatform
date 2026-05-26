@@ -450,7 +450,7 @@ const KnowledgeBasePage: React.FC = () => {
       )}
 
       {activeTab === 'wiki' && (
-        <>
+        <div className="flex flex-col" style={{ height: 'calc(100vh - 200px)' }}>
           {/* Toolbar */}
           <div className="flex items-center gap-2 mb-3">
             <div className="flex gap-1">
@@ -489,7 +489,18 @@ const KnowledgeBasePage: React.FC = () => {
           </div>
 
           {wikiViewMode === 'graph' ? (
-            <WikiGraph onSelectPage={(title: string) => readWikiPage(title)} />
+            <div className="flex-1 min-h-0 relative">
+              <WikiGraph onSelectPage={(title: string) => readWikiPage(title)} />
+              {selectedPage && (
+                <div className="absolute top-2 right-2 w-80 max-h-[60%] overflow-auto bg-dark-card border border-dark-border rounded-lg shadow-lg z-10">
+                  <div className="flex items-center justify-between p-2 border-b border-dark-border">
+                    <span className="text-sm font-medium text-gray-200 truncate">{selectedPage.title}</span>
+                    <button onClick={() => setSelectedPage(null)} className="text-gray-500 hover:text-gray-300 text-xs">✕</button>
+                  </div>
+                  <pre className="text-xs text-gray-300 whitespace-pre-wrap p-2 max-h-64 overflow-auto">{selectedPage.body || '(无正文)'}</pre>
+                </div>
+              )}
+            </div>
           ) : (
             <div className="space-y-2">
               <div className="text-xs text-gray-500">{wikiPages.length} 个页面</div>
@@ -531,7 +542,7 @@ const KnowledgeBasePage: React.FC = () => {
               </div>
             </div>
           )}
-        </>
+        </div>
       )}
 
       {activeTab === 'health' && (
@@ -656,13 +667,6 @@ const KnowledgeBasePage: React.FC = () => {
 
             {!lintResult && <div className="text-xs text-gray-500">点击上方按钮运行健康检查</div>}
           </CardContent>
-        </Card>
-      )}
-
-      {selectedPage && activeTab === 'wiki' && (
-        <Card>
-          <CardHeader><div className="text-sm font-medium flex items-center justify-between"><span>{selectedPage.title}</span><button onClick={() => setSelectedPage(null)} className="text-gray-500 hover:text-gray-300 text-xs">关闭</button></div></CardHeader>
-          <CardContent><pre className="text-xs text-gray-300 whitespace-pre-wrap bg-dark-bg p-3 rounded max-h-96 overflow-auto">{selectedPage.body || '(无正文)'}</pre></CardContent>
         </Card>
       )}
 
