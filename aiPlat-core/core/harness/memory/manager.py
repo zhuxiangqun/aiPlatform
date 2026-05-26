@@ -256,6 +256,27 @@ class MemoryManager:
             except Exception:
                 logging.getLogger("manager").debug("best-effort skipped", exc_info=True)
 
+            # Wiki auto-extraction: high-stability insights → knowledge atoms
+            try:
+                import re as _re
+                assistant = str(assistant_message or "").strip()
+                if len(assistant) > 80:
+                    from core.harness.knowledge.wiki_engine import write_page, search_pages
+                    existing = search_pages(limit=100)
+                    existing_titles = [p["title"] for p in existing]
+                    title_match = _re.match(r'^(.{5,60}?)[.!?。！？\n]', assistant)
+                    title = (title_match.group(1) if title_match else assistant[:60]).strip()
+                    if title and len(title) >= 10:
+                        safe_title = _re.sub(r'[<>:"/\\|?*]', '_', title)[:80]
+                        if safe_title not in existing_titles:
+                            write_page(safe_title, assistant[:5000],
+                                       category="topics",
+                                       tags=["memory", "auto-extracted"],
+                                       summary=assistant[:300].replace('\n', ' '),
+                                       source_articles=["memory:episodic"])
+            except Exception:
+                pass
+
     def export_episodic_state(self) -> Dict[str, Any]:
         """Export episodic memory for persistence (survives restart)."""
         return {

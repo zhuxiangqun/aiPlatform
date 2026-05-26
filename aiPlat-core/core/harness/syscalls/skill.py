@@ -277,6 +277,29 @@ async def sys_skill_call(
             args = dict(prepared_params or {})
             args.setdefault("_user_id", user_id)
             args.setdefault("_session_id", session_id)
+            # Inject graph context for Skill awareness
+            try:
+                if "_graph_context" not in args:
+                    gc = {}
+                    try:
+                        from core.harness.syscalls.code_intel_syscall import sys_code_intel_context
+                        task_hint = str(args.get("task", args.get("question", "")))
+                        if task_hint:
+                            gc["code_graph"] = sys_code_intel_context(task_hint)
+                    except Exception:
+                        pass
+                    try:
+                        from core.harness.knowledge.wiki_engine import search_pages
+                        wiki_pages = search_pages(limit=1)
+                        if wiki_pages:
+                            gc["wiki_available"] = True
+                            gc["wiki_pages"] = len(search_pages(limit=500))
+                    except Exception:
+                        pass
+                    if gc:
+                        args["_graph_context"] = gc
+            except Exception:
+                pass
             # Best-effort: bind run_id for approval replay/linkage. For skill executions,
             # session_id is typically the execution id (run_*), so we use it as fallback.
             if "_run_id" not in args:
