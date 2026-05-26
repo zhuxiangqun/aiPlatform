@@ -8,6 +8,7 @@ import { UploadModal } from './UploadModal';
 import { ChatPanel } from './ChatPanel';
 import WikiGraph from '../../../components/wiki/WikiGraph';
 import WikiListView from '../../../components/wiki/WikiListView';
+import WikiHealthDashboard from '../../../components/wiki/WikiHealthDashboard';
 
 const WIKI_API = '/api/core/wiki';
 
@@ -648,7 +649,9 @@ const KnowledgeBasePage: React.FC = () => {
       )}
 
       {activeTab === 'health' && (
-        <Card>
+        <>
+          <WikiHealthDashboard />
+          <Card className="mt-4">
           <CardHeader><div className="text-sm font-medium flex items-center justify-between">
             <span><AlertTriangle className="w-3 h-3 inline mr-1" />知识库健康检查</span>
             {lintResult && (
@@ -804,6 +807,7 @@ const KnowledgeBasePage: React.FC = () => {
             {!lintResult && <div className="text-xs text-gray-500">点击上方按钮运行健康检查</div>}
           </CardContent>
         </Card>
+        </>
       )}
 
       <UploadModal open={uploadModalOpen} onClose={() => setUploadModalOpen(false)} onComplete={handleUploadComplete} />
