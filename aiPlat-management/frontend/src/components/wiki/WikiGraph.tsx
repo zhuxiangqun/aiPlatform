@@ -85,7 +85,7 @@ const WikiGraph: React.FC<WikiGraphProps> = ({ onSelectPage, exploreTitles, onEx
     const edgeCount = edges.length;
 
     const showLabels = nodeCount <= 60;
-    const edgeOpacity = edgeCount > 800 ? 0.06 : edgeCount > 400 ? 0.10 : 0.18;
+    const edgeOpacity = edgeCount > 800 ? 0.10 : edgeCount > 400 ? 0.18 : 0.35;
     const repulsion = Math.max(200, nodeCount < 30 ? 500 : nodeCount < 80 ? 350 : 240);
 
     const categories = Object.keys(data.stats?.categories || {}).map((cat) => ({
@@ -216,9 +216,8 @@ const WikiGraph: React.FC<WikiGraphProps> = ({ onSelectPage, exploreTitles, onEx
           labelLayout: { hideOverlap: true },
           lineStyle: {
             color: `rgba(255,255,255,${edgeOpacity})`,
-            width: 0.6,
+            width: 0.8,
             curveness: 0.2,
-            opacity: edgeOpacity,
           },
           emphasis: {
             focus: 'adjacency',

@@ -334,6 +334,7 @@ def search_pages(query: str = "", *, tags: List[str] = None, category: str = "",
                 "tags": page.get("tags", []), "summary": page.get("summary", "")[:200],
                 "related": page.get("related", []), "path": page["path"],
                 "contradictions": page.get("contradictions", []),
+                "source_articles": page.get("source_articles", []),
                 "last_updated": page.get("last_updated", ""),
             })
 
