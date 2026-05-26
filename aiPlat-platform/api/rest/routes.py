@@ -1360,7 +1360,7 @@ async def _auto_wiki_update(doc_id: str, file_path: str):
     """
     try:
         from core.api.core_facade import wiki_auto_update
-        wiki_auto_update(doc_id, file_path)
+        await wiki_auto_update(doc_id, file_path)
     except Exception:
         pass
     return {"output": data}

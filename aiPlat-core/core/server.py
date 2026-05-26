@@ -1168,7 +1168,14 @@ async def lifespan(app: FastAPI):
             _learning_task = asyncio.create_task(_learning_loop())
     except Exception:
         _learning_task = None
-    
+
+    # Hot-reload: watch code/config files for changes
+    try:
+        from core.harness.infrastructure.hot_reload import wire_hot_reload
+        wire_hot_reload()
+    except Exception:
+        pass
+
     yield
 
     # Shutdown background services

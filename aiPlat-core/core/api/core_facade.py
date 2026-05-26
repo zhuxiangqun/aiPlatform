@@ -815,7 +815,7 @@ def wiki_retrieve(query: str, wiki_titles: list = None, **kwargs: Any) -> Any:
     return sys_wiki_retrieve(query, wiki_titles, **kwargs)
 
 
-def wiki_auto_update(doc_id: str, file_path: str) -> Dict[str, Any]:
+async def wiki_auto_update(doc_id: str, file_path: str) -> Dict[str, Any]:
     u"""Convert a newly ingested KB document into Wiki knowledge pages.
 
     Called by platform after document ingestion completes.
@@ -844,6 +844,46 @@ def wiki_auto_update(doc_id: str, file_path: str) -> Dict[str, Any]:
     write_page(title, body, category="entities", tags=tags,
                summary=body[:300].replace("\n", " "),
                source_articles=[f"kb:{doc_id}"])
+
+    # LLM curation: extract knowledge atoms, generate proper metadata
+    try:
+        from core.harness.knowledge.wiki_engine import llm_curate_page, list_all_pages, update_page
+        import re as _re
+        safe_title = _re.sub(r"[<>:\"/\\|?*]", "_", title)[:120]
+        existing = list_all_pages()
+        existing_titles = [p["title"] for p in (existing or []) if p["title"] != safe_title]
+        curated = await llm_curate_page(safe_title, body, existing_titles=existing_titles, source_doc_id=doc_id)
+        if not curated.get("error") and not curated.get("fallback"):
+            # Re-write main page with LLM metadata
+            old_title = safe_title
+            write_page(curated["title"], body,
+                category=curated.get("category", "entities"),
+                tags=curated.get("tags", tags),
+                related=curated.get("related", []),
+                summary=curated.get("summary", body[:300].replace("\n", " ")),
+                source_articles=[f"kb:{doc_id}"])
+            if curated["title"] != old_title:
+                from core.harness.knowledge.wiki_engine import delete_page
+                try: delete_page(old_title)
+                except: pass
+            # Create knowledge atom pages
+            for atom in curated.get("knowledge_atoms", [])[:6]:
+                if not atom.get("title") or not atom.get("body"):
+                    continue
+                atom_title = _re.sub(r"[<>:\"/\\|?*]", "_", str(atom["title"])[:80])
+                atom_body = str(atom["body"])[:20000]
+                atom_tags = list(atom.get("tags", []))[:5]
+                atom_cat = str(atom.get("category", "entities"))
+                if atom_title and atom_title != curated["title"]:
+                    write_page(atom_title, atom_body, category=atom_cat,
+                        tags=atom_tags,
+                        related=list(set([curated["title"]] + curated.get("related", [])[:3])),
+                        summary=atom_body[:300].replace("\n", " "),
+                        source_articles=[f"kb:{doc_id}"])
+    except Exception:
+        import logging
+        logging.getLogger(__name__).debug("wiki_auto_update LLM curation skipped", exc_info=True)
+
     return {"status": "created", "title": title, "chars": len(body)}
 
 
