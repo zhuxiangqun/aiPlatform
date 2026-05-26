@@ -331,6 +331,25 @@ class MemoryManager:
         with open(skill_path, "w") as f:
             _json.dump(data, f, indent=2)
         logger.info(f"TaskSkill saved: {skill.skill_id} → {skill_path}")
+
+        # Auto-register in SkillRegistry so agents can discover it
+        try:
+            from core.apps.skills.registry import get_skill_registry
+            from core.apps.skills.metadata import SkillMetadata
+            registry = get_skill_registry()
+            if registry:
+                meta = SkillMetadata(
+                    id=skill.skill_id,
+                    name=skill.name or skill.skill_id,
+                    description=f"Learned task skill (pipeline={skill.pipeline_id})",
+                    tags=skill.keywords or [],
+                    status="enabled",
+                )
+                registry.register(meta)
+                logger.info(f"TaskSkill registered in SkillRegistry: {skill.skill_id}")
+        except Exception:
+            pass
+
         return skill_path
 
     async def load_task_skill(self, skill_id: str) -> Optional[TaskSkill]:

@@ -277,6 +277,14 @@ async def sys_skill_call(
             args = dict(prepared_params or {})
             args.setdefault("_user_id", user_id)
             args.setdefault("_session_id", session_id)
+            # Inject caller Agent identity
+            try:
+                if isinstance(trace_context, dict) and trace_context.get("agent_id"):
+                    args.setdefault("_agent_id", str(trace_context["agent_id"]))
+                elif isinstance(session_id, str) and "agent" in session_id.lower():
+                    args.setdefault("_agent_id", str(session_id))
+            except Exception:
+                pass
             # Inject graph context for Skill awareness
             try:
                 if "_graph_context" not in args:
