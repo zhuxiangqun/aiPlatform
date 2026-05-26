@@ -138,17 +138,13 @@ const WikiGraph: React.FC<WikiGraphProps> = ({ onSelectPage, exploreTitles, onEx
               `<span style="background:${color}22;color:${color};padding:1px 6px;border-radius:3px;margin-right:4px;font-size:10px;border:1px solid ${color}33">${t}</span>`
             ).join('');
             return `
-              <div style="max-width:400px;padding:4px 2px;">
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+              <div style="max-width:340px;padding:4px 2px;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
                   <div style="width:10px;height:10px;border-radius:50%;background:${color};box-shadow:0 0 8px ${color}66;flex-shrink:0;"></div>
                   <div style="font-weight:600;font-size:13px;color:#e4e4e7;">${d.name}</div>
                 </div>
-                ${d.summary ? `<div style="color:${color}aa;font-size:11px;margin-bottom:6px;line-height:1.5;padding-left:18px;">${d.summary.slice(0, 150)}</div>` : ''}
-                <div style="padding-left:18px;display:flex;gap:12px;font-size:10px;color:#71717a;">
-                  <span>🔗 ${d.linkCount} 链接</span><span>📂 ${d.category}</span>${d.hasIssues ? '<span style="color:#ef4444">⚠ 有矛盾</span>' : ''}
-                </div>
-                ${tagsStr ? `<div style="margin-top:6px;padding-left:18px;">${tagsStr}</div>` : ''}
-                <div style="opacity:0.4;margin-top:8px;font-size:10px;padding-left:18px;">点击查看详情</div>
+                ${d.summary && d.summary.length > 20 ? `<div style="color:${color}99;font-size:11px;margin-bottom:6px;line-height:1.5;padding-left:18px;">${d.summary.slice(0, 120)}</div>` : ''}
+                ${tagsStr ? `<div style="margin-top:2px;padding-left:18px;">${tagsStr}</div>` : ''}
               </div>`;
           }
           return `<span style="color:#71717a;font-size:11px">${p?.data?.source} → ${p?.data?.target}</span>`;
