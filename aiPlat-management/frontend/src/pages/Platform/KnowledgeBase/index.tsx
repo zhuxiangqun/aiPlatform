@@ -67,17 +67,14 @@ const KnowledgeBasePage: React.FC = () => {
 
   const checkUnprocessed = async () => {
     try {
-      const [kbRes, wikiRes] = await Promise.all([
-        fetch('/api/platform/documents?limit=1000').then(r => r.json()).catch(() => ({ items: [] })),
-        fetch(`${WIKI_API}/pages?limit=1000`).then(r => r.json()).catch(() => ({ items: [] })),
-      ]);
-      const wikiTitles = new Set((wikiRes.items || []).map((p: any) => p.title));
+      const kbRes = await fetch('/api/platform/documents?limit=1000').then(r => r.json()).catch(() => ({ items: [] }));
       let count = 0;
       for (const doc of (kbRes.items || [])) {
         const meta = doc.meta_json ? (typeof doc.meta_json === 'string' ? JSON.parse(doc.meta_json) : doc.meta_json) : {};
         const pages = meta.wiki_pages || [];
-        const hasWiki = pages.some((p: string) => wikiTitles.has(p));
-        if (!hasWiki) count++;
+        if (!pages || pages.length === 0) {
+          count++;
+        }
       }
       setUnprocessedCount(count);
     } catch { setUnprocessedCount(0); }
@@ -144,7 +141,7 @@ const KnowledgeBasePage: React.FC = () => {
   const handleConvertKb = async () => {
     setConverting(true);
     try { const res = await fetch(`${WIKI_API}/convert-from-kb`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tenant_id: 'default', limit: 50 }) });
-      const data = await res.json(); setConvertResult(data); toast.success(`${data.created} 文档 → Wiki 页面`); fetchWikiPages(); } catch {} finally { setConverting(false); }
+      const data = await res.json(); setConvertResult(data); toast.success(`${data.created} 文档 → Wiki 页面`); fetchWikiPages(); checkUnprocessed(); } catch {} finally { setConverting(false); }
   };
   const runLint = async () => {
     setLintLoading(true);
