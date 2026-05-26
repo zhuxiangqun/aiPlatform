@@ -1192,6 +1192,16 @@ DONE: final_answer
         except Exception:
             pass
 
+        # File operations: make agents aware of available file syscalls
+        state.context.setdefault("messages", []).insert(3, {
+            "role": "user",
+            "content": (
+                "[系统] 文件操作 syscall 可用: sys_file_read, sys_file_write, "
+                "sys_file_edit, sys_glob, sys_code_search。"
+                "读写文件时优先使用这些 syscall 而不是绕过 syscall 通道。"
+            ),
+        })
+
         state.context["_graph_loaded"] = True
         return hints
         """Bridge: inject MemoryManager reminders into the message loop.

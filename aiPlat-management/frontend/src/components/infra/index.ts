@@ -1,6 +1,5 @@
 export { default as AddNodeModal } from './AddNodeModal';
 export { default as NodeDetailModal } from './NodeDetailModal';
-export { default as DeployServiceModal } from './DeployServiceModal';
 export { default as QuotaModal } from './QuotaModal';
 export { default as PolicyModal } from './PolicyModal';
 export { default as PVCModal } from './PVCModal';

@@ -494,7 +494,13 @@ async def lifespan(app: FastAPI):
         from pathlib import Path
         import os
         engine_skills = str(Path(__file__).resolve().parent / "engine" / "skills")
-        skills_path = os.environ.get("AIPLAT_ENGINE_SKILLS_PATH") or engine_skills
+        fixture_skills = str(Path(__file__).resolve().parent / "tests" / "fixtures" / "skills")
+        skills_path_raw = os.environ.get("AIPLAT_ENGINE_SKILLS_PATH") or engine_skills
+        # Include test fixtures in scan if the directory exists
+        if os.path.isdir(fixture_skills):
+            skills_path = f"{skills_path_raw},{fixture_skills}"
+        else:
+            skills_path = skills_path_raw
     except Exception:
         skills_path = "skills"
 

@@ -863,17 +863,19 @@ BaseModelAdapter
 - `aiPlat-infra/CLAUDE.md` §5.6（接线状态）
 
 
-## 5.32 知识图谱注入 Agent 决策循环（强制）
+## 5.32 知识图谱上下文注入 Agent 决策循环（强制）
 
-Agent 启动时自动注入三张预构建图谱的上下文，替代 grep/glob 探索阶段。
+Agent 启动时自动注入三张预构建图谱的**上下文提示文本**，帮助 Agent 定位代码和知识：
 
-### 三张图谱
+### 三张图谱的注入内容
 
-| 图谱 | 模块 | 注入时机 |
+| 图谱 | 模块 | 注入形式 |
 |------|------|---------|
-| **代码图** (code_graph.py) | 文件→导入关系，循环检测，健康评分 | `_try_inject_graph_context()` — Agent 首次 reasoning 前 |
-| **知识图** (wiki_engine.py) | 知识原子→关联，死链/孤立，健康评分 | 同上 — Wiki 页面数 > 0 时注入可用性声明 |
-| **技能图** (skill_deps.py) | Agent→Skill→Syscall 依赖 | 同上 — 注入技能总数 + top-10 名称 |
+| **代码图** (code_graph.py) | 文件→导入关系，循环检测，健康评分 | 注入相关文件列表 + "代码知识图谱已预构建"用户消息 |
+| **知识图** (wiki_engine.py) | 知识原子→关联，死链/孤立，健康评分 | 注入 Wiki 页面数 + "Wiki 知识库可用"用户消息 |
+| **技能图** (skill_deps.py) | Agent→Skill→Syscall 依赖 | 注入技能总数 + top-10 名称用户消息 |
+
+注入的是**文本形式的图谱上下文**（不是结构化的图谱对象），Agent 将其作为任务起始的参考信息。
 
 ### Agent 可用 syscall
 
