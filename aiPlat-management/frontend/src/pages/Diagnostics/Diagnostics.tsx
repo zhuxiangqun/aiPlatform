@@ -101,21 +101,6 @@ const Diagnostics: React.FC = () => {
     { title: 'Ops', desc: '导出（CSV）/ DLQ / 配额用量', href: '/diagnostics/ops', icon: Wrench },
   ], []);
 
-  // Compute recommended tools from both Layer Health guidance AND Audit guidance
-  const recommendedTools = useMemo(() => {
-    const tools = new Set<string>();
-    // From layer health: Doctor + Syscalls
-    if (unhealthyLayers.length > 0) {
-      tools.add('Doctor');
-      tools.add('Syscalls');
-    }
-    // From audit
-    for (const g of auditGuidance) {
-      tools.add(g.tool);
-    }
-    return tools;
-  }, [unhealthyLayers, auditGuidance]);
-
   // Count unhealthy/degraded layers
   const unhealthyLayers = (['infra', 'core', 'platform', 'app'] as const).filter(
     l => health[l]?.status && health[l]!.status !== 'healthy' && health[l]!.status !== 'error'
@@ -135,6 +120,19 @@ const Diagnostics: React.FC = () => {
     }
     return guidance;
   }, [auditResult]);
+
+  // Compute recommended tools from both Layer Health guidance AND Audit guidance
+  const recommendedTools = useMemo(() => {
+    const tools = new Set<string>();
+    if (unhealthyLayers.length > 0) {
+      tools.add('Doctor');
+      tools.add('Syscalls');
+    }
+    for (const g of auditGuidance) {
+      tools.add(g.tool);
+    }
+    return tools;
+  }, [unhealthyLayers, auditGuidance]);
 
   // Collect layer component guidance
   const layerGuidance = useMemo(() => {
