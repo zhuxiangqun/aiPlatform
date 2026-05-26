@@ -51,6 +51,7 @@ const KnowledgeBasePage: React.FC = () => {
   const [lintLoading, setLintLoading] = useState(false);
   const [curating, setCurating] = useState(false);
   const [curateReport, setCurateReport] = useState<any>(null);
+  const [graphRefreshKey, setGraphRefreshKey] = useState(0);
 
   const [evalSamples, setEvalSamples] = useState<any[]>([]);
   const [evalResult, setEvalResult] = useState<any>(null);
@@ -203,7 +204,7 @@ const KnowledgeBasePage: React.FC = () => {
     if (!confirm(`确定删除 "${title}"？`)) return;
     try {
       await fetch(`${WIKI_API}/pages/${encodeURIComponent(title)}`, { method: 'DELETE' });
-      toast.success('已删除'); fetchWikiPages(); setSelectedPage(null);
+      toast.success('已删除'); fetchWikiPages(); setSelectedPage(null); setGraphRefreshKey(k => k + 1);
     } catch { toast.error('删除失败'); }
   };
   const handleConvertKb = async (docIds?: string[]) => {
@@ -212,7 +213,7 @@ const KnowledgeBasePage: React.FC = () => {
       const body: any = { tenant_id: 'default', limit: 50 };
       if (docIds && docIds.length > 0) body.doc_ids = docIds;
       const res = await fetch(`${WIKI_API}/convert-from-kb`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      const data = await res.json(); setConvertResult(data); toast.success(data.message || `转换 ${data.docs_converted || 0} 个文档`); fetchWikiPages(); checkUnprocessed(); } catch {} finally { setConverting(false); }
+      const data = await res.json(); setConvertResult(data); toast.success(data.message || `转换 ${data.docs_converted || 0} 个文档`); fetchWikiPages(); checkUnprocessed(); setGraphRefreshKey(k => k + 1); } catch {} finally { setConverting(false); }
   };
   const handleConvertSelected = () => {
     if (selectedUnprocessed.size === 0) { toast('请先选择文档'); return; }
@@ -225,7 +226,7 @@ const KnowledgeBasePage: React.FC = () => {
       const data = await res.json();
       setCurateReport(data);
       toast.success(`策展完成：${data.processed} 页，${data.links_added} 条新关联`);
-      fetchWikiPages();
+      fetchWikiPages(); setGraphRefreshKey(k => k + 1);
     } catch (e: any) { toast.error('策展失败'); }
     finally { setCurating(false); }
   };
@@ -235,7 +236,7 @@ const KnowledgeBasePage: React.FC = () => {
       const res = await fetch(`${WIKI_API}/pages-all`, { method: 'DELETE' });
       const data = await res.json();
       toast.success(data.message || '已清空');
-      fetchWikiPages(); checkUnprocessed(); setSelectedPage(null);
+      fetchWikiPages(); checkUnprocessed(); setSelectedPage(null); setGraphRefreshKey(k => k + 1);
     } catch { toast.error('清空失败'); }
   };
   const runLint = async () => {
@@ -602,7 +603,7 @@ const KnowledgeBasePage: React.FC = () => {
 
           {wikiViewMode === 'graph' ? (
             <div className="flex-1 min-h-0 relative">
-              <WikiGraph onSelectPage={(title: string) => readWikiPage(title)} />
+              <WikiGraph key={graphRefreshKey} onSelectPage={(title: string) => readWikiPage(title)} />
               {selectedPage && (
                 <div className="absolute top-2 right-2 w-80 max-h-[60%] overflow-auto bg-dark-card border border-dark-border rounded-lg shadow-lg z-10">
                   <div className="flex items-center justify-between p-2 border-b border-dark-border">
