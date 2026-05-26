@@ -657,32 +657,47 @@ async def llm_curate_page(title: str, body: str, *, existing_titles: List[str] =
     existing_titles = existing_titles or []
     result: Dict[str, Any] = {
         "title": title, "category": "entities", "summary": body[:300].replace("\n", " "),
-        "tags": [], "related": [], "entities_found": [], "contradictions": [], "merge_candidates": [],
+        "tags": [], "related": [], "entities_found": [], "contradictions": [],
+        "merge_candidates": [], "knowledge_atoms": [],
     }
 
-    # Build prompt for LLM
-    existing_list = "\n".join(f"- {t}" for t in existing_titles[:50]) if existing_titles else "(none)"
-    prompt = f"""You are a knowledge curator. Read the following new wiki page and analyze it.
+    # Build prompt for LLM — knowledge atom extraction
+    existing_list = "\n".join(f"- {t}" for t in existing_titles[:80]) if existing_titles else "(none)"
+    prompt = f"""You are a knowledge curator. Read the following content and extract structured knowledge atoms — NOT a simple summary or entity list.
 
-=== NEW PAGE ===
+=== CONTENT (first 8000 chars) ===
 Title: {title}
-Content (first 5000 chars):
-{body[:5000]}
+{body[:8000]}
 
 === EXISTING WIKI PAGES ===
 {existing_list}
 
 === TASKS ===
-1. Generate a 2-3 sentence summary (Chinese preferred, max 300 chars)
-2. Suggest the best category: entities, topics, or contradictions
-3. Extract 3-8 tags (keywords, lowercase)
-4. Identify 2-5 existing pages that this new page is related to (from the list above — choose titles that closely match on topic/concept)
-5. If the content discusses conflicting information between two entities, list the contradiction pair
-6. If this page is nearly identical to an existing page (same topic, same content), suggest it as a merge candidate
+1. Generate a 2-3 sentence Chinese summary of the key insight (max 300 chars)
+
+2. If this content covers multiple distinct concepts/methods/facts, extract them as knowledge_atoms:
+   Each knowledge_atom = a self-contained piece of knowledge that could stand alone as a wiki page.
+   For each atom: provide {{
+     "title": "a short readable title (Chinese preferred, 5-15 chars)",
+     "body": "the knowledge content (2-8 sentences, self-contained, Chinese preferred)",
+     "category": "entities" | "topics", 
+     "tags": ["keyword1", "keyword2"]
+   }}
+   Aim to extract 2-6 atoms if the content is long/complex. Each atom should be a coherent knowledge unit.
+
+3. Suggest the best overall category: entities or topics
+
+4. Extract 3-8 tags (lowercase keywords)
+
+5. Identify 2-8 existing wiki pages that this content relates to (from the list above — choose titles that closely match on topic)
+
+6. If the content discusses conflicting/competing viewpoints between entities, list contradictions
+
+7. If this content overlaps heavily with any existing page (same topic, same claims), suggest it as a merge candidate
 
 === OUTPUT FORMAT ===
 Reply with ONLY a JSON object (no markdown fences, no explanation):
-{{"summary":"...","category":"entities","tags":["tag1","tag2"],"related":["Existing Page Title"],"entities_found":["Entity1","Entity2"],"contradictions":[{{"a":"PageA","b":"PageB","detail":"why"}}],"merge_candidates":[{{"target":"PageTitle","reason":"duplicate content"}}]}}
+{{"summary":"...","category":"entities","tags":["tag1","tag2"],"related":["Existing Page"],"entities_found":["概念1","概念2"],"knowledge_atoms":[{{"title":"原子标题","body":"知识片段正文","category":"entities","tags":["tag"]}}],"contradictions":[{{"a":"PageA","b":"PageB","detail":"why"}}],"merge_candidates":[{{"target":"PageTitle","reason":"duplicate"}}]}}
 """
     try:
         from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
@@ -711,6 +726,7 @@ Reply with ONLY a JSON object (no markdown fences, no explanation):
             result["entities_found"] = list(data.get("entities_found", []))[:10]
             result["contradictions"] = list(data.get("contradictions", []))[:5]
             result["merge_candidates"] = list(data.get("merge_candidates", []))[:3]
+            result["knowledge_atoms"] = list(data.get("knowledge_atoms", []))[:6]
     except Exception as e:
         import logging
         logger = logging.getLogger(__name__)

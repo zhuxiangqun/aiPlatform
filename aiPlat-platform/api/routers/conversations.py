@@ -209,6 +209,7 @@ async def query_conversation_stream(session_id: str, request: ConversationQueryR
         fallback=convo.get("scope") or {},
     )
     doc_ids = [str(x).strip() for x in (scope_applied.get("doc_ids") or []) if str(x).strip()]
+    wiki_titles = [str(x).strip() for x in (scope_applied.get("wiki_titles") or []) if str(x).strip()]
     collection_id = str(scope_applied.get("collection_id") or "default")
     question = str(request.message or "").strip()
 
@@ -216,15 +217,23 @@ async def query_conversation_stream(session_id: str, request: ConversationQueryR
         tenant_id=tenant_id, session_id=session_id, user_id=user_id, content=question,
     )
 
-    # Retrieve document content
+    # Retrieve content from Wiki knowledge pages (primary) or KB documents (fallback)
     doc_content = ""
+    is_wiki = bool(wiki_titles)
     try:
-        from core.api.core_facade import kb_retrieve
-        results = kb_retrieve(query=question, doc_ids=doc_ids, collection_id=collection_id, tenant_id=tenant_id, top_k=5)
+        if is_wiki:
+            from core.api.core_facade import wiki_retrieve
+            results = wiki_retrieve(query=question, wiki_titles=wiki_titles if wiki_titles else None, top_k=8)
+        else:
+            from core.api.core_facade import kb_retrieve
+            results = kb_retrieve(query=question, doc_ids=doc_ids, collection_id=collection_id, tenant_id=tenant_id, top_k=5)
         if results:
-            doc_content = "\n\n---\n\n".join(r["text"] for r in results)
+            doc_content = "\n\n---\n\n".join(
+                f"[{r.get('title', '')}] {r.get('text', '')}" if r.get('title') else r.get('text', '')
+                for r in results
+            )
     except ImportError:
-        pass  # kb_retrieve not available in this environment
+        pass
 
     async def _stream():
         if not doc_content:
@@ -234,11 +243,16 @@ async def query_conversation_stream(session_id: str, request: ConversationQueryR
         try:
             from core.api.core_facade import llm_generate_stream
             full_answer = []
+            system_prompt = (
+                "你是知识库问答助手。基于提供的Wiki知识页面内容，准确简洁地回答用户问题。"
+                if is_wiki else
+                "你是知识库问答助手。基于提供的文档内容，准确简洁地回答用户问题。"
+            )
             async for chunk in llm_generate_stream(
                 None,
                 [
-                    {"role": "system", "content": "你是知识库问答助手。基于提供的文档内容，准确简洁地回答用户问题。"},
-                    {"role": "user", "content": f"文档内容：\n{doc_content[:4000]}\n\n用户问题：{question}\n\n请回答："},
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": f"知识内容：\n{doc_content[:4000]}\n\n用户问题：{question}\n\n请回答："},
                 ],
                 model_name="deepseek-chat", temperature=0.3, max_tokens=2000,
             ):

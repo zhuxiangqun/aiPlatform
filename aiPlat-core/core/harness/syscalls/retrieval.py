@@ -332,3 +332,63 @@ def _vector_search_chroma(
     except Exception:
         pass
     return None
+
+
+def sys_wiki_retrieve(
+    query: str,
+    wiki_titles: List[str] = None,
+    *,
+    top_k: int = 8,
+    link_depth: int = 0,
+) -> List[Dict[str, Any]]:
+    u"""Retrieve relevant text from wiki knowledge pages via semantic embedding.
+
+    Uses WikiPageRetriever → embed_text_semantic() → InfraEmbeddingAdapter → infra ModelManager.
+
+    Returns: [{text, title, score, tags, summary, source}]
+    """
+    from core.harness.knowledge.wiki_retriever import WikiPageRetriever
+
+    retriever = WikiPageRetriever(wiki_titles=wiki_titles or [], link_depth=link_depth)
+    import asyncio
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # In async context, create a new task
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(
+                    _sync_wiki_retrieve, query, wiki_titles, top_k, link_depth
+                )
+                return future.result(timeout=30)
+        else:
+            return _sync_wiki_retrieve(query, wiki_titles, top_k, link_depth)
+    except RuntimeError:
+        return _sync_wiki_retrieve(query, wiki_titles, top_k, link_depth)
+
+
+def _sync_wiki_retrieve(query: str, wiki_titles: List[str] = None,
+                        top_k: int = 8, link_depth: int = 0) -> List[Dict[str, Any]]:
+    from core.harness.knowledge.wiki_retriever import WikiPageRetriever
+    from core.harness.knowledge.types import KnowledgeQuery
+
+    retriever = WikiPageRetriever(wiki_titles=wiki_titles or [], link_depth=link_depth)
+    import asyncio
+    try:
+        results = asyncio.run(retriever.retrieve(KnowledgeQuery(query=query, limit=top_k)))
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        results = loop.run_until_complete(retriever.retrieve(KnowledgeQuery(query=query, limit=top_k)))
+
+    return [
+        {
+            "text": r.entry.content,
+            "title": r.entry.title,
+            "score": r.score,
+            "tags": r.entry.metadata.tags,
+            "summary": r.entry.summary or r.highlight or "",
+            "source": r.entry.references,
+        }
+        for r in results
+    ]

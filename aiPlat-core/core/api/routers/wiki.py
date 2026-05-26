@@ -249,7 +249,23 @@ async def convert_from_kb(tenant_id: str = "default", collection_id: str = "defa
                         related=curated.get("related", []),
                         summary=curated.get("summary", summary),
                         source_articles=[f"kb:{doc_id}"])
-                    # Create entity pages
+                    # Create knowledge atom pages (instead of entity stubs)
+                    for atom in curated.get("knowledge_atoms", [])[:6]:
+                        if not atom.get("title") or not atom.get("body"):
+                            continue
+                        atom_title = re.sub(r"[<>:\"/\\|?*]", "_", str(atom["title"])[:80])
+                        atom_body = str(atom["body"])[:20000]
+                        atom_tags = list(atom.get("tags", []))[:5]
+                        atom_cat = str(atom.get("category", "entities"))
+                        if atom_title and atom_title != curated["title"]:
+                            write_page(atom_title, atom_body,
+                                category=atom_cat,
+                                tags=atom_tags,
+                                related=list(set([curated["title"]] + curated.get("related", [])[:3])),
+                                summary=atom_body[:300].replace("\n", " "),
+                                source_articles=[f"kb:{doc_id}"])
+                            entities_created += 1
+                    # Keep entity extraction for backward compatibility
                     for entity in curated.get("entities_found", [])[:5]:
                         safe_entity = re.sub(r"[<>:\"/\\|?*]", "_", entity)[:120]
                         if safe_entity != safe_title and safe_entity not in topic_keywords:
@@ -307,51 +323,51 @@ async def convert_from_kb(tenant_id: str = "default", collection_id: str = "defa
 
     # Also scan uploads/ directory for files not yet in wiki (skip when specific doc_ids given)
     if not doc_ids:
-    try:
-        uploads_dir = os.path.join(kb_dir, tenant_id, "uploads")
-        if os.path.exists(uploads_dir):
-            from core.harness.knowledge.wiki_engine import search_pages
-            existing_wiki = set(p["title"] for p in search_pages(limit=1000))
+        try:
+            uploads_dir = os.path.join(kb_dir, tenant_id, "uploads")
+            if os.path.exists(uploads_dir):
+                from core.harness.knowledge.wiki_engine import search_pages
+                existing_wiki = set(p["title"] for p in search_pages(limit=1000))
 
-            for fname in os.listdir(uploads_dir):
-                fpath = os.path.join(uploads_dir, fname)
-                if not os.path.isfile(fpath): continue
-                if fname.startswith("."): continue
-                if fname.startswith("preview_"): continue  # skip intermediate preview files
+                for fname in os.listdir(uploads_dir):
+                    fpath = os.path.join(uploads_dir, fname)
+                    if not os.path.isfile(fpath): continue
+                    if fname.startswith("."): continue
+                    if fname.startswith("preview_"): continue  # skip intermediate preview files
 
-                title = os.path.splitext(fname)[0][:100]
-                title = re.sub(r"[<>:\"/\\|?*]", "_", title)
-                if title in existing_wiki: continue
+                    title = os.path.splitext(fname)[0][:100]
+                    title = re.sub(r"[<>:\"/\\|?*]", "_", title)
+                    if title in existing_wiki: continue
 
-                # Try to read the file
-                try:
-                    with open(fpath, "rb") as fh:
-                        raw = fh.read(10000)
+                    # Try to read the file
                     try:
-                        body = raw.decode("utf-8")
+                        with open(fpath, "rb") as fh:
+                            raw = fh.read(10000)
+                        try:
+                            body = raw.decode("utf-8")
+                        except:
+                            body = raw.decode("utf-8", errors="replace")
                     except:
-                        body = raw.decode("utf-8", errors="replace")
-                except:
-                    continue
-                if not body or len(body) < 50:
-                    continue
+                        continue
+                    if not body or len(body) < 50:
+                        continue
 
-                tags = list(set(kw.lower() for kw in re.findall(r'[\u4e00-\u9fff]{2,8}|[A-Z][a-zA-Z]{2,}', body[:5000])))[:8]
-                write_page(title, body[:50000], category="entities", tags=tags,
-                          summary=body[:300].replace("\n", " "),
-                          source_articles=[f"upload:{fname}"])
-                uploads_converted += 1
-                # Mark as processed
-                try:
-                    import sqlite3 as _sq
-                    c2 = _sq.connect(kb_db)
-                    existing = c2.execute("SELECT 1 FROM documents WHERE doc_id LIKE ?", (f"%{fname[:20]}%",)).fetchone()
-                    c2.close()
-                except: pass
-                if uploads_converted >= limit * 2:
-                    break
-    except Exception as e:
-        if not errors: errors.append(f"upload scan: {str(e)[:200]}")
+                    tags = list(set(kw.lower() for kw in re.findall(r'[\u4e00-\u9fff]{2,8}|[A-Z][a-zA-Z]{2,}', body[:5000])))[:8]
+                    write_page(title, body[:50000], category="entities", tags=tags,
+                              summary=body[:300].replace("\n", " "),
+                              source_articles=[f"upload:{fname}"])
+                    uploads_converted += 1
+                    # Mark as processed
+                    try:
+                        import sqlite3 as _sq
+                        c2 = _sq.connect(kb_db)
+                        existing = c2.execute("SELECT 1 FROM documents WHERE doc_id LIKE ?", (f"%{fname[:20]}%",)).fetchone()
+                        c2.close()
+                    except: pass
+                    if uploads_converted >= limit * 2:
+                        break
+        except Exception as e:
+            if not errors: errors.append(f"upload scan: {str(e)[:200]}")
 
     total = docs_converted + entities_created + uploads_converted
     return {

@@ -28,7 +28,6 @@ const KnowledgeBasePage: React.FC = () => {
   } = useKBStore();
 
   const [activeTab, setActiveTab] = useState<string>('documents');
-  const [showChat, setShowChat] = useState(false);
 
   // Wiki states
   const [wikiPages, setWikiPages] = useState<any[]>([]);
@@ -51,6 +50,7 @@ const KnowledgeBasePage: React.FC = () => {
   const [curating, setCurating] = useState(false);
   const [curateReport, setCurateReport] = useState<any>(null);
   const [graphRefreshKey, setGraphRefreshKey] = useState(0);
+  const [wikiChatOpen, setWikiChatOpen] = useState(false);
 
   const [evalSamples, setEvalSamples] = useState<any[]>([]);
   const [evalResult, setEvalResult] = useState<any>(null);
@@ -354,32 +354,11 @@ const KnowledgeBasePage: React.FC = () => {
             ))}
           </div>
 
-          <div className="flex gap-3">
-            <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0">
               <DocumentGrid documents={documents} loading={loading} total={totalDocuments} selectedDocIds={selectedDocIds} />
             </div>
-
-            {showChat && (
-              <div className="w-[420px] flex-shrink-0 bg-dark-card rounded-lg border border-dark-border overflow-hidden" style={{ height: 'calc(100vh - 160px)', position: 'sticky', top: '1rem' }}>
-                <ChatPanel onClose={() => setShowChat(false)} />
-              </div>
-            )}
-          </div>
-
-          {!showChat && selectedDocIds.size > 0 && (
-            <div className="fixed bottom-4 right-4 z-40">
-              <button onClick={() => setShowChat(true)}
-                className="flex items-center gap-1.5 px-3 py-2 bg-primary text-white rounded-full shadow-lg text-sm hover:bg-primary/90 transition-colors">
-                <span>💬</span> AI 资料助手
-              </button>
-            </div>
-          )}
-          {showChat && (
-            <button onClick={() => setShowChat(false)}
-              className="fixed bottom-4 right-4 z-40 w-8 h-8 bg-dark-card border border-dark-border rounded-full text-sm text-gray-400 hover:text-gray-200 flex items-center justify-center shadow-lg">&times;</button>
-          )}
-        </>
-      )}
+          </>
+        )}
 
       {activeTab === 'eval' && (
         <div className="space-y-4">
@@ -566,6 +545,9 @@ const KnowledgeBasePage: React.FC = () => {
               </>
             )}
             <div className="flex-1" />
+            <Button variant="ghost" size="sm" onClick={() => setWikiChatOpen(!wikiChatOpen)} className="text-xs">
+              💬 问答
+            </Button>
             <Button variant="ghost" size="sm" onClick={handleCurate} loading={curating} className="text-xs">策展</Button>
             <Button variant="ghost" size="sm" onClick={() => setNewPageOpen(true)} className="text-xs"><Plus className="w-3 h-3 mr-1" />新建</Button>
             <Button variant="primary" size="sm" onClick={() => handleConvertKb()} loading={converting} className="text-xs"><Database className="w-3 h-3 mr-1" />导入</Button>
@@ -579,6 +561,9 @@ const KnowledgeBasePage: React.FC = () => {
             )}
           </div>
 
+          {/* Wiki content + optional chat panel */}
+          <div className="flex-1 min-h-0 flex gap-3">
+            <div className="flex-1 min-w-0">
           {wikiViewMode === 'graph' ? (
             <div className="flex-1 min-h-0 relative">
               <WikiGraph key={graphRefreshKey} onSelectPage={(title: string) => readWikiPage(title)} />
@@ -641,6 +626,14 @@ const KnowledgeBasePage: React.FC = () => {
               </div>
             </div>
           )}
+            </div>
+            {/* Wiki chat sidebar */}
+            {wikiChatOpen && (
+              <div className="w-[380px] flex-shrink-0 bg-dark-card rounded-lg border border-dark-border overflow-hidden">
+                <ChatPanel onClose={() => setWikiChatOpen(false)} wikiTitles={selectedPage ? [selectedPage.title] : []} label="Wiki 问答" />
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -760,9 +753,9 @@ const KnowledgeBasePage: React.FC = () => {
 
                 {lintResult.issues && lintResult.issues.length === 0 && lintResult.total_pages > 0 && (
                   <div className="text-xs text-green-400 mt-2">✅ 知识库健康，无问题</div>
-                )}
-              </div>
-            )}
+          )}
+            </div>
+          )}
 
             {!lintResult && <div className="text-xs text-gray-500">点击上方按钮运行健康检查</div>}
           </CardContent>

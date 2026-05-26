@@ -809,6 +809,12 @@ def kb_retrieve(query: str, doc_ids: Any, **kwargs: Any) -> Any:
     return sys_kb_retrieve(query, doc_ids, **kwargs)
 
 
+def wiki_retrieve(query: str, wiki_titles: list = None, **kwargs: Any) -> Any:
+    """Retrieve relevant wiki knowledge page content through the syscall boundary."""
+    from core.harness.syscalls.retrieval import sys_wiki_retrieve
+    return sys_wiki_retrieve(query, wiki_titles, **kwargs)
+
+
 def kb_ocr_keyframes(image_paths: list, engine: str = "paddleocr", lang: str = "zh") -> Any:
     """OCR multiple image files."""
     from core.harness.document.ocr import ocr_keyframes
