@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Card, CardContent, CardHeader, Input, toast } from '../../../components/ui';
+import { Button, Card, CardContent, CardHeader, Input, Textarea, toast } from '../../../components/ui';
+import { BookOpen, Plus, AlertTriangle, RefreshCw, Database } from 'lucide-react';
 import { useKBStore } from '../../../stores';
 import { kbApi } from '../../../services';
 import { DocumentGrid } from './DocumentGrid';
 import { UploadModal } from './UploadModal';
 import { ChatPanel } from './ChatPanel';
+
+const WIKI_API = '/api/core/wiki';
 
 const METRIC_LABELS: Record<string, string> = {
   faithfulness: '忠实度',
@@ -23,8 +26,23 @@ const KnowledgeBasePage: React.FC = () => {
     setUploadModalOpen, clearSelection,
   } = useKBStore();
 
-  const [activeTab, setActiveTab] = useState<'documents' | 'eval'>('documents');
+  const [activeTab, setActiveTab] = useState<string>('documents');
   const [showChat, setShowChat] = useState(false);
+
+  // Wiki states
+  const [wikiPages, setWikiPages] = useState<any[]>([]);
+  const [wikiQuery, setWikiQuery] = useState('');
+  const [wikiCategory, setWikiCategory] = useState('');
+  const [wikiLoading, setWikiLoading] = useState(false);
+  const [selectedPage, setSelectedPage] = useState<any>(null);
+  const [wikiNewTitle, setWikiNewTitle] = useState('');
+  const [wikiNewBody, setWikiNewBody] = useState('');
+  const [wikiNewTags, setWikiNewTags] = useState('');
+  const [wikiNewCategory, setWikiNewCategory] = useState('entities');
+  const [convertResult, setConvertResult] = useState<any>(null);
+  const [converting, setConverting] = useState(false);
+  const [lintResult, setLintResult] = useState<any>(null);
+  const [lintLoading, setLintLoading] = useState(false);
 
   const [evalSamples, setEvalSamples] = useState<any[]>([]);
   const [evalResult, setEvalResult] = useState<any>(null);
@@ -78,7 +96,41 @@ const KnowledgeBasePage: React.FC = () => {
 
   useEffect(() => {
     if (activeTab === 'eval') { refreshEvalSamples(); loadTimeSeries(); }
+    else if (activeTab === 'wiki') fetchWikiPages();
+    else if (activeTab === 'health') runLint();
   }, [activeTab]);
+
+  // ── Wiki functions ──
+  const fetchWikiPages = async () => {
+    setWikiLoading(true);
+    try {
+      let url = `${WIKI_API}/pages?limit=100`;
+      if (wikiQuery) url += `&query=${encodeURIComponent(wikiQuery)}`;
+      if (wikiCategory) url += `&category=${encodeURIComponent(wikiCategory)}`;
+      const res = await fetch(url); setWikiPages((await res.json()).items || []);
+    } catch {} finally { setWikiLoading(false); }
+  };
+  const readWikiPage = async (title: string) => {
+    try { const res = await fetch(`${WIKI_API}/pages/${encodeURIComponent(title)}`); setSelectedPage(await res.json()); } catch {}
+  };
+  const handleWikiCreate = async () => {
+    if (!wikiNewTitle.trim() || !wikiNewBody.trim()) return;
+    try {
+      await fetch(`${WIKI_API}/pages`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: wikiNewTitle, body: wikiNewBody, category: wikiNewCategory, tags: wikiNewTags.split(',').map((s: string) => s.trim()).filter(Boolean), summary: wikiNewBody.slice(0, 200) }) });
+      toast.success('页面已创建'); setWikiNewTitle(''); setWikiNewBody(''); setWikiNewTags(''); fetchWikiPages();
+    } catch { toast.error('创建失败'); }
+  };
+  const handleConvertKb = async () => {
+    setConverting(true);
+    try { const res = await fetch(`${WIKI_API}/convert-from-kb`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tenant_id: 'default', limit: 50 }) });
+      const data = await res.json(); setConvertResult(data); toast.success(`${data.created} 文档 → Wiki 页面`); fetchWikiPages(); } catch {} finally { setConverting(false); }
+  };
+  const runLint = async () => {
+    setLintLoading(true);
+    try { const res = await fetch(`${WIKI_API}/lint`); setLintResult(await res.json()); } catch {} finally { setLintLoading(false); }
+  };
+  const sourceBadge = (cat: string) => { const colors: Record<string, string> = { entities: 'bg-blue-50 text-blue-300', topics: 'bg-purple-50 text-purple-300' }; return colors[cat] || 'bg-dark-hover text-gray-300'; };
 
   const loadTimeSeries = async () => {
     try { const r = await kbApi.reportsTimeSeries(30); setTimeSeries(r); } catch {}
@@ -119,10 +171,10 @@ const KnowledgeBasePage: React.FC = () => {
         <div className="flex items-center gap-3">
           <h1 className="text-lg font-semibold text-gray-100">知识库</h1>
           <div className="flex gap-1">
-            {(['documents', '评估'] as const).map((label) => {
-              const k = label === '评估' ? 'eval' : 'documents';
+            {(['documents', '编缉知识', '健康', '评估'] as const).map((label) => {
+              const k = label === '评估' ? 'eval' : label === '编缉知识' ? 'wiki' : label === '健康' ? 'health' : 'documents';
               return (
-                <button key={k} onClick={() => setActiveTab(k as 'documents' | 'eval')}
+                <button key={k} onClick={() => setActiveTab(k)}
                   className={`px-3 py-1 rounded text-sm transition-colors ${
                     activeTab === k ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-gray-200'
                   }`}>
@@ -349,6 +401,92 @@ const KnowledgeBasePage: React.FC = () => {
             </Card>
           )}
         </div>
+      )}
+
+      {activeTab === 'wiki' && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="md:col-span-1 space-y-3">
+            <Card>
+              <CardHeader><div className="text-sm font-medium">Wiki 编缉知识</div></CardHeader>
+              <CardContent className="space-y-2">
+                <Input placeholder="搜索标题..." value={wikiQuery} onChange={e => setWikiQuery(e.target.value)} />
+                <select value={wikiCategory} onChange={e => setWikiCategory(e.target.value)}
+                  className="w-full h-8 px-2 bg-dark-card border border-dark-border rounded text-xs text-gray-300">
+                  <option value="">全部分类</option>
+                  <option value="entities">实体</option>
+                  <option value="topics">主题</option>
+                </select>
+                <Button variant="secondary" size="sm" onClick={fetchWikiPages} loading={wikiLoading} className="w-full"><RefreshCw className="w-3 h-3 mr-1" />刷新</Button>
+                <Button variant="primary" size="sm" onClick={handleConvertKb} loading={converting} className="w-full"><Database className="w-3 h-3 mr-1" />从文档导入</Button>
+                {convertResult && <div className="text-xs text-gray-400">{convertResult.message}</div>}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader><div className="text-sm font-medium"><Plus className="w-3 h-3 inline mr-1" />新建页面</div></CardHeader>
+              <CardContent className="space-y-2">
+                <Input placeholder="标题" value={wikiNewTitle} onChange={e => setWikiNewTitle(e.target.value)} />
+                <select value={wikiNewCategory} onChange={e => setWikiNewCategory(e.target.value)} className="w-full h-8 px-2 bg-dark-card border border-dark-border rounded text-xs text-gray-300">
+                  <option value="entities">实体</option><option value="topics">主题</option>
+                </select>
+                <Input placeholder="标签 (逗号分隔)" value={wikiNewTags} onChange={e => setWikiNewTags(e.target.value)} />
+                <Textarea rows={4} placeholder="Markdown 正文" value={wikiNewBody} onChange={e => setWikiNewBody(e.target.value)} />
+                <Button variant="primary" size="sm" onClick={handleWikiCreate} className="w-full">创建页面</Button>
+              </CardContent>
+            </Card>
+          </div>
+          <div className="md:col-span-3">
+            <div className="text-xs text-gray-500 mb-2">{wikiPages.length} 个页面</div>
+            <div className="space-y-2">
+              {wikiPages.map((p: any) => (
+                <div key={p.title} onClick={() => readWikiPage(p.title)} className="p-3 rounded-lg border border-dark-border bg-dark-card cursor-pointer hover:border-gray-600">
+                  <div className="flex items-center gap-2 mb-1">
+                    <BookOpen className="w-3 h-3 text-gray-400" />
+                    <span className="text-sm font-medium text-gray-200">{p.title}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${sourceBadge(p.category)}`}>{p.category}</span>
+                  </div>
+                  {p.summary && <div className="text-xs text-gray-500 line-clamp-1">{p.summary}</div>}
+                  <div className="flex gap-2 mt-1">{(p.tags || []).slice(0,3).map((t:string) => <span key={t} className="text-[10px] text-gray-600 bg-dark-bg px-1 rounded">{t}</span>)}
+                    {p.contradictions?.length > 0 && <span className="text-[10px] text-red-400"><AlertTriangle className="w-2 h-2 inline mr-0.5" />{p.contradictions.length}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'health' && (
+        <Card>
+          <CardHeader><div className="text-sm font-medium flex items-center justify-between">
+            <span><AlertTriangle className="w-3 h-3 inline mr-1" />知识库健康检查</span>
+            {lintResult && <span className={`text-xs px-2 py-0.5 rounded ${lintResult.health_score >= 80 ? 'bg-green-900/50 text-green-300' : 'bg-yellow-900/50 text-yellow-300'}`}>得分: {lintResult.health_score}</span>}
+          </div></CardHeader>
+          <CardContent className="space-y-2">
+            <Button variant="primary" size="sm" onClick={runLint} loading={lintLoading}>执行健康检查</Button>
+            {lintResult && lintResult.issues && (
+              <div className="space-y-1 mt-3">
+                {lintResult.issues.map((issue: any, idx: number) => (
+                  <div key={idx} className="flex items-start gap-2 text-xs p-2 bg-dark-bg rounded">
+                    <AlertTriangle className="w-3 h-3 text-yellow-400 shrink-0 mt-0.5" />
+                    <div><span className="text-gray-300">[{issue.type}] {issue.page_a}</span>
+                      {issue.page_b && <span className="text-gray-500"> ↔ {issue.page_b}</span>}
+                      {issue.suggestion && <div className="text-blue-400">建议: {issue.suggestion}</div>}
+                      {issue.description && <div className="text-gray-500">{issue.description}</div>}
+                    </div>
+                  </div>
+                ))}
+                {lintResult.issues.length === 0 && <div className="text-xs text-green-400">✅ 知识库健康，无问题</div>}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {selectedPage && activeTab === 'wiki' && (
+        <Card>
+          <CardHeader><div className="text-sm font-medium flex items-center justify-between"><span>{selectedPage.title}</span><button onClick={() => setSelectedPage(null)} className="text-gray-500 hover:text-gray-300 text-xs">关闭</button></div></CardHeader>
+          <CardContent><pre className="text-xs text-gray-300 whitespace-pre-wrap bg-dark-bg p-3 rounded max-h-96 overflow-auto">{selectedPage.body || '(无正文)'}</pre></CardContent>
+        </Card>
       )}
 
       <UploadModal open={uploadModalOpen} onClose={() => setUploadModalOpen(false)} onComplete={handleUploadComplete} />

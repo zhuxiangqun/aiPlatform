@@ -174,8 +174,21 @@ async def convert_from_kb(tenant_id: str = "default", collection_id: str = "defa
 
                 # Create wiki page
                 safe_title = re.sub(r"[<>:\"/\\|?*]", "_", title)[:120]
-                write_page(safe_title, body, category="entities", tags=tags, summary=summary)
+                write_page(safe_title, body, category="entities", tags=tags, summary=summary,
+                          source_articles=[f"kb:{doc_id}"])
                 created += 1
+
+                # Write back to KB document: record linked wiki page
+                try:
+                    meta = _json.loads(doc.get("meta_json", "{}") or "{}")
+                    wiki_pages = meta.get("wiki_pages", [])
+                    if safe_title not in wiki_pages:
+                        wiki_pages.append(safe_title)
+                        meta["wiki_pages"] = wiki_pages
+                        conn.execute("UPDATE documents SET meta_json=? WHERE doc_id=? AND tenant_id=?",
+                                    (_json.dumps(meta, ensure_ascii=False), doc_id, tenant_id))
+                        conn.commit()
+                except: pass
 
             # Cross-link pages that share keywords
             for kw, titles in topic_keywords.items():
