@@ -153,10 +153,6 @@ def _on_config_change(filepath: str) -> None:
     u"""Hot-reload callback — dispatched on any watched file change."""
     import logging
     logger = logging.getLogger(__name__)
-    logger.info(f"config file changed: {filepath} — triggering reload")
-    # Trigger a sync of agent/skill registries
-    try:
-        from core.harness.utils.model_injection import _invalidate_model_cache
-        _invalidate_model_cache()
-    except Exception:
-        pass
+    logger.info(f"config file changed: {filepath}")
+    # Callbacks registered by upper layers (core/platform) handle the actual reload
+    # Infra layer is agnostic — it only dispatches the event

@@ -171,12 +171,107 @@ def _try_inject_claude_md(messages: List[Message]) -> None:
             return
 
         guard = ("\n\n## 项目规则（每次从磁盘重读，永不压缩）\n\n" + "\n\n---\n\n".join(content_parts))
+        # Architecture rules
+        guard += _try_inject_arch_rules(messages)
 
         # Idempotent: check if guard content already present (prevent double injection)
         existing_text = " ".join(str(m.get("content", "")) for m in messages[:3])
         guard_snippet = guard[:200]
         if guard_snippet in existing_text:
             return  # already injected by caller (e.g. ReActLoop._try_inject_claude_md)
+
+        if messages and messages[0].get("role") == "system":
+            messages[0]["content"] = str(messages[0].get("content") or "") + guard
+        else:
+            messages.insert(0, {"role": "system", "content": guard})
+    except Exception:
+        logging.getLogger("llm").debug("best-effort skipped", exc_info=True)
+
+
+
+def _try_inject_arch_rules(messages: List[Message]) -> str:
+    u"""Inject architecture boundary rules into the system prompt.
+
+    Prevents Agent from creating files in wrong layers (§5.1, §5.29).
+    """
+    try:
+        from core.harness.knowledge.code_graph import repo_root
+        project = repo_root()
+        # Detect layer directories
+        layers = {}
+        for layer_name in ["aiPlat-core", "aiPlat-platform", "aiPlat-infra", "aiPlat-app",
+                           "aiPlat-management", "scripts", "docs", "tests"]:
+            path = project / layer_name
+            if path.exists():
+                layers[layer_name] = str(path)
+
+        if not layers:
+            return ""
+
+        layer_list = "\n".join(f"- {name}/ → {path}" for name, path in sorted(layers.items()))
+        return (
+            "\n\n## 架构边界（必须遵守）\n\n"
+            "系统采用四层架构，严格单向依赖:\n"
+            "app → platform → core → infra\n\n"
+            "**禁止的跨层操作**:\n"
+            "- 禁止在 platform/ 下新建文件 import core.harness.execution（应走 CoreFacade）\n"
+            "- 禁止在 core/ 下新建文件 import api.routers（harness 是基础层）\n"
+            "- 禁止在 infra/ 下硬编码应用名称或端口号映射\n"
+            "- 修改核心接口（PipelineStageConfig, sys_llm_generate, sys_tool_call）时，\n"
+            "  必须同步更新对应层的 CLAUDE.md 规约文档\n\n"
+            f"项目各层路径:\n{layer_list}\n"
+        )
+    except Exception:
+        return ""
+
+
+def _try_inject_claude_md(messages: List[Message]) -> None:
+    """Read CLAUDE.md from disk and inject as a system message header.
+
+    Idempotent: skips injection if CLAUDE.md content already appears in messages
+    (prevents double injection when caller also injects via ReActLoop._reason).
+
+    Note: file reads are synchronous but small (<12KB per file). For large-scale
+    concurrent LLM calls, consider prefetching into a module-level cache.
+    """
+    try:
+        from pathlib import Path
+        project_root = os.getenv("AIPLAT_PROJECT_ROOT") or os.getcwd()
+        content_parts = []
+
+        # §5.27: SOUL.md — persona layer (loaded first)
+        soul_path = Path(os.getenv("AIPLAT_HOME", str(Path.home() / ".aiplat"))) / "SOUL.md"
+        if not soul_path.exists():
+            soul_path = Path(project_root) / "SOUL.md"
+        if soul_path.exists():
+            soul_text = soul_path.read_text(encoding="utf-8").strip()
+            if soul_text and not soul_text.startswith("<!--"):
+                content_parts.append("[SOUL.md] " + soul_text[:2000])
+
+        # Project rules: CLAUDE.md (never compressed, §5.25)
+        claude_paths = [
+            Path(project_root) / "CLAUDE.md",
+            Path(project_root) / "aiPlat-core" / "CLAUDE.md",
+        ]
+        for p in claude_paths:
+            if p.exists():
+                text = p.read_text(encoding="utf-8")[:12000]
+                content_parts.append(f"[{p.name}] {text}")
+
+        if not content_parts:
+            return
+
+        guard = ("\n\n## 项目规则（每次从磁盘重读，永不压缩）\n\n" + "\n\n---\n\n".join(content_parts))
+
+        # Idempotent: check if guard content already present (prevent double injection)
+        existing_text = " ".join(str(m.get("content", "")) for m in messages[:3])
+        guard_snippet = guard[:200]
+        if guard_snippet in existing_text:
+            return  # already injected by caller (e.g. ReActLoop._try_inject_claude_md)
+
+        # Architecture rules guard (§5.1~§5.7, §5.29)
+        arch_rules = _try_inject_arch_rules(messages)
+        guard = guard + arch_rules if arch_rules else guard
 
         if messages and messages[0].get("role") == "system":
             messages[0]["content"] = str(messages[0].get("content") or "") + guard

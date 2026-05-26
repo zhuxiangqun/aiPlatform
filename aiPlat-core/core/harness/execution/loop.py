@@ -599,6 +599,11 @@ class ReActLoop(BaseLoop):
         except Exception:
             pass
 
+        # Inject code graph context on first reasoning call (replaces grep/glob exploration)
+        graph_hints = await self._try_inject_graph_context(state)
+        if graph_hints:
+            state.context.setdefault("_graph_hints", graph_hints)
+
         # Inject memory context + bus messages into prompt assembly
         mem_hints = ""
         try:
@@ -1104,7 +1109,91 @@ DONE: final_answer
         except Exception:
             pass
 
-    async def _try_inject_memory_reminders(self, state: LoopState) -> None:
+    async def _try_inject_graph_context(self, state: LoopState) -> dict:
+        u"""注入代码图 + Wiki 知识图上下文到 Agent 决策循环。
+
+        代码图：sys_code_intel_context → 相关文件 + 依赖关系
+        知识图：Wiki 页面可用性声明 → Agent 知道可以查 sys_wiki_context
+        技能图：可用技能列表 → Agent 规划时参考
+        """
+        hints: Dict[str, Any] = {}
+        task = state.context.get("task", "") or state.context.get("_original_query", "")
+        skip = state.context.get("_graph_loaded")
+        if skip:
+            return hints
+
+        # Code graph context
+        try:
+            from core.harness.syscalls.code_intel_syscall import sys_code_intel_context
+            code_ctx = sys_code_intel_context(task)
+            if code_ctx and code_ctx.get("related"):
+                related_files = code_ctx["related"][:10]
+                hints["code_graph"] = {
+                    "stats": code_ctx.get("stats", {}),
+                    "related": related_files,
+                }
+                # Inject into messages
+                file_list = "\n".join(
+                    f"- {f['file']} (imports: {', '.join(f['imports'][:3])})"
+                    for f in related_files if f.get("file")
+                )
+                state.context.setdefault("messages", []).insert(0, {
+                    "role": "user",
+                    "content": (
+                        "[系统] 代码知识图谱已预构建。以下是与任务相关的文件:\n"
+                        f"{file_list}\n\n"
+                        "优先使用代码图定位代码，避免反复 grep/glob。"
+                    ),
+                })
+        except Exception:
+            try:
+                from core.harness.syscalls.code_intel_syscall import sys_code_intel_context
+                code_ctx = sys_code_intel_context(task)
+                if code_ctx and code_ctx.get("related"):
+                    hints["code_graph"] = code_ctx
+            except Exception:
+                pass
+
+        # Wiki availability
+        try:
+            from core.harness.knowledge.wiki_engine import search_pages
+            wiki_pages = search_pages(limit=1)
+            if wiki_pages:
+                count = len(search_pages(limit=1000))
+                hints["wiki"] = {"pages": count}
+                state.context.setdefault("messages", []).insert(1, {
+                    "role": "user",
+                    "content": (
+                        f"[系统] Wiki 知识库可用（{count} 个知识页面）。"
+                        "需要查领域知识时调用 sys_wiki_context 检索，"
+                        "不需要重新推理或猜测已知事实。"
+                    ),
+                })
+        except Exception:
+            pass
+
+        # Skill graph availability
+        try:
+            from core.harness.knowledge.skill_deps import build_skill_deps
+            deps = build_skill_deps()
+            if deps.get("stats", {}).get("total_skills", 0) > 0:
+                skills = list(deps["skills"].keys())
+                hints["skills"] = {
+                    "total": deps["stats"]["total_skills"],
+                    "available": skills[:15],
+                }
+                state.context.setdefault("messages", []).insert(2, {
+                    "role": "user",
+                    "content": (
+                        f"[系统] 已注册 {deps['stats']['total_skills']} 个技能。"
+                        f"主要包括: {', '.join(skills[:10])}。"
+                    ),
+                })
+        except Exception:
+            pass
+
+        state.context["_graph_loaded"] = True
+        return hints
         """Bridge: inject MemoryManager reminders into the message loop.
 
         When MemoryManager is available (wired at server startup), its
