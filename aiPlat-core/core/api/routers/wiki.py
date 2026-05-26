@@ -127,6 +127,23 @@ async def get_unprocessed_docs(tenant_id: str = "default"):
     return {"items": unprocessed, "total": len(unprocessed)}
 
 
+@router.get("/skill-deps")
+async def get_skill_deps():
+    u"""Return Agent→Skill→Syscall dependency graph."""
+    from core.harness.knowledge.skill_deps import build_skill_deps
+    return build_skill_deps()
+
+
+@router.get("/skill-impact/{skill_id}")
+async def get_skill_impact(skill_id: str):
+    u"""Return agents and skills affected by a given skill."""
+    from core.harness.knowledge.skill_deps import skill_impact
+    result = skill_impact(skill_id)
+    if not result.get("exists"):
+        raise HTTPException(status_code=404, detail="skill not found")
+    return result
+
+
 @router.get("/proposals")
 async def get_proposals(status: str = ""):
     u"""List pending wiki knowledge proposals (merge/update/supplement/contradict)."""

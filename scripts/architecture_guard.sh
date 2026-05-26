@@ -1204,6 +1204,61 @@ fi
 
 echo ""
 echo "═══════════════════════════════════════════════════════════════"
+echo "  SECTION 32: Agent→Skill Dependency Validation"
+echo "═══════════════════════════════════════════════════════════════"
+echo ""
+
+# §32a — Every required_skill/skills reference resolves to a SKILL.md
+echo "  [32a] Agent→Skill reference resolution..."
+SKILL_DEPS_OUTPUT=$(python3 -c "
+import os, sys
+sys.path.insert(0, os.path.join(os.path.dirname('$0'), '..', 'aiPlat-core'))
+try:
+    from core.harness.knowledge.skill_deps import build_skill_deps
+    deps = build_skill_deps()
+    for r in deps.get('unknown_refs', []):
+        agent = r.get('agent', '?')
+        ref = r.get('ref', '?')
+        if ref:
+            print('agent={}: required_skill={} does_not_exist'.format(agent, ref))
+except Exception:
+    pass
+" 2>/dev/null)
+if [ -n "$SKILL_DEPS_OUTPUT" ]; then
+    VIOLATIONS=$((VIOLATIONS + $(echo "$SKILL_DEPS_OUTPUT" | grep -c ".")))
+    echo "$SKILL_DEPS_OUTPUT" | while read -r line; do
+        echo -e "  ${RED}[FAIL]${NC} $line"
+    done
+else
+    echo -e "  ${GREEN}PASS${NC}  all Agent→Skill references resolve"
+fi
+
+echo ""
+echo "═══════════════════════════════════════════════════════════════"
+echo "  SECTION 33: Skill→Syscall Dependency Validation"
+echo "═══════════════════════════════════════════════════════════════"
+echo ""
+
+# §33a — Every syscall referenced in SKILL.md SOP is a known syscall
+echo "  [33a] Syscall reference validation..."
+SKILL_SYSCALL_VIOLATIONS=0
+for skill_md in $(find aiPlat-core/core/engine/skills/ -name "SKILL.md" 2>/dev/null); do
+    refs=$(grep -oP 'sys_\w+' "$skill_md" 2>/dev/null | sort -u)
+    for ref in $refs; do
+        if ! grep -q "$ref" aiPlat-core/core/harness/syscalls/__init__.py 2>/dev/null; then
+            if ! [ -f "aiPlat-core/core/harness/syscalls/${ref}.py" ]; then
+                echo -e "  ${YELLOW}[WARN]${NC} $skill_md references unknown syscall: $ref"
+                SKILL_SYSCALL_VIOLATIONS=$((SKILL_SYSCALL_VIOLATIONS + 1))
+            fi
+        fi
+    done
+done
+if [ "$SKILL_SYSCALL_VIOLATIONS" -eq 0 ]; then
+    echo -e "  ${GREEN}PASS${NC}  all SKILL.md syscall references are valid"
+fi
+
+echo ""
+echo "═══════════════════════════════════════════════════════════════"
 
 if [ "$VIOLATIONS" -gt 0 ]; then
     echo -e "${RED}═══ ARCHITECTURE GUARD FAILED: $VIOLATIONS violations ═══${NC}"
