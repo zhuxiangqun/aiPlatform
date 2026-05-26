@@ -3,10 +3,18 @@ Wiki API — persistent LLM-curated knowledge base endpoints.
 """
 
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Body
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/wiki", tags=["wiki"])
+
+# ── Request Models ──────────────────────────────────────────────
+
+class ConvertKbRequest(BaseModel):
+    tenant_id: str = "default"
+    collection_id: str = "default"
+    limit: int = 50
+    doc_ids: Optional[List[str]] = None
 
 
 class WikiPageWrite(BaseModel):
@@ -135,13 +143,16 @@ async def ingest_text(body: WikiIngest):
 
 
 @router.post("/convert-from-kb")
-async def convert_from_kb(tenant_id: str = "default", collection_id: str = "default", limit: int = 50,
-                          doc_ids: List[str] = None):
+async def convert_from_kb(req: ConvertKbRequest = Body(default=None)):
     u"""Convert existing KB documents into Wiki pages.
     
     If doc_ids is provided, only those specific documents are converted.
     Otherwise all documents matching tenant/collection are processed.
     """
+    tenant_id = req.tenant_id if req else "default"
+    collection_id = req.collection_id if req else "default"
+    limit = req.limit if req else 50
+    doc_ids = req.doc_ids if req else None
     import os, re, time as _time, logging
     logger = logging.getLogger(__name__)
     from core.harness.knowledge.wiki_engine import write_page, _wiki_root
