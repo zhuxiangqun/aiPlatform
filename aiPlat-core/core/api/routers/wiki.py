@@ -133,7 +133,7 @@ async def convert_from_kb(tenant_id: str = "default", collection_id: str = "defa
 
             for doc in docs:
                 doc_id = doc["doc_id"]
-                source_uri = str(doc.get("source_uri", doc_id) or doc_id)
+                source_uri = str(doc["source_uri"] if "source_uri" in doc.keys() else doc_id)
                 # Extract title from filename or meta
                 title = os.path.basename(source_uri).rsplit(".", 1)[0][:100] or doc_id[:60]
                 # Try to get title from meta_json
@@ -145,7 +145,7 @@ async def convert_from_kb(tenant_id: str = "default", collection_id: str = "defa
 
                 # Skip if already converted
                 try:
-                    meta = _json.loads(doc.get("meta_json", "{}") or "{}")
+                    meta = _json.loads(doc["meta_json"] or "{}")
                     wiki_pages = meta.get("wiki_pages", [])
                     if wiki_pages:
                         skipped += 1
@@ -222,7 +222,7 @@ async def convert_from_kb(tenant_id: str = "default", collection_id: str = "defa
 
                 # Write back to KB document: record linked wiki page
                 try:
-                    meta = _json.loads(doc.get("meta_json", "{}") or "{}")
+                    meta = _json.loads(doc["meta_json"] or "{}")
                     wiki_pages = meta.get("wiki_pages", [])
                     if safe_title not in wiki_pages:
                         wiki_pages.append(safe_title)
