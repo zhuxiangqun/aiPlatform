@@ -186,6 +186,15 @@ const KnowledgeBasePage: React.FC = () => {
     } catch (e: any) { toast.error('策展失败'); }
     finally { setCurating(false); }
   };
+  const handleWikiClear = async () => {
+    if (!confirm('确定清空所有 Wiki 页面？清空后可从文档重新导入。')) return;
+    try {
+      const res = await fetch(`${WIKI_API}/pages-all`, { method: 'DELETE' });
+      const data = await res.json();
+      toast.success(data.message || '已清空');
+      fetchWikiPages(); checkUnprocessed(); setSelectedPage(null);
+    } catch { toast.error('清空失败'); }
+  };
   const runLint = async () => {
     setLintLoading(true);
     try { const res = await fetch(`${WIKI_API}/lint`); setLintResult(await res.json()); } catch {} finally { setLintLoading(false); }
@@ -506,6 +515,7 @@ const KnowledgeBasePage: React.FC = () => {
             <Button variant="ghost" size="sm" onClick={handleCurate} loading={curating} className="text-xs">策展</Button>
             <Button variant="ghost" size="sm" onClick={() => setNewPageOpen(true)} className="text-xs"><Plus className="w-3 h-3 mr-1" />新建</Button>
             <Button variant="primary" size="sm" onClick={handleConvertKb} loading={converting} className="text-xs"><Database className="w-3 h-3 mr-1" />导入</Button>
+            <Button variant="ghost" size="sm" onClick={handleWikiClear} className="text-xs text-red-400 hover:text-red-300"><Trash2 className="w-3 h-3 mr-1" />清空</Button>
             {convertResult && <span className="text-[10px] text-gray-400">{convertResult.message}</span>}
             {curateReport && (
               <span className="text-[10px] text-gray-400">

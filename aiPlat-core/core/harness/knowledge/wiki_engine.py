@@ -211,7 +211,6 @@ def delete_page(title: str) -> bool:
         return False
 
     found.unlink()
-    # Remove from index
     idx_path = _wiki_root() / "index.json"
     if idx_path.exists():
         try:
@@ -221,6 +220,50 @@ def delete_page(title: str) -> bool:
         except Exception:
             pass
     return True
+
+
+def delete_all_pages() -> Dict[str, Any]:
+    u"""Delete ALL wiki pages, reset index, and clear KB document wiki_pages references."""
+    _ensure_dirs()
+    root = _wiki_root()
+    deleted = 0
+
+    # Delete all .md files
+    for cat_dir in root.iterdir():
+        if not cat_dir.is_dir() or cat_dir.name == "contradictions":
+            continue
+        for md_file in cat_dir.glob("*.md"):
+            md_file.unlink()
+            deleted += 1
+
+    # Reset index.json
+    idx_path = root / "index.json"
+    idx_path.write_text(_json.dumps({"pages": {}, "last_updated": ""}, indent=2, ensure_ascii=False))
+
+    # Clear wiki_pages from KB document meta
+    try:
+        import sqlite3 as _sq
+        kb_dir = os.path.expanduser(os.getenv("AIPLAT_KB_TENANTS_DIR", "~/.aiplat/kb/tenants"))
+        kb_db = os.path.join(kb_dir, "default", "kb.sqlite3")
+        if os.path.exists(kb_db):
+            conn = _sq.connect(kb_db)
+            conn.row_factory = _sq.Row
+            docs = conn.execute("SELECT doc_id, meta_json FROM documents WHERE tenant_id='default'").fetchall()
+            for d in docs:
+                try:
+                    meta = _json.loads(d["meta_json"] or "{}")
+                    if "wiki_pages" in meta:
+                        del meta["wiki_pages"]
+                        conn.execute("UPDATE documents SET meta_json=? WHERE doc_id=? AND tenant_id='default'",
+                                     (_json.dumps(meta, ensure_ascii=False), d["doc_id"]))
+                        conn.commit()
+                except Exception:
+                    pass
+            conn.close()
+    except Exception:
+        pass
+
+    return {"deleted": deleted}
 
 
 # ── Search ─────────────────────────────────────────────────────

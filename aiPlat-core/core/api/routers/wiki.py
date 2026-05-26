@@ -68,6 +68,13 @@ async def delete_page(title: str):
     return {"title": title, "status": "deleted"}
 
 
+@router.delete("/pages-all")
+async def delete_all_pages():
+    from core.harness.knowledge.wiki_engine import delete_all_pages
+    result = delete_all_pages()
+    return {"deleted": result["deleted"], "message": f"已清空 {result['deleted']} 个 Wiki 页面"}
+
+
 @router.post("/pages")
 async def write_page(body: WikiPageWrite):
     from core.harness.knowledge.wiki_engine import write_page, auto_link_page, search_pages, update_page
