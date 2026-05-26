@@ -7836,19 +7836,19 @@
           "finished_at": ""
         },
         {
-          "run_id": "run_0e99c95f",
+          "run_id": "run_644cae18",
           "project_id": "test_prj3",
           "phase": "failed",
           "pass_rate": 0,
           "tokens_used": 0,
           "iteration": 0,
           "error": "LLM API timeout",
-          "started_at": "2026-05-27T00:45:12",
+          "started_at": "2026-05-27T07:24:40",
           "finished_at": ""
         }
       ],
-      "updated_at": "2026-05-27T00:45:12"
+      "updated_at": "2026-05-27T07:24:40"
     }
   ],
-  "updated_at": "2026-05-27T00:45:12"
+  "updated_at": "2026-05-27T07:24:40"
 }

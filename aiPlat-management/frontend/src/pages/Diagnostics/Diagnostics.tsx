@@ -276,7 +276,7 @@ const Diagnostics: React.FC = () => {
                 </div>
               )}
 
-              {auditGuidance.length > 0 && (
+              {auditResult !== null && auditGuidance.length > 0 && (
                 <div className="flex items-start gap-3 text-xs">
                   <div className="w-5 h-5 rounded-full bg-primary/20 text-primary flex items-center justify-center shrink-0 mt-0.5 font-bold">2</div>
                   <div>
@@ -297,6 +297,7 @@ const Diagnostics: React.FC = () => {
                 </div>
               )}
 
+              {auditResult !== null && (
               <div className="flex items-start gap-3 text-xs">
                 <div className="w-5 h-5 rounded-full bg-primary/20 text-primary flex items-center justify-center shrink-0 mt-0.5 font-bold">3</div>
                 <div>
@@ -310,6 +311,7 @@ const Diagnostics: React.FC = () => {
                   </div>
                 </div>
               </div>
+              )}
             </div>
           </CardContent>
         </Card>
