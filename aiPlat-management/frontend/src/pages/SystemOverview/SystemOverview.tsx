@@ -89,7 +89,7 @@ const SystemOverview: React.FC = () => {
             { label: '文件数', value: ch.files ?? '—' },
             { label: '导入边', value: ch.edges ?? '—' },
             { label: '循环依赖', value: ch.cycles ?? '—', ok: (ch.cycles ?? 0) === 0 },
-            { label: '平均度数', value: ch.avg_degree ?? '—' },
+            { label: '孤立文件', value: ch.orphan_files ?? '—', ok: (ch.orphan_files ?? 0) === 0 },
           ]}
         />
         <HealthCard
@@ -109,7 +109,7 @@ const SystemOverview: React.FC = () => {
           items={[
             { label: 'Skills', value: sd.skills ?? '—' },
             { label: 'Agents', value: sd.agents ?? '—' },
-            { label: 'Syscalls 使用', value: sd.syscalls_used ?? '—' },
+            { label: '未使用 Skill', value: sd.unused_skills ?? '—', ok: (sd.unused_skills ?? 0) === 0 },
             { label: '未解析引用', value: sd.unknown_refs ?? '—', ok: (sd.unknown_refs ?? 0) === 0 },
           ]}
         />

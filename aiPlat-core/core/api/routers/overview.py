@@ -32,6 +32,7 @@ async def system_overview() -> Dict[str, Any]:
             "cycles": h["signals"]["cycles_back_edges"],
             "avg_degree": h["signals"]["avg_degree"],
             "issues": h["signals"]["issues"],
+            "orphan_files": len([p for p, n in nodes.items() if len(n.get("out", [])) == 0 and n.get("in", 0) == 0]),
         }
     except Exception:
         result["code_health"] = {"score": 0, "error": "unavailable"}
@@ -59,6 +60,7 @@ async def system_overview() -> Dict[str, Any]:
             "agents": sd["stats"]["total_agents"],
             "syscalls_used": sd["stats"]["total_syscalls_used"],
             "unknown_refs": sd["stats"]["unknown_references"],
+            "unused_skills": sd["stats"]["unused_skills"],
         }
     except Exception:
         result["skill_deps"] = {"skills": 0, "error": "unavailable"}
