@@ -271,6 +271,10 @@ async def convert_from_kb(req: ConvertKbRequest = Body(default=None)):
                         from core.harness.knowledge.wiki_engine import delete_page as _delp
                         try: _delp(old_title)
                         except: pass
+                    # Always delete the mechanical page if it still exists
+                    from core.harness.knowledge.wiki_engine import delete_page as _delp2
+                    try: _delp2(old_title)
+                    except: pass
                     # Create knowledge atom pages
                     for atom in curated.get("knowledge_atoms", [])[:8]:
                         if not atom.get("title") or not atom.get("body"):

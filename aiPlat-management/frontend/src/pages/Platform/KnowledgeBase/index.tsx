@@ -584,8 +584,8 @@ const KnowledgeBasePage: React.FC = () => {
           {/* Wiki content + optional chat panel */}
           <div className="flex-1 min-h-0 flex gap-3">
             <div className="flex-1 min-w-0">
-          {wikiViewMode === 'graph' ? (
-            <div className="flex-1 min-h-0 relative">
+              {wikiViewMode === 'graph' ? (
+                <div className="flex-1 min-h-0 relative h-full">
               <WikiGraph key={graphRefreshKey} onSelectPage={(title: string) => readWikiPage(title)}
                 exploreTitles={exploreTitles} onExitExplore={handleExitExplore} />
               {selectedPage && (

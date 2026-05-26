@@ -251,7 +251,7 @@ const WikiGraph: React.FC<WikiGraphProps> = ({ onSelectPage, exploreTitles, onEx
   );
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col" style={{ height: '100%' }}>
       {/* Toolbar */}
       <div className="flex items-center gap-2 mb-2 px-1 shrink-0">
         <div className="relative flex-1 max-w-xs">
