@@ -46,7 +46,6 @@ const KnowledgeBasePage: React.FC = () => {
   const [newPageOpen, setNewPageOpen] = useState(false);
   const [unprocessedCount, setUnprocessedCount] = useState(0);
   const [unprocessedDocs, setUnprocessedDocs] = useState<any[]>([]);
-  const [selectedUnprocessed, setSelectedUnprocessed] = useState<Set<string>>(new Set());
   const [lintResult, setLintResult] = useState<any>(null);
   const [lintLoading, setLintLoading] = useState(false);
   const [curating, setCurating] = useState(false);
@@ -215,10 +214,6 @@ const KnowledgeBasePage: React.FC = () => {
       const res = await fetch(`${WIKI_API}/convert-from-kb`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const data = await res.json(); setConvertResult(data); toast.success(data.message || `转换 ${data.docs_converted || 0} 个文档`); fetchWikiPages(); checkUnprocessed(); setGraphRefreshKey(k => k + 1); } catch {} finally { setConverting(false); }
   };
-  const handleConvertSelected = () => {
-    if (selectedUnprocessed.size === 0) { toast('请先选择文档'); return; }
-    handleConvertKb(Array.from(selectedUnprocessed));
-  };
   const handleCurate = async () => {
     setCurating(true); setCurateReport(null);
     try {
@@ -308,45 +303,28 @@ const KnowledgeBasePage: React.FC = () => {
       </div>
 
       {unprocessedCount > 0 && (
-        <div className="p-3 rounded-lg bg-yellow-900/20 border border-yellow-900/40 text-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <AlertTriangle className="w-4 h-4 text-yellow-400 shrink-0" />
-            <span className="text-yellow-300">{unprocessedCount} 个已有文档尚未关联 Wiki 页面</span>
-            <div className="flex-1" />
-            <Button variant="ghost" size="sm"
-              onClick={() => { setSelectedUnprocessed(old => old.size === unprocessedDocs.length ? new Set() : new Set(unprocessedDocs.map((d: any) => d.doc_id))); }}
-              className="text-xs text-yellow-400">
-              {selectedUnprocessed.size === unprocessedDocs.length ? '取消全选' : '全选'}
-            </Button>
-            <Button variant="primary" size="sm" onClick={handleConvertSelected} loading={converting}
-              disabled={selectedUnprocessed.size === 0}>
-              转换选中 ({selectedUnprocessed.size})
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => handleConvertKb()} loading={converting}
-              className="text-xs text-yellow-400">
-              批量转换全部
-            </Button>
-          </div>
-          <div className="space-y-1 max-h-32 overflow-y-auto">
-            {unprocessedDocs.map((doc: any) => (
-              <label key={doc.doc_id} className="flex items-center gap-2 cursor-pointer hover:bg-yellow-900/10 px-1 py-0.5 rounded text-xs">
-                <input type="checkbox" checked={selectedUnprocessed.has(doc.doc_id)}
-                  onChange={e => {
-                    setSelectedUnprocessed(old => {
-                      const next = new Set(old);
-                      e.target.checked ? next.add(doc.doc_id) : next.delete(doc.doc_id);
-                      return next;
-                    });
-                  }}
-                  className="rounded accent-yellow-500" />
-                <span className="text-yellow-300/80 truncate">
-                  {doc.source_uri ? doc.source_uri.split('/').pop() : doc.doc_id?.slice(0, 60)}
-                </span>
-                <span className="text-gray-500 shrink-0">{doc.kind}</span>
-              </label>
-            ))}
-          </div>
-          {convertResult && <div className="text-xs text-gray-400 mt-2">{convertResult.message}</div>}
+        <div className="flex items-center gap-3 p-3 rounded-lg bg-yellow-900/20 border border-yellow-900/40 text-sm">
+          <AlertTriangle className="w-4 h-4 text-yellow-400 shrink-0" />
+          <span className="text-yellow-300">{unprocessedCount} 个已有文档尚未关联 Wiki 页面</span>
+          <div className="flex-1" />
+          <Button variant="primary" size="sm"
+            onClick={() => {
+              const unprocessedIds = new Set(unprocessedDocs.map((d: any) => d.doc_id));
+              const selected = Array.from(selectedDocIds).filter(id => unprocessedIds.has(id));
+              if (selected.length === 0) { toast('请先在文档列表中选中未转换的文档'); return; }
+              handleConvertKb(selected);
+            }}
+            loading={converting}>
+            转换选中 ({(() => {
+              const unprocessedIds = new Set(unprocessedDocs.map((d: any) => d.doc_id));
+              return Array.from(selectedDocIds).filter(id => unprocessedIds.has(id)).length;
+            })()})
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => handleConvertKb()} loading={converting}
+            className="text-xs text-yellow-400">
+            批量转换全部
+          </Button>
+          {convertResult && <span className="text-xs text-gray-400">{convertResult.message}</span>}
         </div>
       )}
 
