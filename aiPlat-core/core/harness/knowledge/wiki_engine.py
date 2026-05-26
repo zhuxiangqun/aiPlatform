@@ -25,9 +25,41 @@ from typing import Any, Dict, List, Optional, Tuple
 
 # ── Configuration ──────────────────────────────────────────────
 
+FRONTMATTER_FIELDS = {
+    "title": "", "category": "entities", "tags": [], "related": [],
+    "contradictions": [], "source_articles": [], "last_updated": "",
+    "summary": "",
+}
+
 def _wiki_root() -> Path:
     home = os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
     return Path(home) / "wiki"
+
+
+def parse_title_from_uri(source_uri: str) -> str:
+    u"""Extract a readable title from an upload filename.
+
+    Examples:
+      'req_01KS_1080p_xtdowner.com_放弃RAG吧_LLM知识库新范式_Karpathy新思路.mp4'
+        → '放弃 RAG：LLM 知识库新范式'
+    """
+    fname = Path(source_uri).stem
+    for prefix in ["preview_", "req_", "src_"]:
+        if fname.startswith(prefix):
+            fname = fname[len(prefix):]
+    fname = re.sub(r'^[A-Z0-9]{26,30}_', '', fname)   # strip ULID
+    fname = re.sub(r'\d{3,4}p_', '', fname)            # strip resolution
+    fname = re.sub(r'xtdowner\.com_', '', fname)        # strip domain
+    fname = re.sub(r'(_ai_|_技术_|_分享_)', ' · ', fname)
+    fname = re.sub(r'(?<=[\u4e00-\u9fff])_(?=[\u4e00-\u9fff])', ' ', fname)
+    for sfx in ['.edited', '.preview_cache', '.mp4', '.avi', '.mkv', '.json']:
+        fname = fname.replace(sfx, '')
+    fname = fname.replace('_', ' ').strip()
+    fname = re.sub(r'\s{2,}', ' ', fname)
+    parts = [p.strip() for p in re.split(r'[ ·,|：:\-]+', fname) if len(p.strip()) >= 2]
+    if parts:
+        return parts[0][:60]
+    return fname[:60]
 
 def _ensure_dirs():
     root = _wiki_root()
@@ -697,7 +729,7 @@ Title: {title}
 
 === OUTPUT FORMAT ===
 Reply with ONLY a JSON object (no markdown fences, no explanation):
-{{"summary":"...","category":"entities","tags":["tag1","tag2"],"related":["Existing Page"],"entities_found":["概念1","概念2"],"knowledge_atoms":[{{"title":"原子标题","body":"知识片段正文","category":"entities","tags":["tag"]}}],"contradictions":[{{"a":"PageA","b":"PageB","detail":"why"}}],"merge_candidates":[{{"target":"PageTitle","reason":"duplicate"}}]}}
+{{"title":"优化的可读标题","summary":"...","category":"entities","tags":["tag1","tag2"],"related":["Existing Page"],"entities_found":["概念1","概念2"],"knowledge_atoms":[{{"title":"原子标题","body":"知识片段正文","category":"entities","tags":["tag"]}}],"contradictions":[{{"a":"PageA","b":"PageB","detail":"why"}}],"merge_candidates":[{{"target":"PageTitle","reason":"duplicate"}}]}}
 """
     try:
         from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
@@ -715,18 +747,28 @@ Reply with ONLY a JSON object (no markdown fences, no explanation):
             content = content.strip("`").strip()
             if content.startswith("json"):
                 content = content[4:].strip()
-        # Find the outermost JSON object
-        json_match = re.search(r'\{[\s\S]*?\}', content)
+        # Find the outermost JSON object (greedy match to handle nested JSON)
+        json_match = re.search(r'\{[\s\S]*\}', content)
         if json_match:
-            data = _json.loads(json_match.group(0))
-            result["summary"] = str(data.get("summary", result["summary"]))[:500]
-            result["category"] = str(data.get("category", "entities"))
-            result["tags"] = list(data.get("tags", []))[:8]
-            result["related"] = [t for t in (data.get("related", []) or []) if t in existing_titles][:10]
-            result["entities_found"] = list(data.get("entities_found", []))[:10]
-            result["contradictions"] = list(data.get("contradictions", []))[:5]
-            result["merge_candidates"] = list(data.get("merge_candidates", []))[:3]
-            result["knowledge_atoms"] = list(data.get("knowledge_atoms", []))[:6]
+            try:
+                data = _json.loads(json_match.group(0))
+            except _json.JSONDecodeError:
+                # Try cleaning: remove trailing comma before closing brace
+                cleaned = re.sub(r',\s*}', '}', json_match.group(0))
+                try:
+                    data = _json.loads(cleaned)
+                except _json.JSONDecodeError:
+                    data = {}  # LLM response was malformed JSON
+            if data:
+                result["title"] = str(data.get("title", result["title"]))[:120]
+                result["summary"] = str(data.get("summary", result["summary"]))[:500]
+                result["category"] = str(data.get("category", "entities"))
+                result["tags"] = list(data.get("tags", []))[:8]
+                result["related"] = [t for t in (data.get("related", []) or []) if t in existing_titles][:10]
+                result["entities_found"] = list(data.get("entities_found", []))[:10]
+                result["contradictions"] = list(data.get("contradictions", []))[:5]
+                result["merge_candidates"] = list(data.get("merge_candidates", []))[:3]
+                result["knowledge_atoms"] = list(data.get("knowledge_atoms", []))[:6]
     except Exception as e:
         import logging
         logger = logging.getLogger(__name__)

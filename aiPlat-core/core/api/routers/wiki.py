@@ -191,6 +191,11 @@ async def convert_from_kb(tenant_id: str = "default", collection_id: str = "defa
                     if meta.get("title"):
                         title = str(meta["title"])[:120]
                 except: pass
+                # Try to parse a human-readable title from the URI
+                from core.harness.knowledge.wiki_engine import parse_title_from_uri
+                readable = parse_title_from_uri(source_uri)
+                if readable and len(readable) >= 3:
+                    title = readable
 
                 # Skip if already converted
                 try:
@@ -249,8 +254,8 @@ async def convert_from_kb(tenant_id: str = "default", collection_id: str = "defa
                         related=curated.get("related", []),
                         summary=curated.get("summary", summary),
                         source_articles=[f"kb:{doc_id}"])
-                    # Create knowledge atom pages (instead of entity stubs)
-                    for atom in curated.get("knowledge_atoms", [])[:6]:
+                    # Create knowledge atom pages
+                    for atom in curated.get("knowledge_atoms", [])[:8]:
                         if not atom.get("title") or not atom.get("body"):
                             continue
                         atom_title = re.sub(r"[<>:\"/\\|?*]", "_", str(atom["title"])[:80])
@@ -264,13 +269,6 @@ async def convert_from_kb(tenant_id: str = "default", collection_id: str = "defa
                                 related=list(set([curated["title"]] + curated.get("related", [])[:3])),
                                 summary=atom_body[:300].replace("\n", " "),
                                 source_articles=[f"kb:{doc_id}"])
-                            entities_created += 1
-                    # Keep entity extraction for backward compatibility
-                    for entity in curated.get("entities_found", [])[:5]:
-                        safe_entity = re.sub(r"[<>:\"/\\|?*]", "_", entity)[:120]
-                        if safe_entity != safe_title and safe_entity not in topic_keywords:
-                            write_page(safe_entity, f"Entity: {entity}\n\nSee: [[{safe_title}]]",
-                                category="entities", tags=[entity.lower()], related=[safe_title])
                             entities_created += 1
                     # Mark contradictions
                     for con in curated.get("contradictions", [])[:3]:

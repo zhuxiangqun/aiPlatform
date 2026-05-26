@@ -73,11 +73,15 @@ class InfraLLMAdapter(ILLMAdapter):
         resp = await self._client.achat(req)
         usage = {}
         if resp.usage:
-            usage = {
-                "prompt_tokens": resp.usage.prompt_tokens,
-                "completion_tokens": resp.usage.completion_tokens,
-                "total_tokens": resp.usage.total_tokens,
-            }
+            try:
+                u = resp.usage
+                usage = {
+                    "prompt_tokens": getattr(u, "prompt_tokens", u.get("prompt_tokens", 0) if hasattr(u, "get") else 0),
+                    "completion_tokens": getattr(u, "completion_tokens", u.get("completion_tokens", 0) if hasattr(u, "get") else 0),
+                    "total_tokens": getattr(u, "total_tokens", u.get("total_tokens", 0) if hasattr(u, "get") else 0),
+                }
+            except Exception:
+                pass
         return LLMResponse(
             content=resp.content or "",
             usage=usage,

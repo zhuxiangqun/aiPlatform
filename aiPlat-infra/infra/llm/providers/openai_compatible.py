@@ -28,11 +28,10 @@ class OpenAICompatibleClient(LLMClient):
     def _get_client(self):
         if self._client is None:
             import openai
-
-            openai.api_key = self.config.api_key
-            if self.config.base_url:
-                openai.base_url = self.config.base_url
-            self._client = openai
+            self._client = openai.OpenAI(
+                api_key=self.config.api_key,
+                base_url=self.config.base_url or None,
+            )
         return self._client
 
     def chat(self, request: ChatRequest) -> ChatResponse:
@@ -42,7 +41,7 @@ class OpenAICompatibleClient(LLMClient):
         messages = [{"role": m.role, "content": m.content} for m in request.messages]
 
         try:
-            response = client.ChatCompletion.create(
+            response = client.chat.completions.create(
                 model=request.model,
                 messages=messages,
                 temperature=request.temperature,
@@ -56,9 +55,14 @@ class OpenAICompatibleClient(LLMClient):
             resp = response.choices[0].message
             usage = response.usage
 
-            self._cost_stats["prompt_tokens"] += usage.prompt_tokens
-            self._cost_stats["completion_tokens"] += usage.completion_tokens
-            self._cost_stats["total_tokens"] += usage.total_tokens
+            # usage may be a CompletionUsage object (openai) or a dict (DeepSeek)
+            prompt_tokens = getattr(usage, 'prompt_tokens', usage.get('prompt_tokens', 0) if hasattr(usage, 'get') else 0)
+            completion_tokens = getattr(usage, 'completion_tokens', usage.get('completion_tokens', 0) if hasattr(usage, 'get') else 0)
+            total_tokens = getattr(usage, 'total_tokens', usage.get('total_tokens', 0) if hasattr(usage, 'get') else 0)
+
+            self._cost_stats["prompt_tokens"] += prompt_tokens
+            self._cost_stats["completion_tokens"] += completion_tokens
+            self._cost_stats["total_tokens"] += total_tokens
 
             return ChatResponse(
                 id=response.id,
@@ -66,9 +70,9 @@ class OpenAICompatibleClient(LLMClient):
                 content=resp.content or "",
                 role=resp.role,
                 usage={
-                    "prompt": usage.prompt_tokens,
-                    "completion": usage.completion_tokens,
-                    "total": usage.total_tokens,
+                    "prompt": prompt_tokens,
+                    "completion": completion_tokens,
+                    "total": total_tokens,
                 },
                 finish_reason=response.choices[0].finish_reason,
                 latency=latency,
@@ -84,7 +88,7 @@ class OpenAICompatibleClient(LLMClient):
 
         messages = [{"role": m.role, "content": m.content} for m in request.messages]
 
-        response = client.ChatCompletion.create(
+        response = client.chat.completions.create(
             model=request.model,
             messages=messages,
             temperature=request.temperature,
@@ -105,7 +109,7 @@ class OpenAICompatibleClient(LLMClient):
 
     async def embed(self, texts: List[str]) -> List[List[float]]:
         client = self._get_client()
-        response = client.Embedding.create(model="text-embedding-3-small", input=texts)
+        response = client.embeddings.create(model="text-embedding-3-small", input=texts)
         return [d.embedding for d in response.data]
 
     def count_tokens(self, text: str) -> int:
