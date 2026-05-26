@@ -46,11 +46,8 @@ def wire_hot_reload():
                 # Invalidate CodeIntel cache if it's a .py/.ts file
                 if filepath.endswith(('.py', '.ts', '.tsx')):
                     try:
-                        from core.harness.knowledge.code_graph import _CACHE
-                        import core.harness.knowledge.code_graph as cg
-                        if hasattr(cg, '_CACHE') and cg._CACHE:
-                            cg._CACHE = None
-                            logger.debug("CodeIntel cache invalidated")
+                        from core.harness.knowledge.code_graph import clear_cache
+                        clear_cache()
                     except Exception:
                         pass
             return on_change

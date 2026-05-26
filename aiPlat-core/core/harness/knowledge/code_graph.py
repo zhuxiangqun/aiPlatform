@@ -18,6 +18,10 @@ _JS_IMPORT_RE = re.compile(
     r"""(?:import\s+[^;]*?\s+from\s+['"]([^'"]+)['"]|import\s*\(\s*['"]([^'"]+)['"]\s*\)|require\s*\(\s*['"]([^'"]+)['"]\s*\))"""
 )
 
+# Module-level cache for build_graph results
+_CACHE: Optional[Any] = None
+_CACHE_ROOTS: Optional[str] = None
+
 
 @dataclass
 class ScanResult:
@@ -116,8 +120,33 @@ def _resolve_js_relative(from_file: Path, spec: str) -> Optional[Path]:
 
 
 def _resolve_py_module(_repo_root: Path, from_file: Path, mod: str) -> Optional[Path]:
-    if not mod or mod == '.':
+    u"""Resolve a Python import module to a file path.
+
+    Handles: absolute (core.harness.X), relative (.Y, ..Z, .a.b)
+    """
+    if not mod:
         return None
+    # Relative import: from . import X → mod = "."
+    if mod == ".":
+        # Resolve to from_file's parent package (__init__.py or directory)
+        init = from_file.parent / "__init__.py"
+        return init if init.exists() else None
+    # Relative import: from .. import X or from .foo import bar
+    if mod.startswith("."):
+        num_dots = len(mod) - len(mod.lstrip("."))
+        base_dir = from_file.parent
+        for _ in range(num_dots - 1):
+            base_dir = base_dir.parent
+        mod = mod.lstrip(".")
+        if not mod:
+            init = base_dir / "__init__.py"
+            return init if init.exists() else None
+        rel = Path(*mod.split("."))
+        cand1 = base_dir / rel.with_suffix(".py")
+        if cand1.exists(): return cand1
+        cand2 = base_dir / rel / "__init__.py"
+        return cand2 if cand2.exists() else None
+    # Absolute import
     rel = Path(*mod.split("."))
     cand1 = _repo_root / rel.with_suffix(".py")
     cand2 = _repo_root / rel / "__init__.py"
@@ -150,6 +179,13 @@ def _detect_issues(text: str) -> List[Dict[str, Any]]:
 
 
 def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str, Any]], List[Dict[str, str]], List[Dict[str, Any]]]:
+    global _CACHE, _CACHE_ROOTS
+    roots_key = ";".join(str(r) for r in roots)
+    # Use cache if roots match
+    import time as _t
+    if _CACHE and _CACHE_ROOTS == roots_key and _t.time() - _CACHE["_ts"] < 120:
+        return _CACHE["nodes"], _CACHE["edges"], _CACHE["issues"]
+
     nodes: Dict[str, Dict[str, Any]] = {}
     edges: List[Dict[str, str]] = []
     issues: List[Dict[str, Any]] = []
@@ -192,7 +228,17 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
             edges.append({"from": rel_from, "to": rel_to})
             nodes[rel_from]["out"].append(rel_to)
             nodes[rel_to]["in"] += 1
+    # Save to cache
+    _CACHE = {"nodes": nodes, "edges": edges, "issues": issues, "_ts": _t.time()}
+    _CACHE_ROOTS = roots_key
     return nodes, edges, issues
+
+
+def clear_cache():
+    u"""Invalidate the code graph cache (called by hot-reload on file changes)."""
+    global _CACHE, _CACHE_ROOTS
+    _CACHE = None
+    _CACHE_ROOTS = None
 
 
 def count_cycles(nodes: Dict[str, Dict[str, Any]]) -> int:
@@ -265,6 +311,8 @@ def build_context(task: str, roots: List[str] = None) -> Dict[str, Any]:
         roots = default_roots()
     abs_roots = [(_repo_root / r).resolve() for r in roots]
     nodes, edges, issues = build_graph(_repo_root, abs_roots)
+    # Enrich with entity-level symbols (functions/classes via AST)
+    _enrich_nodes_with_symbols(nodes, _repo_root)
     cycles = count_cycles(nodes)
     health = health_score(nodes=nodes, edges=edges, issues=issues, cycles_back_edges=cycles)
     task_lower = task.lower()
@@ -282,6 +330,39 @@ def build_context(task: str, roots: List[str] = None) -> Dict[str, Any]:
         "related": related_files,
         "orphan_files": _find_orphans(nodes),
     }
+
+
+def _enrich_nodes_with_symbols(nodes, repo_root):
+    u"""Add entity-level symbol counts and top symbols to file nodes.
+
+    Uses ast.parse (same approach as repo_map.py) for zero-dependency extraction.
+    Only processes .py files; JS/TS files get basic type hints.
+    """
+    import ast
+    for path, node in nodes.items():
+        if not path.endswith(".py"):
+            continue
+        try:
+            file_path = repo_root / path
+            code = _read_text(file_path, max_bytes=200000)
+            if not code:
+                continue
+            tree = ast.parse(code)
+            classes = []
+            functions = []
+            for n in ast.walk(tree):
+                if isinstance(n, ast.ClassDef):
+                    classes.append(n.name)
+                elif isinstance(n, ast.FunctionDef) and not n.name.startswith("_"):
+                    functions.append(n.name)
+            node["entities"] = {
+                "classes": classes[:10],
+                "functions": functions[:15],
+                "total_classes": len(classes),
+                "total_functions": len(functions),
+            }
+        except (SyntaxError, OSError):
+            pass
 
 
 def _find_orphans(nodes):
