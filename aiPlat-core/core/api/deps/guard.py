@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import Any, Dict, Optional
 
 from fastapi import Request
@@ -65,3 +66,28 @@ async def rbac_guard(
         }
         return JSONResponse(status_code=403, content=body)
     return None
+
+
+# ── Rate Limiting ───────────────────────────────────────────────
+
+import time
+from collections import defaultdict
+
+_rate_limit_store: Dict[str, list] = defaultdict(list)
+
+
+def rate_limit_check(
+    client_id: str,
+    max_requests: int = None,
+    window_seconds: int = 60,
+) -> bool:
+    u"""Simple sliding-window rate limiter. Returns True if within limit."""
+    limit = max_requests or int(os.getenv("AIPLAT_RATE_LIMIT_PER_MINUTE", "120"))
+    now = time.time()
+    window = _rate_limit_store[client_id]
+    # Purge old entries
+    _rate_limit_store[client_id] = [t for t in window if now - t < window_seconds]
+    if len(_rate_limit_store[client_id]) >= limit:
+        return False
+    _rate_limit_store[client_id].append(now)
+    return True

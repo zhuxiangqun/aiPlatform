@@ -1091,6 +1091,11 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             if not current:
                 # Cycle or all remaining have unsatisfied deps; sequential fallback
                 current = sorted(remaining)
+                local_state["_loop_detected"] = True
+                import logging
+                logging.getLogger("pipeline_engine").warning(
+                    f"Pipeline dependency cycle detected among stages: {[stages[i].id for i in sorted(remaining)]}"
+                )
             layers.append(current)
             for n in current:
                 remaining.discard(n)
@@ -1626,6 +1631,17 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                                 "count": hist[ftype], "rule": rule,
                             })
                             hist[ftype] = 0  # reset counter after injection
+                            # Also store failure pattern in semantic memory
+                            try:
+                                from core.harness.memory.manager import get_memory_manager
+                                mgr = get_memory_manager()
+                                await mgr.capture_to_semantic(
+                                    key=f"failure_pattern:{ftype}",
+                                    content=f"Stage {stage.id} repeatedly encounters {ftype}. Rule: {rule}",
+                                    metadata={"stage_id": stage.id, "failure_type": ftype, "count": 3},
+                                )
+                            except Exception:
+                                pass
             # FIX B: Set phase=failed so frontend stops polling and shows error
             state["error"] = str(e)
             state["phase"] = BuilderSessionPhase.failed.value

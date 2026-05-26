@@ -862,6 +862,65 @@ BaseModelAdapter
 - 根 `CLAUDE.md` §12（模型解析中心化）、§14（模型管理层级）
 - `aiPlat-infra/CLAUDE.md` §5.6（接线状态）
 
+
+## 5.32 知识图谱注入 Agent 决策循环（强制）
+
+Agent 启动时自动注入三张预构建图谱的上下文，替代 grep/glob 探索阶段。
+
+### 三张图谱
+
+| 图谱 | 模块 | 注入时机 |
+|------|------|---------|
+| **代码图** (code_graph.py) | 文件→导入关系，循环检测，健康评分 | `_try_inject_graph_context()` — Agent 首次 reasoning 前 |
+| **知识图** (wiki_engine.py) | 知识原子→关联，死链/孤立，健康评分 | 同上 — Wiki 页面数 > 0 时注入可用性声明 |
+| **技能图** (skill_deps.py) | Agent→Skill→Syscall 依赖 | 同上 — 注入技能总数 + top-10 名称 |
+
+### Agent 可用 syscall
+
+以下 syscall 已注册到 `__all__` 并可通过懒加载调度器调用：
+- `sys_code_intel_context(task)` — 代码图上下文查询
+- `sys_code_intel_blast(file)` — 文件影响半径
+- `sys_wiki_context(question)` — 知识图语义搜索（FTS5 + 嵌入 + 链接遍历）
+- `sys_wiki_retrieve(query)` — 知识图嵌入检索
+- `sys_file_read/write/edit` — 文件操作
+- `sys_glob/code_search` — 代码文件搜索
+
+### 架构规则注入
+
+每次 LLM 调用时，`_try_inject_arch_rules()` 将层边界规则追加到系统 prompt，禁止 Agent 跨层写入文件。
+
+## 5.33 MCP 统一归属（强制）
+
+### 所有权
+
+MCP（Model Context Protocol）的所有实现（传输、协议、工具适配、服务端）全部归入 `aiPlat-core/core/apps/mcp/`。不存在其他层的 MCP 实现。
+
+```
+aiPlat-core/core/apps/mcp/  ← Layer 1：唯一 MCP 实现
+  ├── types.py              ← 协议类型（JSONRPC, MCPTool, MCPToolResult, MCPResourceContent）
+  ├── protocol.py           ← JSON-RPC 传输（SSE/Stdio）
+  ├── client.py             ← MCPClient, MCPClientManager
+  ├── adapter.py            ← MCPToolAdapter（extends BaseTool）
+  ├── server.py             ← MCPServer, create_mcp_server
+  ├── config.py             ← MCPConfig, load/save
+  └── runtime.py            ← MCPRuntime（生命周期管理）
+```
+
+### 已删除
+
+`aiPlat-infra/infra/mcp/` 整个目录已被删除（2026-05）。该目录包含 127 行未使用的重复实现。infra 层不管理 MCP。
+
+## 5.34 架构边界 PolicyGate 实时拦截（强制）
+
+`PolicyGate.check_tool()` 在 `sys_file_write`/`sys_file_edit` 执行前检查目标路径的架构边界：
+
+| 写入目标 | 结果 |
+|------|------|
+| `aiPlat-core/` 下 | 非 core 层 → DENY："Use CoreFacade" |
+| `aiPlat-infra/` 下 | 任何层 → DENY："Use infra-specific APIs" |
+
+边界定义在 `_check_arch_boundary()` 函数中，层保护规则在 `_LAYER_PROTECTION` 字典中。
+
 ---
 
 ## 6) 输出要求（每次提交给用户的结果必须包含）
