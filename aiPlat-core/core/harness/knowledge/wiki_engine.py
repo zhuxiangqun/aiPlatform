@@ -159,9 +159,40 @@ def _update_index(title: str, category: str, tags: List[str], related: List[str]
     except Exception:
         idx = {"pages": {}, "last_updated": ""}
     idx["pages"][title] = {"category": category, "tags": tags, "related": related,
-                            "last_updated": datetime.utcnow().isoformat()}
+                             "last_updated": datetime.utcnow().isoformat()}
     idx["last_updated"] = datetime.utcnow().isoformat()
     idx_path.write_text(_json.dumps(idx, indent=2, ensure_ascii=False))
+
+
+def update_page(title: str, **kwargs) -> bool:
+    u"""Update specific frontmatter fields of an existing wiki page, preserving others."""
+    existing = None
+    for cat_dir in _wiki_root().iterdir():
+        if not cat_dir.is_dir() or cat_dir.name == "contradictions":
+            continue
+        test = read_page(title, category=cat_dir.name)
+        if test:
+            existing = test
+            break
+    if not existing:
+        return False
+
+    for key in ("summary", "category", "tags", "related", "contradictions", "source_articles"):
+        if key in kwargs and kwargs[key] is not None:
+            existing[key] = kwargs[key]
+
+    name = kwargs.get("title", title)
+    if name != title:
+        existing["title"] = name
+
+    write_page(existing["title"], existing.get("body", ""),
+               category=existing.get("category", "entities"),
+               tags=existing.get("tags", []),
+               related=existing.get("related", []),
+               summary=existing.get("summary", ""),
+               contradictions=existing.get("contradictions", []),
+               source_articles=existing.get("source_articles", []))
+    return True
 
 
 # ── Search ─────────────────────────────────────────────────────
@@ -436,13 +467,7 @@ def list_all_pages() -> List[Dict[str, Any]]:
 # ── Graph export (ECharts force-layout) ──────────────────────────
 
 def build_graph(*, category: str = "", keyword: str = "", max_nodes: int = 300) -> Dict[str, Any]:
-    u"""Build node/edge graph for ECharts force-layout visualization.
-
-    Returns:
-      { nodes: [{id, name, category, symbolSize, tags, summary, linkCount, hasIssues, itemStyle: {color}}],
-        edges: [{source, target}],
-        stats: {totalNodes, totalEdges, categories, avgLinks} }
-    """
+    u"""Build node/edge graph for ECharts force-layout visualization."""
     _ensure_dirs()
     root = _wiki_root()
     all_pages: Dict[str, Dict[str, Any]] = {}
@@ -455,33 +480,21 @@ def build_graph(*, category: str = "", keyword: str = "", max_nodes: int = 300) 
             if page:
                 all_pages[page["title"]] = page
 
-    # Filter
     if keyword:
         kw = keyword.lower()
-        all_pages = {
-            t: p for t, p in all_pages.items()
-            if kw in t.lower() or any(kw in tag.lower() for tag in p.get("tags", []))
-        }
+        all_pages = {t: p for t, p in all_pages.items()
+                     if kw in t.lower() or any(kw in tag.lower() for tag in p.get("tags", []))}
     if category:
         all_pages = {t: p for t, p in all_pages.items() if p.get("category", "") == category}
 
-    # Compute in-degree (how many pages link to this one)
     in_degree: Dict[str, int] = {t: 0 for t in all_pages}
     for p in all_pages.values():
         for rel in p.get("related", []):
             if rel in in_degree:
                 in_degree[rel] += 1
 
-    # Category colors
-    cat_colors = {
-        "entities": "#4d9fff",   # blue
-        "topics": "#a855f7",     # purple
-        "contradictions": "#ef4444",  # red
-    }
-
-    nodes = []
+    cat_colors = {"entities": "#4d9fff", "topics": "#a855f7", "contradictions": "#ef4444"}
     titles = list(all_pages.keys())
-    # Limit: keep highest-link-count nodes first
     if max_nodes > 0 and len(titles) > max_nodes:
         titles.sort(key=lambda t: len(all_pages[t].get("related", [])) + in_degree.get(t, 0), reverse=True)
         titles = titles[:max_nodes]
@@ -490,17 +503,15 @@ def build_graph(*, category: str = "", keyword: str = "", max_nodes: int = 300) 
 
     cat_counts: Dict[str, int] = {}
     total_links = 0
-
+    nodes = []
     for title in titles:
         p = all_pages[title]
         link_count = len(p.get("related", [])) + in_degree.get(title, 0)
         total_links += link_count
         cat_name = p.get("category", "entities")
         cat_counts[cat_name] = cat_counts.get(cat_name, 0) + 1
-
         symbol_size = min(12 + link_count * 3, 55)
         has_issues = bool(p.get("contradictions") or p.get("issues"))
-
         nodes.append({
             "id": title,
             "name": title if len(title) <= 50 else title[:47] + "...",
@@ -513,27 +524,53 @@ def build_graph(*, category: str = "", keyword: str = "", max_nodes: int = 300) 
             "itemStyle": {"color": "#ef4444" if has_issues else cat_colors.get(cat_name, "#4d9fff")},
         })
 
-    # Build edges (only between nodes in the filtered set)
     id_set = set(titles)
-    edges = []
-    for title in titles:
-        for rel in all_pages[title].get("related", []):
-            if rel in id_set:
-                edges.append({"source": title, "target": rel})
+    edges = [{"source": t, "target": r} for t in titles for r in all_pages[t].get("related", []) if r in id_set]
 
     return {
-        "nodes": nodes,
-        "edges": edges,
-        "stats": {
-            "totalNodes": len(nodes),
-            "totalEdges": len(edges),
-            "avgLinksPerPage": round(total_links / max(len(nodes), 1), 2),
-            "categories": cat_counts,
-        },
+        "nodes": nodes, "edges": edges,
+        "stats": {"totalNodes": len(nodes), "totalEdges": len(edges),
+                  "avgLinksPerPage": round(total_links / max(len(nodes), 1), 2),
+                  "categories": cat_counts},
     }
 
 
-# ── LLM-powered curation (knowledge editor logic) ───────────────
+# ── Cross-linking via embedding similarity ──────────────────────
+
+def auto_link_page(title: str, body: str, all_titles: List[str],
+                   threshold: float = None) -> List[str]:
+    u"""自动语义关联：嵌入相似度 → top-5 相关页面。
+
+    模型路径：embed_texts_semantic → InfraEmbeddingAdapter → infra ModelManager。
+    阈值可通过 AIPLAT_WIKI_LINK_THRESHOLD 环境变量配置。
+    """
+    if threshold is None:
+        threshold = float(os.getenv("AIPLAT_WIKI_LINK_THRESHOLD", "0.35"))
+    existing = [t for t in all_titles if t != title]
+    if not existing:
+        return []
+
+    from core.harness.knowledge.embedder import embed_text_semantic, embed_texts_semantic, cosine_similarity
+
+    target_vec = embed_text_semantic(body[:2000])
+    if target_vec is None:
+        return []
+
+    others = [read_page(t) for t in existing if read_page(t)]
+    texts = [(p["body"] or "")[:2000] for p in others]
+    other_vecs = embed_texts_semantic(texts)
+
+    scored = []
+    for t, v in zip(existing, other_vecs):
+        if v is not None:
+            sim = cosine_similarity(target_vec, v)
+            if sim > threshold:
+                scored.append((t, sim))
+    scored.sort(key=lambda x: -x[1])
+    return [s[0] for s in scored[:5]]
+
+
+# ── LLM-powered curation ────────────────────────────────────────
 
 async def llm_curate_page(title: str, body: str, *, existing_titles: List[str] = None,
                            source_doc_id: str = "") -> Dict[str, Any]:
@@ -599,8 +636,13 @@ Reply with ONLY a JSON object (no markdown fences, no explanation):
             result["entities_found"] = list(data.get("entities_found", []))[:10]
             result["contradictions"] = list(data.get("contradictions", []))[:5]
             result["merge_candidates"] = list(data.get("merge_candidates", []))[:3]
-    except Exception:
-        pass  # LLM is best-effort, fall through to mechanical defaults
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"llm_curate_page failed for '{title}': {e}")
+        import traceback
+        result["error"] = f"{type(e).__name__}: {str(e)[:300]}"
+        result["fallback"] = True
 
     return result
 

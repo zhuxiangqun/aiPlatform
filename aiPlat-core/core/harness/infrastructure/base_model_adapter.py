@@ -26,7 +26,7 @@ _MODEL_ENV_MAP: Dict[str, str] = {
 }
 
 _MODEL_DEFAULTS: Dict[str, str] = {
-    "embedding": "all-MiniLM-L6-v2",
+    "embedding": "paraphrase-multilingual-MiniLM-L12-v2",
     "reranker": "jinaai/jina-reranker-v2-base-multilingual",
     "audio": "base",
     "ocr": "eng+chi_sim",

@@ -55,10 +55,19 @@ async def read_page(title: str, category: str = "entities"):
 
 @router.post("/pages")
 async def write_page(body: WikiPageWrite):
-    from core.harness.knowledge.wiki_engine import write_page
+    from core.harness.knowledge.wiki_engine import write_page, auto_link_page, search_pages, update_page
     path = write_page(body.title, body.body, category=body.category,
                       tags=body.tags, related=body.related, summary=body.summary)
-    return {"title": body.title, "path": path, "status": "created"}
+    # Auto-link via embedding similarity (through infra adapter)
+    auto_links = []
+    try:
+        all_titles = [p["title"] for p in search_pages(limit=500)]
+        auto_links = auto_link_page(body.title, body.body, all_titles)
+        if auto_links:
+            update_page(body.title, related=list(set(body.related or [] + auto_links)))
+    except Exception:
+        pass
+    return {"title": body.title, "path": path, "status": "created", "auto_links": auto_links}
 
 
 @router.get("/traverse/{title}")
@@ -308,3 +317,53 @@ async def convert_from_kb(tenant_id: str = "default", collection_id: str = "defa
 
     return {"created": created, "skipped": skipped, "errors": errors,
             "message": f"Converted {created} KB documents to Wiki pages. {skipped} skipped."}
+
+
+@router.post("/curate")
+async def curate_wiki():
+    u"""LLM 深度策展：遍历所有 Wiki 页面，用 LLM 重写标题/分类/标签/摘要/关联。
+
+    返回: {processed, links_added, titles_updated, errors[]}
+    如果 LLM 不可用，降级到嵌入自动关联。
+    """
+    from core.harness.knowledge.wiki_engine import search_pages, llm_curate_page, update_page, auto_link_page
+    pages = search_pages(limit=500)
+    report = {"processed": 0, "links_added": 0, "titles_updated": 0, "errors": []}
+    all_titles = [p["title"] for p in pages]
+
+    for p in pages:
+        try:
+            existing_titles = [t for t in all_titles if t != p["title"]]
+            result = await llm_curate_page(p["title"], p.get("body", ""),
+                                           existing_titles=existing_titles)
+            if result.get("error") or result.get("fallback"):
+                # LLM failed → try embedding auto-link as fallback
+                report["errors"].append({
+                    "page": p["title"],
+                    "error": result.get("error", "LLM unavailable"),
+                })
+                auto_rel = auto_link_page(p["title"], p.get("body", ""), existing_titles)
+                if auto_rel:
+                    update_page(p["title"], related=list(set(
+                        (p.get("related") or []) + auto_rel
+                    )))
+                    report["links_added"] += len(auto_rel)
+                    report["processed"] += 1
+                continue
+
+            update_page(p["title"],
+                        title=result.get("title"),
+                        category=result.get("category"),
+                        tags=result.get("tags"),
+                        summary=result.get("summary"),
+                        related=list(set(
+                            (p.get("related") or []) + result.get("related", [])
+                        )))
+            report["processed"] += 1
+            report["links_added"] += len(result.get("related", []))
+            if result.get("title") != p["title"]:
+                report["titles_updated"] += 1
+        except Exception as e:
+            report["errors"].append({"page": p["title"], "error": str(e)[:300]})
+
+    return report

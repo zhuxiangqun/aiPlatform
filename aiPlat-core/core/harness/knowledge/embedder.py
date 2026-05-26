@@ -1,14 +1,13 @@
 """
-Unified embedding provider — real semantic embedding with hash fallback.
+Unified embedding provider — all model loading through infra adapters.
 
 Backend selection via AIPLAT_EMBED_BACKEND env var:
 - hash (default): SHA-256 n-gram hash, 128-dim, zero-dependency
-- transform: sentence-transformers (all-MiniLM-L6-v2), real semantic
+- transform: sentence-transformers via InfraEmbeddingAdapter
 - api: OpenAI-compatible embedding API
-- deepseek: legacy alias → delegates to api
 
-New: SemanticEmbedder class implements IEmbedder (from retriever.py) for use
-by InMemoryRetriever and future VectorStoreRetriever.
+Model selection: create_adapter("embedding") → InfraEmbeddingAdapter
+→ infra ModelManager. No direct model loading in core.
 """
 
 from __future__ import annotations
@@ -55,48 +54,32 @@ _semantic_model_name: Optional[str] = None
 
 def _get_semantic_model() -> Any:
     global _semantic_model, _semantic_model_name
-    name = os.getenv("AIPLAT_EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+    name = os.getenv("AIPLAT_EMBEDDING_MODEL", "paraphrase-multilingual-MiniLM-L12-v2")
     if _semantic_model is not None and _semantic_model_name == name:
         return _semantic_model
-    # Try InfraEmbeddingAdapter first (unified model loading via infra)
     try:
         from core.harness.infrastructure.base_model_adapter import create_adapter
         _semantic_model = create_adapter("embedding", model_name=name)
         _semantic_model_name = name
         return _semantic_model
     except Exception:
-        pass
-    # Fallback: direct sentence-transformers (legacy, deprecated)
-    try:
-        from sentence_transformers import SentenceTransformer
-        _semantic_model = SentenceTransformer(name)
-        _semantic_model_name = name
-        return _semantic_model
-    except ImportError:
         return None
 
 
 def embed_text_semantic(text: str) -> Optional[List[float]]:
-    """Sync semantic embedding. Uses InfraEmbeddingAdapter when available."""
+    """Sync semantic embedding via infra InfraEmbeddingAdapter."""
     model = _get_semantic_model()
     if model is None:
         return None
-    # Check if it's InfraEmbeddingAdapter (uses embed_sync) or SentenceTransformer (uses encode)
-    if hasattr(model, 'embed_sync'):
-        return model.embed_sync(text)
-    embedding = model.encode([text], show_progress_bar=False)
-    return [float(v) for v in embedding[0]]
+    return model.embed_sync(text)
 
 
 def embed_texts_semantic(texts: List[str]) -> Optional[List[List[float]]]:
-    """Sync batch semantic embedding. Uses InfraEmbeddingAdapter when available."""
+    """Sync batch semantic embedding via infra InfraEmbeddingAdapter."""
     model = _get_semantic_model()
     if model is None:
         return None
-    if hasattr(model, 'embed_batch_sync'):
-        return model.embed_batch_sync(texts)
-    embeddings = model.encode(texts, show_progress_bar=False)
-    return [[float(v) for v in emb] for emb in embeddings]
+    return model.embed_batch_sync(texts)
 
 
 # ── Unified embed_text (router) ───────────────────────────────────────────

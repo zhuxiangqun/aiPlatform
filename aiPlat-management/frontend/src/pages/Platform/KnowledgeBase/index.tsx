@@ -47,6 +47,8 @@ const KnowledgeBasePage: React.FC = () => {
   const [unprocessedCount, setUnprocessedCount] = useState(0);
   const [lintResult, setLintResult] = useState<any>(null);
   const [lintLoading, setLintLoading] = useState(false);
+  const [curating, setCurating] = useState(false);
+  const [curateReport, setCurateReport] = useState<any>(null);
 
   const [evalSamples, setEvalSamples] = useState<any[]>([]);
   const [evalResult, setEvalResult] = useState<any>(null);
@@ -145,6 +147,17 @@ const KnowledgeBasePage: React.FC = () => {
     setConverting(true);
     try { const res = await fetch(`${WIKI_API}/convert-from-kb`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tenant_id: 'default', limit: 50 }) });
       const data = await res.json(); setConvertResult(data); toast.success(`${data.created} 文档 → Wiki 页面`); fetchWikiPages(); checkUnprocessed(); } catch {} finally { setConverting(false); }
+  };
+  const handleCurate = async () => {
+    setCurating(true); setCurateReport(null);
+    try {
+      const res = await fetch(`${WIKI_API}/curate`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+      const data = await res.json();
+      setCurateReport(data);
+      toast.success(`策展完成：${data.processed} 页，${data.links_added} 条新关联`);
+      fetchWikiPages();
+    } catch (e: any) { toast.error('策展失败'); }
+    finally { setCurating(false); }
   };
   const runLint = async () => {
     setLintLoading(true);
@@ -463,9 +476,16 @@ const KnowledgeBasePage: React.FC = () => {
               </>
             )}
             <div className="flex-1" />
+            <Button variant="ghost" size="sm" onClick={handleCurate} loading={curating} className="text-xs">策展</Button>
             <Button variant="ghost" size="sm" onClick={() => setNewPageOpen(true)} className="text-xs"><Plus className="w-3 h-3 mr-1" />新建</Button>
             <Button variant="primary" size="sm" onClick={handleConvertKb} loading={converting} className="text-xs"><Database className="w-3 h-3 mr-1" />导入</Button>
             {convertResult && <span className="text-[10px] text-gray-400">{convertResult.message}</span>}
+            {curateReport && (
+              <span className="text-[10px] text-gray-400">
+                策展: {curateReport.processed}页 · {curateReport.links_added}关联
+                {curateReport.errors?.length > 0 && <span className="text-yellow-400"> · {curateReport.errors.length}错误</span>}
+              </span>
+            )}
           </div>
 
           {wikiViewMode === 'graph' ? (
