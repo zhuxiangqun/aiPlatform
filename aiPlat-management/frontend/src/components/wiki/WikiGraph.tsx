@@ -134,17 +134,13 @@ const WikiGraph: React.FC<WikiGraphProps> = ({ onSelectPage, exploreTitles, onEx
           if (p?.dataType === 'node') {
             const d = p.data;
             const color = CAT_COLORS[d.category] || '#3b82f6';
-            const tagsStr = (d.tags || []).slice(0, 4).map((t: string) =>
-              `<span style="background:${color}22;color:${color};padding:1px 6px;border-radius:3px;margin-right:3px;font-size:10px;border:1px solid ${color}33">${t}</span>`
-            ).join('');
             return `
-              <div style="max-width:460px;padding:6px 4px;word-break:break-word;overflow-wrap:break-word;">
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <div style="max-width:460px;padding:6px 4px;word-break:break-word;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
                   <div style="width:10px;height:10px;border-radius:50%;background:${color};box-shadow:0 0 8px ${color}66;flex-shrink:0;"></div>
-                  <div style="font-weight:600;font-size:13px;color:#e4e4e7;overflow:hidden;text-overflow:ellipsis;">${d.name}</div>
+                  <div style="font-weight:600;font-size:13px;color:#e4e4e7;">${d.name}</div>
                 </div>
-                ${d.summary && d.summary.length > 20 ? `<div style="color:${color}99;font-size:11px;margin-bottom:4px;line-height:1.5;padding-left:18px;max-height:52px;overflow:hidden;word-break:break-word;">${d.summary.slice(0, 80)}</div>` : ''}
-                ${tagsStr ? `<div style="margin-top:2px;padding-left:18px;">${tagsStr}</div>` : ''}
+                ${d.summary && d.summary.length > 20 ? `<div style="color:${color}99;font-size:11px;line-height:1.6;padding-left:18px;">${d.summary.slice(0, 200)}</div>` : ''}
               </div>`;
           }
           return `<span style="color:#71717a;font-size:11px">${p?.data?.source} → ${p?.data?.target}</span>`;
