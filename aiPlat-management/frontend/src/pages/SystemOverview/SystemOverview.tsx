@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, Button } from '../../components/ui';
 import { RefreshCw, Server, Cpu, Bot, Sparkles, Shield, Database, Activity } from 'lucide-react';
 
@@ -9,13 +10,15 @@ interface HealthCardData {
   scoreLabel: string;
   items: { label: string; value: string | number; ok?: boolean }[];
   loading?: boolean;
+  to?: string;
 }
 
-const HealthCard: React.FC<HealthCardData> = ({ title, icon, score, scoreLabel, items }) => {
+const HealthCard: React.FC<HealthCardData> = ({ title, icon, score, scoreLabel, items, to }) => {
+  const navigate = useNavigate();
   const color = score >= 85 ? 'text-green-400' : score >= 70 ? 'text-yellow-400' : 'text-red-400';
-  const ring = score >= 85 ? 'border-green-500' : score >= 70 ? 'border-yellow-500' : 'border-red-500';
   return (
-    <Card className="hover:border-gray-600 transition-colors">
+    <Card className={`hover:border-gray-600 transition-colors ${to ? 'cursor-pointer hover:border-primary/50' : ''}`}
+      onClick={() => to && navigate(to)}>
       <CardHeader>
         <div className="flex items-center gap-2 text-sm font-medium text-gray-200">
           {icon}
@@ -81,6 +84,7 @@ const SystemOverview: React.FC = () => {
         <HealthCard
           title="代码图谱" icon={<Cpu className="w-4 h-4 text-blue-400" />}
           score={ch.score ?? 0} scoreLabel="分 · 架构健康"
+          to="/diagnostics/code-intel"
           items={[
             { label: '文件数', value: ch.files ?? '—' },
             { label: '导入边', value: ch.edges ?? '—' },
@@ -91,6 +95,7 @@ const SystemOverview: React.FC = () => {
         <HealthCard
           title="知识图谱" icon={<Database className="w-4 h-4 text-purple-400" />}
           score={wh.score ?? 0} scoreLabel="分 · Wiki 健康"
+          to="/platform/kb"
           items={[
             { label: '页面数', value: wh.pages ?? '—' },
             { label: '死链', value: wh.dead_links ?? '—', ok: (wh.dead_links ?? 0) === 0 },
