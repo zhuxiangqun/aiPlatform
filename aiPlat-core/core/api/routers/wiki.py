@@ -74,6 +74,16 @@ async def lint_wiki():
     return wiki_health_report()
 
 
+@router.get("/graph")
+async def wiki_graph(
+    category: str = "",
+    keyword: str = "",
+    max_nodes: int = 300,
+):
+    from core.harness.knowledge.wiki_engine import build_graph
+    return build_graph(category=category, keyword=keyword, max_nodes=max_nodes)
+
+
 @router.post("/ingest")
 async def ingest_text(body: WikiIngest):
     """Submit text for wiki processing. The wiki_curator agent handles this asynchronously."""

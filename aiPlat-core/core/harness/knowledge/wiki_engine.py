@@ -433,6 +433,106 @@ def list_all_pages() -> List[Dict[str, Any]]:
     return search_pages(limit=1000)
 
 
+# ── Graph export (ECharts force-layout) ──────────────────────────
+
+def build_graph(*, category: str = "", keyword: str = "", max_nodes: int = 300) -> Dict[str, Any]:
+    u"""Build node/edge graph for ECharts force-layout visualization.
+
+    Returns:
+      { nodes: [{id, name, category, symbolSize, tags, summary, linkCount, hasIssues, itemStyle: {color}}],
+        edges: [{source, target}],
+        stats: {totalNodes, totalEdges, categories, avgLinks} }
+    """
+    _ensure_dirs()
+    root = _wiki_root()
+    all_pages: Dict[str, Dict[str, Any]] = {}
+
+    for cat_dir in sorted(root.iterdir()):
+        if not cat_dir.is_dir() or cat_dir.name == "contradictions":
+            continue
+        for md_file in sorted(cat_dir.glob("*.md")):
+            page = read_page(md_file.stem, category=cat_dir.name)
+            if page:
+                all_pages[page["title"]] = page
+
+    # Filter
+    if keyword:
+        kw = keyword.lower()
+        all_pages = {
+            t: p for t, p in all_pages.items()
+            if kw in t.lower() or any(kw in tag.lower() for tag in p.get("tags", []))
+        }
+    if category:
+        all_pages = {t: p for t, p in all_pages.items() if p.get("category", "") == category}
+
+    # Compute in-degree (how many pages link to this one)
+    in_degree: Dict[str, int] = {t: 0 for t in all_pages}
+    for p in all_pages.values():
+        for rel in p.get("related", []):
+            if rel in in_degree:
+                in_degree[rel] += 1
+
+    # Category colors
+    cat_colors = {
+        "entities": "#4d9fff",   # blue
+        "topics": "#a855f7",     # purple
+        "contradictions": "#ef4444",  # red
+    }
+
+    nodes = []
+    titles = list(all_pages.keys())
+    # Limit: keep highest-link-count nodes first
+    if max_nodes > 0 and len(titles) > max_nodes:
+        titles.sort(key=lambda t: len(all_pages[t].get("related", [])) + in_degree.get(t, 0), reverse=True)
+        titles = titles[:max_nodes]
+        keep = set(titles)
+        all_pages = {t: p for t, p in all_pages.items() if t in keep}
+
+    cat_counts: Dict[str, int] = {}
+    total_links = 0
+
+    for title in titles:
+        p = all_pages[title]
+        link_count = len(p.get("related", [])) + in_degree.get(title, 0)
+        total_links += link_count
+        cat_name = p.get("category", "entities")
+        cat_counts[cat_name] = cat_counts.get(cat_name, 0) + 1
+
+        symbol_size = min(12 + link_count * 3, 55)
+        has_issues = bool(p.get("contradictions") or p.get("issues"))
+
+        nodes.append({
+            "id": title,
+            "name": title if len(title) <= 50 else title[:47] + "...",
+            "category": cat_name,
+            "symbolSize": symbol_size,
+            "tags": p.get("tags", [])[:5],
+            "summary": p.get("summary", ""),
+            "linkCount": link_count,
+            "hasIssues": has_issues,
+            "itemStyle": {"color": "#ef4444" if has_issues else cat_colors.get(cat_name, "#4d9fff")},
+        })
+
+    # Build edges (only between nodes in the filtered set)
+    id_set = set(titles)
+    edges = []
+    for title in titles:
+        for rel in all_pages[title].get("related", []):
+            if rel in id_set:
+                edges.append({"source": title, "target": rel})
+
+    return {
+        "nodes": nodes,
+        "edges": edges,
+        "stats": {
+            "totalNodes": len(nodes),
+            "totalEdges": len(edges),
+            "avgLinksPerPage": round(total_links / max(len(nodes), 1), 2),
+            "categories": cat_counts,
+        },
+    }
+
+
 # ── LLM-powered curation (knowledge editor logic) ───────────────
 
 async def llm_curate_page(title: str, body: str, *, existing_titles: List[str] = None,

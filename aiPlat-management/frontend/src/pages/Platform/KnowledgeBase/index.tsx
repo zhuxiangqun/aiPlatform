@@ -6,6 +6,7 @@ import { kbApi } from '../../../services';
 import { DocumentGrid } from './DocumentGrid';
 import { UploadModal } from './UploadModal';
 import { ChatPanel } from './ChatPanel';
+import WikiGraph from '../../../components/wiki/WikiGraph';
 
 const WIKI_API = '/api/core/wiki';
 
@@ -32,7 +33,7 @@ const KnowledgeBasePage: React.FC = () => {
   // Wiki states
   const [wikiPages, setWikiPages] = useState<any[]>([]);
   const [wikiQuery, setWikiQuery] = useState('');
-  const [wikiViewMode, setWikiViewMode] = useState<'list' | 'tree'>('tree');
+  const [wikiViewMode, setWikiViewMode] = useState<'graph' | 'list'>('graph');
   const [wikiCategory, setWikiCategory] = useState('');
   const [wikiLoading, setWikiLoading] = useState(false);
   const [selectedPage, setSelectedPage] = useState<any>(null);
@@ -448,13 +449,13 @@ const KnowledgeBasePage: React.FC = () => {
                   <option value="topics">主题</option>
                 </select>
                 <div className="flex gap-1">
+                  <button onClick={() => setWikiViewMode('graph')}
+                    className={`flex-1 text-[10px] px-2 py-1 rounded ${wikiViewMode === 'graph' ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-gray-200'}`}>
+                    图谱
+                  </button>
                   <button onClick={() => setWikiViewMode('list')}
                     className={`flex-1 text-[10px] px-2 py-1 rounded ${wikiViewMode === 'list' ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-gray-200'}`}>
                     列表
-                  </button>
-                  <button onClick={() => setWikiViewMode('tree')}
-                    className={`flex-1 text-[10px] px-2 py-1 rounded ${wikiViewMode === 'tree' ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-gray-200'}`}>
-                    关系图
                   </button>
                 </div>
                 <Button variant="secondary" size="sm" onClick={fetchWikiPages} loading={wikiLoading} className="w-full"><RefreshCw className="w-3 h-3 mr-1" />刷新</Button>
@@ -478,73 +479,8 @@ const KnowledgeBasePage: React.FC = () => {
           <div className="md:col-span-3">
             <div className="text-xs text-gray-500 mb-2">{wikiPages.length} 个页面</div>
             
-            {wikiViewMode === 'tree' && wikiPages.length > 0 ? (
-              /* Directory / link-graph view */
-              <div className="space-y-3">
-                {/* Category groups */}
-                {(() => {
-                  const grouped: Record<string, any[]> = {};
-                  wikiPages.forEach((p: any) => {
-                    const cat = p.category || 'other';
-                    if (!grouped[cat]) grouped[cat] = [];
-                    grouped[cat].push(p);
-                  });
-                  return Object.entries(grouped).map(([cat, pages]) => (
-                    <details key={cat} open className="rounded-lg border border-dark-border bg-dark-card">
-                      <summary className="px-3 py-2 text-xs font-medium text-gray-300 cursor-pointer hover:text-gray-200 flex items-center gap-2">
-                        <BookOpen className="w-3 h-3" />
-                        <span className={sourceBadge(cat)}>
-                          {cat.toUpperCase()}
-                        </span>
-                        <span className="text-gray-500">({pages.length} 页)</span>
-                      </summary>
-                      <div className="px-3 pb-2 space-y-1.5">
-                        {pages.map((p: any) => (
-                          <div key={p.title} className="group ml-4 border-l border-dark-border pl-3 py-1">
-                            <div className="flex items-center gap-1.5 cursor-pointer hover:text-gray-200 text-gray-300 text-xs"
-                              onClick={() => readWikiPage(p.title)}>
-                              <span className={p.related?.length > 0 ? 'text-blue-400' : 'text-gray-500'}>•</span>
-                              <span>{p.title}</span>
-                              {p.contradictions?.length > 0 && <AlertTriangle className="w-2.5 h-2.5 text-red-400" />}
-                            </div>
-                            {/* Show related links */}
-                            {p.related && p.related.length > 0 && (
-                              <div className="ml-3 mt-0.5 flex gap-1 flex-wrap">
-                                {p.related.slice(0, 5).map((r: string) => (
-                                  <span key={r} className="text-[10px] text-blue-500/60 bg-blue-900/10 px-1 rounded cursor-pointer hover:text-blue-400"
-                                    onClick={(e) => { e.stopPropagation(); readWikiPage(r); }}>
-                                    → {r}
-                                  </span>
-                                ))}
-                                {p.related.length > 5 && (
-                                  <span className="text-[10px] text-gray-600">+{p.related.length - 5}</span>
-                                )}
-                              </div>
-                            )}
-                            {p.summary && <div className="text-[10px] text-gray-600 line-clamp-1 ml-3">{p.summary}</div>}
-                            {/* Tags */}
-                            {p.tags?.length > 0 && (
-                              <div className="ml-3 mt-0.5 flex gap-1">
-                                {p.tags.slice(0,3).map((t:string) => (
-                                  <span key={t} className="text-[9px] text-gray-600 bg-dark-bg px-1 rounded">{t}</span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </details>
-                  ));
-                })()}
-                {/* Link density summary */}
-                <div className="text-[10px] text-gray-600 p-2 bg-dark-bg rounded">
-                  <span className="text-gray-400">
-                    {wikiPages.reduce((sum:number, p:any) => sum + (p.related?.length || 0), 0)} 条链接 /
-                    {wikiPages.length} 个页面 = 
-                    {wikiPages.length > 0 ? (wikiPages.reduce((sum:number, p:any) => sum + (p.related?.length || 0), 0) / wikiPages.length).toFixed(1) : '0'} 平均链接
-                  </span>
-                </div>
-              </div>
+            {wikiViewMode === 'graph' ? (
+              <WikiGraph onSelectPage={(title: string) => readWikiPage(title)} />
             ) : (
               /* Flat list view */
               <div className="space-y-2">
