@@ -72,6 +72,14 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api/, ''),
         timeout: 600000,
       },
+      '/api/onboarding': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/api/policies': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
     },
   },
 })
