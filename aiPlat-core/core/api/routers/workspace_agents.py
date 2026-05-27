@@ -298,6 +298,23 @@ async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
     except Exception:
         mcp_entries = ["(unable to load MCP catalog)"]
 
+    # ── Build sub-agent catalog ───────────────────────────────────
+    agent_catalog: List[str] = []
+    try:
+        from core.harness.kernel.runtime import get_kernel_runtime
+        rt = get_kernel_runtime()
+        mgr = getattr(rt, "workspace_agent_manager", None) if rt else None
+        if mgr:
+            all_agents = await mgr.list_agents(limit=200)
+            for a in all_agents:
+                agent_catalog.append(
+                    f"  - id={a.id} | name={a.name} | type={a.type}"
+                )
+        if not agent_catalog:
+            agent_catalog = ["(no sub-agents available)"]
+    except Exception:
+        agent_catalog = ["(unable to load agent catalog)"]
+
     # ── Build prompt ────────────────────────────────────────────
     prompt = f"""你是一个 AI 平台配置专家。用户正在创建一个新的 AI Agent，请根据以下功能描述推荐最优配置。
 
@@ -314,6 +331,9 @@ async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
 ## 可用 MCP 服务器
 {chr(10).join(mcp_entries[:20]) or '(无)'}
 
+## 可委派的子 Agent（用于 workflow_stages）
+{chr(10).join(agent_catalog[:40]) or '(无)'}
+
 ## Agent 类型说明
 - base: 基础 Agent，通用聊天/问答
 - react: ReAct 思考-行动-观察循环，适合复杂推理任务
@@ -324,7 +344,12 @@ async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
 ## 任务
 根据用户的功能描述，推荐最匹配的配置。输出严格 JSON（无 markdown 标记）:
 
-{{"agent_type":"react|plan|tool|base|conversational","config":{{"model":"deepseek-chat","temperature":0.3,"max_tokens":4096,"system_prompt":"根据功能描述生成的系统提示词(中文)"}},"skills":["技能名1"],"tools":["工具名1"],"mcp_ids":[],"agent_ids":[],"memory_config":{{"type":"short_term","recall_count":5}},"sop_text":"根据功能描述生成的 SOP 步骤(Markdown 格式,中文)","reasoning":"为什么这样选择的简要解释(中文)"}}
+{{"agent_type":"react|plan|tool|base|conversational","config":{{"model":"deepseek-chat","temperature":0.3,"max_tokens":4096,"system_prompt":"根据功能描述生成的系统提示词(中文)"}},"skills":["技能名1"],"tools":["工具名1"],"mcp_ids":[],"agent_ids":["可委派的子Agent ID"],"workflow_stages":[{{"agent_id":"子Agent ID","phase":"阶段名","order":1}}],"memory_config":{{"type":"short_term","recall_count":5}},"sop_text":"根据功能描述生成的 SOP 步骤(Markdown 格式,中文)","reasoning":"为什么这样选择的简要解释(中文)"}}
+
+注意:
+- agent_ids 列出适合委派的子 Agent（用于实时调度）
+- workflow_stages 定义按顺序执行的流水线阶段（如用户描述包含多步骤流程）
+- 如果用户没描述多步骤流程，workflow_stages 可以为空数组
 """
 
     # ── Call LLM ─────────────────────────────────────────────────
@@ -369,6 +394,7 @@ async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
         memory_config=data.get("memory_config", {}) if isinstance(data.get("memory_config"), dict) else {},
         sop_text=str(data.get("sop_text", ""))[:8000],
         reasoning=str(data.get("reasoning", ""))[:500],
+        workflow_stages=list(data.get("workflow_stages", []))[:10],
     )
 
 

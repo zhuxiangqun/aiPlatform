@@ -62,4 +62,5 @@ class AgentAutoFillResponse(BaseModel):
     memory_config: Dict[str, Any] = Field(default_factory=dict)
     sop_text: str = ""
     reasoning: str = ""
+    workflow_stages: List[Dict[str, Any]] = Field(default_factory=list)
 

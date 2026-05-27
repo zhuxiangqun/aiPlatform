@@ -184,6 +184,16 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       if (result.agent_ids?.length) setAgentIds(result.agent_ids.filter((a: string) => agentOptions.some(o => o.value === a)));
       if (result.memory_config) setMemoryConfigText(JSON.stringify(result.memory_config, null, 2));
       if (result.sop_text) setSopText(result.sop_text);
+      if (result.workflow_stages?.length) {
+        const stages = result.workflow_stages.filter((s: any) => s.agent_id && agentOptions.some(o => o.value === s.agent_id));
+        setWorkflowStages(stages.map((s: any, i: number) => ({
+          key: `wf_ai_${i}`,
+          agent_id: s.agent_id,
+          phase: s.phase || `阶段${i + 1}`,
+          order: i + 1,
+        })));
+        setWorkflowExpanded(true);
+      }
       toast.success('AI 智能填充完成', result.reasoning || '');
     } catch (e: any) {
       toast.error('智能填充失败', e?.message || String(e));
