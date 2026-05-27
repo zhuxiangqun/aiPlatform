@@ -379,6 +379,24 @@ async def convert_from_kb(req: ConvertKbRequest = Body(default=None)):
                                 summary=atom_body[:300].replace("\n", " "),
                                 source_articles=[f"kb:{doc_id}"])
                             entities_created += 1
+                    # After creating knowledge atoms, update main page's related
+                    # to include them (prevent orphan pages)
+                    if entities_created > 0 and curated.get("title"):
+                        main_page = read_page(curated["title"])
+                        if main_page:
+                            atom_titles = []
+                            for atom in curated.get("knowledge_atoms", [])[:8]:
+                                a_title = re.sub(r"[<>:\"/\\|?*]", "_", str(atom.get("title", ""))[:80])
+                                if a_title and a_title != curated["title"]:
+                                    atom_titles.append(a_title)
+                            if atom_titles:
+                                existing_related = set(main_page.get("related", []) or [])
+                                existing_related.update(atom_titles)
+                                write_page(curated["title"], main_page.get("body", ""),
+                                    category=main_page.get("category", "entities"),
+                                    tags=main_page.get("tags", []),
+                                    related=list(existing_related)[:10],
+                                    summary=main_page.get("summary", ""))
                     # Mark contradictions
                     for con in curated.get("contradictions", [])[:3]:
                         from core.harness.knowledge.wiki_engine import read_page as _rpx
