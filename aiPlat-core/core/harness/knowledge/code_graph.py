@@ -50,7 +50,13 @@ def repo_root() -> Path:
 
 
 def default_roots() -> List[str]:
-    return ["aiPlat-core", "aiPlat-management/frontend"]
+    return [
+        "aiPlat-core",
+        "aiPlat-infra",
+        "aiPlat-platform",
+        "aiPlat-app",
+        "aiPlat-management/frontend",
+    ]
 
 
 def _strip_py_type_checking(text: str) -> str:

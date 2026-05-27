@@ -172,6 +172,39 @@ def _layer_bucket(path: str) -> str:
     if p.startswith("aiPlat-core/scripts/"):
         return "aiPlat-core:scripts"
 
+    # aiPlat-infra layers
+    if p.startswith("aiPlat-infra/infra/"):
+        rest = p[len("aiPlat-infra/infra/"):]
+        for sub in ("llm", "vector", "cache", "database", "storage", "network",
+                    "messaging", "monitoring", "observability", "memory",
+                    "config", "http", "di", "management", "logging", "utils"):
+            if rest.startswith(f"{sub}/") or rest == sub:
+                return f"infra:{sub}"
+        return "infra:other"
+    if p.startswith("aiPlat-infra/config/"):
+        return "infra:config"
+    if p.startswith("aiPlat-infra/"):
+        return "infra:root"
+
+    # aiPlat-platform layers
+    if p.startswith("aiPlat-platform/"):
+        rest = p[len("aiPlat-platform/"):]
+        for sub in ("api", "auth", "billing", "builder", "deployment",
+                    "gateway", "governance", "kb", "messaging", "registry",
+                    "services", "storage", "tenants", "utils", "data"):
+            if rest.startswith(f"{sub}/") or rest == sub:
+                return f"platform:{sub}"
+        return "platform:other"
+
+    # aiPlat-app layers
+    if p.startswith("aiPlat-app/"):
+        rest = p[len("aiPlat-app/"):]
+        for sub in ("api", "channels", "cli", "events", "generated",
+                    "services", "storage", "utils", "workbench", "data"):
+            if rest.startswith(f"{sub}/") or rest == sub:
+                return f"app:{sub}"
+        return "app:other"
+
     # Frontend layers (management frontend)
     if p.startswith("aiPlat-management/frontend/"):
         rest = p[len("aiPlat-management/frontend/") :]
@@ -194,6 +227,12 @@ def _layer_bucket(path: str) -> str:
     # Fallback
     if p.startswith("aiPlat-core/"):
         return "aiPlat-core:other"
+    if p.startswith("aiPlat-infra/"):
+        return "infra:other"
+    if p.startswith("aiPlat-platform/"):
+        return "platform:other"
+    if p.startswith("aiPlat-app/"):
+        return "app:other"
     if p.startswith("aiPlat-management/"):
         return "aiPlat-management:other"
     return "other"
