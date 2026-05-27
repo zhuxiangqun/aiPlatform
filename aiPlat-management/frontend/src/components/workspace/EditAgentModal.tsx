@@ -14,6 +14,7 @@ interface EditAgentModalProps {
 
 const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
+  const [autoFillLoading, setAutoFillLoading] = useState(false);
   const [skills, setSkills] = useState<string[]>([]);
   const [tools, setTools] = useState<string[]>([]);
   const [mcpIds, setMcpIds] = useState<string[]>([]);
@@ -173,7 +174,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
     const nm = name.trim() || agent.name || '';
     const desc = description.trim();
     if (!nm && !desc) { toast.warning('请先填写名称或描述'); return; }
-    setLoading(true);
+    setAutoFillLoading(true);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
     try {
@@ -206,7 +207,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
         toast.error('智能填充失败', e?.message || String(e));
       }
     } finally {
-      setLoading(false);
+      setAutoFillLoading(false);
     }
   };
 
@@ -437,7 +438,8 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
             <Button
               variant="primary"
               onClick={handleAutoFill}
-              disabled={loading}
+              disabled={autoFillLoading}
+              loading={autoFillLoading}
             >
               ✨ AI 智能填充
             </Button>
