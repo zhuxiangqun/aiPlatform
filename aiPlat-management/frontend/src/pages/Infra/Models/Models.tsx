@@ -181,7 +181,7 @@ const Models: React.FC = () => {
           >
             <Network size={16} />
           </button>
-          {(
+          {record.source !== 'config' && (
             <>
               <button
                 className="p-1.5 rounded-lg text-gray-500 hover:bg-dark-hover transition-colors"
