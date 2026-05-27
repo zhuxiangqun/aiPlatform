@@ -239,17 +239,37 @@ async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
     import json as _json
     import re as _re
 
-    # ── Build skill catalog ──────────────────────────────────────
+    # ── Build skill catalog (enriched with display_name + description) ──
     skill_entries: List[str] = []
     try:
         from core.harness.knowledge.capability_graph import build_capability_graph
+        import yaml as _yaml
+        from pathlib import Path as _Py
         cg = build_capability_graph()
         for nid, n in cg.nodes.items():
             if n.get("type") == "skill":
-                skill_entries.append(
-                    f"  - {n['raw_id']}: {n.get('label', n['raw_id'])} "
-                    f"[category={n.get('category','')}]"
-                )
+                skill_id = n['raw_id']
+                label = n.get('label', skill_id)
+                cat = n.get('category', '')
+                desc = ''
+                # Read SKILL.md to get description
+                skill_path = n.get('path', '')
+                if skill_path:
+                    md_file = _Py(skill_path) / 'SKILL.md'
+                    if md_file.exists():
+                        try:
+                            raw = md_file.read_text(encoding='utf-8', errors='ignore')
+                            if raw.startswith('---'):
+                                parts = raw.split('---', 2)
+                                if len(parts) >= 3:
+                                    fm = _yaml.safe_load(parts[1]) or {}
+                                    desc = str(fm.get('description', '') or '')[:120]
+                        except Exception:
+                            pass
+                if desc:
+                    skill_entries.append(f'  - {skill_id} | {label} | [{cat}] | {desc}')
+                else:
+                    skill_entries.append(f'  - {skill_id} | {label} | [{cat}]')
     except Exception:
         skill_entries = ["(unable to load skill catalog)"]
 
