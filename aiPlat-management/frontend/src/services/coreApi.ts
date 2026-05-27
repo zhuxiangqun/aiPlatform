@@ -537,6 +537,10 @@ export const workspaceMcpApi = {
   disableServer: async (serverName: string) => {
     return apiClient.post<{ status: string }>(`/core/workspace/mcp/servers/${serverName}/disable`, {});
   },
+
+  submitForReview: async (serverName: string) => {
+    return apiClient.post<{ status: string; lint: Record<string, unknown> }>(`/core/workspace/mcp/servers/${serverName}/submit-for-review`);
+  },
 };
 
 // ==================== Skill API ====================
@@ -1990,6 +1994,9 @@ export const workflowApi = {
   },
   publishVersion: async (id: string, data?: { name?: string }) => {
     return apiClient.post<any>(`/platform/workflows/${id}/publish`, data || {});
+  },
+  submitForReview: async (nameOrId: string) => {
+    return apiClient.post<{ status: string; lint: Record<string, unknown> }>(`/core/workflow/templates/${nameOrId}/submit-for-review`);
   },
   listVersions: async (id: string) => {
     return apiClient.get<{ versions: any[]; total: number; latest_version: number }>(`/platform/workflows/${id}/versions`);

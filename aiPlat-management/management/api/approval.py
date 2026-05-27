@@ -128,9 +128,8 @@ async def list_items():
                 "deps_ok": True,
                 "dep_warnings": [],
                 "meta": {
-                    "category": s.get("category", ""),
-                    "version": s.get("version", ""),
-                    "effects": s.get("effects", []),
+                    "transport": s.get("transport", ""),
+                    "url": s.get("url", ""),
                     "governance": (s.get("metadata", {}) or {}).get("governance", {}),
                     "lint": (s.get("metadata", {}) or {}).get("governance", {}).get("lint_result", {}),
                 },
@@ -182,6 +181,8 @@ async def list_items():
                     "node_count": len(w.get("nodes", []) if isinstance(w.get("nodes"), list) else []),
                     "edge_count": len(w.get("edges", []) if isinstance(w.get("edges"), list) else []),
                     "bound_app": w.get("app", ""),
+                    "governance": (w.get("_governance", {}) or {}),
+                    "lint": (w.get("_governance", {}) or {}).get("lint_result", {}),
                 },
             })
     except Exception: pass

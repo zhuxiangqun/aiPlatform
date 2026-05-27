@@ -573,4 +573,76 @@ async def workspace_mcps_installer_resolve_head(request: dict, rt: RuntimeDep = 
         return await mgr.installer_resolve_head(url=str(request.get("url", "")))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/workspace/mcp/servers/{server_name}/submit-for-review")
+async def submit_mcp_for_review(server_name: str):
+    """提交 MCP 服务器进入审批流水线。"""
+    import time as _time
+    from pathlib import Path as _Path
+
+    mgr = _workspace_mcp_manager()
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
+
+    servers = mgr.list_servers() or []
+    srv = next((s for s in servers if s.name == server_name), None)
+    if not srv:
+        raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
+
+    lint_errors = 0
+    lint_warnings = 0
+    lint_messages = []
+
+    home = _Path.home() / ".aiplat" / "mcps" / server_name / "server.yaml"
+    if home.exists():
+        try:
+            from core.management.mcp_config_validator import validate_mcp_server
+            issues = validate_mcp_server(home)
+            for iss in issues:
+                lint_messages.append(f"{'ERROR' if iss.severity == 'error' else 'WARN'}: {iss.message}")
+                if iss.severity == "error":
+                    lint_errors += 1
+                else:
+                    lint_warnings += 1
+        except Exception as e:
+            lint_messages.append(f"Validate failed: {e}")
+            lint_errors += 1
+
+    lint_result = {
+        "risk_level": "high" if lint_errors > 0 else "low",
+        "blocked": lint_errors > 0,
+        "error_count": lint_errors,
+        "warning_count": lint_warnings,
+        "messages": lint_messages,
+    }
+
+    if lint_errors > 0:
+        try:
+            mgr.upsert_server({
+                "name": server_name,
+                "enabled": getattr(srv, "enabled", True),
+                "metadata": {"governance": {"status": "failed", "lint_result": lint_result, "submitted_at": _time.time(), "last_op": "submit_for_review"}},
+            })
+        except Exception:
+            pass
+        raise HTTPException(status_code=422, detail={"message": f"配置校验未通过：{lint_errors} 个错误", "lint": lint_result})
+
+    try:
+        mgr.upsert_server({
+            "name": server_name,
+            "status": "ready",
+            "enabled": True,
+            "metadata": {"governance": {"status": "pending", "lint_result": lint_result, "submitted_at": _time.time(), "last_op": "submit_for_review"}},
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update MCP server: {e}")
+
+    return {
+        "status": "ok",
+        "server_name": server_name,
+        "new_status": "ready",
+        "governance": "pending",
+        "lint": {"risk_level": lint_result["risk_level"], "error_count": lint_errors, "warning_count": lint_warnings},
+    }
     return {"status": "disabled"}

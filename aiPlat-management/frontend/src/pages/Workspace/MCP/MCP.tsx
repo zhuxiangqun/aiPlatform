@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Copy, Info, Pencil, Plus, RotateCw } from 'lucide-react';
+import { Copy, Info, Pencil, Plus, RotateCw, ShieldCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Badge, Table, Switch, Button, Modal, toast } from '../../../components/ui';
 import { useWorkspaceMcpStore } from '../../../stores';
 import type { McpServer } from '../../../services';
+import { workspaceMcpApi } from '../../../services';
 import AddMcpModal from '../../../components/workspace/AddMcpModal';
 import EditMcpModal from '../../../components/workspace/EditMcpModal';
 import { toastGateError } from '../../../components/ui';
@@ -35,7 +36,17 @@ const WorkspaceMCP: React.FC = () => {
       await setServerEnabled(s.name, !s.enabled);
       toast.success(!s.enabled ? '已启用' : '已禁用');
     } catch (e: any) {
-      toastGateError(e, '操作失败');
+      toastGateError(e);
+    }
+  };
+
+  const handleSubmitForReview = async (s: McpServer) => {
+    try {
+      await workspaceMcpApi.submitForReview(s.name);
+      toast.success(`MCP "${s.name}" 已提交审批`);
+      fetchServers();
+    } catch (e: any) {
+      toast.error('提交失败', e?.message || String(e));
     }
   };
 
@@ -103,6 +114,15 @@ const WorkspaceMCP: React.FC = () => {
           >
             <Pencil className="w-4 h-4" />
           </button>
+          {(record.status || '').toLowerCase() === 'draft' || (record.status || '').toLowerCase() === 'enabled' ? (
+            <button
+              onClick={() => handleSubmitForReview(record)}
+              className="p-1.5 rounded-lg text-amber-400 hover:bg-amber-400/10 transition-colors"
+              title="提交审批"
+            >
+              <ShieldCheck className="w-4 h-4" />
+            </button>
+          ) : null}
         </div>
       ),
     },

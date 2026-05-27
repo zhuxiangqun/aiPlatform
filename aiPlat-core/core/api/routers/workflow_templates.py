@@ -152,3 +152,66 @@ async def workflow_installer_install(request: dict):
         return {"installed": res.installed, "skipped": res.skipped}
     except ValueError as e:
         return {"installed": [], "skipped": [{"reason": str(e)}]}
+
+
+@router.post("/workflow/templates/{template_name}/submit-for-review")
+async def submit_workflow_for_review(template_name: str):
+    """提交 Workflow 进入审批流水线。"""
+    import time as _time
+
+    d = _templates_dir()
+    safe = _sanitize(template_name)
+    json_path = d / f"{safe}.json"
+    if not json_path.exists():
+        raise HTTPException(status_code=404, detail=f"Template {template_name} not found")
+
+    lint_errors = 0
+    lint_warnings = 0
+    lint_messages = []
+
+    try:
+        from core.management.workflow_config_validator import validate_workflow_template
+        issues = validate_workflow_template(json_path)
+        for iss in issues:
+            lint_messages.append(f"{'ERROR' if iss.severity == 'error' else 'WARN'}: {iss.message}")
+            if iss.severity == "error":
+                lint_errors += 1
+            else:
+                lint_warnings += 1
+    except Exception as e:
+        lint_messages.append(f"Validate failed: {e}")
+        lint_errors += 1
+
+    lint_result = {
+        "risk_level": "high" if lint_errors > 0 else "low",
+        "blocked": lint_errors > 0,
+        "error_count": lint_errors,
+        "warning_count": lint_warnings,
+        "messages": lint_messages,
+    }
+
+    if lint_errors > 0:
+        # Write governance failed
+        try:
+            raw = _json.loads(json_path.read_text(encoding="utf-8", errors="replace"))
+            raw["_governance"] = {"status": "failed", "lint_result": lint_result, "submitted_at": _time.time()}
+            json_path.write_text(_json.dumps(raw, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception:
+            pass
+        raise HTTPException(status_code=422, detail={"message": f"配置校验未通过：{lint_errors} 个错误", "lint": lint_result})
+
+    try:
+        raw = _json.loads(json_path.read_text(encoding="utf-8", errors="replace"))
+        raw["status"] = "ready"
+        raw["_governance"] = {"status": "pending", "lint_result": lint_result, "submitted_at": _time.time()}
+        json_path.write_text(_json.dumps(raw, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update workflow: {e}")
+
+    return {
+        "status": "ok",
+        "template_name": template_name,
+        "new_status": "ready",
+        "governance": "pending",
+        "lint": {"risk_level": lint_result["risk_level"], "error_count": lint_errors, "warning_count": lint_warnings},
+    }

@@ -1,9 +1,9 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2, GitBranch, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { Plus, Trash2, GitBranch, CheckCircle2, XCircle, Clock, ShieldCheck } from 'lucide-react';
 import { Button, toast } from '../../../components/ui';
 import ImportBar from '../../../components/workspace/ImportBar';
-import { workflowApi, appApi } from '../../../services';
+import { workflowApi, appApi, workflowTemplateApi } from '../../../services';
 
 const WorkflowsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -40,6 +40,14 @@ const WorkflowsPage: React.FC = () => {
       toast.success('已删除');
       refresh();
     } catch (e: any) { toast.error('删除失败', e?.detail || ''); }
+  };
+
+  const handleSubmitForReview = async (wf: any) => {
+    try {
+      await workflowTemplateApi.submitForReview(wf.name);
+      toast.success(`Workflow "${wf.name}" 已提交审批`);
+      refresh();
+    } catch (e: any) { toast.error('提交失败', e?.message || String(e)); }
   };
 
   return (
@@ -127,6 +135,12 @@ const WorkflowsPage: React.FC = () => {
                     className="flex-1 flex items-center justify-center gap-1 py-2 text-[10px] text-gray-500 hover:text-red-400 hover:bg-dark-hover rounded-br-xl transition-colors">
                     <Trash2 className="w-3 h-3" /> 删除
                   </button>
+                  {(wf.status || '').toLowerCase() === 'draft' || !wf.status ? (
+                    <button onClick={e => { e.stopPropagation(); handleSubmitForReview(wf); }}
+                      className="flex-1 flex items-center justify-center gap-1 py-2 text-[10px] text-amber-400 hover:text-amber-300 hover:bg-amber-400/5 transition-colors">
+                      <ShieldCheck className="w-3 h-3" /> 提交审批
+                    </button>
+                  ) : null}
                 </div>
               </div>
             );
