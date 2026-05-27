@@ -141,7 +141,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
     if (!agent) return;
     setSopLoading(true);
     try {
-      const res = await workspaceAgentApi.getSop(agent.id);
+      const res = await workspaceAgentApi.getSop(agent.id).catch(() => ({ sop: '' } as any));
       setSopText(String((res as any).sop || ''));
     } catch {
       // SOP might not exist; allow user to create it.
@@ -156,8 +156,8 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       const [skillRes, toolRes, agentSkills, agentTools] = await Promise.all([
         workspaceSkillApi.list({ limit: 200 }),
         toolApi.list({ limit: 200 } as any),
-        agent ? workspaceAgentApi.getSkills(agent.id) : Promise.resolve({ skill_ids: [] as string[] } as any),
-        agent ? workspaceAgentApi.getTools(agent.id) : Promise.resolve({ tool_ids: [] as string[] } as any),
+        agent ? workspaceAgentApi.getSkills(agent.id).catch(() => ({ skill_ids: agent.skills || [] } as any)) : Promise.resolve({ skill_ids: [] as string[] } as any),
+        agent ? workspaceAgentApi.getTools(agent.id).catch(() => ({ tool_ids: agent.tools || [] } as any)) : Promise.resolve({ tool_ids: [] as string[] } as any),
       ]);
       const baseSkillOptions = (skillRes.skills || []).map((s: any) => ({ value: s.id, label: s.name }));
       const baseToolOptions = (toolRes.tools || []).map((t: any) => ({ value: t.name, label: t.description || t.name }));
