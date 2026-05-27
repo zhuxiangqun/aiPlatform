@@ -117,26 +117,6 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
     return { toolset: 'workspace_default', reason: '默认推荐 workspace_default。' };
   };
 
-  const openDisambiguationWizard = () => {
-    const a = detectAmbiguity();
-    setWizOpen(true);
-    setWizMode(a.wantsFs || a.wantsBrowser || a.wantsHttp || a.wantsDb || a.wantsWeb ? 'auto' : 'manual');
-    const src: string[] = [];
-    if (a.wantsFs) src.push('filesystem');
-    if (a.wantsHttp) src.push('http');
-    if (a.wantsDb) src.push('database');
-    if (a.wantsBrowser) src.push('browser');
-    if (a.wantsWeb) src.push('web');
-    setWizSources(src);
-    setWizMayWrite(a.wantsWrite);
-    try {
-      const rec = recommendToolset({ mode: a.wantsFs || a.wantsBrowser || a.wantsHttp || a.wantsDb || a.wantsWeb ? 'auto' : 'manual', sources: src, mayWrite: a.wantsWrite });
-      setWizToolset(rec.toolset);
-    } catch {
-      setWizToolset('workspace_default');
-    }
-  };
-
   const fetchSop = async () => {
     if (!agent) return;
     setSopLoading(true);
@@ -219,39 +199,6 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       setToolOptions([]);
       setModelOptions([]);
     }
-  };
-
-  const applySmartGenerate = () => {
-    const nm = name.trim() || agent?.name || 'Agent';
-    const desc = description.trim();
-    const modelName = selectedModel || 'DeepSeek Reasoner';
-
-    const sys = [
-      `你是“${nm}”。`,
-      desc ? `职责与边界：${desc}` : '',
-      '请先澄清目标与约束，再给出结构化输出。',
-      '输出要求：给出结论、依据（如有）、以及下一步建议。',
-      '如果缺少上下文，请提出需要的材料（文件/接口/数据范围）。',
-    ].filter(Boolean).join('\n');
-
-    const sop = [
-      '1. 澄清问题与范围（目标/输入/约束/权限）。',
-      '2. 结合已绑定技能/工具执行必要的检索或动作。',
-      '3. 组织答案：结论 → 依据/引用 → 建议/下一步。',
-      '4. 自检：一致性、可执行性、风险与不确定性提示。',
-    ].join('\n');
-
-    try {
-      const cfg: any = configText?.trim() ? JSON.parse(configText) : {};
-      cfg.model = modelName;
-      if (cfg.temperature === undefined) cfg.temperature = 0.1;
-      if (cfg.max_tokens === undefined) cfg.max_tokens = 4096;
-      cfg.system_prompt = sys;
-      setConfigText(JSON.stringify(cfg, null, 2));
-    } catch {
-      setConfigText(JSON.stringify({ model: modelName, temperature: 0.1, max_tokens: 4096, system_prompt: sys }, null, 2));
-    }
-    if (!sopText.trim()) setSopText(sop);
   };
 
   const applySmartGenerateWithWiz = (opts?: { mode?: 'manual' | 'auto'; sources?: string[]; mayWrite?: boolean }) => {
@@ -525,23 +472,27 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
             </select>
           </div>
           <div className="flex items-end justify-end">
-            <Button variant="primary" onClick={openDisambiguationWizard} disabled={loading}>
-              生成向导（推荐）
-            </Button>
             <Button
-              variant="secondary"
+              variant="primary"
               onClick={() => {
                 const a = detectAmbiguity();
-                const hinted = a.wantsFs || a.wantsBrowser || a.wantsHttp || a.wantsDb || a.wantsWeb || a.wantsWrite;
-                if (hinted) {
-                  openDisambiguationWizard();
-                } else {
-                  applySmartGenerate();
+                // Pre-fill wizard from detected keywords
+                const srcs: string[] = [];
+                if (a.wantsFs) srcs.push('filesystem');
+                if (a.wantsBrowser) srcs.push('browser');
+                if (a.wantsHttp) srcs.push('http');
+                if (a.wantsDb) srcs.push('database');
+                if (a.wantsWeb) srcs.push('web');
+                if (srcs.length || a.wantsWrite) {
+                  setWizMode('auto');
+                  setWizSources(srcs);
+                  setWizMayWrite(a.wantsWrite);
                 }
+                setWizOpen(true);
               }}
               disabled={loading}
             >
-              快速生成
+              生成向导（推荐）
             </Button>
           </div>
         </div>
@@ -582,13 +533,6 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
         <div>
           <div className="flex items-center justify-between mb-1">
             <span className="text-sm font-medium text-gray-300">SOP（Markdown，可选）</span>
-            <button
-              onClick={(e) => { e.preventDefault(); applySmartGenerate?.(); }}
-              className="text-xs text-blue-400 hover:text-blue-300"
-              title="AI 根据 Agent 名称和描述自动生成 SOP"
-            >
-              🤖 AI 生成
-            </button>
           </div>
           <Textarea
           value={sopText}
