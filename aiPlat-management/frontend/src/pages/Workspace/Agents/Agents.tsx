@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, RotateCw, PlayCircle, PauseCircle, Trash2, Info, Pencil, Zap, Layers, Clock, MessageSquare, ShieldCheck } from 'lucide-react';
+import { Plus, RotateCw, PlayCircle, PauseCircle, Trash2, Pencil, Zap, Clock, MessageSquare, ShieldCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Table, Select, Button, Modal, toast } from '../../../components/ui';
 import { useWorkspaceAgentStore } from '../../../stores';
@@ -174,7 +174,9 @@ const WorkspaceAgents: React.FC = () => {
       key: 'actions',
       width: 160,
       align: 'center' as const,
-      render: (_: unknown, record: Agent) => (
+      render: (_: unknown, record: Agent) => {
+        const isRunning = (record.runtime_state || '') === 'running';
+        return (
         <div className="flex items-center justify-center gap-1">
           <button
             onClick={() => handleChatOpen(record)}
@@ -184,18 +186,11 @@ const WorkspaceAgents: React.FC = () => {
             <MessageSquare className="w-4 h-4" />
           </button>
           <button
-            onClick={() => { setSelectedAgent(record); setVersionsModalOpen(true); }}
-            className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors"
-            title="版本"
+            onClick={() => isRunning ? handleStop(record) : handleStart(record)}
+            className={`p-1.5 rounded-lg transition-colors ${isRunning ? 'text-warning hover:bg-warning-light' : 'text-success hover:bg-success-light'}`}
+            title={isRunning ? '停止' : '启动'}
           >
-            <Layers className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => { setSelectedAgent(record); setHistoryModalOpen(true); }}
-            className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors"
-            title="历史"
-          >
-            <Clock className="w-4 h-4" />
+            {isRunning ? <PauseCircle className="w-4 h-4" /> : <PlayCircle className="w-4 h-4" />}
           </button>
           <button
             onClick={() => { setSelectedAgent(record); setExecuteModalOpen(true); }}
@@ -207,28 +202,16 @@ const WorkspaceAgents: React.FC = () => {
           <button
             onClick={() => { setSelectedAgent(record); setEditModalOpen(true); }}
             className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors"
-            title="编辑/绑定"
+            title="编辑"
           >
             <Pencil className="w-4 h-4" />
           </button>
           <button
-            onClick={async () => {
-              try {
-                const res = await fetch(`/api/core/entropy/eval/generate/${record.id}`, { method: 'POST' });
-                const data = await res.json();
-                toast.info(data.message || '评估检查完成');
-              } catch { toast.error('检查失败'); }
-            }}
-            className="p-1.5 rounded-lg text-blue-400 hover:bg-blue-900/30 transition-colors"
-            title="生成评估指标"
+            onClick={() => { setSelectedAgent(record); setVersionsModalOpen(true); }}
+            className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors"
+            title="版本/历史"
           >
-            <span className="text-xs">📊</span>
-          </button>
-          <button onClick={() => handleStart(record)} className="p-1.5 rounded-lg text-success hover:bg-success-light transition-colors" title="启动">
-            <PlayCircle className="w-4 h-4" />
-          </button>
-          <button onClick={() => handleStop(record)} className="p-1.5 rounded-lg text-warning hover:bg-warning-light transition-colors" title="停止">
-            <PauseCircle className="w-4 h-4" />
+            <Clock className="w-4 h-4" />
           </button>
           {(record.status || '').toLowerCase() === 'draft' || (record.status || '').toLowerCase() === 'enabled' ? (
             <button
@@ -242,15 +225,9 @@ const WorkspaceAgents: React.FC = () => {
           <button onClick={() => setDeleteConfirm({ open: true, agent: record })} className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors" title="删除">
             <Trash2 className="w-4 h-4" />
           </button>
-          <button
-            onClick={() => { setSelectedAgent(record); setDetailModalOpen(true); }}
-            className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors"
-            title="详情"
-          >
-            <Info className="w-4 h-4" />
-          </button>
         </div>
-      ),
+        );
+      },
     },
   ];
 
