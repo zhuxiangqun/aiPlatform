@@ -150,6 +150,7 @@ async def run_smoke_e2e(*, payload: Dict[str, Any], execution_store: Any = None)
                 "description": "ops smoke e2e",
                 "agent_type": "base",
                 "config": {},
+                "auto_smoke": False,  # prevent recursive autosmoke on smoke agents
             }
             if isinstance(agent_model, str) and agent_model.strip():
                 agent_body["config"] = {"model": agent_model.strip()}
@@ -222,13 +223,33 @@ async def run_smoke_e2e(*, payload: Dict[str, Any], execution_store: Any = None)
         finally:
             # Cleanup (best-effort, do not fail the whole run due to cleanup issues)
             cleanup: Dict[str, Any] = {"attempted": [], "errors": []}
+            import logging
+            _log = logging.getLogger(__name__)
             try:
                 if created_agent_id:
                     cleanup["attempted"].append("platform.agents.delete")
-                    try:
-                        await _req(client, "DELETE", f"{cfg.platform_url}/api/v1/agents/{created_agent_id}", headers=h)
-                    except Exception as e:
-                        cleanup["errors"].append({"step": "agents.delete", "error": str(e)})
+                    deleted = False
+                    for attempt in range(2):
+                        try:
+                            await _req(client, "DELETE", f"{cfg.platform_url}/api/v1/agents/{created_agent_id}", headers=h)
+                            deleted = True
+                            break
+                        except Exception as e:
+                            if attempt == 0:
+                                await asyncio.sleep(0.5)  # brief wait before retry
+                                continue
+                            cleanup["errors"].append({"step": "agents.delete", "error": str(e)})
+                            _log.warning(f"smoke cleanup: failed to delete agent {created_agent_id}: {e}")
+                    # Also clean up from workspace agent manager memory directly (best-effort)
+                    if deleted:
+                        try:
+                            from core.harness.kernel.runtime import get_kernel_runtime
+                            rt = get_kernel_runtime()
+                            mgr = getattr(rt, "workspace_agent_manager", None) if rt else None
+                            if mgr and hasattr(mgr, "delete_agent"):
+                                await mgr.delete_agent(created_agent_id)
+                        except Exception:
+                            pass
                 if created_session_id:
                     cleanup["attempted"].append("app.sessions.end")
                     try:
