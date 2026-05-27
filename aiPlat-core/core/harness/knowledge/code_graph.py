@@ -55,7 +55,7 @@ def default_roots() -> List[str]:
         "aiPlat-infra",
         "aiPlat-platform",
         "aiPlat-app",
-        "aiPlat-management/frontend",
+        "aiPlat-management",
     ]
 
 

@@ -224,6 +224,15 @@ def _layer_bucket(path: str) -> str:
             return "frontend:src-other"
         return "frontend:other"
 
+    # Management backend layers
+    if p.startswith("aiPlat-management/management/"):
+        rest = p[len("aiPlat-management/management/"):]
+        for sub in ("api", "diagnostics", "monitoring", "alerting",
+                    "dashboard", "services", "config"):
+            if rest.startswith(f"{sub}/") or rest == sub:
+                return f"management:{sub}"
+        return "management:other"
+
     # Fallback
     if p.startswith("aiPlat-core/"):
         return "aiPlat-core:other"
