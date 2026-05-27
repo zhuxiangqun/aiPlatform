@@ -82,7 +82,7 @@ class HealthChecker:
         return result
     
     async def _check_ollama_connectivity(self, model: ModelInfo) -> Dict[str, Any]:
-        """检查 Ollama 连通性"""
+        """检查 Ollama 连通性（服务器可达即可）"""
         base_url = model.config.base_url or "http://localhost:11434"
         
         async with aiohttp.ClientSession() as session:
@@ -90,9 +90,7 @@ class HealthChecker:
                 f"{base_url}/api/tags",
                 timeout=aiohttp.ClientTimeout(total=5)
             ) as resp:
-                if resp.status == 200:
-                    return {"success": True, "model_id": model.id}
-                return {"success": False, "error": f"HTTP {resp.status}"}
+                return {"success": True, "model_id": model.id, "status_code": resp.status}
         
     async def _check_ollama_response(self, model: ModelInfo) -> Dict[str, Any]:
         """检查 Ollama 响应"""
@@ -126,18 +124,17 @@ class HealthChecker:
                 return {"success": False, "error": f"HTTP {resp.status}", "latency_ms": latency_ms}
     
     async def _check_openai_connectivity(self, model: ModelInfo) -> Dict[str, Any]:
-        """检查 OpenAI 连通性"""
+        """检查 OpenAI 兼容提供商连通性（服务器可达即可，不要求 /v1/models 端点存在）"""
         base_url = model.config.base_url or "https://api.openai.com"
-        
+
         async with aiohttp.ClientSession() as session:
             async with session.get(
                 f"{base_url}/v1/models",
                 headers=self._get_auth_headers(model),
                 timeout=aiohttp.ClientTimeout(total=10)
             ) as resp:
-                if resp.status in [200, 401, 403]:
-                    return {"success": True, "model_id": model.id}
-                return {"success": False, "error": f"HTTP {resp.status}"}
+                # Any HTTP response means the server is reachable
+                return {"success": True, "model_id": model.id, "status_code": resp.status}
     
     async def _check_openai_response(self, model: ModelInfo) -> Dict[str, Any]:
         """检查 OpenAI 响应"""
@@ -181,7 +178,7 @@ class HealthChecker:
                 return {"success": False, "error": error_data.get("error", {}).get("message", f"HTTP {resp.status}"), "latency_ms": latency_ms}
     
     async def _check_anthropic_connectivity(self, model: ModelInfo) -> Dict[str, Any]:
-        """检查 Anthropic 连通性"""
+        """检查 Anthropic 连通性（服务器可达即可）"""
         base_url = model.config.base_url or "https://api.anthropic.com"
         
         async with aiohttp.ClientSession() as session:
@@ -190,9 +187,7 @@ class HealthChecker:
                 headers=self._get_auth_headers(model),
                 timeout=aiohttp.ClientTimeout(total=10)
             ) as resp:
-                if resp.status in [200, 401, 403, 404]:
-                    return {"success": True, "model_id": model.id}
-                return {"success": False, "error": f"HTTP {resp.status}"}
+                return {"success": True, "model_id": model.id, "status_code": resp.status}
     
     async def _check_anthropic_response(self, model: ModelInfo) -> Dict[str, Any]:
         """检查 Anthropic 响应"""
@@ -237,7 +232,7 @@ class HealthChecker:
                 return {"success": False, "error": error_data.get("error", {}).get("message", f"HTTP {resp.status}"), "latency_ms": latency_ms}
     
     async def _check_deepseek_connectivity(self, model: ModelInfo) -> Dict[str, Any]:
-        """检查 DeepSeek 连通性"""
+        """检查 DeepSeek 连通性（服务器可达即可，不要求 /v1/models 端点存在）"""
         import os
         
         api_key = os.environ.get(model.config.api_key_env or "DEEPSEEK_API_KEY", "")
@@ -249,9 +244,7 @@ class HealthChecker:
                 headers={"Authorization": f"Bearer {api_key}"} if api_key else {},
                 timeout=aiohttp.ClientTimeout(total=10)
             ) as resp:
-                if resp.status in [200, 401, 403]:
-                    return {"success": True, "model_id": model.id}
-                return {"success": False, "error": f"HTTP {resp.status}"}
+                return {"success": True, "model_id": model.id, "status_code": resp.status}
     
     async def _check_deepseek_response(self, model: ModelInfo) -> Dict[str, Any]:
         """检查 DeepSeek 响应"""
@@ -331,7 +324,7 @@ class HealthChecker:
             return {"success": False, "error": str(e)}
     
     async def _check_custom_connectivity(self, model: ModelInfo) -> Dict[str, Any]:
-        """检查自定义模型连通性"""
+        """检查自定义模型连通性（服务器可达即可）"""
         base_url = model.config.base_url
         if not base_url:
             return {"success": False, "error": "Base URL not configured"}
@@ -342,9 +335,7 @@ class HealthChecker:
                 headers=model.config.headers or {},
                 timeout=aiohttp.ClientTimeout(total=10)
             ) as resp:
-                if resp.status in [200, 401, 403]:
-                    return {"success": True, "model_id": model.id}
-                return {"success": False, "error": f"HTTP {resp.status}"}
+                return {"success": True, "model_id": model.id, "status_code": resp.status}
     
     async def _check_custom_response(self, model: ModelInfo) -> Dict[str, Any]:
         """检查自定义模型响应"""
