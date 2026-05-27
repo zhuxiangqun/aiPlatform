@@ -341,15 +341,31 @@ async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
 - tool: 工具调用模式，配合 Function Calling 使用
 - conversational: 多轮对话模式，适合客服/咨询
 
+## 角色匹配指引（常见角色→推荐配置参考）
+选择合适的技能时，优先匹配技能的描述（description）而非技能名（skill_id）：
+- 产品经理/需求分析/PRD → skills: task_planning, task_decomposition, text_generation | tools: search, file_operations | type: react | 子Agent: architect_agent, frontend_engineer, backend_developer, qa_agent
+- 开发/编程/工程 → skills: code_generation, code_review, file_operations | tools: file_operations, search, code | type: react
+- 测试/QA/质量保证 → skills: test_case_generation, code_review, root_cause_analysis, e2e_test | tools: file_operations, search | type: react | 子Agent: programmer_agent
+- 客服/对话/咨询/聊天 → skills: chitchat, translation, summarization | tools: search | type: conversational
+- 数据分析/统计/报表 → skills: data_analysis, summarization, information_search | tools: file_operations, search, database | type: react
+- 审查/审计/代码检查 → skills: code_review, root_cause_analysis | tools: file_operations, search | type: react
+- 监控/研究/调研/竞品 → skills: information_search, summarization, browser_automation | tools: search, webfetch, browser | type: react
+- 设计/UI/UX → skills: text_generation, data_analysis | tools: search, webfetch | type: conversational
+- 安全/合规 → skills: code_review, root_cause_analysis | tools: search, file_operations | type: react
+- 运维/DevOps/SRE → skills: code_generation, file_operations, code_review | tools: file_operations, http, code | type: react
+
+注意：以上仅是参考。根据用户的实际功能描述灵活调整，不要机械套用。优先从可用技能列表中匹配描述最相关的技能。
+
 ## 任务
 根据用户的功能描述，推荐最匹配的配置。输出严格 JSON（无 markdown 标记）:
 
 {{"agent_type":"react|plan|tool|base|conversational","config":{{"model":"deepseek-chat","temperature":0.3,"max_tokens":4096,"system_prompt":"根据功能描述生成的系统提示词(中文)"}},"skills":["技能名1"],"tools":["工具名1"],"mcp_ids":[],"agent_ids":["可委派的子Agent ID"],"workflow_stages":[{{"agent_id":"子Agent ID","phase":"阶段名","order":1}}],"memory_config":{{"type":"short_term","recall_count":5}},"sop_text":"根据功能描述生成的 SOP 步骤(Markdown 格式,中文)","reasoning":"为什么这样选择的简要解释(中文)"}}
 
 注意:
-- agent_ids 列出适合委派的子 Agent（用于实时调度）
-- workflow_stages 定义按顺序执行的流水线阶段（如用户描述包含多步骤流程）
+- agent_ids 列出适合委派的子 Agent（用于实时调度），参考角色匹配指引
+- workflow_stages 定义按顺序执行的流水线阶段（如用户描述包含多步骤流程），阶段数量应与用户描述的工作流步骤匹配
 - 如果用户没描述多步骤流程，workflow_stages 可以为空数组
+- 如技能描述与角色不匹配，优先选择描述最相关的技能而非仅看技能名
 """
 
     # ── Call LLM ─────────────────────────────────────────────────
