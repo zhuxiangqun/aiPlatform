@@ -96,6 +96,7 @@ const DiagnosticsCapabilityPolicy = lazy(() => import('./pages/Diagnostics/Capab
 const DiagnosticsExecBackends = lazy(() => import('./pages/Diagnostics/ExecBackends'));
 const DiagnosticsWorkflows = lazy(() => import('./pages/Diagnostics/Workflows'));
 const DiagnosticsCodeIntel = lazy(() => import('./pages/Diagnostics/CodeIntel/CodeIntel'));
+const DiagnosticsCapabilityGraph = lazy(() => import('./pages/Diagnostics/CapabilityGraph/CapabilityGraph'));
 const Onboarding = lazy(() => import('./pages/Onboarding/Onboarding'));
 
 const router = createBrowserRouter([
@@ -188,6 +189,7 @@ const router = createBrowserRouter([
       { path: 'diagnostics/exec-backends', element: withSuspense(DiagnosticsExecBackends) },
       { path: 'diagnostics/workflows', element: withSuspense(DiagnosticsWorkflows) },
       { path: 'diagnostics/code-intel', element: withSuspense(DiagnosticsCodeIntel) },
+      { path: 'diagnostics/capability-graph', element: withSuspense(DiagnosticsCapabilityGraph) },
     ],
   },
 ]);

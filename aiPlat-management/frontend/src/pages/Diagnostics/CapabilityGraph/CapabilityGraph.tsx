@@ -1,0 +1,364 @@
+import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { Sparkles, Search } from 'lucide-react';
+import { Card, CardHeader, CardContent } from '../../../components/ui/card';
+import { Button } from '../../../components/ui/button';
+
+interface CapNode {
+  id: string;
+  type: string;
+  label: string;
+  raw_id?: string;
+  agent_type?: string;
+  status?: string;
+  category?: string;
+  tags?: string[];
+  description?: string;
+  syscalls_used?: string[];
+  effects?: any[];
+  enabled?: boolean;
+  transport?: string;
+  path?: string;
+}
+
+interface CapEdge {
+  from: string;
+  to: string;
+  relation: string;
+}
+
+interface CapGraphData {
+  nodes: CapNode[];
+  edges: CapEdge[];
+}
+
+interface CapHealthData {
+  score: number;
+  grade: string;
+  signals: {
+    total_nodes: number;
+    total_edges: number;
+    agents: number;
+    skills: number;
+    used_skills: number;
+    tools: number;
+    mcp_servers: number;
+    avg_degree: number;
+  };
+  issues: {
+    unused_skills: string[];
+    orphan_agents: string[];
+    unresolved_refs: Array<{ agent: string; target: string; target_type: string }>;
+  };
+  top_hubs: Array<{ id: string; label: string; type: string; degree: number }>;
+  top_blast: Array<{ id: string; label: string; type: string; blast: number }>;
+  by_type: Record<string, number>;
+}
+
+const TYPE_ICONS: Record<string, string> = {
+  agent: '🤖',
+  skill: '⚡',
+  tool: '🔧',
+  mcp_server: '🔌',
+  workflow: '⚙️',
+  syscall: '📡',
+};
+
+const TYPE_COLORS: Record<string, string> = {
+  agent: 'bg-purple-500/15 text-purple-300 border-purple-500/25',
+  skill: 'bg-amber-500/15 text-amber-300 border-amber-500/25',
+  tool: 'bg-blue-500/15 text-blue-300 border-blue-500/25',
+  mcp_server: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/25',
+  workflow: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/25',
+  syscall: 'bg-pink-500/15 text-pink-300 border-pink-500/25',
+};
+
+const RELATION_LABELS: Record<string, string> = {
+  requires: '需要',
+  uses: '调用',
+  provides: '提供',
+  maps_to: '映射到',
+};
+
+export default function CapabilityGraphPage() {
+  const [searchParams] = useSearchParams();
+  const [graph, setGraph] = useState<CapGraphData | null>(null);
+  const [health, setHealth] = useState<CapHealthData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [typeFilter, setTypeFilter] = useState<string>(searchParams.get('type') || '');
+  const [q, setQ] = useState('');
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [gRes, hRes] = await Promise.all([
+        fetch('/api/core/capability-graph'),
+        fetch('/api/core/capability-health'),
+      ]);
+      if (!gRes.ok) throw new Error(`Graph: ${gRes.status}`);
+      if (!hRes.ok) throw new Error(`Health: ${hRes.status}`);
+      setGraph(await gRes.json());
+      setHealth(await hRes.json());
+    } catch (e: any) {
+      setError(e?.message || '加载失败');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const nodeTypes = [...new Set((graph?.nodes || []).map(n => n.type))].sort();
+  const filteredNodes = (graph?.nodes || []).filter(n => {
+    if (typeFilter && n.type !== typeFilter) return false;
+    if (q && !n.label.toLowerCase().includes(q.toLowerCase()) && !n.id.toLowerCase().includes(q.toLowerCase())) return false;
+    return true;
+  });
+  const filteredNodeIds = new Set(filteredNodes.map(n => n.id));
+  const filteredEdges = (graph?.edges || []).filter(e => filteredNodeIds.has(e.from) && filteredNodeIds.has(e.to));
+
+  if (loading) return <div className="flex items-center justify-center h-64 text-sm text-gray-500">加载中…</div>;
+  if (error) return <div className="p-4 text-red-400">加载失败: {error}</div>;
+
+  return (
+    <div className="space-y-4 p-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Sparkles className="w-5 h-5 text-amber-400" />
+          <h1 className="text-lg font-semibold text-gray-100">AI 能力图谱</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={fetchData}>
+            刷新
+          </Button>
+        </div>
+      </div>
+
+      {/* Health bar */}
+      {health && (
+        <div className="flex items-center gap-3 px-4 py-2 rounded-lg bg-dark-card border border-dark-border text-xs text-gray-400">
+          <span className={`font-bold text-lg ${health.score >= 75 ? 'text-green-400' : health.score >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
+            {health.score} {health.grade}
+          </span>
+          <span className="text-gray-600">|</span>
+          <span>Agent {health.signals.agents}</span>
+          <span className="text-gray-600">|</span>
+          <span>Skill {health.signals.used_skills}/{health.signals.skills}</span>
+          <span className="text-gray-600">|</span>
+          <span>Tool {health.signals.tools}</span>
+          <span className="text-gray-600">|</span>
+          <span>MCP {health.signals.mcp_servers}</span>
+          <span className="text-gray-600">|</span>
+          <span>边 {health.signals.total_edges}</span>
+          {health.issues.unused_skills.length > 0 && (
+            <span className="text-yellow-400 ml-auto">⚠ {health.issues.unused_skills.length} 个未使用 Skill</span>
+          )}
+          {health.issues.orphan_agents.length > 0 && (
+            <span className="text-yellow-400 ml-2">⚠ {health.issues.orphan_agents.length} 个孤立 Agent</span>
+          )}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Left: Node type summary */}
+        <div className="lg:col-span-1 space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="text-sm font-medium text-gray-200">节点类型</div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-1">
+                {nodeTypes.map(t => {
+                  const count = filteredNodes.filter(n => n.type === t).length;
+                  return (
+                    <button
+                      key={t}
+                      onClick={() => setTypeFilter(typeFilter === t ? '' : t)}
+                      className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs transition-colors
+                        ${typeFilter === t ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-gray-200 hover:bg-dark-hover'}`}
+                    >
+                      <span>{TYPE_ICONS[t] || '📦'}</span>
+                      <span className="flex-1 text-left">{t}</span>
+                      <span className="text-gray-500 font-mono">{count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Top Hubs */}
+          {health?.top_hubs && health.top_hubs.length > 0 && (
+            <Card>
+              <CardHeader>
+                <div className="text-sm font-medium text-gray-200">Top Hubs</div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-1">
+                  {health.top_hubs.slice(0, 10).map(h => (
+                    <div key={h.id} className="flex items-center gap-2 text-xs text-gray-400">
+                      <span className={TYPE_COLORS[h.type] ? `px-1.5 py-0.5 rounded text-[10px] border ${TYPE_COLORS[h.type]}` : ''}>
+                        {h.type}
+                      </span>
+                      <span className="text-gray-200 truncate flex-1">{h.label}</span>
+                      <span className="text-gray-500 font-mono">deg={h.degree}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Top Blast */}
+          {health?.top_blast && health.top_blast.length > 0 && (
+            <Card>
+              <CardHeader>
+                <div className="text-sm font-medium text-gray-200">Top Blast（影响面）</div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-1">
+                  {health.top_blast.slice(0, 10).map(b => (
+                    <div key={b.id} className="flex items-center gap-2 text-xs text-gray-400">
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] border ${TYPE_COLORS[b.type] || ''}`}>
+                        {b.type}
+                      </span>
+                      <span className="text-gray-200 truncate flex-1">{b.label}</span>
+                      <span className="text-gray-500 font-mono">blast={b.blast}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Right: Node + Edge tables */}
+        <div className="lg:col-span-2 space-y-4">
+          {/* Search */}
+          <div className="flex items-center gap-2">
+            <div className="flex-1 relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+              <input
+                value={q}
+                onChange={e => setQ(e.target.value)}
+                placeholder="搜索节点..."
+                className="w-full h-9 pl-8 pr-3 bg-dark-card border border-dark-border rounded-lg text-xs text-gray-200 placeholder:text-gray-600 focus:outline-none focus:border-primary/50"
+              />
+            </div>
+            {typeFilter && (
+              <button onClick={() => setTypeFilter('')} className="px-2 py-1 rounded text-[10px] bg-primary/10 text-primary border border-primary/20">
+                {typeFilter} ×
+              </button>
+            )}
+          </div>
+
+          {/* Nodes table */}
+          <Card>
+            <CardHeader>
+              <div className="text-sm font-medium text-gray-200">
+                节点 <span className="text-gray-500 font-normal">{filteredNodes.length}</span>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-gray-500 border-b border-dark-border">
+                      <th className="text-left py-2 px-2 font-medium">类型</th>
+                      <th className="text-left py-2 px-2 font-medium">名称</th>
+                      <th className="text-left py-2 px-2 font-medium">详情</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredNodes.slice(0, 100).map(n => (
+                      <tr key={n.id} className="border-b border-dark-border/50 hover:bg-dark-hover/50">
+                        <td className="py-1.5 px-2">
+                          <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] border ${TYPE_COLORS[n.type] || ''}`}>
+                            {TYPE_ICONS[n.type] || ''} {n.type}
+                          </span>
+                        </td>
+                        <td className="py-1.5 px-2 text-gray-200 font-mono max-w-[200px] truncate" title={n.label}>
+                          {n.label}
+                        </td>
+                        <td className="py-1.5 px-2 text-gray-500">
+                          {n.type === 'agent' && n.agent_type && <span className="mr-2">type={n.agent_type}</span>}
+                          {n.type === 'agent' && n.status && <span className="mr-2">status={n.status}</span>}
+                          {n.type === 'skill' && n.category && <span className="mr-2">cat={n.category}</span>}
+                          {n.type === 'skill' && n.syscalls_used && n.syscalls_used.length > 0 && (
+                            <span className="mr-2">syscalls={n.syscalls_used.length}</span>
+                          )}
+                          {n.type === 'tool' && n.description && <span className="truncate max-w-[300px] inline-block">{n.description}</span>}
+                          {n.type === 'mcp_server' && <span>{n.enabled ? 'enabled' : 'disabled'} {n.transport}</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {filteredNodes.length > 100 && (
+                  <div className="text-center text-gray-500 text-xs py-2">仅显示前 100 条，共 {filteredNodes.length} 条</div>
+                )}
+                {filteredNodes.length === 0 && (
+                  <div className="text-center text-gray-500 text-xs py-4">无匹配节点</div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Edges table */}
+          <Card>
+            <CardHeader>
+              <div className="text-sm font-medium text-gray-200">
+                边 <span className="text-gray-500 font-normal">{filteredEdges.length}</span>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-gray-500 border-b border-dark-border sticky top-0 bg-dark-card">
+                      <th className="text-left py-2 px-2 font-medium">From</th>
+                      <th className="text-left py-2 px-2 font-medium">关系</th>
+                      <th className="text-left py-2 px-2 font-medium">To</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredEdges.slice(0, 200).map((e, i) => {
+                      const fromNode = graph?.nodes.find(n => n.id === e.from);
+                      const toNode = graph?.nodes.find(n => n.id === e.to);
+                      return (
+                        <tr key={`${e.from}-${e.to}-${e.relation}-${i}`} className="border-b border-dark-border/50 hover:bg-dark-hover/50">
+                          <td className="py-1 px-2">
+                            <span className={`inline-block px-1 py-0.5 rounded text-[10px] border ${TYPE_COLORS[fromNode?.type || ''] || ''}`}>
+                              {fromNode?.label || e.from}
+                            </span>
+                          </td>
+                          <td className="py-1 px-2">
+                            <span className="text-gray-400">{RELATION_LABELS[e.relation] || e.relation}</span>
+                          </td>
+                          <td className="py-1 px-2">
+                            <span className={`inline-block px-1 py-0.5 rounded text-[10px] border ${TYPE_COLORS[toNode?.type || ''] || ''}`}>
+                              {toNode?.label || e.to}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                {filteredEdges.length > 200 && (
+                  <div className="text-center text-gray-500 text-xs py-2">仅显示前 200 条，共 {filteredEdges.length} 条</div>
+                )}
+                {filteredEdges.length === 0 && (
+                  <div className="text-center text-gray-500 text-xs py-4">无匹配边</div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}

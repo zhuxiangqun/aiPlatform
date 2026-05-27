@@ -61,6 +61,7 @@ const SystemOverview: React.FC = () => {
   const ch = data?.code_health || {};
   const wh = data?.wiki_health || {};
   const sd = data?.skill_deps || {};
+  const cap = data?.capability_health || {};
   const ag = data?.arch_guard || {};
   const models = data?.models || {};
   const agents = data?.agents || {};
@@ -105,12 +106,15 @@ const SystemOverview: React.FC = () => {
         />
         <HealthCard
           title="技能图谱" icon={<Sparkles className="w-4 h-4 text-amber-400" />}
-          score={sd.unknown_refs === 0 ? 100 : 75} scoreLabel="分 · 依赖完整"
+          to="/diagnostics/capability-graph"
+          score={cap.score ?? 75} scoreLabel="分 · 能力完整度"
           items={[
-            { label: 'Skills', value: sd.skills ?? '—' },
-            { label: 'Agents', value: sd.agents ?? '—' },
-            { label: '未使用 Skill', value: sd.unused_skills ?? '—', ok: (sd.unused_skills ?? 0) === 0 },
-            { label: '未解析引用', value: sd.unknown_refs ?? '—', ok: (sd.unknown_refs ?? 0) === 0 },
+            { label: 'Agent', value: cap.agents ?? '—' },
+            { label: 'Skill', value: `${cap.used_skills ?? '—'} / ${cap.skills ?? '—'}` },
+            { label: 'Tool', value: cap.tools ?? '—' },
+            { label: '未使用 Skill', value: Array.isArray(cap.unused_skills) ? cap.unused_skills.length : '—', ok: (cap.unused_skills || []).length === 0 },
+            { label: '未解析引用', value: cap.unresolved_refs ?? '—', ok: (cap.unresolved_refs ?? 0) === 0 },
+            { label: 'MCP', value: cap.mcp_servers ?? '—' },
           ]}
         />
       </div>

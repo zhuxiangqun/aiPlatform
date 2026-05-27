@@ -1,6 +1,6 @@
 """
-System Overview endpoint — aggregates health data from all 3 knowledge graphs
-plus runtime status (models, agents, servers, pipelines).
+System Overview endpoint — aggregates health data from knowledge graphs
+plus runtime status (models, agents, servers, pipelines, capability graph).
 """
 
 from typing import Any, Dict, List
@@ -52,7 +52,7 @@ async def system_overview() -> Dict[str, Any]:
     except Exception:
         result["wiki_health"] = {"score": 0, "error": "unavailable"}
 
-    # 3. Skill dependencies
+    # 3. Skill dependencies (backward compat — prefer capability_health for full graph)
     try:
         from core.harness.knowledge.skill_deps import build_skill_deps
         sd = build_skill_deps()
@@ -65,6 +65,29 @@ async def system_overview() -> Dict[str, Any]:
         }
     except Exception:
         result["skill_deps"] = {"skills": 0, "error": "unavailable"}
+
+    # 3b. Capability graph health (replaces skill_deps as primary capability view)
+    try:
+        from core.harness.knowledge.capability_graph import build_capability_graph
+        from core.harness.knowledge.capability_health import capability_health_report
+        cg = build_capability_graph()
+        ch = capability_health_report(cg)
+        result["capability_health"] = {
+            "score": ch["score"],
+            "grade": ch["grade"],
+            "agents": ch["signals"]["agents"],
+            "skills": ch["signals"]["skills"],
+            "tools": ch["signals"]["tools"],
+            "mcp_servers": ch["signals"]["mcp_servers"],
+            "used_skills": ch["signals"]["used_skills"],
+            "total_nodes": ch["signals"]["total_nodes"],
+            "total_edges": ch["signals"]["total_edges"],
+            "unused_skills": ch["issues"]["unused_skills"],
+            "orphan_agents": ch["issues"]["orphan_agents"],
+            "unresolved_refs": len(ch["issues"]["unresolved_refs"]),
+        }
+    except Exception:
+        result["capability_health"] = {"score": 0, "error": "unavailable"}
 
     # 4. Architecture guard (static)
     result["arch_guard"] = {"checks": 33, "violations": 0, "compliant": True}
