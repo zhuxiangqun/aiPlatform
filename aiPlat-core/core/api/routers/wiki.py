@@ -411,12 +411,21 @@ async def convert_from_kb(req: ConvertKbRequest = Body(default=None)):
                     writeback_errors += 1
                     logger.warning(f"convert-from-kb: failed to write wiki_pages for doc {doc_id}: {e}")
 
-            # Cross-link pages that share keywords
+            # Cross-link pages that share keywords (validate against actual existing pages)
+            valid_titles = set()
+            try:
+                from core.harness.knowledge.wiki_engine import search_pages
+                valid_titles = set(p["title"] for p in (search_pages(limit=1000) or []))
+            except Exception:
+                pass
             for kw, titles in topic_keywords.items():
                 if len(titles) >= 2:
-                    for t in titles:
-                        related = [t2 for t2 in titles if t2 != t]
-                        # Update each page's related links
+                    # Filter out titles that don't correspond to actual wiki pages
+                    real_titles = [t for t in titles if t in valid_titles]
+                    if len(real_titles) < 2:
+                        continue
+                    for t in real_titles:
+                        related = [t2 for t2 in real_titles if t2 != t]
                         from core.harness.knowledge.wiki_engine import read_page
                         page = read_page(t, category="entities")
                         if page:
@@ -531,9 +540,7 @@ async def curate_wiki():
                 })
                 auto_rel = auto_link_page(p["title"], p.get("body", ""), existing_titles)
                 if auto_rel:
-                    update_page(p["title"], related=list(set(
-                        (p.get("related") or []) + auto_rel
-                    )))
+                    update_page(p["title"], related=auto_rel)
                     report["links_added"] += len(auto_rel)
                     report["processed"] += 1
                 continue
@@ -543,9 +550,7 @@ async def curate_wiki():
                         category=result.get("category"),
                         tags=result.get("tags"),
                         summary=result.get("summary"),
-                        related=list(set(
-                            (p.get("related") or []) + result.get("related", [])
-                        )))
+                        related=result.get("related", []))  # replace, not merge (LLM curates against current titles)
             report["processed"] += 1
             report["links_added"] += len(result.get("related", []))
             if result.get("title") != p["title"]:
