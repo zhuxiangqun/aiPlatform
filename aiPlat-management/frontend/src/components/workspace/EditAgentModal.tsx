@@ -5,6 +5,43 @@ import { workspaceMcpApi, workflowTemplateApi } from '../../services';
 import type { Agent } from '../../services';
 import { Alert, Button, Input, Modal, Textarea, toast, MultiSelect } from '../ui';
 
+const _roleInstruction = (name: string, description: string): string => {
+  const text = `${name} ${description}`.toLowerCase();
+  // Review / code review
+  if (text.includes('审查') || text.includes('review') || text.includes('审计')) {
+    return '你是一个审查员。等待用户提供代码或文档后，逐项检查潜在问题（逻辑错误、安全风险、性能瓶颈、风格违规），按严重程度排列，给出具体修改建议和修改后的代码片段。';
+  }
+  // Testing
+  if (text.includes('测试') || text.includes('test') || text.includes('qa') || text.includes('质量')) {
+    return '你是一个测试专家。根据用户提供的测试目标，设计测试方案（覆盖范围、用例、预期结果），执行测试并报告通过/失败项，对失败项给出根因分析和修复建议。';
+  }
+  // Monitoring / research
+  if (text.includes('监控') || text.includes('monitor') || text.includes('研究') || text.includes('research') || text.includes('newsletter')) {
+    return '你是一个监控/研究员。主动关注目标领域变化，发现值得注意的信号或趋势时进行深入分析并形成结构化报告。定期推送摘要，紧急事件立即告警。';
+  }
+  // Planning / architecture
+  if (text.includes('规划') || text.includes('plan') || text.includes('架构') || text.includes('architect') || text.includes('牧羊')) {
+    return '你是一个规划/架构师。先理解目标、约束和现有条件，再拆解为可执行的阶段任务，每个阶段标注输入/输出/依赖/风险。能根据需求变化调整计划。';
+  }
+  // Developer / engineer
+  if (text.includes('开发') || text.includes('program') || text.includes('工程') || text.includes('后端') || text.includes('前端') || text.includes('devops') || text.includes('sre') || text.includes('工程师')) {
+    return '你是一个开发工程师。等待用户提供需求或代码，先用2-3句话确认理解，再输出实现方案（含技术选型、代码结构、关键实现），代码以可运行的最小版本交付。';
+  }
+  // Chat / support / customer
+  if (text.includes('客服') || text.includes('support') || text.includes('咨询') || text.includes('对话') || text.includes('conversation')) {
+    return '以友好、专业的语气与用户对话。先理解用户的问题或需求，再给出准确、简洁的回答。遇到不确定的问题时坦诚说明，不要编造信息。';
+  }
+  // Data analysis
+  if (text.includes('数据') || text.includes('data') || text.includes('分析') || text.includes('analyst')) {
+    return '你是一个数据分析师。等待用户提供数据或数据源后，先做数据探索（结构、质量、分布），再进行统计分析或建模，输出结论时必须附带图表说明或关键数据点。';
+  }
+  // Design
+  if (text.includes('设计') || text.includes('design') || text.includes('ui') || text.includes('ux') || text.includes('体验')) {
+    return '你是一个设计师。根据用户需求产出设计方案：信息架构 → 交互流程 → 界面草图（用文本描述布局）→ 设计备注（颜色、间距、状态）。每次输出附设计决策的依据。';
+  }
+  return '';
+};
+
 interface EditAgentModalProps {
   open: boolean;
   agent: Agent | null;
@@ -212,6 +249,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
     const sys = [
       `你是“${nm}”。`,
       desc ? `职责与边界：${desc}` : '',
+      _roleInstruction(nm, desc),
       mode === 'auto' ? '你需要在回答前主动获取必要信息（通过工具/MCP/技能），必要时委派子Agent或触发Workflow，不要默认要求用户粘贴大段数据。' : '请先澄清目标与约束，再给出结构化输出。',
       '输出要求：给出结论、依据（如有）、以及下一步建议。',
       '如果缺少上下文，请提出需要的材料（文件/接口/数据范围）。',
