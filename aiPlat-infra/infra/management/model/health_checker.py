@@ -29,7 +29,7 @@ class HealthChecker:
             
             if provider == "ollama":
                 result = await self._check_ollama_connectivity(model)
-            elif provider == "openai":
+            elif provider in ("openai", "openai_compatible"):
                 result = await self._check_openai_connectivity(model)
             elif provider == "anthropic":
                 result = await self._check_anthropic_connectivity(model)
@@ -63,7 +63,7 @@ class HealthChecker:
             
             if provider == "ollama":
                 result = await self._check_ollama_response(model)
-            elif provider == "openai":
+            elif provider in ("openai", "openai_compatible"):
                 result = await self._check_openai_response(model)
             elif provider == "anthropic":
                 result = await self._check_anthropic_response(model)
