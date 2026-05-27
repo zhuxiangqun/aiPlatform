@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Sparkles, Search } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, Sparkles, Search } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
 
@@ -127,6 +127,11 @@ export default function CapabilityGraphPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
+          <Link to="/diagnostics">
+            <Button variant="secondary" icon={<ArrowLeft size={16} />}>
+              返回
+            </Button>
+          </Link>
           <Sparkles className="w-5 h-5 text-amber-400" />
           <h1 className="text-lg font-semibold text-gray-100">AI 能力图谱</h1>
         </div>
