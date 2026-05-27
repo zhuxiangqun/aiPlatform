@@ -245,10 +245,14 @@ class AgentManager:
         s = (status or "").strip().lower()
         if s in ("draft", "ready", "published", "listed", "deprecated"):
             return s
-        if s in ("enabled", "active", "running", "initializing", "pending", "idle"):
-            return "enabled"  # legacy runtime states → governance 'enabled'
+        # Legacy runtime states → governance statuses
+        # Agents that were running/had been started are functionally ready
+        if s in ("running", "active", "initializing", "pending", "idle"):
+            return "ready"
         if s in ("stopped", "error", "terminated", "paused"):
-            return "draft"  # stopped/error agents → draft for re-submission
+            return "draft"
+        if s in ("enabled",):
+            return "ready"  # already enabled = functionally ready for review
         return "draft"
     
     def _seed_data(self):
