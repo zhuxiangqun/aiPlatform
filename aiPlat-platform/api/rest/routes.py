@@ -41,6 +41,12 @@ from core.api.core_facade import create_infra_database_client
 
 app = FastAPI(title="aiPlat-platform", version="0.1.0")
 
+
+@app.get("/health")
+def health():
+    return {"status": "healthy"}
+
+
 # ── Governance middleware ────────────────────────────────────────────────
 # Rate limiting and audit logging wired per CLAUDE.md architecture audit.
 # Toggle via AIPLAT_RATE_LIMIT_ENABLED / AIPLAT_AUDIT_LOG_ENABLED env vars.
