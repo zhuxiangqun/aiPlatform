@@ -171,7 +171,6 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
     try {
       const result = await workspaceAgentApi.autoFill({ name: nm, description: desc });
       clearTimeout(timeout);
-      if (result.agent_type) setAgentStatus(result.agent_type);
       if (result.config) setConfigText(JSON.stringify(result.config, null, 2));
       if (result.skills?.length) setSkills(result.skills.filter((s: string) => skillOptions.some(o => o.value === s)));
       if (result.tools?.length) setTools(result.tools.filter((t: string) => toolOptions.some(o => o.value === t)));
