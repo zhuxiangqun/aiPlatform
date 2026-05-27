@@ -121,6 +121,19 @@ const ApprovalCenter: React.FC = () => {
                   <div style={{ fontSize: 12, marginBottom: 4 }}>{ok(item.tools?.length > 0)} Tools 绑定 ({item.tools?.length || 0}个)</div>
                   <div style={{ fontSize: 12, marginBottom: 4 }}>{ok(m.model)} 模型配置: {m.model || '未配置'}</div>
                   {item.deps_ok === false && <div style={{ fontSize: 12, marginBottom: 4, color: '#f59e0b' }}>⚠ 依赖未全部上架</div>}
+                  {m.lint && (
+                    <div style={{ fontSize: 12, lineHeight: 1.6, padding: '8px 10px', background: m.lint.risk_level === 'high' ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)', borderRadius: 6, marginTop: 6 }}>
+                      <div style={{ marginBottom: 2 }}>
+                        🔍 配置校验: <span style={{ color: m.lint.error_count > 0 ? '#ef4444' : '#f59e0b' }}>E{m.lint.error_count || '?'}</span>
+                        {' / '}
+                        <span style={{ color: '#f59e0b' }}>W{m.lint.warning_count || '?'}</span>
+                      </div>
+                      {m.lint.blocked && <div style={{ fontSize: 11, color: '#ef4444' }}>⚠ 存在阻塞错误，无法通过审批</div>}
+                    </div>
+                  )}
+                  {m.governance?.status === 'pending' && (
+                    <div style={{ fontSize: 12, marginTop: 4, color: '#f59e0b' }}>📋 治理状态: 待审批</div>
+                  )}
                 </>
               )}
               {item.type === 'skill' && (

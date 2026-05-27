@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, RotateCw, PlayCircle, PauseCircle, Trash2, Info, Pencil, Zap, Layers, Clock, MessageSquare } from 'lucide-react';
+import { Plus, RotateCw, PlayCircle, PauseCircle, Trash2, Info, Pencil, Zap, Layers, Clock, MessageSquare, ShieldCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Table, Select, Button, Modal, toast } from '../../../components/ui';
 import { useWorkspaceAgentStore } from '../../../stores';
@@ -83,6 +83,16 @@ const WorkspaceAgents: React.FC = () => {
       setDeleteConfirm({ open: false, agent: null });
     } catch {
       toast.error('删除失败');
+    }
+  };
+
+  const handleSubmitForReview = async (agent: Agent) => {
+    try {
+      await workspaceAgentApi.submitForReview(agent.id);
+      toast.success(`Agent "${agent.name}" 已提交审批`);
+      fetchAgents();
+    } catch (e: any) {
+      toast.error('提交失败', e?.message || String(e));
     }
   };
 
@@ -210,6 +220,15 @@ const WorkspaceAgents: React.FC = () => {
           <button onClick={() => handleStop(record)} className="p-1.5 rounded-lg text-warning hover:bg-warning-light transition-colors" title="停止">
             <PauseCircle className="w-4 h-4" />
           </button>
+          {(record.status || '').toLowerCase() === 'draft' || (record.status || '').toLowerCase() === 'enabled' ? (
+            <button
+              onClick={() => handleSubmitForReview(record)}
+              className="p-1.5 rounded-lg text-amber-400 hover:bg-amber-400/10 transition-colors"
+              title="提交审批"
+            >
+              <ShieldCheck className="w-4 h-4" />
+            </button>
+          ) : null}
           <button onClick={() => setDeleteConfirm({ open: true, agent: record })} className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors" title="删除">
             <Trash2 className="w-4 h-4" />
           </button>

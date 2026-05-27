@@ -938,3 +938,126 @@ async def workspace_agents_installer_resolve_head(request: dict, rt: RuntimeDep 
         return await mgr.installer_resolve_head(url=str(request.get("url", "")))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/workspace/agents/{agent_id}/submit-for-review")
+async def submit_agent_for_review(agent_id: str, rt: RuntimeDep = None):
+    """提交 Agent 进入审批流水线。
+
+    1. 获取 Agent 当前状态（仅 draft/enabled 可提交）
+    2. 运行 AGENT.md 配置校验
+    3. 有 error → 拒绝提交，返回校验报告
+    4. 无 error → status → ready, governance → pending
+    """
+    mgr = _ws_agent_mgr(rt)
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+
+    agent = await mgr.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+
+    current_status = str(getattr(agent, "status", "") or "draft")
+    if current_status not in ("draft", "enabled", ""):
+        raise HTTPException(status_code=409, detail=f"Agent status is '{current_status}', must be draft or enabled")
+
+    # ── Run Config Validation ─────────────────────────────────────
+    import time as _time
+    from pathlib import Path as _Path
+
+    lint_errors = 0
+    lint_warnings = 0
+    lint_messages: list = []
+
+    agent_path = None
+    try:
+        from core.harness.kernel.runtime import get_kernel_runtime
+        rt2 = get_kernel_runtime()
+        agent_mgr = getattr(rt2, "workspace_agent_manager", None) if rt2 else None
+        if agent_mgr and hasattr(agent_mgr, "_agents_dir"):
+            ws_agents = _Path(str(agent_mgr._agents_dir)) / agent_id / "AGENT.md"
+            if ws_agents.exists():
+                agent_path = ws_agents
+        if not agent_path:
+            engine_agents = _Path(__file__).resolve().parent.parent.parent.parent / "engine" / "agents" / agent_id / "AGENT.md"
+            if engine_agents.exists():
+                agent_path = engine_agents
+    except Exception:
+        pass
+
+    if agent_path:
+        try:
+            from core.management.agent_config_validator import validate_agent_file
+            issues = validate_agent_file(agent_path)
+            for iss in issues:
+                lint_messages.append(f"{'ERROR' if iss.severity == 'error' else 'WARN'}: {iss.message}")
+                if iss.severity == "error":
+                    lint_errors += 1
+                else:
+                    lint_warnings += 1
+        except Exception as e:
+            lint_messages.append(f"Validate failed: {e}")
+            lint_errors += 1
+
+    lint_result = {
+        "risk_level": "high" if lint_errors > 0 else "low",
+        "blocked": lint_errors > 0,
+        "error_count": lint_errors,
+        "warning_count": lint_warnings,
+        "messages": lint_messages,
+    }
+
+    if lint_errors > 0:
+        try:
+            await mgr.update_agent(agent_id, metadata={
+                "governance": {
+                    "status": "failed",
+                    "lint_result": lint_result,
+                    "submitted_at": _time.time(),
+                    "last_op": "submit_for_review",
+                },
+                "verification": {
+                    "status": "failed",
+                    "source": "config_validator",
+                },
+            })
+        except Exception:
+            pass
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": f"配置校验未通过：{lint_errors} 个错误，{lint_warnings} 个警告",
+                "lint": lint_result,
+            },
+        )
+
+    try:
+        await mgr.update_agent(agent_id,
+            status="ready",
+            metadata={
+                "governance": {
+                    "status": "pending",
+                    "lint_result": lint_result,
+                    "submitted_at": _time.time(),
+                    "last_op": "submit_for_review",
+                },
+                "verification": {
+                    "status": "pending",
+                    "source": "config_validator",
+                },
+            },
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update agent status: {e}")
+
+    return {
+        "status": "ok",
+        "agent_id": agent_id,
+        "new_status": "ready",
+        "governance": "pending",
+        "lint": {
+            "risk_level": lint_result["risk_level"],
+            "error_count": lint_errors,
+            "warning_count": lint_warnings,
+        },
+    }

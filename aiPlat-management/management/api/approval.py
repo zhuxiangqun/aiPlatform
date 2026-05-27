@@ -105,6 +105,8 @@ async def list_items():
                     "sop_steps": 0,
                     "mcp_ids": a.get("mcp_ids", []) or [],
                     "workflow_ids": a.get("workflow_ids", []) or [],
+                    "governance": (a.get("metadata", {}) or {}).get("governance", {}),
+                    "lint": (a.get("metadata", {}) or {}).get("governance", {}).get("lint_result", {}),
                 },
             })
     except Exception: pass

@@ -138,6 +138,10 @@ export const workspaceAgentApi = {
     }>('/core/workspace/agents/auto-fill', data);
   },
 
+  submitForReview: async (agentId: string) => {
+    return apiClient.post<{ status: string; agent_id: string; new_status: string; governance: string; lint: Record<string, unknown> }>(`/core/workspace/agents/${agentId}/submit-for-review`);
+  },
+
   delete: async (agentId: string) => {
     return apiClient.delete<{ status: string; id: string }>(`/core/workspace/agents/${agentId}`);
   },
