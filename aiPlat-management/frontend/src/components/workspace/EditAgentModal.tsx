@@ -77,6 +77,88 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
     }
   }, [open, agent]);
 
+  const fetchSop = async () => {
+    if (!agent) return;
+    setSopLoading(true);
+    try {
+      const res = await workspaceAgentApi.getSop(agent.id).catch(() => ({ sop: '' } as any));
+      setSopText(String((res as any).sop || ''));
+    } catch {
+      setSopText('');
+    } finally {
+      setSopLoading(false);
+    }
+  };
+
+  const fetchOptions = async () => {
+    try {
+      const [skillRes, toolRes, agentSkills, agentTools] = await Promise.all([
+        workspaceSkillApi.list({ limit: 200 }),
+        toolApi.list({ limit: 200 } as any),
+        agent ? workspaceAgentApi.getSkills(agent.id).catch(() => ({ skill_ids: agent.skills || [] } as any)) : Promise.resolve({ skill_ids: [] as string[] } as any),
+        agent ? workspaceAgentApi.getTools(agent.id).catch(() => ({ tool_ids: agent.tools || [] } as any)) : Promise.resolve({ tool_ids: [] as string[] } as any),
+      ]);
+      const baseSkillOptions = (skillRes.skills || []).map((s: any) => ({ value: s.id, label: s.name }));
+      const baseToolOptions = (toolRes.tools || []).map((t: any) => ({ value: t.name, label: t.description || t.name }));
+
+      const selectedSkillIds: string[] = ((agentSkills as any).skill_ids || agent?.skills || []) as string[];
+      const selectedToolIds: string[] = ((agentTools as any).tool_ids || agent?.tools || []) as string[];
+
+      const skillSet = new Set(baseSkillOptions.map((o: any) => o.value));
+      const toolSet = new Set(baseToolOptions.map((o: any) => o.value));
+      const missingSkillOptions = selectedSkillIds
+        .filter((id) => id && !skillSet.has(id))
+        .map((id) => ({ value: id, label: `${id}（未在 Skill 库中找到）` }));
+      const missingToolOptions = selectedToolIds
+        .filter((id) => id && !toolSet.has(id))
+        .map((id) => ({ value: id, label: `${id}（未在 Tool 列表中找到）` }));
+
+      setSkillOptions([...baseSkillOptions, ...missingSkillOptions]);
+      setToolOptions([...baseToolOptions, ...missingToolOptions]);
+      if (agent) {
+        setSkills(selectedSkillIds);
+        setTools(selectedToolIds);
+      }
+
+      try {
+        const mcpRes = await workspaceMcpApi.listServers();
+        const mcpList = (mcpRes as any).servers || [];
+        setMcpOptions(mcpList.map((s: any) => ({ value: s.name || s.id, label: `${s.name || s.id} (MCP)` })));
+      } catch { /* ignore */ }
+      try {
+        const wfRes = await workflowTemplateApi.list();
+        setWorkflowOptions(((wfRes as any).templates || []).map((w: any) => ({ value: w.name, label: `${w.label || w.name} (Workflow)` })));
+      } catch { /* ignore */ }
+      try {
+        const agentRes = await workspaceAgentApi.list({ limit: 200 });
+        setAgentOptions(((agentRes as any).agents || []).filter((a: any) => a.name && a.id !== agent?.id)
+          .map((a: any) => ({ value: a.id || a.name, label: `${a.name || a.id} (Agent)` })));
+      } catch { /* ignore */ }
+
+      try {
+        const modelRes = await modelsApi.list();
+        const models = ((modelRes as any).models || []) as { name: string; provider: string; capabilities: string[] }[];
+        const modelOpts = models.map((m) => ({
+          value: m.name,
+          label: `${m.name} (${m.provider})${m.capabilities?.includes('reasoning') ? ' 🧠' : ''}`,
+        }));
+        setModelOptions(modelOpts);
+        if (!selectedModel && models.length > 0) {
+          const prefer = models.find((m) => m.name.includes('reasoner'))
+            || models.find((m) => m.capabilities?.includes('reasoning'))
+            || models[0];
+          setSelectedModel(prefer?.name || models[0]?.name || '');
+        }
+      } catch {
+        setModelOptions([]);
+      }
+    } catch {
+      setSkillOptions([]);
+      setToolOptions([]);
+      setModelOptions([]);
+    }
+  };
+
   const handleAutoFill = async () => {
     if (!agent) return;
     const nm = name.trim() || agent.name || '';
