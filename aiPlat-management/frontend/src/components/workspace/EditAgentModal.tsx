@@ -33,15 +33,6 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
   const [agentOptions, setAgentOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [modelOptions, setModelOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [selectedModel, setSelectedModel] = useState<string>('');
-  // Inline workflow stages
-  interface WorkflowStage {
-    key: string;
-    agent_id: string;
-    phase: string;
-    order: number;
-  }
-  const [workflowStages, setWorkflowStages] = useState<WorkflowStage[]>([]);
-  const [workflowExpanded, setWorkflowExpanded] = useState(false);
   const [defaultToolset, setDefaultToolset] = useState<string>('workspace_default');
   // Pipeline/Builder configuration fields
   const [generateTestPlan, setGenerateTestPlan] = useState(false);
@@ -188,16 +179,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       if (result.agent_ids?.length) setAgentIds(result.agent_ids.filter((a: string) => agentOptions.some(o => o.value === a)));
       if (result.memory_config) setMemoryConfigText(JSON.stringify(result.memory_config, null, 2));
       if (result.sop_text) setSopText(result.sop_text);
-      if (result.workflow_stages?.length) {
-        const stages = result.workflow_stages.filter((s: any) => s.agent_id && agentOptions.some(o => o.value === s.agent_id));
-        setWorkflowStages(stages.map((s: any, i: number) => ({
-          key: `wf_ai_${i}`,
-          agent_id: s.agent_id,
-          phase: s.phase || `阶段${i + 1}`,
-          order: i + 1,
-        })));
-        setWorkflowExpanded(true);
-      }
+      if (result.workflow_ids?.length) setWorkflowIds(result.workflow_ids.filter((w: string) => Array.isArray(workflowOptions) && workflowOptions.some(o => o.value === w)));
       toast.success('AI 智能填充完成', result.reasoning || '');
     } catch (e: any) {
       clearTimeout(timeout);
@@ -250,39 +232,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       metadata.hitl_after_phase = hitlAfterPhase.trim() || undefined;
       metadata.loop_type = loopType;
 
-      // Save inline workflow stages as a template, then bind it to this agent
-      const validStages = workflowStages.filter(s => s.agent_id && s.phase).sort((a, b) => a.order - b.order);
-      if (validStages.length > 0) {
-        try {
-          const wfName = `wf_${agent.id}`;
-          const wfPayload = {
-            name: wfName,
-            description: `Auto-generated workflow from agent "${agent.name}"`,
-            stages: validStages.map((s, i) => ({
-              agent_id: s.agent_id,
-              phase: s.phase,
-              order: i + 1,
-              output_artifact: `${s.phase}_output`.replace(/\s+/g, '_'),
-            })),
-          };
-          await workflowTemplateApi.save(wfPayload);
-          // Ensure the workflow is in the bound list
-          if (!workflowIds.includes(wfName)) {
-            setWorkflowIds(prev => [...prev, wfName]);
-          }
-          // Update the local workflowIds for the save call below
-          const allWfIds = [...new Set([...workflowIds, wfName])];
-          await workspaceAgentApi.update(agent.id, { name: name.trim() || undefined, status: agentStatus || undefined, config, skills: skills.length ? skills : undefined, tools: tools.length ? tools : undefined, mcp_ids: mcpIds.length ? mcpIds : undefined, workflow_ids: allWfIds, agent_ids: agentIds.length ? agentIds : undefined, memory_config, metadata });
-          // Skip the normal update below since we already did it
-          // Continue to SOP + binding sync
-        } catch (e: any) {
-          toast.error('Workflow 保存失败', e?.message || String(e));
-          setLoading(false);
-          return;
-        }
-      } else {
-        await workspaceAgentApi.update(agent.id, { name: name.trim() || undefined, status: agentStatus || undefined, config, skills: skills.length ? skills : undefined, tools: tools.length ? tools : undefined, mcp_ids: mcpIds.length ? mcpIds : undefined, workflow_ids: workflowIds.length ? workflowIds : undefined, agent_ids: agentIds.length ? agentIds : undefined, memory_config, metadata });
-      }
+      await workspaceAgentApi.update(agent.id, { name: name.trim() || undefined, status: agentStatus || undefined, config, skills: skills.length ? skills : undefined, tools: tools.length ? tools : undefined, mcp_ids: mcpIds.length ? mcpIds : undefined, workflow_ids: workflowIds.length ? workflowIds : undefined, agent_ids: agentIds.length ? agentIds : undefined, memory_config, metadata });
 
       // update SOP (best-effort; do not block binding changes)
       try {
@@ -376,7 +326,6 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
             </div>
           )}
         </div>
-        <Input label="描述（可选）" value={description} onChange={(e: any) => setDescription(e.target.value)} />
 
         {/* ── 流水线配置 ── */}
         <details className="mt-2">
@@ -467,72 +416,6 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
 
         {agentOptions.length > 0 && (
           <MultiSelect label="绑定子 Agent" options={agentOptions} selected={agentIds} onChange={setAgentIds} hint="当前 Agent 可以将任务委派给选中的子 Agent" />
-        )}
-
-        {/* Inline Workflow Stage Config */}
-        {agentOptions.length > 0 && (
-          <div className="bg-dark-bg border border-dark-border rounded-lg p-3">
-            <div
-              className="flex items-center justify-between cursor-pointer select-none"
-              onClick={() => setWorkflowExpanded(!workflowExpanded)}
-            >
-              <span className="text-sm font-medium text-gray-200">内建 Workflow 阶段</span>
-              <span className="text-gray-500 text-xs">{workflowExpanded ? '收起 ▲' : '展开 ▼'}</span>
-            </div>
-            <p className="text-xs text-gray-500 mt-1 mb-2">
-              为当前 Agent 配置顺序执行的工作流阶段，每个阶段绑定一个子 Agent。保存时会自动创建/更新 Workflow 模板。
-            </p>
-            {workflowExpanded && (
-              <div className="space-y-2">
-                {workflowStages.sort((a, b) => a.order - b.order).map((stage, idx) => (
-                  <div key={stage.key} className="flex items-center gap-2 bg-dark-card rounded p-2">
-                    <span className="text-xs text-gray-500 w-6">{idx + 1}.</span>
-                    <select
-                      value={stage.agent_id}
-                      onChange={(e) => {
-                        setWorkflowStages(prev => prev.map(s => s.key === stage.key ? { ...s, agent_id: e.target.value } : s));
-                      }}
-                      className="flex-1 h-8 px-2 bg-dark-bg border border-dark-border rounded text-xs text-gray-200"
-                    >
-                      <option value="">选择子 Agent</option>
-                      {agentOptions.map(a => (
-                        <option key={a.value} value={a.value}>{a.label}</option>
-                      ))}
-                    </select>
-                    <input
-                      value={stage.phase}
-                      onChange={(e) => {
-                        setWorkflowStages(prev => prev.map(s => s.key === stage.key ? { ...s, phase: e.target.value } : s));
-                      }}
-                      placeholder="阶段名（如: 设计、开发、测试）"
-                      className="w-28 h-8 px-2 bg-dark-bg border border-dark-border rounded text-xs text-gray-200 placeholder-gray-600"
-                    />
-                    <button
-                      onClick={() => setWorkflowStages(prev => prev.filter(s => s.key !== stage.key))}
-                      className="p-1 text-gray-500 hover:text-red-400"
-                      title="删除阶段"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-                <button
-                  onClick={() => {
-                    const newStage: WorkflowStage = {
-                      key: `wf_${Date.now()}`,
-                      agent_id: '',
-                      phase: '',
-                      order: workflowStages.length + 1,
-                    };
-                    setWorkflowStages(prev => [...prev, newStage]);
-                  }}
-                  className="w-full py-1.5 rounded border border-dashed border-dark-border text-xs text-gray-500 hover:text-gray-300 hover:border-gray-600 transition-colors"
-                >
-                  ＋ 添加阶段
-                </button>
-              </div>
-            )}
-          </div>
         )}
 
         <div className="grid grid-cols-2 gap-4">

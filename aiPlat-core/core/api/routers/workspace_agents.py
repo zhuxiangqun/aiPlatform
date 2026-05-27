@@ -315,6 +315,26 @@ async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
     except Exception:
         agent_catalog = ["(unable to load agent catalog)"]
 
+    # ── Build workflow template catalog ────────────────────────────
+    wf_catalog: List[str] = []
+    try:
+        import json as _wjson, os as _wos
+        from pathlib import Path as _WPath
+        wf_dir = _WPath(_wos.getenv("AIPLAT_HOME", _wos.path.expanduser("~/.aiplat"))) / "workflow_templates"
+        if wf_dir.exists():
+            for f in sorted(wf_dir.glob("*.json")):
+                try:
+                    data = _wjson.loads(f.read_text(encoding="utf-8"))
+                    nm = data.get("name", f.stem)
+                    sz = len(data.get("stages", []))
+                    wf_catalog.append(f"  - {f.stem} | {nm} | stages={sz}")
+                except Exception:
+                    pass
+        if not wf_catalog:
+            wf_catalog = ["(no workflow templates available — create one in Workflow 页面)"]
+    except Exception:
+        wf_catalog = ["(unable to load workflow catalog)"]
+
     # ── Build prompt ────────────────────────────────────────────
     prompt = f"""你是一个 AI 平台配置专家。用户正在创建一个新的 AI Agent，请根据以下功能描述推荐最优配置。
 
@@ -331,26 +351,29 @@ async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
 ## 可用 MCP 服务器
 {chr(10).join(mcp_entries[:20]) or '(无)'}
 
-## 可委派的子 Agent（用于 workflow_stages）
+## 可委派的子 Agent
 {chr(10).join(agent_catalog[:40]) or '(无)'}
+
+## 已有 Workflow 模板
+{chr(10).join(wf_catalog[:20]) or '(无)'}
 
 ## Agent 类型说明
 - base: 基础 Agent，通用聊天/问答
-- react: ReAct 思考-行动-观察循环，适合复杂推理任务
-- plan: Plan-Execute 模式，先规划再执行，适合多步骤任务
+- react: ReAct 模式，适合需要工具调用、多步推理、结构化输出的 Agent
+- plan: Plan-Execute 模式，先规划再执行，适合复杂多步骤任务
 - tool: 工具调用模式，配合 Function Calling 使用
-- conversational: 多轮对话模式，适合客服/咨询
+- conversational: 纯对话模式，仅适用于无工具调用、单轮问答的客服/闲聊 Agent
 
 ## 任务
 根据用户的功能描述，推荐最匹配的配置。输出严格 JSON（无 markdown 标记）:
 
-{{"agent_type":"react|plan|tool|base|conversational","config":{{"model":"deepseek-chat","temperature":0.3,"max_tokens":4096,"system_prompt":"根据功能描述生成的系统提示词(中文)"}},"skills":["技能名1"],"tools":["工具名1"],"mcp_ids":[],"agent_ids":["可委派的子Agent ID"],"workflow_stages":[{{"agent_id":"子Agent ID","phase":"阶段名","order":1}}],"memory_config":{{"type":"short_term","recall_count":5}},"sop_text":"根据功能描述生成的 SOP 步骤(Markdown 格式,中文)","reasoning":"为什么这样选择的简要解释(中文)"}}
+{{"agent_type":"react|plan|tool|base|conversational","config":{{"model":"deepseek-chat","temperature":0.3,"max_tokens":4096,"system_prompt":"根据功能描述生成的系统提示词(中文)"}},"skills":["技能名1"],"tools":["工具名1"],"mcp_ids":[],"agent_ids":["可委派的子Agent ID"],"workflow_ids":["已有Workflow模板名"],"memory_config":{{"type":"short_term","recall_count":5}},"sop_text":"根据功能描述生成的 SOP 步骤(Markdown 格式,中文)","reasoning":"为什么这样选择的简要解释(中文)"}}
 
 ## 选择原则
 - 根据技能描述（description）匹配用户需求，不要仅看技能名称
-- skills 应同时包含：用户描述中直接需要的 + 执行描述中隐含需要的（如"盘点系统已有能力"→ information_search, knowledge_retrieval；"生成 PRD"→ task_planning, text_generation）
-- agent_ids 和 workflow_stages 根据用户描述的工作流程动态决策，不要预填不相关的子 Agent
-- workflow_stages 的 agent_id 必须从"可委派的子 Agent"列表中选择
+- skills 应同时包含：用户描述中直接需要的 + 执行描述中隐含需要的
+- agent_ids 从"可委派的子Agent"中选择，只选与用户流程实际相关的角色
+- workflow_ids 从"已有 Workflow 模板"中选择匹配的模板名，如无匹配可为空数组
 """
 
     # ── Call LLM ─────────────────────────────────────────────────
@@ -395,7 +418,7 @@ async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
         memory_config=data.get("memory_config", {}) if isinstance(data.get("memory_config"), dict) else {},
         sop_text=str(data.get("sop_text", ""))[:8000],
         reasoning=str(data.get("reasoning", ""))[:500],
-        workflow_stages=list(data.get("workflow_stages", []))[:10],
+        workflow_ids=list(data.get("workflow_ids", []))[:10],
     )
 
 

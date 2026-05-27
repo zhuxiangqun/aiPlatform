@@ -137,7 +137,7 @@ export const workspaceAgentApi = {
       agent_type: string; config: Record<string, unknown>;
       skills: string[]; tools: string[]; mcp_ids: string[]; agent_ids: string[];
       memory_config: Record<string, unknown>; sop_text: string; reasoning: string;
-      workflow_stages: Array<{ agent_id: string; phase: string; order: number }>;
+      workflow_ids: string[];
     }>('/core/workspace/agents/auto-fill', data);
   },
 
