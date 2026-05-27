@@ -7549,7 +7549,7 @@
           "description": "",
           "category": "",
           "tags": [],
-          "phase": "coding",
+          "phase": "development",
           "order": 1,
           "model": "",
           "hitl": false,
@@ -7610,7 +7610,7 @@
           "description": "",
           "category": "",
           "tags": [],
-          "phase": "coding",
+          "phase": "development",
           "order": 2,
           "model": "",
           "hitl": false,
@@ -7728,14 +7728,14 @@
       ],
       "runs": [
         {
-          "run_id": "run_15f1d69d",
+          "run_id": "run_836b5641",
           "project_id": "test_prj2",
           "phase": "failed",
           "pass_rate": 0,
           "tokens_used": 0,
           "iteration": 0,
           "error": "PipelineSession.start() got an unexpected keyword argument 'project_name'",
-          "started_at": "2026-05-27T11:49:39",
+          "started_at": "2026-05-27T16:18:40",
           "finished_at": ""
         }
       ],
@@ -7758,7 +7758,7 @@
           "agent_id": "programmer_agent",
           "agent_name": "程序员",
           "agent_type": "react",
-          "phase": "coding",
+          "phase": "development",
           "order": 1,
           "uses_file_output": true,
           "hitl": false,
@@ -7772,7 +7772,7 @@
           "agent_id": "programmer_agent",
           "agent_name": "程序员",
           "agent_type": "react",
-          "phase": "coding",
+          "phase": "development",
           "order": 2,
           "uses_file_output": true,
           "hitl": false,
@@ -7803,8 +7803,8 @@
         "programmer_frontend",
         "qa"
       ],
-      "team_id": "team_53f3c0fa",
-      "updated_at": "2026-05-27T11:49:39"
+      "team_id": "team_fdf0fc62",
+      "updated_at": "2026-05-27T16:18:40"
     },
     {
       "project_id": "test_prj3",
@@ -7836,19 +7836,19 @@
           "finished_at": ""
         },
         {
-          "run_id": "run_f7060b89",
+          "run_id": "run_8fbe394f",
           "project_id": "test_prj3",
           "phase": "failed",
           "pass_rate": 0,
           "tokens_used": 0,
           "iteration": 0,
           "error": "LLM API timeout",
-          "started_at": "2026-05-27T11:49:39",
+          "started_at": "2026-05-27T16:18:40",
           "finished_at": ""
         }
       ],
-      "updated_at": "2026-05-27T11:49:39"
+      "updated_at": "2026-05-27T16:18:40"
     }
   ],
-  "updated_at": "2026-05-27T11:49:39"
+  "updated_at": "2026-05-27T16:18:40"
 }

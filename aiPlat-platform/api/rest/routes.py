@@ -120,7 +120,7 @@ try:
     from core.api.core_facade import set_knowledge_db, set_knowledge_providers
     from kb.db import KBSqlite
     from kb.storage import get_tenant_storage as _storage_root
-    from kb.service import ingest_document, enqueue_ingest, load_doc_kinds
+    from kb.service import ingest_document, enqueue_ingest, load_doc_kinds, preview_document
     from kb.budget_query import query
     import os as _os
     db_path = _os.path.expanduser(
@@ -1227,6 +1227,76 @@ class DocIngestRequest(BaseModel):
 
 class DocRefreshRequest(BaseModel):
     force: bool = False
+
+
+@app.post("/api/v1/documents/preview", response_model=Dict[str, Any])
+@app.post("/platform/documents/preview", response_model=Dict[str, Any])
+async def documents_preview(request: Request):
+    """
+    Preview a document without saving to KB.
+    Accepts:
+      - multipart/form-data with: file, kind, collection_id
+      - application/json with: url, collection_id
+    Returns parsed elements + classification for user review before ingest.
+    """
+    identity = _resolve_identity(request)
+
+    from pathlib import Path
+    import re, tempfile
+
+    ct = (request.headers.get("content-type") or "").lower()
+    kind = ""
+    collection_id = "default"
+    dst = None
+
+    if "multipart/form-data" in ct:
+        if not _HAS_MULTIPART:
+            raise HTTPException(status_code=501, detail="upload_requires_python_multipart")
+        form = await request.form()
+        file = form.get("file")
+        if file is None or not getattr(file, "filename", None):
+            raise HTTPException(status_code=400, detail="file_required")
+        kind = str(form.get("kind") or "").strip().lower()
+        collection_id = str(form.get("collection_id") or "default")
+        safe_name = re.sub(r"[^A-Za-z0-9_.\u4e00-\u9fff-]+", "_", file.filename)
+        up_dir = Path(_kb_tenant_dir(identity.tenant_id)) / "uploads"
+        up_dir.mkdir(parents=True, exist_ok=True)
+        dst = up_dir / f"preview_{identity.request_id}_{safe_name}"
+        data = await file.read()
+        if len(data) > 200 * 1024 * 1024:
+            raise HTTPException(status_code=413, detail="file_too_large")
+        dst.write_bytes(data)
+    else:
+        body = await request.json()
+        url = body.get("url") if isinstance(body, dict) else None
+        collection_id = str(body.get("collection_id") or "default") if isinstance(body, dict) else "default"
+        if not url:
+            raise HTTPException(status_code=400, detail="url_required")
+        try:
+            from urllib.parse import urlparse
+            import httpx as _httpx
+            async with _httpx.AsyncClient(timeout=60) as client:
+                resp = await client.get(str(url), follow_redirects=True)
+                resp.raise_for_status()
+            host = (urlparse(str(url)).netloc or "").lower()
+            safe_host = re.sub(r"[^A-Za-z0-9.-]+", "_", host)
+            up_dir = Path(_kb_tenant_dir(identity.tenant_id)) / "uploads"
+            up_dir.mkdir(parents=True, exist_ok=True)
+            dst = up_dir / f"preview_url_{identity.request_id}_{safe_host}"
+            dst.write_bytes(resp.content)
+        except Exception as e:
+            raise HTTPException(status_code=422, detail=f"download_failed: {e}")
+
+    if dst is None:
+        raise HTTPException(status_code=400, detail="no_content")
+
+    try:
+        result = preview_document(file_path=str(dst), kind=kind or "pdf")
+        result["temp_file_path"] = str(dst)
+        result["collection_id"] = collection_id
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"preview_failed: {e}")
 
 
 @app.post("/api/v1/documents/ingest", response_model=Dict[str, Any])
