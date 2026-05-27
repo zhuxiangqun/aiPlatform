@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, RotateCw, PlayCircle, PauseCircle, Trash2, Pencil, Zap, Clock, MessageSquare, ShieldCheck } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Table, Select, Button, Modal, toast } from '../../../components/ui';
 import { useWorkspaceAgentStore } from '../../../stores';
 import { workspaceAgentApi, type Agent } from '../../../services';
@@ -354,7 +354,11 @@ const WorkspaceAgents: React.FC = () => {
         onSuccess={() => fetchAgents({ agent_type: typeFilter, status: statusFilter })}
       />
       </div>
-      {chatAgent && <ChatPanel agent={chatAgent} onClose={() => setChatAgent(null)} />}
+      {chatAgent && (
+        <AnimatePresence>
+          <ChatPanel agent={chatAgent} onClose={() => setChatAgent(null)} />
+        </AnimatePresence>
+      )}
     </div>
   );
 };

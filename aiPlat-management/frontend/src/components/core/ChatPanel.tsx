@@ -64,11 +64,18 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ agent, onClose }) => {
 
   return (
     <motion.div
-      initial={{ width: 0, opacity: 0 }}
-      animate={{ width: 380, opacity: 1 }}
-      exit={{ width: 0, opacity: 0 }}
-      className="flex-shrink-0 border-l border-dark-border bg-dark-card flex flex-col h-full overflow-hidden"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        className="bg-dark-card border border-dark-border rounded-xl w-full max-w-[640px] h-[85vh] flex flex-col overflow-hidden shadow-2xl"
+      >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-dark-border">
         <div className="flex items-center gap-2">
@@ -168,6 +175,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ agent, onClose }) => {
           </button>
         </div>
       </div>
+      </motion.div>
     </motion.div>
   );
 };
