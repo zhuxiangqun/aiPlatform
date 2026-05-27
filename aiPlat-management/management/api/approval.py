@@ -129,6 +129,8 @@ async def list_items():
                     "category": s.get("category", ""),
                     "version": s.get("version", ""),
                     "effects": s.get("effects", []),
+                    "governance": (s.get("metadata", {}) or {}).get("governance", {}),
+                    "lint": (s.get("metadata", {}) or {}).get("governance", {}).get("lint_result", {}),
                 },
             })
     except Exception: pass

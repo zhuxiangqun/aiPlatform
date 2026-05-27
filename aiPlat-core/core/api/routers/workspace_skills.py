@@ -2121,3 +2121,113 @@ async def reload_workspace_skill(skill_id: str, rt: RuntimeDep = None):
     if not s:
         raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
     return {"status": "reloaded", "skill_id": skill_id}
+
+
+@router.post("/workspace/skills/{skill_id}/submit-for-review")
+async def submit_skill_for_review(skill_id: str, rt: RuntimeDep = None):
+    """提交 Skill 进入审批流水线。
+
+    1. 获取 Skill 当前状态（仅 draft/enabled 可提交）
+    2. 运行 Lint 静态检查
+    3. E > 0 → 拒绝提交，返回 Lint 报告
+    4. E = 0 → status → ready, governance → pending
+    """
+    mgr = _ws_skill_mgr(rt)
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+
+    skill = await mgr.get_skill(skill_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+
+    current_status = str(getattr(skill, "status", "") or getattr(skill, "listing_status", "") or "draft")
+    if current_status not in ("draft", "enabled"):
+        raise HTTPException(status_code=409, detail=f"Skill status is '{current_status}', must be draft or enabled to submit for review")
+
+    # ── Run Lint ──────────────────────────────────────────────────
+    lint_report = None
+    try:
+        from core.management.skill_linter import lint_skill
+        # Build a minimal skill info dict for the linter
+        skill_info = {
+            "id": skill_id,
+            "name": getattr(skill, "name", skill_id),
+            "display_name": getattr(skill, "display_name", getattr(skill, "name", skill_id)),
+            "description": getattr(skill, "description", ""),
+            "category": getattr(skill, "category", ""),
+            "version": getattr(skill, "version", "1.0.0"),
+            "status": current_status,
+            "execution_mode": getattr(skill, "execution_mode", "prompt"),
+            "effects": getattr(skill, "effects", []),
+            "permissions": getattr(skill, "permissions", []),
+            "input_schema": getattr(skill, "input_schema", {}),
+            "output_schema": getattr(skill, "output_schema", {}),
+        }
+        lint_report = lint_skill(skill_info)
+    except Exception as e:
+        lint_report = {"error": str(e), "risk_level": "unknown", "blocked": False, "errors": [], "warnings": []}
+
+    error_count = int(lint_report.get("summary", {}).get("error_count", lint_report.get("error_count", 0)))
+    risk_level = str(lint_report.get("risk_level", "low"))
+
+    # ── Lint check ────────────────────────────────────────────────
+    if error_count > 0 or lint_report.get("blocked"):
+        # Write governance status as failed
+        try:
+            await mgr.update_skill(skill_id, metadata={
+                "governance": {
+                    "status": "failed",
+                    "lint_result": lint_report,
+                    "submitted_at": time.time(),
+                    "last_op": "submit_for_review",
+                    "updated_at": time.time(),
+                },
+                "verification": {
+                    "status": "failed",
+                    "updated_at": time.time(),
+                    "source": "lint",
+                },
+            })
+        except Exception:
+            pass
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": f"Lint 检查未通过：{error_count} 个错误，{lint_report.get('summary', {}).get('warning_count', 0)} 个警告",
+                "lint": lint_report,
+            },
+        )
+
+    # ── Submit: status → ready, governance → pending ──────────────
+    try:
+        await mgr.update_skill(skill_id,
+            status="ready",
+            metadata={
+                "governance": {
+                    "status": "pending",
+                    "lint_result": lint_report,
+                    "submitted_at": time.time(),
+                    "last_op": "submit_for_review",
+                    "updated_at": time.time(),
+                },
+                "verification": {
+                    "status": "pending",
+                    "updated_at": time.time(),
+                    "source": "lint",
+                },
+            },
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update skill status: {e}")
+
+    return {
+        "status": "ok",
+        "skill_id": skill_id,
+        "new_status": "ready",
+        "governance": "pending",
+        "lint": {
+            "risk_level": risk_level,
+            "error_count": error_count,
+            "warning_count": lint_report.get("summary", {}).get("warning_count", lint_report.get("warning_count", 0)),
+        },
+    }

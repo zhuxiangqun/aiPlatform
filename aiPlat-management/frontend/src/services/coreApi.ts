@@ -745,6 +745,10 @@ export const workspaceSkillApi = {
     return apiClient.post<{ status: string }>(`/core/workspace/skills/${skillId}/restore`);
   },
 
+  submitForReview: async (skillId: string) => {
+    return apiClient.post<{ status: string; skill_id: string; new_status: string; governance: string; lint: Record<string, unknown> }>(`/core/workspace/skills/${skillId}/submit-for-review`);
+  },
+
   delete: async (skillId: string, opts?: { delete_files?: boolean }) => {
     const query = new URLSearchParams();
     if (opts?.delete_files) query.set('delete_files', 'true');

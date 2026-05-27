@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Copy, Info, Plus, RotateCw, Trash2, Pencil, Play, Layers, Clock } from 'lucide-react';
+import { Copy, Info, Plus, RotateCw, Trash2, Pencil, Play, Layers, Clock, ShieldCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Badge, Table, Select, Switch, Button, Modal, toast } from '../../../components/ui';
 import { useWorkspaceSkillStore } from '../../../stores';
@@ -153,6 +153,16 @@ const WorkspaceSkills: React.FC = () => {
     }
   };
 
+  const handleSubmitForReview = async (skill: Skill) => {
+    try {
+      await workspaceSkillApi.submitForReview(skill.id);
+      toast.success(`Skill "${skill.name}" 已提交审批`);
+      fetchSkills();
+    } catch (e: any) {
+      toast.error('提交失败', e?.message || String(e));
+    }
+  };
+
   const copyText = async (text: string) => {
     if (!text) return;
     try {
@@ -302,13 +312,24 @@ const WorkspaceSkills: React.FC = () => {
               恢复
             </Button>
           ) : (
-            <button
-              onClick={() => setDeleteConfirm({ open: true, skill: record, hard: false })}
-              className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors"
-              title="弃用"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+            <>
+              {(record.status || '').toLowerCase() === 'draft' || (record.status || '').toLowerCase() === 'enabled' ? (
+                <button
+                  onClick={() => handleSubmitForReview(record)}
+                  className="p-1.5 rounded-lg text-amber-400 hover:bg-amber-400/10 transition-colors"
+                  title="提交审批"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                </button>
+              ) : null}
+              <button
+                onClick={() => setDeleteConfirm({ open: true, skill: record, hard: false })}
+                className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors"
+                title="弃用"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </>
           )}
           <button
             onClick={() => setDetailModal({ open: true, skill: record })}
