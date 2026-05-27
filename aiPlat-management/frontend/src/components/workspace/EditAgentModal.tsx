@@ -5,43 +5,6 @@ import { workspaceMcpApi, workflowTemplateApi } from '../../services';
 import type { Agent } from '../../services';
 import { Alert, Button, Input, Modal, Textarea, toast, MultiSelect } from '../ui';
 
-const _roleInstruction = (name: string, description: string): string => {
-  const text = `${name} ${description}`.toLowerCase();
-  // Review / code review
-  if (text.includes('审查') || text.includes('review') || text.includes('审计')) {
-    return '你是一个审查员。等待用户提供代码或文档后，逐项检查潜在问题（逻辑错误、安全风险、性能瓶颈、风格违规），按严重程度排列，给出具体修改建议和修改后的代码片段。';
-  }
-  // Testing
-  if (text.includes('测试') || text.includes('test') || text.includes('qa') || text.includes('质量')) {
-    return '你是一个测试专家。根据用户提供的测试目标，设计测试方案（覆盖范围、用例、预期结果），执行测试并报告通过/失败项，对失败项给出根因分析和修复建议。';
-  }
-  // Monitoring / research
-  if (text.includes('监控') || text.includes('monitor') || text.includes('研究') || text.includes('research') || text.includes('newsletter')) {
-    return '你是一个监控/研究员。主动关注目标领域变化，发现值得注意的信号或趋势时进行深入分析并形成结构化报告。定期推送摘要，紧急事件立即告警。';
-  }
-  // Planning / architecture
-  if (text.includes('规划') || text.includes('plan') || text.includes('架构') || text.includes('architect') || text.includes('牧羊')) {
-    return '你是一个规划/架构师。先理解目标、约束和现有条件，再拆解为可执行的阶段任务，每个阶段标注输入/输出/依赖/风险。能根据需求变化调整计划。';
-  }
-  // Developer / engineer
-  if (text.includes('开发') || text.includes('program') || text.includes('工程') || text.includes('后端') || text.includes('前端') || text.includes('devops') || text.includes('sre') || text.includes('工程师')) {
-    return '你是一个开发工程师。等待用户提供需求或代码，先用2-3句话确认理解，再输出实现方案（含技术选型、代码结构、关键实现），代码以可运行的最小版本交付。';
-  }
-  // Chat / support / customer
-  if (text.includes('客服') || text.includes('support') || text.includes('咨询') || text.includes('对话') || text.includes('conversation')) {
-    return '以友好、专业的语气与用户对话。先理解用户的问题或需求，再给出准确、简洁的回答。遇到不确定的问题时坦诚说明，不要编造信息。';
-  }
-  // Data analysis
-  if (text.includes('数据') || text.includes('data') || text.includes('分析') || text.includes('analyst')) {
-    return '你是一个数据分析师。等待用户提供数据或数据源后，先做数据探索（结构、质量、分布），再进行统计分析或建模，输出结论时必须附带图表说明或关键数据点。';
-  }
-  // Design
-  if (text.includes('设计') || text.includes('design') || text.includes('ui') || text.includes('ux') || text.includes('体验')) {
-    return '你是一个设计师。根据用户需求产出设计方案：信息架构 → 交互流程 → 界面草图（用文本描述布局）→ 设计备注（颜色、间距、状态）。每次输出附设计决策的依据。';
-  }
-  return '';
-};
-
 interface EditAgentModalProps {
   open: boolean;
   agent: Agent | null;
@@ -77,13 +40,6 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
   const [hitlAfterExecute, setHitlAfterExecute] = useState(false);
   const [hitlAfterPhase, setHitlAfterPhase] = useState('');
 
-  // Disambiguation wizard
-  const [wizOpen, setWizOpen] = useState(false);
-  const [wizMode, setWizMode] = useState<'manual' | 'auto'>('manual');
-  const [wizSources, setWizSources] = useState<string[]>([]);
-  const [wizMayWrite, setWizMayWrite] = useState(false);
-  const [wizToolset, setWizToolset] = useState<string>('workspace_default');
-  const [genWarnings, setGenWarnings] = useState<string[]>([]);
   const [loopType, setLoopType] = useState<string>('react');
   const [agentStatus, setAgentStatus] = useState<string>('draft');
 
@@ -121,201 +77,28 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
     }
   }, [open, agent]);
 
-  const detectAmbiguity = () => {
-    const text = `${name} ${description}`.toLowerCase();
-    const wantsFs = text.includes('目录') || text.includes('文件') || text.includes('仓库') || text.includes('代码库') || text.includes('文件夹') || text.includes('path');
-    const wantsBrowser = text.includes('浏览器') || text.includes('网页') || text.includes('爬取') || text.includes('自动化');
-    const wantsHttp = text.includes('api') || text.includes('接口') || text.includes('http') || text.includes('crm') || text.includes('工单');
-    const wantsDb = text.includes('数据库') || text.includes('sql');
-    const wantsWeb = text.includes('公网') || text.includes('搜索') || text.includes('查资料') || text.includes('外部信息');
-    const wantsWrite = text.includes('写入') || text.includes('更新') || text.includes('创建') || text.includes('删除') || text.includes('修改');
-    return { wantsFs, wantsBrowser, wantsHttp, wantsDb, wantsWeb, wantsWrite };
-  };
-
-  const recommendToolset = (opts?: { mode?: 'manual' | 'auto'; sources?: string[]; mayWrite?: boolean }) => {
-    const mode = opts?.mode || 'manual';
-    const sources = new Set<string>(opts?.sources || []);
-    const mayWrite = Boolean(opts?.mayWrite);
-
-    // Rules (minimal, predictable):
-    // 1) If the task needs high-risk integrations (http/database/browser) → full
-    // 2) Else if mayWrite → workspace_default (allows file write but avoids extra risky tools)
-    // 3) Else if auto mode with any external sources/filesystem → safe_readonly
-    // 4) Else → workspace_default
-    if (sources.has('http') || sources.has('database') || sources.has('browser')) {
-      return { toolset: 'full', reason: '选择了高风险数据源（HTTP/数据库/浏览器），需要 full 才可能调用相应工具。' };
-    }
-    if (mayWrite) {
-      return { toolset: 'workspace_default', reason: '标记“可能写入/修改”，推荐 workspace_default（允许 file_operations 写/删，但不默认放开 http/browser/code/database）。' };
-    }
-    if (mode === 'auto' && (sources.size > 0 || sources.has('filesystem') || sources.has('web'))) {
-      return { toolset: 'safe_readonly', reason: '自动获取但不需要写入，推荐 safe_readonly（只读 + 低风险工具）。' };
-    }
-    return { toolset: 'workspace_default', reason: '默认推荐 workspace_default。' };
-  };
-
-  const fetchSop = async () => {
+  const handleAutoFill = async () => {
     if (!agent) return;
-    setSopLoading(true);
-    try {
-      const res = await workspaceAgentApi.getSop(agent.id).catch(() => ({ sop: '' } as any));
-      setSopText(String((res as any).sop || ''));
-    } catch {
-      // SOP might not exist; allow user to create it.
-      setSopText('');
-    } finally {
-      setSopLoading(false);
-    }
-  };
-
-  const fetchOptions = async () => {
-    try {
-      const [skillRes, toolRes, agentSkills, agentTools] = await Promise.all([
-        workspaceSkillApi.list({ limit: 200 }),
-        toolApi.list({ limit: 200 } as any),
-        agent ? workspaceAgentApi.getSkills(agent.id).catch(() => ({ skill_ids: agent.skills || [] } as any)) : Promise.resolve({ skill_ids: [] as string[] } as any),
-        agent ? workspaceAgentApi.getTools(agent.id).catch(() => ({ tool_ids: agent.tools || [] } as any)) : Promise.resolve({ tool_ids: [] as string[] } as any),
-      ]);
-      const baseSkillOptions = (skillRes.skills || []).map((s: any) => ({ value: s.id, label: s.name }));
-      const baseToolOptions = (toolRes.tools || []).map((t: any) => ({ value: t.name, label: t.description || t.name }));
-
-      const selectedSkillIds: string[] = ((agentSkills as any).skill_ids || agent?.skills || []) as string[];
-      const selectedToolIds: string[] = ((agentTools as any).tool_ids || agent?.tools || []) as string[];
-
-      const skillSet = new Set(baseSkillOptions.map((o: any) => o.value));
-      const toolSet = new Set(baseToolOptions.map((o: any) => o.value));
-      const missingSkillOptions = selectedSkillIds
-        .filter((id) => id && !skillSet.has(id))
-        .map((id) => ({ value: id, label: `${id}（未在 Skill 库中找到）` }));
-      const missingToolOptions = selectedToolIds
-        .filter((id) => id && !toolSet.has(id))
-        .map((id) => ({ value: id, label: `${id}（未在 Tool 列表中找到）` }));
-
-      setSkillOptions([...baseSkillOptions, ...missingSkillOptions]);
-      setToolOptions([...baseToolOptions, ...missingToolOptions]);
-      if (agent) {
-        setSkills(selectedSkillIds);
-        setTools(selectedToolIds);
-      }
-
-      try {
-        const mcpRes = await workspaceMcpApi.listServers();
-        const mcpList = (mcpRes as any).servers || [];
-        setMcpOptions(mcpList.map((s: any) => ({ value: s.name || s.id, label: `${s.name || s.id} (MCP)` })));
-      } catch { /* ignore */ }
-      try {
-        const wfRes = await workflowTemplateApi.list();
-        setWorkflowOptions(((wfRes as any).templates || []).map((w: any) => ({ value: w.name, label: `${w.label || w.name} (Workflow)` })));
-      } catch { /* ignore */ }
-      try {
-        const agentRes = await workspaceAgentApi.list({ limit: 200 });
-        setAgentOptions(((agentRes as any).agents || []).filter((a: any) => a.name && a.id !== agent?.id)
-          .map((a: any) => ({ value: a.id || a.name, label: `${a.name || a.id} (Agent)` })));
-      } catch { /* ignore */ }
-
-      // models from core model registry
-      try {
-        const modelRes = await modelsApi.list();
-        const models = ((modelRes as any).models || []) as { name: string; provider: string; capabilities: string[] }[];
-        const modelOpts = models.map((m) => ({
-          value: m.name,
-          label: `${m.name} (${m.provider})${m.capabilities?.includes('reasoning') ? ' 🧠' : ''}`,
-        }));
-        setModelOptions(modelOpts);
-        if (!selectedModel && models.length > 0) {
-          const prefer = models.find((m) => m.name.includes('reasoner'))
-            || models.find((m) => m.capabilities?.includes('reasoning'))
-            || models[0];
-          setSelectedModel(prefer?.name || models[0]?.name || '');
-        }
-      } catch {
-        setModelOptions([]);
-      }
-    } catch {
-      setSkillOptions([]);
-      setToolOptions([]);
-      setModelOptions([]);
-    }
-  };
-
-  const applySmartGenerateWithWiz = (opts?: { mode?: 'manual' | 'auto'; sources?: string[]; mayWrite?: boolean }) => {
-    const nm = name.trim() || agent?.name || 'Agent';
+    const nm = name.trim() || agent.name || '';
     const desc = description.trim();
-    const modelName = selectedModel || 'DeepSeek Reasoner';
-    const mode = opts?.mode || 'manual';
-    const sources = new Set<string>(opts?.sources || []);
-    const mayWrite = Boolean(opts?.mayWrite);
-
-    const sys = [
-      `你是“${nm}”。`,
-      desc ? `职责与边界：${desc}` : '',
-      _roleInstruction(nm, desc),
-      mode === 'auto' ? '你需要在回答前主动获取必要信息（通过工具/MCP/技能），必要时委派子Agent或触发Workflow，不要默认要求用户粘贴大段数据。' : '请先澄清目标与约束，再给出结构化输出。',
-      '输出要求：给出结论、依据（如有）、以及下一步建议。',
-      '如果缺少上下文，请提出需要的材料（文件/接口/数据范围）。',
-      mayWrite ? '注意：涉及对外部系统写入/修改时，必须先二次确认并说明影响范围；必要时触发审批。' : '',
-    ].filter(Boolean).join('\n');
-
-    const sopLines: string[] = ['1. 澄清问题与范围（目标/输入/约束/权限）。'];
-    if (mode === 'auto') {
-      if (sources.has('filesystem')) sopLines.push('2. 使用 file_operations：先 list 目录结构（可递归/限量），再 read 关键文件内容（控制读取范围与大小）。');
-      if (sources.has('http')) sopLines.push('2. 使用 http 工具访问内部 API（必要时配置白名单/鉴权），获取所需数据。');
-      if (sources.has('database')) sopLines.push('2. 使用 database 工具执行只读查询（必要时做权限与审计）。');
-      if (sources.has('browser')) sopLines.push('2. 使用 browser/webfetch 获取网页信息（注意合规与来源）。');
-      if (sources.has('web')) sopLines.push('2. 使用 search/webfetch 获取公开信息（记录来源）。');
-      if (!sources.size) sopLines.push('2. 如果需要外部数据，先明确数据源并通过工具获取。');
-    } else {
-      sopLines.push('2. 若需要外部信息，明确需要哪些材料并让用户提供（或建议开启工具自动获取）。');
-    }
-    sopLines.push('3. 分析与处理：按优先级输出发现与建议（必要时分模块/分文件）。');
-    if (mcpIds.length > 0) sopLines.push('   - 可通过 MCP 服务器获取外部能力（工具自动注册到工具池）。');
-    if (workflowIds.length > 0) sopLines.push('   - 可触发已绑定的 Workflow 执行预定义流水线。');
-    if (agentIds.length > 0) sopLines.push('   - 可将子任务委派给已绑定的子 Agent（debugger/test-engineer等）。');
-    sopLines.push('4. 汇总输出：结论 → 依据/引用 → 建议/下一步（含高/中/低优先级）。');
-    sopLines.push('5. 自检：一致性、可执行性、风险与不确定性提示。');
-
+    if (!nm && !desc) { toast.warning('请先填写名称或描述'); return; }
+    setLoading(true);
     try {
-      const cfg: any = configText?.trim() ? JSON.parse(configText) : {};
-      cfg.model = modelName;
-      if (cfg.temperature === undefined) cfg.temperature = 0.1;
-      if (cfg.max_tokens === undefined) cfg.max_tokens = 4096;
-      cfg.system_prompt = sys;
-      setConfigText(JSON.stringify(cfg, null, 2));
-    } catch {
-      setConfigText(JSON.stringify({ model: modelName, temperature: 0.1, max_tokens: 4096, system_prompt: sys }, null, 2));
+      const result = await workspaceAgentApi.autoFill({ name: nm, description: desc });
+      if (result.agent_type) setAgentStatus(result.agent_type);
+      if (result.config) setConfigText(JSON.stringify(result.config, null, 2));
+      if (result.skills?.length) setSkills(result.skills.filter((s: string) => skillOptions.some(o => o.value === s)));
+      if (result.tools?.length) setTools(result.tools.filter((t: string) => toolOptions.some(o => o.value === t)));
+      if (result.mcp_ids?.length) setMcpIds(result.mcp_ids.filter((m: string) => mcpOptions.some(o => o.value === m)));
+      if (result.agent_ids?.length) setAgentIds(result.agent_ids.filter((a: string) => agentOptions.some(o => o.value === a)));
+      if (result.memory_config) setMemoryConfigText(JSON.stringify(result.memory_config, null, 2));
+      if (result.sop_text) setSopText(result.sop_text);
+      toast.success('AI 智能填充完成', result.reasoning || '');
+    } catch (e: any) {
+      toast.error('智能填充失败', e?.message || String(e));
+    } finally {
+      setLoading(false);
     }
-    if (!sopText.trim()) setSopText(sopLines.join('\n'));
-
-    // auto add tools for auto mode if user hasn't bound any tools yet
-    if (mode === 'auto' && tools.length === 0) {
-      const rec = new Set<string>();
-      if (sources.has('filesystem')) rec.add('file_operations');
-      if (sources.has('http')) rec.add('http');
-      if (sources.has('database')) rec.add('database');
-      if (sources.has('browser')) rec.add('browser');
-      if (sources.has('web')) {
-        rec.add('webfetch');
-        rec.add('search');
-      }
-      if (rec.size) setTools(Array.from(rec));
-    }
-
-    // post-generate lint (best-effort)
-    const warns: string[] = [];
-    if (mode === 'auto' && sources.has('filesystem') && !(tools.includes('file_operations'))) {
-      warns.push('你选择了“自动读取目录/仓库”，请确保绑定了 file_operations 工具，并在服务端配置 AIPLAT_FILE_OPERATIONS_ALLOWED_ROOTS。');
-    }
-    if (mode === 'auto' && sources.has('http') && !(tools.includes('http'))) {
-      warns.push('你选择了“内部 HTTP API”，请确保绑定了 http 工具。');
-    }
-    if (mode === 'auto' && sources.has('database') && !(tools.includes('database'))) {
-      warns.push('你选择了“数据库”，请确保绑定了 database 工具。');
-    }
-    if (mode === 'auto' && sources.has('browser') && !(tools.includes('browser'))) {
-      warns.push('你选择了“浏览器自动化”，请确保绑定了 browser 工具。');
-    }
-    if (mayWrite) warns.push('你选择了“可能写入/修改外部系统”：请确保审批/审计与白名单策略已启用。');
-    setGenWarnings(warns);
   };
 
   const handleSubmit = async () => {
@@ -512,25 +295,10 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
           <div className="flex items-end justify-end">
             <Button
               variant="primary"
-              onClick={() => {
-                const a = detectAmbiguity();
-                // Pre-fill wizard from detected keywords
-                const srcs: string[] = [];
-                if (a.wantsFs) srcs.push('filesystem');
-                if (a.wantsBrowser) srcs.push('browser');
-                if (a.wantsHttp) srcs.push('http');
-                if (a.wantsDb) srcs.push('database');
-                if (a.wantsWeb) srcs.push('web');
-                if (srcs.length || a.wantsWrite) {
-                  setWizMode('auto');
-                  setWizSources(srcs);
-                  setWizMayWrite(a.wantsWrite);
-                }
-                setWizOpen(true);
-              }}
+              onClick={handleAutoFill}
               disabled={loading}
             >
-              生成向导（推荐）
+              ✨ AI 智能填充
             </Button>
           </div>
         </div>
@@ -580,118 +348,9 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
           />
           </div>
         {sopLoading && <div className="text-xs text-gray-500">SOP 加载中...</div>}
-        {genWarnings.length > 0 && (
-          <Alert type="warning" title="自动生成提示">
-            <ul className="list-disc pl-5 space-y-1">
-              {genWarnings.map((w, i) => (
-                <li key={i}>{w}</li>
-              ))}
-            </ul>
-          </Alert>
-        )}
         <Alert type="info" title="说明">
           {configHint} {configHint2}
         </Alert>
-      </div>
-    </Modal>
-
-    <Modal
-      open={wizOpen}
-      onClose={() => setWizOpen(false)}
-      title="智能生成：主动消歧"
-      width={760}
-      footer={
-        <>
-          <Button variant="secondary" onClick={() => setWizOpen(false)} disabled={loading}>
-            取消
-          </Button>
-          <Button
-            variant="primary"
-            onClick={() => {
-              applySmartGenerateWithWiz({ mode: wizMode, sources: wizSources, mayWrite: wizMayWrite });
-              // apply recommended/selected toolset to agent default (stored in metadata.toolset)
-              try {
-                setDefaultToolset(wizToolset || 'workspace_default');
-              } catch {
-                setDefaultToolset('workspace_default');
-              }
-              setWizOpen(false);
-            }}
-            disabled={loading}
-          >
-            生成
-          </Button>
-        </>
-      }
-    >
-      <div className="space-y-4">
-        <Alert type="info" title="说明">
-          为避免“目录分析/系统接入”等场景出现歧义，这里先确认运行方式与数据来源。选择“自动获取”时会自动推荐绑定相应工具（可再手动调整）。
-        </Alert>
-
-        <div>
-          <div className="text-sm font-medium text-gray-300 mb-2">运行方式</div>
-          <div className="flex gap-4">
-            <label className="flex items-center gap-2 text-sm text-gray-200">
-              <input type="radio" checked={wizMode === 'manual'} onChange={() => setWizMode('manual')} />
-              我会手动提供材料（粘贴代码/上传内容）
-            </label>
-            <label className="flex items-center gap-2 text-sm text-gray-200">
-              <input type="radio" checked={wizMode === 'auto'} onChange={() => setWizMode('auto')} />
-              自动获取（需要工具/MCP）
-            </label>
-          </div>
-        </div>
-
-        {wizMode === 'auto' && (
-          <div>
-            <div className="text-sm font-medium text-gray-300 mb-2">数据来源（可多选）</div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-200">
-              {[
-                { key: 'filesystem', label: '本地目录/仓库（需要 file_operations）' },
-                { key: 'http', label: '内部 HTTP API（需要 http）' },
-                { key: 'database', label: '数据库（需要 database）' },
-                { key: 'browser', label: '浏览器自动化（需要 browser）' },
-                { key: 'web', label: '公网检索/抓取（search/webfetch）' },
-              ].map((x) => (
-                <label key={x.key} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={wizSources.includes(x.key)}
-                    onChange={() => {
-                      setWizSources((prev) => (prev.includes(x.key) ? prev.filter((k) => k !== x.key) : [...prev, x.key]));
-                    }}
-                  />
-                  {x.label}
-                </label>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div>
-          <div className="text-sm font-medium text-gray-300 mb-2">推荐 Toolset（运行时工具集）</div>
-          <select
-            value={wizToolset}
-            onChange={(e) => setWizToolset(e.target.value)}
-            className="w-full h-10 px-3 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100"
-          >
-            <option value="safe_readonly">safe_readonly（只读）</option>
-            <option value="workspace_default">workspace_default（默认）</option>
-            <option value="full">full（全量/高风险）</option>
-          </select>
-          <div className="text-xs text-gray-500 mt-1">
-            {recommendToolset({ mode: wizMode, sources: wizSources, mayWrite: wizMayWrite }).reason}
-          </div>
-        </div>
-
-        <div>
-          <div className="text-sm font-medium text-gray-300 mb-2">是否可能写入/修改外部系统？</div>
-          <label className="flex items-center gap-2 text-sm text-gray-200">
-            <input type="checkbox" checked={wizMayWrite} onChange={() => setWizMayWrite(!wizMayWrite)} />
-            可能（将提示二次确认/审批）
-          </label>
-        </div>
       </div>
     </Modal>
     </>
