@@ -174,8 +174,11 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
     const desc = description.trim();
     if (!nm && !desc) { toast.warning('请先填写名称或描述'); return; }
     setLoading(true);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
     try {
       const result = await workspaceAgentApi.autoFill({ name: nm, description: desc });
+      clearTimeout(timeout);
       if (result.agent_type) setAgentStatus(result.agent_type);
       if (result.config) setConfigText(JSON.stringify(result.config, null, 2));
       if (result.skills?.length) setSkills(result.skills.filter((s: string) => skillOptions.some(o => o.value === s)));
@@ -196,7 +199,12 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       }
       toast.success('AI 智能填充完成', result.reasoning || '');
     } catch (e: any) {
-      toast.error('智能填充失败', e?.message || String(e));
+      clearTimeout(timeout);
+      if (e.name === 'AbortError') {
+        toast.error('请求超时', 'Core 服务未响应，请检查服务是否正常运行');
+      } else {
+        toast.error('智能填充失败', e?.message || String(e));
+      }
     } finally {
       setLoading(false);
     }
