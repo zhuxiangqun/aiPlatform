@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Sparkles, Search } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '../../../components/ui/card';
@@ -88,6 +88,7 @@ export default function CapabilityGraphPage() {
   const [error, setError] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<string>(searchParams.get('type') || '');
   const [q, setQ] = useState('');
+  const [problemOnly, setProblemOnly] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -111,13 +112,40 @@ export default function CapabilityGraphPage() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const nodeTypes = [...new Set((graph?.nodes || []).map(n => n.type))].sort();
+
+  // Tag problematic nodes from health report
+  const problemNodes = useMemo(() => {
+    const map = new Map<string, string[]>(); // label → [issue tags]
+    if (health?.issues) {
+      for (const label of health.issues.unused_skills || []) {
+        map.set(label, [...(map.get(label) || []), 'unused']);
+      }
+      for (const label of health.issues.orphan_agents || []) {
+        map.set(label, [...(map.get(label) || []), 'orphan']);
+      }
+    }
+    return map;
+  }, [health]);
+
+  const hasProblem = (node: CapNode) => problemNodes.has(node.label);
+
   const filteredNodes = (graph?.nodes || []).filter(n => {
     if (typeFilter && n.type !== typeFilter) return false;
+    if (problemOnly && !hasProblem(n)) return false;
     if (q && !n.label.toLowerCase().includes(q.toLowerCase()) && !n.id.toLowerCase().includes(q.toLowerCase())) return false;
     return true;
   });
   const filteredNodeIds = new Set(filteredNodes.map(n => n.id));
   const filteredEdges = (graph?.edges || []).filter(e => filteredNodeIds.has(e.from) && filteredNodeIds.has(e.to));
+
+  const problemTags = (node: CapNode) => {
+    const tags = problemNodes.get(node.label) || [];
+    return tags.map(t => {
+      if (t === 'unused') return { label: '未使用', cls: 'bg-yellow-500/15 text-yellow-300 border-yellow-500/25' };
+      if (t === 'orphan') return { label: '孤立', cls: 'bg-red-500/15 text-red-300 border-red-500/25' };
+      return { label: t, cls: 'bg-gray-500/15 text-gray-300' };
+    });
+  };
 
   if (loading) return <div className="flex items-center justify-center h-64 text-sm text-gray-500">加载中…</div>;
   if (error) return <div className="p-4 text-red-400">加载失败: {error}</div>;
@@ -164,7 +192,32 @@ export default function CapabilityGraphPage() {
           {health.issues.orphan_agents.length > 0 && (
             <span className="text-yellow-400 ml-2">⚠ {health.issues.orphan_agents.length} 个孤立 Agent</span>
           )}
+          {health.issues.unresolved_refs?.length > 0 && (
+            <span className="text-red-400 ml-2">❌ {health.issues.unresolved_refs.length} 个未解析引用</span>
+          )}
         </div>
+      )}
+
+      {/* Unresolved references warning */}
+      {health?.issues?.unresolved_refs?.length > 0 && (
+        <Card className="border-red-500/20 bg-red-900/10">
+          <CardHeader>
+            <div className="text-sm font-medium text-red-300">未解析引用</div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-1">
+              {health.issues.unresolved_refs.map((ref, i) => (
+                <div key={i} className="text-xs text-gray-400">
+                  <span className="px-1.5 py-0.5 rounded text-[10px] border bg-purple-500/15 text-purple-300 border-purple-500/25">agent</span>
+                  <span className="text-gray-200 ml-1">{ref.agent}</span>
+                  <span className="text-gray-500 mx-1">→</span>
+                  <span className="px-1.5 py-0.5 rounded text-[10px] border bg-red-500/15 text-red-300 border-red-500/25">missing</span>
+                  <span className="text-red-300 ml-1">{ref.target}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -258,6 +311,12 @@ export default function CapabilityGraphPage() {
                 {typeFilter} ×
               </button>
             )}
+            <button
+              onClick={() => setProblemOnly(!problemOnly)}
+              className={`px-2 py-1 rounded text-[10px] border transition-colors ${problemOnly ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' : 'bg-dark-bg text-gray-500 border-dark-border hover:text-gray-300'}`}
+            >
+              ⚠ 仅显示问题
+            </button>
           </div>
 
           {/* Nodes table */}
@@ -278,14 +337,21 @@ export default function CapabilityGraphPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredNodes.slice(0, 100).map(n => (
-                      <tr key={n.id} className="border-b border-dark-border/50 hover:bg-dark-hover/50">
+                    {filteredNodes.slice(0, 100).map(n => {
+                      const issues = problemTags(n);
+                      return (
+                      <tr key={n.id} className={`border-b border-dark-border/50 hover:bg-dark-hover/50 ${issues.length > 0 ? 'bg-red-900/10' : ''}`}>
                         <td className="py-1.5 px-2">
                           <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] border ${TYPE_COLORS[n.type] || ''}`}>
                             {TYPE_ICONS[n.type] || ''} {n.type}
                           </span>
+                          {issues.map((iss, i) => (
+                            <span key={i} className={`ml-1 inline-block px-1 py-0.5 rounded text-[10px] border ${iss.cls}`}>
+                              {iss.label}
+                            </span>
+                          ))}
                         </td>
-                        <td className="py-1.5 px-2 text-gray-200 font-mono max-w-[200px] truncate" title={n.label}>
+                        <td className={`py-1.5 px-2 font-mono max-w-[200px] truncate ${issues.length > 0 ? 'text-yellow-200' : 'text-gray-200'}`} title={n.label}>
                           {n.label}
                         </td>
                         <td className="py-1.5 px-2 text-gray-500">
@@ -299,7 +365,8 @@ export default function CapabilityGraphPage() {
                           {n.type === 'mcp_server' && <span>{n.enabled ? 'enabled' : 'disabled'} {n.transport}</span>}
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
                 {filteredNodes.length > 100 && (
