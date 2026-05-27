@@ -393,6 +393,59 @@ const WorkspaceSkills: React.FC = () => {
         </div>
       </div>
 
+      {/* Legend */}
+      <details className="bg-dark-card border border-dark-border rounded-lg p-3 text-xs text-gray-500 cursor-pointer group">
+        <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <div className="text-gray-300 font-medium mb-1">名称 / 描述</div>
+            <div className="text-gray-600">SKILL.md 的 <span className="text-gray-300">display_name</span>（显示名）和 <span className="text-gray-300">description</span>（功能描述）。括号标注来源范围。</div>
+          </div>
+          <div>
+            <div className="text-gray-300 font-medium mb-1">分类</div>
+            <div className="text-gray-600">SKILL.md 的 <span className="text-gray-300">category</span>：生成 / 分析 / 检索 / 执行 / design / document / tool / text 等。</div>
+          </div>
+          <div>
+            <div className="text-gray-300 font-medium mb-1">来源</div>
+            <div className="text-gray-600"><span className="text-gray-300">-</span> = workspace 自定义创建；<span className="text-gray-300">engine</span> = 引擎内置（只读）；<span className="text-gray-300">skill-pack</span> = 从包安装。</div>
+          </div>
+          <div>
+            <div className="text-gray-300 font-medium mb-1">上架状态</div>
+            <div className="space-y-0.5">
+              <div><span className="text-green-400">draft</span> <span className="text-gray-600">— 草稿，仅创建者可见</span></div>
+              <div><span className="text-yellow-400">ready</span> <span className="text-gray-600">— 待审批</span></div>
+              <div><span className="text-green-400">published</span> <span className="text-gray-600">— 已发布</span></div>
+              <div><span className="text-green-400">listed</span> <span className="text-gray-600">— 已上架（商城可见）</span></div>
+              <div><span className="text-red-400">deprecated</span> <span className="text-gray-600">— 已废弃，不建议使用</span></div>
+              <div><span className="text-gray-400">enabled</span> <span className="text-gray-600">— 旧版状态标记</span></div>
+            </div>
+          </div>
+          <div>
+            <div className="text-gray-300 font-medium mb-1">启用</div>
+            <div className="text-gray-600">开关控制该 Skill 是否可被 Agent 调用。关闭后已绑定的 Agent 仍可使用，但新调用会被拒绝。</div>
+          </div>
+          <div>
+            <div className="text-gray-300 font-medium mb-1">治理</div>
+            <div className="space-y-0.5">
+              <div><span className="text-green-400">verified</span> <span className="text-gray-600">— 已通过系统校验</span></div>
+              <div><span className="text-green-400">published</span> <span className="text-gray-600">— 已发布上线</span></div>
+              <div><span className="text-yellow-400">pending</span> <span className="text-gray-600">— 待审批</span></div>
+              <div><span className="text-red-400">failed</span> <span className="text-gray-600">— 校验未通过</span></div>
+              <div><span className="text-gray-400">n/a</span> <span className="text-gray-600">— 未设置治理状态</span></div>
+            </div>
+          </div>
+          <div>
+            <div className="text-gray-300 font-medium mb-1">Lint（静态检查）</div>
+            <div className="text-gray-600">
+              <span className="text-red-300 font-mono">E{"{数字}"}</span> = 错误数（必须修复），
+              <span className="text-yellow-300 font-mono">W{"{数字}"}</span> = 警告数（建议修复），
+              <span className="text-gray-300">low / medium / high</span> = 风险等级。
+              E0/W0 且绿色 = 通过全部检查。
+            </div>
+          </div>
+        </div>
+      </details>
+
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-dark-card rounded-xl border border-dark-border overflow-hidden">
         <Table columns={columns} data={filteredSkills} rowKey="id" loading={loading} emptyText="暂无 Skill" />
       </motion.div>
