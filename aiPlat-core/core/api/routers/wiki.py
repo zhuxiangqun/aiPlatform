@@ -545,6 +545,9 @@ async def curate_wiki():
     report = {"processed": 0, "links_added": 0, "titles_updated": 0, "errors": []}
     all_titles = [p["title"] for p in pages]
 
+    # Track saved proposals to detect conflicts (same pair, different action)
+    saved_pairs: Dict[frozenset, str] = {}
+
     for p in pages:
         try:
             existing_titles = [t for t in all_titles if t != p["title"]]
@@ -578,6 +581,13 @@ async def curate_wiki():
             for mc in result.get("merge_candidates", [])[:3]:
                 if mc.get("target") and mc["target"] in existing_titles:
                     from core.harness.knowledge.wiki_engine import save_proposal
+                    pair = frozenset([p["title"], mc["target"]])
+                    if pair in saved_pairs and saved_pairs[pair] != "merge":
+                        report["errors"].append({
+                            "page": p["title"],
+                            "error": f"conflicting proposal: merge→{mc['target']} vs existing {saved_pairs[pair]}",
+                        })
+                        continue
                     save_proposal({
                         "action": "merge",
                         "from_title": p["title"],
@@ -587,10 +597,18 @@ async def curate_wiki():
                         "status": "pending",
                         "created_at": str(int(_t.time())),
                     })
+                    saved_pairs[pair] = "merge"
             for con in result.get("contradictions", [])[:3]:
                 b_title = con.get("b", "") if isinstance(con, dict) else con
                 if b_title and b_title in existing_titles:
                     from core.harness.knowledge.wiki_engine import save_proposal
+                    pair = frozenset([p["title"], b_title])
+                    if pair in saved_pairs and saved_pairs[pair] != "contradict":
+                        report["errors"].append({
+                            "page": p["title"],
+                            "error": f"conflicting proposal: contradict↔{b_title} vs existing {saved_pairs[pair]}",
+                        })
+                        continue
                     save_proposal({
                         "action": "contradict",
                         "from_title": p["title"],
@@ -600,6 +618,7 @@ async def curate_wiki():
                         "status": "pending",
                         "created_at": str(int(_t.time())),
                     })
+                    saved_pairs[pair] = "contradict"
         except Exception as e:
             report["errors"].append({"page": p["title"], "error": str(e)[:300]})
 
