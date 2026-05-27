@@ -18,7 +18,7 @@ const badge = (v: string): 'success' | 'warning' | 'error' | 'info' | 'default' 
   return 'default';
 };
 
-const DEFAULT_ROOTS = 'aiPlat-core,aiPlat-management/frontend';
+const DEFAULT_ROOTS = 'aiPlat-core,aiPlat-infra,aiPlat-platform,aiPlat-app,aiPlat-management/frontend';
 
 const CodeIntel: React.FC = () => {
   const [roots, setRoots] = useState(DEFAULT_ROOTS);
