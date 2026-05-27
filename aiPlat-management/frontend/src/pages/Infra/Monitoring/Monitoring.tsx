@@ -1,37 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, RotateCw } from 'lucide-react';
+import { RotateCw } from 'lucide-react';
 import { Table, Button, toast } from '../../../components/ui';
 import PageHeader from '../../../components/common/PageHeader';
-import { AlertRuleModal } from '../../../components/infra';
-import { monitoringApi, type AlertRule, type GPUMetrics, type ClusterMetrics } from '../../../services';
+import { monitoringApi, type GPUMetrics, type ClusterMetrics } from '../../../services';
 
 const Monitoring: React.FC = () => {
   const [clusterMetrics, setClusterMetrics] = useState<ClusterMetrics | null>(null);
   const [gpuMetrics, setGpuMetrics] = useState<GPUMetrics[]>([]);
-  const [alertRules, setAlertRules] = useState<AlertRule[]>([]);
   const [loading, setLoading] = useState(false);
-  const [alertModalOpen, setAlertModalOpen] = useState(false);
-  const [editingRule, setEditingRule] = useState<Partial<AlertRule> | undefined>();
-  const [activeTab, setActiveTab] = useState('gpu');
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [metricsData, gpuData, rulesData] = await Promise.all([
+      const [metricsData, gpuData] = await Promise.all([
         monitoringApi.getClusterMetrics(),
         monitoringApi.getGPUMetrics(),
-        monitoringApi.listAlertRules(),
       ]);
       setClusterMetrics(metricsData || null);
       setGpuMetrics(gpuData || []);
-      setAlertRules(rulesData || []);
     } catch (error) {
       toast.error('获取监控数据失败');
       console.error('Failed to fetch monitoring data:', error);
       setClusterMetrics(null);
       setGpuMetrics([]);
-      setAlertRules([]);
     } finally {
       setLoading(false);
     }
@@ -40,59 +32,6 @@ const Monitoring: React.FC = () => {
   useEffect(() => {
     fetchData();
   }, []);
-
-  const handleCreateRule = () => {
-    setEditingRule(undefined);
-    setAlertModalOpen(true);
-  };
-
-  const handleEditRule = (rule: AlertRule) => {
-    setEditingRule(rule);
-    setAlertModalOpen(true);
-  };
-
-  const handleRuleOk = async (values: any) => {
-    try {
-      if (editingRule?.id) {
-        await monitoringApi.updateAlertRule(editingRule.id, values);
-      } else {
-        await monitoringApi.createAlertRule(values);
-      }
-      setAlertModalOpen(false);
-      fetchData();
-    } catch (error) {
-      throw error;
-    }
-  };
-
-  const handleDeleteRule = async (ruleId: string) => {
-    try {
-      await monitoringApi.deleteAlertRule(ruleId);
-      toast.success('规则删除成功');
-      fetchData();
-    } catch (error) {
-      toast.error('删除规则失败');
-    }
-  };
-
-  const handleToggleRule = async (ruleId: string, enabled: boolean) => {
-    try {
-      if (enabled) {
-        await monitoringApi.disableAlertRule(ruleId);
-        toast.success('规则已停用');
-      } else {
-        await monitoringApi.enableAlertRule(ruleId);
-        toast.success('规则已启用');
-      }
-      fetchData();
-    } catch (error) {
-      toast.error('操作失败');
-    }
-  };
-
-  const handleRefresh = () => {
-    fetchData();
-  };
 
   const gpuColumns = [
     { key: 'nodeId', title: '节点', dataIndex: 'nodeId' },
@@ -119,56 +58,14 @@ const Monitoring: React.FC = () => {
     },
   ];
 
-  const ruleColumns = [
-    { key: 'name', title: '规则名称', dataIndex: 'name' },
-    { key: 'type', title: '类型', dataIndex: 'type' },
-    { key: 'condition', title: '条件', dataIndex: 'condition' },
-    { key: 'threshold', title: '阈值', dataIndex: 'threshold' },
-    {
-      key: 'severity',
-      title: '严重性',
-      render: (_: unknown, record: AlertRule) => {
-        const colorMap: Record<string, string> = {
-          critical: 'bg-error-light text-red-300',
-          warning: 'bg-warning-light text-amber-300',
-          info: 'bg-primary-light text-blue-300',
-        };
-        return <span className={`px-2 py-1 rounded-md text-xs font-medium ${colorMap[record.severity] || 'bg-dark-hover text-gray-300'}`}>{record.severity}</span>;
-      },
-    },
-    {
-      key: 'status',
-      title: '状态',
-      render: (_: unknown, record: AlertRule) => (
-        <span className={`px-2 py-1 rounded-md text-xs font-medium ${record.status === 'enabled' ? 'bg-success-light text-green-300' : 'bg-dark-hover text-gray-300'}`}>
-          {record.status === 'enabled' ? '已启用' : '已停用'}
-        </span>
-      ),
-    },
-    {
-      key: 'action',
-      title: '操作',
-      align: 'center' as const,
-      render: (_: unknown, record: AlertRule) => (
-        <div className="flex items-center justify-center gap-2">
-          <button className="text-primary hover:text-primary-hover" onClick={() => handleEditRule(record)}>编辑</button>
-          <button className="text-primary hover:text-primary-hover" onClick={() => handleToggleRule(record.id, record.status === 'enabled')}>
-            {record.status === 'enabled' ? '停用' : '启用'}
-          </button>
-          <button className="text-error hover:text-red-600" onClick={() => handleDeleteRule(record.id)}>删除</button>
-        </div>
-      ),
-    },
-  ];
-
   return (
     <div className="space-y-6">
       <PageHeader
         title="监控告警"
-        description="指标监控、告警规则、审计日志管理"
+        description="集群与 GPU 指标监控"
         extra={
           <div className="flex items-center gap-3">
-            <Button icon={<RotateCw size={16} />} onClick={handleRefresh} loading={loading}>
+            <Button icon={<RotateCw size={16} />} onClick={fetchData} loading={loading}>
               刷新
             </Button>
           </div>
@@ -220,47 +117,19 @@ const Monitoring: React.FC = () => {
         className="bg-dark-card rounded-xl border border-dark-border overflow-hidden"
       >
         <div className="flex border-b border-dark-border">
-          <button
-            onClick={() => { setActiveTab('gpu'); }}
-            className={`relative px-4 py-2.5 text-sm font-medium transition-colors ${activeTab === 'gpu' ? 'text-primary' : 'text-gray-500 hover:text-gray-300'}`}
-          >
-            GPU 监控
-            {activeTab === 'gpu' && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
-          </button>
-          <button
-            onClick={() => { setActiveTab('alerts'); }}
-            className={`relative px-4 py-2.5 text-sm font-medium transition-colors ${activeTab === 'alerts' ? 'text-primary' : 'text-gray-500 hover:text-gray-300'}`}
-          >
-            告警规则
-            {activeTab === 'alerts' && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
-          </button>
+          <span className="px-4 py-2.5 text-sm font-medium text-primary">GPU 监控</span>
         </div>
 
         <div className="p-4">
-          {activeTab === 'alerts' && (
-            <div className="mb-4 flex justify-end">
-              <Button variant="primary" icon={<Plus size={16} />} onClick={handleCreateRule}>
-                创建规则
-              </Button>
-            </div>
-          )}
           <Table
-            columns={activeTab === 'gpu' ? gpuColumns : ruleColumns as any}
-            data={activeTab === 'gpu' ? gpuMetrics : alertRules as any}
-            rowKey={activeTab === 'gpu' ? ((r: GPUMetrics) => `${r.nodeId}-${r.gpuIndex}`) as any : 'id'}
+            columns={gpuColumns}
+            data={gpuMetrics}
+            rowKey={(r: GPUMetrics) => `${r.nodeId}-${r.gpuIndex}`}
             loading={loading}
-            emptyText={activeTab === 'gpu' ? '暂无GPU监控数据' : '暂无告警规则'}
+            emptyText="暂无GPU监控数据"
           />
         </div>
       </motion.div>
-
-      <AlertRuleModal
-        open={alertModalOpen}
-        onCancel={() => setAlertModalOpen(false)}
-        onOk={handleRuleOk}
-        mode={editingRule ? 'edit' : 'create'}
-        initialValues={editingRule}
-      />
     </div>
   );
 };

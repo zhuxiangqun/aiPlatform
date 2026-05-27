@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
 import { Loader2 } from 'lucide-react';
 import AppLayout from './components/layout/AppLayout';
@@ -38,7 +38,6 @@ const CoreMCP = lazy(() => import('./pages/Core/MCP/MCP'));
 const WorkflowsPage = lazy(() => import('./pages/Core/Workflows/WorkflowsPage'));
 const WorkflowCanvas = lazy(() => import('./pages/Builder/WorkflowCanvas'));
 const WorkflowRunPage = lazy(() => import('./pages/Core/Workflows/WorkflowRunPage'));
-const CoreResources = lazy(() => import('./pages/Core/Resources/Resources'));
 const CoreVariables = lazy(() => import('./pages/Core/Variables/Variables'));
 const CoreCredentials = lazy(() => import('./pages/Core/Credentials/Credentials'));
 const CoreMemory = lazy(() => import('./pages/Core/Memory/Memory'));
@@ -49,7 +48,6 @@ const WorkspaceSkills = lazy(() => import('./pages/Workspace/Skills/Skills'));
 const WorkspaceSkillLint = lazy(() => import('./pages/Workspace/Skills/LintDashboard'));
 const WorkspaceSkillMarketplace = lazy(() => import('./pages/Workspace/SkillMarketplace/SkillMarketplace'));
 const WorkspaceMarketplace = lazy(() => import('./pages/Workspace/Marketplace'));
-const WorkspacePackages = lazy(() => import('./pages/Workspace/Packages'));
 const WorkspaceMCP = lazy(() => import('./pages/Workspace/MCP/MCP'));
 const CoreLearningArtifacts = lazy(() => import('./pages/Core/Learning/Artifacts'));
 const CoreLearningArtifactDetail = lazy(() => import('./pages/Core/Learning/Artifacts/ArtifactDetail'));
@@ -104,8 +102,8 @@ const router = createBrowserRouter([
     path: '/',
     element: <AppLayout />,
     children: [
-      { index: true, element: withSuspense(Overview) },
-      { path: 'overview', element: withSuspense(Overview) },
+      { index: true, element: withSuspense(SystemOverview) },
+      { path: 'overview', element: <Navigate to="/system-overview" replace /> },
       { path: 'system-overview', element: withSuspense(SystemOverview) },
       { path: 'alerts', element: withSuspense(Alerts) },
       { path: 'onboarding', element: withSuspense(Onboarding) },
@@ -127,7 +125,6 @@ const router = createBrowserRouter([
       { path: 'core/workflows/new', element: withSuspense(WorkflowCanvas) },
       { path: 'core/workflows/:id/edit', element: withSuspense(WorkflowCanvas) },
       { path: 'core/workflows/:id/runs/:projectId', element: withSuspense(WorkflowRunPage) },
-      { path: 'core/resources', element: withSuspense(CoreResources) },
       { path: 'core/variables', element: withSuspense(CoreVariables) },
       { path: 'core/credentials', element: withSuspense(CoreCredentials) },
       { path: 'core/memory', element: withSuspense(CoreMemory) },
@@ -138,7 +135,6 @@ const router = createBrowserRouter([
       { path: 'workspace/skills-lint', element: withSuspense(WorkspaceSkillLint) },
       { path: 'workspace/skill-marketplace', element: withSuspense(WorkspaceSkillMarketplace) },
       { path: 'workspace/marketplace', element: withSuspense(WorkspaceMarketplace) },
-      { path: 'workspace/packages', element: withSuspense(WorkspacePackages) },
       { path: 'workspace/mcp', element: withSuspense(WorkspaceMCP) },
       { path: 'workspace/teams', element: withSuspense(WorkspaceTeams) },
       { path: 'core/learning/artifacts', element: withSuspense(CoreLearningArtifacts) },

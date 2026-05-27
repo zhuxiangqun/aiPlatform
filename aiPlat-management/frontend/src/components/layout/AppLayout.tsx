@@ -26,7 +26,6 @@ interface MenuGroup {
 }
 
 const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
-  { key: '/overview', icon: LayoutDashboard, label: '平台总览' },
   { key: '/system-overview', icon: Activity, label: '系统概览' },
   { key: '/alerts', icon: Bell, label: '告警中心' },
   { key: '/releases', icon: Rocket, label: '版本管理' },
@@ -48,7 +47,6 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
     { key: '/core/skills', icon: Sparkles, label: 'Skill管理' },
     { key: '/core/tools', icon: Wrench, label: 'Tool管理' },
     { key: '/core/mcp', icon: Plug, label: 'MCP管理' },
-    { key: '/core/resources', icon: Globe, label: '资源管理' },
     { key: '/core/variables', icon: PenTool, label: '变量管理' },
     { key: '/core/credentials', icon: Key, label: '凭证管理' },
     { key: '/core/memory', icon: Brain, label: 'Memory管理' },
@@ -56,14 +54,13 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
     { key: '/core/agent-insight', icon: BarChart3, label: 'Agent能力' },
   ]},
   { divider: true },
-  { group: 'workspace', label: '应用库', items: [
+  { group: 'workspace', label: '应用能力层', items: [
     { key: '/workspace/agents', icon: Package, label: 'Agent库' },
     { key: '/workspace/skills', icon: Package, label: 'Skill库' },
     { key: '/approval', icon: ShieldCheck, label: '审批中心' },
     { key: '/core/workflows', icon: GitBranch, label: 'Workflow' },
     { key: '/workspace/marketplace', icon: ShoppingBag, label: '商城' },
-    { key: '/core/skill-packs', icon: Package, label: 'Skill包管理' },
-    { key: '/workspace/packages', icon: Box, label: '包管理' },
+    { key: '/core/skill-packs', icon: Package, label: '包管理' },
     { key: '/workspace/mcp', icon: Package, label: 'MCP库' },
     { key: '/workspace/teams', icon: Users, label: '团队组装' },
   ]},
