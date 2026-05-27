@@ -8,7 +8,7 @@ status: running
 protected: true
 category: engineering
 tags: [tool, api, execution]
-skills: [api_calling]
+skills: [api_calling, browser_automation, file_operations]
 tools: [search, calculator]
 model: deepseek-chat
 ---

@@ -10,7 +10,7 @@ category: engineering
 tags: [react, reasoning, action]
 phase: development
 required_tools: []
-required_skills: []
+required_skills: [data_analysis, file_operations]
 pipeline:
   output_artifact: react_output
   phase: development

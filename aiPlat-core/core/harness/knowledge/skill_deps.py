@@ -13,14 +13,36 @@ from typing import Any, Dict, List, Optional, Set
 
 
 def _parse_frontmatter(text: str) -> Dict[str, Any]:
-    u"""Extract YAML-like frontmatter from SKILL.md files."""
-    fm: Dict[str, Any] = {}
+    u"""Extract YAML frontmatter from SKILL.md / AGENT.md files.
+
+    Uses yaml.safe_load for proper nested YAML support (consistent with
+    capability_graph.py).  Falls back to a simple line parser if yaml is
+    unavailable.
+    """
     if not text.startswith("---"):
-        return fm
+        return {}
     parts = text.split("---", 2)
     if len(parts) < 3:
-        return fm
-    for line in parts[1].strip().split("\n"):
+        return {}
+    raw = parts[1].strip()
+    if not raw:
+        return {}
+    # Try proper YAML parser first
+    try:
+        import yaml as _yaml
+        data = _yaml.safe_load(raw)
+        if isinstance(data, dict):
+            # Normalize scalar values that should be lists
+            for key in ('required_skills', 'required_tools', 'skills', 'tools',
+                        'tags', 'effects', 'mcp_servers'):
+                if key in data and isinstance(data[key], str):
+                    data[key] = [data[key]]
+            return {str(k): v for k, v in data.items()}
+    except Exception:
+        pass
+    # Fallback: simple line parser
+    fm: Dict[str, Any] = {}
+    for line in raw.split("\n"):
         line = line.strip()
         if not line or ":" not in line:
             continue

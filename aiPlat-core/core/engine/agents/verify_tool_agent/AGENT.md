@@ -10,7 +10,7 @@ protected: true
 category: quality
 tags: [verification, tool, validation]
 phase: review
-required_skills: []
+required_skills: [code_review, test_case_generation]
 pipeline:
   output_artifact: verify_report
   phase: testing

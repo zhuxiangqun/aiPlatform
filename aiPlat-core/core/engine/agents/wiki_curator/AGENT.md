@@ -9,6 +9,7 @@ required_skills:
   - knowledge_editor
   - wiki_query
   - wiki_lint
+  - knowledge_ingest
 required_tools:
   - file_operations
   - search

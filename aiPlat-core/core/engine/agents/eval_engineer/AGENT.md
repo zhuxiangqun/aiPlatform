@@ -7,6 +7,9 @@ version: 1.0.0
 model: deepseek-chat
 required_skills:
   - eval_code_generator
+  - code_review
+  - root_cause_analysis
+  - test_case_generation
 required_tools:
   - file_operations
   - search

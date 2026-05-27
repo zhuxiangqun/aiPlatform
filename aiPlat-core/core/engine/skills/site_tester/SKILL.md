@@ -4,6 +4,7 @@ display_name: 全站自动化测试
 description: 自动遍历所有页面，发现可交互元素，执行全覆盖功能测试。支持多账号、弹窗递归、截图对比、视频录制。不经过LLM推理，确定性执行。
 version: 1.0.0
 category: testing
+status: enabled
 effects:
   - type: read
     resources: ["browser:page", "filesystem:write"]

@@ -8,7 +8,7 @@ status: running
 protected: true
 category: engineering
 tags: [rag, retrieval, generation]
-skills: [knowledge_retrieval, summarization]
+skills: [knowledge_retrieval, summarization, information_search, doc_query, multi_doc_query]
 tools: [search]
 model: deepseek-reasoner
 ---

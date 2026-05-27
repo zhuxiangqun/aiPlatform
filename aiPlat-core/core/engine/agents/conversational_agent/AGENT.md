@@ -8,7 +8,7 @@ status: running
 protected: true
 category: engineering
 tags: [conversational, chat]
-skills: [chitchat]
+skills: [chitchat, translation, text_generation]
 tools: []
 model: deepseek-chat
 ---

@@ -4,6 +4,7 @@ display_name: E2E 测试自动生成
 description: 输入任意 URL，自动探索站点、生成 Playwright 测试套件、运行测试、修复失败、补充覆盖，循环直到全部通过或达到上限。类似 AgentQX。
 version: 1.0.0
 category: testing
+status: enabled
 effects:
   - type: both
     resources: ["browser:page", "filesystem:write"]
