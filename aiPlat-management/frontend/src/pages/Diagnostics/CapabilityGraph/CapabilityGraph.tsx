@@ -170,6 +170,87 @@ export default function CapabilityGraphPage() {
         </div>
       </div>
 
+      {/* Legend */}
+      <details className="bg-dark-card border border-dark-border rounded-lg p-3 text-xs text-gray-500 cursor-pointer group">
+        <summary className="text-gray-400 hover:text-gray-200 select-none">📖 图例说明</summary>
+        <div className="mt-3 space-y-3">
+          <div>
+            <div className="text-gray-300 font-medium mb-1">节点类型</div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-1">
+              {[
+                { icon: '🤖', type: 'agent', desc: 'AI Agent（来自 AGENT.md）' },
+                { icon: '⚡', type: 'skill', desc: '技能（来自 SKILL.md）' },
+                { icon: '🔧', type: 'tool', desc: '工具（来自 ToolRegistry）' },
+                { icon: '🔌', type: 'mcp_server', desc: 'MCP 服务器（来自 MCPManager）' },
+                { icon: '⚙️', type: 'workflow', desc: '工作流（活跃 Pipeline）' },
+                { icon: '📡', type: 'syscall', desc: '系统调用（sys_*）' },
+              ].map(item => (
+                <div key={item.type} className="flex items-center gap-1.5">
+                  <span>{item.icon}</span>
+                  <span className="text-gray-300">{item.type}</span>
+                  <span className="text-gray-600">— {item.desc}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div className="text-gray-300 font-medium mb-1">边关系</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
+              {[
+                { rel: '需要', from: 'Agent → Skill/Tool', desc: 'Agent 的 required_skills/required_tools' },
+                { rel: '调用', from: 'Skill → Syscall', desc: 'SKILL.md 正文中引用的 sys_*' },
+                { rel: '提供', from: 'MCP → Tool', desc: 'MCP 服务器暴露的工具' },
+                { rel: '映射到', from: 'Workflow → Agent/Skill', desc: 'Pipeline Stage 绑定的 Agent' },
+              ].map(item => (
+                <div key={item.rel} className="flex items-center gap-1.5">
+                  <span className="text-amber-300">{item.rel}</span>
+                  <span className="text-gray-600">= {item.from}</span>
+                  <span className="text-gray-600 hidden md:inline">— {item.desc}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div className="text-gray-300 font-medium mb-1">问题标签</div>
+            <div className="flex flex-wrap gap-2">
+              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] border bg-yellow-500/15 text-yellow-300 border-yellow-500/25">未使用</span>
+              <span className="text-gray-500">= Skill 没有被任何 Agent 引用</span>
+              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] border bg-red-500/15 text-red-300 border-red-500/25 ml-3">孤立</span>
+              <span className="text-gray-500">= Agent 没有绑定任何 Skill/Tool</span>
+              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] border bg-red-500/15 text-red-300 border-red-500/25 ml-3">missing</span>
+              <span className="text-gray-500">= Agent 引用了不存在的 Skill/Tool</span>
+            </div>
+          </div>
+          <div>
+            <div className="text-gray-300 font-medium mb-1">详情列含义</div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-1">
+              <div><span className="text-gray-300">agent</span><span className="text-gray-600"> — type=Agent 类型, status=状态</span></div>
+              <div><span className="text-gray-300">skill</span><span className="text-gray-600"> — cat=分类, syscalls=SOP 中 syscall 引用数</span></div>
+              <div><span className="text-gray-300">tool</span><span className="text-gray-600"> — 功能描述</span></div>
+              <div><span className="text-gray-300">mcp_server</span><span className="text-gray-600"> — enabled/disabled + 传输方式</span></div>
+            </div>
+          </div>
+          <div>
+            <div className="text-gray-300 font-medium mb-1">Top Hubs & Blast</div>
+            <div className="text-gray-600">
+              <span className="text-gray-300">deg</span> = 节点的连接数（入+出），值越大越关键。
+              <span className="text-gray-300 ml-3">blast</span> = 从该节点出发能到达多少个其他节点，改动影响面。
+            </div>
+          </div>
+          <div>
+            <div className="text-gray-300 font-medium mb-1">健康分</div>
+            <div className="text-gray-600">
+              100–90 = <span className="text-green-400">A</span> ·
+              89–75 = <span className="text-green-400">B</span> ·
+              74–60 = <span className="text-yellow-400">C</span> ·
+              59–40 = <span className="text-yellow-400">D</span> ·
+              &lt;40 = <span className="text-red-400">F</span>
+              <span className="ml-2">扣分项：未使用 Skill、孤立 Agent、未解析引用、无 Tool/MCP</span>
+            </div>
+          </div>
+        </div>
+      </details>
+
       {/* Health bar */}
       {health && (
         <div className="flex items-center gap-3 px-4 py-2 rounded-lg bg-dark-card border border-dark-border text-xs text-gray-400">
