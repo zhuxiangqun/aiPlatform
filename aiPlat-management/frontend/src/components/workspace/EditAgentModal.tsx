@@ -350,6 +350,15 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
     >
       <div className="space-y-4">
         <Input label="名称（显示名）" value={name} onChange={(e: any) => setName(e.target.value)} />
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">功能描述</label>
+          <Textarea
+            value={description}
+            onChange={(e: any) => setDescription(e.target.value)}
+            rows={3}
+            placeholder="描述这个 Agent 的功能目标、工作流程和适用场景，AI 智能填充将根据此描述推荐 Skills / Tools / MCP / 子 Agent / Workflow"
+          />
+        </div>
         <div className="mb-2">
           <label className="block text-sm font-medium text-gray-300 mb-1">状态</label>
           {['draft', 'ready'].includes(agentStatus) ? (
