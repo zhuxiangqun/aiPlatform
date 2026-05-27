@@ -12,6 +12,7 @@ export interface Agent {
   display_name?: string;
   agent_type: string;
   status: string;
+  runtime_state?: string;
   description?: string;
   category?: string;
   tags?: string[];

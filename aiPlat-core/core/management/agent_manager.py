@@ -22,15 +22,17 @@ class AgentInfo:
     """Agent information"""
     id: str
     name: str
-    type: str# ReAct, RAG, Plan, Conversational, Tool-Using, Multi-Agent
-    # Canonical status values (see core.harness.state.AgentStateEnum)
+    type: str  # ReAct, RAG, Plan, Conversational, Tool-Using, Multi-Agent
+    # Governance lifecycle status (draft, ready, published, listed, deprecated)
     status: str
-    config: Dict[str, Any]
-    skills: List[str]
-    tools: List[str]
-    memory_config: Dict[str, Any]
-    created_at: datetime
-    updated_at: datetime
+    # Runtime execution state (initializing, running, stopped, error)
+    runtime_state: str = "stopped"
+    config: Dict[str, Any] = field(default_factory=dict)
+    skills: List[str] = field(default_factory=list)
+    tools: List[str] = field(default_factory=list)
+    memory_config: Dict[str, Any] = field(default_factory=dict)
+    created_at: datetime = field(default_factory=datetime.utcnow)
+    updated_at: datetime = field(default_factory=datetime.utcnow)
     version: str = "1.0.0"
     metadata: Dict[str, Any] = field(default_factory=dict)
     mcp_ids: List[str] = field(default_factory=list)
@@ -239,20 +241,15 @@ class AgentManager:
             return
 
     def _normalize_status(self, status: str) -> str:
-        """Normalize legacy status strings to canonical AgentStateEnum values."""
+        """Normalize status to governance lifecycle values."""
         s = (status or "").strip().lower()
-        mapping = {
-            "pending": AgentStateEnum.INITIALIZING.value,
-            "initializing": AgentStateEnum.INITIALIZING.value,
-            "ready": AgentStateEnum.READY.value,
-            "idle": AgentStateEnum.READY.value,
-            "running": AgentStateEnum.RUNNING.value,
-            "paused": AgentStateEnum.PAUSED.value,
-            "stopped": AgentStateEnum.STOPPED.value,
-            "error": AgentStateEnum.ERROR.value,
-            "terminated": AgentStateEnum.TERMINATED.value,
-        }
-        return mapping.get(s, AgentStateEnum.READY.value)
+        if s in ("draft", "ready", "published", "listed", "deprecated"):
+            return s
+        if s in ("enabled", "active", "running", "initializing", "pending", "idle"):
+            return "enabled"  # legacy runtime states → governance 'enabled'
+        if s in ("stopped", "error", "terminated", "paused"):
+            return "draft"  # stopped/error agents → draft for re-submission
+        return "draft"
     
     def _seed_data(self):
         import os as _os
@@ -359,7 +356,8 @@ class AgentManager:
             id=agent_id,
             name=name,
             type=agent_type,
-            status=AgentStateEnum.INITIALIZING.value,
+            status="draft",
+            runtime_state=AgentStateEnum.INITIALIZING.value,
             config=config,
             skills=skills or [],
             tools=tools or [],
@@ -894,7 +892,7 @@ class AgentManager:
         agent = self._agents.get(agent_id)
         if not agent:
             return False
-        agent.status = AgentStateEnum.RUNNING.value
+        agent.runtime_state = AgentStateEnum.RUNNING.value
         agent.updated_at = datetime.utcnow()
         return True
     
@@ -903,7 +901,7 @@ class AgentManager:
         agent = self._agents.get(agent_id)
         if not agent:
             return False
-        agent.status = AgentStateEnum.STOPPED.value
+        agent.runtime_state = AgentStateEnum.STOPPED.value
         agent.updated_at = datetime.utcnow()
         return True
     

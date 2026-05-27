@@ -132,10 +132,20 @@ const WorkspaceAgents: React.FC = () => {
       key: 'listing_status',
       width: 130,
       render: (s: string) => {
-        const labels: Record<string, string> = { draft: '草稿', ready: '待审核', published: '已发布', listed: '已上架', deprecated: '已废弃' };
-        const colors: Record<string, string> = { draft: '#888', ready: '#f59e0b', published: '#3b82f6', listed: '#10b981', deprecated: '#6b7280' };
-        if (s === 'initializing') return <span className="text-xs" style={{ color: '#888' }}>启动中</span>;
+        const labels: Record<string, string> = { draft: '草稿', ready: '待审核', published: '已发布', listed: '已上架', deprecated: '已废弃', enabled: '已启用(旧)' };
+        const colors: Record<string, string> = { draft: '#888', ready: '#f59e0b', published: '#3b82f6', listed: '#10b981', deprecated: '#6b7280', enabled: '#888' };
         return <span className="text-xs" style={{ color: colors[s] || '#888' }}>{labels[s] || s}</span>;
+      },
+    },
+    {
+      title: '运行状态',
+      dataIndex: 'runtime_state',
+      key: 'runtime_state',
+      width: 90,
+      render: (s: string) => {
+        const labels: Record<string, string> = { running: '运行中', stopped: '已停止', initializing: '启动中', error: '错误', paused: '已暂停' };
+        const colors: Record<string, string> = { running: '#10b981', stopped: '#6b7280', initializing: '#f59e0b', error: '#ef4444', paused: '#f59e0b' };
+        return <span className="text-xs" style={{ color: colors[s] || '#888' }}>{labels[s] || (s || '已停止')}</span>;
       },
     },
     {

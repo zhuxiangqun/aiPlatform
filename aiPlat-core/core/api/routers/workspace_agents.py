@@ -139,6 +139,7 @@ async def list_workspace_agents(
              "display_name": a.metadata.get("display_name", a.name) if isinstance(a.metadata, dict) else a.name,
              "description": a.metadata.get("description", ""),
              "agent_type": a.type, "status": a.status,
+             "runtime_state": getattr(a, "runtime_state", "stopped"),
              "category": a.category, "tags": a.tags, "phase": a.phase,
              "output_artifact": a.metadata.get("output_artifact", ""),
              "config": a.config,
