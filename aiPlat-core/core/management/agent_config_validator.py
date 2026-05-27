@@ -142,6 +142,37 @@ def validate_agent_file(md_path: Path) -> List[ConfigIssue]:
     if has_tools and not has_required_tools:
         pass  # OK — parser now reads both fields
 
+    # 5) Shell agent detection — check if agent has meaningful identity
+    skills = fm.get("skills") or fm.get("required_skills") or []
+    tools = fm.get("tools") or fm.get("required_tools") or []
+    system_prompt = (fm.get("config") or {}).get("system_prompt", "") if isinstance(fm.get("config"), dict) else ""
+    has_system_prompt = bool(system_prompt and len(system_prompt.strip()) > 20)
+
+    shell_flags = 0
+    if not has_system_prompt:
+        shell_flags += 1
+        issues.append(ConfigIssue(
+            agent=agent_name, file=file_path, severity="warn",
+            message="Missing system_prompt — runtime will use CLAUDE.md as fallback"
+        ))
+    if not skills or len(skills) == 0:
+        shell_flags += 1
+        issues.append(ConfigIssue(
+            agent=agent_name, file=file_path, severity="warn",
+            message="No skills bound — agent has no capabilities"
+        ))
+    if not tools or len(tools) == 0:
+        shell_flags += 1
+        issues.append(ConfigIssue(
+            agent=agent_name, file=file_path, severity="warn",
+            message="No tools bound — agent cannot perform actions"
+        ))
+    if shell_flags >= 3:
+        issues.append(ConfigIssue(
+            agent=agent_name, file=file_path, severity="error",
+            message="Shell agent detected: no system_prompt, no skills, no tools. Agent will behave as generic CLAUDE.md assistant."
+        ))
+
     return issues
 
 

@@ -102,6 +102,7 @@ async def list_items():
                 "dep_warnings": deps,
                 "meta": {
                     "model": (a.get("config", {}) or {}).get("model", "") or a.get("metadata", {}).get("model", ""),
+                    "system_prompt": (a.get("config", {}) or {}).get("system_prompt", ""),
                     "sop_steps": 0,
                     "mcp_ids": a.get("mcp_ids", []) or [],
                     "workflow_ids": a.get("workflow_ids", []) or [],

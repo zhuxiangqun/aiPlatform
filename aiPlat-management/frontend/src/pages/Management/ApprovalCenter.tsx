@@ -120,7 +120,11 @@ const ApprovalCenter: React.FC = () => {
                   <div style={{ fontSize: 12, marginBottom: 4 }}>{ok(item.skills?.length > 0)} Skills 绑定 ({item.skills?.length || 0}个)</div>
                   <div style={{ fontSize: 12, marginBottom: 4 }}>{ok(item.tools?.length > 0)} Tools 绑定 ({item.tools?.length || 0}个)</div>
                   <div style={{ fontSize: 12, marginBottom: 4 }}>{ok(m.model)} 模型配置: {m.model || '未配置'}</div>
+                  <div style={{ fontSize: 12, marginBottom: 4 }}>{ok((m.system_prompt || '').length > 20)} System Prompt: {(m.system_prompt || '').length > 20 ? '✓' : (m.system_prompt ? '过短' : '未配置')}</div>
                   {item.deps_ok === false && <div style={{ fontSize: 12, marginBottom: 4, color: '#f59e0b' }}>⚠ 依赖未全部上架</div>}
+                  {item.skills?.length === 0 && item.tools?.length === 0 && !(m.system_prompt || '').length && (
+                    <div style={{ fontSize: 12, marginBottom: 4, color: '#ef4444' }}>⚠ 空壳 Agent：无 System Prompt、无 Skills、无 Tools</div>
+                  )}
                   {m.lint && (
                     <div style={{ fontSize: 12, lineHeight: 1.6, padding: '8px 10px', background: m.lint.risk_level === 'high' ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)', borderRadius: 6, marginTop: 6 }}>
                       <div style={{ marginBottom: 2 }}>

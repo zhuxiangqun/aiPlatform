@@ -27,6 +27,15 @@ def _store(rt: Optional[KernelRuntime]):
     return getattr(rt, "execution_store", None) if rt else None
 
 
+def _detect_shell_agent(agent) -> bool:
+    """Detect if an agent is a 'shell' — no system_prompt, no skills, no tools."""
+    system_prompt = (agent.config or {}).get("system_prompt", "") if isinstance(agent.config, dict) else ""
+    has_prompt = bool(system_prompt and len(str(system_prompt).strip()) > 20)
+    has_skills = bool(getattr(agent, "skills", None))
+    has_tools = bool(getattr(agent, "tools", None))
+    return not has_skills and not has_tools and not has_prompt
+
+
 def _ws_agent_mgr(rt: Optional[KernelRuntime]):
     return getattr(rt, "workspace_agent_manager", None) if rt else None
 
@@ -140,6 +149,7 @@ async def list_workspace_agents(
              "description": a.metadata.get("description", ""),
              "agent_type": a.type, "status": a.status,
              "runtime_state": getattr(a, "runtime_state", "stopped"),
+             "is_shell": _detect_shell_agent(a),
              "category": a.category, "tags": a.tags, "phase": a.phase,
              "output_artifact": a.metadata.get("output_artifact", ""),
              "config": a.config,

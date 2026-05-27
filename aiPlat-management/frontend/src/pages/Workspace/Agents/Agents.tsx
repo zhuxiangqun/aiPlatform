@@ -149,6 +149,16 @@ const WorkspaceAgents: React.FC = () => {
       },
     },
     {
+      title: '配置',
+      dataIndex: 'is_shell',
+      key: 'is_shell',
+      width: 70,
+      render: (_: unknown, record: Agent) => {
+        if (record.is_shell) return <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-500/15 text-red-300 border border-red-500/25">空壳</span>;
+        return <span className="text-[10px] text-gray-500">OK</span>;
+      },
+    },
+    {
       title: '启用',
       dataIndex: 'status',
       key: 'enabled',

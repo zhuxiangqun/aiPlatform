@@ -13,6 +13,7 @@ export interface Agent {
   agent_type: string;
   status: string;
   runtime_state?: string;
+  is_shell?: boolean;
   description?: string;
   category?: string;
   tags?: string[];
