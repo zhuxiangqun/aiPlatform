@@ -130,6 +130,14 @@ export const workspaceAgentApi = {
     return apiClient.post<{ id: string; status: string; name: string }>('/core/workspace/agents', data);
   },
 
+  autoFill: async (data: { name: string; description: string }) => {
+    return apiClient.post<{
+      agent_type: string; config: Record<string, unknown>;
+      skills: string[]; tools: string[]; mcp_ids: string[]; agent_ids: string[];
+      memory_config: Record<string, unknown>; sop_text: string; reasoning: string;
+    }>('/core/workspace/agents/auto-fill', data);
+  },
+
   delete: async (agentId: string) => {
     return apiClient.delete<{ status: string; id: string }>(`/core/workspace/agents/${agentId}`);
   },

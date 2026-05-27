@@ -61,6 +61,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
   const [modelOptions, setModelOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [selectedModel, setSelectedModel] = useState<string>('');
   const [autoSmoke, setAutoSmoke] = useState(true);
+  const [autoFillLoading, setAutoFillLoading] = useState(false);
 
   // Disambiguation wizard
   const [wizOpen, setWizOpen] = useState(false);
@@ -157,6 +158,31 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
       toast.success(smoke?.ok ? '全链路冒烟通过' : '全链路冒烟失败');
     } catch (e: any) {
       toast.error('全链路冒烟失败', String(e?.message || 'unknown'));
+    }
+  };
+
+  const handleAutoFill = async () => {
+    if (!name.trim() && !description.trim()) {
+      toast.warning('请先填写名称或功能描述');
+      return;
+    }
+    setAutoFillLoading(true);
+    try {
+      const result = await workspaceAgentApi.autoFill({ name: name.trim(), description: description.trim() });
+      // Populate form fields from AI response
+      if (result.agent_type) setSelectedType(result.agent_type);
+      if (result.config) setConfigText(JSON.stringify(result.config, null, 2));
+      if (result.skills?.length) setSkills(result.skills.filter((s: string) => skillOptions.some(o => o.value === s)));
+      if (result.tools?.length) setTools(result.tools.filter((t: string) => toolOptions.some(o => o.value === t)));
+      if (result.mcp_ids?.length) setMcpIds(result.mcp_ids.filter((m: string) => mcpOptions.some(o => o.value === m)));
+      if (result.agent_ids?.length) setAgentIds(result.agent_ids.filter((a: string) => agentOptions.some(o => o.value === a)));
+      if (result.memory_config) setMemoryConfigText(JSON.stringify(result.memory_config, null, 2));
+      if (result.sop_text) setSopText(result.sop_text);
+      toast.success(`智能填充完成`, result.reasoning || 'AI 已根据描述推荐配置');
+    } catch (e: any) {
+      toast.error('智能填充失败', e?.message || String(e));
+    } finally {
+      setAutoFillLoading(false);
     }
   };
 
@@ -343,7 +369,18 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
     >
       <div className="space-y-4">
         <Input label="名称" value={name} onChange={(e: any) => setName(e.target.value)} placeholder="例如：数据分析助手" />
-        <Input label="描述（可选）" value={description} onChange={(e: any) => setDescription(e.target.value)} placeholder="这个 Agent 的职责边界与适用场景" />
+        <div className="flex items-center gap-2">
+          <div className="flex-1">
+            <label className="text-sm font-medium text-gray-300 mb-1 block">功能描述</label>
+            <Textarea value={description} onChange={(e: any) => setDescription(e.target.value)} placeholder="描述这个 Agent 的任务目标和能力边界，AI 将根据描述自动推荐技能、工具和配置" />
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" size="sm" onClick={handleAutoFill} loading={autoFillLoading}>
+            ✨ AI 智能填充
+          </Button>
+          <span className="text-xs text-gray-500">根据名称和功能描述自动推荐 Skills / Tools / MCP / 配置 / SOP</span>
+        </div>
 
         <label className="flex items-center gap-2 text-sm text-gray-400">
           <input type="checkbox" checked={autoSmoke} onChange={(e) => setAutoSmoke(e.target.checked)} />

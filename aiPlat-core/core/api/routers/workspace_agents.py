@@ -13,7 +13,7 @@ from core.api.deps import actor_from_http, rbac_guard
 from core.api.utils.governance import gate_error_envelope, ui_url
 from core.harness.integration import KernelRuntime
 from core.harness.kernel.runtime import get_kernel_runtime
-from core.schemas_agents import AgentCreateRequest, AgentUpdateRequest
+from core.schemas_agents import AgentCreateRequest, AgentUpdateRequest, AgentAutoFillRequest, AgentAutoFillResponse
 
 router = APIRouter()
 
@@ -220,6 +220,125 @@ async def create_workspace_agent(request: AgentCreateRequest, http_request: Requ
         return {"id": agent.id, "status": "created", "name": agent.name}
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
+
+
+@router.post("/workspace/agents/auto-fill")
+async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
+    """AI 智能填充：根据功能描述自动推荐 skills / tools / MCP / config / SOP 等。"""
+    import json as _json
+    import re as _re
+
+    # ── Build skill catalog ──────────────────────────────────────
+    skill_entries: List[str] = []
+    try:
+        from core.harness.knowledge.capability_graph import build_capability_graph
+        cg = build_capability_graph()
+        for nid, n in cg.nodes.items():
+            if n.get("type") == "skill":
+                skill_entries.append(
+                    f"  - {n['raw_id']}: {n.get('label', n['raw_id'])} "
+                    f"[category={n.get('category','')}]"
+                )
+    except Exception:
+        skill_entries = ["(unable to load skill catalog)"]
+
+    # ── Build tool catalog ───────────────────────────────────────
+    tool_entries: List[str] = []
+    try:
+        from core.apps.tools.base import get_tool_registry
+        reg = get_tool_registry()
+        for name in sorted(reg.list_tools() or []):
+            tool = reg.get(name)
+            desc = getattr(tool, 'description', '') if tool else ''
+            tool_entries.append(f"  - {name}: {str(desc)[:200]}")
+    except Exception:
+        tool_entries = ["(unable to load tool catalog)"]
+
+    # ── Build MCP catalog ────────────────────────────────────────
+    mcp_entries: List[str] = []
+    try:
+        from core.management.mcp_manager import MCPManager as _Mgr
+        mgr = _Mgr()
+        for srv in mgr.list_servers() or []:
+            mcp_entries.append(
+                f"  - {srv.name}: enabled={getattr(srv,'enabled',True)} "
+                f"transport={getattr(srv,'transport','')}"
+            )
+    except Exception:
+        mcp_entries = ["(unable to load MCP catalog)"]
+
+    # ── Build prompt ────────────────────────────────────────────
+    prompt = f"""你是一个 AI 平台配置专家。用户正在创建一个新的 AI Agent，请根据以下功能描述推荐最优配置。
+
+## 用户输入
+- 名称: {req.name or '(待填写)'}
+- 功能描述: {req.description or '(无)'}
+
+## 可用技能 (Skills)
+{chr(10).join(skill_entries[:50]) or '(无)'}
+
+## 可用工具 (Tools)
+{chr(10).join(tool_entries[:30]) or '(无)'}
+
+## 可用 MCP 服务器
+{chr(10).join(mcp_entries[:20]) or '(无)'}
+
+## Agent 类型说明
+- base: 基础 Agent，通用聊天/问答
+- react: ReAct 思考-行动-观察循环，适合复杂推理任务
+- plan: Plan-Execute 模式，先规划再执行，适合多步骤任务
+- tool: 工具调用模式，配合 Function Calling 使用
+- conversational: 多轮对话模式，适合客服/咨询
+
+## 任务
+根据用户的功能描述，推荐最匹配的配置。输出严格 JSON（无 markdown 标记）:
+
+{{"agent_type":"react|plan|tool|base|conversational","config":{{"model":"deepseek-chat","temperature":0.3,"max_tokens":4096,"system_prompt":"根据功能描述生成的系统提示词(中文)"}},"skills":["技能名1"],"tools":["工具名1"],"mcp_ids":[],"agent_ids":[],"memory_config":{{"type":"short_term","recall_count":5}},"sop_text":"根据功能描述生成的 SOP 步骤(Markdown 格式,中文)","reasoning":"为什么这样选择的简要解释(中文)"}}
+"""
+
+    # ── Call LLM ─────────────────────────────────────────────────
+    try:
+        from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
+        model_name = best_model_for_purpose("agent_creation")
+        model = create_selected_adapter(model_name=model_name)
+        messages = [
+            {"role": "system", "content": "你是一个 AI Agent 配置专家。只输出 JSON，不要加任何解释或 markdown 标记。"},
+            {"role": "user", "content": prompt},
+        ]
+        resp = await model.generate(messages, config=None)
+        content = resp.content if hasattr(resp, 'content') else str(resp)
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"LLM unavailable: {e}")
+
+    # ── Parse JSON response ──────────────────────────────────────
+    clean = content.strip()
+    if clean.startswith("```"):
+        clean = _re.sub(r'^```\w*\n?', '', clean)
+        clean = _re.sub(r'\n?```$', '', clean)
+    match = _re.search(r'\{[\s\S]*\}', clean)
+    if match:
+        try:
+            data = _json.loads(match.group(0))
+        except _json.JSONDecodeError:
+            cleaned = _re.sub(r',\s*\}', '}', match.group(0))
+            try:
+                data = _json.loads(cleaned)
+            except _json.JSONDecodeError:
+                raise HTTPException(status_code=422, detail="Failed to parse LLM response as JSON")
+    else:
+        raise HTTPException(status_code=422, detail="LLM response does not contain JSON")
+
+    return AgentAutoFillResponse(
+        agent_type=str(data.get("agent_type", "base"))[:20],
+        config=data.get("config", {}) if isinstance(data.get("config"), dict) else {},
+        skills=list(data.get("skills", []))[:20],
+        tools=list(data.get("tools", []))[:20],
+        mcp_ids=list(data.get("mcp_ids", []))[:10],
+        agent_ids=list(data.get("agent_ids", []))[:10],
+        memory_config=data.get("memory_config", {}) if isinstance(data.get("memory_config"), dict) else {},
+        sop_text=str(data.get("sop_text", ""))[:8000],
+        reasoning=str(data.get("reasoning", ""))[:500],
+    )
 
 
 @router.get("/workspace/agents/{agent_id}")

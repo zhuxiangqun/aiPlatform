@@ -44,3 +44,22 @@ class AgentOutput(BaseModel):
     error: Optional[str] = Field(default=None, description="Error message if failed")
     attachments: List[str] = Field(default_factory=list, description="File paths, screenshots, etc.")
 
+
+class AgentAutoFillRequest(BaseModel):
+    """Request for AI-powered agent creation auto-fill."""
+    name: str = ""
+    description: str = ""
+
+
+class AgentAutoFillResponse(BaseModel):
+    """AI-suggested agent configuration based on functional description."""
+    agent_type: str = "base"
+    config: Dict[str, Any] = Field(default_factory=dict)
+    skills: List[str] = Field(default_factory=list)
+    tools: List[str] = Field(default_factory=list)
+    mcp_ids: List[str] = Field(default_factory=list)
+    agent_ids: List[str] = Field(default_factory=list)
+    memory_config: Dict[str, Any] = Field(default_factory=dict)
+    sop_text: str = ""
+    reasoning: str = ""
+

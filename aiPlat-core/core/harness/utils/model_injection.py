@@ -275,6 +275,10 @@ PURPOSE_PROFILE: dict = {
         "prefer": ["chat"],
         "avoid": ["reasoning"],
     },
+    "agent_creation": {
+        "prefer": ["chat"],
+        "avoid": ["reasoning"],
+    },
 }
 
 _DEFAULT_PROFILE = {"prefer": ["chat"], "avoid": []}

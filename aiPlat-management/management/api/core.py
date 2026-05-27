@@ -539,6 +539,15 @@ async def create_workspace_agent(payload: dict):
         raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
 
 
+@router.post("/workspace/agents/auto-fill")
+async def auto_fill_workspace_agent(payload: dict):
+    try:
+        client = get_core_client()
+        return await client.auto_fill_workspace_agent(payload)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
 @router.get("/workspace/agents/{agent_id}")
 async def get_workspace_agent(agent_id: str):
     try:

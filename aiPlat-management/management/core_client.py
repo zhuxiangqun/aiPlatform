@@ -847,6 +847,9 @@ class CoreAPIClient:
     async def create_workspace_agent(self, agent: Dict[str, Any]) -> Dict[str, Any]:
         return await self._request("POST", "/api/core/workspace/agents", json=agent)
 
+    async def auto_fill_workspace_agent(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", "/api/core/workspace/agents/auto-fill", json=payload)
+
     async def get_workspace_agent(self, agent_id: str) -> Dict[str, Any]:
         return await self._request("GET", f"/api/core/workspace/agents/{agent_id}")
 
