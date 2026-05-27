@@ -359,7 +359,12 @@ async def resolve_entropy(entry_id: str):
 
 @router.post("/eval/generate/{agent_id}")
 async def generate_eval_for_agent(agent_id: str):
-    import os, json as _json
+    """为 Agent 生成评估指标（scoring_dimensions），写入 AGENT.md。
+
+    基于 Agent 的描述 + 工具调用历史，通过 LLM 生成 3-5 个评估维度。
+    已有的 scoring_dimensions 会被跳过。
+    """
+    import os, json as _json, re, yaml
     from pathlib import Path as _Path
     home = _Path(os.path.expanduser("~/.aiplat"))
     agent_md = home / "agents" / agent_id / "AGENT.md"
@@ -367,8 +372,11 @@ async def generate_eval_for_agent(agent_id: str):
         raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
     content = agent_md.read_text(encoding="utf-8")
     has_scoring = "scoring_dimensions:" in content
+
+    # ── Gather traces ──────────────────────────────────────────────
     trace_count = 0
     recent_tools = []
+    recent_events = []
     try:
         from core.services.execution_store import get_execution_store
         store = get_execution_store()
@@ -376,23 +384,153 @@ async def generate_eval_for_agent(agent_id: str):
         import sqlite3
         conn = sqlite3.connect(store._config.db_path)
         try:
-            events = conn.execute("SELECT name FROM syscall_events WHERE kind='tool' ORDER BY created_at DESC LIMIT 500").fetchall()
-            trace_count = len(events)
+            rows = conn.execute(
+                "SELECT name, kind, created_at FROM syscall_events "
+                "WHERE kind IN ('tool','skill') ORDER BY created_at DESC LIMIT 50"
+            ).fetchall()
+            trace_count = len(rows)
             seen = set()
-            for e in events:
-                if e[0] and e[0] not in seen:
-                    recent_tools.append(e[0]); seen.add(e[0])
+            for r in rows:
+                recent_events.append({"name": r[0], "kind": r[1]})
+                if r[0] and r[0] not in seen:
+                    recent_tools.append(r[0]); seen.add(r[0])
         finally:
             conn.close()
-    except: pass
+    except Exception:
+        pass
+
+    if has_scoring:
+        return {
+            "agent_id": agent_id, "action": "skip",
+            "message": f"Already has scoring_dimensions ({trace_count} traces)",
+            "scoring_dimensions": _parse_existing_scoring(content),
+        }
+    if trace_count == 0:
+        return {
+            "agent_id": agent_id, "action": "skip",
+            "message": "No execution traces yet — run the agent first",
+        }
+
+    # ── Parse existing AGENT.md info ───────────────────────────────
+    fm = {}
+    body = ""
+    if content.startswith("---"):
+        parts = content.split("---", 2)
+        if len(parts) >= 3:
+            try:
+                fm = yaml.safe_load(parts[1]) or {}
+            except Exception:
+                pass
+            body = parts[2].strip()
+    name = str(fm.get("name", agent_id))
+    desc = str(fm.get("description", ""))
+    agent_type = str(fm.get("agent_type", "base"))
+
+    # ── Build LLM prompt ───────────────────────────────────────────
+    tool_list = "\n".join(f"  - {t}" for t in recent_tools[:15]) or "(none)"
+    prompt = f"""你是一个 Agent 评估指标设计专家。请根据 Agent 的定义和执行历史，设计一套评分维度。
+
+## Agent 信息
+- 名称: {name}
+- 类型: {agent_type}
+- 描述: {desc[:500]}
+- 正文 (前 2000 字): {body[:2000]}
+
+## 最近调用的工具/Skill (按频率)
+{tool_list}
+
+## 要求
+1. 生成 3-5 个评分维度，权重合计 100%
+2. 每个维度独立衡量 Agent 在某个方面做得好不好
+3. 维度名称应简洁（中文，2-6字）
+4. 权重基于工具调用频率分配：高频工具覆盖的方面权重高
+5. 每个维度附一句简短描述
+
+## 输出格式
+只输出 JSON，不要加 markdown 标记:
+[{{"name":"任务完成度","weight":35,"description":"是否完成了用户要求的核心任务"}},{{"name":"工具使用效率","weight":25,"description":"工具调用是否准确、不重复、不遗漏"}}]
+"""
+
+    # ── Call LLM ───────────────────────────────────────────────────
+    try:
+        from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
+        model_name = best_model_for_purpose("agent_creation")
+        model = create_selected_adapter(model_name=model_name)
+        messages = [
+            {"role": "system", "content": "你是一个评估指标设计专家。只输出 JSON 数组，不要加任何解释。"},
+            {"role": "user", "content": prompt},
+        ]
+        resp = await model.generate(messages, config=None)
+        llm_text = resp.content if hasattr(resp, 'content') else str(resp)
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"LLM unavailable: {e}")
+
+    # ── Parse JSON ─────────────────────────────────────────────────
+    clean = llm_text.strip()
+    if clean.startswith("```"):
+        clean = _re.sub(r'^```\w*\n?', '', clean)
+        clean = _re.sub(r'\n?```$', '', clean)
+    match = _re.search(r'\[[\s\S]*\]', clean)
+    if not match:
+        raise HTTPException(status_code=422, detail="LLM response does not contain a JSON array")
+    try:
+        dims = _json.loads(match.group(0))
+        if not isinstance(dims, list):
+            raise ValueError("Expected JSON array")
+    except Exception:
+        raise HTTPException(status_code=422, detail="Failed to parse LLM response as JSON array")
+
+    # ── Normalize: ensure weights sum to 100 ───────────────────────
+    total_w = sum(d.get("weight", 0) for d in dims if isinstance(d, dict))
+    if total_w > 0 and total_w != 100:
+        scale = 100 / total_w
+        for d in dims:
+            if isinstance(d, dict) and "weight" in d:
+                d["weight"] = round(d["weight"] * scale)
+
+    # ── Write back to AGENT.md ────────────────────────────────────
+    yaml_block = "scoring_dimensions:\n"
+    for d in dims[:5]:
+        if isinstance(d, dict):
+            yaml_block += f'  - name: "{d.get("name","")}"\n'
+            yaml_block += f'    weight: {d.get("weight",20)}\n'
+            yaml_block += f'    description: "{d.get("description","")}"\n'
+
+    if has_scoring:
+        # Replace existing scoring_dimensions block
+        new_content = _re.sub(
+            r'(scoring_dimensions:.*?)(?=\n\S|\Z)',
+            yaml_block.strip(),
+            content,
+            flags=_re.DOTALL,
+        )
+    else:
+        # Insert before closing --- or at the end of frontmatter
+        if content.startswith("---"):
+            parts = content.split("---", 2)
+            new_content = parts[0] + "---\n" + parts[1].rstrip() + "\n" + yaml_block + "\n---" + parts[2]
+        else:
+            new_content = content + "\n\n" + yaml_block
+    agent_md.write_text(new_content, encoding="utf-8")
+
     return {
-        "agent_id": agent_id, "has_scoring_dimensions": has_scoring,
-        "trace_count": trace_count, "recent_tools": recent_tools[:10],
-        "needs_generation": not has_scoring and trace_count > 0,
-        "action": "generate" if (not has_scoring and trace_count > 0) else "skip",
-        "message": (
-            "Ready for eval generation" if (not has_scoring and trace_count > 0)
-            else "Already has scoring_dimensions" if has_scoring
-            else "No execution traces yet"
-        ),
+        "agent_id": agent_id,
+        "action": "generated",
+        "message": f"Generated {len(dims)} scoring dimensions (from {trace_count} traces)",
+        "scoring_dimensions": dims,
+        "recent_tools": recent_tools[:10],
     }
+
+
+def _parse_existing_scoring(content: str) -> list:
+    """Parse existing scoring_dimensions from AGENT.md frontmatter."""
+    import yaml, re as _re
+    try:
+        if content.startswith("---"):
+            parts = content.split("---", 2)
+            if len(parts) >= 3:
+                fm = yaml.safe_load(parts[1]) or {}
+                return fm.get("scoring_dimensions", []) or []
+    except Exception:
+        pass
+    return []
