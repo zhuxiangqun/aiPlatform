@@ -49,6 +49,17 @@ class AgentAutoFillRequest(BaseModel):
     """Request for AI-powered agent creation auto-fill."""
     name: str = ""
     description: str = ""
+    role_definition: Optional[Dict[str, Any]] = None
+
+
+class RoleDefinitionResponse(BaseModel):
+    """AI-generated role definition based on functional description."""
+    role_name: str = ""
+    responsibilities: List[str] = Field(default_factory=list)
+    scenarios: List[str] = Field(default_factory=list)
+    required_capabilities: List[str] = Field(default_factory=list)
+    workflow_hint: str = ""
+    reasoning: str = ""
 
 
 class AgentAutoFillResponse(BaseModel):

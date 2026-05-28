@@ -141,6 +141,22 @@ export const workspaceAgentApi = {
     }>('/core/workspace/agents/auto-fill', data);
   },
 
+  autoFillWithRole: async (data: { name: string; description: string; role_definition: Record<string, unknown> }) => {
+    return apiClient.post<{
+      agent_type: string; config: Record<string, unknown>;
+      skills: string[]; tools: string[]; mcp_ids: string[]; agent_ids: string[];
+      memory_config: Record<string, unknown>; sop_text: string; reasoning: string;
+      workflow_ids: string[];
+    }>('/core/workspace/agents/auto-fill', data);
+  },
+
+  generateRoleDefinition: async (data: { name: string; description: string }) => {
+    return apiClient.post<{
+      role_name: string; responsibilities: string[]; scenarios: string[];
+      required_capabilities: string[]; workflow_hint: string; reasoning: string;
+    }>('/core/workspace/agents/generate-role-definition', data);
+  },
+
   submitForReview: async (agentId: string) => {
     return apiClient.post<{ status: string; agent_id: string; new_status: string; governance: string; lint: Record<string, unknown> }>(`/core/workspace/agents/${agentId}/submit-for-review`);
   },

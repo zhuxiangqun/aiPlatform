@@ -13,7 +13,7 @@ from core.api.deps import actor_from_http, rbac_guard
 from core.api.utils.governance import gate_error_envelope, ui_url
 from core.harness.integration import KernelRuntime
 from core.harness.kernel.runtime import get_kernel_runtime
-from core.schemas_agents import AgentCreateRequest, AgentUpdateRequest, AgentAutoFillRequest, AgentAutoFillResponse
+from core.schemas_agents import AgentCreateRequest, AgentUpdateRequest, AgentAutoFillRequest, AgentAutoFillResponse, RoleDefinitionResponse
 
 router = APIRouter()
 
@@ -233,6 +233,72 @@ async def create_workspace_agent(request: AgentCreateRequest, http_request: Requ
         raise HTTPException(status_code=409, detail=str(e))
 
 
+@router.post("/workspace/agents/generate-role-definition")
+async def generate_role_definition(req: AgentAutoFillRequest) -> RoleDefinitionResponse:
+    """基于功能描述生成角色定义，让用户确认后再进行下一步的技能/工具推荐。"""
+    import json as _json, re as _re
+
+    prompt = f"""你是一个 AI Agent 角色定义专家。根据用户的名称和功能描述，生成一份结构化的角色定义。
+
+## 用户输入
+- 名称: {req.name or '(待填写)'}
+- 功能描述: {req.description or '(无)'}
+
+## 任务
+分析用户的功能描述，推断这个 Agent 的角色定位。输出严格 JSON（无 markdown 标记）:
+
+{{{{
+  "role_name": "角色的中文名称（2-8字）",
+  "responsibilities": ["职责1", "职责2", "职责3"],
+  "scenarios": ["使用场景1", "使用场景2"],
+  "required_capabilities": ["需要的能力1（如任务规划、文档生成、信息检索、代码生成等）", "需要的能力2"],
+  "workflow_hint": "可能的工作流协作方式（如需要与哪些角色协作，一句话描述）",
+  "reasoning": "为什么这样定义这个角色（1-2句话）"
+}}}}
+
+注意：
+- responsibilities 列出 3-5 个核心职责
+- scenarios 列出 2-3 个典型使用场景
+- required_capabilities 用自然语言描述需要的能力类型（不是具体的技能名）
+- workflow_hint 简要描述与其他 Agent 的协作关系，无协作则为空字符串
+"""
+
+    try:
+        from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
+        model_name = best_model_for_purpose("agent_creation")
+        model = create_selected_adapter(model_name=model_name)
+        messages = [
+            {"role": "system", "content": "你是一个 AI 角色定义专家。只输出 JSON，不要加任何解释或 markdown 标记。"},
+            {"role": "user", "content": prompt},
+        ]
+        resp = await model.generate(messages, config=None)
+        content = resp.content if hasattr(resp, 'content') else str(resp)
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"LLM unavailable: {e}")
+
+    clean = content.strip()
+    if clean.startswith("```"):
+        clean = _re.sub(r'^```\w*\n?', '', clean)
+        clean = _re.sub(r'\n?```$', '', clean)
+    match = _re.search(r'\{[\s\S]*\}', clean)
+    if match:
+        try:
+            data = _json.loads(match.group(0))
+        except _json.JSONDecodeError:
+            raise HTTPException(status_code=422, detail="Failed to parse LLM response as JSON")
+    else:
+        raise HTTPException(status_code=422, detail="LLM response does not contain JSON")
+
+    return RoleDefinitionResponse(
+        role_name=str(data.get("role_name", ""))[:20],
+        responsibilities=list(data.get("responsibilities", []))[:8],
+        scenarios=list(data.get("scenarios", []))[:5],
+        required_capabilities=list(data.get("required_capabilities", []))[:8],
+        workflow_hint=str(data.get("workflow_hint", ""))[:500],
+        reasoning=str(data.get("reasoning", ""))[:500],
+    )
+
+
 @router.post("/workspace/agents/auto-fill")
 async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
     """AI 智能填充：根据功能描述自动推荐 skills / tools / MCP / config / SOP 等。"""
@@ -336,12 +402,24 @@ async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
         wf_catalog = ["(unable to load workflow catalog)"]
 
     # ── Build prompt ────────────────────────────────────────────
+    role_section = ""
+    if req.role_definition and isinstance(req.role_definition, dict):
+        rd = req.role_definition
+        role_section = f"""
+## 已确认的角色定义
+- 角色名称: {rd.get('role_name', '')}
+- 职责: {', '.join(rd.get('responsibilities', []))}
+- 使用场景: {', '.join(rd.get('scenarios', []))}
+- 需要的能力: {', '.join(rd.get('required_capabilities', []))}
+- 协作关系: {rd.get('workflow_hint', '无')}
+"""
+
     prompt = f"""你是一个 AI 平台配置专家。用户正在创建一个新的 AI Agent，请根据以下功能描述推荐最优配置。
 
 ## 用户输入
 - 名称: {req.name or '(待填写)'}
 - 功能描述: {req.description or '(无)'}
-
+{role_section}
 ## 可用技能 (Skills)
 {chr(10).join(skill_entries[:50]) or '(无)'}
 
@@ -365,13 +443,13 @@ async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
 - conversational: 纯对话模式，仅适用于无工具调用、单轮问答的客服/闲聊 Agent
 
 ## 任务
-根据用户的功能描述，推荐最匹配的配置。输出严格 JSON（无 markdown 标记）:
+根据用户的功能描述{"和已确认的角色定义" if role_section else ""}，推荐最匹配的配置。输出严格 JSON（无 markdown 标记）:
 
 {{"agent_type":"react|plan|tool|base|conversational","config":{{"model":"deepseek-chat","temperature":0.3,"max_tokens":4096,"system_prompt":"根据功能描述生成的系统提示词(中文)"}},"skills":["技能名1"],"tools":["工具名1"],"mcp_ids":[],"agent_ids":["可委派的子Agent ID"],"workflow_ids":["已有Workflow模板名"],"memory_config":{{"type":"short_term","recall_count":5}},"sop_text":"根据功能描述生成的 SOP 步骤(Markdown 格式,中文)","reasoning":"为什么这样选择的简要解释(中文)"}}
 
 ## 选择原则
 - 根据技能描述（description）匹配用户需求，不要仅看技能名称
-- skills 应同时包含：用户描述中直接需要的 + 执行描述中隐含需要的
+- skills 应同时包含：用户描述中直接需要的 + 执行描述中隐含需要的{chr(10) + "- 如果提供了角色定义，根据职责和能力需求匹配技能" if role_section else ""}
 - agent_ids 从"可委派的子Agent"中选择，只选与用户流程实际相关的角色
 - workflow_ids 从"已有 Workflow 模板"中选择匹配的模板名，如无匹配可为空数组
 """

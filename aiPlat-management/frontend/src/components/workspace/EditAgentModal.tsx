@@ -15,6 +15,12 @@ interface EditAgentModalProps {
 const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [autoFillLoading, setAutoFillLoading] = useState(false);
+  // Role definition flow
+  const [roleDefinition, setRoleDefinition] = useState<{
+    role_name: string; responsibilities: string[]; scenarios: string[];
+    required_capabilities: string[]; workflow_hint: string; reasoning: string;
+  } | null>(null);
+  const [showRolePreview, setShowRolePreview] = useState(false);
   const [skills, setSkills] = useState<string[]>([]);
   const [tools, setTools] = useState<string[]>([]);
   const [mcpIds, setMcpIds] = useState<string[]>([]);
@@ -169,7 +175,37 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
     try {
-      const result = await workspaceAgentApi.autoFill({ name: nm, description: desc });
+      // Step 1: generate role definition
+      const roleDef = await workspaceAgentApi.generateRoleDefinition({ name: nm, description: desc });
+      clearTimeout(timeout);
+      if (roleDef) {
+        setRoleDefinition(roleDef);
+        setShowRolePreview(true);
+        toast.success('角色定义已生成，请确认后继续填充');
+      }
+    } catch (e: any) {
+      clearTimeout(timeout);
+      if (e.name === 'AbortError') {
+        toast.error('请求超时', 'Core 服务未响应，请检查服务是否正常运行');
+      } else {
+        toast.error('角色定义生成失败', e?.message || String(e));
+      }
+    } finally {
+      setAutoFillLoading(false);
+    }
+  };
+
+  const handleConfirmRoleAndFill = async () => {
+    if (!agent || !roleDefinition) return;
+    setAutoFillLoading(true);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20000);
+    try {
+      const result = await workspaceAgentApi.autoFillWithRole({
+        name: name.trim() || agent.name || '',
+        description: description.trim(),
+        role_definition: roleDefinition,
+      });
       clearTimeout(timeout);
       if (result.config) setConfigText(JSON.stringify(result.config, null, 2));
       if (result.skills?.length) setSkills(result.skills.filter((s: string) => skillOptions.some(o => o.value === s)));
@@ -179,11 +215,12 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       if (result.memory_config) setMemoryConfigText(JSON.stringify(result.memory_config, null, 2));
       if (result.sop_text) setSopText(result.sop_text);
       if (result.workflow_ids?.length) setWorkflowIds(result.workflow_ids.filter((w: string) => Array.isArray(workflowOptions) && workflowOptions.some(o => o.value === w)));
+      setShowRolePreview(false);
       toast.success('AI 智能填充完成', result.reasoning || '');
     } catch (e: any) {
       clearTimeout(timeout);
       if (e.name === 'AbortError') {
-        toast.error('请求超时', 'Core 服务未响应，请检查服务是否正常运行');
+        toast.error('请求超时', 'Core 服务未响应');
       } else {
         toast.error('智能填充失败', e?.message || String(e));
       }
@@ -402,6 +439,57 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
             </Button>
           </div>
         </div>
+
+        {/* Role Definition Preview */}
+        {showRolePreview && roleDefinition && (
+          <div className="bg-blue-900/20 border border-blue-500/20 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-medium text-blue-300">📋 角色定义预览</span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { setShowRolePreview(false); setRoleDefinition(null); }}
+                  className="text-xs text-gray-500 hover:text-gray-300"
+                >
+                  关闭
+                </button>
+                <Button variant="primary" size="sm" onClick={handleConfirmRoleAndFill} loading={autoFillLoading}>
+                  确认并填充
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-2 text-xs text-gray-300">
+              <div>
+                <span className="text-gray-500">角色名称：</span>
+                <span className="text-blue-200 font-medium">{roleDefinition.role_name}</span>
+              </div>
+              <div>
+                <span className="text-gray-500">核心职责：</span>
+                {roleDefinition.responsibilities?.map((r, i) => (
+                  <span key={i} className="ml-1 inline-block px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-300">{r}</span>
+                ))}
+              </div>
+              <div>
+                <span className="text-gray-500">使用场景：</span>
+                {roleDefinition.scenarios?.map((s, i) => (
+                  <span key={i} className="ml-1">{s}{i < (roleDefinition.scenarios?.length || 1) - 1 ? '、' : ''}</span>
+                ))}
+              </div>
+              <div>
+                <span className="text-gray-500">需要的能力：</span>
+                {roleDefinition.required_capabilities?.map((c, i) => (
+                  <span key={i} className="ml-1 inline-block px-1.5 py-0.5 rounded bg-green-500/10 text-green-300">{c}</span>
+                ))}
+              </div>
+              {roleDefinition.workflow_hint && (
+                <div>
+                  <span className="text-gray-500">协作关系：</span>
+                  <span>{roleDefinition.workflow_hint}</span>
+                </div>
+              )}
+              <div className="text-gray-500 italic mt-2">{roleDefinition.reasoning}</div>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <MultiSelect label="绑定技能" options={skillOptions} selected={skills} onChange={setSkills} />
