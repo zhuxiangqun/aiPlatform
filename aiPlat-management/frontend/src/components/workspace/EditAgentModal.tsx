@@ -15,6 +15,7 @@ interface EditAgentModalProps {
 const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [autoFillLoading, setAutoFillLoading] = useState(false);
+  const [confirmRoleLoading, setConfirmRoleLoading] = useState(false);
   // Role definition flow
   const [roleDefinition, setRoleDefinition] = useState<{
     role_name: string; responsibilities: string[]; scenarios: string[];
@@ -206,7 +207,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
 
   const handleConfirmRoleAndFill = async () => {
     if (!agent || !roleDefinition) return;
-    setAutoFillLoading(true);
+    setConfirmRoleLoading(true);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 20000);
     try {
@@ -229,7 +230,6 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
         const md = { ...(agent.metadata || {}), role_definition: roleDefinition };
         await workspaceAgentApi.update(agent.id, { metadata: md } as any);
       } catch { /* best-effort */ }
-      setShowRolePreview(false);
       toast.success('AI 智能填充完成', result.reasoning || '');
     } catch (e: any) {
       clearTimeout(timeout);
@@ -239,7 +239,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
         toast.error('智能填充失败', e?.message || String(e));
       }
     } finally {
-      setAutoFillLoading(false);
+      setConfirmRoleLoading(false);
     }
   };
 
@@ -466,7 +466,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
                 >
                   关闭
                 </button>
-                <Button variant="primary" size="sm" onClick={handleConfirmRoleAndFill} loading={autoFillLoading}>
+                <Button variant="primary" size="sm" onClick={handleConfirmRoleAndFill} loading={confirmRoleLoading}>
                   确认并填充
                 </Button>
               </div>
