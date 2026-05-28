@@ -457,7 +457,7 @@ async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
 
 ## system_prompt 生成方法
 必须从角色定义的字段逐项推导 system_prompt，不要脱离角色定义自己编：
-- role_name → 开头："你是{角色名称}"
+- role_name → 开头："你是{{角色名称}}"
 - responsibilities → 逐条转为"你需要..."的行为指令（每条职责一行）
 - scenarios → 补充一句："适用场景：..."
 - required_capabilities → 补充："你具备以下能力：..."
