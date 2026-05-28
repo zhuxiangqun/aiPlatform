@@ -15,7 +15,6 @@ interface EditAgentModalProps {
 const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [autoFillLoading, setAutoFillLoading] = useState(false);
-  const [confirmRoleLoading, setConfirmRoleLoading] = useState(false);
   // Role definition flow
   const [roleDefinition, setRoleDefinition] = useState<{
     role_name: string; responsibilities: string[]; scenarios: string[];
@@ -206,9 +205,9 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
     }
   };
 
-  const handleConfirmRoleAndFill = async () => {
+  const handleAutoFillWithRole = async () => {
     if (!agent || !roleDefinition) return;
-    setConfirmRoleLoading(true);
+    setAutoFillLoading(true);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 20000);
     try {
@@ -226,7 +225,6 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       if (result.memory_config) setMemoryConfigText(JSON.stringify(result.memory_config, null, 2));
       if (result.sop_text) setSopText(result.sop_text);
       if (result.workflow_ids?.length) setWorkflowIds(result.workflow_ids.filter((w: string) => Array.isArray(workflowOptions) && workflowOptions.some(o => o.value === w)));
-      // Persist role definition to agent metadata
       try {
         const md = { ...(agent.metadata || {}), role_definition: roleDefinition, role_description: description.trim() };
         await workspaceAgentApi.update(agent.id, { metadata: md } as any);
@@ -240,7 +238,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
         toast.error('智能填充失败', e?.message || String(e));
       }
     } finally {
-      setConfirmRoleLoading(false);
+      setAutoFillLoading(false);
     }
   };
 
@@ -450,7 +448,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
               disabled={autoFillLoading}
               loading={autoFillLoading}
             >
-              ✨ AI 智能填充
+              📋 生成角色定义
             </Button>
           </div>
         </div>
@@ -467,8 +465,8 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
                 >
                   关闭
                 </button>
-                <Button variant="primary" size="sm" onClick={handleConfirmRoleAndFill} loading={confirmRoleLoading}>
-                  确认并填充
+                <Button variant="primary" size="sm" onClick={handleAutoFillWithRole} loading={autoFillLoading}>
+                  ✨ AI 智能填充
                 </Button>
               </div>
             </div>
