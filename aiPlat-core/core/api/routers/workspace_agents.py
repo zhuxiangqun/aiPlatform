@@ -445,7 +445,15 @@ async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
 ## 任务
 根据用户的功能描述{"和已确认的角色定义" if role_section else ""}，推荐最匹配的配置。输出严格 JSON（无 markdown 标记）:
 
-{{"agent_type":"react|plan|tool|base|conversational","config":{{"model":"deepseek-chat","temperature":0.3,"max_tokens":4096,"system_prompt":"根据功能描述生成的系统提示词(中文)"}},"skills":["技能名1"],"tools":["工具名1"],"mcp_ids":[],"agent_ids":["可委派的子Agent ID"],"workflow_ids":["已有Workflow模板名"],"memory_config":{{"type":"short_term","recall_count":5}},"sop_text":"根据功能描述生成的 SOP 步骤(Markdown 格式,中文)","reasoning":"为什么这样选择的简要解释(中文)"}}
+{{"agent_type":"react|plan|tool|base|conversational","config":{{"model":"deepseek-chat","temperature":0.3,"max_tokens":4096,"system_prompt":"根据功能描述生成的系统提示词(中文)"}},"skills":["技能名1"],"tools":["工具名1"],"mcp_ids":[],"agent_ids":["可委派的子Agent ID"],"workflow_ids":["已有Workflow模板名"],"memory_config":{{"type":"short_term","recall_count":5}},"sop_text":"按照以下结构化格式生成的 SOP (Markdown,中文):\n# {{角色名}} SOP\n\n## 角色定位\n一句话说明核心职责\n\n## 输入\n- `input_field`: 说明（类型，必填/可选）\n\n## 工作流程\n### 步骤1：{{步骤名}}\n1. 具体操作\n- 🛠 使用技能/工具：`skill_name` / `tool_name`\n\n### 步骤2：{{步骤名}}\n...\n\n## 输出格式\n输出格式说明（JSON/Markdown/文本）\n\n## 自检清单\n- [ ] 是否完成了核心目标？\n- [ ] 输出是否包含必要字段？\n- [ ] 是否需要用户补充信息？\n\n## 异常处理\n- 输入不完整时 → 如何引导用户","reasoning":"为什么这样选择的简要解释(中文)"}}
+
+## SOP 格式要求
+- 必须包含 6 个章节：角色定位、输入、工作流程、输出格式、自检清单、异常处理
+- 工作流程的每个步骤标注使用的具体技能/工具（如 🛠 使用技能：task_planning）
+- 输入字段要标注类型和是否必填
+- 输出格式要具体的 JSON schema 或 Markdown 模板
+- 自检清单 3-5 项
+- 异常处理至少 2 种场景
 
 ## 选择原则
 - 根据技能描述（description）匹配用户需求，不要仅看技能名称{chr(10) + "- 如果提供了角色定义，必须根据 required_capabilities 中的每个能力类型匹配对应的技能" if role_section else ""}
