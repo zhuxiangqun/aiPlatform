@@ -442,35 +442,32 @@ async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
 - tool: 工具调用模式，配合 Function Calling 使用
 - conversational: 纯对话模式，仅适用于无工具调用、单轮问答的客服/闲聊 Agent
 
+## 技能选择方法
+对于角色定义中的每个 required_capability，在可用技能列表中按以下方法找到最匹配的技能：
+1. 看技能描述（description）中是否包含该能力类型的核心动词或场景关键词
+2. 例如：
+   - 能力类型含"规划/分解/拆解/结构化" → 找描述中包含"分解任务"、"制定计划"、"拆解"、"结构化"的技能
+   - 能力类型含"搜索/检索/查询/盘点" → 找描述中包含"搜索"、"检索"、"查询"、"召回"的技能
+   - 能力类型含"生成/编写/创建/产出" → 找描述中包含"生成"、"编写"、"创建"的技能
+   - 能力类型含"引导/澄清/理解/确认" → 找描述中包含"引导"、"澄清"、"结构化"、"对话"的技能（注意：如果描述中包含"日常闲聊"或"简单问答"，那是纯聊天技能，不要选）
+   - 能力类型含"审查/检查/评估" → 找描述中包含"审查"、"检查"、"评估"的技能
+   - 能力类型含"测试/验证" → 找描述中包含"测试"、"验证"、"检查"的技能
+3. 每个能力类型至少匹配一个技能；找不到直接匹配时选最接近的替代
+4. 不要仅看技能名称（skill_id），要读描述内容
+
 ## 任务
 根据用户的功能描述{"和已确认的角色定义" if role_section else ""}，推荐最匹配的配置。输出严格 JSON（无 markdown 标记）:
 
-{{"agent_type":"react|plan|tool|base|conversational","config":{{"model":"deepseek-chat","temperature":0.3,"max_tokens":4096,"system_prompt":"根据功能描述生成的系统提示词(中文)"}},"skills":["技能名1"],"tools":["工具名1"],"mcp_ids":[],"agent_ids":["可委派的子Agent ID"],"workflow_ids":["已有Workflow模板名"],"memory_config":{{"type":"short_term","recall_count":5}},"sop_text":"按照以下结构化格式生成的 SOP (Markdown,中文):\n# {{角色名}} SOP\n\n## 角色定位\n一句话说明核心职责\n\n## 输入\n- `input_field`: 说明（类型，必填/可选）\n\n## 工作流程\n### 步骤1：{{步骤名}}\n1. 具体操作\n- 🛠 使用技能/工具：`skill_name` / `tool_name`\n\n### 步骤2：{{步骤名}}\n...\n\n## 输出格式\n输出格式说明（JSON/Markdown/文本）\n\n## 自检清单\n- [ ] 是否完成了核心目标？\n- [ ] 输出是否包含必要字段？\n- [ ] 是否需要用户补充信息？\n\n## 异常处理\n- 输入不完整时 → 如何引导用户","reasoning":"为什么这样选择的简要解释(中文)"}}
+{{"agent_type":"react|plan|tool|base|conversational","config":{{"model":"deepseek-chat","temperature":0.3,"max_tokens":4096,"system_prompt":"根据功能描述和角色定义生成的系统提示词(中文)"}},"skills":["技能名1"],"tools":["工具名1"],"mcp_ids":[],"agent_ids":["可委派的子Agent ID"],"workflow_ids":["已有Workflow模板名"],"memory_config":{{"type":"short_term","recall_count":5}},"sop_text":"6章节SOP(角色定位+输入+工作流程+输出格式+自检清单+异常处理,每步骤标注🛠tool/skill名,Markdown中文)","reasoning":"为什么这样选择的简要解释(中文)"}}
 
-## SOP 格式要求
-- 必须包含 6 个章节：角色定位、输入、工作流程、输出格式、自检清单、异常处理
-- 工作流程的每个步骤标注使用的具体技能/工具（如 🛠 使用技能：task_planning）
-- 输入字段要标注类型和是否必填
-- 输出格式要具体的 JSON schema 或 Markdown 模板
-- 自检清单 3-5 项
-- 异常处理至少 2 种场景
+## SOP 格式
+- 必须6章节：角色定位、输入、工作流程、输出格式、自检清单、异常处理
+- 工作流程每步标注使用的工具/技能（如 🛠 skill_name / tool_name）
+- 输入字段标注类型和是否必填，输出格式给出具体 JSON schema 或 Markdown 模板
+- 自检清单3-5项，异常处理至少2种场景
 
 ## 选择原则
-- 根据技能描述（description）匹配用户需求，不要仅看技能名称{chr(10) + "- 如果提供了角色定义，必须根据 required_capabilities 中的每个能力类型匹配对应的技能" if role_section else ""}
 - skills 应同时包含：用户描述中直接需要的 + 执行描述中隐含需要的
-- **能力→技能映射非常重要，必须严格遵守**：
-  "任务规划/需求分解/结构化" → task_planning, task_decomposition
-  "需求澄清/多轮对话引导" → task_planning（结构化引导），**不要选 chitchat（闲聊会严重偏离产品经理职责）**
-  "文档生成/PRD/报告" → text_generation, summarization
-  "信息检索/知识查询/能力盘点" → information_search, knowledge_retrieval
-  "代码生成/编程" → code_generation
-  "审查/审计/检查" → code_review, root_cause_analysis
-  "测试/验证/质量" → test_case_generation, e2e_test
-  "搜索/外部信息" → information_search
-  "浏览器/网页操作" → browser_automation
-  "数据分析/统计" → data_analysis
-  "日常闲聊/简单问答" → **仅 true 纯对话场景选 chitchat，其他角色一律不要选**
-- 如果某个能力类型在可用技能中找不到直接匹配，选描述最接近的替代
 - agent_ids 从"可委派的子Agent"中选择，只选与用户流程实际相关的角色
 - workflow_ids 从"已有 Workflow 模板"中选择匹配的模板名，如无匹配可为空数组
 """
