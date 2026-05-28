@@ -29,7 +29,7 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
   { key: '/system-overview', icon: Activity, label: '系统概览' },
   { key: '/alerts', icon: Bell, label: '告警中心' },
   { key: '/releases', icon: Rocket, label: '版本管理' },
-  { key: '/diagnostics', icon: Activity, label: '可观测性' },
+  { key: '/diagnostics', icon: Activity, label: '诊断中心' },
   { key: '/onboarding', icon: Settings, label: '初始化向导' },
   { divider: true },
   { group: 'infra', label: '基础设施层', items: [

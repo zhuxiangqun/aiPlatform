@@ -195,8 +195,8 @@ const Diagnostics: React.FC = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-200">可观测性</h1>
-        <p className="text-sm text-gray-500 mt-1">Trace / Graph Runs / Links 联动定位问题</p>
+        <h1 className="text-2xl font-semibold text-gray-200">诊断中心</h1>
+        <p className="text-sm text-gray-500 mt-1">综合诊断 · 合规审计 · 架构守卫 · 诊断工具</p>
       </div>
 
       {error && (

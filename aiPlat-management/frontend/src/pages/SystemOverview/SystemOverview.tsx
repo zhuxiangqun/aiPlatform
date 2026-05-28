@@ -80,45 +80,6 @@ const SystemOverview: React.FC = () => {
         </Button>
       </div>
 
-      {/* Row 1: 3 knowledge graphs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <HealthCard
-          title="代码图谱" icon={<Cpu className="w-4 h-4 text-blue-400" />}
-          score={ch.score ?? 0} scoreLabel="分 · 架构健康"
-          to="/diagnostics/code-intel"
-          items={[
-            { label: '文件数', value: ch.files ?? '—' },
-            { label: '导入边', value: ch.edges ?? '—' },
-            { label: '循环依赖', value: ch.cycles ?? '—', ok: (ch.cycles ?? 0) === 0 },
-            { label: '孤立文件', value: ch.orphan_files ?? '—', ok: (ch.orphan_files ?? 0) === 0 },
-          ]}
-        />
-        <HealthCard
-          title="知识图谱" icon={<Database className="w-4 h-4 text-purple-400" />}
-          score={wh.score ?? 0} scoreLabel="分 · Wiki 健康"
-          to="/platform/kb"
-          items={[
-            { label: '页面数', value: wh.pages ?? '—' },
-            { label: '死链', value: wh.dead_links ?? '—', ok: (wh.dead_links ?? 0) === 0 },
-            { label: '孤立页面', value: wh.orphans ?? '—', ok: (wh.orphans ?? 0) === 0 },
-            { label: '矛盾标记', value: wh.contradictions ?? '—' },
-          ]}
-        />
-        <HealthCard
-          title="技能图谱" icon={<Sparkles className="w-4 h-4 text-amber-400" />}
-          to="/diagnostics/capability-graph"
-          score={cap.score ?? 75} scoreLabel="分 · 能力完整度"
-          items={[
-            { label: 'Agent', value: cap.agents ?? '—' },
-            { label: 'Skill', value: `${cap.used_skills ?? '—'} / ${cap.skills ?? '—'}` },
-            { label: 'Tool', value: cap.tools ?? '—' },
-            { label: '未使用 Skill', value: Array.isArray(cap.unused_skills) ? cap.unused_skills.length : '—', ok: (cap.unused_skills || []).length === 0 },
-            { label: '未解析引用', value: cap.unresolved_refs ?? '—', ok: (cap.unresolved_refs ?? 0) === 0 },
-            { label: 'MCP', value: cap.mcp_servers ?? '—' },
-          ]}
-        />
-      </div>
-
       {/* Row 2: Arch guard + servers */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
