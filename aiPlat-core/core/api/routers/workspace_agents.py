@@ -455,10 +455,27 @@ async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
 3. 每个能力类型至少匹配一个技能；找不到直接匹配时选最接近的替代
 4. 不要仅看技能名称（skill_id），要读描述内容
 
+## system_prompt 生成方法
+必须从角色定义的字段逐项推导 system_prompt，不要脱离角色定义自己编：
+- role_name → 开头："你是{角色名称}"
+- responsibilities → 逐条转为"你需要..."的行为指令（每条职责一行）
+- scenarios → 补充一句："适用场景：..."
+- required_capabilities → 补充："你具备以下能力：..."
+- workflow_hint → 补充："协作方式：..."
+最终效果：system_prompt 应完整覆盖角色定义中的所有信息，使 Agent 运行时清楚自己的身份、职责、能力和协作关系
+
 ## 任务
 根据用户的功能描述{"和已确认的角色定义" if role_section else ""}，推荐最匹配的配置。输出严格 JSON（无 markdown 标记）:
 
-{{"agent_type":"react|plan|tool|base|conversational","config":{{"model":"deepseek-chat","temperature":0.3,"max_tokens":4096,"system_prompt":"根据功能描述和角色定义生成的系统提示词(中文)"}},"skills":["技能名1"],"tools":["工具名1"],"mcp_ids":[],"agent_ids":["可委派的子Agent ID"],"workflow_ids":["已有Workflow模板名"],"memory_config":{{"type":"short_term","recall_count":5}},"sop_text":"6章节SOP(角色定位+输入+工作流程+输出格式+自检清单+异常处理,每步骤标注🛠tool/skill名,Markdown中文)","reasoning":"为什么这样选择的简要解释(中文)"}}
+{{"agent_type":"react|plan|tool|base|conversational","config":{{"model":"deepseek-chat","temperature":0.3,"max_tokens":4096,"system_prompt":"从角色定义推导的系统提示词(中文)"}},"skills":["技能名1"],"tools":["工具名1"],"mcp_ids":[],"agent_ids":["可委派的子Agent ID"],"workflow_ids":["已有Workflow模板名"],"memory_config":{{"type":"short_term","recall_count":5}},"sop_text":"6章节SOP(角色定位+输入+工作流程+输出格式+自检清单+异常处理,每步骤标注🛠tool/skill名,Markdown中文)","reasoning":"为什么这样选择的简要解释(中文)"}}
+
+## SOP 生成方法
+- 角色定位：从角色定义 role_name + responsibilities 推导
+- 输入：从 scenarios 推导需要什么输入数据
+- 工作流程：将 responsibilities 拆解为操作步骤，每步标注使用的具体技能/工具
+- 输出格式：从场景推导输出结构（JSON/Markdown/文本）
+- 自检清单：从 responsibilities 推导完成检查项
+- 异常处理：从 scenarios 推导边界和错误场景
 
 ## SOP 格式
 - 必须6章节：角色定位、输入、工作流程、输出格式、自检清单、异常处理
