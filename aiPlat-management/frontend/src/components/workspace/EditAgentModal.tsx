@@ -457,18 +457,15 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
         {showRolePreview && roleDefinition && (
           <div className="bg-blue-900/20 border border-blue-500/20 rounded-lg p-4">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium text-blue-300">📋 角色定义（可编辑 JSON）</span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => { setShowRolePreview(false); setRoleDefinition(null); }}
-                  className="text-xs text-gray-500 hover:text-gray-300"
-                >
-                  关闭
-                </button>
-                <Button variant="primary" size="sm" onClick={handleAutoFillWithRole} loading={autoFillLoading}>
-                  ✨ AI 智能填充
-                </Button>
-              </div>
+               <span className="text-sm font-medium text-blue-300">📋 角色定义（可编辑 JSON）</span>
+               <div className="flex items-center gap-2">
+                 <button
+                   onClick={() => { setShowRolePreview(false); setRoleDefinition(null); }}
+                   className="text-xs text-gray-500 hover:text-gray-300"
+                 >
+                   关闭
+                 </button>
+               </div>
             </div>
             <div className="text-xs text-gray-400 mb-2">
               格式：{'{ "role_name": "...", "responsibilities": [...], "scenarios": [...], "required_capabilities": [...], "workflow_hint": "...", "reasoning": "..." }'}
@@ -481,6 +478,15 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
               rows={12}
               placeholder='{"role_name":"产品经理","responsibilities":["需求收集","PRD生成"],...}'
             />
+          </div>
+        )}
+
+        {/* AI fill button — only when role definition exists */}
+        {showRolePreview && roleDefinition && (
+          <div className="flex items-end justify-end">
+            <Button variant="primary" onClick={handleAutoFillWithRole} loading={autoFillLoading}>
+              ✨ AI 智能填充
+            </Button>
           </div>
         )}
 
