@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
-import { Activity, GitBranch, Share2, Zap, Wrench, FolderSearch, Wand2, ShieldCheck, ArrowRight, AlertTriangle, Search } from 'lucide-react';
+import { Activity, GitBranch, Share2, Zap, Wrench, FolderSearch, Wand2, ShieldCheck, ArrowRight, AlertTriangle, Search, RefreshCw, ChevronRight } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, Badge, Button, toast } from '../../components/ui';
 import { diagnosticsApi } from '../../services';
@@ -49,6 +49,10 @@ const Diagnostics: React.FC = () => {
   // Architecture guard
   const [guardResult, setGuardResult] = useState<any>(null);
   const [guardRunning, setGuardRunning] = useState(false);
+  // Unified diagnostic
+  const [diagResult, setDiagResult] = useState<any>(null);
+  const [diagRunning, setDiagRunning] = useState(false);
+  const [expandedCat, setExpandedCat] = useState<string | null>(null);
 
   const runGuard = async () => {
     setGuardRunning(true); setGuardResult(null);
@@ -58,6 +62,28 @@ const Diagnostics: React.FC = () => {
       setGuardResult(data);
     } catch (e: any) { toast.error('守卫检测失败', e?.message || e); }
     finally { setGuardRunning(false); }
+  };
+
+  const runAllDiagnostics = async () => {
+    setDiagRunning(true); setDiagResult(null);
+    try {
+      const res = await fetch('/api/core/diagnostics/run-all', { method: 'POST' });
+      setDiagResult(await res.json());
+    } catch (e: any) { toast.error('诊断失败', e?.message || e); }
+    finally { setDiagRunning(false); }
+  };
+
+  const catLabels: Record<string, string> = {
+    layer_health: '层健康', code_intel: '代码架构', capability: '能力图谱',
+    wiki_health: 'Wiki 健康', arch_guard: '架构守卫', compliance: '合规审计',
+  };
+  const catColors: Record<string, string> = {
+    layer_health: 'bg-blue-400', code_intel: 'bg-violet-400', capability: 'bg-amber-400',
+    wiki_health: 'bg-purple-400', arch_guard: 'bg-green-400', compliance: 'bg-cyan-400',
+  };
+  const catLinks: Record<string, string> = {
+    code_intel: '/diagnostics/code-intel', capability: '/diagnostics/capability-graph',
+    wiki_health: '/platform/kb', arch_guard: '/diagnostics', compliance: '/diagnostics',
   };
 
   const runAudit = async () => {
@@ -176,6 +202,92 @@ const Diagnostics: React.FC = () => {
       {error && (
         <div className="text-sm text-error bg-error-light border border-dark-border rounded-lg p-3">{error}</div>
       )}
+
+      {/* ═══════════ Unified Diagnostic ═══════ */}
+      <Card className="border-primary/20 bg-dark-card">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Activity className="w-5 h-5 text-primary" />
+              <span className="text-sm font-semibold text-gray-200">综合诊断报告</span>
+              {diagResult && (
+                <span className={`text-lg font-bold ${
+                  diagResult.overall_score >= 75 ? 'text-green-400' : diagResult.overall_score >= 50 ? 'text-yellow-400' : 'text-red-400'
+                }`}>
+                  {diagResult.overall_score} {diagResult.overall_grade}
+                </span>
+              )}
+            </div>
+            <Button variant="primary" size="sm" loading={diagRunning} onClick={runAllDiagnostics}>
+              🔍 一键诊断
+            </Button>
+          </div>
+        </CardHeader>
+        {diagResult && (
+          <CardContent>
+            {/* Summary bar */}
+            <div className="flex items-center gap-4 mb-4 text-xs">
+              <span className="text-green-400">✅ {diagResult.pass} 通过</span>
+              <span className="text-yellow-400">⚠️ {diagResult.warn} 警告</span>
+              <span className="text-red-400">❌ {diagResult.fail} 失败</span>
+              <span className="text-gray-500">| {diagResult.duration_ms}ms</span>
+            </div>
+            {/* Category cards */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {Object.entries(diagResult.categories || {}).map(([key, cat]: [string, any]) => {
+                const s = cat?.status || 'unknown';
+                const bg = s === 'pass' ? 'bg-green-900/20 border-green-500/20' : s === 'warn' ? 'bg-yellow-900/20 border-yellow-500/20' : 'bg-red-900/20 border-red-500/20';
+                const icon = s === 'pass' ? '✅' : s === 'warn' ? '⚠️' : s === 'error' ? '❌' : '⚪';
+                const isExpanded = expandedCat === key;
+                const link = catLinks[key];
+                return (
+                  <div key={key}>
+                    <div
+                      onClick={() => setExpandedCat(isExpanded ? null : key)}
+                      className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer hover:border-gray-500 transition-colors ${bg}`}
+                    >
+                      <div className={`w-2 h-2 rounded-full ${catColors[key] || 'bg-gray-400'}`} />
+                      <span className="text-sm text-gray-200 flex-1">{catLabels[key] || key}</span>
+                      <span className={`text-sm font-bold ${s === 'pass' ? 'text-green-400' : s === 'warn' ? 'text-yellow-400' : 'text-red-400'}`}>
+                        {cat?.score ?? '—'}
+                      </span>
+                      <ChevronRight className={`w-3 h-3 text-gray-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                    </div>
+                    {isExpanded && (
+                      <div className="mt-1 p-2 bg-dark-bg rounded border border-dark-border text-xs text-gray-400 space-y-1">
+                        {cat?.signals && Object.entries(cat.signals).map(([k, v]) => (
+                          <div key={k} className="flex justify-between">
+                            <span>{k}</span>
+                            <span className="text-gray-300">{String(v)}</span>
+                          </div>
+                        ))}
+                        {cat?.violations !== undefined && <div className="flex justify-between"><span>violations</span><span className="text-red-400">{cat.violations}</span></div>}
+                        {cat?.issue_count !== undefined && <div className="flex justify-between"><span>issues</span><span className="text-yellow-400">{cat.issue_count}</span></div>}
+                        {cat?.error && <div className="text-red-400">{cat.error}</div>}
+                        {link && (
+                          <Link to={link} className="text-blue-400 hover:text-blue-300 block mt-1">查看详情 →</Link>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            {/* Top issues */}
+            {diagResult.top_issues?.length > 0 && (
+              <div className="mt-3 p-2 bg-red-900/10 rounded border border-red-500/20 text-xs">
+                <span className="text-yellow-400 font-medium">需关注：</span>
+                {diagResult.top_issues.map((iss: any, i: number) => (
+                  <span key={i} className="ml-2 text-gray-400">
+                    {catLabels[iss.category] || iss.category}({iss.score})
+                    {i < diagResult.top_issues.length - 1 ? '、' : ''}
+                  </span>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        )}
+      </Card>
 
       {/* ═══════════ 确认流程 1: Layer Health ═══════ */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
