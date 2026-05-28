@@ -332,3 +332,85 @@ async def diagnostics_exec_backend_metrics_summary(window_hours: int = 24, limit
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
     return await store.exec_backend_metrics_summary(window_hours=int(window_hours or 24), limit=int(limit or 20))
+
+
+@router.post("/diagnostics/guard/run")
+async def run_architecture_guard():
+    """Execute architecture_guard.sh and return structured results."""
+    import re, subprocess as _sp
+    from pathlib import Path as _Path
+
+    # Locate the guard script
+    script = _Path(__file__).resolve().parents[4] / "scripts" / "architecture_guard.sh"
+    if not script.exists():
+        raise HTTPException(status_code=404, detail="Guard script not found")
+
+    try:
+        result = _sp.run(
+            ["bash", str(script)],
+            capture_output=True, text=True, timeout=30,
+            cwd=str(script.parent.parent),
+        )
+        output = result.stdout + "\n" + result.stderr
+    except _sp.TimeoutExpired:
+        raise HTTPException(status_code=504, detail="Guard script timed out")
+
+    # Parse sections
+    sections: List[Dict[str, Any]] = []
+    current_section: Optional[Dict[str, Any]] = None
+    violation_count = 0
+
+    for line in output.split("\n"):
+        line_stripped = line.strip()
+        # Section header
+        section_match = _re.match(r'SECTION\s+(\d+):\s+(.+)', line_stripped)
+        if section_match:
+            if current_section:
+                sections.append(current_section)
+            current_section = {
+                "number": section_match.group(1),
+                "name": section_match.group(2),
+                "items": [],
+                "status": "pass",
+            }
+            continue
+
+        # Check item
+        item_match = _re.match(r'\[(\w+)\]\s+(.+)', line_stripped)
+        if item_match and current_section is not None:
+            tag = item_match.group(1)
+            desc = item_match.group(2)
+            if tag == "PASS" and "violation" in line_stripped.lower():
+                tag = "fail"
+            current_section["items"].append({"tag": tag.lower(), "description": desc})
+            if tag.lower() != "pass":
+                current_section["status"] = "warn" if tag.lower() == "warn" else "fail"
+                violation_count += 1 if tag.lower() == "fail" else 0
+            continue
+
+        # Aggregate stats
+        total_violations_match = _re.search(r'(\d+)\s+violations?', line_stripped)
+        if total_violations_match and "ARCHITECTURE GUARD" in line_stripped:
+            violation_count = int(total_violations_match.group(1))
+        passed_match = _re.search(r'PASSED', line_stripped)
+        if passed_match and "ARCHITECTURE GUARD" in line_stripped:
+            violation_count = 0
+
+    if current_section:
+        sections.append(current_section)
+
+    pass_count = sum(1 for s in sections if s["status"] == "pass")
+    warn_count = sum(1 for s in sections if s["status"] == "warn")
+    fail_count = sum(1 for s in sections if s["status"] == "fail")
+
+    return {
+        "status": "ok",
+        "sections": sections,
+        "summary": {
+            "total": len(sections),
+            "pass": pass_count,
+            "warn": warn_count,
+            "fail": fail_count,
+        },
+        "violations": violation_count,
+    }

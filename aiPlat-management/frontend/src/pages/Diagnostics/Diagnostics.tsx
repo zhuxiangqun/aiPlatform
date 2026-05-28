@@ -46,6 +46,19 @@ const Diagnostics: React.FC = () => {
   const [auditResult, setAuditResult] = useState<any>(null);
   const [auditRunning, setAuditRunning] = useState(false);
   const [auditTab, setAuditTab] = useState('');
+  // Architecture guard
+  const [guardResult, setGuardResult] = useState<any>(null);
+  const [guardRunning, setGuardRunning] = useState(false);
+
+  const runGuard = async () => {
+    setGuardRunning(true); setGuardResult(null);
+    try {
+      const res = await fetch('/api/core/diagnostics/guard/run', { method: 'POST' });
+      const data = await res.json();
+      setGuardResult(data);
+    } catch (e: any) { toast.error('守卫检测失败', e?.message || e); }
+    finally { setGuardRunning(false); }
+  };
 
   const runAudit = async () => {
     setAuditRunning(true); setAuditResult(null);
@@ -255,6 +268,53 @@ const Diagnostics: React.FC = () => {
                 </div>
               );
             })}
+          </CardContent>
+        )}
+      </Card>
+
+      {/* ═══════ Architecture Guard ═══ */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-green-400" />
+              <span className="text-sm font-semibold text-gray-200">架构守卫</span>
+              {guardResult && (
+                <span className={`text-xs px-2 py-0.5 rounded ${
+                  guardResult.violations === 0 ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'
+                }`}>
+                  {guardResult.violations === 0 ? '✅ 通过' : `❌ ${guardResult.violations} 违规`}
+                </span>
+              )}
+            </div>
+            <Button variant="secondary" size="sm" loading={guardRunning} onClick={runGuard}>🛡️ 运行守卫</Button>
+          </div>
+        </CardHeader>
+        {guardResult && guardResult.sections && (
+          <CardContent>
+            <div className="flex items-center gap-3 mb-3 text-xs text-gray-400">
+              <span className="text-green-400">{guardResult.summary.pass} 通过</span>
+              {guardResult.summary.warn > 0 && <span className="text-yellow-400">{guardResult.summary.warn} 警告</span>}
+              {guardResult.summary.fail > 0 && <span className="text-red-400">{guardResult.summary.fail} 失败</span>}
+              <span className="text-gray-600">| 共 {guardResult.summary.total} 项</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
+              {guardResult.sections.filter((s: any) => s.items?.length > 0).map((s: any) => {
+                const color = s.status === 'fail' ? 'border-red-900/30 bg-red-900/10' : s.status === 'warn' ? 'border-yellow-900/30 bg-yellow-900/10' : 'border-dark-border/50';
+                const icon = s.status === 'fail' ? '❌' : s.status === 'warn' ? '⚠️' : '✅';
+                return (
+                  <div key={s.number} className={`flex items-center gap-1.5 px-2 py-1 rounded border text-xs ${color}`}>
+                    <span>{icon}</span>
+                    <span className="text-gray-400 truncate">§{s.number} {s.name}</span>
+                    {s.items.filter((i: any) => i.tag !== 'pass').length > 0 && (
+                      <span className={`ml-auto text-[10px] ${s.status === 'fail' ? 'text-red-400' : 'text-yellow-400'}`}>
+                        {s.items.filter((i: any) => i.tag !== 'pass').length} issues
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </CardContent>
         )}
       </Card>
