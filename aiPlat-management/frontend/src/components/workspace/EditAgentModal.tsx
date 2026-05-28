@@ -61,7 +61,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       setWorkflowIds((agent as any)?.workflow_ids || []);
       setAgentIds((agent as any)?.agent_ids || []);
       setConfigText(agent.metadata?.config ? JSON.stringify(agent.metadata.config, null, 2) : (agent as any)?.config ? JSON.stringify((agent as any).config, null, 2) : '');
-      setMemoryConfigText((agent as any)?.memory_config ? JSON.stringify((agent as any).memory_config, null, 2) : '');
+      setMemoryConfigText((agent as any)?.memory_config ? JSON.stringify((agent as any).memory_config, null, 2) : '{\n  "type": "short_term",\n  "recall_count": 5\n}');
       setSopText('');
       setAgentStatus(agent.status || 'draft');
       // Pipeline config fields from metadata
@@ -458,7 +458,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
         {showRolePreview && roleDefinition && (
           <div className="bg-blue-900/20 border border-blue-500/20 rounded-lg p-4">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium text-blue-300">📋 角色定义预览（可编辑）</span>
+              <span className="text-sm font-medium text-blue-300">📋 角色定义（可编辑 JSON）</span>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => { setShowRolePreview(false); setRoleDefinition(null); }}
@@ -471,106 +471,17 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
                 </Button>
               </div>
             </div>
-            <div className="space-y-3 text-xs text-gray-300">
-              <div className="flex items-center gap-2">
-                <span className="text-gray-500 shrink-0">角色名称：</span>
-                <input
-                  value={roleDefinition.role_name}
-                  onChange={(e) => setRoleDefinition({ ...roleDefinition, role_name: e.target.value })}
-                  className="flex-1 h-7 px-2 bg-dark-bg border border-dark-border rounded text-xs text-blue-200"
-                />
-              </div>
-              <div>
-                <span className="text-gray-500">核心职责：</span>
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {roleDefinition.responsibilities?.map((r, i) => (
-                    <span key={i} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-300 group">
-                      <input
-                        value={r}
-                        onChange={(e) => {
-                          const newArr = [...roleDefinition.responsibilities];
-                          newArr[i] = e.target.value;
-                          setRoleDefinition({ ...roleDefinition, responsibilities: newArr });
-                        }}
-                        className="w-20 h-5 px-1 bg-transparent border-none text-blue-200 text-xs focus:outline-none focus:bg-blue-900/30"
-                      />
-                      <button
-                        onClick={() => {
-                          setRoleDefinition({
-                            ...roleDefinition,
-                            responsibilities: roleDefinition.responsibilities.filter((_, j) => i !== j),
-                          });
-                        }}
-                        className="opacity-0 group-hover:opacity-100 text-red-400"
-                      >×</button>
-                    </span>
-                  ))}
-                  <button
-                    onClick={() => {
-                      setRoleDefinition({
-                        ...roleDefinition,
-                        responsibilities: [...(roleDefinition.responsibilities || []), ''],
-                      });
-                    }}
-                    className="inline-flex items-center px-1.5 py-0.5 rounded bg-blue-500/5 text-blue-400 hover:bg-blue-500/10"
-                  >+</button>
-                </div>
-              </div>
-              <div>
-                <span className="text-gray-500">需要的能力：</span>
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {roleDefinition.required_capabilities?.map((c, i) => (
-                    <span key={i} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-green-500/10 text-green-300 group">
-                      <input
-                        value={c}
-                        onChange={(e) => {
-                          const newArr = [...roleDefinition.required_capabilities];
-                          newArr[i] = e.target.value;
-                          setRoleDefinition({ ...roleDefinition, required_capabilities: newArr });
-                        }}
-                        className="w-24 h-5 px-1 bg-transparent border-none text-green-200 text-xs focus:outline-none focus:bg-green-900/30"
-                      />
-                      <button
-                        onClick={() => {
-                          setRoleDefinition({
-                            ...roleDefinition,
-                            required_capabilities: roleDefinition.required_capabilities.filter((_, j) => i !== j),
-                          });
-                        }}
-                        className="opacity-0 group-hover:opacity-100 text-red-400"
-                      >×</button>
-                    </span>
-                  ))}
-                  <button
-                    onClick={() => {
-                      setRoleDefinition({
-                        ...roleDefinition,
-                        required_capabilities: [...(roleDefinition.required_capabilities || []), ''],
-                      });
-                    }}
-                    className="inline-flex items-center px-1.5 py-0.5 rounded bg-green-500/5 text-green-400 hover:bg-green-500/10"
-                  >+</button>
-                </div>
-              </div>
-              {roleDefinition.workflow_hint !== undefined && (
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-500 shrink-0">协作关系：</span>
-                  <input
-                    value={roleDefinition.workflow_hint}
-                    onChange={(e) => setRoleDefinition({ ...roleDefinition, workflow_hint: e.target.value })}
-                    className="flex-1 h-7 px-2 bg-dark-bg border border-dark-border rounded text-xs text-gray-200"
-                  />
-                </div>
-              )}
-              <div className="flex items-center gap-2">
-                <span className="text-gray-500 shrink-0">推理说明：</span>
-                <input
-                  value={roleDefinition.reasoning}
-                  onChange={(e) => setRoleDefinition({ ...roleDefinition, reasoning: e.target.value })}
-                  className="flex-1 h-7 px-2 bg-dark-bg border border-dark-border rounded text-xs text-gray-400 italic"
-                />
-              </div>
+            <div className="text-xs text-gray-400 mb-2">
+              格式：{'{ "role_name": "...", "responsibilities": [...], "scenarios": [...], "required_capabilities": [...], "workflow_hint": "...", "reasoning": "..." }'}
             </div>
+            <Textarea
+              value={JSON.stringify(roleDefinition, null, 2)}
+              onChange={(e: any) => {
+                try { setRoleDefinition(JSON.parse(e.target.value)); } catch { /* invalid JSON, keep editing */ }
+              }}
+              rows={12}
+              placeholder='{"role_name":"产品经理","responsibilities":["需求收集","PRD生成"],...}'
+            />
           </div>
         )}
 
