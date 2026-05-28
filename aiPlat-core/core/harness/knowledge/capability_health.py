@@ -71,7 +71,17 @@ def capability_health_report(graph_result) -> Dict[str, Any]:
             if e["to"] not in nodes:
                 unresolved_refs.append({"agent": e["from"], "target": e["to"], "target_type": nodes[e["from"]]["type"]})
 
-    # 4) Top hubs — nodes sorted by total degree
+    # 4) Entry point duplicates — same capability with multiple API routes
+    entry_point_duplicates: List[Dict[str, Any]] = []
+    for nid, n in nodes.items():
+        if n.get("type") == "entry_point" and n.get("has_duplicate"):
+            entry_point_duplicates.append({
+                "capability": n["label"],
+                "files": n.get("files", []),
+                "detail": n.get("_issue_detail", ""),
+            })
+
+    # 5) Top hubs — nodes sorted by total degree
     top_hubs = sorted(
         [{"id": nid, "label": nodes[nid]["label"], "type": nodes[nid]["type"], "degree": total_degree[nid]}
          for nid in nodes],
@@ -114,6 +124,10 @@ def capability_health_report(graph_result) -> Dict[str, Any]:
     # Penalty: unresolved references
     if unresolved_refs:
         score -= min(len(unresolved_refs) * 2, 20)
+
+    # Penalty: entry point duplicates (same capability, multiple routes)
+    if entry_point_duplicates:
+        score -= min(len(entry_point_duplicates) * 3, 15)
 
     # Penalty: no tools (capability gap)
     if total_tools == 0:
@@ -165,6 +179,7 @@ def capability_health_report(graph_result) -> Dict[str, Any]:
             "unused_skills": unused_skills,
             "orphan_agents": orphan_agents,
             "unresolved_refs": unresolved_refs,
+            "entry_point_duplicates": entry_point_duplicates,
         },
         "top_hubs": top_hubs,
         "top_blast": top_blast,

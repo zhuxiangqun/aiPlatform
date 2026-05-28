@@ -137,6 +137,7 @@ def build_capability_graph() -> CapabilityGraphResult:
     _scan_tools(nodes, edges)
     _scan_mcp_servers(nodes, edges)
     _scan_workflows(nodes, edges)
+    _scan_entry_points(nodes, edges)
 
     return CapabilityGraphResult(
         created_at=time.time(),
@@ -313,3 +314,52 @@ def _scan_workflows(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]
                     edges.append({"from": f"workflow:{wf_id}", "to": f"skill:{skill_ref}", "relation": "maps_to"})
     except Exception:
         pass
+
+
+def _scan_entry_points(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):
+    """Scan API routers for duplicate entry points serving the same capability."""
+    import re as _re
+    from pathlib import Path as _Py
+
+    here = _Py(__file__).resolve()
+    for _ in range(5):
+        routers_dir = here.parent.parent.parent / "api" / "routers"
+        if routers_dir.exists():
+            break
+        here = here.parent
+    else:
+        return
+
+    capability_patterns: Dict[str, Any] = {
+        "agent.execute": _re.compile(r'@router\.\w+\([\"\'][\w/]*agents?/[\w{}_]*execute'),
+        "agent.create": _re.compile(r'@router\.\w+\([\"\'][\w/]*agents?[\"\']'),
+        "skill.execute": _re.compile(r'@router\.\w+\([\"\'][\w/]*skills?/[\w{}_]*execute'),
+        "sfp.injection": _re.compile(r'system_prompt|_sys_prompt'),
+    }
+
+    found: Dict[str, List[str]] = {}
+    for py_file in sorted(routers_dir.glob("*.py")):
+        try:
+            content = py_file.read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            continue
+        for cap_name, pattern in capability_patterns.items():
+            if pattern.search(content):
+                found.setdefault(cap_name, []).append(str(py_file.name))
+
+    for cap_name, files in found.items():
+        node_id = f"entry_point:{cap_name}"
+        nodes[node_id] = {
+            "id": node_id,
+            "type": "entry_point",
+            "label": cap_name,
+            "raw_id": cap_name,
+            "file_count": len(files),
+            "files": files,
+            "has_duplicate": len(files) > 1,
+        }
+        if len(files) > 1:
+            nodes[node_id]["_issue"] = "duplicate_entry_point"
+            nodes[node_id]["_issue_detail"] = (
+                f"'{cap_name}' has {len(files)} routes: {', '.join(files)}"
+            )
