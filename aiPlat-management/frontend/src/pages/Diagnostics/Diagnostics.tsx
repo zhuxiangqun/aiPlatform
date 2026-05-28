@@ -255,6 +255,32 @@ const Diagnostics: React.FC = () => {
                     </div>
                     {isExpanded && (
                       <div className="mt-1 p-2 bg-dark-bg rounded border border-dark-border text-xs text-gray-400 space-y-1">
+                        {/* Items-level details */}
+                        {cat?.items && cat.items.length > 0 && (
+                          <>
+                            <div className="text-gray-500 mb-1 border-b border-dark-border pb-1">具体问题</div>
+                            {cat.items.map((item: any, i: number) => (
+                              item.link ? (
+                                <Link key={i} to={item.link} className="flex items-start gap-1.5 hover:bg-dark-hover/50 rounded px-1 py-0.5">
+                                  <span className="shrink-0">{item.result}</span>
+                                  <div>
+                                    <span className="text-gray-300">{item.check}</span>
+                                    <span className="text-gray-500 ml-1">— {item.detail}</span>
+                                  </div>
+                                </Link>
+                              ) : (
+                                <div key={i} className="flex items-start gap-1.5 px-1 py-0.5">
+                                  <span className="shrink-0">{item.result}</span>
+                                  <div>
+                                    <span className="text-gray-300">{item.check}</span>
+                                    <span className="text-gray-500 ml-1">— {item.detail}</span>
+                                  </div>
+                                </div>
+                              )
+                            ))}
+                          </>
+                        )}
+                        {/* Signals */}
                         {cat?.signals && Object.entries(cat.signals).map(([k, v]) => (
                           <div key={k} className="flex justify-between">
                             <span>{k}</span>
