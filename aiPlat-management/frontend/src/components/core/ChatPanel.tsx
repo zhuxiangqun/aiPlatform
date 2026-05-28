@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Loader2, Zap, X, MessageSquare, User, Bot, BrainCircuit, Eye } from 'lucide-react';
-import { agentApi } from '../../services';
+import { workspaceAgentApi } from '../../services';
 import type { Agent } from '../../services';
 
 interface ChatMessage {
@@ -34,7 +34,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ agent, onClose }) => {
     setSending(true);
 
     try {
-      const res: any = await agentApi.execute(agent.id, {
+      const res: any = await workspaceAgentApi.execute(agent.id, {
         input: { message: input },
         options: { force_react: reactMode },
       });
