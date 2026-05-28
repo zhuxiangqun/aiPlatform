@@ -448,8 +448,21 @@ async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
 {{"agent_type":"react|plan|tool|base|conversational","config":{{"model":"deepseek-chat","temperature":0.3,"max_tokens":4096,"system_prompt":"根据功能描述生成的系统提示词(中文)"}},"skills":["技能名1"],"tools":["工具名1"],"mcp_ids":[],"agent_ids":["可委派的子Agent ID"],"workflow_ids":["已有Workflow模板名"],"memory_config":{{"type":"short_term","recall_count":5}},"sop_text":"根据功能描述生成的 SOP 步骤(Markdown 格式,中文)","reasoning":"为什么这样选择的简要解释(中文)"}}
 
 ## 选择原则
-- 根据技能描述（description）匹配用户需求，不要仅看技能名称
-- skills 应同时包含：用户描述中直接需要的 + 执行描述中隐含需要的{chr(10) + "- 如果提供了角色定义，根据职责和能力需求匹配技能" if role_section else ""}
+- 根据技能描述（description）匹配用户需求，不要仅看技能名称{chr(10) + "- 如果提供了角色定义，必须根据 required_capabilities 中的每个能力类型匹配对应的技能" if role_section else ""}
+- skills 应同时包含：用户描述中直接需要的 + 执行描述中隐含需要的
+- **能力→技能映射非常重要，必须严格遵守**：
+  "任务规划/需求分解/结构化" → task_planning, task_decomposition
+  "需求澄清/多轮对话引导" → task_planning（结构化引导），**不要选 chitchat（闲聊会严重偏离产品经理职责）**
+  "文档生成/PRD/报告" → text_generation, summarization
+  "信息检索/知识查询/能力盘点" → information_search, knowledge_retrieval
+  "代码生成/编程" → code_generation
+  "审查/审计/检查" → code_review, root_cause_analysis
+  "测试/验证/质量" → test_case_generation, e2e_test
+  "搜索/外部信息" → information_search
+  "浏览器/网页操作" → browser_automation
+  "数据分析/统计" → data_analysis
+  "日常闲聊/简单问答" → **仅 true 纯对话场景选 chitchat，其他角色一律不要选**
+- 如果某个能力类型在可用技能中找不到直接匹配，选描述最接近的替代
 - agent_ids 从"可委派的子Agent"中选择，只选与用户流程实际相关的角色
 - workflow_ids 从"已有 Workflow 模板"中选择匹配的模板名，如无匹配可为空数组
 """
