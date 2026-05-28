@@ -1,47 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, Button } from '../../components/ui';
-import { RefreshCw, Server, Cpu, Bot, Sparkles, Shield, Database, Activity } from 'lucide-react';
-
-interface HealthCardData {
-  title: string;
-  icon: React.ReactNode;
-  score: number;
-  scoreLabel: string;
-  items: { label: string; value: string | number; ok?: boolean }[];
-  loading?: boolean;
-  to?: string;
-}
-
-const HealthCard: React.FC<HealthCardData> = ({ title, icon, score, scoreLabel, items, to }) => {
-  const navigate = useNavigate();
-  const color = score >= 85 ? 'text-green-400' : score >= 70 ? 'text-yellow-400' : 'text-red-400';
-  return (
-    <Card className={`hover:border-gray-600 transition-colors ${to ? 'cursor-pointer hover:border-primary/50' : ''}`}
-      onClick={() => to && navigate(to)}>
-      <CardHeader>
-        <div className="flex items-center gap-2 text-sm font-medium text-gray-200">
-          {icon}
-          {title}
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="flex items-end gap-2 mb-3">
-          <span className={`text-2xl font-bold ${color}`}>{score}</span>
-          <span className="text-xs text-gray-500 mb-1">{scoreLabel}</span>
-        </div>
-        <div className="border-t border-dark-border pt-2 space-y-1">
-          {items.map((it, i) => (
-            <div key={i} className="flex justify-between text-xs">
-              <span className="text-gray-500">{it.label}</span>
-              <span className={it.ok === false ? 'text-red-400' : 'text-gray-300'}>{it.value}</span>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
+import { RefreshCw, Server, Cpu, Bot, Network, Shield, MessageSquare, Database, Layers, Globe } from 'lucide-react';
 
 const SystemOverview: React.FC = () => {
   const [data, setData] = useState<any>(null);
@@ -58,119 +17,194 @@ const SystemOverview: React.FC = () => {
 
   useEffect(() => { fetchData(); const t = setInterval(fetchData, 30000); return () => clearInterval(t); }, []);
 
-  const ch = data?.code_health || {};
-  const wh = data?.wiki_health || {};
-  const sd = data?.skill_deps || {};
-  const cap = data?.capability_health || {};
-  const models = data?.models || {};
-  const agents = data?.agents || {};
-  const servers = data?.servers || {};
-  const pipeline = data?.pipeline || {};
+  const infra = data?.infra || {};
+  const core = data?.core || {};
+  const platform = data?.platform || {};
+  const app = data?.app || {};
+
+  const statusColor = (status: string) =>
+    status === 'healthy' ? 'text-green-400' : status === 'degraded' ? 'text-yellow-400' : 'text-red-400';
+  const statusBg = (status: string) =>
+    status === 'healthy' ? 'bg-green-900/20 border-green-500/20' : status === 'degraded' ? 'bg-yellow-900/20 border-yellow-500/20' : 'bg-red-900/20 border-red-500/20';
+  const statusLabel = (status: string) =>
+    status === 'healthy' ? '健康' : status === 'degraded' ? '部分可用' : '异常';
+  const serversUp = () => Object.values(infra.servers || {}).filter((v: any) => v === 'up').length;
+  const serversTotal = () => Object.keys(infra.servers || {}).length;
 
   return (
     <div className="space-y-4 p-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Activity className="w-5 h-5 text-primary" />
+        <div>
           <h1 className="text-lg font-semibold text-gray-100">系统概览</h1>
+          <p className="text-xs text-gray-500 mt-0.5">四层架构运行状态</p>
         </div>
         <Button variant="ghost" size="sm" onClick={fetchData} loading={loading}>
           <RefreshCw className="w-3 h-3 mr-1" />刷新
         </Button>
       </div>
 
-      {/* Row 2: Servers */}
-      <div className="grid grid-cols-1 gap-4">
-        <Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* ═══ INFRA — Layer 0 ═══ */}
+        <Card className={statusBg(infra.status || 'healthy')}>
           <CardHeader>
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-200">
-              <Shield className="w-4 h-4 text-green-400" />
-              架构守卫
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm font-medium text-gray-200">
+                <Server className="w-4 h-4 text-cyan-400" />
+                基础设施层 <span className="text-[10px] text-gray-500">Layer 0</span>
+              </div>
+              <span className={`text-xs font-medium ${statusColor(infra.status || 'healthy')}`}>
+                {statusLabel(infra.status || 'healthy')}
+              </span>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-green-400 text-lg font-bold">{ag.compliant ? '合规 ✓' : '违规 ✗'}</span>
-            </div>
-            <div className="text-xs text-gray-500">{ag.checks} 项检查 · {ag.violations} 项违规</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-200">
-              <Server className="w-4 h-4 text-cyan-400" />
-              服务器状态
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              {Object.entries(servers).map(([name, status]) => (
-                <div key={name} className="flex items-center gap-1.5">
-                  <span className={`w-2 h-2 rounded-full ${status === 'up' ? 'bg-green-500' : 'bg-red-500'}`} />
-                  <span className="text-gray-400">{name}</span>
-                  <span className={status === 'up' ? 'text-green-400' : 'text-red-400'}>{status}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Row 3: Models + Agents + Pipeline */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-200">
-              <Cpu className="w-4 h-4 text-violet-400" />
-              模型状态
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xs space-y-1">
-              <div className="text-gray-500">{models.available}/{models.total} 可用</div>
-              {(models.list || []).slice(0, 5).map((m: any) => (
-                <div key={m.name} className="flex items-center gap-1.5">
-                  <span className={`w-1.5 h-1.5 rounded-full ${m.status === 'available' ? 'bg-green-500' : 'bg-red-500'}`} />
-                  <span className="text-gray-400 truncate">{m.name}</span>
-                </div>
-              ))}
+            <div className="space-y-2 text-xs">
+              {/* Models */}
+              <div className="flex justify-between">
+                <span className="text-gray-500">模型</span>
+                <span className="text-gray-300">
+                  {infra.models?.available ?? '—'}/{infra.models?.total ?? '—'} 可用
+                  {infra.models?.types && (
+                    <span className="text-gray-500 ml-1">
+                      (chat:{infra.models.types.chat || 0} emb:{infra.models.types.embedding || 0})
+                    </span>
+                  )}
+                </span>
+              </div>
+              {/* Servers */}
+              <div className="flex justify-between">
+                <span className="text-gray-500">服务</span>
+                <span className="text-gray-300">{serversUp()}/{serversTotal()} 在线</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {Object.entries(infra.servers || {}).map(([name, status]: [string, any]) => (
+                  <span key={name} className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] ${
+                    status === 'up' ? 'bg-green-900/20 text-green-300 border border-green-500/20' : 'bg-red-900/20 text-red-300 border border-red-500/20'
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${status === 'up' ? 'bg-green-400' : 'bg-red-400'}`} />
+                    {name}
+                  </span>
+                ))}
+              </div>
+              {infra.models?.error && <div className="text-red-400 mt-1">{infra.models.error}</div>}
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        {/* ═══ CORE — Layer 1 ═══ */}
+        <Card className="bg-dark-card">
           <CardHeader>
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-200">
-              <Bot className="w-4 h-4 text-emerald-400" />
-              Agent 注册
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm font-medium text-gray-200">
+                <Cpu className="w-4 h-4 text-violet-400" />
+                AI 中台 <span className="text-[10px] text-gray-500">Layer 1</span>
+              </div>
+              <span className={`text-xs font-medium ${statusColor(core.status || 'healthy')}`}>
+                {statusLabel(core.status || 'healthy')}
+              </span>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-xs space-y-1">
-              <div className="text-gray-500">{agents.ready}/{agents.total} 就绪</div>
-              {(agents.list || []).slice(0, 6).map((a: any) => (
-                <div key={a.id} className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                  <span className="text-gray-400 truncate">{a.id}</span>
-                </div>
-              ))}
+            <div className="space-y-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Agent</span>
+                <span className="text-gray-300">
+                  {core.agents?.total ?? '—'}
+                  <span className="text-gray-500 ml-1">(引擎 {core.agents?.engine ?? 0} + 应用 {core.agents?.workspace ?? 0})</span>
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Skill</span>
+                <span className="text-gray-300">{core.skills?.total ?? '—'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Tool</span>
+                <span className="text-gray-300">{core.tools ?? '—'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">MCP 服务器</span>
+                <span className="text-gray-300">{core.mcp_servers ?? '—'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Pipeline</span>
+                <span className="text-gray-300">
+                  {core.pipeline?.active !== undefined ? `${core.pipeline.active} 活跃` : '—'}
+                </span>
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        {/* ═══ PLATFORM — Layer 2 ═══ */}
+        <Card className="bg-dark-card">
           <CardHeader>
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-200">
-              <Activity className="w-4 h-4 text-orange-400" />
-              Pipeline 引擎
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm font-medium text-gray-200">
+                <Globe className="w-4 h-4 text-emerald-400" />
+                平台服务层 <span className="text-[10px] text-gray-500">Layer 2</span>
+              </div>
+              <span className={`text-xs font-medium ${statusColor(platform.status || 'healthy')}`}>
+                {statusLabel(platform.status || 'healthy')}
+              </span>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-3 gap-2 text-center text-xs">
-              <div><div className="text-lg font-semibold text-blue-400">{pipeline.active}</div><div className="text-gray-500">活跃</div></div>
-              <div><div className="text-lg font-semibold text-green-400">{pipeline.completed}</div><div className="text-gray-500">完成</div></div>
-              <div><div className="text-lg font-semibold text-red-400">{pipeline.failed}</div><div className="text-gray-500">失败</div></div>
+            <div className="space-y-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-gray-500">网关路由</span>
+                <span className="text-gray-300">{platform.gateway?.routes ?? '—'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">用户</span>
+                <span className="text-gray-300">{platform.auth?.users ?? '—'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">租户</span>
+                <span className="text-gray-300">{platform.tenant?.tenants ?? '—'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">知识库</span>
+                <span className="text-gray-300">集合 {platform.knowledge_base?.collections ?? '—'}</span>
+              </div>
+              {platform.gateway?.error && platform.auth?.error && (
+                <div className="text-yellow-400 text-[10px] mt-1">Platform 服务未响应</div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ═══ APP — Layer 3 ═══ */}
+        <Card className="bg-dark-card">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm font-medium text-gray-200">
+                <MessageSquare className="w-4 h-4 text-orange-400" />
+                应用接入层 <span className="text-[10px] text-gray-500">Layer 3</span>
+              </div>
+              <span className={`text-xs font-medium ${statusColor(app.status || 'healthy')}`}>
+                {statusLabel(app.status || 'healthy')}
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-gray-500">渠道</span>
+                <span className="text-gray-300">{app.channels?.count ?? '—'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">会话</span>
+                <span className="text-gray-300">
+                  {app.sessions?.active ?? '—'} 活跃 / {app.sessions?.total ?? '—'} 总计
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Apps</span>
+                <span className="text-gray-300">{app.apps?.count ?? '—'}</span>
+              </div>
+              {app.channels?.error && app.sessions?.error && (
+                <div className="text-yellow-400 text-[10px] mt-1">App 服务未响应</div>
+              )}
             </div>
           </CardContent>
         </Card>
