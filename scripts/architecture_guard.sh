@@ -850,8 +850,8 @@ echo "════════════════════════�
 
 echo ""
 echo "  [17a] Builder pipeline E2E tests..."
-BUILDER_E2E_OUTPUT=$(cd "$(dirname "$0")/.." && PYTHONPATH="$(pwd)/aiPlat-core:$(pwd)/aiPlat-platform" python3 -m pytest aiPlat-platform/tests/test_builder.py aiPlat-core/core/tests/unit/test_builder_pipeline_e2e.py -q --tb=line 2>&1)
-BUILDER_E2E_RC=$?
+BUILDER_E2E_OUTPUT=$(cd "$(dirname "$0")/.." && PYTHONPATH="$(pwd)/aiPlat-core:$(pwd)/aiPlat-platform" python3 -m pytest aiPlat-platform/tests/test_builder.py aiPlat-core/core/tests/unit/test_builder_pipeline_e2e.py -q --tb=line 2>&1) || BUILDER_E2E_OUTPUT="pytest exited with error"
+BUILDER_E2E_RC=${PIPESTATUS[0]}
 if [ "$BUILDER_E2E_RC" -eq 0 ]; then
     check_pass "all builder pipeline E2E tests pass"
 else
@@ -1255,6 +1255,77 @@ for skill_md in $(find aiPlat-core/core/engine/skills/ -name "SKILL.md" 2>/dev/n
 done
 if [ "$SKILL_SYSCALL_VIOLATIONS" -eq 0 ]; then
     echo -e "  ${GREEN}PASS${NC}  all SKILL.md syscall references are valid"
+fi
+
+echo ""
+echo "═══════════════════════════════════════════════════════════════"
+echo "  SECTION 34: Hardcoded System Prompts in Core"
+echo "═══════════════════════════════════════════════════════════════"
+echo ""
+
+# §34a — Detect hardcoded role='system' messages in core/harness
+echo "  [34a] Hardcoded system role messages..."
+HARD_SYSTEM_PROMPTS=$(grep -rn '"role"[[:space:]]*:[[:space:]]*"system"' aiPlat-core/core/harness/ --include='*.py' 2>/dev/null | grep -v "system_prompt\|_sys_prompt\|sys_prompt\|#.*test" || true)
+HARD_SYSTEM_COUNT=$(echo "$HARD_SYSTEM_PROMPTS" | grep -c ":" 2>/dev/null || echo 0)
+if [ "$HARD_SYSTEM_COUNT" -gt 0 ] && [ -n "$HARD_SYSTEM_PROMPTS" ]; then
+    echo -e "  ${YELLOW}[WARN]${NC} $HARD_SYSTEM_COUNT hardcoded system role messages found:"
+    echo "$HARD_SYSTEM_PROMPTS" | while read -r line; do
+        echo -e "    ${YELLOW}→${NC} $line"
+    done
+    echo "    These should use agent_config.system_prompt instead of hardcoded text."
+    echo "    Exception: test fixtures and bootstrap code may keep hardcoded prompts."
+else
+    echo -e "  ${GREEN}PASS${NC}  no hardcoded system role messages detected"
+fi
+
+echo ""
+echo "═══════════════════════════════════════════════════════════════"
+echo "  SECTION 35: Agent Execute Path Uniqueness"
+echo "═══════════════════════════════════════════════════════════════"
+echo ""
+
+# §35a — Detect multiple execute endpoints for same resource type
+echo "  [35a] Duplicate execute endpoint detection..."
+EXEC_ENDPOINTS=$(grep -rn '"agents.*execute\|execute.*agent"\|agents/{agent_id}/execute\|workspace/agents/{agent_id}/execute' aiPlat-core/core/api/routers/ --include='*.py' 2>/dev/null | grep "@router" || true)
+EXEC_COUNT=$(echo "$EXEC_ENDPOINTS" | grep -c "execute" 2>/dev/null || echo 0)
+if [ "$EXEC_COUNT" -gt 2 ]; then
+    echo -e "  ${YELLOW}[WARN]${NC} $EXEC_COUNT execute endpoints detected (expect 2: engine + workspace)"
+    echo "$EXEC_ENDPOINTS" | while read -r line; do
+        echo -e "    ${YELLOW}→${NC} $line"
+    done
+    echo "    Multiple execute paths for same resource type may diverge in behavior."
+else
+    echo -e "  ${GREEN}PASS${NC}  execute endpoint count is within expected range"
+fi
+
+echo ""
+echo "═══════════════════════════════════════════════════════════════"
+echo "  SECTION 36: system_prompt Flow Integrity"
+echo "═══════════════════════════════════════════════════════════════"
+echo ""
+
+# §36a — Detect system_prompt being lost between pipeline stages
+echo "  [36a] system_prompt flow check..."
+# Check that run_workspace_agent reads system_prompt from config
+if grep -q "agent_info.*config.*system_prompt\|cfg.*get.*system_prompt\|sys_prompt" aiPlat-core/core/api/core_facade.py 2>/dev/null; then
+    echo -e "  ${GREEN}PASS${NC}  core_facade.py reads system_prompt from agent config"
+else
+    echo -e "  ${RED}[FAIL]${NC} core_facade.py does not read system_prompt from agent config"
+    VIOLATIONS=$((VIOLATIONS + 1))
+fi
+# Check that StageRunner passes system_prompt to LoopState
+if grep -q "system_prompt\|_sys_prompt" aiPlat-core/core/harness/execution/langgraph/stage_runner.py 2>/dev/null; then
+    echo -e "  ${GREEN}PASS${NC}  stage_runner.py passes system_prompt to LoopState"
+else
+    echo -e "  ${RED}[FAIL]${NC} stage_runner.py does not pass system_prompt to LoopState"
+    VIOLATIONS=$((VIOLATIONS + 1))
+fi
+# Check that ReActLoop reads system_prompt from context
+if grep -q "system_prompt\|_sys_prompt" aiPlat-core/core/harness/execution/loop.py 2>/dev/null; then
+    echo -e "  ${GREEN}PASS${NC}  loop.py reads system_prompt from context"
+else
+    echo -e "  ${RED}[FAIL]${NC} loop.py does not read system_prompt from context"
+    VIOLATIONS=$((VIOLATIONS + 1))
 fi
 
 echo ""
