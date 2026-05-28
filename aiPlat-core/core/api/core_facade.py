@@ -1184,6 +1184,7 @@ async def run_workspace_agent(
         "_coding_policy_profile": "off",
         "_user_id": "system",
         "_enable_query_rewrite": True,
+        "_sys_prompt": sys_prompt,
         "context": {"system_prompt": sys_prompt, "task": user_message},
     }
 

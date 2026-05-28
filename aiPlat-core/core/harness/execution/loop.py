@@ -730,6 +730,12 @@ class ReActLoop(BaseLoop):
                 skills_desc=skills_desc,
                 observation=state.context.get("observation", "None"),
             )
+            # Inject system_prompt as a system message if configured
+            sp = state.context.get("_sys_prompt", "") or state.context.get("system_prompt", "")
+            if sp:
+                # Remove any existing system message and prepend with sys_prompt
+                prompt = [m for m in prompt if m.get("role") != "system"]
+                prompt.insert(0, {"role": "system", "content": sp})
             rs = state.context.get("run_state")
             if isinstance(rs, dict):
                 prompt.append({"role": "user", "content": format_run_state_for_prompt(rs)})

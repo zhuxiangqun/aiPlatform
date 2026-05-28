@@ -118,10 +118,16 @@ class StageRunner:
             skills=skills,
         )
 
+        # Read system_prompt from incoming state (set by run_workspace_agent)
+        ctx = state.get("context") if isinstance(state.get("context"), dict) else {}
+        sys_prompt = state.get("_sys_prompt") or ctx.get("system_prompt", "")
+
         loop_state = LoopState(
             current=LoopStateEnum.INIT,
             context={
                 "task": prompt,
+                "system_prompt": sys_prompt,
+                "_sys_prompt": sys_prompt,
                 "messages": [],
                 "_session_id": str(state.get("session_id", "")),
                 "_run_id": str(state.get("_run_id", "")),
