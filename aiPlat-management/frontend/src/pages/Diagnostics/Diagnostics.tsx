@@ -289,6 +289,13 @@ const Diagnostics: React.FC = () => {
         )}
       </Card>
 
+      {/* ═══════════ 分类诊断（折叠） ═══════ */}
+      <details className="bg-dark-card border border-dark-border rounded-lg overflow-hidden">
+        <summary className="px-4 py-3 cursor-pointer text-sm font-semibold text-gray-200 hover:text-gray-100 select-none">
+          📊 分类诊断
+          <span className="text-xs text-gray-500 ml-2">— 按类别手动运行各项诊断</span>
+        </summary>
+        <div className="px-4 pb-4 space-y-4">
       {/* ═══════════ 确认流程 1: Layer Health ═══════ */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {(['infra', 'core', 'platform', 'app'] as const).map((layer) => {
@@ -508,12 +515,16 @@ const Diagnostics: React.FC = () => {
         </Card>
       )}
 
-      {/* ═══════ 确认流程 4: 诊断工具箱 ═══ */}
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          <Search className="w-4 h-4 text-gray-500" />
-          <span className="text-xs text-gray-500">诊断工具箱 — 按需使用以下工具深入排查</span>
         </div>
+      </details>
+
+      {/* ═══════════ 诊断工具箱（折叠） ═══════ */}
+      <details className="bg-dark-card border border-dark-border rounded-lg overflow-hidden">
+        <summary className="px-4 py-3 cursor-pointer text-sm font-semibold text-gray-200 hover:text-gray-100 select-none">
+          🛠️ 诊断工具箱
+          <span className="text-xs text-gray-500 ml-2">— 按需使用以下工具深入排查（18 个工具）</span>
+        </summary>
+        <div className="px-4 pb-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {items.map((it) => {
             const isRecommended = recommendedTools.has(it.title);
@@ -537,7 +548,8 @@ const Diagnostics: React.FC = () => {
             );
           })}
         </div>
-      </div>
+        </div>
+      </details>
     </div>
   );
 };
