@@ -89,10 +89,7 @@ async def system_overview() -> Dict[str, Any]:
     except Exception:
         result["capability_health"] = {"score": 0, "error": "unavailable"}
 
-    # 4. Architecture guard (static)
-    result["arch_guard"] = {"checks": 33, "violations": 0, "compliant": True}
-
-    # 5. Model status
+    # 4. Model status
     try:
         from core.harness.infrastructure.infra_bridge import ModelManager
         models = ModelManager.list_models()

@@ -62,7 +62,6 @@ const SystemOverview: React.FC = () => {
   const wh = data?.wiki_health || {};
   const sd = data?.skill_deps || {};
   const cap = data?.capability_health || {};
-  const ag = data?.arch_guard || {};
   const models = data?.models || {};
   const agents = data?.agents || {};
   const servers = data?.servers || {};
@@ -80,8 +79,8 @@ const SystemOverview: React.FC = () => {
         </Button>
       </div>
 
-      {/* Row 2: Arch guard + servers */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Row 2: Servers */}
+      <div className="grid grid-cols-1 gap-4">
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2 text-sm font-medium text-gray-200">
