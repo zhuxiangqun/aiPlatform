@@ -67,9 +67,10 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       setAgentStatus(agent.status || 'draft');
       // Pipeline config fields from metadata
       const md = (agent as any)?.metadata || {};
-      // Restore saved role definition
+      // Restore saved role definition (only if description hasn't changed)
       const savedRole = md.role_definition;
-      if (savedRole && typeof savedRole === 'object') {
+      const savedDesc = md.role_description;
+      if (savedRole && typeof savedRole === 'object' && savedDesc === description.trim()) {
         setRoleDefinition(savedRole as any);
         setShowRolePreview(true);
       } else {
@@ -227,7 +228,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       if (result.workflow_ids?.length) setWorkflowIds(result.workflow_ids.filter((w: string) => Array.isArray(workflowOptions) && workflowOptions.some(o => o.value === w)));
       // Persist role definition to agent metadata
       try {
-        const md = { ...(agent.metadata || {}), role_definition: roleDefinition };
+        const md = { ...(agent.metadata || {}), role_definition: roleDefinition, role_description: description.trim() };
         await workspaceAgentApi.update(agent.id, { metadata: md } as any);
       } catch { /* best-effort */ }
       toast.success('AI 智能填充完成', result.reasoning || '');
