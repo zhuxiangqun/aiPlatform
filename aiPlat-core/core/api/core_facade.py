@@ -1158,6 +1158,10 @@ async def run_workspace_agent(
     if not agent_model:
         return {"ok": False, "status": "error", "output": None, "error": "No LLM model", "run_id": run_id}
 
+    # Extract system_prompt from agent config (used by ReActLoop)
+    cfg = getattr(agent_info, "config", None)
+    sys_prompt = cfg.get("system_prompt", "") if isinstance(cfg, dict) else ""
+
     resolved_tools = []
     try:
         from core.harness.integration import _resolve_tool_registry
@@ -1169,10 +1173,19 @@ async def run_workspace_agent(
         pass
 
     prompt = (sop_body + "\n\n## Task\n" + user_message) if sop_body else user_message
+    if sys_prompt:
+        prompt = sys_prompt + "\n\n" + prompt
 
     from core.harness.execution.langgraph.stage_runner import StageRunner
     runner = StageRunner(model=agent_model, tools=resolved_tools)
-    state = {"session_id": session_id, "_run_id": run_id, "_coding_policy_profile": "off", "_user_id": "system", "_enable_query_rewrite": True}
+    state = {
+        "session_id": session_id,
+        "_run_id": run_id,
+        "_coding_policy_profile": "off",
+        "_user_id": "system",
+        "_enable_query_rewrite": True,
+        "context": {"system_prompt": sys_prompt, "task": user_message},
+    }
 
     status = "completed"
     result_text = ""
