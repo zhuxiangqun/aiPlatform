@@ -664,6 +664,7 @@ async def export_code_graph(rt=Depends(get_kernel_runtime)):
             "in_degree": int(n.get("in") or 0),
             "out_degree": int(len(n.get("out") or [])),
             "out": n.get("out", []),
+            "routes": n.get("routes", []),
             "symbols": [s[0] if isinstance(s, (list, tuple)) else str(s) for s in (n.get("symbols") or [])],
             "layer": _layer_bucket(n.get("path", "")),
             "issue_count": int(n.get("issue_count") or 0),
@@ -698,6 +699,7 @@ async def guided_tour(limit: int = 30, rt=Depends(get_kernel_runtime)):
             "in_degree": int(n.get("in") or 0),
             "out_degree": int(len(n.get("out") or [])),
             "symbols": symbols[:8],
+            "routes": n.get("routes", []),
             "issue_count": int(n.get("issue_count") or 0),
         })
     

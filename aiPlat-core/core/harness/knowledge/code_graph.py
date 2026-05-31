@@ -192,6 +192,108 @@ def _extract_js_symbols(filepath: Path) -> list:
     return symbols
 
 
+# ── JS/TS route & API call extraction ──────────────────────────
+
+_ROUTE_PATH_RE = re.compile(r"""path\s*[:=]\s*['"]([^'"]+)['"]""", re.I)
+_API_CALL_RE = re.compile(
+    r"""(?:fetch|apiClient\.\w+|axios\.\w+|request\()\s*\(\s*['"`]((?:/api)?/core/\S*?)['"`]""",
+    re.I
+)
+_BACKEND_ROUTE_RE = re.compile(r"""@router\.\w+\(\s*['"]([^'"]+)['"]""", re.I)
+
+
+def _extract_js_routes(filepath: Path) -> List[str]:
+    """Extract React Router / route paths from TSX/TS files."""
+    try:
+        text = _read_text(filepath)
+    except Exception:
+        return []
+    routes = []
+    for m in _ROUTE_PATH_RE.finditer(text):
+        path = m.group(1)
+        if path and not path.startswith('*') and path != '/':
+            routes.append(path)
+    return routes
+
+
+def _extract_api_calls(filepath: Path) -> List[str]:
+    """Extract backend API endpoint strings from frontend files."""
+    try:
+        text = _read_text(filepath)
+    except Exception:
+        return []
+    endpoints = []
+    for m in _API_CALL_RE.finditer(text):
+        ep = m.group(1)
+        if ep:
+            # Normalize: remove /api and /core prefixes, query params
+            ep = ep.replace('/api/', '/').replace('/core/', '/').split('?')[0].rstrip('/')
+            endpoints.append(ep)
+    return list(set(endpoints))
+
+
+def _extract_backend_routes(filepath: Path) -> List[str]:
+    """Extract FastAPI @router routes from Python backend files."""
+    try:
+        text = _read_text(filepath)
+    except Exception:
+        return []
+    routes = []
+    for m in _BACKEND_ROUTE_RE.finditer(text):
+        path = m.group(1)
+        if path:
+            routes.append(path)
+    return list(set(routes))
+
+
+def _link_frontend_to_backend(
+    nodes: Dict[str, Any],
+    edges: List[Dict[str, str]],
+    frontend_files: List[Path],
+    backend_files: List[Path],
+    repo_root: Path,
+):
+    """Create cross-language edges: frontend API calls → backend routes."""
+    route_index: Dict[str, str] = {}
+    for bf in backend_files:
+        if bf.suffix.lower() != ".py":
+            continue
+        for route in _extract_backend_routes(bf):
+            if route.startswith('/'):
+                route_index.setdefault(route, str(bf.relative_to(repo_root)))
+
+    for ff in frontend_files:
+        rel_from = str(ff.relative_to(repo_root))
+        api_calls = _extract_api_calls(ff)
+        for ep in api_calls:
+            if ep in route_index:
+                rel_to = route_index[ep]
+                if not any(e.get("from") == rel_from and e.get("to") == rel_to for e in edges):
+                    edges.append({"from": rel_from, "to": rel_to, "kind": "api", "label": ep})
+            else:
+                for route, backend_file in route_index.items():
+                    if _route_matches(ep, route):
+                        if not any(e.get("from") == rel_from and e.get("to") == backend_file for e in edges):
+                            edges.append({"from": rel_from, "to": backend_file, "kind": "api", "label": ep})
+                        break
+
+
+def _route_matches(api_path: str, route_pattern: str) -> bool:
+    api_segs = api_path.strip('/').split('/')
+    route_segs = route_pattern.strip('/').split('/')
+    if len(api_segs) != len(route_segs):
+        return False
+    for a, r in zip(api_segs, route_segs):
+        if r.startswith('{') and r.endswith('}'):
+            continue  # FastAPI path parameter
+        # Normalize JS template literal ${var} to match {var}
+        if a.startswith('${') and a.endswith('}'):
+            continue  # JS template parameter
+        if a != r:
+            return False
+    return True
+
+
 def _is_code_file(p: Path) -> bool:
     if not p.is_file() or p.name.startswith("."):
         return False
@@ -396,6 +498,7 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
                 edges = [e for e in edges if e.get("kind", "import") != "calls"]
                 loaded_files = [_repo_root / nid for nid in nodes if (_repo_root / nid).exists()]
                 _resolve_cross_call_edges(nodes, edges, loaded_files, _repo_root)
+                _link_frontend_to_backend(nodes, edges, loaded_files, loaded_files, _repo_root)
                 with _CACHE_LOCK:
                     _CACHE = {"nodes": nodes, "edges": edges, "issues": [], "_ts": _t.time()}
                     _CACHE_ROOTS = ";".join(str(r) for r in roots)
@@ -455,6 +558,10 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
             if f.suffix.lower() in (".ts", ".tsx", ".js", ".jsx"):
                 try:
                     nodes[rel_from]["symbols"] = _extract_js_symbols(f)
+                    # Also extract route paths as metadata
+                    routes = _extract_js_routes(f)
+                    if routes:
+                        nodes[rel_from]["routes"] = routes
                 except Exception:
                     pass
         for rel_to in sorted(deps):
@@ -472,6 +579,8 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
                 pass
     # Resolve cross-file call edges
     _resolve_cross_call_edges(nodes, edges, files, _repo_root)
+    # Build cross-language edges: frontend API calls → backend routes
+    _link_frontend_to_backend(nodes, edges, files, files, _repo_root)
     # Save to in-memory cache + SQLite persistence
     with _CACHE_LOCK:
         _CACHE = {"nodes": nodes, "edges": edges, "issues": issues, "_ts": _t.time()}

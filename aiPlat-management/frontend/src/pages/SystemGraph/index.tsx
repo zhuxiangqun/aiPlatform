@@ -24,7 +24,7 @@ const SystemGraph: React.FC = () => {
   const [globalQuery, setGlobalQuery] = useState('');
   const lastCenter = useRef('');
   const [tourMode, setTourMode] = useState(false);
-  const [tourSteps, setTourSteps] = useState<{ file: string; layer: string; in_degree: number; out_degree: number; symbols: string[] }[]>([]);
+  const [tourSteps, setTourSteps] = useState<{ file: string; layer: string; in_degree: number; out_degree: number; symbols: string[]; routes?: string[] }[]>([]);
   const [tourIdx, setTourIdx] = useState(0);
 
   const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -492,6 +492,19 @@ const SystemGraph: React.FC = () => {
                           {s}
                         </span>
                       ))}
+                    </div>
+                  )}
+                  {step.routes && step.routes.length > 0 && (
+                    <div style={{ marginTop: 4 }}>
+                      <span style={{ fontSize: 9, color: '#6b7280' }}>🔗 路由:</span>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: 2 }}>
+                        {step.routes.slice(0, 5).map((r, i) => (
+                          <span key={i} style={{ fontSize: 9, color: '#f59e0b', background: '#451a03', borderRadius: 3, padding: '0 4px' }}>
+                            /{r}
+                          </span>
+                        ))}
+                        {step.routes.length > 5 && <span style={{ fontSize: 9, color: '#6b7280' }}>+{step.routes.length - 5}</span>}
+                      </div>
                     </div>
                   )}
                 </div>
