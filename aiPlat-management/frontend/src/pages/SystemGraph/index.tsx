@@ -83,40 +83,14 @@ const SystemGraph: React.FC = () => {
 
   useEffect(() => { setGraphData(null); if (tab !== 'code') fetchGraph(); }, [fetchGraph, tab]);
 
-  const inferLayer = (path: string): string => {
-    if (!path) return 'unknown';
-    if (path.includes('infra') || path.includes('model')) return 'infra';
-    if (path.includes('harness') || path.includes('syscall') || path.includes('engine')) return 'core';
-    if (path.includes('api/rest') || path.includes('platform')) return 'platform';
-    if (path.includes('frontend') || path.includes('App.') || path.includes('page')) return 'app';
-    return 'core';
-  };
-
   // ── Guided Tour ──
   const startTour = useCallback(async () => {
     setTourMode(true);
     setTourIdx(0);
     try {
-      const res = await fetch('/api/core/diagnostics/code-intel/scan?depth=2&limit=200');
+      const res = await fetch('/api/core/diagnostics/code-intel/tour?limit=30');
       const data = await res.json();
-      const nodes = data?.nodes || data?.graph?.nodes || {};
-      const nodeList = Array.isArray(nodes) ? nodes : Object.values(nodes);
-      const sorted = nodeList
-        .filter((n: any) => n.in_degree !== undefined || n.out_degree !== undefined)
-        .sort((a: any, b: any) => (a.in_degree || 0) - (b.in_degree || 0))
-        .slice(0, 30)
-        .map((n: any) => ({
-          file: n.path || n.id || n.file || '',
-          layer: n.layer || inferLayer(n.path || n.file || ''),
-          in_degree: n.in_degree || 0,
-          out_degree: n.out_degree || 0,
-          symbols: ((n.symbols || []) as any[]).map((s: any) => {
-            if (Array.isArray(s)) return s[0];
-            if (typeof s === 'object' && s !== null) return s.name || '';
-            return String(s || '');
-          }).filter(Boolean).slice(0, 8),
-        }));
-      setTourSteps(sorted);
+      setTourSteps(data.tour || []);
     } catch {
       setTourMode(false);
     }

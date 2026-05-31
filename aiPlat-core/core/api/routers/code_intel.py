@@ -651,11 +651,7 @@ async def blast_radius(
 
 @router.get("/diagnostics/code-intel/export")
 async def export_code_graph(rt=Depends(get_kernel_runtime)):
-    """Export the full code graph as committable JSON for team onboarding.
-    
-    The exported JSON can be committed to the repository so team members
-    clone and load the graph without scanning.
-    """
+    """Export the full code graph as committable JSON for team onboarding."""
     import time as _t
     root_list = default_roots()
     res = await code_intel_scan(rt, root_list)
@@ -672,6 +668,40 @@ async def export_code_graph(rt=Depends(get_kernel_runtime)):
             "layer": _layer_bucket(n.get("path", "")),
             "issue_count": int(n.get("issue_count") or 0),
         }
+    return {
+        "generated_at": _t.strftime("%Y-%m-%dT%H:%M:%SZ", _t.gmtime()),
+        "stats": {"nodes": len(nodes_export), "edges": len(res.edges), "issues": len(res.issues)},
+        "health": res.health,
+        "nodes": nodes_export,
+        "edges": res.edges,
+    }
+
+
+@router.get("/diagnostics/code-intel/tour")
+async def guided_tour(limit: int = 30, rt=Depends(get_kernel_runtime)):
+    """Return dependency-sorted file list for guided architecture tour."""
+    root_list = default_roots()
+    res = await code_intel_scan(rt, root_list)
+    
+    sorted_nodes = sorted(
+        res.nodes.values(),
+        key=lambda n: (int(n.get("in") or 0), -(len(n.get("out") or [])))
+    )[:int(limit)]
+    
+    tour = []
+    for n in sorted_nodes:
+        node_id = str(n.get("id") or n.get("path") or "")
+        symbols = [s[0] if isinstance(s, (list, tuple)) else str(s) for s in (n.get("symbols") or [])]
+        tour.append({
+            "file": node_id,
+            "layer": _layer_bucket(n.get("path", "")),
+            "in_degree": int(n.get("in") or 0),
+            "out_degree": int(len(n.get("out") or [])),
+            "symbols": symbols[:8],
+            "issue_count": int(n.get("issue_count") or 0),
+        })
+    
+    return {"tour": tour, "total": len(res.nodes)}
     return {
         "generated_at": _t.strftime("%Y-%m-%dT%H:%M:%SZ", _t.gmtime()),
         "stats": {
