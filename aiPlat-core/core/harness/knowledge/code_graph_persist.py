@@ -88,6 +88,11 @@ def init_db():
             conn.execute(f"ALTER TABLE edges ADD COLUMN {col} {typ}")
         except sqlite3.OperationalError:
             pass  # column already exists
+    # Migration: add parent column to symbols table
+    try:
+        conn.execute("ALTER TABLE symbols ADD COLUMN parent TEXT")
+    except sqlite3.OperationalError:
+        pass
     conn.commit()
     conn.close()
 
@@ -133,10 +138,10 @@ def load_nodes() -> Dict[str, Dict[str, Any]]:
                            "layer": layer, "out": [], "in": 0, "issue_count": issues,
                            "_mtime": mtime, "_hash": chash, "symbols": []}
         # Load symbols
-        sym_rows = conn.execute("SELECT file_path, name, kind, line FROM symbols").fetchall()
-        for filepath, name, kind, line in sym_rows:
+        sym_rows = conn.execute("SELECT file_path, name, kind, line, parent FROM symbols").fetchall()
+        for filepath, name, kind, line, parent in sym_rows:
             if filepath in nodes:
-                nodes[filepath]["symbols"].append([name, kind, line])
+                nodes[filepath]["symbols"].append([name, kind, line, parent])
         # Populate adjacency
         edge_rows = conn.execute("SELECT from_file, to_file FROM edges WHERE kind='import'").fetchall()
         for src, dst in edge_rows:
@@ -191,10 +196,16 @@ def save_graph(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]], re
             )
         # Save symbols per file
         for filepath, node in nodes.items():
-            for name, kind, line in node.get("symbols", []):
+            for sym in node.get("symbols", []):
+                if not isinstance(sym, (list, tuple)):
+                    continue
+                name = sym[0] if len(sym) > 0 else ""
+                kind = sym[1] if len(sym) > 1 else ""
+                line = sym[2] if len(sym) > 2 else 0
+                parent = sym[3] if len(sym) > 3 else None
                 conn.execute(
-                    "INSERT INTO symbols (file_path, name, kind, line) VALUES (?,?,?,?)",
-                    (filepath, name, kind, line)
+                    "INSERT INTO symbols (file_path, name, kind, line, parent) VALUES (?,?,?,?,?)",
+                    (filepath, name, kind, line, parent)
                 )
         for e in edges:
             conn.execute(

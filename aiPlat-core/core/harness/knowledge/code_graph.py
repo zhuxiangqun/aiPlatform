@@ -144,7 +144,8 @@ def _extract_calls_ast(filepath: Path) -> list:
 
 def _extract_symbols_ast(filepath: Path) -> list:
     """Extract function and class definitions from a Python file using AST.
-    Returns list of (name, kind, line_number) tuples."""
+    Returns list of (name, kind, line_number, parent_base) tuples where
+    parent_base is the base class name for ClassDef, or None."""
     try:
         text = _read_text(filepath)
         if not text:
@@ -157,11 +158,18 @@ def _extract_symbols_ast(filepath: Path) -> list:
     symbols = []
     for node in ast.walk(tree):
         if isinstance(node, ast.FunctionDef):
-            symbols.append((node.name, "function", node.lineno))
+            symbols.append((node.name, "function", node.lineno, None))
         elif isinstance(node, ast.AsyncFunctionDef):
-            symbols.append((node.name, "async_function", node.lineno))
+            symbols.append((node.name, "async_function", node.lineno, None))
         elif isinstance(node, ast.ClassDef):
-            symbols.append((node.name, "class", node.lineno))
+            parent = None
+            if node.bases:
+                first_base = node.bases[0]
+                if isinstance(first_base, ast.Name):
+                    parent = first_base.id
+                elif isinstance(first_base, ast.Attribute):
+                    parent = first_base.attr
+            symbols.append((node.name, "class", node.lineno, parent))
     return symbols
 
 
@@ -944,6 +952,46 @@ def _build_symbol_graph(
     return symbol_nodes, symbol_edges
 
 
+def _build_inheritance_edges(
+    nodes: Dict[str, Any], edges: List[Dict[str, str]]
+) -> int:
+    """Build inheritance edges from class parent info.
+
+    Uses the parent field in symbols (4th element) to create is-a edges.
+    Cross-references across files using the global symbol name index.
+    Returns the number of inheritance edges created.
+    """
+    from collections import defaultdict
+
+    # Index: class name → list of (file_id, symbol)
+    name_index: Dict[str, List[Tuple[str, list]]] = defaultdict(list)
+    for nid, nd in nodes.items():
+        for sym in nd.get("symbols", []):
+            if isinstance(sym, (list, tuple)) and len(sym) >= 2 and sym[1] == "class":
+                name_index[sym[0]].append((nid, sym))
+
+    added = 0
+    for nid, nd in nodes.items():
+        for sym in nd.get("symbols", []):
+            if not isinstance(sym, (list, tuple)) or len(sym) < 4:
+                continue
+            parent = sym[3]  # 4th element = parent class name
+            if not parent:
+                continue
+            # Find parent class in the same file or across files
+            for child_file, child_sym in name_index.get(sym[0], []):
+                for parent_file, parent_sym in name_index.get(parent, []):
+                    if child_file in nodes and parent_file in nodes:
+                        edges.append({
+                            "from": child_file,
+                            "to": parent_file,
+                            "kind": "inherits",
+                            "label": f"{sym[0]} → {parent}",
+                        })
+                        added += 1
+    return added
+
+
 def _resolve_cross_call_edges(nodes, edges, files, repo_root):
     u"""Rebuild cross-file call edges (kind='calls', cross=True).
     Removes stale calls-kind edges and regenerates from current graph state.
@@ -951,7 +999,11 @@ def _resolve_cross_call_edges(nodes, edges, files, repo_root):
     from collections import defaultdict
     fn_to_files = defaultdict(list)
     for nid, n in nodes.items():
-        for name, kind, line in n.get("symbols", []):
+        for sym in n.get("symbols", []):
+            if not isinstance(sym, (list, tuple)) or len(sym) < 2:
+                continue
+            name = sym[0]
+            kind = sym[1]
             if kind in ("function", "async_function", "class"):
                 fn_to_files[name].append(nid)
     if not fn_to_files:

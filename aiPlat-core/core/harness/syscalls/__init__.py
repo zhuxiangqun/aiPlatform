@@ -21,6 +21,7 @@ __all__ = [
     "sys_code_intel_context", "sys_code_intel_blast",
     "sys_code_intel_callers", "sys_code_intel_callees",
     "sys_code_intel_affected", "sys_code_intel_search",
+    "sys_code_intel_subclasses",
     "sys_file_read", "sys_file_write", "sys_file_edit",
     "sys_glob", "sys_code_search",
 ]
@@ -36,6 +37,8 @@ _LAZY_MODULES = {
     "code_intel_syscall": [
         "sys_code_intel_context", "sys_code_intel_blast",
         "sys_code_intel_callers", "sys_code_intel_callees",
+        "sys_code_intel_affected", "sys_code_intel_search",
+        "sys_code_intel_subclasses",
         "sys_code_intel_affected", "sys_code_intel_search",
     ],
     "file": ["sys_file_read", "sys_file_write", "sys_file_edit"],

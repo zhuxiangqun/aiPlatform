@@ -243,3 +243,39 @@ def sys_code_intel_search(query: str, *, kind: str = "all", max_results: int = 3
         results = results[:max_results]
 
     return {"query": query, "count": len(results), "results": results}
+
+
+def sys_code_intel_subclasses(parent: str, *, max_results: int = 50) -> Dict[str, Any]:
+    u"""Find all subclasses of a given parent class in the codebase.
+
+    Uses the parent field in symbol data (4th element) to find is-a relationships.
+    Returns subclass names and their file locations.
+
+    Args:
+        parent: Parent class name to search for subclasses
+        max_results: Maximum number of results
+
+    Returns:
+        {parent, count, subclasses: [{name, file, line}]}
+    """
+    nodes, _ = _ensure_graph()
+    subclasses = []
+    for nid, nd in nodes.items():
+        for sym in nd.get("symbols", []):
+            if isinstance(sym, (list, tuple)) and len(sym) >= 4:
+                name = sym[0]
+                kind = sym[1]
+                line = sym[2]
+                sym_parent = sym[3]
+                if sym_parent == parent and kind == "class":
+                    subclasses.append({
+                        "name": name,
+                        "file": nid,
+                        "line": line,
+                    })
+
+    total = len(subclasses)
+    if total > max_results:
+        subclasses = subclasses[:max_results]
+
+    return {"parent": parent, "count": total, "subclasses": subclasses}
