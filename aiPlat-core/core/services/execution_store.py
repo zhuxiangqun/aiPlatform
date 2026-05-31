@@ -116,7 +116,7 @@ class ExecutionStoreConfig:
 
 
 class ExecutionStore:
-    CURRENT_SCHEMA_VERSION = 42
+    CURRENT_SCHEMA_VERSION = 47
 
     def __init__(self, config: ExecutionStoreConfig):
         self._config = config
@@ -1683,6 +1683,135 @@ class ExecutionStore:
                         _set_version(42)
                         current = 42
 
+                    # ---- Migration v43: prompt app templates + test cases + eval runs ----
+                    if current < 43:
+                        conn.executescript("""
+                            CREATE TABLE IF NOT EXISTS prompt_app_templates (
+                                id              TEXT PRIMARY KEY,
+                                name            TEXT NOT NULL,
+                                category        TEXT NOT NULL DEFAULT '',
+                                tags            TEXT DEFAULT '[]',
+                                system_prompt   TEXT NOT NULL DEFAULT '',
+                                user_prompt     TEXT NOT NULL DEFAULT '',
+                                assistant_prompt TEXT NOT NULL DEFAULT '',
+                                variables       TEXT DEFAULT '[]',
+                                version         TEXT NOT NULL DEFAULT '1.0.0',
+                                status          TEXT NOT NULL DEFAULT 'draft',
+                                metadata_json   TEXT DEFAULT '{}',
+                                created_at      REAL NOT NULL,
+                                updated_at      REAL NOT NULL
+                            );
+                            CREATE INDEX IF NOT EXISTS idx_prompt_app_cat ON prompt_app_templates(category);
+
+                            CREATE TABLE IF NOT EXISTS prompt_app_categories (
+                                name            TEXT PRIMARY KEY,
+                                display_order   INTEGER DEFAULT 0,
+                                icon            TEXT DEFAULT '',
+                                parent          TEXT DEFAULT '',
+                                created_at      REAL NOT NULL
+                            );
+
+                            CREATE TABLE IF NOT EXISTS prompt_test_cases (
+                                id              TEXT PRIMARY KEY,
+                                template_id     TEXT NOT NULL,
+                                name            TEXT NOT NULL DEFAULT '',
+                                variables       TEXT NOT NULL DEFAULT '{}',
+                                expected_keys   TEXT DEFAULT '',
+                                created_at      REAL NOT NULL,
+                                FOREIGN KEY (template_id) REFERENCES prompt_app_templates(id)
+                            );
+                            CREATE INDEX IF NOT EXISTS idx_prompt_tc_tid ON prompt_test_cases(template_id);
+
+                            CREATE TABLE IF NOT EXISTS prompt_eval_runs (
+                                id              TEXT PRIMARY KEY,
+                                template_id     TEXT NOT NULL,
+                                version_a       TEXT NOT NULL,
+                                version_b       TEXT NOT NULL,
+                                model           TEXT NOT NULL DEFAULT 'deepseek-chat',
+                                status          TEXT NOT NULL DEFAULT 'pending',
+                                total_cases     INTEGER DEFAULT 0,
+                                a_wins          INTEGER DEFAULT 0,
+                                b_wins          INTEGER DEFAULT 0,
+                                draws           INTEGER DEFAULT 0,
+                                avg_score_a     REAL DEFAULT 0.0,
+                                avg_score_b     REAL DEFAULT 0.0,
+                                results_json    TEXT DEFAULT '[]',
+                                created_at      REAL NOT NULL,
+                                finished_at     REAL
+                            );
+                            CREATE INDEX IF NOT EXISTS idx_prompt_er_tid ON prompt_eval_runs(template_id);
+                        """)
+                        _set_version(43)
+                        current = 43
+
+                    # ---- Migration v44: prompt app instances ----
+                    if current < 44:
+                        conn.executescript("""
+                            CREATE TABLE IF NOT EXISTS prompt_app_instances (
+                                id                  TEXT PRIMARY KEY,
+                                name                TEXT NOT NULL,
+                                source_template_id  TEXT NOT NULL,
+                                system_prompt       TEXT DEFAULT '',
+                                user_prompt         TEXT DEFAULT '',
+                                assistant_prompt    TEXT DEFAULT '',
+                                variables           TEXT DEFAULT '[]',
+                                status              TEXT DEFAULT 'draft',
+                                created_at          REAL NOT NULL,
+                                updated_at          REAL NOT NULL
+                            );
+                            CREATE INDEX IF NOT EXISTS idx_prompt_app_instances_tid ON prompt_app_instances(source_template_id);
+                        """)
+                        _set_version(44)
+                        current = 44
+
+                    # ---- Migration v45: add examples + constraints to app templates ----
+                    if current < 45:
+                        try:
+                            conn.execute("ALTER TABLE prompt_app_templates ADD COLUMN examples TEXT DEFAULT '';")
+                        except sqlite3.OperationalError:
+                            pass  # column already exists
+                        try:
+                            conn.execute("ALTER TABLE prompt_app_templates ADD COLUMN constraints TEXT DEFAULT '';")
+                        except sqlite3.OperationalError:
+                            pass
+                        _set_version(45)
+                        current = 45
+
+                    # ---- Migration v46: scenario tags ----
+                    if current < 46:
+                        conn.executescript("""
+                            CREATE TABLE IF NOT EXISTS prompt_scenario_tags (
+                                name         TEXT PRIMARY KEY,
+                                category     TEXT NOT NULL DEFAULT "",
+                                parent       TEXT DEFAULT "",
+                                display_order INTEGER DEFAULT 0,
+                                created_at   REAL NOT NULL
+                            );
+                            ALTER TABLE prompt_app_templates ADD COLUMN scenario_tags TEXT DEFAULT '[]';
+                        """)
+                        _set_version(46)
+                        current = 46
+
+                    # ---- Migration v47: syscall_events token & cost tracking ----
+                    if current < 47:
+                        try:
+                            conn.execute("ALTER TABLE syscall_events ADD COLUMN input_tokens INTEGER DEFAULT 0;")
+                        except sqlite3.OperationalError:
+                            pass
+                        try:
+                            conn.execute("ALTER TABLE syscall_events ADD COLUMN output_tokens INTEGER DEFAULT 0;")
+                        except sqlite3.OperationalError:
+                            pass
+                        try:
+                            conn.execute("ALTER TABLE syscall_events ADD COLUMN cost REAL DEFAULT 0.0;")
+                        except sqlite3.OperationalError:
+                            pass
+                        conn.execute(
+                            "CREATE INDEX IF NOT EXISTS idx_syscall_events_tokens ON syscall_events(kind, input_tokens, output_tokens);"
+                        )
+                        _set_version(47)
+                        current = 47
+
                     # If legacy db exists with tables but without meta, upgrade meta to current
                     if current < self.CURRENT_SCHEMA_VERSION:
                         _set_version(self.CURRENT_SCHEMA_VERSION)
@@ -2657,6 +2786,12 @@ class ExecutionStore:
 
     async def add_syscall_event(self, event: Dict[str, Any]) -> None:
         """Append a syscall audit event (best-effort)."""
+        # Best-effort validation via Pydantic schema
+        try:
+            from core.harness.observation.event_schema import SyscallEvent
+            SyscallEvent.model_validate(event)
+        except Exception:
+            pass
         await self.init()
         db_path = self._config.db_path
 
@@ -2699,6 +2834,9 @@ class ExecutionStore:
             event.get("session_id"),
             event.get("approval_request_id"),
             float(event.get("created_at") or time.time()),
+            int(event.get("input_tokens") or 0),
+            int(event.get("output_tokens") or 0),
+            float(event.get("cost") or 0.0),
         )
 
         def _sync():
@@ -2709,9 +2847,9 @@ class ExecutionStore:
                     INSERT INTO syscall_events(
                       id, trace_id, span_id, run_id, tenant_id, kind, name, status, start_time, end_time, duration_ms,
                       args_json, result_json, error, error_code, target_type, target_id, user_id, session_id,
-                      approval_request_id, created_at
+                      approval_request_id, created_at, input_tokens, output_tokens, cost
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
                     """,
                     payload,
                 )
@@ -2720,6 +2858,22 @@ class ExecutionStore:
                 conn.close()
 
         await anyio.to_thread.run_sync(_sync)
+        # Publish to real-time observation layer (best-effort, non-blocking)
+        try:
+            from core.harness.observation.event_bus import EventBus
+            publish_event = dict(event)
+            publish_event.setdefault("input_tokens", int(event.get("input_tokens") or 0))
+            publish_event.setdefault("output_tokens", int(event.get("output_tokens") or 0))
+            publish_event.setdefault("cost", float(event.get("cost") or 0.0))
+            EventBus.publish(str(event.get("run_id") or ""), publish_event)
+        except Exception:
+            pass
+        # Export to OpenTelemetry (best-effort)
+        try:
+            from core.harness.observation.otel_bridge import export_syscall_as_span
+            export_syscall_as_span(event)
+        except Exception:
+            pass
 
     async def list_syscall_events(
         self,
@@ -2822,6 +2976,9 @@ class ExecutionStore:
                             "session_id": r["session_id"] if "session_id" in r.keys() else None,
                             "tenant_id": r["tenant_id"] if "tenant_id" in r.keys() else None,
                             "approval_request_id": r["approval_request_id"] if "approval_request_id" in r.keys() else None,
+                            "input_tokens": r["input_tokens"] if "input_tokens" in r.keys() else 0,
+                            "output_tokens": r["output_tokens"] if "output_tokens" in r.keys() else 0,
+                            "cost": r["cost"] if "cost" in r.keys() else 0.0,
                             "created_at": r["created_at"],
                         }
                     )
@@ -8687,6 +8844,200 @@ class ExecutionStore:
 
         return await anyio.to_thread.run_sync(_sync)
 
+    # ── Prompt App Template CRUD ────────────────────────────────────
+
+    async def list_prompt_app_templates(self, *, limit: int = 100, offset: int = 0,
+                                         category: str = "", status: str = "") -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+        def _sync():
+            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
+            try:
+                where = []
+                params = []
+                if category: where.append("category=?"); params.append(category)
+                if status: where.append("status=?"); params.append(status)
+                w = (" WHERE " + " AND ".join(where)) if where else ""
+                total = conn.execute(f"SELECT COUNT(*) FROM prompt_app_templates{w};", params).fetchone()[0]
+                rows = conn.execute(
+                    f"SELECT * FROM prompt_app_templates{w} ORDER BY updated_at DESC LIMIT ? OFFSET ?;",
+                    params + [limit, offset]
+                ).fetchall()
+                items = [dict(r) if r else None for r in rows]
+                return {"total": total, "items": items}
+            finally:
+                conn.close()
+        return await anyio.to_thread.run_sync(_sync)
+
+    async def get_prompt_app_template(self, *, template_id: str) -> Optional[Dict[str, Any]]:
+        await self.init()
+        db_path = self._config.db_path
+        def _sync():
+            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
+            try:
+                row = conn.execute("SELECT * FROM prompt_app_templates WHERE id=?;", (str(template_id),)).fetchone()
+                return dict(row) if row else None
+            finally:
+                conn.close()
+        return await anyio.to_thread.run_sync(_sync)
+
+    async def upsert_prompt_app_template(self, *, template_id: str, name: str,
+                                          category: str = "", tags: str = "[]",
+                                          system_prompt: str = "", user_prompt: str = "",
+                                          assistant_prompt: str = "", variables: str = "[]",
+                                          examples: str = "", constraints: str = "", scenario_tags: str = "[]",
+                                          status: str = "draft") -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+        import time as _t, json as _j
+        now = _t.time()
+        def _sync():
+            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
+            try:
+                existing = conn.execute("SELECT * FROM prompt_app_templates WHERE id=?;", (str(template_id),)).fetchone()
+                if existing:
+                    conn.execute(
+                        "UPDATE prompt_app_templates SET name=?, category=?, tags=?, system_prompt=?, user_prompt=?, assistant_prompt=?, variables=?, examples=?, constraints=?, scenario_tags=?, status=?, updated_at=? WHERE id=?;",
+                        (name, category, tags, system_prompt, user_prompt, assistant_prompt, variables, examples, constraints, scenario_tags, status, now, str(template_id))
+                    )
+                else:
+                    conn.execute(
+                        "INSERT INTO prompt_app_templates(id,name,category,tags,system_prompt,user_prompt,assistant_prompt,variables,examples,constraints,scenario_tags,version,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);",
+                        (str(template_id), name, category, tags, system_prompt, user_prompt, assistant_prompt, variables, examples, constraints, scenario_tags, '1.0.0', status, now, now)
+                    )
+                conn.commit()
+                return dict(conn.execute("SELECT * FROM prompt_app_templates WHERE id=?;", (str(template_id),)).fetchone())
+            finally:
+                conn.close()
+        return await anyio.to_thread.run_sync(_sync)
+
+    async def delete_prompt_app_template(self, *, template_id: str) -> bool:
+        await self.init()
+        db_path = self._config.db_path
+        def _sync():
+            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
+            try:
+                cur = conn.execute("DELETE FROM prompt_app_templates WHERE id=?;", (str(template_id),))
+                conn.commit()
+                return (cur.rowcount or 0) > 0
+            finally:
+                conn.close()
+        return await anyio.to_thread.run_sync(_sync)
+
+    async def list_prompt_app_categories(self) -> List[str]:
+        await self.init()
+        db_path = self._config.db_path
+        def _sync():
+            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
+            try:
+                rows = conn.execute("SELECT name FROM prompt_app_categories ORDER BY display_order;").fetchall()
+                return [r[0] for r in rows]
+            finally:
+                conn.close()
+        return await anyio.to_thread.run_sync(_sync)
+
+    async def upsert_prompt_app_category(self, *, name: str, display_order: int = 0, icon: str = "", parent: str = ""):
+        await self.init()
+        db_path = self._config.db_path
+        import time as _t
+        now = _t.time()
+        def _sync():
+            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
+            try:
+                conn.execute(
+                    "INSERT OR REPLACE INTO prompt_app_categories(name,display_order,icon,parent,created_at) VALUES(?,?,?,?,COALESCE((SELECT created_at FROM prompt_app_categories WHERE name=?),?));",
+                    (name, display_order, icon, parent, name, now)
+                )
+                conn.commit()
+            finally:
+                conn.close()
+        await anyio.to_thread.run_sync(_sync)
+
+    async def delete_prompt_app_category(self, *, name: str) -> bool:
+        await self.init()
+        db_path = self._config.db_path
+        def _sync():
+            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
+            try:
+                conn.execute("DELETE FROM prompt_app_categories WHERE name=?;", (name,))
+                conn.commit()
+                return True
+            finally:
+                conn.close()
+        return await anyio.to_thread.run_sync(_sync)
+
+    # ── Prompt App Instance CRUD ────────────────────────────────────
+
+    async def list_prompt_app_instances(self, *, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+        def _sync():
+            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
+            try:
+                total = conn.execute("SELECT COUNT(*) FROM prompt_app_instances;").fetchone()[0]
+                rows = conn.execute(
+                    "SELECT * FROM prompt_app_instances ORDER BY updated_at DESC LIMIT ? OFFSET ?;",
+                    [limit, offset]
+                ).fetchall()
+                items = [dict(r) for r in rows]
+                return {"total": total, "items": items}
+            finally:
+                conn.close()
+        return await anyio.to_thread.run_sync(_sync)
+
+    async def get_prompt_app_instance(self, *, instance_id: str) -> Optional[Dict[str, Any]]:
+        await self.init()
+        db_path = self._config.db_path
+        def _sync():
+            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
+            try:
+                row = conn.execute("SELECT * FROM prompt_app_instances WHERE id=?;", (str(instance_id),)).fetchone()
+                return dict(row) if row else None
+            finally:
+                conn.close()
+        return await anyio.to_thread.run_sync(_sync)
+
+    async def upsert_prompt_app_instance(self, *, instance_id: str, name: str, source_template_id: str,
+                                          system_prompt: str = "", user_prompt: str = "",
+                                          assistant_prompt: str = "", variables: str = "[]",
+                                          status: str = "draft") -> Dict[str, Any]:
+        await self.init()
+        db_path = self._config.db_path
+        import time as _t
+        now = _t.time()
+        def _sync():
+            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
+            try:
+                existing = conn.execute("SELECT * FROM prompt_app_instances WHERE id=?;", (str(instance_id),)).fetchone()
+                if existing:
+                    conn.execute(
+                        "UPDATE prompt_app_instances SET name=?, system_prompt=?, user_prompt=?, assistant_prompt=?, variables=?, status=?, updated_at=? WHERE id=?;",
+                        (name, system_prompt, user_prompt, assistant_prompt, variables, status, now, str(instance_id))
+                    )
+                else:
+                    conn.execute(
+                        "INSERT INTO prompt_app_instances(id,name,source_template_id,system_prompt,user_prompt,assistant_prompt,variables,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?);",
+                        (str(instance_id), name, source_template_id, system_prompt, user_prompt, assistant_prompt, variables, status, now, now)
+                    )
+                conn.commit()
+                return dict(conn.execute("SELECT * FROM prompt_app_instances WHERE id=?;", (str(instance_id),)).fetchone())
+            finally:
+                conn.close()
+        return await anyio.to_thread.run_sync(_sync)
+
+    async def delete_prompt_app_instance(self, *, instance_id: str) -> bool:
+        await self.init()
+        db_path = self._config.db_path
+        def _sync():
+            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
+            try:
+                cur = conn.execute("DELETE FROM prompt_app_instances WHERE id=?;", (str(instance_id),))
+                conn.commit()
+                return (cur.rowcount or 0) > 0
+            finally:
+                conn.close()
+        return await anyio.to_thread.run_sync(_sync)
+
     def _job_row_to_obj(self, row: Dict[str, Any]) -> Dict[str, Any]:
         return {
             "id": row.get("id"),
@@ -8741,7 +9092,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
             conn.row_factory = sqlite3.Row
             now = float(time.time())
             try:
@@ -8789,7 +9140,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute("SELECT * FROM skill_eval_suites WHERE suite_id=?;", (str(suite_id),)).fetchone()
@@ -8807,7 +9158,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
             conn.row_factory = sqlite3.Row
             try:
                 where = ""
@@ -8837,7 +9188,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> bool:
-            conn = sqlite3.connect(db_path)
+            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
             try:
                 cur = conn.execute("DELETE FROM skill_eval_suites WHERE suite_id=?;", (str(suite_id),))
                 conn.commit()
@@ -8862,7 +9213,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
             conn.row_factory = sqlite3.Row
             now = float(time.time())
             try:
@@ -8910,7 +9261,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute("SELECT * FROM skill_eval_runs WHERE run_id=?;", (str(run_id),)).fetchone()
@@ -8940,7 +9291,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
             conn.row_factory = sqlite3.Row
             now = float(time.time())
             try:
@@ -8979,7 +9330,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
             conn.row_factory = sqlite3.Row
             try:
                 total_row = conn.execute("SELECT COUNT(1) AS c FROM skill_eval_results WHERE run_id=?;", (str(run_id),)).fetchone()

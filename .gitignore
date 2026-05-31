@@ -74,3 +74,10 @@ download/
 .aiplat/skills/auto/
 .aiplat/auto_pipelines/
 .aiplat/artifacts/
+.aiplat/builder_states/
+.aiplat/diag_cache.json
+.aiplat/diag_history.json
+.aiplat/credentials.json
+.aiplat/kb/
+.aiplat/projects.json
+.aiplat/runtime_state.json

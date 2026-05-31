@@ -231,8 +231,9 @@ def _try_inject_claude_md(messages: List[Message]) -> None:
     Idempotent: skips injection if CLAUDE.md content already appears in messages
     (prevents double injection when caller also injects via ReActLoop._reason).
 
-    Note: file reads are synchronous but small (<12KB per file). For large-scale
-    concurrent LLM calls, consider prefetching into a module-level cache.
+    Task-aware: extracts task keywords from messages and injects only relevant
+    sections of aiPlat-core/CLAUDE.md (the 56K-char rules file). Root CLAUDE.md
+    and SOUL.md are always injected in full.
     """
     try:
         from pathlib import Path
@@ -248,15 +249,28 @@ def _try_inject_claude_md(messages: List[Message]) -> None:
             if soul_text and not soul_text.startswith("<!--"):
                 content_parts.append("[SOUL.md] " + soul_text[:2000])
 
+        # ── Extract task keywords from messages ──────────────────
+        task_text = " ".join(
+            str(m.get("content", "")) for m in messages[-6:]
+            if isinstance(m.get("content"), str)
+        )[:4000]
+
         # Project rules: CLAUDE.md (never compressed, §5.25)
         claude_paths = [
             Path(project_root) / "CLAUDE.md",
             Path(project_root) / "aiPlat-core" / "CLAUDE.md",
         ]
-        for p in claude_paths:
-            if p.exists():
-                text = p.read_text(encoding="utf-8")[:12000]
-                content_parts.append(f"[{p.name}] {text}")
+        for i, p in enumerate(claude_paths):
+            if not p.exists():
+                continue
+            full = p.read_text(encoding="utf-8")
+            if i == 0:
+                # Root CLAUDE.md: always inject full (only ~10K chars, critical guard rules)
+                content_parts.append(f"[{p.name}] {full[:12000]}")
+            else:
+                # aiPlat-core/CLAUDE.md: inject relevant sections only (56K chars)
+                filtered = _filter_claude_md_sections(full, task_text)
+                content_parts.append(f"[{p.name}] {filtered}")
 
         if not content_parts:
             return
@@ -267,7 +281,7 @@ def _try_inject_claude_md(messages: List[Message]) -> None:
         existing_text = " ".join(str(m.get("content", "")) for m in messages[:3])
         guard_snippet = guard[:200]
         if guard_snippet in existing_text:
-            return  # already injected by caller (e.g. ReActLoop._try_inject_claude_md)
+            return
 
         # Architecture rules guard (§5.1~§5.7, §5.29)
         arch_rules = _try_inject_arch_rules(messages)
@@ -279,6 +293,92 @@ def _try_inject_claude_md(messages: List[Message]) -> None:
             messages.insert(0, {"role": "system", "content": guard})
     except Exception:
         logging.getLogger("llm").debug("best-effort skipped", exc_info=True)
+
+
+# ── Task → Clause keyword mapping (heuristic) ──────────────────────
+_CLAUSE_KEYWORDS = {
+    "file_read": ["5.4", "5.5", "5.7", "5.29", "5.32"],
+    "file_write": ["5.4", "5.5", "5.7", "5.29", "5.32", "5.34"],
+    "file_edit": ["5.4", "5.5", "5.7", "5.29", "5.32", "5.34"],
+    "sys_tool_call": ["5.11", "5.24", "5.34"],
+    "sys_skill_call": ["5.10", "5.19", "5.24"],
+    "sys_llm_generate": ["5.20", "5.21", "5.25"],
+    "memory": ["5.12", "5.21", "5.25", "5.26", "5.28"],
+    "model": ["5.13", "5.17", "5.31"],
+    "engine": ["5.5", "5.6", "5.7", "5.8", "5.16", "5.17", "5.23"],
+    "harness": ["5.5", "5.6", "5.7", "5.8", "5.16", "5.17", "5.23"],
+    "pipeline": ["5.4", "5.5", "5.6", "5.23"],
+    "agent": ["5.9", "5.10", "5.15", "5.16", "5.22", "5.27"],
+    "skill": ["5.10", "5.19", "5.24"],
+    "tool": ["5.11", "5.24", "5.34"],
+    "mcp": ["5.24", "5.33"],
+    "sysgraph": ["5.32"],
+    "knowledge": ["5.32"],
+    "graph": ["5.32", "5.33"],
+    "callback": ["5.8", "5.16"],
+    "hook": ["5.24"],
+    "security": ["5.18"],
+    "injection": ["5.18"],
+    "di": ["5.14", "5.30"],
+    "dependency": ["5.14", "5.30"],
+    "test": ["5.30", "6)"],
+    "build": ["5.30", "6)"],
+    "architecture": ["0.", "1)", "2)", "3)", "4)", "5)"],
+    "arch_guard": ["0.", "1)", "2)", "3)", "4)", "5)"],
+    "violation": ["0.", "1)", "2)", "3)", "4)", "5)"],
+    "subagent": ["5.15", "5.26", "5.27"],
+    "module": ["5.14", "5.29", "5.30"],
+    "import": ["5.1", "5.14", "5.29", "5.30"],
+    "refactor": ["5.1", "5.3", "5.14"],
+}
+
+
+def _filter_claude_md_sections(full_text: str, task_text: str) -> str:
+    u"""Inject full CLAUDE.md text, but prioritize: always include §0-§5 headers,
+    append matching subsections from the task keyword map. Falls back to first 8000
+    chars when no task keywords detected.
+    """
+    task_lower = task_text.lower()
+
+    # Collect relevant section numbers from task keywords
+    relevant_sections: set = set()
+    for kw, sections in _CLAUSE_KEYWORDS.items():
+        if kw in task_lower:
+            relevant_sections.update(sections)
+
+    # Split into sections by ## or ### headings
+    import re as _re
+    parts = _re.split(r'(?=^#{2,3}\s)', full_text, flags=_re.MULTILINE)
+    if len(parts) <= 1:
+        # No headings found — inject first 8000 chars
+        return full_text[:8000]
+
+    # Always include: part 0 (before first heading, if any) + §0-§5 header sections
+    always = []
+    matching = []
+    for p in parts:
+        stripped = p.lstrip()
+        if not stripped or stripped.startswith('---'):
+            continue
+        # Check if this section's heading matches any relevant clause
+        heading_match = _re.match(r'^#{2,3}\s+([\d.]+\b).*', stripped)
+        section_num = heading_match.group(1) if heading_match else ""
+        is_always = bool(
+            _re.match(r'^0[\.\s)]', section_num) or
+            _re.match(r'^[1-6][\).\s]', section_num) or
+            section_num.startswith("5.")
+        )
+        if is_always:
+            always.append(p)
+        elif relevant_sections and section_num in relevant_sections:
+            matching.append(p)
+
+    # If no task keywords matched at all, fall back to all §5 sections
+    if not relevant_sections:
+        return "".join(always[:20])[:8000]
+
+    result = "".join(always) + "\n" + "".join(matching)
+    return result[:8000]
 
 
 def _classify_llm_error(error: Exception) -> Dict[str, Any]:
@@ -367,8 +467,8 @@ async def sys_llm_generate(
         elif deployment:
             # Try SecretsManager as fallback (P2-10 wiring)
             try:
-                from core.api.core_facade import get_secret
-                api_key = get_secret(deployment.api_key_env) or ""
+                from core.harness.infrastructure.secrets_manager import get_secrets_manager
+                api_key = get_secrets_manager().get(deployment.api_key_env) or ""
             except Exception:
                 api_key = ""
         else:
@@ -612,6 +712,12 @@ async def sys_llm_generate(
                                 await store.add_tenant_usage(tenant_id=str(tid), metric_key="llm_total_tokens", amount=total_f, day=day)
                 except Exception:
                     logging.getLogger("llm").debug("best-effort skipped", exc_info=True)
+                usage = getattr(result, "usage", None) if isinstance(getattr(result, "usage", None), dict) else None
+                input_tokens = (usage.get("prompt_tokens") or 0) if usage else 0
+                output_tokens = (usage.get("completion_tokens") or 0) if usage else 0
+                cost = 0.0
+                if input_tokens > 0 or output_tokens > 0:
+                    cost = round((input_tokens / 1_000_000) * 1.0 + (output_tokens / 1_000_000) * 3.0, 6)
                 await store.add_syscall_event(
                     {
                         "trace_id": span.trace_id,
@@ -628,13 +734,16 @@ async def sys_llm_generate(
                         "start_time": start_ts,
                         "end_time": end_ts,
                         "duration_ms": (end_ts - start_ts) * 1000.0,
+                        "input_tokens": input_tokens,
+                        "output_tokens": output_tokens,
+                        "cost": cost,
                         "args": {
                             "prompt_type": "messages" if isinstance(prepared, list) else "text",
                             "message_guard": message_guard_stats,
                         },
                         "result": {
                             "has_content": bool(getattr(result, "content", None)),
-                            "usage": getattr(result, "usage", None) if isinstance(getattr(result, "usage", None), dict) else None,
+                            "usage": usage,
                             "prompt_version": prompt_version,
                             "applied_prompt_revision_ids": applied_prompt_revision_ids,
                             "ignored_prompt_revision_ids": ignored_prompt_revision_ids,

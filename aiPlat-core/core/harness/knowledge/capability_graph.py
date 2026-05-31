@@ -114,21 +114,75 @@ class CapabilityGraphResult:
 
 
 # ---------------------------------------------------------------------------
-# Graph builder
+# Graph builder — with SQLite persistence + incremental sync
 # ---------------------------------------------------------------------------
+
+_CAP_CACHE: Optional[CapabilityGraphResult] = None
+_CAP_CACHE_TS: float = 0.0
+_CAP_CACHE_LOCK: Any = None
+
 
 def build_capability_graph() -> CapabilityGraphResult:
     """Scan all 5 capability dimensions and return a pure graph.
 
+    Persisted to SQLite for restart survival. Incremental sync via mtime on
+    AGENT.md / SKILL.md files (≤10 changes → rebuild only changed directories).
+
     Returns:
-        CapabilityGraphResult with:
-          - nodes keyed by ``{type}:{name}`` (e.g. ``agent:architect``)
-          - edges with ``relation`` field:
-            * ``requires``     agent→skill, agent→tool
-            * ``uses``         skill→syscall
-            * ``provides``     mcp_server→tool
-            * ``maps_to``      workflow→agent, workflow→skill
+        CapabilityGraphResult with nodes + edges.
     """
+    global _CAP_CACHE, _CAP_CACHE_TS, _CAP_CACHE_LOCK
+
+    if _CAP_CACHE_LOCK is None:
+        import threading as _th
+        _CAP_CACHE_LOCK = _th.Lock()
+
+    # Try SQLite persistence first
+    try:
+        from core.harness.knowledge.cap_graph_persist import has_cache as _has, load_nodes as _ln, load_edges as _le, init_db as _idb
+        _idb()
+        if _has():
+            nodes = _ln()
+            edges = _le()
+
+            # Incremental sync: check mtimes of AGENT.md/SKILL.md files
+            stale_ids: List[str] = []
+            for nid, n in nodes.items():
+                fpath = n.get("path", "")
+                if not fpath or not os.path.exists(fpath):
+                    continue
+                # Check AGENT.md or SKILL.md modification
+                md_file = os.path.join(fpath, "AGENT.md")
+                if not os.path.exists(md_file):
+                    md_file = os.path.join(fpath, "SKILL.md")
+                if not os.path.exists(md_file):
+                    continue
+                current_mtime = os.path.getmtime(md_file)
+                if abs(current_mtime - n.get("_mtime", 0)) > 0.001:
+                    stale_ids.append(nid)
+
+            if 0 < len(stale_ids) <= 10:
+                # Incremental: remove stale, re-scan only those
+                for sid in stale_ids:
+                    ntype = nodes[sid].get("type", "")
+                    if sid in nodes:
+                        del nodes[sid]
+                edges = [e for e in edges if e["from"] not in stale_ids and e["to"] not in stale_ids]
+                # Rebuild only for stale types
+                _incremental_rescan(nodes, edges, stale_ids)
+                _finalize(nodes, edges)
+                return _cache_and_return(nodes, edges)
+
+            if len(stale_ids) > 10:
+                pass  # fall through to full rebuild below
+            else:
+                # 0 stale: compute degrees and return
+                _finalize(nodes, edges)
+                return _cache_and_return(nodes, edges)
+    except Exception:
+        pass
+
+    # Full rebuild (first run or >10 stale)
     nodes: Dict[str, Dict[str, Any]] = {}
     edges: List[Dict[str, str]] = []
 
@@ -139,11 +193,94 @@ def build_capability_graph() -> CapabilityGraphResult:
     _scan_workflows(nodes, edges)
     _scan_entry_points(nodes, edges)
 
-    return CapabilityGraphResult(
-        created_at=time.time(),
-        nodes=nodes,
-        edges=edges,
-    )
+    _finalize(nodes, edges)
+    _save_cap_graph(nodes, edges)
+    return _cache_and_return(nodes, edges)
+
+
+def _incremental_rescan(nodes, edges, stale_ids):
+    """Rescan only directories for stale nodes."""
+    stale_types = set()
+    for sid in stale_ids:
+        if sid.startswith("agent:"):
+            stale_types.add("agent")
+        elif sid.startswith("skill:"):
+            stale_types.add("skill")
+        elif sid.startswith("tool:"):
+            stale_types.add("tool")
+        elif sid.startswith("mcp_server:"):
+            stale_types.add("mcp")
+        elif sid.startswith("workflow:"):
+            stale_types.add("workflow")
+    if "agent" in stale_types:
+        _scan_agents(nodes, edges)
+    if "skill" in stale_types:
+        _scan_skills(nodes, edges)
+    if "tool" in stale_types:
+        _scan_tools(nodes, edges)
+    if "mcp" in stale_types:
+        _scan_mcp_servers(nodes, edges)
+    if "workflow" in stale_types:
+        _scan_workflows(nodes, edges)
+
+
+def _finalize(nodes, edges):
+    """Compute degrees for all nodes."""
+    for nid, n in nodes.items():
+        n["in_degree"] = sum(1 for e in edges if e["to"] == nid)
+        n["out_degree"] = sum(1 for e in edges if e["from"] == nid)
+        # Update mtime from filesystem
+        fpath = n.get("path", "")
+        if fpath and os.path.exists(fpath):
+            for md_name in ("AGENT.md", "SKILL.md"):
+                mdp = os.path.join(fpath, md_name)
+                if os.path.exists(mdp):
+                    n["_mtime"] = os.path.getmtime(mdp)
+                    break
+
+
+def _save_cap_graph(nodes, edges):
+    """Persist to SQLite."""
+    try:
+        from core.harness.knowledge.cap_graph_persist import save_graph
+        save_graph(nodes, edges)
+    except Exception:
+        pass
+
+
+def _cache_and_return(nodes, edges):
+    """Save to in-memory cache and return CapabilityGraphResult."""
+    result = CapabilityGraphResult(created_at=time.time(), nodes=nodes, edges=edges)
+    global _CAP_CACHE, _CAP_CACHE_TS, _CAP_CACHE_LOCK
+    if _CAP_CACHE_LOCK is None:
+        import threading as _th
+        _CAP_CACHE_LOCK = _th.Lock()
+    with _CAP_CACHE_LOCK:
+        _CAP_CACHE = result
+        _CAP_CACHE_TS = time.time()
+    return result
+
+
+def clear_capability_cache():
+    """Invalidate both in-memory cache and SQLite persistence (called by hot-reload)."""
+    global _CAP_CACHE, _CAP_CACHE_TS
+    lock = _CAP_CACHE_LOCK
+    if lock:
+        with lock:
+            _CAP_CACHE = None
+            _CAP_CACHE_TS = 0.0
+    else:
+        _CAP_CACHE = None
+        _CAP_CACHE_TS = 0.0
+    # Clear SQLite so next build re-indexes
+    try:
+        import os as _os
+        from core.harness.knowledge.cap_graph_persist import _db_path
+        path = _db_path()
+        if _os.path.exists(path):
+            _os.remove(path)
+    except Exception:
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -232,7 +369,7 @@ def _scan_skills(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):
 def _scan_tools(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):
     """Scan ToolRegistry for registered tools."""
     try:
-        from core.apps.tools.base import get_tool_registry
+        from core.harness.integration import get_tool_registry
         reg = get_tool_registry()
         tool_names = reg.list_tools()
         for name in sorted(tool_names):
@@ -260,24 +397,103 @@ def _scan_tools(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):
 
 
 def _scan_mcp_servers(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):
-    """Scan MCPManager for configured MCP servers."""
+    """Scan MCPManager for configured MCP servers (engine + workspace)."""
     try:
         from core.management.mcp_manager import MCPManager as _MCPMgr
-        mgr = _MCPMgr()
-        servers = mgr.list_servers()
-        for srv in servers:
-            name = srv.name
-            nodes[f"mcp_server:{name}"] = {
-                "id": f"mcp_server:{name}",
-                "type": "mcp_server",
-                "label": name,
-                "raw_id": name,
-                "enabled": getattr(srv, 'enabled', True),
-                "transport": getattr(srv, 'transport', ''),
-                "url": getattr(srv, 'url', ''),
-            }
+        for scope in ("engine", "workspace"):
+            mgr = _MCPMgr(scope=scope)
+            for srv in mgr.list_servers():
+                name = srv.name
+                nodes[f"mcp_server:{name}"] = {
+                    "id": f"mcp_server:{name}",
+                    "type": "mcp_server",
+                    "label": name,
+                    "raw_id": name,
+                    "enabled": getattr(srv, 'enabled', True),
+                    "transport": getattr(srv, 'transport', ''),
+                    "url": getattr(srv, 'url', ''),
+                    "command": getattr(srv, 'command', ''),
+                    "args": getattr(srv, 'args', []) or [],
+                    "scope": scope,
+                    "status": "unknown",
+                }
+        _probe_mcp_reachability(nodes)
     except Exception:
         pass
+
+
+def _probe_mcp_reachability(nodes: Dict[str, Dict[str, Any]]):
+    """Lightweight connectivity check for MCP servers. Best-effort, 1s timeout."""
+    import urllib.request
+    import shutil
+    import subprocess
+
+    for key, node in list(nodes.items()):
+        if node.get("type") != "mcp_server":
+            continue
+        if not node.get("enabled", True):
+            node["status"] = "disabled"
+            continue
+
+        transport = node.get("transport", "")
+        try:
+            if transport == "sse":
+                url = node.get("url", "")
+                if not url:
+                    node["status"] = "unreachable"
+                    continue
+                if "/mcp" in url:
+                    # Probe: try to open a stream; just check if host:port is reachable
+                    try:
+                        with urllib.request.urlopen(url, timeout=1):
+                            pass
+                        node["status"] = "reachable"
+                    except Exception as e:
+                        # Reachable but not a real MCP SSE endpoint
+                        node["status"] = "unreachable"
+                        node["status_detail"] = str(e)[:120]
+                else:
+                    node["status"] = "unreachable"
+                    node["status_detail"] = "url does not contain /mcp path"
+
+            elif transport == "stdio":
+                cmd = node.get("command", "")
+                if not cmd:
+                    node["status"] = "unreachable"
+                    continue
+                if shutil.which(cmd):
+                    # For npx-based MCPs, also check if the npm package exists
+                    if cmd == "npx":
+                        args = node.get("args", []) or []
+                        for arg in args:
+                            if arg.startswith("@") or (not arg.startswith("-") and "/" not in arg):
+                                try:
+                                    r = subprocess.run(
+                                        ["npm", "view", arg, "version"],
+                                        capture_output=True, timeout=3,
+                                    )
+                                    if r.returncode == 0:
+                                        node["status"] = "reachable"
+                                    else:
+                                        node["status"] = "unreachable"
+                                        node["status_detail"] = f"npm package not found: {arg}"
+                                except Exception:
+                                    node["status"] = "unreachable"
+                                    node["status_detail"] = f"failed to check npm package: {arg}"
+                                break
+                        else:
+                            node["status"] = "reachable"
+                    else:
+                        node["status"] = "reachable"
+                else:
+                    node["status"] = "unreachable"
+                    node["status_detail"] = f"command not found: {cmd}"
+
+            else:
+                node["status"] = "unreachable"
+                node["status_detail"] = f"unsupported transport: {transport}"
+        except Exception:
+            node["status"] = "unreachable"
 
 
 def _scan_workflows(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):

@@ -1,0 +1,511 @@
+# Architecture Guard Rules — declarative config
+# Add new grep checks here (6 lines each), zero code change.
+#
+# Supported check types:
+#   grep_forbidden  grep for pattern, violations = every hit
+#   grep_required   grep for pattern, violations = no hits
+#   file_exists     check file/dir exists, violations = missing
+#   file_forbidden  check filename pattern, violations = match
+#   cmd_output      run shell cmd, check ok_pattern
+#
+# See arch_guard_base.py::ArchYAMLRule for full engine docs.
+
+rules:
+  # ═══ Section 1: Cross-Layer Import Direction (graph-optimized) ═══
+  - id: layer_import_app_to_core
+    section: "§1"
+    section_name: "Cross-Layer Import Direction"
+    level: error
+    check:
+      type: grep_graph_import
+      from_pattern: "^aiPlat-app/"
+      to_pattern: "^aiPlat-core/"
+    message: "app imports core (must go through platform)"
+
+  - id: layer_import_app_to_infra
+    section: "§1"
+    section_name: "Cross-Layer Import Direction"
+    level: error
+    check:
+      type: grep_graph_import
+      from_pattern: "^aiPlat-app/"
+      to_pattern: "^aiPlat-infra/"
+    message: "app imports infra (must go through platform)"
+
+  - id: layer_import_platform_to_infra
+    section: "§1"
+    section_name: "Cross-Layer Import Direction"
+    level: error
+    check:
+      type: grep_graph_import
+      from_pattern: "^aiPlat-platform/"
+      to_pattern: "^aiPlat-infra/"
+    message: "platform imports infra (must go through core)"
+
+  - id: layer_import_infra_to_internal
+    section: "§1"
+    section_name: "Cross-Layer Import Direction"
+    level: error
+    check:
+      type: grep_graph_import
+      from_pattern: "^aiPlat-infra/"
+      to_pattern: "^(aiPlat-core/|aiPlat-platform/|aiPlat-app/|aiPlat-management/)"
+    message: "infra imports internal layers (must be independent)"
+
+  - id: layer_import_core_to_platform_app
+    section: "§1"
+    section_name: "Cross-Layer Import Direction"
+    level: error
+    check:
+      type: grep_graph_import
+      from_pattern: "^aiPlat-core/"
+      to_pattern: "^(aiPlat-platform/|aiPlat-app/)"
+    message: "core imports platform or app (reverse dependency)"
+
+  # ═══ Section 2: Platform No Direct PipelineEngine ═══
+  - id: platform_no_direct_engine
+    section: "§2"
+    section_name: "Platform — No Direct Engine Access"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: "PipelineEngine\\("
+      paths: ["aiPlat-platform"]
+      exclude: ["__pycache__", "tests/"]
+    message: "platform directly instantiates PipelineEngine (use CoreFacade)"
+
+  # ═══ Section 3: Core Harness Kernel Agnostic ═══
+  - id: kernel_agnostic_artifact_keys
+    section: "§3"
+    section_name: "Core Harness — Kernel Agnostic"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: 'state\["prd"\]|state\["architecture"\]|state\["code"\]|state\["test_report"\]|state\["test_plan"\]|state\.get\("prd"|state\.get\("architecture"|state\.get\("code"|state\.get\("test_report"'
+      paths: ["aiPlat-core/core/harness"]
+      exclude: ["__pycache__", "tests/"]
+    message: "hardcoded artifact keys in harness (use stage.output_artifact)"
+
+  - id: kernel_agnostic_business_roles
+    section: "§3"
+    section_name: "Core Harness — Kernel Agnostic"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: '"pm_agent"|"architect_agent"|"programmer_agent"|"qa_agent"'
+      paths: ["aiPlat-core/core/harness"]
+      exclude: ["__pycache__", "tests/"]
+    message: "hardcoded business role names in harness"
+
+  - id: kernel_agnostic_scoring_dims
+    section: "§3"
+    section_name: "Core Harness — Kernel Agnostic"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: '"functionality"|"product_depth"|"design_ux"|"code_architecture"'
+      paths: ["aiPlat-core/core/harness/evaluation"]
+      exclude: ["__pycache__", "tests/"]
+      grep_exclude: ["dimensions\\.py"]
+    message: "hardcoded scoring dimensions (use PipelineStageConfig.scoring_dimensions)"
+
+  - id: kernel_agnostic_sop_prompts
+    section: "§3"
+    section_name: "Core Harness — Kernel Agnostic"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: '"You are a strict.*evaluator|你是一个严格的'
+      paths: ["aiPlat-core/core/harness/execution"]
+      exclude: ["__pycache__", "tests/"]
+    message: "business SOP prompts in engine (move to AGENT.md)"
+
+  - id: kernel_agnostic_channel_adapters
+    section: "§3"
+    section_name: "Core Harness — Kernel Agnostic"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: "slack.*signature|verify_slack|slack_command|slack_events|response_url"
+      paths: ["aiPlat-core/core"]
+      exclude: ["__pycache__", "tests/"]
+    message: "channel adapter logic in core (move to app)"
+
+  - id: kernel_agnostic_chinese_names
+    section: "§3"
+    section_name: "Core Harness — Kernel Agnostic"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: '产品经理|架构师|程序员|测试员|前端开发|后端开发|项目经理|需求分析|系统设计|代码实现|测试评估'
+      paths: ["aiPlat-core/core"]
+      exclude: ["__pycache__", "tests/"]
+      grep_exclude: ["orchestration/|kernel/types\\.py|prompt_loader\\.py|prompt_app\\.py"]
+    message: "hardcoded Chinese business names in core (use config-driven)"
+
+  # ═══ Section 4: Infra Application Agnostic ═══
+  - id: infra_agnostic_app_names
+    section: "§4"
+    section_name: "Infra — Application Agnostic"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: '=.*"ai.platform|=.*"aiplat|=.*"aiPlat|=.*"ai-platform'
+      paths: ["aiPlat-infra/infra"]
+      exclude: ["__pycache__", "tests/"]
+      grep_exclude: ["os\\.getenv|AIPLAT_"]
+    message: "application-name defaults in infra (use env vars)"
+
+  - id: infra_agnostic_gpu_models
+    section: "§4"
+    section_name: "Infra — Application Agnostic"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: '"A100"|"H100"|"V100"|"T4"|"A10G"'
+      paths: ["aiPlat-infra/infra"]
+      exclude: ["__pycache__", "tests/"]
+    message: "GPU model name defaults in infra"
+
+  - id: infra_agnostic_dev_paths
+    section: "§4"
+    section_name: "Infra — Application Agnostic"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: "/Users/"
+      paths: ["aiPlat-infra/infra"]
+      exclude: ["__pycache__", "tests/"]
+    message: "developer paths in infra"
+
+  - id: infra_agnostic_crypto_salts
+    section: "§4"
+    section_name: "Infra — Application Agnostic"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: "ai.platform.salt|ai-platform-salt|aiplat.*salt"
+      paths: ["aiPlat-infra/infra"]
+      exclude: ["__pycache__", "tests/"]
+    message: "application-specific crypto salts in infra"
+
+  # ═══ Section 5: App Layer Boundaries ═══
+  - id: app_no_api_server
+    section: "§5"
+    section_name: "App — No API Server / No Direct DB"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: "FastAPI\\(|uvicorn\\.run\\("
+      paths: ["aiPlat-app"]
+      exclude: ["__pycache__", "tests/", "generated/", "api/rest/routes.py"]
+    message: "app runs its own API server — api/rest/routes.py is a minimal health-only bootstrap, allowed per constitution"
+
+  - id: app_no_direct_db
+    section: "§5"
+    section_name: "App — No API Server / No Direct DB"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: "sqlite3\\.connect|create_engine\\(|aiosqlite\\.connect"
+      paths: ["aiPlat-app"]
+      exclude: ["__pycache__", "tests/", "generated/"]
+    message: "app accesses database directly (use platform API)"
+
+  # ═══ Section 5.5: LangGraph Syscall Bypass ═══
+  - id: langgraph_no_direct_syscall
+    section: "§5.5"
+    section_name: "LangGraph — No Direct Syscall Bypass"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: "sys_llm_generate|sys_tool_call|sys_skill_call"
+      paths: ["aiPlat-core/core/harness/execution/langgraph"]
+      exclude: ["__pycache__", "tests/", "compiled_graphs/react.py", "nodes/reason_node.py", "nodes/act_node.py", "nodes/observe_node.py"]
+      grep_exclude: []
+    message: "LangGraph nodes call syscalls directly (must delegate to Harness) — known exceptions per CLAUDE.md §5.23: react node, reason_node, act_node, observe_node are ReAct graph parallel implementation, to be retired in Phase 9"
+
+  # ═══ Section 6: Core No Platform Routes ═══
+  - id: core_no_platform_routes
+    section: "§6"
+    section_name: "Core — No Platform-Level Routes"
+    level: error
+    check:
+      type: file_forbidden
+      pattern: "approvals|tenant_policies|quota|permissions|onboarding|gateway|gate_policies|change_control|chat|channel_adapters|conversations|policy|ops_exports"
+      paths: ["aiPlat-core/core/api/routers"]
+    message: "core defines platform-level routes"
+
+  # ═══ Section 10: Platform No AI Model Imports ═══
+  - id: platform_no_model_imports
+    section: "§10"
+    section_name: "Platform — No Direct AI Model Imports"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: "import faster_whisper|import whisper|from whisper|import pytesseract|import paddleocr|import sentence_transformers|from sentence_transformers"
+      paths: ["aiPlat-platform"]
+      exclude: ["__pycache__", "tests/"]
+      grep_exclude: ["kb/poc/ocr\\.py"]
+    message: "platform directly imports AI model libraries (belongs in Core)"
+
+  # ═══ Section 11: Platform KB No Own Parsers ═══
+  - id: platform_kb_no_parsers
+    section: "§11"
+    section_name: "Platform KB — No Own Parsers"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: "def parse_docx|def parse_pptx|def parse_markdown|def classify_document|def _extract_keywords|def _score_text"
+      paths: ["aiPlat-platform/kb/intelligence"]
+      exclude: ["__pycache__", "tests/"]
+    message: "platform implements own parsers/classifiers (belongs in core)"
+
+  - id: platform_kb_no_embed_cache
+    section: "§11"
+    section_name: "Platform KB — No Own Parsers"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: "_EMBED_CACHE|_EMBED_CACHE_MAX"
+      paths: ["aiPlat-platform/kb/intelligence"]
+      exclude: ["__pycache__", "tests/"]
+    message: "platform implements own embed cache (belongs in core)"
+
+  # ═══ Section 12: Platform KB Retrieval Orchestration ═══
+  - id: platform_query_retrieval_algo
+    section: "§12"
+    section_name: "Platform KB — Retrieval Orchestration Only"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: "def _cosine_similarity|def _dedupe|def retrieve|def _search_embedding|def _search_keyword"
+      paths: ["aiPlat-platform/kb/intelligence/query.py"]
+      exclude: ["__pycache__", "tests/"]
+    message: "platform query.py implements retrieval algorithms (belongs in core)"
+
+  - id: platform_video_retrieval_algo
+    section: "§12"
+    section_name: "Platform KB — Retrieval Orchestration Only"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: "def _cosine_similarity|def _dedupe|def retrieve|def _search_embedding|def _search_keyword"
+      paths: ["aiPlat-platform/kb/intelligence/video_retrieval.py"]
+      exclude: ["__pycache__", "tests/"]
+    message: "platform video_retrieval.py implements retrieval algorithms (belongs in core)"
+
+  # ═══ Section 13: Platform No Agent Discovery ═══
+  - id: platform_no_agent_discovery
+    section: "§13"
+    section_name: "Platform — No Agent Discovery"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: "def _build_agent_catalog|def list_available_agents|def recommend_team_stages|_load_agent_md|_role_agent_md_path|def _scan_agent"
+      paths: ["aiPlat-platform/builder"]
+      exclude: ["__pycache__", "tests/"]
+      grep_exclude: ["builder_roles\\.py|builder_project_service\\.py"]
+    message: "platform implements agent discovery logic (belongs in Core)"
+
+  # ═══ Section 21: Performance ═══
+  - id: perf_sync_subprocess
+    section: "§21"
+    section_name: "Performance — Sync I/O in Async"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: "subprocess\\.run\\("
+      paths: ["aiPlat-core/core/harness/execution"]
+      exclude: ["__pycache__", "tests/"]
+      grep_exclude: ["capture_output.*text.*timeout|# noqa|_write_file|git.*-C.*repo_root|f\"r = subprocess"]
+    message: "synchronous subprocess.run in async context — known exceptions: _git_commit_stage (sync function), f-string template (not real call)"
+
+  # ═══ Section 22: License ═══
+  - id: license_copyleft
+    section: "§22"
+    section_name: "License — Copyleft Compliance"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: "(?i)gpl|agpl"
+      paths: ["requirements.txt"]
+      exclude: []
+      ext: [".txt"]
+    message: "copyleft-licensed packages detected"
+
+  # ═══ Section 24: Secret Detection ═══
+  - id: secret_detection
+    section: "§24"
+    section_name: "Secret Detection"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: '(?i)sk-[a-zA-Z0-9]{20,}|api[_-]?key\s*=\s*["\"][^"\"]{20,}["\"]|password\s*=\s*["\"][^"\"]{8,}["\"]|secret\s*=\s*["\"][^"\"]{8,}["\"]'
+      paths: ["aiPlat-core", "aiPlat-platform", "aiPlat-infra", "aiPlat-app"]
+      exclude: ["__pycache__", "tests/", ".env", "generated/"]
+      ext: [".py", ".yml", ".yaml", ".json"]
+      grep_exclude: ["mock-api-key|REPLACE_ME|example"]
+    message: "potential hardcoded secrets detected (use env vars)"
+
+  # ═══ Section 25: Error Swallowing ═══
+  - id: error_swallowing
+    section: "§25"
+    section_name: "Error Handling — No Silent except:pass"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: "except Exception: pass"
+      paths: ["aiPlat-core/core", "aiPlat-platform", "aiPlat-app"]
+      exclude: ["__pycache__", "tests/", "generated/"]
+      grep_exclude: ["# noqa|# allowed"]
+    message: "bare except:pass — use logging at minimum"
+
+  # ═══ Section 26: Security Hardcoded Credentials ═══
+  - id: security_hardcoded_passwords
+    section: "§26"
+    section_name: "Security — No Hardcoded Credentials"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: 'password\s*:\s*"[^$]{3,}"'
+      paths: ["."]
+      exclude: ["__pycache__", "tests/", "node_modules", ".venv"]
+      ext: [".yaml", ".yml", ".json"]
+      grep_exclude: ["mock|example|REPLACE_ME"]
+    message: "hardcoded passwords in config files (use env var references)"
+
+  # ═══ Section 29: Infra No Vendor Strings ═══
+  - id: infra_no_vendor_strings
+    section: "§29"
+    section_name: "Infra — No Vendor Hardware Strings"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: '"Apple Silicon"|"Apple M|M1|M2|M3|"A100"|"H100"|"V100"'
+      paths: ["aiPlat-infra/infra"]
+      exclude: ["__pycache__", "tests/"]
+      grep_exclude: ["# noqa|# allowed"]
+    message: "hardware vendor strings in infra defaults"
+
+  # ═══ Section 30: Code Quality bare except ═══
+  - id: code_quality_bare_except
+    section: "§30"
+    section_name: "Code Quality — No bare except:"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: "except\\s*:"
+      paths: ["aiPlat-infra/infra"]
+      exclude: ["__pycache__", "tests/"]
+      grep_exclude: ["except Exception|except BaseException|except.*Error|except.*Warning|# noqa|# allowed"]
+    message: "bare except: detected — use specific exception types"
+
+  # ═══ Section 31: Code Quality datetime.now() ═══
+  - id: code_quality_naive_datetime
+    section: "§31"
+    section_name: "Code Quality — datetime.now() timezone"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: "datetime\\.now\\(\\)"
+      paths: ["aiPlat-infra/infra"]
+      exclude: ["__pycache__", "tests/"]
+      grep_exclude: ["timezone|utcnow|# noqa|# allowed"]
+    message: "datetime.now() without timezone — use datetime.now(timezone.utc)"
+
+  # ═══ Section 34: Hardcoded System Prompts ═══
+  - id: hardcoded_system_roles
+    section: "§34"
+    section_name: "Hardcoded System Prompts"
+    level: warning
+    check:
+      type: grep_forbidden
+      pattern: '"role"\\s*:\\s*"system"'
+      paths: ["aiPlat-core/core/harness"]
+      exclude: ["__pycache__", "tests/"]
+      grep_exclude: ["system_prompt|_sys_prompt|sys_prompt|test"]
+    message: "hardcoded system role messages (use agent_config.system_prompt)"
+
+  # ═══ Section 35: Agent Execute Path Uniqueness ═══
+  - id: execute_path_uniqueness
+    section: "§35"
+    section_name: "Agent Execute Path Uniqueness"
+    level: warning
+    check:
+      type: grep_forbidden
+      pattern: "@router\\.(post|get|put)\\(.*\\{agent_id\\}/execute"
+      paths: ["aiPlat-core/core/api/routers"]
+      exclude: ["__pycache__", "tests/"]
+    message: "duplicate execute endpoints detected (expect 2: engine + workspace)"
+
+  # ═══ Section 36: system_prompt Flow Integrity ═══
+  - id: sysprompt_flow_corefacade
+    section: "§36"
+    section_name: "system_prompt Flow Integrity"
+    level: error
+    check:
+      type: grep_required
+      pattern: "agent_info.*system_prompt|cfg.*system_prompt|sys_prompt"
+      paths: ["aiPlat-core/core/api/core_facade.py"]
+      exclude: []
+    message: "core_facade.py does not read system_prompt from agent config"
+
+  - id: sysprompt_flow_stage_runner
+    section: "§36"
+    section_name: "system_prompt Flow Integrity"
+    level: error
+    check:
+      type: grep_required
+      pattern: "system_prompt|_sys_prompt"
+      paths: ["aiPlat-core/core/harness/execution/langgraph/stage_runner.py"]
+      exclude: []
+    message: "stage_runner.py does not pass system_prompt to LoopState"
+
+  - id: sysprompt_flow_loop
+    section: "§36"
+    section_name: "system_prompt Flow Integrity"
+    level: error
+    check:
+      type: grep_required
+      pattern: "system_prompt|_sys_prompt"
+      paths: ["aiPlat-core/core/harness/execution/loop.py"]
+      exclude: []
+    message: "loop.py does not read system_prompt from context"
+
+  # ═══ Section 37: 跨层能力重复检测 ═══
+  - id: model_registry_centralized
+    section: "§37"
+    section_name: "跨层能力重复检测"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: "class\\s+ModelRegistry|def\\s+get_model_registry|get_default_for_purpose"
+      paths: ["aiPlat-core/core/harness/"]
+      exclude: ["__pycache__", "tests/"]
+      grep_exclude: ["DEPRECATED|deprecated|infra_bridge|integration\\.py|model_router\\.py"]
+    message: "core must not maintain own model registry (use infra ModelManager)"
+
+  - id: capability_duplication_cross_layer
+    section: "§37"
+    section_name: "跨层能力重复检测"
+    level: warning
+    check:
+      type: grep_forbidden
+      pattern: "class\\s+\\w+(Model|LLM|Vector|Embedding|Database|Cache|Storage|Network|Compute)\\w*(?:Registry|Manager|Router)"
+      paths: ["aiPlat-core/core/harness/"]
+      exclude: ["__pycache__", "tests/", "integration.py", "model_registry.py", "model_router.py", "model_injection.py", "infra_bridge.py", "infrastructure/"]
+    message: "potential cross-layer capability duplication — infra may already provide this"
+
+  # ═══ Section 38: LLM API Bypass ═══
+  - id: llm_api_bypass
+    section: "§38"
+    section_name: "LLM API 调用治理"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: "openai\\.ChatCompletion|openai\\.chat\\.completions|openai\\.completions|anthropic\\.(?!types|_version)|litellm\\.completion|google\\.generativeai|cohere\\.Client"
+      paths: ["aiPlat-platform", "aiPlat-app"]
+      exclude: ["__pycache__", "tests/", "generated/"]
+      grep_exclude: ["# noqa: llm-approved"]
+    message: "platform/app directly calling LLM API — use CoreFacade.llm_complete() or sys_llm_generate"

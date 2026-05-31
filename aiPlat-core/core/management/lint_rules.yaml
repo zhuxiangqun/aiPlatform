@@ -1,0 +1,104 @@
+# Lint Rules — declarative config
+# Add new simple checks here (5 lines each), no code change needed.
+#
+# Supported check types:
+#   field_required     path must exist and be truthy
+#   field_enum         value must be in 'allowed' list
+#   field_pattern      value must match regex
+#   field_length_range length in [min, max]
+#   field_not_empty    list/dict/string is non-empty
+#
+# See skill_linter_base.py::YAMLRule for full engine docs.
+
+rules:
+  # ---- Metadata ----
+  - id: missing_name
+    level: error
+    category: metadata
+    check:
+      type: field_required
+      path: name
+    message: "缺少 name/skill_id"
+    fix:
+      fix_id: fix_missing_name
+      title: "补充 name"
+      priority: P0
+      risk_level: low
+      auto: false
+      requires_approval: false
+      touches: [SKILL.md.frontmatter.name]
+      ops: []
+      md: "### 补充 name\n- 原因：缺少 name 字段，无法识别和路由。\n"
+
+  - id: unknown_category
+    level: warning
+    category: metadata
+    check:
+      type: field_enum
+      path: category
+      allowed: [general, execution, retrieval, analysis, generation, transformation, reasoning, coding, search, tool, communication]
+    message: "category 不在推荐枚举内（不影响运行，但建议统一）"
+
+  - id: non_semver_version
+    level: warning
+    category: metadata
+    check:
+      type: field_pattern
+      path: version
+      pattern: "^\\d+\\.\\d+\\.\\d+$"
+    message: "version 不是标准 semver（建议 1.2.3）"
+
+  - id: weak_description
+    level: warning
+    category: metadata
+    check:
+      type: field_length_range
+      path: description
+      min: 8
+    message: "description 过短，可能影响路由命中与可解释性（建议 >= 8 字）"
+
+  - id: long_description
+    level: warning
+    category: metadata
+    check:
+      type: field_length_range
+      path: description
+      max: 280
+    message: "description 过长（建议 <= 280 字），避免 L1 噪声影响匹配"
+
+  # ---- Schema ----
+  - id: missing_input_schema
+    level: warning
+    category: schema
+    check:
+      type: field_not_empty
+      path: input_schema
+    message: "缺少 input_schema，会降低可测试性/可复用性"
+
+  - id: missing_output_schema
+    level: error
+    category: schema
+    check:
+      type: field_not_empty
+      path: output_schema
+    message: "缺少 output_schema，无法形成稳定的机器可读契约"
+
+  - id: missing_markdown
+    level: error
+    category: schema
+    check:
+      type: field_required
+      path: output_schema.markdown
+      when:
+        field: output_schema
+        not_empty: true
+    message: "output_schema 必须包含 markdown 字段（平台统一 JSON+Markdown 输出）"
+
+  # ---- Governance ----
+  - id: missing_triggers
+    level: warning
+    category: trigger
+    check:
+      type: field_not_empty
+      path: metadata.trigger_conditions
+    message: "缺少 trigger_conditions/trigger_keywords，可能降低自动路由命中率"

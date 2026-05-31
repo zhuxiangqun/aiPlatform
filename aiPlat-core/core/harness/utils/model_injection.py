@@ -17,17 +17,30 @@ from core.adapters.llm.base import create_adapter
 
 
 def get_default_model(purpose: str = "default") -> str:
-    """Centralized default model selection — single source of truth (§12).
+    """Centralized default model selection — delegates to infra ModelManager.
 
-    Resolution chain: purpose → dedicated env → generic env → SQLite store → hardcoded fallback.
+    Resolution chain: infra ModelManager.get_default_model() → env vars → fallback.
     All modules MUST use this function instead of reading AIPLAT_*_MODEL env vars directly.
     """
+    # Primary: infra ModelManager (unique source of truth)
+    try:
+        from infra.management.model.manager import ModelManager
+        mgr = ModelManager()
+        result = mgr.get_default_model(purpose)
+        if result:
+            return result
+    except Exception:
+        pass
+
+    # Fallback: direct env var reading (backward compat)
     if purpose in ("agent", "reasoning"):
         return os.getenv("AIPLAT_AGENT_MODEL") or os.getenv("AIPLAT_DEFAULT_AGENT_MODEL") or os.getenv("AIPLAT_DEFAULT_MODEL", "")
     if purpose == "document":
         return os.getenv("AIPLAT_DOC_LLM_MODEL") or os.getenv("AIPLAT_LLM_MODEL") or os.getenv("AIPLAT_DEFAULT_CHAT_MODEL") or os.getenv("AIPLAT_DEFAULT_MODEL", "")
     if purpose == "code_gen":
         return os.getenv("AIPLAT_CODE_GEN_MODEL") or os.getenv("AIPLAT_LLM_MODEL") or os.getenv("AIPLAT_DEFAULT_MODEL", "")
+    if purpose == "query_translation":
+        return os.getenv("AIPLAT_QUERY_MODEL") or os.getenv("AIPLAT_DEFAULT_CHAT_MODEL") or os.getenv("AIPLAT_LLM_MODEL") or os.getenv("AIPLAT_DEFAULT_MODEL", "")
     return os.getenv("AIPLAT_DEFAULT_CHAT_MODEL") or os.getenv("AIPLAT_LLM_MODEL") or os.getenv("AIPLAT_DEFAULT_MODEL", "")
 
 
@@ -279,6 +292,11 @@ PURPOSE_PROFILE: dict = {
         "prefer": ["chat"],
         "avoid": ["reasoning"],
     },
+    "query_translation": {
+        "prefer": ["chat"],
+        "avoid": ["reasoning"],
+        "prefer_local": True,  # Prefer local models (Ollama/LM Studio) — 0 cost
+    },
 }
 
 _DEFAULT_PROFILE = {"prefer": ["chat"], "avoid": []}
@@ -314,8 +332,14 @@ def _select_from_infra(purpose: str) -> Optional[str]:
             continue
 
         score = 0
-        if m.source.value == "config":
-            score += 100  # Remote API > local
+        if profile.get("prefer_local"):
+            # Prefer local models for low-stakes tasks (e.g., NL→graph translation)
+            if m.source.value in ("local", "external"):
+                score += 120
+            else:
+                score += 40  # Remote still acceptable as fallback
+        elif m.source.value == "config":
+            score += 100  # Remote API > local for production tasks
         if "reasoning" in caps:
             if profile["prefer"][0] == "reasoning":
                 score += 80  # Reasoning-required tasks: reasoning is a plus

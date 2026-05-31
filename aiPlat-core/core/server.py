@@ -287,6 +287,7 @@ async def lifespan(app: FastAPI):
     global _approval_manager
     global _execution_store
     global _trace_service
+    global _diag_task
     
     from core.apps.agents import create_agent_discovery
     from core.apps.skills import create_discovery
@@ -871,6 +872,23 @@ async def lifespan(app: FastAPI):
         ("core.apps.tools.skill_tools", "SkillLoadTool", {}),
         # P1-3: guarded script runner for skill scripts/
         ("core.apps.tools.skill_script_tools", "SkillRunScriptTool", {"timeout": 20000}),
+        # System Graph MCP tools — expose code/capability graph to AI agents
+        ("core.apps.tools.sysgraph_tools", "SysGraphContextTool", {}),
+        ("core.apps.tools.sysgraph_tools", "SysGraphSearchTool", {}),
+        ("core.apps.tools.sysgraph_tools", "SysGraphImpactTool", {}),
+        ("core.apps.tools.sysgraph_tools", "SysGraphCallersTool", {}),
+        ("core.apps.tools.sysgraph_tools", "SysGraphNodeTool", {}),
+        ("core.apps.tools.sysgraph_tools", "SysGraphAffectedTestsTool", {}),
+        ("core.apps.tools.sysgraph_tools", "SysGraphReviewTool", {}),
+        ("core.apps.tools.sysgraph_tools", "SysGraphDepsTool", {}),
+        ("core.apps.tools.sysgraph_tools", "SysGraphDiffTool", {}),
+        ("core.apps.tools.sysgraph_tools", "SysGraphRelatedTool", {}),
+        ("core.apps.tools.sysgraph_tools", "SysGraphStatsTool", {}),
+        ("core.apps.tools.sysgraph_tools", "SysGraphTestsTool", {}),
+        ("core.apps.tools.sysgraph_tools", "SysGraphHotspotsTool", {}),
+        ("core.apps.tools.sysgraph_tools", "SysGraphFindTool", {}),
+        ("core.apps.tools.sysgraph_tools", "SysGraphChurnTool", {}),
+        ("core.apps.tools.sysgraph_tools", "SysLspFixTool", {}),
     ]
     for module_path, cls_name, kwargs in _tool_modules:
         try:
@@ -1182,9 +1200,57 @@ async def lifespan(app: FastAPI):
     except Exception:
         pass
 
+    # Cache warming: pre-build knowledge graphs on startup to avoid cold-start latency
+    try:
+        import asyncio as _aw
+        async def _warm_graphs():
+            _aw.create_task(_warm_code_graph())
+            _aw.create_task(_warm_cap_graph())
+        def _warm_code_graph():
+            from core.harness.knowledge.code_graph import build_graph, default_roots, repo_root
+            r = repo_root()
+            roots = [(r / d).resolve() for d in default_roots()]
+            build_graph(r, roots)
+        def _warm_cap_graph():
+            from core.harness.knowledge.capability_graph import build_capability_graph
+            build_capability_graph()
+        # Run in thread pool to avoid blocking startup
+        import asyncio
+        asyncio.create_task(asyncio.to_thread(_warm_code_graph))
+        asyncio.create_task(asyncio.to_thread(_warm_cap_graph))
+    except Exception:
+        pass
+
+    # Auto-diagnostic scheduler: runs diagnostics periodically in background
+    # Controlled by AIPLAT_ENABLE_AUTO_DIAG (default: true) and AIPLAT_AUTO_DIAG_INTERVAL_SECONDS (default: 300)
+    global _diag_task
+    _diag_task = None
+    try:
+        enable_auto_diag = os.getenv("AIPLAT_ENABLE_AUTO_DIAG", "true").lower() in ("1", "true", "yes", "y")
+        diag_interval = float(os.getenv("AIPLAT_AUTO_DIAG_INTERVAL_SECONDS", "300") or "300")
+        if enable_auto_diag and diag_interval > 0:
+            async def _auto_diag_loop():
+                # Wait for first run (spread out from startup)
+                await asyncio.sleep(60)
+                while True:
+                    try:
+                        from core.api.routers.diagnostics import run_all_diagnostics
+                        await run_all_diagnostics()
+                    except asyncio.CancelledError:
+                        raise
+                    except Exception:
+                        pass
+                    await asyncio.sleep(diag_interval)
+            _diag_task = asyncio.create_task(_auto_diag_loop())
+    except Exception:
+        pass
+
+    from core.harness.observation.event_bus import EventBus
+    EventBus.start()
     yield
 
     # Shutdown background services
+    EventBus.stop()
     try:
         if _job_scheduler is not None:
             await _job_scheduler.stop()
@@ -1203,6 +1269,11 @@ async def lifespan(app: FastAPI):
     try:
         if _learning_task is not None:
             _learning_task.cancel()
+    except Exception:
+        pass
+    try:
+        if _diag_task is not None:
+            _diag_task.cancel()
     except Exception:
         pass
 
@@ -1241,6 +1312,9 @@ from core.api.routers.jobs import router as jobs_router  # noqa: E402
 from core.api.routers.diagnostics import router as diagnostics_router  # noqa: E402
 from core.api.routers.diagnostics_repo import router as diagnostics_repo_router  # noqa: E402
 from core.api.routers.prompt_templates import router as prompt_templates_router  # noqa: E402
+from core.api.routers.prompt_app import router as prompt_app_router  # noqa: E402
+from core.api.routers.prompt_eval import router as prompt_eval_router  # noqa: E402
+from core.api.routers.prompt_optimize import router as prompt_optimize_router  # noqa: E402
 from core.api.routers.personas import router as personas_router  # noqa: E402
 from core.api.routers.skill_evals import router as skill_evals_router  # noqa: E402
 from core.api.routers.agents import router as agents_router  # noqa: E402
@@ -1270,6 +1344,8 @@ from core.api.routers.entropy import router as entropy_router  # noqa: E402
 from core.api.routers.overview import router as overview_router  # noqa: E402
 from core.api.routers.wiki import router as wiki_router  # noqa: E402
 from core.api.routers.capability import router as capability_router  # noqa: E402
+from core.api.routers.knowledge_graph import router as knowledge_graph_router  # noqa: E402
+from core.api.routers.observation import router as observation_router  # noqa: E402
 from core.harness.utils.llm_env import get_llm_api_key, get_llm_base_url
 
 api_router.include_router(routing_observability_router)
@@ -1288,6 +1364,9 @@ api_router.include_router(jobs_router)
 api_router.include_router(diagnostics_router)
 api_router.include_router(diagnostics_repo_router)
 api_router.include_router(prompt_templates_router)
+api_router.include_router(prompt_app_router)
+api_router.include_router(prompt_eval_router)
+api_router.include_router(prompt_optimize_router)
 api_router.include_router(personas_router)
 api_router.include_router(skill_evals_router)
 api_router.include_router(agents_router)
@@ -1318,6 +1397,8 @@ api_router.include_router(entropy_router)
 api_router.include_router(overview_router)
 api_router.include_router(wiki_router)
 api_router.include_router(capability_router)
+api_router.include_router(knowledge_graph_router)
+api_router.include_router(observation_router)
 
 
 def _runtime_env() -> str:
