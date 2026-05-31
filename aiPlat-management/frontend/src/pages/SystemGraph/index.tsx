@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Brain, Code, Network, RefreshCw, Download, GitBranch, BookOpen, Layers, Maximize2, Minimize2 } from 'lucide-react';
+import { Brain, Code, Network, RefreshCw, Download, GitBranch, BookOpen, Layers, Maximize2, Minimize2, Compass } from 'lucide-react';
 import GraphCanvas from './GraphCanvas';
 import NodeDetailPanel from './NodeDetailPanel';
 import SearchBar from './SearchBar';
@@ -21,6 +21,9 @@ const SystemGraph: React.FC = () => {
   const [globalOpen, setGlobalOpen] = useState(false);
   const [globalQuery, setGlobalQuery] = useState('');
   const lastCenter = useRef('');
+  const [tourMode, setTourMode] = useState(false);
+  const [tourSteps, setTourSteps] = useState<{ file: string; layer: string; in_degree: number; out_degree: number; symbols: string[] }[]>([]);
+  const [tourIdx, setTourIdx] = useState(0);
 
   const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
 
@@ -78,6 +81,49 @@ const SystemGraph: React.FC = () => {
 
   useEffect(() => { setGraphData(null); if (tab !== 'code') fetchGraph(); }, [fetchGraph, tab]);
 
+  const inferLayer = (path: string): string => {
+    if (!path) return 'unknown';
+    if (path.includes('infra') || path.includes('model')) return 'infra';
+    if (path.includes('harness') || path.includes('syscall') || path.includes('engine')) return 'core';
+    if (path.includes('api/rest') || path.includes('platform')) return 'platform';
+    if (path.includes('frontend') || path.includes('App.') || path.includes('page')) return 'app';
+    return 'core';
+  };
+
+  // ── Guided Tour ──
+  const startTour = useCallback(async () => {
+    setTourMode(true);
+    setTourIdx(0);
+    try {
+      const res = await fetch('/api/core/diagnostics/code-intel/scan?depth=2&limit=200');
+      const data = await res.json();
+      const nodes = data?.nodes || data?.graph?.nodes || {};
+      const nodeList = Array.isArray(nodes) ? nodes : Object.values(nodes);
+      const sorted = nodeList
+        .filter((n: any) => n.in_degree !== undefined || n.out_degree !== undefined)
+        .sort((a: any, b: any) => (a.in_degree || 0) - (b.in_degree || 0))
+        .slice(0, 30)
+        .map((n: any) => ({
+          file: n.path || n.id || n.file || '',
+          layer: n.layer || inferLayer(n.path || n.file || ''),
+          in_degree: n.in_degree || 0,
+          out_degree: n.out_degree || 0,
+          symbols: ((n.symbols || []) as any[]).map((s: any) => {
+            if (Array.isArray(s)) return s[0];
+            if (typeof s === 'object' && s !== null) return s.name || '';
+            return String(s || '');
+          }).filter(Boolean).slice(0, 8),
+        }));
+      setTourSteps(sorted);
+    } catch {
+      setTourMode(false);
+    }
+  }, []);
+
+  const nextTour = () => { if (tourIdx < tourSteps.length - 1) setTourIdx(tourIdx + 1); };
+  const prevTour = () => { if (tourIdx > 0) setTourIdx(tourIdx - 1); };
+  const closeTour = () => { setTourMode(false); setTourSteps([]); };
+
   return (
     <div className={`flex flex-col bg-dark-bg ${fullscreen ? 'fixed inset-0 z-50' : 'h-screen'}`}>
       {/* Header */}
@@ -120,6 +166,18 @@ const SystemGraph: React.FC = () => {
               <Layers className="w-3 h-3" />架构全景
             </button>
           </div>
+          {/* Tour button */}
+          {tab === 'code' && (
+            <button
+              onClick={() => tourMode ? closeTour() : startTour()}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                tourMode ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400 hover:text-gray-300'
+              }`}
+            >
+              <Compass className="w-3 h-3" />
+              {tourMode ? `导览中 (${tourIdx + 1}/${tourSteps.length})` : '导览'}
+            </button>
+          )}
           {/* Code tab: subgraph info bar */}
           {tab === 'code' && graphData && (
             <div className="flex items-center gap-2 text-[10px] text-gray-500">
@@ -341,6 +399,94 @@ const SystemGraph: React.FC = () => {
           )}
           <button onClick={() => setDiffInput('')} className="text-gray-500 text-[10px]">×</button>
         </div>
+
+      {/* Guided Tour Panel */}
+      {tourMode && tourSteps.length > 0 && (
+        <div style={{
+          position: 'absolute', bottom: 12, left: 12, zIndex: 30,
+          width: 320, maxHeight: 360, overflowY: 'auto',
+          background: '#1f2937', border: '1px solid #374151', borderRadius: 10,
+          padding: 12, boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#f59e0b' }}>
+              🧭 架构导览
+            </span>
+            <div style={{ display: 'flex', gap: 4 }}>
+              <button onClick={prevTour} disabled={tourIdx === 0}
+                style={{ fontSize: 10, background: '#374151', border: 'none', borderRadius: 4,
+                  color: tourIdx === 0 ? '#4b5563' : '#e5e7eb', cursor: tourIdx === 0 ? 'default' : 'pointer', padding: '2px 8px' }}>
+                ◀ 上一个
+              </button>
+              <button onClick={nextTour} disabled={tourIdx >= tourSteps.length - 1}
+                style={{ fontSize: 10, background: '#374151', border: 'none', borderRadius: 4,
+                  color: tourIdx >= tourSteps.length - 1 ? '#4b5563' : '#e5e7eb', cursor: tourIdx >= tourSteps.length - 1 ? 'default' : 'pointer', padding: '2px 8px' }}>
+                下一个 ▶
+              </button>
+              <button onClick={closeTour}
+                style={{ fontSize: 10, background: '#374151', border: 'none', borderRadius: 4,
+                  color: '#9ca3af', cursor: 'pointer', padding: '2px 6px' }}>
+                ✕
+              </button>
+            </div>
+          </div>
+          <div style={{ fontSize: 10, color: '#6b7280', marginBottom: 8 }}>
+            按依赖深度排序 — 从基础层向上探索 {tourIdx + 1} / {tourSteps.length}
+          </div>
+          {/* Current step */}
+          {(() => {
+            const step = tourSteps[tourIdx];
+            const colors: Record<string, string> = { infra: '#10b981', core: '#3b82f6', platform: '#8b5cf6', app: '#f59e0b', unknown: '#6b7280' };
+            const labels: Record<string, string> = { infra: 'Infra', core: 'Core', platform: 'Platform', app: 'App', unknown: 'Unknown' };
+            if (!step) return null;
+            return (
+              <div>
+                <div style={{
+                  background: '#111827', borderRadius: 6, padding: '8px 10px', marginBottom: 6,
+                  borderLeft: `3px solid ${colors[step.layer] || '#6b7280'}`,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    <span style={{
+                      fontSize: 9, padding: '1px 5px', borderRadius: 3,
+                      background: `${colors[step.layer]}20`, color: colors[step.layer],
+                    }}>
+                      {labels[step.layer] || step.layer}
+                    </span>
+                    <span style={{ fontSize: 9, color: '#6b7280' }}>
+                      ⬇{step.in_degree} ⬆{step.out_degree}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 11, fontFamily: 'monospace', color: '#e5e7eb', wordBreak: 'break-all' }}>
+                    {step.file ? step.file.replace(/^.*\/aiPlat-(core|platform|app|infra|management)\//, '$1/').replace(/^core\//, '') : '(unknown)'}
+                  </div>
+                  {step.symbols.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: 4 }}>
+                      {step.symbols.map((s, i) => (
+                        <span key={i} style={{ fontSize: 9, color: '#9ca3af', background: '#374151', borderRadius: 3, padding: '0 4px' }}>
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {/* Progress dots */}
+                <div style={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+                  {tourSteps.slice(Math.max(0, tourIdx - 2), Math.min(tourSteps.length, tourIdx + 5)).map((_, i) => {
+                    const actualIdx = Math.max(0, tourIdx - 2) + i;
+                    return (
+                      <div key={i} style={{
+                        width: 6, height: 6, borderRadius: '50%',
+                        background: actualIdx === tourIdx ? '#f59e0b' : actualIdx < tourIdx ? '#22c55e' : '#374151',
+                        cursor: 'pointer',
+                      }} onClick={() => setTourIdx(actualIdx)} />
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
     </div>
   );
 };
