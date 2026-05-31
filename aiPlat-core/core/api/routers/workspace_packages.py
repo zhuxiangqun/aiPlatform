@@ -106,19 +106,25 @@ async def export_workspace_package(data: Dict[str, Any]):
                 continue
 
             src = workspace_root / f"{kind}s" / rid
+            # For hooks, also try .py file directly
+            if kind == "hook" and not src.exists():
+                src = workspace_root / "hooks" / f"{rid}.py"
             if not src.exists():
                 continue
 
             dst = bundle_dir / f"{kind}s" / rid
-            dst.mkdir(parents=True, exist_ok=True)
-
-            for item in src.iterdir():
-                dest = dst / item.name
-                if item.is_dir():
-                    if not dest.exists():
-                        shutil.copytree(item, dest)
-                else:
-                    shutil.copy2(item, dest)
+            if src.is_file():
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                dst.write_bytes(src.read_bytes())
+            else:
+                dst.mkdir(parents=True, exist_ok=True)
+                for item in src.iterdir():
+                    dest = dst / item.name
+                    if item.is_dir():
+                        if not dest.exists():
+                            shutil.copytree(item, dest)
+                    else:
+                        shutil.copy2(item, dest)
             copied += 1
 
         if copied == 0:

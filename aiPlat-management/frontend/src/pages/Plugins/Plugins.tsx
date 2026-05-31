@@ -42,15 +42,17 @@ const Plugins: React.FC = () => {
   const fetchExportAssets = useCallback(async () => {
     const assets: { kind: string; id: string; label: string }[] = [];
     try {
-      // Load workspace agents, skills, mcps
-      const [agentsRes, skillsRes, mcpsRes] = await Promise.all([
+      // Load workspace agents, skills, mcps, hooks
+      const [agentsRes, skillsRes, mcpsRes, hooksRes] = await Promise.all([
         fetch('/api/core/workspace/agents').then(r => r.json()).catch(() => ({ items: [] })),
         fetch('/api/core/workspace/skills').then(r => r.json()).catch(() => ({ items: [] })),
         fetch('/api/core/workspace/mcp/servers').then(r => r.json()).catch(() => ({ servers: [] })),
+        fetch('/api/core/workspace/hooks').then(r => r.json()).catch(() => ({ items: [] })),
       ]);
       (agentsRes.items || []).forEach((a: any) => assets.push({ kind: 'agent', id: a.name || a.id, label: a.display_name || a.name || a.id }));
       (skillsRes.items || []).forEach((s: any) => assets.push({ kind: 'skill', id: s.name || s.id, label: s.display_name || s.name || s.id }));
       (mcpsRes.servers || []).forEach((m: any) => assets.push({ kind: 'mcp', id: m.name, label: m.name }));
+      (hooksRes.items || []).forEach((h: any) => assets.push({ kind: 'hook', id: h.name || h.id, label: h.name || h.id }));
     } catch {}
     setExportAssets(assets);
   }, []);
