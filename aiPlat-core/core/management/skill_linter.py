@@ -1,20 +1,24 @@
 """
-Skill Linter (system-level).
+Skill Linter (system-level) — facade.
 
-Goal: keep Skills scalable and governable by enforcing a stable contract:
-- L1: discoverable metadata (name/description/category/version/permissions/trigger)
-- L2: SOP quality (SKILL.md body)
-- I/O contract: input_schema/output_schema (JSON + Markdown)
-- Governance: permissions -> risk_level, and enforcement hints (block enable for high-risk)
+Architecture:
+  - lint_skill()  → delegates to RuleRegistry (skill_linter_base.py)
+  - Simple checks → YAML config (lint_rules.yaml) → YAMLRule
+  - Complex checks → Python classes (lint_rules/*.py) → LintRule subclass
 
-This module is intentionally lightweight and pure-ish: no DB writes, best-effort file reads.
+Adding a new rule:
+  - Simple: add 5 lines to lint_rules.yaml, zero code change
+  - Complex: create a class in lint_rules/, auto-discovered
+
+This module retains helper functions (risk_level_from_permissions, lint_summary,
+propose_skill_fixes) for backward compatibility with existing API callers.
 """
 
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass, asdict, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -45,9 +49,6 @@ class LintReport:
             "blocked": self.blocked,
         }
         return d
-
-
-_SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
 
 
 def _as_list(x: Any) -> List[str]:
@@ -157,251 +158,12 @@ def lint_skill(skill: Any) -> Dict[str, Any]:
     Lint a SkillInfo-like object (from SkillManager) or a dict with similar keys.
     Returns dict(report).
 
-    Enforcement guideline:
-      - errors always reported
-      - blocked = (risk_level == "high" and error_count > 0)
+    Delegates to extensible RuleRegistry. Add new rules via:
+      - lint_rules.yaml (declarative, 5 lines each)
+      - lint_rules/*.py (complex logic, auto-discovered)
     """
-    sid = ""
-    try:
-        sid = str(getattr(skill, "id", "") or (skill.get("id") if isinstance(skill, dict) else "")).strip()
-    except Exception:
-        sid = ""
-    sid = sid or "<unknown>"
-
-    # Extract key fields
-    name = str(getattr(skill, "name", "") or (skill.get("name") if isinstance(skill, dict) else "") or "").strip()
-    desc = str(getattr(skill, "description", "") or (skill.get("description") if isinstance(skill, dict) else "") or "").strip()
-    category = str(getattr(skill, "type", "") or (skill.get("category") if isinstance(skill, dict) else "") or (skill.get("type") if isinstance(skill, dict) else "") or "").strip()
-    version = str(getattr(skill, "version", "") or (skill.get("version") if isinstance(skill, dict) else "") or "").strip()
-    input_schema = getattr(skill, "input_schema", None) if not isinstance(skill, dict) else skill.get("input_schema")
-    output_schema = getattr(skill, "output_schema", None) if not isinstance(skill, dict) else skill.get("output_schema")
-    meta = getattr(skill, "metadata", None) if not isinstance(skill, dict) else skill.get("metadata")
-    meta = meta if isinstance(meta, dict) else {}
-
-    # executable posture
-    executable = bool(meta.get("executable") is True) or str(meta.get("skill_kind") or "").lower() == "executable"
-    perms = _as_list(meta.get("permissions") or meta.get("permission"))
-    risk = risk_level_from_permissions(perms)
-
-    errors: List[LintIssue] = []
-    warnings: List[LintIssue] = []
-
-    # ---- L1 metadata checks ----
-    if not name:
-        errors.append(LintIssue(level="error", code="missing_name", message="缺少 name/skill_id", location="frontmatter.name"))
-    if not desc or len(desc) < 8:
-        warnings.append(LintIssue(level="warning", code="weak_description", message="description 过短，可能影响路由命中与可解释性（建议 >= 8 字）", location="frontmatter.description"))
-    if desc and len(desc) > 280:
-        warnings.append(LintIssue(level="warning", code="long_description", message="description 过长（建议 <= 280 字），避免 L1 噪声影响匹配", location="frontmatter.description"))
-    if category and category not in {"general", "execution", "retrieval", "analysis", "generation", "transformation", "reasoning", "coding", "search", "tool", "communication"}:
-        warnings.append(LintIssue(level="warning", code="unknown_category", message=f"category='{category}' 不在推荐枚举内（不影响运行，但建议统一）", location="frontmatter.category"))
-    if version and not _SEMVER_RE.match(version.lstrip("v")):
-        warnings.append(LintIssue(level="warning", code="non_semver_version", message=f"version='{version}' 不是标准 semver（建议 1.2.3）", location="frontmatter.version"))
-
-    # trigger_conditions / trigger_keywords
-    tc = meta.get("trigger_conditions") or meta.get("trigger_keywords") or []
-    if not _as_list(tc):
-        warnings.append(LintIssue(level="warning", code="missing_triggers", message="缺少 trigger_conditions/trigger_keywords，可能降低自动路由命中率", location="frontmatter.trigger_conditions"))
-    else:
-        tc_list = _as_list(tc)
-        if len(tc_list) < 6:
-            warnings.append(
-                LintIssue(
-                    level="warning",
-                    code="triggers_too_few",
-                    message="trigger_conditions 建议 6-12 条（覆盖口语/同义表达/约束词），以提升命中率与稳定性",
-                    location="frontmatter.trigger_conditions",
-                )
-            )
-
-    # keywords / negative_triggers / required_questions (Phase-1, best-effort)
-    negative_triggers = _as_list(meta.get("negative_triggers"))
-    required_questions = _as_list(meta.get("required_questions"))
-    keywords = meta.get("keywords") if isinstance(meta.get("keywords"), dict) else {}
-    kw_objects = _as_list((keywords or {}).get("objects"))
-    kw_actions = _as_list((keywords or {}).get("actions"))
-    kw_constraints = _as_list((keywords or {}).get("constraints"))
-
-    name_l = name.lower()
-    generic_name_markers = ("tool", "assistant", "helper", "my-", "skill-")
-    if name_l and any(m in name_l for m in generic_name_markers):
-        warnings.append(
-            LintIssue(
-                level="warning",
-                code="generic_name",
-                message="Skill 名称过泛，容易与其它 Skill 冲突导致误触发/不触发；建议使用“动词+名词(+限定)”",
-                location="frontmatter.name",
-            )
-        )
-
-    if not kw_objects or not kw_actions:
-        warnings.append(
-            LintIssue(
-                level="warning",
-                code="missing_keywords",
-                message="建议填写 keywords.objects/actions/constraints（对象词/动作词/约束词），用于提升召回与区分度",
-                location="frontmatter.keywords",
-            )
-        )
-
-    # generic description heuristic: must contain at least one action+object signal
-    if desc:
-        builtin_object_markers = ("代码", "sql", "日志", "合同", "发票", "订单", "pdf", "csv", "表格", "权限", "schema", "配置", "报错", "接口", "数据库")
-        builtin_action_markers = ("审查", "排查", "优化", "生成", "转换", "对账", "导出", "review", "analyze", "generate", "fix")
-        has_obj = any(k.lower() in desc.lower() for k in kw_objects) if kw_objects else any(m in desc.lower() for m in builtin_object_markers)
-        has_act = any(k.lower() in desc.lower() for k in kw_actions) if kw_actions else any(m in desc.lower() for m in builtin_action_markers)
-        if not has_obj or not has_act:
-            warnings.append(
-                LintIssue(
-                    level="warning",
-                    code="generic_description",
-                    message="description 过泛或缺少对象词/动作词；建议补充“触发场景+动作+对象+输出+不适用”并补齐关键词",
-                    location="frontmatter.description",
-                )
-            )
-
-    if (not negative_triggers) and desc and ("不" not in desc) and _as_list(tc):
-        warnings.append(
-            LintIssue(
-                level="warning",
-                code="missing_negative_triggers",
-                message="建议补充 negative_triggers 或在 description 中写明“不适用于…”，以减少误触发",
-                location="frontmatter.negative_triggers",
-            )
-        )
-
-    # ---- Routing observability hints (closed-loop governance) ----
-    obs = meta.get("_observability") if isinstance(meta.get("_observability"), dict) else None
-    try:
-        if obs:
-            wrong_top1 = int(obs.get("selected_not_top1") or 0)
-            wrong_cand = int(obs.get("selected_not_in_candidates") or 0)
-            avg_rank = obs.get("selected_rank_avg")
-            rank_ge3 = int(obs.get("selected_rank_ge3") or 0)
-            sel = int(obs.get("selected") or 0)
-            # Gate thresholds: avoid noisy small samples
-            if sel >= 10 and (wrong_top1 >= 3 or wrong_cand >= 1 or rank_ge3 >= 3 or (isinstance(avg_rank, (int, float)) and float(avg_rank) >= 2.0)):
-                warnings.append(
-                    LintIssue(
-                        level="warning",
-                        code="routing_needs_disambiguation",
-                        message=f"路由质量提示：selected={sel}, wrong_top1={wrong_top1}, wrong_cand={wrong_cand}, avg_rank={avg_rank}, rank≥3={rank_ge3}。建议补充 constraints/negative_triggers 提高区分度。",
-                        location="observability.routing_funnel",
-                    )
-                )
-    except Exception:
-        pass
-
-    # ---- Conflict pair hints (routing conflicts) ----
-    try:
-        confs = meta.get("_conflicts") if isinstance(meta.get("_conflicts"), list) else []
-        if confs:
-            top = confs[0] if isinstance(confs[0], dict) else None
-            j = float((top or {}).get("jaccard") or 0.0) if top else 0.0
-            ov = (top or {}).get("overlap_tokens") if isinstance((top or {}).get("overlap_tokens"), list) else []
-            if j >= 0.35 and len(ov) >= 3:
-                a = (top.get("skill_a") or {}) if isinstance(top.get("skill_a"), dict) else {}
-                b = (top.get("skill_b") or {}) if isinstance(top.get("skill_b"), dict) else {}
-                other = b if str(a.get("skill_id") or "") == sid else a
-                warnings.append(
-                    LintIssue(
-                        level="warning",
-                        code="conflict_pair_high_overlap",
-                        message=f"路由冲突：与 {other.get('name') or other.get('skill_id')} 的 token 重合偏高（jaccard={j:.2f}）。建议做冲突对定向消歧（negative_triggers/constraints/减少泛化 triggers）。",
-                        location="observability.lint_conflicts",
-                    )
-                )
-    except Exception:
-        pass
-
-    # ---- Governance checks ----
-    if executable and not perms:
-        errors.append(LintIssue(level="error", code="missing_permissions", message="executable skill 必须声明 permissions（至少 llm:generate）", location="frontmatter.permissions"))
-    if risk == "high":
-        constraint_markers = ("批量", "删除", "覆盖", "不可逆", "生产", "回滚", "审批", "权限", "stable", "canary")
-        tc_text = " ".join(_as_list(tc))
-        constraint_hit = any(k in tc_text or k in desc for k in kw_constraints) if kw_constraints else False
-        constraint_hit = constraint_hit or any(m in tc_text or m in desc for m in constraint_markers)
-        if not constraint_hit:
-            warnings.append(
-                LintIssue(
-                    level="warning",
-                    code="high_risk_missing_constraints",
-                    message="高风险权限 Skill 建议在 trigger_conditions/description 中加入约束词（批量/删除/生产/不可逆/回滚等）以提升稳定召回并降低误触发",
-                    location="frontmatter.trigger_conditions",
-                )
-            )
-        if executable and not required_questions:
-            warnings.append(
-                LintIssue(
-                    level="warning",
-                    code="missing_required_questions",
-                    message="高风险可执行 Skill 建议填写 required_questions（缺参追问清单），否则模型容易不敢触发或触发后不会用",
-                    location="frontmatter.required_questions",
-                )
-            )
-
-    # ---- Schema checks ----
-    if not isinstance(input_schema, dict) or not input_schema:
-        warnings.append(LintIssue(level="warning", code="missing_input_schema", message="缺少 input_schema，会降低可测试性/可复用性", location="frontmatter.input_schema"))
-
-    if not isinstance(output_schema, dict) or not output_schema:
-        errors.append(LintIssue(level="error", code="missing_output_schema", message="缺少 output_schema，无法形成稳定的机器可读契约", location="frontmatter.output_schema"))
-    else:
-        if "markdown" not in output_schema:
-            errors.append(LintIssue(level="error", code="missing_markdown", message="output_schema 必须包含 markdown 字段（平台统一 JSON+Markdown 输出）", location="frontmatter.output_schema.markdown"))
-        else:
-            md = output_schema.get("markdown")
-            if not isinstance(md, dict):
-                errors.append(LintIssue(level="error", code="invalid_markdown_schema", message="output_schema.markdown 必须是对象 schema", location="frontmatter.output_schema.markdown"))
-            else:
-                t = str(md.get("type") or "").strip().lower()
-                req = md.get("required")
-                if t and t != "string":
-                    errors.append(LintIssue(level="error", code="markdown_type", message="output_schema.markdown.type 必须为 string", location="frontmatter.output_schema.markdown.type"))
-                if req is not True:
-                    warnings.append(LintIssue(level="warning", code="markdown_required", message="建议 output_schema.markdown.required=true（平台统一要求）", location="frontmatter.output_schema.markdown.required"))
-
-        # Coding/Executable contract: change plan + verification + rollback
-        try:
-            tags = meta.get("tags") or []
-            tags = [str(t).strip().lower() for t in tags] if isinstance(tags, list) else []
-            is_coding = str(category or "").strip().lower() == "coding" or ("coding" in tags) or ("code" in tags)
-            if is_coding or executable:
-                required_keys = ["change_plan", "changed_files", "unrelated_changes", "acceptance_criteria", "rollback_plan"]
-                missing = [k for k in required_keys if k not in output_schema]
-                if missing:
-                    warnings.append(
-                        LintIssue(
-                            level="warning",
-                            code="missing_change_contract",
-                            message="建议为 coding/executable Skill 补齐输出契约字段（用于精准修改/验收/回滚）："
-                            + ",".join(missing),
-                            location="frontmatter.output_schema",
-                        )
-                    )
-        except Exception:
-            pass
-
-    # ---- SOP checks (L2) ----
-    sop = _read_skill_md_body(skill)
-    if sop:
-        # Minimal section heuristics
-        has_goal = ("## 目标" in sop) or ("# 目标" in sop) or ("目标：" in sop)
-        has_flow = ("## SOP" in sop) or ("工作流程" in sop) or ("步骤" in sop)
-        has_check = ("Checklist" in sop) or ("质量要求" in sop) or ("- [ ]" in sop)
-        if not has_goal:
-            warnings.append(LintIssue(level="warning", code="sop_missing_goal", message="SOP 缺少“目标”章节/说明（建议补齐）", location="SKILL.md.body"))
-        if not has_flow:
-            warnings.append(LintIssue(level="warning", code="sop_missing_flow", message="SOP 缺少“流程/步骤”章节（建议补齐）", location="SKILL.md.body"))
-        if not has_check:
-            warnings.append(LintIssue(level="warning", code="sop_missing_checklist", message="SOP 缺少 Checklist/质量要求（建议补齐以便回归测试）", location="SKILL.md.body"))
-    else:
-        warnings.append(LintIssue(level="warning", code="missing_sop_body", message="无法读取 SKILL.md 正文（SOP），建议检查 filesystem.skill_md 路径", location="SKILL.md"))
-
-    blocked = bool(risk == "high" and len(errors) > 0)
-    rep = LintReport(skill_id=sid, risk_level=risk, blocked=blocked, errors=errors, warnings=warnings)
-    return rep.to_dict()
+    from core.management.skill_linter_base import get_registry
+    return get_registry().run_all(skill).to_dict()
 
 
 def lint_summary(report: Dict[str, Any]) -> Dict[str, Any]:

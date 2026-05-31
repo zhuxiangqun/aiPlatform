@@ -15,7 +15,7 @@ from urllib.parse import urljoin
 import aiohttp
 
 from .schemas import ModelInfo, ModelType, ModelSource, ModelStatus, ModelConfig, ModelStats
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 async def _scan_openai_compatible(endpoint: str, provider_label: str, source: ModelSource) -> List[ModelInfo]:
@@ -40,7 +40,7 @@ async def _scan_openai_compatible(endpoint: str, provider_label: str, source: Mo
                             capabilities=["chat"],
                             status=ModelStatus.AVAILABLE,
                             config=ModelConfig(base_url=endpoint),
-                            stats=ModelStats(), created_at=datetime.now(), updated_at=datetime.now(),
+                            stats=ModelStats(), created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc),
                         ))
     except Exception:
         pass
@@ -73,7 +73,7 @@ async def _scan_ollama(endpoint: str) -> List[ModelInfo]:
                             capabilities=caps,
                             status=ModelStatus.AVAILABLE,
                             config=ModelConfig(base_url=endpoint),
-                            stats=ModelStats(), created_at=datetime.now(), updated_at=datetime.now(),
+                            stats=ModelStats(), created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc),
                         ))
     except Exception:
         pass

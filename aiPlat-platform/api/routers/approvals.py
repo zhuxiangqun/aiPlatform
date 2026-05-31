@@ -15,7 +15,7 @@ from auth.deps import require_auth
 from core.api.deps import actor_from_http, rbac_guard
 from core.api.utils.governance import change_links, gate_error_envelope, ui_url
 from core.api.utils.run_contract import wrap_execution_result_as_run_summary
-from core.api.core_facade import get_kernel_runtime
+from core.api.facades.runtime_facade import get_kernel_runtime
 
 
 router = APIRouter(prefix="/platform/approvals", tags=["approvals"])
@@ -240,7 +240,7 @@ async def approve_request(request_id: str, request: dict, http_request: Request,
     try:
         r0 = await mgr.get_request_async(str(request_id)) if hasattr(mgr, "get_request_async") else mgr.get_request(str(request_id))
         if r0 and getattr(r0, "expires_at", None) and getattr(r0, "status", None):
-            from datetime import datetime
+            from datetime import datetime, timezone
             from core.api.core_facade import RequestStatus
 
             expired = False
@@ -248,7 +248,7 @@ async def approve_request(request_id: str, request: dict, http_request: Request,
                 expired = bool(r0.is_expired())
             except Exception:
                 expired = False
-            if r0.status in (RequestStatus.EXPIRED,) or (r0.status == RequestStatus.PENDING and expired and datetime.utcnow() > r0.expires_at):
+            if r0.status in (RequestStatus.EXPIRED,) or (r0.status == RequestStatus.PENDING and expired and datetime.now(timezone.utc) > r0.expires_at):
                 raise HTTPException(
                     status_code=409,
                     detail=gate_error_envelope(
@@ -423,8 +423,8 @@ async def replay_approval(request_id: str, request: dict, http_request: Request,
         }
         payload = {"input": tool_args, "context": ctx}
 
-        from core.api.core_facade import get_harness
-        from core.api.core_facade import ExecutionRequest
+        from core.api.facades.runtime_facade import get_harness
+        from core.api.facades.runtime_facade import ExecutionRequest
         from core.utils.ids import new_prefixed_id
 
         exec_req = ExecutionRequest(
@@ -456,8 +456,8 @@ async def replay_approval(request_id: str, request: dict, http_request: Request,
         }
         payload = {"input": skill_args, "context": ctx}
 
-        from core.api.core_facade import get_harness
-        from core.api.core_facade import ExecutionRequest
+        from core.api.facades.runtime_facade import get_harness
+        from core.api.facades.runtime_facade import ExecutionRequest
         from core.utils.ids import new_prefixed_id
 
         exec_req = ExecutionRequest(

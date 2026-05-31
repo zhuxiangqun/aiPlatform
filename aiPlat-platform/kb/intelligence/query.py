@@ -4,7 +4,8 @@ import re
 from typing import Any, Dict, List, Optional, Tuple
 
 from . import video_retrieval as _video_retrieval
-from core.api.core_facade import kb_extract_keywords, kb_llm_chat_complete as chat_complete, kb_llm_enabled as llm_enabled, kb_get_tenant_storage as get_tenant_storage
+from core.api.facades.kb_facade import kb_llm_chat_complete as chat_complete, kb_llm_enabled as llm_enabled
+from core.api.facades.kb_facade import kb_extract_keywords, kb_get_tenant_storage as get_tenant_storage
 
 
 def _get_keywords(text: str) -> List[str]:
@@ -89,7 +90,7 @@ async def query_elements(
         except Exception:
             picked = []
 
-    from core.api.core_facade import kb_retrieve
+    from core.api.facades.kb_facade import kb_retrieve
     import json as _json
 
     picked: List[Dict[str, Any]] = []
@@ -193,9 +194,9 @@ async def query_elements(
                 ctx_lines.append(
                     f"[{i}] doc={it.get('doc_id')} page={it.get('page_idx')} snippet={it.get('snippet')}"
                 )
-            system_prompt = (
-                "你是文档问答助手。请仅基于给定片段回答，不要编造。"
-                "若信息不足，请明确说信息不足。输出纯文本答案。"
+            from core.harness.utils.prompt_loader import _sync_resolve
+            system_prompt = _sync_resolve("kb-doc-qa",
+                passages="\n".join(ctx_lines), question=question,
             )
             user_prompt = (
                 f"问题：{question}\n\n"

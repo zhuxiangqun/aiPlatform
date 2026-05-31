@@ -76,6 +76,9 @@ class TestHardcodedSystemPrompts:
 
         hardcoded_identities = []
         for i, line in enumerate(lines):
+            # Allow _sync_resolve / _async_prompt_resolve calls (centrally managed templates)
+            if "_sync_resolve" in line or "_async_prompt_resolve" in line:
+                continue
             if '"system"' in line and (
                 "你是" in line
                 or "浏览器自动化" in line
@@ -104,7 +107,7 @@ class TestExecutePathUniqueness:
         result = subprocess.run(
             [
                 "grep", "-rn",
-                "agents.*execute\|execute.*agent.*{agent_id}",
+                r"agents.*execute\|execute.*agent.*{agent_id}",
                 "aiPlat-core/core/api/routers/",
                 "--include=*.py",
             ],

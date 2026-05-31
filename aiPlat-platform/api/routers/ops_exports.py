@@ -13,7 +13,7 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 from core.api.deps import actor_from_http, rbac_guard
-from core.api.core_facade import KernelRuntime, get_kernel_runtime
+from core.api.facades.runtime_facade import KernelRuntime, get_kernel_runtime
 
 router = APIRouter(prefix="/platform/ops", tags=["ops"])
 

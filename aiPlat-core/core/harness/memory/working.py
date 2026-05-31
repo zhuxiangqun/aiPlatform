@@ -7,7 +7,7 @@ Short-term memory for current task context.
 from collections import deque
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 @dataclass
@@ -15,7 +15,7 @@ class Message:
     """A message in the memory"""
     role: str  # system, user, assistant, tool
     content: str
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 

@@ -36,6 +36,7 @@ def _has_transitional_marker(fp: Path) -> bool:
     markers = [
         r'DEPRECATED:.*migrate\s+to\s+',
         r'# NOTE:.*should move to.*layer',
+        r'# NOTE:.*minimal.*bootstrap.*allowed',
     ]
     for m in markers:
         if re.search(m, text, re.IGNORECASE):

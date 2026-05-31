@@ -7,7 +7,7 @@ In standalone mode, monitors real network ports.
 
 from typing import Dict, Any, List, Optional
 from ..base import ManagementBase, Status, HealthStatus, Metrics, DiagnosisResult
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 import time
 
@@ -137,7 +137,7 @@ class NetworkManager(ManagementBase):
                     backend_service=svc["service"],
                     backend_port=port,
                     status="Active",
-                    created_at=datetime.now()
+                    created_at=datetime.now(timezone.utc)
                 )
         
         self._policies = {
@@ -348,7 +348,7 @@ class NetworkManager(ManagementBase):
             backend_service=config.get("backend_service", ""),
             backend_port=config.get("backend_port", 80),
             status="Pending",
-            created_at=datetime.now()
+            created_at=datetime.now(timezone.utc)
         )
         
         self._ingresses[key] = ing

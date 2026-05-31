@@ -6,7 +6,7 @@ Tests the REST API endpoints for infrastructure management.
 
 import pytest
 from fastapi.testclient import TestClient
-from datetime import datetime
+from datetime import datetime, timezone
 import sys
 import os
 
@@ -34,7 +34,7 @@ class MockManager(ManagementBase):
             status=Status.HEALTHY if self._healthy else Status.UNHEALTHY,
             message="Mock manager is healthy",
             details={"mock": True},
-            timestamp=datetime.now()
+            timestamp=datetime.now(timezone.utc)
         )
     
     async def get_metrics(self) -> List[Metrics]:

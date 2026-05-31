@@ -6,11 +6,19 @@ export interface ChatMessage {
 }
 
 export const chatApi = {
-  createSession: async (agentId: string, systemPrompt: string, initialContext?: Record<string, unknown>) => {
+  createSession: async (opts: {
+    agentId?: string;
+    systemPrompt?: string;
+    templateId?: string;
+    variables?: Record<string, string>;
+    initialContext?: Record<string, unknown>;
+  }) => {
     return apiClient.post<{ session_id: string }>('/platform/chat/sessions', {
-      agent_id: agentId,
-      system_prompt: systemPrompt,
-      initial_context: initialContext || {},
+      agent_id: opts.agentId || '',
+      system_prompt: opts.systemPrompt || '',
+      template_id: opts.templateId || '',
+      variables: opts.variables || {},
+      initial_context: opts.initialContext || {},
     });
   },
 
@@ -19,5 +27,21 @@ export const chatApi = {
       `/platform/chat/sessions/${sessionId}/chat`,
       { message }
     );
+  },
+};
+
+export const promptsApi = {
+  run: async (opts: {
+    templateId?: string;
+    instanceId?: string;
+    variables: Record<string, string>;
+    model?: string;
+  }) => {
+    return apiClient.post<{ output: string; model: string }>('/platform/prompts/run', {
+      template_id: opts.templateId || '',
+      instance_id: opts.instanceId || '',
+      variables: opts.variables,
+      model: opts.model || 'deepseek-chat',
+    });
   },
 };

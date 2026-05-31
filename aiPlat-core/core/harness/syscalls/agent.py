@@ -31,8 +31,7 @@ async def sys_agent_call(
         }
     """
     try:
-        from core.apps.agents.subagent.coordinator import get_subagent_coordinator
-
+        from core.harness.integration import get_subagent_coordinator
         coordinator = get_subagent_coordinator()
         result = await coordinator.execute_single(
             subagent_name=subagent_name,

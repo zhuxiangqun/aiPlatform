@@ -11,7 +11,7 @@ Provides:
 
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 import uuid
 import time
@@ -58,7 +58,7 @@ class Span:
     trace_id: str
     name: str
     parent_span_id: Optional[str] = None
-    start_time: datetime = field(default_factory=datetime.utcnow)
+    start_time: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     end_time: Optional[datetime] = None
     duration_ms: Optional[float] = None
     status: SpanStatus = SpanStatus.STARTED
@@ -73,7 +73,7 @@ class Span:
         """Add an event to this span."""
         self.events.append({
             "name": name,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "attributes": attributes or {}
         })
     
@@ -83,7 +83,7 @@ class Span:
     
     def end(self, status: SpanStatus = SpanStatus.SUCCESS):
         """End this span."""
-        self.end_time = datetime.utcnow()
+        self.end_time = datetime.now(timezone.utc)
         self.duration_ms = (self.end_time - self.start_time).total_seconds() * 1000
         self.status = status
 
@@ -107,7 +107,7 @@ class Trace:
     trace_id: str
     name: str
     root_span_id: Optional[str] = None
-    start_time: datetime = field(default_factory=datetime.utcnow)
+    start_time: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     end_time: Optional[datetime] = None
     duration_ms: Optional[float] = None
     status: SpanStatus = SpanStatus.STARTED
@@ -206,7 +206,7 @@ class TraceService:
         if not trace:
             return None
         
-        trace.end_time = datetime.utcnow()
+        trace.end_time = datetime.now(timezone.utc)
         trace.duration_ms = (trace.end_time - trace.start_time).total_seconds() * 1000
         trace.status = status
 
@@ -681,5 +681,5 @@ class TraceServiceTracer:
             "from_type": "FORMAT_AFFINITY",
             "to_type": "FEEDBACK_QUALITY",
             "new_value": span.current_value,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }

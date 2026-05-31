@@ -6,7 +6,7 @@ Error Handler - 错误处理实现
 
 import warnings
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from .base import ErrorHandler
@@ -49,7 +49,7 @@ class ErrorHandlerImpl(ErrorHandler):
             message=str(error),
             exception=error,
             context=context,
-            timestamp=datetime.now(),
+            timestamp=datetime.now(timezone.utc),
             trace_id=context.get("trace_id"),
         )
 

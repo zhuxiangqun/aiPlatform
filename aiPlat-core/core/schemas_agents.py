@@ -74,4 +74,14 @@ class AgentAutoFillResponse(BaseModel):
     sop_text: str = ""
     reasoning: str = ""
     workflow_ids: List[str] = Field(default_factory=list)
+    template_id: str = ""  # recommended prompt app template
+
+
+class AgentAutoFillBatchRequest(BaseModel):
+    names: List[str] = Field(default_factory=list, min_length=1, max_length=50)
+
+
+class AgentAutoFillBatchResponse(BaseModel):
+    results: Dict[str, AgentAutoFillResponse] = Field(default_factory=dict)
+    errors: List[str] = Field(default_factory=list)
 

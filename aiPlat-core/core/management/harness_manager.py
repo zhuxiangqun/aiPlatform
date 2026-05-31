@@ -6,7 +6,7 @@ Provides execution engine configuration and monitoring operations.
 
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 
@@ -103,12 +103,12 @@ class HarnessManager:
                 "feedback_loops": {"status": "healthy", "feedback_count": 0}
             },
             uptime_seconds=0.0,
-            last_check=datetime.utcnow()
+            last_check=datetime.now(timezone.utc)
         )
     
     async def get_status(self) -> HarnessStatus:
         """Get harness status"""
-        self._status.last_check = datetime.utcnow()
+        self._status.last_check = datetime.now(timezone.utc)
         return self._status
     
     async def get_config(self) -> ExecutionConfig:
@@ -205,7 +205,7 @@ class HarnessManager:
     ) -> CoordinatorInfo:
         """Create coordinator"""
         coordinator_id = f"coord-{uuid.uuid4().hex[:8]}"
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         coordinator = CoordinatorInfo(
             id=coordinator_id,
@@ -277,7 +277,7 @@ class HarnessManager:
     ) -> str:
         """Record execution"""
         execution_id = f"exec-{uuid.uuid4().hex[:8]}"
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         log = ExecutionLog(
             id=execution_id,

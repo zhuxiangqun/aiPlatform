@@ -28,9 +28,15 @@ class OpenAICompatibleClient(LLMClient):
     def _get_client(self):
         if self._client is None:
             import openai
+            base_url = self.config.base_url or None
+            # Normalize: Ollama/LM Studio/oMLX may lack /v1 suffix
+            if base_url and not base_url.rstrip("/").endswith("/v1"):
+                provider = (self.config.provider or "").lower()
+                if provider in ("ollama", "lmstudio", "omlx", "vllm"):
+                    base_url = base_url.rstrip("/") + "/v1"
             self._client = openai.OpenAI(
                 api_key=self.config.api_key,
-                base_url=self.config.base_url or None,
+                base_url=base_url,
             )
         return self._client
 

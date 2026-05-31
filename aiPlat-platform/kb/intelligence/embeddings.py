@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import List
 
-from core.api.core_facade import kb_embed_text as _facade_embed
+from core.api.facades.kb_facade import kb_embed_text as _facade_embed
 
 import os
 
@@ -24,7 +24,7 @@ async def embed_text_async(text: str) -> List[float]:
     if backend == "hash":
         return embed_text(text)
     try:
-        from core.api.core_facade import kb_embed_text
+        from core.api.facades.kb_facade import kb_embed_text
         return kb_embed_text(text)
     except Exception:
         return embed_text(text)

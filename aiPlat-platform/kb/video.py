@@ -208,7 +208,7 @@ def ingest_video_document(
 
             # ── Also insert chunked version for finer retrieval ──
             try:
-                from core.api.core_facade import kb_chunk_elements
+                from core.api.facades.kb_facade import kb_chunk_elements
                 para_element = [{"type": "paragraph", "text": full_text, "page_idx": 0}]
                 para_chunks = kb_chunk_elements(para_element, kind="markdown", target_size=1000, overlap=150)
                 for ci, ch in enumerate(para_chunks):

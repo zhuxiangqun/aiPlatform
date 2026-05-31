@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from core.api.deps import rbac_guard
 from core.api.utils.governance import gate_error_envelope, governance_links
 from core.api.core_facade import record_changeset, new_change_id
-from core.api.core_facade import KernelRuntime, get_kernel_runtime
+from core.api.facades.runtime_facade import KernelRuntime, get_kernel_runtime
 
 router = APIRouter(prefix="/platform/gate-policies", tags=["gate_policies"])
 

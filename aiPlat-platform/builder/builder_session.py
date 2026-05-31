@@ -37,7 +37,7 @@ class BuilderSessionService:
         self._sessions: Dict[str, Dict[str, Any]] = {}
         self._pipeline_sessions: Dict[str, Any] = {}
         try:
-            from core.api.core_facade import seed_all_registries
+            from core.api.facades.skill_tool_facade import seed_all_registries
             seed_all_registries()
         except Exception:
             pass
@@ -45,7 +45,7 @@ class BuilderSessionService:
     async def _restore_chat_history(self, session_id: str) -> List[Dict[str, str]]:
         """Restore conversation history from MemoryManager (survives restart)."""
         try:
-            from core.api.core_facade import get_memory_manager as _mem
+            from core.api.facades.runtime_facade import get_memory_manager as _mem
             mgr = _mem()
             ctx = await mgr.build_context(current_query="", system_prompt="")
             if ctx and isinstance(ctx, dict):

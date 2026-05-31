@@ -7,7 +7,7 @@ Manages system monitoring and alerting.
 from typing import Dict, Any, List, Optional
 from ..base import ManagementBase, Status, HealthStatus, Metrics
 from ..schemas import AlertRule, Alert
-from datetime import datetime
+from datetime import datetime, timezone
 import time
 
 
@@ -241,14 +241,14 @@ class MonitoringManager(ManagementBase):
         if not rule or not rule.enabled:
             return None
         
-        alert_id = f"alert-{datetime.now().strftime('%Y%m%d%H%M%S')}-{len(self._alerts)}"
+        alert_id = f"alert-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}-{len(self._alerts)}"
         
         alert = Alert(
             alert_id=alert_id,
             rule_name=rule_name,
             status="active",
             message=message or f"Alert triggered for {rule_name}",
-            started_at=datetime.now()
+            started_at=datetime.now(timezone.utc)
         )
         
         self._alerts.append(alert)
@@ -256,7 +256,7 @@ class MonitoringManager(ManagementBase):
         self._alert_history.append({
             "alert_id": alert_id,
             "action": "triggered",
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "rule_name": rule_name,
             "severity": rule.severity
         })
@@ -276,12 +276,12 @@ class MonitoringManager(ManagementBase):
         for alert in self._alerts:
             if alert.alert_id == alert_id:
                 alert.status = "resolved"
-                alert.resolved_at = datetime.now()
+                alert.resolved_at = datetime.now(timezone.utc)
                 
                 self._alert_history.append({
                     "alert_id": alert_id,
                     "action": "resolved",
-                    "timestamp": datetime.now().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                     "rule_name": alert.rule_name
                 })
                 

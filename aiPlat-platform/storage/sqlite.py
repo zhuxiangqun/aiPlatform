@@ -4,7 +4,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from core.api.core_facade import create_infra_database_client
+from core.api.facades.kb_facade import create_infra_database_client
 
 
 def _db_path() -> str:

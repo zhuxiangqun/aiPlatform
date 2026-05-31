@@ -1,0 +1,35 @@
+# BOUNDARY.yaml — 模块层归属声明
+#
+# 每个目录放一份此文件，声明本目录代码的架构层归属。
+# 归属依据：docs/architecture/boundary-standard.md §2 决策树。
+#
+# Guard 检查: 声明 layer 必须与代码所在仓库/目录一致。
+#
+# 新建模块时：
+#   1. 创建 BOUNDARY.yaml 并填写 layer + rationale
+#   2. 将目录路径添加到 scripts/architecture_guard.sh 的 KEY_DIRS 列表中
+# -----------------------------------------------------------
+
+# 架构层归属（必填）
+# 可选值: core | platform | infra | app
+layer: core
+
+# 归属理由（必填）
+# 引用边界标准中的具体条款，说明为什么属于这一层
+rationale: |
+  符合 boundary-standard.md §铁律2（可复用性）。
+  描述此模块的通用 AI 能力，删除具体应用概念后仍有 ≥2 个使用场景。
+
+# 本目录提供的公共能力（选填）
+# 列出本目录暴露给其他模块调用的核心函数/类
+capabilities:
+  - example_function       # 简短的功能描述
+  - ExampleClass           # 简短的功能描述
+
+# 已知架构债务（选填）
+# 本目录中暂时在错误层的代码清单，含迁移目标
+known_debt:
+  - file: "legacy_module.py"
+    issue: "description of why it belongs elsewhere"
+    target: "core/harness/execution/new_module.py"
+    status: "planned"   # planned | in_progress | done

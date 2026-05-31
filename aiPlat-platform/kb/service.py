@@ -23,7 +23,8 @@ from .poc.mineru_extract import (
     run_mineru_parse,
 )
 from .intelligence.embeddings import embed_text
-from core.api.core_facade import kb_parse_document, kb_chunk_document, kb_classify_document
+from core.api.facades.kb_facade import kb_parse_document, kb_chunk_document
+from core.api.facades.kb_facade import kb_classify_document
 
 
 def _safe_readable_path(p: str) -> bool:
@@ -280,7 +281,7 @@ def ingest_document(
             progress_cb(0.1, "parsed", {"format": effective_kind, "elements": len(parsed)})
 
         # ── Auto-select chunking strategy based on document features ──
-        from core.api.core_facade import kb_chunk_elements
+        from core.api.facades.kb_facade import kb_chunk_elements
 
         try:
             raw_chunks = kb_chunk_elements(parsed, kind=effective_kind, target_size=1000, overlap=150)
@@ -868,7 +869,7 @@ def preview_document(
     elif k == "video":
         # Extract audio from video file and transcribe via core/harness transcriber
         import subprocess, tempfile, os as _os, json as _json
-        from core.api.core_facade import kb_transcribe_audio as _transcribe_audio
+        from core.api.facades.kb_facade import kb_transcribe_audio as _transcribe_audio
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
             audio_path = tmp.name
         try:

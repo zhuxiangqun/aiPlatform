@@ -39,6 +39,9 @@ export {
   opsApi,
   pluginApi,
   promptApi,
+  promptAppApi,
+  promptEvalApi,
+  promptOptimizeApi,
   variablesApi,
   credentialsApi,
   workflowTemplateApi,
@@ -104,6 +107,7 @@ export { gatewayApi, authApi, tenantApi, channelApi, appSessionApi } from './pla
 export { builderTeamApi } from './builderTeamApi';
 export { projectApi } from './builderTeamApi';
 export { insightApi } from './builderTeamApi';
+export { chatApi, promptsApi } from './chatApi';
 
 export type { ProjectItem, ProjectRun } from './builderTeamApi';
 export type { AgentInsight } from './builderTeamApi';

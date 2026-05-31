@@ -162,7 +162,7 @@ async def uninstall_skill(skill_name: str, _auth: str = Depends(require_admin)):
     shutil.rmtree(dst)
     # Try to unregister from registry
     try:
-        from core.api.core_facade import get_skill_registry
+        from core.api.facades.skill_tool_facade import get_skill_registry
         reg = get_skill_registry()
         if reg and reg.get(skill_name):
             reg.unregister(skill_name)
@@ -174,7 +174,7 @@ async def uninstall_skill(skill_name: str, _auth: str = Depends(require_admin)):
 def _notify_registry(skill_name: str):
     """Notify the Skill registry to rescan for new skills."""
     try:
-        from core.api.core_facade import get_skill_registry
+        from core.api.facades.skill_tool_facade import get_skill_registry
         reg = get_skill_registry()
         if reg and hasattr(reg, 'scan_folder'):
             reg.scan_folder(SKILLS_HOME)

@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  core:
+    image: aiplat-core:latest
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    volumes:
+      - ./data/core:/app/.aiplat
+    environment:
+      - AIPLAT_HOME=/app/.aiplat
+      - BROWSER_USE_HEADLESS=true
+      - AIPLAT_LLM_PROVIDER=${AIPLAT_LLM_PROVIDER:-deepseek}
+      - AIPLAT_LLM_BASE_URL=${AIPLAT_LLM_BASE_URL:-https://api.deepseek.com/v1}
+      - AIPLAT_LLM_API_KEY=${AIPLAT_LLM_API_KEY:-}
+      - AIPLAT_PROJECT_ROOT=/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/api/core/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  management:
+    image: aiplat-management:latest
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    depends_on:
+      core:
+        condition: service_started
+    volumes:
+      - ./data/management:/app/.aiplat
+    environment:
+      - AIPLAT_HOME=/app/.aiplat
+      - AIPLAT_MANAGEMENT_MODE=docker
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    image: aiplat-frontend:latest
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - core
+      - management

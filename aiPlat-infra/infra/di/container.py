@@ -260,8 +260,8 @@ class DIContainerImpl(DIContainer):
                 if param_type != inspect.Parameter.empty:
                     try:
                         params[param_name] = self.resolve(param_type)
-                    except:
-                        # 如果无法解析，使用默认值
+                    except Exception:
+                        logging.getLogger("infra.di").debug("DI resolve failed for %s", param_name, exc_info=True)
                         if param.default != inspect.Parameter.empty:
                             params[param_name] = param.default
 

@@ -304,12 +304,11 @@ class SupervisorPattern(ICoordinationPattern):
             )
         
         # Supervisor delegates
-        delegation_prompt = f"""Task: {context.task}
-
-Available workers: {[w.get_config().name if hasattr(w, 'get_config') else str(w) for w in self._workers]}
-
-Delegate subtasks to appropriate workers.
-"""
+        from core.harness.utils.prompt_loader import _sync_resolve
+        delegation_prompt = _sync_resolve("supervisor-delegate",
+            task=str(context.task),
+            workers=str([w.get_config().name if hasattr(w, 'get_config') else str(w) for w in self._workers]),
+        )
         
         try:
             ok, output, err = await _safe_execute(self._supervisor, delegation_prompt, 0)
@@ -336,11 +335,10 @@ Delegate subtasks to appropriate workers.
         errors = [str(r) for r in results if isinstance(r, Exception)]
         
         # Supervisor aggregates
-        aggregation_prompt = f"""Results from workers:
-{chr(10).join(outputs)}
-
-Provide final answer.
-"""
+        from core.harness.utils.prompt_loader import _sync_resolve
+        aggregation_prompt = _sync_resolve("results-aggregate",
+            outputs=chr(10).join(outputs),
+        )
         
         try:
             ok, output, err = await _safe_execute(self._supervisor, aggregation_prompt, 0)

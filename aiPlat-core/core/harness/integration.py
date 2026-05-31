@@ -133,6 +133,86 @@ def _resolve_exec_backend():
     from core.apps.exec_drivers.registry import get_exec_backend  # noqa
     return get_exec_backend()
 
+
+# ── Public accessor functions for harness-internal use ──────────────
+# These break the harness→apps reverse dependency by routing through
+# DI container first, direct import as fallback. All harness modules
+# should use these instead of importing from core.apps.* directly.
+
+
+def get_tool_registry():
+    """Resolve tool registry (DI first, direct import fallback)."""
+    return _resolve_tool_registry()
+
+
+def get_agent_registry():
+    """Resolve agent registry."""
+    return _resolve_or_import("AgentRegistry", "core.apps.agents.registry:AgentRegistry")()
+
+
+def get_skill_registry():
+    """Resolve skill registry."""
+    return _resolve_or_import("SkillRegistry", "core.apps.skills.registry:get_skill_registry")()
+
+
+def get_permission_manager():
+    """Resolve permission manager."""
+    return _resolve_or_import("PermissionManager", "core.apps.tools.permission:get_permission_manager")()
+
+
+def get_exec_backend():
+    """Resolve execution backend."""
+    return _resolve_exec_backend()
+
+
+def get_subagent_coordinator():
+    """Resolve subagent coordinator."""
+    return _resolve_or_import("SubagentCoordinator", "core.apps.agents.subagent.coordinator:get_subagent_coordinator")()
+
+
+def get_skill_permission_resolver():
+    """Resolve skill permission resolver function."""
+    return _resolve_or_import("SkillPermissionResolver", "core.apps.tools.skill_tools:resolve_skill_permission")
+
+
+def get_exec_skill_permission_resolver():
+    """Resolve executable skill permission resolver function."""
+    return _resolve_or_import("ExecSkillPermissionResolver", "core.apps.tools.skill_tools:resolve_executable_skill_permission")
+
+
+def get_skill_curator():
+    """Resolve skill curator."""
+    return _resolve_or_import("SkillCurator", "core.apps.skills.curator:get_skill_curator")()
+
+
+def get_evolution_engine():
+    """Resolve evolution engine."""
+    return _resolve_or_import("EvolutionEngine", "core.apps.skills.evolution.engine:get_evolution_engine")()
+
+
+def get_mcp_runtime():
+    """Resolve MCP runtime."""
+    di = _ensure_di()
+    if di:
+        try:
+            return di.resolve("MCPRuntime")
+        except Exception:
+            pass
+    from core.apps.mcp.runtime import MCPRuntime  # noqa
+    return MCPRuntime()
+
+
+def get_latest_predictions():
+    """Resolve evolution predictions."""
+    di = _ensure_di()
+    if di:
+        try:
+            return di.resolve("LatestPredictions")
+        except Exception:
+            pass
+    from core.apps.skills.evolution.engine import get_latest_predictions  # noqa
+    return get_latest_predictions()
+
 import asyncio
 import time
 import uuid

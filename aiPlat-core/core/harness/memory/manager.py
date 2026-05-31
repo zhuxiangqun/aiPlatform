@@ -334,7 +334,7 @@ class MemoryManager:
 
         # Auto-register in SkillRegistry so agents can discover it
         try:
-            from core.apps.skills.registry import get_skill_registry
+            from core.harness.integration import get_skill_registry
             from core.apps.skills.metadata import SkillMetadata
             registry = get_skill_registry()
             if registry:

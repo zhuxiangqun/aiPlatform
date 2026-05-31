@@ -7,7 +7,7 @@ Stores user-added models in JSON file.
 import json
 import os
 from typing import List
-from datetime import datetime
+from datetime import datetime, timezone
 
 from .schemas import ModelInfo, ModelSource, ModelType, ModelStatus, ModelConfig, ModelStats
 
@@ -83,8 +83,8 @@ class ExternalModelStorage:
                 description=item.get("description", ""),
                 tags=item.get("tags", []),
                 capabilities=item.get("capabilities", []),
-                created_at=datetime.fromisoformat(item["created_at"]) if item.get("created_at") else datetime.now(),
-                updated_at=datetime.fromisoformat(item["updated_at"]) if item.get("updated_at") else datetime.now(),
+                created_at=datetime.fromisoformat(item["created_at"]) if item.get("created_at") else datetime.now(timezone.utc),
+                updated_at=datetime.fromisoformat(item["updated_at"]) if item.get("updated_at") else datetime.now(timezone.utc),
             )
             models.append(model)
         

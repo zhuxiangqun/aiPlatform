@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from auth.deps import require_auth, require_admin
 from core.api.core_facade import Permission
-from core.api.core_facade import get_permission_manager
+from core.api.facades.security_facade import get_permission_manager
 
 router = APIRouter(prefix="/platform/permissions", tags=["permissions"])
 

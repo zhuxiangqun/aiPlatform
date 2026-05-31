@@ -6,7 +6,7 @@ Provides CRUD operations for skills and execution management.
 
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 import os
 from pathlib import Path
@@ -107,7 +107,7 @@ class SkillManager:
     def _load_directory_skills(self) -> None:
         """Load directory-based skills from filesystem into management plane."""
         try:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             # Load low priority first, then allow high priority (repo) to override
             for base_dir in self._resolve_skills_paths():
                 if not base_dir.exists():
@@ -443,7 +443,7 @@ class SkillManager:
         import os as _os
         import yaml as _yaml
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         engine_skills_root = _os.path.join(
             _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))),
@@ -469,6 +469,8 @@ class SkillManager:
             skill_type = "general"
             description = ""
             status = "enabled"
+            input_schema = {}
+            output_schema = {}
 
             if raw.startswith("---"):
                 parts = raw.split("---", 2)
@@ -480,6 +482,12 @@ class SkillManager:
                         skill_type = str(fm.get("category", "general"))
                         description = str(fm.get("description", ""))
                         status = "enabled" if str(fm.get("status", "enabled")) != "disabled" else "disabled"
+                        input_schema = fm.get("input_schema") or {}
+                        output_schema = fm.get("output_schema") or {}
+                        if not isinstance(input_schema, dict):
+                            input_schema = {}
+                        if not isinstance(output_schema, dict):
+                            output_schema = {}
                     except Exception:
                         pass
 
@@ -488,7 +496,7 @@ class SkillManager:
 
             self._skills[name] = SkillInfo(
                 id=name, name=display_name, type=skill_type, description=description,
-                status=status, input_schema={}, output_schema={},
+                status=status, input_schema=input_schema, output_schema=output_schema,
                 config={"version": "1.0.0"}, dependencies=[],
                 version="1.0.0", created_at=now, updated_at=now, created_by="system"
             )
@@ -562,7 +570,7 @@ class SkillManager:
             skill_id = name.lower().replace(" ", "_").replace("-", "_")
         if self._reserved_ids and skill_id in self._reserved_ids:
             raise ValueError(f"Skill id '{skill_id}' is reserved by engine scope and cannot be created in workspace.")
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         skill = SkillInfo(
             id=skill_id,
@@ -1085,7 +1093,7 @@ class SkillManager:
         if metadata:
             skill.metadata.update(metadata)
         
-        skill.updated_at = datetime.utcnow()
+        skill.updated_at = datetime.now(timezone.utc)
 
         # Record audit trail (best-effort, bounded)
         try:
@@ -1133,7 +1141,7 @@ class SkillManager:
             else:
                 # Snapshot revision before mutation
                 try:
-                    rev_dir = skill_dir / ".revisions" / datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+                    rev_dir = skill_dir / ".revisions" / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
                     rev_dir.mkdir(parents=True, exist_ok=True)
                     rev_dir.joinpath("SKILL.md").write_text(skill_md_path.read_text(encoding="utf-8"), encoding="utf-8")
                     # store minimal manifest snapshot too
@@ -1288,7 +1296,7 @@ class SkillManager:
             if isinstance(getattr(skill, "metadata", None), dict) and skill.metadata.get("protected") is True:
                 raise PermissionError("Protected engine skill cannot be deleted")
 
-        now_iso = datetime.utcnow().isoformat()
+        now_iso = datetime.now(timezone.utc).isoformat()
 
         if delete_files:
             # Hard delete: remove directory + unregister + remove from memory
@@ -1318,7 +1326,7 @@ class SkillManager:
         skill.status = "deprecated"
         if isinstance(skill.metadata, dict):
             skill.metadata["deprecated_at"] = now_iso
-        skill.updated_at = datetime.utcnow()
+        skill.updated_at = datetime.now(timezone.utc)
 
         try:
             from core.apps.skills import get_skill_registry
@@ -1339,7 +1347,7 @@ class SkillManager:
             # Must use restore_skill to un-deprecate (keeps intent explicit).
             return False
         skill.status = "enabled"
-        skill.updated_at = datetime.utcnow()
+        skill.updated_at = datetime.now(timezone.utc)
         self._sync_registry_config(skill)
         try:
             from core.apps.skills import get_skill_registry
@@ -1356,7 +1364,7 @@ class SkillManager:
         if not skill:
             return False
         skill.status = "disabled"
-        skill.updated_at = datetime.utcnow()
+        skill.updated_at = datetime.now(timezone.utc)
         self._sync_registry_config(skill)
         try:
             from core.apps.skills import get_skill_registry
@@ -1376,7 +1384,7 @@ class SkillManager:
         skill.status = "enabled"
         if isinstance(skill.metadata, dict):
             skill.metadata.pop("deprecated_at", None)
-        skill.updated_at = datetime.utcnow()
+        skill.updated_at = datetime.now(timezone.utc)
 
         # Ensure registered
         try:
@@ -1532,7 +1540,7 @@ class SkillManager:
         """Execute skill via SkillExecutor and record audit trail."""
         import time
         execution_id = str(execution_id or f"exec-{uuid.uuid4().hex[:8]}")
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         # If execution_id already exists (e.g. approval replay), reuse the record to keep run_id stable.
         execution: Optional[SkillExecution] = None
@@ -1621,7 +1629,7 @@ class SkillManager:
                 mode=mode
             )
             
-            duration_ms = (datetime.utcnow() - now).total_seconds() * 1000
+            duration_ms = (datetime.now(timezone.utc) - now).total_seconds() * 1000
             
             res_meta = result.metadata if isinstance(getattr(result, "metadata", None), dict) else {}
             if result.success:
@@ -1630,7 +1638,7 @@ class SkillManager:
                 await self.fail_execution(execution_id, result.error or "Unknown error", duration_ms, metadata=res_meta)
             
         except Exception as e:
-            duration_ms = (datetime.utcnow() - now).total_seconds() * 1000
+            duration_ms = (datetime.now(timezone.utc) - now).total_seconds() * 1000
             await self.fail_execution(execution_id, str(e), duration_ms)
         
         updated = await self.get_execution(execution_id)
@@ -1662,7 +1670,7 @@ class SkillManager:
         if self._reserved_ids and skill_id in self._reserved_ids:
             raise ValueError(f"Skill id '{skill_id}' is reserved by engine scope and cannot be created in workspace.")
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         skill = self._skills.get(skill_id)
         if not skill:
             skill = SkillInfo(
@@ -1761,7 +1769,7 @@ class SkillManager:
                     exec_.status = "completed"
                     exec_.output_data = output_data
                     exec_.error = None
-                    exec_.end_time = datetime.utcnow()
+                    exec_.end_time = datetime.now(timezone.utc)
                     exec_.duration_ms = duration_ms
                     if isinstance(metadata, dict):
                         exec_.metadata = dict(metadata)
@@ -1791,7 +1799,7 @@ class SkillManager:
                 if exec_.id == execution_id:
                     exec_.status = "failed"
                     exec_.error = error
-                    exec_.end_time = datetime.utcnow()
+                    exec_.end_time = datetime.now(timezone.utc)
                     exec_.duration_ms = duration_ms
                     if isinstance(metadata, dict):
                         exec_.metadata = dict(metadata)
@@ -1856,13 +1864,13 @@ class SkillManager:
         version = SkillVersion(
             version=new_version,
             status="current",
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             changes=changes
         )
         
         self._versions[skill_id].append(version)
         skill.version = new_version
-        skill.updated_at = datetime.utcnow()
+        skill.updated_at = datetime.now(timezone.utc)
         
         return version
     
@@ -1887,7 +1895,7 @@ class SkillManager:
             v.status = "historical" if v.version != version else "current"
         
         skill.version = version
-        skill.updated_at = datetime.utcnow()
+        skill.updated_at = datetime.now(timezone.utc)
         
         return True
     

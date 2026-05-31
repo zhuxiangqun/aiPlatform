@@ -76,7 +76,7 @@ _BUILDER_STATES_DIR = os.path.join(
 
 def _semantic_output(agent_id: str, phase: str) -> str:
     """Map agent_id to semantic output artifact name — reads from AGENT.md frontmatter."""
-    from core.api.core_facade import get_agent_frontmatter
+    from core.api.facades.agent_facade import get_agent_frontmatter
     try:
         fm = get_agent_frontmatter(agent_id)
         if fm.get("output_artifact"):
@@ -118,7 +118,7 @@ class BuilderProjectService:
     def __init__(self, model: Any = None, team_service: Optional[BuilderTeamService] = None):
         self._model = model
         if self._model is None:
-            from core.api.core_facade import get_default_model
+            from core.api.facades.service_facade import get_default_model
             self._model = get_default_model()
         self._team_service = team_service or BuilderTeamService(self._model)
         self._seed_registries()
@@ -131,7 +131,7 @@ class BuilderProjectService:
 
     @staticmethod
     def _seed_registries() -> None:
-        from core.api.core_facade import seed_all_registries
+        from core.api.facades.skill_tool_facade import seed_all_registries
         seed_all_registries()
 
     # ── Persistence ──────────────────────────────────────────────────
@@ -604,7 +604,7 @@ class BuilderProjectService:
                     if (not s.model or not s.hitl_after_execute or not hasattr(s, '_auto_hitl_loaded')
                         or not s.phase_description or not s.prompt_extra or not s.required_skills):
                         try:
-                            from core.api.core_facade import get_agent_frontmatter
+                            from core.api.facades.agent_facade import get_agent_frontmatter
                             fm = get_agent_frontmatter(s.agent_id)
                             if not fm:
                                 continue
@@ -667,7 +667,7 @@ class BuilderProjectService:
         self._pipeline_sessions[project_id] = pipeline_session
 
         # Register event bus listener — writes pipeline state to singleton _runs for frontend polling
-        from core.api.core_facade import get_event_bus
+        from core.api.facades.runtime_facade import get_event_bus
         from api.routers.builder import _svc as builder_singleton
         _runs_singleton = builder_singleton._runs
         def _on_event(pid: str, evt: str, data: dict):
@@ -726,7 +726,7 @@ class BuilderProjectService:
         self._runs[project_id] = state
         # Embed episodic memory state for restart survival
         try:
-            from core.api.core_facade import get_memory_manager
+            from core.api.facades.runtime_facade import get_memory_manager
             mgr = get_memory_manager()
             state["_episodic"] = mgr.export_episodic_state()
         except Exception:
@@ -889,7 +889,7 @@ class BuilderProjectService:
                 episodic = state.get("_episodic")
                 if isinstance(episodic, dict):
                     try:
-                        from core.api.core_facade import get_memory_manager
+                        from core.api.facades.runtime_facade import get_memory_manager
                         mgr = get_memory_manager()
                         mgr.import_episodic_state(episodic)
                     except Exception:

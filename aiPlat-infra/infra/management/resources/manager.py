@@ -7,7 +7,7 @@ Manages compute resources including GPU, CPU, and memory.
 from typing import Dict, Any, List, Optional
 from ..base import ManagementBase, Status, HealthStatus, Metrics
 from ..schemas import ResourceStats, NodeInfo, AllocatedResource
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class ResourcesManager(ManagementBase):
@@ -46,7 +46,7 @@ class ResourcesManager(ManagementBase):
     async def get_metrics(self) -> List[Metrics]:
         """Get resource metrics."""
         metrics = []
-        timestamp = datetime.now().timestamp()
+        timestamp = datetime.now(timezone.utc).timestamp()
         
         # GPU utilization
         gpu_util = self._get_config_value("monitoring.gpu_utilization_threshold", 0.9)
@@ -188,13 +188,13 @@ class ResourcesManager(ManagementBase):
         Returns:
             Allocated resource
         """
-        allocation_id = f"alloc-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        allocation_id = f"alloc-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
         
         allocation = AllocatedResource(
             allocation_id=allocation_id,
             resource_type=request.get("resource_type", "gpu"),
             amount=request.get("amount", 1),
-            allocated_at=datetime.now(),
+            allocated_at=datetime.now(timezone.utc),
             expires_at=request.get("expires_at")
         )
         

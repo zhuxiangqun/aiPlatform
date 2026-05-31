@@ -6,7 +6,7 @@ Manages vector database operations.
 
 from typing import Dict, Any, List, Optional
 from ..base import ManagementBase, Status, HealthStatus, Metrics
-from datetime import datetime
+from datetime import datetime, timezone
 import time
 
 
@@ -177,7 +177,7 @@ class VectorManager(ManagementBase):
             "name": name,
             "status": "healthy",
             "config": config or {},
-            "created_at": datetime.now().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         
         self._vectors[name] = []
@@ -246,7 +246,7 @@ class VectorManager(ManagementBase):
                 "id": vector_id,
                 "vector": vector_entry.get("vector", []),
                 "metadata": vector_entry.get("metadata", {}),
-                "created_at": datetime.now().isoformat()
+                "created_at": datetime.now(timezone.utc).isoformat()
             }
             
             self._vectors[collection].append(entry)

@@ -25,29 +25,19 @@ ALLOWED_HARNESS_TO_APPS: Set[Tuple[str, str]] = {
     ("harness/integration.py", "apps/tools/skill_tools"),
     ("harness/integration.py", "apps/skills/curator"),
     ("harness/integration.py", "apps/skills/evolution/engine"),
-    ("harness/feedback_loops/__init__.py", "apps/skills/evolution/engine"),
-    # Syscall layer — legitimate tool/skill/permission gate checks
-    ("harness/syscalls/skill.py", "apps/tools/skill_tools"),
-    ("harness/syscalls/skill.py", "apps/skills/curator"),
-    ("harness/syscalls/tool.py", "apps/exec_drivers/registry"),
+    # DI fallback — lazy import guarded by try/except
+    ("harness/integration.py", "apps/mcp/runtime"),
+    # Data type imports — allowed (enum + metadata class, not service calls)
+    ("harness/memory/manager.py", "apps/skills/metadata"),
+    # Data type — enum import, allowed
     ("harness/infrastructure/gates/policy_gate.py", "apps/tools/permission"),
-    # Pipeline engine — tool access for code generation + evaluation
+    ("harness/feedback_loops/__init__.py", "apps/skills/evolution/engine"),
+    # Pipeline engine — data type imports (class, not service call)
     ("harness/execution/pipeline_engine.py", "apps/tools/code"),
-    ("harness/execution/pipeline_engine.py", "apps/skills/evolution/engine"),
-    # Loop — tool dispatch and MCP runtime
-    ("harness/execution/loop.py", "apps/mcp/runtime"),
-    ("harness/execution/loop.py", "apps/tools/base"),
-    ("harness/execution/loop.py", "apps/tools/skill_tools"),
-    # Scheduler — skill curator access
-    ("harness/scheduler/cron.py", "apps/skills/curator"),
     # LangGraph stage runner — data type access
     ("harness/execution/langgraph/stage_runner.py", "apps/tools/code"),
-    ("harness/syscalls/tool.py", "apps/tools/base"),
-    ("harness/syscalls/skill.py", "apps/skills/base"),
-    # KNOWN_DEBT: these imports are in integration/syscall bridge functions,
-    # already guarded by lazy import + try/except. Will be refactored to DI.
+    # KNOWN_DEBT: browser_test_engine in bridge, guarded by lazy import + try/except
     ("harness/integration.py", "apps/tools/browser_test_engine"),
-    ("harness/syscalls/agent.py", "apps/agents/subagent/coordinator"),
 }
 
 

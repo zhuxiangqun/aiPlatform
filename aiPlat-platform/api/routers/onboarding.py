@@ -16,7 +16,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from auth.deps import require_auth, require_admin
 from core.api.deps import actor_from_http
 from core.api.utils.governance import gate_error_envelope, ui_url
-from core.api.core_facade import record_changeset, get_kernel_runtime, RequestStatus, ApprovalContext, ApprovalRule, RuleType
+from core.api.core_facade import record_changeset, RequestStatus, ApprovalContext, ApprovalRule, RuleType
+from core.api.facades.runtime_facade import get_kernel_runtime
 from core.schemas_onboarding import (
     OnboardingAutosmokeConfigRequest,
     OnboardingContextConfigRequest,

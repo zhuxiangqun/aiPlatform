@@ -19,7 +19,7 @@ import os
 import re
 import json as _json
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -154,7 +154,7 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
     root = _wiki_root()
     name = re.sub(r"[<>:\"/\\|?*]", "_", title)[:120]
     existing = read_page(title, category=category)
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
 
     # Merge with existing if updating
     if existing:
@@ -197,8 +197,8 @@ def _update_index(title: str, category: str, tags: List[str], related: List[str]
     except Exception:
         idx = {"pages": {}, "last_updated": ""}
     idx["pages"][title] = {"category": category, "tags": tags, "related": related,
-                             "last_updated": datetime.utcnow().isoformat()}
-    idx["last_updated"] = datetime.utcnow().isoformat()
+                             "last_updated": datetime.now(timezone.utc).isoformat()}
+    idx["last_updated"] = datetime.now(timezone.utc).isoformat()
     idx_path.write_text(_json.dumps(idx, indent=2, ensure_ascii=False))
 
 
@@ -339,7 +339,7 @@ def save_proposal(proposal: Dict[str, Any]) -> str:
             break
     else:
         proposals.append(proposal)
-    pp.write_text(_json.dumps({"proposals": proposals, "last_updated": datetime.utcnow().isoformat()},
+    pp.write_text(_json.dumps({"proposals": proposals, "last_updated": datetime.now(timezone.utc).isoformat()},
                               indent=2, ensure_ascii=False))
     return pid
 
@@ -350,9 +350,9 @@ def update_proposal_status(proposal_id: str, status: str) -> bool:
     for p in proposals:
         if p.get("id") == proposal_id:
             p["status"] = status
-            p["resolved_at"] = datetime.utcnow().isoformat()
+            p["resolved_at"] = datetime.now(timezone.utc).isoformat()
             pp = _proposals_path()
-            pp.write_text(_json.dumps({"proposals": proposals, "last_updated": datetime.utcnow().isoformat()},
+            pp.write_text(_json.dumps({"proposals": proposals, "last_updated": datetime.now(timezone.utc).isoformat()},
                                       indent=2, ensure_ascii=False))
             return True
     return False
@@ -537,194 +537,12 @@ def detect_contradictions() -> List[Dict[str, Any]]:
 
 
 def wiki_health_report() -> Dict[str, Any]:
-    u"""Comprehensive wiki health report with categorized issues and stats.
+    """Comprehensive wiki health report — delegates to extensible WikiHealthRegistry.
     
-    返回: {
-      health_score, total_pages, issues, stats, link_graph
-    }
+    To add a new health check: add a WikiRule subclass in wiki_health_rules.py.
     """
-    _ensure_dirs()
-    root = _wiki_root()
-    all_pages: Dict[str, Dict[str, Any]] = {}
-    issues: List[Dict[str, Any]] = []
-
-    # Index all pages
-    for cat_dir in sorted(root.iterdir()):
-        if not cat_dir.is_dir() or cat_dir.name == "contradictions":
-            continue
-        for md_file in sorted(cat_dir.glob("*.md")):
-            page = read_page(md_file.stem, category=cat_dir.name)
-            if page:
-                all_pages[page["title"]] = page
-
-    # Stats
-    total_pages = len(all_pages)
-    categories: Dict[str, int] = {}
-    total_tags: Dict[str, int] = {}
-    total_related = 0
-    pages_with_body = 0
-    small_pages = 0  # < 200 chars body
-
-    for page in all_pages.values():
-        cat = page.get("category", "unknown")
-        categories[cat] = categories.get(cat, 0) + 1
-        for tag in page.get("tags", []):
-            total_tags[tag] = total_tags.get(tag, 0) + 1
-        total_related += len(page.get("related", []))
-        if page.get("body") and len(page["body"]) > 50:
-            pages_with_body += 1
-        if len(page.get("body", "")) < 200:
-            small_pages += 1
-
-    # 1. Marked contradictions
-    contradiction_count = 0
-    for title, page in all_pages.items():
-        for con in page.get("contradictions", []):
-            if con in all_pages:
-                contradiction_count += 1
-                issues.append({
-                    "check_type": "contradiction",
-                    "severity": "high",
-                    "page_a": title, "page_b": con,
-                    "description": "标注矛盾",
-                    "suggestion": f"合并或协调 '{title}' 和 '{con}' 中的矛盾信息",
-                })
-
-    # 2. Orphan pages (no incoming links, but links to others)
-    all_linked: set = set()
-    for page in all_pages.values():
-        for rel in page.get("related", []):
-            all_linked.add(rel)
-    orphan_count = 0
-    for title, page in all_pages.items():
-        if title not in all_linked and page.get("related", []):
-            orphan_count += 1
-            issues.append({
-                "check_type": "orphan",
-                "severity": "medium",
-                "page_a": title, "page_b": "",
-                "description": f"孤立页面（无入链）",
-                "suggestion": f"在相关页面中添加入站链接指向 '{title}'",
-            })
-
-    # 3. Dead links (referenced pages that don't exist)
-    all_titles = set(all_pages.keys())
-    dead_link_count = 0
-    for title, page in all_pages.items():
-        for rel in page.get("related", []):
-            if rel not in all_titles:
-                dead_link_count += 1
-                issues.append({
-                    "check_type": "dead_link",
-                    "severity": "high",
-                    "page_a": title, "page_b": rel,
-                    "description": f"死链（'{rel}' 页面不存在）",
-                    "suggestion": f"创建 '{rel}' 页面或删除 '{title}' 中的死链接",
-                })
-
-    # 4. Stale pages (last_updated > 30 days ago)
-    stale_cutoff = (datetime.utcnow() - timedelta(days=30)).isoformat()
-    stale_count = 0
-    for title, page in all_pages.items():
-        lu = page.get("last_updated", "")
-        if lu and lu < stale_cutoff:
-            stale_count += 1
-            issues.append({
-                "check_type": "stale",
-                "severity": "low",
-                "page_a": title, "page_b": "",
-                "description": f"过期页面（超过30天未更新）",
-                "suggestion": "检查信息是否仍然准确，或添加reviewed标记",
-            })
-
-    # 5. Thin content
-    thin_count = 0
-    for title, page in all_pages.items():
-        body = page.get("body", "")
-        if len(body) < 100:
-            thin_count += 1
-            issues.append({
-                "check_type": "thin_content",
-                "severity": "low",
-                "page_a": title, "page_b": "",
-                "description": f"内容过短（{len(body)} 字符）",
-                "suggestion": "丰富页面内容，或考虑与相关页面合并",
-            })
-
-    # 6. Missing tags
-    no_tags_count = 0
-    for title, page in all_pages.items():
-        if not page.get("tags"):
-            no_tags_count += 1
-            issues.append({
-                "check_type": "no_tags",
-                "severity": "low",
-                "page_a": title, "page_b": "",
-                "description": "缺少标签",
-                "suggestion": "添加相关标签以提高可发现性",
-            })
-
-    # 7. Missing summary
-    no_summary_count = 0
-    for title, page in all_pages.items():
-        if not page.get("summary"):
-            no_summary_count += 1
-            issues.append({
-                "check_type": "no_summary",
-                "severity": "low",
-                "page_a": title, "page_b": "",
-                "description": "缺少摘要",
-                "suggestion": "添加页面摘要以便快速浏览",
-            })
-
-    # Penalty per issue weighted by severity
-    penalty = (
-        contradiction_count * 5 +
-        dead_link_count * 4 +
-        orphan_count * 3 +
-        stale_count * 1 +
-        thin_count * 1 +
-        no_tags_count * 1 +
-        no_summary_count * 1
-    )
-    base = max(0, 100 - penalty)
-    coverage = (pages_with_body / max(total_pages, 1)) * 10
-
-    # Build link graph adjacency
-    link_graph: Dict[str, List[str]] = {}
-    for title, page in all_pages.items():
-        link_graph[title] = page.get("related", [])
-
-    return {
-        "health_score": min(100, int(base + coverage)),
-        "total_pages": total_pages,
-        "stats": {
-            "categories": categories,
-            "top_tags": dict(sorted(total_tags.items(), key=lambda x: -x[1])[:15]),
-            "total_links": total_related,
-            "avg_links_per_page": round(total_related / max(total_pages, 1), 2),
-            "pages_with_body": pages_with_body,
-            "small_pages": small_pages,
-            "orphan_pages": orphan_count,
-            "dead_links": dead_link_count,
-            "stale_pages": stale_count,
-            "thin_pages": thin_count,
-            "no_tags": no_tags_count,
-            "no_summary": no_summary_count,
-            "contradictions": contradiction_count,
-        },
-        "issues": issues,
-        "link_graph": link_graph,
-        "checks": [
-            {"name": "矛盾检测", "pass": contradiction_count == 0, "count": contradiction_count, "severity": "high"},
-            {"name": "死链检测", "pass": dead_link_count == 0, "count": dead_link_count, "severity": "high"},
-            {"name": "孤立页面", "pass": orphan_count == 0, "count": orphan_count, "severity": "medium"},
-            {"name": "过期内容", "pass": stale_count == 0, "count": stale_count, "severity": "low"},
-            {"name": "内容完整度", "pass": thin_count == 0, "count": thin_count, "severity": "low"},
-            {"name": "标签覆盖", "pass": no_tags_count == 0, "count": no_tags_count, "severity": "low"},
-            {"name": "摘要覆盖", "pass": no_summary_count == 0, "count": no_summary_count, "severity": "low"},
-        ],
-    }
+    from core.harness.knowledge.wiki_health_rules import get_wiki_registry
+    return get_wiki_registry().run().to_dict()
 
 
 def list_all_pages() -> List[Dict[str, Any]]:
@@ -860,9 +678,8 @@ async def llm_curate_page(title: str, body: str, *, existing_titles: List[str] =
 
     # Build prompt for LLM — knowledge atom extraction
     existing_list = "\n".join(f"- {t}" for t in existing_titles[:80]) if existing_titles else "(none)"
-    prompt = f"""You are a knowledge curator. Read the following content and extract structured knowledge atoms — NOT a simple summary or entity list.
-
-=== CONTENT (first 8000 chars) ===
+    from core.harness.utils.prompt_loader import _async_prompt_resolve
+    prompt_content = f"""=== CONTENT (first 8000 chars) ===
 Title: {title}
 {body[:8000]}
 
@@ -877,7 +694,7 @@ Title: {title}
    For each atom: provide {{
      "title": "a short readable title (Chinese preferred, 5-15 chars)",
      "body": "the knowledge content (2-8 sentences, self-contained, Chinese preferred)",
-     "category": "entities" | "topics", 
+     "category": "entities" | "topics",
      "tags": ["keyword1", "keyword2"]
    }}
    Aim to extract 2-6 atoms if the content is long/complex. Each atom should be a coherent knowledge unit.
@@ -886,7 +703,7 @@ Title: {title}
 
 4. Extract 3-8 tags (lowercase keywords)
 
-5. Identify 2-8 existing wiki pages that this content relates to (from the list above — choose titles that closely match on topic)
+5. Identify 2-8 existing wiki pages that this content relates to (from the list above)
 
 6. If the content discusses conflicting/competing viewpoints between entities, list contradictions
 
@@ -896,12 +713,14 @@ Title: {title}
 Reply with ONLY a JSON object (no markdown fences, no explanation):
 {{"title":"优化的可读标题","summary":"...","category":"entities","tags":["tag1","tag2"],"related":["Existing Page"],"entities_found":["概念1","概念2"],"knowledge_atoms":[{{"title":"原子标题","body":"知识片段正文","category":"entities","tags":["tag"]}}],"contradictions":[{{"a":"PageA","b":"PageB","detail":"why"}}],"merge_candidates":[{{"target":"PageTitle","reason":"duplicate"}}]}}
 """
+
+    prompt = await _async_prompt_resolve("wiki-curator", content=prompt_content)
     try:
         from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
         model_name = best_model_for_purpose("wiki_curation")
         model = create_selected_adapter(model_name=model_name)
         messages = [
-            {"role": "system", "content": "You are a knowledge curation assistant. Reply with JSON only, no markdown fences."},
+            {"role": "system", "content": await _async_prompt_resolve("wiki-system-role")},
             {"role": "user", "content": prompt},
         ]
         resp = await model.generate(messages, config=None)

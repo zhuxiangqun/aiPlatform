@@ -1,0 +1,371 @@
+{
+  "session_id": "prj_ee3d4ddb",
+  "phase": "awaiting_architecture_approval",
+  "description": "1、通过多轮对话方式由产品经理确认需求，生成PRD，用户确认后进入下个阶段；\n2、系统架构师根据PRD生成系统架构，用户确认后进入下个阶段；\n3、前端工程师、后端工程师根据架构进行程序编制，编制结束后进入下个阶段；\n4、测试经理根据PRD生成测试用例，用户确认后进入下个阶段；\n5、测试经理根据测试用例对程序进行测试，得出测试报告；\n6、程序员根据测试报告自动修正程序，同时记录bug修正日期、方式、程序名；\n7、测试经理根据最新程序再次测试；\n8、不断循环，直至测试结果OK为止\n",
+  "prd": {
+    "title": "自动化项目交付 Agent（AutoDelivery Agent）",
+    "overview": "在 aiPlat 平台内创建一个新的自动化项目交付 Agent，通过多轮对话引导用户输入需求，自动编排并执行从需求确认、架构设计、编码、测试到缺陷修复的完整软件交付生命周期，直至所有测试用例通过率达到 100%。",
+    "user_stories": [
+      {
+        "id": "U1",
+        "description": "作为项目创建者（项目经理/产品经理），我可以在 aiPlat 平台中选择“自动化项目交付”功能，通过输入一段自然语言需求描述来启动一个新项目，以便快速进入开发流程。",
+        "acceptance_criteria": [
+          "AC1: 在 aiPlat 平台主界面存在“新建自动化项目”入口。",
+          "AC2: 点击后进入对话界面，系统提示用户输入需求描述。",
+          "AC3: 系统能正确接收并存储用户输入的非结构化文本需求。"
+        ],
+        "priority": "P0"
+      },
+      {
+        "id": "U2",
+        "description": "作为项目创建者，我可以在项目启动时选择参与该项目的团队角色（产品经理、架构师、前后端工程师、测试经理）并为每个角色指定具体的团队成员，以便流程自动将任务分配给对应人员。",
+        "acceptance_criteria": [
+          "AC1: 系统在需求输入后，提供角色选择界面，默认显示所有标准角色。",
+          "AC2: 创建者可以勾选或取消勾选角色。",
+          "AC3: 创建者可以为每个已选角色从平台现有成员列表中指定具体人选。",
+          "AC4: 角色和人选配置完成后，流程方可进入下一阶段。"
+        ],
+        "priority": "P0"
+      },
+      {
+        "id": "U3",
+        "description": "作为团队成员（架构师/工程师/测试经理），我可以在我的工作台看到分配给自己的任务，并查看其他角色的工作产物（如 PRD、架构图、代码、测试报告），但不能修改，以便我了解全局并完成我的本职工作。",
+        "acceptance_criteria": [
+          "AC1: 每个角色的工作产物（文档、代码、报告）自动存储并关联到项目。",
+          "AC2: 所有团队成员均可查看项目内所有工作产物。",
+          "AC3: 非产物创建者或项目管理员无法编辑或删除该产物。",
+          "AC4: 系统记录所有查看日志。"
+        ],
+        "priority": "P1"
+      },
+      {
+        "id": "U4",
+        "description": "作为测试经理，我希望系统能根据 PRD 自动生成测试用例，并在每次代码变更后自动执行测试，生成测试报告，以便我高效完成测试工作。",
+        "acceptance_criteria": [
+          "AC1: 系统在“架构设计”阶段完成后，自动调用测试用例生成 Skill。",
+          "AC2: 生成的测试用例覆盖 PRD 中的所有用户故事和验收标准。",
+          "AC3: 每次代码提交后，自动触发测试执行。",
+          "AC4: 测试完成后，自动生成包含通过率、失败详情、日志的结构化测试报告。"
+        ],
+        "priority": "P0"
+      },
+      {
+        "id": "U5",
+        "description": "作为系统，我希望在测试报告显示失败时，自动将缺陷信息（失败测试、日志）传递给程序员 Agent，自动修正代码并记录 Bug 修正日期、方式和程序名，然后重新触发测试，直至测试通过率达到 100%。",
+        "acceptance_criteria": [
+          "AC1: 系统检测到测试失败后，自动创建 Bug 记录。",
+          "AC2: 自动将 Bug 信息与失败代码片段关联，并触发代码修复 Agent。",
+          "AC3: 代码修复后，自动记录修正日期、修改方式（如：修改函数 X）、程序名。",
+          "AC4: 修正后自动进入下一轮测试，形成闭环。",
+          "AC5: 当测试通过率达到 100% 时，流程自动结束，并向项目创建者发送通知。"
+        ],
+        "priority": "P0"
+      }
+    ],
+    "constraints": [
+      "C1: 所有流程步骤必须由系统自动编排执行，无需人工干预（角色选择阶段除外）。",
+      "C2: 团队成员仅能查看其他角色工作产物，不能修改。",
+      "C3: 流程结束的唯一条件是所有测试用例通过率达到 100%。",
+      "C4: 系统必须记录完整的审计日志，包括每个阶段的开始时间、结束时间、执行人（Agent 或人工）、产物版本。"
+    ],
+    "scope": "组合"
+  },
+  "max_iterations": 3,
+  "tokens_used": 51263,
+  "tokens_budget": 50000,
+  "iteration": 15,
+  "qa_retry": 0,
+  "issues": [
+    {
+      "severity": "P1",
+      "description": "Test case generation is placeholder; needs integration with actual PRD parsing and test generation logic.",
+      "target_agent": "backend_developer",
+      "suggestion": "Implement a Skill or external service that parses PRD and generates structured test cases covering all user stories and acceptance criteria."
+    },
+    {
+      "severity": "P2",
+      "description": "No authentication or authorization implemented; any user can access any project.",
+      "target_agent": "backend_developer",
+      "suggestion": "Add user authentication (JWT) and role-based access control (RBAC) to enforce read-only for non-owners."
+    },
+    {
+      "severity": "P2",
+      "description": "Fix logic is simplistic; assumes only one fix per cycle without analyzing root cause.",
+      "target_agent": "backend_developer",
+      "suggestion": "Enhance the fix endpoint to accept multiple fixes, correlate with failed tests, and support iterative debugging."
+    }
+  ],
+  "_prev_failing_ids": [],
+  "_stagnation_count": 0,
+  "_bug_fixes": [],
+  "_auto_approve": false,
+  "_current_stage_idx": 2,
+  "_reject_feedback": "",
+  "output_dir": "/Users/apple/workdata/person/zy/aiPlatform/aiPlat-app/generated/prj_ee3d4ddb",
+  "context": {},
+  "_stage_pm_agent_1_done": true,
+  "architecture": {
+    "main.py": "## FILE: main.py\nfrom fastapi import FastAPI, HTTPException, Depends, BackgroundTasks\nfrom pydantic import BaseModel, Field\nfrom typing import List, Optional, Dict, Any\nfrom datetime import datetime\nimport uuid\nimport asyncio\n\napp = FastAPI(title=\"AutoDelivery Agent\", version=\"1.0.0\")\n\n# ========== Data Models ==========\n\nclass RequirementInput(BaseModel):\n    text: str\n\nclass ProjectCreate(BaseModel):\n    name: str\n    requirement: str\n    team_roles: Dict[str, str]  # role -> member_id\n\nclass ProjectStatus(BaseModel):\n    id: str\n    name: str\n    phase: str  # requirement, architecture, coding, testing, fix, done\n    requirement: str\n    prd: Optional[str] = None\n    architecture: Optional[str] = None\n    code: Optional[Dict[str, str]] = None  # file -> content\n    test_cases: Optional[List[str]] = None\n    test_report: Optional[Dict[str, Any]] = None\n    bugs: List[Dict[str, Any]] = []\n    logs: List[Dict[str, Any]] = []\n    created_at: datetime = Field(default_factory=datetime.utcnow)\n    updated_at: datetime = Field(default_factory=datetime.utcnow)\n\n# ========== In-memory storage ==========\n\nprojects: Dict[str, ProjectStatus] = {}\n\n# ========== Helper functions ==========\n\ndef log_event(project_id: str, event: str, detail: str = \"\"):\n    if project_id in projects:\n        projects[project_id].logs.append({\n            \"timestamp\": datetime.utcnow().isoformat(),\n            \"event\": event,\n            \"detail\": detail\n        })\n\n# ========== API Endpoints ==========\n\n@app.post(\"/projects/new\")\nasync def create_project(req: RequirementInput):\n    project_id = str(uuid.uuid4())\n    project = ProjectStatus(\n        id=project_id,\n        name=f\"Project-{project_id[:8]}\",\n        phase=\"requirement\",\n        requirement=req.text\n    )\n    projects[project_id] = project\n    log_event(project_id, \"project_created\", f\"Requirement: {req.text[:50]}...\")\n    return {\"project_id\": project_id, \"phase\": \"requirement\", \"message\": \"Project created. Please confirm requirement and assign team roles.\"}\n\n@app.post(\"/projects/{project_id}/confirm_requirement\")\nasync def confirm_requirement(project_id: str, prd: str):\n    if project_id not in projects:\n        raise HTTPException(status_code=404, detail=\"Project not found\")\n    proj = projects[project_id]\n    proj.prd = prd\n    proj.phase = \"architecture\"\n    proj.updated_at = datetime.utcnow()\n    log_event(project_id, \"requirement_confirmed\", \"PRD generated and confirmed by user\")\n    return {\"phase\": \"architecture\", \"message\": \"Requirement confirmed. Proceeding to architecture design.\"}\n\n@app.post(\"/projects/{project_id}/architecture\")\nasync def submit_architecture(project_id: str, architecture: str):\n    if project_id not in projects:\n        raise HTTPException(status_code=404, detail=\"Project not found\")\n    proj = projects[project_id]\n    proj.architecture = architecture\n    proj.phase = \"coding\"\n    proj.updated_at = datetime.utcnow()\n    log_event(project_id, \"architecture_submitted\", \"Architecture design submitted by architect\")\n    return {\"phase\": \"coding\", \"message\": \"Architecture confirmed. Starting coding phase.\"}\n\n@app.post(\"/projects/{project_id}/code\")\nasync def submit_code(project_id: str, code: Dict[str, str]):\n    if project_id not in projects:\n        raise HTTPException(status_code=404, detail=\"Project not found\")\n    proj = projects[project_id]\n    proj.code = code\n    proj.phase = \"testing\"\n    proj.updated_at = datetime.utcnow()\n    log_event(project_id, \"code_submitted\", f\"Code files: {list(code.keys())}\")\n    # Auto-generate test cases from PRD\n    proj.test_cases = [f\"Test case {i}: validate {story['description'][:30]}...\" for i, story in enumerate([])]  # placeholder\n    return {\"phase\": \"testing\", \"message\": \"Code submitted. Generating test cases from PRD.\"}\n\n@app.post(\"/projects/{project_id}/test_report\")\nasync def submit_test_report(project_id: str, report: Dict[str, Any]):\n    if project_id not in projects:\n        raise HTTPException(status_code=404, detail=\"Project not found\")\n    proj = projects[project_id]\n    proj.test_report = report\n    pass_rate = report.get(\"pass_rate\", 0)\n    if pass_rate < 100:\n        # Auto-fix: create bug and trigger fix\n        bug = {\n            \"id\": str(uuid.uuid4()),\n            \"description\": f\"Test failed with pass rate {pass_rate}%\",\n            \"failed_tests\": report.get(\"failed_tests\", []),\n            \"fix_date\": datetime.utcnow().isoformat(),\n            \"fix_method\": \"Auto-fix applied\",\n            \"program_name\": \"main.py\"\n        }\n        proj.bugs.append(bug)\n        proj.phase = \"fix\"\n        log_event(project_id, \"bug_detected\", f\"Pass rate {pass_rate}%. Bug created: {bug['id']}\")\n        return {\"phase\": \"fix\", \"message\": f\"Test failed ({pass_rate}%). Auto-fix triggered.\", \"bug\": bug}\n    else:\n        proj.phase = \"done\"\n        log_event(project_id, \"project_completed\", \"All tests passed (100%). Project completed.\")\n        return {\"phase\": \"done\", \"message\": \"All tests passed. Project completed!\"}\n\n@app.post(\"/projects/{project_id}/fix\")\nasync def apply_fix(project_id: str, fix_details: Dict[str, Any]):\n    if project_id not in projects:\n        raise HTTPException(status_code=404, detail=\"Project not found\")\n    proj = projects[project_id]\n    # Record fix\n    bug = {\n        \"id\": str(uuid.uuid4()),\n        \"description\": fix_details.get(\"description\", \"Auto-fix\"),\n        \"fix_date\": datetime.utcnow().isoformat(),\n        \"fix_method\": fix_details.get(\"fix_method\", \"modified function X\"),\n        \"program_name\": fix_details.get(\"program_name\", \"unknown\")\n    }\n    proj.bugs.append(bug)\n    proj.phase = \"testing\"  # Re-enter testing phase\n    proj.updated_at = datetime.utcnow()\n    log_event(project_id, \"fix_applied\", f\"Bug fixed: {bug['id']}\")\n    return {\"phase\": \"testing\", \"message\": \"Fix applied. Re-testing.\"}\n\n@app.get(\"/projects/{project_id}\")\nasync def get_project(project_id: str):\n    if project_id not in projects:\n        raise HTTPException(status_code=404, detail=\"Project not found\")\n    return projects[project_id]\n\n@app.get(\"/projects/{project_id}/logs\")\nasync def get_logs(project_id: str):\n    if project_id not in projects:\n        raise HTTPException(status_code=404, detail=\"Project not found\")\n    return {\"logs\": projects[project_id].logs}\n\n# ========== Health Check ==========\n\n@app.get(\"/health\")\nasync def health():\n    return {\"status\": \"ok\", \"timestamp\": datetime.utcnow().isoformat()}\n",
+    "requirements.txt": "## FILE: requirements.txt\nfastapi==0.104.1\nuvicorn[standard]==0.24.0\npydantic==2.5.2\naiofiles==23.2.1\n",
+    "Dockerfile": "## FILE: Dockerfile\nFROM python:3.11-slim\n\nWORKDIR /app\n\nCOPY requirements.txt .\nRUN pip install --no-cache-dir -r requirements.txt\n\nCOPY . .\n\nEXPOSE 8000\n\nCMD [\"uvicorn\", \"main:app\", \"--host\", \"0.0.0.0\", \"--port\", \"8000\"]\n"
+  },
+  "frontend_code": {
+    "main.py": "## FILE: main.py\nfrom fastapi import FastAPI\nfrom api.routes import router\nfrom config import settings\n\napp = FastAPI(title=\"AutoDelivery Agent API\", version=\"1.0.0\")\n\napp.include_router(router, prefix=\"/api/v1\")\n\nif __name__ == \"__main__\":\n    import uvicorn\n    uvicorn.run(app, host=settings.HOST, port=settings.PORT)\n",
+    "requirements.txt": "## FILE: requirements.txt\nfastapi==0.104.1\nuvicorn[standard]==0.24.0\npydantic==2.5.2\npydantic-settings==2.1.0\npython-multipart==0.0.6\n",
+    "Dockerfile": "## FILE: Dockerfile\nFROM python:3.11-slim\n\nWORKDIR /app\n\nCOPY requirements.txt .\nRUN pip install --no-cache-dir -r requirements.txt\n\nCOPY . .\n\nEXPOSE 8000\n\nCMD [\"uvicorn\", \"main:app\", \"--host\", \"0.0.0.0\", \"--port\", \"8000\"]\n",
+    "api/__init__.py": "## FILE: api/__init__.py\n",
+    "api/routes.py": "## FILE: api/routes.py\nfrom fastapi import APIRouter, HTTPException, Depends\nfrom models import (\n    ProjectCreateRequest, ProjectCreateResponse, ProjectStatusResponse,\n    RequirementSubmitRequest, RequirementSubmitResponse,\n    TeamConfigRequest, TeamConfigResponse,\n    PRDConfirmRequest, PRDConfirmResponse,\n    ArchitectureConfirmRequest, ArchitectureConfirmResponse,\n    TestCaseConfirmRequest, TestCaseConfirmResponse,\n    BugReport, FixRecord, TestResult\n)\nfrom typing import List\nimport uuid\nfrom datetime import datetime\n\nrouter = APIRouter()\n\n# In-memory storage for demo purposes\nprojects = {}\n\n@router.post(\"/projects\", response_model=ProjectCreateResponse, tags=[\"Projects\"])\nasync def create_project(request: ProjectCreateRequest):\n    project_id = str(uuid.uuid4())\n    projects[project_id] = {\n        \"id\": project_id,\n        \"name\": request.name,\n        \"status\": \"initialized\",\n        \"requirements\": None,\n        \"team\": None,\n        \"prd\": None,\n        \"architecture\": None,\n        \"test_cases\": None,\n        \"test_results\": [],\n        \"bugs\": [],\n        \"fix_records\": [],\n        \"created_at\": datetime.utcnow().isoformat()\n    }\n    return ProjectCreateResponse(project_id=project_id, status=\"created\")\n\n@router.post(\"/projects/{project_id}/requirements\", response_model=RequirementSubmitResponse, tags=[\"Requirements\"])\nasync def submit_requirement(project_id: str, request: RequirementSubmitRequest):\n    if project_id not in projects:\n        raise HTTPException(status_code=404, detail=\"Project not found\")\n    projects[project_id][\"requirements\"] = request.text\n    projects[project_id][\"status\"] = \"requirement_submitted\"\n    return RequirementSubmitResponse(project_id=project_id, status=\"requirement_received\", message=\"Requirement received. PRD generation in progress.\")\n\n@router.post(\"/projects/{project_id}/team\", response_model=TeamConfigResponse, tags=[\"Team\"])\nasync def configure_team(project_id: str, request: TeamConfigRequest):\n    if project_id not in projects:\n        raise HTTPException(status_code=404, detail=\"Project not found\")\n    projects[project_id][\"team\"] = request.team_members\n    projects[project_id][\"status\"] = \"team_configured\"\n    return TeamConfigResponse(project_id=project_id, status=\"team_configured\", message=\"Team configuration saved.\")\n\n@router.post(\"/projects/{project_id}/prd/confirm\", response_model=PRDConfirmResponse, tags=[\"PRD\"])\nasync def confirm_prd(project_id: str, request: PRDConfirmRequest):\n    if project_id not in projects:\n        raise HTTPException(status_code=404, detail=\"Project not found\")\n    if not request.confirmed:\n        return PRDConfirmResponse(project_id=project_id, status=\"prd_rejected\", message=\"PRD rejected, please revise.\")\n    projects[project_id][\"prd\"] = request.prd_content\n    projects[project_id][\"status\"] = \"prd_confirmed\"\n    return PRDConfirmResponse(project_id=project_id, status=\"prd_confirmed\", message=\"PRD confirmed. Proceeding to architecture design.\")\n\n@router.post(\"/projects/{project_id}/architecture/confirm\", response_model=ArchitectureConfirmResponse, tags=[\"Architecture\"])\nasync def confirm_architecture(project_id: str, request: ArchitectureConfirmRequest):\n    if project_id not in projects:\n        raise HTTPException(status_code=404, detail=\"Project not found\")\n    if not request.confirmed:\n        return ArchitectureConfirmResponse(project_id=project_id, status=\"architecture_rejected\", message=\"Architecture rejected, please revise.\")\n    projects[project_id][\"architecture\"] = request.architecture_content\n    projects[project_id][\"status\"] = \"architecture_confirmed\"\n    return ArchitectureConfirmResponse(project_id=project_id, status=\"architecture_confirmed\", message=\"Architecture confirmed. Proceeding to development.\")\n\n@router.post(\"/projects/{project_id}/testcases/confirm\", response_model=TestCaseConfirmResponse, tags=[\"TestCases\"])\nasync def confirm_test_cases(project_id: str, request: TestCaseConfirmRequest):\n    if project_id not in projects:\n        raise HTTPException(status_code=404, detail=\"Project not found\")\n    if not request.confirmed:\n        return TestCaseConfirmResponse(project_id=project_id, status=\"testcases_rejected\", message=\"Test cases rejected, please revise.\")\n    projects[project_id][\"test_cases\"] = request.test_cases\n    projects[project_id][\"status\"] = \"testcases_confirmed\"\n    return TestCaseConfirmResponse(project_id=project_id, status=\"testcases_confirmed\", message=\"Test cases confirmed. Proceeding to testing.\")\n\n@router.post(\"/projects/{project_id}/test/run\", response_model=TestResult, tags=[\"Testing\"])\nasync def run_tests(project_id: str):\n    if project_id not in projects:\n        raise HTTPException(status_code=404, detail=\"Project not found\")\n    # Simulated test execution\n    result = TestResult(\n        project_id=project_id,\n        passed=8,\n        failed=2,\n        total=10,\n        pass_rate=80.0,\n        details=[\n            {\"test_id\": \"TC001\", \"status\": \"pass\"},\n            {\"test_id\": \"TC002\", \"status\": \"fail\", \"log\": \"AssertionError: expected 5 got 3\"}\n        ],\n        executed_at=datetime.utcnow().isoformat()\n    )\n    projects[project_id][\"test_results\"].append(result)\n    projects[project_id][\"status\"] = \"test_executed\"\n    if result.pass_rate >= 100.0:\n        projects[project_id][\"status\"] = \"completed\"\n    return result\n\n@router.post(\"/projects/{project_id}/bugs\", response_model=BugReport, tags=[\"Bugs\"])\nasync def report_bug(project_id: str, bug: BugReport):\n    if project_id not in projects:\n        raise HTTPException(status_code=404, detail=\"Project not found\")\n    bug.bug_id = str(uuid.uuid4())\n    bug.reported_at = datetime.utcnow().isoformat()\n    projects[project_id][\"bugs\"].append(bug)\n    projects[project_id][\"status\"] = \"bug_reported\"\n    return bug\n\n@router.post(\"/projects/{project_id}/fix\", response_model=FixRecord, tags=[\"Fixes\"])\nasync def apply_fix(project_id: str, fix: FixRecord):\n    if project_id not in projects:\n        raise HTTPException(status_code=404, detail=\"Project not found\")\n    fix.fix_id = str(uuid.uuid4())\n    fix.fixed_at = datetime.utcnow().isoformat()\n    projects[project_id][\"fix_records\"].append(fix)\n    projects[project_id][\"status\"] = \"fix_applied\"\n    return fix\n\n@router.get(\"/projects/{project_id}/status\", response_model=ProjectStatusResponse, tags=[\"Projects\"])\nasync def get_project_status(project_id: str):\n    if project_id not in projects:\n        raise HTTPException(status_code=404, detail=\"Project not found\")\n    proj = projects[project_id]\n    return ProjectStatusResponse(\n        project_id=proj[\"id\"],\n        name=proj[\"name\"],\n        status=proj[\"status\"],\n        test_results=proj[\"test_results\"],\n        bugs=proj[\"bugs\"],\n        fix_records=proj[\"fix_records\"],\n        created_at=proj[\"created_at\"]\n    )\n",
+    "models.py": "## FILE: models.py\nfrom pydantic import BaseModel, Field\nfrom typing import List, Optional, Dict, Any\nfrom datetime import datetime\n\nclass ProjectCreateRequest(BaseModel):\n    name: str = Field(..., description=\"Project name\")\n\nclass ProjectCreateResponse(BaseModel):\n    project_id: str\n    status: str\n\nclass RequirementSubmitRequest(BaseModel):\n    text: str = Field(..., description=\"Natural language requirement description\")\n\nclass RequirementSubmitResponse(BaseModel):\n    project_id: str\n    status: str\n    message: str\n\nclass TeamMember(BaseModel):\n    role: str  # e.g., \"product_manager\", \"architect\", \"frontend_engineer\", \"backend_engineer\", \"test_manager\"\n    user_id: str\n    name: str\n\nclass TeamConfigRequest(BaseModel):\n    team_members: List[TeamMember]\n\nclass TeamConfigResponse(BaseModel):\n    project_id: str\n    status: str\n    message: str\n\nclass PRDConfirmRequest(BaseModel):\n    confirmed: bool\n    prd_content: Optional[Dict[str, Any]] = None\n\nclass PRDConfirmResponse(BaseModel):\n    project_id: str\n    status: str\n    message: str\n\nclass ArchitectureConfirmRequest(BaseModel):\n    confirmed: bool\n    architecture_content: Optional[Dict[str, Any]] = None\n\nclass ArchitectureConfirmResponse(BaseModel):\n    project_id: str\n    status: str\n    message: str\n\nclass TestCase(BaseModel):\n    id: str\n    description: str\n    expected_result: str\n\nclass TestCaseConfirmRequest(BaseModel):\n    confirmed: bool\n    test_cases: Optional[List[TestCase]] = None\n\nclass TestCaseConfirmResponse(BaseModel):\n    project_id: str\n    status: str\n    message: str\n\nclass TestResultDetail(BaseModel):\n    test_id: str\n    status: str  # \"pass\" or \"fail\"\n    log: Optional[str] = None\n\nclass TestResult(BaseModel):\n    project_id: str\n    passed: int\n    failed: int\n    total: int\n    pass_rate: float\n    details: List[TestResultDetail]\n    executed_at: str\n\nclass BugReport(BaseModel):\n    bug_id: Optional[str] = None\n    test_id: str\n    description: str\n    log: str\n    reported_at: Optional[str] = None\n\nclass FixRecord(BaseModel):\n    fix_id: Optional[str] = None\n    bug_id: str\n    modified_function: str\n    program_name: str\n    fix_method: str\n    fixed_at: Optional[str] = None\n\nclass ProjectStatusResponse(BaseModel):\n    project_id: str\n    name: str\n    status: str\n    test_results: List[TestResult]\n    bugs: List[BugReport]\n    fix_records: List[FixRecord]\n    created_at: str\n",
+    "config.py": "## FILE: config.py\nfrom pydantic_settings import BaseSettings\n\nclass Settings(BaseSettings):\n    HOST: str = \"0.0.0.0\"\n    PORT: int = 8000\n    DATABASE_URL: str = \"sqlite:///./autodelivery.db\"\n    SECRET_KEY: str = \"your-secret-key-here\"\n    ALGORITHM: str = \"HS256\"\n    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30\n\n    class Config:\n        env_file = \".env\"\n\nsettings = Settings()\n"
+  },
+  "backend_code": null,
+  "test_plan": {
+    "test_cases": [
+      {
+        "id": "TC-U1-AC1-POS",
+        "description": "正向：验证在 aiPlat 平台主界面存在“新建自动化项目”入口。",
+        "acceptance_criteria_id": "AC1-U1",
+        "expected": "在 aiPlat 平台主界面（如侧边栏、首页按钮或菜单中）可以找到一个明确标识为“新建自动化项目”的按钮或链接，点击后能触发项目创建流程。"
+      },
+      {
+        "id": "TC-U1-AC1-BND",
+        "description": "边界：验证“新建自动化项目”入口在平台主界面被隐藏或不可用时的表现。",
+        "acceptance_criteria_id": "AC1-U1",
+        "expected": "如果用户角色没有创建项目的权限，该入口应置灰或隐藏，并提示“您没有创建项目的权限，请联系管理员。” 而不是直接报错或显示空白。"
+      },
+      {
+        "id": "TC-U1-AC2-POS",
+        "description": "正向：验证点击“新建自动化项目”后，进入对话界面并提示用户输入需求。",
+        "acceptance_criteria_id": "AC2-U1",
+        "expected": "点击入口后，系统跳转到一个新的对话界面，界面中显示系统发出的第一条消息，提示用户“请描述您的项目需求，例如：开发一个在线书店系统。”"
+      },
+      {
+        "id": "TC-U1-AC2-BND",
+        "description": "边界：验证用户在对话界面长时间（如5分钟）未输入任何内容时的表现。",
+        "acceptance_criteria_id": "AC2-U1",
+        "expected": "系统应保持对话界面活跃，不自动关闭或超时，并显示提示信息“请继续输入您的需求描述。若需帮助，请输入‘帮助’。” 或类似友好提示。"
+      },
+      {
+        "id": "TC-U1-AC3-POS",
+        "description": "正向：验证系统能正确接收并存储用户输入的非结构化文本需求。",
+        "acceptance_criteria_id": "AC3-U1",
+        "expected": "用户输入一段自然语言（如“我想做一个学生成绩管理系统，支持教师录入成绩，学生查询成绩。”）并提交后，系统提示“需求已接收，正在分析...”，并在项目创建成功后，在项目详情页的“需求文档”中能看到该段原始文本。"
+      },
+      {
+        "id": "TC-U1-AC3-BND",
+        "description": "边界：验证用户输入超长文本（如10万字）时的系统处理能力。",
+        "acceptance_criteria_id": "AC3-U1",
+        "expected": "系统应能成功接收并存储超长文本，不出现界面卡死或请求超时错误。存储后，系统可以正常进行后续分析，或给出“需求过长，系统将优先处理关键部分”的提示。"
+      },
+      {
+        "id": "TC-U2-AC1-POS",
+        "description": "正向：验证在需求输入后，系统提供角色选择界面，并默认显示所有标准角色。",
+        "acceptance_criteria_id": "AC1-U2",
+        "expected": "在需求分析完成后，界面切换至角色配置页面，默认显示“产品经理”、“架构师”、“前端工程师”、“后端工程师”、“测试经理”等所有标准角色，且每个角色前都有一个未勾选的复选框。"
+      },
+      {
+        "id": "TC-U2-AC1-BND",
+        "description": "边界：验证当平台标准角色列表为空时，角色选择界面的显示。",
+        "acceptance_criteria_id": "AC1-U2",
+        "expected": "若平台未配置任何标准角色，系统应显示“当前无可用的标准角色，请联系平台管理员配置。” 并阻止流程进入下一阶段，而不是显示一个空白列表。"
+      },
+      {
+        "id": "TC-U2-AC2-POS",
+        "description": "正向：验证创建者可以勾选或取消勾选角色。",
+        "acceptance_criteria_id": "AC2-U2",
+        "expected": "创建者可以点击“架构师”角色的复选框，使其变为已勾选状态；再次点击，使其变为未勾选状态。界面状态应实时更新。"
+      },
+      {
+        "id": "TC-U2-AC2-BND",
+        "description": "边界：验证创建者取消勾选所有角色后的表现。",
+        "acceptance_criteria_id": "AC2-U2",
+        "expected": "如果创建者取消了所有角色的勾选，系统应禁用“下一步”按钮，并显示错误提示“请至少选择一个项目角色。”"
+      },
+      {
+        "id": "TC-U2-AC3-POS",
+        "description": "正向：验证创建者可以为每个已选角色从平台现有成员列表中指定具体人选。",
+        "acceptance_criteria_id": "AC3-U2",
+        "expected": "勾选“测试经理”角色后，其下方出现一个下拉选择框，下拉列表包含平台中所有用户，从中选择“张三”作为测试经理。选择后，该角色旁显示“测试经理：张三”。"
+      },
+      {
+        "id": "TC-U2-AC3-BND",
+        "description": "边界：验证为角色指定一个已被其他项目占用的成员（假设不允许多项目并行）时的表现。",
+        "acceptance_criteria_id": "AC3-U2",
+        "expected": "如果选中的“张三”当前正在参与另一个活跃的自动化项目，系统应给出警告“成员张三当前已分配给项目‘XXXX’，是否仍要将其分配至此项目？” 提供“强制分配”和“取消”选项。"
+      },
+      {
+        "id": "TC-U2-AC4-POS",
+        "description": "正向：验证角色和人选配置完成后，流程方可进入下一阶段。",
+        "acceptance_criteria_id": "AC4-U2",
+        "expected": "为所有已选角色（如产品经理、架构师）都指定了具体人选后，“下一步”按钮变为可点击状态。点击后，系统进入“架构设计”阶段。"
+      },
+      {
+        "id": "TC-U2-AC4-BND",
+        "description": "边界：验证已选角色但未指定人选时，能否进入下一阶段。",
+        "acceptance_criteria_id": "AC4-U2",
+        "expected": "只勾选了“架构师”角色，但未从成员列表中为其选择任何人。“下一步”按钮应保持禁用状态，并提示“请为所有已选角色指定具体人选。”"
+      },
+      {
+        "id": "TC-U3-AC1-POS",
+        "description": "正向：验证每个角色的工作产物自动存储并关联到项目。",
+        "acceptance_criteria_id": "AC1-U3",
+        "expected": "在“架构设计”阶段完成后，系统自动生成架构图，并在项目文件库中新增一个名为“架构设计_<项目名>_<时间戳>.png”的文件，该文件与当前项目关联。"
+      },
+      {
+        "id": "TC-U3-AC1-BND",
+        "description": "边界：验证系统在生成产物时，若存储空间不足，是否会有正确提示。",
+        "acceptance_criteria_id": "AC1-U3",
+        "expected": "当系统尝试存储架构图但存储空间已满时，不应丢失产物，而应暂停流程，并向项目创建者发送通知“存储空间不足，无法保存产物‘架构图’，请清理空间后重试。”"
+      },
+      {
+        "id": "TC-U3-AC2-POS",
+        "description": "正向：验证所有团队成员均可查看项目内所有工作产物。",
+        "acceptance_criteria_id": "AC2-U3",
+        "expected": "作为“前端工程师”角色的用户登录，进入该项目的工作台，可以点击查看“架构师”产出的架构图，以及“测试经理”产出的测试报告。"
+      },
+      {
+        "id": "TC-U3-AC2-BND",
+        "description": "边界：验证非项目成员的用户无法查看该项目的工作产物。",
+        "acceptance_criteria_id": "AC2-U3",
+        "expected": "一个不属于该项目任何角色的平台用户，尝试通过直接URL访问该项目的产物列表时，系统应返回“404 未找到”或“您无权访问此项目”。"
+      },
+      {
+        "id": "TC-U3-AC3-POS",
+        "description": "正向：验证非产物创建者或项目管理员无法编辑或删除该产物。",
+        "acceptance_criteria_id": "AC3-U3",
+        "expected": "作为“后端工程师”角色，在查看“架构师”的架构图时，界面上没有“编辑”或“删除”按钮，右键菜单中也不包含相关选项。"
+      },
+      {
+        "id": "TC-U3-AC3-BND",
+        "description": "边界：验证项目管理员可以编辑或删除任何产物。",
+        "acceptance_criteria_id": "AC3-U3",
+        "expected": "项目创建者（管理员）在查看“测试经理”的测试报告时，界面上显示“编辑”和“删除”按钮，可以成功修改报告内容或将其删除。"
+      },
+      {
+        "id": "TC-U3-AC4-POS",
+        "description": "正向：验证系统记录所有查看日志。",
+        "acceptance_criteria_id": "AC4-U3",
+        "expected": "用户“张三”查看了“架构图”后，在项目审计日志中新增一条记录：“[时间] 用户 [张三] 查看了文件 [架构图]”。"
+      },
+      {
+        "id": "TC-U3-AC4-BND",
+        "description": "边界：验证频繁查看同一产物时，日志记录是否会产生大量冗余。",
+        "acceptance_criteria_id": "AC4-U3",
+        "expected": "用户在1分钟内刷新或点击查看同一份测试报告10次，审计日志中应只记录1次或最多3次（如：首次、中间一次、最后一次），而不是记录10次完全相同的日志。"
+      },
+      {
+        "id": "TC-U4-AC1-POS",
+        "description": "正向：验证系统在“架构设计”阶段完成后，自动调用测试用例生成 Skill。",
+        "acceptance_criteria_id": "AC1-U4",
+        "expected": "在“架构设计”阶段状态变为“已完成”后，系统后台立即触发一个名为“Test_Case_Generator”的 Agent 或 Skill 执行，并在项目日志中记录“开始生成测试用例”。"
+      },
+      {
+        "id": "TC-U4-AC1-BND",
+        "description": "边界：验证当测试用例生成 Skill 服务不可用时，系统的重试机制。",
+        "acceptance_criteria_id": "AC1-U4",
+        "expected": "如果 Test_Case_Generator 服务返回500错误，系统应自动重试最多3次，每次间隔30秒。若3次后仍失败，则暂停流程，并向项目创建者发送告警“测试用例生成服务异常，请检查。”"
+      },
+      {
+        "id": "TC-U4-AC2-POS",
+        "description": "正向：验证生成的测试用例覆盖 PRD 中的所有用户故事和验收标准。",
+        "acceptance_criteria_id": "AC2-U4",
+        "expected": "查看系统生成的测试用例列表，应该包含至少5个测试用例，分别对应 U1 的 AC1、AC2、AC3 以及 U2 的 AC1、AC2 等。例如，存在一个测试用例描述为“验证用户能否选择团队成员”。"
+      },
+      {
+        "id": "TC-U4-AC2-BND",
+        "description": "边界：验证当 PRD 中包含模糊或矛盾的验收标准时，系统如何生成测试用例。",
+        "acceptance_criteria_id": "AC2-U4",
+        "expected": "如果 PRD 中有一条 AC 为“系统应快速响应”，系统应生成一个测试用例，并注明“该标准未定义具体指标，默认设定响应时间应小于2秒。” 并在报告中标记为“待确认”。"
+      },
+      {
+        "id": "TC-U4-AC3-POS",
+        "description": "正向：验证每次代码提交后，自动触发测试执行。",
+        "acceptance_criteria_id": "AC3-U4",
+        "expected": "当“后端工程师”Agent 提交一次代码后，系统自动启动测试流水线，项目状态更新为“测试中”，并在日志中记录“代码变更 [commit_id] 触发测试执行”。"
+      },
+      {
+        "id": "TC-U4-AC3-BND",
+        "description": "边界：验证当有多次代码提交时，测试是否会被重复触发。",
+        "acceptance_criteria_id": "AC3-U4",
+        "expected": "在1分钟内，后端 Agent 连续提交了3次代码（commit A, B, C）。系统应智能地取消对 commit A 和 B 的测试任务，仅对最新的 commit C 执行一次测试，以避免资源浪费。"
+      },
+      {
+        "id": "TC-U4-AC4-POS",
+        "description": "正向：验证测试完成后，自动生成包含通过率、失败详情、日志的结构化测试报告。",
+        "acceptance_criteria_id": "AC4-U4",
+        "expected": "测试执行完毕后，项目文件库中新增一份“测试报告_<项目名>_<时间戳>.json”文件。该文件包含字段：`pass_rate: 85%`，`failed_cases: [ { id: “TC-U1-AC1”, error_log: “断言失败：预期按钮存在，实际未找到” } ]`。"
+      },
+      {
+        "id": "TC-U4-AC4-BND",
+        "description": "边界：验证当测试过程中发生基础设施故障（如测试环境宕机）时，测试报告如何生成。",
+        "acceptance_criteria_id": "AC4-U4",
+        "expected": "如果测试环境在运行到一半时崩溃，系统应生成一份报告，其中 `pass_rate` 字段为“N/A”，并包含一个 `infrastructure_error` 字段，描述为“测试环境在时间 XX:XX 发生连接超时，测试未完成。”"
+      },
+      {
+        "id": "TC-U5-AC1-POS",
+        "description": "正向：验证系统检测到测试失败后，自动创建 Bug 记录。",
+        "acceptance_criteria_id": "AC1-U5",
+        "expected": "测试报告显示通过率为85%，系统自动在项目“缺陷管理”模块中创建一个新的 Bug，标题为“测试失败：TC-U1-AC1”，状态为“待修复”。"
+      },
+      {
+        "id": "TC-U5-AC1-BND",
+        "description": "边界：验证同一个测试用例反复失败时，系统是否会重复创建相同的 Bug。",
+        "acceptance_criteria_id": "AC1-U5",
+        "expected": "如果 TC-U1-AC1 在连续两次测试中均失败，系统应识别出该 Bug 已存在，并更新已有 Bug 的记录（如：增加“复现次数”字段），而不是创建两个完全相同的 Bug。"
+      },
+      {
+        "id": "TC-U5-AC2-POS",
+        "description": "正向：验证自动将 Bug 信息与失败代码片段关联，并触发代码修复 Agent。",
+        "acceptance_criteria_id": "AC2-U5",
+        "expected": "创建的 Bug 详情中，自动关联了导致失败的代码文件路径（如 `src/main.js:120`）和代码片段。同时，系统向“后端工程师”Agent 发送一个修复任务，包含该 Bug 的所有信息。"
+      },
+      {
+        "id": "TC-U5-AC2-BND",
+        "description": "边界：验证当 Bug 关联的代码片段所在的文件被删除后，系统如何处理。",
+        "acceptance_criteria_id": "AC2-U5",
+        "expected": "如果修复任务开始时，发现 Bug 关联的文件已被删除，代码修复 Agent 应记录“错误：关联文件已不存在”，并暂停修复，等待人工干预。"
+      },
+      {
+        "id": "TC-U5-AC3-POS",
+        "description": "正向：验证代码修复后，自动记录修正日期、修改方式、程序名。",
+        "acceptance_criteria_id": "AC3-U5",
+        "expected": "代码修复 Agent 提交修改后，在 Bug 记录中自动追加一条记录：“[时间] 已修复。修改方式：修改函数 `calculateTotal` 中的边界条件。程序名：`backend-agent-v2`。”"
+      },
+      {
+        "id": "TC-U5-AC3-BND",
+        "description": "边界：验证当代码修复 Agent 未能成功修改代码时的记录。",
+        "acceptance_criteria_id": "AC3-U5",
+        "expected": "如果 Agent 尝试修复但编译失败，应记录：“[时间] 修复尝试失败。修改方式：尝试重写 `login.js` 文件。程序名：`backend-agent-v2`。失败原因：语法错误。” 而不是不记录。"
+      },
+      {
+        "id": "TC-U5-AC4-POS",
+        "description": "正向：验证修正后自动进入下一轮测试，形成闭环。",
+        "acceptance_criteria_id": "AC4-U5",
+        "expected": "在代码修复 Agent 提交代码后，系统自动触发新一轮的测试，项目状态再次变为“测试中”，形成“测试-失败-修复-测试”的闭环。"
+      },
+      {
+        "id": "TC-U5-AC4-BND",
+        "description": "边界：验证在修复后的测试中，如果出现新的失败，是否仍能继续闭环。",
+        "acceptance_criteria_id": "AC4-U5",
+        "expected": "修复后的测试中，原来的 Bug 通过了，但引发了另一个测试用例失败。系统应能正确处理，创建新的 Bug（或复用旧 Bug 但更新信息），并再次触发修复流程，继续闭环。"
+      },
+      {
+        "id": "TC-U5-AC5-POS",
+        "description": "正向：验证当测试通过率达到 100% 时，流程自动结束，并向项目创建者发送通知。",
+        "acceptance_criteria_id": "AC5-U5",
+        "expected": "最后一轮测试报告显示 `pass_rate: 100%`。系统将项目状态更新为“已完成”。项目创建者在平台通知中心和注册邮箱中收到通知：“您的项目 [项目名] 已成功交付，所有测试用例通过率达到100%。”"
+      },
+      {
+        "id": "TC-U5-AC5-BND",
+        "description": "边界：验证在达到100%通过率后，如果又有人为提交代码，流程是否会重新开启。",
+        "acceptance_criteria_id": "AC5-U5",
+        "expected": "项目状态为“已完成”后，即使有人为或 Agent 再次提交代码，系统应拒绝此次提交，并提示“项目已交付，无法再修改代码。” 除非项目被重新激活。"
+      }
+    ]
+  },
+  "test_report": null,
+  "_stage_architect_agent_2_done": true,
+  "_stage_frontend_engineer_3_done": true,
+  "error": "token_budget_exhausted (51263)",
+  "_last_action_reason": "budget_exhausted"
+}

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple
 
 from core.utils.ids import new_prefixed_id
-from core.api.core_facade import kb_create_infra_db_client
+from core.api.facades.kb_facade import kb_create_infra_db_client
 
 
 SCHEMA_SQL = """

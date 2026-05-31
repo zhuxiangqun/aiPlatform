@@ -5,12 +5,12 @@ Manages GPU resource quotas, scheduling policies, and task queues.
 """
 
 import os
-from datetime import datetime
+from datetime import datetime, timezone, timezone
 
 from typing import Dict, Any, List, Optional
 from ..base import ManagementBase, Status, HealthStatus, Metrics, DiagnosisResult
 from ..schemas import QuotaInfo, PolicyInfo, TaskInfo, AutoscalingPolicy
-from datetime import datetime
+from datetime import datetime, timezone, timezone
 import time
 
 
@@ -46,7 +46,7 @@ def get_real_gpu_info() -> Dict[str, Any]:
             result["total_gpus"] = max(gpu_count, 1)
             result["available_gpus"] = result["total_gpus"]
             result["gpu_details"].append({
-                "model": "Apple Silicon" if "apple" in output.lower() else "Unknown",
+                "model": "arm64 accelerated" if "apple" in output.lower() else "Unknown",
                 "count": result["total_gpus"]
             })
     except Exception:
@@ -94,7 +94,7 @@ class SchedulerManager(ManagementBase):
                 gpu_used=0,
                 label="system",
                 status="Active",
-                created_at=datetime.now()
+                created_at=datetime.now(timezone.utc)
             )
         }
         
@@ -211,7 +211,7 @@ class SchedulerManager(ManagementBase):
         
         for task_id, task in self._tasks.items():
             if task.status == "pending":
-                wait_time = (datetime.now() - task.submitted_at).total_seconds()
+                wait_time = (datetime.now(timezone.utc) - task.submitted_at).total_seconds()
                 if wait_time > 3600:
                     issues.append(f"Task {task_id} has been pending for {wait_time}s")
         
@@ -340,7 +340,7 @@ class SchedulerManager(ManagementBase):
             gpu_used=0,
             label=config.get("label", ""),
             status="active",
-            created_at=datetime.now()
+            created_at=datetime.now(timezone.utc)
         )
         
         self._quotas[quota.id] = quota
@@ -511,7 +511,7 @@ class SchedulerManager(ManagementBase):
             position=len([t for t in self._tasks.values() if t.status == "pending"]) + 1,
             estimated_wait_time=0,
             submitter=config.get("submitter", "system"),
-            submitted_at=datetime.now()
+            submitted_at=datetime.now(timezone.utc)
         )
         
         self._tasks[task.id] = task

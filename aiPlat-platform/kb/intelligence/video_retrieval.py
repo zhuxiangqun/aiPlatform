@@ -4,9 +4,9 @@ import re
 from typing import Any, Dict, List, Optional, Tuple
 
 from .embeddings import cosine_similarity, embed_text
-from core.api.core_facade import kb_extract_keywords as extract_keywords
-from core.api.core_facade import kb_score_text as score_text
-from core.api.core_facade import kb_element_source as element_source
+from core.api.facades.kb_facade import kb_extract_keywords as extract_keywords
+from core.api.facades.kb_facade import kb_score_text as score_text
+from core.api.facades.kb_facade import kb_element_source as element_source
 
 
 def element_time_ms(e: Dict[str, Any]) -> Optional[int]:

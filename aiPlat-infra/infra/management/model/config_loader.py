@@ -10,7 +10,7 @@ Sources (in priority order):
 import os
 import yaml
 from typing import List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 from .schemas import ModelInfo, ModelType, ModelSource, ModelStatus, ModelConfig, ModelStats
 
@@ -79,7 +79,7 @@ def _models_from_env(api_key_env: str, provider: str, model_type: str,
             tags=tags[:], capabilities=[capability],
             status=ModelStatus.AVAILABLE,
             config=ModelConfig(api_key_env=api_key_env, base_url=base_url),
-            stats=ModelStats(), created_at=datetime.now(), updated_at=datetime.now(),
+            stats=ModelStats(), created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc),
         ))
     return models
 
@@ -114,7 +114,7 @@ def _load_non_api_models() -> List[ModelInfo]:
                 tags=list(tags), capabilities=[capability],
                 status=ModelStatus.AVAILABLE,
                 config=ModelConfig(),
-                stats=ModelStats(), created_at=datetime.now(), updated_at=datetime.now(),
+                stats=ModelStats(), created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc),
             ))
     # AIPLAT_DOC_LLM_MODEL is a CHAT purpose variant, skip if already in chat models
     return models
@@ -138,7 +138,7 @@ def _detect_system_capability_models() -> List[ModelInfo]:
             tags=["ocr", "chinese", "document"], capabilities=["ocr"],
             status=ModelStatus.AVAILABLE,
             config=ModelConfig(), stats=ModelStats(),
-            created_at=datetime.now(), updated_at=datetime.now(),
+            created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc),
         ))
     except ImportError:
         pass
@@ -155,7 +155,7 @@ def _detect_system_capability_models() -> List[ModelInfo]:
             tags=["ocr", "tesseract", "document"], capabilities=["ocr"],
             status=ModelStatus.AVAILABLE,
             config=ModelConfig(), stats=ModelStats(),
-            created_at=datetime.now(), updated_at=datetime.now(),
+            created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc),
         ))
     except ImportError:
         pass
@@ -174,7 +174,7 @@ def _detect_system_capability_models() -> List[ModelInfo]:
                 tags=["document", "pdf", "parser"], capabilities=["doc-parser"],
                 status=ModelStatus.AVAILABLE,
                 config=ModelConfig(), stats=ModelStats(),
-                created_at=datetime.now(), updated_at=datetime.now(),
+                created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc),
             ))
     except Exception:
         pass
@@ -193,7 +193,7 @@ def _detect_system_capability_models() -> List[ModelInfo]:
                 tags=["local", "embedding", "sentence-transformers"], capabilities=["embedding"],
                 status=ModelStatus.AVAILABLE,
                 config=ModelConfig(base_url="sentence-transformers/all-MiniLM-L6-v2"),
-                stats=ModelStats(), created_at=datetime.now(), updated_at=datetime.now(),
+                stats=ModelStats(), created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc),
             ))
     except ImportError:
         pass
@@ -280,7 +280,7 @@ class ConfigLoader:
                 tags=[provider, mtype], capabilities=[cap],
                 status=ModelStatus.AVAILABLE,
                 config=ModelConfig(api_key_env=env_key, base_url=base_url),
-                stats=ModelStats(), created_at=datetime.now(), updated_at=datetime.now(),
+                stats=ModelStats(), created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc),
             ))
 
         # 3. Local embedding models
@@ -307,7 +307,7 @@ class ConfigLoader:
             capabilities=config.get("capabilities", ["embedding"]),
             status=ModelStatus.AVAILABLE,
             config=ModelConfig(base_url=f"sentence-transformers/{config.get('path', '')}"),
-            stats=ModelStats(), created_at=datetime.now(), updated_at=datetime.now(),
+            stats=ModelStats(), created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc),
         )
 
     def get_local_scan_endpoints(self) -> List[str]:

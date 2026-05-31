@@ -81,12 +81,8 @@ class EpisodicMemory:
         for m in recent:
             lines.append(f"User: {str(m.get('user', ''))[:300]}")
             lines.append(f"Assistant: {str(m.get('assistant', ''))[:300]}")
-        prompt = f"""Summarize this conversation session in 2-3 sentences.
-Focus on: what was accomplished, key decisions made, and remaining work.
-
-{chr(10).join(lines)}
-
-Return a JSON object with keys: summary, key_points (list of strings), tasks (list of strings), decisions (list of strings)."""
+        from core.harness.utils.prompt_loader import _sync_resolve
+        prompt = _sync_resolve("episodic-summary") + "\n\n" + chr(10).join(lines)
         response = await llm_callable(prompt)
         import json
         try:

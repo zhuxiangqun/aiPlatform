@@ -6,7 +6,7 @@ Scans locally installed Ollama models via API.
 
 import aiohttp
 from typing import List
-from datetime import datetime
+from datetime import datetime, timezone
 
 from .schemas import ModelInfo, ModelType, ModelSource, ModelStatus, ModelConfig
 
@@ -72,8 +72,8 @@ class OllamaScanner:
                             description=details.get("family", ""),
                             tags=["ollama", "local", details.get("family", "")] if details.get("family") else ["ollama", "local"],
                             capabilities=self._get_capabilities(details),
-                            created_at=datetime.now(),
-                            updated_at=datetime.now(),
+                            created_at=datetime.now(timezone.utc),
+                            updated_at=datetime.now(timezone.utc),
                         )
                         models.append(model)
         

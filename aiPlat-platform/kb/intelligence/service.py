@@ -11,7 +11,9 @@ from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
-from core.api.core_facade import kb_transcribe_audio, kb_embed_text, kb_get_ingest_fn
+from core.api.facades.kb_facade import kb_get_ingest_fn
+from core.api.facades.kb_facade import kb_embed_text
+from core.api.facades.kb_facade import kb_transcribe_audio
 from kb.storage import get_tenant_storage
 from .embeddings import embed_text
 from core.utils.ids import new_prefixed_id
@@ -69,7 +71,7 @@ def _detect_charset_from_content_type(content_type: str) -> Optional[str]:
 
 def _transcribe_video(video_path: str, up_dir: Path, file_hash: str) -> str:
     """Extract audio from video and transcribe via core/harness transcriber."""
-    from core.api.core_facade import kb_transcribe_audio as _transcribe_audio
+    from core.api.facades.kb_facade import kb_transcribe_audio as _transcribe_audio
     from kb.service import _format_transcript_with_punctuation
     audio_path = str(up_dir / f"audio_{file_hash}.wav")
     subprocess.run(

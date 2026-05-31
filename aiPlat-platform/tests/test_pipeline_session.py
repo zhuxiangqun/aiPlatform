@@ -20,7 +20,7 @@ class TestPipelineSession:
             "PipelineSession", "create_pipeline_session",
             "validate_pipeline_stages", "apply_agent_md_to_stage",
             "create_agent", "get_default_model",
-            "chat_conversation", "core_chat", "ChatContext", "ChatResult",
+            "core_chat", "ChatContext", "ChatResult",
             "extract_json",
             "seed_all_registries", "get_skill_registry",
             "get_tool_registry", "get_model_registry",

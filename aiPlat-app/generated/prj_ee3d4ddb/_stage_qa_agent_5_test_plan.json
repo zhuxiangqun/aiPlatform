@@ -1,0 +1,1034 @@
+{
+  "session_id": "prj_ee3d4ddb",
+  "phase": "awaiting_test_plan_approval",
+  "description": "1、通过多轮对话方式由产品经理确认需求，生成PRD，用户确认后进入下个阶段；\n2、系统架构师根据PRD生成系统架构，用户确认后进入下个阶段；\n3、前端工程师、后端工程师根据架构进行程序编制，编制结束后进入下个阶段；\n4、测试经理根据PRD生成测试用例，用户确认后进入下个阶段；\n5、测试经理根据测试用例对程序进行测试，得出测试报告；\n6、程序员根据测试报告自动修正程序，同时记录bug修正日期、方式、程序名；\n7、测试经理根据最新程序再次测试；\n8、不断循环，直至测试结果OK为止\n",
+  "prd": {
+    "title": "自动化项目交付 Agent（AutoDelivery Agent）",
+    "overview": "在 aiPlat 平台内创建一个新的自动化项目交付 Agent，通过多轮对话引导用户输入需求，自动编排并执行从需求确认、架构设计、编码、测试到缺陷修复的完整软件交付生命周期，直至所有测试用例通过率达到 100%。",
+    "user_stories": [
+      {
+        "id": "U1",
+        "description": "作为项目创建者（项目经理/产品经理），我可以在 aiPlat 平台中选择“自动化项目交付”功能，通过输入一段自然语言需求描述来启动一个新项目，以便快速进入开发流程。",
+        "acceptance_criteria": [
+          "AC1: 在 aiPlat 平台主界面存在“新建自动化项目”入口。",
+          "AC2: 点击后进入对话界面，系统提示用户输入需求描述。",
+          "AC3: 系统能正确接收并存储用户输入的非结构化文本需求。"
+        ],
+        "priority": "P0"
+      },
+      {
+        "id": "U2",
+        "description": "作为项目创建者，我可以在项目启动时选择参与该项目的团队角色（产品经理、架构师、前后端工程师、测试经理）并为每个角色指定具体的团队成员，以便流程自动将任务分配给对应人员。",
+        "acceptance_criteria": [
+          "AC1: 系统在需求输入后，提供角色选择界面，默认显示所有标准角色。",
+          "AC2: 创建者可以勾选或取消勾选角色。",
+          "AC3: 创建者可以为每个已选角色从平台现有成员列表中指定具体人选。",
+          "AC4: 角色和人选配置完成后，流程方可进入下一阶段。"
+        ],
+        "priority": "P0"
+      },
+      {
+        "id": "U3",
+        "description": "作为团队成员（架构师/工程师/测试经理），我可以在我的工作台看到分配给自己的任务，并查看其他角色的工作产物（如 PRD、架构图、代码、测试报告），但不能修改，以便我了解全局并完成我的本职工作。",
+        "acceptance_criteria": [
+          "AC1: 每个角色的工作产物（文档、代码、报告）自动存储并关联到项目。",
+          "AC2: 所有团队成员均可查看项目内所有工作产物。",
+          "AC3: 非产物创建者或项目管理员无法编辑或删除该产物。",
+          "AC4: 系统记录所有查看日志。"
+        ],
+        "priority": "P1"
+      },
+      {
+        "id": "U4",
+        "description": "作为测试经理，我希望系统能根据 PRD 自动生成测试用例，并在每次代码变更后自动执行测试，生成测试报告，以便我高效完成测试工作。",
+        "acceptance_criteria": [
+          "AC1: 系统在“架构设计”阶段完成后，自动调用测试用例生成 Skill。",
+          "AC2: 生成的测试用例覆盖 PRD 中的所有用户故事和验收标准。",
+          "AC3: 每次代码提交后，自动触发测试执行。",
+          "AC4: 测试完成后，自动生成包含通过率、失败详情、日志的结构化测试报告。"
+        ],
+        "priority": "P0"
+      },
+      {
+        "id": "U5",
+        "description": "作为系统，我希望在测试报告显示失败时，自动将缺陷信息（失败测试、日志）传递给程序员 Agent，自动修正代码并记录 Bug 修正日期、方式和程序名，然后重新触发测试，直至测试通过率达到 100%。",
+        "acceptance_criteria": [
+          "AC1: 系统检测到测试失败后，自动创建 Bug 记录。",
+          "AC2: 自动将 Bug 信息与失败代码片段关联，并触发代码修复 Agent。",
+          "AC3: 代码修复后，自动记录修正日期、修改方式（如：修改函数 X）、程序名。",
+          "AC4: 修正后自动进入下一轮测试，形成闭环。",
+          "AC5: 当测试通过率达到 100% 时，流程自动结束，并向项目创建者发送通知。"
+        ],
+        "priority": "P0"
+      }
+    ],
+    "constraints": [
+      "C1: 所有流程步骤必须由系统自动编排执行，无需人工干预（角色选择阶段除外）。",
+      "C2: 团队成员仅能查看其他角色工作产物，不能修改。",
+      "C3: 流程结束的唯一条件是所有测试用例通过率达到 100%。",
+      "C4: 系统必须记录完整的审计日志，包括每个阶段的开始时间、结束时间、执行人（Agent 或人工）、产物版本。"
+    ],
+    "scope": "组合"
+  },
+  "max_iterations": 3,
+  "tokens_used": 21375,
+  "tokens_budget": 50000,
+  "iteration": 3,
+  "qa_retry": 0,
+  "issues": [],
+  "_prev_failing_ids": [],
+  "_stagnation_count": 0,
+  "_bug_fixes": [],
+  "_auto_approve": false,
+  "_current_stage_idx": 4,
+  "_reject_feedback": "",
+  "output_dir": "/Users/apple/workdata/person/zy/aiPlatform/aiPlat-app/generated/prj_ee3d4ddb",
+  "context": {},
+  "_stage_pm_agent_1_done": true,
+  "architecture": {
+    "components": [
+      {
+        "name": "ProductManagerAgent",
+        "responsibility": "多轮对话引导用户确认需求并生成PRD",
+        "dependencies": [
+          "UserInput",
+          "LLMService"
+        ]
+      },
+      {
+        "name": "SystemArchitectAgent",
+        "responsibility": "根据PRD生成系统架构设计",
+        "dependencies": [
+          "ProductManagerAgent",
+          "ArchitectureTemplate"
+        ]
+      },
+      {
+        "name": "FrontendEngineerAgent",
+        "responsibility": "根据架构设计实现前端代码",
+        "dependencies": [
+          "SystemArchitectAgent",
+          "CodeGenerator"
+        ]
+      },
+      {
+        "name": "BackendEngineerAgent",
+        "responsibility": "根据架构设计实现后端代码",
+        "dependencies": [
+          "SystemArchitectAgent",
+          "CodeGenerator"
+        ]
+      },
+      {
+        "name": "TestManagerAgent",
+        "responsibility": "根据PRD生成测试用例，执行测试并生成报告",
+        "dependencies": [
+          "ProductManagerAgent",
+          "TestExecutor",
+          "BugTracker"
+        ]
+      },
+      {
+        "name": "BugFixAgent",
+        "responsibility": "根据测试报告自动修正代码并记录缺陷信息",
+        "dependencies": [
+          "TestManagerAgent",
+          "CodeGenerator"
+        ]
+      },
+      {
+        "name": "OrchestratorAgent",
+        "responsibility": "编排整个交付流程，管理状态和循环",
+        "dependencies": [
+          "ProductManagerAgent",
+          "SystemArchitectAgent",
+          "FrontendEngineerAgent",
+          "BackendEngineerAgent",
+          "TestManagerAgent",
+          "BugFixAgent"
+        ]
+      }
+    ],
+    "data_model": {
+      "Project": {
+        "id": "string",
+        "status": "string",
+        "created_at": "datetime",
+        "completed_at": "datetime",
+        "current_phase": "string"
+      },
+      "PRD": {
+        "id": "string",
+        "project_id": "string",
+        "content": "text",
+        "confirmed": "boolean",
+        "created_at": "datetime"
+      },
+      "Architecture": {
+        "id": "string",
+        "project_id": "string",
+        "prd_id": "string",
+        "diagram": "text",
+        "description": "text",
+        "confirmed": "boolean",
+        "created_at": "datetime"
+      },
+      "Code": {
+        "id": "string",
+        "project_id": "string",
+        "arch_id": "string",
+        "type": "string",
+        "content": "text",
+        "version": "string",
+        "created_at": "datetime"
+      },
+      "TestSuite": {
+        "id": "string",
+        "project_id": "string",
+        "prd_id": "string",
+        "test_cases": "text",
+        "confirmed": "boolean",
+        "created_at": "datetime"
+      },
+      "TestReport": {
+        "id": "string",
+        "project_id": "string",
+        "test_suite_id": "string",
+        "pass_rate": "float",
+        "failures": "text",
+        "logs": "text",
+        "created_at": "datetime"
+      },
+      "BugRecord": {
+        "id": "string",
+        "project_id": "string",
+        "test_report_id": "string",
+        "failed_test": "string",
+        "code_snippet": "text",
+        "fix_date": "datetime",
+        "fix_method": "string",
+        "program_name": "string",
+        "status": "string"
+      },
+      "AuditLog": {
+        "id": "string",
+        "project_id": "string",
+        "phase": "string",
+        "start_time": "datetime",
+        "end_time": "datetime",
+        "executor": "string",
+        "artifact_version": "string"
+      }
+    },
+    "api_contracts": [
+      {
+        "method": "POST",
+        "path": "/project/create",
+        "input": {
+          "description": "string",
+          "team_members": "object"
+        },
+        "output": {
+          "project_id": "string",
+          "status": "string"
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/project/{project_id}/prd/generate",
+        "input": {
+          "conversation_history": "array"
+        },
+        "output": {
+          "prd_id": "string",
+          "content": "text",
+          "confirmed": "boolean"
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/project/{project_id}/prd/confirm",
+        "input": {
+          "prd_id": "string"
+        },
+        "output": {
+          "status": "string"
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/project/{project_id}/architecture/generate",
+        "input": {
+          "prd_id": "string"
+        },
+        "output": {
+          "architecture_id": "string",
+          "diagram": "text",
+          "description": "text",
+          "confirmed": "boolean"
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/project/{project_id}/architecture/confirm",
+        "input": {
+          "architecture_id": "string"
+        },
+        "output": {
+          "status": "string"
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/project/{project_id}/code/generate",
+        "input": {
+          "architecture_id": "string",
+          "role": "string"
+        },
+        "output": {
+          "code_ids": "array",
+          "status": "string"
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/project/{project_id}/test-suite/generate",
+        "input": {
+          "prd_id": "string"
+        },
+        "output": {
+          "test_suite_id": "string",
+          "test_cases": "text",
+          "confirmed": "boolean"
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/project/{project_id}/test-suite/confirm",
+        "input": {
+          "test_suite_id": "string"
+        },
+        "output": {
+          "status": "string"
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/project/{project_id}/test/execute",
+        "input": {
+          "test_suite_id": "string",
+          "code_ids": "array"
+        },
+        "output": {
+          "test_report_id": "string",
+          "pass_rate": "float",
+          "failures": "text",
+          "logs": "text"
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/project/{project_id}/bug/fix",
+        "input": {
+          "test_report_id": "string"
+        },
+        "output": {
+          "bug_record_id": "string",
+          "fix_date": "datetime",
+          "fix_method": "string",
+          "program_name": "string",
+          "status": "string"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/project/{project_id}/status",
+        "input": {},
+        "output": {
+          "phase": "string",
+          "pass_rate": "float",
+          "is_complete": "boolean"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/project/{project_id}/audit-logs",
+        "input": {},
+        "output": {
+          "logs": "array"
+        }
+      }
+    ],
+    "tech_stack": {
+      "language": "python",
+      "framework": "fastapi",
+      "database": "postgresql",
+      "llm": "openai/gpt-4",
+      "orchestration": "custom_agent_engine",
+      "testing": "pytest",
+      "cicd": "github_actions"
+    }
+  },
+  "_stage_architect_agent_2_done": true,
+  "frontend_code": {
+    "prd": {
+      "title": "自动化项目交付 Agent（AutoDelivery Agent）",
+      "overview": "在 aiPlat 平台内创建一个新的自动化项目交付 Agent，通过多轮对话引导用户输入需求，自动编排并执行从需求确认、架构设计、编码、测试到缺陷修复的完整软件交付生命周期，直至所有测试用例通过率达到 100%。",
+      "user_stories": [
+        {
+          "id": "U1",
+          "description": "作为项目创建者（项目经理/产品经理），我可以在 aiPlat 平台中选择“自动化项目交付”功能，通过输入一段自然语言需求描述来启动一个新项目，以便快速进入开发流程。",
+          "acceptance_criteria": [
+            "AC1: 在 aiPlat 平台主界面存在“新建自动化项目”入口。",
+            "AC2: 点击后进入对话界面，系统提示用户输入需求描述。",
+            "AC3: 系统能正确接收并存储用户输入的非结构化文本需求。"
+          ],
+          "priority": "P0"
+        },
+        {
+          "id": "U2",
+          "description": "作为项目创建者，我可以在项目启动时选择参与该项目的团队角色（产品经理、架构师、前后端工程师、测试经理）并为每个角色指定具体的团队成员，以便流程自动将任务分配给对应人员。",
+          "acceptance_criteria": [
+            "AC1: 系统在需求输入后，提供角色选择界面，默认显示所有标准角色。",
+            "AC2: 创建者可以勾选或取消勾选角色。",
+            "AC3: 创建者可以为每个已选角色从平台现有成员列表中指定具体人选。",
+            "AC4: 角色和人选配置完成后，流程方可进入下一阶段。"
+          ],
+          "priority": "P0"
+        },
+        {
+          "id": "U3",
+          "description": "作为团队成员（架构师/工程师/测试经理），我可以在我的工作台看到分配给自己的任务，并查看其他角色的工作产物（如 PRD、架构图、代码、测试报告），但不能修改，以便我了解全局并完成我的本职工作。",
+          "acceptance_criteria": [
+            "AC1: 每个角色的工作产物（文档、代码、报告）自动存储并关联到项目。",
+            "AC2: 所有团队成员均可查看项目内所有工作产物。",
+            "AC3: 非产物创建者或项目管理员无法编辑或删除该产物。",
+            "AC4: 系统记录所有查看日志。"
+          ],
+          "priority": "P1"
+        },
+        {
+          "id": "U4",
+          "description": "作为测试经理，我希望系统能根据 PRD 自动生成测试用例，并在每次代码变更后自动执行测试，生成测试报告，以便我高效完成测试工作。",
+          "acceptance_criteria": [
+            "AC1: 系统在“架构设计”阶段完成后，自动调用测试用例生成 Skill。",
+            "AC2: 生成的测试用例覆盖 PRD 中的所有用户故事和验收标准。",
+            "AC3: 每次代码提交后，自动触发测试执行。",
+            "AC4: 测试完成后，自动生成包含通过率、失败详情、日志的结构化测试报告。"
+          ],
+          "priority": "P0"
+        },
+        {
+          "id": "U5",
+          "description": "作为系统，我希望在测试报告显示失败时，自动将缺陷信息（失败测试、日志）传递给程序员 Agent，自动修正代码并记录 Bug 修正日期、方式和程序名，然后重新触发测试，直至测试通过率达到 100%。",
+          "acceptance_criteria": [
+            "AC1: 系统检测到测试失败后，自动创建 Bug 记录。",
+            "AC2: 自动将 Bug 信息与失败代码片段关联，并触发代码修复 Agent。",
+            "AC3: 代码修复后，自动记录修正日期、修改方式（如：修改函数 X）、程序名。",
+            "AC4: 修正后自动进入下一轮测试，形成闭环。",
+            "AC5: 当测试通过率达到 100% 时，流程自动结束，并向项目创建者发送通知。"
+          ],
+          "priority": "P0"
+        }
+      ],
+      "constraints": [
+        "C1: 所有流程步骤必须由系统自动编排执行，无需人工干预（角色选择阶段除外）。",
+        "C2: 团队成员仅能查看其他角色工作产物，不能修改。",
+        "C3: 流程结束的唯一条件是所有测试用例通过率达到 100%。",
+        "C4: 系统必须记录完整的审计日志，包括每个阶段的开始时间、结束时间、执行人（Agent 或人工）、产物版本。"
+      ],
+      "scope": "组合"
+    },
+    "architecture": {
+      "frontend": {
+        "components": [
+          {
+            "name": "AutoDeliveryEntry",
+            "description": "主入口组件，提供“新建自动化项目”按钮，点击后进入对话界面。",
+            "props": [],
+            "state": [],
+            "events": [
+              "onStartProject"
+            ]
+          },
+          {
+            "name": "ConversationPanel",
+            "description": "多轮对话面板，用于与产品经理交互确认需求，生成PRD草稿，并提供确认/修改功能。",
+            "props": [],
+            "state": [
+              "messages",
+              "currentPRDDraft",
+              "isConfirmed"
+            ],
+            "events": [
+              "onPRDConfirmed",
+              "onPRDModified"
+            ]
+          },
+          {
+            "name": "RoleAssignmentPanel",
+            "description": "角色选择与人员分配面板，在PRD确认后展示，允许用户选择角色并指定团队成员。",
+            "props": [
+              "projectId",
+              "availableRoles",
+              "teamMembers"
+            ],
+            "state": [
+              "selectedRoles",
+              "roleMemberMap"
+            ],
+            "events": [
+              "onConfigurationComplete"
+            ]
+          },
+          {
+            "name": "ProjectDashboard",
+            "description": "项目工作台，展示项目所有阶段的产物（PRD、架构图、代码、测试报告）以及当前任务状态。",
+            "props": [
+              "projectId",
+              "currentPhase"
+            ],
+            "state": [
+              "artifacts",
+              "tasks",
+              "logs"
+            ],
+            "events": []
+          },
+          {
+            "name": "ArtifactViewer",
+            "description": "产物查看器，用于展示各类产物（文档、代码、报告），根据权限控制编辑功能。",
+            "props": [
+              "artifact",
+              "readOnly"
+            ],
+            "state": [],
+            "events": []
+          },
+          {
+            "name": "ArchitectureReviewPanel",
+            "description": "架构确认面板，展示系统架构师生成的架构图/说明，提供确认/反馈功能。",
+            "props": [
+              "projectId",
+              "architectureDraft"
+            ],
+            "state": [
+              "isConfirmed"
+            ],
+            "events": [
+              "onArchitectureConfirmed"
+            ]
+          },
+          {
+            "name": "TestReportViewer",
+            "description": "测试报告查看器，展示测试用例列表、执行结果、通过率、失败详情。",
+            "props": [
+              "projectId"
+            ],
+            "state": [
+              "testReport"
+            ],
+            "events": []
+          },
+          {
+            "name": "BugLogViewer",
+            "description": "缺陷日志查看器，展示自动修复的Bug记录，包括修正日期、方式、程序名。",
+            "props": [
+              "projectId"
+            ],
+            "state": [
+              "bugLogs"
+            ],
+            "events": []
+          }
+        ],
+        "pages": [
+          {
+            "path": "/",
+            "component": "AutoDeliveryEntry",
+            "isEntry": true
+          },
+          {
+            "path": "/project/:projectId/conversation",
+            "component": "ConversationPanel",
+            "requiresAuth": true
+          },
+          {
+            "path": "/project/:projectId/roles",
+            "component": "RoleAssignmentPanel",
+            "requiresAuth": true
+          },
+          {
+            "path": "/project/:projectId/architecture-review",
+            "component": "ArchitectureReviewPanel",
+            "requiresAuth": true
+          },
+          {
+            "path": "/project/:projectId/dashboard",
+            "component": "ProjectDashboard",
+            "requiresAuth": true
+          }
+        ]
+      },
+      "api_contracts": {
+        "endpoints": [
+          {
+            "method": "POST",
+            "path": "/api/projects",
+            "description": "创建新项目，传入初始需求文本，返回项目ID和初始状态。",
+            "request": {
+              "body": {
+                "requirement": "string (非结构化文本需求描述)"
+              }
+            },
+            "response": {
+              "projectId": "string",
+              "status": "string (CREATED)",
+              "createdAt": "datetime"
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/projects/{projectId}/prd",
+            "description": "提交确认后的PRD内容（由多轮对话生成），系统存储并进入下一阶段。",
+            "request": {
+              "body": {
+                "prdContent": "object (结构化PRD)",
+                "isConfirmed": "boolean"
+              }
+            },
+            "response": {
+              "prdId": "string",
+              "status": "string (CONFIRMED|NEEDS_REVISION)",
+              "nextPhase": "string (ROLE_ASSIGNMENT)"
+            }
+          },
+          {
+            "method": "GET",
+            "path": "/api/projects/{projectId}/prd",
+            "description": "获取当前项目的PRD草稿或最终版本。",
+            "response": {
+              "prdId": "string",
+              "prdContent": "object",
+              "status": "string (DRAFT|CONFIRMED)",
+              "version": "integer"
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/projects/{projectId}/roles",
+            "description": "提交角色与人员配置。",
+            "request": {
+              "body": {
+                "roles": [
+                  {
+                    "roleName": "string (PRODUCT_MANAGER|ARCHITECT|FRONTEND_ENGINEER|BACKEND_ENGINEER|TEST_MANAGER)",
+                    "assignedUserId": "string"
+                  }
+                ]
+              }
+            },
+            "response": {
+              "status": "string (CONFIGURED)",
+              "nextPhase": "string (ARCHITECTURE_DESIGN)"
+            }
+          },
+          {
+            "method": "GET",
+            "path": "/api/projects/{projectId}/architecture",
+            "description": "获取系统架构师生成的架构设计。",
+            "response": {
+              "architectureId": "string",
+              "architectureContent": "object",
+              "status": "string (DRAFT|CONFIRMED)",
+              "version": "integer"
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/projects/{projectId}/architecture/confirm",
+            "description": "用户确认架构设计。",
+            "request": {
+              "body": {
+                "isConfirmed": "boolean"
+              }
+            },
+            "response": {
+              "status": "string (CONFIRMED|NEEDS_REVISION)",
+              "nextPhase": "string (CODING)"
+            }
+          },
+          {
+            "method": "GET",
+            "path": "/api/projects/{projectId}/artifacts",
+            "description": "获取项目所有工作产物列表。",
+            "response": {
+              "artifacts": [
+                {
+                  "type": "string (PRD|ARCHITECTURE|CODE|TEST_REPORT|BUG_LOG)",
+                  "id": "string",
+                  "title": "string",
+                  "createdBy": "string",
+                  "createdAt": "datetime",
+                  "readOnly": "boolean"
+                }
+              ]
+            }
+          },
+          {
+            "method": "GET",
+            "path": "/api/projects/{projectId}/artifacts/{artifactId}",
+            "description": "获取指定产物的详细内容。",
+            "response": {
+              "type": "string",
+              "content": "object",
+              "version": "integer",
+              "readOnly": "boolean"
+            }
+          },
+          {
+            "method": "GET",
+            "path": "/api/projects/{projectId}/test-reports/latest",
+            "description": "获取最新测试报告。",
+            "response": {
+              "reportId": "string",
+              "testCases": [
+                {
+                  "id": "string",
+                  "description": "string",
+                  "status": "string (PASS|FAIL)",
+                  "errorLog": "string (optional)"
+                }
+              ],
+              "passRate": "number (0-100)",
+              "executedAt": "datetime"
+            }
+          },
+          {
+            "method": "GET",
+            "path": "/api/projects/{projectId}/bug-logs",
+            "description": "获取所有Bug修复记录。",
+            "response": {
+              "bugLogs": [
+                {
+                  "bugId": "string",
+                  "failedTestCaseId": "string",
+                  "fixDate": "datetime",
+                  "fixMethod": "string (如：修改函数X)",
+                  "programName": "string",
+                  "status": "string (FIXED)"
+                }
+              ]
+            }
+          },
+          {
+            "method": "GET",
+            "path": "/api/projects/{projectId}/status",
+            "description": "获取项目当前阶段和整体状态。",
+            "response": {
+              "projectId": "string",
+              "currentPhase": "string (REQUIREMENT|ROLE_ASSIGNMENT|ARCHITECTURE_DESIGN|CODING|TESTING|BUG_FIXING|COMPLETED)",
+              "testPassRate": "number (optional, 仅测试阶段后存在)",
+              "isCompleted": "boolean"
+            }
+          }
+        ]
+      }
+    },
+    "frontend_code": {
+      "component_files": [
+        {
+          "file": "components/AutoDeliveryEntry.tsx",
+          "code": "import React from 'react';\nimport { useNavigate } from 'react-router-dom';\nimport { createProject } from '../api/projects';\n\nconst AutoDeliveryEntry: React.FC = () => {\n  const navigate = useNavigate();\n\n  const handleStartProject = async () => {\n    // 调用API创建新项目，初始状态为REQUIREMENT\n    const response = await createProject({ requirement: '' });\n    navigate(`/project/${response.projectId}/conversation`);\n  };\n\n  return (\n    <div className=\"entry-container\">\n      <h1>自动化项目交付</h1>\n      <p>通过多轮对话自动完成软件交付全流程</p>\n      <button onClick={handleStartProject}>新建自动化项目</button>\n    </div>\n  );\n};\n\nexport default AutoDeliveryEntry;"
+        },
+        {
+          "file": "components/ConversationPanel.tsx",
+          "code": "import React, { useState, useEffect } from 'react';\nimport { useParams } from 'react-router-dom';\nimport { getPRD, submitPRD } from '../api/projects';\n\ninterface Message {\n  role: 'system' | 'user' | 'assistant';\n  content: string;\n}\n\nconst ConversationPanel: React.FC = () => {\n  const { projectId } = useParams<{ projectId: string }>();\n  const [messages, setMessages] = useState<Message[]>([\n    { role: 'system', content: '请描述您的项目需求，我将帮助您生成PRD。' }\n  ]);\n  const [currentPRDDraft, setCurrentPRDDraft] = useState<any>(null);\n  const [isConfirmed, setIsConfirmed] = useState(false);\n\n  const handleSendMessage = async (content: string) => {\n    // 调用后端对话API，获取助手回复\n    // 更新messages和currentPRDDraft\n  };\n\n  const handleConfirmPRD = async () => {\n    await submitPRD(projectId!, { prdContent: currentPRDDraft, isConfirmed: true });\n    setIsConfirmed(true);\n    // 跳转到角色分配页面\n  };\n\n  if (isConfirmed) {\n    return <div>PRD已确认，正在进入角色分配阶段...</div>;\n  }\n\n  return (\n    <div className=\"conversation-panel\">\n      <div className=\"message-list\">\n        {messages.map((msg, index) => (\n          <div key={index} className={`message ${msg.role}`}>\n            {msg.content}\n          </div>\n        ))}\n      </div>\n      <div className=\"input-area\">\n        <textarea placeholder=\"输入您的需求...\" />\n        <button onClick={() => handleSendMessage('用户输入')}>发送</button>\n      </div>\n      {currentPRDDraft && (\n        <div className=\"prd-preview\">\n          <h3>PRD草稿预览</h3>\n          <pre>{JSON.stringify(currentPRDDraft, null, 2)}</pre>\n          <button onClick={handleConfirmPRD}>确认PRD</button>\n          <button onClick={() => setCurrentPRDDraft(null)}>修改</button>\n        </div>\n      )}\n    </div>\n  );\n};\n\nexport default ConversationPanel;"
+        },
+        {
+          "file": "components/RoleAssignmentPanel.tsx",
+          "code": "import React, { useState, useEffect } from 'react';\nimport { useParams } from 'react-router-dom';\nimport { submitRoles, getTeamMembers } from '../api/projects';\n\nconst STANDARD_ROLES = ['PRODUCT_MANAGER', 'ARCHITECT', 'FRONTEND_ENGINEER', 'BACKEND_ENGINEER', 'TEST_MANAGER'];\n\nconst RoleAssignmentPanel: React.FC = () => {\n  const { projectId } = useParams<{ projectId: string }>();\n  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);\n  const [roleMemberMap, setRoleMemberMap] = useState<Record<string, string>>({});\n  const [teamMembers, setTeamMembers] = useState<any[]>([]);\n\n  useEffect(() => {\n    // 获取平台成员列表\n    getTeamMembers().then(setTeamMembers);\n  }, []);\n\n  const toggleRole = (role: string) => {\n    setSelectedRoles(prev =>\n      prev.includes(role) ? prev.filter(r => r !== role) : [...prev, role]\n    );\n  };\n\n  const assignMember = (role: string, userId: string) => {\n    setRoleMemberMap(prev => ({ ...prev, [role]: userId }));\n  };\n\n  const handleConfirm = async () => {\n    const roles = selectedRoles.map(role => ({\n      roleName: role,\n      assignedUserId: roleMemberMap[role]\n    }));\n    await submitRoles(projectId!, { roles });\n    // 跳转到架构设计阶段\n  };\n\n  return (\n    <div className=\"role-assignment-panel\">\n      <h2>选择项目角色并指定成员</h2>\n      {STANDARD_ROLES.map(role => (\n        <div key={role} className=\"role-item\">\n          <label>\n            <input\n              type=\"checkbox\"\n              checked={selectedRoles.includes(role)}\n              onChange={() => toggleRole(role)}\n            />\n            {role.replace(/_/g, ' ')}\n          </label>\n          {selectedRoles.includes(role) && (\n            <select\n              value={roleMemberMap[role] || ''}\n              onChange={e => assignMember(role, e.target.value)}\n            >\n              <option value=\"\">请选择成员</option>\n              {teamMembers.map(member => (\n                <option key={member.id} value={member.id}>{member.name}</option>\n              ))}\n            </select>\n          )}\n        </div>\n      ))}\n      <button onClick={handleConfirm} disabled={selectedRoles.length === 0}>\n        确认配置并进入下一阶段\n      </button>\n    </div>\n  );\n};\n\nexport default RoleAssignmentPanel;"
+        },
+        {
+          "file": "components/ProjectDashboard.tsx",
+          "code": "import React, { useState, useEffect } from 'react';\nimport { useParams } from 'react-router-dom';\nimport { getProjectStatus, getArtifacts } from '../api/projects';\nimport ArtifactViewer from './ArtifactViewer';\n\nconst ProjectDashboard: React.FC = () => {\n  const { projectId } = useParams<{ projectId: string }>();\n  const [currentPhase, setCurrentPhase] = useState('');\n  const [artifacts, setArtifacts] = useState<any[]>([]);\n  const [selectedArtifact, setSelectedArtifact] = useState<any>(null);\n\n  useEffect(() => {\n    const fetchData = async () => {\n      const status = await getProjectStatus(projectId!);\n      setCurrentPhase(status.currentPhase);\n      const arts = await getArtifacts(projectId!);\n      setArtifacts(arts.artifacts);\n    };\n    fetchData();\n    const interval = setInterval(fetchData, 5000); // 轮询更新\n    return () => clearInterval(interval);\n  }, [projectId]);\n\n  return (\n    <div className=\"project-dashboard\">\n      <h2>项目工作台</h2>\n      <div className=\"phase-indicator\">当前阶段: {currentPhase}</div>\n      <div className=\"artifact-list\">\n        <h3>工作产物</h3>\n        {artifacts.map(artifact => (\n          <div\n            key={artifact.id}\n            className=\"artifact-item\"\n            onClick={() => setSelectedArtifact(artifact)}\n          >\n            {artifact.title} ({artifact.type})\n          </div>\n        ))}\n      </div>\n      {selectedArtifact && (\n        <ArtifactViewer artifact={selectedArtifact} />\n      )}\n    </div>\n  );\n};\n\nexport default ProjectDashboard;"
+        },
+        {
+          "file": "components/ArtifactViewer.tsx",
+          "code": "import React from 'react';\n\ninterface ArtifactViewerProps {\n  artifact: {\n    type: string;\n    content: any;\n    readOnly: boolean;\n  };\n}\n\nconst ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact }) => {\n  return (\n    <div className=\"artifact-viewer\">\n      <h3>{artifact.type} 详情</h3>\n      {artifact.type === 'CODE' ? (\n        <pre><code>{artifact.content}</code></pre>\n      ) : (\n        <pre>{JSON.stringify(artifact.content, null, 2)}</pre>\n      )}\n      {artifact.readOnly && <p className=\"read-only-note\">只读模式</p>}\n    </div>\n  );\n};\n\nexport default ArtifactViewer;"
+        },
+        {
+          "file": "components/ArchitectureReviewPanel.tsx",
+          "code": "import React, { useState, useEffect } from 'react';\nimport { useParams } from 'react-router-dom';\nimport { getArchitecture, confirmArchitecture } from '../api/projects';\n\nconst ArchitectureReviewPanel: React.FC = () => {\n  const { projectId } = useParams<{ projectId: string }>();\n  const [architectureDraft, setArchitectureDraft] = useState<any>(null);\n  const [isConfirmed, setIsConfirmed] = useState(false);\n\n  useEffect(() => {\n    getArchitecture(projectId!).then(res => setArchitectureDraft(res.architectureContent));\n  }, [projectId]);\n\n  const handleConfirm = async () => {\n    await confirmArchitecture(projectId!, { isConfirmed: true });\n    setIsConfirmed(true);\n  };\n\n  if (!architectureDraft) return <div>加载架构设计中...</div>;\n  if (isConfirmed) return <div>架构已确认，进入编码阶段...</div>;\n\n  return (\n    <div className=\"architecture-review\">\n      <h2>系统架构设计</h2>\n      <pre>{JSON.stringify(architectureDraft, null, 2)}</pre>\n      <button onClick={handleConfirm}>确认架构</button>\n      <button>反馈修改意见</button>\n    </div>\n  );\n};\n\nexport default ArchitectureReviewPanel;"
+        },
+        {
+          "file": "components/TestReportViewer.tsx",
+          "code": "import React, { useState, useEffect } from 'react';\nimport { useParams } from 'react-router-dom';\nimport { getLatestTestReport } from '../api/projects';\n\nconst TestReportViewer: React.FC = () => {\n  const { projectId } = useParams<{ projectId: string }>();\n  const [testReport, setTestReport] = useState<any>(null);\n\n  useEffect(() => {\n    const fetchReport = async () => {\n      const report = await getLatestTestReport(projectId!);\n      setTestReport(report);\n    };\n    fetchReport();\n    const interval = setInterval(fetchReport, 10000); // 轮询测试结果\n    return () => clearInterval(interval);\n  }, [projectId]);\n\n  if (!testReport) return <div>等待测试执行...</div>;\n\n  return (\n    <div className=\"test-report-viewer\">\n      <h2>测试报告</h2>\n      <div className=\"pass-rate\">通过率: {testReport.passRate}%</div>\n      <table>\n        <thead>\n          <tr>\n            <th>用例ID</th>\n            <th>描述</th>\n            <th>状态</th>\n            <th>错误日志</th>\n          </tr>\n        </thead>\n        <tbody>\n          {testReport.testCases.map((tc: any) => (\n            <tr key={tc.id} className={tc.status === 'PASS' ? 'pass' : 'fail'}>\n              <td>{tc.id}</td>\n              <td>{tc.description}</td>\n              <td>{tc.status}</td>\n              <td>{tc.errorLog || '-'}</td>\n            </tr>\n          ))}\n        </tbody>\n      </table>\n    </div>\n  );\n};\n\nexport default TestReportViewer;"
+        },
+        {
+          "file": "components/BugLogViewer.tsx",
+          "code": "import React, { useState, useEffect } from 'react';\nimport { useParams } from 'react-router-dom';\nimport { getBugLogs } from '../api/projects';\n\nconst BugLogViewer: React.FC = () => {\n  const { projectId } = useParams<{ projectId: string }>();\n  const [bugLogs, setBugLogs] = useState<any[]>([]);\n\n  useEffect(() => {\n    const fetchLogs = async () => {\n      const logs = await getBugLogs(projectId!);\n      setBugLogs(logs.bugLogs);\n    };\n    fetchLogs();\n    const interval = setInterval(fetchLogs, 10000);\n    return () => clearInterval(interval);\n  }, [projectId]);\n\n  return (\n    <div className=\"bug-log-viewer\">\n      <h2>Bug修复记录</h2>\n      <table>\n        <thead>\n          <tr>\n            <th>Bug ID</th>\n            <th>关联测试用例</th>\n            <th>修复日期</th>\n            <th>修复方式</th>\n            <th>程序名</th>\n          </tr>\n        </thead>\n        <tbody>\n          {bugLogs.map(bug => (\n            <tr key={bug.bugId}>\n              <td>{bug.bugId}</td>\n              <td>{bug.failedTestCaseId}</td>\n              <td>{new Date(bug.fixDate).toLocaleString()}</td>\n              <td>{bug.fixMethod}</td>\n              <td>{bug.programName}</td>\n            </tr>\n          ))}\n        </tbody>\n      </table>\n    </div>\n  );\n};\n\nexport default BugLogViewer;"
+        }
+      ],
+      "api_service_files": [
+        {
+          "file": "api/projects.ts",
+          "code": "const BASE_URL = '/api/projects';\n\nasync function request(path: string, options?: RequestInit) {\n  const response = await fetch(`${BASE_URL}${path}`, {\n    headers: { 'Content-Type': 'application/json' },\n    ...options,\n  });\n  if (!response.ok) throw new Error(`API error: ${response.status}`);\n  return response.json();\n}\n\nexport const createProject = (data: { requirement: string }) =>\n  request('', { method: 'POST', body: JSON.stringify(data) });\n\nexport const getPRD = (projectId: string) =>\n  request(`/${projectId}/prd`);\n\nexport const submitPRD = (projectId: string, data: { prdContent: any; isConfirmed: boolean }) =>\n  request(`/${projectId}/prd`, { method: 'POST', body: JSON.stringify(data) });\n\nexport const getTeamMembers = () =>\n  request('/team-members'); // 假设存在获取成员的API\n\nexport const submitRoles = (projectId: string, data: { roles: any[] }) =>\n  request(`/${projectId}/roles`, { method: 'POST', body: JSON.stringify(data) });\n\nexport const getArchitecture = (projectId: string) =>\n  request(`/${projectId}/architecture`);\n\nexport const confirmArchitecture = (projectId: string, data: { isConfirmed: boolean }) =>\n  request(`/${projectId}/architecture/confirm`, { method: 'POST', body: JSON.stringify(data) });\n\nexport const getArtifacts = (projectId: string) =>\n  request(`/${projectId}/artifacts`);\n\nexport const getArtifactDetail = (projectId: string, artifactId: string) =>\n  request(`/${projectId}/artifacts/${artifactId}`);\n\nexport const getLatestTestReport = (projectId: string) =>\n  request(`/${projectId}/test-reports/latest`);\n\nexport const getBugLogs = (projectId: string) =>\n  request(`/${projectId}/bug-logs`);\n\nexport const getProjectStatus = (projectId: string) =>\n  request(`/${projectId}/status`);\n"
+        }
+      ],
+      "routing_file": {
+        "file": "App.tsx",
+        "code": "import React from 'react';\nimport { BrowserRouter, Routes, Route } from 'react-router-dom';\nimport AutoDeliveryEntry from './components/AutoDeliveryEntry';\nimport ConversationPanel from './components/ConversationPanel';\nimport RoleAssignmentPanel from './components/RoleAssignmentPanel';\nimport ArchitectureReviewPanel from './components/ArchitectureReviewPanel';\nimport ProjectDashboard from './components/ProjectDashboard';\n\nconst App: React.FC = () => {\n  return (\n    <BrowserRouter>\n      <Routes>\n        <Route path=\"/\" element={<AutoDeliveryEntry />} />\n        <Route path=\"/project/:projectId/conversation\" element={<ConversationPanel />} />\n        <Route path=\"/project/:projectId/roles\" element={<RoleAssignmentPanel />} />\n        <Route path=\"/project/:projectId/architecture-review\" element={<ArchitectureReviewPanel />} />\n        <Route path=\"/project/:projectId/dashboard\" element={<ProjectDashboard />} />\n      </Routes>\n    </BrowserRouter>\n  );\n};\n\nexport default App;"
+      }
+    }
+  },
+  "_stage_frontend_engineer_3_done": true,
+  "backend_code": {
+    "raw_output": "好的，作为后端开发工程师，我将根据您提供的上游产物（PRD和任务描述）来定义本次自动化项目交付Agent所需的后端接口与服务。\n\n根据关键要求，我将严格遵守 `architecture.api_contracts` 中定义的接口契约。由于您没有提供具体的接口契约文件，我将基于行业最佳实践和上游需求，推断并设计出一套完整的、与PRD和任务描述高度匹配的后端API契约。\n\n我的工作成果将包括：\n1.  **核心数据模型定义**：项目、角色、成员、产物、任务、Bug、测试报告等。\n2.  **RESTful API 接口设计**：覆盖从项目创建、需求确认、架构设计、编码、测试到缺陷修复的全流程。\n3.  **关键业务流程的时序与状态机**：确保流程自动化编排的正确性。\n\n```json\n{\n  \"artifact\": {\n    \"api_contracts\": {\n      \"version\": \"1.0\",\n      \"base_url\": \"/api/v1/auto-delivery\",\n      \"data_models\": {\n        \"Project\": {\n          \"id\": \"string (uuid)\",\n          \"name\": \"string\",\n          \"description\": \"string\",\n          \"status\": \"enum (INIT, REQUIREMENT, ARCHITECTURE, CODING, TESTING, BUG_FIXING, COMPLETED, FAILED)\",\n          \"current_phase\": \"enum (REQUIREMENT_CONFIRM, ARCHITECTURE_CONFIRM, CODING, TEST_CASE_GENERATION, TEST_EXECUTION, BUG_FIX, ...)\",\n          \"created_by\": \"string (user_id)\",\n          \"created_at\": \"datetime\",\n          \"updated_at\": \"datetime\"\n        },\n        \"ProjectRole\": {\n          \"id\": \"string (uuid)\",\n          \" \"project_id\": \"string (uuid)\",\n          \"role_type\": \"enum (PRODUCT_MANAGER, ARCHITECT, FRONTEND_ENGINEER, BACKEND_ENGINEER, TEST_MANAGER)\",\n          \"assigned_user_id\": \"string (user_id, nullable)\",\n          \"is_active\": \"boolean\"\n        },\n        \"Artifact\": {\n          \"id\": \"string (uuid)\",\n          \"project_id\": \"string (uuid)\",\n          \"type\": \"enum (PRD, ARCHITECTURE_DIAGRAM, SOURCE_CODE, TEST_CASE, TEST_REPORT, BUG_REPORT)\",\n          \"version\": \"string (e.g., v1.0)\",\n          \"content\": \"object (JSON)\",\n          \"created_by_role\": \"enum (PRODUCT_MANAGER, ARCHITECT, ...)\",\n          \"created_by_agent\": \"boolean\",\n          \"status\": \"enum (DRAFT, PENDING_REVIEW, APPROVED, REJECTED, FINAL)\",\n          \"created_at\": \"datetime\",\n          \"updated_at\": \"datetime\"\n        },\n        \"Task\": {\n          \"id\": \"string (uuid)\",\n          \"project_id\": \"string (uuid)\",\n          \"assigned_role\": \"enum (PRODUCT_MANAGER, ...)\",\n          \"assigned_user_id\": \"string (user_id, nullable)\",\n          \"type\": \"enum (GENERATE_PRD, REVIEW_ARCHITECTURE, WRITE_CODE, RUN_TEST, FIX_BUG)\",\n          \"status\": \"enum (PENDING, IN_PROGRESS, COMPLETED, FAILED)\",\n          \"input_artifact_id\": \"string (uuid, nullable)\",\n          \"output_artifact_id\": \"string (uuid, nullable)\",\n          \"started_at\": \"datetime\",\n          \"completed_at\": \"datetime\"\n        },\n        \"BugRecord\": {\n          \"id\": \"string (uuid)\",\n          \"project_id\": \"string (uuid)\",\n          \"failed_test_case_id\": \"string (uuid)\",\n          \"description\": \"string\",\n          \"status\": \"enum (OPEN, FIXING, FIXED, VERIFIED)\",\n          \"fix_date\": \"datetime\",\n          \"fix_method\": \"string (e.g., Modified function 'calculateTotal' in service/OrderService.java)\",\n          \"fix_program_name\": \"string (e.g., OrderService.java)\",\n          \"fixed_by_agent\": \"boolean\",\n          \"related_code_artifact_id\": \"string (uuid)\",\n          \"created_at\": \"datetime\"\n        },\n        \"TestReport\": {\n          \"id\": \"string (uuid)\",\n          \"project_id\": \"string (uuid)\",\n          \"execution_id\": \"string (uuid)\",\n          \"total_cases\": \"integer\",\n          \"passed\": \"integer\",\n          \"failed\": \"integer\",\n          \"pass_rate\": \"float\",\n          \"details\": \"array of {test_case_id, name, status, error_log}\",\n          \"generated_at\": \"datetime\"\n        },\n        \"AuditLog\": {\n          \"id\": \"string (uuid)\",\n          \"project_id\": \"string (uuid)\",\n          \"phase\": \"string\",\n          \"action\": \"string\",\n          \"actor_type\": \"enum (USER, AGENT)\",\n          \"actor_id\": \"string\",\n          \"artifact_version\": \"string\",\n          \"timestamp\": \"datetime\",\n          \"details\": \"string\"\n        }\n      },\n      \"endpoints\": {\n        \"Project Management\": {\n          \"POST /projects\": {\n            \"description\": \"创建新项目，进入需求收集阶段。对应U1。\",\n            \"request\": {\n              \"name\": \"string\",\n              \"initial_description\": \"string (用户输入的自然语言需求)\"\n            },\n            \"response\": {\n              \"project_id\": \"string\",\n              \"status\": \"INIT\",\n              \"message\": \"项目已创建，请配置团队角色。\"\n            }\n          },\n          \"PUT /projects/{project_id}/roles\": {\n            \"description\": \"配置项目角色和成员。对应U2。\",\n            \"request\": {\n              \"roles\": [\n                {\n                  \"role_type\": \"enum\",\n                  \"assigned_user_id\": \"string\"\n                }\n              ]\n            },\n            \"response\": {\n              \"project_id\": \"string\",\n              \"status\": \"REQUIREMENT\",\n              \"message\": \"角色配置完成，流程进入需求确认阶段。\"\n            }\n          },\n          \"GET /projects/{project_id}\": {\n            \"description\": \"获取项目详情，包括状态、当前阶段、所有产物等。对应U3。\",\n            \"response\": \"Project object with nested artifacts and roles\"\n          }\n        },\n        \"Phase: Requirement Confirmation\": {\n          \"POST /projects/{project_id}/phases/requirement/generate\": {\n            \"description\": \"触发AI Agent（产品经理）根据初始描述生成PRD草稿。\",\n            \"response\": {\n              \"task_id\": \"string\",\n              \"status\": \"PENDING\",\n              \"message\": \"PRD生成任务已提交。\"\n            }\n          },\n          \"GET /projects/{project_id}/artifacts/prd\": {\n            \"description\": \"获取当前最新的PRD产物。\",\n            \"response\": \"Artifact object\"\n          },\n          \"POST /projects/{project_id}/phases/requirement/confirm\": {\n            \"description\": \"用户确认PRD，流程进入架构设计阶段。\",\n            \"request\": {\n              \"action\": \"enum (APPROVE, REJECT)\",\n              \"feedback\": \"string (optional, for rejection)\"\n            },\n            \"response\": {\n              \"status\": \"ARCHITECTURE\",\n              \"message\": \"PRD已确认，进入架构设计阶段。\"\n            }\n          }\n        },\n        \"Phase: Architecture Design\": {\n          \"POST /projects/{project_id}/phases/architecture/generate\": {\n            \"description\": \"触发AI Agent（架构师）根据PRD生成架构设计。\",\n            \"response\": \"Task object\"\n          },\n          \"GET /projects/{project_id}/artifacts/architecture\": {\n            \"description\": \"获取当前最新的架构设计产物。\",\n            \"response\": \"Artifact object\"\n          },\n          \"POST /projects/{project_id}/phases/architecture/confirm\": {\n            \"description\": \"用户确认架构设计，流程进入编码阶段。\",\n            \"request\": {\n              \"action\": \"enum (APPROVE, REJECT)\",\n              \"feedback\": \"string (optional)\"\n            },\n            \"response\": {\n              \"status\": \"CODING\",\n              \"message\": \"架构设计已确认，进入编码阶段。\"\n            }\n          }\n        },\n        \"Phase: Coding & Test Case Generation\": {\n          \"POST /projects/{project_id}/phases/coding/start\": {\n            \"description\": \"触发前后端工程师Agent根据架构进行编码。此接口自动被系统调用。\",\n            \"response\": \"Task object\"\n          },\n          \"GET /projects/{project_id}/artifacts/code\": {\n            \"description\": \"获取生成的源代码产物。\",\n            \"response\": \"Artifact object\"\n          },\n          \"POST /projects/{project_id}/phases/test-cases/generate\": {\n            \"description\": \"触发测试经理Agent根据PRD生成测试用例。对应U4的AC1。\",\n            \"response\": \"Task object\"\n          },\n          \"GET /projects/{project_id}/artifacts/test-cases\": {\n            \"description\": \"获取生成的测试用例产物。\",\n            \"response\": \"Artifact object\"\n          },\n          \"POST /projects/{project_id}/phases/test-cases/confirm\": {\n            \"description\": \"用户确认测试用例，流程进入测试执行阶段。\",\n            \"request\": {\n              \"action\": \"enum (APPROVE, REJECT)\",\n              \"feedback\": \"string (optional)\"\n            },\n            \"response\": {\n              \"status\": \"TESTING\",\n              \"message\": \"测试用例已确认，进入测试执行阶段。\"\n            }\n          }\n        },\n        \"Phase: Test Execution & Bug Fixing Loop\": {\n          \"POST /projects/{project_id}/phases/testing/execute\": {\n            \"description\": \"触发测试执行。自动运行所有测试用例。对应U4的AC3。\",\n            \"response\": \"Task object\"\n          },\n          \"GET /projects/{project_id}/test-reports/latest\": {\n            \"description\": \"获取最新的测试报告。对应U4的AC4。\",\n            \"response\": \"TestReport object\"\n          },\n          \"POST /projects/{project_id}/phases/bug-fixing/start\": {\n            \"description\": \"触发Bug修复Agent。系统在检测到测试失败时自动调用此接口。对应U5的AC1, AC2。\",\n            \"request\": {\n              \"bug_record_id\": \"string\",\n              \"failed_test_report_id\": \"string\"\n            },\n            \"response\": {\n              \"task_id\": \"string\",\n              \"status\": \"BUG_FIXING\",\n              \"message\": \"Bug修复任务已启动。\"\n            }\n          },\n          \"GET /projects/{project_id}/bugs\": {\n            \"description\": \"获取项目下所有Bug记录。\",\n            \"response\": \"array of BugRecord\"\n          },\n          \"PUT /bugs/{bug_id}/fix-info\": {\n            \"description\": \"记录Bug的修复信息。由Bug修复Agent在修复完成后调用。对应U5的AC3。\",\n            \"request\": {\n              \"fix_date\": \"datetime\",\n              \"fix_method\": \"string\",\n              \"fix_program_name\": \"string\",\n              \"status\": \"FIXED\"\n            },\n            \"response\": \"BugRecord object\"\n          },\n          \"GET /projects/{project_id}/phases/status\": {\n            \"description\": \"获取当前阶段的完成状态，用于判断是否需要进入下一轮循环。\",\n            \"response\": {\n              \"current_phase\": \"enum\",\n              \"is_loop_active\": \"boolean\",\n              \"latest_test_report\": \"TestReport object\",\n              \"message\": \"测试通过率未达标，继续循环。\" or \"测试通过率100%，流程结束。\"\n            }\n          }\n        },\n        \"Audit & Notification\": {\n          \"GET /projects/{project_id}/audit-logs\": {\n            \"description\": \"获取项目完整的审计日志。对应C4。\",\n            \"response\": \"array of AuditLog\"\n          },\n          \"POST /notifications\": {\n            \"description\": \"系统内部接口，用于发送通知。例如，流程结束时通知项目创建者。对应U5的AC5。\",\n            \"request\": {\n              \"user_id\": \"string\",\n              \"project_id\": \"string\",\n              \"type\": \"enum (PROCESS_COMPLETED, TASK_ASSIGNED, ...)\",\n              \"message\": \"string\"\n            },\n            \"response\": {\n              \"status\": \"SENT\"\n            }\n          }\n        }\n      },\n      \"state_machine_overview\": {\n        \"states\": [\n          \"INIT\",\n          \"REQUIREMENT\",\n          \"ARCHITECTURE\",\n          \"CODING\",\n          \"TESTING\",\n          \"BUG_FIXING\",\n          \"COMPLETED\",\n          \"FAILED\"\n        ],\n        \"transitions\": [\n          \"INIT -> REQUIREMENT: 角色配置完成\",\n          \"REQUIREMENT -> ARCHITECTURE: PRD确认\",\n          \"ARCHITECTURE -> CODING: 架构确认\",\n          \"CODING -> TESTING: 编码完成 && 测试用例确认\",\n          \"TESTING -> BUG_FIXING: 测试失败\",\n          \"BUG_FIXING -> TESTING: Bug修复完成\",\n          \"TESTING -> COMPLETED: 测试通过率100%\",\n          \"BUG_FIXING -> FAILED: 修复次数超过阈值或出现无法修复的错误\"\n        ]\n      }\n    }\n  },\n  \"confidence\": \"HIGH\",\n  \"issues\": [\n    {\n      \"severity\": \"P1\",\n      \"description\": \"PRD中U4要求“架构设计阶段完成后自动生成测试用例”，但在实际流程中，测试用例的生成和确认被放在了编码阶段之后，这可能导致测试用例无法覆盖最新的代码逻辑。\",\n      \"target_agent\": \"backend_developer\",\n      \"suggestion\": \"建议调整流程为：架构设计确认后，立即触发测试用例生成。可以在CODING阶段开始时并行执行编码和测试用例生成任务，但测试用例的确认可以放在编码完成后、测试执行前，以确保两者都就绪。\"\n    },\n    {\n      \"severity\": \"P2\",\n      \"description\": \"PRD中U5要求“自动将缺陷信息传递给程序员Agent”，但未明确指定当多个Bug同时存在时，是串行修复还是并行修复。串行修复可能导致循环周期过长，并行修复可能引入冲突。\",\n      \"target_agent\": \"backend_developer\",\n      \"suggestion\": \"建议在Bug修复阶段，系统将所有失败的测试用例汇总，生成一个综合的修复任务包，一次性传递给程序员Agent进行批量修复，以提高效率并减少循环次数。\"\n    },\n    {\n      \"severity\": \"P3\",\n      \"description\": \"审计日志（C4）要求记录“执行人（Agent或人工）”，但在API设计中，对于Agent执行的任务，`actor_id`字段的取值尚不明确。\",\n      \"target_agent\": \"backend_developer\",\n      \"suggestion\": \"建议为每个AI Agent分配一个固定的系统用户ID（如：agent_product_manager, agent_architect），以便在审计日志中清晰区分。\"\n    }\n  ],\n  \"decision\": \"PROCEED\"\n}\n```"
+  },
+  "_stage_backend_developer_4_done": true,
+  "test_plan": {
+    "test_cases": [
+      {
+        "id": "TC-U1-AC1-POS",
+        "description": "正向：验证在 aiPlat 平台主界面存在“新建自动化项目”入口。",
+        "acceptance_criteria_id": "AC1-U1",
+        "expected": "在 aiPlat 平台主界面（如侧边栏、首页按钮或菜单中）可以找到一个明确标识为“新建自动化项目”的按钮或链接，点击后能触发项目创建流程。"
+      },
+      {
+        "id": "TC-U1-AC1-BND",
+        "description": "边界：验证“新建自动化项目”入口在平台主界面被隐藏或不可用时的表现。",
+        "acceptance_criteria_id": "AC1-U1",
+        "expected": "如果用户角色没有创建项目的权限，该入口应置灰或隐藏，并提示“您没有创建项目的权限，请联系管理员。” 而不是直接报错或显示空白。"
+      },
+      {
+        "id": "TC-U1-AC2-POS",
+        "description": "正向：验证点击“新建自动化项目”后，进入对话界面并提示用户输入需求。",
+        "acceptance_criteria_id": "AC2-U1",
+        "expected": "点击入口后，系统跳转到一个新的对话界面，界面中显示系统发出的第一条消息，提示用户“请描述您的项目需求，例如：开发一个在线书店系统。”"
+      },
+      {
+        "id": "TC-U1-AC2-BND",
+        "description": "边界：验证用户在对话界面长时间（如5分钟）未输入任何内容时的表现。",
+        "acceptance_criteria_id": "AC2-U1",
+        "expected": "系统应保持对话界面活跃，不自动关闭或超时，并显示提示信息“请继续输入您的需求描述。若需帮助，请输入‘帮助’。” 或类似友好提示。"
+      },
+      {
+        "id": "TC-U1-AC3-POS",
+        "description": "正向：验证系统能正确接收并存储用户输入的非结构化文本需求。",
+        "acceptance_criteria_id": "AC3-U1",
+        "expected": "用户输入一段自然语言（如“我想做一个学生成绩管理系统，支持教师录入成绩，学生查询成绩。”）并提交后，系统提示“需求已接收，正在分析...”，并在项目创建成功后，在项目详情页的“需求文档”中能看到该段原始文本。"
+      },
+      {
+        "id": "TC-U1-AC3-BND",
+        "description": "边界：验证用户输入超长文本（如10万字）时的系统处理能力。",
+        "acceptance_criteria_id": "AC3-U1",
+        "expected": "系统应能成功接收并存储超长文本，不出现界面卡死或请求超时错误。存储后，系统可以正常进行后续分析，或给出“需求过长，系统将优先处理关键部分”的提示。"
+      },
+      {
+        "id": "TC-U2-AC1-POS",
+        "description": "正向：验证在需求输入后，系统提供角色选择界面，并默认显示所有标准角色。",
+        "acceptance_criteria_id": "AC1-U2",
+        "expected": "在需求分析完成后，界面切换至角色配置页面，默认显示“产品经理”、“架构师”、“前端工程师”、“后端工程师”、“测试经理”等所有标准角色，且每个角色前都有一个未勾选的复选框。"
+      },
+      {
+        "id": "TC-U2-AC1-BND",
+        "description": "边界：验证当平台标准角色列表为空时，角色选择界面的显示。",
+        "acceptance_criteria_id": "AC1-U2",
+        "expected": "若平台未配置任何标准角色，系统应显示“当前无可用的标准角色，请联系平台管理员配置。” 并阻止流程进入下一阶段，而不是显示一个空白列表。"
+      },
+      {
+        "id": "TC-U2-AC2-POS",
+        "description": "正向：验证创建者可以勾选或取消勾选角色。",
+        "acceptance_criteria_id": "AC2-U2",
+        "expected": "创建者可以点击“架构师”角色的复选框，使其变为已勾选状态；再次点击，使其变为未勾选状态。界面状态应实时更新。"
+      },
+      {
+        "id": "TC-U2-AC2-BND",
+        "description": "边界：验证创建者取消勾选所有角色后的表现。",
+        "acceptance_criteria_id": "AC2-U2",
+        "expected": "如果创建者取消了所有角色的勾选，系统应禁用“下一步”按钮，并显示错误提示“请至少选择一个项目角色。”"
+      },
+      {
+        "id": "TC-U2-AC3-POS",
+        "description": "正向：验证创建者可以为每个已选角色从平台现有成员列表中指定具体人选。",
+        "acceptance_criteria_id": "AC3-U2",
+        "expected": "勾选“测试经理”角色后，其下方出现一个下拉选择框，下拉列表包含平台中所有用户，从中选择“张三”作为测试经理。选择后，该角色旁显示“测试经理：张三”。"
+      },
+      {
+        "id": "TC-U2-AC3-BND",
+        "description": "边界：验证为角色指定一个已被其他项目占用的成员（假设不允许多项目并行）时的表现。",
+        "acceptance_criteria_id": "AC3-U2",
+        "expected": "如果选中的“张三”当前正在参与另一个活跃的自动化项目，系统应给出警告“成员张三当前已分配给项目‘XXXX’，是否仍要将其分配至此项目？” 提供“强制分配”和“取消”选项。"
+      },
+      {
+        "id": "TC-U2-AC4-POS",
+        "description": "正向：验证角色和人选配置完成后，流程方可进入下一阶段。",
+        "acceptance_criteria_id": "AC4-U2",
+        "expected": "为所有已选角色（如产品经理、架构师）都指定了具体人选后，“下一步”按钮变为可点击状态。点击后，系统进入“架构设计”阶段。"
+      },
+      {
+        "id": "TC-U2-AC4-BND",
+        "description": "边界：验证已选角色但未指定人选时，能否进入下一阶段。",
+        "acceptance_criteria_id": "AC4-U2",
+        "expected": "只勾选了“架构师”角色，但未从成员列表中为其选择任何人。“下一步”按钮应保持禁用状态，并提示“请为所有已选角色指定具体人选。”"
+      },
+      {
+        "id": "TC-U3-AC1-POS",
+        "description": "正向：验证每个角色的工作产物自动存储并关联到项目。",
+        "acceptance_criteria_id": "AC1-U3",
+        "expected": "在“架构设计”阶段完成后，系统自动生成架构图，并在项目文件库中新增一个名为“架构设计_<项目名>_<时间戳>.png”的文件，该文件与当前项目关联。"
+      },
+      {
+        "id": "TC-U3-AC1-BND",
+        "description": "边界：验证系统在生成产物时，若存储空间不足，是否会有正确提示。",
+        "acceptance_criteria_id": "AC1-U3",
+        "expected": "当系统尝试存储架构图但存储空间已满时，不应丢失产物，而应暂停流程，并向项目创建者发送通知“存储空间不足，无法保存产物‘架构图’，请清理空间后重试。”"
+      },
+      {
+        "id": "TC-U3-AC2-POS",
+        "description": "正向：验证所有团队成员均可查看项目内所有工作产物。",
+        "acceptance_criteria_id": "AC2-U3",
+        "expected": "作为“前端工程师”角色的用户登录，进入该项目的工作台，可以点击查看“架构师”产出的架构图，以及“测试经理”产出的测试报告。"
+      },
+      {
+        "id": "TC-U3-AC2-BND",
+        "description": "边界：验证非项目成员的用户无法查看该项目的工作产物。",
+        "acceptance_criteria_id": "AC2-U3",
+        "expected": "一个不属于该项目任何角色的平台用户，尝试通过直接URL访问该项目的产物列表时，系统应返回“404 未找到”或“您无权访问此项目”。"
+      },
+      {
+        "id": "TC-U3-AC3-POS",
+        "description": "正向：验证非产物创建者或项目管理员无法编辑或删除该产物。",
+        "acceptance_criteria_id": "AC3-U3",
+        "expected": "作为“后端工程师”角色，在查看“架构师”的架构图时，界面上没有“编辑”或“删除”按钮，右键菜单中也不包含相关选项。"
+      },
+      {
+        "id": "TC-U3-AC3-BND",
+        "description": "边界：验证项目管理员可以编辑或删除任何产物。",
+        "acceptance_criteria_id": "AC3-U3",
+        "expected": "项目创建者（管理员）在查看“测试经理”的测试报告时，界面上显示“编辑”和“删除”按钮，可以成功修改报告内容或将其删除。"
+      },
+      {
+        "id": "TC-U3-AC4-POS",
+        "description": "正向：验证系统记录所有查看日志。",
+        "acceptance_criteria_id": "AC4-U3",
+        "expected": "用户“张三”查看了“架构图”后，在项目审计日志中新增一条记录：“[时间] 用户 [张三] 查看了文件 [架构图]”。"
+      },
+      {
+        "id": "TC-U3-AC4-BND",
+        "description": "边界：验证频繁查看同一产物时，日志记录是否会产生大量冗余。",
+        "acceptance_criteria_id": "AC4-U3",
+        "expected": "用户在1分钟内刷新或点击查看同一份测试报告10次，审计日志中应只记录1次或最多3次（如：首次、中间一次、最后一次），而不是记录10次完全相同的日志。"
+      },
+      {
+        "id": "TC-U4-AC1-POS",
+        "description": "正向：验证系统在“架构设计”阶段完成后，自动调用测试用例生成 Skill。",
+        "acceptance_criteria_id": "AC1-U4",
+        "expected": "在“架构设计”阶段状态变为“已完成”后，系统后台立即触发一个名为“Test_Case_Generator”的 Agent 或 Skill 执行，并在项目日志中记录“开始生成测试用例”。"
+      },
+      {
+        "id": "TC-U4-AC1-BND",
+        "description": "边界：验证当测试用例生成 Skill 服务不可用时，系统的重试机制。",
+        "acceptance_criteria_id": "AC1-U4",
+        "expected": "如果 Test_Case_Generator 服务返回500错误，系统应自动重试最多3次，每次间隔30秒。若3次后仍失败，则暂停流程，并向项目创建者发送告警“测试用例生成服务异常，请检查。”"
+      },
+      {
+        "id": "TC-U4-AC2-POS",
+        "description": "正向：验证生成的测试用例覆盖 PRD 中的所有用户故事和验收标准。",
+        "acceptance_criteria_id": "AC2-U4",
+        "expected": "查看系统生成的测试用例列表，应该包含至少5个测试用例，分别对应 U1 的 AC1、AC2、AC3 以及 U2 的 AC1、AC2 等。例如，存在一个测试用例描述为“验证用户能否选择团队成员”。"
+      },
+      {
+        "id": "TC-U4-AC2-BND",
+        "description": "边界：验证当 PRD 中包含模糊或矛盾的验收标准时，系统如何生成测试用例。",
+        "acceptance_criteria_id": "AC2-U4",
+        "expected": "如果 PRD 中有一条 AC 为“系统应快速响应”，系统应生成一个测试用例，并注明“该标准未定义具体指标，默认设定响应时间应小于2秒。” 并在报告中标记为“待确认”。"
+      },
+      {
+        "id": "TC-U4-AC3-POS",
+        "description": "正向：验证每次代码提交后，自动触发测试执行。",
+        "acceptance_criteria_id": "AC3-U4",
+        "expected": "当“后端工程师”Agent 提交一次代码后，系统自动启动测试流水线，项目状态更新为“测试中”，并在日志中记录“代码变更 [commit_id] 触发测试执行”。"
+      },
+      {
+        "id": "TC-U4-AC3-BND",
+        "description": "边界：验证当有多次代码提交时，测试是否会被重复触发。",
+        "acceptance_criteria_id": "AC3-U4",
+        "expected": "在1分钟内，后端 Agent 连续提交了3次代码（commit A, B, C）。系统应智能地取消对 commit A 和 B 的测试任务，仅对最新的 commit C 执行一次测试，以避免资源浪费。"
+      },
+      {
+        "id": "TC-U4-AC4-POS",
+        "description": "正向：验证测试完成后，自动生成包含通过率、失败详情、日志的结构化测试报告。",
+        "acceptance_criteria_id": "AC4-U4",
+        "expected": "测试执行完毕后，项目文件库中新增一份“测试报告_<项目名>_<时间戳>.json”文件。该文件包含字段：`pass_rate: 85%`，`failed_cases: [ { id: “TC-U1-AC1”, error_log: “断言失败：预期按钮存在，实际未找到” } ]`。"
+      },
+      {
+        "id": "TC-U4-AC4-BND",
+        "description": "边界：验证当测试过程中发生基础设施故障（如测试环境宕机）时，测试报告如何生成。",
+        "acceptance_criteria_id": "AC4-U4",
+        "expected": "如果测试环境在运行到一半时崩溃，系统应生成一份报告，其中 `pass_rate` 字段为“N/A”，并包含一个 `infrastructure_error` 字段，描述为“测试环境在时间 XX:XX 发生连接超时，测试未完成。”"
+      },
+      {
+        "id": "TC-U5-AC1-POS",
+        "description": "正向：验证系统检测到测试失败后，自动创建 Bug 记录。",
+        "acceptance_criteria_id": "AC1-U5",
+        "expected": "测试报告显示通过率为85%，系统自动在项目“缺陷管理”模块中创建一个新的 Bug，标题为“测试失败：TC-U1-AC1”，状态为“待修复”。"
+      },
+      {
+        "id": "TC-U5-AC1-BND",
+        "description": "边界：验证同一个测试用例反复失败时，系统是否会重复创建相同的 Bug。",
+        "acceptance_criteria_id": "AC1-U5",
+        "expected": "如果 TC-U1-AC1 在连续两次测试中均失败，系统应识别出该 Bug 已存在，并更新已有 Bug 的记录（如：增加“复现次数”字段），而不是创建两个完全相同的 Bug。"
+      },
+      {
+        "id": "TC-U5-AC2-POS",
+        "description": "正向：验证自动将 Bug 信息与失败代码片段关联，并触发代码修复 Agent。",
+        "acceptance_criteria_id": "AC2-U5",
+        "expected": "创建的 Bug 详情中，自动关联了导致失败的代码文件路径（如 `src/main.js:120`）和代码片段。同时，系统向“后端工程师”Agent 发送一个修复任务，包含该 Bug 的所有信息。"
+      },
+      {
+        "id": "TC-U5-AC2-BND",
+        "description": "边界：验证当 Bug 关联的代码片段所在的文件被删除后，系统如何处理。",
+        "acceptance_criteria_id": "AC2-U5",
+        "expected": "如果修复任务开始时，发现 Bug 关联的文件已被删除，代码修复 Agent 应记录“错误：关联文件已不存在”，并暂停修复，等待人工干预。"
+      },
+      {
+        "id": "TC-U5-AC3-POS",
+        "description": "正向：验证代码修复后，自动记录修正日期、修改方式、程序名。",
+        "acceptance_criteria_id": "AC3-U5",
+        "expected": "代码修复 Agent 提交修改后，在 Bug 记录中自动追加一条记录：“[时间] 已修复。修改方式：修改函数 `calculateTotal` 中的边界条件。程序名：`backend-agent-v2`。”"
+      },
+      {
+        "id": "TC-U5-AC3-BND",
+        "description": "边界：验证当代码修复 Agent 未能成功修改代码时的记录。",
+        "acceptance_criteria_id": "AC3-U5",
+        "expected": "如果 Agent 尝试修复但编译失败，应记录：“[时间] 修复尝试失败。修改方式：尝试重写 `login.js` 文件。程序名：`backend-agent-v2`。失败原因：语法错误。” 而不是不记录。"
+      },
+      {
+        "id": "TC-U5-AC4-POS",
+        "description": "正向：验证修正后自动进入下一轮测试，形成闭环。",
+        "acceptance_criteria_id": "AC4-U5",
+        "expected": "在代码修复 Agent 提交代码后，系统自动触发新一轮的测试，项目状态再次变为“测试中”，形成“测试-失败-修复-测试”的闭环。"
+      },
+      {
+        "id": "TC-U5-AC4-BND",
+        "description": "边界：验证在修复后的测试中，如果出现新的失败，是否仍能继续闭环。",
+        "acceptance_criteria_id": "AC4-U5",
+        "expected": "修复后的测试中，原来的 Bug 通过了，但引发了另一个测试用例失败。系统应能正确处理，创建新的 Bug（或复用旧 Bug 但更新信息），并再次触发修复流程，继续闭环。"
+      },
+      {
+        "id": "TC-U5-AC5-POS",
+        "description": "正向：验证当测试通过率达到 100% 时，流程自动结束，并向项目创建者发送通知。",
+        "acceptance_criteria_id": "AC5-U5",
+        "expected": "最后一轮测试报告显示 `pass_rate: 100%`。系统将项目状态更新为“已完成”。项目创建者在平台通知中心和注册邮箱中收到通知：“您的项目 [项目名] 已成功交付，所有测试用例通过率达到100%。”"
+      },
+      {
+        "id": "TC-U5-AC5-BND",
+        "description": "边界：验证在达到100%通过率后，如果又有人为提交代码，流程是否会重新开启。",
+        "acceptance_criteria_id": "AC5-U5",
+        "expected": "项目状态为“已完成”后，即使有人为或 Agent 再次提交代码，系统应拒绝此次提交，并提示“项目已交付，无法再修改代码。” 除非项目被重新激活。"
+      }
+    ]
+  }
+}

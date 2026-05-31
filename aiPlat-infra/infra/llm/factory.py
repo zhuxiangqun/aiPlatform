@@ -5,7 +5,7 @@ from .base import LLMClient
 # Providers that use the OpenAI-compatible client (same API protocol)
 _OPENAI_COMPATIBLE_PROVIDERS: Set[str] = {
     "openai", "deepseek", "qwen", "xai", "lmstudio", "omlx", "vllm",
-    "openai_compatible",
+    "openai_compatible", "ollama",
 }
 
 

@@ -33,54 +33,18 @@ async def kb_slack_query(request: Request):
 
     try:
         # Retrieve from KB
-        from core.api.core_facade import kb_retrieve, llm_generate
-        doc_ids = ["doc_test_001", "doc_test_002", "doc_test_003"]  # TODO: configurable collection
-        results = kb_retrieve(query=question, doc_ids=doc_ids, top_k=3)
-        if not results:
-            return {"response_type": "ephemeral", "text": f"未找到与「{question}」相关的知识"}
+        from core.api.facades.service_facade import llm_generate
+        from core.api.facades.kb_facade import kb_retrieve
 
-        doc_content = "\n\n---\n\n".join(r["text"][:500] for r in results[:3])
-
-        # Generate answer
-        resp = await llm_generate(
-            None,
-            [
-                {"role": "system", "content": "你是知识库助手，基于提供的文档回答。"},
-                {"role": "user", "content": f"文档：\n{doc_content}\n\n问题：{question}\n回答："},
-            ],
-            model_name="deepseek-chat", temperature=0.3, max_tokens=1000,
-        )
-        answer = getattr(resp, "content", "") or str(resp)
-
-        return {
-            "response_type": "in_channel",
-            "text": f"*{question}*\n{answer.strip()}\n\n_由 aiPlat 知识库提供_",
-        }
-    except Exception as e:
-        return {"response_type": "ephemeral", "text": f"查询失败：{e}"}
-
-
-@router.post("/kb/widget/query")
-async def kb_widget_query(request: Request):
-    """Widget/iframe embeddable KB query endpoint (JSON API + CORS friendly)."""
-    try:
-        data = await request.json()
-    except Exception:
-        data = {}
-    question = str(data.get("q") or data.get("question") or "").strip()
-    if not question:
-        raise HTTPException(status_code=400, detail="question_required")
-
-    try:
-        from core.api.core_facade import kb_retrieve, llm_generate
         doc_ids = data.get("doc_ids") or ["doc_test_001", "doc_test_002", "doc_test_003"]
         results = kb_retrieve(query=question, doc_ids=doc_ids, top_k=3)
         doc_content = "\n\n---\n\n".join(r["text"][:500] for r in results[:3]) if results else ""
 
+        from core.harness.utils.prompt_loader import _async_prompt_resolve
+        sp = await _async_prompt_resolve("kb-qa", scenario="widget", documents=doc_content, question=question)
         resp = await llm_generate(
             None,
-            [{"role": "system", "content": "你是知识库助手。"},
-             {"role": "user", "content": f"文档：\n{doc_content}\n\n问题：{question}\n回答："}],
+            [{"role": "user", "content": sp}],
             model_name="deepseek-chat", temperature=0.3, max_tokens=1000,
         )
         answer = getattr(resp, "content", "") or str(resp)

@@ -5,7 +5,7 @@ Tests the Prometheus metrics exporter.
 """
 
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 import sys
 import os
 
@@ -180,7 +180,7 @@ class TestManagementMetricsExporter:
                     status=Status.HEALTHY,
                     message="OK",
                     details={},
-                    timestamp=datetime.now()
+                    timestamp=datetime.now(timezone.utc)
                 )
             
             async def get_metrics(self) -> List[Metrics]:

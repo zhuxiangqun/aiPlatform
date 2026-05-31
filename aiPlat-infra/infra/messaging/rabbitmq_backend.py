@@ -1,7 +1,7 @@
 import asyncio
 import uuid
 from typing import Callable, Dict, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from .base import MessageClient
 from .schemas import Message, ConsumerConfig, MessagingConfig
@@ -72,7 +72,7 @@ class RabbitMQClient(MessageClient):
             topic=topic,
             body=body,
             headers=headers or {},
-            timestamp=datetime.now(),
+            timestamp=datetime.now(timezone.utc),
         )
 
     async def publish(self, topic: str, message: bytes, **kwargs) -> None:

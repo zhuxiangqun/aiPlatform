@@ -4,7 +4,7 @@ Data Models for Management Module
 
 from dataclasses import dataclass
 from typing import Dict, Any, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 @dataclass
@@ -301,8 +301,8 @@ class ModelInfo:
         if self.capabilities is None:
             self.capabilities = []
         if self.created_at is None:
-            self.created_at = datetime.now()
+            self.created_at = datetime.now(timezone.utc)
         if self.updated_at is None:
-            self.updated_at = datetime.now()
+            self.updated_at = datetime.now(timezone.utc)
         if self.display_name is None:
             self.display_name = self.name

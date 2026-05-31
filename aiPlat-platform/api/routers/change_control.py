@@ -20,7 +20,7 @@ from auth.deps import require_auth
 from core.api.deps import actor_from_http
 from core.api.utils.governance import gate_error_envelope, governance_links, ui_url
 from core.api.core_facade import record_changeset, apply_autosmoke_result, mark_resource_pending
-from core.api.core_facade import get_kernel_runtime
+from core.api.facades.runtime_facade import get_kernel_runtime
 
 
 router = APIRouter(prefix="/platform/change-control", tags=["change_control"])

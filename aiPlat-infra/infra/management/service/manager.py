@@ -7,7 +7,7 @@ Manages AI inference services. In standalone mode, monitors real processes.
 from typing import Dict, Any, List, Optional
 from ..base import ManagementBase, Status, HealthStatus, Metrics, DiagnosisResult
 from ..schemas import ServiceInfo, ImageInfo
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 import time
 
@@ -115,7 +115,7 @@ class ServiceManager(ManagementBase):
                     "memory_mb": proc['memory_mb'],
                     "cpu_percent": proc['cpu_percent']
                 },
-                created_at=datetime.now()
+                created_at=datetime.now(timezone.utc)
             )
             self._services[f"standalone/{proc['name']}"] = service
         
@@ -313,7 +313,7 @@ class ServiceManager(ManagementBase):
             status="Pending",
             pods=[],
             config=config,
-            created_at=datetime.now()
+            created_at=datetime.now(timezone.utc)
         )
         
         key = f"{service.namespace}/{service.name}"

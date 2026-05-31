@@ -12,7 +12,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from core.api.deps import rbac_guard
-from core.api.core_facade import KernelRuntime, get_kernel_runtime
+from core.api.facades.runtime_facade import KernelRuntime, get_kernel_runtime
 
 router = APIRouter(prefix="/platform/policy", tags=["policy"])
 

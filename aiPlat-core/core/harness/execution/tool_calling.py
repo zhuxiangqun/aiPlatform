@@ -43,7 +43,7 @@ def _try_load_json(s: str) -> Optional[Any]:
 
 def _extract_json_candidate(text: str) -> Optional[str]:
     """Delegates to canonical JSON extraction via CoreFacade."""
-    from core.api.core_facade import extract_json_safe
+    from core.utils.json_utils import extract_json_safe
     return extract_json_safe(text)
 
 def _normalize_tool_call(obj: Any, raw: str) -> Optional[ParsedToolCall]:

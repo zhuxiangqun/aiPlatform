@@ -6,7 +6,7 @@ Provides session management and memory storage operations.
 
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 
@@ -67,7 +67,7 @@ class MemoryManager:
             self._seed_data()
     
     def _seed_data(self):
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         demo_sessions = [
             ("sess-react-001", "react", "user-001", "active", "short_term", {"model": "gpt-4"}),
             ("sess-rag-001", "rag", "user-002", "active", "long_term", {"model": "gpt-4", "retrieval_count": 5}),
@@ -102,7 +102,7 @@ class MemoryManager:
     ) -> SessionInfo:
         """Create a new session"""
         session_id = f"sess-{uuid.uuid4().hex[:8]}"
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         session = SessionInfo(
             id=session_id,
@@ -179,7 +179,7 @@ class MemoryManager:
             role=role,
             content=content,
             metadata=metadata or {},
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         
         self._messages[session_id].append(message)
@@ -187,7 +187,7 @@ class MemoryManager:
         # Update session
         session = self._sessions[session_id]
         session.message_count += 1
-        session.last_activity = datetime.utcnow()
+        session.last_activity = datetime.now(timezone.utc)
         self._stats.total_messages += 1
         
         return message

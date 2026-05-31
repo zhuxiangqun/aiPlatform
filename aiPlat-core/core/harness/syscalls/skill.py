@@ -381,8 +381,8 @@ async def sys_skill_call(
             if resolver and isinstance(resolver, dict):
                 decision = resolver["resolve_exec"](skill_name)
             else:
-                from core.apps.tools.skill_tools import resolve_executable_skill_permission
-                decision = resolve_executable_skill_permission(skill_name)
+                from core.harness.integration import get_exec_skill_permission_resolver
+                decision = get_exec_skill_permission_resolver()(skill_name)
             if decision == "deny":
                 end_ts = time.time()
                 await trace_gate.end(span, success=False)
@@ -671,7 +671,7 @@ async def sys_skill_call(
                 if di: curator = di.resolve("SkillCurator")
             except Exception: pass  # noqa: allowed — DI best-effort
             if curator is None:
-                from core.apps.skills.curator import get_skill_curator
+                from core.harness.integration import get_skill_curator
                 curator = get_skill_curator()
             curator.record_call(skill_name) if skill_name else None
         except Exception:

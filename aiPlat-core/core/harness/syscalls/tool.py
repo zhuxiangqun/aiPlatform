@@ -236,7 +236,7 @@ async def sys_tool_call(
                 backend = await _resolve_exec_backend()
             except Exception:
                 try:
-                    from core.apps.exec_drivers.registry import get_exec_backend
+                    from core.harness.integration import get_exec_backend
                     backend = await get_exec_backend()
                 except Exception:
                     backend = None

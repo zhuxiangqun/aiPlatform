@@ -12,7 +12,7 @@ Provides:
 
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timezone,timedelta
 from enum import Enum
 import json
 import uuid
@@ -43,8 +43,8 @@ class ContextFile:
     name: str
     content: str
     version: int = 1
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     created_by: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
     
@@ -52,7 +52,7 @@ class ContextFile:
         """Update file content and increment version."""
         self.content = new_content
         self.version += 1
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
 
 @dataclass
@@ -78,20 +78,20 @@ class SessionContext:
     state: ContextState = ContextState.ACTIVE
     data: Dict[str, Any] = field(default_factory=dict)
     metadata: Dict[str, Any] = field(default_factory=dict)
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     expires_at: Optional[datetime] = None
     parent_context_id: Optional[str] = None
     
     def is_expired(self) -> bool:
         """Check if context is expired."""
         if self.expires_at:
-            return datetime.utcnow() > self.expires_at
+            return datetime.now(timezone.utc) > self.expires_at
         return False
     
     def touch(self):
         """Update the last modified time."""
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
 
 class ContextService:
@@ -144,7 +144,7 @@ class ContextService:
         session_id = str(uuid.uuid4())
         
         effective_ttl = ttl or self._default_ttl
-        expires_at = datetime.utcnow() + timedelta(seconds=effective_ttl) if effective_ttl > 0 else None
+        expires_at = datetime.now(timezone.utc) + timedelta(seconds=effective_ttl) if effective_ttl > 0 else None
         
         context = SessionContext(
             session_id=session_id,
@@ -374,7 +374,7 @@ class ContextService:
             return None
         
         context.state = ContextState.EXPIRED
-        context.expires_at = datetime.utcnow()
+        context.expires_at = datetime.now(timezone.utc)
         context.touch()
         
         return context
@@ -401,7 +401,7 @@ class ContextService:
         if context.expires_at:
             context.expires_at = context.expires_at + timedelta(seconds=additional_seconds)
         else:
-            context.expires_at = datetime.utcnow() + timedelta(seconds=additional_seconds)
+            context.expires_at = datetime.now(timezone.utc) + timedelta(seconds=additional_seconds)
         
         context.touch()
         
@@ -455,8 +455,8 @@ class ContextService:
             state=ContextState(data.get("state", "active")),
             data=data.get("data", {}),
             metadata=data.get("metadata", {}),
-            created_at=datetime.fromisoformat(data["created_at"]) if "created_at" in data else datetime.utcnow(),
-            updated_at=datetime.fromisoformat(data["updated_at"]) if "updated_at" in data else datetime.utcnow(),
+            created_at=datetime.fromisoformat(data["created_at"]) if "created_at" in data else datetime.now(timezone.utc),
+            updated_at=datetime.fromisoformat(data["updated_at"]) if "updated_at" in data else datetime.now(timezone.utc),
             expires_at=datetime.fromisoformat(data["expires_at"]) if data.get("expires_at") else None,
             parent_context_id=data.get("parent_context_id")
         )

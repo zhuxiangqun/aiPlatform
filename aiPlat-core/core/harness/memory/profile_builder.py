@@ -21,18 +21,17 @@ from typing import Any, Dict, List, Optional
 
 _log = logging.getLogger("pipeline_engine.profile_builder")
 
-_MEMORY_REVIEW_PROMPT = (
-    "Review the conversation above and extract facts about the user, team, or project.\n\n"
-    "Extract ONLY clear, explicit information — do not guess or infer.\n"
-    "Output JSON with these keys:\n"
-    "- preferences: technical choices they prefer or avoid (list of strings)\n"
-    "- constraints: team size, budget, timeline restrictions (list of strings)\n"
-    "- decisions: things they explicitly approved or rejected (list of strings)\n"
-    "- work_style: brief description of how they work (string)\n\n"
-    'Example: {"preferences":["React","TypeScript"],"constraints":["team of 3"],"decisions":["rejected microservices"],"work_style":"iterate fast, refine later"}\n\n'
-    "If nothing new is learned beyond what's already known, output empty lists:\n"
-    '{"preferences":[],"constraints":[],"decisions":[],"work_style":""}'
-)
+
+def _get_memory_review_prompt() -> str:
+    from core.harness.utils.prompt_loader import _sync_resolve
+    return _sync_resolve("memory-review")
+
+
+def _get_skill_review_prompt() -> str:
+    from core.harness.utils.prompt_loader import _sync_resolve
+    return _sync_resolve("memory-skill-review",
+        stage_name="", agent_id="", output_summary="",
+    ).split("\n\n", 1)[0]  # Get the prompt text without pre-filled variables
 
 _MEMORY_NUDGE_INTERVAL = 10
 
@@ -111,7 +110,7 @@ async def _run_profile_extraction(conversation_summary: str) -> Optional[UserPro
             tools=[],
             skills=[],
         )
-        prompt = f"{_MEMORY_REVIEW_PROMPT}\n\n{conversation_summary}"
+        prompt = f"{_get_memory_review_prompt()}\n\n{conversation_summary}"
         loop_state = LoopState(
             current=LoopStateEnum.INIT,
             context={
@@ -192,14 +191,12 @@ async def run_skill_review(state: Dict[str, Any]) -> Dict[str, Any]:
     try:
         from core.harness.execution.loop import ReActLoop
         from core.harness.interfaces.loop import LoopConfig, LoopState, LoopStateEnum
-        prompt = (
-            "Review the stage execution above and consider saving a reusable approach as a skill.\n\n"
-            "Focus on:\n"
-            "- Was a non-trivial, multi-step approach used?\n"
-            "- Did execution require trial-and-error or format corrections?\n"
-            "- Would this approach be useful in future similar tasks?\n\n"
-            "If a relevant skill already exists, update it. Otherwise create a new one.\n"
-            "If nothing is worth saving, respond 'Nothing to save.'"
+        from core.harness.utils.prompt_loader import _sync_resolve
+        stage_summary = build_stage_summary(state)
+        prompt = _sync_resolve("memory-skill-review",
+            stage_name="current_stage",
+            agent_id="review",
+            output_summary=stage_summary[:2000],
         )
         loop = ReActLoop(
             config=LoopConfig(max_steps=8, max_tokens=4096, model_name="eval"),

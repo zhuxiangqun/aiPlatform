@@ -8,7 +8,7 @@ In standalone mode, automatically detects local machine as a node.
 from typing import Dict, Any, List, Optional
 from ..base import ManagementBase, Status, HealthStatus, Metrics, DiagnosisResult
 from ..schemas import NodeInfo, GPUStatus
-from datetime import datetime
+from datetime import datetime, timezone
 import time
 import platform
 import socket
@@ -44,37 +44,38 @@ def get_local_node_info() -> NodeInfo:
     gpus = []
     
     try:
-        import subprocess
-        result = subprocess.run(
-            ["system_profiler", "SPDisplaysDataType"],
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
-        if result.returncode == 0:
-            output = result.stdout
-            if "Apple M" in output or "Apple Silicon" in output:
-                gpu_model = "Apple Silicon (Unified Memory)"
-                gpu_count = 1
-                driver_version = "Apple Silicon (Built-in)"
-            elif "NVIDIA" in output:
-                lines = output.split("\n")
-                for line in lines:
-                    if "NVIDIA" in line:
-                        gpu_model = line.split(":")[-1].strip()
-                        gpu_count = 1
-                        break
-                try:
-                    nvidia_result = subprocess.run(
-                        ["nvidia-smi", "--query-gpu=driver_version", "--format=csv,noheader"],
-                        capture_output=True,
-                        text=True,
-                        timeout=5
-                    )
-                    if nvidia_result.returncode == 0:
-                        driver_version = nvidia_result.stdout.strip()
-                except Exception:
-                    pass
+        import platform as _pf
+        machine = _pf.machine()
+        if machine == "arm64":
+            gpu_model = "arm64 accelerated"
+            gpu_count = 1
+            driver_version = "arm64 built-in"
+        else:
+            gpu_grep = os.getenv("AIPLAT_GPU_DETECT_GREP", "").strip()
+            gpu_driver_cmd = os.getenv("AIPLAT_GPU_DRIVER_CMD", "").strip()
+            if gpu_grep:
+                import subprocess
+                result = subprocess.run(
+                    ["system_profiler", "SPDisplaysDataType"],
+                    capture_output=True, text=True, timeout=5
+                )
+                if result.returncode == 0:
+                    output = result.stdout
+                    if gpu_grep in output:
+                        lines = output.split("\n")
+                        for line in lines:
+                            if gpu_grep in line:
+                                gpu_model = line.split(":")[-1].strip()
+                                gpu_count = 1
+                                break
+                        if gpu_driver_cmd:
+                            try:
+                                cmd_parts = gpu_driver_cmd.split()
+                                drv = subprocess.run(cmd_parts, capture_output=True, text=True, timeout=5)
+                                if drv.returncode == 0:
+                                    driver_version = drv.stdout.strip()
+                            except Exception:
+                                pass
     except Exception:
         pass
     
@@ -97,7 +98,7 @@ def get_local_node_info() -> NodeInfo:
             )
         ]
         
-        if "Apple Silicon" in gpu_model or "Apple M" in gpu_model:
+        if gpu_model.startswith("arm64"):
             gpus[0].memory_shared = True
     except Exception:
         memory_total = 0
@@ -118,7 +119,7 @@ def get_local_node_info() -> NodeInfo:
             "os": os_name
         },
         conditions=[],
-        created_at=datetime.now()
+        created_at=datetime.now(timezone.utc)
     )
 
 
@@ -372,7 +373,7 @@ class NodeManager(ManagementBase):
             gpus=[],
             labels=config.get("labels", {}),
             conditions=[],
-            created_at=datetime.now()
+            created_at=datetime.now(timezone.utc)
         )
         
         self._nodes[node.name] = node

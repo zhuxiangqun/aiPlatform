@@ -214,21 +214,15 @@ class ReflectionGraph:
             previous_feedback = f"\n之前的改进建议：\n" + "\n".join(f"- {f}" for f in feedback)
 
         dim_names = [d.value for d in self._config.evaluation_dimensions]
-        prompt_template = os.getenv("AIPLAT_EVAL_CRITIC_TEMPLATE") or (
-            "You are a quality evaluator. Check the following output against the criteria:\n"
-            "{dimensions}\n\n"
-            "{previous}"
-            "\n\nTask: {task}\n\n"
-            "Output to evaluate:\n{output}\n\n"
-            "If the output meets all criteria, reply PASS.\n"
-            "If issues found, provide:\n"
-            "1. Scores per dimension (0-1)\n"
-            "2. Specific improvement points\n"
-            "3. Actionable feedback\n\n"
-            "Format:\nSTATUS: PASS or REJECTED\n"
-            "SCORES: " + " ".join(f"{d}={{{{X}}}}" for d in dim_names) + "\n"
-            "FEEDBACK: improvement suggestions (one per line)"
-        )
+        import os as _os
+        prompt_template = _os.getenv("AIPLAT_EVAL_CRITIC_TEMPLATE")
+        if not prompt_template:
+            from core.harness.utils.prompt_loader import _sync_resolve
+            prompt_template = _sync_resolve("reflection-critic",
+                output=output, dimensions=dimension_lines,
+            )
+            return prompt_template  # Already resolved with variables
+
         prompt = prompt_template.format(
             dimensions=dimension_lines,
             previous=previous_feedback,
@@ -244,20 +238,16 @@ class ReflectionGraph:
         
         feedback_text = "\n".join(f"- {f}" for f in feedback)
         
-        return f"""Task: {task}
-
-Previous output:
-{previous_output}
-
-The critic found the following issues:
-{feedback_text}
-
-Please improve the output to address all the issues mentioned above."""
+        from core.harness.utils.prompt_loader import _sync_resolve
+        return _sync_resolve("reflection-improve",
+            previous_output=previous_output, feedback=feedback_text, task=task,
+        )
 
     async def _executor_wrapper(self, state: ReflectionState) -> Dict[str, Any]:
         """Executor wrapper - generates or improves output."""
+        from core.harness.utils.prompt_loader import _sync_resolve
         if state.iteration == 0:
-            prompt = f"Task: {state.task}\n\nPlease provide a complete and accurate answer."
+            prompt = _sync_resolve("reflection-executor", task=state.task)
             state.status = ReflectionStatus.EXECUTING
         else:
             feedback = state.critic_result.feedback if state.critic_result else []

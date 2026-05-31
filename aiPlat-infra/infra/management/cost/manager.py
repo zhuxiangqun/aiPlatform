@@ -7,7 +7,7 @@ Manages cost tracking and budgeting.
 from typing import Dict, Any, List, Optional
 from ..base import ManagementBase, Status, HealthStatus, Metrics
 from ..schemas import CostBreakdown, BudgetStatus
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import time
 
 
@@ -218,7 +218,7 @@ class CostManager(ManagementBase):
         cost_entry = {
             "service": service,
             "amount": amount,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "metadata": metadata or {}
         }
         
@@ -228,8 +228,8 @@ class CostManager(ManagementBase):
         self._costs[service].append(cost_entry)
         
         # Update spending
-        today = datetime.now().strftime("%Y-%m-%d")
-        month = datetime.now().strftime("%Y-%m")
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        month = datetime.now(timezone.utc).strftime("%Y-%m")
         
         self._spending["daily"] = self._spending.get("daily", 0) + amount
         self._spending["monthly"] = self._spending.get("monthly", 0) + amount
@@ -248,7 +248,7 @@ class CostManager(ManagementBase):
         Returns:
             Cost breakdown
         """
-        target_date = date or datetime.now().strftime("%Y-%m-%d")
+        target_date = date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
         
         total = 0.0
         by_service: Dict[str, float] = {}
@@ -335,7 +335,7 @@ class CostManager(ManagementBase):
         trend = []
         
         for i in range(days):
-            date = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
+            date = (datetime.now(timezone.utc) - timedelta(days=i)).strftime("%Y-%m-%d")
             
             # In real implementation, would filter by date
             # For now, using placeholder

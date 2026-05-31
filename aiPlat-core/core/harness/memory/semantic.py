@@ -6,7 +6,7 @@ Long-term memory with vector-based storage.
 
 from typing import List, Optional, Dict, Any
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 
 from .embedding import EmbeddingProvider, get_embedding_provider
 
@@ -18,8 +18,8 @@ class MemoryItem:
     content: str
     embedding: Optional[List[float]] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    accessed_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    accessed_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     access_count: int = 0
 
 
@@ -113,7 +113,7 @@ class SemanticMemory:
                     results = []
                     for item, sim in scored[:top_k]:
                         if sim >= threshold:
-                            item.accessed_at = datetime.utcnow()
+                            item.accessed_at = datetime.now(timezone.utc)
                             item.access_count += 1
                             results.append(item)
                     if results:
@@ -130,7 +130,7 @@ class SemanticMemory:
             content_words = set(item.content.lower().split())
             overlap = len(query_words & content_words)
             if overlap > 0:
-                item.accessed_at = datetime.utcnow()
+                item.accessed_at = datetime.now(timezone.utc)
                 item.access_count += 1
                 results.append((item, overlap))
 

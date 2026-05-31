@@ -8,7 +8,7 @@ In standalone mode, monitors real disk usage and directory sizes.
 from typing import Dict, Any, List, Optional
 from ..base import ManagementBase, Status, HealthStatus, Metrics, DiagnosisResult
 from ..schemas import ResourceStats
-from datetime import datetime
+from datetime import datetime, timezone
 import time
 import os
 
@@ -92,7 +92,7 @@ class VectorCollectionInfo:
         self.metric = metric
         self.count = count
         self.status = status
-        self.created_at = created_at or datetime.now()
+        self.created_at = created_at or datetime.now(timezone.utc)
 
 
 class StorageManager(ManagementBase):
@@ -126,7 +126,7 @@ class StorageManager(ManagementBase):
                     storage_class="local",
                     access_mode="ReadWriteOnce",
                     status="Bound" if disk.get('usage_percent', 0) < 90 else "Warning",
-                    created_at=datetime.now()
+                    created_at=datetime.now(timezone.utc)
                 )
             }
         
@@ -295,7 +295,7 @@ status="Active"
                     "usagePercent": disk.get("usage_percent", 0),
                     "storageClass": "local",
                     "status": "Bound" if disk.get("usage_percent", 0) < 90 else "Warning",
-                    "createdAt": datetime.now().isoformat()
+                    "createdAt": datetime.now(timezone.utc).isoformat()
                 }]
         return [
             {
@@ -349,7 +349,7 @@ status="Active"
             storage_class=config.get("storage_class", "standard"),
             access_mode=config.get("access_mode", "ReadWriteOnce"),
             status="Pending",
-            created_at=datetime.now()
+            created_at=datetime.now(timezone.utc)
         )
         
         self._pvcs[key] = pvc
@@ -383,7 +383,7 @@ status="Active"
                         "dimension": 0,
                         "size": f"{dir_info['size_mb']} MB",
                         "status": "green",
-                        "createdAt": datetime.now().isoformat()
+                        "createdAt": datetime.now(timezone.utc).isoformat()
                     })
             return collections
         
@@ -456,7 +456,7 @@ status="Active"
             "name": snapshot_name,
             "pvc": pvc_name,
             "status": "created",
-            "created_at": datetime.now().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
     
     async def get_vector_status(self) -> Dict[str, Any]:

@@ -7,7 +7,7 @@ Performs connectivity and response tests for models.
 import os
 import aiohttp
 from typing import Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 from .schemas import ModelInfo, ModelStatus
 
@@ -20,7 +20,7 @@ class HealthChecker:
         result = {
             "success": False,
             "model_id": model.id,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "error": None,
         }
         
@@ -52,7 +52,7 @@ class HealthChecker:
         result = {
             "success": False,
             "model_id": model.id,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "latency_ms": 0,
             "tokens_used": 0,
             "error": None,

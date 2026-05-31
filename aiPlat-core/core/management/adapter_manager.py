@@ -7,7 +7,7 @@ Provides adapter configuration and monitoring operations.
 import os
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 
@@ -99,7 +99,7 @@ class AdapterManager:
                     full = await self._execution_store.get_adapter(adapter_id)
                     if not full:
                         continue
-                    now = datetime.utcnow()
+                    now = datetime.now(timezone.utc)
                     a = AdapterInfo(
                         id=adapter_id,
                         name=str(full.get("name") or adapter_id),
@@ -138,7 +138,7 @@ class AdapterManager:
     ) -> AdapterInfo:
         """Create a new adapter"""
         adapter_id = f"adapter-{uuid.uuid4().hex[:8]}"
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         adapter = AdapterInfo(
             id=adapter_id,
@@ -242,7 +242,7 @@ class AdapterManager:
         if metadata:
             adapter.metadata.update(metadata)
         
-        adapter.updated_at = datetime.utcnow()
+        adapter.updated_at = datetime.now(timezone.utc)
         try:
             if self._execution_store:
                 await self._execution_store.upsert_adapter(
@@ -288,7 +288,7 @@ class AdapterManager:
         if not adapter:
             return False
         adapter.status = "active"
-        adapter.updated_at = datetime.utcnow()
+        adapter.updated_at = datetime.now(timezone.utc)
         try:
             if self._execution_store:
                 await self._execution_store.upsert_adapter({"adapter_id": adapter.id, "name": adapter.name, "provider": adapter.provider, "status": adapter.status, "api_key": adapter.api_key, "api_base_url": adapter.api_base_url, "models": adapter.models, "rate_limit": adapter.rate_limit, "retry_config": adapter.retry_config, "metadata": adapter.metadata, "description": adapter.description, "organization_id": adapter.organization_id})
@@ -302,7 +302,7 @@ class AdapterManager:
         if not adapter:
             return False
         adapter.status = "disabled"
-        adapter.updated_at = datetime.utcnow()
+        adapter.updated_at = datetime.now(timezone.utc)
         try:
             if self._execution_store:
                 await self._execution_store.upsert_adapter({"adapter_id": adapter.id, "name": adapter.name, "provider": adapter.provider, "status": adapter.status, "api_key": adapter.api_key, "api_base_url": adapter.api_base_url, "models": adapter.models, "rate_limit": adapter.rate_limit, "retry_config": adapter.retry_config, "metadata": adapter.metadata, "description": adapter.description, "organization_id": adapter.organization_id})
@@ -344,7 +344,7 @@ class AdapterManager:
         }
         
         adapter.models.append(model_config)
-        adapter.updated_at = datetime.utcnow()
+        adapter.updated_at = datetime.now(timezone.utc)
         try:
             if self._execution_store:
                 await self._execution_store.upsert_adapter({"adapter_id": adapter.id, "name": adapter.name, "provider": adapter.provider, "status": adapter.status, "api_key": adapter.api_key, "api_base_url": adapter.api_base_url, "models": adapter.models, "rate_limit": adapter.rate_limit, "retry_config": adapter.retry_config, "metadata": adapter.metadata, "description": adapter.description, "organization_id": adapter.organization_id})
@@ -360,7 +360,7 @@ class AdapterManager:
             return False
         
         adapter.models = [m for m in adapter.models if m["name"] != model_name]
-        adapter.updated_at = datetime.utcnow()
+        adapter.updated_at = datetime.now(timezone.utc)
         try:
             if self._execution_store:
                 await self._execution_store.upsert_adapter({"adapter_id": adapter.id, "name": adapter.name, "provider": adapter.provider, "status": adapter.status, "api_key": adapter.api_key, "api_base_url": adapter.api_base_url, "models": adapter.models, "rate_limit": adapter.rate_limit, "retry_config": adapter.retry_config, "metadata": adapter.metadata, "description": adapter.description, "organization_id": adapter.organization_id})
@@ -389,7 +389,7 @@ class AdapterManager:
             duration_ms=duration_ms,
             tokens=tokens,
             error=error,
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         
         self._call_history[adapter_id].append(call)

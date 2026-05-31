@@ -3,7 +3,7 @@ import json
 import os
 import uuid
 from typing import Callable, Dict, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from .base import MessageClient
 from .schemas import Message, ConsumerConfig, MessagingConfig
@@ -77,7 +77,7 @@ class RedisClient(MessageClient):
             topic=topic,
             body=body,
             headers=headers or {},
-            timestamp=datetime.now(),
+            timestamp=datetime.now(timezone.utc),
         )
 
     async def publish(self, topic: str, message: bytes, **kwargs) -> None:
@@ -91,7 +91,7 @@ class RedisClient(MessageClient):
             "id": message_id,
             "body": message.decode() if isinstance(message, bytes) else message,
             "headers": json.dumps(headers),
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
         await self._redis.xadd(stream_name, message_data)

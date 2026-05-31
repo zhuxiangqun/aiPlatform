@@ -12,7 +12,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from core.api.deps import actor_from_http
 from core.api.utils.run_contract import wrap_execution_result_as_run_summary
-from core.api.core_facade import KernelRuntime, ExecutionRequest, get_kernel_runtime, create_conversation_service, normalize_conversation_scope
+from core.api.facades.runtime_facade import KernelRuntime, ExecutionRequest, get_kernel_runtime
+from core.api.facades.service_facade import create_conversation_service
+from core.api.facades.service_facade import normalize_conversation_scope
 from core.schemas_conversations import (
     ConversationCreateRequest,
     ConversationQueryRequest,
@@ -225,7 +227,7 @@ async def query_conversation_stream(session_id: str, request: ConversationQueryR
             from core.api.core_facade import wiki_retrieve
             results = wiki_retrieve(query=question, wiki_titles=wiki_titles if wiki_titles else None, top_k=8)
         else:
-            from core.api.core_facade import kb_retrieve
+            from core.api.facades.kb_facade import kb_retrieve
             results = kb_retrieve(query=question, doc_ids=doc_ids, collection_id=collection_id, tenant_id=tenant_id, top_k=5)
         if results:
             doc_content = "\n\n---\n\n".join(
@@ -243,11 +245,11 @@ async def query_conversation_stream(session_id: str, request: ConversationQueryR
         try:
             from core.api.core_facade import llm_generate_stream
             full_answer = []
-            system_prompt = (
-                "你是知识库问答助手。基于提供的Wiki知识页面内容，准确简洁地回答用户问题。"
-                if is_wiki else
-                "你是知识库问答助手。基于提供的文档内容，准确简洁地回答用户问题。"
-            )
+            from core.harness.utils.prompt_loader import _sync_resolve
+            system_prompt = _sync_resolve("kb-qa",
+                scenario="wiki" if is_wiki else "document",
+                documents="", question="",
+            ).split("\n\n")[0]
             async for chunk in llm_generate_stream(
                 None,
                 [
@@ -263,7 +265,7 @@ async def query_conversation_stream(session_id: str, request: ConversationQueryR
             answer = "".join(full_answer).strip()
             # Save final answer to conversation
             try:
-                from core.api.core_facade import normalize_conversation_scope
+                from core.api.facades.service_facade import normalize_conversation_scope
                 await svc.append_conversation_assistant_message(
                     tenant_id=tenant_id, session_id=session_id, user_id=user_id,
                     content=answer, citations=[], turn_summary=f"用户提问：{question}；本轮回答：{answer[:160]}",

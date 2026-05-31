@@ -9,7 +9,7 @@ from __future__ import annotations
 import os
 import sqlite3
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from core.utils.ids import new_prefixed_id
@@ -104,7 +104,7 @@ class KnowledgeManager:
     ) -> CollectionInfo:
         """Create a new collection"""
         collection_id = f"kb-{uuid.uuid4().hex[:8]}"
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         collection = CollectionInfo(
             id=collection_id,
@@ -175,7 +175,7 @@ class KnowledgeManager:
         if config:
             collection.config.update(config)
         
-        collection.updated_at = datetime.utcnow()
+        collection.updated_at = datetime.now(timezone.utc)
         
         return collection
     
@@ -200,7 +200,7 @@ class KnowledgeManager:
     ) -> DocumentInfo:
         """Upload document to collection"""
         document_id = f"doc-{uuid.uuid4().hex[:8]}"
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         document = DocumentInfo(
             id=document_id,
@@ -286,7 +286,7 @@ class KnowledgeManager:
     ) -> List[SearchResult]:
         """Search in collection via CoreFacade.kb_retrieve (unified KnowledgeRetriever path)."""
         try:
-            from core.api.core_facade import kb_retrieve
+            from core.api.facades.kb_facade import kb_retrieve
             conn = _kb_connect("default")
             doc_ids = []
             if conn:

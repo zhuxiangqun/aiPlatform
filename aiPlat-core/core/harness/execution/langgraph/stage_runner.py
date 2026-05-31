@@ -60,7 +60,7 @@ class StageRunner:
     def _load_global_skills(fallback: List[Any], filter_names: List[str] = None) -> List[Any]:
         try:
             from core.harness.integration import _ensure_di
-            from core.api.core_facade import get_skill_registry as _import_skill_reg
+            from core.api.facades.skill_tool_facade import get_skill_registry as _import_skill_reg
             di = _ensure_di(); reg = di.resolve("SkillRegistry") if di else _import_skill_reg(); reg = reg() if callable(reg) else reg
             if filter_names:
                 return [reg.get(name) for name in filter_names if reg.get(name) is not None]

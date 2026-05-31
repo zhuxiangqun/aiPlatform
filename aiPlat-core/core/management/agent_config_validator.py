@@ -169,7 +169,7 @@ def validate_agent_file(md_path: Path) -> List[ConfigIssue]:
         ))
     if shell_flags >= 3:
         issues.append(ConfigIssue(
-            agent=agent_name, file=file_path, severity="error",
+            agent=agent_name, file=file_path, severity="warn",
             message="Shell agent detected: no system_prompt, no skills, no tools. Agent will behave as generic CLAUDE.md assistant."
         ))
 

@@ -36,7 +36,7 @@ class FileCacheClient(CacheClient):
 
         try:
             return json.loads(path.read_text(encoding="utf-8"))
-        except:
+        except Exception:
             return path.read_text(encoding="utf-8")
 
     async def set(self, key: str, value: Any, ttl: int = 0) -> bool:

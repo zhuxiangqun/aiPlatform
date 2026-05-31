@@ -7,7 +7,7 @@ Provides CRUD operations for agents and skill/tool bindings.
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 import os
 from pathlib import Path
@@ -31,8 +31,8 @@ class AgentInfo:
     skills: List[str] = field(default_factory=list)
     tools: List[str] = field(default_factory=list)
     memory_config: Dict[str, Any] = field(default_factory=dict)
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     version: str = "1.0.0"
     metadata: Dict[str, Any] = field(default_factory=dict)
     mcp_ids: List[str] = field(default_factory=list)
@@ -146,7 +146,7 @@ class AgentManager:
     def _load_directory_agents(self) -> None:
         """Load directory-based agents from filesystem into management plane."""
         try:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             # low -> high, high overrides
             for base_dir in self._resolve_agents_paths():
                 if not base_dir.exists():
@@ -259,7 +259,7 @@ class AgentManager:
         import os as _os
         import yaml as _yaml
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         engine_agents_root = _os.path.join(
             _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))),
@@ -354,7 +354,7 @@ class AgentManager:
         agent_id = name.lower().replace(" ", "_").replace("-", "_")
         if self._reserved_ids and agent_id in self._reserved_ids:
             raise ValueError(f"Agent id '{agent_id}' is reserved by engine scope and cannot be created in workspace.")
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         agent = AgentInfo(
             id=agent_id,
@@ -571,7 +571,7 @@ class AgentManager:
         if metadata:
             agent.metadata.update(metadata)
         
-        agent.updated_at = datetime.utcnow()
+        agent.updated_at = datetime.now(timezone.utc)
 
         # Best-effort: persist updates back to directory-based AGENT.md (keep body unchanged).
         try:
@@ -861,7 +861,7 @@ class AgentManager:
             new_body = self._replace_sop_in_body(body, sop_markdown)
             header = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True).strip()
             p.write_text(f"---\n{header}\n---\n{new_body.lstrip()}", encoding="utf-8")
-            agent.updated_at = datetime.utcnow()
+            agent.updated_at = datetime.now(timezone.utc)
             return True
         except Exception:
             return False
@@ -888,7 +888,7 @@ class AgentManager:
         if not agent:
             return None
         agent.enabled = not agent.enabled
-        agent.updated_at = datetime.utcnow()
+        agent.updated_at = datetime.now(timezone.utc)
         return agent.enabled
     
     async def start_agent(self, agent_id: str) -> bool:
@@ -897,7 +897,7 @@ class AgentManager:
         if not agent:
             return False
         agent.runtime_state = AgentStateEnum.RUNNING.value
-        agent.updated_at = datetime.utcnow()
+        agent.updated_at = datetime.now(timezone.utc)
         return True
     
     async def stop_agent(self, agent_id: str) -> bool:
@@ -906,7 +906,7 @@ class AgentManager:
         if not agent:
             return False
         agent.runtime_state = AgentStateEnum.STOPPED.value
-        agent.updated_at = datetime.utcnow()
+        agent.updated_at = datetime.now(timezone.utc)
         return True
     
     async def bind_skills(self, agent_id: str, skill_ids: List[str]) -> bool:
@@ -925,7 +925,7 @@ class AgentManager:
                     skill_type="unknown"
                 ))
         
-        agent.updated_at = datetime.utcnow()
+        agent.updated_at = datetime.now(timezone.utc)
         return True
     
     async def unbind_skill(self, agent_id: str, skill_id: str) -> bool:
@@ -939,7 +939,7 @@ class AgentManager:
             self._skill_bindings[agent_id] = [
                 b for b in self._skill_bindings[agent_id] if b.skill_id != skill_id
             ]
-            agent.updated_at = datetime.utcnow()
+            agent.updated_at = datetime.now(timezone.utc)
         
         return True
     
@@ -963,7 +963,7 @@ class AgentManager:
                     tool_type="unknown"
                 ))
         
-        agent.updated_at = datetime.utcnow()
+        agent.updated_at = datetime.now(timezone.utc)
         return True
     
     async def unbind_tool(self, agent_id: str, tool_id: str) -> bool:
@@ -977,7 +977,7 @@ class AgentManager:
             self._tool_bindings[agent_id] = [
                 b for b in self._tool_bindings[agent_id] if b.tool_id != tool_id
             ]
-            agent.updated_at = datetime.utcnow()
+            agent.updated_at = datetime.now(timezone.utc)
         
         return True
     
@@ -1010,7 +1010,7 @@ class AgentManager:
             "input": input_data,
             "output": output_data,
             "error": error,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
         
         # Update stats
@@ -1067,13 +1067,13 @@ class AgentManager:
         version = AgentVersion(
             version=new_version,
             status="current",
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             changes=changes
         )
 
         self._versions[agent_id].append(version)
         agent.version = new_version
-        agent.updated_at = datetime.utcnow()
+        agent.updated_at = datetime.now(timezone.utc)
 
         return version
 
@@ -1097,7 +1097,7 @@ class AgentManager:
             v.status = "historical" if v.version != version else "current"
 
         agent.version = version
-        agent.updated_at = datetime.utcnow()
+        agent.updated_at = datetime.now(timezone.utc)
 
     # ── Installer methods (workspace scope only) ────────────────────────
 

@@ -49,7 +49,7 @@ def list_available_agents() -> List[AgentCatalogEntry]:
 
     Returns a list of AgentCatalogEntry sorted by agent_id.
     """
-    from core.api.core_facade import get_agent_frontmatter
+    from core.api.facades.agent_facade import get_agent_frontmatter
 
     entries: List[AgentCatalogEntry] = []
     seen: set = set()
@@ -128,7 +128,7 @@ async def recommend_team_stages(
         TeamRecommendation with team_name, reasoning, and stages
     """
     from core.api.intents import core_chat, ChatContext
-    from core.api.core_facade import extract_json
+    from core.utils.json_utils import extract_json
 
     if available_agents is None:
         available_agents = list_available_agents()
@@ -199,7 +199,7 @@ async def recommend_team_stages(
     for s in recommendation.stages:
         aid = s.get("agent_id", "")
         if aid:
-            from core.api.core_facade import get_agent_frontmatter
+            from core.api.facades.agent_facade import get_agent_frontmatter
             if not get_agent_frontmatter(aid):
                 unknown.append(aid)
     if unknown:

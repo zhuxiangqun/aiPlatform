@@ -9,7 +9,7 @@ Manages AI models from three sources:
 
 import asyncio
 from typing import Dict, List, Optional, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 from .schemas import ModelInfo, ModelType, ModelSource, ModelStatus, ModelConfig
 from ..base import Status, HealthStatus
@@ -109,7 +109,47 @@ class ModelManager:
     async def get_model(self, model_id: str) -> Optional[ModelInfo]:
         """获取单个模型"""
         return self._models.get(model_id)
-    
+
+    def get_default_model(self, purpose: str = "default") -> str:
+        """Resolve purpose to model name via env vars (unique resolution point).
+
+        Purpose mapping:
+          "document" → AIPLAT_DOC_LLM_MODEL → AIPLAT_LLM_MODEL → AIPLAT_DEFAULT_CHAT_MODEL
+          "code"     → AIPLAT_CODE_GEN_MODEL → AIPLAT_LLM_MODEL → AIPLAT_DEFAULT_MODEL
+          "default"  → AIPLAT_DEFAULT_CHAT_MODEL → AIPLAT_LLM_MODEL → AIPLAT_DEFAULT_MODEL
+        """
+        import os
+        if purpose == "document":
+            return (os.getenv("AIPLAT_DOC_LLM_MODEL", "").strip()
+                    or os.getenv("AIPLAT_LLM_MODEL", "").strip()
+                    or os.getenv("AIPLAT_DEFAULT_CHAT_MODEL", "").strip()
+                    or os.getenv("AIPLAT_DEFAULT_MODEL", "").strip())
+        elif purpose == "code":
+            return (os.getenv("AIPLAT_CODE_GEN_MODEL", "").strip()
+                    or os.getenv("AIPLAT_LLM_MODEL", "").strip()
+                    or os.getenv("AIPLAT_DEFAULT_MODEL", "").strip())
+        return (os.getenv("AIPLAT_DEFAULT_CHAT_MODEL", "").strip()
+                or os.getenv("AIPLAT_LLM_MODEL", "").strip()
+                or os.getenv("AIPLAT_DEFAULT_MODEL", "").strip())
+
+    def select(self, model_name: str = "", purpose: str = "") -> Optional[ModelInfo]:
+        """Select model by name or purpose. Returns full ModelInfo with provider/base_url/api_key_env.
+
+        Resolution order:
+          1. model_name given → use directly
+          2. purpose given → resolve via get_default_model(purpose)
+          3. fallback → get_default_model("default")
+        Returns None if model not found in registry.
+        """
+        name = model_name.strip() if model_name else ""
+        if not name and purpose:
+            name = self.get_default_model(purpose)
+        if not name:
+            name = self.get_default_model("default")
+        if not name:
+            return None
+        return self._models.get(name)
+
     # ===== 管理接口 =====
     
     def _generate_model_id(self, name: str, provider: str) -> str:
@@ -117,7 +157,7 @@ class ModelManager:
         import re
         safe_name = re.sub(r'[^a-zA-Z0-9_-]', '-', name.lower())
         safe_provider = re.sub(r'[^a-zA-Z0-9_-]', '-', provider.lower())
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
         return f"{safe_provider}:{safe_name}-{timestamp}"
     
     async def add_model(self, model: ModelInfo) -> ModelInfo:
@@ -129,8 +169,8 @@ class ModelManager:
         if not model.id:
             model.id = self._generate_model_id(model.name, model.provider)
         
-        model.created_at = datetime.now()
-        model.updated_at = datetime.now()
+        model.created_at = datetime.now(timezone.utc)
+        model.updated_at = datetime.now(timezone.utc)
         
         self._models[model.id] = model
         self._storage.save(list(self._models.values()))
@@ -155,7 +195,7 @@ class ModelManager:
             elif hasattr(model, key):
                 setattr(model, key, value)
         
-        model.updated_at = datetime.now()
+        model.updated_at = datetime.now(timezone.utc)
         
         if model.source == ModelSource.EXTERNAL:
             self._storage.save(list(self._models.values()))
@@ -200,7 +240,7 @@ class ModelManager:
         else:
             model.status = ModelStatus.UNAVAILABLE
         
-        model.updated_at = datetime.now()
+        model.updated_at = datetime.now(timezone.utc)
         
         return result
     
@@ -218,13 +258,13 @@ class ModelManager:
             model.stats.requests_total += 1
             model.stats.requests_success += 1
             model.stats.tokens_total += result.get("tokens_used", 0)
-            model.stats.last_request_at = datetime.now()
+            model.stats.last_request_at = datetime.now(timezone.utc)
         else:
             model.status = ModelStatus.ERROR if "error" in result else ModelStatus.UNAVAILABLE
             model.stats.requests_total += 1
             model.stats.requests_failed += 1
         
-        model.updated_at = datetime.now()
+        model.updated_at = datetime.now(timezone.utc)
         
         return result
     

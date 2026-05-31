@@ -18,14 +18,14 @@ class SimpleLogger(Logger):
         return self._formatters.get(self.config.format, JSONFormatter())
 
     def _log(self, level: str, msg: str, **kwargs: Any) -> None:
-        from datetime import datetime
+from datetime import datetime, timezone
         from .schemas import LogRecord
         from .base import LogContext
 
         record = LogRecord(
             level=level,
             message=msg,
-            timestamp=datetime.now(),
+            timestamp=datetime.now(timezone.utc),
             logger_name=self.name,
             trace_id=LogContext.get("trace_id"),
             request_id=LogContext.get("request_id"),

@@ -37,6 +37,7 @@ from auth.authenticator import authenticator as _authenticator  # type: ignore
 from auth.deps import require_auth, require_admin
 from storage import sqlite as platform_store  # type: ignore
 from core.api.core_facade import create_infra_database_client
+from core.api.facades.service_facade import llm_generate
 
 
 app = FastAPI(title="aiPlat-platform", version="0.1.0")
@@ -118,6 +119,7 @@ async def value_error_handler(request: Request, exc: ValueError):
 # to core's abstract interfaces (resolves core→platform reverse dependency).
 try:
     from core.api.core_facade import set_knowledge_db, set_knowledge_providers
+from core.api.facades.service_facade import llm_generate
     from kb.db import KBSqlite
     from kb.storage import get_tenant_storage as _storage_root
     from kb.service import ingest_document, enqueue_ingest, load_doc_kinds, preview_document
@@ -734,7 +736,7 @@ async def platform_whoami(request: Request):
 
 @app.post("/app/channels")
 def platform_app_create_channel(body: Dict[str, Any], request: Request):
-    from datetime import datetime as _dt
+    from datetime import datetime, timezone as _dt
     cid = _new_prefixed_id("ch")
     channel = {
         "id": cid,
@@ -748,7 +750,7 @@ def platform_app_create_channel(body: Dict[str, Any], request: Request):
 
 @app.post("/app/sessions")
 def platform_app_create_session(body: Dict[str, Any], request: Request):
-    from datetime import datetime as _dt
+    from datetime import datetime, timezone as _dt
     sid = _new_prefixed_id("ses")
     session = {
         "id": sid,
@@ -773,7 +775,7 @@ async def kb_reindex(request: Request):
         return {"status": "no_data", "count": 0}
     conn = _open_kb_db(identity.tenant_id)
     try:
-        from core.api.core_facade import kb_embed_text as _embed_text
+        from core.api.facades.kb_facade import kb_embed_text as _embed_text
         import json as _j
         rows = conn.execute(
             "SELECT element_id, doc_id, text FROM kb_elements WHERE tenant_id=? AND text IS NOT NULL AND length(text)>0",
@@ -1127,11 +1129,13 @@ async def kb_delete_document(doc_id: str, request: Request):
         conn.execute("DELETE FROM url_cache WHERE tenant_id=? AND doc_id=?", (identity.tenant_id, doc_id))
         for table in ("kb_graph", "analysis_runs", "analysis_batches"):
             try: conn.execute(f"DELETE FROM {table} WHERE tenant_id=? AND doc_id=?", (identity.tenant_id, doc_id))
-            except Exception: pass
+            except Exception:
+                logging.getLogger("platform.routes").debug("Table %s cleanup skipped", table)
         try:
             conn.execute("DELETE FROM kb_eval_samples WHERE doc_ids = ?", (json.dumps([doc_id]),))
             conn.execute("DELETE FROM kb_eval_reports WHERE sample_id NOT IN (SELECT id FROM kb_eval_samples)")
-        except Exception: pass
+        except Exception:
+            logging.getLogger("platform.routes").debug("KB cleanup best-effort", exc_info=True)
         conn.execute("DELETE FROM documents WHERE tenant_id=? AND doc_id=?", (identity.tenant_id, doc_id))
         conn.commit()
     finally:
@@ -1436,6 +1440,7 @@ async def _auto_wiki_update(doc_id: str, file_path: str):
     """
     try:
         from core.api.core_facade import wiki_auto_update
+from core.api.facades.service_facade import llm_generate
         await wiki_auto_update(doc_id, file_path)
     except Exception:
         pass
@@ -1539,6 +1544,7 @@ async def documents_categories(request: Request, collection_id: Optional[str] = 
         for r in kind_rows:
             k = str(r["kind"] or "").lower().strip()
             from core.api.core_facade import get_document_categories
+from core.api.facades.service_facade import llm_generate
             cats = get_document_categories()
             cat_key = cats["kind_map"].get(k, k)
             kind_cats.append({
@@ -2352,6 +2358,7 @@ from api.routers.policy import router as policy_router  # noqa: E402
 from api.routers.ops_exports import router as ops_exports_router  # noqa: E402
 from api.routers.chat import router as chat_router  # noqa: E402
 from api.routers.conversations import router as conversations_router  # noqa: E402
+from api.routers.prompts import router as prompts_router  # noqa: E402
 from api.routers.permissions import router as permissions_router  # noqa: E402
 from api.routers.quota import router as quota_router  # noqa: E402
 from api.routers.tenant_policies import router as tenant_policies_router  # noqa: E402
@@ -2362,6 +2369,7 @@ app.include_router(policy_router)
 app.include_router(ops_exports_router)
 app.include_router(chat_router)
 app.include_router(conversations_router)
+app.include_router(prompts_router)
 app.include_router(permissions_router)
 app.include_router(quota_router)
 app.include_router(tenant_policies_router)
@@ -2584,9 +2592,12 @@ async def kb_create_with_ai(request: Request):
     if not prompt:
         raise HTTPException(status_code=400, detail="prompt_required")
     try:
-        from core.api.core_facade import llm_generate
+        from core.api.core_facade import 
+from core.api.facades.service_facade import llm_generate
+        from core.harness.utils.prompt_loader import _async_prompt_resolve
+        sp = await _async_prompt_resolve("kb-doc-writer", title=title, prompt=prompt)
         resp = await llm_generate(None, [
-            {"role": "system", "content": "你是文档写作助手。按用户要求生成知识库文档。"},
+            {"role": "user", "content": sp},
             {"role": "user", "content": f"标题：{title}\n要求：{prompt}\n\n请生成完整文档内容："},
         ], model_name="deepseek-chat", temperature=0.7, max_tokens=4000)
         content = getattr(resp, "content", "") or str(resp)

@@ -3,7 +3,7 @@ Tests for Management Base Classes
 """
 
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 from infra.management.base import (
     ManagementBase,
     Status,
@@ -51,7 +51,7 @@ class TestMetrics:
             name="cpu_usage",
             value=0.75,
             unit="ratio",
-            timestamp=datetime.now().timestamp(),
+            timestamp=datetime.now(timezone.utc).timestamp(),
             labels={"host": "server-1"}
         )
         
@@ -66,7 +66,7 @@ class TestMetrics:
             name="memory_usage",
             value=0.65,
             unit="ratio",
-            timestamp=datetime.now().timestamp()
+            timestamp=datetime.now(timezone.utc).timestamp()
         )
         
         assert metric.labels == {}

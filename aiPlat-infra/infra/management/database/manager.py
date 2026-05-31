@@ -7,7 +7,7 @@ Manages database connections and operations with connection pooling.
 from typing import Dict, Any, List, Optional
 from ..base import ManagementBase, Status, HealthStatus, Metrics
 from ..schemas import SlowQuery, DBPoolStats
-from datetime import datetime
+from datetime import datetime, timezone
 import time
 
 
@@ -264,10 +264,10 @@ class DatabaseManager(ManagementBase):
         
         if duration_ms > slow_threshold:
             slow_query = SlowQuery(
-                query_id=f"q-{datetime.now().strftime('%Y%m%d%H%M%S')}-{self._query_count}",
+                query_id=f"q-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}-{self._query_count}",
                 sql=query,
                 duration_ms=duration_ms,
-                executed_at=datetime.now()
+                executed_at=datetime.now(timezone.utc)
             )
             self._slow_queries.append(slow_query)
             
@@ -284,7 +284,7 @@ class DatabaseManager(ManagementBase):
         self._error_count += 1
         self._connection_errors.append({
             "error": error,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
         
         if len(self._connection_errors) > 100:

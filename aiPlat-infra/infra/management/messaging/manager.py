@@ -6,7 +6,7 @@ Manages message queue operations.
 
 from typing import Dict, Any, List, Optional
 from ..base import ManagementBase, Status, HealthStatus, Metrics
-from datetime import datetime
+from datetime import datetime, timezone
 import time
 import asyncio
 
@@ -192,7 +192,7 @@ class MessagingManager(ManagementBase):
             "name": name,
             "status": "healthy",
             "config": config or {},
-            "created_at": datetime.now().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         
         self._messages[name] = []
@@ -243,9 +243,9 @@ class MessagingManager(ManagementBase):
             return False
         
         msg_entry = {
-            "id": f"msg-{datetime.now().strftime('%Y%m%d%H%M%S')}-{len(self._messages[queue])}",
+            "id": f"msg-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}-{len(self._messages[queue])}",
             "data": message,
-            "published_at": datetime.now().isoformat(),
+            "published_at": datetime.now(timezone.utc).isoformat(),
             "status": "pending"
         }
         
@@ -275,7 +275,7 @@ class MessagingManager(ManagementBase):
             if msg["status"] == "pending":
                 msg["status"] = "processing"
                 msg["consumer_id"] = consumer_id
-                msg["consumed_at"] = datetime.now().isoformat()
+                msg["consumed_at"] = datetime.now(timezone.utc).isoformat()
                 self._message_count += 1
                 return msg
         
@@ -298,7 +298,7 @@ class MessagingManager(ManagementBase):
         for msg in self._messages[queue]:
             if msg["id"] == message_id:
                 msg["status"] = "completed"
-                msg["acked_at"] = datetime.now().isoformat()
+                msg["acked_at"] = datetime.now(timezone.utc).isoformat()
                 return True
         
         return False
@@ -320,7 +320,7 @@ class MessagingManager(ManagementBase):
         for msg in self._messages[queue]:
             if msg["id"] == message_id:
                 msg["status"] = "pending"
-                msg["requeued_at"] = datetime.now().isoformat()
+                msg["requeued_at"] = datetime.now(timezone.utc).isoformat()
                 del msg["consumer_id"]
                 del msg["consumed_at"]
                 self._error_count += 1

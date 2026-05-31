@@ -38,7 +38,7 @@ class RedisCacheClient(CacheClient):
             return None
         try:
             return json.loads(value.decode("utf-8"))
-        except:
+        except Exception:
             return value.decode("utf-8")
 
     async def set(self, key: str, value: Any, ttl: int = 0) -> bool:

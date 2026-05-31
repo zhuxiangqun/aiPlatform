@@ -7,7 +7,7 @@ Manages Language Model services including configuration, rate limiting, and cost
 from typing import Dict, Any, List, Optional
 from ..base import ManagementBase, Status, HealthStatus, Metrics
 from ..schemas import CostBreakdown, BudgetStatus
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class LLMManager(ManagementBase):
@@ -46,7 +46,7 @@ class LLMManager(ManagementBase):
     async def get_metrics(self) -> List[Metrics]:
         """Get LLM metrics."""
         metrics = []
-        timestamp = datetime.now().timestamp()
+        timestamp = datetime.now(timezone.utc).timestamp()
         
         # Request metrics
         metrics.append(Metrics(
@@ -206,7 +206,7 @@ class LLMManager(ManagementBase):
         """
         # Placeholder implementation
         return CostBreakdown(
-            date=date or datetime.now().strftime("%Y-%m-%d"),
+            date=date or datetime.now(timezone.utc).strftime("%Y-%m-%d"),
             total=15.67,
             by_model={
                 "gpt-4": 10.50,

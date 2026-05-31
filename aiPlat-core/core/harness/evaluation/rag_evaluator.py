@@ -154,7 +154,7 @@ class RagEvaluator:
         # 1. Retrieve
         contexts = []
         try:
-            from core.api.core_facade import kb_retrieve
+            from core.api.facades.kb_facade import kb_retrieve
             results = kb_retrieve(query=sample.question, doc_ids=sample.doc_ids, top_k=12)
             contexts = [r["text"] for r in results]
         except Exception:
@@ -186,9 +186,10 @@ class RagEvaluator:
                 ctx_text = paragraph_context[:8000] + "\n\n---\n\n(以下为检索到的相关片段)\n" + ctx_text
             else:
                 ctx_text = ctx_text[:8000]
+            from core.harness.utils.prompt_loader import _sync_resolve
             resp = await sys_llm_generate(
                 None,
-                [{"role": "system", "content": "你是知识库助手。请严格基于提供的上下文回答问题，不要编造信息。如果上下文不足以回答，请诚实说明。"},
+                [{"role": "system", "content": _sync_resolve("rag-evaluator")},
                  {"role": "user", "content": f"上下文：\n{ctx_text[:8000]}\n\n问题：{sample.question}\n请基于上述上下文回答："}],
                 model_name="deepseek-chat", temperature=0.1, max_tokens=2000,
             )
