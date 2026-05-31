@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Copy, Info, Plus, RotateCw, Trash2, Pencil, Play, Layers, Clock, ShieldCheck } from 'lucide-react';
+import { Copy, Info, Plus, RotateCw, Trash2, Pencil, Play, Layers, Clock, ShieldCheck, Upload } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Badge, Table, Select, Switch, Button, Modal, toast } from '../../../components/ui';
 import { useWorkspaceSkillStore } from '../../../stores';
@@ -131,6 +131,29 @@ const WorkspaceSkills: React.FC = () => {
     } catch (e: any) {
       toastGateError(e, '操作失败');
     }
+  };
+
+  const handleExportPlugin = async (skill: any) => {
+    try {
+      const name = (skill.name || skill.id || 'skill').replace(/\s+/g, '_');
+      const res = await fetch('/api/core/workspace/packages/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          version: '0.1.0',
+          description: (skill as any).metadata?.description || skill.description || '',
+          resources: [{ kind: 'skill', id: skill.name || skill.id }],
+        }),
+      });
+      if (!res.ok) { toast.error('导出失败'); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `${name}.zip`; a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`已导出 ${name}`);
+    } catch (e: any) { toast.error(`导出失败: ${e?.message || ''}`); }
   };
 
   const handleDelete = async () => {
@@ -328,6 +351,13 @@ const WorkspaceSkills: React.FC = () => {
                 title="弃用"
               >
                 <Trash2 className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handleExportPlugin(record)}
+                className="p-1.5 rounded-lg text-purple-400 hover:bg-purple-400/10 transition-colors"
+                title="导出为插件"
+              >
+                <Upload className="w-4 h-4" />
               </button>
             </>
           )}

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Box, Download, Trash2, RefreshCw, Package, Wrench, Bot, Sparkles, Plug, GitBranch, Upload, Rocket } from 'lucide-react';
+import { Box, Download, Trash2, RefreshCw, Package, Wrench, Bot, Sparkles, Plug, GitBranch, Upload, Rocket, FolderOpen } from 'lucide-react';
 import { Button, Modal, toast, Badge } from '../../components/ui';
 import { packageApi } from '../../services';
 import { toastGateError } from '../../components/ui';
@@ -152,6 +152,45 @@ const Plugins: React.FC = () => {
     }
   };
 
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleImportZip = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.name.endsWith('.zip')) {
+      toast.error('只接受 .zip 文件');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const name = file.name.replace('.zip', '').replace(/\s+/g, '_');
+      try {
+        const res = await fetch('/api/core/workspace/packages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name,
+            version: '0.1.0',
+            description: `Imported from ${file.name}`,
+            resources: [],
+            bundle: false,
+          }),
+        });
+        if (!res.ok) {
+          toast.error('创建包失败');
+          return;
+        }
+        await packageApi.install(name);
+        toast.success(`插件 "${name}" 已导入并安装`);
+        fetchAll();
+      } catch (err: any) {
+        toast.error(`导入失败: ${err?.message || ''}`);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    e.target.value = '';
+  };
+
   const handlePublish = async (pkgName: string) => {
     const version = prompt('发布版本号:', '0.1.0');
     if (!version) return;
@@ -298,6 +337,15 @@ const Plugins: React.FC = () => {
           >
             导出插件
           </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<FolderOpen className="w-4 h-4" />}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            导入插件
+          </Button>
+          <input ref={fileInputRef} type="file" accept=".zip" onChange={handleImportZip} style={{ display: 'none' }} />
           <Button icon={<RefreshCw className="w-4 h-4" />} onClick={fetchAll} loading={loading}>
             刷新
           </Button>

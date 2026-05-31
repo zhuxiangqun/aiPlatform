@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, RotateCw, PlayCircle, PauseCircle, Trash2, Pencil, Zap, Clock, MessageSquare, ShieldCheck } from 'lucide-react';
+import { Plus, RotateCw, PlayCircle, PauseCircle, Trash2, Pencil, Zap, Clock, MessageSquare, ShieldCheck, Upload } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Table, Select, Button, Modal, toast } from '../../../components/ui';
 import { useWorkspaceAgentStore } from '../../../stores';
@@ -73,6 +73,29 @@ const WorkspaceAgents: React.FC = () => {
     } catch {
       toast.error('停止失败');
     }
+  };
+
+  const handleExportPlugin = async (agent: any) => {
+    try {
+      const name = (agent.name || agent.id || 'agent').replace(/\s+/g, '_');
+      const res = await fetch('/api/core/workspace/packages/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          version: '0.1.0',
+          description: (agent as any).metadata?.description || agent.description || '',
+          resources: [{ kind: 'agent', id: agent.name || agent.id }],
+        }),
+      });
+      if (!res.ok) { toast.error('导出失败'); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `${name}.zip`; a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`已导出 ${name}`);
+    } catch (e: any) { toast.error(`导出失败: ${e?.message || ''}`); }
   };
 
   const handleDelete = async () => {
@@ -234,6 +257,9 @@ const WorkspaceAgents: React.FC = () => {
           ) : null}
           <button onClick={() => setDeleteConfirm({ open: true, agent: record })} className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors" title="删除">
             <Trash2 className="w-4 h-4" />
+          </button>
+          <button onClick={() => handleExportPlugin(record)} className="p-1.5 rounded-lg text-purple-400 hover:bg-purple-400/10 transition-colors" title="导出为插件">
+            <Upload className="w-4 h-4" />
           </button>
         </div>
         );
