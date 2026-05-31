@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { RotateCw, CheckSquare, Square } from 'lucide-react';
 import { workspaceMcpApi } from '../../services';
 import type { McpServer } from '../../services';
 import { Alert, Button, Input, Modal, Select, Switch, Textarea, toast } from '../ui';
@@ -53,9 +54,25 @@ const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSu
   const [launcherPath, setLauncherPath] = useState('/opt/aiplat/mcp/bin/launch');
   const [template, setTemplate] = useState('sse_internal');
   const [policyModal, setPolicyModal] = useState<{ open: boolean; title: string; content: string }>({ open: false, title: '', content: '' });
+  const [discoveredTools, setDiscoveredTools] = useState<{ name: string; description: string; selected: boolean }[]>([]);
+  const [discoveringTools, setDiscoveringTools] = useState(false);
+  const [showTools, setShowTools] = useState(false);
 
+  // Seed form from prop immediately on open, then enrich from API
   useEffect(() => {
     if (!open || !server?.name) return;
+    // Start with prop data so the form shows correct values instantly (no flash of defaults)
+    setEnabled(Boolean(server.enabled));
+    setTransport(String(server.transport || 'sse'));
+    setUrl(String(server.url || ''));
+    setCommand(String(server.command || ''));
+    setArgsText(JSON.stringify(server.args || [], null, 2));
+    setAllowedToolsText((server.allowed_tools || []).join('\n'));
+    setMetadataText(server.metadata ? JSON.stringify(server.metadata, null, 2) : '');
+    setDiscoveredTools([]);
+    setShowTools(false);
+
+    // Then enrich from full API (may have richer metadata/filesystem info)
     setFetching(true);
     workspaceMcpApi.getServer(server.name).then((detail: any) => {
       const d = detail as McpServer;
@@ -68,14 +85,7 @@ const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSu
       setAuthText(d.auth ? JSON.stringify(d.auth, null, 2) : '');
       setMetadataText(d.metadata ? JSON.stringify(d.metadata, null, 2) : '');
     }).catch(() => {
-      // fallback to list item
-      setEnabled(Boolean(server.enabled));
-      setTransport(String(server.transport || 'sse'));
-      setUrl(String(server.url || ''));
-      setCommand(String(server.command || ''));
-      setArgsText(JSON.stringify(server.args || [], null, 2));
-      setAllowedToolsText((server.allowed_tools || []).join('\n'));
-      setMetadataText(server.metadata ? JSON.stringify(server.metadata, null, 2) : '');
+      // fallback already applied above
     }).finally(() => setFetching(false));
   }, [open, server?.name]);
 
@@ -181,18 +191,41 @@ const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSu
 
   const handleDiscover = async () => {
     if (!server?.name) return;
+    setDiscoveringTools(true);
     try {
-      const res = await workspaceMcpApi.discoverTools(server.name, { timeout_seconds: 10 });
+      const res = await workspaceMcpApi.discoverTools(server.name, { timeout_seconds: 25 });
       const tools = (res as any).tools || [];
       if (!tools.length) {
         toast.error('未发现工具（tools/list 返回为空）');
+        setDiscoveredTools([]);
+        setShowTools(false);
         return;
       }
-      setAllowedToolsText(tools.map((t: any) => t.name).filter(Boolean).join('\n'));
-      toast.success(`已发现 ${tools.length} 个工具，并已填充到 allowed_tools`);
+      setDiscoveredTools(tools.map((t: any) => ({ name: t.name, description: t.description || '', selected: true })));
+      setShowTools(true);
     } catch (e: any) {
       toast.error('发现工具失败', String(e?.message || ''));
+    } finally {
+      setDiscoveringTools(false);
     }
+  };
+
+  const toggleToolSelect = (idx: number) => {
+    setDiscoveredTools(prev => prev.map((t, i) => i === idx ? { ...t, selected: !t.selected } : t));
+  };
+
+  const selectAll = () => {
+    setDiscoveredTools(prev => prev.map(t => ({ ...t, selected: true })));
+  };
+
+  const deselectAll = () => {
+    setDiscoveredTools(prev => prev.map(t => ({ ...t, selected: false })));
+  };
+
+  const confirmToolSelection = () => {
+    const selected = discoveredTools.filter(t => t.selected).map(t => t.name);
+    setAllowedToolsText(selected.join('\n'));
+    toast.success(`已选择 ${selected.length} 个工具`);
   };
 
   const handleSubmit = async () => {
@@ -349,31 +382,73 @@ const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSu
           <div className="text-xs text-gray-500">{hint}</div>
         </div>
         <div className="border border-dark-border rounded-lg bg-dark-card p-3">
-          <div className="text-sm font-medium text-gray-200 mb-2">使用说明 / 示例</div>
-          <div className="text-xs text-gray-300 whitespace-pre-wrap leading-relaxed">{MCP_HELP}</div>
-          <div className="mt-3 space-y-2">
-            <div className="text-xs font-medium text-gray-300">常用片段（复制）</div>
-            <div className="flex gap-2 flex-wrap">
-              <Button
-                variant="secondary"
-                onClick={async () => {
-                  try { await navigator.clipboard.writeText('{\n  \"type\": \"bearer\",\n  \"token\": \"\"\n}'); toast.success('已复制'); } catch { toast.error('复制失败'); }
-                }}
-                disabled={loading}
-              >
-                复制 bearer auth
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={async () => {
-                  try { await navigator.clipboard.writeText('browser_navigate\nbrowser_snapshot'); toast.success('已复制'); } catch { toast.error('复制失败'); }
-                }}
-                disabled={loading}
-              >
-                复制 allowed_tools 示例
-              </Button>
-            </div>
-          </div>
+          {showTools ? (
+            <>
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-sm font-medium text-gray-200">
+                  发现的工具 ({discoveredTools.length})
+                </div>
+                <Button variant="ghost" size="sm" icon={<RotateCw className="w-3 h-3" />} onClick={handleDiscover} loading={discoveringTools}>
+                  重新发现
+                </Button>
+              </div>
+              <div className="space-y-1 max-h-64 overflow-y-auto mb-3">
+                {discoveredTools.map((t, i) => (
+                  <div
+                    key={t.name}
+                    onClick={() => toggleToolSelect(i)}
+                    className={`flex items-start gap-2 p-2 rounded cursor-pointer transition-colors ${
+                      t.selected ? 'bg-primary/10 border border-primary/30' : 'bg-dark-bg border border-dark-border hover:border-dark-border/80'
+                    }`}
+                  >
+                    <span className="flex-shrink-0 mt-0.5">
+                      {t.selected ? <CheckSquare className="w-3.5 h-3.5 text-primary" /> : <Square className="w-3.5 h-3.5 text-gray-600" />}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs font-mono text-gray-200">{t.name}</div>
+                      {t.description && <div className="text-[10px] text-gray-500 mt-0.5">{t.description}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button variant="ghost" size="sm" onClick={selectAll} disabled={discoveringTools}>全选</Button>
+                <Button variant="ghost" size="sm" onClick={deselectAll} disabled={discoveringTools}>取消全选</Button>
+                <Button variant="primary" size="sm" onClick={confirmToolSelection} disabled={discoveringTools}>确认选择</Button>
+                <span className="text-[10px] text-gray-500 ml-auto">
+                  已选 {discoveredTools.filter(t => t.selected).length}/{discoveredTools.length} 个工具
+                </span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="text-sm font-medium text-gray-200 mb-2">使用说明 / 示例</div>
+              <div className="text-xs text-gray-300 whitespace-pre-wrap leading-relaxed">{MCP_HELP}</div>
+              <div className="mt-3 space-y-2">
+                <div className="text-xs font-medium text-gray-300">常用片段（复制）</div>
+                <div className="flex gap-2 flex-wrap">
+                  <Button
+                    variant="secondary"
+                    onClick={async () => {
+                      try { await navigator.clipboard.writeText('{\n  \"type\": \"bearer\",\n  \"token\": \"\"\n}'); toast.success('已复制'); } catch { toast.error('复制失败'); }
+                    }}
+                    disabled={loading}
+                  >
+                    复制 bearer auth
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={async () => {
+                      try { await navigator.clipboard.writeText('browser_navigate\nbrowser_snapshot'); toast.success('已复制'); } catch { toast.error('复制失败'); }
+                    }}
+                    disabled={loading}
+                  >
+                    复制 allowed_tools 示例
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
         </div>
       )}

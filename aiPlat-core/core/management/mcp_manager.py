@@ -9,7 +9,7 @@ Goal:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 import os
@@ -20,6 +20,7 @@ import yaml
 class MCPServerInfo:
     name: str
     enabled: bool = True
+    status: str = "draft"  # draft | ready | published | listed | deprecated
     transport: str = "sse"  # sse|stdio|http etc
     url: Optional[str] = None
     command: Optional[str] = None
@@ -27,8 +28,8 @@ class MCPServerInfo:
     auth: Optional[Dict[str, Any]] = None
     allowed_tools: List[str] = field(default_factory=list)
     metadata: Dict[str, Any] = field(default_factory=dict)
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class MCPManager:
@@ -72,7 +73,7 @@ class MCPManager:
     def reload(self) -> None:
         """Reload from filesystem."""
         self._servers = {}
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         for base in self._resolve_mcp_paths():
             if not base.exists():
                 continue
@@ -91,6 +92,7 @@ class MCPManager:
 
                 name = str(data.get("name") or item.name)
                 enabled = bool(data.get("enabled", True))
+                status = str(data.get("status") or "draft")
                 transport = str(data.get("transport") or "sse")
                 url = data.get("url")
                 command = data.get("command")
@@ -137,6 +139,7 @@ class MCPManager:
                 self._servers[name] = MCPServerInfo(
                     name=name,
                     enabled=enabled,
+                    status=status,
                     transport=transport,
                     url=url,
                     command=command,
@@ -170,6 +173,7 @@ class MCPManager:
         data = {
             "name": info.name,
             "enabled": bool(info.enabled),
+            "status": info.status or "draft",
             "transport": info.transport,
             "url": info.url,
             "command": info.command,
@@ -191,12 +195,20 @@ class MCPManager:
         return self._servers[info.name]
 
     def set_enabled(self, name: str, enabled: bool) -> bool:
-        cur = self.get_server(name)
-        if not cur:
+        info = self._servers.get(name)
+        if not info:
             return False
-        cur.enabled = enabled
-        cur.updated_at = datetime.utcnow()
-        self.upsert_server(cur)
+        info.enabled = enabled
+        self.upsert_server(info)
+        return True
+
+    def delete_server(self, name: str) -> bool:
+        """Delete a server from disk and in-memory."""
+        server_dir = self._find_server_dir(name)
+        if server_dir:
+            import shutil as _shutil
+            _shutil.rmtree(server_dir, ignore_errors=True)
+        self._servers.pop(name, None)
         return True
 
     # ── Installer methods (workspace scope only) ────────────────────────

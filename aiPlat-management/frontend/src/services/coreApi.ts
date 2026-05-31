@@ -313,6 +313,61 @@ export const promptApi = {
     const qs = q.toString();
     return apiClient.delete<any>(`/core/prompts/${encodeURIComponent(templateId)}${qs ? `?${qs}` : ''}`);
   },
+  seed: async (role?: string) => {
+    return apiClient.post<any>('/core/prompts/seed', role ? { role } : {});
+  },
+};
+
+// ==================== Prompt App Templates ====================
+
+export const promptAppApi = {
+  list: (params?: { category?: string; status?: string; limit?: number; offset?: number }) =>
+    apiClient.get<any>('/core/prompts/app/templates', { params }),
+  get: (id: string) =>
+    apiClient.get<any>(`/core/prompts/app/templates/${encodeURIComponent(id)}`),
+  create: (body: any) =>
+    apiClient.post<any>('/core/prompts/app/templates', body),
+  update: (id: string, body: any) =>
+    apiClient.put<any>(`/core/prompts/app/templates/${encodeURIComponent(id)}`, body),
+  delete: (id: string) =>
+    apiClient.delete<any>(`/core/prompts/app/templates/${encodeURIComponent(id)}`),
+  copy: (id: string) =>
+    apiClient.post<any>(`/core/prompts/app/templates/${encodeURIComponent(id)}/copy`),
+  preview: (id: string, body: { variables: any; model: string }) =>
+    apiClient.post<any>(`/core/prompts/app/templates/${encodeURIComponent(id)}/preview`, body),
+  optimize: (body: { prompt: string; template_id?: string; model: string }) =>
+    apiClient.post<any>('/core/prompts/app/optimize', body),
+  run: (body: { template_id?: string; instance_id?: string; variables: any; model: string }) =>
+    apiClient.post<any>('/core/prompts/app/run', body),
+  categories: () =>
+    apiClient.get<string[]>('/core/prompts/app/categories'),
+  createCategory: (body: { name: string; display_order?: number }) =>
+    apiClient.post<any>('/core/prompts/app/categories', body),
+  seed: () => apiClient.post<any>('/core/prompts/app/seed', {}),
+  listInstances: () => apiClient.get<any>('/core/prompts/app/instances'),
+  createInstance: (body: any) => apiClient.post<any>('/core/prompts/app/instances', body),
+  updateInstance: (id: string, body: any) => apiClient.put<any>(`/core/prompts/app/instances/${encodeURIComponent(id)}`, body),
+  deleteInstance: (id: string) => apiClient.delete<any>(`/core/prompts/app/instances/${encodeURIComponent(id)}`),
+};
+
+export const promptEvalApi = {
+  listTestCases: (templateId?: string) =>
+    apiClient.get<any>('/core/prompts/eval/test-cases', { params: templateId ? { template_id: templateId } : {} }),
+  createTestCase: (body: any) =>
+    apiClient.post<any>('/core/prompts/eval/test-cases', body),
+  deleteTestCase: (id: string) =>
+    apiClient.delete<any>(`/core/prompts/eval/test-cases/${encodeURIComponent(id)}`),
+  createRun: (body: any) =>
+    apiClient.post<any>('/core/prompts/eval/runs', body),
+  listRuns: (templateId?: string) =>
+    apiClient.get<any>('/core/prompts/eval/runs', { params: templateId ? { template_id: templateId } : {} }),
+  getRun: (id: string) =>
+    apiClient.get<any>(`/core/prompts/eval/runs/${encodeURIComponent(id)}`),
+};
+
+export const promptOptimizeApi = {
+  run: (body: { prompt: string; model: string }) =>
+    apiClient.post<any>('/core/prompts/optimize', body),
 };
 
 // ==================== Learning / Releases / Approvals (Phase 6) ====================
@@ -490,6 +545,7 @@ export const approvalsApi = {
 export interface McpServer {
   name: string;
   enabled: boolean;
+  status?: string;  // draft | ready | published | listed | deprecated
   transport?: string;
   url?: string;
   command?: string;
@@ -514,6 +570,10 @@ export const mcpApi = {
 
   disableServer: async (serverName: string) => {
     return apiClient.post<{ status: string }>(`/core/mcp/servers/${serverName}/disable`, {});
+  },
+
+  reloadServers: async () => {
+    return apiClient.post<{ status: string; servers: string[] }>('/core/mcp/servers/reload', {});
   },
 };
 
@@ -559,6 +619,20 @@ export const workspaceMcpApi = {
 
   submitForReview: async (serverName: string) => {
     return apiClient.post<{ status: string; lint: Record<string, unknown> }>(`/core/workspace/mcp/servers/${serverName}/submit-for-review`);
+  },
+
+  reloadServers: async () => {
+    return apiClient.post<{ status: string; servers: string[] }>('/core/workspace/mcp/servers/reload', {});
+  },
+
+  createFromTemplate: async (template: string, data: { name: string; description?: string }) => {
+    return apiClient.post<{ status: string; name: string; template: string }>(
+      `/core/workspace/mcp/templates/${template}/create`, data as any
+    );
+  },
+
+  deleteServer: async (serverName: string) => {
+    return apiClient.delete<{ status: string; name: string }>(`/core/workspace/mcp/servers/${serverName}`);
   },
 };
 

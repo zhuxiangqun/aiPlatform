@@ -81,6 +81,7 @@ async def list_mcp_servers():
             {
                 "name": s.name,
                 "enabled": s.enabled,
+                "status": getattr(s, "status", "draft") or "draft",
                 "transport": s.transport,
                 "url": s.url,
                 "command": s.command,
@@ -151,6 +152,17 @@ async def disable_mcp_server(server_name: str):
     return {"status": "disabled"}
 
 
+@router.post("/mcp/servers/reload")
+async def reload_mcp_servers():
+    """Reload MCP server configs from disk (engine scope)."""
+    mgr = _mcp_manager()
+    if not mgr:
+        raise HTTPException(status_code=503, detail="MCP manager not available")
+    mgr.reload()
+    await sync_mcp_runtime(mcp_manager=mgr, workspace_mcp_manager=_workspace_mcp_manager())
+    return {"status": "reloaded", "servers": mgr.get_server_names()}
+
+
 # ==================== Workspace MCP servers ====================
 
 
@@ -165,6 +177,7 @@ async def list_workspace_mcp_servers():
             {
                 "name": s.name,
                 "enabled": s.enabled,
+                "status": getattr(s, "status", "draft") or "draft",
                 "transport": s.transport,
                 "url": s.url,
                 "command": s.command,
@@ -187,33 +200,8 @@ async def get_workspace_mcp_server(server_name: str):
     s = mgr.get_server(server_name)
     if not s:
         raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
-    return {
-        "name": s.name,
-        "enabled": s.enabled,
-        "transport": s.transport,
-        "url": s.url,
-        "command": s.command,
-        "args": s.args,
-        "auth": s.auth,
-        "allowed_tools": s.allowed_tools,
-        "metadata": s.metadata,
-    }
-
-
-@router.get("/workspace/mcp/servers/{server_name}/tools")
-async def discover_workspace_mcp_tools(server_name: str, timeout_seconds: int = 10):
-    """
-    Best-effort tool discovery via MCP protocol (tools/list).
-    - For sse/http: POST JSON-RPC to url
-    - For stdio: spawn process, send JSON-RPC via stdin/stdout (dev/staging recommended)
-    """
-    mgr = _workspace_mcp_manager()
-    store = _store()
-    if not mgr:
-        raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
-    s = mgr.get_server(server_name)
-    if not s:
-        raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
+    if not getattr(s, "enabled", False):
+        raise HTTPException(status_code=400, detail="MCP server is disabled — enable it first before testing")
 
     transport = str(s.transport or "").strip().lower()
     ok, reason = prod_stdio_policy_check(server_name=server_name, transport=transport, command=s.command, args=s.args, metadata=s.metadata)
@@ -517,6 +505,242 @@ async def disable_workspace_mcp_server(server_name: str):
     await sync_mcp_runtime(mcp_manager=_mcp_manager(), workspace_mcp_manager=mgr)
 
 
+@router.post("/workspace/mcp/templates/{template}/create")
+async def create_mcp_from_template(template: str, data: dict):
+    """Create a new MCP server from a seed template, copying config + script files."""
+    mgr = _workspace_mcp_manager()
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
+
+    name = (data.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="name is required")
+
+    allowed_templates = {"http_bridge", "shell_executor", "file_ops", "db_query"}
+    if template not in allowed_templates:
+        raise HTTPException(status_code=400, detail=f"Unknown template: {template}")
+
+    info = MCPServerInfo(
+        name=name,
+        enabled=False,
+        transport="stdio",
+        command="python3",
+        args=["mcp_server.py"],
+        metadata={"description": data.get("description", ""), "template": template},
+    )
+    mgr.upsert_server(info)
+
+    from pathlib import Path as _P
+    seeds_root = _P(__file__).resolve().parents[2] / "core" / "workspace_seeds" / "mcps" / template
+    server_dir = mgr._resolve_mcp_base_path() / name
+
+    if seeds_root.exists():
+        import shutil as _shutil
+        for seed_file in seeds_root.iterdir():
+            if seed_file.is_file():
+                dst = server_dir / seed_file.name
+                if not dst.exists():
+                    _shutil.copy2(seed_file, dst)
+
+    mgr.reload()
+    await sync_mcp_runtime(mcp_manager=_mcp_manager(), workspace_mcp_manager=mgr)
+    return {"status": "created", "name": name, "template": template}
+
+
+@router.delete("/workspace/mcp/servers/{server_name}")
+async def delete_workspace_mcp_server(server_name: str):
+    """Delete a workspace MCP server config + directory."""
+    mgr = _workspace_mcp_manager()
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
+    if not mgr.get_server(server_name):
+        raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
+    mgr.delete_server(server_name)
+    await sync_mcp_runtime(mcp_manager=_mcp_manager(), workspace_mcp_manager=mgr)
+    return {"status": "deleted", "name": server_name}
+
+
+@router.post("/workspace/mcp/servers/{server_name}/test-invoke")
+@router.post("/workspace/mcp/servers/{server_name}/test-invoke")
+async def test_invoke_mcp_server(server_name: str, data: dict = None):
+    """Start an MCP server test run. Returns run_id immediately, streams results via SSE."""
+    import uuid
+
+    mgr = _workspace_mcp_manager()
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
+    s = mgr.get_server(server_name)
+    if not s:
+        raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
+    if not getattr(s, "enabled", False):
+        raise HTTPException(status_code=400, detail="MCP server is disabled — enable it first before testing")
+
+    transport = str(s.transport or "").strip().lower()
+    ok, reason = prod_stdio_policy_check(server_name=server_name, transport=transport, command=s.command, args=s.args, metadata=s.metadata)
+    if not ok:
+        raise HTTPException(status_code=403, detail=reason)
+
+    run_id = f"mcp-test-{server_name}-{uuid.uuid4().hex[:8]}"
+    tool_name = (data.get("tool") or "").strip() if data else ""
+
+    asyncio.create_task(_run_mcp_test(
+        run_id=run_id,
+        server_name=server_name,
+        transport=transport,
+        command=s.command,
+        args=s.args,
+        url=s.url,
+        tool_name=tool_name,
+        tool_args=(data.get("arguments") or {}) if data else {},
+    ))
+
+    return {"run_id": run_id, "status": "started"}
+
+
+async def _run_mcp_test(
+    *, run_id: str, server_name: str, transport: str,
+    command: Optional[str], args: Optional[list],
+    url: Optional[str], tool_name: str, tool_args: dict,
+):
+    """Background task: run MCP test steps and publish events via EventBus."""
+    def _publish(name: str, status: str, **kwargs):
+        try:
+            from core.harness.observation.event_bus import EventBus
+            t = time.time()
+            event: Dict[str, Any] = {
+                "kind": "mcp_test",
+                "name": name,
+                "status": status,
+                "run_id": run_id,
+                "start_time": t,
+                "target_type": server_name,
+                "duration_ms": 0,
+            }
+            event.update(kwargs)
+            if status in ("ok", "error") and event.get("duration_ms") == 0:
+                event["duration_ms"] = int((t - event["start_time"]) * 1000) if event.get("start_time") else 0
+            EventBus.publish(run_id, event)
+        except Exception:
+            pass
+
+    async def _http_post(url_str: str, payload: dict) -> dict:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:
+            async with session.post(url_str, data=json.dumps(payload), headers={"Content-Type": "application/json"}) as resp:
+                text = await resp.text()
+                if resp.status != 200:
+                    raise Exception(f"HTTP {resp.status}: {text[:200]}")
+                return json.loads(text)
+
+    try:
+        tools = []
+        t_start = time.time()
+
+        # Step 1: Connect
+        _publish("connect", "running", args_json=json.dumps({"transport": transport}))
+
+        if transport in {"sse", "http"}:
+            if not url:
+                raise Exception("Missing URL for SSE/HTTP MCP server")
+            # initialize
+            init_resp = await _http_post(url, {"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "clientInfo": {"name": "aiplat-test", "version": "1.0.0"}}})
+            _publish("connect", "ok", duration_ms=int((time.time() - t_start) * 1000))
+
+            # Step 2: Initialize
+            _publish("initialize", "running")
+            _publish("initialize", "ok", result_json=json.dumps({"server": init_resp.get("result", {}).get("serverInfo", {})}))
+
+            # Step 3: List tools
+            _publish("list_tools", "running")
+            tools_resp = await _http_post(url, {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}})
+            tools = (tools_resp.get("result") or {}).get("tools") or []
+            _publish("list_tools", "ok", result_json=json.dumps({"count": len(tools), "tools": [t.get("name") for t in tools[:10]]}))
+
+        elif transport == "stdio":
+            proc = await asyncio.create_subprocess_exec(command, *(args or []), stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+            try:
+                init = {"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "clientInfo": {"name": "aiplat-test", "version": "1.0.0"}}}
+                proc.stdin.write((json.dumps(init) + "\n").encode("utf-8"))
+                await proc.stdin.drain()
+                line = await asyncio.wait_for(proc.stdout.readline(), timeout=15)
+                init_data = json.loads(line.decode("utf-8"))
+                _publish("connect", "ok", duration_ms=int((time.time() - t_start) * 1000))
+
+                _publish("initialize", "running")
+                _publish("initialize", "ok", result_json=json.dumps({"server": init_data.get("result", {}).get("serverInfo", {})}))
+
+                _publish("list_tools", "running")
+                req = {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}
+                proc.stdin.write((json.dumps(req) + "\n").encode("utf-8"))
+                await proc.stdin.drain()
+                line = await asyncio.wait_for(proc.stdout.readline(), timeout=15)
+                tools_resp = json.loads(line.decode("utf-8"))
+                tools = (tools_resp.get("result") or {}).get("tools") or []
+                _publish("list_tools", "ok", result_json=json.dumps({"count": len(tools), "tools": [t.get("name") for t in tools[:10]]}))
+            finally:
+                try:
+                    proc.terminate()
+                    await asyncio.wait_for(proc.wait(), timeout=2)
+                except Exception:
+                    pass
+        else:
+            raise Exception(f"Unsupported transport: {transport}")
+
+        # Step 4: Invoke first tool (or user-specified)
+        invoke_name = tool_name or (tools[0].get("name", "") if tools else "")
+        if not invoke_name:
+            _publish("invoke", "ok", result_json=json.dumps({"message": "No tools to invoke"}))
+        else:
+            _publish("invoke", "running", args_json=json.dumps({"tool": invoke_name, "args": tool_args}))
+            t_invoke = time.time()
+
+            if transport in {"sse", "http"}:
+                call_resp = await _http_post(url, {"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": invoke_name, "arguments": tool_args}})
+            elif transport == "stdio":
+                proc = await asyncio.create_subprocess_exec(command, *(args or []), stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+                try:
+                    init = {"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "clientInfo": {"name": "aiplat-test", "version": "1.0.0"}}}
+                    proc.stdin.write((json.dumps(init) + "\n").encode("utf-8"))
+                    await proc.stdin.drain()
+                    await asyncio.wait_for(proc.stdout.readline(), timeout=15)
+                    req = {"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": invoke_name, "arguments": tool_args}}
+                    proc.stdin.write((json.dumps(req) + "\n").encode("utf-8"))
+                    await proc.stdin.drain()
+                    line = await asyncio.wait_for(proc.stdout.readline(), timeout=15)
+                    call_resp = json.loads(line.decode("utf-8"))
+                finally:
+                    try:
+                        proc.terminate()
+                        await asyncio.wait_for(proc.wait(), timeout=2)
+                    except Exception:
+                        pass
+
+            error = call_resp.get("error", {})
+            result = call_resp.get("result", {})
+            dur_ms = int((time.time() - t_invoke) * 1000)
+            if error:
+                _publish("invoke", "error", duration_ms=dur_ms, error=str(error))
+            else:
+                content = str(result.get("content", json.dumps(result)))
+                _publish("invoke", "ok", duration_ms=dur_ms, result_json=json.dumps({"output": content[:5000]}))
+
+        # Done
+        _publish("finish", "ok", result_json=json.dumps({"tools_count": len(tools), "invoked": invoke_name}))
+
+    except Exception as e:
+        _publish("finish", "error", error=str(e))
+
+
+@router.post("/workspace/mcp/servers/reload")
+async def reload_workspace_mcp_servers():
+    """Reload MCP server configs from disk (workspace scope)."""
+    mgr = _workspace_mcp_manager()
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
+    mgr.reload()
+    await sync_mcp_runtime(mcp_manager=_mcp_manager(), workspace_mcp_manager=mgr)
+    return {"status": "reloaded", "servers": mgr.get_server_names()}
+
+
 # ── MCP Installer endpoints (workspace scope) ──────────────────────
 
 @router.post("/workspace/mcps/installer/plan")
@@ -619,22 +843,36 @@ async def submit_mcp_for_review(server_name: str):
 
     if lint_errors > 0:
         try:
-            mgr.upsert_server({
-                "name": server_name,
-                "enabled": getattr(srv, "enabled", True),
-                "metadata": {"governance": {"status": "failed", "lint_result": lint_result, "submitted_at": _time.time(), "last_op": "submit_for_review"}},
-            })
+            info = MCPServerInfo(
+                name=server_name,
+                enabled=getattr(srv, "enabled", True),
+                status=getattr(srv, "status", "draft"),
+                transport=srv.transport,
+                command=srv.command,
+                args=srv.args,
+                metadata={"governance": {"status": "failed", "lint_result": lint_result, "submitted_at": _time.time(), "last_op": "submit_for_review"}},
+            )
+            mgr.upsert_server(info)
         except Exception:
             pass
         raise HTTPException(status_code=422, detail={"message": f"配置校验未通过：{lint_errors} 个错误", "lint": lint_result})
 
     try:
-        mgr.upsert_server({
-            "name": server_name,
-            "status": "ready",
-            "enabled": True,
-            "metadata": {"governance": {"status": "pending", "lint_result": lint_result, "submitted_at": _time.time(), "last_op": "submit_for_review"}},
-        })
+        meta = dict(getattr(srv, "metadata", {}) or {})
+        meta["governance"] = {"status": "pending", "lint_result": lint_result, "submitted_at": _time.time(), "last_op": "submit_for_review"}
+        info = MCPServerInfo(
+            name=server_name,
+            enabled=True,
+            status="ready",
+            transport=srv.transport,
+            command=srv.command,
+            args=srv.args,
+            url=srv.url,
+            auth=srv.auth,
+            allowed_tools=srv.allowed_tools,
+            metadata=meta,
+        )
+        mgr.upsert_server(info)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update MCP server: {e}")
 
@@ -645,4 +883,3 @@ async def submit_mcp_for_review(server_name: str):
         "governance": "pending",
         "lint": {"risk_level": lint_result["risk_level"], "error_count": lint_errors, "warning_count": lint_warnings},
     }
-    return {"status": "disabled"}

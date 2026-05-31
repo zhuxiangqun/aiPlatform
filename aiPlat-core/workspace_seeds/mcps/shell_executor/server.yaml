@@ -1,0 +1,14 @@
+name: shell_executor
+enabled: false
+transport: stdio
+command: python3
+args: ["mcp_server.py"]
+url: null
+auth: null
+allowed_tools: []
+metadata:
+  description: "Shell 命令执行器 — 通过 Agent 安全执行本地 shell 命令。默认限制在 SAFE_DIR 内，可修改 ALLOWED_COMMANDS 白名单。"
+  template: "shell_executor"
+  config:
+    safe_dir: "/tmp"
+    allowed_commands: "ls,cat,grep,wc,head,tail,find,echo,pwd,date,whoami,df,du,ps,curl"

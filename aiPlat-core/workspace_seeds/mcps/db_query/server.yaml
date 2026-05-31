@@ -1,0 +1,14 @@
+name: db_query
+enabled: false
+transport: stdio
+command: python3
+args: ["mcp_server.py"]
+url: null
+auth: null
+allowed_tools: []
+metadata:
+  description: "数据库查询 — 通过 Agent 查询本地 SQLite/PostgreSQL/MySQL 数据库。修改 DATABASE_URL 连接你的数据库。"
+  template: "db_query"
+  config:
+    database_url: "sqlite:////tmp/test.db"
+    readonly: "true"

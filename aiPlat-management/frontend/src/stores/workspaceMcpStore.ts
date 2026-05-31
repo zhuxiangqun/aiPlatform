@@ -16,6 +16,8 @@ export const useWorkspaceMcpStore = create<WorkspaceMcpState>((set, get) => ({
   fetchServers: async () => {
     set({ loading: true });
     try {
+      // Reload from disk first so config changes are picked up
+      await workspaceMcpApi.reloadServers().catch(() => {});
       const res = await workspaceMcpApi.listServers();
       set({ servers: res.servers || [], loading: false });
     } catch {

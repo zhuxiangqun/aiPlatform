@@ -1,14 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { Copy, Info, Pencil, Plus, RotateCw, ShieldCheck } from 'lucide-react';
+import { Copy, Info, Pencil, Plus, RotateCw, ShieldCheck, Zap, Play, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Badge, Table, Switch, Button, Modal, toast } from '../../../components/ui';
 import { useWorkspaceMcpStore } from '../../../stores';
 import type { McpServer } from '../../../services';
 import { workspaceMcpApi } from '../../../services';
+import { ExecutionViewer } from '../../../components/ExecutionViewer';
 import AddMcpModal from '../../../components/workspace/AddMcpModal';
 import EditMcpModal from '../../../components/workspace/EditMcpModal';
 import { toastGateError } from '../../../components/ui';
 import ImportBar from '../../../components/workspace/ImportBar';
+
+const MCP_TEMPLATES = [
+  { id: 'http_bridge', name: 'HTTP API 桥接', icon: '🌐', desc: '调用任何 REST/HTTP API', tools: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] },
+  { id: 'shell_executor', name: 'Shell 命令执行', icon: '⚡', desc: '每个允许的命令生成独立工具', tools: ['ls', 'cat', 'grep', 'curl', 'ps', '…'] },
+  { id: 'file_ops', name: '文件操作', icon: '📁', desc: '读写本地文件系统', tools: ['读', '写', '追', '删', '列', '查'] },
+  { id: 'db_query', name: '数据库查询', icon: '🗄️', desc: '查询 SQLite/PostgreSQL/MySQL', tools: ['查询', '列表', '写操作'] },
+];
 
 const WorkspaceMCP: React.FC = () => {
   const { servers, loading, fetchServers, setServerEnabled } = useWorkspaceMcpStore();
@@ -16,6 +24,13 @@ const WorkspaceMCP: React.FC = () => {
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editServer, setEditServer] = useState<McpServer | null>(null);
+  const [templateModal, setTemplateModal] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+  const [templateId, setTemplateId] = useState('');
+  const [templateCreating, setTemplateCreating] = useState(false);
+  const [testRunId, setTestRunId] = useState('');
+  const [testServerName, setTestServerName] = useState('');
+  const [testModal, setTestModal] = useState(false);
 
   useEffect(() => {
     fetchServers();
@@ -50,6 +65,60 @@ const WorkspaceMCP: React.FC = () => {
     }
   };
 
+  const handleTest = async (s: McpServer) => {
+    if (!s.enabled) { toast.error('请先启用 MCP 再进行测试'); return; }
+    try {
+      const res = await fetch(`/api/core/workspace/mcp/servers/${s.name}/test-invoke`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(`${s.name}: ${data.detail || data.message || `HTTP ${res.status}`}`);
+        return;
+      }
+      // Open ExecutionViewer live mode
+      setTestRunId(data.run_id);
+      setTestServerName(s.name);
+      setTestModal(true);
+    } catch (e: any) {
+      toast.error(`测试请求失败: ${e?.message || ''}`);
+    }
+  };
+
+  const handleDelete = async (s: McpServer) => {
+    if (!window.confirm(`确定要删除 MCP "${s.name}" 吗？此操作不可撤销，将删除整个配置目录。`)) return;
+    try {
+      await workspaceMcpApi.deleteServer(s.name);
+      toast.success(`已删除 "${s.name}"`);
+      fetchServers();
+    } catch (e: any) {
+      toastGateError(e, '删除失败');
+    }
+  };
+
+  const handleTemplateCreate = async () => {
+    if (!templateName.trim()) { toast.error('请输入 MCP 名称'); return; }
+    if (!templateId) { toast.error('请选择模板'); return; }
+    setTemplateCreating(true);
+    try {
+      await workspaceMcpApi.createFromTemplate(templateId, {
+        name: templateName.trim(),
+        description: MCP_TEMPLATES.find(t => t.id === templateId)?.desc || '',
+      });
+      await workspaceMcpApi.reloadServers();
+      setTemplateModal(false);
+      setTemplateName('');
+      setTemplateId('');
+      fetchServers();
+      toast.success(`MCP "${templateName.trim()}" 从模板创建成功`);
+    } catch (e: any) {
+      toastGateError(e, '创建失败');
+    } finally {
+      setTemplateCreating(false);
+    }
+  };
+
   const columns = [
     {
       title: '名称',
@@ -61,7 +130,18 @@ const WorkspaceMCP: React.FC = () => {
         </button>
       ),
     },
-    { title: 'Transport', dataIndex: 'transport', key: 'transport', width: 120, render: (v: string) => <span className="text-gray-400">{v || '-'}</span> },
+    { title: 'Transport', dataIndex: 'transport', key: 'transport', width: 100, render: (v: string) => <span className="text-gray-400">{v || '-'}</span> },
+    {
+      title: '描述',
+      key: 'description',
+      width: 220,
+      render: (_: unknown, record: McpServer) => {
+        const desc = ((record.metadata as any)?.description || '').trim();
+        return desc
+          ? <span className="text-xs text-gray-400 truncate block max-w-[220px]" title={desc}>{desc}</span>
+          : <span className="text-xs text-gray-600">—</span>;
+      },
+    },
     {
       title: '上架状态',
       dataIndex: 'status',
@@ -96,10 +176,18 @@ const WorkspaceMCP: React.FC = () => {
     {
       title: '操作',
       key: 'actions',
-      width: 120,
+      width: 140,
       align: 'center' as const,
       render: (_: unknown, record: McpServer) => (
         <div className="flex items-center justify-center gap-1">
+          <button
+            onClick={() => handleTest(record)}
+            className={`p-1.5 rounded-lg transition-colors ${record.enabled ? 'text-green-400 hover:bg-green-400/10' : 'text-gray-600 cursor-not-allowed'}`}
+            title={record.enabled ? '测试调用' : '请先启用'}
+            disabled={!record.enabled}
+          >
+            <Play className="w-4 h-4" />
+          </button>
           <button
             onClick={() => setDetailModal({ open: true, server: record })}
             className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors"
@@ -123,6 +211,13 @@ const WorkspaceMCP: React.FC = () => {
               <ShieldCheck className="w-4 h-4" />
             </button>
           ) : null}
+          <button
+            onClick={() => handleDelete(record)}
+            className="p-1.5 rounded-lg text-red-400 hover:bg-red-400/10 transition-colors"
+            title="删除"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
         </div>
       ),
     },
@@ -141,6 +236,9 @@ const WorkspaceMCP: React.FC = () => {
         <div className="flex items-center gap-3">
           <Button variant="primary" icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>
             新增
+          </Button>
+          <Button variant="outline" size="sm" icon={<Zap className="w-4 h-4" />} onClick={() => setTemplateModal(true)}>
+            从模板创建
           </Button>
           <Button icon={<RotateCw className="w-4 h-4" />} onClick={fetchServers} loading={loading}>
             刷新
@@ -192,6 +290,79 @@ const WorkspaceMCP: React.FC = () => {
         onClose={() => setEditOpen(false)}
         onSuccess={fetchServers}
       />
+
+      {/* Template Creation Modal */}
+      <Modal
+        open={templateModal}
+        onClose={() => { setTemplateModal(false); setTemplateId(''); }}
+        title="从模板创建 MCP"
+        width={650}
+        footer={
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={() => { setTemplateModal(false); setTemplateId(''); }}>取消</Button>
+            <Button variant="primary" onClick={handleTemplateCreate} loading={templateCreating} disabled={!templateId}>创建</Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <div className="text-xs text-gray-500 mb-1">名称</div>
+            <input
+              value={templateName}
+              onChange={e => setTemplateName(e.target.value)}
+              placeholder="my_mcp_server"
+              className="w-full bg-dark-bg border border-dark-border rounded px-3 py-2 text-sm text-gray-200"
+            />
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 mb-2">选择模板</div>
+            <div className="grid grid-cols-2 gap-3">
+              {MCP_TEMPLATES.map(t => (
+                <div
+                  key={t.id}
+                  onClick={() => setTemplateId(t.id)}
+                  className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                    templateId === t.id
+                      ? 'border-primary/50 bg-primary/10'
+                      : 'border-dark-border bg-dark-bg hover:border-dark-border/80'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">{t.icon}</span>
+                    <span className="text-sm font-semibold text-gray-100">{t.name}</span>
+                  </div>
+                  <div className="text-xs text-gray-500 mb-2">{t.desc}</div>
+                  <div className="flex flex-wrap gap-1">
+                    {t.tools.map(tool => (
+                      <Badge key={tool} variant="default" className="text-[10px]">{tool}</Badge>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="text-xs text-gray-600 bg-dark-bg rounded-lg p-3">
+            <Zap className="w-3 h-3 inline mr-1 text-yellow-400" />
+            创建后默认为<b>禁用</b>状态。编辑 <code>~/.aiplat/mcps/{'{name}'}/server.yaml</code> 修改配置，再启用。
+          </div>
+        </div>
+      </Modal>
+
+      {/* Test Execution Viewer Modal */}
+      <Modal
+        open={testModal}
+        onClose={() => setTestModal(false)}
+        title={`测试 MCP: ${testServerName}`}
+        width={900}
+        footer={<Button onClick={() => setTestModal(false)}>关闭</Button>}
+      >
+        <ExecutionViewer
+          title={testServerName}
+          live
+          runId={testRunId}
+          height={420}
+        />
+      </Modal>
     </div>
   );
 };

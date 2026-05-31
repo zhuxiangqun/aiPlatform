@@ -179,6 +179,8 @@ class MCPRuntime:
         tool_risk = pol.get("tool_risk") if isinstance(pol.get("tool_risk"), dict) else {}
         approval_required = pol.get("approval_required")
         allowed_tools = getattr(s, "allowed_tools", None) or []
+        meta = getattr(s, "metadata", {}) or {}
+        server_description = meta.get("description", "") if isinstance(meta, dict) else ""
 
         # Register tools; names are mcp.<server>.<tool>
         before = set(tool_registry.list_tools())
@@ -189,6 +191,7 @@ class MCPRuntime:
             risk_level=risk_level,
             tool_risk=tool_risk,
             approval_required=approval_required if approval_required is not None else None,
+            server_description=server_description,
         )
         after = set(tool_registry.list_tools())
         added = sorted(list(after - before))

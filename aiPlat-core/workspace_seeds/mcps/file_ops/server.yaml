@@ -1,0 +1,14 @@
+name: file_ops
+enabled: false
+transport: stdio
+command: python3
+args: ["mcp_server.py"]
+url: null
+auth: null
+allowed_tools: []
+metadata:
+  description: "文件操作 — 通过 Agent 读写本地文件。限制在 ALLOWED_DIRS 范围内。"
+  template: "file_ops"
+  config:
+    allowed_dirs: "/Users/apple/Desktop,/Users/apple/Documents,/Users/apple/Downloads,/tmp"
+    max_file_size: "10485760"

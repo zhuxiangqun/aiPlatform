@@ -37,6 +37,7 @@ export interface PipelineStageConfig {
   phase_description?: string;
   input_artifacts: string[];
   output_artifact: string;
+  routing_rules?: { condition: string; next: string }[];
 }
 
 export interface TeamConfig {

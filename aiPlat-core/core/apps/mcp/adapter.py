@@ -34,6 +34,7 @@ class MCPToolAdapter(BaseTool):
         approval_required: bool = False,
         disabled_reason: Optional[str] = None,
         extra_metadata: Optional[Dict[str, Any]] = None,
+        server_description: str = "",
     ):
         self._mcp_tool = mcp_tool
         self._client = client
@@ -44,9 +45,9 @@ class MCPToolAdapter(BaseTool):
         metadata = {
             "category": "mcp",
             "mcp_server": server_name,
+            "mcp_server_description": server_description,
             "mcp_tool": tool_name,
             "risk_level": risk_level,
-            # When true, PolicyGate will request approval even if global syscall approval is off.
             "approval_required": bool(approval_required),
         }
         if disabled_reason:
@@ -149,6 +150,7 @@ class MCPClientWrapper:
         tool_risk: Optional[Dict[str, str]] = None,
         approval_required: Optional[bool] = None,
         disabled_reason: Optional[str] = None,
+        server_description: str = "",
     ) -> int:
         """
         Register all tools from an MCP server to the local registry.
@@ -174,6 +176,7 @@ class MCPClientWrapper:
                 risk_level=r,
                 approval_required=need_approval,
                 disabled_reason=disabled_reason,
+                server_description=server_description,
             )
             registry.register(adapter)
             count += 1

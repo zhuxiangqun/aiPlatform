@@ -1,0 +1,14 @@
+name: http_bridge
+enabled: false
+transport: stdio
+command: python3
+args: ["mcp_server.py"]
+url: null
+auth: null
+allowed_tools: []
+metadata:
+  description: "HTTP API 桥接 — 通过 Agent 调用任何 REST/HTTP API。修改 mcp_server.py 中的BASE_URL 和 ALLOWED_ENDPOINTS 来限制可用端点。"
+  template: "http_bridge"
+  config:
+    base_url: "https://api.example.com"
+    auth_header: "Bearer YOUR_TOKEN"
