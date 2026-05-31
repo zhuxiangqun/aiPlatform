@@ -647,3 +647,39 @@ async def blast_radius(
     start = str(file).strip()
     out = blast(res.nodes, start)
     return {"status": "ok", "file": start, "affected": out, "count": len(out)}
+
+
+@router.get("/diagnostics/code-intel/export")
+async def export_code_graph(rt=Depends(get_kernel_runtime)):
+    """Export the full code graph as committable JSON for team onboarding.
+    
+    The exported JSON can be committed to the repository so team members
+    clone and load the graph without scanning.
+    """
+    import time as _t
+    root_list = default_roots()
+    res = await code_intel_scan(rt, root_list)
+    nodes_export = {}
+    for n in res.nodes.values():
+        node_id = str(n.get("id") or n.get("path") or "")
+        nodes_export[node_id] = {
+            "id": node_id,
+            "path": n.get("path", ""),
+            "in_degree": int(n.get("in") or 0),
+            "out_degree": int(len(n.get("out") or [])),
+            "out": n.get("out", []),
+            "symbols": [s[0] if isinstance(s, (list, tuple)) else str(s) for s in (n.get("symbols") or [])],
+            "layer": _layer_bucket(n.get("path", "")),
+            "issue_count": int(n.get("issue_count") or 0),
+        }
+    return {
+        "generated_at": _t.strftime("%Y-%m-%dT%H:%M:%SZ", _t.gmtime()),
+        "stats": {
+            "nodes": len(nodes_export),
+            "edges": len(res.edges),
+            "issues": len(res.issues),
+        },
+        "health": res.health,
+        "nodes": nodes_export,
+        "edges": res.edges,
+    }

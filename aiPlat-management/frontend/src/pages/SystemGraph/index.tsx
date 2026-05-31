@@ -124,6 +124,21 @@ const SystemGraph: React.FC = () => {
   const prevTour = () => { if (tourIdx > 0) setTourIdx(tourIdx - 1); };
   const closeTour = () => { setTourMode(false); setTourSteps([]); };
 
+  // ── Export Graph as committable JSON ──
+  const exportGraph = async () => {
+    try {
+      const res = await fetch('/api/core/diagnostics/code-intel/export');
+      const data = await res.json();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'code_graph.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {}
+  };
+
   return (
     <div className={`flex flex-col bg-dark-bg ${fullscreen ? 'fixed inset-0 z-50' : 'h-screen'}`}>
       {/* Header */}
@@ -307,6 +322,12 @@ const SystemGraph: React.FC = () => {
             className="p-1.5 rounded text-gray-400 hover:text-gray-200 transition-colors" title="导出PNG"
           >
             <Download className="w-3 h-3" />
+          </button>
+          <button
+            onClick={exportGraph}
+            className="p-1.5 rounded text-gray-400 hover:text-gray-200 transition-colors" title="导出JSON（可提交到仓库）"
+          >
+            <GitBranch className="w-3 h-3" />
           </button>
         </div>
       </div>
