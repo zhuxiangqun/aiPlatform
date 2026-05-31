@@ -31,6 +31,7 @@ const CoreAgents = lazy(() => import('./pages/Core/Agents/Agents'));
 const CoreSkills = lazy(() => import('./pages/Core/Skills/Skills'));
 const CoreSkillsRollouts = lazy(() => import('./pages/Core/Skills/Rollouts'));
 const CorePrompts = lazy(() => import('./pages/Core/Prompts'));
+const PromptApp = lazy(() => import('./pages/Prompts/AppTemplates'));
 const CoreTools = lazy(() => import('./pages/Core/Tools/Tools'));
 const WorkspaceTeams = lazy(() => import('./pages/App/Builder/TeamAssemblyPage'));
 const CorePlugins = lazy(() => import('./pages/Core/Plugins'));
@@ -95,6 +96,11 @@ const DiagnosticsExecBackends = lazy(() => import('./pages/Diagnostics/ExecBacke
 const DiagnosticsWorkflows = lazy(() => import('./pages/Diagnostics/Workflows'));
 const DiagnosticsCodeIntel = lazy(() => import('./pages/Diagnostics/CodeIntel/CodeIntel'));
 const DiagnosticsCapabilityGraph = lazy(() => import('./pages/Diagnostics/CapabilityGraph/CapabilityGraph'));
+const RepairCenter = lazy(() => import('./pages/Diagnostics/RepairCenter'));
+const ObservabilityDashboard = lazy(() => import('./pages/Diagnostics/ObservabilityDashboard'));
+const RunComparison = lazy(() => import('./pages/Diagnostics/RunComparison'));
+const ModelPlayground = lazy(() => import('./pages/Diagnostics/ModelPlayground'));
+const SystemGraph = lazy(() => import('./pages/SystemGraph'));
 const Onboarding = lazy(() => import('./pages/Onboarding/Onboarding'));
 
 const router = createBrowserRouter([
@@ -105,6 +111,7 @@ const router = createBrowserRouter([
       { index: true, element: withSuspense(SystemOverview) },
       { path: 'overview', element: <Navigate to="/system-overview" replace /> },
       { path: 'system-overview', element: withSuspense(SystemOverview) },
+      { path: 'system-graph', element: withSuspense(SystemGraph) },
       { path: 'alerts', element: withSuspense(Alerts) },
       { path: 'onboarding', element: withSuspense(Onboarding) },
       { path: 'infra/nodes', element: withSuspense(InfraNodes) },
@@ -130,6 +137,7 @@ const router = createBrowserRouter([
       { path: 'core/memory', element: withSuspense(CoreMemory) },
       { path: 'core/skill-packs', element: withSuspense(CoreSkillPacks) },
       { path: 'core/jobs', element: withSuspense(CoreJobs) },
+      { path: 'prompts/app', element: withSuspense(PromptApp) },
       { path: 'workspace/agents', element: withSuspense(WorkspaceAgents) },
       { path: 'workspace/skills', element: withSuspense(WorkspaceSkills) },
       { path: 'workspace/skills-lint', element: withSuspense(WorkspaceSkillLint) },
@@ -186,6 +194,10 @@ const router = createBrowserRouter([
       { path: 'diagnostics/workflows', element: withSuspense(DiagnosticsWorkflows) },
       { path: 'diagnostics/code-intel', element: withSuspense(DiagnosticsCodeIntel) },
       { path: 'diagnostics/capability-graph', element: withSuspense(DiagnosticsCapabilityGraph) },
+      { path: 'diagnostics/repairs', element: withSuspense(RepairCenter) },
+      { path: 'diagnostics/observability', element: withSuspense(ObservabilityDashboard) },
+      { path: 'diagnostics/run-comparison', element: withSuspense(RunComparison) },
+      { path: 'diagnostics/model-playground', element: withSuspense(ModelPlayground) },
     ],
   },
 ]);

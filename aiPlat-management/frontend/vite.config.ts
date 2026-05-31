@@ -61,6 +61,16 @@ export default defineConfig({
         changeOrigin: true,
         timeout: 600000,
       },
+      '/api/core/prompts': {
+        target: 'http://localhost:8002',
+        changeOrigin: true,
+        timeout: 600000,
+      },
+      '/api/core/observation': {
+        target: 'http://localhost:8002',
+        changeOrigin: true,
+        timeout: 600000,
+      },
       '/api/core': {
         target: 'http://localhost:8000',
         changeOrigin: true,

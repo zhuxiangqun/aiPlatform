@@ -369,6 +369,9 @@ export const diagnosticsApi = {
     const qs = q.toString();
     return apiClient.get<any>(`/core/diagnostics/code-intel/blast?${qs}`);
   },
+  getObservabilityStats: async () => {
+    return apiClient.get<any>('/core/diagnostics/observability/stats');
+  },
 };
 
 // Onboarding API

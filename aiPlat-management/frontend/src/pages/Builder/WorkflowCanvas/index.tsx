@@ -10,6 +10,7 @@ import 'reactflow/dist/style.css';
 import { Play, Save, ChevronRight, ChevronDown, Square, Loader2, History, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { Button, toast } from '../../../components/ui';
 import { workspaceAgentApi, workflowApi } from '../../../services';
+import { ExecutionViewer } from '../../../components/ExecutionViewer';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 
 /* ---------- LabeledEdge ---------- */
@@ -87,6 +88,10 @@ const CanvasInner: React.FC = () => {
   const [canvasMenu, setCanvasMenu] = useState<{ x: number; y: number } | null>(null);
   const [highlightNode, setHighlightNode] = useState<string | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [execViewerOpen, setExecViewerOpen] = useState(false);
+  const [lastRunId, setLastRunId] = useState('');
+  const [execDone, setExecDone] = useState(false);
+  const [replayMode, setReplayMode] = useState(false);
 
   const [canvasSearch, setCanvasSearch] = useState('');
   const [canvasSearchOpen, setCanvasSearchOpen] = useState(false);
@@ -218,6 +223,10 @@ const CanvasInner: React.FC = () => {
       const r: any = await workflowApi.execute(workflowId, { name: workflowName });
       const runId: string = r.run_id || r.project_id || '';
       setRunningPid(runId);
+      setLastRunId(runId);
+      setExecViewerOpen(true);
+      setExecDone(false);
+      setReplayMode(false);
       toast.success('流水线启动');
 
       // Start polling events API (SQLite-based)
@@ -246,12 +255,13 @@ const CanvasInner: React.FC = () => {
             else if (s._graph_trace?.some((e: any) => e.node === nid && e.status === 'started')) st = 'running';
             return { ...n, data: { ...n.data, status: st, _output: output || undefined, _input: _input || undefined, _elapsed: elapsed } };
           }));
-          if (phase === 'done' || phase === 'failed' || attempts > 120) {
+            if (phase === 'done' || phase === 'failed' || attempts > 120) {
             if (pollRef.current) clearInterval(pollRef.current);
             clearInterval(elapsedTimer);
             const finalElapsed = Math.floor((Date.now() - runStartRef.current) / 1000);
             setRunElapsed(finalElapsed);
             setIsRunning(false);
+            setExecDone(true);  // keep viewer open for results review
             if (phase === 'failed') toast.error('执行失败');
             else if (phase === 'done') {
               setNodes(nds => {
@@ -273,7 +283,7 @@ const CanvasInner: React.FC = () => {
     try { await workflowApi.stopRun(workflowId, runningPid); }
     catch { /* best effort */ }
     if (pollRef.current) clearInterval(pollRef.current);
-    setIsRunning(false); setStopping(false);
+    setIsRunning(false); setStopping(false); setExecDone(true);
     setNodes(nds => nds.map(n => ({ ...n, data: { ...n.data, status: 'idle' } })));
   }, [runningPid, workflowId, setNodes]);
 
@@ -455,6 +465,11 @@ const CanvasInner: React.FC = () => {
                                 _output: allState[`_stage_output_${n.id}`] || '', _input: allState[`_stage_input_${n.id}`] || '', _elapsed: allState[`_stage_elapsed_${n.id}`] || 0 }
                             })));
                             setIsRunning(false);
+                            // Open ExecutionViewer in replay mode
+                            setLastRunId(r.project_id);
+                            setExecViewerOpen(true);
+                            setExecDone(true);
+                            setReplayMode(true);
                           }
                           toast.success('已加载运行记录');
                         } catch { toast.error('加载失败'); }
@@ -478,7 +493,42 @@ const CanvasInner: React.FC = () => {
           )}
         </div>
       </div>
-      {isRunning && (
+      {/* Execution Viewer — shows during + after pipeline runs */}
+      {execViewerOpen && lastRunId && (
+        <div style={{
+          borderBottom: '1px solid #374151', display: 'flex', flexDirection: 'column',
+        }}>
+          <ExecutionViewer
+            title={`流水线执行: ${workflowName || 'Workflow'}`}
+            live={isRunning && !replayMode}
+            replayRunId={replayMode ? lastRunId : undefined}
+            runId={isRunning ? lastRunId : undefined}
+            running={isRunning}
+            elapsed={runElapsed}
+            summary={nodes.filter(n => n.data?.status === 'completed').length > 0 ? {
+              pass: nodes.filter(n => n.data?.status === 'completed').length,
+              warn: 0,
+              fail: nodes.filter(n => n.data?.status === 'failed').length,
+              total: nodes.length,
+            } : undefined}
+            height={320}
+          />
+          {execDone && (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '6px 0' }}>
+              <button
+                onClick={() => { setExecViewerOpen(false); setExecDone(false); }}
+                style={{
+                  background: '#374151', border: 'none', borderRadius: 4,
+                  color: '#9ca3af', cursor: 'pointer', fontSize: 11, padding: '2px 12px',
+                }}
+              >
+                关闭执行视图
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+      {isRunning && !execViewerOpen && (
         <div className="flex items-center gap-3 px-4 py-1.5 bg-blue-500/10 border-b border-blue-500/20 text-xs">
           <Loader2 className="w-3 h-3 text-blue-400 animate-spin" />
           <span className="text-blue-300">执行中 · {runElapsed}s</span>

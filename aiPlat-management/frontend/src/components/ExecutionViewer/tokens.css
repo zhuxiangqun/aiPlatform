@@ -1,0 +1,20 @@
+:root {
+  --ev-bg-primary: #111827;
+  --ev-bg-secondary: #1f2937;
+  --ev-bg-subflow: #1e2640;
+  --ev-text-primary: #e5e7eb;
+  --ev-text-secondary: #9ca3af;
+  --ev-text-muted: #6b7280;
+  --ev-border: #374151;
+  --ev-accent: #8b5cf6;
+  --ev-accent-light: #a78bfa;
+  --ev-success: #22c55e;
+  --ev-warning: #f59e0b;
+  --ev-error: #ef4444;
+  --ev-info: #3b82f6;
+  --ev-node-running: #3b82f6;
+  --ev-node-completed: #22c55e;
+  --ev-node-failed: #ef4444;
+  --ev-node-warning: #f59e0b;
+  --ev-node-idle: #374151;
+}
