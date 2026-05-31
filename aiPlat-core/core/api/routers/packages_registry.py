@@ -213,6 +213,11 @@ async def publish_package(pkg_name: str, http_request: Request, request: Package
     if not pkg:
         raise HTTPException(status_code=404, detail="package_not_found")
 
+    # Require package to be in "ready" status before publishing
+    status = getattr(pkg, "status", None) or (pkg.get("status") if isinstance(pkg, dict) else None)
+    if not status or status not in {"ready", "published"}:
+        raise HTTPException(status_code=409, detail=f"Package must be submitted for review first (status={status or 'draft'})")
+
     # Build archive from bundle
     reg_dir = _packages_registry_dir() / pkg_name
     reg_dir.mkdir(parents=True, exist_ok=True)

@@ -35,10 +35,10 @@ async def list_workspace_packages(include_engine: bool = True) -> Dict[str, Any]
     items: List[Dict[str, Any]] = []
     if workspace_pkg_mgr:
         for p in workspace_pkg_mgr.list_packages():
-            items.append({"name": p.name, "scope": p.scope, "version": p.version, "description": p.description, "resources": p.resources})
+            items.append({"name": p.name, "scope": p.scope, "version": p.version, "status": getattr(p, "status", "draft") or "draft", "description": p.description, "resources": p.resources})
     if include_engine and engine_pkg_mgr:
         for p in engine_pkg_mgr.list_packages():
-            items.append({"name": p.name, "scope": p.scope, "version": p.version, "description": p.description, "resources": p.resources})
+            items.append({"name": p.name, "scope": p.scope, "version": p.version, "status": getattr(p, "status", "draft") or "draft", "description": p.description, "resources": p.resources})
     return {"items": items, "total": len(items)}
 
 
@@ -54,10 +54,67 @@ async def get_workspace_package(pkg_name: str) -> Dict[str, Any]:
         "name": p.name,
         "scope": p.scope,
         "version": p.version,
+        "status": getattr(p, "status", "draft") or "draft",
         "description": p.description,
         "manifest_path": p.manifest_path,
         "package_dir": p.package_dir,
         "resources": p.resources,
+    }
+
+
+@router.post("/workspace/packages/{pkg_name}/submit-for-review")
+async def submit_workspace_package_for_review(pkg_name: str):
+    """Submit a workspace package for review. Requires draft or enabled status."""
+    workspace_pkg_mgr, _ = _mgrs()
+    if not workspace_pkg_mgr:
+        raise HTTPException(status_code=503, detail="Workspace package manager not available")
+
+    pkg = workspace_pkg_mgr.get_package(pkg_name)
+    if not pkg:
+        raise HTTPException(status_code=404, detail="package_not_found")
+
+    current_status = getattr(pkg, "status", "draft") or "draft"
+    if current_status not in {"draft", "enabled"}:
+        raise HTTPException(status_code=409, detail=f"Package status '{current_status}' cannot be submitted for review")
+
+    # Validate package.yaml structure
+    errors = []
+    if not pkg.name:
+        errors.append("missing package name")
+    if not pkg.version:
+        errors.append("missing version")
+    if not isinstance(pkg.resources, list):
+        errors.append("resources must be a list")
+    else:
+        for i, r in enumerate(pkg.resources):
+            kind = r.get("kind", "")
+            rid = r.get("id", "")
+            if not kind or not rid:
+                errors.append(f"resource[{i}]: missing kind or id")
+
+    if errors:
+        return {
+            "status": "failed",
+            "blocked": True,
+            "error_count": len(errors),
+            "messages": [f"ERROR: {e}" for e in errors],
+        }
+
+    # Build updated manifest with ready status
+    from pathlib import Path
+    manifest = {
+        "name": pkg.name,
+        "version": pkg.version,
+        "status": "ready",
+        "description": pkg.description,
+        "resources": pkg.resources,
+    }
+    workspace_pkg_mgr.upsert_package(manifest=manifest)
+    return {
+        "status": "ok",
+        "package_name": pkg_name,
+        "new_status": "ready",
+        "governance": "pending",
     }
 
 

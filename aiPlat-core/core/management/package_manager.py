@@ -75,6 +75,7 @@ class PackageInfo:
     name: str
     scope: str  # engine|workspace
     version: str
+    status: str = "draft"  # draft | ready | published | listed | deprecated
     description: str
     manifest_path: str
     package_dir: str
@@ -136,6 +137,7 @@ class PackageManager:
                     raw = {}
                 name = str(raw.get("name") or item.name)
                 version = str(raw.get("version") or "0.1.0")
+                status = str(raw.get("status") or "draft")
                 desc = str(raw.get("description") or "")
                 res = raw.get("resources") or []
                 resources: List[Dict[str, Any]] = []
@@ -155,6 +157,7 @@ class PackageManager:
                     name=name,
                     scope=self._scope,
                     version=version,
+                    status=status,
                     description=desc,
                     manifest_path=str(mf),
                     package_dir=str(item),
