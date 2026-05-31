@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Brain, Code, Network, RefreshCw, Download, GitBranch, BookOpen, Layers, Maximize2, Minimize2, Compass } from 'lucide-react';
+import { Brain, Code, Network, RefreshCw, Download, GitBranch, BookOpen, Layers, Maximize2, Minimize2, Compass, Globe } from 'lucide-react';
 import GraphCanvas from './GraphCanvas';
 import NodeDetailPanel from './NodeDetailPanel';
 import SearchBar from './SearchBar';
@@ -7,7 +7,7 @@ import LayerLegend from './LayerLegend';
 import ArchitectureView from './ArchitectureView';
 
 const SystemGraph: React.FC = () => {
-  const [tab, setTab] = useState<'code' | 'capability' | 'wiki' | 'architecture'>('code');
+  const [tab, setTab] = useState<'code' | 'capability' | 'wiki' | 'architecture' | 'domain'>('code');
   const [codeMode, setCodeMode] = useState<'file' | 'symbol'>('file');
   const [graphData, setGraphData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -76,6 +76,8 @@ const SystemGraph: React.FC = () => {
           lastCenter.current = c;
           url += (url.includes('?') ? '&' : '?') + `center=${encodeURIComponent(c)}&depth=${d || 2}`;
         }
+      } else if (tab === 'domain') {
+        url = '/api/core/diagnostics/code-intel/domain-view';
       } else {
         url = tab === 'capability'
           ? '/api/core/knowledge-graph/capability'
@@ -161,6 +163,14 @@ const SystemGraph: React.FC = () => {
               }`}
             >
               <Layers className="w-3 h-3" />架构全景
+            </button>
+            <button
+              onClick={() => { setTab('domain'); setActiveLayers(new Set()); }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                tab === 'domain' ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-gray-300'
+              }`}
+            >
+              <Globe className="w-3 h-3" />领域视图
             </button>
           </div>
           {/* Tour button */}
@@ -350,6 +360,50 @@ const SystemGraph: React.FC = () => {
                   <p className="text-xs text-gray-600">← 使用顶部全局搜索框搜索代码文件</p>
                 </div>
               </div>
+           ) : tab === 'domain' && graphData ? (
+            /* Domain view — card grid */
+            <div className="flex-1 overflow-y-auto p-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {(graphData.domains || []).map((d: any) => (
+                  <div
+                    key={d.id}
+                    className="p-4 rounded-xl bg-dark-card border border-dark-border hover:border-primary/30 transition-colors"
+                    style={{ borderLeftColor: d.color, borderLeftWidth: 3 }}
+                  >
+                    <div className="text-sm font-semibold text-gray-100 mb-2">{d.name}</div>
+                    <div className="flex items-center gap-3 text-xs text-gray-500">
+                      <span>{d.files} 文件</span>
+                      {d.symbols > 0 && <span>{d.symbols} 符号</span>}
+                    </div>
+                    <div className="mt-2 h-1 bg-dark-bg rounded-full overflow-hidden">
+                      <div style={{
+                        width: `${Math.min(100, (d.files / (graphData.total_files || 1)) * 100)}%`,
+                        height: '100%', background: d.color, borderRadius: '1px',
+                        transition: 'width 0.5s',
+                      }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {graphData.edges && graphData.edges.length > 0 && (
+                <div className="mt-4 p-3 bg-dark-card border border-dark-border rounded-lg">
+                  <div className="text-xs font-medium text-gray-300 mb-2">跨领域依赖关系</div>
+                  <div className="space-y-1">
+                    {graphData.edges.slice(0, 20).map((e: any, i: number) => {
+                      const fromD = (graphData.domains || []).find((d: any) => d.id === e.from);
+                      const toD = (graphData.domains || []).find((d: any) => d.id === e.to);
+                      return (
+                        <div key={i} className="flex items-center gap-2 text-[11px]">
+                          <span style={{ color: fromD?.color || '#6b7280' }}>{fromD?.name || e.from}</span>
+                          <span className="text-gray-600">→</span>
+                          <span style={{ color: toD?.color || '#6b7280' }}>{toD?.name || e.to}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
            ) : graphData ? (
             <GraphCanvas
               ref={chartRef}

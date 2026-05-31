@@ -720,14 +720,69 @@ async def guided_tour(limit: int = 30, rt=Depends(get_kernel_runtime)):
         })
     
     return {"tour": tour, "total": len(res.nodes)}
-    return {
-        "generated_at": _t.strftime("%Y-%m-%dT%H:%M:%SZ", _t.gmtime()),
-        "stats": {
-            "nodes": len(nodes_export),
-            "edges": len(res.edges),
-            "issues": len(res.issues),
-        },
-        "health": res.health,
-        "nodes": nodes_export,
-        "edges": res.edges,
-    }
+
+
+@router.get("/diagnostics/code-intel/domain-view")
+async def domain_view(rt=Depends(get_kernel_runtime)):
+    """Aggregate code graph into business domains."""
+    root_list = default_roots()
+    res = await code_intel_scan(rt, root_list)
+    nodes = res.nodes
+    edges = res.edges
+
+    DOMAIN_RULES = [
+        (lambda p: any(x in p for x in ["agents/", "AGENT.md"]), "agent_engineering", "研发 Agent", "#3b82f6"),
+        (lambda p: any(x in p for x in ["product_manager", "pm_agent", "prd"]), "product", "产品管理", "#f59e0b"),
+        (lambda p: any(x in p for x in ["qa_agent", "test", "quality", "e2e"]), "qa", "质量保证", "#22c55e"),
+        (lambda p: any(x in p for x in ["architect", "design"]), "architecture", "架构设计", "#8b5cf6"),
+        (lambda p: any(x in p for x in ["src/pages/", "src/components/", "App.tsx"]), "frontend_ui", "前端界面", "#ec4899"),
+        (lambda p: any(x in p for x in ["src/services/", "src/hooks/", "src/stores/"]), "frontend_api", "前端数据层", "#f472b6"),
+        (lambda p: any(x in p for x in ["api/routers/", "api/rest/", "facades/"]), "backend_api", "后端 API", "#6366f1"),
+        (lambda p: any(x in p for x in ["harness/execution/", "harness/syscalls/"]), "core_engine", "执行引擎", "#06b6d4"),
+        (lambda p: any(x in p for x in ["harness/knowledge/", "harness/memory/"]), "core_knowledge", "知识记忆", "#14b8a6"),
+        (lambda p: any(x in p for x in ["apps/mcp/", "mcps/", "mcp_manager"]), "mcp_system", "MCP 系统", "#eab308"),
+        (lambda p: any(x in p for x in ["infra/", "model/", "storage/"]), "infra", "基础设施", "#6b7280"),
+        (lambda p: any(x in p for x in ["apps/skills/", "skills/", "SKILL.md"]), "skills", "技能库", "#10b981"),
+        (lambda p: any(x in p for x in ["apps/agents/", "engine/agents/"]), "agent_definition", "Agent 定义", "#ef4444"),
+        (lambda p: any(x in p for x in ["management/", "governance", "audit"]), "governance", "治理审计", "#f97316"),
+        (lambda p: any(x in p for x in ["workspace_seeds/", "templates/"]), "templates", "种子模板", "#84cc16"),
+        (lambda p: any(x in p for x in ["docs/", "md$"]), "docs", "文档", "#9ca3af"),
+        (lambda p: any(x in p for x in ["harness/assembly/", "harness/infrastructure/", "harness/coordination/", "harness/feedback", "harness/evaluation"]), "core_runtime", "核心运行时", "#0ea5e9"),
+        (lambda p: any(x in p for x in ["generated/", "_stage_", "_final_"]), "generated", "生成产物", "#78716c"),
+    ]
+
+    domains: Dict[str, Dict] = {}
+    for nid, nd in nodes.items():
+        matched = False
+        for rule_fn, domain_id, label, color in DOMAIN_RULES:
+            if rule_fn(nid):
+                domains.setdefault(domain_id, {"id": domain_id, "name": label, "color": color, "files": [], "total_symbols": 0})
+                domains[domain_id]["files"].append(nid)
+                symbols = nd.get("symbols", [])
+                domains[domain_id]["total_symbols"] += len(symbols) if isinstance(symbols, list) else 0
+                matched = True
+                break
+        if not matched:
+            domains.setdefault("other", {"id": "other", "name": "其他", "color": "#4b5563", "files": [], "total_symbols": 0})
+            domains["other"]["files"].append(nid)
+
+    file_to_domain = {}
+    for did, d in domains.items():
+        for f in d["files"]:
+            file_to_domain[f] = did
+
+    domain_edges = []
+    seen = set()
+    for e in edges:
+        from_d = file_to_domain.get(e.get("from", ""))
+        to_d = file_to_domain.get(e.get("to", ""))
+        if from_d and to_d and from_d != to_d:
+            key = f"{from_d}->{to_d}"
+            if key not in seen:
+                seen.add(key)
+                domain_edges.append({"from": from_d, "to": to_d, "kind": e.get("kind", "import")})
+
+    domain_nodes = [{"id": d["id"], "name": d["name"], "color": d["color"], "files": len(d["files"]), "symbols": d["total_symbols"]} for d in domains.values()]
+    domain_nodes.sort(key=lambda x: -x["files"])
+
+    return {"domains": domain_nodes, "edges": domain_edges, "total_files": len(nodes)}
