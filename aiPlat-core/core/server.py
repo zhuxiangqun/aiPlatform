@@ -625,6 +625,28 @@ async def lifespan(app: FastAPI):
     except Exception:
         pass
 
+    # Workspace hooks seeds (user-facing). Best-effort materialization into ~/.aiplat/hooks (do NOT overwrite).
+    try:
+        from pathlib import Path
+
+        seeds_dir = Path(__file__).resolve().parent / "workspace_seeds" / "hooks"
+        workspace_dir = Path.home() / ".aiplat" / "hooks"
+        if seeds_dir.exists():
+            workspace_dir.mkdir(parents=True, exist_ok=True)
+            for item in seeds_dir.iterdir():
+                dst = workspace_dir / item.name
+                if dst.exists():
+                    continue
+                try:
+                    if item.is_file():
+                        shutil.copy2(item, dst)
+                    else:
+                        shutil.copytree(item, dst)
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
     # Workspace managers (user-facing). Strictly separated: no override of engine ids.
     try:
         global _workspace_agent_manager, _workspace_skill_manager, _workspace_mcp_manager
@@ -1305,6 +1327,7 @@ from core.api.routers.mcp_admin import router as mcp_admin_router  # noqa: E402
 from core.api.routers.workspace_packages import router as workspace_packages_router  # noqa: E402
 from core.api.routers.workspace_skills import router as workspace_skills_router  # noqa: E402
 from core.api.routers.workspace_skills_meta import router as workspace_skills_meta_router  # noqa: E402
+from core.api.routers.workspace_hooks import router as workspace_hooks_router  # noqa: E402
 from core.api.routers.engine_skills import router as engine_skills_router  # noqa: E402
 from core.api.routers.skill_packs import router as skill_packs_router  # noqa: E402
 from core.api.routers.packages_registry import router as packages_registry_router  # noqa: E402
@@ -1355,6 +1378,7 @@ api_router.include_router(plugins_router)
 api_router.include_router(learning_autocapture_router)
 api_router.include_router(mcp_admin_router)
 api_router.include_router(workspace_packages_router)
+api_router.include_router(workspace_hooks_router)
 api_router.include_router(workspace_skills_router)
 api_router.include_router(workspace_skills_meta_router)
 api_router.include_router(engine_skills_router)

@@ -1,7 +1,7 @@
 name: integrated_browser
-enabled: true
+enabled: false
 transport: sse
 url: http://localhost:0/mcp
 metadata:
-  description: 示例 MCP server 配置（实际 url/transport 请按部署环境修改）
+  description: "示例 MCP server — 默认禁用。启用前请先配置实际的 SSE endpoint 或替换为真实的 MCP 服务。"
 
