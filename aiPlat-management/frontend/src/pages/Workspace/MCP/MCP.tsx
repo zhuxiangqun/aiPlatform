@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Copy, Info, Pencil, Plus, RotateCw, ShieldCheck, Zap, Play, Trash2 } from 'lucide-react';
+import { Copy, Info, Pencil, Plus, RotateCw, ShieldCheck, Zap, Play, Trash2, Upload } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Badge, Table, Switch, Button, Modal, toast } from '../../../components/ui';
 import { useWorkspaceMcpStore } from '../../../stores';
@@ -97,6 +97,32 @@ const WorkspaceMCP: React.FC = () => {
     }
   };
 
+  const handleExportPlugin = async (s: McpServer) => {
+    try {
+      const res = await fetch('/api/core/workspace/packages/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: s.name,
+          version: '0.1.0',
+          description: (s.metadata as any)?.description || '',
+          resources: [{ kind: 'mcp', id: s.name }],
+        }),
+      });
+      if (!res.ok) { toast.error('导出失败'); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${s.name}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`已导出 ${s.name}`);
+    } catch (e: any) {
+      toast.error(`导出失败: ${e?.message || ''}`);
+    }
+  };
+
   const handleTemplateCreate = async () => {
     if (!templateName.trim()) { toast.error('请输入 MCP 名称'); return; }
     if (!templateId) { toast.error('请选择模板'); return; }
@@ -176,7 +202,7 @@ const WorkspaceMCP: React.FC = () => {
     {
       title: '操作',
       key: 'actions',
-      width: 140,
+      width: 160,
       align: 'center' as const,
       render: (_: unknown, record: McpServer) => (
         <div className="flex items-center justify-center gap-1">
@@ -217,6 +243,13 @@ const WorkspaceMCP: React.FC = () => {
             title="删除"
           >
             <Trash2 className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => handleExportPlugin(record)}
+            className="p-1.5 rounded-lg text-purple-400 hover:bg-purple-400/10 transition-colors"
+            title="导出为插件"
+          >
+            <Upload className="w-4 h-4" />
           </button>
         </div>
       ),
