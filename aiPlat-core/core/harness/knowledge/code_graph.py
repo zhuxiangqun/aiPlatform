@@ -210,17 +210,38 @@ _API_CALL_RE = re.compile(
 _BACKEND_ROUTE_RE = re.compile(r"""@router\.\w+\(\s*['"]([^'"]+)['"]""", re.I)
 
 
-def _extract_js_routes(filepath: Path) -> List[str]:
-    """Extract React Router / route paths from TSX/TS files."""
+def _extract_js_routes(filepath: Path) -> list:
+    """Extract React Router routes with component names from TSX/TS files.
+    Returns list of [path, component_name, line_no, 'GET'] per route."""
     try:
         text = _read_text(filepath)
     except Exception:
         return []
+    lines = text.split('\n')
     routes = []
-    for m in _ROUTE_PATH_RE.finditer(text):
-        path = m.group(1)
-        if path and not path.startswith('*') and path != '/':
-            routes.append(path)
+    for i, line in enumerate(lines):
+        for m in _ROUTE_PATH_RE.finditer(line):
+            path = m.group(1)
+            if not path or path.startswith('*'):
+                continue
+            # Try to find component/import in current line + next 3 lines
+            scan = line + '\n' + '\n'.join(lines[i+1:i+4] if i+4 <= len(lines) else lines[i+1:])
+            comp = ""
+            # Pattern: element={withSuspense(Comp)} or element: withSuspense(Comp)
+            ele_match = re.search(r'element\s*[:=]\s*\{?\s*withSuspense\((\w+)\)', scan)
+            if ele_match:
+                comp = ele_match.group(1)
+            else:
+                # Pattern: element={<Comp />}
+                ele_match = re.search(r'element\s*[:=]\s*\{?\s*<(\w+)', scan)
+                if ele_match:
+                    comp = ele_match.group(1)
+                else:
+                    # Pattern: component={Comp}
+                    comp_match = re.search(r'component\s*[:=]\s*\{?\s*(\w+)', scan)
+                    if comp_match:
+                        comp = comp_match.group(1)
+            routes.append([path, comp, i + 1, 'GET'])
     return routes
 
 
@@ -240,18 +261,75 @@ def _extract_api_calls(filepath: Path) -> List[str]:
     return list(set(endpoints))
 
 
-def _extract_backend_routes(filepath: Path) -> List[str]:
-    """Extract FastAPI @router routes from Python backend files."""
+def _extract_backend_routes(filepath: Path) -> list:
+    """Extract FastAPI @router routes with handler names and line numbers.
+    Returns list of [path, handler_name, line_no, method] per route.
+    Uses AST for Python files to reliably pair decorator→function.
+    Falls back to regex for non-Python or syntax-error files."""
+    ext = filepath.suffix.lower()
+    if ext != ".py":
+        # Fallback to regex for config files
+        try:
+            text = _read_text(filepath)
+        except Exception:
+            return []
+        return [[m.group(1), "", 0, "GET"] for m in _BACKEND_ROUTE_RE.finditer(text) if m.group(1)]
+
     try:
         text = _read_text(filepath)
-    except Exception:
-        return []
+        if not text:
+            return []
+        tree = ast.parse(text, filename=str(filepath))
+    except (SyntaxError, Exception):
+        # Regex fallback
+        result = []
+        for m in _BACKEND_ROUTE_RE.finditer(text):
+            path = m.group(1)
+            if path:
+                result.append([path, "", m.start() // max(1, text.count('\n', 0, m.start())), "GET"])
+        return result
+
     routes = []
-    for m in _BACKEND_ROUTE_RE.finditer(text):
-        path = m.group(1)
-        if path:
-            routes.append(path)
-    return list(set(routes))
+    methods = {"get", "post", "put", "delete", "patch", "head", "options"}
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            for decorator in node.decorator_list:
+                method, path = _parse_router_decorator(decorator, methods)
+                if path:
+                    routes.append([path, node.name, node.lineno, method.upper()])
+    return routes
+
+
+def _parse_router_decorator(decorator: ast.expr, methods: set) -> tuple:
+    """Parse @router.get('/path') or @router.post('/path') decorator.
+    Returns (method_str, path_str) or ("", "") if not a router decorator."""
+    if not isinstance(decorator, ast.Call):
+        return ("", "")
+    # Check for @router.get, @router.post, etc.
+    func = decorator.func
+    method_name = ""
+    if isinstance(func, ast.Attribute):
+        if isinstance(func.value, ast.Name) and func.value.id == "router":
+            method_name = func.attr
+        elif isinstance(func.value, ast.Attribute) and _get_attr_name(func.value) == "router":
+            method_name = func.attr
+    if method_name not in methods:
+        return ("", "")
+    # Extract first string argument (the path)
+    if decorator.args:
+        first_arg = decorator.args[0]
+        if isinstance(first_arg, ast.Constant) and isinstance(first_arg.value, str):
+            return (method_name, first_arg.value)
+    return ("", "")
+
+
+def _get_attr_name(node: ast.expr) -> str:
+    """Get the full dotted name of an attribute chain."""
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        return _get_attr_name(node.value) + "." + node.attr
+    return ""
 
 
 def _link_frontend_to_backend(
@@ -267,8 +345,10 @@ def _link_frontend_to_backend(
         if bf.suffix.lower() != ".py":
             continue
         for route in _extract_backend_routes(bf):
-            if route.startswith('/'):
-                route_index.setdefault(route, str(bf.relative_to(repo_root)))
+            # Handle both old str format and new [path, handler, line, method] format
+            path = route[0] if isinstance(route, (list, tuple)) and len(route) > 0 else str(route)
+            if path.startswith('/'):
+                route_index.setdefault(path, str(bf.relative_to(repo_root)))
 
     for ff in frontend_files:
         rel_from = str(ff.relative_to(repo_root))
@@ -926,28 +1006,50 @@ def _build_symbol_graph(
         routes = fn.get("routes", [])
         if routes:
             for road in routes:
-                route_node_id = f"{file_id}::route::{road}"
+                # Handle both old format (str) and new format (list)
+                if isinstance(road, str):
+                    path, handler, line, method = road, "", 0, "GET"
+                elif isinstance(road, (list, tuple)):
+                    path = road[0] if len(road) > 0 else ""
+                    handler = road[1] if len(road) > 1 else ""
+                    line = road[2] if len(road) > 2 else 0
+                    method = road[3] if len(road) > 3 else "GET"
+                else:
+                    continue
+                label = f"{method} /{path}"
+                route_node_id = f"{file_id}::route::{path}"
                 symbol_nodes[route_node_id] = {
                     "id": route_node_id,
-                    "name": f"/{road}",
+                    "name": label,
                     "kind": "route",
                     "file": file_id,
-                    "line": 0,
+                    "line": line,
                     "layer": _layer_bucket(file_id),
                     "ext": fn.get("ext", ""),
                     "issue_count": 0,
                 }
-                # Link route to first function in file
-                first_sym = fn.get("symbols", [])
-                if first_sym:
-                    sym = first_sym[0]
-                    if isinstance(sym, (list, tuple)) and len(sym) >= 2:
+                # Link route to the handler function in this file
+                for sym in fn.get("symbols", []):
+                    if isinstance(sym, (list, tuple)) and len(sym) >= 2 and handler and sym[0] == handler:
                         symbol_edges.append({
                             "from": route_node_id,
                             "to": f"{file_id}::{sym[0]}",
                             "kind": "route_to",
-                            "label": road,
+                            "label": method,
                         })
+                        break
+                else:
+                    # Fallback: link to first function
+                    first_sym = fn.get("symbols", [])
+                    if first_sym:
+                        sym = first_sym[0]
+                        if isinstance(sym, (list, tuple)) and len(sym) >= 2:
+                            symbol_edges.append({
+                                "from": route_node_id,
+                                "to": f"{file_id}::{sym[0]}",
+                                "kind": "route_to",
+                                "label": path,
+                            })
 
     return symbol_nodes, symbol_edges
 

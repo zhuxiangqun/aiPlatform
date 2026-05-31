@@ -577,9 +577,9 @@ const SystemGraph: React.FC = () => {
                     <div style={{ marginTop: 4 }}>
                       <span style={{ fontSize: 9, color: '#6b7280' }}>🔗 路由:</span>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: 2 }}>
-                        {step.routes.slice(0, 5).map((r, i) => (
+                        {step.routes.filter((r: any) => r.path).slice(0, 5).map((r: any, i: number) => (
                           <span key={i} style={{ fontSize: 9, color: '#f59e0b', background: '#451a03', borderRadius: 3, padding: '0 4px' }}>
-                            /{r}
+                            {typeof r === 'string' ? `/${r}` : r.path}{r.handler ? ` → ${r.handler}()` : ''}
                           </span>
                         ))}
                         {step.routes.length > 5 && <span style={{ fontSize: 9, color: '#6b7280' }}>+{step.routes.length - 5}</span>}
