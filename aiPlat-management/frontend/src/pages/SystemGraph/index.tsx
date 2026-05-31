@@ -15,6 +15,8 @@ const SystemGraph: React.FC = () => {
   const [activeLayers, setActiveLayers] = useState<Set<string>>(new Set(['infra', 'core', 'platform', 'app']));
   const [diffInput, setDiffInput] = useState('');
   const [diffNodes, setDiffNodes] = useState<Set<string>>(new Set());
+  const [diffResult, setDiffResult] = useState<{ file: string; affected: string[]; count: number } | null>(null);
+  const [diffLoading, setDiffLoading] = useState(false);
   const chartRef = useRef<any>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const [globalResults, setGlobalResults] = useState<any>(null);
@@ -397,25 +399,54 @@ const SystemGraph: React.FC = () => {
             type="text"
             value={diffInput}
             onChange={e => setDiffInput(e.target.value)}
-            onKeyDown={e => {
+            onKeyDown={async e => {
               if (e.key === 'Enter') {
-                const files = diffInput.split(/[\n,]/).map(f => f.trim()).filter(Boolean);
-                const matchSet = new Set<string>();
-                (graphData?.nodes || []).forEach((n: any) => {
-                  if (files.some(f => (n.id || n.fullName || '').includes(f))) matchSet.add(n.id);
-                });
-                setDiffNodes(matchSet);
+                const file = diffInput.trim();
+                if (!file) return;
+                setDiffLoading(true);
+                try {
+                  // Call blast radius API
+                  const res = await fetch(`/api/core/diagnostics/code-intel/blast?file=${encodeURIComponent(file)}`);
+                  const data = await res.json();
+                  const affected: string[] = data.affected || [];
+                  const matchSet = new Set<string>([file, ...affected]);
+                  setDiffNodes(matchSet);
+                  setDiffResult({ file, affected, count: affected.length });
+                } catch {
+                  // Fallback: simple name matching
+                  const files = diffInput.split(/[\n,]/).map(f => f.trim()).filter(Boolean);
+                  const matchSet = new Set<string>();
+                  (graphData?.nodes || []).forEach((n: any) => {
+                    if (files.some(f => (n.id || n.fullName || '').includes(f))) matchSet.add(n.id);
+                  });
+                  setDiffNodes(matchSet);
+                  setDiffResult(null);
+                } finally {
+                  setDiffLoading(false);
+                }
               }
             }}
             placeholder="输入改动文件路径（逗号或换行分隔），按 Enter 高亮影响..."
             className="flex-1 bg-dark-bg border border-dark-border rounded px-2 py-1 text-[10px] text-gray-300 outline-none focus:border-primary/50"
           />
           <span className="text-[10px] text-gray-600">
-            {diffNodes.size > 0 ? `${diffNodes.size} 节点已高亮` : '输入文件后按 Enter'}
+            {diffLoading ? '分析中...' : diffResult ? `⚠ ${diffResult.affected.length} 个受影响文件` : diffNodes.size > 0 ? `${diffNodes.size} 节点高亮` : '输入文件路径，按 Enter 分析影响面'}
           </span>
           {diffNodes.size > 0 && (
-            <button onClick={() => { setDiffNodes(new Set()); setDiffInput(''); }} className="text-[10px] text-gray-500 hover:text-gray-300">
+            <button onClick={() => { setDiffNodes(new Set()); setDiffInput(''); setDiffResult(null); }} className="text-[10px] text-gray-500 hover:text-gray-300">
               清除
+            </button>
+          )}
+          {diffResult && diffResult.affected.length > 0 && (
+            <button
+              onClick={() => {
+                const list = `目标文件: ${diffResult.file}\n\n受影响文件 (${diffResult.affected.length}):\n${diffResult.affected.map(f => '  - ' + f).join('\n')}`;
+                navigator.clipboard.writeText(list);
+              }}
+              className="text-[10px] text-gray-500 hover:text-gray-300"
+              title="复制影响面清单"
+            >
+              复制清单
             </button>
           )}
           <button onClick={() => setDiffInput('')} className="text-gray-500 text-[10px]">×</button>
