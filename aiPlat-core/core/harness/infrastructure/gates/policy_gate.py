@@ -20,7 +20,7 @@ import os
 import hashlib
 import fnmatch
 
-from core.apps.tools.permission import Permission, get_permission_manager  # noqa: data type (enum) + permission manager — allowed exception
+from core.apps.tools.permission import Permission  # noqa: allowed — data type (enum)
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.policy.engine import evaluate_tool_policy_snapshot, PolicyDecision as EngineDecision
 # DI: resolve_skill_permission via SkillPermissionResolver
@@ -259,6 +259,7 @@ class PolicyGate:
         """Single-point permission enforcement for tool execution (§11)."""
         if self._disable_approvals:
             return PolicyResult(decision=PolicyDecision.ALLOW)
+        from core.harness.integration import get_permission_manager
         perm_mgr = get_permission_manager()
         if not perm_mgr.check_permission(user_id, tool_name, Permission.EXECUTE):
             return PolicyResult(
@@ -505,6 +506,7 @@ class PolicyGate:
             from core.harness.kernel.execution_context import get_active_request_context
 
             if get_active_request_context() is not None:
+                from core.harness.integration import get_permission_manager
                 perm_mgr = get_permission_manager()
                 if not perm_mgr.check_permission(user_id, str(skill_name or ""), Permission.EXECUTE):
                     return PolicyResult(

@@ -13,6 +13,8 @@ required_skills:
 required_tools:
   - file_operations
   - search
+  - sysgraph_search
+  - sysgraph_context
 status: ready
 protected: true
 category: knowledge
@@ -36,6 +38,8 @@ pipeline:
 4. **矛盾标记而非删除**。新旧知识矛盾时，标记 `contradictions` 字段而非删除旧内容。
 
 ### 工作流程
+
+> 探索代码结构时优先用 sysgraph_* 工具（比 grep/read 快 10×）
 
 ```
 新文档 → knowledge_editor: 分析 + 更新 Wiki

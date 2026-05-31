@@ -6,7 +6,7 @@ Scans content for sensitive information and security vulnerabilities.
 
 import re
 from typing import Any, Dict, List, Pattern
-from datetime import datetime
+from datetime import datetime, timezone
 from dataclasses import field
 
 from .types import (
@@ -133,7 +133,7 @@ class SecurityScanner:
         return SecurityScanResult(
             passed=not any_high,
             vulnerabilities=vulnerabilities,
-            scanned_at=datetime.utcnow().isoformat(),
+            scanned_at=datetime.now(timezone.utc).isoformat(),
             scanned_content_length=len(content)
         )
 

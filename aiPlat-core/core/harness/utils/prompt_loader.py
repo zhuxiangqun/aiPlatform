@@ -1,0 +1,685 @@
+"""
+Prompt template loader — resolves prompt templates from database.
+
+All LLM-facing prompt templates should be loaded through this module instead of
+being hardcoded as f-strings. This enables centralized management via the
+Core/Prompts frontend without code changes.
+
+Resolution chain: cache → DB → default (code-embedded, always available)
+"""
+import logging
+import time
+from typing import Any, Dict, List, Optional, Tuple
+
+_log = logging.getLogger("aiplat.prompt_loader")
+
+_DEFAULT_PROMPTS: Dict[str, str] = {}
+_METADATA: Dict[str, Dict[str, Any]] = {}
+# B-class cache: high-frequency templates, 60s TTL
+_CACHE: Dict[str, str] = {}
+_CACHE_TS: Dict[str, float] = {}
+
+
+def _register(template_id: str, content: str, **metadata):
+    _DEFAULT_PROMPTS[template_id] = content
+    _METADATA[template_id] = {
+        "category": metadata.get("category", "general"),
+        "immutable": metadata.get("immutable", False),
+        "variables": metadata.get("variables", []),
+        "cache_ttl": metadata.get("cache_ttl", 0),
+    }
+
+
+_CLASSIFICATION_CACHE: Dict[str, str] = {}
+
+
+def auto_classify(template_id: str) -> str:
+    """Classify template as 'admin' or 'app' by scanning real call sites in source code.
+
+    Scans all .py files under aiPlat-core/ for _sync_resolve / _async_prompt_resolve
+    calls referencing the given template_id.  Results are cached for subsequent calls.
+
+    Admin: callers in harness/engine, memory, assembly, evaluation, knowledge, skills infrastructure
+    App: callers in API routers, service layer, platform layer, or no callers found
+    """
+    # Cache hit
+    cached = _CLASSIFICATION_CACHE.get(template_id)
+    if cached is not None:
+        return cached
+
+    # Scan source files for call site patterns
+    import re
+    from pathlib import Path
+    # core_dir = aiPlat-core/core → scan from aiPlat-core/ (package root)
+    scan_dir = Path(__file__).resolve().parent.parent.parent.parent
+    if not scan_dir.is_dir():
+        scan_dir = Path(__file__).resolve().parent
+
+    callers: list = []
+    patterns = [
+        f'_sync_resolve("{template_id}"',
+        f"_sync_resolve('{template_id}'",
+        f'_async_prompt_resolve("{template_id}"',
+        f"_async_prompt_resolve('{template_id}'",
+    ]
+
+    try:
+        # Limit scan depth for performance
+        for i, py_file in enumerate(scan_dir.rglob("*.py")):
+            if i > 5000:
+                break
+            if "__pycache__" in str(py_file) or "test_" in py_file.name or "conftest" in py_file.name:
+                continue
+            try:
+                content = py_file.read_text(encoding="utf-8", errors="ignore")
+                for pat in patterns:
+                    if pat in content:
+                        rel = str(py_file.relative_to(scan_dir))
+                        callers.append(rel)
+                        break
+            except Exception:
+                continue
+    except Exception:
+        pass
+
+    # Classify based on caller location
+    admin_dirs = (
+        "core/harness/execution/", "core/harness/memory/",
+        "core/harness/assembly/", "core/harness/coordination/",
+        "core/harness/evaluation/", "core/harness/knowledge/",
+        "core/harness/execution/langgraph/",
+        "core/apps/skills/executor", "core/apps/skills/registry",
+        "core/apps/skills/base",
+    )
+    result = "app"
+    for caller in callers:
+        if any(caller.startswith(d) for d in admin_dirs):
+            result = "admin"
+            break
+
+    # Cache
+    _CLASSIFICATION_CACHE[template_id] = result
+    return result
+
+
+def list_templates() -> List[Tuple[str, str, Dict]]:
+    """List all registered templates with metadata."""
+    result = []
+    for tid in _DEFAULT_PROMPTS:
+        meta = _METADATA.get(tid, {})
+        result.append((tid, _DEFAULT_PROMPTS[tid], meta))
+    return result
+
+
+def _sync_resolve(template_id: str, **variables) -> str:
+    """Sync resolve: cache → default. No DB dependency, safe for sync callers."""
+    meta = _METADATA.get(template_id, {})
+    ttl = meta.get("cache_ttl", 0)
+    if ttl > 0:
+        cached = _CACHE.get(template_id, "")
+        if cached and (time.time() - _CACHE_TS.get(template_id, 0)) < ttl:
+            return _substitute(cached, variables)
+
+    default = _DEFAULT_PROMPTS.get(template_id)
+    if not default:
+        raise ValueError(f"Unknown prompt template: {template_id}")
+
+    if ttl > 0:
+        _CACHE[template_id] = default
+        _CACHE_TS[template_id] = time.time()
+
+    return _substitute(default, variables)
+
+
+def get_metadata(template_id: str) -> Optional[Dict]:
+    """Get template metadata (variables, role, category, immutable)."""
+    return _METADATA.get(template_id)
+
+
+# ── Default prompt templates ──────────────────────────────────────
+
+# === KERNEL — Engine ===
+_register("react-reasoning", """Task: ${task}
+
+History:
+${history}
+${mem_hints}
+${bus_hints}
+
+Available tools:
+${tools_desc}
+
+Available skills:
+${skills_desc}
+
+Observation: ${observation}
+
+Think about what to do next. If you need to call a tool or skill, output in strict JSON:
+{"type":"tool_call","tool":"tool_name","input":{...}}
+{"type":"skill_call","skill":"skill_name","input":"..."}
+If you have the final answer, output: {"type":"done","answer":"your answer"}
+
+Respond in Chinese unless the task is in English.""",
+    category="engine", cache_ttl=60,
+    variables=["task", "history", "mem_hints", "bus_hints", "tools_desc", "skills_desc", "observation"])
+
+_register("plan-execute-plan", """请为以下任务生成可执行的步骤计划。
+
+任务: ${task}
+上下文: ${context}
+
+要求:
+1) 普通步骤用自然语言描述即可。
+2) 若需调用工具，请用结构化 JSON 格式: {"tool_call": {"tool": "name", "input": {...}}}
+3) 若需调用技能: {"skill_call": {"skill": "name", "input": "..."}}
+4) 每步明确验收标准。""",
+    category="engine", cache_ttl=60,
+    variables=["task", "context"])
+
+_register("langgraph-reason", """Current state:
+- History: ${history}
+- Reasoning: ${reasoning}
+- Action: ${action}
+- Observation: ${observation}
+
+Based on the current state, what is the next reasoning step? Provide a concise analysis and decide the next action.""",
+    category="engine", cache_ttl=60,
+    variables=["history", "reasoning", "action", "observation"])
+
+_register("langgraph-observe", """Observation from tool execution: ${observation}
+
+Based on this observation, what should I do next?
+- If the task is complete, respond with DONE: [answer]
+- If there was an error, respond with ERROR: [description]
+- Otherwise, describe the next action.""",
+    category="engine", cache_ttl=60,
+    variables=["observation"])
+
+_register("browser-assistant", """你是浏览器自动化助手。涉及网页/浏览器的任务，必须使用 browser 工具一步步操作。
+
+交互流程（必须严格遵守）：
+1. goto 打开目标页面
+2. list_elements 获取可交互元素
+3. type / click 执行操作
+4. screenshot 验证结果
+5. 完成后输出 DONE: [summary]
+
+每个步骤必须报出具体的选择器和操作内容。禁止用训练数据直接回答，必须实际操作浏览器。""",
+    category="engine", cache_ttl=60,
+    variables=[])
+
+_register("relevance-ranker", """You are a relevance ranker. Given a user query and retrieved passages, rank them by relevance to the query. Return the top ${top_k} passages in order, with a relevance score (0-1).
+
+Query: ${query}
+
+Passages:
+${passages}
+
+Output format: JSON array of {"rank": 1, "score": 0.95, "content": "..."}""",
+    category="engine", cache_ttl=60,
+    variables=["query", "passages", "top_k"])
+
+_register("meta-agent-diagnosis", """Stage ${stage_id} (agent=${agent_id}) REJECTED after multiple retries.
+${diagnosis_context}
+
+Output ONLY this JSON (no preamble): {"diagnosis":"<1 sentence>","suggested_prompt_extra":"<追加内容>","suggested_agent_type":"react|plan|reflection","enable_test_plan":false}""",
+    category="engine",
+    variables=["stage_id", "agent_id", "diagnosis_context"])
+
+# === KERNEL — Memory ===
+_register("compaction-prompt", """You are a conversation compressor. Compress the conversation history below into a summary.
+
+Requirements:
+1) Preserve key conclusions, ongoing plans, and important context
+2) Retain all entity identifiers, file paths, project names
+3) Keep user decisions and preferences
+4) Output as a single paragraph
+
+Identifiers to preserve: ${identifiers}
+
+History:
+${history}""",
+    category="memory",
+    variables=["identifiers", "history"])
+
+_register("memory-review", """Review the conversation above and extract facts about the user, team, or project.
+
+Output as JSON with these keys:
+- preferences: what the user likes/dislikes
+- constraints: technical or business limitations
+- decisions: key decisions made
+- work_style: how the user prefers to work
+
+Only include information explicitly stated or clearly implied. Do not make assumptions.""",
+    category="memory",
+    variables=[])
+
+_register("memory-skill-review", """Review this stage execution and determine if a reusable skill should be created or updated.
+
+Stage: ${stage_name}
+Agent: ${agent_id}
+Output: ${output_summary}
+
+Should a reusable skill be created? Output JSON:
+{"create_skill": true/false, "skill_name": "...", "description": "...", "reasoning": "..."}""",
+    category="memory",
+    variables=["stage_name", "agent_id", "output_summary"])
+
+_register("episodic-summary", """Summarize this conversation session in 2-3 sentences.
+
+Focus on: what was accomplished, key decisions made, and remaining work.
+
+Output as JSON:
+{"summary": "string", "decisions": ["decision 1", ...], "next_steps": ["step 1", ...]}""",
+    category="memory",
+    variables=[])
+
+# === KERNEL — Evaluation ===
+_register("eval-auto", """你是一个严格的 QA evaluator。你将根据一次系统 run 的执行摘要与事件日志，输出一份结构化评估报告 JSON。
+
+要求：
+1) 只输出 JSON，不要 markdown 标记
+2) 给出 pass (boolean) 和 score (0-10)
+3) 列出 issues 数组，每项含 severity, description, evidence
+4) 列出 action_items 数组，每项含 action, priority, effort
+
+Run summary:
+${run_summary}
+
+Events:
+${events}""",
+    category="evaluation",
+    variables=["run_summary", "events"])
+
+_register("qaeval-system-role", """You are a strict software QA evaluator.
+
+Evaluate the system output against the requirements. Be objective, specific, and reference evidence from the run logs.
+
+Output valid JSON only, no markdown fences.""",
+    category="evaluation",
+    variables=[])
+
+_register("rag-evaluator", """你是知识库助手。请严格基于提供的上下文回答问题，不要编造信息。
+
+如果上下文不足以回答，请诚实说明。""",
+    category="evaluation",
+    variables=[])
+
+# === KERNEL — Knowledge ===
+_register("wiki-curator", """You are a knowledge curator. Read the following content and extract structured knowledge atoms.
+
+Requirements:
+1) Extract key entities, concepts, and relationships
+2) Categorize into: entities, topics, contradictions
+3) If identifying contradictions, reference conflicting sources
+4) Suggest merges for duplicate content
+5) Output strict JSON
+
+Content:
+${content}""",
+    category="knowledge",
+    variables=["content"])
+
+_register("wiki-system-role", """You are a knowledge curation assistant. Reply with JSON only, no markdown fences.
+
+Extract facts, identify contradictions, and flag duplicate content.""",
+    category="knowledge",
+    variables=[])
+
+# === KERNEL — Reflection ===
+_register("reflection-critic", """Evaluate the following output against the specified dimensions.
+
+Output:
+${output}
+
+Dimensions:
+${dimensions}
+
+For each dimension, provide a score (0-10) and brief feedback.
+If any dimension scores below 6, mark as REJECTED.
+
+Output JSON:
+{"verdict": "PASS" | "REJECTED", "scores": {...}, "feedback": [...], "overall": N}""",
+    category="engine",
+    variables=["output", "dimensions"])
+
+_register("reflection-executor", """Task: ${task}
+
+Please provide a complete and accurate answer. Consider all aspects of the task and provide a thorough response.""",
+    category="engine",
+    variables=["task"])
+
+_register("reflection-improve", """Your previous output was evaluated and needs improvement.
+
+Previous output:
+${previous_output}
+
+Feedback:
+${feedback}
+
+Please improve your output based on the feedback. Keep what was correct and fix what was identified as issues.""",
+    category="engine",
+    variables=["previous_output", "feedback"])
+
+# === KERNEL — Coordination ===
+_register("supervisor-delegate", """Task: ${task}
+
+Available workers:
+${workers}
+
+Delegate subtasks to appropriate workers. Output the delegation plan as JSON:
+{"delegations": [{"worker": "name", "subtask": "description"}]}""",
+    category="engine",
+    variables=["task", "workers"])
+
+_register("results-aggregate", """Results from workers:
+${outputs}
+
+Provide a comprehensive final answer that synthesizes all worker results. Address the original task completely.""",
+    category="engine",
+    variables=["outputs"])
+
+# === OPERATOR — Graph & NL ===
+_register("graph-ask", """你是代码库专家。用户问："${question}"
+
+你可以使用以下工具：
+- describe_layer(layer, type) → 描述一个层的架构信息
+    type=capabilities → 模块结构 + 关键符号 + agent/skill列表
+    type=relationships → 该层与其他层的导入关系
+    type=interfaces → REST API端点列表
+    适用层: core, infra, platform, app, management
+- sysgraph_stats → 返回全局统计
+- sysgraph_search(name) → 按文件名搜索
+- sysgraph_hotspots(metric) → 热点模块
+- sysgraph_churn → 最近修改的文件
+- sysgraph_tests(untested=true) → 测试覆盖
+- sysgraph_find(name, kind) → 按函数/类名查找定义
+
+问题分类:
+- "XX层有什么能力" → describe_layer(layer="XX", type="capabilities")
+- "XX层跟YY层的关系" → describe_layer(layer="XX", type="relationships")
+- "XX层有哪些接口" → describe_layer(layer="XX", type="interfaces")
+- 统计/搜索类问题 → 用 sysgraph_* 工具
+
+返回严格 JSON（无 markdown）:
+{"tool":"tool_name","args":{...},"answer":"一句话解释"}
+如果不需要查询直接能回答，返回: {"answer":"一句话"}
+
+只返回 JSON，不要任何其他内容。""",
+    category="graph",
+    variables=["question"])
+
+_register("graph-ask-translate", """用户问："${question}"
+系统查询结果：
+${results_text}
+
+请用 3-5 句中文回答用户的问题。引用具体的模块名、文件名、关键符号。
+简明扼要，不要重复问题。直接回答即可。""",
+    category="graph",
+    variables=["question", "results_text"])
+
+_register("graph-system-role", """你是代码库专家。只输出 JSON，不要任何解释。""",
+    category="graph",
+    variables=[])
+
+_register("graph-architect-role", """你是代码库架构师。用中文简洁回答。""",
+    category="graph",
+    variables=[])
+
+_register("graph-chat-stream", """You are a codebase expert. Below is relevant code structure:
+${context}
+
+User question: ${question}
+
+Answer concisely in Chinese, referencing specific file paths. Keep it under 300 words.""",
+    category="graph",
+    variables=["context", "question"])
+
+# === OPERATOR — Agent Config ===
+_register("agent-auto-fill", """你是一个 AI 平台配置专家。用户正在创建一个新的 AI Agent，请根据以下功能描述推荐最优配置。
+
+## 用户输入
+- 名称: ${name}
+- 功能描述: ${description}
+${role_section}
+
+## 可用技能 (Skills)
+${skills_catalog}
+
+## 可用工具 (Tools)
+${tools_catalog}
+
+## 可用 MCP 服务器
+${mcp_catalog}
+
+## 可委派的子 Agent
+${agent_catalog}
+
+## 可用 Workflow 模板
+${wf_catalog}
+
+## 可用的用户应用模板 (Prompt Templates)
+${app_template_catalog}
+
+## Agent 类型说明
+- base: 基础 Agent，通用聊天/问答
+- react: ReAct 模式，适合需要工具调用、多步推理、结构化输出的 Agent
+- plan: Plan-Execute 模式，先规划再执行，适合复杂多步骤任务
+- tool: 工具调用模式，配合 Function Calling 使用
+- conversational: 纯对话模式，仅适用于无工具调用、单轮问答的客服/闲聊 Agent
+
+## 任务
+根据用户的功能描述${role_phrase}，推荐最匹配的配置。输出严格 JSON（无 markdown 标记）:
+{"agent_type":"react|plan|tool|base|conversational","config":{"model":"deepseek-chat","temperature":0.3,"max_tokens":4096,"system_prompt":"从角色定义推导的系统提示词(中文)"},"skills":["技能名1"],"tools":["工具名1"],"mcp_ids":[],"agent_ids":["可委派的子Agent ID"],"workflow_ids":["已有Workflow模板名"],"template_id":"最匹配的用户应用模板ID(如tech-proposal,无则为空字符串)","memory_config":{"type":"short_term","recall_count":5},"sop_text":"6章节SOP","reasoning":"为什么这样选择的简要解释(中文)"}}
+
+
+## 原则
+- skills 应同时包含：用户描述中直接需要的 + 执行描述中隐含需要的
+- agent_ids 从"可委派的子Agent"中选择，只选与用户流程实际相关的角色
+- workflow_ids 从"已有 Workflow 模板"中选择匹配的模板名，如无匹配可为空数组""",
+    category="agent",
+    variables=["name", "description", "role_section", "skills_catalog", "tools_catalog",
+               "mcp_catalog", "agent_catalog", "wf_catalog", "app_template_catalog", "role_phrase"])
+
+_register("agent-role-definition", """你是一个 AI Agent 角色定义专家。根据用户的名称和功能描述，生成一份结构化的角色定义。
+
+## 用户输入
+- 名称: ${name}
+- 功能描述: ${description}
+
+## 输出格式
+生成 JSON，包含以下字段：
+- role_name: 角色的中文名称
+- responsibilities: 该角色的主要职责列表（3-5条）
+- scenarios: 该角色适用的使用场景列表（2-3条）
+- required_capabilities: 该角色需要的能力列表（3-5条）
+- workflow_hint: 该角色在团队协作中的位置描述""",
+    category="agent",
+    variables=["name", "description"])
+
+_register("agent-role-system", """你是 AI 角色定义专家。只输出 JSON，不要加任何解释或 markdown 标记。""",
+    category="agent",
+    variables=[])
+
+_register("agent-auto-fill-batch", """你是一个 AI 平台配置专家。请为以下 ${count} 个 Agent 分别推荐最优配置。
+
+## 待填充 Agent 列表（均缺失 system_prompt/skills/tools）
+${agent_list}
+
+## 可用技能 (Skills)
+${skills_catalog}
+
+## 可用工具 (Tools)
+${tools_catalog}
+
+## 可用 MCP 服务器
+${mcp_catalog}
+
+## 可委派的子 Agent
+${agent_catalog}
+
+## 已有 Workflow 模板
+${wf_catalog}
+
+## 任务
+为以上每个 Agent 推荐配置。输出严格 JSON（无 markdown 标记），格式为:
+{"<agent名>":{"agent_type":"...","config":{...},"skills":[...],"tools":[...],"mcp_ids":[],"agent_ids":[],"workflow_ids":[],"memory_config":{...},"sop_text":"...","reasoning":"..."},...}
+
+## 原则
+- 每个 Agent 根据名称推断角色定位，选择匹配的技能和工具
+- system_prompt 1-2 句即可，用 agent 名+角色定义
+- skills 选 2-4 个最相关的，tools 选 2-3 个
+- 只输出 JSON，不要任何解释""",
+    category="agent",
+    variables=["count", "agent_list", "skills_catalog", "tools_catalog",
+               "mcp_catalog", "agent_catalog", "wf_catalog"])
+
+# === OPERATOR — Evaluation ===
+_register("eval-metrics-design", """你是一个 Agent 评估指标设计专家。请根据 Agent 的定义和执行历史，设计一套评分维度。
+
+## Agent 信息
+- 名称: ${name}
+- 类型: ${agent_type}
+- 描述: ${description}
+- 历史执行: ${history}
+
+## 要求
+设计 3-5 个评分维度，每个维度包含:
+- name: 维度名称
+- weight: 权重 (0-1，总和为1)
+- description: 该维度评估什么
+- criteria: 评分标准 (0-10)""",
+    category="evaluation",
+    variables=["name", "agent_type", "description", "history"])
+
+_register("eval-metrics-system", """你是一个评估指标设计专家。只输出 JSON 数组，不要加任何解释。""",
+    category="evaluation",
+    variables=[])
+
+# === OPERATOR — Knowledge Base (merged) ===
+_register("kb-qa", """你是知识库问答助手。基于提供的文档内容，准确简洁地回答用户问题。
+
+如果文档内容不足以回答，请如实告知：文档中未找到相关信息。
+
+场景: ${scenario}
+文档内容:
+${documents}
+
+用户问题: ${question}
+
+请直接用中文回答，不需要 JSON 格式。""",
+    category="knowledge",
+    variables=["scenario", "documents", "question"])
+
+_register("kb-doc-qa", """你是文档问答助手。请仅基于给定片段回答，不要编造。
+
+若信息不足，请明确说：信息不足，无法回答。
+
+文档片段:
+${passages}
+
+问题: ${question}
+
+输出纯文本答案。""",
+    category="knowledge",
+    variables=["passages", "question"])
+
+_register("kb-doc-writer", """你是文档写作助手。按用户要求生成知识库文档。
+
+标题: ${title}
+要求: ${prompt}
+
+请生成完整文档内容。""",
+    category="knowledge",
+    variables=["title", "prompt"])
+
+_register("kb-planner", """你是一个任务规划器。将以下用户任务拆解为 2-5 个执行步骤。
+
+可用工具: retrieve(查询词) — 从 ${doc_count} 个文档检索相关内容
+
+用户任务: ${task}
+
+输出每步的查询词和执行描述。""",
+    category="knowledge",
+    variables=["doc_count", "task"])
+
+_register("kb-retrieval-assistant", """You are a knowledge retrieval assistant. Answer based on provided context.
+
+Use only the information provided in the context. If the context doesn't contain the answer, say so honestly.""",
+    category="knowledge",
+    variables=[])
+
+# === OPERATOR — Skills ===
+_register("codegen-expert", """You are a ${language} expert. Output ONLY complete runnable code.
+
+Requirements:
+- No explanations, no markdown, no JSON wrappers
+- Use ## FILE: filename.ext format to indicate file paths
+- Each file must contain the complete implementation
+- Include all necessary imports and dependencies""",
+    category="skills",
+    variables=["language"])
+
+_register("skill-executor-fork", """你是一个专用技能代理（fork mode）。
+
+技能名称：${skill_name}
+技能描述：${skill_desc}
+${sop}
+
+你的任务：严格执行该技能并输出结果。
+
+执行规则：
+1. 严格按照 SOP 的步骤执行
+2. 每步完成后检查结果
+3. 遇到错误记录并尝试修复
+4. 完成后输出最终结果和关键依据""",
+    category="skills",
+    variables=["skill_name", "skill_desc", "sop"])
+
+_register("skill-executor-inline", """你是一个可复用技能（Skill）执行器。
+
+技能名称：${skill_name}
+技能描述：${skill_desc}
+${sop}
+
+下面是该技能的 SOP（必须严格遵循）。
+
+请严格按照 SOP 执行，输出执行结果。""",
+    category="skills",
+    variables=["skill_name", "skill_desc", "sop"])
+
+# === OPERATOR — Document Intelligence ===
+_register("doc-summarizer", """你是文档总结助手。请仅基于提供的候选句生成总结。
+
+候选句（每句包含 idx 编号）:
+${sentences}
+
+要求:
+- 选择最关键的句子组成总结
+- 保持原文措辞，不编造信息
+- 输出 JSON：{"summary": "string", "points": [{"idx": 1, "text": "sentence"}] }""",
+    category="document",
+    variables=["sentences"])
+
+# === OPERATOR — Generic ===
+_register("agent-fallback", """You are ${agent_name}. Respond helpfully.""",
+    category="general",
+    variables=["agent_name"])
+
+_register("conversational-default", """You are a helpful assistant.
+
+You can help with a wide range of tasks. When you don't know something, be honest about it.
+Use tools and skills when appropriate to complete tasks accurately.""",
+    category="general",
+    variables=[])
+
+_register("data-analysis", """Analyze the following data:
+
+Data: ${data}
+
+Analysis type: ${analysis_type}
+Question: ${question}
+
+Provide insights and analysis.""",
+    category="skills",
+    variables=["data", "analysis_type", "question"])

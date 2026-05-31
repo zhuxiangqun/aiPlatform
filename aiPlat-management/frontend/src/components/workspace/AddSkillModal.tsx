@@ -3,6 +3,7 @@ import { workspaceSkillApi, SKILL_CATEGORIES as SKILL_CAT_NAMES } from '../../se
 import { Button, Input, Modal, Select, Textarea, toast } from '../ui';
 import { diagnosticsApi } from '../../services';
 import SkillWizardV2Modal, { type SkillWizardV2Value } from './SkillWizardV2Modal';
+import PromptDiffModal from './PromptDiffModal';
 
 interface AddSkillModalProps {
   open: boolean;
@@ -100,6 +101,8 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
   const [wizMayWrite, setWizMayWrite] = useState(false);
   const [genWarnings, setGenWarnings] = useState<string[]>([]);
   const [autoSmoke, setAutoSmoke] = useState(true);
+  const [optimizeOpen, setOptimizeOpen] = useState(false);
+  const [optimizePrompt, setOptimizePrompt] = useState('');
   const [wizV2Open, setWizV2Open] = useState(false);
 
   const categoryOptions = useMemo(() => SKILL_CATEGORIES, []);
@@ -362,6 +365,13 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
         <Textarea label="input_schema（JSON）" rows={6} value={inputSchemaText} onChange={(e: any) => setInputSchemaText(e.target.value)} />
         <Textarea label="output_schema（JSON）" rows={6} value={outputSchemaText} onChange={(e: any) => setOutputSchemaText(e.target.value)} />
         <Textarea label="SOP（Markdown，可选）" rows={8} value={sopText} onChange={(e: any) => setSopText(e.target.value)} />
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" onClick={() => {
+            if (!sopText.trim()) { toast.warning('SOP 为空，无法优化'); return; }
+            setOptimizePrompt(sopText);
+            setOptimizeOpen(true);
+          }}>🤖 AI 优化 SOP</Button>
+        </div>
         {genWarnings.length > 0 && (
           <div className="text-sm text-yellow-300">
             <div className="font-medium mb-1">生成提示</div>
@@ -493,6 +503,17 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
         </div>
       </div>
     </Modal>
+
+    <PromptDiffModal
+      open={optimizeOpen}
+      title="AI 优化 Skill SOP"
+      original={optimizePrompt}
+      onClose={() => setOptimizeOpen(false)}
+      onApply={(optimized) => {
+        setSopText(optimized);
+        toast.success('已应用优化');
+      }}
+    />
     </>
   );
 };

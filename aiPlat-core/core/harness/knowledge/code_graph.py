@@ -7,6 +7,7 @@ CLAUDE.md §5.14 (harness must not import from api/routers).
 
 from __future__ import annotations
 
+import ast
 import os
 import re
 from dataclasses import dataclass
@@ -85,6 +86,110 @@ def _strip_py_type_checking(text: str) -> str:
         if not skip:
             out.append(line)
     return "\n".join(out)
+
+
+def _extract_py_imports_ast(filepath: Path) -> list:
+    """Use Python's built-in AST to extract import module names.
+    Replaces regex-based _PY_IMPORT_RE with 100% accurate parsing.
+    Falls back to regex on SyntaxError."""
+    try:
+        text = _read_text(filepath)
+        if not text:
+            return []
+        text = _strip_py_type_checking(text)
+        tree = ast.parse(text, filename=str(filepath))
+    except SyntaxError:
+        # Fallback to regex for files with syntax issues
+        mods = []
+        for m in _PY_IMPORT_RE.finditer(text):
+            mod = m.group(2) or m.group(3)
+            if mod and not mod.startswith("TYPE_CHECKING"):
+                mods.append(mod)
+        return mods
+
+    imports = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                imports.append(alias.name)
+        elif isinstance(node, ast.ImportFrom):
+            if node.module:
+                imports.append(node.module)
+    return imports
+
+
+def _extract_calls_ast(filepath: Path) -> list:
+    """Extract function/method calls from a Python file using AST.
+    Returns list of (function_name, line_number) tuples."""
+    try:
+        text = _read_text(filepath)
+        if not text:
+            return []
+        text = _strip_py_type_checking(text)
+        tree = ast.parse(text, filename=str(filepath))
+    except SyntaxError:
+        return []
+
+    calls = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call):
+            func = node.func
+            # Extract the function/method name from the call
+            if isinstance(func, ast.Name):
+                calls.append((func.id, func.lineno))
+            elif isinstance(func, ast.Attribute):
+                calls.append((func.attr, func.lineno))
+    return calls
+
+
+def _extract_symbols_ast(filepath: Path) -> list:
+    """Extract function and class definitions from a Python file using AST.
+    Returns list of (name, kind, line_number) tuples."""
+    try:
+        text = _read_text(filepath)
+        if not text:
+            return []
+        text = _strip_py_type_checking(text)
+        tree = ast.parse(text, filename=str(filepath))
+    except SyntaxError:
+        return []
+
+    symbols = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef):
+            symbols.append((node.name, "function", node.lineno))
+        elif isinstance(node, ast.AsyncFunctionDef):
+            symbols.append((node.name, "async_function", node.lineno))
+        elif isinstance(node, ast.ClassDef):
+            symbols.append((node.name, "class", node.lineno))
+    return symbols
+
+
+_JS_FUNC_RE = re.compile(
+    r'(?:export\s+)?(?:async\s+)?function\s+(\w+)'
+    r'|(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?(?:\w+\s*=>|\([^)]*\)\s*=>|\()'
+    r'|(?:export\s+)?class\s+(\w+)'
+    r'|(?:export\s+)?(?:const|let|var)\s+(\w+)\s*:\s*(?:React\.)?(?:FC|FunctionComponent)',
+    re.M | re.I
+)
+
+
+def _extract_js_symbols(filepath: Path) -> list:
+    """Extract functions/classes from .ts/.tsx/.js/.jsx files via regex."""
+    try:
+        text = _read_text(filepath)
+        if not text:
+            return []
+    except Exception:
+        return []
+    symbols = []
+    for line_num, line in enumerate(text.split("\n"), 1):
+        for m in _JS_FUNC_RE.finditer(line):
+            for g in m.groups():
+                if g and g not in ("const", "let", "var", "export", "default", "async"):
+                    symbols.append([g, "function", line_num])
+                    break
+    return symbols
 
 
 def _is_code_file(p: Path) -> bool:
@@ -166,6 +271,15 @@ def _resolve_py_module(_repo_root: Path, from_file: Path, mod: str) -> Optional[
         cand = pkg_root / rel / "__init__.py"
         if cand.exists(): return cand
         pkg_root = pkg_root.parent
+    # Cross-package fallback: when importing from a different monorepo package
+    # (e.g., aiPlat-platform importing core.foo → check aiPlat-core/core/foo.py)
+    for prefix in ("aiPlat-core", "aiPlat-infra", "aiPlat-platform",
+                   "aiPlat-app", "aiPlat-management"):
+        base = _repo_root / prefix
+        cand1 = base / rel.with_suffix(".py")
+        if cand1.exists(): return cand1
+        cand2 = base / rel / "__init__.py"
+        if cand2.exists(): return cand2
     return None
 
 
@@ -190,8 +304,107 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
     if _CACHE_LOCK is None:
         import threading as _th
         _CACHE_LOCK = _th.Lock()
+
+    # Try SQLite persistence first — with incremental sync on stale files
+    try:
+        from core.harness.knowledge.code_graph_persist import has_cache, load_nodes, load_edges, init_db
+        init_db()
+        if has_cache():
+            nodes = load_nodes()
+            edges = load_edges()
+
+            # Incremental sync: check mtime + content hash
+            import time as _t, hashlib
+            stale_files: List[Path] = []
+            for nid, n in nodes.items():
+                fpath = _repo_root / nid
+                if not fpath.exists():
+                    stale_files.append(fpath)
+                    continue
+                current_mtime = fpath.stat().st_mtime
+                stored_mtime = n.get("_mtime", 0)
+                if abs(current_mtime - stored_mtime) > 0.001:
+                    # mtime changed → verify with content hash
+                    try:
+                        current_hash = hashlib.md5(fpath.read_bytes()[:65536]).hexdigest()
+                    except Exception:
+                        current_hash = ""
+                    stored_hash = n.get("_hash", "")
+                    if current_hash != stored_hash or not stored_hash:
+                        stale_files.append(fpath)
+                    else:
+                        n["_mtime"] = current_mtime  # mtime-only change, content same
+
+            # Incremental sync: only rescan changed files (up to 100)
+            # Beyond 100 stale files → fall through to full disk rebuild
+            if 0 < len(stale_files) <= 100:
+                for f in stale_files:
+                    rel = str(f.relative_to(_repo_root)) if f.exists() else ""
+                    if rel in nodes:
+                        del nodes[rel]
+                    # Re-scan this file
+                    if f.exists() and f.suffix.lower() == ".py":
+                        if rel not in nodes:
+                            nodes[rel] = {"id": rel, "path": rel, "ext": f.suffix.lower(),
+                                          "out": [], "in": 0, "issue_count": 0, "symbols": []}
+                        for mod in _extract_py_imports_ast(f):
+                            tgt = _resolve_py_module(_repo_root, f, mod)
+                            if tgt and tgt.exists():
+                                rel_to = str(tgt.relative_to(_repo_root))
+                                nodes.setdefault(rel_to, {"id": rel_to, "path": rel_to, "ext": tgt.suffix.lower(),
+                                                "out": [], "in": 0, "issue_count": 0, "symbols": []})
+                    try:
+                        nodes[rel]["symbols"] = _extract_symbols_ast(f)
+                    except Exception:
+                        logging.getLogger("code_graph").debug("Symbol extraction failed", exc_info=True)
+                    # Rebuild edges for stale file
+                    edges = [e for e in edges if e["from"] != rel]
+                    if f.exists():
+                        text = _read_text(f)
+                        deps = set()
+                        for mod in _extract_py_imports_ast(f):
+                            tgt = _resolve_py_module(_repo_root, f, mod)
+                            if tgt and tgt.exists():
+                                rel_to = str(tgt.relative_to(_repo_root))
+                                deps.add(rel_to)
+                        for d in sorted(deps):
+                            edges.append({"from": rel, "to": d})
+                            nodes[rel].setdefault("out", []).append(d)
+
+                # Save incrementally updated graph
+            try:
+                from core.harness.knowledge.code_graph_persist import save_graph
+                save_graph(nodes, edges, _repo_root)
+            except Exception:
+                logging.getLogger("code_graph").debug("Graph persistence skipped", exc_info=True)
+
+                with _CACHE_LOCK:
+                    _CACHE = {"nodes": nodes, "edges": edges, "issues": [], "_ts": _t.time()}
+                    _CACHE_ROOTS = ";".join(str(r) for r in roots)
+                return nodes, edges, []
+
+            # 0 stale or >100 stale → if >100, force full disk rebuild below
+            if len(stale_files) > 100:
+                raise Exception("Too many stale files (>100), force full rebuild")
+            else:
+                # 0 stale: return loaded data with mtime updated
+                for nid, n in nodes.items():
+                    fpath = _repo_root / nid
+                    if fpath.exists():
+                        n["_mtime"] = fpath.stat().st_mtime
+                # Rebuild cross-file call edges (not persisted in old cache)
+                edges = [e for e in edges if e.get("kind", "import") != "calls"]
+                loaded_files = [_repo_root / nid for nid in nodes if (_repo_root / nid).exists()]
+                _resolve_cross_call_edges(nodes, edges, loaded_files, _repo_root)
+                with _CACHE_LOCK:
+                    _CACHE = {"nodes": nodes, "edges": edges, "issues": [], "_ts": _t.time()}
+                    _CACHE_ROOTS = ";".join(str(r) for r in roots)
+                return nodes, edges, []
+    except Exception:
+        pass
+
+    # Fallback: in-memory cache (120s TTL)
     roots_key = ";".join(str(r) for r in roots)
-    # Use cache if roots match (thread-safe read)
     import time as _t
     with _CACHE_LOCK:
         if _CACHE and _CACHE_ROOTS == roots_key and _t.time() - _CACHE["_ts"] < 120:
@@ -208,7 +421,7 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
             if _is_code_file(p): files.append(p)
     for f in files:
         rel = str(f.relative_to(_repo_root))
-        nodes[rel] = {"id": rel, "path": rel, "ext": f.suffix.lower(), "out": [], "in": 0, "issue_count": 0}
+        nodes[rel] = {"id": rel, "path": rel, "ext": f.suffix.lower(), "out": [], "in": 0, "issue_count": 0, "symbols": []}
     for f in files:
         rel_from = str(f.relative_to(_repo_root))
         text = _read_text(f)
@@ -218,14 +431,17 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
             nodes[rel_from]["issue_count"] = len(file_issues)
         deps: Set[str] = set()
         if f.suffix.lower() == ".py":
-            text = _strip_py_type_checking(text)
-            for m in _PY_IMPORT_RE.finditer(text):
-                mod = m.group(2) or m.group(3)
-                if not mod: continue
+            # AST-based extraction: imports + symbols + calls
+            for mod in _extract_py_imports_ast(f):
                 tgt = _resolve_py_module(_repo_root, f, mod)
                 if tgt and tgt.exists():
                     rel_to = str(tgt.relative_to(_repo_root))
                     if rel_to in nodes and rel_to != rel_from: deps.add(rel_to)
+            # Extract symbols (functions/classes)
+            try:
+                nodes[rel_from]["symbols"] = _extract_symbols_ast(f)
+            except Exception:
+                pass
         else:
             for m in _JS_IMPORT_RE.finditer(text):
                 spec = m.group(1) or m.group(2) or m.group(3)
@@ -235,19 +451,42 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
                     if tgt and tgt.exists():
                         rel_to = str(tgt.relative_to(_repo_root))
                         if rel_to in nodes and rel_to != rel_from: deps.add(rel_to)
+            # Extract TS/JS symbols (functions/classes via regex)
+            if f.suffix.lower() in (".ts", ".tsx", ".js", ".jsx"):
+                try:
+                    nodes[rel_from]["symbols"] = _extract_js_symbols(f)
+                except Exception:
+                    pass
         for rel_to in sorted(deps):
             edges.append({"from": rel_from, "to": rel_to})
             nodes[rel_from]["out"].append(rel_to)
             nodes[rel_to]["in"] += 1
-    # Save to cache (thread-safe write)
+        # Extract call edges (function→function calls within and across files)
+        if f.suffix.lower() == ".py":
+            try:
+                calls = _extract_calls_ast(f)
+                for func_name, line_no in calls[:50]:
+                    edges.append({"from": rel_from, "to": rel_from, "kind": "calls",
+                                  "label": f"{func_name}()", "line": line_no})
+            except Exception:
+                pass
+    # Resolve cross-file call edges
+    _resolve_cross_call_edges(nodes, edges, files, _repo_root)
+    # Save to in-memory cache + SQLite persistence
     with _CACHE_LOCK:
         _CACHE = {"nodes": nodes, "edges": edges, "issues": issues, "_ts": _t.time()}
         _CACHE_ROOTS = roots_key
+    try:
+        from core.harness.knowledge.code_graph_persist import save_graph
+        save_graph(nodes, edges, _repo_root)
+    except Exception:
+        pass
     return nodes, edges, issues
 
 
 def clear_cache():
-    u"""Invalidate the code graph cache (called by hot-reload on file changes)."""
+    u"""Invalidate in-memory cache only. SQLite data persists for incremental rebuild.
+    Called by hot-reload on file change — next build_graph() only rescans changed files."""
     global _CACHE, _CACHE_ROOTS, _CACHE_LOCK
     if _CACHE_LOCK:
         with _CACHE_LOCK:
@@ -349,6 +588,26 @@ def build_context(task: str, roots: List[str] = None) -> Dict[str, Any]:
     }
 
 
+def _ctx_to_prompt(ctx: dict, max_chars: int = 2000) -> str:
+    u"""Convert build_context() dict result to LLM-friendly clean text (no dict repr)."""
+    lines = []
+    stats = ctx.get("stats", {})
+    lines.append(f"Codebase: {stats.get('files', 0)} files, {stats.get('edges', 0)} edges")
+    health = ctx.get("health", {})
+    if health:
+        lines.append(f"Health: score={health.get('score', 'N/A')}, issues={stats.get('issues', 0)}")
+    related = ctx.get("related", [])
+    if related:
+        lines.append("Relevant files:")
+        for r in related:
+            lines.append(f"  - {r.get('file', '')}")
+    orphans = ctx.get("orphan_files", [])
+    if orphans:
+        lines.append(f"Orphans: {len(orphans)} isolated files")
+    text = "\n".join(lines)
+    return text[:max_chars]
+
+
 def _enrich_nodes_with_symbols(nodes, repo_root):
     u"""Add entity-level symbol counts and top symbols to file nodes.
 
@@ -383,27 +642,38 @@ def _enrich_nodes_with_symbols(nodes, repo_root):
 
 
 def _find_orphans(nodes):
-    u"""Find files with no imports and no dependents, excluding structural files."""
+    """Find files with no imports and no importers."""
     orphans = []
-    for p, n in nodes.items():
-        if len(n.get("out", [])) != 0 or n.get("in", 0) != 0:
-            continue
-        name = str(p)
-        # Skip package init and barrel exports
-        if name.endswith("__init__.py") or name.endswith("index.ts") or name.endswith("index.tsx"):
-            continue
-        # Skip config files
-        if ".config.js" in name or ".config.ts" in name:
-            continue
-        # Skip UI library files (re-exported through barrel)
-        if "/components/ui/" in name or "/components/common/" in name:
-            continue
-        # Skip pages subdirectory barrel exports
-        if "/pages/" in name and name.count("/") >= 3 and (name.endswith("/index.ts") or name.endswith("/index.tsx")):
-            continue
-        # Skip tailwind/postcss/eslint config
-        for kw in ["tailwind.config", "postcss.config", "eslint.config", "vite.config", "proxy_server"]:
-            if kw in name:
-                continue
-        orphans.append(name)
+    for path, node in nodes.items():
+        if not node.get("out") and node.get("in", 0) == 0:
+            orphans.append(path)
     return orphans
+
+
+def _resolve_cross_call_edges(nodes, edges, files, repo_root):
+    u"""Rebuild cross-file call edges (kind='calls', cross=True).
+    Removes stale calls-kind edges and regenerates from current graph state.
+    """
+    from collections import defaultdict
+    fn_to_files = defaultdict(list)
+    for nid, n in nodes.items():
+        for name, kind, line in n.get("symbols", []):
+            if kind in ("function", "async_function", "class"):
+                fn_to_files[name].append(nid)
+    if not fn_to_files:
+        return
+    for f in files:
+        if f.suffix.lower() != ".py":
+            continue
+        rel_from = str(f.relative_to(repo_root))
+        try:
+            calls = _extract_calls_ast(f)
+            for func_name, line_no in calls[:30]:
+                target_files = fn_to_files.get(func_name, [])
+                for tf in target_files[:3]:
+                    if tf != rel_from and tf in nodes:
+                        edges.append({"from": rel_from, "to": tf, "kind": "calls",
+                                      "label": f"{func_name}()", "line": line_no,
+                                      "cross": True})
+        except Exception:
+            pass

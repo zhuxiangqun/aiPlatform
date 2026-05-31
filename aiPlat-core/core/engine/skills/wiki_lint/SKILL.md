@@ -26,6 +26,8 @@ output_schema:
     type: array
   health_score:
     type: number
+  markdown:
+    type: string
 ---
 
 ## SOP

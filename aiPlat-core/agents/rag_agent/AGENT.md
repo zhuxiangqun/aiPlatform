@@ -5,7 +5,9 @@ description: 检索增强问答 Agent：召回知识并生成可引用答案。
 agent_type: rag
 version: 1.0.0
 status: ready
-required_tools: []
+required_tools:
+  - sysgraph_search
+  - sysgraph_context
 required_skills:
   - knowledge_retrieval
   - summarization
@@ -22,7 +24,7 @@ config:
 # RAG问答引擎
 
 ## SOP（4 步）
-1. 问题转 query：将用户问题转为检索查询，调 `knowledge_retrieval`。
+1. 问题转 query：将用户问题转为检索查询，调 `knowledge_retrieval`。需定位文件/函数时优先用 sysgraph_search / sysgraph_context（比 grep 快 10×）。
 2. 去重排序：对召回片段按相关性排序，去重。
 3. 提炼证据：从 Top-K 片段中提取与问题相关的关键句。
 4. 生成答案：基于证据回答，引用来源 ID。

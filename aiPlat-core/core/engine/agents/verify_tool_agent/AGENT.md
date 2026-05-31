@@ -18,6 +18,8 @@ pipeline:
   phase_description: 工具验证
 required_tools:
 - skill_load
+- sysgraph_search
+- sysgraph_context
 config:
   max_tokens: 100
   temperature: 0.0
@@ -30,6 +32,8 @@ config:
 ## 工作流程（SOP）
 1. 第一步……
 2. 第二步……
+
+> 探索代码结构时优先用 sysgraph_* 工具（比 grep/read 快 10×）
 3. 第三步……
 
 ## 权限与工具

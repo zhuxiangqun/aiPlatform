@@ -5,7 +5,9 @@ description: 多轮对话 Agent：偏聊天/澄清/引导，必要时切换到�
 agent_type: conversational
 version: 1.0.0
 status: ready
-required_tools: []
+required_tools:
+  - sysgraph_search
+  - sysgraph_context
 required_skills:
   - chitchat
 output_artifact: conversation_output
@@ -23,7 +25,7 @@ config:
 ## SOP（4 步）
 1. 意图识别：确定用户需求（信息查询/任务执行/闲聊）。
 2. 澄清缺失信息：如需求模糊，先反问 1-2 个问题再作答。
-3. 执行/回答：选择合适的技能或知识源。不需要工具时直接回答。
+3. 执行/回答：选择合适的技能或知识源。查询代码结构时优先用 sysgraph_search / sysgraph_context（比 grep 快 10×、省 86% tokens）。不需要工具时直接回答。
 4. 切换到专用 Agent：如果任务超出对话范围，建议"你可能需要 XXX Agent"。
 
 ## 输出格式

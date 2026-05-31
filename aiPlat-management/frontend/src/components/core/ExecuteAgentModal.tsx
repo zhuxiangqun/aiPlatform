@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { agentApi, type Agent } from '../../services';
 import { Button, Modal, Textarea, toast } from '../ui';
 import { toastGateError } from '../ui';
+import ExecutionViewer from '../ExecutionViewer/ExecutionViewer';
 
 interface ExecuteAgentModalProps {
   open: boolean;
@@ -115,6 +116,11 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
             </div>
           ) : (
             renderResult(result, '执行结果', '#3b82f6')
+          )}
+          {(result as any)?.run_id && (
+            <div className="mt-3">
+              <ExecutionViewer runId={String((result as any).run_id)} live={true} title="ReAct 执行流程" height={400} />
+            </div>
           )}
         </div>
       )}

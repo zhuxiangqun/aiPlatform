@@ -8,7 +8,7 @@ import logging
 import os
 import threading
 from typing import Dict, List, Optional, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timezone,timedelta
 from dataclasses import dataclass
 
 from .types import (
@@ -55,7 +55,7 @@ class EvolutionEngine:
         if skill_id not in self._last_evolution_time:
             return True
         
-        elapsed = datetime.utcnow() - self._last_evolution_time[skill_id]
+        elapsed = datetime.now(timezone.utc) - self._last_evolution_time[skill_id]
         if elapsed < timedelta(hours=self._config.cooldown_hours):
             logger.warning(f"Skill {skill_id} in cooldown period")
             return False
@@ -117,7 +117,7 @@ class EvolutionEngine:
             )
 
             # Update last evolution time
-            self._last_evolution_time[skill_id] = datetime.utcnow()
+            self._last_evolution_time[skill_id] = datetime.now(timezone.utc)
 
             logger.info(f"Evolution completed for skill {skill_id}: {new_version.version}")
 

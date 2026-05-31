@@ -33,6 +33,8 @@ output_schema:
     type: array
   new_links:
     type: array
+  markdown:
+    type: string
 ---
 
 ## SOP

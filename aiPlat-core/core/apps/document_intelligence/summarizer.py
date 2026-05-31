@@ -156,11 +156,10 @@ async def summarize_document(
             ctx_lines = []
             for p in points[: max(1, int(max_points))]:
                 ctx_lines.append(f"[{p['idx']}] page={p['page_idx']} text={p['text']}")
-            system_prompt = (
-                "你是文档总结助手。请仅基于提供的候选句生成总结。"
-                "输出 JSON：{\"summary\": string, \"points\": [{\"idx\": number, \"text\": string, \"page_idx\": number}] }。"
-                "points 数量不要超过输入候选数，不要编造新的页码。"
-            )
+            from core.harness.utils.prompt_loader import _sync_resolve
+            system_prompt = _sync_resolve("doc-summarizer", sentences="")
+            # Strip the ${sentences} part from the template since we pass sentences via user_prompt
+            system_prompt = system_prompt.split("\n\n候选句：")[0]
             user_prompt = (
                 f"profile={profile}\n"
                 f"max_points={max_points}\n"

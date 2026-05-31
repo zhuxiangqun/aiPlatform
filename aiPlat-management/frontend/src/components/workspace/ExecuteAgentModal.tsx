@@ -4,6 +4,7 @@ import type { Agent } from '../../services';
 import { Button, Modal, Textarea, toast } from '../ui';
 import { toastGateError } from '../ui';
 import { TraceFlowGraph } from './TraceFlowGraph';
+import ExecutionViewer from '../ExecutionViewer/ExecutionViewer';
 import { browserTestApi } from '../../services/browserTestApi';
 
 interface ExecuteAgentModalProps {
@@ -20,7 +21,6 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
   const [examples, setExamples] = useState<Array<{ title: string; content: string }>>([]);
   const [result, setResult] = useState<{ status: string; execution_id?: string; output?: unknown; error?: any; error_message?: string; error_detail?: any; run_id?: string; tokens?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } } | null>(null);
   const [toolset, setToolset] = useState<string>('workspace_default');
-  const [showFlow, setShowFlow] = useState(false);
   const [stopping, setStopping] = useState(false);
   const [progress, setProgress] = useState<{ total_pages: number; total_actions: number; passed: number; failed: number; skipped: number; duration_ms: number } | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -330,15 +330,16 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
                     <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
                       <div className="text-xs text-gray-400 break-all">execution_id: {result.execution_id}</div>
                       <div className="flex gap-2">
-                        <Button variant="secondary" size="sm" onClick={() => setShowFlow(!showFlow)}>执行流程</Button>
                         <Button variant="secondary" size="sm" onClick={async () => { try { await navigator.clipboard.writeText(result.execution_id || ''); toast.success('已复制'); } catch { toast.error('复制失败'); } }}>复制ID</Button>
                         <Button variant="secondary" size="sm" onClick={() => { window.open(`/diagnostics/links?execution_id=${encodeURIComponent(result.execution_id || '')}`, '_blank', 'noopener,noreferrer'); }}>查看诊断详情</Button>
                       </div>
                     </div>
                   )}
-                  {showFlow && result.run_id && (
-                    <div className="mt-3"><TraceFlowGraph runId={result.run_id} /></div>
-              )}
+                  {result.run_id && (
+                    <div className="mt-3">
+                      <ExecutionViewer runId={result.run_id} live={true} title="ReAct 执行流程" height={400} />
+                    </div>
+                  )}
             </div>
           )}
 

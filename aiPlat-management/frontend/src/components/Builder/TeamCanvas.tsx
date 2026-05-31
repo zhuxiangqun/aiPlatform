@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronUp, ChevronDown, X, CheckCircle, ArrowRight } from 'lucide-react';
+import { ChevronUp, ChevronDown, X, CheckCircle, ArrowRight, GitFork, Plus, Trash2 } from 'lucide-react';
 import type { PipelineStageConfig } from '../../services';
 import { Card, CardHeader, CardContent, Button } from '../../components/ui';
 
@@ -10,6 +10,38 @@ interface Props {
 }
 
 export const TeamCanvas: React.FC<Props> = ({ stages, onUpdate }) => {
+  const [expandedRouting, setExpandedRouting] = useState<Set<number>>(new Set());
+
+  const toggleRouting = (idx: number) => {
+    setExpandedRouting(prev => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx); else next.add(idx);
+      return next;
+    });
+  };
+
+  const addRoutingRule = (idx: number) => {
+    const next = [...stages];
+    const rules = next[idx].routing_rules || [];
+    next[idx] = { ...next[idx], routing_rules: [...rules, { condition: 'status=="ok"', next: '' }] };
+    onUpdate(next);
+  };
+
+  const updateRoutingRule = (stageIdx: number, ruleIdx: number, field: 'condition' | 'next', value: string) => {
+    const next = [...stages];
+    const rules = [...(next[stageIdx].routing_rules || [])];
+    rules[ruleIdx] = { ...rules[ruleIdx], [field]: value };
+    next[stageIdx] = { ...next[stageIdx], routing_rules: rules };
+    onUpdate(next);
+  };
+
+  const removeRoutingRule = (stageIdx: number, ruleIdx: number) => {
+    const next = [...stages];
+    const rules = [...(next[stageIdx].routing_rules || [])];
+    rules.splice(ruleIdx, 1);
+    next[stageIdx] = { ...next[stageIdx], routing_rules: rules };
+    onUpdate(next);
+  };
 
   const move = (idx: number, dir: -1 | 1) => {
     const next = [...stages];
@@ -84,6 +116,84 @@ export const TeamCanvas: React.FC<Props> = ({ stages, onUpdate }) => {
               </div>
               <div className="text-xs text-gray-400 line-clamp-2">
                 {stage.description || '暂无描述'}
+              </div>
+              {/* Routing rules */}
+              <div style={{ marginTop: 4 }}>
+                <button
+                  onClick={() => toggleRouting(idx)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 3,
+                    background: 'none', border: 'none', color: expandedRouting.has(idx) ? '#8b5cf6' : '#6b7280',
+                    cursor: 'pointer', fontSize: 10, padding: 0,
+                  }}
+                >
+                  <GitFork size={10} />
+                  条件路由{expandedRouting.has(idx) ? ' ▲' : ' ▼'}
+                  {(stage.routing_rules || []).length > 0 && (
+                    <span style={{ color: '#8b5cf6', fontWeight: 600 }}>
+                      ({(stage.routing_rules || []).length})
+                    </span>
+                  )}
+                </button>
+                {expandedRouting.has(idx) && (
+                  <div style={{
+                    marginTop: 6, marginLeft: 4, padding: '6px 8px',
+                    background: '#111827', borderRadius: 6, border: '1px solid #374151',
+                  }}>
+                    {(stage.routing_rules || []).map((rule, ri) => (
+                      <div key={ri} style={{
+                        display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4,
+                      }}>
+                        <span style={{ fontSize: 10, color: '#6b7280', whiteSpace: 'nowrap' }}>当</span>
+                        <input
+                          value={rule.condition}
+                          onChange={e => updateRoutingRule(idx, ri, 'condition', e.target.value)}
+                          placeholder='status=="ok"'
+                          style={{
+                            width: 130, fontSize: 10, background: '#1f2937', border: '1px solid #374151',
+                            borderRadius: 3, padding: '2px 6px', color: '#e5e7eb', fontFamily: 'monospace',
+                          }}
+                        />
+                        <span style={{ fontSize: 10, color: '#6b7280' }}>跳转到</span>
+                        <select
+                          value={rule.next}
+                          onChange={e => updateRoutingRule(idx, ri, 'next', e.target.value)}
+                          style={{
+                            fontSize: 10, background: '#1f2937', border: '1px solid #374151',
+                            borderRadius: 3, padding: '2px 4px', color: '#e5e7eb', maxWidth: 120,
+                          }}
+                        >
+                          <option value="">-- 选择阶段 --</option>
+                          {stages.filter(s => s.id !== stage.id).map(s => (
+                            <option key={s.id} value={s.id}>{s.agent_name}</option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => removeRoutingRule(idx, ri)}
+                          style={{
+                            background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer',
+                            fontSize: 12, padding: '0 2px',
+                          }}
+                          title="删除规则"
+                        >✕</button>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => addRoutingRule(idx)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 3,
+                        background: 'none', border: '1px dashed #374151', borderRadius: 4,
+                        color: '#8b5cf6', cursor: 'pointer', fontSize: 10, padding: '2px 8px',
+                        width: '100%', justifyContent: 'center',
+                      }}
+                    >
+                      <Plus size={10} /> 添加条件
+                    </button>
+                    <div style={{ fontSize: 9, color: '#6b7280', marginTop: 4 }}>
+                      支持: status=="ok", result.pass_rate &gt; 0.8, error is not None, 多个 and 组合
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

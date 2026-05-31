@@ -70,6 +70,8 @@ output_schema:
       type: array
       items: {type: integer}
     assets_dir: {type: string}
+  markdown:
+    type: string
 ---
 
 # 知识库入库（文档）

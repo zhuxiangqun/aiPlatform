@@ -4,7 +4,7 @@ import json
 import re
 import time
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Annotated, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -14,7 +14,7 @@ from core.api.deps import actor_from_http, rbac_guard
 from core.api.utils.governance import governance_links
 from core.api.utils.run_contract import wrap_execution_result_as_run_summary
 from core.api.utils.skills_meta import load_skill_spec_v2_schema, permission_catalog, req_tenant_channel, schema_version, skill_governance_preview
-from core.api.core_facade import get_skill_registry
+from core.api.facades.skill_tool_facade import get_skill_registry
 from core.harness.integration import get_harness, KernelRuntime
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.harness.kernel.types import ExecutionRequest
@@ -1185,7 +1185,7 @@ async def trigger_skill_evolution(skill_id: str, request: dict, rt: RuntimeDep =
     trigger_type = request.get("trigger_type", "manual")
     evolution = skill.metadata.get("evolution", {}) if skill.metadata else {}
     evolution["status"] = "capturing" if trigger_type == "capture" else "fixing"
-    evolution["last_evolution"] = datetime.utcnow().isoformat()
+    evolution["last_evolution"] = datetime.now(timezone.utc).isoformat()
     evolution["evolution_count"] = evolution.get("evolution_count", 0) + 1
     await mgr.update_skill(skill_id, metadata={"evolution": evolution})
     return {"status": "triggered", "evolution_type": trigger_type, "evolution_count": evolution["evolution_count"]}

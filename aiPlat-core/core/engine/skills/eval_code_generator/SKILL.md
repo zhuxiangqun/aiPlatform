@@ -32,6 +32,8 @@ output_schema:
     type: string
   code_files:
     type: array
+  markdown:
+    type: string
 ---
 
 ## SOP

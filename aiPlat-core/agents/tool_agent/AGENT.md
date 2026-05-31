@@ -7,6 +7,8 @@ version: 1.0.0
 status: ready
 required_tools:
   - http
+  - sysgraph_search
+  - sysgraph_context
 required_skills:
   - api_calling
 output_artifact: tool_output
@@ -22,7 +24,7 @@ config:
 # 工具调用器
 
 ## SOP（4 步）
-1. 明确输入输出：理解请求参数、预期响应格式、验证方式。
+1. 明确输入输出：理解请求参数、预期响应格式、验证方式。探索代码依赖和结构时优先用 sysgraph_search / sysgraph_context（比 grep 快 10×）。
 2. 执行工具调用：通过 `sys_tool_call` 执行，记录 HTTP 状态码和响应。
 3. 结果处理：成功→提取关键数据；失败→读取错误信息，重试或报告。
 4. 输出：结果 + 日志要点 + 下一步建议。

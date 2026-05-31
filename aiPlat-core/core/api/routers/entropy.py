@@ -247,7 +247,7 @@ async def run_readiness_audit():
     app_imports = []
     try:
         result = subprocess.run(
-            ["grep", "-rn", "--include=*.py", "from core.\|from infra.", str(app_dir)],
+            ["grep", "-rn", "--include=*.py", r"from core.\|from infra.", str(app_dir)],
             capture_output=True, text=True, timeout=10
         )
         app_imports = [l.strip() for l in result.stdout.split("\n") if l.strip() and "tests/" not in l and "api/rest/routes" not in l]
@@ -259,7 +259,7 @@ async def run_readiness_audit():
     core_reverse = []
     try:
         result = subprocess.run(
-            ["grep", "-rn", "--include=*.py", "from core.apps.\|import core.apps.", str(core_src / "harness")],
+            ["grep", "-rn", "--include=*.py", r"from core.apps.\|import core.apps.", str(core_src / "harness")],
             capture_output=True, text=True, timeout=10
         )
         core_reverse = [l.strip() for l in result.stdout.split("\n") if l.strip() and "tests/" not in l]
@@ -271,7 +271,7 @@ async def run_readiness_audit():
     model_loads = []
     try:
         result = subprocess.run(
-            ["grep", "-rn", "--include=*.py", "from sentence_transformers import\|from faster_whisper import\|from paddleocr import\|import pytesseract", str(core_src)],
+            ["grep", "-rn", "--include=*.py", r"from sentence_transformers import\|from faster_whisper import\|from paddleocr import\|import pytesseract", str(core_src)],
             capture_output=True, text=True, timeout=10
         )
         model_loads = [l.strip() for l in result.stdout.split("\n") if l.strip() and "infra_" not in l and "tests/" not in l]
@@ -294,7 +294,7 @@ async def run_readiness_audit():
     refs_rt = 0
     if has_mr or has_rt:
         try:
-            result = _sp.run(["grep", "-rn", "model_registry\|model_router", str(core_src)],
+            result = _sp.run(["grep", "-rn", r"model_registry\|model_router", str(core_src)],
                            capture_output=True, text=True, timeout=10)
             for line in result.stdout.split("\n"):
                 if "model_registry" in line and "model_registry.py" not in line:
@@ -428,28 +428,11 @@ async def generate_eval_for_agent(agent_id: str):
 
     # ── Build LLM prompt ───────────────────────────────────────────
     tool_list = "\n".join(f"  - {t}" for t in recent_tools[:15]) or "(none)"
-    prompt = f"""你是一个 Agent 评估指标设计专家。请根据 Agent 的定义和执行历史，设计一套评分维度。
-
-## Agent 信息
-- 名称: {name}
-- 类型: {agent_type}
-- 描述: {desc[:500]}
-- 正文 (前 2000 字): {body[:2000]}
-
-## 最近调用的工具/Skill (按频率)
-{tool_list}
-
-## 要求
-1. 生成 3-5 个评分维度，权重合计 100%
-2. 每个维度独立衡量 Agent 在某个方面做得好不好
-3. 维度名称应简洁（中文，2-6字）
-4. 权重基于工具调用频率分配：高频工具覆盖的方面权重高
-5. 每个维度附一句简短描述
-
-## 输出格式
-只输出 JSON，不要加 markdown 标记:
-[{{"name":"任务完成度","weight":35,"description":"是否完成了用户要求的核心任务"}},{{"name":"工具使用效率","weight":25,"description":"工具调用是否准确、不重复、不遗漏"}}]
-"""
+    from core.harness.utils.prompt_loader import _async_prompt_resolve
+    prompt = await _async_prompt_resolve("eval-metrics-design",
+        name=name, agent_type=agent_type, description=desc[:300],
+        history=tool_list[:1000],
+    )
 
     # ── Call LLM ───────────────────────────────────────────────────
     try:
@@ -457,7 +440,7 @@ async def generate_eval_for_agent(agent_id: str):
         model_name = best_model_for_purpose("agent_creation")
         model = create_selected_adapter(model_name=model_name)
         messages = [
-            {"role": "system", "content": "你是一个评估指标设计专家。只输出 JSON 数组，不要加任何解释。"},
+            {"role": "system", "content": await _async_prompt_resolve("eval-metrics-system")},
             {"role": "user", "content": prompt},
         ]
         resp = await model.generate(messages, config=None)

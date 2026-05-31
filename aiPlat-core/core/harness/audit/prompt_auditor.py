@@ -48,18 +48,10 @@ class PromptAuditRecord:
 
 
 # Adjectives that signal vague/unactionable instructions (CLAUDE.md §5.27 Rule 1)
-_VAGUE_ADJECTIVES = [
-    (r"写高质量代码", "vague_quality_code"),
-    (r"遵循最佳实践", "vague_best_practices"),
-    (r"注意安全", "vague_security"),
-    (r"充分测试", "vague_full_testing"),
-    (r"确保代码可维护", "vague_maintainable"),
-    (r"编写优雅的", "vague_elegant"),
-    (r"高性能", "vague_performance"),
-]
+# Patterns defined in prompt_audit_rules.py for extensibility.
 
 # Required handoff fields (CLAUDE.md §5.27 Rule 2.1)
-_HANDOFF_FIELDS = ["做了什么", "产出物在哪", "如何验证", "已知问题", "下一步"]
+# Fields defined in prompt_audit_rules.py for extensibility.
 
 
 def parse_agent_md(path: str) -> Dict[str, Any]:
@@ -101,15 +93,17 @@ def audit_agent_md(agent_id: str, sop_body: str, frontmatter: Dict = None) -> Pr
     )
 
     # Check for vague adjectives
-    for pattern, tag in _VAGUE_ADJECTIVES:
+    from core.harness.audit.prompt_audit_rules import VAGUE_ADJECTIVES, HANDOFF_FIELDS, PIPELINE_FM_FIELDS
+
+    for pattern, tag in VAGUE_ADJECTIVES:
         if re.search(pattern, body):
             record.anti_patterns_found.append(tag)
 
     # Check handoff completeness
-    present = sum(1 for f in _HANDOFF_FIELDS if f in body)
+    present = sum(1 for f in HANDOFF_FIELDS if f in body)
     record.handoff_complete = present >= 5
     if present < 5:
-        missing = [f for f in _HANDOFF_FIELDS if f not in body]
+        missing = [f for f in HANDOFF_FIELDS if f not in body]
         record.compliance_issues.append({
             "rule": "handoff_completeness",
             "detail": f"Missing handoff fields: {missing}",
@@ -117,8 +111,7 @@ def audit_agent_md(agent_id: str, sop_body: str, frontmatter: Dict = None) -> Pr
 
     # Check frontmatter completeness for pipeline agents
     if fm.get("output_artifact"):
-        required_fm = ["agent_type", "output_artifact", "phase"]
-        for f in required_fm:
+        for f in PIPELINE_FM_FIELDS:
             if not fm.get(f):
                 record.compliance_issues.append({
                     "rule": "frontmatter_completeness",

@@ -167,8 +167,9 @@ class CodeGenerationSkill(BaseSkill):
         if model is None:
             return SkillResult(success=False, error="No model configured for code generation")
 
+        from core.harness.utils.prompt_loader import _sync_resolve
         msgs = [
-            {"role": "system", "content": f"You are a {language} expert. Output ONLY complete runnable code. No explanations, no markdown, no JSON wrappers. Use ## FILE: filename.py format to indicate file paths."},
+            {"role": "system", "content": _sync_resolve("codegen-expert", language=language)},
             {"role": "user", "content": f"Generate {language} code for:\n{str(requirements)[:4000]}\nOutput ONLY code with ## FILE: path headers. Output DONE: prefix before code."},
         ]
 
@@ -258,15 +259,10 @@ class DataAnalysisSkill(BaseSkill):
         analysis_type = params.get("analysis_type", "general")
         question = params.get("question", "")
         
-        prompt = f"""Analyze the following data:
-
-Data: {data}
-
-Analysis type: {analysis_type}
-Question: {question}
-
-Provide insights and analysis.
-"""
+        from core.harness.utils.prompt_loader import _sync_resolve
+        prompt = _sync_resolve("data-analysis",
+            data=str(data)[:3000], analysis_type=str(analysis_type), question=str(question),
+        )
         
         try:
             from ...harness.syscalls.llm import sys_llm_generate

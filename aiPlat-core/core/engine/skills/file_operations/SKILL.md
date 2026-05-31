@@ -21,6 +21,8 @@ input_schema:
 output_schema:
   result:
     type: object
+  markdown:
+    type: string
 ---
 
 # 文件操作（Engine）

@@ -260,6 +260,7 @@ class PipelineStageConfig(BaseModel):
     tdd_enforce: bool = False
     context_isolation: str = "shared"   # "shared" | "isolated"
     eval_model: str = ""  # dedicated evaluator model (empty = fallback to stage.model or AIPLAT_EVAL_MODEL)
+    routing_rules: List[dict] = Field(default_factory=list)  # declarative conditional routing
     deviation_tolerance: float = 0.0  # [0.0, 10.0] Accept output when overall score >= this (0=disabled)
     failure_mode_constraints: List[Dict[str, Any]] = Field(default_factory=list)
     # [{failure_type, constraint_action, max_escalation}] — targeted recovery per failure type

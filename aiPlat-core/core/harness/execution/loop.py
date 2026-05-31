@@ -740,41 +740,12 @@ class ReActLoop(BaseLoop):
             if isinstance(rs, dict):
                 prompt.append({"role": "user", "content": format_run_state_for_prompt(rs)})
         else:
-            prompt = f"""Task: {task}
-
-History:
-{history}
-{mem_hints}
-{bus_hints}
-
-Available tools:
-{tools_desc}
-
-Available skills:
-{skills_desc}
-
-Observation: {state.context.get('observation', 'None')}
-
-Think about what to do next. If using a tool/skill, respond with:
-1) 优先（结构化）：
-```json
-{{"tool":"tool_name","args":{{...}}}}
-```
-
-Skill（必须显式标注，避免误触发）：
-```json
-{{"skill":"skill_name","args":{{...}}}}
-```
-
-2) 兼容旧格式（tool）：
-ACTION: tool_name: argument
-
-兼容旧格式（skill）：
-SKILL: skill_name: argument
-
-If finished, respond with:
-DONE: final_answer
-"""
+            from core.harness.utils.prompt_loader import _sync_resolve
+            prompt = _sync_resolve("react-reasoning",
+                task=task, history=history, mem_hints=mem_hints, bus_hints=bus_hints,
+                tools_desc=tools_desc, skills_desc=skills_desc,
+                observation=str(state.context.get('observation', 'None')),
+            )
             rs = state.context.get("run_state")
             if isinstance(rs, dict):
                 prompt += "\n\n" + format_run_state_for_prompt(rs)
@@ -1090,7 +1061,7 @@ DONE: final_answer
                             metadata={"source": "loop_interaction"},
                         )
                     except Exception:
-                        pass
+                        logging.getLogger("harness.loop").debug("Semantic capture skipped", exc_info=True)
             # Feed into ProductionFeedbackLoop for analytics (P3-3 wiring)
             try:
                 from core.harness.feedback_loops.prod import get_production_feedback
@@ -1394,6 +1365,15 @@ DONE: final_answer
                 desc = desc[: max(0, per_tool_max - 16)] + " …(truncated)"
                 stats["tools_truncated"] += 1
 
+            # MCP tools: prepend server description so Agent knows which MCP this tool belongs to
+            try:
+                meta = getattr(t, "metadata", {}) or {}
+                srv_desc = str(meta.get("mcp_server_description", "") or "")
+                if srv_desc:
+                    name = f"{name} [{srv_desc}]"
+            except Exception:
+                pass
+
             line = f"- {name}: {desc}".strip()
             projected = stats["chars_total"] + len(line) + (1 if lines else 0)
             if total_max > 0 and projected > total_max:
@@ -1474,16 +1454,18 @@ DONE: final_answer
                         r = di.resolve("SkillPermissionResolver")
                         if r and isinstance(r, dict):
                             perm_denied = r["resolve"](name) == "deny"
-                except Exception: pass
+                except Exception:
+                    logging.getLogger("harness.loop").debug("Permission resolver fallback", exc_info=True)
                 if not perm_denied:
                     try:
-                        from core.apps.tools.skill_tools import resolve_skill_permission
-                        perm_denied = resolve_skill_permission(name) == "deny"
-                    except Exception: pass
+                        from core.harness.integration import get_skill_permission_resolver
+                        perm_denied = get_skill_permission_resolver()(name) == "deny"
+                    except Exception:
+                        logging.getLogger("harness.loop").debug("DI resolve fallback", exc_info=True)
                 if perm_denied:
                     continue
             except Exception:
-                pass
+                logging.getLogger("harness.loop").debug("Skill enumeration best-effort", exc_info=True)
             try:
                 cfg = getattr(skill, '_config', None) or (skill.get_config() if hasattr(skill, 'get_config') else None)
                 desc = str(getattr(cfg, "description", "") or "")
@@ -2049,10 +2031,9 @@ DONE: final_answer
                 return str(result_output)
         # ---- MCP lazy-load: try on-demand discovery before giving up ----
         try:
-            from core.apps.mcp.runtime import MCPRuntime
-            rt = MCPRuntime()
+            from core.harness.integration import get_mcp_runtime, get_tool_registry
+            rt = get_mcp_runtime()
             if hasattr(rt, '_registered') and rt._registered:
-                from core.apps.tools.base import get_tool_registry
                 tr = get_tool_registry()
                 found = await rt.search_and_register(str(tool_name), tr)
                 if found:

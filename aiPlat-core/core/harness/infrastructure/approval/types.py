@@ -7,7 +7,7 @@ Based on framework/patterns.md §7.
 
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 
@@ -118,8 +118,8 @@ class ApprovalRequest:
     amount: Optional[float] = None
     batch_size: Optional[int] = None
     is_first_time: bool = False
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     expires_at: Optional[datetime] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
     result: Optional["ApprovalResult"] = None
@@ -127,7 +127,7 @@ class ApprovalRequest:
     def is_expired(self) -> bool:
         """Check if request has expired."""
         if self.expires_at:
-            return datetime.utcnow() > self.expires_at
+            return datetime.now(timezone.utc) > self.expires_at
         return False
 
     def is_resolved(self) -> bool:
@@ -158,7 +158,7 @@ class ApprovalResult:
     decision: RequestStatus
     comments: str = ""
     approved_by: Optional[str] = None
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 

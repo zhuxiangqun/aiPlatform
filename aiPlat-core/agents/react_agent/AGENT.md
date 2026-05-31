@@ -5,7 +5,12 @@ description: 通用 ReAct Agent：推理-行动-观察循环，适用于需要�
 agent_type: react
 version: 1.0.0
 status: ready
-required_tools: []
+required_tools:
+  - sysgraph_search
+  - sysgraph_context
+  - sysgraph_callers
+  - sysgraph_impact
+  - sysgraph_node
 required_skills: []
 pipeline:
   output_artifact: react_output
@@ -22,7 +27,7 @@ config:
 
 ## SOP（4 步）
 1. 分析任务：理解用户意图，拆解为具体步骤。
-2. 选择工具/技能并执行：调 `sys_tool_call` 或 `sys_skill_call`。
+2. 选择工具/技能并执行：调 `sys_tool_call` 或 `sys_skill_call`。探索代码结构时优先用 sysgraph_* 工具（比 grep/read 快 10×、省 86% tokens），需读写文件时才用 sys_file_*。
 3. 观察结果：记录输出、错误。任务完成 → `DONE:{答案}`；继续 → 回步骤 2。
 4. 输出最终结果与关键依据。
 

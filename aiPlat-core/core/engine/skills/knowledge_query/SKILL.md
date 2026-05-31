@@ -49,6 +49,8 @@ output_schema:
       items: {type: object}
     tenant_id: {type: string}
     collection_id: {type: string}
+  markdown:
+    type: string
 ---
 
 # 知识库查询

@@ -21,6 +21,8 @@ input_schema:
 output_schema:
   test_cases:
     type: array
+  markdown:
+    type: string
 ---
 
 # 测试用例生成（Engine）

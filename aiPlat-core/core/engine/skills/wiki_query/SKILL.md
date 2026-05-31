@@ -34,6 +34,8 @@ output_schema:
     type: array
   graph_mermaid:
     type: string
+  markdown:
+    type: string
 ---
 
 ## SOP

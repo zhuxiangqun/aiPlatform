@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Button, Modal, Textarea, toast } from '../ui';
 import { diagnosticsApi } from '../../services';
 import { toastGateError } from '../ui';
+import ExecutionViewer from '../ExecutionViewer/ExecutionViewer';
 
 interface ExecuteSkillModalProps {
   open: boolean;
@@ -134,6 +135,11 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
             </div>
           )}
 
+          {(result as any)?.run_id && (
+            <div className="mt-3">
+              <ExecutionViewer runId={String((result as any).run_id)} live={true} title="执行流程" height={400} />
+            </div>
+          )}
           {(result as any)?.execution_id && (
             <div className="mt-3 flex items-center justify-end">
               <Button

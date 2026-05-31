@@ -4,6 +4,7 @@ import { toolApi } from '../../services';
 import { workspaceMcpApi, workflowTemplateApi } from '../../services';
 import type { Agent } from '../../services';
 import { Alert, Button, Input, Modal, Textarea, toast, MultiSelect } from '../ui';
+import PromptDiffModal from './PromptDiffModal';
 
 interface EditAgentModalProps {
   open: boolean;
@@ -49,6 +50,8 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
 
   const [loopType, setLoopType] = useState<string>('react');
   const [agentStatus, setAgentStatus] = useState<string>('draft');
+  const [optimizeOpen, setOptimizeOpen] = useState(false);
+  const [optimizePrompt, setOptimizePrompt] = useState('');
 
   useEffect(() => {
     if (open && agent) {
@@ -522,6 +525,17 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
         </div>
 
         <Textarea label="配置（JSON）" value={configText} onChange={(e: any) => setConfigText(e.target.value)} rows={10} />
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" onClick={() => {
+            try {
+              const cfg = JSON.parse(configText || '{}');
+              const sp = cfg.system_prompt || '';
+              if (!sp) { toast.warning('配置中无 system_prompt 可优化'); return; }
+              setOptimizePrompt(sp);
+              setOptimizeOpen(true);
+            } catch { toast.warning('配置 JSON 格式错误'); }
+          }}>🤖 AI 优化 System Prompt</Button>
+        </div>
         <Textarea label="memory_config（JSON，可选）" value={memoryConfigText} onChange={(e: any) => setMemoryConfigText(e.target.value)} rows={6} />
         <div>
           <div className="flex items-center justify-between mb-1">
@@ -540,6 +554,21 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
         </Alert>
       </div>
     </Modal>
+
+    <PromptDiffModal
+      open={optimizeOpen}
+      title="AI 优化 Agent System Prompt"
+      original={optimizePrompt}
+      onClose={() => setOptimizeOpen(false)}
+      onApply={(optimized) => {
+        try {
+          const cfg = configText?.trim() ? JSON.parse(configText) : {};
+          cfg.system_prompt = optimized;
+          setConfigText(JSON.stringify(cfg, null, 2));
+          toast.success('已应用优化');
+        } catch { toast.error('应用失败'); }
+      }}
+    />
     </>
   );
 };

@@ -1,0 +1,11 @@
+{
+  "include": ["core/harness", "core/api", "core/apps"],
+  "exclude": ["**/__pycache__", "**/tests", "**/generated", "**/langgraph/compiled_graphs"],
+  "typeCheckingMode": "basic",
+  "reportMissingImports": false,
+  "reportMissingTypeStubs": false,
+  "reportUnknownMemberType": false,
+  "reportUnknownArgumentType": false,
+  "reportUnknownVariableType": false,
+  "pythonVersion": "3.11"
+}

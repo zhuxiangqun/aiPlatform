@@ -913,7 +913,7 @@ class _GenericSkill(BaseSkill):
             )
 
         # Canonical JSON extraction via CoreFacade (replaces local _extract_json).
-        from core.api.core_facade import parse_json
+        from core.utils.json_utils import parse_json
 
         prompt = params.get("prompt", params.get("input", ""))
         if not prompt:
@@ -950,10 +950,13 @@ class _GenericSkill(BaseSkill):
             except Exception:
                 allowed_tools = []
 
+            from core.harness.utils.prompt_loader import _sync_resolve
             system_parts = [
-                "你是一个可复用技能（Skill）执行器。",
-                f"技能名称：{self._config.name}",
-                f"技能描述：{self._config.description}",
+                _sync_resolve("skill-executor-inline",
+                    skill_name=str(self._config.name),
+                    skill_desc=str(self._config.description),
+                    sop=(sop if sop else ""),
+                ),
             ]
             if policy_block:
                 system_parts.append(policy_block)

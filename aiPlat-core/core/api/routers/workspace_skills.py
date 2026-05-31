@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 import time
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Annotated, Dict, List, Optional
 
@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 from core.api.deps import actor_from_http, rbac_guard
 from core.api.utils.governance import gate_error_envelope, governance_links, ui_url
 from core.api.utils.run_contract import wrap_execution_result_as_run_summary
-from core.api.core_facade import get_skill_registry
+from core.api.facades.skill_tool_facade import get_skill_registry
 from core.harness.integration import get_harness, KernelRuntime
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.harness.kernel.types import ExecutionRequest
@@ -2082,7 +2082,7 @@ async def update_workspace_skill_markdown(skill_id: str, request: Dict[str, Any]
         # Snapshot before overwrite (best-effort)
         try:
             skill_dir = p.parent
-            rev_dir = skill_dir / ".revisions" / datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+            rev_dir = skill_dir / ".revisions" / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
             rev_dir.mkdir(parents=True, exist_ok=True)
             rev_dir.joinpath("SKILL.md").write_text(raw, encoding="utf-8")
         except Exception:

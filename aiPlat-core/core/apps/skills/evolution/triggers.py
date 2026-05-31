@@ -6,7 +6,7 @@ Implements the three trigger mechanisms for skill evolution.
 
 import logging
 from typing import Dict, List, Optional, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timezone,timedelta
 from dataclasses import dataclass
 
 from .types import TriggerType, TriggerStatus, EvolutionTrigger
@@ -63,7 +63,7 @@ class PostExecutionTrigger(BaseTrigger):
             # Analyze and create trigger if needed
             if not success and error_type:
                 trigger = EvolutionTrigger(
-                    id=f"post_exec_{datetime.utcnow().timestamp()}",
+                    id=f"post_exec_{datetime.now(timezone.utc).timestamp()}",
                     skill_id=skill_id,
                     trigger_type=TriggerType.POST_EXEC,
                     status=TriggerStatus.PENDING,
@@ -75,7 +75,7 @@ class PostExecutionTrigger(BaseTrigger):
             # Check for capture opportunities
             if success and record.get("pattern_reusable", False):
                 trigger = EvolutionTrigger(
-                    id=f"capture_{datetime.utcnow().timestamp()}",
+                    id=f"capture_{datetime.now(timezone.utc).timestamp()}",
                     skill_id=skill_id,
                     trigger_type=TriggerType.POST_EXEC,
                     status=TriggerStatus.PENDING,
@@ -104,7 +104,7 @@ class ToolDegradationTrigger(BaseTrigger):
             metrics.success_count += 1
         else:
             metrics.failure_count += 1
-        metrics.last_checked = datetime.utcnow()
+        metrics.last_checked = datetime.now(timezone.utc)
     
     async def check(self) -> List[EvolutionTrigger]:
         """Check for tool degradation"""
@@ -122,7 +122,7 @@ class ToolDegradationTrigger(BaseTrigger):
                 
                 for skill_id in affected_skills:
                     trigger = EvolutionTrigger(
-                        id=f"degradation_{tool_name}_{skill_id}_{datetime.utcnow().timestamp()}",
+                        id=f"degradation_{tool_name}_{skill_id}_{datetime.now(timezone.utc).timestamp()}",
                         skill_id=skill_id,
                         trigger_type=TriggerType.TOOL_DEGRADATION,
                         status=TriggerStatus.PENDING,
@@ -172,7 +172,7 @@ class MetricMonitorTrigger(BaseTrigger):
                     value = metrics[metric_name]
                     if value < threshold:
                         trigger = EvolutionTrigger(
-                            id=f"metric_{skill_id}_{metric_name}_{datetime.utcnow().timestamp()}",
+                            id=f"metric_{skill_id}_{metric_name}_{datetime.now(timezone.utc).timestamp()}",
                             skill_id=skill_id,
                             trigger_type=TriggerType.METRIC,
                             status=TriggerStatus.PENDING,

@@ -8,7 +8,7 @@ import logging
 import uuid
 import hashlib
 from typing import Any, Dict, List, Optional, Set
-from datetime import datetime
+from datetime import datetime, timezone
 from dataclasses import asdict
 
 from .types import SkillVersion, EvolutionType, EvolutionConfig
@@ -60,7 +60,7 @@ class VersionLineage:
             evolution_type=evolution_type,
             trigger=trigger,
             content_hash=self._compute_hash(content),
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             metadata=metadata or {},
         )
         

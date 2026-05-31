@@ -179,77 +179,21 @@ class MessageFormatter:
         msgs: List[Message] = []
         has_tools = tools_desc and tools_desc != "No tools available"
         if has_tools:
-            msgs.append({"role": "system", "content": (
-                "你是浏览器自动化助手。涉及网页/浏览器的任务，必须使用 browser 工具一步步操作。\n\n"
-                "交互流程（必须严格遵守）：\n"
-                "1. goto 打开目标页面\n"
-                '   {"tool":"browser","args":{"action":"goto","url":"https://目标URL"}}\n'
-                "2. 观察 goto 返回结果，确认页面加载成功\n"
-                "3. list_elements 列出可交互元素（发现输入框、按钮等）\n"
-                '   {"tool":"browser","args":{"action":"list_elements","instruction":"找出搜索输入框和搜索按钮"}}\n'
-                "4. 根据 list_elements 返回的 index，用 type_index 在输入框中输入内容\n"
-                '   {"tool":"browser","args":{"action":"type_index","index":输入框的索引号,"text":"要输入的内容"}}\n'
-                "5. 用 click_index 点击按钮或 send_keys 发送 Enter\n"
-                '   {"tool":"browser","args":{"action":"send_keys","keys":"Enter"}}\n'
-                "6. wait 等待结果加载\n"
-                '   {"tool":"browser","args":{"action":"wait","ms":2000}}\n'
-                "7. screenshot 截图或 extract 提取内容验证\n"
-                "8. DONE: 输出操作结果\n\n"
-                "关键规则：\n"
-                "- 永远先 list_elements 再交互\n"
-                "- list_elements 返回的是 Markdown 表格，从表格中找 search_input 行 → type_target(role=search_input)；找 submit_button 行 → click_target(role=submit_button)\n"
-                "- 使用 click_target / type_target（不是 click_index/type_index）\n"
-                "- 每步只执行一个工具调用\n"
-                "- 禁止跳过步骤直接编造答案\n"
-                "- 搜索操作使用 type_target(role=search_input) + send_keys Enter，不用 search action"
-            )})
-        prompt = f"""Task: {task}
+            from core.harness.utils.prompt_loader import _sync_resolve
+            msgs.append({"role": "system", "content": _sync_resolve("browser-assistant")})
 
-History:
-{history}
-
-Available tools:
-{tools_desc}
-
-Available skills:
-{skills_desc}
-
-Observation: {observation}
-
-Think about what to do next. If using a tool/skill, respond with:
-1) 优先（结构化）：
-```json
-{{"tool":"tool_name","args":{{...}}}}
-```
-
-Skill（必须显式标注，避免误触发）：
-```json
-{{"skill":"skill_name","args":{{...}}}}
-```
-
-2) 兼容旧格式（tool）：
-ACTION: tool_name: argument
-
-兼容旧格式（skill）：
-SKILL: skill_name: argument
-
-If finished, respond with:
-DONE: final_answer
-"""
+        from core.harness.utils.prompt_loader import _sync_resolve
+        prompt = _sync_resolve("react-reasoning",
+            task=task, history=history, tools_desc=tools_desc,
+            skills_desc=skills_desc or "", observation=observation,
+            mem_hints="", bus_hints="",
+        )
         msgs.append({"role": "user", "content": prompt})
         return msgs
 
     def build_plan_execute_plan_messages(self, *, task: str) -> List[Message]:
-        prompt = (
-            "请为任务生成可执行的步骤计划。\n"
-            "要求：\n"
-            "1) 普通步骤用自然语言描述即可。\n"
-            "2) 若某一步需要调用工具，请用结构化 JSON 表达（单行）：\n"
-            "   {\"tool\":\"tool_name\",\"args\":{...}}\n"
-            "3) 若某一步需要调用 skill，也必须显式标注（单行）：\n"
-            "   {\"skill\":\"skill_name\",\"args\":{...}}\n"
-            f"\nTask: {task}\n"
-        )
+        from core.harness.utils.prompt_loader import _sync_resolve
+        prompt = _sync_resolve("plan-execute-plan", task=task, context="")
         return [{"role": "user", "content": prompt}]
 
     def build_plan_execute_step_messages(self, *, action: str, task: str) -> List[Message]:
@@ -264,34 +208,15 @@ DONE: final_answer
         action: str,
         observation: str,
     ) -> List[Message]:
-        prompt = f"""Current state:
-- History: {history}
-- Reasoning: {reasoning}
-- Action: {action}
-- Observation: {observation}
-
-What should I do next?
-
-优先使用结构化工具调用（推荐）：
-```json
-{{"tool":"tool_name","args":{{...}}}}
-```
-
-兼容旧格式：
-ACTION: tool_name: {{json_or_text}}
-
-If finished, respond with: DONE
-"""
+        from core.harness.utils.prompt_loader import _sync_resolve
+        prompt = _sync_resolve("langgraph-reason",
+            history=history, reasoning=reasoning, action=action, observation=observation,
+        )
         return [{"role": "user", "content": prompt}]
 
     def build_langgraph_observe_messages(self, *, observation: str) -> List[Message]:
-        prompt = f"""Observation from tool execution: {observation}
-
-Based on this observation, what should I do next?
-- If more work needed, respond with what to do
-- If task complete, respond with DONE
-- If error occurred, respond with ERROR: description
-"""
+        from core.harness.utils.prompt_loader import _sync_resolve
+        prompt = _sync_resolve("langgraph-observe", observation=observation)
         return [{"role": "user", "content": prompt}]
 
     def _normalize(self, prompt: Union[str, List[Message]]) -> List[Message]:

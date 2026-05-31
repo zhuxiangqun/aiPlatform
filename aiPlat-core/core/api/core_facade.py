@@ -84,13 +84,9 @@ def get_tool_registry() -> Any:
 
 
 def get_model_registry() -> Any:
-    """Get the global ModelRegistry singleton (bridged to infra ModelManager)."""
-    try:
-        from infra.management.model.manager import ModelManager
-        return ModelManager()
-    except Exception:
-        from core.harness.infrastructure.model_registry import get_model_registry as _get
-        return _get()
+    """Get the global ModelManager from infra (unique source of truth for models)."""
+    from infra.management.model.manager import ModelManager
+    return ModelManager()
 
 
 def llm_generate(model: Any, prompt: Any, **kwargs: Any) -> Any:
@@ -100,31 +96,10 @@ def llm_generate(model: Any, prompt: Any, **kwargs: Any) -> Any:
     return sys_llm_generate(model, prompt, **kwargs)
 
 
-async def chat_conversation(
-    model: Any,
-    system_prompt: str,
-    messages: List[Dict[str, str]],
-    user_instruction: str = "",
-    name: str = "chat_agent",
-) -> str:
-    """DEPRECATED: Use intents.core_chat() instead.
-    Redirects to the intent-level API for backward compatibility."""
-    from core.api.intents import core_chat, ChatContext as ICtx
-
-    ctx = ICtx(
-        agent_name=name,
-        session_id="legacy_chat",
-        user_input=user_instruction or (messages[-1].get("content", "") if messages else ""),
-        model=model,
-        metadata={"system_prompt": system_prompt, "legacy_caller": True},
-    )
-    result = await core_chat(ctx)
-    return result.reply
-
-
 # ═══════════════════════════════════════════════════════════════
 # core_chat() — intent-level agent conversation entry.
 # Automatically activates Memory, Trace, AgentRegistry, Skills.
+# (chat_conversation() removed — use intents.core_chat() directly)
 # ═══════════════════════════════════════════════════════════════
 
 class ChatContext:
@@ -322,58 +297,7 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
     )
 
 
-def extract_json(text: str) -> str:
-    """Extract JSON substring from text (handles markdown code blocks and
-    raw curly-brace regions). Use instead of duplicating extraction logic
-    in platform."""
-    from core.harness.execution.pipeline_engine import PipelineEngine
-    return PipelineEngine._extract_json(text)
-
-
-def extract_json_safe(text: str) -> Optional[str]:
-    """Extract JSON substring with bracket-balanced truncation handling.
-    Unlike extract_json, this finds the first balanced {…} or […] block,
-    making it safe for LLM outputs where JSON may be followed by commentary.
-    """
-    import re
-    if not text:
-        return None
-    # 1. Try ```json fence
-    m = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', text, re.IGNORECASE)
-    candidate = m.group(1).strip() if m else text
-    # 2. Find first { or [ at outermost level
-    def _balanced(src: str, open_ch: str, close_ch: str) -> Optional[str]:
-        i = src.find(open_ch)
-        if i < 0:
-            return None
-        depth, in_str, esc = 0, False, False
-        for j in range(i, len(src)):
-            ch = src[j]
-            if in_str:
-                if esc: esc = False
-                elif ch == '\\': esc = True
-                elif ch == '"': in_str = False
-            else:
-                if ch == '"': in_str = True
-                elif ch == open_ch: depth += 1
-                elif ch == close_ch:
-                    depth -= 1
-                    if depth == 0:
-                        return src[i:j + 1]
-        return None
-    return _balanced(candidate, '{', '}') or _balanced(candidate, '[', ']')
-
-
-def parse_json(raw: str) -> Optional[Dict[str, Any]]:
-    """Extract and parse JSON from LLM output. Returns parsed dict or None."""
-    import json
-    json_str = extract_json_safe(raw or "")
-    if json_str:
-        try:
-            return json.loads(json_str)
-        except json.JSONDecodeError:
-            pass
-    return None
+from core.utils.json_utils import extract_json, extract_json_safe, parse_json
 
 
 def parse_output(raw: str) -> Dict[str, Any]:

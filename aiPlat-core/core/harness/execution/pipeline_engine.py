@@ -64,19 +64,15 @@ class PipelineEventBus:
             except Exception:
                 pass
         # Write to SQLite for cross-thread/process visibility
-        try:
-            import json
-            from storage.sqlite import insert_pipeline_event
-            insert_pipeline_event(
-                run_id=project_id,
-                event_type=event_type,
-                node_id=str(data.get("node_id", "")),
-                state_json=json.dumps(incoming, default=str),
-                elapsed=float(data.get("elapsed", 0)),
-                output=str(incoming.get(f"_stage_output_{data.get('node_id','')}", "")),
-            )
-        except Exception:
-            pass
+        import json
+        _write_pipeline_event(
+            run_id=project_id,
+            event_type=event_type,
+            node_id=str(data.get("node_id", "")),
+            state_json=json.dumps(incoming, default=str),
+            elapsed=float(data.get("elapsed", 0)),
+            output=str(incoming.get(f"_stage_output_{data.get('node_id','')}", "")),
+        )
 
 # Global singleton — engine fires events, platform/service layers listen
 _event_bus = PipelineEventBus()
@@ -1019,6 +1015,12 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                 state.update(r_state)
                 if r_paused:
                     paused = True
+            # Handle conditional routing after layer results are merged
+            route_to = state.pop("_route_after", None)
+            if route_to is not None and isinstance(route_to, int) and 0 <= route_to < len(stages):
+                # Re-compute layers from the routing target, skipping already-done stages
+                layers = self._compute_dependency_layers(stages, route_to)
+                continue
             # Live state push for frontend polling
             _event_bus.emit(state.get("session_id", ""), "layer_after", {"state": dict(state)})
             if paused:
@@ -1048,8 +1050,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
         try:
             session_id = state.get("session_id", "")
             if session_id:
-                from storage.sqlite import update_workflow_run_phase
-                update_workflow_run_phase(session_id, state.get("phase", "done"))
+                _update_workflow_run_phase(session_id, state.get("phase", "done"))
         except Exception:
             pass
         _event_bus.emit(state.get("session_id", ""), "complete", {"state": dict(state)})
@@ -1432,7 +1433,86 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
 
         # Git auto-commit on stage completion
         self._git_commit_stage(stage, local_state)
+
+        # Conditional routing: evaluate routing_rules, record target if triggered
+        route_to = self._evaluate_routing(stage, local_state)
+        if route_to is not None:
+            local_state["_route_after"] = route_to
+            local_state["_last_action_reason"] = f"routed_to:{self._config.stages[route_to].id}"
+
         return local_state, False
+
+    def _evaluate_routing(self, stage: PipelineStageConfig, state: PipelineState) -> Optional[int]:
+        """Evaluate routing_rules for a stage. Returns index of next stage, or None."""
+        rules = getattr(stage, 'routing_rules', None) or []
+        if not rules:
+            return None
+        stages = self._config.stages
+        id_to_idx = {s.id: i for i, s in enumerate(stages)}
+        for rule in rules:
+            if not isinstance(rule, dict):
+                continue
+            condition = rule.get("condition", "")
+            target_id = rule.get("next", "")
+            if not condition or not target_id or target_id not in id_to_idx:
+                continue
+            try:
+                if self._check_condition(condition, state):
+                    return id_to_idx[target_id]
+            except Exception:
+                logging.getLogger("pipeline_engine").debug("routing eval failed", exc_info=True)
+        return None
+
+    @staticmethod
+    def _check_condition(condition: str, state: dict) -> bool:
+        """Evaluate condition against pipeline state.
+        Supports: 'field=="val"', 'result.pass_rate > 0.8', 'error is not None', 'a=="x" and b>0'
+        """
+        import re
+        for part in [p.strip() for p in condition.split(" and ")]:
+            m = re.match(r'^(\w+(?:\.\w+)*)\s*(==|!=|>|<|>=|<=|is\s+not|is)\s*(.+)$', part)
+            if not m:
+                return False
+            path_str, op, val_str = m.group(1), m.group(2), m.group(3).strip()
+            val = state
+            for seg in path_str.split('.'):
+                val = val.get(seg) if isinstance(val, dict) else None
+                if val is None:
+                    break
+            rhs: Any
+            s = val_str.strip()
+            if (s.startswith('"') and s.endswith('"')) or (s.startswith("'") and s.endswith("'")):
+                rhs = s[1:-1]
+            elif s.lower() == 'none':
+                rhs = None
+            elif s.lower() == 'true':
+                rhs = True
+            elif s.lower() == 'false':
+                rhs = False
+            else:
+                try:
+                    rhs = float(s)
+                except ValueError:
+                    rhs = s
+            if op in ("==", "!="):
+                if (val == rhs) != (op == "=="):
+                    return False
+            elif op == "is":
+                if val is not rhs:
+                    return False
+            elif op == "is not":
+                if val is rhs:
+                    return False
+            elif op in (">", "<", ">=", "<=") and val is not None and rhs is not None:
+                try:
+                    fv, fr = float(val), float(rhs)
+                    if not eval(f"fv {op} fr"):
+                        return False
+                except (TypeError, ValueError):
+                    return False
+            else:
+                return False
+        return True
 
     @staticmethod
     def _git_commit_stage(stage: PipelineStageConfig, state: PipelineState) -> None:
@@ -3195,6 +3275,45 @@ def export_otel_trace(graph_trace: list, output_path: str = None) -> str:
     Returns JSON string if output_path is None, else writes to file.
     """
     import json, time, os
+
+_PLATFORM_DB_PATH = os.getenv("AIPLAT_PLATFORM_DB_PATH", "data/aiplat_platform.sqlite3")
+
+
+def _write_pipeline_event(run_id: str, event_type: str, node_id: str,
+                          state_json: str, elapsed: float, output: str) -> None:
+    """Write pipeline event to platform SQLite. Self-contained in core; no cross-layer import."""
+    try:
+        import sqlite3
+        conn = sqlite3.connect(_PLATFORM_DB_PATH)
+        try:
+            conn.execute(
+                "INSERT INTO pipeline_events (run_id, event_type, node_id, state_json, elapsed, output, created_at) "
+                "VALUES (?,?,?,?,?,?,?)",
+                (str(run_id), str(event_type), str(node_id or ""),
+                 str(state_json), float(elapsed), str(output or ""), time.time()),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception:
+        pass
+
+
+def _update_workflow_run_phase(project_id: str, phase: str) -> None:
+    """Update workflow_runs phase in platform SQLite. Self-contained in core."""
+    try:
+        import sqlite3
+        conn = sqlite3.connect(_PLATFORM_DB_PATH)
+        try:
+            conn.execute(
+                "UPDATE workflow_runs SET phase=? WHERE project_id=?",
+                (str(phase), str(project_id)),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception:
+        pass
     spans = []
     trace_id = hex(int(time.time() * 1000000))[2:20]
     root_span_id = hex(int(time.time() * 1000000 + 1))[2:18]

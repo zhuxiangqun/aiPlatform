@@ -112,7 +112,7 @@ class MaterialsChatAgent(BaseAgent):
             retrieved_docs: str = ""
             citations: list = []
             try:
-                from core.api.core_facade import kb_retrieve
+                from core.api.facades.kb_facade import kb_retrieve
                 results = kb_retrieve(
                     query=enhanced_question,
                     doc_ids=doc_ids,

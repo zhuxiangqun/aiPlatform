@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { workspaceSkillApi, SKILL_CATEGORIES as SKILL_CAT_NAMES } from '../../services';
 import type { Skill } from '../../services';
 import { Button, Input, Modal, Select, Textarea, toast } from '../ui';
+import PromptDiffModal from './PromptDiffModal';
 
 const SKILL_CATEGORIES = SKILL_CAT_NAMES.map(v => ({ value: v, label: v }));
 
@@ -24,6 +25,8 @@ const EditSkillModal: React.FC<EditSkillModalProps> = ({ open, skill, onClose, o
   const [sopText, setSopText] = useState('');
   const [sopOrig, setSopOrig] = useState('');
   const [skillMdPath, setSkillMdPath] = useState<string>('');
+  const [optimizeOpen, setOptimizeOpen] = useState(false);
+  const [optimizePrompt, setOptimizePrompt] = useState('');
 
   useEffect(() => {
     if (open && skill) {
@@ -165,6 +168,7 @@ const EditSkillModal: React.FC<EditSkillModalProps> = ({ open, skill, onClose, o
   };
 
   return (
+    <>
     <Modal
       open={open}
       onClose={onClose}
@@ -234,15 +238,35 @@ const EditSkillModal: React.FC<EditSkillModalProps> = ({ open, skill, onClose, o
           <Textarea label="配置（JSON，可选）" rows={10} value={configText} onChange={(e: any) => setConfigText(e.target.value)} />
           <Textarea label="input_schema（JSON）" rows={8} value={inputSchemaText} onChange={(e: any) => setInputSchemaText(e.target.value)} />
           <Textarea label="output_schema（JSON）" rows={8} value={outputSchemaText} onChange={(e: any) => setOutputSchemaText(e.target.value)} />
-          <Textarea
-            label={`SOP（SKILL.md Body，Markdown）${skillMdPath ? ` · ${skillMdPath}` : ''}`}
-            rows={12}
-            value={sopText}
-            onChange={(e: any) => setSopText(e.target.value)}
-          />
+          <div className="flex gap-2 items-center">
+            <Textarea
+              label={`SOP（SKILL.md Body，Markdown）${skillMdPath ? ` · ${skillMdPath}` : ''}`}
+              rows={12}
+              value={sopText}
+              onChange={(e: any) => setSopText(e.target.value)}
+            />
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => {
+            if (!sopText.trim()) { toast.warning('SOP 为空，无法优化'); return; }
+            setOptimizePrompt(sopText);
+            setOptimizeOpen(true);
+          }}>🤖 AI 优化 SOP</Button>
         </div>
       )}
     </Modal>
+
+    <PromptDiffModal
+      open={optimizeOpen}
+      title="AI 优化 Skill SOP"
+      original={optimizePrompt}
+      onClose={() => setOptimizeOpen(false)}
+      onApply={(optimized) => {
+        setSopText(optimized);
+        setSopOrig(optimized);
+        toast.success('已应用优化，请保存');
+      }}
+    />
+    </>
   );
 };
 

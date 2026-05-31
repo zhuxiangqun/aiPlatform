@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { workspaceAgentApi, workspaceSkillApi } from '../../services';
+import { workspaceAgentApi, workspaceSkillApi, promptAppApi } from '../../services';
 import { modelApi, toolApi, type Model } from '../../services';
 import { workspaceMcpApi, workflowTemplateApi } from '../../services';
 import { Alert, Button, Input, Modal, Textarea, toast, MultiSelect } from '../ui';
+import PromptDiffModal from './PromptDiffModal';
 import { diagnosticsApi } from '../../services';
 
 interface AgentConfigTemplate {
@@ -62,6 +63,10 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
   const [selectedModel, setSelectedModel] = useState<string>('');
   const [autoSmoke, setAutoSmoke] = useState(true);
   const [autoFillLoading, setAutoFillLoading] = useState(false);
+  const [appTemplates, setAppTemplates] = useState<any[]>([]);
+  const [selectedAppTemplateId, setSelectedAppTemplateId] = useState('');
+  const [optimizeOpen, setOptimizeOpen] = useState(false);
+  const [optimizePrompt, setOptimizePrompt] = useState('');
 
   // Disambiguation wizard
   const [wizOpen, setWizOpen] = useState(false);
@@ -83,9 +88,33 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
       setConfigText(JSON.stringify(AGENT_TYPE_TEMPLATES.base.config, null, 2));
       setMemoryConfigText('{\n  "type": "short_term",\n  "recall_count": 5\n}');
       setSopText('');
+      setSelectedAppTemplateId('');
       fetchOptions();
+      fetchAppTemplates();
     }
   }, [open]);
+
+  // Auto-apply template when selected (by user or AI)
+  useEffect(() => {
+    if (!selectedAppTemplateId) return;
+    const tpl = appTemplates.find(t => t.id === selectedAppTemplateId);
+    if (!tpl) return;
+    if (tpl.name && !name) setName(tpl.name);
+    const sp = [tpl.system_prompt, tpl.user_prompt].filter(Boolean).join('\n\n');
+    if (!sp) return;
+    try {
+      const cfg = JSON.parse(configText);
+      cfg.system_prompt = sp;
+      setConfigText(JSON.stringify(cfg, null, 2));
+    } catch { }
+  }, [selectedAppTemplateId, appTemplates]);
+
+  const fetchAppTemplates = async () => {
+    try {
+      const r = await promptAppApi.list();
+      setAppTemplates((r as any).items || []);
+    } catch { }
+  };
 
   const fetchOptions = async () => {
     try {
@@ -178,6 +207,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
       if (result.agent_ids?.length) setAgentIds(result.agent_ids.filter((a: string) => agentOptions.some(o => o.value === a)));
       if (result.memory_config) setMemoryConfigText(JSON.stringify(result.memory_config, null, 2));
       if (result.sop_text) setSopText(result.sop_text);
+      if (result.template_id) setSelectedAppTemplateId(result.template_id);
       toast.success(`智能填充完成`, result.reasoning || 'AI 已根据描述推荐配置');
     } catch (e: any) {
       toast.error('智能填充失败', e?.message || String(e));
@@ -368,6 +398,19 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
       }
     >
       <div className="space-y-4">
+        {appTemplates.length > 0 && (
+          <div>
+            <label className="text-sm font-medium text-gray-300 mb-1 block">基于应用模板创建（可选）</label>
+            <select value={selectedAppTemplateId} onChange={e => setSelectedAppTemplateId(e.target.value)}
+              className="w-full bg-dark-bg border border-dark-border rounded px-3 py-2 text-sm text-gray-200 outline-none">
+              <option value="">不使用模板</option>
+              {appTemplates.map((t: any) => (
+                <option key={t.id} value={t.id}>{t.name} ({t.category || '通用'})</option>
+              ))}
+            </select>
+            <p className="text-[10px] text-gray-600 mt-0.5">选择后自动填入名称和 System Prompt，可选择「AI 智能填充」补充 Skills/Tools</p>
+          </div>
+        )}
         <Input label="名称" value={name} onChange={(e: any) => setName(e.target.value)} placeholder="例如：数据分析助手" />
         <div className="flex items-center gap-2">
           <div className="flex-1">
@@ -446,6 +489,17 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
         )}
 
         <Textarea label="配置（JSON）" value={configText} onChange={(e: any) => setConfigText(e.target.value)} rows={10} />
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" onClick={() => {
+            try {
+              const cfg = JSON.parse(configText || '{}');
+              const sp = cfg.system_prompt || '';
+              if (!sp) { toast.warning('配置中无 system_prompt 可优化'); return; }
+              setOptimizePrompt(sp);
+              setOptimizeOpen(true);
+            } catch { toast.warning('配置 JSON 格式错误'); }
+          }}>🤖 AI 优化 System Prompt</Button>
+        </div>
         <Textarea label="memory_config（JSON，可选）" value={memoryConfigText} onChange={(e: any) => setMemoryConfigText(e.target.value)} rows={6} />
         <Textarea
           label="SOP（Markdown，可选）"
@@ -467,6 +521,20 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
       </div>
     </Modal>
 
+    <PromptDiffModal
+      open={optimizeOpen}
+      title="AI 优化 Agent System Prompt"
+      original={optimizePrompt}
+      onClose={() => setOptimizeOpen(false)}
+      onApply={(optimized) => {
+        try {
+          const cfg = configText?.trim() ? JSON.parse(configText) : {};
+          cfg.system_prompt = optimized;
+          setConfigText(JSON.stringify(cfg, null, 2));
+          toast.success('已应用优化');
+        } catch { toast.error('应用失败'); }
+      }}
+    />
     <Modal
       open={wizOpen}
       onClose={() => setWizOpen(false)}

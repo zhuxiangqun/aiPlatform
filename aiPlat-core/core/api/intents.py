@@ -161,8 +161,8 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
 
     from core.api.core_facade import (
         create_agent, get_agent_frontmatter, get_default_model,
-        get_skill_registry,
     )
+    from core.api.facades.skill_tool_facade import get_skill_registry
 
     trace_id = f"chat_{_uuid.uuid4().hex[:12]}"
 
@@ -207,7 +207,8 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
             "Create AGENT.md at ~/.aiplat/agents/%s/AGENT.md with SOP instructions.",
             ctx.agent_name, ctx.agent_name,
         )
-        system_prompt = f"You are {ctx.agent_name}. Respond helpfully."
+        from core.harness.utils.prompt_loader import _async_prompt_resolve
+        system_prompt = await _async_prompt_resolve("agent-fallback", agent_name=str(ctx.agent_name))
 
     # ── 2. MemoryManager: load conversation history ──
     memory_saved = False
@@ -355,16 +356,18 @@ async def core_query(ctx: QueryContext) -> QueryResult:
     Application interprets the results (citations, relevance, etc.).
     """
     import uuid as _uuid
-    from core.api.core_facade import create_agent, get_default_model, get_skill_registry
+    from core.api.core_facade import create_agent
+    from core.api.facades.skill_tool_facade import get_skill_registry
 
     trace_id = f"query_{_uuid.uuid4().hex[:12]}"
     model = ctx.model or get_default_model()
 
+    from core.harness.utils.prompt_loader import _async_prompt_resolve
     agent = create_agent(
         agent_type="conversational",
         config={"name": "kb_query", "temperature": 0.3, "timeout": 300},
         model=model,
-        system_prompt="You are a knowledge retrieval assistant. Answer based on provided context.",
+        system_prompt=await _async_prompt_resolve("kb-retrieval-assistant"),
     )
 
     skill_reg = get_skill_registry()

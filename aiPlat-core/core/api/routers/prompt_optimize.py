@@ -1,0 +1,98 @@
+"""Prompt Optimize API — template-aware LLM optimization."""
+from __future__ import annotations
+import json as _json
+import re as _re
+import logging
+
+from fastapi import APIRouter, HTTPException
+from core.schemas_prompt_app import PromptOptimizeRequest
+
+router = APIRouter()
+_log = logging.getLogger("aiplat.prompt_optimize")
+
+
+@router.post("/prompts/optimize")
+async def optimize_prompt(req: PromptOptimizeRequest):
+    """Optimize a prompt template with context-aware analysis."""
+    if not req.prompt:
+        raise HTTPException(status_code=400, detail="prompt is required")
+
+    # Load template context if available
+    context_text = ""
+    if req.template_id:
+        from core.harness.kernel.runtime import get_kernel_runtime
+        rt = get_kernel_runtime()
+        store = getattr(rt, "execution_store", None) if rt else None
+        if store:
+            try:
+                tpl = await store.get_prompt_app_template(template_id=req.template_id)
+                if tpl:
+                    cat = tpl.get("category", "")
+                    name = tpl.get("name", "")
+                    vars_text = tpl.get("variables", "[]")
+                    context_text = f"\n模板名称: {name}\n行业分类: {cat}\n变量定义: {vars_text[:500]}"
+            except Exception:
+                pass
+
+    try:
+        from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
+        model_name = req.model or best_model_for_purpose("query_translation")
+        if not model_name:
+            return {"error": "无可用模型", "original": req.prompt[:500], "optimized": "", "changes": [], "analysis": ""}
+        try:
+            model = create_selected_adapter(model_name=model_name)
+        except RuntimeError as re:
+            return {"error": f"模型不可用: {str(re)[:200]}", "original": req.prompt[:500],
+                    "optimized": "", "changes": [], "analysis": "",
+                    "hint": "请配置 AIPLAT_LLM_API_KEY 或启动 Ollama/LM Studio 本地模型"}
+
+        optimize_prompt = f"""你是 Prompt 优化专家。请分析并优化以下 Prompt 模板。{context_text}
+
+当前 Prompt：
+{req.prompt[:3000]}
+
+请输出优化建议 JSON：
+{{
+  "optimized": "优化后的完整文本（保留所有${{var}}变量不变）",
+  "changes": [
+    "改动1：具体说明改了哪里及原因",
+    "改动2：..."
+  ],
+  "suggested_vars": ["新增变量1", "新增变量2"],
+  "analysis": "一句话分析",
+  "score_before": 7,
+  "score_after": 9
+}}
+
+要求：
+- 必须保留所有现存的${{变量名}}占位符
+- 针对该行业/场景优化措辞和结构
+- 每条改动说明必须具体
+
+只输出 JSON。"""
+
+        resp = await model.generate([
+            {"role": "system", "content": "你是 Prompt 优化专家。只输出 JSON，不要任何解释。"},
+            {"role": "user", "content": optimize_prompt},
+        ], config=None)
+
+        content = resp.content if hasattr(resp, 'content') else str(resp)
+        match = _re.search(r'\{[\s\S]*\}', content.strip())
+        result = {}
+        if match:
+            try:
+                result = _json.loads(match.group(0))
+            except Exception:
+                result = {}
+
+        return {
+            "original": req.prompt[:2000],
+            "optimized": result.get("optimized", "")[:2000],
+            "changes": result.get("changes", [])[:8],
+            "suggested_vars": result.get("suggested_vars", [])[:5],
+            "analysis": result.get("analysis", "")[:500],
+            "score_before": result.get("score_before", 7),
+            "score_after": result.get("score_after", 9),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Optimize failed: {str(e)[:200]}")

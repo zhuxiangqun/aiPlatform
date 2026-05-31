@@ -88,7 +88,7 @@ class KBPlannerAgent:
         action = str(step.get("action", "retrieve")).lower()
         if action in ("retrieve", "search"):
             query = str(step.get("query", "相关文档"))
-            from core.api.core_facade import kb_retrieve
+            from core.api.facades.kb_facade import kb_retrieve
             results = kb_retrieve(query=query, doc_ids=doc_ids, tenant_id=tenant_id, top_k=5)
             return "\n\n---\n\n".join(r["text"] for r in results) if results else "[无匹配内容]"
         elif action in ("analyze", "summarize", "generate"):

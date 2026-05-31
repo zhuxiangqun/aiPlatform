@@ -12,7 +12,7 @@ import asyncio
 import logging
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 from .config import SubagentConfig, SubagentInstance
@@ -78,7 +78,7 @@ class SubagentCoordinator:
             config=config,
             session_id=session_id,
             state="created",
-            created_at=datetime.utcnow().isoformat()
+            created_at=datetime.now(timezone.utc).isoformat()
         )
         
         self._active_instances[f"{session_id}:{name}"] = instance
@@ -96,14 +96,14 @@ class SubagentCoordinator:
         binds allowed tools, executes the task, and returns a summarized
         result (max ~800 chars per §5.26 Subagent 摘要原则).
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         try:
             instance = await self.create_instance(
                 name=subagent_name,
-                session_id=f"task-{datetime.utcnow().timestamp()}"
+                session_id=f"task-{datetime.now(timezone.utc).timestamp()}"
             )
             instance.state = "running"
-            instance.started_at = datetime.utcnow().isoformat()
+            instance.started_at = datetime.now(timezone.utc).isoformat()
 
             # Build conversation context from system prompt + task
             messages: List[Dict[str, str]] = []
@@ -152,9 +152,9 @@ class SubagentCoordinator:
                     output = output.get("content", str(output))
                 # Summarize per §5.26: parent needs concise summary, not full output
                 summarized = self._summarize_output(str(output), max_chars=800)
-                duration = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+                duration = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
                 instance.state = "completed"
-                instance.completed_at = datetime.utcnow().isoformat()
+                instance.completed_at = datetime.now(timezone.utc).isoformat()
                 return SubagentResult(
                     subagent_name=subagent_name,
                     success=True,
@@ -163,7 +163,7 @@ class SubagentCoordinator:
                     duration_ms=duration,
                 )
             else:
-                duration = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+                duration = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
                 instance.state = "error"
                 return SubagentResult(
                     subagent_name=subagent_name,
@@ -173,7 +173,7 @@ class SubagentCoordinator:
                 )
         except Exception as e:
             logger.error(f"Subagent '{subagent_name}' failed: {e}")
-            duration = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+            duration = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
             return SubagentResult(
                 subagent_name=subagent_name,
                 success=False,

@@ -13,6 +13,11 @@ effects:
     resources: ["kb:documents"]
     idempotent: true
     rollback_available: false
+output_schema:
+  result:
+    type: string
+  markdown:
+    type: string
 ---
 你是一个知识库文档查询助手。你的任务是根据用户的问题，从指定的知识库文档中检索相关内容，并生成准确、简洁的回答。
 

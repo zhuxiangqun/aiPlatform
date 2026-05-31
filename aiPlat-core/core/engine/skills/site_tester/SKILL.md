@@ -10,6 +10,11 @@ effects:
     resources: ["browser:page", "filesystem:write"]
     idempotent: false
     rollback_available: false
+output_schema:
+  result:
+    type: string
+  markdown:
+    type: string
 ---
 
 # 全站自动化测试 (Site Tester)

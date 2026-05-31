@@ -315,14 +315,14 @@ class SkillExecutor:
                         "4) 目标驱动：把任务转成可验证目标；给出验收标准（测试/复现步骤/检查清单）。\n"
                     )
 
-                system_prompt = (
-                    "你是一个专用技能代理（fork mode）。\n"
-                    f"技能名称：{getattr(config, 'name', skill_name)}\n"
-                    f"技能描述：{getattr(config, 'description', '')}\n"
-                    f"{policy_block}"
-                    f"{sop_block}"
-                    "你的任务：根据用户给定的参数与输入，严格执行该技能并输出结果。"
+                from core.harness.utils.prompt_loader import _sync_resolve
+                system_prompt = _sync_resolve("skill-executor-fork",
+                    skill_name=str(getattr(config, 'name', skill_name)),
+                    skill_desc=str(getattr(config, 'description', '')),
+                    sop=(sop_block if sop_block else ""),
                 )
+                if policy_block:
+                    system_prompt = policy_block + "\n" + system_prompt
 
                 agent_config = AgentConfig(
                     name=f"fork-{skill_name}",

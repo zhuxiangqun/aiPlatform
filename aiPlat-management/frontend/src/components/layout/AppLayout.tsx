@@ -7,7 +7,7 @@ import {
   FileText, Users, MessageSquare,
   ChevronLeft, ChevronRight, Settings, LogOut, User,
   Bell, ChevronDown, FolderOpen, BarChart3, Wrench,
-  Activity, Plug, Package, ShoppingBag, Box,
+  Activity, Plug, Package, ShoppingBag, Box, Zap,
   GitBranch, Globe, PenTool, Key, Rocket,
   type LucideIcon,
 } from 'lucide-react';
@@ -30,6 +30,8 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
   { key: '/alerts', icon: Bell, label: '告警中心' },
   { key: '/releases', icon: Rocket, label: '版本管理' },
   { key: '/diagnostics', icon: Activity, label: '诊断中心' },
+  { key: '/diagnostics/repairs', icon: Activity, label: '修复中心' },
+  { key: '/system-graph', icon: Activity, label: '系统图谱' },
   { key: '/onboarding', icon: Settings, label: '初始化向导' },
   { divider: true },
   { group: 'infra', label: '基础设施层', items: [
@@ -50,8 +52,12 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
     { key: '/core/variables', icon: PenTool, label: '变量管理' },
     { key: '/core/credentials', icon: Key, label: '凭证管理' },
     { key: '/core/memory', icon: Brain, label: 'Memory管理' },
-    { key: '/core/prompts', icon: FileText, label: 'Prompt模板' },
+    { key: '/core/prompts', icon: FileText, label: '系统Prompt' },
     { key: '/core/agent-insight', icon: BarChart3, label: 'Agent能力' },
+  ]},
+  { divider: true },
+  { group: 'prompts', label: '提示词工程', items: [
+    { key: '/prompts/app', icon: FileText, label: '应用模板' },
   ]},
   { divider: true },
   { group: 'workspace', label: '应用能力层', items: [

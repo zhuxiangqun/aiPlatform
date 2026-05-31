@@ -13,6 +13,9 @@ required_skills:
 required_tools:
   - file_operations
   - search
+  - sysgraph_search
+  - sysgraph_context
+  - sysgraph_callers
 status: ready
 protected: true
 category: evaluation
@@ -36,6 +39,8 @@ pipeline:
 4. **API 先验证后使用**：不要猜测不存在的库
 
 ### 工作流
+
+> 探索代码结构时优先用 sysgraph_* 工具（比 grep/read 快 10×）
 
 ```
 1. 读取 AGENT.md

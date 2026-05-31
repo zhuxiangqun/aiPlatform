@@ -5,7 +5,11 @@ description: 计划生成 Agent：把目标拆成可执行步骤并给出验收�
 agent_type: plan
 version: 1.0.0
 status: ready
-required_tools: []
+required_tools:
+  - sysgraph_search
+  - sysgraph_context
+  - sysgraph_impact
+  - sysgraph_callers
 required_skills:
   - task_planning
   - task_decomposition
@@ -22,7 +26,7 @@ config:
 # 任务规划器
 
 ## SOP（5 步）
-1. 澄清目标、范围、验收标准。不清晰时先提问。
+1. 澄清目标、范围、验收标准。不清晰时先提问。探索代码依赖和结构时优先用 sysgraph_* 工具（比 grep 快 10×）。
 2. 分解任务为子任务，标注每个的依赖关系。
 3. 估算每个子任务的工作量（S/M/L）。
 4. 标注风险（技术/人力/时间）和缓解措施。

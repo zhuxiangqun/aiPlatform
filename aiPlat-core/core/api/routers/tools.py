@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 
 from core.api.deps import actor_from_http, rbac_guard
 from core.api.utils.run_contract import wrap_execution_result_as_run_summary
-from core.api.core_facade import get_tool_registry
+from core.api.facades.skill_tool_facade import get_tool_registry
 from core.harness.integration import KernelRuntime, get_harness
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.harness.kernel.types import ExecutionRequest

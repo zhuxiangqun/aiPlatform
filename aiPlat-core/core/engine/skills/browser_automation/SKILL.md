@@ -10,6 +10,11 @@ effects:
     resources: ["browser:page", "filesystem:read"]
     idempotent: false
     rollback_available: false
+output_schema:
+  result:
+    type: string
+  markdown:
+    type: string
 ---
 
 # Browser Automation

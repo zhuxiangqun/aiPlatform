@@ -238,37 +238,17 @@ async def generate_role_definition(req: AgentAutoFillRequest) -> RoleDefinitionR
     """基于功能描述生成角色定义，让用户确认后再进行下一步的技能/工具推荐。"""
     import json as _json, re as _re
 
-    prompt = f"""你是一个 AI Agent 角色定义专家。根据用户的名称和功能描述，生成一份结构化的角色定义。
-
-## 用户输入
-- 名称: {req.name or '(待填写)'}
-- 功能描述: {req.description or '(无)'}
-
-## 任务
-分析用户的功能描述，推断这个 Agent 的角色定位。输出严格 JSON（无 markdown 标记）:
-
-{{{{
-  "role_name": "角色的中文名称（2-8字）",
-  "responsibilities": ["职责1", "职责2", "职责3"],
-  "scenarios": ["使用场景1", "使用场景2"],
-  "required_capabilities": ["需要的能力1（如任务规划、文档生成、信息检索、代码生成等）", "需要的能力2"],
-  "workflow_hint": "可能的工作流协作方式（如需要与哪些角色协作，一句话描述）",
-  "reasoning": "为什么这样定义这个角色（1-2句话）"
-}}}}
-
-注意：
-- responsibilities 列出 3-5 个核心职责
-- scenarios 列出 2-3 个典型使用场景
-- required_capabilities 用自然语言描述需要的能力类型（不是具体的技能名）
-- workflow_hint 简要描述与其他 Agent 的协作关系，无协作则为空字符串
-"""
+    from core.harness.utils.prompt_loader import _async_prompt_resolve
+    prompt = await _async_prompt_resolve("agent-role-definition",
+        name=req.name or '(待填写)', description=req.description or '(无)',
+    )
 
     try:
         from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
         model_name = best_model_for_purpose("agent_creation")
         model = create_selected_adapter(model_name=model_name)
         messages = [
-            {"role": "system", "content": "你是一个 AI 角色定义专家。只输出 JSON，不要加任何解释或 markdown 标记。"},
+            {"role": "system", "content": await _async_prompt_resolve("agent-role-system")},
             {"role": "user", "content": prompt},
         ]
         resp = await model.generate(messages, config=None)
@@ -414,80 +394,34 @@ async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
 - 协作关系: {rd.get('workflow_hint', '无')}
 """
 
-    prompt = f"""你是一个 AI 平台配置专家。用户正在创建一个新的 AI Agent，请根据以下功能描述推荐最优配置。
+    from core.harness.utils.prompt_loader import _async_prompt_resolve
 
-## 用户输入
-- 名称: {req.name or '(待填写)'}
-- 功能描述: {req.description or '(无)'}
-{role_section}
-## 可用技能 (Skills)
-{chr(10).join(skill_entries[:50]) or '(无)'}
+    # Build app template catalog (for template recommendation)
+    app_tpl_entries: List[str] = []
+    try:
+        store = getattr(rt, "execution_store", None) if rt else None
+        if store:
+            tpls = await store.list_prompt_app_templates(limit=100)
+            for t in (tpls.get("items") or []):
+                name = t.get("name", "")
+                cat = t.get("category", "")
+                sp = (t.get("system_prompt", "") or "")[:80]
+                app_tpl_entries.append(f"- {t.get('id','')}: {name}（{cat}），系统提示：{sp}")
+    except Exception:
+        pass
 
-## 可用工具 (Tools)
-{chr(10).join(tool_entries[:30]) or '(无)'}
-
-## 可用 MCP 服务器
-{chr(10).join(mcp_entries[:20]) or '(无)'}
-
-## 可委派的子 Agent
-{chr(10).join(agent_catalog[:40]) or '(无)'}
-
-## 已有 Workflow 模板
-{chr(10).join(wf_catalog[:20]) or '(无)'}
-
-## Agent 类型说明
-- base: 基础 Agent，通用聊天/问答
-- react: ReAct 模式，适合需要工具调用、多步推理、结构化输出的 Agent
-- plan: Plan-Execute 模式，先规划再执行，适合复杂多步骤任务
-- tool: 工具调用模式，配合 Function Calling 使用
-- conversational: 纯对话模式，仅适用于无工具调用、单轮问答的客服/闲聊 Agent
-
-## 技能选择方法
-对于角色定义中的每个 required_capability，在可用技能列表中按以下方法找到最匹配的技能：
-1. 看技能描述（description）中是否包含该能力类型的核心动词或场景关键词
-2. 例如：
-   - 能力类型含"规划/分解/拆解/结构化" → 找描述中包含"分解任务"、"制定计划"、"拆解"、"结构化"的技能
-   - 能力类型含"搜索/检索/查询/盘点" → 找描述中包含"搜索"、"检索"、"查询"、"召回"的技能
-   - 能力类型含"生成/编写/创建/产出" → 找描述中包含"生成"、"编写"、"创建"的技能
-   - 能力类型含"引导/澄清/理解/确认" → 找描述中包含"引导"、"澄清"、"结构化"、"对话"的技能（注意：如果描述中包含"日常闲聊"或"简单问答"，那是纯聊天技能，不要选）
-   - 能力类型含"审查/检查/评估" → 找描述中包含"审查"、"检查"、"评估"的技能
-   - 能力类型含"测试/验证" → 找描述中包含"测试"、"验证"、"检查"的技能
-3. 每个能力类型至少匹配一个技能；找不到直接匹配时选最接近的替代
-4. 不要仅看技能名称（skill_id），要读描述内容
-
-## system_prompt 生成方法
-必须从角色定义的字段逐项推导 system_prompt，不要脱离角色定义自己编：
-- role_name → 开头："你是{{角色名称}}"
-- responsibilities → 逐条转为"你需要..."的行为指令（每条职责一行）
-- scenarios → 补充一句："适用场景：..."
-- required_capabilities → 补充："你具备以下能力：..."
-- workflow_hint → 补充："协作方式：..."
-最终效果：system_prompt 应完整覆盖角色定义中的所有信息，使 Agent 运行时清楚自己的身份、职责、能力和协作关系
-
-## 任务
-根据用户的功能描述{"和已确认的角色定义" if role_section else ""}，推荐最匹配的配置。输出严格 JSON（无 markdown 标记）:
-
-{{"agent_type":"react|plan|tool|base|conversational","config":{{"model":"deepseek-chat","temperature":0.3,"max_tokens":4096,"system_prompt":"从角色定义推导的系统提示词(中文)"}},"skills":["技能名1"],"tools":["工具名1"],"mcp_ids":[],"agent_ids":["可委派的子Agent ID"],"workflow_ids":["已有Workflow模板名"],"memory_config":{{"type":"short_term","recall_count":5}},"sop_text":"6章节SOP(角色定位+输入+工作流程+输出格式+自检清单+异常处理,每步骤标注🛠tool/skill名,Markdown中文)","reasoning":"为什么这样选择的简要解释(中文)"}}
-
-## SOP 生成方法
-- 角色定位：从角色定义 role_name + responsibilities 推导
-- 输入：从 scenarios 推导需要什么输入数据
-- 工作流程：将 responsibilities 拆解为操作步骤，每步标注使用的具体技能/工具
-- 输出格式：从场景推导输出结构（JSON/Markdown/文本）
-- 自检清单：从 responsibilities 推导完成检查项
-- 异常处理：从 scenarios 推导边界和错误场景
-
-## SOP 格式
-- 必须6章节：角色定位、输入、工作流程、输出格式、自检清单、异常处理
-- 工作流程每步标注使用的工具/技能（如 🛠 skill_name / tool_name）
-- 输入字段标注类型和是否必填，输出格式给出具体 JSON schema 或 Markdown 模板
-- 自检清单3-5项，异常处理至少2种场景
-
-## 选择原则
-- skills 应同时包含：用户描述中直接需要的 + 执行描述中隐含需要的
-- agent_ids 从"可委派的子Agent"中选择，只选与用户流程实际相关的角色
-- workflow_ids 从"已有 Workflow 模板"中选择匹配的模板名，如无匹配可为空数组
-"""
+    prompt = await _async_prompt_resolve("agent-auto-fill",
+        name=req.name or '(待填写)',
+        description=req.description or '(无)',
+        role_section=role_section,
+        skills_catalog=chr(10).join(skill_entries[:50]) or '(无)',
+        tools_catalog=chr(10).join(tool_entries[:30]) or '(无)',
+        mcp_catalog=chr(10).join(mcp_entries[:20]) or '(无)',
+        agent_catalog=chr(10).join(agent_catalog[:40]) or '(无)',
+        wf_catalog=chr(10).join(wf_catalog[:20]) or '(无)',
+        app_template_catalog=chr(10).join(app_tpl_entries[:30]) or '(无)',
+        role_phrase="和已确认的角色定义" if role_section else "",
+    )
 
     # ── Call LLM ─────────────────────────────────────────────────
     try:
@@ -532,7 +466,197 @@ async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
         sop_text=str(data.get("sop_text", ""))[:8000],
         reasoning=str(data.get("reasoning", ""))[:500],
         workflow_ids=list(data.get("workflow_ids", []))[:10],
+        template_id=str(data.get("template_id", ""))[:80],
     )
+
+
+@router.post("/workspace/agents/auto-fill-batch")
+async def agent_auto_fill_batch(req: "AgentAutoFillBatchRequest") -> "AgentAutoFillBatchResponse":
+    u"""Batch AI auto-fill: single LLM call for multiple agents."""
+    from core.schemas_agents import AgentAutoFillBatchResponse as _BatchResp, AgentAutoFillResponse as _FillResp
+    import json as _json, re as _re
+
+    names = req.names
+    errors: List[str] = []
+    results: Dict[str, Any] = {}
+
+    # ── Build catalogs (once for all agents) ────────────────
+    skill_entries = await _build_skill_catalog()
+    tool_entries = await _build_tool_catalog()
+    mcp_entries = await _build_mcp_catalog()
+    agent_catalog = await _build_agent_catalog()
+    wf_catalog = await _build_wf_catalog()
+
+    # ── Build batch prompt ──────────────────────────────────
+    agent_list_text = "\n".join(f"  - {n}" for n in names)
+    from core.harness.utils.prompt_loader import _async_prompt_resolve
+    prompt = await _async_prompt_resolve("agent-auto-fill-batch",
+        count=str(len(names)),
+        agent_list=agent_list_text,
+        skills_catalog=chr(10).join(skill_entries[:50]) or '(无)',
+        tools_catalog=chr(10).join(tool_entries[:30]) or '(无)',
+        mcp_catalog=chr(10).join(mcp_entries[:20]) or '(无)',
+        agent_catalog=chr(10).join(agent_catalog[:40]) or '(无)',
+        wf_catalog=chr(10).join(wf_catalog[:20]) or '(无)',
+    )
+
+    # ── Call LLM ────────────────────────────────────────────
+    try:
+        from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
+        model_name = best_model_for_purpose("agent_creation")
+        model = create_selected_adapter(model_name=model_name)
+        messages = [
+            {"role": "system", "content": await _async_prompt_resolve("agent-role-system")},
+            {"role": "user", "content": prompt},
+        ]
+        resp = await model.generate(messages, config=None)
+        content = resp.content if hasattr(resp, 'content') else str(resp)
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"LLM unavailable: {e}")
+
+    # ── Parse JSON ──────────────────────────────────────────
+    clean = content.strip()
+    if clean.startswith("```"):
+        clean = _re.sub(r'^```\w*\n?', '', clean)
+        clean = _re.sub(r'\n?```$', '', clean)
+    match = _re.search(r'\{[\s\S]*\}', clean)
+    if not match:
+        raise HTTPException(status_code=422, detail="LLM response does not contain JSON")
+
+    try:
+        data = _json.loads(match.group(0))
+    except _json.JSONDecodeError:
+        cleaned = _re.sub(r',\s*\}', '}', match.group(0))
+        try:
+            data = _json.loads(cleaned)
+        except _json.JSONDecodeError:
+            raise HTTPException(status_code=422, detail="Failed to parse LLM response")
+
+    for name in names:
+        entry = data.get(name, {})
+        if not entry:
+            errors.append(f"{name}: not in LLM response")
+            continue
+        try:
+            results[name] = _FillResp(
+                agent_type=str(entry.get("agent_type", "base"))[:20],
+                config=entry.get("config", {}) if isinstance(entry.get("config"), dict) else {},
+                skills=list(entry.get("skills", []))[:20],
+                tools=list(entry.get("tools", []))[:20],
+                mcp_ids=list(entry.get("mcp_ids", []))[:10],
+                agent_ids=list(entry.get("agent_ids", []))[:10],
+                memory_config=entry.get("memory_config", {}) if isinstance(entry.get("memory_config"), dict) else {},
+                sop_text=str(entry.get("sop_text", ""))[:8000],
+                reasoning=str(entry.get("reasoning", ""))[:500],
+                workflow_ids=list(entry.get("workflow_ids", []))[:10],
+            )
+        except Exception as e:
+            errors.append(f"{name}: {e}")
+
+    return _BatchResp(results=results, errors=errors)
+
+
+async def _build_skill_catalog() -> List[str]:
+    import yaml as _yaml
+    from pathlib import Path as _Py
+    entries = []
+    try:
+        from core.harness.knowledge.capability_graph import build_capability_graph
+        cg = build_capability_graph()
+        for nid, n in cg.nodes.items():
+            if n.get("type") == "skill":
+                skill_id = n['raw_id']
+                label = n.get('label', skill_id)
+                cat = n.get('category', '')
+                desc = ''
+                skill_path = n.get('path', '')
+                if skill_path:
+                    md_file = _Py(skill_path) / 'SKILL.md'
+                    if md_file.exists():
+                        try:
+                            raw = md_file.read_text(encoding='utf-8', errors='ignore')
+                            if raw.startswith('---'):
+                                parts = raw.split('---', 2)
+                                if len(parts) >= 3:
+                                    fm = _yaml.safe_load(parts[1]) or {}
+                                    desc = str(fm.get('description', '') or '')[:120]
+                        except Exception:
+                            pass
+                if desc:
+                    entries.append(f'  - {skill_id} | {label} | [{cat}] | {desc}')
+                else:
+                    entries.append(f'  - {skill_id} | {label} | [{cat}]')
+    except Exception:
+        entries = ["(unable to load skill catalog)"]
+    return entries
+
+
+async def _build_tool_catalog() -> List[str]:
+    entries = []
+    try:
+        from core.apps.tools.base import get_tool_registry
+        reg = get_tool_registry()
+        for name in sorted(reg.list_tools() or []):
+            tool = reg.get(name)
+            desc = getattr(tool, 'description', '') if tool else ''
+            entries.append(f"  - {name}: {str(desc)[:200]}")
+    except Exception:
+        entries = ["(unable to load tool catalog)"]
+    return entries
+
+
+async def _build_mcp_catalog() -> List[str]:
+    entries = []
+    try:
+        from core.management.mcp_manager import MCPManager as _Mgr
+        mgr = _Mgr()
+        for srv in mgr.list_servers() or []:
+            entries.append(
+                f"  - {srv.name}: enabled={getattr(srv,'enabled',True)} "
+                f"transport={getattr(srv,'transport','')}"
+            )
+    except Exception:
+        entries = ["(unable to load MCP catalog)"]
+    return entries
+
+
+async def _build_agent_catalog() -> List[str]:
+    entries = []
+    try:
+        from core.harness.kernel.runtime import get_kernel_runtime
+        rt = get_kernel_runtime()
+        mgr = getattr(rt, "workspace_agent_manager", None) if rt else None
+        if mgr:
+            all_agents = await mgr.list_agents(limit=200)
+            for a in all_agents:
+                entries.append(f"  - id={a.id} | name={a.name} | type={a.type}")
+        if not entries:
+            entries = ["(no sub-agents available)"]
+    except Exception:
+        entries = ["(unable to load agent catalog)"]
+    return entries
+
+
+async def _build_wf_catalog() -> List[str]:
+    import json as _wjson, os as _wos
+    from pathlib import Path as _WPath
+    entries = []
+    try:
+        wf_dir = _WPath(_wos.getenv("AIPLAT_HOME", _wos.path.expanduser("~/.aiplat"))) / "workflow_templates"
+        if wf_dir.exists():
+            for f in sorted(wf_dir.glob("*.json")):
+                try:
+                    data = _wjson.loads(f.read_text(encoding="utf-8"))
+                    nm = data.get("name", f.stem)
+                    sz = len(data.get("stages", []))
+                    entries.append(f"  - {f.stem} | {nm} | stages={sz}")
+                except Exception:
+                    pass
+        if not entries:
+            entries = ["(no workflow templates available)"]
+    except Exception:
+        entries = ["(unable to load workflow catalog)"]
+    return entries
 
 
 @router.get("/workspace/agents/{agent_id}")
@@ -1254,4 +1378,41 @@ async def submit_agent_for_review(agent_id: str, rt: RuntimeDep = None):
             "error_count": lint_errors,
             "warning_count": lint_warnings,
         },
+    }
+
+
+@router.post("/workspace/agents/{agent_id}/invoke")
+async def invoke_agent(agent_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
+    """Standardized invoke endpoint — external systems call this to run an agent.
+    Body: { input: "your message", config?: {}, options?: {} }
+    Returns: { run_id, output, tokens, status }
+    """
+    mgr = _ws_agent_mgr(rt)
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    agent = await mgr.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+
+    inp = request.get("input") if isinstance(request, dict) else None
+    if isinstance(inp, str):
+        user_message = inp.strip()
+    elif isinstance(inp, dict):
+        user_message = str(inp.get("message") or inp.get("prompt") or "")
+    else:
+        user_message = str(request.get("message") or request.get("prompt") or "")
+
+    from core.api.core_facade import run_workspace_agent
+    resp = await run_workspace_agent(
+        agent_info=agent,
+        user_message=user_message,
+        max_steps=int(request.get("config", {}).get("max_steps", 10) if isinstance(request.get("config"), dict) else 10),
+        session_id=str(request.get("session_id", "") or f"invoke-{agent_id}"),
+    )
+    return {
+        "run_id": resp.get("run_id", ""),
+        "output": resp.get("output", ""),
+        "tokens": resp.get("tokens", {}),
+        "status": resp.get("status", "completed"),
+        "error": resp.get("error"),
     }

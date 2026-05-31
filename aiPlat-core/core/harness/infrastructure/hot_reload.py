@@ -42,10 +42,15 @@ def wire_hot_reload():
             import logging
             logger = logging.getLogger("hot_reload")
             logger.info(f"file changed: {filepath}")
-            if filepath.endswith(('.py', '.ts', '.tsx')):
+            if filepath.endswith(('.py', '.ts', '.tsx', '.md', '.yaml', '.yml')):
                 try:
                     from core.harness.knowledge.code_graph import clear_cache
                     clear_cache()
+                except Exception:
+                    pass
+                try:
+                    from core.harness.knowledge.capability_graph import clear_capability_cache
+                    clear_capability_cache()
                 except Exception:
                     pass
         watcher.watch(p, _on_file_change)

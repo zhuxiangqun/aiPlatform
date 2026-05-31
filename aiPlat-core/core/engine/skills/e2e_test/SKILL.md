@@ -10,6 +10,11 @@ effects:
     resources: ["browser:page", "filesystem:write"]
     idempotent: false
     rollback_available: true
+output_schema:
+  result:
+    type: string
+  markdown:
+    type: string
 ---
 
 # E2E Test 自动生成

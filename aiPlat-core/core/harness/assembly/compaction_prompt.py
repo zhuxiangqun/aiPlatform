@@ -36,8 +36,17 @@ _DEFAULT_PROMPT = (
 def get_compaction_prompt(identifiers: List[str], history_lines: List[str]) -> str:
     prompt_template = os.getenv("AIPLAT_COMPACTION_PROMPT", "").strip()
     if not prompt_template:
-        prompt_template = _DEFAULT_PROMPT
-    return prompt_template.format(
-        identifiers=", ".join(identifiers) if identifiers else "(none)",
-        history="\n".join(history_lines),
-    )
+        try:
+            from core.harness.utils.prompt_loader import _sync_resolve
+            prompt_template = _sync_resolve("compaction-prompt",
+                identifiers=", ".join(identifiers) if identifiers else "(none)",
+                history="\n".join(history_lines),
+            )
+            return prompt_template  # Already resolved with variables
+        except Exception:
+            prompt_template = _DEFAULT_PROMPT
+    if "$" not in prompt_template:
+        return prompt_template.format(
+            identifiers=", ".join(identifiers) if identifiers else "(none)",
+            history="\n".join(history_lines),
+        )

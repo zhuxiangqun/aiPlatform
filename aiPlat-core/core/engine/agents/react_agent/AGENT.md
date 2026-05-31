@@ -9,7 +9,7 @@ protected: true
 category: engineering
 tags: [react, reasoning, action]
 phase: development
-required_tools: []
+required_tools: [sysgraph_search, sysgraph_context, sysgraph_callers, sysgraph_impact]
 required_skills: [data_analysis, file_operations]
 pipeline:
   output_artifact: react_output
@@ -26,6 +26,8 @@ config:
 1. 理解任务与约束，必要时澄清。
 2. 推理-行动-观察循环使用工具/技能。
 3. 输出结论与关键依据。
+
+> 探索代码结构时优先用 sysgraph_* 工具（比 grep/read 快 10×）
 
 ## 交接规范
 1. **做了什么**：ReAct 推理-行动-观察循环完成，输出最终答案和步骤追踪

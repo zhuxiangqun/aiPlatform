@@ -20,6 +20,8 @@ input_schema:
 output_schema:
   analysis:
     type: object
+  markdown:
+    type: string
 ---
 
 # 根因分析（Engine）

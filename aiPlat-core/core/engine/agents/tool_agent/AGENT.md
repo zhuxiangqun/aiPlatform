@@ -9,7 +9,7 @@ protected: true
 category: engineering
 tags: [tool, api, execution]
 skills: [api_calling, browser_automation, file_operations]
-tools: [search, calculator]
+tools: [search, calculator, sysgraph_search, sysgraph_context]
 model: deepseek-chat
 ---
 
@@ -20,3 +20,5 @@ model: deepseek-chat
 **如何验证**: 检查 output_artifact 是否存在且非空
 **已知问题**: Engine seed — 完整 SOP 需在 workspace agent 中定义
 **下一步**: 下游阶段读取本阶段的产出物继续执行
+
+> 探索代码结构时优先用 sysgraph_* 工具（比 grep/read 快 10×）

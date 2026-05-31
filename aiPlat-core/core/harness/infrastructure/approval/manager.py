@@ -6,7 +6,7 @@ Based on framework/patterns.md §7.
 """
 
 from typing import Dict, List, Optional, Any, Callable
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import uuid
 
 from .types import (
@@ -134,8 +134,8 @@ class ApprovalManager:
             amount=rec.get("amount"),
             batch_size=rec.get("batch_size"),
             is_first_time=bool(rec.get("is_first_time") or False),
-            created_at=datetime.utcfromtimestamp(float(rec.get("created_at") or datetime.utcnow().timestamp())),
-            updated_at=datetime.utcfromtimestamp(float(rec.get("updated_at") or datetime.utcnow().timestamp())),
+            created_at=datetime.utcfromtimestamp(float(rec.get("created_at") or datetime.now(timezone.utc).timestamp())),
+            updated_at=datetime.utcfromtimestamp(float(rec.get("updated_at") or datetime.now(timezone.utc).timestamp())),
             expires_at=datetime.utcfromtimestamp(float(rec["expires_at"])) if rec.get("expires_at") else None,
             metadata=rec.get("metadata") or {},
         )
@@ -147,7 +147,7 @@ class ApprovalManager:
                     decision=RequestStatus(res.get("decision") or RequestStatus.APPROVED.value),
                     comments=res.get("comments") or "",
                     approved_by=res.get("approved_by"),
-                    timestamp=datetime.utcfromtimestamp(float(res.get("timestamp") or datetime.utcnow().timestamp())),
+                    timestamp=datetime.utcfromtimestamp(float(res.get("timestamp") or datetime.now(timezone.utc).timestamp())),
                     metadata=res.get("metadata") or {},
                 )
             except Exception:
@@ -308,7 +308,7 @@ class ApprovalManager:
         
         expires_at = None
         if rule.expires_in_seconds:
-            expires_at = datetime.utcnow() + timedelta(seconds=rule.expires_in_seconds)
+            expires_at = datetime.now(timezone.utc) + timedelta(seconds=rule.expires_in_seconds)
         
         meta = dict(context.metadata or {})
         try:
@@ -373,7 +373,7 @@ class ApprovalManager:
         
         if not request.is_resolved() and request.status == RequestStatus.PENDING:
             request.status = RequestStatus.APPROVED
-            request.updated_at = datetime.utcnow()
+            request.updated_at = datetime.now(timezone.utc)
             request.result = ApprovalResult(
                 request_id=request_id,
                 decision=RequestStatus.APPROVED,
@@ -410,7 +410,7 @@ class ApprovalManager:
         
         if not request.is_resolved() and request.status == RequestStatus.PENDING:
             request.status = RequestStatus.REJECTED
-            request.updated_at = datetime.utcnow()
+            request.updated_at = datetime.now(timezone.utc)
             request.result = ApprovalResult(
                 request_id=request_id,
                 decision=RequestStatus.REJECTED,
@@ -440,7 +440,7 @@ class ApprovalManager:
         
         if not request.is_resolved() and request.status == RequestStatus.PENDING:
             request.status = RequestStatus.CANCELLED
-            request.updated_at = datetime.utcnow()
+            request.updated_at = datetime.now(timezone.utc)
             await self._persist(request)
         
         return request
@@ -461,7 +461,7 @@ class ApprovalManager:
                 request = None
         if request and request.is_expired() and request.status == RequestStatus.PENDING:
             request.status = RequestStatus.EXPIRED
-            request.updated_at = datetime.utcnow()
+            request.updated_at = datetime.now(timezone.utc)
             self._notify_callbacks("on_expired", request)
         return request
 
@@ -478,7 +478,7 @@ class ApprovalManager:
                     request = None
         if request and request.is_expired() and request.status == RequestStatus.PENDING:
             request.status = RequestStatus.EXPIRED
-            request.updated_at = datetime.utcnow()
+            request.updated_at = datetime.now(timezone.utc)
             self._notify_callbacks("on_expired", request)
         return request
 
@@ -548,7 +548,7 @@ class ApprovalManager:
         
         if not request.is_resolved() and request.status == RequestStatus.PENDING:
             request.status = RequestStatus.AUTO_APPROVED
-            request.updated_at = datetime.utcnow()
+            request.updated_at = datetime.now(timezone.utc)
             request.result = ApprovalResult(
                 request_id=request_id,
                 decision=RequestStatus.AUTO_APPROVED,
@@ -610,7 +610,7 @@ class ApprovalManager:
         """
         import asyncio
         
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         timeout = timedelta(seconds=timeout_seconds)
         
         while True:
@@ -621,9 +621,9 @@ class ApprovalManager:
             if request.is_resolved():
                 return request.result
             
-            if datetime.utcnow() - start_time > timeout:
+            if datetime.now(timezone.utc) - start_time > timeout:
                 request.status = RequestStatus.EXPIRED
-                request.updated_at = datetime.utcnow()
+                request.updated_at = datetime.now(timezone.utc)
                 request.result = ApprovalResult(
                     request_id=request_id,
                     decision=RequestStatus.EXPIRED,

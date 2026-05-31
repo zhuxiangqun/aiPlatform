@@ -198,6 +198,45 @@ async def list_prompt_templates(limit: int = 100, offset: int = 0):
     return await store.list_prompt_templates(limit=int(limit), offset=int(offset))
 
 
+@router.post("/prompts/seed")
+async def seed_prompt_templates():
+    """Batch-import default templates from prompt_loader (idempotent)."""
+    store = _store()
+    if not store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    from core.harness.utils.prompt_loader import list_templates as _list, auto_classify
+
+    templates = _list()
+    seeded, skipped = [], []
+    for tid, content, meta in templates:
+        try:
+            existing = await store.get_prompt_template(template_id=tid)
+            if existing:
+                skipped.append(tid)
+                continue
+            name = tid.replace("-", " ").title()
+            role = auto_classify(tid)
+            await store.upsert_prompt_template(
+                template_id=tid, name=name, template=content,
+                metadata={"source": "seed", "role": role, "auto": True},
+                increment_version=False,
+            )
+            seeded.append(tid)
+        except Exception:
+            skipped.append(tid)
+    return {"seeded": seeded, "skipped": skipped, "total": len(seeded) + len(skipped)}
+
+
+@router.get("/prompts/{template_id}/variables")
+async def get_template_variables(template_id: str):
+    """Return template metadata (variables, role, category)."""
+    from core.harness.utils.prompt_loader import get_metadata as _meta
+    meta = _meta(str(template_id))
+    if not meta:
+        raise HTTPException(status_code=404, detail="Template not found in prompt_loader")
+    return {"template_id": template_id, **meta}
+
+
 @router.get("/prompts/{template_id}")
 async def get_prompt_template(template_id: str):
     store = _store()

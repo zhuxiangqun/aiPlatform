@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Annotated, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -396,7 +396,7 @@ async def execute_agent(agent_id: str, request: dict, http_request: Request, rt:
                     "session_id": (request or {}).get("session_id", "default"),
                     "approval_request_id": approval_id,
                     "loop_state_snapshot": loop_snapshot,
-                    "created_at": datetime.utcnow().isoformat(),
+                    "created_at": datetime.now(timezone.utc).isoformat(),
                 }
                 _agent_executions[exec_id] = payload2
     except Exception:
@@ -592,7 +592,7 @@ async def rollback_agent_version(agent_id: str, version: str, rt: RuntimeDep = N
 async def list_models():
     """List available LLM models grouped by provider (for agent editor dropdown)."""
     try:
-        from core.api.core_facade import get_model_registry
+        from core.api.facades.skill_tool_facade import get_model_registry
         registry = get_model_registry()
         # infra ModelManager returns models as list of objects
         if hasattr(registry, '_models'):

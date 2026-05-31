@@ -9,7 +9,7 @@ protected: true
 category: engineering
 tags: [rag, retrieval, generation]
 skills: [knowledge_retrieval, summarization, information_search, doc_query, multi_doc_query]
-tools: [search]
+tools: [search, sysgraph_search, sysgraph_context]
 model: deepseek-reasoner
 ---
 
@@ -20,3 +20,5 @@ model: deepseek-reasoner
 **如何验证**: 检查 output_artifact 是否存在且非空
 **已知问题**: Engine seed — 完整 SOP 需在 workspace agent 中定义
 **下一步**: 下游阶段读取本阶段的产出物继续执行
+
+> 探索代码结构时优先用 sysgraph_* 工具（比 grep/read 快 10×）

@@ -100,9 +100,16 @@ const Prompts: React.FC = () => {
   }, []);
 
   const filtered = useMemo(() => {
+    let result = items.filter((r: any) => {
+      // Only show admin/system templates (seed-imported, auto_classify marks them)
+      try {
+        const md = typeof r.metadata_json === 'string' ? JSON.parse(r.metadata_json) : (r.metadata_json || {});
+        return md.role === 'admin';
+      } catch { return true; }
+    });
     const t = q.trim().toLowerCase();
-    if (!t) return items;
-    return items.filter((r) => String(r.template_id || '').toLowerCase().includes(t) || String(r.name || '').toLowerCase().includes(t));
+    if (t) result = result.filter((r: any) => String(r.template_id || '').toLowerCase().includes(t) || String(r.name || '').toLowerCase().includes(t));
+    return result;
   }, [items, q]);
 
   const openTemplate = async (templateId: string) => {
@@ -460,12 +467,19 @@ const Prompts: React.FC = () => {
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-200">Prompt Templates</h1>
-          <div className="text-sm text-gray-500 mt-1">版本 / diff / 验证状态（autosmoke）</div>
+          <h1 className="text-2xl font-semibold text-gray-200">系统 Prompt</h1>
+          <div className="text-sm text-gray-500 mt-1">内核运行时模板 · 版本 / 回滚 / 灰度</div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" icon={<Plus size={16} />} onClick={openCreate}>
-            新建
+          <Button variant="secondary" icon={<RefreshCw size={16} />} onClick={async () => {
+            setLoading(true);
+            try {
+              await promptApi.seed();
+              toast.success('预置模板已导入');
+            } catch { toast.error('导入失败'); }
+            finally { await fetchList(); setLoading(false); }
+          }} loading={loading}>
+            ↓ 导入预置
           </Button>
           <Button variant="secondary" icon={<RefreshCw size={16} />} onClick={fetchList} loading={loading}>
             刷新

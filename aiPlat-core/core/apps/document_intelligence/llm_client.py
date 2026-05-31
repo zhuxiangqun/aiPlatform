@@ -60,5 +60,5 @@ async def chat_complete(
 
 def extract_json_block(text: str) -> Optional[Dict[str, Any]]:
     """Extract JSON from LLM output via CoreFacade."""
-    from core.api.core_facade import parse_json
+    from core.utils.json_utils import parse_json
     return parse_json(text)

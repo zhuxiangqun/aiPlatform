@@ -3,6 +3,8 @@ import React, { useEffect, useState } from 'react';
 import { Button, Modal, Textarea, toast } from '../ui';
 import { workspaceSkillApi } from '../../services';
 import { toastGateError } from '../ui';
+import { TraceFlowGraph } from './TraceFlowGraph';
+import ExecutionViewer from '../ExecutionViewer/ExecutionViewer';
 
 interface ExecuteSkillModalProps {
   open: boolean;
@@ -223,6 +225,12 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
                 const errCode = errObj?.code ? String(errObj.code) : '';
                 return `${errCode ? `[${errCode}] ` : ''}${errMsg}`;
               })()}
+            </div>
+          )}
+
+          {(result as any)?.run_id && (
+            <div className="mt-3">
+              <ExecutionViewer runId={String((result as any).run_id)} live={true} title="执行流程" height={400} />
             </div>
           )}
 
