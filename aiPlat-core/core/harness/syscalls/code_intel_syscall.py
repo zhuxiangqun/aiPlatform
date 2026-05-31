@@ -20,8 +20,8 @@ def _load_graph():
 
 def _ensure_graph():
     """Get cached nodes + edges. Returns (nodes, edges)."""
-    nodes, edges, _ = _load_graph()
-    return nodes, edges
+    nodes, edg, _ = _load_graph()
+    return nodes, edg
 
 
 def _resolve_file(query: str, nodes: Dict) -> Optional[str]:
@@ -79,7 +79,7 @@ def sys_code_intel_callers(target: str, *, max_results: int = 50) -> Dict[str, A
     Returns:
         {target, count, callers: [{file, dep_count, symbols}]}
     """
-    nodes, _ = _ensure_graph()
+    nodes, edges = _ensure_graph()
     resolved = _resolve_file(target, nodes)
     if not resolved:
         return {"target": target, "count": 0, "callers": [], "note": "File/symbol not found in code graph"}
@@ -92,9 +92,25 @@ def sys_code_intel_callers(target: str, *, max_results: int = 50) -> Dict[str, A
         if isinstance(out_list, list) and resolved in out_list:
             callers.append({
                 "file": nid,
+                "kind": "import",
                 "dep_count": len(out_list) if isinstance(out_list, list) else 0,
                 "symbols": [s[0] for s in n.get("symbols", [])[:10]],
             })
+
+    # Also include cross-language API callers from edges
+    for edge in edges:
+        if edge.get("to") == resolved and edge.get("kind") == "api":
+            caller_file = edge.get("from", "")
+            if caller_file and caller_file != resolved:
+                # Avoid duplicates
+                if not any(c["file"] == caller_file for c in callers):
+                    callers.append({
+                        "file": caller_file,
+                        "kind": "api",
+                        "label": edge.get("label", ""),
+                        "dep_count": 0,
+                        "symbols": [],
+                    })
 
     callers.sort(key=lambda x: -x["dep_count"])
     total = len(callers)
@@ -114,7 +130,7 @@ def sys_code_intel_callees(target: str, *, max_results: int = 50) -> Dict[str, A
     Returns:
         {target, count, callees: [{file, symbols}]}
     """
-    nodes, _ = _ensure_graph()
+    nodes, edges = _ensure_graph()
     resolved = _resolve_file(target, nodes)
     if not resolved or resolved not in nodes:
         return {"target": target, "count": 0, "callees": [], "note": "File/symbol not found in code graph"}
@@ -126,8 +142,21 @@ def sys_code_intel_callees(target: str, *, max_results: int = 50) -> Dict[str, A
         callee_node = nodes.get(f, {})
         callees.append({
             "file": f,
+            "kind": "import",
             "symbols": [s[0] for s in callee_node.get("symbols", [])[:10]],
         })
+
+    # Also include cross-language API callees (frontend API calls from this file)
+    for edge in edges:
+        if edge.get("from") == resolved and edge.get("kind") == "api":
+            callee_file = edge.get("to", "")
+            if callee_file:
+                callees.append({
+                    "file": callee_file,
+                    "kind": "api",
+                    "label": edge.get("label", ""),
+                    "symbols": [],
+                })
 
     total = len(callees)
     if total > max_results:
