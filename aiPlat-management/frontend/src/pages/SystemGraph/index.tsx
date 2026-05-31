@@ -8,6 +8,7 @@ import ArchitectureView from './ArchitectureView';
 
 const SystemGraph: React.FC = () => {
   const [tab, setTab] = useState<'code' | 'capability' | 'wiki' | 'architecture'>('code');
+  const [codeMode, setCodeMode] = useState<'file' | 'symbol'>('file');
   const [graphData, setGraphData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
@@ -66,20 +67,25 @@ const SystemGraph: React.FC = () => {
     if (tab === 'code' && !c) { setGraphData(null); setLoading(false); return; }
     setLoading(true);
     try {
-      let url = tab === 'code'
-        ? '/api/core/knowledge-graph/code'
-        : tab === 'capability'
+      let url: string;
+      if (tab === 'code') {
+        url = codeMode === 'symbol'
+          ? '/api/core/diagnostics/code-intel/scan?mode=symbol&limit=500'
+          : `/api/core/knowledge-graph/code`;
+        if (c) {
+          lastCenter.current = c;
+          url += (url.includes('?') ? '&' : '?') + `center=${encodeURIComponent(c)}&depth=${d || 2}`;
+        }
+      } else {
+        url = tab === 'capability'
           ? '/api/core/knowledge-graph/capability'
           : '/api/core/knowledge-graph/wiki';
-      if (tab === 'code' && c) {
-        lastCenter.current = c;
-        url += `?center=${encodeURIComponent(c)}&depth=${d || 2}`;
       }
       const r = await fetch(url);
       setGraphData(await r.json());
     } catch { }
     finally { setLoading(false); }
-  }, [tab]);
+  }, [tab, codeMode]);
 
   useEffect(() => { setGraphData(null); if (tab !== 'code') fetchGraph(); }, [fetchGraph, tab]);
 
@@ -170,15 +176,34 @@ const SystemGraph: React.FC = () => {
             </button>
           )}
           {/* Code tab: subgraph info bar */}
-          {tab === 'code' && graphData && (
-            <div className="flex items-center gap-2 text-[10px] text-gray-500">
-              <span>中心: {lastCenter.current}</span>
-              <span className="text-gray-600">· {graphData.nodes?.length || 0} 节点 · {graphData.links?.length || 0} 边</span>
-              <button onClick={() => { setGraphData(null); lastCenter.current = ''; }}
-                className="text-gray-500 hover:text-gray-300">✕ 清除</button>
-              <button onClick={() => fetchGraph(lastCenter.current, 3)}
-                className="text-gray-500 hover:text-gray-300">+ 展开</button>
-            </div>
+          {tab === 'code' && (
+            <>
+              {/* Symbol/File toggle */}
+              <div className="flex gap-0.5 bg-dark-bg rounded-md p-0.5 border border-dark-border ml-2">
+                <button
+                  onClick={() => { setCodeMode('file'); setGraphData(null); }}
+                  className={`px-2 py-0.5 rounded text-[10px] font-medium ${
+                    codeMode === 'file' ? 'bg-primary/20 text-primary' : 'text-gray-500'
+                  }`}
+                >文件</button>
+                <button
+                  onClick={() => { setCodeMode('symbol'); setGraphData(null); }}
+                  className={`px-2 py-0.5 rounded text-[10px] font-medium ${
+                    codeMode === 'symbol' ? 'bg-primary/20 text-primary' : 'text-gray-500'
+                  }`}
+                >符号</button>
+              </div>
+              {graphData && (
+                <div className="flex items-center gap-2 text-[10px] text-gray-500">
+                  <span>中心: {lastCenter.current}</span>
+                  <span className="text-gray-600">· {graphData.nodes?.length || 0} 节点 · {graphData.links?.length || 0} 边</span>
+                  <button onClick={() => { setGraphData(null); lastCenter.current = ''; }}
+                    className="text-gray-500 hover:text-gray-300">✕ 清除</button>
+                  <button onClick={() => fetchGraph(lastCenter.current, 3)}
+                    className="text-gray-500 hover:text-gray-300">+ 展开</button>
+                </div>
+              )}
+            </>
           )}
           {tab === 'wiki' && (
             <div className="flex gap-1">

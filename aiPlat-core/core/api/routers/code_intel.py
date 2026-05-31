@@ -18,6 +18,7 @@ from core.harness.knowledge.code_graph import (
     _strip_py_type_checking, _is_code_file, _should_skip, _read_text,
     _resolve_js_relative, _resolve_py_module, _detect_issues,
     build_graph as _build_graph,
+    build_symbol_graph as _build_symbol_graph,
     count_cycles as _count_cycles,
     health_score as _health_score,
     blast,
@@ -547,6 +548,8 @@ async def scan_code_intel(
     """
     Code intelligence scan (CodeFlow-inspired, server-side).
     Defaults to scanning: aiPlat-core + aiPlat-management/frontend
+
+    mode: file | folder | layer | symbol
     """
     store = getattr(rt, "execution_store", None) if rt else None
     if not store:
@@ -555,8 +558,21 @@ async def scan_code_intel(
     root_list = [x.strip() for x in (roots.split(",") if roots else default_roots()) if x.strip()]
     res = await code_intel_scan(rt, root_list)
     mode = str(mode or "file").strip().lower()
-    if mode not in {"file", "folder", "layer"}:
+    if mode not in {"file", "folder", "layer", "symbol"}:
         mode = "file"
+
+    # Symbol mode: convert to per-function/class nodes
+    if mode == "symbol":
+        _root = repo_root()
+        symbol_nodes, symbol_edges = _build_symbol_graph(res.nodes, res.edges, _root)
+        return {
+            "status": "ok",
+            "mode": "symbol",
+            "stats": {"nodes": len(symbol_nodes), "edges": len(symbol_edges)},
+            "nodes": list(symbol_nodes.values()),
+            "edges": symbol_edges,
+            "issues": [],
+        }
 
     nodes_out: List[Dict[str, Any]]
     edges_out: List[Dict[str, str]]

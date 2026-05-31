@@ -606,6 +606,22 @@ def clear_cache():
         _CACHE_ROOTS = None
 
 
+def build_symbol_graph(
+    _repo_root: Path = None, roots: List[Path] = None
+) -> Tuple[Dict[str, Any], List[Dict[str, str]]]:
+    """Build a symbol-level code graph (each function/class is a node).
+
+    Convenience wrapper that calls build_graph() then converts to symbol-level.
+    Returns (symbol_nodes, symbol_edges).
+    """
+    if _repo_root is None:
+        _repo_root = repo_root()
+    if roots is None:
+        roots = [(_repo_root / r).resolve() for r in default_roots()]
+    file_nodes, file_edges, _ = build_graph(_repo_root, roots)
+    return _build_symbol_graph(file_nodes, file_edges, _repo_root)
+
+
 def count_cycles(nodes: Dict[str, Dict[str, Any]]) -> int:
     visiting: Set[str] = set()
     visited: Set[str] = set()
@@ -757,6 +773,175 @@ def _find_orphans(nodes):
         if not node.get("out") and node.get("in", 0) == 0:
             orphans.append(path)
     return orphans
+
+
+def _layer_bucket(path: str) -> str:
+    """Infer architecture layer from file path."""
+    if not path:
+        return "unknown"
+    if any(x in path for x in ["infra/", "model/", "storage/"]):
+        return "infra"
+    if any(x in path for x in ["harness/", "syscall", "engine", "execution/"]):
+        return "core"
+    if any(x in path for x in ["api/rest/", "platform/", "gateway"]):
+        return "platform"
+    if any(x in path for x in ["frontend/", "src/pages", "src/components", "App.tsx"]):
+        return "app"
+    return "core"
+
+
+def _build_symbol_graph(
+    file_nodes: Dict[str, Any],
+    file_edges: List[Dict[str, str]],
+    repo_root: Path,
+) -> Tuple[Dict[str, Any], List[Dict[str, str]]]:
+    """Convert file-level graph to symbol-level graph.
+
+    Each function/class becomes its own node.
+    Intra-file call edges connect symbols within the same file.
+    Import edges are expanded: if file A imports file B, all symbols in A
+    that reference symbols in B get edges.
+    """
+    from collections import defaultdict
+
+    symbol_nodes: Dict[str, Any] = {}
+    symbol_edges: List[Dict[str, str]] = []
+
+    # Index: function/class name → list of (file, symbol_info)
+    name_index: Dict[str, List[Tuple[str, list]]] = defaultdict(list)
+
+    # Phase 1: Create symbol nodes
+    for file_id, fn in file_nodes.items():
+        symbols = fn.get("symbols", [])
+        routes = fn.get("routes", [])
+        ext = fn.get("ext", "")
+        layer = _layer_bucket(file_id)
+        file_issues = fn.get("issue_count", 0)
+
+        for sym in symbols:
+            if not isinstance(sym, (list, tuple)) or len(sym) < 2:
+                continue
+            name = sym[0]
+            kind = sym[1]
+            line = sym[2] if len(sym) > 2 else 0
+
+            symbol_id = f"{file_id}::{name}"
+            symbol_nodes[symbol_id] = {
+                "id": symbol_id,
+                "name": name,
+                "kind": kind,  # function | async_function | class
+                "file": file_id,
+                "line": line,
+                "layer": layer,
+                "ext": ext,
+                "issue_count": 0,
+            }
+            name_index[name].append((file_id, sym))
+
+    # Phase 2: Build intra-file call edges
+    for file_id in file_nodes:
+        # Re-extract calls and match to local symbols
+        fpath = repo_root / file_id
+        if not fpath.exists() or fpath.suffix.lower() != ".py":
+            continue
+        try:
+            calls = _extract_calls_ast(fpath)
+            local_symbols = {s[0] for s in file_nodes[file_id].get("symbols", [])}
+            for func_name, line_no in calls:
+                # Only create edge if the called function is a known symbol in this file
+                if func_name in local_symbols:
+                    caller_candidates = [
+                        s for s in file_nodes[file_id].get("symbols", [])
+                        if isinstance(s, (list, tuple)) and len(s) > 2 and s[2] < line_no
+                    ]
+                    caller_name = caller_candidates[-1][0] if caller_candidates else file_id
+                    caller_id = f"{file_id}::{caller_name}"
+                    callee_id = f"{file_id}::{func_name}"
+                    if caller_id != callee_id:
+                        symbol_edges.append({
+                            "from": caller_id,
+                            "to": callee_id,
+                            "kind": "calls",
+                            "label": f"{func_name}()",
+                            "line": line_no,
+                        })
+
+            # Also scan for cross-file references through name_index
+            for func_name, line_no in calls:
+                if func_name not in local_symbols:
+                    target_files = name_index.get(func_name, [])
+                    for tf, _ in target_files[:2]:
+                        if tf != file_id and tf in file_nodes:
+                            caller_id = f"{file_id}::{file_id}"
+                            callee_id = f"{tf}::{func_name}"
+                            if callee_id in symbol_nodes:
+                                symbol_edges.append({
+                                    "from": caller_id,
+                                    "to": callee_id,
+                                    "kind": "cross_call",
+                                    "label": f"{func_name}()",
+                                    "line": line_no,
+                                })
+        except Exception:
+            pass
+
+    # Phase 3: Build import-based edges between symbols
+    for edge in file_edges:
+        if edge.get("from", "") in file_nodes and edge.get("to", "") in file_nodes:
+            from_file = edge["from"]
+            to_file = edge["to"]
+            from_symbols = file_nodes[from_file].get("symbols", [])
+            to_symbols = file_nodes[to_file].get("symbols", [])
+
+            # Only create import edge if the file has symbols
+            count = 0
+            for fs in from_symbols[:3]:
+                if not isinstance(fs, (list, tuple)) or len(fs) < 2:
+                    continue
+                from_id = f"{from_file}::{fs[0]}"
+                for ts in to_symbols[:1]:
+                    if not isinstance(ts, (list, tuple)) or len(ts) < 2:
+                        continue
+                    to_id = f"{to_file}::{ts[0]}"
+                    if from_id != to_id:
+                        symbol_edges.append({
+                            "from": from_id,
+                            "to": to_id,
+                            "kind": "import",
+                        })
+                        count += 1
+                if count >= 3:
+                    break
+
+    # Phase 4: Inherit routes to symbol nodes
+    for file_id, fn in file_nodes.items():
+        routes = fn.get("routes", [])
+        if routes:
+            for road in routes:
+                route_node_id = f"{file_id}::route::{road}"
+                symbol_nodes[route_node_id] = {
+                    "id": route_node_id,
+                    "name": f"/{road}",
+                    "kind": "route",
+                    "file": file_id,
+                    "line": 0,
+                    "layer": _layer_bucket(file_id),
+                    "ext": fn.get("ext", ""),
+                    "issue_count": 0,
+                }
+                # Link route to first function in file
+                first_sym = fn.get("symbols", [])
+                if first_sym:
+                    sym = first_sym[0]
+                    if isinstance(sym, (list, tuple)) and len(sym) >= 2:
+                        symbol_edges.append({
+                            "from": route_node_id,
+                            "to": f"{file_id}::{sym[0]}",
+                            "kind": "route_to",
+                            "label": road,
+                        })
+
+    return symbol_nodes, symbol_edges
 
 
 def _resolve_cross_call_edges(nodes, edges, files, repo_root):
