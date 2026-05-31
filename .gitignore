@@ -81,3 +81,8 @@ download/
 .aiplat/kb/
 .aiplat/projects.json
 .aiplat/runtime_state.json
+
+deploy/*.zip
+deploy/**/*.tar
+deploy-kit/**/*.tar
+deploy-kit/images/*.tar
