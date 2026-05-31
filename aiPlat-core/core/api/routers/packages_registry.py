@@ -40,6 +40,74 @@ def _store():
     return getattr(rt, "execution_store", None) if rt else None
 
 
+def _packages_registry_dir() -> Path:
+    return Path.home() / ".aiplat" / "packages" / "registry"
+
+
+def _sha256_file(path: Path) -> str:
+    import hashlib
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 16), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _find_filesystem_package(pkg_name: str):
+    """Find a package by name from workspace + engine package managers."""
+    try:
+        from core.api.routers.workspace_packages import _mgrs
+    except Exception:
+        return None
+    try:
+        wsp, eng = _mgrs()
+    except Exception:
+        return None
+    for mgr in [wsp, eng]:
+        if not mgr:
+            continue
+        try:
+            pkg = mgr.get_package(pkg_name)
+            if pkg is not None:
+                return pkg
+        except Exception:
+            pass
+    return None
+
+
+def _build_bundle_dir_for_package(pkg_info: dict, bundle_dir: Path):
+    """Copy bundled resources into the bundle directory from workspace/engine paths."""
+    import shutil
+    resources = pkg_info.get("resources", []) or []
+    for r in resources:
+        kind = r.get("kind", "")
+        rid = r.get("id", "")
+        bundled = r.get("bundled", False)
+        scope = r.get("scope", "engine")
+        if not kind or not rid:
+            continue
+        if bundled:
+            # Bundled content lives inside the package's own bundle dir
+            pkg_dir = Path(pkg_info.get("package_dir", "")) if isinstance(pkg_info.get("package_dir"), str) else None
+            if pkg_dir:
+                src = pkg_dir / "bundle" / f"{kind}s" / rid
+                if src.exists():
+                    dst = bundle_dir / f"{kind}s" / rid
+                    dst.mkdir(parents=True, exist_ok=True)
+                    shutil.copytree(src, dst)
+        else:
+            # Non-bundled: copy from engine or workspace path
+            repo_root = Path(__file__).resolve().parent.parent.parent  # aiPlat-core/core
+            if scope == "engine":
+                src = repo_root / "core" / "engine" / f"{kind}s" / rid
+            else:
+                src = Path.home() / ".aiplat" / f"{kind}s" / rid
+            if src.exists():
+                dst = bundle_dir / f"{kind}s" / rid
+                dst.mkdir(parents=True, exist_ok=True)
+                shutil.copytree(src, dst)
+
+
 @router.get("/packages")
 async def list_packages():
     store = _store()
@@ -155,6 +223,7 @@ async def publish_package(pkg_name: str, http_request: Request, request: Package
         root = td_path / "pkg"
         root.mkdir(parents=True, exist_ok=True)
         bundle_dir = root / "bundle"
+        bundle_dir.mkdir(parents=True, exist_ok=True)
         _build_bundle_dir_for_package(pkg.__dict__ if hasattr(pkg, "__dict__") else (pkg if isinstance(pkg, dict) else {}), bundle_dir)
         manifest = {
             "name": getattr(pkg, "name", pkg_name),
@@ -165,7 +234,9 @@ async def publish_package(pkg_name: str, http_request: Request, request: Package
         (root / "package.yaml").write_text(yaml.safe_dump(manifest, sort_keys=False, allow_unicode=True), encoding="utf-8")
         with tarfile.open(str(archive_path), "w:gz") as tar:
             tar.add(str(root / "package.yaml"), arcname="package.yaml")
-            tar.add(str(bundle_dir), arcname="bundle")
+            # Only add bundle if it contains files
+            if any(bundle_dir.iterdir()):
+                tar.add(str(bundle_dir), arcname="bundle")
 
     sha = _sha256_file(archive_path)
     rec = await store.publish_package_version(

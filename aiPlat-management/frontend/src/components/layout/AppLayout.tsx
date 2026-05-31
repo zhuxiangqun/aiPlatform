@@ -69,6 +69,7 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
     { key: '/core/skill-packs', icon: Package, label: '包管理' },
     { key: '/workspace/mcp', icon: Package, label: 'MCP库' },
     { key: '/workspace/teams', icon: Users, label: '团队组装' },
+    { key: '/plugins', icon: Box, label: '插件管理' },
   ]},
   { divider: true },
   { group: 'platform', label: '平台服务层', items: [

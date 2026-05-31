@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import FileResponse
 
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.mcp.runtime_sync import sync_mcp_runtime
@@ -58,6 +59,93 @@ async def get_workspace_package(pkg_name: str) -> Dict[str, Any]:
         "package_dir": p.package_dir,
         "resources": p.resources,
     }
+
+
+@router.post("/workspace/packages/export")
+async def export_workspace_package(data: Dict[str, Any]):
+    """Export workspace assets as a redistributable plugin zip."""
+    from pathlib import Path
+    import shutil
+    import tempfile
+    import yaml
+
+    name = str((data or {}).get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="name is required")
+    resources = (data or {}).get("resources") or []
+    if not isinstance(resources, list) or not resources:
+        raise HTTPException(status_code=400, detail="resources list is required")
+
+    workspace_root = Path.home() / ".aiplat"
+
+    # Create temp package directory
+    tmpdir = tempfile.mkdtemp(prefix=f"aiplat-plugin-{name}-")
+    pkg_dir = Path(tmpdir) / name
+    bundle_dir = pkg_dir / "bundle"
+
+    try:
+        # Generate package.yaml
+        manifest = {
+            "name": name,
+            "type": "plugin",
+            "version": str((data or {}).get("version") or "0.1.0"),
+            "description": str((data or {}).get("description") or ""),
+            "resources": resources,
+        }
+        pkg_dir.mkdir(parents=True, exist_ok=True)
+        (pkg_dir / "package.yaml").write_text(
+            yaml.safe_dump(manifest, sort_keys=False, allow_unicode=True), encoding="utf-8"
+        )
+
+        # Copy each resource into bundle/
+        copied = 0
+        for r in resources:
+            kind = str(r.get("kind") or "").strip()
+            rid = str(r.get("id") or "").strip()
+            if not kind or not rid:
+                continue
+
+            src = workspace_root / f"{kind}s" / rid
+            if not src.exists():
+                continue
+
+            dst = bundle_dir / f"{kind}s" / rid
+            dst.mkdir(parents=True, exist_ok=True)
+
+            for item in src.iterdir():
+                dest = dst / item.name
+                if item.is_dir():
+                    if not dest.exists():
+                        shutil.copytree(item, dest)
+                else:
+                    shutil.copy2(item, dest)
+            copied += 1
+
+        if copied == 0:
+            raise HTTPException(status_code=400, detail="No resources were found in workspace")
+
+        # Create zip
+        zip_path = Path(tmpdir) / f"{name}.zip"
+        shutil.make_archive(
+            str(zip_path.with_suffix("")), "zip",
+            root_dir=str(pkg_dir.parent), base_dir=name
+        )
+
+        return FileResponse(
+            zip_path,
+            media_type="application/zip",
+            filename=f"{name}.zip",
+            headers={"X-Resources-Copied": str(copied)},
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        try:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+        except Exception:
+            pass
 
 
 @router.post("/workspace/packages")

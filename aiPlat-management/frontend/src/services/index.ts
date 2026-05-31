@@ -35,6 +35,7 @@ export {
   quotaApi,
   mcpApi,
   workspaceMcpApi,
+  packageApi,
   gatewayDlqApi,
   opsApi,
   pluginApi,

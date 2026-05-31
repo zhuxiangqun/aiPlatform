@@ -35,6 +35,7 @@ const PromptApp = lazy(() => import('./pages/Prompts/AppTemplates'));
 const CoreTools = lazy(() => import('./pages/Core/Tools/Tools'));
 const WorkspaceTeams = lazy(() => import('./pages/App/Builder/TeamAssemblyPage'));
 const CorePlugins = lazy(() => import('./pages/Core/Plugins'));
+const PackagePlugins = lazy(() => import('./pages/Plugins/Plugins'));
 const CoreMCP = lazy(() => import('./pages/Core/MCP/MCP'));
 const WorkflowsPage = lazy(() => import('./pages/Core/Workflows/WorkflowsPage'));
 const WorkflowCanvas = lazy(() => import('./pages/Builder/WorkflowCanvas'));
@@ -145,6 +146,7 @@ const router = createBrowserRouter([
       { path: 'workspace/marketplace', element: withSuspense(WorkspaceMarketplace) },
       { path: 'workspace/mcp', element: withSuspense(WorkspaceMCP) },
       { path: 'workspace/teams', element: withSuspense(WorkspaceTeams) },
+      { path: 'plugins', element: withSuspense(PackagePlugins) },
       { path: 'core/learning/artifacts', element: withSuspense(CoreLearningArtifacts) },
       { path: 'core/learning/artifacts/:artifactId', element: withSuspense(CoreLearningArtifactDetail) },
       { path: 'core/learning/releases', element: withSuspense(CoreReleases) },

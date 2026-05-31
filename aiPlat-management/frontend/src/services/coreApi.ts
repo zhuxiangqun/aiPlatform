@@ -636,6 +636,32 @@ export const workspaceMcpApi = {
   },
 };
 
+// ==================== Package / Plugin API ====================
+
+export const packageApi = {
+  listWorkspace: async () => {
+    return apiClient.get<{ items: any[]; total: number }>('/core/workspace/packages');
+  },
+  listMarketplace: async () => {
+    return apiClient.get<{ packages: any[]; total: number }>('/core/packages');
+  },
+  get: async (name: string) => {
+    return apiClient.get<any>(`/core/workspace/packages/${name}`);
+  },
+  install: async (name: string, opts?: { allow_overwrite?: boolean }) => {
+    return apiClient.post<{ status: string; record: any }>(`/core/workspace/packages/${name}/install`, opts || {});
+  },
+  uninstall: async (name: string, opts?: { keep_modified?: boolean }) => {
+    return apiClient.post<{ status: string; result: any }>(`/core/workspace/packages/${name}/uninstall`, opts || {});
+  },
+  installMarketplace: async (name: string) => {
+    return apiClient.post<{ status: string; record: any }>(`/core/packages/${name}/install`, { allow_overwrite: true });
+  },
+  getVersions: async (name: string) => {
+    return apiClient.get<{ versions: any[]; total: number }>(`/core/packages/${name}/versions`);
+  },
+};
+
 // ==================== Skill API ====================
 
 /** Unified skill categories — single source of truth for all skill forms */
