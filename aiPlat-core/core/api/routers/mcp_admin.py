@@ -200,100 +200,18 @@ async def get_workspace_mcp_server(server_name: str):
     s = mgr.get_server(server_name)
     if not s:
         raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
-    if not getattr(s, "enabled", False):
-        raise HTTPException(status_code=400, detail="MCP server is disabled — enable it first before testing")
-
-    transport = str(s.transport or "").strip().lower()
-    ok, reason = prod_stdio_policy_check(server_name=server_name, transport=transport, command=s.command, args=s.args, metadata=s.metadata)
-    if not ok:
-        if store:
-            await audit_event(
-                store=store,
-                kind="mcp_admin",
-                name="workspace.mcp.discover_tools",
-                status="failed",
-                args={"server_name": server_name, "transport": transport, "command": s.command, "args": s.args},
-                error=reason,
-            )
-        raise HTTPException(status_code=403, detail=f"stdio MCP tool discovery is blocked by prod policy: {reason}")
-
-    async def _jsonrpc_post(url: str, payload: dict) -> dict:
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=max(1, int(timeout_seconds)))) as session:
-            async with session.post(url, data=json.dumps(payload), headers={"Content-Type": "application/json"}) as resp:
-                if resp.status != 200:
-                    raise HTTPException(status_code=502, detail=f"MCP server returned HTTP {resp.status}")
-                return await resp.json()
-
-    try:
-        if transport in {"sse", "http"}:
-            if not s.url:
-                raise HTTPException(status_code=400, detail="Missing MCP server url")
-            # best-effort initialize
-            try:
-                await _jsonrpc_post(
-                    s.url,
-                    {
-                        "jsonrpc": "2.0",
-                        "id": 0,
-                        "method": "initialize",
-                        "params": {"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "clientInfo": {"name": "aiplat-core", "version": "1.0.0"}},
-                    },
-                )
-            except Exception:
-                pass
-
-            res = await _jsonrpc_post(s.url, {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}})
-            if "error" in res and res["error"]:
-                raise HTTPException(status_code=502, detail=str(res["error"]))
-            tools = (res.get("result") or {}).get("tools") or []
-            norm = [{"name": t.get("name"), "description": t.get("description", ""), "input_schema": t.get("inputSchema", {}) or {}} for t in tools if isinstance(t, dict) and t.get("name")]
-            if store:
-                await audit_event(store=store, kind="mcp_admin", name="workspace.mcp.discover_tools", status="success", args={"server_name": server_name, "transport": transport}, result={"total": len(norm)})
-            return {"tools": norm, "total": len(norm)}
-
-        if transport == "stdio":
-            if not s.command:
-                raise HTTPException(status_code=400, detail="Missing MCP stdio command")
-            # Security: allowlist for MCP stdio commands
-            import os as _os
-            allowlist = (_os.getenv("AIPLAT_MCP_STDIO_ALLOWLIST", "") or "").strip()
-            if allowlist:
-                allowed = set(c.strip() for c in allowlist.split(",") if c.strip())
-                if s.command not in allowed:
-                    raise HTTPException(status_code=400, detail=f"MCP stdio command not in allowlist: {s.command}")
-            proc = await asyncio.create_subprocess_exec(s.command, *(s.args or []), stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-            try:
-                init = {"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "clientInfo": {"name": "aiplat-core", "version": "1.0.0"}}}
-                proc.stdin.write((json.dumps(init) + "\n").encode("utf-8"))  # type: ignore[union-attr]
-                await proc.stdin.drain()  # type: ignore[union-attr]
-                await asyncio.wait_for(proc.stdout.readline(), timeout=max(1, int(timeout_seconds)))  # type: ignore[union-attr]
-
-                req = {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}
-                proc.stdin.write((json.dumps(req) + "\n").encode("utf-8"))  # type: ignore[union-attr]
-                await proc.stdin.drain()  # type: ignore[union-attr]
-                line = await asyncio.wait_for(proc.stdout.readline(), timeout=max(1, int(timeout_seconds)))  # type: ignore[union-attr]
-                if not line:
-                    raise HTTPException(status_code=502, detail="MCP stdio server returned empty response")
-                res = json.loads(line.decode("utf-8"))
-                if res.get("error"):
-                    raise HTTPException(status_code=502, detail=str(res["error"]))
-                tools = (res.get("result") or {}).get("tools") or []
-                norm = [{"name": t.get("name"), "description": t.get("description", ""), "input_schema": t.get("inputSchema", {}) or {}} for t in tools if isinstance(t, dict) and t.get("name")]
-                if store:
-                    await audit_event(store=store, kind="mcp_admin", name="workspace.mcp.discover_tools", status="success", args={"server_name": server_name, "transport": transport}, result={"total": len(norm)})
-                return {"tools": norm, "total": len(norm)}
-            finally:
-                try:
-                    proc.terminate()
-                    await asyncio.wait_for(proc.wait(), timeout=2)
-                except Exception:
-                    pass
-
-        raise HTTPException(status_code=400, detail=f"Unsupported MCP transport: {transport}")
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=str(e))
+    return {
+        "name": s.name,
+        "enabled": s.enabled,
+        "status": getattr(s, "status", "draft") or "draft",
+        "transport": s.transport,
+        "url": s.url,
+        "command": s.command,
+        "args": s.args,
+        "auth": s.auth,
+        "allowed_tools": s.allowed_tools,
+        "metadata": s.metadata,
+    }
 
 
 @router.get("/workspace/mcp/servers/{server_name}/policy-check")
