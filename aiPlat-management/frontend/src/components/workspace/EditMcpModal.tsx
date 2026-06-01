@@ -9,6 +9,7 @@ interface EditMcpModalProps {
   server: McpServer | null;
   onClose: () => void;
   onSuccess: () => void;
+  autoDiscover?: boolean;
 }
 
 const TRANSPORTS = [
@@ -39,7 +40,7 @@ const MCP_HELP = `### 如何配置 MCP Server
 - tools/call 失败：allowed_tools 未放行、token 过期、server 未启用
 - stdio prod：先点“prod 放行检查”确认策略通过`;
 
-const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSuccess }) => {
+const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSuccess, autoDiscover }) => {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
 
@@ -88,6 +89,18 @@ const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSu
       // fallback already applied above
     }).finally(() => setFetching(false));
   }, [open, server?.name]);
+
+  // Auto-discover tools when opened via "新增" flow
+  const autoDiscovered = React.useRef(false);
+  useEffect(() => {
+    if (autoDiscover && !fetching && open && server?.name && !autoDiscovered.current) {
+      autoDiscovered.current = true;
+      handleDiscover();
+    }
+    if (!open) {
+      autoDiscovered.current = false;
+    }
+  }, [autoDiscover, fetching, open, server?.name]);
 
   const hint = useMemo(() => {
     if (transport === 'stdio') return 'stdio 模式通常使用 command + args（例如：node / python / 本地可执行文件）。';

@@ -24,6 +24,7 @@ const WorkspaceMCP: React.FC = () => {
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editServer, setEditServer] = useState<McpServer | null>(null);
+  const [autoDiscover, setAutoDiscover] = useState(false);
   const [templateModal, setTemplateModal] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const [templateId, setTemplateId] = useState('');
@@ -315,13 +316,20 @@ const WorkspaceMCP: React.FC = () => {
         open={addOpen}
         onClose={() => setAddOpen(false)}
         onSuccess={fetchServers}
+        onCreated={(name) => {
+          setAddOpen(false);
+          setEditServer({ name, enabled: true } as McpServer);
+          setAutoDiscover(true);
+          setEditOpen(true);
+        }}
       />
 
       <EditMcpModal
         open={editOpen}
         server={editServer}
-        onClose={() => setEditOpen(false)}
+        onClose={() => { setEditOpen(false); setAutoDiscover(false); }}
         onSuccess={fetchServers}
+        autoDiscover={autoDiscover}
       />
 
       {/* Template Creation Modal */}

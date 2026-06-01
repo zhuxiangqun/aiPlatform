@@ -8,6 +8,7 @@ interface AddMcpModalProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  onCreated?: (serverName: string) => void;
 }
 
 const TRANSPORTS = [
@@ -40,7 +41,7 @@ const MCP_HELP = `### 如何创建 MCP Server
 - tools/call 失败：常见是 auth/token 不对、allowed_tools 未放行
 - stdio prod：若 policy-check 不通过，需要配置 allowlist/command prefixes（以及可选统一 launcher 强制）`;
 
-const AddMcpModal: React.FC<AddMcpModalProps> = ({ open, onClose, onSuccess }) => {
+const AddMcpModal: React.FC<AddMcpModalProps> = ({ open, onClose, onSuccess, onCreated }) => {
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState('');
   const [enabled, setEnabled] = useState(false);
@@ -278,6 +279,9 @@ const AddMcpModal: React.FC<AddMcpModalProps> = ({ open, onClose, onSuccess }) =
       await workspaceMcpApi.upsertServer(payload);
       toast.success('已创建 MCP Server');
       onSuccess();
+      if (onCreated && enabled) {
+        onCreated(name.trim());
+      }
       if (autoSmoke) {
         try {
           const smoke = await diagnosticsApi.runE2ESmoke({ tenant_id: 'ops_smoke', actor_id: 'admin', agent_model: 'deepseek-reasoner' });
