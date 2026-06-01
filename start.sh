@@ -412,49 +412,10 @@ kill_port_if_any 5173
 
 cd "$PROJECT_ROOT/aiPlat-management/frontend"
 
-# Build if needed
-NEED_BUILD=0
-if [ ! -d "dist" ]; then
-    NEED_BUILD=1
-elif [ "${AIPLAT_FORCE_FRONTEND_BUILD:-0}" = "1" ]; then
-    NEED_BUILD=1
-else
-    # Cross-platform mtime check via python (safe in "python -c", no heredoc).
-    # We are already in aiPlat-management/frontend directory here.
-    NEED_BUILD=$("$PY" -c 'from pathlib import Path
-import sys
-try:
-  frontend = Path.cwd()
-  dist_index = frontend / "dist" / "index.html"
-  if not dist_index.exists():
-    print(1); sys.exit(0)
-  src_targets = [
-    frontend / "package.json",
-    frontend / "vite.config.ts",
-    frontend / "proxy_server.py",
-    frontend / "index.html",
-  ]
-  src_dir = frontend / "src"
-  if src_dir.exists():
-    for p in src_dir.rglob("*"):
-      if p.is_file():
-        src_targets.append(p)
-  dist_m = dist_index.stat().st_mtime
-  latest = 0.0
-  for p in src_targets:
-    if p.exists():
-      latest = max(latest, p.stat().st_mtime)
-  print(1 if latest > dist_m else 0)
-except Exception:
-  print(1)
-')
-fi
-
-if [ "$NEED_BUILD" = "1" ]; then
-    echo "正在构建前端...（可设置 AIPLAT_FORCE_FRONTEND_BUILD=0 跳过）"
-    npm install >/dev/null 2>&1 || true
-    npx vite build 2>&1 | tail -3
-fi
+# Always rebuild frontend to ensure latest code is served
+echo "正在构建前端..."
+npm install >/dev/null 2>&1 || true
+npx vite build 2>&1 | tail -3
 
 nohup "$PY" "$PROJECT_ROOT/aiPlat-management/frontend/proxy_server.py" > "$AIPLAT_HOME/logs/frontend.log" 2>&1 &
 FRONTEND_PID=$!
