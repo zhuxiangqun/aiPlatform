@@ -102,7 +102,7 @@ const SystemOverview: React.FC = () => {
          </div>
          <div className="flex items-center gap-3">
            {diagSummary && (diagSummary.fail > 0 || diagSummary.warn > 0) && (
-             <a href="/workspace/diagnostics" className="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium bg-red-900/20 text-red-300 hover:bg-red-900/30 transition-colors border border-red-500/20">
+              <a href="/diagnostics" className="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium bg-red-900/20 text-red-300 hover:bg-red-900/30 transition-colors border border-red-500/20">
                <AlertTriangle className="w-3 h-3" />
                {diagSummary.fail > 0 && <span>{diagSummary.fail} 项失败</span>}
                {diagSummary.fail > 0 && diagSummary.warn > 0 && <span>·</span>}
