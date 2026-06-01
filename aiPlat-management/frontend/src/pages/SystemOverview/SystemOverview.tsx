@@ -131,7 +131,7 @@ const SystemOverview: React.FC = () => {
               </span>
             </div>
             <div className="text-[10px] text-gray-600 mb-2">
-              健康分基于循环依赖、平均耦合度、代码风险问题综合计算。A (>90) B (75-90) C (60-75) D (40-60) F (&lt;40)
+              {'健康分基于循环依赖、平均耦合度、代码风险问题综合计算。A (>90) B (75-90) C (60-75) D (40-60) F (<40)'}
             </div>
             <div className="grid grid-cols-5 gap-3 text-[10px]">
               {Object.entries(data.codebase_stats.layers || {}).map(([layer, info]: [string, any]) => (
