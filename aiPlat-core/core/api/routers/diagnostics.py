@@ -775,7 +775,7 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
         """B1: Detect frontend API calls with no matching backend route."""
         import re
         try:
-            from core.harness.knowledge.code_graph import _extract_api_calls, _extract_backend_routes
+            from core.harness.knowledge.code_graph import repo_root, default_roots, _extract_api_calls, _extract_backend_routes
             repo = repo_root()
             abs_roots = [(repo / r).resolve() for r in default_roots()]
             nodes, edges, _ = _get_or_build_graph()
@@ -820,7 +820,7 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
     async def _check_route_coverage():
         """B2: Check if backend routes have corresponding frontend usage."""
         try:
-            from core.harness.knowledge.code_graph import _extract_backend_routes, _extract_api_calls, _route_matches
+            from core.harness.knowledge.code_graph import repo_root, default_roots, _extract_backend_routes, _extract_api_calls, _route_matches
             repo = repo_root()
             abs_roots = [(repo / r).resolve() for r in default_roots()]
             nodes, edges, _ = _get_or_build_graph()
@@ -870,6 +870,7 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
         """B3: Check for questionable cross-domain dependencies."""
         try:
             from core.api.routers.code_intel import _layer_bucket as code_layer
+            from core.harness.knowledge.code_graph import repo_root, default_roots
             repo = repo_root()
             abs_roots = [(repo / r).resolve() for r in default_roots()]
             nodes, edges, _ = _get_or_build_graph()
@@ -901,6 +902,7 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
         """B4: Detect fragile base classes (too many subclasses or deep inheritance)."""
         try:
             from collections import Counter
+            from core.harness.knowledge.code_graph import repo_root, default_roots
             repo = repo_root()
             abs_roots = [(repo / r).resolve() for r in default_roots()]
             nodes, edges, _ = _get_or_build_graph()
@@ -1285,6 +1287,10 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
                 if '/builder/' in nid and 'builder_session' in nid: return True
                 # CLI scripts
                 if '/scripts/' in nid: return True
+                # Architecture guard & lint rules (loaded dynamically by registries)
+                if '/arch_guard_rules/' in nid: return True
+                if '/lint_rules/' in nid: return True
+                if '/management/' in nid and ('arch_guard_' in nid or 'compliance_checks' in nid or 'skill_linter' in nid): return True
                 return False
 
             total = len(nodes)
