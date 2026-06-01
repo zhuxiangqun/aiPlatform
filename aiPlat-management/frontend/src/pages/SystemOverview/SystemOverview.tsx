@@ -200,6 +200,9 @@ const SystemOverview: React.FC = () => {
               </span>
             </div>
           </CardHeader>
+            <p className="text-[9px] text-gray-600 px-4 -mt-1 pb-1">
+              模型（LLM/Embed/Rerank/Audio/OCR）、服务端口、数据库状态
+            </p>
           <CardContent>
             <div className="space-y-2 text-xs">
               {/* Models */}
@@ -318,15 +321,14 @@ const SystemOverview: React.FC = () => {
                 {statusLabel(core.status || 'healthy')}
               </span>
             </div>
-          </CardHeader>
+           </CardHeader>
+          <p className="text-[9px] text-gray-600 px-4 -mt-1 pb-1">
+            Agent · Skill · Tool · MCP · Pipeline · Memory · Syscall 统计
+          </p>
           <CardContent>
             <div className="space-y-2 text-xs">
-              {/* Agents */}
-              <div className="pb-1.5 border-b border-dark-border/50">
-                <div className="flex items-center gap-1.5 text-gray-400 font-medium mb-1">
-                  <Bot className="w-3 h-3" />Agent
-                </div>
-                <MetricRow
+              {/* Agent */}
+              <MetricRow
                   label="总计"
                   value={core.agents?.total ?? '—'}
                   sub={<>引擎 {core.agents?.engine ?? 0} · 工作区 {core.agents?.workspace ?? 0}</>}
@@ -444,7 +446,10 @@ const SystemOverview: React.FC = () => {
                 {statusLabel(platform.status || 'healthy')}
               </span>
             </div>
-          </CardHeader>
+           </CardHeader>
+          <p className="text-[9px] text-gray-600 px-4 -mt-1 pb-1">
+            网关路由 · 用户/租户 · 知识库集合
+          </p>
           <CardContent>
             <div className="space-y-2 text-xs">
               {/* Gateway & Users & Tenants */}
@@ -502,7 +507,10 @@ const SystemOverview: React.FC = () => {
                 {statusLabel(app.status || 'healthy')}
               </span>
             </div>
-          </CardHeader>
+           </CardHeader>
+          <p className="text-[9px] text-gray-600 px-4 -mt-1 pb-1">
+            渠道 · 会话 · Apps · 能力健康
+          </p>
           <CardContent>
             <div className="space-y-2 text-xs">
               {/* Channels */}
