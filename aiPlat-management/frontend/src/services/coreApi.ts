@@ -654,9 +654,6 @@ export const packageApi = {
   uninstall: async (name: string, opts?: { keep_modified?: boolean }) => {
     return apiClient.post<{ status: string; result: any }>(`/core/workspace/packages/${name}/uninstall`, opts || {});
   },
-  installMarketplace: async (name: string) => {
-    return apiClient.post<{ status: string; record: any }>(`/core/packages/${name}/install`, { allow_overwrite: true });
-  },
   getVersions: async (name: string) => {
     return apiClient.get<{ versions: any[]; total: number }>(`/core/packages/${name}/versions`);
   },

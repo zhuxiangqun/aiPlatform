@@ -141,58 +141,6 @@ const Plugins: React.FC = () => {
     }
   };
 
-  const handleInstallMarketplace = async (pkgName: string) => {
-    setInstalling(pkgName);
-    try {
-      await packageApi.installMarketplace(pkgName);
-      toast.success(`插件 "${pkgName}" 已从市场安装`);
-      fetchAll();
-    } catch (e: any) {
-      toastGateError(e, '安装失败');
-    } finally {
-      setInstalling(null);
-    }
-  };
-
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-
-  const handleImportZip = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.name.endsWith('.zip')) {
-      toast.error('只接受 .zip 文件');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      const name = file.name.replace('.zip', '').replace(/\s+/g, '_');
-      try {
-        const res = await fetch('/api/core/workspace/packages', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name,
-            version: '0.1.0',
-            description: `Imported from ${file.name}`,
-            resources: [],
-            bundle: false,
-          }),
-        });
-        if (!res.ok) {
-          toast.error('创建包失败');
-          return;
-        }
-        await packageApi.install(name);
-        toast.success(`插件 "${name}" 已导入并安装`);
-        fetchAll();
-      } catch (err: any) {
-        toast.error(`导入失败: ${err?.message || ''}`);
-      }
-    };
-    reader.readAsArrayBuffer(file);
-    e.target.value = '';
-  };
-
   const handlePublish = async (pkgName: string) => {
     const version = prompt('发布版本号:', '0.1.0');
     if (!version) return;
@@ -235,13 +183,8 @@ const Plugins: React.FC = () => {
     }
   };
 
-  const showDetail = async (pkg: PackageInfo) => {
-    try {
-      const detail = await packageApi.get(pkg.name);
-      setDetailPkg(detail as any);
-    } catch {
-      setDetailPkg(pkg);
-    }
+  const showDetail = (pkg: PackageInfo) => {
+    setDetailPkg(pkg);
     setDetailOpen(true);
   };
 
@@ -290,9 +233,9 @@ const Plugins: React.FC = () => {
               </button>
             ) : (
               <button
-                onClick={() => handleInstallMarketplace(pkg.name)}
+                onClick={() => handleInstall(pkg.name)}
                 className="p-1.5 rounded text-green-400 hover:bg-green-400/10"
-                title="从市场安装"
+                title="安装"
                 disabled={installing === pkg.name}
               >
                 <Download className="w-4 h-4" />
