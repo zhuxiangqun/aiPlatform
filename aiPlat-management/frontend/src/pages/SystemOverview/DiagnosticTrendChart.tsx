@@ -57,10 +57,11 @@ const DiagnosticTrendChart: React.FC<Props> = ({ history }) => {
           const grade = h?.overall_grade || '?';
           let html = `<div style="font-size:12px;font-weight:600">评分: ${h?.overall_score ?? '?'} (${grade})</div>`;
           for (const p of params) {
-            let val = p.value;
+            const v = Array.isArray(p.value) ? p.value[1] : p.value;
+            let val = String(v);
             if (p.seriesName === '通过%' || p.seriesName === '警告%' || p.seriesName === '失败%') {
               const count = p.seriesName === '通过%' ? h?.pass : p.seriesName === '警告%' ? h?.warn : h?.fail;
-              val = `${p.value}% (${count}项)`;
+              val = `${v}% (${count}项)`;
             }
             html += `<div style="font-size:10px">${p.marker} ${p.seriesName}: ${val}</div>`;
           }
