@@ -71,6 +71,21 @@ const Diagnostics: React.FC = () => {
     }
   };
 
+  const runQuickDiagnostics = async () => {
+    setDiagRunning(true);
+    setDiagResult(null);
+    try {
+      const res = await fetch('/api/core/diagnostics/run-all?quick=true', { method: 'POST' });
+      const data = await res.json();
+      setDiagResult(data);
+      setDiagRunId(data.run_id || '');
+      setDiagRunning(false);
+    } catch (e: any) {
+      setDiagRunning(false);
+      toast.error('快速诊断失败', e?.message || e);
+    }
+  };
+
   const catLabels: Record<string, string> = {
     core_runtime: 'Core 运行时', code_intel: '代码架构', capability: '能力图谱',
     wiki_health: 'Wiki 健康', arch_guard: '架构守卫',
@@ -206,9 +221,14 @@ const Diagnostics: React.FC = () => {
                 </span>
               )}
             </div>
-            <Button variant="primary" size="sm" loading={diagRunning} onClick={runDiagnosticsInBg}>
-              🔍 一键诊断
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="primary" size="sm" loading={diagRunning} onClick={runDiagnosticsInBg}>
+                🔍 一键诊断
+              </Button>
+              <Button variant="outline" size="sm" loading={diagRunning} onClick={runQuickDiagnostics} title="跳过LSP/安全扫描等慢检查">
+                ⚡ 快速
+              </Button>
+            </div>
           </div>
         </CardHeader>
         {diagResult && (
