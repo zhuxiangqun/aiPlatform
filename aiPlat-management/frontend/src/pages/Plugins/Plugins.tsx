@@ -76,8 +76,8 @@ const Plugins: React.FC = () => {
         fetch('/api/core/workspace/mcp/servers').then(r => r.json()).catch(() => ({ servers: [] })),
         fetch('/api/core/workspace/hooks').then(r => r.json()).catch(() => ({ items: [] })),
       ]);
-      (agentsRes.items || []).forEach((a: any) => assets.push({ kind: 'agent', id: a.name || a.id, label: a.display_name || a.name || a.id }));
-      (skillsRes.items || []).forEach((s: any) => assets.push({ kind: 'skill', id: s.name || s.id, label: s.display_name || s.name || s.id }));
+      (agentsRes.agents || agentsRes.items || []).forEach((a: any) => assets.push({ kind: 'agent', id: a.name || a.id, label: a.display_name || a.name || a.id }));
+      (skillsRes.skills || skillsRes.items || []).forEach((s: any) => assets.push({ kind: 'skill', id: s.name || s.id, label: s.display_name || s.name || s.id }));
       (mcpsRes.servers || []).forEach((m: any) => assets.push({ kind: 'mcp', id: m.name, label: m.name }));
       (hooksRes.items || []).forEach((h: any) => assets.push({ kind: 'hook', id: h.name || h.id, label: h.name || h.id }));
     } catch {}
