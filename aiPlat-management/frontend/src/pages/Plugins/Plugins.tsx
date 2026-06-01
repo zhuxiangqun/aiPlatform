@@ -465,7 +465,7 @@ const Plugins: React.FC = () => {
                         sel ? 'bg-primary/10 border border-primary/30' : 'bg-dark-bg border border-dark-border hover:border-dark-border/80'
                       }`}
                     >
-                      <input type="checkbox" checked={sel} onChange={() => toggleAsset(key)} className="accent-primary" />
+                      <input type="checkbox" checked={sel} onChange={(e) => { e.stopPropagation(); toggleAsset(key); }} className="accent-primary" />
                       <span className="text-xs">{info?.icon}</span>
                       <span className="text-xs text-gray-300 flex-1">{a.label}</span>
                       <Badge variant="default" className="text-[10px]">{a.kind}</Badge>
