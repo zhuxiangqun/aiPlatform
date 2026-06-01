@@ -130,6 +130,9 @@ const SystemOverview: React.FC = () => {
                 健康 {(data.codebase_stats.health_score || 0)}/{data.codebase_stats.health_grade || '?'}
               </span>
             </div>
+            <div className="text-[10px] text-gray-600 mb-2">
+              健康分基于循环依赖、平均耦合度、代码风险问题综合计算。A (>90) B (75-90) C (60-75) D (40-60) F (&lt;40)
+            </div>
             <div className="grid grid-cols-5 gap-3 text-[10px]">
               {Object.entries(data.codebase_stats.layers || {}).map(([layer, info]: [string, any]) => (
                 <div key={layer} className="bg-dark-bg rounded px-2 py-1.5 text-center">
@@ -138,6 +141,9 @@ const SystemOverview: React.FC = () => {
                   <div className="text-gray-500">{info.symbols} sym</div>
                 </div>
               ))}
+            </div>
+            <div className="text-[9px] text-gray-600 mt-1">
+              infra=基础设施 core=AI引擎 platform=平台服务 app=应用接入 management=管理端 · 文件数/符号数
             </div>
             <div className="flex gap-2 mt-2 text-[10px] text-gray-500">
               <span>边: {(data.codebase_stats.total_edges || 0).toLocaleString()} (导入:{data.codebase_stats.import_edges} 跨文件调用:{data.codebase_stats.cross_calls})</span>
@@ -149,6 +155,7 @@ const SystemOverview: React.FC = () => {
               <div className="flex items-center gap-1.5 text-[10px] text-gray-400 mb-1.5">
                 <Flame className="w-3 h-3 text-orange-400" />
                 Hotspots
+                <span className="text-gray-600">— 被依赖最多的文件(Top Imported) / 依赖最多的文件(Top Dependents)</span>
               </div>
               <div className="grid grid-cols-2 gap-3 text-[10px]">
                 <div>
@@ -186,6 +193,7 @@ const SystemOverview: React.FC = () => {
               <div className="flex items-center gap-2 text-sm font-medium text-gray-200">
                 <Server className="w-4 h-4 text-cyan-400" />
                 基础设施层 <span className="text-[10px] text-gray-500">Layer 0</span>
+                <span className="text-[9px] text-gray-600 ml-2">模型 · 服务 · 存储</span>
               </div>
               <span className={`text-xs font-medium ${statusColor(infra.status || 'healthy')}`}>
                 {statusLabel(infra.status || 'healthy')}
@@ -304,6 +312,7 @@ const SystemOverview: React.FC = () => {
               <div className="flex items-center gap-2 text-sm font-medium text-gray-200">
                 <Cpu className="w-4 h-4 text-violet-400" />
                 AI 中台 <span className="text-[10px] text-gray-500">Layer 1</span>
+                <span className="text-[9px] text-gray-600 ml-2">Agent · Skill · Tool · MCP</span>
               </div>
               <span className={`text-xs font-medium ${statusColor(core.status || 'healthy')}`}>
                 {statusLabel(core.status || 'healthy')}
@@ -429,6 +438,7 @@ const SystemOverview: React.FC = () => {
               <div className="flex items-center gap-2 text-sm font-medium text-gray-200">
                 <Globe className="w-4 h-4 text-emerald-400" />
                 平台服务层 <span className="text-[10px] text-gray-500">Layer 2</span>
+                <span className="text-[9px] text-gray-600 ml-2">网关 · 用户 · 知识库</span>
               </div>
               <span className={`text-xs font-medium ${statusColor(platform.status || 'healthy')}`}>
                 {statusLabel(platform.status || 'healthy')}
@@ -486,6 +496,7 @@ const SystemOverview: React.FC = () => {
               <div className="flex items-center gap-2 text-sm font-medium text-gray-200">
                 <MessageSquare className="w-4 h-4 text-orange-400" />
                 应用接入层 <span className="text-[10px] text-gray-500">Layer 3</span>
+                <span className="text-[9px] text-gray-600 ml-2">渠道 · 会话 · Apps</span>
               </div>
               <span className={`text-xs font-medium ${statusColor(app.status || 'healthy')}`}>
                 {statusLabel(app.status || 'healthy')}
