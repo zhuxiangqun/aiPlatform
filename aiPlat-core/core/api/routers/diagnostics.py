@@ -730,6 +730,168 @@ async def run_all_diagnostics(category: str = ""):
         except Exception as e:
             return {"status": "error", "score": 0, "error": str(e)[:200]}
 
+    async def _check_cross_lang_links():
+        """B1: Detect frontend API calls with no matching backend route."""
+        import re
+        try:
+            from core.harness.knowledge.code_graph import repo_root, default_roots, build_graph, _extract_api_calls, _extract_backend_routes
+            repo = repo_root()
+            abs_roots = [(repo / r).resolve() for r in default_roots()]
+            nodes, edges, _ = build_graph(repo, abs_roots)
+
+            # Build backend route set
+            backend_routes = set()
+            for f in abs_roots:
+                if not f.exists() or not f.is_dir():
+                    continue
+                for p in f.rglob("*.py"):
+                    if (p.parent.name == "tests" or "__pycache__" in str(p)):
+                        continue
+                    for route in _extract_backend_routes(p):
+                        path = route[0] if isinstance(route, (list, tuple)) else str(route)
+                        if path and path.startswith('/'):
+                            backend_routes.add(path)
+
+            # Check frontend API calls
+            broken = []
+            for f in abs_roots:
+                if not f.exists() or not f.is_dir():
+                    continue
+                for p in f.rglob("*.ts") if f.name == "aiPlat-management" else []:
+                    for ep in _extract_api_calls(p):
+                        ep = ep.replace('/api/', '/').replace('/core/', '/').rstrip('/')
+                        if ep and not any(re.match(ep.replace('${', r'\{').replace('}', r'\}'), br) for br in backend_routes):
+                            broken.append({"file": str(p.relative_to(repo))[:80], "endpoint": ep})
+
+            items = []
+            if broken:
+                for b in broken[:5]:
+                    items.append({"check": "断链API调用", "result": "⚠️", "detail": f"{b['file']}: {b['endpoint']}"})
+            return {
+                "status": "warn" if broken else "pass",
+                "score": max(0, 100 - len(broken[:5]) * 5),
+                "items": items,
+                "signals": {"broken_calls": len(broken)},
+            }
+        except Exception as e:
+            return {"status": "error", "score": 0, "error": str(e)[:200]}
+
+    async def _check_route_coverage():
+        """B2: Check if backend routes have corresponding frontend usage."""
+        try:
+            from core.harness.knowledge.code_graph import repo_root, default_roots, build_graph, _extract_backend_routes, _extract_api_calls
+            repo = repo_root()
+            abs_roots = [(repo / r).resolve() for r in default_roots()]
+            nodes, edges, _ = build_graph(repo, abs_roots)
+
+            # Collect all backend routes
+            backend_routes = []
+            for f in abs_roots:
+                if not f.exists() or not f.is_dir():
+                    continue
+                for p in f.rglob("*.py"):
+                    if p.parent.name == "tests" or "__pycache__" in str(p):
+                        continue
+                    for route in _extract_backend_routes(p):
+                        path = route[0] if isinstance(route, (list, tuple)) else str(route)
+                        handler = route[1] if isinstance(route, (list, tuple)) and len(route) > 1 else ""
+                        if path and path.startswith('/') and '{' not in path:  # skip param routes
+                            backend_routes.append({"path": path, "file": str(p.relative_to(repo))[:70], "handler": handler})
+
+            # Collect all frontend API calls
+            frontend_calls = set()
+            for f in abs_roots:
+                if not f.exists() or not f.is_dir():
+                    continue
+                for p in f.rglob("*.ts") if f.name == "aiPlat-management" else []:
+                    for ep in _extract_api_calls(p):
+                        ep = ep.replace('/api/', '/').replace('/core/', '/').rstrip('/')
+                        if ep:
+                            frontend_calls.add(ep)
+
+            # Find uncovered routes
+            uncovered = [br for br in backend_routes if not any(fc == br["path"] for fc in frontend_calls)]
+
+            items = []
+            for u in uncovered[:5]:
+                items.append({"check": "未使用路由", "result": "⚠️",
+                              "detail": f'{u["path"]} ({u["handler"]}) @ {u["file"]}'})
+            return {
+                "status": "warn" if len(uncovered) > 5 else "pass",
+                "score": max(0, 100 - len(uncovered[:5]) * 3),
+                "items": items,
+                "signals": {"uncovered_routes": len(uncovered), "total_routes": len(backend_routes)},
+            }
+        except Exception as e:
+            return {"status": "error", "score": 0, "error": str(e)[:200]}
+
+    async def _check_domain_coupling():
+        """B3: Check for questionable cross-domain dependencies."""
+        try:
+            from core.harness.knowledge.code_graph import repo_root, default_roots, build_graph
+            from core.api.routers.code_intel import _layer_bucket as code_layer
+            repo = repo_root()
+            abs_roots = [(repo / r).resolve() for r in default_roots()]
+            nodes, edges, _ = build_graph(repo, abs_roots)
+
+            # Check frontend directly importing core harness (bypassing platform)
+            suspicious = []
+            for edge in edges:
+                from_f = edge.get("from", "")
+                to_f = edge.get("to", "")
+                from_layer = code_layer(from_f)
+                to_layer = code_layer(to_f)
+                # app → core (should go through platform)
+                if from_layer == "app" and to_layer == "core" and "facade" not in to_f:
+                    suspicious.append(f"{from_f[:50]} → {to_f[:50]}")
+
+            items = []
+            for s in suspicious[:5]:
+                items.append({"check": "跨层依赖", "result": "⚠️", "detail": s})
+            return {
+                "status": "warn" if suspicious else "pass",
+                "score": max(0, 100 - len(suspicious[:5]) * 3),
+                "items": items,
+                "signals": {"suspicious_edges": len(suspicious)},
+            }
+        except Exception as e:
+            return {"status": "error", "score": 0, "error": str(e)[:200]}
+
+    async def _check_fragile_base():
+        """B4: Detect fragile base classes (too many subclasses or deep inheritance)."""
+        try:
+            from core.harness.knowledge.code_graph import repo_root, default_roots, build_graph
+            from collections import Counter
+            repo = repo_root()
+            abs_roots = [(repo / r).resolve() for r in default_roots()]
+            nodes, edges, _ = build_graph(repo, abs_roots)
+
+            # Count subclasses per parent
+            parent_count = Counter()
+            for nid, nd in nodes.items():
+                for sym in nd.get("symbols", []):
+                    if isinstance(sym, (list, tuple)) and len(sym) >= 4 and sym[1] == "class":
+                        parent = sym[3]
+                        if parent:
+                            parent_count[parent] += 1
+
+            # Report parents with too many subclasses (>10)
+            fragile = [(p, c) for p, c in parent_count.items() if c > 10]
+            fragile.sort(key=lambda x: -x[1])
+
+            items = []
+            for parent, count in fragile[:5]:
+                items.append({"check": "脆弱基类", "result": "⚠️",
+                              "detail": f"{parent} has {count} subclasses"})
+            return {
+                "status": "warn" if fragile else "pass",
+                "score": max(0, 100 - len(fragile[:5]) * 5),
+                "items": items,
+                "signals": {"fragile_bases": len(fragile)},
+            }
+        except Exception as e:
+            return {"status": "error", "score": 0, "error": str(e)[:200]}
+
     async def _check_capability():
         try:
             from core.harness.knowledge.capability_graph import build_capability_graph
@@ -1255,6 +1417,10 @@ async def run_all_diagnostics(category: str = ""):
     checks = [
         ("core_runtime", _check_core_runtime()),
         ("code_intel", _check_code_intel()),
+        ("cross_lang", _check_cross_lang_links()),
+        ("route_coverage", _check_route_coverage()),
+        ("domain_coupling", _check_domain_coupling()),
+        ("fragile_base", _check_fragile_base()),
         ("capability", _check_capability()),
         ("skill_lint", _check_skill_lint()),
         ("wiki_health", _check_wiki_health()),
@@ -1308,6 +1474,8 @@ async def run_all_diagnostics(category: str = ""):
         "traces": "链路追踪", "graph_runs": "图执行", "context_metrics": "上下文",
         "e2e_smoke": "冒烟测试", "doctor": "Doctor", "overview_issues": "概览问题",
         "symbol_health": "符号健康", "lsp": "LSP 诊断", "security": "安全扫描",
+        "cross_lang": "跨语言连接", "route_coverage": "路由覆盖",
+        "domain_coupling": "跨域耦合", "fragile_base": "脆弱基类",
     }
     for cat_name, cat in categories.items():
         if not isinstance(cat, dict):

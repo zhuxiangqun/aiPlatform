@@ -96,13 +96,32 @@ const SystemGraph: React.FC = () => {
     setTourMode(true);
     setTourIdx(0);
     try {
-      const res = await fetch('/api/core/diagnostics/code-intel/tour?limit=30');
+      const url = tab === 'capability'
+        ? '/api/core/knowledge-graph/capability'
+        : '/api/core/diagnostics/code-intel/tour?limit=30';
+      const res = await fetch(url);
       const data = await res.json();
-      setTourSteps(data.tour || []);
+
+      if (tab === 'capability') {
+        // Convert capability graph nodes to tour steps
+        const nodes = data?.nodes || {};
+        const nodeList = Array.isArray(nodes) ? nodes : Object.values(nodes);
+        setTourSteps(nodeList
+          .sort((a: any, b: any) => (a.type || '').localeCompare(b.type || ''))
+          .map((n: any) => ({
+            file: n.id || '',
+            layer: n.type || 'unknown',
+            in_degree: n.in_degree || 0,
+            out_degree: n.out_degree || 0,
+            symbols: n.label ? [n.label] : [],
+          })));
+      } else {
+        setTourSteps(data.tour || []);
+      }
     } catch {
       setTourMode(false);
     }
-  }, []);
+  }, [tab]);
 
   const nextTour = () => { if (tourIdx < tourSteps.length - 1) setTourIdx(tourIdx + 1); };
   const prevTour = () => { if (tourIdx > 0) setTourIdx(tourIdx - 1); };
@@ -174,7 +193,7 @@ const SystemGraph: React.FC = () => {
             </button>
           </div>
           {/* Tour button */}
-          {tab === 'code' && (
+          {(tab === 'code' || tab === 'capability') && (
             <button
               onClick={() => tourMode ? closeTour() : startTour()}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors ${

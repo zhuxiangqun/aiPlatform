@@ -224,6 +224,25 @@ def _incremental_rescan(nodes, edges, stale_ids):
         _scan_workflows(nodes, edges)
 
 
+def _infer_domain(category: str, tags: list) -> str:
+    """Infer business domain from AGENT/SKILL category and tags."""
+    cat = (category or "").lower()
+    tag_set = set((t or "").lower() for t in (tags or []))
+    if "engineering" in cat or "development" in cat or "engineering" in tag_set:
+        return "研发工程"
+    if "product" in cat or "pm" in tag_set:
+        return "产品管理"
+    if "quality" in cat or "qa" in cat or "testing" in tag_set:
+        return "质量保证"
+    if "design" in cat or "architecture" in tag_set:
+        return "架构设计"
+    if "management" in cat or "monitoring" in tag_set:
+        return "治理管理"
+    if "sales" in cat or "support" in cat:
+        return "业务运营"
+    return "通用能力"
+
+
 def _finalize(nodes, edges):
     """Compute degrees for all nodes."""
     for nid, n in nodes.items():
@@ -312,6 +331,7 @@ def _scan_agents(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):
             "status": fm.get("status", "unknown"),
             "category": fm.get("category", ""),
             "tags": fm.get("tags", []),
+            "domain": _infer_domain(fm.get("category", ""), fm.get("tags", [])),
             "path": str(agent_dir),
         }
 
