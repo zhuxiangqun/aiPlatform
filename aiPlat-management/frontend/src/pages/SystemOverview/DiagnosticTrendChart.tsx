@@ -33,18 +33,18 @@ const DiagnosticTrendChart: React.FC<Props> = ({ history }) => {
       h.overall_score,
     ]);
 
-    const passData = history.map((h: HistoryEntry) => [
-      new Date(h.started_at).getTime(),
-      h.pass,
-    ]);
-    const warnData = history.map((h: HistoryEntry) => [
-      new Date(h.started_at).getTime(),
-      h.warn,
-    ]);
-    const failData = history.map((h: HistoryEntry) => [
-      new Date(h.started_at).getTime(),
-      h.fail,
-    ]);
+    const passData = history.map((h: HistoryEntry) => {
+      const total = (h.pass || 0) + (h.warn || 0) + (h.fail || 0) || 1;
+      return [new Date(h.started_at).getTime(), Math.round(h.pass / total * 100)];
+    });
+    const warnData = history.map((h: HistoryEntry) => {
+      const total = (h.pass || 0) + (h.warn || 0) + (h.fail || 0) || 1;
+      return [new Date(h.started_at).getTime(), Math.round(h.warn / total * 100)];
+    });
+    const failData = history.map((h: HistoryEntry) => {
+      const total = (h.pass || 0) + (h.warn || 0) + (h.fail || 0) || 1;
+      return [new Date(h.started_at).getTime(), Math.round(h.fail / total * 100)];
+    });
 
     return {
       tooltip: {
@@ -53,11 +53,16 @@ const DiagnosticTrendChart: React.FC<Props> = ({ history }) => {
         borderColor: '#30363D',
         textStyle: { color: '#c9d1d9', fontSize: 11 },
         formatter: (params: any) => {
-          const score = params.find((p: any) => p.seriesName === '综合评分');
-          const grade = history[params[0].dataIndex]?.overall_grade || '?';
-          let html = `<div style="font-size:12px;font-weight:600">评分: ${score?.value ?? '?'} (${grade})</div>`;
+          const h = history[params[0].dataIndex];
+          const grade = h?.overall_grade || '?';
+          let html = `<div style="font-size:12px;font-weight:600">评分: ${h?.overall_score ?? '?'} (${grade})</div>`;
           for (const p of params) {
-            html += `<div style="font-size:10px">${p.marker} ${p.seriesName}: ${p.value}</div>`;
+            let val = p.value;
+            if (p.seriesName === '通过%' || p.seriesName === '警告%' || p.seriesName === '失败%') {
+              const count = p.seriesName === '通过%' ? h?.pass : p.seriesName === '警告%' ? h?.warn : h?.fail;
+              val = `${p.value}% (${count}项)`;
+            }
+            html += `<div style="font-size:10px">${p.marker} ${p.seriesName}: ${val}</div>`;
           }
           return html;
         },
@@ -65,7 +70,7 @@ const DiagnosticTrendChart: React.FC<Props> = ({ history }) => {
       legend: {
         top: 0,
         textStyle: { color: '#8b949e', fontSize: 10 },
-        data: ['综合评分', '通过', '警告', '失败'],
+        data: ['综合评分', '通过%', '警告%', '失败%'],
       },
       grid: { top: 30, right: 16, bottom: 24, left: 40 },
       xAxis: {
@@ -96,7 +101,7 @@ const DiagnosticTrendChart: React.FC<Props> = ({ history }) => {
           symbolSize: 4,
         },
         {
-          name: '通过',
+          name: '通过%',
           type: 'line',
           data: passData,
           lineStyle: { color: '#3fb950', width: 1, type: 'dashed' as const },
@@ -104,7 +109,7 @@ const DiagnosticTrendChart: React.FC<Props> = ({ history }) => {
           symbol: 'none',
         },
         {
-          name: '警告',
+          name: '警告%',
           type: 'line',
           data: warnData,
           lineStyle: { color: '#d29922', width: 1, type: 'dashed' as const },
@@ -112,7 +117,7 @@ const DiagnosticTrendChart: React.FC<Props> = ({ history }) => {
           symbol: 'none',
         },
         {
-          name: '失败',
+          name: '失败%',
           type: 'line',
           data: failData,
           lineStyle: { color: '#f85149', width: 1, type: 'dashed' as const },
