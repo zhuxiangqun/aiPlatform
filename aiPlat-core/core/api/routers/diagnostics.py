@@ -19,6 +19,21 @@ _log = logging.getLogger("aiplat.diagnostics")
 # ── Run-all cache (persistent to disk, survives restart) ─────
 _DIAG_CACHE: Optional[Dict[str, Any]] = None
 _DIAG_CACHE_TS: float = 0.0
+_CACHE_TTL: float = float(os.getenv("AIPLAT_DIAG_CACHE_TTL", "120") or "120")
+
+# ── Shared code graph: built once by run_all_diagnostics, reused by graph-dependent checks ──
+_SHARED_GRAPH = (None, None, None)  # (nodes, edges, issues)
+
+def _get_or_build_graph():
+    """Return the shared code graph or build a new one if not available."""
+    global _SHARED_GRAPH
+    nodes, edges, issues = _SHARED_GRAPH
+    if nodes is not None and isinstance(nodes, dict) and len(nodes) > 0:
+        return nodes, edges, issues
+    from core.harness.knowledge.code_graph import repo_root, default_roots, build_graph
+    repo = repo_root()
+    abs_roots = [(repo / r).resolve() for r in default_roots()]
+    return build_graph(repo, abs_roots)
 
 # ── Sub-component caches (30s TTL, speed up repeated diagnostic runs) ──
 _LINT_CACHE: Optional[Dict[str, Any]] = None
@@ -503,20 +518,20 @@ async def run_architecture_guard():
 
 @router.get("/diagnostics/latest")
 def get_latest_diagnostic():
-    """Return last diagnostic result — persists until next run."""
-    global _DIAG_CACHE
-    if _DIAG_CACHE is not None:
+    """Return last diagnostic result — cached with _CACHE_TTL seconds expiry."""
+    global _DIAG_CACHE, _DIAG_CACHE_TS, _CACHE_TTL
+    if _DIAG_CACHE is not None and (time.time() - _DIAG_CACHE_TS) < _CACHE_TTL:
         result = dict(_DIAG_CACHE)
-        result.pop("_details", None)  # strip heavy raw data (repairs use it separately)
+        result.pop("_details", None)
         return result
     return {"cached": False, "message": "尚未运行诊断 — POST /diagnostics/run-all 先"}
 
 
 @router.get("/diagnostics/repairs-latest")
 async def get_latest_repairs():
-    """Return last repair result — persists until next diagnostic run."""
-    global _DIAG_CACHE
-    if _DIAG_CACHE is not None:
+    """Return last repair result — cached with _CACHE_TTL seconds expiry."""
+    global _DIAG_CACHE, _DIAG_CACHE_TS, _CACHE_TTL
+    if _DIAG_CACHE is not None and (time.time() - _DIAG_CACHE_TS) < _CACHE_TTL:
         return await get_repairs()
     return {"cached": False, "needs_diagnostics": True, "summary": {"total_issues": 0}}
 
@@ -585,9 +600,10 @@ def get_diagnostic_history():
 
 
 @router.post("/diagnostics/run-all")
-async def run_all_diagnostics(category: str = ""):
+async def run_all_diagnostics(category: str = "", quick: bool = False):
     """Unified diagnostic endpoint — runs all checks in parallel and returns a combined report.
-    Pass category=code_intel to run only that check."""
+    Pass category=code_intel to run only that check.
+    Pass quick=true to skip slow external checks (LSP, security, e2e_smoke)."""
     import asyncio, json as _json, uuid as _uuid
 
     started_at = time.time()
@@ -595,7 +611,16 @@ async def run_all_diagnostics(category: str = ""):
     categories: Dict[str, Any] = {}
     issues: List[Dict[str, Any]] = []
 
-    # Publish observations to EventBus (best-effort, non-blocking)
+    # ── Shared code graph: build once, reuse across all graph-dependent checks ──
+    global _SHARED_GRAPH
+    try:
+        from core.harness.knowledge.code_graph import repo_root, default_roots, build_graph
+        repo = repo_root()
+        abs_roots = [(repo / r).resolve() for r in default_roots()]
+        _SHARED_GRAPH = build_graph(repo, abs_roots)
+    except Exception:
+        _SHARED_GRAPH = (None, None, None)
+
     def _publish(event_type: str, **kwargs):
         try:
             from core.harness.observation.event_bus import EventBus
@@ -701,10 +726,8 @@ async def run_all_diagnostics(category: str = ""):
 
     async def _check_code_intel():
         try:
-            from core.harness.knowledge.code_graph import repo_root, default_roots, build_graph, count_cycles, health_score
-            repo = repo_root()
-            abs_roots = [(repo / r).resolve() for r in default_roots()]
-            nodes, edges, issues_list = build_graph(repo, abs_roots)
+            from core.harness.knowledge.code_graph import count_cycles, health_score
+            nodes, edges, issues_list = _get_or_build_graph()
             cycles = count_cycles(nodes)
             h = health_score(nodes=nodes, edges=edges, issues=issues_list, cycles_back_edges=cycles)
             items: List[Dict[str, Any]] = []
@@ -734,10 +757,10 @@ async def run_all_diagnostics(category: str = ""):
         """B1: Detect frontend API calls with no matching backend route."""
         import re
         try:
-            from core.harness.knowledge.code_graph import repo_root, default_roots, build_graph, _extract_api_calls, _extract_backend_routes
+            from core.harness.knowledge.code_graph import _extract_api_calls, _extract_backend_routes
             repo = repo_root()
             abs_roots = [(repo / r).resolve() for r in default_roots()]
-            nodes, edges, _ = build_graph(repo, abs_roots)
+            nodes, edges, _ = _get_or_build_graph()
 
             # Build backend route set
             backend_routes = set()
@@ -779,10 +802,10 @@ async def run_all_diagnostics(category: str = ""):
     async def _check_route_coverage():
         """B2: Check if backend routes have corresponding frontend usage."""
         try:
-            from core.harness.knowledge.code_graph import repo_root, default_roots, build_graph, _extract_backend_routes, _extract_api_calls
+            from core.harness.knowledge.code_graph import _extract_backend_routes, _extract_api_calls, _route_matches
             repo = repo_root()
             abs_roots = [(repo / r).resolve() for r in default_roots()]
-            nodes, edges, _ = build_graph(repo, abs_roots)
+            nodes, edges, _ = _get_or_build_graph()
 
             # Collect all backend routes
             backend_routes = []
@@ -828,11 +851,10 @@ async def run_all_diagnostics(category: str = ""):
     async def _check_domain_coupling():
         """B3: Check for questionable cross-domain dependencies."""
         try:
-            from core.harness.knowledge.code_graph import repo_root, default_roots, build_graph
             from core.api.routers.code_intel import _layer_bucket as code_layer
             repo = repo_root()
             abs_roots = [(repo / r).resolve() for r in default_roots()]
-            nodes, edges, _ = build_graph(repo, abs_roots)
+            nodes, edges, _ = _get_or_build_graph()
 
             # Check frontend directly importing core harness (bypassing platform)
             suspicious = []
@@ -860,11 +882,10 @@ async def run_all_diagnostics(category: str = ""):
     async def _check_fragile_base():
         """B4: Detect fragile base classes (too many subclasses or deep inheritance)."""
         try:
-            from core.harness.knowledge.code_graph import repo_root, default_roots, build_graph
             from collections import Counter
             repo = repo_root()
             abs_roots = [(repo / r).resolve() for r in default_roots()]
-            nodes, edges, _ = build_graph(repo, abs_roots)
+            nodes, edges, _ = _get_or_build_graph()
 
             # Count subclasses per parent
             parent_count = Counter()
@@ -1224,10 +1245,10 @@ async def run_all_diagnostics(category: str = ""):
     async def _check_symbol_health():
         """Scan code graph for symbol coverage and dead code candidates."""
         try:
-            from core.harness.knowledge.code_graph import build_graph, default_roots, repo_root
+            from core.harness.knowledge.code_graph import repo_root, default_roots
             r = repo_root()
             roots = [(r / d).resolve() for d in default_roots()]
-            nodes, edges, _ = build_graph(r, roots)
+            nodes, edges, _ = _get_or_build_graph()
 
             # Exclusion patterns: files legitimately with 0 in-degree
             def _is_excluded(nid: str) -> bool:
@@ -1429,13 +1450,17 @@ async def run_all_diagnostics(category: str = ""):
         ("traces", _check_traces()),
         ("graph_runs", _check_graph_runs()),
         ("context_metrics", _check_context_metrics()),
-        ("e2e_smoke", _check_e2e_smoke()),
-        ("symbol_health", _check_symbol_health()),
-        ("doctor", _check_doctor()),
-        ("lsp", _check_lsp()),
-        ("security", _check_security()),
-        ("arch_guard", _check_arch_guard()),
     ]
+    # Slow checks — skipped in quick mode
+    if not quick:
+        checks.extend([
+            ("e2e_smoke", _check_e2e_smoke()),
+            ("symbol_health", _check_symbol_health()),
+            ("doctor", _check_doctor()),
+            ("lsp", _check_lsp()),
+            ("security", _check_security()),
+            ("arch_guard", _check_arch_guard()),
+        ])
     if category:
         checks = [c for c in checks if c[0] == category]
     await asyncio.gather(*(_safe(name, coro) for name, coro in checks))
