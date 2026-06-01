@@ -38,6 +38,7 @@ const Plugins: React.FC = () => {
   const [exportAssets, setExportAssets] = useState<{ kind: string; id: string; label: string }[]>([]);
   const [selectedAssets, setSelectedAssets] = useState<Set<string>>(new Set());
   const [exporting, setExporting] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const fetchExportAssets = useCallback(async () => {
     const assets: { kind: string; id: string; label: string }[] = [];
