@@ -35,6 +35,27 @@ def _get_or_build_graph():
     abs_roots = [(repo / r).resolve() for r in default_roots()]
     return build_graph(repo, abs_roots)
 
+
+# ── DiagnosticCheck base class — shared infrastructure for all checks ──
+
+class DiagnosticCheck:
+    """Base class for diagnostic checks. Provides shared access to the code graph
+    and helper utilities. All check functions should use `self.get_graph()`
+    instead of calling `build_graph()` directly."""
+    
+    @staticmethod
+    def get_graph():
+        """Return the shared code graph (nodes, edges, issues). 
+        Prefers the pre-built _SHARED_GRAPH from run_all_diagnostics,
+        falling back to a fresh build if not available."""
+        return _get_or_build_graph()
+    
+    @staticmethod
+    def get_repo_info():
+        from core.harness.knowledge.code_graph import repo_root, default_roots
+        return repo_root(), default_roots()
+
+
 # ── Sub-component caches (30s TTL, speed up repeated diagnostic runs) ──
 _LINT_CACHE: Optional[Dict[str, Any]] = None
 _LINT_CACHE_TS: float = 0.0
@@ -614,10 +635,7 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
     # ── Shared code graph: build once, reuse across all graph-dependent checks ──
     global _SHARED_GRAPH
     try:
-        from core.harness.knowledge.code_graph import repo_root, default_roots, build_graph
-        repo = repo_root()
-        abs_roots = [(repo / r).resolve() for r in default_roots()]
-        _SHARED_GRAPH = build_graph(repo, abs_roots)
+        _SHARED_GRAPH = _get_or_build_graph()
     except Exception:
         _SHARED_GRAPH = (None, None, None)
 

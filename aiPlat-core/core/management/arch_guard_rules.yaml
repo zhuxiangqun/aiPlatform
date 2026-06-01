@@ -508,4 +508,17 @@ rules:
       paths: ["aiPlat-platform", "aiPlat-app"]
       exclude: ["__pycache__", "tests/", "generated/"]
       grep_exclude: ["# noqa: llm-approved"]
-    message: "platform/app directly calling LLM API — use CoreFacade.llm_complete() or sys_llm_generate"
+     message: "platform/app directly calling LLM API — use CoreFacade.llm_complete() or sys_llm_generate"
+
+  # ═══ Section 39: Diagnostic Graph Rebuild ═══
+  - id: diag_single_graph_build
+    section: "§39"
+    section_name: "诊断性能 — 代码图谱复用"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: "build_graph\\("
+      paths: ["aiPlat-core/core/api/routers/diagnostics.py"]
+      exclude: ["__pycache__", "tests/"]
+      grep_exclude: ["_get_or_build_graph\\b"]
+    message: "diagnostics.py calls build_graph() — use _get_or_build_graph() instead"
