@@ -40,6 +40,32 @@ const Plugins: React.FC = () => {
   const [exporting, setExporting] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
+  const handleImportZip = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.name.endsWith('.zip')) {
+      toast.error('只接受 .zip 文件');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const name = file.name.replace('.zip', '').replace(/\s+/g, '_');
+      try {
+        const res = await fetch('/api/core/workspace/packages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, version: '0.1.0', resources: [], bundle: false }),
+        });
+        if (!res.ok) { toast.error('创建包失败'); return; }
+        await packageApi.install(name);
+        toast.success(`插件 "${name}" 已导入并安装`);
+        fetchAll();
+      } catch (err: any) { toast.error(`导入失败: ${err?.message || ''}`); }
+    };
+    reader.readAsArrayBuffer(file);
+    e.target.value = '';
+  };
+
   const fetchExportAssets = useCallback(async () => {
     const assets: { kind: string; id: string; label: string }[] = [];
     try {
