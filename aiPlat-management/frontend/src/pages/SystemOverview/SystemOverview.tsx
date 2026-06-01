@@ -302,6 +302,9 @@ const SystemOverview: React.FC = () => {
 
               {infra.models?.error && <div className="text-red-400 mt-1">{infra.models.error}</div>}
             </div>
+            <div className="text-[9px] text-gray-600 mt-2 pt-1.5 border-t border-dark-border/30">
+              ⚠️ 表示连接异常 · 检查对应端口是否在监听(8000-8004) · 模型可用=已部署且在线 · Chat/Embed/Rerank/Audio/OCR各司其职
+            </div>
           </CardContent>
         </Card>
 
@@ -428,6 +431,9 @@ const SystemOverview: React.FC = () => {
                 </div>
               )}
             </div>
+            <div className="text-[9px] text-gray-600 mt-2 pt-1.5 border-t border-dark-border/30">
+              Lint健康: E=错误(必须修) W=警告(建议修) · 能力健康=Agent/Skill/Tool配置质量 · Syscall统计近1h调用 · Memory=三层记忆
+            </div>
           </CardContent>
         </Card>
 
@@ -485,6 +491,9 @@ const SystemOverview: React.FC = () => {
               {(platform.gateway?.error || platform.users?.error) && (
                 <div className="text-yellow-400 text-[10px] mt-1">Platform 服务未响应</div>
               )}
+            </div>
+            <div className="text-[9px] text-gray-600 mt-2 pt-1.5 border-t border-dark-border/30">
+              服务未响应=端口未监听/服务未启动 · 网关路由=API访问入口 · 知识库集合=已创建的向量存储空间
             </div>
           </CardContent>
         </Card>
@@ -561,6 +570,9 @@ const SystemOverview: React.FC = () => {
               {app.channels?.error && app.sessions?.error && (
                 <div className="text-yellow-400 text-[10px] mt-1">App 服务未响应</div>
               )}
+            </div>
+            <div className="text-[9px] text-gray-600 mt-2 pt-1.5 border-t border-dark-border/30">
+              渠道=外部接入方式(Slack/Telegram等) · 会话=用户对话上下文 · Apps=已发布的应用 · 能力健康同AI中台评分
             </div>
           </CardContent>
         </Card>
