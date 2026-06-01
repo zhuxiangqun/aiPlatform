@@ -1114,6 +1114,9 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
                 if not scan_dir.exists():
                     continue
                 for md_path in sorted(scan_dir.rglob("AGENT.md")):
+                    # Skip builtin subagents (loaded via SubagentConfig, not workspace)
+                    if "/builtin/" in str(md_path):
+                        continue
                     for issue in validate_agent_file(md_path):
                         if "shell" in issue.message.lower():
                             scope = "workspace" if ".aiplat" in str(md_path) else "engine"
