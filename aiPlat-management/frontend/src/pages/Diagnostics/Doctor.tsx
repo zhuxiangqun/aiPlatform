@@ -1,15 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { diagnosticsApi } from '../../services';
-import { Card, CardContent, CardHeader, Badge, Button, Table } from '../../components/ui';
+import { Card, CardContent, CardHeader, Badge, Button } from '../../components/ui';
 import { ActionableFixes } from '../../components/common/ActionableFixes';
-import { Copy } from 'lucide-react';
+import { Copy, ChevronDown, ChevronRight, Shield, Cpu, Layers, Activity, CheckCircle, AlertTriangle, XCircle, Info } from 'lucide-react';
+
+const LAYER_LABELS: Record<string, string> = { infra: '基础设施', core: 'AI引擎', platform: '平台服务', app: '应用接入' };
+const LAYER_ICONS: Record<string, any> = { infra: Cpu, core: Layers, platform: Shield, app: Activity };
 
 const Doctor: React.FC = () => {
-  const navigate = useNavigate();
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [runningSmoke, setRunningSmoke] = useState(false);
+  const [showRaw, setShowRaw] = useState(false);
+  const [showConfig, setShowConfig] = useState(false);
+  const [showActions, setShowActions] = useState(false);
 
   const refresh = async () => {
     setError(null);
@@ -28,581 +33,317 @@ const Doctor: React.FC = () => {
         if (mounted) setError(e?.message || '加载失败');
       }
     })();
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, []);
 
   const jsonText = useMemo(() => JSON.stringify(data || {}, null, 2), [data]);
-  const repo = data?.repo?.changeset || null;
-  const changesets = data?.changesets || null;
-  const repoActions = useMemo(() => {
-    const a: Record<string, any> = {};
-    if (data?.actions?.record_repo_changeset) a.record_repo_changeset = data.actions.record_repo_changeset;
-    if (data?.actions?.run_repo_tests) a.run_repo_tests = data.actions.run_repo_tests;
-    return Object.keys(a).length > 0 ? a : null;
-  }, [data]);
-  const changesetItems = Array.isArray(changesets?.items) ? changesets.items : [];
-  const [repoPatchOpen, setRepoPatchOpen] = useState(false);
-  const [repoPatchLoading, setRepoPatchLoading] = useState(false);
-  const [repoPatch, setRepoPatch] = useState<string>('');
-  const [stagedOpen, setStagedOpen] = useState(false);
-  const [stagedLoading, setStagedLoading] = useState(false);
-  const [stagedPreview, setStagedPreview] = useState<any>(null);
-  const [promptDiffOpen, setPromptDiffOpen] = useState(false);
-  const [promptDiffLoading, setPromptDiffLoading] = useState(false);
-  const [promptDiff, setPromptDiff] = useState<string>('');
-  const [promptDiffTitle, setPromptDiffTitle] = useState<string>('');
-  const exec = data?.exec || null;
-  const execAction = data?.actions?.set_exec_backend ? { set_exec_backend: data.actions.set_exec_backend } : null;
-
-  const formatTs = (ts: any) => {
-    const n = Number(ts);
-    if (!Number.isFinite(n) || n <= 0) return '-';
-    try {
-      return new Date(n * 1000).toLocaleString();
-    } catch {
-      return String(ts);
-    }
-  };
-
-  const statusVariant = (s: any) => {
-    const v = String(s || '').toLowerCase();
-    if (v === 'success' || v === 'ok' || v === 'completed' || v === 'verified') return 'success';
-    if (v.includes('fail') || v === 'error') return 'error';
-    if (v.includes('approval') || v === 'pending') return 'warning';
-    return 'default';
-  };
-
-  const openChangesetInSyscalls = (r: any) => {
-    const q = new URLSearchParams();
-    q.set('kind', 'changeset');
-    if (r?.name) q.set('name', String(r.name));
-    if (r?.approval_request_id) q.set('approval_request_id', String(r.approval_request_id));
-    if (r?.target_type) q.set('target_type', String(r.target_type));
-    if (r?.target_id) q.set('target_id', String(r.target_id));
-    navigate(`/diagnostics/syscalls?${q.toString()}`);
-  };
-
-  const parseJson = (s: any) => {
-    try {
-      if (!s) return {};
-      if (typeof s === 'object') return s;
-      return JSON.parse(String(s));
-    } catch {
-      return {};
-    }
-  };
 
   const copyReport = async () => {
-    try {
-      await navigator.clipboard.writeText(jsonText);
-    } catch (e) {
-      console.error(e);
-    }
+    try { await navigator.clipboard.writeText(jsonText); } catch (e) { console.error(e); }
   };
 
   const downloadReport = () => {
     const blob = new Blob([jsonText], { type: 'application/json;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = `doctor-report-${Date.now()}.json`;
-    a.click();
+    a.href = url; a.download = `doctor-report-${Date.now()}.json`; a.click();
     URL.revokeObjectURL(url);
   };
 
   const runSmoke = async () => {
     setRunningSmoke(true);
-    try {
-      await diagnosticsApi.runE2ESmoke({});
-      await refresh();
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setRunningSmoke(false);
-    }
+    try { await diagnosticsApi.runE2ESmoke({}); await refresh(); }
+    catch (e) { console.error(e); }
+    finally { setRunningSmoke(false); }
+  };
+
+  // ── Derived data ──
+  const health = data?.health || {};
+  const layers = ['infra', 'core', 'platform', 'app'] as const;
+  const layerStatuses = layers.map(l => ({ key: l, status: health[l]?.status || 'unknown', data: health[l] }));
+  const unhealthyCount = layerStatuses.filter(l => l.status !== 'healthy').length;
+
+  const layerChecks = (l: string) => {
+    const checks = health[l]?.checks || [];
+    const healthy = checks.filter((c: any) => c.status === 'healthy').length;
+    return { total: checks.length, healthy };
+  };
+
+  const infraDigest = () => {
+    const h = health.infra;
+    if (!h) return null;
+    const models = h.checks?.find((c: any) => c.component === 'model')?.details?.total_models || 0;
+    const services = h.checks?.find((c: any) => c.component === 'service')?.details?.running_services || 0;
+    const alerts = h.checks?.find((c: any) => c.component === 'monitoring')?.details?.active_alerts || 0;
+    return `${models} 模型 · ${services} 服务 · ${alerts} 告警`;
+  };
+
+  const coreDigest = () => {
+    const ck = health.core?.checks?.[0]?.details?.checks || {};
+    const ok = Object.entries(ck).filter(([_, v]: [string, any]) => v?.ok).length;
+    return `${ok}/${Object.keys(ck).length} 检查通过`;
+  };
+
+  const recs = (data?.recommendations || []) as any[];
+  const issues = recs.map((r: any) => ({
+    severity: r.severity || 'info',
+    code: r.code || '',
+    message: r.message || '',
+    action: r.actions ? Object.keys(r.actions)[0] : null,
+    actionData: r.actions ? Object.values(r.actions)[0] : null,
+  }));
+
+  const getStatusIcon = (status: string) => {
+    if (status === 'healthy') return <CheckCircle size={16} className="text-green-400" />;
+    if (status === 'degraded') return <AlertTriangle size={16} className="text-yellow-400" />;
+    return <XCircle size={16} className="text-red-400" />;
+  };
+
+  const getBannerColor = () => {
+    if (unhealthyCount === 0) return 'from-green-900/30 to-green-900/10 border-green-500/30';
+    if (unhealthyCount <= 2) return 'from-yellow-900/30 to-yellow-900/10 border-yellow-500/30';
+    return 'from-red-900/30 to-red-900/10 border-red-500/30';
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-200">Doctor</h1>
-          <p className="text-sm text-gray-500 mt-1">一键聚合诊断：健康检查、adapter 配置、autosmoke 配置与建议</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link
-            to="/onboarding"
-            className="px-3 py-2 rounded-lg bg-dark-hover text-gray-200 hover:bg-dark-border transition-colors text-sm"
-          >
-            去初始化向导
-          </Link>
-          <button
-            onClick={runSmoke}
-            disabled={runningSmoke}
-            className="px-3 py-2 rounded-lg bg-primary text-white hover:opacity-90 disabled:opacity-60 transition-colors text-sm"
-          >
-            {runningSmoke ? '运行中…' : '一键跑 Smoke'}
-          </button>
-          <button
-            onClick={copyReport}
-            className="px-3 py-2 rounded-lg bg-dark-hover text-gray-200 hover:bg-dark-border transition-colors text-sm"
-          >
-            复制报告
-          </button>
-          <button
-            onClick={downloadReport}
-            className="px-3 py-2 rounded-lg bg-dark-hover text-gray-200 hover:bg-dark-border transition-colors text-sm"
-          >
-            下载 JSON
-          </button>
-          <button
-            onClick={refresh}
-            className="px-3 py-2 rounded-lg bg-dark-hover text-gray-200 hover:bg-dark-border transition-colors text-sm"
-          >
-            刷新
-          </button>
+      {/* ═══ Summary Banner ═══ */}
+      <div className={`bg-gradient-to-br ${getBannerColor()} border rounded-xl p-5`}>
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-200">系统诊断 Doctor</h1>
+            <p className="text-sm text-gray-400 mt-1">
+              {unhealthyCount === 0
+                ? '✅ 四层架构全部健康，系统运行正常'
+                : `⚠️ ${unhealthyCount} 层状态异常，建议查看详情`}
+            </p>
+            <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
+              <span>{data?.adapters?.total || 0} 个适配器</span>
+              <span>{data?.prompts?.templates?.total || 0} 个 Prompt 模板</span>
+              <span>autosmoke: {data?.autosmoke?.enabled ? '已开启' : '未开启'}</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link to="/onboarding" className="px-3 py-2 rounded-lg bg-dark-hover text-gray-200 hover:bg-dark-border transition-colors text-sm">去初始化向导</Link>
+            <button onClick={runSmoke} disabled={runningSmoke} className="px-3 py-2 rounded-lg bg-primary text-white hover:opacity-90 disabled:opacity-60 text-sm transition-colors">
+              {runningSmoke ? '运行中…' : '一键跑 Smoke'}
+            </button>
+            <button onClick={copyReport} className="px-3 py-2 rounded-lg bg-dark-hover text-gray-200 hover:bg-dark-border transition-colors text-sm">复制报告</button>
+            <button onClick={downloadReport} className="px-3 py-2 rounded-lg bg-dark-hover text-gray-200 hover:bg-dark-border transition-colors text-sm">下载 JSON</button>
+            <button onClick={refresh} className="px-3 py-2 rounded-lg bg-dark-hover text-gray-200 hover:bg-dark-border transition-colors text-sm">刷新</button>
+          </div>
         </div>
       </div>
 
       {error && <div className="text-sm text-error bg-error-light border border-dark-border rounded-lg p-3">{error}</div>}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-semibold text-gray-200">Health</div>
-              <Badge variant="info">/diagnostics/doctor</Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
-              {JSON.stringify(data?.health || {}, null, 2)}
-            </pre>
-          </CardContent>
-        </Card>
+      {/* ═══ Layer Health Cards ═══ */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {layerStatuses.map(({ key, status }) => {
+          const Icon = LAYER_ICONS[key] || Activity;
+          const ck = layerChecks(key);
+          const digest = key === 'infra' ? infraDigest() : key === 'core' ? coreDigest() : null;
+          return (
+            <Card key={key} className={status === 'healthy' ? 'border-green-500/30' : status === 'degraded' ? 'border-yellow-500/30' : 'border-red-500/30'}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Icon size={18} className={status === 'healthy' ? 'text-green-400' : status === 'degraded' ? 'text-yellow-400' : 'text-red-400'} />
+                    <span className="text-sm font-medium text-gray-200">{LAYER_LABELS[key] || key}</span>
+                  </div>
+                  {getStatusIcon(status)}
+                </div>
+                <div className="space-y-1">
+                  <div className="text-xs text-gray-500">
+                    <span className={status === 'healthy' ? 'text-green-400' : status === 'degraded' ? 'text-yellow-400' : 'text-red-400'}>
+                      {ck.healthy}/{ck.total} 检查正常
+                    </span>
+                  </div>
+                  {digest && <div className="text-xs text-gray-500">{digest}</div>}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
 
+      {/* ═══ Issues & Recommendations ═══ */}
+      {issues.length > 0 && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <div className="text-sm font-semibold text-gray-200">Exec Backends</div>
-              <Badge variant="info">{exec?.current_backend || '-'}</Badge>
+              <div className="text-sm font-semibold text-gray-200">诊断建议</div>
+              <Badge variant={issues.filter(i => i.severity === 'error').length > 0 ? 'error' : 'warning'}>
+                {issues.length} 条
+              </Badge>
             </div>
           </CardHeader>
           <CardContent>
-            <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
-              {JSON.stringify(exec || {}, null, 2)}
-            </pre>
-            {execAction && (
+            <div className="space-y-2">
+              {issues.map((iss: any, i: number) => (
+                <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-dark-hover border border-dark-border">
+                  <span className="mt-0.5">
+                    {iss.severity === 'error' ? <XCircle size={16} className="text-red-400" />
+                      : iss.severity === 'warn' ? <AlertTriangle size={16} className="text-yellow-400" />
+                        : <Info size={16} className="text-blue-400" />}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm text-gray-200">{iss.message}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">{iss.code}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {issues.length > 3 && (
               <div className="mt-3">
-                <div className="text-xs text-gray-500 mb-1">切换执行后端（docker 会强制审批）</div>
-                <ActionableFixes actions={execAction} recommendations={[]} onAfterAction={refresh} />
+                <ActionableFixes actions={data?.actions} recommendations={data?.recommendations} onAfterAction={refresh} />
               </div>
             )}
           </CardContent>
         </Card>
+      )}
 
+      {/* ═══ 自学习产出 ═══ */}
+      {data?.learning && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <div className="text-sm font-semibold text-gray-200">Context Status Sample</div>
-              <Badge variant={data?.context_status_sample && Object.keys(data?.context_status_sample || {}).length > 0 ? 'success' : 'default'}>
-                {data?.context_status_sample && Object.keys(data?.context_status_sample || {}).length > 0 ? 'ok' : 'n/a'}
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xs text-gray-500 mb-2">来源：core prompt assemble（最小 messages），仅展示 context_status，不展示 prompt 内容</div>
-            {data?.context_status_sample?.compaction?.applied ? (
-              <div className="text-xs text-gray-400 mb-2 flex items-center gap-2">
-                <Badge variant="warning">compacted</Badge>
-                <span>
-                  {data?.context_status_sample?.compaction?.before?.tokens_est ?? '-'}t → {data?.context_status_sample?.compaction?.after?.tokens_est ?? '-'}t
-                </span>
-                <span>
-                  {data?.context_status_sample?.compaction?.before?.chars ?? '-'}c → {data?.context_status_sample?.compaction?.after?.chars ?? '-'}c
-                </span>
-              </div>
-            ) : (
-              <div className="text-xs text-gray-500 mb-2">compaction: not applied</div>
-            )}
-            <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
-              {JSON.stringify(data?.context_status_sample || {}, null, 2)}
-            </pre>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-semibold text-gray-200">Adapters</div>
-              <Badge variant={(data?.adapters?.total || 0) > 0 ? 'success' : 'warning'}>{data?.adapters?.total ?? 0}</Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
-              {JSON.stringify(data?.adapters || {}, null, 2)}
-            </pre>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-semibold text-gray-200">Prompt Templates</div>
-              <Badge variant="info">{data?.prompts?.templates?.total ?? 0}</Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {Array.isArray(data?.prompts?.templates?.items) && data?.prompts?.templates?.items?.length > 0 ? (
-              <div className="space-y-3">
-                <Table
-                  columns={[
-                    { key: 'template_id', title: 'id', width: 180, render: (_: any, r: any) => <span className="text-xs text-gray-200">{r.template_id}</span> },
-                    { key: 'name', title: 'name', width: 180, render: (_: any, r: any) => <span className="text-xs text-gray-300">{r.name}</span> },
-                    { key: 'version', title: 'ver', width: 90, render: (_: any, r: any) => <Badge variant="default">{String(r.version || '-')}</Badge> },
-                    {
-                      key: 'verification',
-                      title: 'verify',
-                      width: 120,
-                      render: (_: any, r: any) => {
-                        const md = parseJson(r.metadata_json);
-                        const st = md?.verification?.status;
-                        const v = String(st || '-');
-                        return <Badge variant={statusVariant(v)}>{v}</Badge>;
-                      },
-                    },
-                    {
-                      key: 'actions',
-                      title: '',
-                      width: 180,
-                      render: (_: any, r: any) => (
-                        <div className="flex items-center gap-2">
-                          <Button variant="ghost" icon={<Copy size={14} />} onClick={() => navigator.clipboard.writeText(String(r.template_id || ''))} />
-                          <Button
-                            variant="secondary"
-                            onClick={async () => {
-                              setPromptDiffOpen(true);
-                              setPromptDiffLoading(true);
-                              setPromptDiff('');
-                              setPromptDiffTitle(String(r.template_id || ''));
-                              try {
-                                const res = await diagnosticsApi.getPromptTemplateDiff(String(r.template_id || ''));
-                                setPromptDiff(String(res?.diff || ''));
-                                setPromptDiffTitle(`${res?.template_id}@${res?.from_version} → ${res?.to_version}`);
-                              } finally {
-                                setPromptDiffLoading(false);
-                              }
-                            }}
-                          >
-                            diff
-                          </Button>
-                        </div>
-                      ),
-                    },
-                  ]}
-                  data={data.prompts.templates.items.slice(0, 20)}
-                  rowKey={(r: any) => String(r.template_id)}
-                />
-
-                {promptDiffOpen && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs text-gray-500">diff: {promptDiffTitle || '-'}</div>
-                      <Button variant="secondary" onClick={() => setPromptDiffOpen(false)}>
-                        关闭
-                      </Button>
-                    </div>
-                    <pre className="text-[11px] text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto max-h-[420px]">
-                      {promptDiffLoading ? 'loading…' : promptDiff || '(empty)'}
-                    </pre>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="text-sm text-gray-500">暂无 prompt templates</div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-semibold text-gray-200">Repo（AIPLAT_REPO_ROOT）</div>
-              <Badge variant={repo?.status_lines > 0 ? 'warning' : 'success'}>{repo?.status_lines ?? 0} changes</Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {!repo ? (
-              <div className="text-sm text-gray-500">未配置 repo_root 或无法读取 git 状态（设置 AIPLAT_REPO_ROOT 后可显示）。</div>
-            ) : (
-              <div className="space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="text-xs text-gray-400">
-                    <div>branch: <span className="text-gray-200">{repo?.branch || '-'}</span></div>
-                    <div>head: <span className="text-gray-200">{(repo?.head || '').slice(0, 12) || '-'}</span></div>
-                    <div>last_commit: <span className="text-gray-200">{(repo?.last_commit?.sha || '').slice(0, 12) || '-'}</span> <span className="text-gray-500">{repo?.last_commit?.subject || ''}</span></div>
-                    <div>diff_sha256: <span className="text-gray-200">{(repo?.diff_sha256 || '').slice(0, 16) || '-'}</span></div>
-                  </div>
-                  <div className="text-xs text-gray-400">
-                    <div>working_tree: <span className="text-gray-200">{repo?.working_tree?.files_changed ?? 0} files</span>, +{repo?.working_tree?.lines_added ?? 0}/-{repo?.working_tree?.lines_deleted ?? 0}</div>
-                    <div>staged: <span className="text-gray-200">{repo?.staged?.files_changed ?? 0} files</span>, +{repo?.staged?.lines_added ?? 0}/-{repo?.staged?.lines_deleted ?? 0}</div>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    variant="secondary"
-                    onClick={async () => {
-                      const next = !repoPatchOpen;
-                      setRepoPatchOpen(next);
-                      if (next && !repoPatch) {
-                        setRepoPatchLoading(true);
-                        try {
-                          const res = await diagnosticsApi.getRepoChangesetPatch();
-                          setRepoPatch(String(res?.patch || ''));
-                        } finally {
-                          setRepoPatchLoading(false);
-                        }
-                      }
-                    }}
-                    loading={repoPatchLoading}
-                  >
-                    {repoPatchOpen ? '隐藏 diff' : '查看 diff'}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    onClick={async () => {
-                      const next = !stagedOpen;
-                      setStagedOpen(next);
-                      if (next && !stagedPreview) {
-                        setStagedLoading(true);
-                        try {
-                          const res = await diagnosticsApi.getRepoStagedPreview();
-                          setStagedPreview(res || {});
-                        } finally {
-                          setStagedLoading(false);
-                        }
-                      }
-                    }}
-                    loading={stagedLoading}
-                  >
-                    {stagedOpen ? '隐藏 staged' : '查看 staged'}
-                  </Button>
-                </div>
-
-                {repoPatchOpen && (
-                  <pre className="text-[11px] text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto max-h-[420px]">
-                    {repoPatch || '(empty)'}
-                  </pre>
-                )}
-
-                {stagedOpen && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs text-gray-500">
-                        staged: {stagedPreview?.staged?.files_changed ?? 0} files, +{stagedPreview?.staged?.lines_added ?? 0}/-{stagedPreview?.staged?.lines_deleted ?? 0}
-                      </div>
-                      {stagedPreview?.suggested_commit_message && (
-                        <Button
-                          variant="ghost"
-                          icon={<Copy size={14} />}
-                          onClick={() => navigator.clipboard.writeText(String(stagedPreview?.suggested_commit_message || ''))}
-                          title="复制建议 commit message"
-                        />
-                      )}
-                    </div>
-                    {stagedPreview?.suggested_commit_message && (
-                      <div className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-2">
-                        <span className="text-gray-500">suggested:</span>{' '}
-                        <span className="text-gray-200">{String(stagedPreview?.suggested_commit_message || '')}</span>
-                      </div>
-                    )}
-                    <pre className="text-[11px] text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto max-h-[420px]">
-                      {String(stagedPreview?.patch || '(empty)')}
-                    </pre>
-                  </div>
-                )}
-
-                {repoActions && repo?.status_lines > 0 ? (
-                  <div>
-                    <div className="text-xs text-gray-500 mb-1">一键动作（会进入 ChangeSet 审计时间线）</div>
-                    <ActionableFixes actions={repoActions} recommendations={[]} onAfterAction={refresh} />
-                  </div>
-                ) : (
-                  <div className="text-sm text-gray-500">当前工作区无变更，或未提供记录动作。</div>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-semibold text-gray-200">Recent ChangeSets</div>
+              <div className="text-sm font-semibold text-gray-200">自学习产出</div>
               <div className="flex items-center gap-2">
-                <Link
-                  to="/diagnostics/syscalls?kind=changeset"
-                  className="text-xs text-primary hover:underline"
-                  title="打开 Syscalls 并筛选 kind=changeset"
-                >
-                  打开 Syscalls
-                </Link>
-                <Button
-                  variant="ghost"
-                  icon={<Copy size={14} />}
-                  onClick={() => navigator.clipboard.writeText(`${window.location.origin}/diagnostics/syscalls?kind=changeset`)}
-                />
-                <Badge variant="info">{changesets?.total ?? 0}</Badge>
+                {(data.learning.crystallized > 0) && <Badge variant="success">{data.learning.crystallized} 晶体化</Badge>}
+                {(data.learning.evolution?.total_evolutions > 0) && <Badge variant="info">{data.learning.evolution.total_evolutions} 进化</Badge>}
+                {(data.learning.ab_scores?.total_evals > 0) && <Badge variant="warning">{data.learning.ab_scores.templates} 模板A/B</Badge>}
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            {changesetItems.length === 0 ? (
-              <div className="text-sm text-gray-500">暂无变更审计（changeset）记录</div>
-            ) : (
-              <Table
-                columns={[
-                  { key: 'created_at', title: '时间', width: 170, render: (_: any, r: any) => <span className="text-xs text-gray-300">{formatTs(r.created_at)}</span> },
-                  { key: 'name', title: 'name', width: 200, render: (_: any, r: any) => <span className="text-xs text-gray-200">{r.name}</span> },
-                  { key: 'status', title: 'status', width: 110, render: (_: any, r: any) => <Badge variant={statusVariant(r.status)}>{String(r.status || '-')}</Badge> },
-                  {
-                    key: 'tests',
-                    title: 'tests',
-                    width: 140,
-                    render: (_: any, r: any) => {
-                      const ec = r?.result?.tests?.exit_code;
-                      const ms = r?.result?.tests?.duration_ms;
-                      if (ec === undefined || ec === null) return <span className="text-xs text-gray-500">-</span>;
-                      return (
-                        <div className="flex items-center gap-2">
-                          <Badge variant={Number(ec) === 0 ? 'success' : 'error'}>{String(ec)}</Badge>
-                          <span className="text-xs text-gray-400">{ms != null ? `${ms}ms` : ''}</span>
-                        </div>
-                      );
-                    },
-                  },
-                  {
-                    key: 'staged',
-                    title: 'staged',
-                    width: 160,
-                    render: (_: any, r: any) => {
-                      const cnt = r?.result?.staged_files_count ?? r?.result?.staged?.files_changed;
-                      const sha = String(r?.result?.staged_patch_sha256 || '');
-                      return (
-                        <span className="text-xs text-gray-400">
-                          {cnt != null ? `${cnt}f` : '-'} {sha ? sha.slice(0, 8) : ''}
-                        </span>
-                      );
-                    },
-                  },
-                  {
-                    key: 'diff',
-                    title: 'diff',
-                    width: 160,
-                    render: (_: any, r: any) => {
-                      const full = String(r?.result?.diff_sha256 || r?.result?.template_sha256 || '');
-                      const short = full ? full.slice(0, 16) : '-';
-                      return (
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs text-gray-400">{short}</span>
-                          {full && (
-                            <Button
-                              variant="ghost"
-                              icon={<Copy size={14} />}
-                              onClick={(e: any) => {
-                                e?.stopPropagation?.();
-                                navigator.clipboard.writeText(full);
-                              }}
-                              title="复制 diff hash"
-                            />
-                          )}
-                        </div>
-                      );
-                    },
-                  },
-                  {
-                    key: 'target',
-                    title: 'target',
-                    width: 220,
-                    render: (_: any, r: any) => (
-                      <span className="text-xs text-gray-400">
-                        {r.target_type || '-'} / {String(r.target_id || '-').slice(0, 24)}
-                      </span>
-                    ),
-                  },
-                  {
-                    key: 'note',
-                    title: 'note',
-                    render: (_: any, r: any) => <span className="text-xs text-gray-400">{r?.args?.note || '-'}</span>,
-                  },
-                  {
-                    key: 'approval',
-                    title: 'approval',
-                    width: 160,
-                    render: (_: any, r: any) => (
-                      <span className="text-xs text-gray-400">{r.approval_request_id ? String(r.approval_request_id).slice(0, 12) : '-'}</span>
-                    ),
-                  },
-                ]}
-                data={changesetItems.slice(0, 20)}
-                rowKey={(r: any) => String(r.id)}
-                onRow={(r: any) => ({
-                  onClick: () => openChangesetInSyscalls(r),
-                  className: 'cursor-pointer',
-                })}
-              />
-            )}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Task Skills */}
+              <div className="p-3 rounded-lg bg-dark-hover border border-dark-border">
+                <div className="text-xs text-gray-500 mb-1">流水线晶体化</div>
+                <div className="text-sm text-gray-200">{data.learning.crystallized || 0} 个可复用 TaskSkill</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {data.learning.crystallized > 0
+                    ? '成功流水线自动固化为技能，下次可直接复用'
+                    : '尚未有流水线完成执行'}
+                </div>
+              </div>
+              {/* Evolution */}
+              <div className="p-3 rounded-lg bg-dark-hover border border-dark-border">
+                <div className="text-xs text-gray-500 mb-1">技能进化</div>
+                <div className="text-sm text-gray-200">
+                  {data.learning.evolution?.total_evolutions || 0} 次进化
+                  {data.learning.evolution?.total_rollbacks > 0 && (
+                    <span className="text-amber-400"> · {data.learning.evolution.total_rollbacks} 次回滚</span>
+                  )}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {data.learning.evolution?.total_evolutions > 0
+                    ? '失败触发修复→新版本→A/B对比→自动回滚退化版本'
+                    : '尚未触发技能进化（需流水线执行）'}
+                </div>
+              </div>
+              {/* A/B */}
+              <div className="p-3 rounded-lg bg-dark-hover border border-dark-border">
+                <div className="text-xs text-gray-500 mb-1">Prompt A/B 优化</div>
+                <div className="text-sm text-gray-200">
+                  {data.learning.ab_scores?.total_evals > 0
+                    ? `${data.learning.ab_scores.total_evals} 次评分 · ${data.learning.ab_scores.templates} 个模板 · 均分 ${data.learning.ab_scores.avg_score}`
+                    : '尚无评分数据'}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {data.learning.ab_scores?.total_evals > 0
+                    ? '评分自动收集，流水线完成时权重自动向高分版本收敛'
+                    : '需有 rollout 配置的 Prompt 模板参与流水线'}
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
+      )}
 
+      {/* ═══ Quick Actions (collapsible) ═══ */}
+      {data?.actions && Object.keys(data.actions).length > 0 && (
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-semibold text-gray-200">Strong Gate（default tenant）</div>
-              <Badge variant={data?.strong_gate?.enabled ? 'warning' : 'success'}>
-                {data?.strong_gate?.enabled ? 'enabled' : 'off'}
-              </Badge>
-            </div>
+            <button onClick={() => setShowActions(!showActions)} className="flex items-center justify-between w-full">
+              <div className="text-sm font-semibold text-gray-200">快速操作</div>
+              {showActions ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />}
+            </button>
           </CardHeader>
-          <CardContent>
-            <div className="text-sm text-gray-500 mb-3">
-              {data?.strong_gate?.enabled ? '当前 default tenant 已开启强门禁（所有工具执行需审批）' : '当前未启用强门禁'}
-            </div>
-            <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto mt-3">
-              {JSON.stringify(data?.strong_gate || {}, null, 2)}
-            </pre>
-          </CardContent>
+          {showActions && (
+            <CardContent>
+              <ActionableFixes actions={data.actions} recommendations={data.recommendations} onAfterAction={refresh} />
+            </CardContent>
+          )}
         </Card>
+      )}
 
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-semibold text-gray-200">诊断即修复</div>
-              <Badge variant="info">actions</Badge>
-            </div>
-          </CardHeader>
+      {/* ═══ Configuration Overview (collapsible) ═══ */}
+      <Card>
+        <CardHeader>
+          <button onClick={() => setShowConfig(!showConfig)} className="flex items-center justify-between w-full">
+            <div className="text-sm font-semibold text-gray-200">配置概览</div>
+            {showConfig ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />}
+          </button>
+        </CardHeader>
+        {showConfig && (
           <CardContent>
-            <ActionableFixes actions={data?.actions} recommendations={data?.recommendations} onAfterAction={refresh} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <div className="text-xs text-gray-500 mb-1">适配器</div>
+                <div className="text-sm text-gray-200">{data?.adapters?.total || 0} 个</div>
+                {(data?.adapters?.adapters || []).map((a: any, i: number) => (
+                  <div key={i} className="text-xs text-gray-400 mt-0.5">{a.name} ({a.provider}) — {a.status}</div>
+                ))}
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 mb-1">Prompt 模板</div>
+                <div className="text-sm text-gray-200">{data?.prompts?.templates?.total || 0} 个模板</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 mb-1">Context 引擎</div>
+                <div className="text-sm text-gray-200">{data?.context?.context_engine || '-'}</div>
+                <div className="text-xs text-gray-400">注入检测: {data?.context?.security?.has_injection_detection ? '✅ 已启用' : '❌ 未启用'}</div>
+                <div className="text-xs text-gray-400">跨会话检索: {data?.context?.enable_session_search ? '已开启' : '未开启'}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 mb-1">Autosmoke</div>
+                <div className="text-sm text-gray-200">{data?.autosmoke?.enabled ? '✅ 已启用' : '未启用'}</div>
+                <div className="text-xs text-gray-400">强制门禁: {data?.autosmoke?.enforce ? '是' : '否'}</div>
+                <div className="text-xs text-gray-400">去重窗口: {data?.autosmoke?.dedup_seconds || '-'}s</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 mb-1">Strong Gate</div>
+                <div className="text-sm text-gray-200">{data?.strong_gate?.enabled ? '⚠️ 已启用' : '未启用'}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 mb-1">Secrets</div>
+                <div className="text-sm text-gray-200">{data?.secrets?.total || 0} 个</div>
+                <div className="text-xs text-gray-400">加密: {data?.secrets?.encrypted || 0} · 明文: {data?.secrets?.plaintext || 0}</div>
+              </div>
+            </div>
           </CardContent>
-        </Card>
+        )}
+      </Card>
 
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-semibold text-gray-200">Raw</div>
-              <Badge variant="default">JSON</Badge>
-            </div>
-          </CardHeader>
+      {/* ═══ Technical Details (collapsible, hidden by default) ═══ */}
+      <Card>
+        <CardHeader>
+          <button onClick={() => setShowRaw(!showRaw)} className="flex items-center justify-between w-full">
+            <div className="text-sm font-semibold text-gray-200">技术细节（原始数据）</div>
+            {showRaw ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />}
+          </button>
+        </CardHeader>
+        {showRaw && (
           <CardContent>
-            <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
+            <Button variant="secondary" icon={<Copy size={14} />} onClick={copyReport} className="mb-3">复制报告</Button>
+            <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto max-h-[600px]">
               {jsonText}
             </pre>
           </CardContent>
-        </Card>
-      </div>
+        )}
+      </Card>
     </div>
   );
 };

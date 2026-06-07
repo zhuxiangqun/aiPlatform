@@ -8,12 +8,13 @@ status: enabled
 protected: true
 execution_mode: prompt
 permissions:
-  - "llm:generate"
+- llm:generate
 effects:
-  - type: read
-    resources: ["filesystem:~/.aiplat"]
-    idempotent: true
-    rollback_available: false
+- type: read
+  resources:
+  - filesystem:~/.aiplat
+  idempotent: true
+  rollback_available: false
 input_schema:
   data:
     type: string
@@ -25,6 +26,32 @@ output_schema:
     type: string
     required: true
     description: 面向人阅读的 Markdown 输出，与结构化字段一致
+metadata:
+  trigger_conditions:
+  - 数据分析
+  - 分析数据
+  - 统计
+  - 数据可视化
+  - 数据报告
+  - 数据洞察
+  - 数据探索
+  - 趋势分析
+  - 异常检测
+  keywords:
+    objects:
+    - 数据
+    - CSV
+    - 报告
+    - 统计
+    actions:
+    - 分析
+    - 统计
+    - 可视化
+    - 清洗
+  negative_triggers:
+  - 不需要特定的编程语言知识
+  - 不要猜测或编造不存在的数据
+  sop_goal: 对数据执行统计分析并输出洞察
 ---
 
 # 数据分析（Engine）
@@ -33,3 +60,11 @@ output_schema:
 1. 理解数据格式、规模和目标分析问题。
 2. 选择合适的统计/可视化方法并执行。
 3. 输出结构化洞察：关键发现、趋势、异常点、建议。
+
+## 目标
+对数据执行统计分析并输出洞察
+
+## Checklist
+- [ ] 输出格式符合规范
+- [ ] 正确处理错误和边界条件
+- [ ] 返回结果包含引用和来源标注

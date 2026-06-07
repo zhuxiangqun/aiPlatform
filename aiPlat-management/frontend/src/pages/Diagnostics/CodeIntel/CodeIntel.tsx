@@ -607,7 +607,17 @@ const CodeIntel: React.FC = () => {
               </React.Suspense>
             </div>
           ) : (
+            <>
+            <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+              <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+              <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+                <div><span className="text-gray-300">file</span><span className="ml-2 text-gray-600">文件路径 + out（出边数）· in（入边数）· issues</span></div>
+                <div><span className="text-gray-300">issues</span><span className="ml-2 text-gray-600">问题数（绿标=0，黄标=有）</span></div>
+                <div><span className="text-gray-300">actions</span><span className="ml-2 text-gray-600">查看节点/问题详情 / 名称冲突检测(blast)</span></div>
+              </div>
+            </details>
             <Table columns={columns as any} data={filtered} rowKey="id" loading={loading} />
+            </>
           )}
         </CardContent>
       </Card>

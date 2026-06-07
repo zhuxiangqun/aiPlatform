@@ -9,7 +9,7 @@ Architecture:
 - aiPlat-core (8002): Core business layer, actual implementation
 """
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from typing import Optional, List, Dict, Any
 import httpx
 import time
@@ -380,6 +380,17 @@ async def resolve_workspace_skill_install_head(payload: dict):
         client = get_core_client()
         url = str((payload or {}).get("url") or "")
         return await client.resolve_workspace_skill_install_head(url)
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/workspace/skills/sign-all")
+async def sign_all_workspace_skills(payload: dict):
+    try:
+        client = get_core_client()
+        return await client._request("POST", "/api/core/workspace/skills/sign-all", json=payload or {})
     except httpx.HTTPStatusError as e:
         raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
     except httpx.HTTPError as e:
@@ -778,6 +789,89 @@ async def rollback_workspace_agent_version(agent_id: str, version: str):
         raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
 
 
+# ── Workspace tools (应用库 Tool) ──
+
+@router.get("/workspace/tools")
+async def list_workspace_tools():
+    try:
+        client = get_core_client()
+        return await client._request("GET", "/api/core/workspace/tools")
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/workspace/tools")
+async def create_workspace_tool(payload: dict):
+    try:
+        client = get_core_client()
+        return await client._request("POST", "/api/core/workspace/tools", json=payload)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.delete("/workspace/tools/{tool_name}")
+async def delete_workspace_tool(tool_name: str):
+    try:
+        client = get_core_client()
+        return await client._request("DELETE", f"/api/core/workspace/tools/{tool_name}")
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.put("/workspace/tools/{tool_name}")
+async def update_workspace_tool(tool_name: str, payload: dict):
+    try:
+        client = get_core_client()
+        return await client._request("PUT", f"/api/core/workspace/tools/{tool_name}", json=payload)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/workspace/tools/{tool_name}/sign")
+async def sign_workspace_tool(tool_name: str, payload: dict):
+    try:
+        client = get_core_client()
+        return await client._request("POST", f"/api/core/workspace/tools/{tool_name}/sign", json=payload)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/workspace/tools/{tool_name}/source")
+async def get_workspace_tool_source(tool_name: str):
+    try:
+        client = get_core_client()
+        return await client._request("GET", f"/api/core/workspace/tools/{tool_name}/source")
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.put("/workspace/tools/{tool_name}/source")
+async def update_workspace_tool_source(tool_name: str, payload: dict):
+    try:
+        client = get_core_client()
+        return await client._request("PUT", f"/api/core/workspace/tools/{tool_name}/source", json=payload)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/workspace/tools/{tool_name}/reload")
+async def reload_workspace_tool(tool_name: str):
+    try:
+        client = get_core_client()
+        return await client._request("POST", f"/api/core/workspace/tools/{tool_name}/reload")
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/workspace/tools/discover")
+async def discover_workspace_tools():
+    try:
+        client = get_core_client()
+        return await client._request("POST", "/api/core/workspace/tools/discover")
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
 @router.get("/workspace/skills/{skill_id}/executions")
 async def list_workspace_skill_executions(skill_id: str, limit: int = 100, offset: int = 0):
     try:
@@ -839,6 +933,70 @@ async def disable_workspace_mcp_server(server_name: str):
         return await client.disable_workspace_mcp_server(server_name)
     except httpx.HTTPError as e:
         raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/workspace/mcp/servers/{server_name}/tools")
+async def list_mcp_server_tools(server_name: str, timeout_seconds: int = 25):
+    try:
+        client = get_core_client()
+        qs = f"?timeout_seconds={int(timeout_seconds)}" if timeout_seconds else ""
+        return await client._request("GET", f"/api/core/workspace/mcp/servers/{server_name}/tools{qs}")
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/workspace/mcp/servers/{server_name}/test-invoke")
+async def test_invoke_workspace_mcp_server(server_name: str, payload: dict):
+    try:
+        client = get_core_client()
+        return await client._request("POST", f"/api/core/workspace/mcp/servers/{server_name}/test-invoke", json=payload or {})
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/workspace/mcp/servers/{server_name}")
+async def get_workspace_mcp_server(server_name: str):
+    try:
+        client = get_core_client()
+        return await client._request("GET", f"/api/core/workspace/mcp/servers/{server_name}")
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.post("/workspace/mcp/servers")
+async def upsert_workspace_mcp_server(payload: dict):
+    try:
+        client = get_core_client()
+        return await client._request("POST", "/api/core/workspace/mcp/servers", json=payload)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.delete("/workspace/mcp/servers/{server_name}")
+async def delete_workspace_mcp_server(server_name: str):
+    try:
+        client = get_core_client()
+        return await client._request("DELETE", f"/api/core/workspace/mcp/servers/{server_name}")
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+# ── Observation SSE stream ──
+
+@router.get("/core/observation/runs/{run_id}/stream")
+async def observation_stream(run_id: str):
+    """Proxy SSE observation stream to core (stream pass-through)."""
+    import httpx, os
+    core_url = f"{os.getenv('AIPLAT_CORE_URL', 'http://localhost:8002')}/api/core/observation/runs/{run_id}/stream"
+    async with httpx.AsyncClient(timeout=600) as client:
+        resp = await client.send(client.build_request("GET", core_url), stream=True)
+        resp.raise_for_status()
+        from fastapi.responses import StreamingResponse
+        return StreamingResponse(
+            resp.aiter_bytes(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
+        )
 
 
 @router.get("/skills/{skill_id}/agents")

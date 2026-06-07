@@ -20,13 +20,13 @@
       "pattern": "^[a-z][a-z0-9_-]{2,}$",
       "minLength": 0,
       "maxLength": 64,
-      "x-ui": { "step": 0, "order": 20, "advanced": true, "placeholder": "例如：customer_support（建议小写/下划线）" }
+      "x-ui": { "step": 1, "order": 15, "advanced": true, "placeholder": "例如：customer_support（建议小写/下划线）" }
     },
     "display_name": {
       "type": "string",
       "title": "display_name（可选）",
       "maxLength": 64,
-      "x-ui": { "step": 0, "order": 30, "advanced": true, "placeholder": "默认等于名称" }
+      "x-ui": { "x-visible": false }
     },
     "description": {
       "type": "string",
@@ -46,14 +46,14 @@
       "title": "版本",
       "pattern": "^v?\\d+\\.\\d+\\.\\d+$",
       "default": "1.0.0",
-      "x-ui": { "step": 0, "order": 60, "advanced": true }
+      "x-ui": { "x-visible": false }
     },
     "status": {
       "type": "string",
       "title": "状态",
       "enum": ["enabled", "disabled", "deprecated"],
       "default": "enabled",
-      "x-ui": { "step": 0, "order": 70, "advanced": true }
+      "x-ui": { "x-visible": false }
     },
     "skill_kind": {
       "type": "string",

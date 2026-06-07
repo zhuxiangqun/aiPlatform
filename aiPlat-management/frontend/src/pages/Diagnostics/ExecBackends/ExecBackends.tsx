@@ -169,9 +169,21 @@ const ExecBackends: React.FC = () => {
           <div className="text-sm font-semibold text-gray-200">backends health</div>
         </CardHeader>
         <CardContent>
+          <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+            <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+            <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+              <div><span className="text-gray-300">driver_id / exec_backend</span><span className="ml-2 text-gray-600">后端执行器唯一标识</span></div>
+              <div><span className="text-gray-300">ok</span><span className="ml-2 text-gray-600">健康检测结果（true=绿）</span></div>
+              <div><span className="text-gray-300">detail</span><span className="ml-2 text-gray-600">后端详细信息（JSON）</span></div>
+              <div><span className="text-gray-300">success_rate</span><span className="ml-2 text-gray-600">24h 成功率</span></div>
+              <div><span className="text-gray-300">avg_latency_ms</span><span className="ml-2 text-gray-600">24h 平均延迟（毫秒）</span></div>
+              <div><span className="text-gray-300">policy_denied</span><span className="ml-2 text-gray-600">24h 策略拦截次数</span></div>
+              <div><span className="text-gray-300">total / ok / failed / done</span><span className="ml-2 text-gray-600">24h 运行次数统计</span></div>
+            </div>
+          </details>
           <Table
-            data={backends}
             loading={loading}
+            data={data?.items as any[]}
             rowKey={(r: any) => String(r.driver_id || r.backend || Math.random())}
             columns={[
               { key: 'driver_id', title: 'driver_id', dataIndex: 'driver_id', width: 160 },

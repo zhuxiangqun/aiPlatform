@@ -16,13 +16,14 @@ const ACCEPTED_TYPES: Record<string, { label: string; extensions: string[]; kind
   markdown: { label: 'Markdown', extensions: ['.md', '.markdown'], kind: 'markdown' },
   xlsx: { label: 'Excel 表格', extensions: ['.xlsx', '.xls'], kind: 'xlsx' },
   csv: { label: 'CSV 数据表', extensions: ['.csv'], kind: 'csv' },
+  html: { label: 'HTML 网页', extensions: ['.html', '.htm'], kind: 'html' },
   audio: { label: '音频', extensions: ['.mp3', '.wav', '.m4a', '.ogg', '.flac'], kind: 'audio' },
   image: { label: '图片', extensions: ['.png', '.jpg', '.jpeg', '.bmp', '.webp'], kind: 'image' },
   json: { label: 'JSON 数据', extensions: ['.json'], kind: 'json' },
   video: { label: '视频', extensions: ['.mp4', '.mov', '.mkv', '.avi'], kind: 'video' },
 };
 
-type UploadMode = 'file' | 'url';
+type UploadMode = 'file' | 'url' | 'directory';
 type Step = 'input' | 'preview' | 'saving';
 
 export const UploadModal: React.FC<Props> = ({ open, onClose, onComplete }) => {
@@ -35,8 +36,15 @@ export const UploadModal: React.FC<Props> = ({ open, onClose, onComplete }) => {
   const [kind, setKind] = useState<'pdf' | 'video' | 'word' | 'ppt' | 'markdown'>('pdf');
   const [collectionId, setCollectionId] = useState('default');
   const [url, setUrl] = useState('');
+  const [dirPath, setDirPath] = useState('');
+  const [dirRecursive, setDirRecursive] = useState(true);
+  const [dirPattern, setDirPattern] = useState('*.md');
+  const [dirAutoSync, setDirAutoSync] = useState(false);
   const [showSegments, setShowSegments] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Sync result display
+  const [syncResult, setSyncResult] = useState<{ total: number; cleaned: number; skipped: number } | null>(null);
 
   const [preview, setPreview] = useState<any>(null);
   const [tempFilePath, setTempFilePath] = useState('');
@@ -92,6 +100,47 @@ export const UploadModal: React.FC<Props> = ({ open, onClose, onComplete }) => {
       setStep('preview');
     } catch (e: any) {
       toast.error(`预览失败：${e?.message || e}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDirectoryIngest = async () => {
+    if (!dirPath.trim()) { toast.error('请输入目录路径'); return; }
+    setLoading(true);
+    try {
+      const res = await fetch('/api/platform/documents/ingest-directory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          directory: dirPath.trim(),
+          collection_id: collectionId,
+          recursive: dirRecursive,
+          pattern: dirPattern,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error((data as any).detail || '导入失败');
+
+      setSyncResult({ total: data.total || 0, cleaned: data.cleaned || 0, skipped: data.skipped || 0 });
+
+      if (dirAutoSync) {
+        await fetch('/api/platform/kb/watch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            directory: dirPath.trim(),
+            collection_id: collectionId,
+            recursive: dirRecursive,
+            pattern: dirPattern,
+          }),
+        }).catch(() => {});
+        toast.success(`已导入并开启同步：${data.total} 新/更新，${data.cleaned} 清理，${data.skipped || 0} 跳过`);
+      } else {
+        toast.success(`导入完成：${data.total} 新/更新，${data.cleaned} 清理，${data.skipped || 0} 跳过`);
+      }
+    } catch (e: any) {
+      toast.error(`导入失败：${e?.message || e}`);
     } finally {
       setLoading(false);
     }
@@ -253,10 +302,17 @@ export const UploadModal: React.FC<Props> = ({ open, onClose, onComplete }) => {
       footer={
         <div className="flex gap-2 justify-end">
           <Button variant="secondary" onClick={handleClose} disabled={loading}>取消</Button>
-          <Button variant="primary" onClick={handlePreview} loading={loading}
-            disabled={(mode === 'file' && !file) || (mode === 'url' && !url.trim())}>
-            预览内容
-          </Button>
+          {mode === 'directory' ? (
+            <Button variant="primary" onClick={handleDirectoryIngest} loading={loading}
+              disabled={!dirPath.trim()}>
+              开始导入
+            </Button>
+          ) : (
+            <Button variant="primary" onClick={handlePreview} loading={loading}
+              disabled={(mode === 'file' && !file) || (mode === 'url' && !url.trim())}>
+              预览内容
+            </Button>
+          )}
         </div>
       }
     >
@@ -270,6 +326,10 @@ export const UploadModal: React.FC<Props> = ({ open, onClose, onComplete }) => {
             className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
               mode === 'url' ? 'bg-dark-card text-gray-100 shadow' : 'text-gray-400 hover:text-gray-300'
             }`}>资料链接</button>
+          <button onClick={() => setMode('directory')}
+            className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
+              mode === 'directory' ? 'bg-dark-card text-gray-100 shadow' : 'text-gray-400 hover:text-gray-300'
+            }`}>导入目录</button>
         </div>
 
         {mode === 'file' ? (
@@ -282,7 +342,58 @@ export const UploadModal: React.FC<Props> = ({ open, onClose, onComplete }) => {
                 <div className="text-sm text-gray-200">{file.name}</div>
                 <div className="text-xs text-gray-500 mt-1">{(file.size / 1024 / 1024).toFixed(1)} MB</div>
               </div>
-            ) : (
+        ) : (mode as string) === 'directory' ? (
+          <div className="space-y-3">
+            <Input label="目录路径" value={dirPath}
+              onChange={(e: any) => {
+                setDirPath(e.target.value);
+                // Auto-name: use last path component as collection name if still default
+                const path = e.target.value.trim();
+                if (path && collectionId === 'default') {
+                  const parts = path.split('/').filter(Boolean);
+                  if (parts.length > 0) setCollectionId(parts[parts.length - 1]);
+                }
+              }}
+              placeholder="/Users/apple/Documents/Obsidian Vault" />
+            <div className="grid grid-cols-2 gap-3">
+              <Input label="文件模式" value={dirPattern}
+                onChange={(e: any) => setDirPattern(e.target.value)}
+                placeholder="*.md" />
+              <div className="flex items-center pt-6 gap-2">
+                <input type="checkbox" checked={dirRecursive}
+                  onChange={(e) => setDirRecursive(e.target.checked)}
+                  className="w-3.5 h-3.5" />
+                <span className="text-sm text-gray-400">递归子目录</span>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500">指定服务器上的一个目录路径，批量导入其中匹配的文件。适用于 Obsidian Vault、本地文档库等。</p>
+            <div className="flex items-center gap-2 pt-1">
+              <input type="checkbox" checked={dirAutoSync}
+                onChange={(e) => setDirAutoSync(e.target.checked)}
+                className="w-3.5 h-3.5" />
+              <span className="text-sm text-gray-400">自动同步（每 30 秒检测变更并增量更新）</span>
+            </div>
+            {syncResult && (
+              <div className="p-3 rounded bg-dark-hover border border-dark-border space-y-1">
+                <div className="text-sm text-gray-300 font-medium">最近同步结果</div>
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div className="text-center">
+                    <div className="text-green-400 font-semibold">{syncResult.total}</div>
+                    <div className="text-gray-500">新/更新</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-amber-400 font-semibold">{syncResult.cleaned}</div>
+                    <div className="text-gray-500">清理</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-gray-400 font-semibold">{syncResult.skipped}</div>
+                    <div className="text-gray-500">跳过</div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
               <div>
                 <div className="text-3xl mb-2">📤</div>
                 <div className="text-sm text-gray-300">点击选择文件或拖拽到此处</div>

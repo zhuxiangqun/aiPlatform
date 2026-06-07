@@ -61,6 +61,9 @@ class ActiveWorkspaceContext:
     context_file: Optional[str] = None
     project_context: str = ""
     toolset: Optional[str] = None
+    mcp_ids: Optional[List[str]] = None
+    agent_ids: Optional[List[str]] = None
+    workflow_ids: Optional[List[str]] = None
     # Optional: multiple CLAUDE.md files for multi-repo / multi-path operations.
     claude_md_files: Optional[List[str]] = None
 
@@ -91,6 +94,29 @@ def reset_active_workspace_context(token) -> None:
 
 def get_active_workspace_context() -> Optional[ActiveWorkspaceContext]:
     return _active_workspace_ctx.get()
+
+
+# ── GateTracer: runtime gate coverage tracking (Phase 3) ──
+# Marks which mandatory gates were passed during an execution.
+# Validated at exit time to detect runtime gate bypasses.
+
+_gate_coverage: ContextVar[set] = ContextVar("_gate_coverage", default=set())
+
+
+def mark_gate_passed(gate_name: str) -> None:
+    """Mark a mandatory gate as passed for the current execution."""
+    _gate_coverage.get().add(gate_name)
+
+
+def get_gate_coverage() -> set:
+    """Get the set of gates passed in the current execution scope."""
+    return _gate_coverage.get().copy()
+
+
+def reset_gate_coverage() -> Any:
+    """Start a fresh gate coverage scope. Returns token for restore."""
+    token = _gate_coverage.set(set())
+    return token
 
 
 # ---------------------------------------------------------------------------

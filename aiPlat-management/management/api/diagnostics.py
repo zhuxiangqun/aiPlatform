@@ -451,6 +451,70 @@ async def run_e2e_smoke(request: Request, body: Dict[str, Any]) -> Dict[str, Any
 # ==================== Doctor (one-shot report) ====================
 
 
+async def _get_learning_stats(core_client) -> Dict[str, Any]:
+    """Get self-learning statistics for Doctor report."""
+    result: Dict[str, Any] = {"evolution": {}, "ab_scores": {}, "crystallized": 0}
+    if not core_client:
+        return result
+    try:
+        # Evolution artifacts (last 30 days)
+        evo = await core_client.list_learning_artifacts(
+            kind="SKILL_EVOLUTION", limit=5, offset=0
+        )
+        rollback = await core_client.list_learning_artifacts(
+            kind="SKILL_ROLLBACK", limit=5, offset=0
+        )
+        result["evolution"] = {
+            "total_evolutions": evo.get("total", 0) if isinstance(evo, dict) else 0,
+            "total_rollbacks": rollback.get("total", 0) if isinstance(rollback, dict) else 0,
+            "recent": (evo.get("items", []) or [])[:3] if isinstance(evo, dict) else [],
+        }
+    except Exception:
+        pass
+
+    # A/B scores summary — check if prompt_eval_scores table has data
+    try:
+        import os
+        import sqlite3
+        db_path = os.environ.get(
+            "AIPLAT_EXECUTION_DB_PATH",
+            "data/aiplat_executions.sqlite3"
+        )
+        if os.path.isfile(db_path):
+            conn = sqlite3.connect(db_path)
+            try:
+                row = conn.execute(
+                    "SELECT COUNT(*) as total, COUNT(DISTINCT template_id) as templates,"
+                    " COALESCE(AVG(score), 0) as avg_score"
+                    " FROM prompt_eval_scores"
+                ).fetchone()
+                if row:
+                    result["ab_scores"] = {
+                        "total_evals": row[0] or 0,
+                        "templates": row[1] or 0,
+                        "avg_score": round(row[2] or 0, 2),
+                    }
+            except Exception:
+                pass
+            finally:
+                conn.close()
+    except Exception:
+        pass
+
+    # Crystallized skills count
+    try:
+        skill_auto_dir = os.path.expanduser("~/.aiplat/skills/auto")
+        if os.path.isdir(skill_auto_dir):
+            result["crystallized"] = len([
+                f for f in os.listdir(skill_auto_dir)
+                if os.path.isfile(os.path.join(skill_auto_dir, f, "SKILL.md"))
+            ])
+    except Exception:
+        pass
+
+    return result
+
+
 @router.get("/doctor")
 async def doctor_report(request: Request) -> Dict[str, Any]:
     """
@@ -1006,6 +1070,7 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
         "links": links,
         "actions": actions,
         "recommendations": recs,
+        "learning": await _get_learning_stats(core_client),
     }
 
 

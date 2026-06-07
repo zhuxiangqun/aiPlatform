@@ -191,6 +191,101 @@ def enqueue_ingest(
     return {"tenant_id": st.tenant_id, "collection_id": collection_id, "job_id": job_id, "doc_id": doc_id}
 
 
+def enqueue_directory_ingest(
+    *,
+    tenant_id: str,
+    collection_id: str,
+    directory: str,
+    recursive: bool = True,
+    pattern: str = "*.md",
+    kind: str = "markdown",
+    name: str = "",
+) -> Dict[str, Any]:
+    """
+    批量导入目录中匹配的文件。
+    返回 {job_ids: [...], doc_ids: [...], total: N}。
+    """
+    if not tenant_id:
+        raise ValueError("tenant_id_required")
+    if not collection_id:
+        raise ValueError("collection_id_required")
+    if not directory:
+        raise ValueError("directory_required")
+
+    target_dir = Path(directory).expanduser()
+    if not target_dir.is_dir():
+        raise ValueError(f"Directory not found or not accessible: {directory}")
+
+    # Scan current files + compute doc_ids
+    current_docs: Dict[str, str] = {}  # file_path → doc_id
+    for fpath in sorted(target_dir.glob(pattern)):
+        if not recursive and fpath.parent != target_dir:
+            continue
+        fp = str(fpath)
+        current_docs[fp] = _stable_doc_id(fp)
+
+    # Clean up stale docs: files deleted or content changed
+    stale_cleaned = 0
+    st = get_tenant_storage(tenant_id)
+    db = KBSqlite(st.db_path)
+    db.ensure_schema()
+    try:
+        with db.connect() as conn:
+            rows = conn.execute(
+                "SELECT doc_id, source_uri FROM documents WHERE tenant_id=? AND collection_id=?",
+                (tenant_id, collection_id),
+            ).fetchall()
+            for r in rows:
+                existing_uri = r["source_uri"]
+                existing_doc = r["doc_id"]
+                should_clean = False
+                if isinstance(existing_uri, str) and existing_uri not in current_docs:
+                    should_clean = True  # File deleted
+                elif isinstance(existing_uri, str) and current_docs.get(existing_uri, "") != existing_doc:
+                    should_clean = True  # Content changed
+                if should_clean:
+                    try:
+                        conn.execute("DELETE FROM documents WHERE tenant_id=? AND doc_id=?", (tenant_id, existing_doc))
+                        conn.execute("DELETE FROM kb_elements WHERE tenant_id=? AND doc_id=?", (tenant_id, existing_doc))
+                        conn.execute("DELETE FROM kb_embeddings WHERE tenant_id=? AND doc_id=?", (tenant_id, existing_doc))
+                        stale_cleaned += 1
+                    except Exception:
+                        pass
+            conn.commit()
+    except Exception:
+        pass
+
+    job_ids = []
+    doc_ids = []
+    skipped = 0
+    cleaned = len(current_docs) - len(doc_ids) if len(doc_ids) < len(current_docs) else 0
+
+    for fp in sorted(current_docs.keys()):
+        try:
+            result = enqueue_ingest(
+                tenant_id=tenant_id,
+                collection_id=collection_id,
+                file_path=fp,
+                kind=kind,
+                name=name,
+            )
+            job_ids.append(result["job_id"])
+            doc_ids.append(result["doc_id"])
+        except ValueError:
+            skipped += 1
+            continue
+
+    return {
+        "tenant_id": tenant_id,
+        "collection_id": collection_id,
+        "job_ids": job_ids,
+        "doc_ids": doc_ids,
+        "total": len(doc_ids),
+        "skipped": skipped,
+        "cleaned": stale_cleaned,
+    }
+
+
 def ingest_document(
     *,
     tenant_id: str,
@@ -986,4 +1081,410 @@ def preview_document(
         ],
         "element_count": len(elements),
         "classification": classification,
+    }
+
+
+# ── Directory Watch / Auto-Sync ──
+
+_WATCH_THREADS: Dict[str, threading.Thread] = {}
+_WATCH_STOP_FLAGS: Dict[str, bool] = {}
+
+
+def watch_directory(
+    *, tenant_id: str, watch_id: str, directory: str,
+    collection_id: str = "default", recursive: bool = True,
+    pattern: str = "*.md", kind: str = "markdown", poll_interval: float = 30.0,
+) -> Dict[str, Any]:
+    """Start background watcher for a directory. On each poll, ingest new/changed files."""
+    if watch_id in _WATCH_THREADS:
+        unwatch_directory(tenant_id=tenant_id, watch_id=watch_id)
+
+    st = get_tenant_storage(tenant_id)
+    db = KBSqlite(st.db_path)
+    db.ensure_schema()
+
+    db.upsert_watch(
+        tenant_id=tenant_id, watch_id=watch_id,
+        directory_path=directory, collection_id=collection_id,
+        recursive=recursive, pattern=pattern, enabled=True,
+    )
+
+    _WATCH_STOP_FLAGS[watch_id] = False
+
+    def _poll():
+        while not _WATCH_STOP_FLAGS.get(watch_id, True):
+            try:
+                result = enqueue_directory_ingest(
+                    tenant_id=tenant_id, collection_id=collection_id,
+                    directory=directory, recursive=recursive, pattern=pattern, kind=kind,
+                )
+                if result.get("total", 0) > 0:
+                    try:
+                        db.touch_watch(tenant_id=tenant_id, watch_id=watch_id)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            time.sleep(max(poll_interval, 5.0))
+
+    t = threading.Thread(target=_poll, name=f"kb_watch_{watch_id}", daemon=True)
+    t.start()
+    _WATCH_THREADS[watch_id] = t
+
+    return {"status": "watching", "watch_id": watch_id, "directory": directory}
+
+
+def unwatch_directory(*, tenant_id: str, watch_id: str) -> Dict[str, Any]:
+    """Stop a directory watcher."""
+    _WATCH_STOP_FLAGS[watch_id] = True
+    t = _WATCH_THREADS.pop(watch_id, None)
+    if t:
+        t.join(timeout=2.0)
+    try:
+        st = get_tenant_storage(tenant_id)
+        KBSqlite(st.db_path).delete_watch(tenant_id=tenant_id, watch_id=watch_id)
+    except Exception:
+        pass
+    return {"status": "unwatched", "watch_id": watch_id}
+
+
+def list_watches(*, tenant_id: str) -> List[Dict[str, Any]]:
+    """List active directory watches."""
+    try:
+        st = get_tenant_storage(tenant_id)
+        return KBSqlite(st.db_path).list_watches(tenant_id=tenant_id, enabled_only=False)
+    except Exception:
+        return []
+
+
+# ── Vault Browser ──
+
+def _resolve_doc_source(tenant_id: str, doc_id: str) -> Optional[str]:
+    """Get source_uri for a document from the KB."""
+    try:
+        st = get_tenant_storage(tenant_id)
+        with KBSqlite(st.db_path).connect() as conn:
+            row = conn.execute(
+                "SELECT source_uri FROM documents WHERE tenant_id=? AND doc_id=?",
+                (tenant_id, doc_id),
+            ).fetchone()
+            return row["source_uri"] if row else None
+    except Exception:
+        return None
+
+
+def vault_connect(
+    *, tenant_id: str, vault_path: str, label: str = "", auto_index: bool = True,
+) -> Dict[str, Any]:
+    """Connect a local directory as a vault (read-only browsing, no copy)."""
+    target = Path(vault_path).expanduser()
+    if not target.is_dir():
+        raise ValueError(f"Directory not found: {vault_path}")
+    vault_id = hashlib.md5(str(target).encode()).hexdigest()[:12]
+
+    st = get_tenant_storage(tenant_id)
+    KBSqlite(st.db_path).ensure_schema()
+    KBSqlite(st.db_path).upsert_vault(
+        tenant_id=tenant_id, vault_id=vault_id,
+        vault_path=str(target), label=label, auto_index=auto_index,
+    )
+    return {"vault_id": vault_id, "vault_path": str(target), "status": "connected"}
+
+
+def vault_disconnect(*, tenant_id: str, vault_id: str) -> Dict[str, Any]:
+    """Disconnect a vault."""
+    KBSqlite(get_tenant_storage(tenant_id).db_path).delete_vault(tenant_id=tenant_id, vault_id=vault_id)
+    return {"vault_id": vault_id, "status": "disconnected"}
+
+
+def vault_list(*, tenant_id: str) -> List[Dict[str, Any]]:
+    """List connected vaults."""
+    try:
+        vaults = KBSqlite(get_tenant_storage(tenant_id).db_path).list_vaults(tenant_id=tenant_id)
+        # ③ Disconnect detection: check if vault path still exists
+        for v in vaults:
+            v["path_exists"] = Path(v.get("vault_path", "")).expanduser().is_dir()
+        return vaults
+    except Exception:
+        return []
+
+
+def vault_tree(*, vault_path: str, subdir: str = "", max_depth: int = 3,
+               vault_id: str = "", tenant_id: str = "default") -> Dict[str, Any]:
+    """Return directory tree for a vault starting from subdir. Includes wiki status per file."""
+    root = Path(vault_path).expanduser()
+    if not root.is_dir():
+        raise ValueError(f"Directory not found: {vault_path}")
+    if subdir:
+        root = root / subdir.lstrip("/")
+        if not root.is_dir():
+            raise ValueError(f"Subdirectory not found: {subdir}")
+
+    file_statuses = {}
+    if vault_id:
+        try:
+            db = KBSqlite(get_tenant_storage(tenant_id).db_path)
+            db.ensure_schema()
+            file_statuses = db.get_vault_file_statuses(vault_id=vault_id)
+        except Exception:
+            pass
+
+    def _walk(path: Path, depth: int) -> List[Dict[str, Any]]:
+        if depth > max_depth:
+            return []
+        entries = []
+        try:
+            for entry in sorted(path.iterdir(), key=lambda x: (x.is_file(), x.name.lower())):
+                if entry.name.startswith("."):
+                    continue
+                if entry.is_file() and entry.suffix in (".md", ".markdown"):
+                    file_path_str = str(entry)
+                    status = file_statuses.get(file_path_str, "ready")
+                    entries.append({
+                        "name": entry.name,
+                        "path": file_path_str,
+                        "type": "file",
+                        "size": entry.stat().st_size,
+                        "status": status,
+                    })
+                elif entry.is_dir():
+                    children = _walk(entry, depth + 1)
+                    entries.append({
+                        "name": entry.name,
+                        "path": str(entry),
+                        "type": "directory",
+                        "children": children,
+                    })
+        except PermissionError:
+            pass
+        return entries
+
+    return {"vault_path": str(root), "subdir": subdir, "entries": _walk(root, 0)}
+
+
+def vault_read(*, file_path: str) -> Dict[str, Any]:
+    """Read a markdown file from the vault and return content + frontmatter."""
+    p = Path(file_path).expanduser()
+    if not p.is_file():
+        raise ValueError(f"File not found: {file_path}")
+    content = p.read_text(encoding="utf-8", errors="ignore")
+    frontmatter = {}
+    body = content
+    if content.startswith("---"):
+        parts = content.split("---", 2)
+        if len(parts) >= 3:
+            try:
+                import yaml as _yaml
+                fm = _yaml.safe_load(parts[1]) or {}
+                if isinstance(fm, dict):
+                    frontmatter = dict(fm)
+            except Exception:
+                pass
+            body = parts[2]
+    return {
+        "file_path": str(p),
+        "name": p.name,
+        "frontmatter": frontmatter,
+        "content": body.strip(),
+        "raw": content,
+    }
+
+
+async def vault_to_wiki(*, file_path: str, label: str = "", collection_id: str = "",
+                       vault_id: str = "", tenant_id: str = "default") -> Dict[str, Any]:
+    """Convert a vault markdown file to a Wiki page using the full KB pipeline.
+
+    collection_id: derived from subdirectory name for auto-collection mapping.
+    vault_id: if provided, record file status in kb_vault_files after conversion.
+    """
+    from core.api.core_facade import wiki_auto_update
+
+    p = Path(file_path).expanduser()
+    if not p.is_file():
+        raise ValueError(f"File not found: {file_path}")
+
+    # Compute stable doc_id from file content hash
+    doc_id = _stable_doc_id(str(p))
+
+    try:
+        # Run the full wiki pipeline (parse→chunk→embed→LLM curate→knowledge atoms)
+        result = await wiki_auto_update(doc_id=doc_id, file_path=str(p), collection_id=collection_id)
+
+        status = result.get("status", "created")
+        category = result.get("category", "")
+        title = result.get("title", p.stem)
+
+        if status in ("created", "skipped") and vault_id:
+            try:
+                db = KBSqlite(get_tenant_storage(tenant_id).db_path)
+                db.ensure_schema()
+                db.upsert_vault_file(
+                    vault_id=vault_id, file_path=str(p), doc_id=doc_id,
+                )
+            except Exception:
+                pass
+
+        # V1: Schema validation after conversion
+        schema_ok = None
+        try:
+            from core.harness.knowledge.wiki_engine import read_page
+            from core.harness.knowledge.knowledge_ontology import validate_page_against_schema
+            saved = read_page(title, collection_id=collection_id, category=category)
+            if saved:
+                val = validate_page_against_schema(saved, collection_id=collection_id, mode="warning")
+                schema_ok = val.is_valid
+        except Exception:
+            pass
+
+        return {
+            "status": status,
+            "title": title,
+            "category": category,
+            "chars": result.get("chars", 0),
+            "doc_id": doc_id,
+            "schema_valid": schema_ok,
+        }
+    except Exception as e:
+        # Record failed status for observability
+        if vault_id:
+            try:
+                db = KBSqlite(get_tenant_storage(tenant_id).db_path)
+                db.ensure_schema()
+                db.upsert_vault_file_failed(
+                    vault_id=vault_id, file_path=str(p), error=str(e)[:200],
+                )
+            except Exception:
+                pass
+        raise
+
+
+# ── Vault Indexer ──
+
+_VAULT_INDEX_THREADS: Dict[str, threading.Thread] = {}
+_VAULT_INDEX_STOP: Dict[str, bool] = {}
+_VAULT_INDEX_STATE: Dict[str, Dict[str, Any]] = {}  # vault_id → {status, progress, last_error}
+
+
+def vault_start_indexer(
+    *, tenant_id: str, vault_id: str, vault_path: str,
+    collection_id: str = "default", poll_interval: float = 30.0,
+    auto_wiki: bool = False,
+) -> Dict[str, Any]:
+    """Start background indexer for a vault. Optionally auto-wiki new files."""
+    key = f"{tenant_id}:{vault_id}"
+    if key in _VAULT_INDEX_THREADS:
+        vault_stop_indexer(tenant_id=tenant_id, vault_id=vault_id)
+
+    _VAULT_INDEX_STOP[key] = False
+    _VAULT_INDEX_STATE[key] = {"status": "running", "progress": 0, "cleaned": 0, "wikified": 0, "last_error": None}
+
+    def _poll():
+        while not _VAULT_INDEX_STOP.get(key, True):
+            try:
+                vault_dir = Path(vault_path).expanduser()
+                if not vault_dir.is_dir():
+                    _VAULT_INDEX_STATE[key] = {"status": "error", "progress": -1, "last_error": f"Vault path not found: {vault_path}"}
+                    return
+
+                # Scan vault files directly (no documents table pollution)
+                md_files = sorted(vault_dir.rglob("*.md"))
+                total = len(md_files)
+                wikified = 0
+
+                # Auto-wiki: send newly detected files to Wiki directly
+                if auto_wiki and total > 0:
+                    for fpath in md_files:
+                        try:
+                            if fpath.name.startswith("."):
+                                continue
+                            file_path_str = str(fpath)
+                            import asyncio as _asyncio
+                            loop = _asyncio.new_event_loop()
+                            try:
+                                result = loop.run_until_complete(
+                                    vault_to_wiki(file_path=file_path_str,
+                                                  collection_id=collection_id,
+                                                  vault_id=vault_id,
+                                                  tenant_id=tenant_id))
+                                if result.get("status") in ("created", "skipped"):
+                                    wikified += 1
+                            finally:
+                                loop.close()
+                        except Exception:
+                            pass
+
+                _VAULT_INDEX_STATE[key] = {
+                    "status": "running",
+                    "progress": total,
+                    "cleaned": 0,
+                    "wikified": wikified,
+                    "last_error": None,
+                }
+                if total > 0 or wikified > 0:
+                    try:
+                        KBSqlite(get_tenant_storage(tenant_id).db_path).touch_vault(
+                            tenant_id=tenant_id, vault_id=vault_id,
+                        )
+                    except Exception:
+                        pass
+            except Exception as e:
+                _VAULT_INDEX_STATE[key] = {"status": "error", "progress": -1, "last_error": str(e)}
+            time.sleep(max(poll_interval, 5.0))
+
+    t = threading.Thread(target=_poll, name=f"vault_index_{vault_id}", daemon=True)
+    t.start()
+    _VAULT_INDEX_THREADS[key] = t
+
+    return {"status": "indexing", "vault_id": vault_id}
+
+
+def vault_stop_indexer(*, tenant_id: str, vault_id: str) -> Dict[str, Any]:
+    """Stop vault indexer."""
+    key = f"{tenant_id}:{vault_id}"
+    _VAULT_INDEX_STOP[key] = True
+    t = _VAULT_INDEX_THREADS.pop(key, None)
+    if t:
+        t.join(timeout=2.0)
+    _VAULT_INDEX_STATE.pop(key, None)
+    return {"status": "stopped", "vault_id": vault_id}
+
+
+def vault_index_status(*, tenant_id: str, vault_id: str) -> Dict[str, Any]:
+    """Get indexer status."""
+    key = f"{tenant_id}:{vault_id}"
+    return _VAULT_INDEX_STATE.get(key, {"status": "idle", "progress": 0, "last_error": None})
+
+
+def vault_reindex(*, tenant_id: str, vault_path: str, collection_id: str = "default") -> Dict[str, Any]:
+    """Rebuild all indexes for a vault: clear existing docs + re-scan + re-ingest."""
+    st = get_tenant_storage(tenant_id)
+    db = KBSqlite(st.db_path)
+    db.ensure_schema()
+
+    # Clear existing docs from this vault (matching source_uri prefix)
+    try:
+        with db.connect() as conn:
+            rows = conn.execute(
+                "SELECT doc_id FROM documents WHERE tenant_id=? AND source_uri LIKE ?",
+                (tenant_id, f"{vault_path}%"),
+            ).fetchall()
+            for r in rows:
+                did = r["doc_id"]
+                conn.execute("DELETE FROM documents WHERE tenant_id=? AND doc_id=?", (tenant_id, did))
+                conn.execute("DELETE FROM kb_elements WHERE tenant_id=? AND doc_id=?", (tenant_id, did))
+                conn.execute("DELETE FROM kb_embeddings WHERE tenant_id=? AND doc_id=?", (tenant_id, did))
+            conn.commit()
+            cleared = len(rows)
+    except Exception as e:
+        cleared = 0
+
+    result = enqueue_directory_ingest(
+        tenant_id=tenant_id, collection_id=collection_id,
+        directory=vault_path, recursive=True, pattern="*.md", kind="markdown",
+    )
+    return {
+        "status": "reindexing",
+        "cleared": cleared,
+        "queued": result.get("total", 0),
+        "job_ids": result.get("job_ids", []),
     }

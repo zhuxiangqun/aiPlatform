@@ -100,6 +100,11 @@ class MCPRuntime:
         return False
 
     async def _connect_and_register(self, s: Any, tool_registry: Any) -> None:
+        server_name = str(getattr(s, "name", ""))
+        # Skip if already connected (avoid double-connect on reload)
+        if server_name in self._registered:
+            return
+
         # Production safety: forbid stdio unless explicitly allowed.
         transport = str(getattr(s, "transport", "sse") or "sse").lower()
         # PR-07: unify via policy_engine (tenant-aware best-effort)

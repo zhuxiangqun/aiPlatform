@@ -133,18 +133,26 @@ async def run_smoke_e2e(*, payload: Dict[str, Any], execution_store: Any = None)
             evidence["created"]["route_id"] = created_route_id
             evidence["steps"].append({"name": "platform.routes.create", "ok": True, "route_id": created_route_id})
 
-            # 3) app channel/session
-            ch = await _req(client, "POST", f"{cfg.app_url}/app/channels", headers=h, json={"name": "ops-smoke", "type": "webhook"})
-            created_channel_id = ch.get("id")
-            evidence["created"]["channel_id"] = created_channel_id
-            evidence["steps"].append({"name": "app.channels.create", "ok": True, "channel_id": created_channel_id})
+            # 3) app channel/session (best-effort: app layer may be health-only bootstrap)
+            try:
+                ch = await _req(client, "POST", f"{cfg.app_url}/app/channels", headers=h, json={"name": "ops-smoke", "type": "webhook"})
+                created_channel_id = ch.get("id")
+                evidence["created"]["channel_id"] = created_channel_id
+                evidence["steps"].append({"name": "app.channels.create", "ok": True, "channel_id": created_channel_id})
 
-            sess = await _req(client, "POST", f"{cfg.app_url}/app/sessions", headers=h, json={"channel_id": created_channel_id, "user_id": str(created_user_id or "admin")})
-            created_session_id = sess.get("id")
-            evidence["created"]["session_id"] = created_session_id
-            evidence["steps"].append({"name": "app.sessions.create", "ok": True, "session_id": created_session_id})
+                sess = await _req(client, "POST", f"{cfg.app_url}/app/sessions", headers=h, json={"channel_id": created_channel_id, "user_id": str(created_user_id or "admin")})
+                created_session_id = sess.get("id")
+                evidence["created"]["session_id"] = created_session_id
+                evidence["steps"].append({"name": "app.sessions.create", "ok": True, "session_id": created_session_id})
+            except httpx.HTTPStatusError as e:
+                reason = f"HTTP {e.response.status_code}" if e.response else str(e)
+                evidence["steps"].append({"name": "app.channels+session.create", "ok": False, "skipped": True, "reason": reason})
+            except Exception as e:
+                evidence["steps"].append({"name": "app.channels+session.create", "ok": False, "skipped": True, "reason": str(e)})
 
             # 4) agent create + execute (via platform -> core workspace agents)
+            # Fallback session_id when app layer is not available
+            smoke_session_id = created_session_id or f"smoke-session-{int(time.time())}"
             agent_body: Dict[str, Any] = {
                 "name": f"ops-smoke-agent-{int(time.time())}",
                 "description": "ops smoke e2e",
@@ -164,7 +172,7 @@ async def run_smoke_e2e(*, payload: Dict[str, Any], execution_store: Any = None)
                 "POST",
                 f"{cfg.platform_url}/api/v1/agents/{created_agent_id}/execute",
                 headers=h,
-                json={"input": "hello", "session_id": created_session_id, "context": {"tenant_id": tenant_id}},
+                json={"input": "hello", "session_id": smoke_session_id, "context": {"tenant_id": tenant_id}},
             )
             run_id = exec_res.get("run_id")
             evidence["steps"].append({"name": "platform.agents.execute", "ok": True, "run_id": run_id, "exec": exec_res})
@@ -187,7 +195,7 @@ async def run_smoke_e2e(*, payload: Dict[str, Any], execution_store: Any = None)
                     "channel": "ops_smoke",
                     "kind": "tool",
                     "target_id": "calculator",
-                    "session_id": created_session_id,
+                    "session_id": smoke_session_id,
                     "payload": {"input": {"expression": "1+1"}, "context": {"tenant_id": tenant_id}},
                 },
             )

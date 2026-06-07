@@ -12,6 +12,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+import hashlib
+import json
 import os
 import yaml
 
@@ -27,6 +29,7 @@ class MCPServerInfo:
     args: List[str] = field(default_factory=list)
     auth: Optional[Dict[str, Any]] = None
     allowed_tools: List[str] = field(default_factory=list)
+    source: str = "external"  # "internal" = 本地工作台工具, "external" = 外部 MCP Server
     metadata: Dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
@@ -100,6 +103,7 @@ class MCPManager:
                 if not isinstance(args, list):
                     args = []
                 auth = data.get("auth") if isinstance(data.get("auth"), dict) else None
+                source = str(data.get("source") or "external")
 
                 # optional policy
                 allowed_tools: List[str] = []
@@ -147,9 +151,137 @@ class MCPManager:
                     auth=auth,
                     allowed_tools=allowed_tools,
                     metadata=meta,
+                    source=source,
                     created_at=now,
                     updated_at=now,
                 )
+                # Enrich with provenance and integrity
+                self._enrich_mcp_provenance_and_integrity(meta, server_dir=item)
+
+    # ==================== Provenance & Integrity ====================
+
+    def _sha256_file(self, p: Path) -> str:
+        h = hashlib.sha256()
+        with p.open("rb") as f:
+            while True:
+                b = f.read(1024 * 1024)
+                if not b:
+                    break
+                h.update(b)
+        return h.hexdigest()
+
+    def _read_mcp_manifest_json(self, server_dir: Path) -> Dict[str, Any]:
+        p = server_dir / "MCP.manifest.json"
+        if not p.exists():
+            return {}
+        try:
+            raw = p.read_text(encoding="utf-8")
+            data = json.loads(raw or "{}")
+            return data if isinstance(data, dict) else {}
+        except Exception:
+            return {}
+
+    def _compute_mcp_bundle_integrity(self, server_dir: Path) -> Dict[str, Any]:
+        entries: List[str] = []
+        total_bytes = 0
+        file_count = 0
+        files_sample: List[str] = []
+        try:
+            for p in sorted(server_dir.rglob("*")):
+                try:
+                    if p.is_dir():
+                        continue
+                    rel = str(p.relative_to(server_dir))
+                    if rel.startswith("__pycache__/") or rel.endswith(".pyc"):
+                        continue
+                    if rel.startswith(".git/"):
+                        continue
+                    size = int(p.stat().st_size)
+                    sha = self._sha256_file(p)
+                    entries.append(f"{rel}\t{size}\t{sha}")
+                    total_bytes += size
+                    file_count += 1
+                    if len(files_sample) < 20:
+                        files_sample.append(rel)
+                except Exception:
+                    continue
+        except Exception:
+            pass
+        bundle_sha256 = hashlib.sha256(("\n".join(entries)).encode("utf-8")).hexdigest()
+        return {
+            "bundle_sha256": bundle_sha256,
+            "file_count": int(file_count),
+            "total_bytes": int(total_bytes),
+            "files_sample": files_sample,
+        }
+
+    def _enrich_mcp_provenance_and_integrity(self, metadata: Dict[str, Any], *, server_dir: Path) -> None:
+        if not isinstance(metadata, dict):
+            return
+        prov = metadata.get("provenance") if isinstance(metadata.get("provenance"), dict) else {}
+        prov.setdefault("source_type", "filesystem")
+        prov.setdefault("scope", (self._scope or "workspace"))
+        prov.setdefault("server_dir", str(server_dir))
+
+        manifest = self._read_mcp_manifest_json(server_dir)
+        if not manifest and (self._scope or "").strip().lower() != "engine":
+            manifest = {"version": "1.0.0"}
+            try:
+                (server_dir / "MCP.manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
+            except Exception:
+                pass
+        if manifest:
+            prov.setdefault("publisher", manifest.get("publisher"))
+            prov.setdefault("source", manifest.get("source"))
+            prov.setdefault("version", manifest.get("version"))
+            if manifest.get("signature") is not None:
+                prov.setdefault("signature", manifest.get("signature"))
+            try:
+                mpath = server_dir / "MCP.manifest.json"
+                if mpath.exists():
+                    prov.setdefault("manifest_sha256", self._sha256_file(mpath))
+            except Exception:
+                pass
+        metadata["provenance"] = prov
+
+        integ = metadata.get("integrity") if isinstance(metadata.get("integrity"), dict) else {}
+        try:
+            integ.update(self._compute_mcp_bundle_integrity(server_dir))
+        except Exception:
+            pass
+        metadata["integrity"] = integ
+
+    def compute_mcp_signature_verification(self, server: "MCPServerInfo", trusted_keys: Dict[str, str]) -> Dict[str, Any]:
+        if not isinstance(getattr(server, "metadata", None), dict):
+            return {}
+        prov = dict(server.metadata.get("provenance") or {}) if isinstance(server.metadata.get("provenance"), dict) else {}
+        integ = server.metadata.get("integrity") if isinstance(server.metadata, dict) else {}
+        sig = prov.get("signature")
+        bundle_sha = integ.get("bundle_sha256") if isinstance(integ, dict) else None
+        if not sig or not bundle_sha:
+            return prov
+        prov = dict(prov)
+        prov["signature_verified"] = False
+        prov["signature_verified_reason"] = ""
+        prov["signature_verified_key_id"] = ""
+        try:
+            from core.harness.infrastructure.crypto.signature import verify_skill_signature
+            version = str(getattr(server, "metadata", {}).get("version", "0.1.0") or "0.1.0")
+            r = verify_skill_signature(
+                skill_id=str(getattr(server, "name", "")),
+                version=version,
+                bundle_sha256=str(bundle_sha),
+                signature=str(sig),
+                trusted_keys=trusted_keys,
+            )
+            prov["signature_verified"] = bool(r.get("verified"))
+            prov["signature_verified_key_id"] = r.get("key_id") or ""
+            prov["signature_verified_reason"] = (r.get("error") or "") if not r.get("verified") else ""
+        except Exception as e:
+            prov["signature_verified_reason"] = str(e)
+        return prov
+
+    # ================================================================
 
     def list_servers(self) -> List[MCPServerInfo]:
         return list(self._servers.values())
@@ -179,6 +311,7 @@ class MCPManager:
             "command": info.command,
             "args": info.args or [],
             "auth": info.auth,
+            "source": getattr(info, "source", "external") or "external",
             "metadata": {k: v for k, v in (info.metadata or {}).items() if k != "filesystem"},
         }
         server_yaml.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")

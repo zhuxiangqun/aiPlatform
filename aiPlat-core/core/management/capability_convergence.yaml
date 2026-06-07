@@ -1,0 +1,130 @@
+# Capability Convergence Contract
+# ============================================================================
+# Declares canonical implementation paths for each system capability and the
+# mandatory gates that every execution path for that capability MUST pass through.
+#
+# Checked by capability_convergence.py at CI time (Phase 2) and by GateTracer
+# ContextVar at runtime (Phase 3).
+#
+# Format:
+#   capabilities:
+#     - name: "capability_name"
+#       description: "human-readable"
+#       canonical_path: "file.py::function_name"
+#       mandatory_gates:           # every execution path must hit these
+#         - symbol: "gate_func"
+#           from: "file.py"
+#       known_paths:               # additional entry points (checked for convergence)
+#         - "file.py::function_name"
+#       forbidden_patterns:        # banned code patterns for this capability
+#         - pattern: "regex"
+#           paths: ["dir/"]        # scope: where to grep
+# ============================================================================
+
+capabilities:
+
+  # ── Agent Execution ──
+  - name: "agent_execution"
+    description: "Workspace agent 执行 — 从 API 入口到 ReActLoop 的全链路"
+    canonical_path: "harness/integration.py::_execute_agent"
+    mandatory_gates:
+      - symbol: "set_active_workspace_context"
+        from: "harness/kernel/execution_context.py"
+      - symbol: "set_active_request_context"
+        from: "harness/kernel/execution_context.py"
+      - symbol: "upsert_agent_execution"
+        from: "services/execution_store.py"
+    known_paths:
+      - "api/core_facade.py::run_workspace_agent"
+      - "apps/agents/subagent/coordinator.py::execute_single"
+    forbidden_patterns:
+      - pattern: 'sqlite3\.connect\s*\('
+        paths: ["core/api/core_facade.py", "core/api/routers/workspace_agents.py"]
+
+  # ── Skill Execution ──
+  - name: "skill_execution"
+    description: "Skill 执行 — 所有调用 Skill 的路径必须经过 sys_skill_call → PolicyGate"
+    canonical_path: "harness/syscalls/skill.py::sys_skill_call"
+    mandatory_gates:
+      - symbol: "check_skill"          # PolicyGate.check_skill()
+        from: "harness/infrastructure/gates/policy_gate.py"
+      - symbol: "check_workspace_gate" # toolset gate
+        from: "harness/tools/toolsets.py"
+    known_paths:
+      - "harness/execution/loop.py::_dispatch_skill_call"
+      - "apps/skills/executor.py::execute"       # SkillExecutor.execute (inline)
+    forbidden_paths:
+      - "apps/skills/executor.py::_execute_fork"  # bypasses PolicyGate entirely
+    resolution_required: true  # must go through sys_skill_call, not direct agent creation
+
+  # ── Tool Execution ──
+  - name: "tool_execution"
+    description: "Tool 执行 — 所有工具调用必须经过 sys_tool_call → PolicyGate + ToolsetGate"
+    canonical_path: "harness/syscalls/tool.py::sys_tool_call"
+    mandatory_gates:
+      - symbol: "check_workspace_gate"
+        from: "harness/tools/toolsets.py"
+      - symbol: "check_tool"
+        from: "harness/infrastructure/gates/policy_gate.py"
+
+  # ── Model Resolution ──
+  - name: "model_resolution"
+    description: "模型解析 — 所有 LLM 模型创建必须经过 create_selected_adapter 或 get_default_model"
+    canonical_path: "harness/utils/model_injection.py::create_selected_adapter"
+    forbidden_patterns:
+      - pattern: 'create_adapter\s*\(\s*provider\s*=\s*"'
+        paths: ["core/"]
+      - pattern: 'os\.getenv\s*\(\s*"LLM_PROVIDER"\s*\)'
+        paths: ["core/"]
+      - pattern: 'os\.getenv\s*\(\s*"AIPLAT_LLM_MODEL"\s*\)'
+        paths: ["core/"]
+      - pattern: 'os\.getenv\s*\(\s*"LLM_MODEL"\s*\)'
+        paths: ["core/"]
+    resolution_required: true  # no direct adapter creation outside model_injection.py
+
+  # ── Database Access ──
+  - name: "database_access"
+    description: "数据库写入 — API/Syscall 层禁止直接 sqlite3，必须走 execution_store 或 infra_bridge"
+    canonical_path: "services/execution_store.py::upsert_agent_execution"
+    forbidden_patterns:
+      - pattern: 'sqlite3\.connect\s*\('
+        paths: ["core/api/", "core/harness/syscalls/"]
+
+  # ── Context Access ──
+  - name: "context_access"
+    description: "上下文访问 — 任何模块访问 workspace context 必须通过 get_active_workspace_context()"
+    canonical_path: "harness/kernel/execution_context.py::get_active_workspace_context"
+    forbidden_patterns:
+      - pattern: 'getattr\s*\(\s*\w+\s*,\s*["\u2018]workspace_context["\u2019]'
+        paths: ["core/harness/"]
+
+  # ── Event Emission ──
+  - name: "event_emission"
+    description: "事件发布 — Syscall 层必须通过 add_syscall_event 发布可观测事件"
+    canonical_path: "services/execution_store.py::add_syscall_event"
+    mandatory_gates:
+      - symbol: "add_syscall_event"
+        from: "services/execution_store.py"
+    known_paths:
+      - "harness/syscalls/llm.py::sys_llm_generate"
+      - "harness/syscalls/tool.py::sys_tool_call"
+      - "harness/syscalls/skill.py::sys_skill_call"
+      - "harness/syscalls/agent.py::sys_agent_call"
+
+# ── Runtime Gate Coverage (Phase 3) ──
+# These are the gates that GateTracer validates at runtime.
+# Every agent/skill/tool execution must hit all gates in its capability.
+gate_coverage_required:
+  agent_execution:
+    - workspace_context_injected
+    - request_context_injected
+    - execution_store_persist
+    - llm_generate_called
+  skill_execution:
+    - workspace_gate_checked
+    - policy_gate_skill
+  tool_execution:
+    - workspace_gate_checked
+    - policy_gate_tool
+  agent_call:
+    - policy_gate_agent

@@ -147,6 +147,17 @@ const Traces: React.FC = () => {
         </CardHeader>
         <CardContent>
           {error && <div className="text-sm text-error mb-3">{error}</div>}
+          <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+            <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+            <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+              <div><span className="text-gray-300">trace_id</span><span className="ml-2 text-gray-600">链路追踪唯一 ID，可复制/跳转详情</span></div>
+              <div><span className="text-gray-300">name</span><span className="ml-2 text-gray-600">Trace 名称</span></div>
+              <div><span className="text-gray-300">status</span><span className="ml-2 text-gray-600">healthy/success/completed/degraded/warn/failed/error</span></div>
+              <div><span className="text-gray-300">start_time</span><span className="ml-2 text-gray-600">追踪开始时间</span></div>
+              <div><span className="text-gray-300">end_time</span><span className="ml-2 text-gray-600">追踪结束时间</span></div>
+              <div><span className="text-gray-300">操作</span><span className="ml-2 text-gray-600">跳转详情 / 查看关联 Links</span></div>
+            </div>
+          </details>
           <Table columns={columns as any} data={traces} rowKey="trace_id" loading={loading} />
           <div className="mt-4">
             <Pagination

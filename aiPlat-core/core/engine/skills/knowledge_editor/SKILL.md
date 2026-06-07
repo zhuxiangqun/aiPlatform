@@ -1,19 +1,20 @@
 ---
 name: knowledge_editor
 display_name: 知识编缉
-description: 阅读新文档，识别受影响的 Wiki 页面，编排更新时间（添加/合并/拆分/新建）。这是持久化知识库的核心——LLM 不再是检索后扔掉答案，而是持续编缉和维护知识。
+description: 阅读新文档，识别受影响的Wiki页面，编排更新。LLM持续编缉和维护知识库而非检索后丢弃。涉及代码生成和接口审查。 涉及Wiki相关操作。 主要进行编辑。
 category: knowledge
 version: 1.0.0
 status: enabled
 execution_mode: prompt
 permissions:
-  - "wiki:write"
-  - "llm:generate"
+- wiki:write
+- llm:generate
 effects:
-  - type: write
-    resources: ["filesystem:~/.aiplat/wiki"]
-    idempotent: false
-    rollback_available: true
+- type: write
+  resources:
+  - filesystem:~/.aiplat/wiki
+  idempotent: false
+  rollback_available: true
 input_schema:
   source_text:
     type: string
@@ -35,6 +36,32 @@ output_schema:
     type: array
   markdown:
     type: string
+    required: true
+    description: 面向人阅读的 Markdown 输出
+metadata:
+  trigger_conditions:
+  - 知识编辑
+  - 编辑知识
+  - 修改知识库
+  - 更新条目
+  - 知识库维护
+  - 更新Wiki
+  - 修改条目
+  - 添加知识
+  keywords:
+    objects:
+    - 知识
+    - Wiki
+    - 知识库
+    actions:
+    - 编辑
+    - 更新
+    - 维护
+    - 编排
+  negative_triggers:
+  - 不需要特定的编程语言知识
+  - 不要猜测或编造不存在的数据
+  sop_goal: 持续编缉和维护 Wiki 知识库
 ---
 
 ## SOP
@@ -99,3 +126,11 @@ output_schema:
 - **每次更新保留时间戳**（`last_updated: 2026-05-25T...`）。
 - **链接是知识的核心**——每次编辑至少建立 1-2 条新链接。
 - **你是编辑，不是作者**。保持原有页面的风格和结构，只做增量更新。
+
+## 目标
+持续编缉和维护 Wiki 知识库
+
+## Checklist
+- [ ] 输出格式符合规范
+- [ ] 正确处理错误和边界条件
+- [ ] 返回结果包含引用和来源标注

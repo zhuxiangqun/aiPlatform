@@ -204,6 +204,10 @@ class CodeGenerationSkill(BaseSkill):
             if entry and entry.provider:
                 api_key = os.getenv(entry.api_key_env, "") if entry.api_key_env else entry.api_key
                 from core.adapters.llm import create_adapter
+                try:
+                    from core.harness.utils.model_injection import _log_model_selection
+                    _log_model_selection("skill_fallback", entry.name, entry="create_adapter_legacy", source="SkillBase")
+                except Exception: pass
                 return create_adapter(
                     provider=entry.provider,
                     model=entry.name,
@@ -214,7 +218,7 @@ class CodeGenerationSkill(BaseSkill):
             pass
         try:
             from core.harness.utils.model_injection import create_selected_adapter, get_default_model
-            return create_selected_adapter(model_name=get_default_model(purpose="code_gen") or "deepseek-chat")
+            return create_selected_adapter(model_name=get_default_model(purpose="code_gen") or best_model_for_purpose("chat") or "deepseek-chat")  # noqa: model-legacy
         except Exception:
             return None
 

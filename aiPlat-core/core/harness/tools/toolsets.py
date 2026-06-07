@@ -27,6 +27,15 @@ class ToolsetPolicy:
     # Per-tool restrictions (best-effort; enforced in sys_tool_call).
     file_operations_allowed_ops: Optional[Set[str]] = None
     repo_allowed_ops: Optional[Set[str]] = None
+    # Whether skills are allowed when this toolset is active (default True = backward compat).
+    skills_allowed: bool = True
+    # Agent behavioral constraints injected into system prompt:
+    # force_tool_use: LLM MUST use available tools, never answer from own knowledge
+    force_tool_use: bool = False
+    # prefer_skill_use: LLM should prefer bound skills over raw tools when applicable
+    prefer_skill_use: bool = False
+    # prefer_agent_delegate: LLM should delegate to bound sub-agents for their domain
+    prefer_agent_delegate: bool = False
 
 
 # NOTE: These tool names must match ToolConfig.name in core/apps/tools/*
@@ -98,9 +107,11 @@ DEFAULT_TOOLSETS: Dict[str, ToolsetPolicy] = {
     ),
     "mcp_readonly": ToolsetPolicy(
         name="mcp_readonly",
-        description="MCP 只读工具集：允许 mcp.* 动态工具（受 allowed_tools 及审批策略约束）",
+        description="MCP 只读工具集：允许 mcp.* 动态工具（受 allowed_tools 及审批策略约束），禁止 Skill 调用，强制工具使用",
         allowed_prefixes={"mcp."},
         allowed_tools={"calculator"},
+        skills_allowed=False,
+        force_tool_use=True,
     ),
 }
 
@@ -150,3 +161,64 @@ def is_tool_allowed(policy: ToolsetPolicy, tool_name: str, tool_args: Optional[D
             )
 
     return True, None
+
+
+# ── Unified workspace gate (shared by tool / skill / agent syscalls) ──
+
+def check_workspace_gate(
+    target_type: str,
+    target_name: str,
+    target_args: Optional[Dict[str, Any]] = None,
+) -> tuple[bool, Optional[str], Optional[str]]:
+    """Check whether a tool/skill/agent call is allowed under the active toolset.
+
+    Returns (allowed, reason, active_toolset_name).
+    All three syscalls (sys_tool_call, sys_skill_call, sys_agent_call) MUST
+    call this before executing. Per CLAUDE.md system-level rule D.
+
+    target_type: "tool" | "skill" | "agent"
+    """
+    from core.harness.kernel.execution_context import get_active_workspace_context
+
+    ws = get_active_workspace_context()
+    active_toolset = getattr(ws, "toolset", None) if ws else None
+    if not active_toolset:
+        return True, None, None  # No toolset active → allow all
+
+    # Mark gate coverage (Phase 3 GateTracer)
+    try:
+        from core.harness.kernel.execution_context import mark_gate_passed
+        mark_gate_passed("workspace_gate_checked")
+    except Exception:
+        pass
+
+    policy = resolve_toolset(str(active_toolset))
+
+    if target_type == "skill":
+        if not policy.skills_allowed:
+            return False, f"skills not allowed in '{policy.name}' toolset", str(active_toolset)
+        return True, None, str(active_toolset)
+
+    if target_type == "agent":
+        bound_ids = getattr(ws, "agent_ids", None) if ws else None
+        if isinstance(bound_ids, list) and bound_ids:
+            if str(target_name).strip() not in bound_ids:
+                return False, f"'{target_name}' not in agent's agent_ids ({bound_ids})", str(active_toolset)
+        return True, None, str(active_toolset)
+
+    if target_type == "tool":
+        allowed, reason = is_tool_allowed(policy, target_name, target_args)
+        if not allowed:
+            return False, reason, str(active_toolset)
+
+        # For mcp_readonly: additionally check agent's mcp_ids binding
+        if str(active_toolset) == "mcp_readonly" and target_name.startswith("mcp."):
+            mcp_ids = getattr(ws, "mcp_ids", None) if ws else None
+            if mcp_ids:
+                parts = target_name.split(".", 2)
+                server_name = parts[1] if len(parts) >= 2 else None
+                if server_name and server_name not in mcp_ids:
+                    return False, f"MCP server '{server_name}' not in agent's bound MCP servers ({mcp_ids})", str(active_toolset)
+        return True, None, str(active_toolset)
+
+    return True, None, None  # Unknown target_type → allow (backward compat)

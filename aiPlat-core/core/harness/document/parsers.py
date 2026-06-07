@@ -60,11 +60,48 @@ def parse_markdown(file_path: str) -> List[Dict[str, Any]]:
     with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
         text = f.read()
     if not text.strip(): return []
-    sections = re.split(r"\n(?=#{1,6}\s)", text)
+
+    # Extract YAML frontmatter (Obsidian-style --- at top)
+    frontmatter: Dict[str, Any] = {}
+    body = text
+    if text.startswith("---"):
+        parts = text.split("---", 2)
+        if len(parts) >= 3:
+            try:
+                import yaml as _yaml
+                fm = _yaml.safe_load(parts[1]) or {}
+                if isinstance(fm, dict):
+                    frontmatter = {k: fm[k] for k in fm}
+            except Exception:
+                pass
+            body = parts[2]
+
+    # Extract [[wikilinks]]
+    wikilinks = re.findall(r"\[\[([^\]|]+)(?:\|([^\]]+))?\]\]", body)
+    link_texts = [l[0] for l in wikilinks]
+
+    # Split body by markdown headings
+    sections = re.split(r"\n(?=#{1,6}\s)", body)
     elements: List[Dict[str, Any]] = []
     for si, section in enumerate(sections):
-        if section.strip(): elements.append({"type": "text", "text": section.strip(), "page_idx": si, "cells": None, "meta": {"source": "markdown"}})
-    return elements or [{"type": "text", "text": text.strip(), "page_idx": 0, "cells": None, "meta": {"source": "markdown"}}]
+        if section.strip():
+            meta = {"source": "markdown"}
+            # First section inherits full frontmatter; later sections get summary
+            if frontmatter:
+                meta.update(frontmatter if si == 0 else {
+                    "tags": frontmatter.get("tags", []) if isinstance(frontmatter.get("tags"), list) else [],
+                    "aliases": frontmatter.get("aliases", []) if isinstance(frontmatter.get("aliases"), list) else [],
+                })
+            if link_texts:
+                meta["wikilinks"] = link_texts
+            elements.append({
+                "type": "text", "text": section.strip(),
+                "page_idx": si, "cells": None, "meta": meta,
+            })
+    return elements or [{
+        "type": "text", "text": text.strip(), "page_idx": 0, "cells": None,
+        "meta": {"source": "markdown", **frontmatter},
+    }]
 
 
 # ── XLSX ──
@@ -122,6 +159,62 @@ def parse_pdf(file_path: str) -> List[Dict[str, Any]]:
         if elements: return elements
     except ImportError: pass
     return elements or _fallback_text(file_path, "pdf")
+
+
+# ── MarkItDown (unified DOCX/PPTX/XLSX/PDF/HTML → structured Markdown) ──
+
+def parse_markitdown(file_path: str) -> List[Dict[str, Any]]:
+    """Convert office documents to structured Markdown via MarkItDown, then split by headings.
+
+    Preserves heading hierarchy (#/##/###), tables (Markdown tables), lists, and links.
+    Falls back to format-specific parser if MarkItDown is unavailable.
+    """
+    ext = os.path.splitext(file_path)[1].lower().lstrip(".")
+    if ext == "html":
+        return _parse_markitdown_impl(file_path, ext)
+    try:
+        from markitdown import MarkItDown
+    except ImportError:
+        return _fallback_text(file_path, f"markitdown+{ext}")
+    return _parse_markitdown_impl(file_path, ext)
+
+
+def _parse_markitdown_impl(file_path: str, ext: str) -> List[Dict[str, Any]]:
+    try:
+        from markitdown import MarkItDown
+        md = MarkItDown()
+        result = md.convert(file_path)
+        text = result.text_content or ""
+    except Exception as e:
+        return [{"type": "text", "text": f"[markitdown conversion failed: {e}]",
+                 "page_idx": 0, "cells": None, "meta": {"source": f"markitdown+{ext}", "error": str(e)}}]
+
+    if not text.strip():
+        return []
+
+    # Split by Markdown headings (reuse same strategy as parse_markdown)
+    sections = re.split(r"\n(?=#{1,6}\s)", text)
+    elements: List[Dict[str, Any]] = []
+    for si, section in enumerate(sections):
+        if section.strip():
+            elements.append({
+                "type": "text",
+                "text": section.strip(),
+                "page_idx": si,
+                "cells": None,
+                "meta": {"source": f"markitdown+{ext}", "parser": "markitdown"},
+            })
+    return elements or [{
+        "type": "text", "text": text.strip(), "page_idx": 0, "cells": None,
+        "meta": {"source": f"markitdown+{ext}", "parser": "markitdown"},
+    }]
+
+
+# ── HTML (via MarkItDown) ──
+
+def parse_html(file_path: str) -> List[Dict[str, Any]]:
+    """Parse HTML files via MarkItDown → structured Markdown."""
+    return parse_markitdown(file_path)
 
 
 # ── Audio ──
@@ -191,4 +284,132 @@ def parse_eml(file_path: str) -> List[Dict[str, Any]]:
         return [{"type": "text", "text": f"[email parse failed: {e}]", "page_idx": 0, "cells": None, "meta": {"source": "eml", "error": str(e)}}]
 
 
-__all__ = ["parse_docx", "parse_pptx", "parse_markdown", "parse_xlsx", "parse_csv", "parse_pdf", "parse_audio", "parse_image", "parse_json_document", "parse_eml"]
+__all__ = ["parse_docx", "parse_pptx", "parse_markdown", "parse_xlsx", "parse_csv", "parse_pdf", "parse_audio", "parse_image", "parse_json_document", "parse_eml", "parse_markitdown", "parse_html", "extract_images_from_document", "describe_images"]
+
+
+# ── Image extraction from documents ──
+
+def extract_images_from_document(file_path: str, output_dir: str = None) -> List[str]:
+    """Extract embedded images from DOCX/PDF/PPTX to a temp directory."""
+    import tempfile
+    ext = os.path.splitext(file_path)[1].lower()
+    out = output_dir or tempfile.mkdtemp(prefix="aiplat_img_")
+    os.makedirs(out, exist_ok=True)
+    extracted: List[str] = []
+
+    if ext in (".docx", ".doc"):
+        extracted = _extract_docx_images(file_path, out)
+    elif ext == ".pdf":
+        extracted = _extract_pdf_images(file_path, out)
+    elif ext in (".pptx", ".ppt"):
+        extracted = _extract_pptx_images(file_path, out)
+    return extracted
+
+
+def _extract_docx_images(file_path: str, out_dir: str) -> List[str]:
+    extracted = []
+    try:
+        from docx import Document
+        doc = Document(file_path)
+        for i, rel in enumerate(doc.part.rels.values()):
+            if "image" in rel.reltype:
+                img_data = rel.target_part.blob
+                ext2 = os.path.splitext(rel.target_part.partname)[1] or ".png"
+                img_path = os.path.join(out_dir, f"docx_img_{i}{ext2}")
+                with open(img_path, "wb") as f:
+                    f.write(img_data)
+                extracted.append(img_path)
+    except ImportError:
+        pass
+    return extracted
+
+
+def _extract_pdf_images(file_path: str, out_dir: str) -> List[str]:
+    extracted = []
+    try:
+        import fitz
+        doc = fitz.open(file_path)
+        for pi in range(len(doc)):
+            for img_info in doc[pi].get_images(full=True):
+                xref = img_info[0]
+                base_img = doc.extract_image(xref)
+                img_bytes = base_img["image"]
+                ext2 = base_img.get("ext", "png")
+                img_path = os.path.join(out_dir, f"pdf_p{pi}_img_{xref}.{ext2}")
+                with open(img_path, "wb") as f:
+                    f.write(img_bytes)
+                extracted.append(img_path)
+        doc.close()
+    except ImportError:
+        pass
+    return extracted
+
+
+def _extract_pptx_images(file_path: str, out_dir: str) -> List[str]:
+    extracted = []
+    try:
+        from pptx import Presentation
+        from pptx.enum.shapes import MSO_SHAPE_TYPE
+        prs = Presentation(file_path)
+        for si, slide in enumerate(prs.slides):
+            for shape in slide.shapes:
+                if shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
+                    img = shape.image
+                    ct = img.content_type or "image/png"
+                    ext2 = ct.split("/")[-1] if "/" in ct else "png"
+                    img_path = os.path.join(out_dir, f"pptx_s{si}_{shape.shape_id}.{ext2}")
+                    with open(img_path, "wb") as f:
+                        f.write(img.blob)
+                    extracted.append(img_path)
+    except ImportError:
+        pass
+    return extracted
+
+
+# ── Image description via infra LLM vision ──
+
+async def describe_images(image_paths: List[str],
+                           model_name: str = None,
+                           prompt: str = "请用2-3句中文描述这张图片的主要内容，包括图中展示的结构、流程或关键信息。") -> List[Dict[str, str]]:
+    """Generate semantic descriptions for images using a vision-capable LLM."""
+    results = []
+    if not image_paths:
+        return results
+
+    import base64
+
+    try:
+        from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
+        if not model_name:
+            model_name = best_model_for_purpose("vision") or best_model_for_purpose("multimodal")
+        if not model_name:
+            model_name = (os.getenv("AIPLAT_VISION_MODEL") or
+                         os.getenv("AIPLAT_LLM_MODEL") or "")
+        if not model_name:
+            return [{"path": p, "description": "", "error": "no vision model configured"}
+                    for p in image_paths]
+        adapter = create_selected_adapter(model_name=model_name)
+    except Exception:
+        return [{"path": p, "description": "", "error": "model init failed"}
+                for p in image_paths]
+
+    for img_path in image_paths[:8]:
+        try:
+            with open(img_path, "rb") as f:
+                img_b64 = base64.b64encode(f.read()).decode("utf-8")
+            ext3 = os.path.splitext(img_path)[1].lower().strip(".")
+            mime = f"image/{ext3}" if ext3 in ("png", "jpeg", "jpg", "gif", "webp") else "image/png"
+            messages = [{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{img_b64}"}},
+                ]
+            }]
+            resp = await adapter.generate(messages, config=None)
+            desc = resp.content if hasattr(resp, 'content') else str(resp)
+            results.append({"path": img_path, "description": desc.strip(), "error": None})
+        except Exception as e:
+            results.append({"path": img_path, "description": "", "error": str(e)[:200]})
+
+    return results

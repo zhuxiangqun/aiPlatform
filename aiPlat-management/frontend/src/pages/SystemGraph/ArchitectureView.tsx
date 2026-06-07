@@ -9,17 +9,6 @@ import { Layers, TrendingUp, Maximize2, Minimize2 } from 'lucide-react';
 
 echarts.use([GraphChart, TreemapChart, TooltipComponent, GridComponent, LegendComponent, CanvasRenderer]);
 
-interface SankeyData {
-  nodes: { name: string }[];
-  links: { source: string; target: string; value: number }[];
-}
-
-interface TreemapEntry {
-  name: string;
-  file_count: number;
-  children: { name: string; children?: any[]; value?: number }[];
-}
-
 const LAYER_COLORS: Record<string, string> = {
   infra: '#06b6d4',
   core: '#8b5cf6',
@@ -64,19 +53,7 @@ const ArchitectureView: React.FC = () => {
       label: { show: true, fontSize: 12, color: '#c9d1d9' },
     }));
 
-    const gLinks = flows.map((f: any) => ({
-      source: f.source,
-      target: f.target,
-      label: { show: true, formatter: f.value.toLocaleString(), fontSize: 9, color: '#8b949e' },
-      lineStyle: {
-        color: LAYER_COLORS[f.source] || '#9ca3af',
-        opacity: 0.3 + (f.value / maxVal) * 0.5,
-        width: 0.5 + (f.value / maxVal) * 4,
-        curveness: 0.3,
-      },
-    }));
-
-    // Add reverse edges with different curveness to avoid overlap
+    // Use allLinks with reverse edges to avoid overlap
     const seen: Record<string, boolean> = {};
     const allLinks = [];
     for (const f of flows) {

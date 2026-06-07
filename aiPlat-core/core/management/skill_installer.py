@@ -98,6 +98,23 @@ def _iter_skill_dirs(root: Path, *, subdir: Optional[str] = None) -> List[Path]:
     return out
 
 
+def _find_skill_dirs(root: Path) -> List[Path]:
+    """Recursively find all directories containing a SKILL.md file.
+
+    No subdir guessing needed — works regardless of nesting depth.
+    Returns distinct skill directory paths (each SKILL.md's parent dir).
+    """
+    seen: set = set()
+    out: List[Path] = []
+    for entry in sorted(root.rglob("SKILL.md")):
+        skill_dir = entry.parent
+        key = str(skill_dir.resolve())
+        if key not in seen:
+            seen.add(key)
+            out.append(skill_dir)
+    return out
+
+
 def _parse_frontmatter(skill_md_text: str) -> Tuple[Dict[str, Any], str]:
     """
     Minimal YAML-frontmatter parser.
@@ -477,6 +494,8 @@ class SkillInstaller:
         allow_overwrite: bool,
     ) -> InstallResult:
         skills = _iter_skill_dirs(root, subdir=subdir)
+        if not skills and not subdir:
+            skills = _find_skill_dirs(root)
         if not skills:
             raise ValueError("no_skills_found")
 
@@ -525,6 +544,8 @@ class SkillInstaller:
         subdir: Optional[str],
     ) -> PlanResult:
         skills = _iter_skill_dirs(root, subdir=subdir)
+        if not skills and not subdir:
+            skills = _find_skill_dirs(root)
         if not skills:
             raise ValueError("no_skills_found")
 

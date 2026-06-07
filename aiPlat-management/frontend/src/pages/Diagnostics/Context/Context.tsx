@@ -192,6 +192,17 @@ const ContextDiagnostics: React.FC = () => {
 
           <div className="mt-4">
             <div className="text-xs text-gray-500 mb-2">最近 metrics（kind=metric / name=context_assemble）</div>
+            <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+              <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+              <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+                <div><span className="text-gray-300">created_at</span><span className="ml-2 text-gray-600">上下文组装时间</span></div>
+                <div><span className="text-gray-300">tenant</span><span className="ml-2 text-gray-600">租户 ID</span></div>
+                <div><span className="text-gray-300">session</span><span className="ml-2 text-gray-600">会话 ID</span></div>
+                <div><span className="text-gray-300">target</span><span className="ml-2 text-gray-600">目标（Agent ID / Skill ID 等）</span></div>
+                <div><span className="text-gray-300">cache_hit</span><span className="ml-2 text-gray-600">是否命中稳定缓存（true=绿标）</span></div>
+                <div><span className="text-gray-300">tokens_est</span><span className="ml-2 text-gray-600">估算 token 用量</span></div>
+              </div>
+            </details>
             <Table
               data={recent}
               loading={metricsLoading}

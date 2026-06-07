@@ -10,13 +10,19 @@ import { useReplayEvents } from '../../hooks/useReplayEvents';
 const ICONS: Record<string, string> = {
   llm: '🧠', tool: '🔧', skill: '🎯', mcp: '🔌', reason: '💭', observe: '👁️',
   diag: '🔍', runtime: '⚙️', capability: '🧩', security: '🔒', trace: '🔗', finish: '🏁',
-  start: '▶️', default: '📋',
+  start: '▶️', routing: '🧭', changeset: '📝', metric: '📊',
+  step: '🔄', context: '📋', done: '✅', gate: '🚪', agent: '🤖',
+  hitl: '⏸️', fork: '🍴', stage: '📊', pipeline: '🏗️',
+  default: '📋',
 };
 
 const TYPE_COLORS: Record<string, string> = {
   llm: '#3b82f6', tool: '#f59e0b', skill: '#8b5cf6', mcp: '#10b981',
   reason: '#6366f1', observe: '#ec4899', diag: '#06b6d4',
   runtime: '#3b82f6', capability: '#f59e0b', security: '#22c55e', trace: '#06b6d4', finish: '#f97316',
+  routing: '#a855f7', changeset: '#eab308', metric: '#14b8a6',
+  step: '#8b5cf6', context: '#6b7280', done: '#22c55e', gate: '#ef4444', agent: '#3b82f6',
+  hitl: '#f59e0b', fork: '#ec4899', stage: '#6366f1', pipeline: '#14b8a6',
   default: '#6b7280',
 };
 
@@ -73,48 +79,88 @@ const ExecutionViewer: React.FC<ExecutionViewerProps> = ({ nodes: propNodes, tit
   const replay = useReplayEvents(replayRunId || null);
 
   // Merge prop nodes with live-generated nodes + replay nodes
+  // Unified status mapping: all backend statuses → frontend display status
+  const mapStatus = (e: any): 'completed' | 'failed' | 'running' | 'warning' | 'idle' => {
+    const s = (e.status || '').toLowerCase();
+    if (s === 'ok' || s === 'success' || s === 'completed') return 'completed';
+    if (s === 'error' || s === 'failed' || s === 'policy_denied' || s === 'toolset_denied'
+        || s === 'blocked' || s === 'prod_denied') return 'failed';
+    if (s === 'running' || s === 'pending') return 'running';
+    if (s === 'warning' || s === 'approval_required') return 'warning';
+    return 'idle';
+  };
+
+  const resolveArgs = (e: any) => {
+    if (e.args && typeof e.args === 'object' && !Array.isArray(e.args)) return e.args;
+    try { return JSON.parse(e.args_json || '{}'); } catch { return e.args_json || {}; }
+  };
+
+  const resolveResult = (e: any) => {
+    if (e.result && typeof e.result === 'object' && !Array.isArray(e.result)) return e.result;
+    try { return JSON.parse(e.result_json || '{}'); } catch { return e.result_json || {}; }
+  };
+
+  const eventToNode = (e: any, i: number, prefix: string): ENode => ({
+    id: e.span_id || `${prefix}_${i}`,
+    type: (e.kind || '').replace(/^sys_/, '') || 'default',
+    name: (e.name || e.kind || 'unknown').slice(0, 40),
+    status: mapStatus(e),
+    startTime: e.start_time || undefined,
+    duration: e.duration_ms || 0,
+    details: {
+      args: resolveArgs(e),
+      result: resolveResult(e),
+      error: e.error,
+      target: e.target_type,
+      kind: e.kind,
+      input_tokens: e.input_tokens ?? undefined,
+      output_tokens: e.output_tokens ?? undefined,
+      cost: e.cost ?? undefined,
+    },
+  });
+
+  // Merge events with same span_id — keep latest, then build tree from parent_span_id
+  const mergeEvents = (events: any[], prefix: string): ENode[] => {
+    const merged = new Map<string, { node: ENode; idx: number; finalStatus: boolean }>();
+    for (let i = 0; i < events.length; i++) {
+      const e = events[i];
+      const id = e.span_id || `${prefix}_${i}`;
+      const node = eventToNode(e, i, prefix);
+      node.parentSpanId = e.parent_span_id || undefined;
+      const existing = merged.get(id);
+      if (!existing || (node.status !== 'idle' && !existing.finalStatus)) {
+        const isFinal = node.status === 'completed' || node.status === 'failed' || node.status === 'warning';
+        if (existing) {
+          if (node.details && existing.node.details) {
+            node.details.args = (node.details.args && Object.keys(node.details.args).length) ? node.details.args : existing.node.details.args;
+            node.details.result = (node.details.result && Object.keys(node.details.result).length) ? node.details.result : existing.node.details.result;
+          }
+        }
+        merged.set(id, { node, idx: i, finalStatus: existing ? (existing.finalStatus || isFinal) : isFinal });
+      }
+    }
+    // Build tree: attach child nodes to their parent based on parent_span_id
+    const nodes = [...merged.values()].sort((a, b) => (a.node.startTime || a.idx) - (b.node.startTime || b.idx) || a.idx - b.idx).map(m => m.node);
+    const nodeMap = new Map<string, ENode>(nodes.map(n => [n.id, n]));
+    const roots: ENode[] = [];
+    for (const n of nodes) {
+      if (n.parentSpanId && nodeMap.has(n.parentSpanId)) {
+        const parent = nodeMap.get(n.parentSpanId)!;
+        if (!parent.children) parent.children = [];
+        parent.children.push(n);
+      } else {
+        roots.push(n);
+      }
+    }
+    return roots;
+  };
+
   const dataNodes: ENode[] = useMemo(() => {
     if (live && liveEvents.length > 0) {
-      return liveEvents.map((e, i) => ({
-        id: e.span_id || `ev_${i}`,
-        type: (e.kind || '').replace(/^sys_/, '') || 'default',
-        name: (e.name || e.kind || 'unknown').slice(0, 40),
-        status: e.status === 'ok' ? 'completed' as const
-          : e.status === 'error' ? 'failed' as const
-          : e.status === 'running' ? 'running' as const : 'idle' as const,
-        duration: e.duration_ms || 0,
-        details: {
-          args: (() => { try { return JSON.parse(e.args_json || '{}'); } catch { return e.args_json; } })(),
-          result: (() => { try { return JSON.parse(e.result_json || '{}'); } catch { return e.result_json; } })(),
-          error: e.error,
-          target: e.target_type,
-          kind: e.kind,
-          input_tokens: e.input_tokens || 0,
-          output_tokens: e.output_tokens || 0,
-          cost: e.cost || 0,
-        },
-      }));
+      return mergeEvents(liveEvents, 'ev');
     }
     if (replayRunId && replay.visibleEvents.length > 0) {
-      return replay.visibleEvents.map((e, i) => ({
-        id: e.span_id || `replay_${i}`,
-        type: (e.kind || '').replace(/^sys_/, '') || 'default',
-        name: (e.name || e.kind || 'unknown').slice(0, 40),
-        status: e.status === 'ok' ? 'completed' as const
-          : e.status === 'error' ? 'failed' as const
-          : e.status === 'running' ? 'running' as const : 'idle' as const,
-        duration: e.duration_ms || 0,
-        details: {
-          args: (() => { try { return JSON.parse(e.args_json || '{}'); } catch { return e.args_json; } })(),
-          result: (() => { try { return JSON.parse(e.result_json || '{}'); } catch { return e.result_json; } })(),
-          error: e.error,
-          target: e.target_type,
-          kind: e.kind,
-          input_tokens: e.input_tokens || 0,
-          output_tokens: e.output_tokens || 0,
-          cost: e.cost || 0,
-        },
-      }));
+      return mergeEvents(replay.visibleEvents, 'replay');
     }
     return propNodes || [];
   }, [live, liveEvents, propNodes, replayRunId, replay.visibleEvents]);
@@ -170,9 +216,10 @@ const ExecutionViewer: React.FC<ExecutionViewerProps> = ({ nodes: propNodes, tit
       const sc = STATUS_CONFIG[n.status] || STATUS_CONFIG.idle;
       const icon = n.icon || (hasChildren ? '📦' : ICONS[n.type] || ICONS.default);
       const durText = n.duration ? (n.duration >= 1000 ? `${(n.duration / 1000).toFixed(1)}s` : `${n.duration}ms`) : '';
-      const totalTokens = (n.details?.input_tokens || 0) + (n.details?.output_tokens || 0);
-      const tokenText = totalTokens > 0 ? (totalTokens >= 1000 ? `${(totalTokens / 1000).toFixed(1)}K` : String(totalTokens)) : '';
-      const cost = n.details?.cost || 0;
+      const totalTokens = (n.details?.input_tokens ?? 0) + (n.details?.output_tokens ?? 0);
+      const hasTokenInfo = n.details?.input_tokens !== undefined || n.details?.output_tokens !== undefined;
+      const tokenText = hasTokenInfo ? (totalTokens >= 1000 ? `${(totalTokens / 1000).toFixed(1)}K` : String(totalTokens)) : '';
+      const cost = n.details?.cost ?? 0;
       const costText = cost > 0 ? `$${cost.toFixed(4)}` : '';
 
       nodeList.push({
@@ -189,7 +236,7 @@ const ExecutionViewer: React.FC<ExecutionViewerProps> = ({ nodes: propNodes, tit
                   <span style={{ color }}>{sc.badge}{n.status === 'running' ? '...' : ''}{durText ? ` · ${durText}` : ''}</span>
                 )}
                 {tokenText && (
-                  <span style={{ color: 'var(--ev-text-muted)', fontSize: 9 }} title={`${n.details?.input_tokens || 0} in / ${n.details?.output_tokens || 0} out`}>
+                  <span style={{ color: 'var(--ev-text-muted)', fontSize: 9 }} title={`${n.details?.input_tokens ?? 0} in / ${n.details?.output_tokens ?? 0} out`}>
                     {tokenText} tok
                   </span>
                 )}
@@ -284,9 +331,6 @@ const ExecutionViewer: React.FC<ExecutionViewerProps> = ({ nodes: propNodes, tit
         if (parent?.children && parent.children.length > 0) {
           const firstChild = flattenedNodes.find(n => n.parentId === parent.id);
           if (firstChild) {
-            const edgeColor = parent.status === 'running' ? '#3b82f6' :
-                             parent.status === 'completed' ? '#22c55e' :
-                             parent.status === 'failed' ? '#ef4444' : '#374151';
             edgeList.push({
               id: `sub_${parent.id}_start`,
               source: parent.id,
@@ -462,9 +506,9 @@ const ExecutionViewer: React.FC<ExecutionViewerProps> = ({ nodes: propNodes, tit
             <span style={{ color: 'var(--ev-text-secondary)' }}>类型: {selectedNode.type}</span>
             <span style={{ color: 'var(--ev-text-secondary)' }}>状态: {selectedNode.status}</span>
             {selectedNode.duration ? <span style={{ color: 'var(--ev-text-secondary)' }}>耗时: {selectedNode.duration}ms</span> : null}
-            {selectedNode.details?.input_tokens != null && (selectedNode.details.input_tokens > 0 || selectedNode.details.output_tokens > 0) ? (
+            {selectedNode.details?.input_tokens !== undefined || selectedNode.details?.output_tokens !== undefined ? (
               <span style={{ color: 'var(--ev-text-secondary)' }}>
-                输入: {selectedNode.details.input_tokens || 0} · 输出: {selectedNode.details.output_tokens || 0} tok
+                输入: {selectedNode.details.input_tokens ?? 0} · 输出: {selectedNode.details.output_tokens ?? 0} tok
               </span>
             ) : null}
             {selectedNode.details?.cost ? (

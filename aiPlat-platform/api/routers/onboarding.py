@@ -27,12 +27,16 @@ from core.schemas_onboarding import (
     OnboardingSecretsMigrateRequest,
     OnboardingStrongGateRequest,
     OnboardingTrustedSkillKeysRequest,
+    OnboardingGenerateSkillKeyRequest,
 )
 
 from storage import sqlite as platform_store  # tenant CRUD now lives in Platform
 
 
-router = APIRouter(prefix="/platform/onboarding", tags=["onboarding"])
+router = APIRouter(tags=["onboarding"])
+
+
+_execution_store = None  # set by routes.py lifespan on startup
 
 
 def _rt():
@@ -40,6 +44,8 @@ def _rt():
 
 
 def _store():
+    if _execution_store:
+        return _execution_store
     rt = _rt()
     return getattr(rt, "execution_store", None) if rt else None
 
@@ -694,6 +700,37 @@ async def set_trusted_skill_keys(request: OnboardingTrustedSkillKeysRequest, _au
     except Exception:
         pass
     return {"status": "updated", "trusted_skill_pubkeys": {"keys_count": len(keys_out), "key_ids": [k.get("key_id") for k in keys_out]}}
+
+
+@router.post("/onboarding/generate-skill-key")
+async def generate_skill_key(request: OnboardingGenerateSkillKeyRequest, _auth: str = Depends(require_auth)):
+    from core.harness.infrastructure.crypto.signature import generate_ed25519_key_pair, key_id_for_public_key
+
+    sk_pem, pk_pem = generate_ed25519_key_pair()
+    kid = key_id_for_public_key(pk_pem)
+
+    # Best-effort: save public key to global settings if store is available
+    store = _store()
+    if store:
+        try:
+            current = await store.get_global_setting(key="trusted_skill_pubkeys") or {}
+            existing_keys = list(current.get("keys", []) if isinstance(current.get("keys"), list) else [])
+            existing_key_ids = {k.get("key_id") for k in existing_keys if isinstance(k, dict)}
+            if kid not in existing_key_ids:
+                existing_keys.append({"key_id": kid, "public_key": pk_pem, "label": request.label or ""})
+                await store.upsert_global_setting(key="trusted_skill_pubkeys", value={"keys": existing_keys})
+                try:
+                    await record_changeset(
+                        store=store, name="global_setting_upsert_trusted_skill_keys",
+                        target_type="global_setting", target_id="trusted_skill_pubkeys",
+                        args={"action": "generate_key", "key_id": kid}, user_id="admin",
+                    )
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    return {"key_id": kid, "public_key": pk_pem, "private_key": sk_pem, "label": request.label}
 
 
 @router.post("/onboarding/context-config")

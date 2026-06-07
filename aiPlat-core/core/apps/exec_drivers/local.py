@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import sys
 import time
 import tempfile
 from pathlib import Path
@@ -38,7 +39,7 @@ class LocalExecDriver(ExecDriver):
             p.write_text(code or "", encoding="utf-8")
 
             if language == "python":
-                cmd = ["python3", str(p)]
+                cmd = [sys.executable, str(p)]
             else:
                 cmd = ["node", str(p)]
 
@@ -72,7 +73,7 @@ class LocalExecDriver(ExecDriver):
         ok_py = True
         ok_node = True
         try:
-            proc = await asyncio.create_subprocess_exec("python3", "--version", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+            proc = await asyncio.create_subprocess_exec(sys.executable, "--version", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
             await proc.communicate()
             ok_py = proc.returncode == 0
         except Exception:

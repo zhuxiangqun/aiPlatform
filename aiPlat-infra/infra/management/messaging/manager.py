@@ -147,8 +147,14 @@ class MessagingManager(ManagementBase):
                 ]
                 return HealthStatus(
                     status=status,
-                    message=f"Some queues degraded: {degraded}",
-                    details={"queues": queue_details, "degraded": degraded}
+                    message=f"{len(degraded)} queue(s) degraded: {', '.join(degraded)}",
+                    details={"queues": queue_details}
+                )
+            elif status == Status.DISABLED:
+                return HealthStatus(
+                    status=status,
+                    message="Message queue not configured (disabled)",
+                    details={"queues": {}}
                 )
             else:
                 return HealthStatus(

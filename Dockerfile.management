@@ -1,0 +1,17 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# 依赖层 (aiPlat-infra → aiPlat-core → aiPlat-management)
+COPY aiPlat-infra/ /app/aiPlat-infra/
+RUN pip install --no-cache-dir -e /app/aiPlat-infra
+
+COPY aiPlat-core/ /app/aiPlat-core/
+RUN pip install --no-cache-dir -e /app/aiPlat-core
+
+COPY aiPlat-management/ /app/aiPlat-management/
+RUN pip install --no-cache-dir -e "/app/aiPlat-management[dev]" 2>/dev/null \
+    || pip install --no-cache-dir -e /app/aiPlat-management
+
+EXPOSE 8000
+CMD ["python", "-m", "uvicorn", "management.server:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory"]

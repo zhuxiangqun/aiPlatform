@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2, GitBranch, CheckCircle2, XCircle, Clock, ShieldCheck } from 'lucide-react';
-import { Button, toast } from '../../../components/ui';
+import { Plus, Trash2, GitBranch, CheckCircle2, XCircle, Clock, ShieldCheck, Info, Key } from 'lucide-react';
+import { Button, Modal, toast, Badge } from '../../../components/ui';
+import { toastGateError } from '../../../components/ui';
 import ImportBar from '../../../components/workspace/ImportBar';
 import { workflowApi, appApi, workflowTemplateApi } from '../../../services';
 
@@ -11,6 +12,11 @@ const WorkflowsPage: React.FC = () => {
   const [lastRuns, setLastRuns] = useState<Record<string, any>>({});
   const [pubApps, setPubApps] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
+  const [detailWf, setDetailWf] = useState<any>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [signKey, setSignKey] = useState('');
+  const [signing, setSigning] = useState(false);
+  const [signResult, setSignResult] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -44,10 +50,26 @@ const WorkflowsPage: React.FC = () => {
 
   const handleSubmitForReview = async (wf: any) => {
     try {
-      await workflowTemplateApi.submitForReview(wf.name);
+      await (workflowTemplateApi as any).submitForReview(wf.name);
       toast.success(`Workflow "${wf.name}" 已提交审批`);
       refresh();
     } catch (e: any) { toast.error('提交失败', e?.message || String(e)); }
+  };
+
+  const handleSign = async () => {
+    if (!detailWf?.id || !signKey.trim()) return;
+    setSigning(true);
+    setSignResult(null);
+    try {
+      const res = await workflowApi.sign(detailWf.id, { private_key: signKey.trim() });
+      setSignResult(res.signature);
+      toast.success('签名成功');
+      setSignKey('');
+      refresh();
+    } catch (e: any) {
+      toastGateError(e, '签名失败');
+      setSignResult(null);
+    } finally { setSigning(false); }
   };
 
   return (
@@ -88,6 +110,10 @@ const WorkflowsPage: React.FC = () => {
                   <div className="flex items-start justify-between gap-2 mb-1">
                     <h3 className="text-sm font-semibold text-gray-100 truncate">{wf.name || '未命名'}</h3>
                     <div className="flex items-center gap-1">
+                      <button onClick={e => { e.stopPropagation(); setDetailWf(wf); setDetailOpen(true); setSignResult(null); setSignKey(''); }}
+                        className="text-gray-600 hover:text-gray-300" title="详情">
+                        <Info size={14} />
+                      </button>
                       {(wf.status && wf.status !== 'draft') ? (
                         <span className={`text-[8px] px-1 py-0 rounded border ${
                           wf.status === 'listed' ? 'text-green-400 border-green-500/30 bg-green-500/5' :
@@ -101,7 +127,48 @@ const WorkflowsPage: React.FC = () => {
                       <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${wfEnabled ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-dark-bg text-gray-600 border border-dark-border'}`}>
                         {wfEnabled ? '已启用' : '已禁用'}
                       </span>
-                    </div>
+      {detailWf && (
+        <Modal open={detailOpen} onClose={() => { setDetailOpen(false); setDetailWf(null); }} title={`Workflow 详情：${detailWf.name || ''}`} width={700}
+          footer={<Button onClick={() => { setDetailOpen(false); setDetailWf(null); }}>关闭</Button>}>
+          <div className="space-y-3 text-sm text-gray-300">
+            <div className="grid grid-cols-3 gap-3">
+              <div><div className="text-xs text-gray-500">名称</div><div className="text-gray-100">{detailWf.name || '-'}</div></div>
+              <div><div className="text-xs text-gray-500">ID</div><div className="text-xs font-mono text-gray-400">{detailWf.id || '-'}</div></div>
+              <div><div className="text-xs text-gray-500">状态</div><span className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                detailWf.status === 'published' ? 'text-blue-400 border-blue-500/30 bg-blue-500/5' : 'text-gray-400 border-gray-500/30'
+              }`}>{detailWf.status || 'draft'}</span></div>
+            </div>
+            {detailWf.description && <div><div className="text-xs text-gray-500">描述</div><div>{detailWf.description}</div></div>}
+            <div className="grid grid-cols-3 gap-3">
+              <div><div className="text-xs text-gray-500">节点</div><div className="text-gray-100">{detailWf.nodes?.length || 0}</div></div>
+              <div><div className="text-xs text-gray-500">连线</div><div className="text-gray-100">{detailWf.edges?.length || 0}</div></div>
+              <div><div className="text-xs text-gray-500">启用</div><Badge variant={detailWf.enabled !== false ? 'success' : 'default'}>{detailWf.enabled !== false ? '是' : '否'}</Badge></div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-500 mb-1">签名</div>
+              {signResult ? (
+                <div className="flex items-center gap-2 text-green-400 text-xs">
+                  <ShieldCheck size={14} />
+                  <span className="font-mono">{signResult.slice(0, 16)}...</span>
+                  <button onClick={() => setSignResult(null)} className="text-gray-500 hover:text-gray-300 ml-2">重新签名</button>
+                </div>
+              ) : (
+                <div className="flex items-start gap-2">
+                  <textarea className="flex-1 h-14 px-3 py-2 bg-dark-hover border border-dark-border rounded text-xs text-gray-200 placeholder-gray-500 font-mono resize-none"
+                    placeholder="粘贴 Ed25519 私钥 PEM"
+                    value={signKey} onChange={(e) => setSignKey(e.target.value)} />
+                  <div className="flex flex-col gap-1">
+                    <Button variant="primary" size="sm" icon={<Key size={14} />} onClick={handleSign} loading={signing} disabled={!signKey.trim() || signing}>签名</Button>
+                    <Button variant="ghost" size="sm" onClick={() => { try { window.open('/onboarding', '_blank', 'noopener,noreferrer'); } catch {} }}>生成密钥</Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </Modal>
+      )}
+
+    </div>
                   </div>
                   {wf.description && <p className="text-xs text-gray-500 mb-2 line-clamp-2">{wf.description}</p>}
                   {pubApp && <div className="mb-1"><span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/5 border border-blue-500/20 text-blue-400">已绑定 App: {pubApp.name}</span></div>}

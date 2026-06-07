@@ -257,3 +257,7 @@ class InfraAPIClient:
     async def get_model_providers(self) -> Dict[str, Any]:
         """Get supported providers."""
         return await self._request("GET", "/api/infra/models/providers")
+
+    async def get_provider_models(self) -> Dict[str, Any]:
+        """Get dynamic model catalog from provider_models.json."""
+        return await self._request("GET", "/api/infra/models/provider-models")

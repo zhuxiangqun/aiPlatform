@@ -52,7 +52,7 @@ export function useReplayEvents(runId: string | null, maxEvents = 200) {
     if (!runId) return;
     setState(prev => ({ ...prev, loading: true, error: null, events: [], visibleEvents: [], currentIndex: 0, progress: 0 }));
     try {
-      const resp = await fetch(`/api/core/diagnostics/syscalls/core?run_id=${encodeURIComponent(runId)}&limit=${maxEvents}&offset=0`);
+      const resp = await fetch(`/api/core/syscalls/events?run_id=${encodeURIComponent(runId)}&limit=${maxEvents}&offset=0`);
       const data = await resp.json();
       const items: LiveEvent[] = (data?.items || []).reverse(); // oldest first
       setState(prev => ({

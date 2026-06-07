@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS documents (
   source_uri TEXT NOT NULL,
   kind TEXT NOT NULL,
   status TEXT NOT NULL,
+  wiki_status TEXT NOT NULL DEFAULT '',
   meta_json TEXT,
   created_at INTEGER NOT NULL,
   PRIMARY KEY (tenant_id, doc_id)
@@ -177,6 +178,42 @@ CREATE TABLE IF NOT EXISTS kb_job_events (
 
 CREATE INDEX IF NOT EXISTS idx_kb_job_events_job
   ON kb_job_events(tenant_id, job_id, ts);
+
+-- Watched directories for auto-ingest
+CREATE TABLE IF NOT EXISTS kb_watches (
+  tenant_id TEXT NOT NULL,
+  watch_id TEXT NOT NULL,
+  directory_path TEXT NOT NULL,
+  collection_id TEXT NOT NULL DEFAULT 'default',
+  recursive INTEGER NOT NULL DEFAULT 1,
+  pattern TEXT NOT NULL DEFAULT '*.md',
+  enabled INTEGER NOT NULL DEFAULT 1,
+  last_synced REAL NOT NULL DEFAULT 0.0,
+  PRIMARY KEY (tenant_id, watch_id)
+);
+
+-- Connected vaults (direct filesystem link, no copy)
+CREATE TABLE IF NOT EXISTS kb_vaults (
+  tenant_id TEXT NOT NULL,
+  vault_id TEXT NOT NULL,
+  vault_path TEXT NOT NULL,
+  label TEXT NOT NULL,
+  enabled INTEGER NOT NULL DEFAULT 1,
+  auto_index INTEGER NOT NULL DEFAULT 1,
+  last_indexed REAL NOT NULL DEFAULT 0.0,
+  created_at REAL NOT NULL DEFAULT (strftime('%s','now')),
+  PRIMARY KEY (tenant_id, vault_id)
+);
+
+-- Per-file wiki status within a vault (e.g. ready | wikified | failed)
+CREATE TABLE IF NOT EXISTS kb_vault_files (
+  vault_id TEXT NOT NULL,
+  file_path TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'wikified',
+  doc_id TEXT NOT NULL DEFAULT '',
+  last_wikified_at REAL NOT NULL DEFAULT (strftime('%s','now')),
+  PRIMARY KEY (vault_id, file_path)
+);
 """
 
 
@@ -196,6 +233,11 @@ class KBSqlite:
     def ensure_schema(self) -> None:
         with self.connect() as conn:
             conn.executescript(SCHEMA_SQL)
+            # Migration: add wiki_status column for existing DBs
+            try:
+                conn.execute("ALTER TABLE documents ADD COLUMN wiki_status TEXT NOT NULL DEFAULT ''")
+            except Exception:
+                pass
             conn.commit()
         # FTS5 full-text search on kb_elements (created separately to handle missing fts5 builds)
         self._ensure_fts5()
@@ -855,3 +897,110 @@ class KBSqlite:
             d.pop("extra_json", None)
             items.append(d)
         return {"items": items, "total": int(total)}
+
+    # ── Watched Directories ──
+
+    def upsert_watch(self, *, tenant_id: str, watch_id: str, directory_path: str, collection_id: str = "default", recursive: bool = True, pattern: str = "*.md", enabled: bool = True) -> None:
+        with self.connect() as conn:
+            conn.execute(
+                """INSERT OR REPLACE INTO kb_watches (tenant_id, watch_id, directory_path, collection_id, recursive, pattern, enabled, last_synced)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (tenant_id, watch_id, directory_path, collection_id, int(recursive), pattern, int(enabled), 0.0),
+            )
+            conn.commit()
+
+    def delete_watch(self, *, tenant_id: str, watch_id: str) -> None:
+        with self.connect() as conn:
+            conn.execute("DELETE FROM kb_watches WHERE tenant_id=? AND watch_id=?", (tenant_id, watch_id))
+            conn.commit()
+
+    def list_watches(self, *, tenant_id: str, enabled_only: bool = True) -> List[Dict[str, Any]]:
+        with self.connect() as conn:
+            if enabled_only:
+                rows = conn.execute(
+                    "SELECT * FROM kb_watches WHERE tenant_id=? AND enabled=1", (tenant_id,)
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT * FROM kb_watches WHERE tenant_id=?", (tenant_id,)
+                ).fetchall()
+        return [dict(r) for r in rows]
+
+    def touch_watch(self, *, tenant_id: str, watch_id: str) -> None:
+        import time
+        with self.connect() as conn:
+            conn.execute(
+                "UPDATE kb_watches SET last_synced=? WHERE tenant_id=? AND watch_id=?",
+                (time.time(), tenant_id, watch_id),
+            )
+            conn.commit()
+
+    # ── Connected Vaults ──
+
+    def upsert_vault(self, *, tenant_id: str, vault_id: str, vault_path: str, label: str = "", auto_index: bool = True) -> None:
+        with self.connect() as conn:
+            conn.execute(
+                """INSERT OR REPLACE INTO kb_vaults (tenant_id, vault_id, vault_path, label, auto_index)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (tenant_id, vault_id, vault_path, label or vault_path.split("/")[-1], int(auto_index)),
+            )
+            conn.commit()
+
+    def delete_vault(self, *, tenant_id: str, vault_id: str) -> None:
+        with self.connect() as conn:
+            conn.execute("DELETE FROM kb_vaults WHERE tenant_id=? AND vault_id=?", (tenant_id, vault_id))
+            conn.commit()
+
+    def list_vaults(self, *, tenant_id: str) -> List[Dict[str, Any]]:
+        with self.connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM kb_vaults WHERE tenant_id=? ORDER BY created_at DESC", (tenant_id,)
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def get_vault(self, *, tenant_id: str, vault_id: str) -> Optional[Dict[str, Any]]:
+        with self.connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM kb_vaults WHERE tenant_id=? AND vault_id=?", (tenant_id, vault_id)
+            ).fetchone()
+        return dict(row) if row else None
+
+    def touch_vault(self, *, tenant_id: str, vault_id: str) -> None:
+        import time
+        with self.connect() as conn:
+            conn.execute(
+                "UPDATE kb_vaults SET last_indexed=? WHERE tenant_id=? AND vault_id=?",
+                (time.time(), tenant_id, vault_id),
+            )
+            conn.commit()
+
+    def upsert_vault_file(self, *, vault_id: str, file_path: str, doc_id: str) -> None:
+        """Record that a vault file has been wikified."""
+        import time
+        with self.connect() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO kb_vault_files(vault_id, file_path, status, doc_id, last_wikified_at) "
+                "VALUES(?, ?, 'wikified', ?, ?)",
+                (vault_id, file_path, doc_id, time.time()),
+            )
+            conn.commit()
+
+    def upsert_vault_file_failed(self, *, vault_id: str, file_path: str, error: str = "") -> None:
+        """Record that a vault file failed wiki conversion."""
+        import time
+        with self.connect() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO kb_vault_files(vault_id, file_path, status, doc_id, last_wikified_at) "
+                "VALUES(?, ?, 'failed', ?, ?)",
+                (vault_id, file_path, error[:200], time.time()),
+            )
+            conn.commit()
+
+    def get_vault_file_statuses(self, *, vault_id: str) -> dict:
+        """Return {file_path: status} map for a vault."""
+        with self.connect() as conn:
+            rows = conn.execute(
+                "SELECT file_path, status FROM kb_vault_files WHERE vault_id=?",
+                (vault_id,),
+            ).fetchall()
+        return {r["file_path"]: r["status"] for r in rows}

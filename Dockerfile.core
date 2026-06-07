@@ -1,0 +1,21 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# 系统依赖
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# 复制依赖层 (aiPlat-infra → aiPlat-core)
+COPY aiPlat-infra/ /app/aiPlat-infra/
+RUN pip install --no-cache-dir -e /app/aiPlat-infra
+
+COPY aiPlat-core/ /app/aiPlat-core/
+RUN pip install --no-cache-dir -e /app/aiPlat-core
+
+# 安装 Playwright 浏览器
+RUN python -m playwright install chromium 2>/dev/null || true
+
+EXPOSE 8002
+CMD ["python", "-m", "uvicorn", "core.server:app", "--host", "0.0.0.0", "--port", "8002"]

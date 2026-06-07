@@ -6,6 +6,7 @@ Handles JSON-RPC protocol parsing and message processing for MCP.
 
 import asyncio
 import json
+import sys
 from typing import Any, AsyncGenerator, Callable, Optional
 import aiohttp
 
@@ -146,9 +147,14 @@ class StdioHandler:
         args: list[str],
         cwd: Optional[str] = None
     ) -> None:
-        """Spawn a local MCP server process"""
+        """Spawn a local MCP server process.
+
+        All MCP servers share the same Python as the server (.venv).
+        Never run a different python3 from PATH.
+        """
+        resolved = sys.executable if command == "python3" else command
         self._process = await asyncio.create_subprocess_exec(
-            command,
+            resolved,
             *args,
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
@@ -156,8 +162,10 @@ class StdioHandler:
             cwd=cwd
         )
         
-    async def call(self, request: JSONRPCRequest) -> JSONRPCResponse:
-        """Send a JSON-RPC request via stdio"""
+    async def call(self, url: str = "", request: JSONRPCRequest = None) -> JSONRPCResponse:
+        """Send a JSON-RPC request via stdio (url param ignored, kept for interface compat with SSEHandler)."""
+        if request is None:
+            raise RuntimeError("No request provided")
         if not self._process:
             raise RuntimeError("Process not started")
             

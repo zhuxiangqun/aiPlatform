@@ -64,10 +64,11 @@ _AIPLAT_NO_PRD = os.getenv(
     "AIPLAT_NO_PRD", "No PRD data available. Complete the PM dialogue first.")
 
 _PROJECTS_FILE = os.path.join(
-    os.path.expanduser(os.getenv("AIPLAT_HOME", "~/.aiplat")),
-    "projects.json",
+    os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "projects.json"
 )
-
+_PROJECTS_DIR = os.path.join(
+    os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "projects"
+)
 _BUILDER_STATES_DIR = os.path.join(
     os.path.expanduser(os.getenv("AIPLAT_HOME", "~/.aiplat")),
     "builder_states",
@@ -116,16 +117,21 @@ def _parse_team_stages(stages_raw: list) -> list:
 class BuilderProjectService:
 
     def __init__(self, model: Any = None, team_service: Optional[BuilderTeamService] = None):
-        self._model = model
-        if self._model is None:
-            from core.api.facades.service_facade import get_default_model
-            self._model = get_default_model()
-        self._team_service = team_service or BuilderTeamService(self._model)
+        self._model = model  # None = lazy init on first use
+        self._team_service = team_service or BuilderTeamService(None)
         self._seed_registries()
         self._projects: Dict[str, Dict[str, Any]] = {}
         self._sessions: Dict[str, Dict[str, Any]] = {}
         self._pipeline_sessions: Dict[str, Any] = {}
         self._runs: Dict[str, Dict[str, Any]] = {}
+
+    @property
+    def model(self) -> Any:
+        """Lazy init: only create LLM adapter when actually needed."""
+        if self._model is None:
+            from core.api.facades.service_facade import get_default_model
+            self._model = get_default_model()
+        return self._model
         self._phases: Dict[str, str] = {}  # dialogue | executing
         self._load_projects()
 
@@ -169,6 +175,44 @@ class BuilderProjectService:
             with open(tmp, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
             os.replace(tmp, _PROJECTS_FILE)
+
+            # Also write per-project directory files for governance support
+            try:
+                os.makedirs(_PROJECTS_DIR, exist_ok=True)
+                for p in deduped:
+                    pid = p.get("project_id", "")
+                    if not pid:
+                        continue
+                    proj_dir = os.path.join(_PROJECTS_DIR, pid)
+                    os.makedirs(proj_dir, exist_ok=True)
+
+                    # Write project.json
+                    proj_json = os.path.join(proj_dir, "project.json")
+                    proj_payload = dict(p)
+                    # Strip runs from the per-file snapshot (they're in projects.json)
+                    proj_payload.pop("runs", None)
+                    with open(proj_json + ".tmp", "w", encoding="utf-8") as f:
+                        json.dump(proj_payload, f, ensure_ascii=False, indent=2)
+                    os.replace(proj_json + ".tmp", proj_json)
+
+                    # Enrich with provenance/integrity if manifest exists
+                    manifest_path = os.path.join(proj_dir, "PROJECT.manifest.json")
+                    if os.path.exists(manifest_path):
+                        try:
+                            with open(manifest_path, "r", encoding="utf-8") as f:
+                                manifest = json.load(f)
+                            p.setdefault("metadata", {})
+                            p["metadata"].setdefault("provenance", {})
+                            p["metadata"]["provenance"].update({
+                                "publisher": manifest.get("publisher"),
+                                "source": manifest.get("source"),
+                                "version": manifest.get("version"),
+                                "signature": manifest.get("signature"),
+                            })
+                        except Exception:
+                            pass
+            except Exception:
+                _log.debug("Failed to write per-project directory files", exc_info=True)
         except Exception as e:
             _log.error("Failed to save projects to %s (project data may be lost on restart): %s", _PROJECTS_FILE, e)
 
@@ -226,8 +270,8 @@ class BuilderProjectService:
             if team:
                 team_name = team.name
         return Project(
-            project_id=project_data["project_id"],
-            name=project_data["name"],
+            project_id=project_data.get("project_id", project_id),
+            name=project_data.get("name", ""),
             description=project_data.get("description", ""),
             team_id=project_data.get("team_id", ""),
             team_name=team_name,
@@ -257,8 +301,8 @@ class BuilderProjectService:
             team_id = data.get("team_id", "")
             team_name = team_map.get(team_id, "")
             projects.append(Project(
-                project_id=data["project_id"],
-                name=data["name"],
+                project_id=data.get("project_id", pid),
+                name=data.get("name", ""),
                 description=data.get("description", ""),
                 team_id=team_id,
                 team_name=team_name,
@@ -337,7 +381,7 @@ class BuilderProjectService:
                 agent_name=_AIPLAT_PM_AGENT,
                 session_id=project_id,
                 user_input=message,
-                model=self._model,
+                model=self.model,
             ))
             reply = result.reply
             session["messages"].append({"role": "assistant", "content": reply})
@@ -433,7 +477,29 @@ class BuilderProjectService:
                    "functional_requirements": [], "user_stories": []}
 
         # Delegate AI inference to core team_planner (boundary-standard.md §决策树)
-        rec = await recommend_team_stages(requirement=prd, model=self._model)
+        # Gather agent performance history for smarter recommendations
+        extra_context = ""
+        try:
+            agent_insights = await self.list_agent_insights()
+            if agent_insights and agent_insights.get("agents"):
+                insights = agent_insights["agents"]
+                if insights:
+                    lines = ["## Agent Performance History (from past pipeline runs)",
+                             "| Agent ID | First Pass | Rejection | Rollback | Runs |",
+                             "|----------|-----------|-----------|----------|------|"]
+                    for a in insights[:20]:
+                        aid = a.get("agent_id", "?")
+                        fpr = a.get("first_pass_rate", 0) or 0
+                        rej = a.get("rejection_rate", 0) or 0
+                        qa = a.get("qa_rollback_rate", 0) or 0
+                        tr = a.get("total_runs", 0) or 0
+                        if tr > 0:
+                            lines.append(f"| {aid} | {fpr:.0%} | {rej:.0%} | {qa:.0%} | {tr} |")
+                    extra_context = "\n".join(lines)
+        except Exception:
+            pass
+        
+        rec = await recommend_team_stages(requirement=prd, model=self.model, extra_context=extra_context or None)
 
         recommendation = {
             "team_name": rec.team_name,
@@ -663,7 +729,7 @@ class BuilderProjectService:
             if isinstance(chat_session, dict):
                 prd_data = chat_session.get("prd")
 
-        pipeline_session = create_pipeline_session(config=config, model=self._model, skill_loader=_create_skill_loader())
+        pipeline_session = create_pipeline_session(config=config, model=self.model, skill_loader=_create_skill_loader())
         self._pipeline_sessions[project_id] = pipeline_session
 
         # Register event bus listener — writes pipeline state to singleton _runs for frontend polling
@@ -717,6 +783,61 @@ class BuilderProjectService:
         finally:
             proj["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
             self._save_projects()
+
+        # Signature verification on governed projects (non-blocking best-effort)
+        sig_verified = None
+        try:
+            proj_dir = os.path.join(_PROJECTS_DIR, project_id)
+            manifest_path = os.path.join(proj_dir, "PROJECT.manifest.json")
+            if os.path.exists(manifest_path):
+                from core.security.skill_signature_gate import get_trusted_skill_pubkeys_map
+                import asyncio as _asyncio
+
+                # Compute integrity from per-project JSON
+                proj_json = os.path.join(proj_dir, "project.json")
+                if os.path.exists(proj_json):
+                    import hashlib
+                    h = hashlib.sha256()
+                    h.update(Path(proj_json).read_bytes())
+                    bundle_sha = h.hexdigest()
+
+                    with open(manifest_path, "r", encoding="utf-8") as f:
+                        manifest = json.load(f)
+                    sig = manifest.get("signature")
+                    if sig:
+                        from core.harness.infrastructure.crypto.signature import verify_skill_signature
+                        from core.harness.kernel.runtime import get_kernel_runtime
+                        rt = get_kernel_runtime()
+                        store = getattr(rt, "execution_store", None) if rt else None
+                        trusted = _asyncio.new_event_loop().run_until_complete(
+                            get_trusted_skill_pubkeys_map(store)
+                        ) if store else {}
+                        r = verify_skill_signature(
+                            skill_id=project_id,
+                            version=manifest.get("version", "0.1.0"),
+                            bundle_sha256=bundle_sha,
+                            signature=sig,
+                            trusted_keys=trusted,
+                        )
+                        sig_verified = r.get("verified")
+                        if not sig_verified:
+                            _log.warning("Project %s signature verification failed: %s", project_id, r.get("error"))
+        except Exception:
+            _log.debug("Signature verification skipped for project %s", project_id, exc_info=True)
+
+        # Record as changeset for governance audit
+        try:
+            from core.api.core_facade import record_changeset
+            await record_changeset(
+                name="start_pipeline",
+                target_type="project",
+                target_id=project_id,
+                status=state.get("phase", "executing"),
+                args={"run_id": run_id, "team_id": team_id, "stage_count": len(stages)},
+                user_id="admin",
+            )
+        except Exception:
+            _log.debug(f"Failed to record start_pipeline changeset for {project_id}", exc_info=True)
 
         return {"project_id": project_id, "phase": state.get("phase", "executing"), "run_id": run_id,
                 "state": state, "diagnostics": diagnostics}
@@ -988,7 +1109,7 @@ class BuilderProjectService:
         max_tokens = int(os.getenv("AIPLAT_BUILDER_MAX_TOKENS", "100000"))
         max_retry = int(os.getenv("AIPLAT_BUILDER_MAX_RETRY", "3"))
         config = PipelineConfig(stages=stages, max_tokens_per_run=max_tokens, max_retry_attempts=max_retry)
-        session = create_pipeline_session(config=config, model=self._model, skill_loader=_create_skill_loader())
+        session = create_pipeline_session(config=config, model=self.model, skill_loader=_create_skill_loader())
         self._pipeline_sessions[project_id] = session
         return session
 
@@ -1148,9 +1269,20 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
 
 
 def _get_agent_insight_for(agent_id: str, projects: dict) -> dict:
-    """Get insight metrics for a single agent from project run history."""
+    """Get insight metrics for a single agent from project run history.
+    
+    Filters to only count runs from projects where this agent is in the team.
+    """
     total_runs, passes, rejections, rollbacks = 0, 0, 0, 0
     for pid, proj in projects.items():
+        # Check if this agent is part of the project's team
+        stages = proj.get("team_stages", []) or []
+        agent_in_team = any(
+            str(s.get("agent_id", "")) == str(agent_id) for s in stages if isinstance(s, dict)
+        )
+        if not agent_in_team:
+            continue
+        
         runs = proj.get("runs", []) or []
         for run in runs:
             total_runs += 1
@@ -1161,6 +1293,7 @@ def _get_agent_insight_for(agent_id: str, projects: dict) -> dict:
                 rejections += 1
             if run.get("rollback_count", 0) > 0:
                 rollbacks += 1
+    
     first_pass_rate = round(passes / max(total_runs, 1), 2)
     rejection_rate = round(rejections / max(total_runs, 1), 2)
     qa_rollback_rate = round(rollbacks / max(total_runs, 1), 2)

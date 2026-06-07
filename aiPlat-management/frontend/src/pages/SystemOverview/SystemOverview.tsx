@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, Button } from '../../components/ui';
-import { RefreshCw, Server, Cpu, Bot, Globe, MessageSquare, Database, Zap, Brain, Activity, Flame, AlertTriangle } from 'lucide-react';
+import { RefreshCw, Server, Cpu, Bot, Globe, MessageSquare, Database, Zap, Brain, Activity, Flame, AlertTriangle, ShieldCheck } from 'lucide-react';
 import DiagnosticTrendChart from './DiagnosticTrendChart';
-import type { HistoryEntry } from './DiagnosticTrendChart';
 
 const SystemOverview: React.FC = () => {
   const [data, setData] = useState<any>(null);
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [diagSummary, setDiagSummary] = useState<any>(null);
 
@@ -41,11 +40,8 @@ const SystemOverview: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchData();
-    fetchHistory();
-    fetchSummary();
-    const t = setInterval(() => { fetchData(); fetchHistory(); fetchSummary(); }, 30000);
-    return () => clearInterval(t);
+    fetchData(false);   // read from cache — no diagnostics on initial load
+    // No auto-refresh — manual only to reduce resource usage
   }, []);
 
   const infra = data?.infra || {};
@@ -94,7 +90,7 @@ const SystemOverview: React.FC = () => {
          <div>
            <h1 className="text-lg font-semibold text-gray-100">系统概览</h1>
            <p className="text-xs text-gray-500 mt-0.5">
-             四层架构运行状态 · 自动刷新 30s
+              四层架构运行状态 · 手动刷新
              {diagSummary?.last_run && (
                <span className="text-gray-600"> · 诊断 {diagSummary.last_run}</span>
              )}
@@ -112,7 +108,7 @@ const SystemOverview: React.FC = () => {
            {diagSummary && diagSummary.fail === 0 && diagSummary.warn === 0 && diagSummary.pass > 0 && (
              <span className="text-[10px] text-green-400 bg-green-900/20 px-2 py-1 rounded border border-green-500/20">✅ 全部通过</span>
            )}
-           <Button variant="ghost" size="sm" onClick={() => fetchData(true)} loading={loading}>
+           <Button variant="ghost" size="sm" onClick={() => { fetchData(true); fetchHistory(); fetchSummary(); }} loading={loading}>
            <RefreshCw className="w-3 h-3 mr-1" />刷新
          </Button>
          </div>
@@ -142,9 +138,10 @@ const SystemOverview: React.FC = () => {
                 </div>
               ))}
             </div>
-            <div className="text-[9px] text-gray-600 mt-1">
-              infra=基础设施 core=AI引擎 platform=平台服务 app=应用接入 management=管理端 · 文件数/符号数
-            </div>
+            <details className="bg-dark-bg border border-dark-border rounded px-2 py-1 text-[10px] text-gray-500 cursor-pointer group mt-1">
+              <summary className="text-gray-500 hover:text-gray-300 select-none">📖 表头说明</summary>
+              <div className="mt-1 text-gray-600">infra=基础设施 core=AI引擎 platform=平台服务 app=应用接入 management=管理端 · 文件数 / sym(符号数=函数+类)</div>
+            </details>
             <div className="flex gap-2 mt-2 text-[10px] text-gray-500">
               <span>边: {(data.codebase_stats.total_edges || 0).toLocaleString()} (导入:{data.codebase_stats.import_edges} 跨文件调用:{data.codebase_stats.cross_calls})</span>
               <span>· 环: {data.codebase_stats.cycles || 0}</span>
@@ -234,7 +231,7 @@ const SystemOverview: React.FC = () => {
                   <MetricRow label="请求" value={infra.llm?.requests_24h != null ? `${infra.llm.requests_24h.toLocaleString()} 次` : '—'} />
                   <MetricRow label="成功率" value={infra.llm?.success_rate != null ? `${infra.llm.success_rate}%` : '—'} />
                   <MetricRow label="平均延迟" value={infra.llm?.avg_latency_ms ? `${infra.llm.avg_latency_ms}ms` : '—'} />
-                  <MetricRow label="Token 消耗" value={infra.llm?.total_tokens_24h ? `${(infra.llm.total_tokens_24h / 1000).toFixed(1)}K` : '—'} />
+                  <MetricRow label="Token 消耗" value={infra.llm?.total_tokens_24h != null ? `${(infra.llm.total_tokens_24h / 1000).toFixed(1)}K` : '—'} />
                   {infra.llm?.error_count_24h > 0 && (
                     <MetricRow label="错误" value={<span className="text-red-400">{infra.llm.error_count_24h} 次</span>} />
                   )}
@@ -302,9 +299,10 @@ const SystemOverview: React.FC = () => {
 
               {infra.models?.error && <div className="text-red-400 mt-1">{infra.models.error}</div>}
             </div>
-            <div className="text-[9px] text-gray-600 mt-2 pt-1.5 border-t border-dark-border/30">
-              ⚠️ 表示连接异常 · 检查对应端口是否在监听(8000-8004) · 模型可用=已部署且在线 · Chat/Embed/Rerank/Audio/OCR各司其职
-            </div>
+            <details className="bg-dark-bg border border-dark-border rounded px-2 py-1 text-[10px] text-gray-500 cursor-pointer group mt-2">
+              <summary className="text-gray-500 hover:text-gray-300 select-none">📖 表头说明</summary>
+              <div className="mt-1 text-gray-600">⚠️ 表示连接异常 · 检查对应端口是否在监听(8000-8004) · 模型可用=已部署且在线 · Chat/Embed/Rerank/Audio/OCR各司其职</div>
+            </details>
           </CardContent>
         </Card>
 
@@ -366,7 +364,23 @@ const SystemOverview: React.FC = () => {
               {/* Tools / MCP / Workflows */}
               <div className="pb-1.5 border-b border-dark-border/50 space-y-1.5">
                 <MetricRow label="Tool" value={core.tools ?? '—'} />
-                <MetricRow label="MCP 服务器" value={core.mcp_servers ?? '—'} />
+                {typeof core.mcp_servers === 'object' ? (
+                    <MetricRow
+                      label="MCP 服务器"
+                      value={
+                        <span>
+                          {core.mcp_servers.total ?? '—'}
+                          {core.mcp_servers.alive != null && (
+                            <span className={core.mcp_servers.alive ? 'text-green-400 ml-1' : 'text-red-400 ml-1'}>
+                              ({core.mcp_servers.alive ? '在线' : '断连'})
+                            </span>
+                          )}
+                        </span>
+                      }
+                    />
+                  ) : (
+                    <MetricRow label="MCP 服务器" value={core.mcp_servers ?? '—'} />
+                  )}
                 <MetricRow label="Workflow" value={core.workflows ?? '—'} />
               </div>
 
@@ -401,6 +415,35 @@ const SystemOverview: React.FC = () => {
                 </div>
               </div>
 
+              {/* Governance */}
+              {core.governance && !core.governance.error && (
+                <div className="pb-1.5 border-b border-dark-border/50">
+                  <div className="flex items-center gap-1.5 text-gray-400 font-medium mb-1">
+                    <ShieldCheck className="w-3 h-3" />治理
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">已治理</span>
+                    <span className={core.governance.governed > 0 ? 'text-green-400' : 'text-gray-500'}>
+                      {core.governance.governed}/{core.governance.total}
+                    </span>
+                  </div>
+                  <div className="flex justify-between mt-0.5">
+                    <span className="text-gray-600 text-[10px]">未治理</span>
+                    <span className="text-[10px]">
+                      {core.governance.unsigned > 0 && <span className="text-amber-400">{core.governance.unsigned} 未签名 </span>}
+                      {core.governance.no_manifest > 0 && <span className="text-red-400">{core.governance.no_manifest} 无溯源码 </span>}
+                      {core.governance.unsigned === 0 && core.governance.no_manifest === 0 && <span className="text-green-400">全部已签名</span>}
+                    </span>
+                  </div>
+                  <div className="flex justify-between mt-0.5">
+                    <span className="text-gray-600 text-[10px]">可信公钥</span>
+                    <span className={`text-[10px] ${core.governance.has_trusted_keys ? 'text-green-400' : 'text-red-400'}`}>
+                      {core.governance.has_trusted_keys ? '已配置' : '未配置'}
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {/* Capability Health */}
               <div>
                 <div className="flex justify-between">
@@ -431,9 +474,10 @@ const SystemOverview: React.FC = () => {
                 </div>
               )}
             </div>
-            <div className="text-[9px] text-gray-600 mt-2 pt-1.5 border-t border-dark-border/30">
-              Lint健康: E=错误(必须修) W=警告(建议修) · 能力健康=Agent/Skill/Tool配置质量 · Syscall统计近1h调用 · Memory=三层记忆
-            </div>
+            <details className="bg-dark-bg border border-dark-border rounded px-2 py-1 text-[10px] text-gray-500 cursor-pointer group mt-2">
+              <summary className="text-gray-500 hover:text-gray-300 select-none">📖 表头说明</summary>
+              <div className="mt-1 text-gray-600">Lint健康: E=错误(必须修) W=警告(建议修) · 能力健康=Agent/Skill/Tool配置质量 · Syscall统计近1h调用 · Memory=三层记忆</div>
+            </details>
           </CardContent>
         </Card>
 
@@ -492,9 +536,10 @@ const SystemOverview: React.FC = () => {
                 <div className="text-yellow-400 text-[10px] mt-1">Platform 服务未响应</div>
               )}
             </div>
-            <div className="text-[9px] text-gray-600 mt-2 pt-1.5 border-t border-dark-border/30">
-              服务未响应=端口未监听/服务未启动 · 网关路由=API访问入口 · 知识库集合=已创建的向量存储空间
-            </div>
+            <details className="bg-dark-bg border border-dark-border rounded px-2 py-1 text-[10px] text-gray-500 cursor-pointer group mt-2">
+              <summary className="text-gray-500 hover:text-gray-300 select-none">📖 表头说明</summary>
+              <div className="mt-1 text-gray-600">服务未响应=端口未监听/服务未启动 · 网关路由=API访问入口 · 知识库集合=已创建的向量存储空间</div>
+            </details>
           </CardContent>
         </Card>
 
@@ -571,9 +616,10 @@ const SystemOverview: React.FC = () => {
                 <div className="text-yellow-400 text-[10px] mt-1">App 服务未响应</div>
               )}
             </div>
-            <div className="text-[9px] text-gray-600 mt-2 pt-1.5 border-t border-dark-border/30">
-              渠道=外部接入方式(Slack/Telegram等) · 会话=用户对话上下文 · Apps=已发布的应用 · 能力健康同AI中台评分
-            </div>
+            <details className="bg-dark-bg border border-dark-border rounded px-2 py-1 text-[10px] text-gray-500 cursor-pointer group mt-2">
+              <summary className="text-gray-500 hover:text-gray-300 select-none">📖 表头说明</summary>
+              <div className="mt-1 text-gray-600">渠道=外部接入方式(Slack/Telegram等) · 会话=用户对话上下文 · Apps=已发布的应用 · 能力健康同AI中台评分</div>
+            </details>
           </CardContent>
         </Card>
       </div>

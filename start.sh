@@ -38,22 +38,25 @@ export PATH="$VENV_DIR/bin:$PATH"
 
 # 统一数据目录（KB/执行记录等），确保 core/platform/app 使用同一份持久化路径。
 # 默认放在项目目录下，避免不同用户/不同启动方式导致写到不同的 ~/.aiplat。
-export AIPLAT_HOME="${AIPLAT_HOME:-$PROJECT_ROOT/.aiplat}"
+export AIPLAT_HOME="${AIPLAT_HOME:-$HOME/.aiplat}"
 export AIPLAT_PROJECT_ROOT="${AIPLAT_PROJECT_ROOT:-$PROJECT_ROOT}"
 export AIPLAT_KB_TENANTS_DIR="${AIPLAT_KB_TENANTS_DIR:-$AIPLAT_HOME/kb/tenants}"
 mkdir -p "$AIPLAT_HOME/logs"
 
-# 统一 LLM 配置（可通过 .env / .env.local 覆盖为其他 provider）。
-# - 通用/对话/重写类默认使用 deepseek-chat
-# - Agent/推理类默认使用 deepseek-reasoner
-# - Python 代码中已消除硬编码 fallback，全部由这些环境变量驱动
-export AIPLAT_LLM_PROVIDER="${AIPLAT_LLM_PROVIDER:-deepseek}"
-export AIPLAT_LLM_BASE_URL="${AIPLAT_LLM_BASE_URL:-${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}}"
+# Execution DB retention: keep last 7 days of syscall events, auto-prune on start
+export AIPLAT_EXECUTION_DB_RETENTION_DAYS="${AIPLAT_EXECUTION_DB_RETENTION_DAYS:-7}"
+export AIPLAT_EXECUTION_DB_VACUUM_ON_PRUNE="${AIPLAT_EXECUTION_DB_VACUUM_ON_PRUNE:-true}"
+
+# Self-learning: enable evolution engine + A/B prompt optimization
+export AIPLAT_RECORD_LEARNING_ARTIFACTS="${AIPLAT_RECORD_LEARNING_ARTIFACTS:-true}"
+
+# LLM 配置 — 由 infra ModelManager 统一管理。
+# 模型选择策略编辑: aiPlat-infra/config/infra/llm_profile.yaml
+# API key 和 base URL 从这里注入:
 export AIPLAT_LLM_API_KEY="${AIPLAT_LLM_API_KEY:-${DEEPSEEK_API_KEY:-}}"
-export AIPLAT_LLM_MODEL="${AIPLAT_LLM_MODEL:-deepseek-chat}"
-export AIPLAT_DOC_LLM_MODEL="${AIPLAT_DOC_LLM_MODEL:-${AIPLAT_LLM_MODEL}}"
-export AIPLAT_AGENT_MODEL="${AIPLAT_AGENT_MODEL:-deepseek-reasoner}"
-# Builder Pipeline: 单次流水线 token 预算（防止费用过高）
+export AIPLAT_LLM_BASE_URL="${AIPLAT_LLM_BASE_URL:-${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}}"
+export AIPLAT_LLM_CONFIG_PATH="${AIPLAT_LLM_CONFIG_PATH:-$PROJECT_ROOT/aiPlat-infra/config/infra/llm_profile.yaml}"
+# Builder Pipeline: 单次流水线 token 预算
 export AIPLAT_BUILDER_MAX_TOKENS="${AIPLAT_BUILDER_MAX_TOKENS:-50000}"
 if [ -z "${AIPLAT_LLM_API_KEY:-}" ]; then
   echo "提示：未检测到 DeepSeek API Key。请先设置 DEEPSEEK_API_KEY 或 AIPLAT_LLM_API_KEY。"
@@ -269,6 +272,29 @@ if [ "${AIPLAT_ENABLE_MINERU_API:-0}" = "1" ]; then
   echo ""
 fi
 
+# ===== Step 0: Cleanup execution DB (best-effort, before servers start) =====
+_EXEC_DB="$PROJECT_ROOT/aiPlat-core/core/data/aiplat_executions.sqlite3"
+if [ -f "$_EXEC_DB" ]; then
+  _EVENT_COUNT=$(sqlite3 "$_EXEC_DB" "SELECT COUNT(*) FROM syscall_events;" 2>/dev/null || echo "0")
+  if [ "$_EVENT_COUNT" -gt 1000000 ] 2>/dev/null; then
+    echo "执行库事件数: ${_EVENT_COUNT}，清理异常运行..."
+    # Speed up deletions
+    sqlite3 -cmd "PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF;" "$_EXEC_DB" "BEGIN TRANSACTION; DELETE FROM syscall_events WHERE run_id IS NOT NULL AND run_id IN (SELECT run_id FROM syscall_events WHERE run_id IS NOT NULL GROUP BY run_id HAVING COUNT(*) > 100000); COMMIT;" 2>/dev/null && echo "  ✓ 清理异常运行" || true
+    _after=$(sqlite3 "$_EXEC_DB" "SELECT COUNT(*) FROM syscall_events;" 2>/dev/null || echo "0")
+    _deleted=$((_EVENT_COUNT - _after))
+    if [ "$_deleted" -gt 100000 ] 2>/dev/null; then
+      echo "  ✓ 清理完成: ${_EVENT_COUNT} → ${_after} (删除 ${_deleted} 条)"
+      _before_mb=$(du -m "$_EXEC_DB" 2>/dev/null | awk '{print $1}' || echo "?")
+      echo "  正在回收磁盘空间 (VACUUM)..."
+      sqlite3 "$_EXEC_DB" "VACUUM;" 2>/dev/null && echo "  ✓ VACUUM 完成" || echo "  ⚠ VACUUM 超时，下次启动继续"
+      _after_mb=$(du -m "$_EXEC_DB" 2>/dev/null | awk '{print $1}' || echo "?")
+      echo "  磁盘: ${_before_mb}MB → ${_after_mb}MB"
+    else
+      echo "  ✓ 清理完成: ${_EVENT_COUNT} → ${_after} (无需压缩)"
+    fi
+  fi
+fi
+
 # ===== Step 1: aiPlat-infra =====
 echo "============================================================"
 echo "  Step 1/4: 启动 aiPlat-infra (端口 8001)"
@@ -413,9 +439,19 @@ kill_port_if_any 5173
 cd "$PROJECT_ROOT/aiPlat-management/frontend"
 
 # Always rebuild frontend to ensure latest code is served
+echo "正在安装前端依赖..."
+npm install --silent || { echo "❌ npm install 失败"; exit 1; }
+
 echo "正在构建前端..."
-npm install >/dev/null 2>&1 || true
-npx vite build 2>&1 | tail -3
+BUILD_LOG=$(mktemp)
+npx vite build > "$BUILD_LOG" 2>&1 || {
+    cat "$BUILD_LOG"
+    rm "$BUILD_LOG"
+    echo "❌ 前端构建失败"
+    exit 1
+}
+tail -3 "$BUILD_LOG"
+rm "$BUILD_LOG"
 
 nohup "$PY" "$PROJECT_ROOT/aiPlat-management/frontend/proxy_server.py" > "$AIPLAT_HOME/logs/frontend.log" 2>&1 &
 FRONTEND_PID=$!

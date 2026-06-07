@@ -151,6 +151,17 @@ const Graphs: React.FC = () => {
         </CardHeader>
         <CardContent>
           {error && <div className="text-sm text-error mb-3">{error}</div>}
+          <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+            <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+            <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+              <div><span className="text-gray-300">run_id</span><span className="ml-2 text-gray-600">Graph 执行 run 唯一 ID，可复制/跳转</span></div>
+              <div><span className="text-gray-300">graph_name</span><span className="ml-2 text-gray-600">执行的 Graph 名称</span></div>
+              <div><span className="text-gray-300">status</span><span className="ml-2 text-gray-600">completed/success/failed/error/running/degraded</span></div>
+              <div><span className="text-gray-300">start_time</span><span className="ml-2 text-gray-600">Run 开始时间</span></div>
+              <div><span className="text-gray-300">duration_ms</span><span className="ml-2 text-gray-600">Run 持续时间（毫秒）</span></div>
+              <div><span className="text-gray-300">trace_id</span><span className="ml-2 text-gray-600">关联的链路追踪 ID，可复制/跳转</span></div>
+            </div>
+          </details>
           <Table columns={columns as any} data={runs} rowKey="run_id" loading={loading} />
           <div className="mt-4">
             <Pagination

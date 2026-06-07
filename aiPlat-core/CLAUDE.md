@@ -292,7 +292,7 @@ Harness 是 AI Runtime Kernel（"操作系统"），解决**"任务如何被执�
 
 | 规则 | 说明 |
 |------|------|
-| **三层架构** | Working（当前细节/常驻）+ Episodic（会话摘要/按需检索）+ Semantic（长期知识/启动注入） |
+| **四层架构** | Working（Hot, 当前上下文）+ Episodic（Warm, 会话摘要）+ Semantic（Cold, 长期知识）+ Task Skills（External, 可复用执行模式）。参照 Hermes Agent 四层记忆框架 |
 | **5 级压缩** | 70%监控 → 80%替换旧输出 → 85%裁剪 → 90%激进 → 99%完整摘要 |
 | **压缩必须可追溯** | Context Compaction MUST 产生 CONTEXT_SUMMARY，记录 before/after/preserved_ids |
 | **Transcript Guard** | MUST 归一化 role（防止 role 混乱导致模型行为异常） |
@@ -300,11 +300,11 @@ Harness 是 AI Runtime Kernel（"操作系统"），解决**"任务如何被执�
 | **自动过期** | 长期记忆支持自动过期清理 |
 
 **设计文档依据**：
-- `core/docs/memory/index.md` §三层架构
+- `core/docs/memory/index.md` §四层架构
 - `core/docs/harness/context.md` §5级压缩策略、§System Reminders
 - `core/docs/contracts/04-prompt-context-contract.md`
 
-> **当前实现状态**：`MemoryManager` 三层架构已实现并接入 Agent 执行循环（`loop.py:545` 调用 `build_context`、`loop.py:1111` 调用 `get_reminders`、`loop.py:1042` 保存交互）。5 级 ContextCompression 为主压缩路径。`PipelineEngine._call_llm()` 已实现轻量级 System Reminder。
+> **当前实现状态**：`MemoryManager` 四层架构已实现并接入 Agent 执行循环（`loop.py:545` 调用 `build_context`、`loop.py:1111` 调用 `get_reminders`、`loop.py:1042` 保存交互）。5 级 ContextCompression 为主压缩路径。Layer 4 (Task Skills) 在流水线完成时自动晶体化——pass_rate ≥85% 的 hot skill 自动注册到 SkillRegistry。
 
 ### 5.13 Engine vs Workspace 分离（来自 `core/docs/index.md` §Engine vs Workspace）
 
@@ -611,15 +611,18 @@ AGENT.md 瘦身到核心内容（<100 行）。超过 100 行时，拆分为：
 - 已删除（10 个 smoke agent + workspace duplicates）
 - 12 个 core agent 已补全 `output_artifact`/`phase` 等 pipeline 字段
 
-### 5.28 记忆系统实际架构（反映真实实现）
+### 5.28 记忆系统实际架构（四层，对应 Hermes Agent 框架）
 
-`MemoryManager` 三层架构无需外部文件系统——长期记忆已有 SQLite 实现。
+`MemoryManager` 四层架构无需外部文件系统——长期记忆已有 SQLite 实现。
 
-| 层 | 实现 | 存储 | 状态 |
-|----|------|------|------|
-| Working | `harness/memory/working.py` | deque 滑动窗口，30K token | ✅ 全实现 |
-| Episodic | `harness/memory/episodic.py` | 规则摘要（非 LLM） | ✅ 已接入 loop `save_interaction` |
-| Semantic/Long-term | SQLite `long_term_memories` 表 + FTS5 | 持久化 | ✅ 生产级，完整 REST API |
+| 层 | Hermes 对应 | 实现 | 存储 | 状态 |
+|----|-----------|------|------|------|
+| Layer 1: Working | Hot (热记忆) | `harness/memory/working.py` | deque 滑动窗口，30K token | ✅ 全实现 |
+| Layer 2: Episodic | Warm (温记忆) | `harness/memory/episodic.py` | 规则摘要（非 LLM） | ✅ 已接入 loop `save_interaction` |
+| Layer 3: Semantic | Cold (冷记忆) | SQLite `long_term_memories` 表 + FTS5 | 持久化 | ✅ 生产级，完整 REST API |
+| Layer 4: Task Skills | External (外挂记忆) | `manager.py:TaskSkill` → `~/.aiplat/task_skills/` | JSON 文件 + SkillRegistry | ✅ 流水线完成自动晶体化，pass_rate ≥85% 自动注册 |
+
+**设计参考**：Hermes Agent 记忆诊断原则——热记忆负责当前连续性，温记忆负责少量稳定事实，冷记忆负责历史检索，外挂记忆负责可复用执行模式。
 
 **已接入执行循环的**：
 - `loop._try_inject_memory_reminders()` → `MemoryManager.get_reminders()`
@@ -632,7 +635,7 @@ AGENT.md 瘦身到核心内容（<100 行）。超过 100 行时，拆分为：
 - `save_interaction` 已通 ✅
 - Episodic LLM 摘要升级（当前规则匹配，可进一步优化）
 
-> 设计参考（Hermes Agent 记忆诊断）：记忆问题的根因往往是"放错层"——不要让 MEMORY.md 扛所有事。诊断原则：热记忆负责当前连续性，温记忆负责少量稳定事实，冷记忆负责历史检索，外挂记忆负责长期知识。当前系统通过 `_try_inject_claude_md()`（每次重读，永不压缩），优先保证稳定性而非容量。
+> 设计参考（Hermes Agent 记忆诊断）：记忆问题的根因往往是"放错层"——不要让 MEMORY.md 扛所有事。aiPlat 的四层（Hot→Warm→Cold→External）与 Hermes 完全对应。当前系统通过 `_try_inject_claude_md()`（每次重读，永不压缩），优先保证稳定性而非容量。
 
 **设计文档依据**：
 - `core/docs/memory/index.md`

@@ -58,7 +58,7 @@ def _init_platform_runtime() -> None:
             agent_reg.register(
                 da.agent_id,
                 agent,
-                {"model": da.model or "deepseek-chat"},
+                {"model": da.model or best_model_for_purpose("chat") or "deepseek-chat"},
                 metadata=da,
                 skills=da.skills or [],
                 tools=da.tools or [],
@@ -256,7 +256,7 @@ async def query_conversation_stream(session_id: str, request: ConversationQueryR
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": f"知识内容：\n{doc_content[:4000]}\n\n用户问题：{question}\n\n请回答："},
                 ],
-                model_name="deepseek-chat", temperature=0.3, max_tokens=2000,
+                model_name=best_model_for_purpose("chat") or "deepseek-chat", temperature=0.3, max_tokens=2000,
             ):
                 if chunk:
                     full_answer.append(chunk)

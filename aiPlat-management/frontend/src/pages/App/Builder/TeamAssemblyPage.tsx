@@ -1,10 +1,10 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Save, Trash2, Eye, Pencil, X, Download, Upload, Bookmark, BookOpen, MessageSquare } from 'lucide-react';
+import { Plus, Save, Trash2, Eye, Pencil, Download, Upload, Bookmark, BookOpen, MessageSquare } from 'lucide-react';
 import { builderTeamApi, type AgentCatalogItem, type PipelineStageConfig, type TeamConfig } from '../../../services';
 import { AgentCatalog } from '../../../components/Builder/AgentCatalog';
 import { TeamCanvas } from '../../../components/Builder/TeamCanvas';
-import { Card, CardHeader, CardContent, Button, toast, Select } from '../../../components/ui';
+import { Card, CardHeader, CardContent, Button, toast, Select, Modal } from '../../../components/ui';
 import { toastGateError } from '../../../components/ui';
 
 let _idCounter = 0;
@@ -262,7 +262,7 @@ const TeamAssemblyPage: React.FC = () => {
         </div>
         <div className="flex gap-2 items-center">
           {stages.length > 0 && (
-            <Button variant="outline" size="sm" onClick={() => setChatOpen(!chatOpen)} icon={<MessageSquare className="w-4 h-4" />}>
+            <Button variant="secondary" size="sm" onClick={() => setChatOpen(!chatOpen)} icon={<MessageSquare className="w-4 h-4" />}>
               {chatOpen ? '关闭测试' : '测试'}
             </Button>
           )}
@@ -397,82 +397,84 @@ const TeamAssemblyPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Builder section */}
-      {showBuilder && (
-        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-          <Card>
-            <CardHeader
-              title={editingTeamId ? `编辑：${teamName}` : '新建团队'}
-              extra={<Button size="sm" variant="ghost" onClick={clearBuilder} icon={<X className="w-3.5 h-3.5" />}>取消</Button>}
-            />
-          </Card>
-          <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-4">
-            <AgentCatalog onAdd={addAgent} />
-            <div className="space-y-4">
-              <TeamCanvas stages={stages} onUpdate={setStages} />
-              <Card>
-                <CardHeader title={editingTeamId ? '更新团队' : '保存为新团队'} />
-                <CardContent>
-                  <div className="flex gap-2">
-                    <input
-                      className="flex-1 bg-dark-hover border border-dark-border rounded px-3 py-2 text-sm text-gray-200 placeholder-gray-500"
-                      value={teamName} onChange={(e) => setTeamName(e.target.value)}
-                      placeholder="团队名称（如：标准研发团队）"
-                    />
-                    <Button variant="primary" onClick={saveTeam} loading={saving} icon={<Save className="w-4 h-4" />}>
-                      {editingTeamId ? '更新' : '保存'}
-                    </Button>
-                    <Button variant="ghost" onClick={exportPipeline} icon={<Download className="w-4 h-4" />} title="导出为 JSON">
-                      导出
-                    </Button>
-                    <Button variant="ghost" onClick={() => fileInputRef.current?.click()} icon={<Upload className="w-4 h-4" />} title="从 JSON 导入">
-                      导入
-                    </Button>
-                    <Button variant="ghost" onClick={saveTemplate} icon={<Bookmark className="w-4 h-4" />} title="保存为模板">
-                      模板
-                    </Button>
-                    <div style={{ position: 'relative' }}>
-                      <Button variant="ghost" onClick={() => setShowTemplates(!showTemplates)} icon={<BookOpen className="w-4 h-4" />} title="加载模板">
-                        加载
-                      </Button>
-                      {showTemplates && (
-                        <div style={{
-                          position: 'absolute', top: '100%', right: 0, zIndex: 50,
-                          background: '#1f2937', border: '1px solid #374151', borderRadius: 8,
-                          padding: 8, minWidth: 200, boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
-                        }}>
-                          {getTemplates().length === 0 ? (
-                            <div style={{ fontSize: 12, color: '#6b7280', padding: 8 }}>暂无模板</div>
-                          ) : (
-                            getTemplates().map(t => (
-                              <div key={t.name} style={{
-                                display: 'flex', alignItems: 'center', gap: 6,
-                                padding: '6px 8px', borderRadius: 4, cursor: 'pointer',
-                                fontSize: 12, color: '#e5e7eb',
-                              }}
-                              onMouseEnter={e => (e.currentTarget.style.background = '#374151')}
-                              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                              >
-                                <span style={{ flex: 1 }} onClick={() => loadTemplate(t.name)}>
-                                  📋 {t.name} <span style={{ color: '#6b7280', fontSize: 10 }}>({t.stages.length} 阶段)</span>
-                                </span>
-                                <button onClick={() => deleteTemplate(t.name)} style={{
-                                  background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 14, padding: '0 4px',
-                                }} title="删除模板">✕</button>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <input ref={fileInputRef} type="file" accept=".json" onChange={importPipeline} style={{ display: 'none' }} />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+      {/* Builder modal */}
+      <Modal
+        open={showBuilder}
+        onClose={clearBuilder}
+        title={editingTeamId ? `编辑：${teamName}` : '新建团队'}
+        width={960}
+        footer={
+          <div className="flex gap-2 justify-end">
+            <Button variant="ghost" onClick={clearBuilder}>取消</Button>
+            <Button variant="primary" onClick={saveTeam} loading={saving} icon={<Save className="w-4 h-4" />}>
+              {editingTeamId ? '更新' : '保存'}
+            </Button>
           </div>
-        </motion.div>
-      )}
+        }
+      >
+        <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-4">
+          <AgentCatalog onAdd={addAgent} />
+          <div className="space-y-4">
+            <TeamCanvas stages={stages} onUpdate={setStages} />
+            <Card>
+              <CardHeader title="团队信息" />
+              <CardContent>
+                <div className="flex gap-2">
+                  <input
+                    className="flex-1 bg-dark-hover border border-dark-border rounded px-3 py-2 text-sm text-gray-200 placeholder-gray-500"
+                    value={teamName} onChange={(e) => setTeamName(e.target.value)}
+                    placeholder="团队名称（如：标准研发团队）"
+                  />
+                  <Button variant="ghost" onClick={exportPipeline} icon={<Download className="w-4 h-4" />} title="导出为 JSON">
+                    导出
+                  </Button>
+                  <Button variant="ghost" onClick={() => fileInputRef.current?.click()} icon={<Upload className="w-4 h-4" />} title="从 JSON 导入">
+                    导入
+                  </Button>
+                  <Button variant="ghost" onClick={saveTemplate} icon={<Bookmark className="w-4 h-4" />} title="保存为模板">
+                    模板
+                  </Button>
+                  <div style={{ position: 'relative' }}>
+                    <Button variant="ghost" onClick={() => setShowTemplates(!showTemplates)} icon={<BookOpen className="w-4 h-4" />} title="加载模板">
+                      加载
+                    </Button>
+                    {showTemplates && (
+                      <div style={{
+                        position: 'absolute', top: '100%', right: 0, zIndex: 50,
+                        background: '#1f2937', border: '1px solid #374151', borderRadius: 8,
+                        padding: 8, minWidth: 200, boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                      }}>
+                        {getTemplates().length === 0 ? (
+                          <div style={{ fontSize: 12, color: '#6b7280', padding: 8 }}>暂无模板</div>
+                        ) : (
+                          getTemplates().map(t => (
+                            <div key={t.name} style={{
+                              display: 'flex', alignItems: 'center', gap: 6,
+                              padding: '6px 8px', borderRadius: 4, cursor: 'pointer',
+                              fontSize: 12, color: '#e5e7eb',
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.background = '#374151')}
+                            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                            >
+                              <span style={{ flex: 1 }} onClick={() => loadTemplate(t.name)}>
+                                📋 {t.name} <span style={{ color: '#6b7280', fontSize: 10 }}>({t.stages.length} 阶段)</span>
+                              </span>
+                              <button onClick={() => deleteTemplate(t.name)} style={{
+                                background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 14, padding: '0 4px',
+                              }} title="删除模板">✕</button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <input ref={fileInputRef} type="file" accept=".json" onChange={importPipeline} style={{ display: 'none' }} />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </Modal>
 
       {/* View modal */}
       {viewingTeam && (

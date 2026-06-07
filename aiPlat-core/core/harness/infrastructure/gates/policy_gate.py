@@ -101,7 +101,7 @@ class PolicyGate:
         )
         # Default: do NOT enforce approval in syscall yet to avoid double approval.
         # Phase 4+: we will move approval fully into sys_tool and remove loop-level checks.
-        self._enforce_approval = os.getenv("AIPLAT_SYSCALL_ENFORCE_APPROVAL", "false").lower() in (
+        self._enforce_approval = os.getenv("AIPLAT_SYSCALL_ENFORCE_APPROVAL", "false").lower() in (  # noqa: planned-phase4
             "1",
             "true",
             "yes",
@@ -641,3 +641,71 @@ class PolicyGate:
             return PolicyResult(decision=PolicyDecision.ALLOW)
 
         return PolicyResult(decision=PolicyDecision.ALLOW)
+
+    async def check_agent(self, *, user_id: str, agent_id: str, agent_args: Optional[Dict[str, Any]] = None) -> PolicyResult:
+        """Governance for agent execution. Enforces RBAC permission + optional approval sampling."""
+        args = agent_args if isinstance(agent_args, dict) else {}
+        if self._disable_approvals:
+            return PolicyResult(decision=PolicyDecision.ALLOW)
+        try:
+            from core.harness.kernel.execution_context import get_active_request_context
+            if get_active_request_context() is not None:
+                from core.harness.integration import get_permission_manager
+                perm_mgr = get_permission_manager()
+                if not perm_mgr.check_permission(user_id, str(agent_id or ""), Permission.EXECUTE):
+                    return PolicyResult(decision=PolicyDecision.DENY, reason=f"User '{user_id}' lacks EXECUTE permission for agent '{agent_id}'")
+        except Exception:
+            pass
+        force_approval = bool(args.get("_approval_required"))
+        try:
+            force_approval, _ = await self._maybe_waive_approval(operation=f"agent:{agent_id}", force_approval=force_approval,
+                tenant_id=str(args.get("_tenant_id")) if args.get("_tenant_id") else None,
+                args=args if isinstance(args, dict) else None)
+        except Exception:
+            pass
+        if not force_approval:
+            return PolicyResult(decision=PolicyDecision.ALLOW)
+        # Approval flow (same as check_skill)
+        runtime = get_kernel_runtime()
+        approval_mgr = getattr(runtime, "approval_manager", None) if runtime else None
+        if not approval_mgr:
+            return PolicyResult(decision=PolicyDecision.ALLOW) if not force_approval else PolicyResult(decision=PolicyDecision.APPROVAL_REQUIRED, reason=f"Agent '{agent_id}' requires approval")
+        try:
+            from core.harness.infrastructure.approval.types import ApprovalContext
+            req = approval_mgr.check_and_request(ApprovalContext(
+                operation=f"agent:{agent_id}", user_id=user_id,
+                tenant_id=str(args.get("_tenant_id")) if args.get("_tenant_id") else None,
+                metadata={"agent_id": str(agent_id)}))
+            status = getattr(req, "status", None)
+            from core.harness.infrastructure.approval.types import RequestStatus
+            if status in (RequestStatus.PENDING, RequestStatus.REJECTED):
+                return PolicyResult(decision=PolicyDecision.APPROVAL_REQUIRED, reason=f"Agent '{agent_id}' requires approval",
+                    approval_request_id=getattr(req, "request_id", None) or getattr(req, "id", None))
+        except Exception:
+            return PolicyResult(decision=PolicyDecision.ALLOW)
+        return PolicyResult(decision=PolicyDecision.ALLOW)
+
+    async def check_workflow(self, *, user_id: str, workflow_id: str, workflow_args: Optional[Dict[str, Any]] = None) -> PolicyResult:
+        """Governance for workflow execution. Enforces RBAC permission + optional approval."""
+        args = workflow_args if isinstance(workflow_args, dict) else {}
+        if self._disable_approvals:
+            return PolicyResult(decision=PolicyDecision.ALLOW)
+        try:
+            from core.harness.kernel.execution_context import get_active_request_context
+            if get_active_request_context() is not None:
+                from core.harness.integration import get_permission_manager
+                perm_mgr = get_permission_manager()
+                if not perm_mgr.check_permission(user_id, str(workflow_id or ""), Permission.EXECUTE):
+                    return PolicyResult(decision=PolicyDecision.DENY, reason=f"User '{user_id}' lacks EXECUTE permission for workflow '{workflow_id}'")
+        except Exception:
+            pass
+        force_approval = bool(args.get("_approval_required"))
+        try:
+            force_approval, _ = await self._maybe_waive_approval(operation=f"workflow:{workflow_id}", force_approval=force_approval,
+                tenant_id=str(args.get("_tenant_id")) if args.get("_tenant_id") else None,
+                args=args if isinstance(args, dict) else None)
+        except Exception:
+            pass
+        if not force_approval:
+            return PolicyResult(decision=PolicyDecision.ALLOW)
+        return PolicyResult(decision=PolicyDecision.APPROVAL_REQUIRED, reason=f"Workflow '{workflow_id}' requires approval")

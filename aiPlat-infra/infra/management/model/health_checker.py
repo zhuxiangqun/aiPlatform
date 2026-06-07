@@ -39,6 +39,10 @@ class HealthChecker:
                 result = await self._check_local_embedding_connectivity(model)
             elif provider == "custom":
                 result = await self._check_custom_connectivity(model)
+            elif provider == "mineru":
+                result = self._check_mineru_connectivity(model)
+            elif provider in ("tesseract", "pytesseract"):
+                result = self._check_tesseract_connectivity(model)
             else:
                 result["error"] = f"Unknown provider: {provider}"
         
@@ -90,6 +94,8 @@ class HealthChecker:
                 f"{base_url}/api/tags",
                 timeout=aiohttp.ClientTimeout(total=5)
             ) as resp:
+                if resp.status >= 400:
+                    return {"success": False, "model_id": model.id, "status_code": resp.status, "error": f"HTTP {resp.status}"}
                 return {"success": True, "model_id": model.id, "status_code": resp.status}
         
     async def _check_ollama_response(self, model: ModelInfo) -> Dict[str, Any]:
@@ -133,7 +139,10 @@ class HealthChecker:
                 headers=self._get_auth_headers(model),
                 timeout=aiohttp.ClientTimeout(total=10)
             ) as resp:
-                # Any HTTP response means the server is reachable
+                if resp.status >= 400:
+                    body = await resp.text()
+                    return {"success": False, "model_id": model.id, "status_code": resp.status,
+                            "error": body[:200] if body else f"HTTP {resp.status}"}
                 return {"success": True, "model_id": model.id, "status_code": resp.status}
     
     async def _check_openai_response(self, model: ModelInfo) -> Dict[str, Any]:
@@ -187,6 +196,8 @@ class HealthChecker:
                 headers=self._get_auth_headers(model),
                 timeout=aiohttp.ClientTimeout(total=10)
             ) as resp:
+                if resp.status >= 400:
+                    return {"success": False, "model_id": model.id, "status_code": resp.status, "error": f"HTTP {resp.status}"}
                 return {"success": True, "model_id": model.id, "status_code": resp.status}
     
     async def _check_anthropic_response(self, model: ModelInfo) -> Dict[str, Any]:
@@ -244,6 +255,8 @@ class HealthChecker:
                 headers={"Authorization": f"Bearer {api_key}"} if api_key else {},
                 timeout=aiohttp.ClientTimeout(total=10)
             ) as resp:
+                if resp.status >= 400:
+                    return {"success": False, "model_id": model.id, "status_code": resp.status, "error": f"HTTP {resp.status}"}
                 return {"success": True, "model_id": model.id, "status_code": resp.status}
     
     async def _check_deepseek_response(self, model: ModelInfo) -> Dict[str, Any]:
@@ -323,6 +336,30 @@ class HealthChecker:
         except Exception as e:
             return {"success": False, "error": str(e)}
     
+    def _check_mineru_connectivity(self, model: ModelInfo) -> Dict[str, Any]:
+        """Check if MinerU CLI is available."""
+        import subprocess
+        try:
+            r = subprocess.run(["mineru", "--version"], capture_output=True, text=True, timeout=10)
+            ok = r.returncode == 0 or "mineru" in (r.stdout + r.stderr).lower()
+            if ok:
+                return {"success": True, "model_id": model.id}
+            return {"success": False, "model_id": model.id, "error": r.stderr[:200]}
+        except FileNotFoundError:
+            return {"success": False, "model_id": model.id, "error": "mineru not found in PATH"}
+        except Exception as e:
+            return {"success": False, "model_id": model.id, "error": str(e)}
+
+    def _check_tesseract_connectivity(self, model: ModelInfo) -> Dict[str, Any]:
+        """Check if pytesseract is importable."""
+        try:
+            import pytesseract
+            return {"success": True, "model_id": model.id}
+        except ImportError:
+            return {"success": False, "model_id": model.id, "error": "pytesseract not installed"}
+        except Exception as e:
+            return {"success": False, "model_id": model.id, "error": str(e)}
+
     async def _check_custom_connectivity(self, model: ModelInfo) -> Dict[str, Any]:
         """检查自定义模型连通性（服务器可达即可）"""
         base_url = model.config.base_url
@@ -335,6 +372,8 @@ class HealthChecker:
                 headers=model.config.headers or {},
                 timeout=aiohttp.ClientTimeout(total=10)
             ) as resp:
+                if resp.status >= 400:
+                    return {"success": False, "model_id": model.id, "status_code": resp.status, "error": f"HTTP {resp.status}"}
                 return {"success": True, "model_id": model.id, "status_code": resp.status}
     
     async def _check_custom_response(self, model: ModelInfo) -> Dict[str, Any]:

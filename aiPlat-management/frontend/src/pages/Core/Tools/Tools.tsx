@@ -5,16 +5,8 @@ import { Table, Button } from '../../../components/ui';
 import { ToolDetailModal, ExecuteToolModal, EditToolConfigModal } from '../../../components/core';
 import { toolApi } from '../../../services';
 import type { ToolInfo } from '../../../services';
-
-const categoryConfig: Record<string, { color: string; text: string }> = {
-  general: { color: 'bg-dark-hover text-gray-300 border-dark-border', text: '通用' },
-  search: { color: 'bg-blue-50 text-blue-300 border-blue-200', text: '搜索' },
-  calculation: { color: 'bg-green-50 text-green-300 border-green-200', text: '计算' },
-  file_operations: { color: 'bg-amber-50 text-amber-300 border-amber-200', text: '文件操作' },
-  code_execution: { color: 'bg-purple-50 text-purple-300 border-purple-200', text: '代码执行' },
-  api: { color: 'bg-cyan-50 text-cyan-300 border-cyan-200', text: 'API调用' },
-  data: { color: 'bg-rose-50 text-rose-300 border-rose-200', text: '数据处理' },
-};
+import { getSourceLabel, extractProvenance } from '../../../utils/sourceLabel';
+import { TOOL_CATEGORIES } from '../../../utils/categoryConfig';
 
 const Tools: React.FC = () => {
   const [tools, setTools] = useState<ToolInfo[]>([]);
@@ -69,13 +61,21 @@ const Tools: React.FC = () => {
       key: 'category',
       width: 120,
       render: (category: string) => {
-        const cfg = categoryConfig[category] || { color: 'bg-dark-hover text-gray-300 border-dark-border', text: category };
+        const cfg = TOOL_CATEGORIES[category] || { color: 'bg-dark-hover text-gray-300 border-dark-border', text: category };
         return (
           <span className={`inline-flex px-2 py-1 rounded-md text-xs font-medium border ${cfg.color}`}>
             {cfg.text}
           </span>
         );
       },
+    },
+    {
+      title: '来源',
+      key: 'source',
+      width: 80,
+      render: (_: unknown, record: ToolInfo) => (
+        <span className="text-gray-400 text-xs">{getSourceLabel(extractProvenance(record))}</span>
+      ),
     },
     {
       title: '调用次数',
@@ -150,6 +150,18 @@ const Tools: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+        <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+          <div><span className="text-gray-300">名称</span><span className="ml-2 text-gray-600">Tool 名称，点击查看详情</span></div>
+          <div><span className="text-gray-300">描述</span><span className="ml-2 text-gray-600">Tool 的功能说明</span></div>
+          <div><span className="text-gray-300">分类</span><span className="ml-2 text-gray-600">通用/搜索/计算/文件操作/代码执行/API调用/数据处理</span></div>
+          <div><span className="text-gray-300">调用次数</span><span className="ml-2 text-gray-600">运行统计中的总调用次数</span></div>
+          <div><span className="text-gray-300">成功率</span><span className="ml-2 text-gray-600">success_count / call_count，0 次调用时显示 —</span></div>
+          <div><span className="text-gray-300">操作</span><span className="ml-2 text-gray-600">执行/编辑(非保护)/详情。Tool 由系统自动注册，无需手动添加</span></div>
+        </div>
+      </details>
 
       <motion.div
         initial={{ opacity: 0, y: 8 }}

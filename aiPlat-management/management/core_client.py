@@ -55,9 +55,11 @@ class CoreAPIClient:
         """Make HTTP request to platform API (Builder was moved to platform)."""
         import os
         platform_url = os.getenv("AIPLAT_PLATFORM_URL", "http://localhost:8003")
+        headers = kwargs.pop("headers", {}) or {}
+        headers.setdefault("X-AIPLAT-INTERNAL", "management")
         try:
             async with httpx.AsyncClient(base_url=platform_url, timeout=self.config.timeout, trust_env=False) as pc:
-                resp = await pc.request(method, path, **kwargs)
+                resp = await pc.request(method, path, headers=headers, **kwargs)
                 resp.raise_for_status()
                 return resp.json()
         except httpx.HTTPStatusError as e:
@@ -312,51 +314,54 @@ class CoreAPIClient:
     # ===== Core Onboarding =====
 
     async def get_onboarding_state(self) -> Dict[str, Any]:
-        return await self._request("GET", "/api/core/onboarding/state")
+        return await self._platform_req("GET", "/onboarding/state")
 
     async def set_default_llm(self, body: Dict[str, Any]) -> Dict[str, Any]:
-        return await self._request("POST", "/api/core/onboarding/default-llm", json=body or {})
+        return await self._platform_req("POST", "/onboarding/default-llm", json=body or {})
 
     async def init_tenant(self, body: Dict[str, Any]) -> Dict[str, Any]:
-        return await self._request("POST", "/api/core/onboarding/init-tenant", json=body or {})
+        return await self._platform_req("POST", "/onboarding/init-tenant", json=body or {})
 
     async def set_autosmoke(self, body: Dict[str, Any]) -> Dict[str, Any]:
-        return await self._request("POST", "/api/core/onboarding/autosmoke", json=body or {})
+        return await self._platform_req("POST", "/onboarding/autosmoke", json=body or {})
 
     async def get_secrets_status(self) -> Dict[str, Any]:
-        return await self._request("GET", "/api/core/onboarding/secrets/status")
+        return await self._platform_req("GET", "/onboarding/secrets/status")
 
     async def migrate_secrets(self, body: Dict[str, Any]) -> Dict[str, Any]:
-        return await self._request("POST", "/api/core/onboarding/secrets/migrate", json=body or {})
+        return await self._platform_req("POST", "/onboarding/secrets/migrate", json=body or {})
 
     async def set_strong_gate(self, body: Dict[str, Any]) -> Dict[str, Any]:
-        return await self._request("POST", "/api/core/onboarding/strong-gate", json=body or {})
+        return await self._platform_req("POST", "/onboarding/strong-gate", json=body or {})
 
     async def set_exec_backend(self, body: Dict[str, Any]) -> Dict[str, Any]:
-        return await self._request("POST", "/api/core/onboarding/exec-backend", json=body or {})
+        return await self._platform_req("POST", "/onboarding/exec-backend", json=body or {})
 
     async def set_context_config(self, body: Dict[str, Any]) -> Dict[str, Any]:
-        return await self._request("POST", "/api/core/onboarding/context-config", json=body or {})
+        return await self._platform_req("POST", "/onboarding/context-config", json=body or {})
 
     async def set_trusted_skill_keys(self, body: Dict[str, Any]) -> Dict[str, Any]:
-        return await self._request("POST", "/api/core/onboarding/trusted-skill-keys", json=body or {})
+        return await self._platform_req("POST", "/onboarding/trusted-skill-keys", json=body or {})
+
+    async def generate_skill_key(self, body: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        return await self._platform_req("POST", "/onboarding/generate-skill-key", json=body or {})
 
     async def create_onboarding_evidence(self, body: Dict[str, Any]) -> Dict[str, Any]:
-        return await self._request("POST", "/api/core/onboarding/evidence/runs", json=body or {})
+        return await self._platform_req("POST", "/onboarding/evidence/runs", json=body or {})
 
     async def list_onboarding_evidence(self, *, step_key: Optional[str] = None, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
         params: Dict[str, Any] = {"limit": int(limit), "offset": int(offset)}
         if step_key:
             params["step_key"] = str(step_key)
-        return await self._request("GET", "/api/core/onboarding/evidence/runs", params=params)
+        return await self._platform_req("GET", "/onboarding/evidence/runs", params=params)
 
     async def get_onboarding_evidence(self, evidence_id: str) -> Dict[str, Any]:
-        return await self._request("GET", f"/api/core/onboarding/evidence/runs/{evidence_id}")
+        return await self._platform_req("GET", f"/onboarding/evidence/runs/{evidence_id}")
 
     # ===== Tenant Policies =====
 
     async def get_tenant_policy(self, tenant_id: str) -> Dict[str, Any]:
-        return await self._request("GET", f"/api/core/policies/tenants/{tenant_id}")
+        return await self._platform_req("GET", f"/platform/tenant-policies/policies/tenants/{tenant_id}")
 
     # ===== Diagnostics: context/prompt =====
 
@@ -732,10 +737,16 @@ class CoreAPIClient:
         return await self._request("GET", f"/api/core/agents/{agent_id}/sop")
 
     async def list_models(self, *, provider: Optional[str] = None, status: Optional[str] = None) -> Dict[str, Any]:
+        """List available models from infra ModelManager (calls infra directly)."""
+        import httpx, os
+        infra_url = os.getenv("AIPLAT_INFRA_URL", "http://localhost:8001")
         params: Dict[str, Any] = {}
         if provider: params["provider"] = provider
         if status: params["status"] = status
-        return await self._request("GET", "/api/core/models", params=params)
+        async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+            resp = await client.get(f"{infra_url}/api/infra/models", params=params)
+            resp.raise_for_status()
+            return resp.json()
 
     async def get_agent_versions(self, agent_id: str) -> Dict[str, Any]:
         """Get agent version history."""

@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Button, Modal, Textarea, toast } from '../ui';
 import { workspaceSkillApi } from '../../services';
 import { toastGateError } from '../ui';
-import { TraceFlowGraph } from './TraceFlowGraph';
+import './TraceFlowGraph';
 import ExecutionViewer from '../ExecutionViewer/ExecutionViewer';
 
 interface ExecuteSkillModalProps {

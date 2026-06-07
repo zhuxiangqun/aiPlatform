@@ -60,6 +60,9 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         try:
             with open(index_path, "rb") as f:
                 content = f.read()
+            # Inject Service Worker unregister script before </head> to prevent stale caching
+            sw_unregister = b"<script>navigator.serviceWorker?.getRegistrations().then(r=>r.forEach(x=>x.unregister()))</script>"
+            content = content.replace(b"</head>", sw_unregister + b"</head>", 1)
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(content)))
@@ -68,6 +71,52 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(content)
         except FileNotFoundError:
             self.send_error(404, "index.html not found")
+
+    def _serve_static(self, path):
+        """Serve a static file with appropriate cache headers.
+        Hashed assets (build output) get immutable long cache.
+        """
+        filepath = os.path.normpath(os.path.join(STATIC_DIR, path.lstrip("/")))
+        # Security: prevent directory traversal
+        if not filepath.startswith(os.path.normpath(STATIC_DIR)):
+            self.send_error(403)
+            return
+        if not os.path.isfile(filepath):
+            self.send_error(404)
+            return
+        try:
+            with open(filepath, "rb") as f:
+                content = f.read()
+            self.send_response(200)
+            # Infer content type from extension
+            ext = os.path.splitext(filepath)[1].lower()
+            ctype = {
+                ".js": "application/javascript",
+                ".css": "text/css",
+                ".html": "text/html",
+                ".json": "application/json",
+                ".png": "image/png",
+                ".jpg": "image/jpeg",
+                ".jpeg": "image/jpeg",
+                ".gif": "image/gif",
+                ".svg": "image/svg+xml",
+                ".woff": "font/woff",
+                ".woff2": "font/woff2",
+                ".ico": "image/x-icon",
+            }.get(ext, "application/octet-stream")
+            self.send_header("Content-Type", f"{ctype}; charset=utf-8" if ctype.startswith("text/") or ctype.startswith("application/javascript") else ctype)
+            self.send_header("Content-Length", str(len(content)))
+            # Hashed assets: immutable long cache. Non-hashed: short cache.
+            if ext in (".js", ".css", ".woff", ".woff2"):
+                self.send_header("Cache-Control", "public, max-age=31536000, immutable")
+            elif ext == ".html":
+                self.send_header("Cache-Control", "no-cache")
+            else:
+                self.send_header("Cache-Control", "public, max-age=3600")
+            self.end_headers()
+            self.wfile.write(content)
+        except FileNotFoundError:
+            self.send_error(404)
 
     def _proxy(self, method="GET"):
         target = self._get_target(self.path)
@@ -134,7 +183,7 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         if self._get_target(self.path):
             self._proxy("GET")
         elif self._is_static_asset(self.path):
-            super().do_GET()
+            self._serve_static(self.path)
         else:
             self._serve_spa()
 
@@ -156,7 +205,7 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
 
 if __name__ == "__main__":
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 5173
-    with http.server.HTTPServer(("0.0.0.0", port), ProxyHandler) as httpd:
+    with http.server.ThreadingHTTPServer(("0.0.0.0", port), ProxyHandler) as httpd:
         print(f"Frontend proxy running on http://0.0.0.0:{port}")
         print(f"Serving static files from: {STATIC_DIR}")
         print(f"Proxy routes: {list(PROXY_ROUTES.keys())}")

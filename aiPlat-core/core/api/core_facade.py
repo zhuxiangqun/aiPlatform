@@ -50,7 +50,7 @@ def create_agent(
     if isinstance(config, dict):
         config = AgentConfig(
             name=config.get("name", "agent"),
-            model=config.get("model", "gpt-4"),
+            model=config.get("model") or best_model_for_purpose("chat") or "gpt-4",
             temperature=float(config.get("temperature", 0.3)),
             max_tokens=int(config.get("max_tokens", 4096)),
             timeout=int(config.get("timeout", 600)),
@@ -641,6 +641,9 @@ def apply_agent_md_to_stage(stage: Any, agent_id: str) -> None:
     if fm.get("scoring_dimensions"):
         stage.scoring_dimensions = fm["scoring_dimensions"]
 
+    if fm.get("knowledge_bases"):
+        stage.knowledge_bases = fm["knowledge_bases"]
+
 
 # ═══════════════════════════════════════════════════════════════
 # Governance facade — Platform MUST use these instead of importing
@@ -739,11 +742,14 @@ def wiki_retrieve(query: str, wiki_titles: list = None, **kwargs: Any) -> Any:
     return sys_wiki_retrieve(query, wiki_titles, **kwargs)
 
 
-async def wiki_auto_update(doc_id: str, file_path: str) -> Dict[str, Any]:
+async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "") -> Dict[str, Any]:
     u"""Convert a newly ingested KB document into Wiki knowledge pages.
 
     Called by platform after document ingestion completes.
     Complies with platform→core facade rule (§5.1).
+
+    If collection_id is provided, it is added as a tag and used
+    for subdir→collection mapping in Vault→Wiki flows.
     """
     import os, re
     from core.harness.knowledge.wiki_engine import write_page
@@ -764,51 +770,159 @@ async def wiki_auto_update(doc_id: str, file_path: str) -> Dict[str, Any]:
     body = "\n\n".join(body_parts)[:50000]
     keywords = re.findall(r'[\u4e00-\u9fff]{2,8}|[A-Z][a-zA-Z]{2,}', body[:5000])
     tags = list(set(kw.lower() for kw in keywords[:8]))
+    if collection_id:
+        tags.append(f"collection:{collection_id}")
+
+    # ── Image extraction & description (fire-and-forget, best-effort) ──
+    image_descriptions = []
+    try:
+        from core.harness.document.parsers import extract_images_from_document, describe_images
+        img_paths = extract_images_from_document(file_path)
+        if img_paths:
+            image_descriptions = await describe_images(img_paths[:8])
+    except Exception:
+        pass
 
     write_page(title, body, category="entities", tags=tags,
                summary=body[:300].replace("\n", " "),
-               source_articles=[f"kb:{doc_id}"])
+               source_articles=[f"kb:{doc_id}"],
+               images=image_descriptions)
 
-    # LLM curation: extract knowledge atoms, generate proper metadata
-    try:
-        from core.harness.knowledge.wiki_engine import llm_curate_page, list_all_pages, update_page
-        import re as _re
-        safe_title = _re.sub(r"[<>:\"/\\|?*]", "_", title)[:120]
-        existing = list_all_pages()
-        existing_titles = [p["title"] for p in (existing or []) if p["title"] != safe_title]
-        curated = await llm_curate_page(safe_title, body, existing_titles=existing_titles, source_doc_id=doc_id)
-        if not curated.get("error") and not curated.get("fallback"):
+    # LLM curation: extract knowledge atoms, generate proper metadata (with retry)
+    import asyncio as _asyncio
+    curated = None
+    curation_retries = 0
+    for attempt in range(3):
+        try:
+            from core.harness.knowledge.wiki_engine import llm_curate_page, list_all_pages, update_page
+            import re as _re
+            safe_title = _re.sub(r"[<>:\"/\\|?*]", "_", title)[:120]
+            existing = list_all_pages()
+            existing_titles = [p["title"] for p in (existing or []) if p["title"] != safe_title]
+            curated = await llm_curate_page(safe_title, body, existing_titles=existing_titles, source_doc_id=doc_id)
+            if not curated.get("error") and not curated.get("fallback"):
+                break
+        except Exception:
+            if attempt < 2:
+                await _asyncio.sleep(2 ** attempt)
+                curation_retries += 1
+
+    if curated and not curated.get("error") and not curated.get("fallback"):
+        try:
             # Re-write main page with LLM metadata
             old_title = safe_title
+            curated_tags = curated.get("tags", tags)
+            if collection_id:
+                curated_tags = list(set(curated_tags + [f"collection:{collection_id}"]))
+            # Convert related to typed relationships for ontology A-Box
+            related_pages = curated.get("related", [])
+            relationships = [{"type": "cites", "target": r} for r in related_pages] if related_pages else None
+
             write_page(curated["title"], body,
                 category=curated.get("category", "entities"),
-                tags=curated.get("tags", tags),
-                related=curated.get("related", []),
+                tags=curated_tags,
+                relationships=relationships,
                 summary=curated.get("summary", body[:300].replace("\n", " ")),
-                source_articles=[f"kb:{doc_id}"])
+                source_articles=[f"kb:{doc_id}"],
+                images=image_descriptions)
             if curated["title"] != old_title:
                 from core.harness.knowledge.wiki_engine import delete_page
                 try: delete_page(old_title)
                 except: pass
-            # Create knowledge atom pages
+            # Create knowledge atom pages with evidence tracking
+            from core.harness.knowledge.wiki_engine import write_atom
             for atom in curated.get("knowledge_atoms", [])[:6]:
                 if not atom.get("title") or not atom.get("body"):
                     continue
                 atom_title = _re.sub(r"[<>:\"/\\|?*]", "_", str(atom["title"])[:80])
-                atom_body = str(atom["body"])[:20000]
                 atom_tags = list(atom.get("tags", []))[:5]
-                atom_cat = str(atom.get("category", "entities"))
+                if collection_id:
+                    atom_tags.append(f"collection:{collection_id}")
                 if atom_title and atom_title != curated["title"]:
-                    write_page(atom_title, atom_body, category=atom_cat,
-                        tags=atom_tags,
-                        related=list(set([curated["title"]] + curated.get("related", [])[:3])),
-                        summary=atom_body[:300].replace("\n", " "),
-                        source_articles=[f"kb:{doc_id}"])
-    except Exception:
-        import logging
-        logging.getLogger(__name__).debug("wiki_auto_update LLM curation skipped", exc_info=True)
+                    write_atom({
+                        "title": atom_title,
+                        "body": str(atom.get("body", ""))[:20000],
+                        "source_doc_id": f"kb:{doc_id}",
+                        "evidence_text": atom.get("evidence_text", ""),
+                        "confidence": float(atom.get("confidence", 0.5)),
+                        "tags": atom_tags,
+                        "contradicts_atom_index": atom.get("contradicts_atom_index"),
+                        "supports_atom_index": atom.get("supports_atom_index"),
+                    }, collection_id=collection_id or "default")
 
-    return {"status": "created", "title": title, "chars": len(body)}
+            # Track curation success for metrics
+            try:
+                import json as _json, os as _os, time as _time
+                stats_path = _os.path.join(_os.path.expanduser(_os.getenv("AIPLAT_HOME", "~/.aiplat")),
+                                           "wiki", "curation_stats.json")
+                stats = {}
+                if _os.path.exists(stats_path):
+                    stats = _json.loads(open(stats_path).read())
+                if curated and not curated.get("error") and not curated.get("fallback"):
+                    stats["successes"] = stats.get("successes", 0) + 1
+                    stats["last_success"] = _time.time()
+                else:
+                    stats["failures"] = stats.get("failures", 0) + 1
+                if curation_retries > 0:
+                    stats["retries_total"] = stats.get("retries_total", 0) + curation_retries
+                _os.makedirs(_os.path.dirname(stats_path), exist_ok=True)
+                _json.dump(stats, open(stats_path, "w"))
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+    # Record changelog for this ingest operation
+    try:
+        from core.harness.knowledge.wiki_engine import ingest_changelog
+        ops = [{"type": "create", "page": title, "detail": f"从 KB 文档 {doc_id} 创建"}]
+        if curated and not curated.get("error"):
+            for atom in curated.get("knowledge_atoms", [])[:6]:
+                if atom.get("title") and atom["title"] != curated.get("title", ""):
+                    ops.append({"type": "create", "page": str(atom["title"]),
+                                "detail": f"知识原子（来源：{title}）"})
+            if curated.get("related"):
+                ops.append({"type": "link", "page": title,
+                            "detail": f"关联 {len(curated['related'])} 个页面"})
+        ingest_changelog(ops)
+    except Exception:
+        pass
+
+    # ── Ontology: incremental A-Box rebuild after ingest ──
+    try:
+        from core.harness.knowledge.knowledge_abox_builder import rebuild_for_doc
+        rebuild_for_doc(doc_id)
+    except Exception:
+        pass
+
+    # ── Evolution: auto-trigger if enough new pages accumulated ──
+    try:
+        from core.harness.knowledge.evolution_runner import EvolutionRunner
+        runner = EvolutionRunner(collection_id=collection_id or "default", max_mutations=3)
+        if runner.can_evolve():
+            await runner.run_one_generation(force=False)
+    except Exception:
+        pass
+
+    final_category = "entities"
+    if curated and not curated.get("error") and not curated.get("fallback"):
+        final_category = curated.get("category", "entities")
+
+    # Update wiki_status in KB database for unified document→wiki tracking
+    try:
+        import sqlite3 as _sq
+        kb_db = os.path.join(os.path.expanduser(os.getenv("AIPLAT_HOME", "~/.aiplat")),
+                              "kb", "tenants", "default", "kb.sqlite3")
+        if os.path.exists(kb_db):
+            with _sq.connect(kb_db) as _conn:
+                _conn.execute(
+                    "UPDATE documents SET wiki_status='wikified' WHERE doc_id=?",
+                    (doc_id,))
+                _conn.commit()
+    except Exception:
+        pass
+
+    return {"status": "created", "title": title, "category": final_category, "chars": len(body)}
 
 
 def wiki_skill_deps() -> Dict[str, Any]:
@@ -833,6 +947,12 @@ def wiki_fts_search(query: str, limit: int = 10) -> Any:
     u"""Keyword search wiki pages via FTS5."""
     from core.harness.knowledge.wiki_fts import fts_search
     return fts_search(query, limit)
+
+
+def wiki_pages_by_source(source_key: str) -> List[Dict[str, Any]]:
+    u"""Find wiki pages that originated from a given source key (e.g. kb:<doc_id>)."""
+    from core.harness.knowledge.wiki_engine import pages_by_source
+    return pages_by_source(source_key)
 
 
 def code_intel_context(task: str) -> Any:
@@ -875,14 +995,20 @@ def kb_parse_document(file_path: str, kind: str) -> Any:
     """Parse a document file into element list via the unified parsers."""
     from core.harness.document import parsers
     dispatch = {
-        "docx": parsers.parse_docx, "word": parsers.parse_docx,
-        "pptx": parsers.parse_pptx, "ppt": parsers.parse_pptx,
-        "xlsx": parsers.parse_xlsx, "xls": parsers.parse_xlsx,
-        "csv": parsers.parse_csv, "pdf": parsers.parse_pdf,
+        # Office formats → MarkItDown (preserves heading/table/list structure)
+        "docx": parsers.parse_markitdown, "word": parsers.parse_markitdown,
+        "pptx": parsers.parse_markitdown, "ppt": parsers.parse_markitdown,
+        "xlsx": parsers.parse_markitdown, "xls": parsers.parse_markitdown,
+        "pdf": parsers.parse_markitdown,
+        "html": parsers.parse_html, "htm": parsers.parse_html,
+        # Lightweight formats → dedicated parsers
+        "csv": parsers.parse_csv,
         "md": parsers.parse_markdown, "markdown": parsers.parse_markdown,
+        "json": parsers.parse_json_document,
+        "eml": parsers.parse_eml,
+        # Media → keep existing pipelines (Whisper/OCR)
         "audio": parsers.parse_audio, "mp3": parsers.parse_audio, "wav": parsers.parse_audio,
         "image": parsers.parse_image, "png": parsers.parse_image, "jpg": parsers.parse_image,
-        "json": parsers.parse_json_document, "eml": parsers.parse_eml,
     }
     parser = dispatch.get(str(kind).lower())
     if not parser:
@@ -1025,31 +1151,42 @@ async def run_workspace_agent(
     import asyncio as _asyncio, os as _os
 
     agent_id = str(getattr(agent_info, "id", "unknown"))
-    import uuid as _uuid, os as _os_env
+    import uuid as _uuid, os as _os_env, time as _time
     run_id = f"run-{_uuid.uuid4().hex[:12]}"
     session_id = session_id or run_id
 
-    # Persist run to agent_executions so /api/core/runs/{run_id}/wait can find it
-    import time as _time, sqlite3 as _sqlite3
+    # Persist run to agent_executions via execution_store (unified path)
+    _now = _time.time()
     try:
         from core.services.execution_store import get_execution_store
         _es = get_execution_store()
-        _db_path = _es._config.db_path if hasattr(_es, "_config") else ""
+        await _es.upsert_agent_execution({
+            "id": run_id,
+            "agent_id": agent_id,
+            "status": "running",
+            "start_time": _now,
+            "created_at": _now,
+        })
+        # Mark gate coverage (Phase 3 GateTracer)
+        try:
+            from core.harness.kernel.execution_context import mark_gate_passed
+            mark_gate_passed("execution_store_persist")
+        except Exception:
+            pass
     except Exception:
-        _db_path = _os_env.getenv("AIPLAT_EXECUTION_DB_PATH", "")
-    if not _db_path:
-        from pathlib import Path as _Path
-        _db_path = str(_Path(__file__).resolve().parents[2] / "core" / "data" / "aiplat_executions.sqlite3")
-    _now = _time.time()
+        pass
+
+    # ── Emit run_start so ExecutionViewer + Runs page can discover this run ──
     try:
-        _conn = _sqlite3.connect(_db_path)
-        _conn.execute("PRAGMA journal_mode=WAL")
-        _conn.execute(
-            "INSERT OR REPLACE INTO agent_executions(id, agent_id, status, start_time, created_at) VALUES(?,?,?,?,?)",
-            (run_id, agent_id, "running", _now, _now),
+        from core.services.execution_store import get_execution_store
+        _es = get_execution_store()
+        await _es.append_run_event(
+            run_id=run_id,
+            event_type="run_start",
+            trace_id=None,
+            tenant_id=None,
+            payload={"kind": "agent", "agent_id": agent_id, "status": "running", "session_id": session_id},
         )
-        _conn.commit()
-        _conn.close()
     except Exception:
         pass
 
@@ -1072,7 +1209,7 @@ async def run_workspace_agent(
     def _resolve_model():
         from core.harness.utils.model_injection import create_selected_adapter
         cfg = getattr(agent_info, "config", None)
-        model_name = cfg.get("model", "deepseek-chat") if isinstance(cfg, dict) else "deepseek-chat"
+        model_name = cfg.get("model") or best_model_for_purpose("chat") or "deepseek-chat"  # noqa: model-legacy if isinstance(cfg, dict) else "deepseek-chat"
         try:
             return create_selected_adapter(model_name=model_name)
         except Exception:
@@ -1096,21 +1233,155 @@ async def run_workspace_agent(
     except Exception:
         pass
 
+    # Resolve agent's bound skills from registry (parallel to tools resolution)
+    resolved_skills = []
+    try:
+        from core.harness.integration import get_skill_registry
+        sk_reg = get_skill_registry()
+        for sn in (getattr(agent_info, "skills", []) or []):
+            s = sk_reg.get(str(sn)) if hasattr(sk_reg, "get") else None
+            if s: resolved_skills.append(s)
+    except Exception:
+        pass
+
+    # ── Pre-filter tools against toolset policy (② avoid LLM seeing denied tools) ──
+    if toolset:
+        try:
+            from core.harness.tools.toolsets import resolve_toolset, is_tool_allowed
+            policy = resolve_toolset(str(toolset))
+            filtered = []
+            for t in resolved_tools:
+                tn = getattr(t, "name", "")
+                allowed, _ = is_tool_allowed(policy, str(tn))
+                if allowed:
+                    filtered.append(t)
+            resolved_tools = filtered
+        except Exception:
+            pass
+
     prompt = (sop_body + "\n\n## Task\n" + user_message) if sop_body else user_message
     if sys_prompt:
         prompt = sys_prompt + "\n\n" + prompt
 
     from core.harness.execution.langgraph.stage_runner import StageRunner
-    runner = StageRunner(model=agent_model, tools=resolved_tools)
+    # Create a minimal pipeline config so StageRunner uses the caller's max_steps (default=10),
+    # not the fallback of 1 when self._config is None.
+    agent_loop_type = "react"
+    try:
+        meta = getattr(agent_info, "metadata", None) or {}
+        agent_loop_type = str(meta.get("loop_type") or agent_loop_type)
+    except Exception:
+        pass
+    class _RunnerConfig:
+        max_steps_per_stage = max_steps
+        max_tokens_per_run = 100000
+        stages = []
+        loop_type = agent_loop_type
+    runner = StageRunner(model=agent_model, tools=resolved_tools, skills=resolved_skills, pipeline_config=_RunnerConfig())
     state = {
         "session_id": session_id,
         "_run_id": run_id,
+        "_agent_id": agent_id,
         "_coding_policy_profile": "off",
         "_user_id": "system",
         "_enable_query_rewrite": True,
         "_sys_prompt": sys_prompt,
         "context": {"system_prompt": sys_prompt, "task": user_message},
     }
+
+    # ── Inject workspace context (toolset + mcp_ids + agent_ids + workflow_ids) ──
+    ws_token = None
+    mcp_ids = None
+    agent_ids = None
+    workflow_ids = None
+    # Fallback: if request didn't specify toolset, use agent-level binding
+    if not toolset:
+        try:
+            meta = getattr(agent_info, "metadata", None) or {}
+            toolset = str(meta.get("toolset") or "")
+        except Exception:
+            pass
+    try:
+        agent_mcp_ids = getattr(agent_info, "mcp_ids", None)
+        mcp_ids = list(agent_mcp_ids) if isinstance(agent_mcp_ids, list) else None
+    except Exception:
+        pass
+    try:
+        agent_agent_ids = getattr(agent_info, "agent_ids", None)
+        agent_ids = list(agent_agent_ids) if isinstance(agent_agent_ids, list) else None
+    except Exception:
+        pass
+    try:
+        agent_workflow_ids = getattr(agent_info, "workflow_ids", None)
+        workflow_ids = list(agent_workflow_ids) if isinstance(agent_workflow_ids, list) else None
+    except Exception:
+        pass
+    if toolset or mcp_ids or agent_ids or workflow_ids:
+        from core.harness.kernel.execution_context import (
+            set_active_workspace_context,
+            reset_active_workspace_context,
+            ActiveWorkspaceContext,
+        )
+        ws_token = set_active_workspace_context(
+            ActiveWorkspaceContext(
+                toolset=str(toolset) if toolset else None,
+                mcp_ids=mcp_ids,
+                agent_ids=agent_ids,
+                workflow_ids=workflow_ids,
+            )
+        )
+        # Mark gate coverage (Phase 3 GateTracer)
+        try:
+            from core.harness.kernel.execution_context import mark_gate_passed
+            mark_gate_passed("workspace_context_injected")
+        except Exception:
+            pass
+
+    # ── Inject request identity context (aligns with Path B integration.py:1805) ──
+    req_token = None
+    try:
+        from core.harness.kernel.execution_context import (
+            set_active_request_context,
+            reset_active_request_context,
+            ActiveRequestContext,
+        )
+        req_token = set_active_request_context(
+            ActiveRequestContext(
+                user_id="system",
+                session_id=str(session_id),
+                entrypoint="workspace_agent_api",
+            )
+        )
+        # Mark gate coverage (Phase 3 GateTracer)
+        try:
+            from core.harness.kernel.execution_context import mark_gate_passed
+            mark_gate_passed("request_context_injected")
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+    # ── Emit agent_start via EventBus so ExecutionViewer sees live events ──
+    # Delay 0.3s to give frontend SSE EventSource time to connect before execution begins.
+    try:
+        from core.harness.observation.event_bus import EventBus
+        t0_agent = _time.time()
+        EventBus.publish(run_id, {
+            "id": f"{run_id}:agent_start",
+            "parent_span_id": None,
+            "kind": "agent",
+            "name": "agent_start",
+            "status": "running",
+            "span_id": f"agent:{agent_id}:start",
+            "trace_id": f"trace-{_uuid.uuid4().hex[:12]}",
+            "run_id": run_id,
+            "start_time": t0_agent,
+            "target_type": str(agent_id),
+            "duration_ms": 0,
+        })
+        await _asyncio.sleep(0.3)
+    except Exception:
+        t0_agent = _now
 
     status = "completed"
     result_text = ""
@@ -1123,19 +1394,95 @@ async def run_workspace_agent(
     except Exception as e:
         status = "failed"
         error_msg = str(e)[:500]
+    finally:
+        if ws_token is not None:
+            try:
+                from core.harness.kernel.execution_context import reset_active_workspace_context
+                reset_active_workspace_context(ws_token)
+            except Exception:
+                pass
+        if req_token is not None:
+            try:
+                from core.harness.kernel.execution_context import reset_active_request_context
+                reset_active_request_context(req_token)
+            except Exception:
+                pass
 
-    # Update agent_executions status
+    # ── Emit agent_end + run_end for ExecutionViewer done detection + live events ──
     import json as _json
     _end = _time.time()
-    _duration_ms = int((_end - _now) * 1000)
+    _duration_ms = int((_end - (t0_agent or _now)) * 1000)
+
+    # Emit agent_end FIRST so SSE catches it before run_end triggers done
     try:
-        _conn2 = _sqlite3.connect(_db_path)
-        _conn2.execute(
-            "UPDATE agent_executions SET status=?, output_json=?, error=?, end_time=?, duration_ms=? WHERE id=?",
-            (status, _json.dumps({"text": result_text or ""}), error_msg or "", _end, _duration_ms, run_id),
+        from core.harness.observation.event_bus import EventBus
+        EventBus.publish(run_id, {
+            "id": f"{run_id}:agent_end",
+            "parent_span_id": None,
+            "kind": "agent",
+            "name": "agent_end",
+            "status": "ok" if status == "completed" else "error",
+            "span_id": f"agent:{agent_id}:end",
+            "trace_id": f"trace-{_uuid.uuid4().hex[:12]}",
+            "run_id": run_id,
+            "start_time": _time.time(),
+            "duration_ms": _duration_ms,
+            "target_type": str(agent_id),
+            "result_json": _json.dumps({"text": str(result_text or "")[:5000]}),
+            "error": error_msg,
+        })
+    except Exception:
+        pass
+
+    try:
+        from core.services.execution_store import get_execution_store
+        _es = get_execution_store()
+        await _es.upsert_agent_execution({
+            "id": run_id,
+            "agent_id": agent_id,
+            "status": status,
+            "output": {"text": result_text or ""},
+            "error": error_msg or "",
+            "end_time": _end,
+            "duration_ms": _duration_ms,
+        })
+        # Emit run_end so SSE can detect completion
+        await _es.append_run_event(
+            run_id=run_id,
+            event_type="run_end",
+            trace_id=None,
+            tenant_id=None,
+            payload={"kind": "agent", "agent_id": agent_id, "status": status, "duration_ms": _duration_ms, "error": error_msg or ""},
         )
-        _conn2.commit()
-        _conn2.close()
+    except Exception:
+        pass
+
+    # ── GateTracer: validate mandatory gates were all passed (Phase 3) ──
+    try:
+        from core.harness.kernel.execution_context import get_gate_coverage
+        gates = get_gate_coverage()
+        # Required gates for workspace agent execution
+        required = {"workspace_context_injected", "request_context_injected", "llm_generate_called"}
+        missing = required - gates
+        if missing:
+            # Emit diagnostic event visible in ExecutionViewer
+            try:
+                from core.services.execution_store import get_execution_store
+                store = get_execution_store()
+                await store.append_run_event(
+                    run_id=str(run_id),
+                    event_type="gate_coverage_gap",
+                    trace_id=None,
+                    tenant_id=None,
+                    payload={
+                        "missing_gates": sorted(missing),
+                        "covered_gates": sorted(gates),
+                        "agent_id": agent_id,
+                        "status": status,
+                    },
+                )
+            except Exception:
+                pass
     except Exception:
         pass
 

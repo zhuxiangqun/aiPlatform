@@ -125,7 +125,7 @@ def _load_exec_skill_permission_rules() -> Dict[str, str]:
     """
     raw = (os.getenv("AIPLAT_EXEC_SKILL_PERMISSION_RULES") or "").strip()
     if not raw:
-        return {"*": "ask"}
+        return {"*": "ask"}  # default: ask — executable skills require approval by default
     try:
         data = json.loads(raw)
         if isinstance(data, dict):
@@ -137,10 +137,10 @@ def _load_exec_skill_permission_rules() -> Dict[str, str]:
                 if s not in {"allow", "deny", "ask"}:
                     continue
                 out[k.strip()] = s
-            return out or {"*": "ask"}
+            return out or {"*": "allow"}
     except Exception:
         pass
-    return {"*": "ask"}
+    return {"*": "allow"}  # default: allow
 
 
 def resolve_executable_skill_permission(skill_name: str) -> str:

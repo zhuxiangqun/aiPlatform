@@ -265,7 +265,7 @@ class PipelineStageConfig(BaseModel):
     failure_mode_constraints: List[Dict[str, Any]] = Field(default_factory=list)
     # [{failure_type, constraint_action, max_escalation}] — targeted recovery per failure type
     # Empty list = use system DEFAULT_FAILURE_MODE_CONSTRAINTS
-    enable_query_rewrite: bool = False  # rewrite ambiguous follow-up queries before retrieval
+    enable_query_rewrite: bool = True  # rewrite ambiguous follow-up queries before retrieval
     scoring_dimensions: List[Dict[str, Any]] = Field(default_factory=list)
     coverage_trace_fields: Dict[str, str] = Field(default_factory=lambda: {"components_key": "components", "api_contracts_key": "api_contracts", "data_model_key": "data_model", "files_key": "files", "test_cases_key": "test_cases"})
     # Debate pattern: stage uses adversarial multi-agent debate (TradingAgents-inspired)
@@ -278,6 +278,8 @@ class PipelineStageConfig(BaseModel):
     # Render config: inject upstream outputs as Markdown into stage prompt
     render_upstream: bool = False
     render_schema_fields: List[Dict[str, Any]] = Field(default_factory=list)
+    # Knowledge base binding: collections the agent's wiki search is scoped to
+    knowledge_bases: List[str] = Field(default_factory=list)
 
 
 class PipelineConfig(BaseModel):

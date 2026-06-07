@@ -7,15 +7,16 @@ version: 1.0.0
 status: enabled
 execution_mode: prompt
 permissions:
-  - "eval:write"
-  - "llm:generate"
-  - "agent:read"
-  - "event:read"
+- eval:write
+- llm:generate
+- agent:read
+- event:read
 effects:
-  - type: write
-    resources: ["filesystem:~/.aiplat"]
-    idempotent: false
-    rollback_available: true
+- type: write
+  resources:
+  - filesystem:~/.aiplat
+  idempotent: false
+  rollback_available: true
 input_schema:
   target_agent_id:
     type: string
@@ -34,6 +35,31 @@ output_schema:
     type: array
   markdown:
     type: string
+    required: true
+    description: 面向人阅读的 Markdown 输出
+metadata:
+  trigger_conditions:
+  - 评估代码
+  - 代码评估
+  - 生成评估代码
+  - 评分
+  - 评估生成器
+  - 代码评分
+  - 生成评估报告
+  - 自动化评估
+  keywords:
+    objects:
+    - 评估代码
+    - 评分标准
+    - 测试用例
+    actions:
+    - 生成
+    - 评估
+    - 评分
+  negative_triggers:
+  - 不需要特定的编程语言知识
+  - 不要猜测或编造不存在的数据
+  sop_goal: 为 Agent 自动生成评估代码
 ---
 
 ## SOP
@@ -100,3 +126,11 @@ scoring_dimensions:
 ```
 
 生成的 Python 文件写入 `~/.aiplat/eval/<agent_id>/eval_metric.py` 和 `eval_runner.py`。
+
+## 目标
+为 Agent 自动生成评估代码
+
+## Checklist
+- [ ] 输出格式符合规范
+- [ ] 正确处理错误和边界条件
+- [ ] 返回结果包含引用和来源标注

@@ -181,6 +181,20 @@ const Approvals: React.FC = () => {
         </Button>
       </div>
 
+      <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+        <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+          <div><span className="text-gray-300">request_id</span><span className="ml-2 text-gray-600">审批请求唯一标识</span></div>
+          <div><span className="text-gray-300">change_id</span><span className="ml-2 text-gray-600">关联的变更控制 ID</span></div>
+          <div><span className="text-gray-300">operation</span><span className="ml-2 text-gray-600">操作类型</span></div>
+          <div><span className="text-gray-300">config</span><span className="ml-2 text-gray-600">config:publish 时显示 target/scope/channel/tenant</span></div>
+          <div><span className="text-gray-300">expires_at</span><span className="ml-2 text-gray-600">审批过期时间 + 剩余时长</span></div>
+          <div><span className="text-gray-300">status</span><span className="ml-2 text-gray-600"><span className="text-yellow-400">pending</span> 等待审批</span></div>
+          <div><span className="text-gray-300">candidate</span><span className="ml-2 text-gray-600">关联的发布候选 ID</span></div>
+          <div><span className="text-gray-300">操作</span><span className="ml-2 text-gray-600">查看/变更/批准/拒绝</span></div>
+        </div>
+      </details>
+
       <Card>
         <CardHeader>
           <div className="text-sm font-semibold text-gray-200">Pending Requests</div>

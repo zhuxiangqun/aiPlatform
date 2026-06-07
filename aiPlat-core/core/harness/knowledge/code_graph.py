@@ -131,15 +131,142 @@ def _extract_calls_ast(filepath: Path) -> list:
         return []
 
     calls = []
+    # Pre-compute: which nodes are inside a function body (Phase 2.5)
+    func_body_nodes: set = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            for child in ast.walk(node):
+                func_body_nodes.add(id(child))
     for node in ast.walk(tree):
         if isinstance(node, ast.Call):
             func = node.func
-            # Extract the function/method name from the call
             if isinstance(func, ast.Name):
                 calls.append((func.id, func.lineno))
             elif isinstance(func, ast.Attribute):
                 calls.append((func.attr, func.lineno))
+        # Track lazy imports inside function bodies (Phase 2.5: convergence checker support)
+        elif isinstance(node, ast.ImportFrom):
+            if id(node) in func_body_nodes:
+                for alias in node.names:
+                    if alias.name != "*":
+                        calls.append((alias.asname or alias.name, node.lineno))
     return calls
+
+
+def _extract_py_imported_names(filepath: Path) -> set:
+    """Extract all names made available by import statements in a Python file.
+    Returns set of local name strings (e.g. 'os', 'llm_generate', 'json')."""
+    try:
+        text = _read_text(filepath)
+        if not text:
+            return set()
+        text = _strip_py_type_checking(text)
+        tree = ast.parse(text, filename=str(filepath))
+    except SyntaxError:
+        return set()
+
+    names = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                name = alias.asname or alias.name.split(".")[0]
+                names.add(name)
+        elif isinstance(node, ast.ImportFrom):
+            for alias in node.names:
+                if alias.name == "*":
+                    names.add("*")  # wildcard — can't determine exact names
+                else:
+                    name = alias.asname or alias.name
+                    names.add(name)
+    return names
+
+
+# Python builtins (functions, types, constants)
+_BUILTIN_NAMES = frozenset({
+    "abs", "all", "any", "ascii", "bin", "bool", "breakpoint", "bytearray", "bytes",
+    "callable", "chr", "classmethod", "compile", "complex", "copyright", "credits",
+    "delattr", "dict", "dir", "divmod", "enumerate", "eval", "exec", "exit", "filter",
+    "float", "format", "frozenset", "getattr", "globals", "hasattr", "hash", "help",
+    "hex", "id", "input", "int", "isinstance", "issubclass", "iter", "len", "license",
+    "list", "locals", "map", "max", "memoryview", "min", "next", "object", "oct",
+    "open", "ord", "pow", "print", "property", "quit", "range", "repr", "reversed",
+    "round", "set", "setattr", "slice", "sorted", "staticmethod", "str", "sum",
+    "super", "tuple", "type", "vars", "zip", "__import__",
+    # Common exception types
+    "Exception", "ValueError", "TypeError", "KeyError", "IndexError",
+    "AttributeError", "RuntimeError", "StopIteration", "ImportError", "OSError",
+    "FileNotFoundError", "PermissionError", "NotImplementedError",
+    # Constants
+    "True", "False", "None", "Ellipsis", "NotImplemented",
+    # Decorator-related: these are often imported elsewhere but make parsing noisy
+    "abstractmethod", "dataclass", "field",
+})
+
+
+def _detect_undefined_calls(filepath: Path) -> list:
+    """Detect bare function calls that reference undefined names.
+    Only checks bare names (e.g. 'func()'), not method calls (e.g. 'obj.method()').
+    Filters out common parameter / callback variable names to reduce false positives.
+    Returns list of dicts with type='undefined_call', file, line, name."""
+    if filepath.suffix.lower() != ".py":
+        return []
+    try:
+        text = _read_text(filepath)
+        if not text:
+            return []
+        text = _strip_py_type_checking(text)
+        tree = ast.parse(text, filename=str(filepath))
+    except SyntaxError:
+        return []
+
+    # Collect bare function calls (only ast.Name, not ast.Attribute)
+    bare_calls = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+            bare_calls.add((node.func.id, node.lineno))
+
+    if not bare_calls:
+        return []
+
+    # Collect symbols defined in this file
+    symbols = _extract_symbols_ast(filepath)
+    defined = {s[0] for s in symbols}
+    if not defined:
+        return []
+
+    # Collect imported names
+    imported = _extract_py_imported_names(filepath)
+
+    # Collect function parameters to filter out callback names
+    param_names = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            for arg in node.args.args + node.args.kwonlyargs:
+                param_names.add(arg.arg)
+            if node.args.vararg:
+                param_names.add(node.args.vararg.arg)
+            if node.args.kwarg:
+                param_names.add(node.args.kwarg.arg)
+
+    known = _BUILTIN_NAMES | imported | defined | param_names
+
+    issues = []
+    seen = set()
+    for func_name, line_no in sorted(bare_calls):
+        if func_name in seen or func_name in known:
+            continue
+        if func_name[0].isupper() or func_name.startswith("__"):
+            continue
+        seen.add(func_name)
+        issues.append({
+            "type": "undefined_call",
+            "severity": "error",
+            "rule": f"undefined:{func_name}",
+            "file": str(filepath),
+            "line": line_no,
+            "detail": f"调用未定义的函数 '{func_name}' — 非 builtin、非 import、非本文件定义",
+        })
+    return issues
 
 
 def _extract_symbols_ast(filepath: Path) -> list:
@@ -875,7 +1002,52 @@ def _layer_bucket(path: str) -> str:
         return "platform"
     if any(x in path for x in ["frontend/", "src/pages", "src/components", "App.tsx"]):
         return "app"
-    return "core"
+        return "core"
+
+
+def _build_contains_edges(
+    tree: ast.AST,
+    file_id: str,
+    symbol_nodes: Dict[str, Any],
+    symbol_edges: List[Dict[str, str]],
+) -> None:
+    """Walk AST to find parent→child nesting and create 'contains' edges."""
+    parent_stack: list = []
+
+    def _add_edge(node):
+        if parent_stack:
+            parent_name, _ = parent_stack[-1]
+            parent_id = f"{file_id}::{parent_name}"
+            child_id = f"{file_id}::{node.name}"
+            if child_id in symbol_nodes:
+                symbol_edges.append({
+                    "from": parent_id,
+                    "to": child_id,
+                    "kind": "contains",
+                    "label": f"defines {node.name}",
+                    "line": node.lineno,
+                })
+
+    class _Walker(ast.NodeVisitor):
+        def visit_FunctionDef(self, node):
+            _add_edge(node)
+            parent_stack.append((node.name, "function"))
+            self.generic_visit(node)
+            parent_stack.pop()
+
+        def visit_AsyncFunctionDef(self, node):
+            _add_edge(node)
+            parent_stack.append((node.name, "async_function"))
+            self.generic_visit(node)
+            parent_stack.pop()
+
+        def visit_ClassDef(self, node):
+            _add_edge(node)
+            parent_stack.append((node.name, "class"))
+            self.generic_visit(node)
+            parent_stack.pop()
+
+    _Walker().visit(tree)
 
 
 def _build_symbol_graph(
@@ -935,14 +1107,26 @@ def _build_symbol_graph(
         try:
             calls = _extract_calls_ast(fpath)
             local_symbols = {s[0] for s in file_nodes[file_id].get("symbols", [])}
+
+            def _find_enclosing_function(file_id, line_no, candidate_symbols):
+                """Find the enclosing function for a call at line_no.
+                Sorts by line number first since AST-walk order != line order,
+                then picks the innermost (last one defined before the call)."""
+                func_candidates = sorted(
+                    [s for s in candidate_symbols
+                     if isinstance(s, (list, tuple)) and len(s) > 2
+                     and s[2] < line_no
+                     and s[1] in ("function", "async_function")],
+                    key=lambda x: x[2]
+                )
+                return func_candidates[-1][0] if func_candidates else file_id
+
             for func_name, line_no in calls:
-                # Only create edge if the called function is a known symbol in this file
                 if func_name in local_symbols:
-                    caller_candidates = [
-                        s for s in file_nodes[file_id].get("symbols", [])
-                        if isinstance(s, (list, tuple)) and len(s) > 2 and s[2] < line_no
-                    ]
-                    caller_name = caller_candidates[-1][0] if caller_candidates else file_id
+                    caller_name = _find_enclosing_function(
+                        file_id, line_no,
+                        file_nodes[file_id].get("symbols", [])
+                    )
                     caller_id = f"{file_id}::{caller_name}"
                     callee_id = f"{file_id}::{func_name}"
                     if caller_id != callee_id:
@@ -960,7 +1144,11 @@ def _build_symbol_graph(
                     target_files = name_index.get(func_name, [])
                     for tf, _ in target_files[:2]:
                         if tf != file_id and tf in file_nodes:
-                            caller_id = f"{file_id}::{file_id}"
+                            caller_name = _find_enclosing_function(
+                                file_id, line_no,
+                                file_nodes[file_id].get("symbols", [])
+                            )
+                            caller_id = f"{file_id}::{caller_name}"
                             callee_id = f"{tf}::{func_name}"
                             if callee_id in symbol_nodes:
                                 symbol_edges.append({
@@ -970,6 +1158,24 @@ def _build_symbol_graph(
                                     "label": f"{func_name}()",
                                     "line": line_no,
                                 })
+        except Exception:
+            pass
+
+    # Phase 2.5: Add "contains" edges using AST parent tracking.
+    # Walk each file's AST to build a parent→child nesting map, then create
+    # edges from outermost function/class to all inner symbols it contains.
+    # This lets BFS traverse from run_workspace_agent → _resolve_model → cross_call edges.
+    for file_id in file_nodes:
+        fpath = repo_root / file_id
+        if not fpath.exists() or fpath.suffix.lower() != ".py":
+            continue
+        try:
+            text = _read_text(fpath)
+            if text:
+                text = _strip_py_type_checking(text)
+                tree = ast.parse(text, filename=str(fpath))
+                # Build parent map: child_id → parent_name
+                _build_contains_edges(tree, file_id, symbol_nodes, symbol_edges)
         except Exception:
             pass
 

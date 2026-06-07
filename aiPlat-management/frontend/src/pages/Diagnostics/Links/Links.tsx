@@ -393,6 +393,18 @@ const Links: React.FC = () => {
                 </div>
               </div>
 
+              <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+                <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+                <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+                  <div><span className="text-gray-300">run_id / execution_id</span><span className="ml-2 text-gray-600">Run / 执行唯一 ID，可复制/跳转</span></div>
+                  <div><span className="text-gray-300">graph_name / type</span><span className="ml-2 text-gray-600">Graph 名称 / 执行类型（agent/skill）</span></div>
+                  <div><span className="text-gray-300">status</span><span className="ml-2 text-gray-600">执行状态</span></div>
+                  <div><span className="text-gray-300">start_time</span><span className="ml-2 text-gray-600">开始时间</span></div>
+                  <div><span className="text-gray-300">duration_ms</span><span className="ml-2 text-gray-600">耗时（毫秒）</span></div>
+                  <div><span className="text-gray-300">error</span><span className="ml-2 text-gray-600">错误详情（含 error_code）</span></div>
+                </div>
+              </details>
+
               <Tabs
                 tabs={[
                   {

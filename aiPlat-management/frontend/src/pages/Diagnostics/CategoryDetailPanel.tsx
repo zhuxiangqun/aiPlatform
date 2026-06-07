@@ -20,7 +20,7 @@ const mapStatus = (s: string): ExecutionNode['status'] => {
   return 'idle';
 };
 
-const CategoryDetailPanel: React.FC<Props> = ({ open, runId, categoryKey, categoryName, categoryResult, onClose }) => {
+const CategoryDetailPanel: React.FC<Props> = ({ open, runId: _runId, categoryKey, categoryName, categoryResult, onClose }) => {
   const [liveRunId, setLiveRunId] = useState('');
   const [runningFetch, setRunningFetch] = useState(false);
   const [fetchError, setFetchError] = useState('');
@@ -59,7 +59,7 @@ const CategoryDetailPanel: React.FC<Props> = ({ open, runId, categoryKey, catego
   const { events: allEvents, status: sseStatus } = useLiveEvents(open && liveRunId ? liveRunId : null);
 
   const catEvents = useMemo(() => {
-    return allEvents.filter(e => !e.category || e.category === categoryKey);
+    return allEvents.filter((e: any) => !e.category || e.category === categoryKey);
   }, [allEvents, categoryKey]);
 
   // Fallback: if SSE events are empty and run completed, use cached result items
@@ -88,17 +88,20 @@ const CategoryDetailPanel: React.FC<Props> = ({ open, runId, categoryKey, catego
             group: categoryKey,
             status: mapStatus(evt.status || 'pass'),
           });
-        } else if (evt.type === 'check_progress' && evt.skill) {
-          const sk = evt.skill;
-          if (!seen.has(sk.name)) {
-            seen.add(sk.name);
-            result.push({
-              id: `${categoryKey}_${sk.name}`,
-              type: 'diag',
-              name: sk.name.slice(0, 40),
-              group: categoryKey,
-              status: sk.errors > 0 ? 'warning' : 'completed',
-            });
+        } else if (evt.type === 'check_progress') {
+          const skillName = (evt as any).skill;
+          if (skillName) {
+            const sk = (evt as any).skill;
+            if (!seen.has(sk.name)) {
+              seen.add(sk.name);
+              result.push({
+                id: `${categoryKey}_${sk.name}`,
+                type: 'diag',
+                name: sk.name.slice(0, 40),
+                group: categoryKey,
+                status: sk.errors > 0 ? 'warning' : 'completed',
+              });
+            }
           }
         }
       }

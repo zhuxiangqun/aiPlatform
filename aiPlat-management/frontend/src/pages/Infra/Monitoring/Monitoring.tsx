@@ -110,6 +110,19 @@ const Monitoring: React.FC = () => {
         </motion.div>
       </div>
 
+      <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+        <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+          <div><span className="text-gray-300">节点</span><span className="ml-2 text-gray-600">GPU 所在节点 ID</span></div>
+          <div><span className="text-gray-300">GPU</span><span className="ml-2 text-gray-600">GPU 索引编号</span></div>
+          <div><span className="text-gray-300">利用率</span><span className="ml-2 text-gray-600">当前 GPU 使用率（%）</span></div>
+          <div><span className="text-gray-300">显存</span><span className="ml-2 text-gray-600">已用/总显存（GB）</span></div>
+          <div><span className="text-gray-300">温度</span><span className="ml-2 text-gray-600">GPU 当前温度（°C）</span></div>
+          <div><span className="text-gray-300">功耗</span><span className="ml-2 text-gray-600">当前功耗 / 功耗上限（W）</span></div>
+          <div><span className="text-gray-300">状态</span><span className="ml-2 text-gray-600"><span className="text-green-300">正常</span> · <span className="text-amber-300">警告</span> · <span className="text-red-300">告警</span></span></div>
+        </div>
+      </details>
+
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}

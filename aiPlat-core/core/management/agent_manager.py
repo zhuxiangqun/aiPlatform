@@ -7,6 +7,7 @@ Provides CRUD operations for agents and skill/tool bindings.
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any
 import json
+import hashlib
 from datetime import datetime, timezone
 import uuid
 import os
@@ -192,7 +193,7 @@ class AgentManager:
                     if not isinstance(config, dict):
                         config = {}
                     if not config.get("model"):
-                        config["model"] = fm.get("model") or "deepseek-chat"
+                        config["model"] = fm.get("model") or best_model_for_purpose("chat") or "deepseek-chat"  # noqa: model-legacy
 
                     category = str(fm.get("category") or "")
                     tags = fm.get("tags") or []
@@ -219,6 +220,9 @@ class AgentManager:
                         config=config,
                         skills=list(required_skills),
                         tools=list(required_tools),
+                        mcp_ids=fm.get("mcp_servers", []) if isinstance(fm.get("mcp_servers"), list) else [],
+                        workflow_ids=fm.get("workflows", []) if isinstance(fm.get("workflows"), list) else [],
+                        agent_ids=fm.get("agent_ids", []) if isinstance(fm.get("agent_ids"), list) else [],
                         memory_config=metadata.get("memory_config") or {"type": "short_term", "recall_count": 5},
                         created_at=now,
                         updated_at=now,
@@ -229,6 +233,8 @@ class AgentManager:
                         tags=tags,
                         phase=phase,
                     )
+                    # Enrich with provenance and integrity
+                    self._enrich_agent_provenance_and_integrity(metadata, agent_dir=item)
                     self._stats.setdefault(agent_id, AgentStats())
                     self._skill_bindings.setdefault(agent_id, [])
                     self._tool_bindings.setdefault(agent_id, [])
@@ -254,7 +260,139 @@ class AgentManager:
         if s in ("enabled",):
             return "ready"  # already enabled = functionally ready for review
         return "draft"
-    
+
+    # ==================== Provenance & Integrity ====================
+
+    def _sha256_file(self, p: Path) -> str:
+        h = hashlib.sha256()
+        with p.open("rb") as f:
+            while True:
+                b = f.read(1024 * 1024)
+                if not b:
+                    break
+                h.update(b)
+        return h.hexdigest()
+
+    def _read_agent_manifest_json(self, agent_dir: Path) -> Dict[str, Any]:
+        p = agent_dir / "AGENT.manifest.json"
+        if not p.exists():
+            return {}
+        try:
+            raw = p.read_text(encoding="utf-8")
+            data = json.loads(raw or "{}")
+            return data if isinstance(data, dict) else {}
+        except Exception:
+            return {}
+
+    def _compute_agent_bundle_integrity(self, agent_dir: Path) -> Dict[str, Any]:
+        entries: List[str] = []
+        total_bytes = 0
+        file_count = 0
+        files_sample: List[str] = []
+        try:
+            for p in sorted(agent_dir.rglob("*")):
+                try:
+                    if p.is_dir():
+                        continue
+                    rel = str(p.relative_to(agent_dir))
+                    if rel.startswith("__pycache__/") or rel.endswith(".pyc"):
+                        continue
+                    if rel.startswith(".revisions/"):
+                        continue
+                    if rel.startswith(".git/"):
+                        continue
+                    if rel.startswith("node_modules/"):
+                        continue
+                    size = int(p.stat().st_size)
+                    sha = self._sha256_file(p)
+                    entries.append(f"{rel}\t{size}\t{sha}")
+                    total_bytes += size
+                    file_count += 1
+                    if len(files_sample) < 20:
+                        files_sample.append(rel)
+                except Exception:
+                    continue
+        except Exception:
+            pass
+        bundle_sha256 = hashlib.sha256(("\n".join(entries)).encode("utf-8")).hexdigest()
+        return {
+            "bundle_sha256": bundle_sha256,
+            "file_count": int(file_count),
+            "total_bytes": int(total_bytes),
+            "files_sample": files_sample,
+        }
+
+    def _enrich_agent_provenance_and_integrity(self, metadata: Dict[str, Any], *, agent_dir: Path) -> None:
+        if not isinstance(metadata, dict):
+            return
+        prov = metadata.get("provenance") if isinstance(metadata.get("provenance"), dict) else {}
+        prov.setdefault("source_type", "filesystem")
+        prov.setdefault("scope", (self._scope or "engine"))
+        prov.setdefault("agent_dir", str(agent_dir))
+
+        manifest = self._read_agent_manifest_json(agent_dir)
+        if not manifest and (self._scope or "").strip().lower() != "engine":
+            manifest = {"version": "1.0.0"}
+            try:
+                (agent_dir / "AGENT.manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
+            except Exception:
+                pass
+        if manifest:
+            prov.setdefault("publisher", manifest.get("publisher"))
+            prov.setdefault("source", manifest.get("source"))
+            prov.setdefault("version", manifest.get("version"))
+            if manifest.get("signature") is not None:
+                prov.setdefault("signature", manifest.get("signature"))
+            try:
+                mpath = agent_dir / "AGENT.manifest.json"
+                if mpath.exists():
+                    prov.setdefault("manifest_sha256", self._sha256_file(mpath))
+            except Exception:
+                pass
+        # Workspace items without external source → mark as locally created
+        if (self._scope or "").strip().lower() == "workspace" and not prov.get("source"):
+            prov["source"] = "local"
+        metadata["provenance"] = prov
+
+        integ = metadata.get("integrity") if isinstance(metadata.get("integrity"), dict) else {}
+        try:
+            integ.update(self._compute_agent_bundle_integrity(agent_dir))
+        except Exception:
+            pass
+        metadata["integrity"] = integ
+
+    def compute_agent_signature_verification(self, agent: "AgentInfo", trusted_keys: Dict[str, str]) -> Dict[str, Any]:
+        if not isinstance(getattr(agent, "metadata", None), dict):
+            return {}
+        prov = dict(agent.metadata.get("provenance") or {}) if isinstance(agent.metadata.get("provenance"), dict) else {}
+        integ = agent.metadata.get("integrity") if isinstance(agent.metadata, dict) else {}
+        sig = prov.get("signature")
+        bundle_sha = integ.get("bundle_sha256") if isinstance(integ, dict) else None
+        if not sig or not bundle_sha:
+            return prov
+        prov = dict(prov)
+        prov["signature_verified"] = False
+        prov["signature_verified_reason"] = ""
+        prov["signature_verified_key_id"] = ""
+        try:
+            from core.harness.infrastructure.crypto.signature import verify_skill_signature
+            version = str(getattr(agent, "version", "0.1.0") or "0.1.0")
+            r = verify_skill_signature(
+                skill_id=str(getattr(agent, "id", "")),
+                version=version,
+                bundle_sha256=str(bundle_sha),
+                signature=str(sig),
+                trusted_keys=trusted_keys,
+            )
+            prov["signature_verified"] = bool(r.get("verified"))
+            prov["signature_verified_key_id"] = r.get("key_id") or ""
+            prov["signature_verified_reason"] = (r.get("error") or "") if not r.get("verified") else ""
+        except Exception as e:
+            prov["signature_verified_reason"] = str(e)
+        return prov
+
+    # ================================================================
+
     def _seed_data(self):
         import os as _os
         import yaml as _yaml
@@ -301,7 +439,7 @@ class AgentManager:
                         if not isinstance(config, dict):
                             config = {}
                         if not config.get("model"):
-                            config["model"] = fm.get("model") or "deepseek-chat"
+                            config["model"] = fm.get("model") or best_model_for_purpose("chat") or "deepseek-chat"  # noqa: model-legacy
                         skills = fm.get("skills") or fm.get("required_skills") or []
                         skills = skills if isinstance(skills, list) else []
                         tools = fm.get("tools") or fm.get("required_tools") or []
@@ -414,6 +552,10 @@ class AgentManager:
                     "workflows": workflow_ids or [],
                     "agent_ids": agent_ids or [],
                     "config": config or {},
+                    "toolset": (metadata.get("toolset") if isinstance(metadata, dict) else "workspace_default") or "workspace_default",
+                    "loop_type": (agent_type if agent_type == "react" else (metadata.get("loop_type") if isinstance(metadata, dict) else "react")) or "react",
+                    "memory_config": memory_config or {"type": "short_term", "recall_count": 5},
+                    "knowledge_bases": metadata.get("knowledge_bases") if isinstance(metadata, dict) else [],
                 }
                 header = yaml.safe_dump(manifest, sort_keys=False, allow_unicode=True).strip()
                 body = f"""
@@ -442,6 +584,8 @@ class AgentManager:
                 if isinstance(agent.metadata["filesystem"], dict):
                     agent.metadata["filesystem"]["agent_dir"] = str(agent_dir)
                     agent.metadata["filesystem"]["agent_md"] = str(agent_md_path)
+            # Enrich with provenance and integrity
+            self._enrich_agent_provenance_and_integrity(agent.metadata, agent_dir=agent_dir)
         except Exception:
             pass
         
@@ -628,6 +772,10 @@ class AgentManager:
                     "phase_description": (agent.metadata or {}).get("phase_description") or fm.get("phase_description", ""),
                     "hitl_after_execute": (agent.metadata or {}).get("hitl_after_execute", fm.get("hitl_after_execute", False)),
                     "hitl_after_phase": (agent.metadata or {}).get("hitl_after_phase") or fm.get("hitl_after_phase", ""),
+                    "loop_type": (agent.metadata or {}).get("loop_type") or fm.get("loop_type", "react"),
+                    "toolset": (agent.metadata or {}).get("toolset") or fm.get("toolset", "workspace_default"),
+                    "memory_config": agent.memory_config or fm.get("memory_config", {"type": "short_term", "recall_count": 5}),
+                    "knowledge_bases": (agent.metadata or {}).get("knowledge_bases") or fm.get("knowledge_bases", []),
                 })
                 header = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True).strip()
                 agent_md_path.write_text(f"---\n{header}\n---\n{body.lstrip()}", encoding="utf-8")
@@ -684,12 +832,12 @@ class AgentManager:
         If no SOP section found, returns the entire body so caller can still view it."""
         import re
         text = body or ""
-        m = re.search(r"(?m)^##\\s+SOP\\s*$", text)
+        m = re.search(r"(?m)^##\s+SOP\s*$", text)
         if not m:
             return text.strip("\n").strip()
         start = m.end()
         rest = text[start:]
-        m2 = re.search(r"(?m)^##\\s+[^\\n]+\\s*$", rest)
+        m2 = re.search(r"(?m)^##\s+[^\n]+\s*$", rest)
         sop = rest[: m2.start()] if m2 else rest
         return sop.strip("\n").strip()
 
@@ -700,14 +848,14 @@ class AgentManager:
         text = body or ""
         sop_markdown = (sop_markdown or "").strip("\n").rstrip() + "\n"
         header = "## SOP\n"
-        m = re.search(r"(?m)^##\\s+SOP\\s*$", text)
+        m = re.search(r"(?m)^##\s+SOP\s*$", text)
         if not m:
             # append new SOP section at end
             sep = "" if text.endswith("\n") or text == "" else "\n"
             return f"{text}{sep}\n{header}{sop_markdown}"
         start = m.end()
         rest = text[start:]
-        m2 = re.search(r"(?m)^##\\s+[^\\n]+\\s*$", rest)
+        m2 = re.search(r"(?m)^##\s+[^\n]+\s*$", rest)
         before = text[:start]
         after = rest[m2.start():] if m2 else ""
         # keep one blank line between header and content
@@ -725,6 +873,19 @@ class AgentManager:
         """Update SOP section in AGENT.md (best-effort)."""
         agent = self._agents.get(agent_id)
         if not agent:
+            return False
+        info = self._read_agent_md(agent_id)
+        if not info:
+            return False
+        body = info.get("body") or ""
+        new_body = self._replace_sop_in_body(str(body), sop_markdown)
+        try:
+            p = Path(info["path"])
+            fm = info.get("frontmatter") or {}
+            fm_text = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True).rstrip("\n")
+            p.write_text(f"---\n{fm_text}\n---\n{new_body}", encoding="utf-8")
+            return True
+        except Exception:
             return False
 
     async def get_agent_execution_help(self, agent_id: str) -> Optional[Dict[str, Any]]:
@@ -881,6 +1042,17 @@ class AgentManager:
         del self._skill_bindings[agent_id]
         del self._tool_bindings[agent_id]
         del self._execution_history[agent_id]
+
+        # filesystem cleanup: remove agent directory from disk
+        try:
+            import shutil
+            base_dir = self._resolve_agents_base_path()
+            agent_dir = base_dir / agent_id
+            if agent_dir.exists():
+                shutil.rmtree(str(agent_dir), ignore_errors=True)
+        except Exception:
+            pass
+
         return True
     
     async def toggle_enabled(self, agent_id: str) -> Optional[bool]:

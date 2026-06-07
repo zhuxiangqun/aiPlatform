@@ -172,6 +172,19 @@ const Tenant: React.FC = () => {
         }
       />
 
+      <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+        <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+          <div><span className="text-gray-300">租户名称</span><span className="ml-2 text-gray-600">租户的显示名称</span></div>
+          <div><span className="text-gray-300">描述</span><span className="ml-2 text-gray-600">租户的功能说明</span></div>
+          <div><span className="text-gray-300">状态</span><span className="ml-2 text-gray-600">活跃 / 已暂停 / 待审核</span></div>
+          <div><span className="text-gray-300">GPU配额</span><span className="ml-2 text-gray-600">该租户分配的 GPU 卡数上限</span></div>
+          <div><span className="text-gray-300">存储配额</span><span className="ml-2 text-gray-600">该租户分配的存储空间上限（GB）</span></div>
+          <div><span className="text-gray-300">用户数</span><span className="ml-2 text-gray-600">该租户下关联的用户数量</span></div>
+          <div><span className="text-gray-300">操作</span><span className="ml-2 text-gray-600">暂停/恢复/删除。暂停后租户不可访问资源</span></div>
+        </div>
+      </details>
+
       <div className="grid grid-cols-4 gap-4">
         <motion.div
           initial={{ opacity: 0, y: 8 }}

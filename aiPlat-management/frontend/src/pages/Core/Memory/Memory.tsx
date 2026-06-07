@@ -178,6 +178,15 @@ const Memory: React.FC = () => {
         </div>
       </div>
 
+      <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+        <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+          <div><span className="text-gray-300">会话ID</span><span className="ml-2 text-gray-600">Agent 会话唯一标识</span></div>
+          <div><span className="text-gray-300">消息数</span><span className="ml-2 text-gray-600">该会话中的消息总数</span></div>
+          <div><span className="text-gray-300">操作</span><span className="ml-2 text-gray-600">查看详情/删除会话</span></div>
+        </div>
+      </details>
+
       {/* Table Card */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}

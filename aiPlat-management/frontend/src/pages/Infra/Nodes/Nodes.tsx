@@ -134,6 +134,18 @@ const Nodes: React.FC = () => {
         }
       />
 
+      <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+        <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+          <div><span className="text-gray-300">节点名称</span><span className="ml-2 text-gray-600">物理/K8s 节点唯一标识</span></div>
+          <div><span className="text-gray-300">IP地址</span><span className="ml-2 text-gray-600">节点 IP</span></div>
+          <div><span className="text-gray-300">GPU型号/数量</span><span className="ml-2 text-gray-600">配置的 GPU 信息</span></div>
+          <div><span className="text-gray-300">驱动版本</span><span className="ml-2 text-gray-600">GPU 驱动版本号</span></div>
+          <div><span className="text-gray-300">状态</span><span className="ml-2 text-gray-600"><span className="text-green-400">健康</span> · <span className="text-red-400">离线</span></span></div>
+          <div><span className="text-gray-300">操作</span><span className="ml-2 text-gray-600">详情/驱逐</span></div>
+        </div>
+      </details>
+
       <div className="grid grid-cols-4 gap-4">
         <motion.div
           initial={{ opacity: 0, y: 8 }}

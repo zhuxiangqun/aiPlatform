@@ -1,19 +1,20 @@
 ---
 name: wiki_lint
 display_name: Wiki 健康检查
-description: 定期对 Wiki 做健康检查——找出矛盾数据、孤儿页面、死链接、过期内容。LLM 会自动建议补充缺失信息和下一步研究方向。
+description: 定期对 Wiki 做健康检查——找出矛盾数据、孤儿页面、死链接、过期内容。LLM 会自动建议补充缺失信息和下一步研究方向。 涉及Wiki相关操作。 主要进行检查。
 category: governance
 version: 1.0.0
 status: enabled
 execution_mode: prompt
 permissions:
-  - "wiki:read"
-  - "llm:generate"
+- wiki:read
+- llm:generate
 effects:
-  - type: read
-    resources: ["filesystem:~/.aiplat/wiki"]
-    idempotent: true
-    rollback_available: false
+- type: read
+  resources:
+  - filesystem:~/.aiplat/wiki
+  idempotent: true
+  rollback_available: false
 input_schema:
   scope:
     type: string
@@ -28,6 +29,31 @@ output_schema:
     type: number
   markdown:
     type: string
+    required: true
+    description: 面向人阅读的 Markdown 输出
+metadata:
+  trigger_conditions:
+  - Wiki检查
+  - 知识库健康
+  - Wiki健康
+  - 文档质量
+  - 知识库检测
+  - 死链检查
+  - Wiki质量
+  keywords:
+    objects:
+    - Wiki
+    - 知识库
+    - 页面
+    actions:
+    - 检查
+    - 检测
+    - 分析
+    - 建议
+  negative_triggers:
+  - 不需要特定的编程语言知识
+  - 不要猜测或编造不存在的数据
+  sop_goal: 检测 Wiki 的矛盾和死链接
 ---
 
 ## SOP
@@ -87,3 +113,11 @@ output_schema:
   ]
 }
 ```
+
+## 目标
+检测 Wiki 的矛盾和死链接
+
+## Checklist
+- [ ] 输出格式符合规范
+- [ ] 正确处理错误和边界条件
+- [ ] 返回结果包含引用和来源标注

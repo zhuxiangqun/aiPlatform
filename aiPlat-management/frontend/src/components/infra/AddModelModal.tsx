@@ -29,6 +29,8 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
   const [maxTokens, setMaxTokens] = useState('2048');
   const [topP, setTopP] = useState('1.0');
 
+  const isConfigModel = editingModel?.source === 'config';
+
   const providerOptions = useMemo(
     () => providers.map((p) => ({ value: p.id, label: `${p.name}${p.requires_api_key ? ' (需要 API Key)' : ''}` })),
     [providers]
@@ -38,6 +40,7 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
   // Provider-level base config
   const PROVIDER_BASE: Record<string, { baseUrl: string; apiKeyEnv: string }> = {
     deepseek: { baseUrl: 'https://api.deepseek.com/v1', apiKeyEnv: 'AIPLAT_LLM_API_KEY' },
+    openai_compatible: { baseUrl: 'https://api.deepseek.com/v1', apiKeyEnv: 'DEEPSEEK_API_KEY' },
     openai: { baseUrl: 'https://api.openai.com/v1', apiKeyEnv: 'OPENAI_API_KEY' },
     anthropic: { baseUrl: 'https://api.anthropic.com/v1', apiKeyEnv: 'ANTHROPIC_API_KEY' },
     local: { baseUrl: 'http://localhost:11434/v1', apiKeyEnv: '' },
@@ -181,7 +184,7 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
     <Modal
       open={open}
       onClose={onClose}
-      title={editingModel ? '编辑模型' : '添加模型'}
+      title={editingModel ? (editingModel.source === 'config' ? '设置 API Key' : '编辑模型') : '添加模型'}
       width={760}
       footer={
         <>
@@ -191,7 +194,7 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
       }
     >
       <div className="space-y-4">
-        <Select label="Provider" value={provider} onChange={setProvider} options={providerOptions} placeholder="选择 Provider" />
+        <Select label="Provider" value={provider} onChange={setProvider} options={providerOptions} placeholder="选择 Provider" disabled={isConfigModel} />
 
         {selectedProviderInfo && (
           <Alert type="info" title={selectedProviderInfo.name}>
@@ -200,18 +203,19 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
         )}
 
         {Object.keys(providerModels).length > 0 && (
-          <Select label="选择模型" value={selectedModel} onChange={setSelectedModel} options={modelOptions} placeholder="选择模型" />
+          <Select label="选择模型" value={selectedModel} onChange={setSelectedModel} options={modelOptions} placeholder="选择模型" disabled={isConfigModel} />
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Input label="name" value={name} onChange={(e: any) => setName(e.target.value)} placeholder="例如: gpt-4o-mini" />
-          <Input label="displayName" value={displayName} onChange={(e: any) => setDisplayName(e.target.value)} placeholder="例如: GPT-4o Mini" />
+          <Input label="name" value={name} onChange={(e: any) => setName(e.target.value)} placeholder="例如: gpt-4o-mini" disabled={isConfigModel} />
+          <Input label="displayName" value={displayName} onChange={(e: any) => setDisplayName(e.target.value)} placeholder="例如: GPT-4o Mini" disabled={isConfigModel} />
         </div>
 
         <Select
           label="type"
           value={type}
           onChange={(v) => setType(v as any)}
+          disabled={isConfigModel}
           options={[
             { value: 'chat', label: 'chat' },
             { value: 'embedding', label: 'embedding' },
@@ -219,12 +223,12 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
           ]}
         />
 
-        <Textarea label="description" rows={3} value={description} onChange={(e: any) => setDescription(e.target.value)} />
-        <Input label="tags（逗号分隔）" value={tags} onChange={(e: any) => setTags(e.target.value)} placeholder="tag1,tag2" />
+        <Textarea label="description" rows={3} value={description} onChange={(e: any) => setDescription(e.target.value)} disabled={isConfigModel} />
+        <Input label="tags（逗号分隔）" value={tags} onChange={(e: any) => setTags(e.target.value)} placeholder="tag1,tag2" disabled={isConfigModel} />
 
         <div className="border-t border-dark-border pt-4">
           <div className="text-sm font-semibold text-gray-200 mb-3">连接配置</div>
-          <Input label="baseUrl" value={baseUrl} onChange={(e: any) => setBaseUrl(e.target.value)} placeholder="https://api.openai.com/v1" />
+          <Input label="baseUrl" value={baseUrl} onChange={(e: any) => setBaseUrl(e.target.value)} placeholder="https://api.openai.com/v1" disabled={isConfigModel} />
           <div className="flex items-center gap-2 mt-2">
             <Button variant="secondary" onClick={handleTestConnectivity} loading={testLoading}>测试 baseUrl</Button>
             {testResult && (
@@ -239,10 +243,25 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
             placeholder="例如: OPENAI_API_KEY"
           />
 
+          <Input
+            label="API Key"
+            value={apiKeyEnv}
+            onChange={(e: any) => setApiKeyEnv(e.target.value)}
+            placeholder="输入 API Key 值 (以 sk- 开头)"
+            type="password"
+          />
+          <div className="text-xs mt-1 ml-1">
+            {apiKeyEnv.trim() ? (
+              <span className="text-green-400">✅ 已输入新 Key — 保存后将写入本地环境配置</span>
+            ) : (
+              <span className="text-yellow-400">⚠️ 未输入 — 将使用系统已有的环境变量</span>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Input label="temperature" type="number" value={temperature} onChange={(e: any) => setTemperature(e.target.value)} />
-            <Input label="maxTokens" type="number" value={maxTokens} onChange={(e: any) => setMaxTokens(e.target.value)} />
-            <Input label="topP" type="number" value={topP} onChange={(e: any) => setTopP(e.target.value)} />
+            <Input label="temperature" type="number" value={temperature} onChange={(e: any) => setTemperature(e.target.value)} disabled={isConfigModel} />
+            <Input label="maxTokens" type="number" value={maxTokens} onChange={(e: any) => setMaxTokens(e.target.value)} disabled={isConfigModel} />
+            <Input label="topP" type="number" value={topP} onChange={(e: any) => setTopP(e.target.value)} disabled={isConfigModel} />
           </div>
         </div>
       </div>

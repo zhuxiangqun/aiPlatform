@@ -145,6 +145,17 @@ class BaseLoop(ILoop):
 
     def should_continue(self, state: LoopState) -> bool:
         """Determine if loop should continue"""
+        # Hard safety cap: prevent runaway loops regardless of config
+        if state.step_count >= 1000:
+            import logging
+            logging.getLogger("aiplat.loop").error(
+                "SAFETY STOP: loop exceeded 1000 steps (run_id=%s, agent=%s, steps=%d)",
+                state.context.get("_run_id", "?"),
+                state.context.get("agent_id", "?"),
+                state.step_count,
+            )
+            return False
+        
         # Check max steps
         if state.step_count >= self._config.max_steps:
             return False
@@ -362,6 +373,43 @@ class ReActLoop(BaseLoop):
     async def step(self, state: LoopState) -> LoopState:
         """Execute single ReAct step: reason -> act -> observe."""
         state.step_count += 1
+
+        # Emit step_start + context_snapshot (first step only) for zero-black-box tree
+        try:
+            from core.services.execution_store import get_execution_store
+            store = get_execution_store()
+            agent_id = state.context.get("_agent_id") or "react"
+            step_span_id = f"step:{agent_id}:{state.step_count}"
+            state.context["_current_step_span_id"] = step_span_id
+            await store.add_syscall_event({
+                "id": f"{state.context.get('_run_id','?')}:step:{state.step_count}",
+                "span_id": step_span_id,
+                "parent_span_id": f"agent:{agent_id}:start",
+                "kind": "step", "name": f"step_{state.step_count}", "status": "running",
+                "run_id": state.context.get("_run_id") or "",
+                "start_time": time.time(),
+                "step_number": state.step_count,
+            })
+            if state.step_count == 1:
+                from core.harness.kernel.execution_context import get_active_workspace_context
+                ws = get_active_workspace_context()
+                await store.add_syscall_event({
+                    "id": f"{state.context.get('_run_id','?')}:context",
+                    "span_id": f"context:{agent_id}",
+                    "parent_span_id": f"agent:{agent_id}:start",
+                    "kind": "context", "name": "context_snapshot", "status": "ok",
+                    "run_id": state.context.get("_run_id") or "",
+                    "start_time": time.time(),
+                    "args": {
+                        "toolset": str(getattr(ws, 'toolset', '')) if ws else '',
+                        "mcp_ids": getattr(ws, 'mcp_ids', None) if ws else None,
+                        "max_steps": int(getattr(self._config, 'max_steps', 0) or 0),
+                        "max_tokens": int(getattr(self._config, 'max_tokens', 0) or 0),
+                    },
+                })
+        except Exception:
+            pass
+
         state.history.append({
             "step": state.step_count,
             "node": self._current_node,
@@ -407,6 +455,21 @@ class ReActLoop(BaseLoop):
                         final_text = final_text[len(tag) :].strip()
                         break
                 state.context["output"] = final_text
+                try:
+                    from core.services.execution_store import get_execution_store
+                    store = get_execution_store()
+                    await store.add_syscall_event({
+                        "id": f"{state.context.get('_run_id','?')}:done:{state.step_count}",
+                        "span_id": f"done:{state.context.get('_agent_id','react')}:{state.step_count}",
+                        "parent_span_id": state.context.get("_current_step_span_id"),
+                        "kind": "done", "name": "final_answer", "status": "ok",
+                        "run_id": state.context.get("_run_id") or "",
+                        "start_time": time.time(),
+                        "result": {"answer": final_text[:500]},
+                        "step_number": state.step_count,
+                    })
+                except Exception:
+                    pass
                 # Optional: auto-complete current todo when finishing (best-effort)
                 try:
                     if os.getenv("AIPLAT_RUN_STATE_AUTO_COMPLETE_ON_DONE", "true").lower() in ("1", "true", "yes", "y"):
@@ -434,6 +497,26 @@ class ReActLoop(BaseLoop):
 
         # Auto-detect final output / stagnation
         parsed = parse_action_call(reasoning) if reasoning else None
+        # If LLM returns text answer (no tool/skill call) → treat as final output
+        if not parsed and len(str(reasoning or "").strip()) > 0:
+            state.context["output"] = reasoning
+            try:
+                from core.services.execution_store import get_execution_store
+                store = get_execution_store()
+                await store.add_syscall_event({
+                    "id": f"{state.context.get('_run_id','?')}:done:{state.step_count}",
+                    "span_id": f"done:{state.context.get('_agent_id','react')}:{state.step_count}",
+                    "parent_span_id": state.context.get("_current_step_span_id"),
+                    "kind": "done", "name": "auto_done", "status": "ok",
+                    "run_id": state.context.get("_run_id") or "",
+                    "start_time": time.time(),
+                    "result": {"answer": str(reasoning)[:500]},
+                    "step_number": state.step_count,
+                })
+            except Exception:
+                pass
+            state.current = LoopStateEnum.FINISHED
+            return state
         if parsed and parsed.kind == "none" and len(str(reasoning or "").strip()) > 200:
             state.context["output"] = reasoning
             state.current = LoopStateEnum.FINISHED
@@ -739,6 +822,31 @@ class ReActLoop(BaseLoop):
             rs = state.context.get("run_state")
             if isinstance(rs, dict):
                 prompt.append({"role": "user", "content": format_run_state_for_prompt(rs)})
+            # Inject toolset behavioral constraints (force_tool_use, prefer_skill, prefer_agent_delegate)
+            try:
+                from core.harness.kernel.execution_context import get_active_workspace_context
+                from core.harness.tools.toolsets import resolve_toolset
+                ws = get_active_workspace_context()
+                active_t = getattr(ws, 'toolset', None) if ws else None
+                if active_t:
+                    policy = resolve_toolset(str(active_t))
+                    constraints = []
+                    if policy.force_tool_use:
+                        if not state.context.get("_capability_attempted"):
+                            constraints.append("You have not yet used any tool/skill/agent. You MUST call an available tool first. Do NOT answer from your own knowledge.")
+                        else:
+                            constraints.append("You may now respond with DONE to summarize results.")
+                    if policy.prefer_skill_use:
+                        constraints.append("Prefer using your bound skills over raw tool calls when available.")
+                    if constraints:
+                        toolset_instruction = "## Toolset Requirements\n" + "\n".join(f"- {c}" for c in constraints)
+                        existing_sys = prompt[0].get("content", "") if prompt and prompt[0].get("role") == "system" else ""
+                        if prompt and prompt[0].get("role") == "system":
+                            prompt[0]["content"] = existing_sys + "\n\n" + toolset_instruction
+                        else:
+                            prompt.insert(0, {"role": "system", "content": toolset_instruction})
+            except Exception:
+                pass
         else:
             from core.harness.utils.prompt_loader import _sync_resolve
             prompt = _sync_resolve("react-reasoning",
@@ -753,6 +861,8 @@ class ReActLoop(BaseLoop):
             trace_ctx = {
                 "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
                 "run_id": state.context.get("_run_id") or state.context.get("run_id"),
+                "parent_span_id": state.context.get("_current_step_span_id") or (state.context.get("_agent_id") and f"agent:{state.context['_agent_id']}:start"),
+                "knowledge_bases": state.context.get("_knowledge_bases", []),
             }
             response = await sys_llm_generate(self._model, prompt,
                 trace_context=trace_ctx,
@@ -769,6 +879,10 @@ class ReActLoop(BaseLoop):
                     state.used_tokens = float(getattr(state, "used_tokens", 0) or 0) + float(total or 0)
             except Exception:
                 pass
+            # Update budget_remaining
+            _max = float(getattr(self._config, "max_tokens", 0) or 0)
+            if _max > 0:
+                state.budget_remaining = max(0.0, 1.0 - (state.used_tokens / _max))
             return response.content
         except Exception as e:
             # P3-15: Session overflow fallback — retry with emergency compression
@@ -999,19 +1113,145 @@ class ReActLoop(BaseLoop):
             await self._append_run_event(state, event_type="context_shaping", payload=item)
 
         async def _budget_trim():
-            return
+            """Record current tool/skill description budgets for observability.
+            
+            Tools and skills already have per-description budget limits applied
+            by the disclosure budget system. This stage records the current state
+            so downstream stages (prune, fold) can make informed decisions.
+            """
+            state.metadata["_budget_trim_applied"] = True
 
         async def _prune():
-            return
+            """Priority-based message pruning at moderate pressure (>= 80%).
+            
+            When token budget exceeds 80%, remove low-priority messages first
+            (complete file contents, debug output, intermediate reasoning).
+            Replace medium-priority messages (API responses, tool outputs) with
+            structured summaries. High-priority messages (user input, system
+            prompts, error messages) are never touched.
+            
+            This complements micro_compress which triggers at 90%.
+            """
+            msgs = state.context.get("messages")
+            if not isinstance(msgs, list) or len(msgs) < 5:
+                return
 
-        async def _micro_compress():
-            await self._maybe_compact_messages(state)
+            max_tokens = float(getattr(self._config, "max_tokens", None) or getattr(state, "max_tokens", 0) or 0)
+            used_tokens = float(getattr(state, "used_tokens", 0) or 0)
+            if max_tokens <= 0 or used_tokens <= 0:
+                return
+
+            ratio = used_tokens / max_tokens
+            if ratio < 0.80:
+                return
+
+            priority_order = {"low": 0, "medium": 1, "high": 2}
+            preserved: list = []
+            pruned_count = 0
+            summarized_count = 0
+
+            for msg in msgs:
+                p = str(msg.get("priority") or msg.get("metadata", {}).get("priority", "medium"))
+                rank = priority_order.get(p, 1)
+
+                if rank == 0:  # low — discard
+                    pruned_count += 1
+                    continue
+                elif rank == 1 and ratio >= 0.85:  # medium — summarize at high pressure
+                    content = str(msg.get("content", ""))
+                    if len(content) > 500:
+                        msg["content"] = content[:200] + f"...(trl: {len(content)} chars)"
+                        msg.setdefault("metadata", {})["summarized"] = True
+                        summarized_count += 1
+                # high priority — always keep
+                preserved.append(msg)
+
+            if pruned_count or summarized_count:
+                state.context["messages"] = preserved
+                state.metadata["prune_stats"] = {
+                    "pruned": pruned_count,
+                    "summarized": summarized_count,
+                    "before": len(msgs),
+                    "after": len(preserved),
+                    "ratio": round(ratio, 2),
+                }
 
         async def _fold():
-            return
+            """Merge consecutive same-role messages to reduce message count.
+            
+            When conversation gets long, consecutive user messages or assistant
+            messages can be folded into single messages separated by section breaks.
+            This is cost-free (no semantic loss) and reduces the prompt token count
+            by removing redundant role markers and formatting.
+            """
+            msgs = state.context.get("messages")
+            if not isinstance(msgs, list) or len(msgs) < 6:
+                return
+
+            folded: list = []
+            for msg in msgs:
+                role = str(msg.get("role", ""))
+                content = str(msg.get("content", ""))
+                if folded and folded[-1].get("role") == role and role in ("user", "assistant"):
+                    # Merge content with a section break
+                    folded[-1]["content"] = str(folded[-1].get("content", "")) + "\n---\n" + content
+                else:
+                    folded.append(dict(msg))
+
+            if len(folded) < len(msgs):
+                state.context["messages"] = folded
+                state.metadata["fold_stats"] = {
+                    "before": len(msgs),
+                    "after": len(folded),
+                    "saved": len(msgs) - len(folded),
+                }
 
         async def _auto_compress():
-            return
+            """Auto-summarize conversation into Episodic memory for cross-session recall.
+            
+            After significant conversations (>= 8 messages), generate an episodic
+            summary and persist it via MemoryManager. This enables the next session
+            to recall what was discussed — the foundation of cross-session learning.
+            
+            Only fires when: message count >= 8 or conversation appears complete.
+            """
+            msgs = state.context.get("messages")
+            if not isinstance(msgs, list) or len(msgs) < 8:
+                return
+
+            # Skip if already compressed this conversation
+            if state.metadata.get("_auto_compress_applied"):
+                return
+
+            try:
+                from core.harness.memory.manager import get_memory_manager
+                mm = get_memory_manager()
+                # Extract the last user message as conversation context
+                user_msgs = [m for m in msgs if isinstance(m, dict) and str(m.get("role", "")) == "user"]
+                task_hint = str(user_msgs[-1].get("content", ""))[:300] if user_msgs else ""
+                # Extract key points from assistant responses
+                assistant_msgs = [m for m in msgs if isinstance(m, dict) and str(m.get("role", "")) == "assistant"]
+                key_outputs = " | ".join(
+                    str(m.get("content", ""))[:150] for m in assistant_msgs[-3:]
+                ) if assistant_msgs else ""
+                summary = (
+                    f"Task: {task_hint or 'conversation'}\n"
+                    f"Messages: {len(msgs)}\n"
+                    f"Recent outputs: {key_outputs or 'none'}"
+                )
+                await mm.save_interaction(
+                    session_id=state.context.get("_run_id", state.context.get("session_id", "default")),
+                    user_msg=task_hint[:500],
+                    assistant_msg=summary[:1000],
+                    stability="medium",
+                )
+                state.metadata["_auto_compress_applied"] = True
+                state.metadata["auto_compress_stats"] = {
+                    "message_count": len(msgs),
+                    "task_hint": task_hint[:100],
+                }
+            except Exception:
+                pass  # best-effort, don't affect execution
 
         mapping = {
             "budget_trim": _budget_trim,
@@ -1133,17 +1373,36 @@ class ReActLoop(BaseLoop):
 
         # Wiki availability
         try:
-            from core.harness.knowledge.wiki_engine import search_pages
-            wiki_pages = search_pages(limit=1)
+            from core.harness.knowledge.wiki_engine import search_pages, list_collections
+            from core.harness.knowledge.knowledge_ontology import AI as __AI
+            kbs = state.context.get("_knowledge_bases", []) or []
+            first_cid = kbs[0] if kbs else "default"
+            wiki_pages = search_pages(limit=1, collection_id=first_cid)
             if wiki_pages:
-                count = len(search_pages(limit=1000))
-                hints["wiki"] = {"pages": count}
+                total = 0
+                for cid in (kbs or ["default"]):
+                    total += len(search_pages(limit=1000, collection_id=cid))
+                kb_info = ""
+                if kbs:
+                    kb_info = f"（限定集合: {', '.join(kbs)}，共 {total} 页）"
+                else:
+                    kb_info = f"（共 {total} 页）"
+                hints["wiki"] = {"pages": total, "collections": kbs}
                 state.context.setdefault("messages", []).insert(1, {
                     "role": "user",
-                    "content": (
-                        f"[系统] Wiki 知识库可用（{count} 个知识页面）。"
-                        "需要查领域知识时调用 sys_wiki_context 检索，"
-                        "不需要重新推理或猜测已知事实。"
+                    "content":                     (
+                        f"[系统] Wiki 知识库可用{kb_info}。\n\n"
+                        f"检索语法:\n"
+                        f"  sys_knowledge_retrieve('问题', wiki_collection_ids=['{first_cid}'])\n"
+                        f"  sys_wiki_context('问题', collection_ids=['{first_cid}'])\n\n"
+                        f"【可用本体类过滤 - 传 target_class 参数】\n"
+                        f"  '{__AI}ConceptPage' → 概念实体页 (entities)\n"
+                        f"  '{__AI}TopicPage' → 专题综述页 (topics)\n"
+                        f"  expand_subclasses=True → 同时查子类页面\n\n"
+                        f"【示例】\n"
+                        f"  sys_knowledge_retrieve('什么是记忆系统', wiki_collection_ids=['{first_cid}'], target_class='{__AI}ConceptPage', expand_subclasses=True)\n"
+                        f"  sys_knowledge_retrieve('各方案对比', wiki_collection_ids=['{first_cid}'], target_class='{__AI}TopicPage')\n\n"
+                        f"不需要重新推理或猜测已有知识，直接检索即可。"
                     ),
                 })
         except Exception:
@@ -1365,6 +1624,23 @@ class ReActLoop(BaseLoop):
                 desc = desc[: max(0, per_tool_max - 16)] + " …(truncated)"
                 stats["tools_truncated"] += 1
 
+            # Inject parameter schema so LLM knows correct parameter names
+            try:
+                params = getattr(getattr(t, '_config', None), 'parameters', None)
+                if params and isinstance(params, dict):
+                    props = params.get('properties', {})
+                    required = params.get('required', [])
+                    if props:
+                        parts = []
+                        for pn, ps in props.items():
+                            pt = ps.get('type', 'any') if isinstance(ps, dict) else 'any'
+                            rq = '*' if pn in required else ''
+                            parts.append(f"{pn}{rq}:{pt}")
+                        if parts:
+                            desc = f"Params({', '.join(parts)}). {desc}"
+            except Exception:
+                pass
+
             # MCP tools: prepend server description so Agent knows which MCP this tool belongs to
             try:
                 meta = getattr(t, "metadata", {}) or {}
@@ -1438,7 +1714,17 @@ class ReActLoop(BaseLoop):
             return "No skills available (use skill_find to discover)", stats
 
         lines: List[str] = []
-        for skill in sorted(self._skills, key=lambda s: str(getattr(s, 'name', getattr(getattr(s, '_config', None), 'name', '')) or '')):
+        # Sort skills by routing weight (learned), then alphabetically
+        try:
+            from core.harness.routing.skill_routing import get_skill_weight
+            _get_weight = lambda s: get_skill_weight(
+                str(getattr(s, 'name', None) or (getattr(s._config, 'name', '') if hasattr(s, '_config') else ''))
+            )
+        except Exception:
+            _get_weight = lambda s: 1.0
+        for skill in sorted(self._skills,
+                            key=lambda s: (-_get_weight(s),
+                                           str(getattr(s, 'name', getattr(getattr(s, '_config', None), 'name', '')) or ''))):
             try:
                 name = getattr(skill, 'name', None) or (getattr(skill._config, 'name', '') if hasattr(skill, '_config') else '')
             except Exception:
@@ -1565,6 +1851,7 @@ class ReActLoop(BaseLoop):
         self, state: LoopState, routing_decision_id: str,
         selected_kind: str, selected_name: str = "",
     ) -> list:
+        return []  # downgraded: verbose debug event, not needed in execution flow
         try:
             runtime = get_kernel_runtime()
             store = getattr(runtime, "execution_store", None) if runtime else None
@@ -1752,6 +2039,7 @@ class ReActLoop(BaseLoop):
         selected_kind: str, selected_name: str, candidates_top: list,
         result_status: str = "", result_error: str = "",
     ) -> None:
+        return  # downgraded: verbose debug event, not needed in execution flow
         try:
             runtime = get_kernel_runtime()
             store = getattr(runtime, "execution_store", None) if runtime else None
@@ -2068,12 +2356,29 @@ class ReActLoop(BaseLoop):
             return "No action to execute"
         self._iters_since_skill += 1
         self._iters_since_memory += 1
+        state.context["_capability_attempted"] = True
         if parsed.kind == "skill":
             return await self._dispatch_skill_call(state, parsed, routing_decision_id)
         return await self._dispatch_tool_call(state, parsed, routing_decision_id)
     async def _observe(self, state: LoopState) -> str:
         """Observing phase"""
-        return state.context.get("action_result", "")
+        result = state.context.get("action_result", "")
+        try:
+            from core.services.execution_store import get_execution_store
+            store = get_execution_store()
+            await store.add_syscall_event({
+                "id": f"{state.context.get('_run_id','?')}:observe:{state.step_count}",
+                "span_id": f"observe:{state.context.get('_agent_id','react')}:{state.step_count}",
+                "parent_span_id": state.context.get("_current_step_span_id"),
+                "kind": "observe", "name": "observation", "status": "ok" if result else "empty",
+                "run_id": state.context.get("_run_id") or "",
+                "start_time": time.time(),
+                "result": {"summary": str(result)[:500]},
+                "step_number": state.step_count,
+            })
+        except Exception:
+            pass
+        return result
 
 
 class PlanExecuteLoop(BaseLoop):

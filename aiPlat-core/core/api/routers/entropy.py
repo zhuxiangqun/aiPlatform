@@ -6,6 +6,7 @@ Track technical debt accumulation across projects and agents.
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
+from core.harness.syscalls.llm import sys_llm_generate
 
 router = APIRouter(prefix="/entropy", tags=["entropy"])
 
@@ -443,7 +444,7 @@ async def generate_eval_for_agent(agent_id: str):
             {"role": "system", "content": await _async_prompt_resolve("eval-metrics-system")},
             {"role": "user", "content": prompt},
         ]
-        resp = await model.generate(messages, config=None)
+        resp = await sys_llm_generate(model, messages)
         llm_text = resp.content if hasattr(resp, 'content') else str(resp)
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"LLM unavailable: {e}")

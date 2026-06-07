@@ -264,23 +264,15 @@ class SkillExecutor:
                     if params:
                         prompt += f"\nInput: {params}"
 
-                from core.adapters.llm import create_adapter
                 from core.apps.agents.conversational import create_conversational_agent
                 from core.harness.interfaces import AgentConfig, AgentContext
 
-                # Prefer skill-injected model if available; otherwise create from environment.
+                # Prefer skill-injected model if available; otherwise use centralized resolution.
                 model = getattr(skill, "_model", None)
-                provider = params.get("provider") or os.getenv("LLM_PROVIDER") or "openai"
-                model_name = params.get("model") or os.getenv("AIPLAT_LLM_MODEL") or os.getenv("LLM_MODEL") or "deepseek-chat"
-                api_key = None
-                if provider == "openai":
-                    api_key = get_llm_api_key("openai")
-                elif provider == "anthropic":
-                    api_key = get_llm_api_key("anthropic")
-
                 if model is None:
                     try:
-                        model = create_adapter(provider=provider, api_key=api_key, model=model_name)
+                        from core.harness.utils.model_injection import create_selected_adapter
+                        model = create_selected_adapter(model_name=(params.get("model") or best_model_for_purpose("chat") or "deepseek-chat"))
                     except Exception:
                         model = None
 
@@ -332,6 +324,24 @@ class SkillExecutor:
                 # Use ReAct agent so fork mode can also orchestrate tools when provided.
                 from core.apps.agents.react import create_react_agent
                 agent = create_react_agent(config=agent_config, model=model)
+
+                # Emit fork event for zero-black-box (parent=skill span, child=agent tree)
+                try:
+                    from core.services.execution_store import get_execution_store
+                    import time as _t, uuid as _u
+                    fork_span_id = f"fork:{skill_name}:{_u.uuid4().hex[:8]}"
+                    store = get_execution_store()
+                    await store.add_syscall_event({
+                        "id": f"fork-{skill_name}-{_u.uuid4().hex[:8]}",
+                        "span_id": fork_span_id,
+                        "parent_span_id": f"skill:{skill_name}:start" if context else None,
+                        "kind": "fork", "name": f"fork_{skill_name}", "status": "running",
+                        "run_id": getattr(context, 'session_id', 'fork') or "fork",
+                        "start_time": _t.time(),
+                        "args": {"skill_name": skill_name, "model": str(getattr(agent, '_model', '') or '')},
+                    })
+                except Exception:
+                    fork_span_id = None
 
                 task = system_prompt + "\n\n用户输入：\n" + prompt
                 agent_context = AgentContext(

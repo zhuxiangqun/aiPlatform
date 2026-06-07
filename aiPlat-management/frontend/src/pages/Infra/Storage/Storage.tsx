@@ -205,6 +205,20 @@ const Storage: React.FC = () => {
         }
       />
 
+      <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+        <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+          <div className="text-gray-300 font-medium md:col-span-2 border-b border-dark-border pb-1 mb-0.5">向量存储</div>
+          <div><span className="text-gray-300">Collection</span><span className="ml-2 text-gray-600">向量集合名称</span></div>
+          <div><span className="text-gray-300">向量数量/维度/存储大小</span><span className="ml-2 text-gray-600">统计信息</span></div>
+          <div><span className="text-gray-300">状态</span><span className="ml-2 text-gray-600"><span className="text-green-400">健康</span> · <span className="text-yellow-400">警告</span> · <span className="text-red-400">异常</span></span></div>
+          <div className="text-gray-300 font-medium md:col-span-2 border-b border-dark-border pb-1 mb-0.5 mt-1">PVC 管理</div>
+          <div><span className="text-gray-300">PVC名称/命名空间/大小/已用</span><span className="ml-2 text-gray-600">存储卷详情</span></div>
+          <div><span className="text-gray-300">存储类</span><span className="ml-2 text-gray-600">StorageClass 名称</span></div>
+          <div><span className="text-gray-300">状态</span><span className="ml-2 text-gray-600"><span className="text-green-400">已绑定</span> · <span className="text-yellow-400">等待中</span> · <span className="text-red-400">丢失</span></span></div>
+        </div>
+      </details>
+
       <div className="grid grid-cols-4 gap-4">
         <motion.div
           initial={{ opacity: 0, y: 8 }}

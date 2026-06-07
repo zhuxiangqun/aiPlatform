@@ -69,6 +69,8 @@ def _normalize_tool_call(obj: Any, raw: str) -> Optional[ParsedToolCall]:
         args = obj.get("tool_args")
     if args is None:
         args = obj.get("arguments")
+    if args is None:
+        args = obj.get("input")
 
     tool_args: Dict[str, Any] = {}
     if isinstance(args, dict):
@@ -159,6 +161,8 @@ def parse_action_call(text: str) -> Optional[ParsedActionCall]:
                 args = obj.get("args") if obj.get("args") is not None else obj.get("skill_args")
                 if args is None:
                     args = obj.get("arguments")
+                if args is None:
+                    args = obj.get("input")
                 if isinstance(args, dict):
                     parsed_args = args
                 elif isinstance(args, str):
@@ -182,6 +186,8 @@ def parse_action_call(text: str) -> Optional[ParsedActionCall]:
                 agent_args = obj.get("args") if obj.get("args") is not None else obj.get("agent_args")
                 if agent_args is None:
                     agent_args = obj.get("task")
+                if agent_args is None:
+                    agent_args = obj.get("input")
                 if isinstance(agent_args, str):
                     agent_args = {"task": agent_args}
                 elif not isinstance(agent_args, dict):

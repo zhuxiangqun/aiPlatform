@@ -1,28 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Info, RotateCw, RotateCcw, Trash2, Pencil, Play } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Badge, Table, Select, Switch, Button, Modal, toast } from '../../../components/ui';
+import { Table, Select, Switch, Button, Modal, toast } from '../../../components/ui';
 import { EditSkillModal, ExecuteSkillModal, SkillDetailModal } from '../../../components/core';
 import { useSkillStore } from '../../../stores';
 import type { Skill } from '../../../services';
-import { toastGateError } from '../../../components/ui';
-
-const categoryConfig: Record<string, { color: string; text: string }> = {
-  general: { color: 'bg-dark-hover text-gray-300 border-gray-200', text: '通用' },
-  reasoning: { color: 'bg-blue-50 text-blue-300 border-blue-200', text: '推理' },
-  coding: { color: 'bg-green-50 text-green-300 border-green-200', text: '编程' },
-  search: { color: 'bg-amber-50 text-amber-300 border-amber-200', text: '搜索' },
-  tool: { color: 'bg-purple-50 text-purple-300 border-purple-200', text: '工具' },
-  communication: { color: 'bg-cyan-50 text-cyan-300 border-cyan-200', text: '通信' },
-  execution: { color: 'bg-orange-50 text-orange-300 border-orange-200', text: '执行' },
-  retrieval: { color: 'bg-teal-50 text-teal-300 border-teal-200', text: '检索' },
-  analysis: { color: 'bg-indigo-50 text-indigo-300 border-indigo-200', text: '分析' },
-  generation: { color: 'bg-pink-50 text-pink-300 border-pink-200', text: '生成' },
-  transformation: { color: 'bg-yellow-50 text-yellow-300 border-yellow-200', text: '转换' },
-};
+import { getSourceLabel, extractProvenance } from '../../../utils/sourceLabel';
+import { SKILL_CATEGORIES } from '../../../utils/categoryConfig';
 
 const Skills: React.FC = () => {
-  const { skills, loading, fetchSkills, toggleSkill, deleteSkill, restoreSkill } = useSkillStore();
+  const { skills, loading, fetchSkills, deleteSkill, restoreSkill } = useSkillStore();
   const [categoryFilter, setCategoryFilter] = useState<string | undefined>();
   const [enabledOnly, setEnabledOnly] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -37,18 +24,6 @@ const Skills: React.FC = () => {
     fetchSkills();
   }, [fetchSkills]);
 
-  const handleToggle = async (skill: Skill) => {
-    try {
-      if ((skill.status || '').toLowerCase() === 'deprecated') {
-        toast.error('已弃用的 Skill 不能直接切换开关（可先“恢复”再启用）');
-        return;
-      }
-      await toggleSkill(skill.id, !skill.enabled);
-      toast.success(skill.enabled ? `Skill "${skill.name}" 已禁用` : `Skill "${skill.name}" 已启用`);
-    } catch (e: any) {
-      toastGateError(e, '操作失败');
-    }
-  };
 
   const handleDelete = async () => {
     if (!deleteConfirm.skill) return;
@@ -107,7 +82,7 @@ const Skills: React.FC = () => {
       key: 'category',
       width: 100,
       render: (category: string) => {
-        const cfg = categoryConfig[category] || { color: 'bg-dark-hover text-gray-300 border-gray-200', text: category };
+        const cfg = SKILL_CATEGORIES[category] || { color: 'bg-dark-hover text-gray-300 border-gray-200', text: category };
         return (
           <span className={`inline-flex px-2 py-1 rounded-md text-xs font-medium border ${cfg.color}`}>
             {cfg.text}
@@ -116,50 +91,17 @@ const Skills: React.FC = () => {
       },
     },
     {
-      title: '上架状态',
-      dataIndex: 'status',
-      key: 'listing_status',
-      width: 130,
-      align: 'center' as const,
-      render: (s: string) => {
-        const labels: Record<string, string> = { draft: '草稿', ready: '待审核', published: '已发布', listed: '已上架', deprecated: '已废弃' };
-        const colors: Record<string, string> = { draft: '#888', ready: '#f59e0b', published: '#3b82f6', listed: '#10b981', deprecated: '#6b7280' };
-        return <span className="text-xs" style={{ color: colors[s] || '#888' }}>{labels[s] || s || '-'}</span>;
-      },
-    },
-    {
-      title: '启用',
-      key: 'enabled',
-      width: 170,
-      align: 'center' as const,
-      render: (_: unknown, record: Skill) => {
-        const st = (record.status || (record.enabled ? 'enabled' : 'disabled')).toLowerCase();
-        const badgeVariant = st === 'enabled' ? 'success' : st === 'disabled' ? 'warning' : st === 'deprecated' ? 'error' : 'default';
-        return (
-          <div className="flex items-center justify-center gap-2">
-            <Badge variant={badgeVariant as any}>{st}</Badge>
-            <Switch
-              checked={record.enabled}
-              disabled={st === 'deprecated'}
-              onChange={() => handleToggle(record)}
-            />
-          </div>
-        );
-      },
-    },
-    {
-      title: 'ID',
-      dataIndex: 'id',
-      key: 'id',
-      width: 100,
-      render: (id: string) => (
-        <code className="text-xs bg-dark-hover px-1.5 py-0.5 rounded">{id.slice(0, 8)}</code>
+      title: '来源',
+      key: 'source',
+      width: 80,
+      render: (_: unknown, record: Skill) => (
+        <span className="text-gray-400 text-xs">{getSourceLabel(extractProvenance(record))}</span>
       ),
     },
     {
       title: '操作',
       key: 'actions',
-      width: 180,
+      width: 160,
       align: 'center' as const,
       render: (_: unknown, record: Skill) => {
         const isProtected = Boolean((record as any)?.metadata?.protected === true || (record as any)?.protected === true);
@@ -241,7 +183,7 @@ const Skills: React.FC = () => {
           <Select
             value={categoryFilter}
             onChange={(v) => setCategoryFilter(v || undefined)}
-            options={Object.entries(categoryConfig).map(([k, v]) => ({ value: k, label: v.text }))}
+            options={[{ value: '', label: '全部' }, ...Object.entries(SKILL_CATEGORIES).map(([k, v]) => ({ value: k, label: v.text }))]}
             placeholder="分类筛选"
           />
           <Select
@@ -269,7 +211,20 @@ const Skills: React.FC = () => {
             刷新
           </Button>
         </div>
-      </div>
+       </div>
+
+      <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+        <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+          <div><span className="text-gray-300">名称</span><span className="ml-2 text-gray-600">SKILL.md 的 display_name，点击查看详情</span></div>
+          <div><span className="text-gray-300">描述</span><span className="ml-2 text-gray-600">SKILL.md 的 description</span></div>
+          <div><span className="text-gray-300">分类</span><span className="ml-2 text-gray-600">category：推理/编程/搜索/工具/通信/执行/检索/分析/生成/转换</span></div>
+          <div><span className="text-gray-300">上架状态</span><span className="ml-2 text-gray-600"><span className="text-gray-400">draft</span> 开发中 · <span className="text-yellow-400">ready</span> 待审 · <span className="text-blue-400">published</span> 已发布 · <span className="text-green-400">listed</span> 上架 · <span className="text-red-400">deprecated</span> 废弃</span></div>
+          <div><span className="text-gray-300">启用</span><span className="ml-2 text-gray-600">即上架状态。engine 内置为 published（只读）</span></div>
+          <div><span className="text-gray-300">ID</span><span className="ml-2 text-gray-600">Skill 唯一标识符</span></div>
+          <div><span className="text-gray-300">操作</span><span className="ml-2 text-gray-600">详情/执行/编辑/恢复/弃用/删除</span></div>
+        </div>
+      </details>
 
       {/* Table Card */}
       <motion.div

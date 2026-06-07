@@ -2,12 +2,15 @@
 from __future__ import annotations
 import json as _json
 import logging
+import os
 import time
 import uuid
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
 from core.harness.kernel.runtime import get_kernel_runtime
+from core.harness.syscalls.llm import sys_llm_generate
 from core.schemas_prompt_app import (
     PromptAppTemplateCreate, PromptAppTemplateUpdate,
     PromptPreviewRequest, PromptPreviewTextRequest, PromptOptimizeRequest,
@@ -18,6 +21,37 @@ from core.schemas_prompt_app import (
 
 router = APIRouter()
 _log = logging.getLogger("aiplat.prompt_app")
+
+
+async def _record_changeset(store, name: str, target_id: str, status: str = "success", args: dict = None, result: dict = None):
+    try:
+        from core.governance.changeset import record_changeset
+        await record_changeset(
+            store=store, name=name, target_type="prompt_app_template", target_id=target_id,
+            status=status, args=args or {}, result=result, user_id="admin",
+        )
+    except Exception:
+        _log.warning("变更集记录失败: name=%s target_id=%s", name, target_id, exc_info=True)
+
+
+def _verify_template_signature(template_id: str) -> Optional[bool]:
+    """Best-effort signature verification for prompt app templates."""
+    try:
+        from core.management.prompt_app_manager import PromptAppManager
+        from core.security.skill_signature_gate import get_trusted_skill_pubkeys_map
+        import asyncio
+        mgr = PromptAppManager()
+        tpl = mgr.get(template_id)
+        if not tpl: return None
+        prov = dict(tpl.metadata.get("provenance", {}))
+        if not prov.get("signature"): return None
+        rt = get_kernel_runtime()
+        store = getattr(rt, "execution_store", None) if rt else None
+        trusted = asyncio.new_event_loop().run_until_complete(get_trusted_skill_pubkeys_map(store)) if store else {}
+        result = mgr.compute_signature_verification(tpl, trusted)
+        return result.get("signature_verified")
+    except Exception:
+        return None
 
 
 def _store():
@@ -53,7 +87,7 @@ async def create_template(req: PromptAppTemplateCreate):
         store = _store()
         if not store:
             raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
-        return await store.upsert_prompt_app_template(
+        result = await store.upsert_prompt_app_template(
             template_id=req.template_id,
             name=req.name,
             category=req.category,
@@ -63,6 +97,9 @@ async def create_template(req: PromptAppTemplateCreate):
             assistant_prompt=req.assistant_prompt,
             variables=_json.dumps(req.variables, ensure_ascii=False),
         )
+        await _record_changeset(store, "create_prompt_app_template", req.template_id, args={"name": req.name, "category": req.category})
+        _verify_template_signature(req.template_id)  # best-effort signature check
+        return result
     except HTTPException:
         raise
     except Exception as e:
@@ -106,6 +143,37 @@ async def update_template(template_id: str, req: PromptAppTemplateUpdate):
     except Exception as e:
         _log.error(f"Update template failed: {e}")
         raise HTTPException(status_code=500, detail=f"Update template failed: {str(e)[:300]}")
+
+
+@router.post("/prompts/app/templates/{template_id}/publish")
+async def publish_template(template_id: str):
+    """Publish a prompt app template with signature verification."""
+    store = _store()
+    if not store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    tpl = await store.get_prompt_app_template(template_id=template_id)
+    if not tpl:
+        raise HTTPException(status_code=404, detail="Template not found")
+
+    # Signature verification gate (best-effort)
+    verified = _verify_template_signature(template_id)
+    if verified is False:
+        raise HTTPException(status_code=403, detail="Template signature verification failed — must be signed before publish")
+
+    await store.upsert_prompt_app_template(
+        template_id=template_id, name=tpl.get("name", ""), category=tpl.get("category", ""),
+        tags=tpl.get("tags", "[]"), system_prompt=tpl.get("system_prompt", ""),
+        user_prompt=tpl.get("user_prompt", ""), assistant_prompt=tpl.get("assistant_prompt", ""),
+        variables=tpl.get("variables", "[]"),
+    )
+    # Update status to published via raw update
+    try:
+        await store.db.execute("UPDATE prompt_app_templates SET status='published', updated_at=? WHERE template_id=?", (time.time(), template_id))
+        await store.db.commit()
+    except Exception:
+        pass
+    await _record_changeset(store, "publish_prompt_app_template", template_id, args={"status": "published"})
+    return {"status": "published", "template_id": template_id}
 
 
 @router.delete("/prompts/app/templates/{template_id}")
@@ -171,7 +239,7 @@ async def preview_template(template_id: str, req: PromptPreviewRequest):
         messages.append({"role": "user", "content": up})
         if ap:
             messages.append({"role": "assistant", "content": ap})
-        resp = await model.generate(messages, config=None)
+        resp = await sys_llm_generate(model, messages)
         output = resp.content if hasattr(resp, 'content') else str(resp)
         return {"output": str(output)[:4000], "model": model_name}
     except Exception as e:
@@ -198,7 +266,7 @@ async def preview_text(req: PromptPreviewTextRequest):
         if sp:
             messages.append({"role": "system", "content": sp})
         messages.append({"role": "user", "content": up})
-        resp = await model.generate(messages, config=None)
+        resp = await sys_llm_generate(model, messages)
         output = resp.content if hasattr(resp, 'content') else str(resp)
         return {"output": str(output)[:4000], "model": model_name}
     except Exception as e:
@@ -241,7 +309,7 @@ async def run_prompt(req: PromptRunRequest):
         if sp:
             messages.append({"role": "system", "content": sp})
         messages.append({"role": "user", "content": up})
-        resp = await model.generate(messages, config=None)
+        resp = await sys_llm_generate(model, messages)
         output = resp.content if hasattr(resp, 'content') else str(resp)
         return {"output": str(output)[:4000], "model": model_name}
     except Exception as e:
@@ -283,7 +351,7 @@ async def optimize_prompt(req: PromptOptimizeRequest):
 
 只输出 JSON，不要其他内容。"""
 
-        resp = await model.generate([
+        resp = await sys_llm_generate(model, [
             {"role": "system", "content": "你是 Prompt 优化专家。只输出 JSON。"},
             {"role": "user", "content": optimize_prompt_text},
         ], config=None)
@@ -603,3 +671,56 @@ async def delete_instance(instance_id: str):
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
     await store.delete_prompt_app_instance(instance_id=instance_id)
     return {"status": "deleted"}
+
+
+@router.post("/prompts/app/templates/{template_id}/sign")
+async def sign_prompt_app_template(template_id: str, req: Dict[str, Any]):
+    """Sign a prompt app template directory with Ed25519 key. Writes TEMPLATE.manifest.json."""
+    private_key = str(req.get("private_key") or "").strip()
+    private_key = private_key.replace("\\n", "\n")  # normalize escaped newlines from frontend
+    if not private_key:
+        raise HTTPException(status_code=400, detail="private_key is required")
+
+    try:
+        from core.management.prompt_app_manager import PromptAppManager
+        mgr = PromptAppManager()
+    except Exception:
+        raise HTTPException(status_code=503, detail="PromptAppManager not available")
+
+    tpl = mgr.get(template_id)
+    if not tpl:
+        raise HTTPException(status_code=404, detail="template not found")
+
+    try:
+        from core.harness.infrastructure.crypto.signature import sign_skill as sign_tpl
+
+        tmpl_dir = Path(tpl.metadata.get("filesystem", {}).get("template_dir") or "")
+        if not tmpl_dir or not tmpl_dir.exists():
+            raise HTTPException(status_code=500, detail="Template directory not found")
+
+        mgr._enrich_provenance_and_integrity(tpl.metadata, template_dir=tmpl_dir)
+        integ = tpl.metadata.get("integrity", {})
+        bundle_sha256 = integ.get("bundle_sha256", "")
+        if not bundle_sha256:
+            raise HTTPException(status_code=500, detail="Could not compute bundle_sha256")
+
+        version = req.get("version") or tpl.version or "0.1.0"
+        signature = sign_tpl(private_key=private_key, skill_id=template_id, version=str(version), bundle_sha256=bundle_sha256)
+
+        manifest_path = tmpl_dir / "TEMPLATE.manifest.json"
+        manifest = {}
+        if manifest_path.exists():
+            try:
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            except Exception:
+                _log.warning("无法解析 manifest JSON: %s", manifest_path, exc_info=True)
+        manifest["signature"] = signature
+        manifest["version"] = str(version)
+        manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
+        mgr._enrich_provenance_and_integrity(tpl.metadata, template_dir=tmpl_dir)
+
+    except HTTPException: raise
+    except ValueError as e: raise HTTPException(status_code=400, detail=f"Invalid private key: {str(e)}")
+    except Exception as e: raise HTTPException(status_code=500, detail=f"Signing failed: {str(e)}")
+
+    return {"status": "signed", "bundle_sha256": bundle_sha256, "version": str(version), "signature": signature}

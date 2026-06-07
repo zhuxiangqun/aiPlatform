@@ -3,6 +3,7 @@ import { RotateCw, PlayCircle, PauseCircle, Trash2, Zap, Pencil, MessageSquare }
 import { motion } from 'framer-motion';
 import { Table, Select, Button, Modal, toast } from '../../../components/ui';
 import { EditAgentModal, ExecuteAgentModal, AgentDetailModal, ChatPanel } from '../../../components/core';
+import { getSourceLabel, extractProvenance } from '../../../utils/sourceLabel';
 import { useAgentStore } from '../../../stores';
 import { agentApi, type Agent } from '../../../services';
 
@@ -83,9 +84,9 @@ const Agents: React.FC = () => {
       key: 'name',
       render: (name: string, record: Agent) => (
         <button
-          onClick={() => { handleChatOpen(record); }}
+          onClick={() => { setSelectedAgent(record); setDetailModalOpen(true); }}
           className="text-primary hover:text-primary-hover font-medium cursor-pointer"
-          title="点击打开对话面板"
+          title="查看详情"
         >
           {name}
         </button>
@@ -101,12 +102,11 @@ const Agents: React.FC = () => {
       ),
     },
     {
-      title: '模型',
-      dataIndex: 'config',
-      key: 'model',
-      width: 140,
-      render: (cfg: Record<string, any>) => (
-        <span className="text-xs text-gray-300 font-mono">{(cfg as any)?.model || (cfg?.model) || '-'}</span>
+      title: '来源',
+      key: 'source',
+      width: 80,
+      render: (_: unknown, record: Agent) => (
+        <span className="text-gray-400 text-xs">{getSourceLabel(extractProvenance(record))}</span>
       ),
     },
     {
@@ -119,13 +119,15 @@ const Agents: React.FC = () => {
       ),
     },
     {
-      title: 'ID',
-      dataIndex: 'id',
-      key: 'id',
-      width: 120,
-      render: (id: string) => (
-        <code className="text-xs bg-dark-hover px-1.5 py-0.5 rounded">{id.slice(0, 8)}</code>
-      ),
+      title: '治理',
+      key: 'governance',
+      width: 90,
+      render: (_: unknown, record: Agent) => {
+        const prov: any = (record.metadata as any)?.provenance || {};
+        if (prov?.signature_verified) return <span className="text-xs text-green-400">已验签</span>;
+        if (prov?.signature) return <span className="text-xs text-blue-400">已签名</span>;
+        return <span className="text-xs text-gray-500">未签名</span>;
+      },
     },
     {
       title: '操作',
@@ -238,6 +240,18 @@ const Agents: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+        <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+          <div><span className="text-gray-300">名称</span><span className="ml-2 text-gray-600">AGENT.md 的 display_name，点击打开对话</span></div>
+          <div><span className="text-gray-300">分类</span><span className="ml-2 text-gray-600">Agent 的功能分类标签</span></div>
+          <div><span className="text-gray-300">模型</span><span className="ml-2 text-gray-600">config.model，调用的 LLM 模型</span></div>
+          <div><span className="text-gray-300">功能描述</span><span className="ml-2 text-gray-600">AGENT.md 的 description</span></div>
+          <div><span className="text-gray-300">ID</span><span className="ml-2 text-gray-600">Agent 唯一标识符</span></div>
+          <div><span className="text-gray-300">操作</span><span className="ml-2 text-gray-600">对话/编辑/启动/停止/执行/删除。受保护的 Agent 不可编辑和删除</span></div>
+        </div>
+      </details>
 
       {/* Table Card */}
       <motion.div

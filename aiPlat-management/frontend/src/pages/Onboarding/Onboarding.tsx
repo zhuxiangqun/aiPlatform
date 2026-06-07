@@ -4,8 +4,9 @@ import { CheckCircle, AlertTriangle, RotateCw, Download } from 'lucide-react';
 import { onboardingApi, diagnosticsApi } from '../../services';
 import { approvalsApi, policyApi } from '../../services';
 import { ActionableFixes } from '../../components/common/ActionableFixes';
+import { Modal } from '../../components/ui';
 
-type StepKey = 'adapter' | 'default_llm' | 'tenant' | 'strong_gate' | 'autosmoke' | 'secrets' | 'doctor' | 'health' | 'smoke';
+type StepKey = 'adapter' | 'default_llm' | 'tenant' | 'strong_gate' | 'autosmoke' | 'secrets' | 'doctor' | 'health' | 'smoke' | 'sign_keys';
 
 const StepBadge: React.FC<{ ok?: boolean; loading?: boolean }> = ({ ok, loading }) => {
   if (loading) return <RotateCw className="w-4 h-4 text-primary animate-spin" />;
@@ -62,6 +63,7 @@ const Onboarding: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [activeStep, setActiveStep] = useState<StepKey>('adapter');
+  const [showModal, setShowModal] = useState(false);
   const [state, setState] = useState<any>(null);
   const [loadingState, setLoadingState] = useState(false);
 
@@ -105,6 +107,8 @@ const Onboarding: React.FC = () => {
   const [rotateKeyForm, setRotateKeyForm] = useState<{ adapter_id: string; api_key: string }>({ adapter_id: '', api_key: '' });
   const [rotateKeyLoading, setRotateKeyLoading] = useState(false);
   const [rotateKeyResult, setRotateKeyResult] = useState<any>(null);
+  const [signKeyGenLoading, setSignKeyGenLoading] = useState(false);
+  const [signKeyGenResult, setSignKeyGenResult] = useState<{ key_id: string; public_key: string; private_key: string } | null>(null);
   const [autosmokeLoading, setAutosmokeLoading] = useState(false);
   const [autosmokeResult, setAutosmokeResult] = useState<any>(null);
   const [autosmokeApprovalId, setAutosmokeApprovalId] = useState<string>('');
@@ -434,6 +438,7 @@ const Onboarding: React.FC = () => {
       { key: 'strong_gate' as StepKey, title: '强门禁开关', desc: 'default tenant：控制“所有工具需审批”开关' },
       { key: 'autosmoke' as StepKey, title: '配置 autosmoke', desc: '启用 autosmoke + enforce（发布前验证）' },
       { key: 'secrets' as StepKey, title: '密钥与迁移', desc: '检查 SecretKey、迁移明文密钥、轮换 Adapter key' },
+      { key: 'sign_keys' as StepKey, title: 'Ed25519 签名密钥', desc: '生成 Ed25519 密钥对，用于签名 Skill/Agent/MCP/Tool 等实体' },
       { key: 'doctor' as StepKey, title: 'Doctor 一键检查', desc: '聚合诊断 + Quick Fix Actions（自动审批轮询）' },
       { key: 'health' as StepKey, title: '检查全链路健康', desc: 'infra/core/platform/app 健康状态' },
       { key: 'smoke' as StepKey, title: '运行 E2E Smoke', desc: '触发一次生产级全链路冒烟' },
@@ -467,6 +472,7 @@ const Onboarding: React.FC = () => {
     if (k === 'strong_gate') return undefined;
     if (k === 'autosmoke') return autosmokeOk;
     if (k === 'secrets') return secretsOk;
+    if (k === 'sign_keys') return signKeyGenResult ? true : undefined;
     if (k === 'doctor') return doctor ? doctorOk : undefined;
     if (k === 'health') return healthOk;
     if (k === 'smoke') return smokeOk;
@@ -1109,11 +1115,11 @@ const Onboarding: React.FC = () => {
         {steps.map((s) => {
           const active = activeStep === s.key;
           const ok = getStepOk(s.key);
-          const loading = getStepLoading(s.key);
+          const loading = activeStep === s.key && getStepLoading(s.key);
           return (
             <button
               key={s.key}
-              onClick={() => setActiveStep(s.key)}
+              onClick={() => { setActiveStep(s.key); setShowModal(true); }}
               className={`p-4 rounded-xl border text-left transition-colors ${
                 active ? 'border-primary bg-primary-light/10' : 'border-dark-border bg-dark-bg hover:bg-dark-hover'
               }`}
@@ -1267,6 +1273,12 @@ const Onboarding: React.FC = () => {
       )}
 
       {/* Step content */}
+      <Modal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        title={steps.find((s) => s.key === activeStep)?.title || ''}
+        width={700}
+      >
       {activeStep === 'adapter' && (
         <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-4">
           <div className="text-gray-200 font-medium">Step 1：配置模型 Adapter</div>
@@ -1753,6 +1765,63 @@ const Onboarding: React.FC = () => {
         </div>
       )}
 
+      {activeStep === 'sign_keys' && (
+        <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-4">
+          <div className="text-gray-200 font-medium">Skill 签名密钥对</div>
+          <div className="text-sm text-gray-500">
+            生成 Ed25519 密钥对用于签名 Skill、Agent、MCP、Workflow 等实体。私钥仅显示一次，请立即复制保存。
+          </div>
+          {signKeyGenResult ? (
+            <div className="space-y-3">
+              <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-3 text-sm text-green-300">
+                ⚠️ 私钥仅显示一次，请立即复制并保存在安全位置。关闭此页面后无法再次获取。
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 mb-1">Key ID</div>
+                <code className="text-xs bg-dark-hover px-2 py-1 rounded break-all">{signKeyGenResult.key_id}</code>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 mb-1">公钥（已自动配置）</div>
+                <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-2 overflow-auto max-h-20">{signKeyGenResult.public_key}</pre>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 mb-1">私钥（复制后去各管理页面签名）</div>
+                <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-2 overflow-auto max-h-32">{signKeyGenResult.private_key}</pre>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(signKeyGenResult.private_key);
+                    // toast would need importing, skip for now
+                  }}
+                  className="mt-2 px-3 py-1 rounded text-xs bg-dark-hover text-gray-200 border border-dark-border hover:bg-dark-border"
+                >
+                  复制私钥
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <button
+                disabled={signKeyGenLoading}
+                onClick={async () => {
+                  setSignKeyGenLoading(true);
+                  try {
+                    const res = await onboardingApi.generateSkillKey({ label: 'default' });
+                    setSignKeyGenResult(res);
+                  } catch (e: any) {
+                    // toastGateError not imported, skip
+                  } finally {
+                    setSignKeyGenLoading(false);
+                  }
+                }}
+                className="px-4 py-2 rounded-lg bg-primary text-white text-sm hover:opacity-90 disabled:opacity-60"
+              >
+                {signKeyGenLoading ? '生成中…' : '生成密钥对'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Approvals inline */}
       <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-3">
         <div className="flex items-center justify-between">
@@ -1843,6 +1912,7 @@ const Onboarding: React.FC = () => {
           </pre>
         </div>
       )}
+      </Modal>
     </div>
   );
 };

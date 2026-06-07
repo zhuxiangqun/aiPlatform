@@ -6,6 +6,7 @@ import logging
 
 from fastapi import APIRouter, HTTPException
 from core.schemas_prompt_app import PromptOptimizeRequest
+from core.harness.syscalls.llm import sys_llm_generate
 
 router = APIRouter()
 _log = logging.getLogger("aiplat.prompt_optimize")
@@ -71,7 +72,7 @@ async def optimize_prompt(req: PromptOptimizeRequest):
 
 只输出 JSON。"""
 
-        resp = await model.generate([
+        resp = await sys_llm_generate(model, [
             {"role": "system", "content": "你是 Prompt 优化专家。只输出 JSON，不要任何解释。"},
             {"role": "user", "content": optimize_prompt},
         ], config=None)

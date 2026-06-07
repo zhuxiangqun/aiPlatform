@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, RotateCw, Network, Settings, Trash2, Laptop } from 'lucide-react';
+import { Plus, RotateCw, Network, Settings, Trash2, Laptop, Key } from 'lucide-react';
 import { Table, Button, Modal, Select, toast } from '../../../components/ui';
 import PageHeader from '../../../components/common/PageHeader';
 import AddModelModal from '../../../components/infra/AddModelModal';
@@ -199,6 +199,15 @@ const Models: React.FC = () => {
               </button>
             </>
           )}
+          {record.source === 'config' && (
+            <button
+              className="p-1.5 rounded-lg text-gray-500 hover:bg-dark-hover transition-colors"
+              title="设置 API Key"
+              onClick={() => handleEdit(record)}
+            >
+              <Key size={16} />
+            </button>
+          )}
         </div>
       ),
     },
@@ -269,6 +278,19 @@ const Models: React.FC = () => {
             className="h-10 px-3 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 w-48"
           />
         </div>
+
+        <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+          <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+          <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+            <div><span className="text-gray-300">模型名称</span><span className="ml-2 text-gray-600">displayName / name，底层模型标识符</span></div>
+            <div><span className="text-gray-300">类型</span><span className="ml-2 text-gray-600">LLM / EMBEDDING / RERANKER / AUDIO / IMAGE</span></div>
+            <div><span className="text-gray-300">来源</span><span className="ml-2 text-gray-600">内置（自动发现）/ 本地（Ollama等）/ 自定义</span></div>
+            <div><span className="text-gray-300">Provider</span><span className="ml-2 text-gray-600">模型提供商标识（openai_compatible/deepseek等）</span></div>
+            <div><span className="text-gray-300">状态</span><span className="ml-2 text-gray-600">可用 / 不可用 / 错误 / 未配置</span></div>
+            <div><span className="text-gray-300">启用</span><span className="ml-2 text-gray-600">开关——内置模型不可禁用</span></div>
+            <div><span className="text-gray-300">操作</span><span className="ml-2 text-gray-600">测试连通性 / 编辑 / 删除。内置模型仅可测试</span></div>
+          </div>
+        </details>
 
         <Table columns={columns} data={filteredModels} rowKey="id" loading={loading} emptyText="暂无模型数据" />
 

@@ -26,6 +26,20 @@ _BATCH_SIZE = 50
 
 class EventBus:
     @classmethod
+    def subscribe(cls, run_id: str) -> asyncio.Queue:
+        """Subscribe to events for a run_id. Returns an asyncio.Queue that receives events."""
+        q = _buses.get(run_id)
+        if q is None:
+            q = asyncio.Queue(maxsize=1000)
+            _buses[run_id] = q
+        return q
+
+    @classmethod
+    def unsubscribe(cls, run_id: str) -> None:
+        """Unsubscribe from events for a run_id."""
+        _buses.pop(run_id, None)
+
+    @classmethod
     def publish(cls, run_id: str, event: Dict[str, Any]) -> None:
         """发布事件到指定 run 的订阅者。非阻塞。
         如果没有订阅者，事件进入 DLQ 等待持久化。"""
@@ -76,7 +90,8 @@ class EventBus:
                 store = get_execution_store()
                 for evt in batch:
                     try:
-                        await store.add_syscall_event(evt)
+                        # Use _insert_event_raw: pure SQL, no re-publish to EventBus
+                        await store._insert_event_raw(evt)
                     except Exception:
                         pass
             except Exception:

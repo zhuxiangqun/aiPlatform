@@ -76,9 +76,9 @@ class OpenAICompatibleClient(LLMClient):
                 content=resp.content or "",
                 role=resp.role,
                 usage={
-                    "prompt": prompt_tokens,
-                    "completion": completion_tokens,
-                    "total": total_tokens,
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                    "total_tokens": total_tokens,
                 },
                 finish_reason=response.choices[0].finish_reason,
                 latency=latency,

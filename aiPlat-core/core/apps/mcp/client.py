@@ -88,9 +88,17 @@ class MCPClient:
                     init_request
                 )
                 self._handle_init_response(response)
+            elif isinstance(self._transport, StdioHandler):
+                # For stdio, spawn the subprocess first
+                command = self._config.command or ""
+                if not command:
+                    raise ValueError("stdio transport requires command field")
+                args = list(self._config.args or [])
+                await self._transport.spawn(command, args)
+                response = await self._transport.call("", init_request)
+                self._handle_init_response(response)
             else:
-                # For stdio, spawn process first
-                raise NotImplementedError("Stdio transport requires spawn first")
+                raise ValueError(f"Unsupported transport: {self._config.transport}")
                 
             self._connected = True
             logger.info(f"Connected to MCP server at {self._config.server_url}")

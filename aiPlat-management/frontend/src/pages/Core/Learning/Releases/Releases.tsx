@@ -358,6 +358,18 @@ const Releases: React.FC = () => {
         </div>
       </div>
 
+      <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+        <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+          <div><span className="text-gray-300">candidate_id</span><span className="ml-2 text-gray-600">发布候选 artifact_id，点击查看详情</span></div>
+          <div><span className="text-gray-300">version</span><span className="ml-2 text-gray-600">发布版本号</span></div>
+          <div><span className="text-gray-300">status</span><span className="ml-2 text-gray-600"><span className="text-green-400">published</span> 已发布 · <span className="text-red-400">rolled_back</span> 已回滚 · <span className="text-gray-400">draft</span> 草稿</span></div>
+          <div><span className="text-gray-300">expires_at</span><span className="ml-2 text-gray-600">过期时间 + 剩余时长。过期候选将自动回滚</span></div>
+          <div><span className="text-gray-300">rollback_report</span><span className="ml-2 text-gray-600">回滚回归报告 ID（回滚原因文档）</span></div>
+          <div><span className="text-gray-300">操作</span><span className="ml-2 text-gray-600">详情/回滚原因/发布/Trace/TTL设置/回滚</span></div>
+        </div>
+      </details>
+
       <Card>
         <CardHeader>
           <div className="flex flex-wrap items-center gap-3">

@@ -11,13 +11,17 @@ from typing import Any, Dict, List, Optional
 
 
 def sys_wiki_context(question: str, *, wiki_titles: List[str] = None,
-                     top_k: int = 8, link_depth: int = 1) -> Dict[str, Any]:
+                     top_k: int = 8, link_depth: int = 1,
+                     collection_ids: List[str] = None) -> Dict[str, Any]:
     u"""Return knowledge context for a question from the Wiki knowledge graph.
 
     Combines:
       1. FTS5 keyword search (exact name match)
       2. Embedding semantic search (wiki_retrieve)
       3. Link-graph traversed related pages
+
+    Args:
+        collection_ids: Wiki collections to search. Defaults to ["default"].
 
     Returns:
       {results: [{title, text, score, tags, summary, source}],
@@ -26,6 +30,8 @@ def sys_wiki_context(question: str, *, wiki_titles: List[str] = None,
     """
     from core.harness.knowledge.wiki_engine import search_pages, traverse_links
     from core.harness.syscalls.retrieval import sys_wiki_retrieve
+
+    cids = collection_ids or ["default"]
 
     # FTS5 keyword search
     fts5_matches: List[str] = []
@@ -36,7 +42,8 @@ def sys_wiki_context(question: str, *, wiki_titles: List[str] = None,
         pass
 
     # Semantic search via wiki retriever
-    results = sys_wiki_retrieve(question, wiki_titles=wiki_titles, top_k=top_k, link_depth=link_depth)
+    results = sys_wiki_retrieve(question, wiki_titles=wiki_titles, top_k=top_k,
+                                link_depth=link_depth, collection_ids=cids)
 
     # Link-graph traversed related pages for top results
     related_pages: List[Dict[str, Any]] = []
@@ -45,12 +52,13 @@ def sys_wiki_context(question: str, *, wiki_titles: List[str] = None,
         title = r.get("title", "")
         if title and title not in seen:
             try:
-                linked = traverse_links(title, depth=link_depth)
-                for lp in linked:
-                    if lp["title"] not in seen:
-                        seen.add(lp["title"])
-                        related_pages.append({"title": lp["title"],
-                                              "summary": lp.get("summary", "")[:120]})
+                for cid in cids:
+                    linked = traverse_links(title, depth=link_depth, collection_id=cid)
+                    for lp in linked:
+                        if lp["title"] not in seen:
+                            seen.add(lp["title"])
+                            related_pages.append({"title": lp["title"],
+                                                  "summary": lp.get("summary", "")[:120]})
             except Exception:
                 pass
 

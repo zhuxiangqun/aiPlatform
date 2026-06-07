@@ -21,7 +21,7 @@ from typing import Any, Dict, List, Optional, Tuple
 class ToolSelector:
     def __init__(self, max_tools: int = None, threshold: int = None):
         self._max = max_tools or int(os.getenv("AIPLAT_TOOL_SELECTOR_MAX", "10"))
-        self._threshold = threshold or int(os.getenv("AIPLAT_TOOL_SELECTOR_THRESHOLD", "15"))
+        self._threshold = threshold or int(os.getenv("AIPLAT_TOOL_SELECTOR_THRESHOLD", "5"))
         self._use_embedding = os.getenv("AIPLAT_TOOL_SELECTOR_EMBEDDING", "0") in ("1", "true", "yes")
         self._embedder = None
 

@@ -29,7 +29,7 @@ const RunComparison: React.FC = () => {
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Run 对比</h1>
       </div>
 
-      <Card className="border-dark-border bg-dark-card" style={{ marginBottom: 20 }}>
+      <Card className="border-dark-border bg-dark-card" {...({ style: { marginBottom: 20 } } as any)}>
         <CardContent>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 16 }}>
             <div style={{ flex: 1 }}>

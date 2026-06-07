@@ -172,6 +172,17 @@ const Plugins: React.FC = () => {
         </CardContent>
       </Card>
 
+      <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+        <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+          <div><span className="text-gray-300">plugin_id</span><span className="ml-2 text-gray-600">插件唯一标识符</span></div>
+          <div><span className="text-gray-300">name</span><span className="ml-2 text-gray-600">插件名称</span></div>
+          <div><span className="text-gray-300">version</span><span className="ml-2 text-gray-600">当前安装版本号</span></div>
+          <div><span className="text-gray-300">enabled</span><span className="ml-2 text-gray-600"><span className="text-green-400">yes</span> 已启用 · <span className="text-gray-500">no</span> 已停用</span></div>
+          <div><span className="text-gray-300">操作</span><span className="ml-2 text-gray-600">启用/停用/查看manifest/版本历史</span></div>
+        </div>
+      </details>
+
       <Card>
         <CardHeader>
           <div className="text-sm font-semibold text-gray-200">已安装插件</div>

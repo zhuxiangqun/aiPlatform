@@ -17,6 +17,7 @@ from core.api.facades.skill_tool_facade import get_skill_registry
 from core.harness.integration import get_harness, KernelRuntime
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.harness.kernel.types import ExecutionRequest
+from core.harness.syscalls.llm import sys_llm_generate
 from core.schemas_run import RunStatus
 from core.schemas_skills import SkillCreateRequest, SkillExecuteRequest
 from core.utils.ids import new_prefixed_id
@@ -1272,6 +1273,23 @@ async def delete_workspace_skill(skill_id: str, delete_files: bool = False, http
         )
         if deny:
             return deny
+
+    # Check skill impact before deletion — warn if agents depend on this skill
+    try:
+        from core.harness.knowledge.skill_deps import skill_impact
+        impact = skill_impact(str(skill_id))
+        affected = impact.get("affected_agents", []) if isinstance(impact, dict) else []
+        if affected and not delete_files:
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "detail": f"Skill {skill_id} is used by {len(affected)} agent(s): {affected[:5]}. Set delete_files=true to force deletion.",
+                    "affected_agents": affected[:10],
+                },
+            )
+    except Exception:
+        pass
+
     ok = await mgr.delete_skill(skill_id, delete_files=delete_files)
     if not ok:
         raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
@@ -1514,6 +1532,89 @@ async def enable_workspace_skill(skill_id: str, request: Optional[Dict[str, Any]
         "lint": lint,
         "lint_summary": lint_sum,
         "links": governance_links(change_id=change_id, approval_request_id=str(approval_request_id) if approval_request_id else None),
+    }
+
+
+@router.post("/workspace/skills/{skill_id}/sign")
+async def sign_workspace_skill(skill_id: str, request: Dict[str, Any], http_request: Request = None, rt: RuntimeDep = None):
+    """
+    Sign a skill with an Ed25519 private key, writing the signature to
+    SKILL.manifest.json and updating provenance metadata.
+
+    Body: { "private_key": "-----BEGIN PRIVATE KEY-----..." }
+
+    After signing, the skill transitions from pre-governance to governed.
+    Subsequent enable will enforce signature verification.
+    """
+    mgr = _ws_skill_mgr(rt)
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+
+    if http_request is not None:
+        deny = await rbac_guard(http_request=http_request, payload={}, action="sign", resource_type="skill", resource_id=str(skill_id))
+        if deny:
+            return deny
+
+    private_key = str(request.get("private_key") or "").strip()
+    private_key = private_key.replace("\\n", "\n")  # normalize escaped newlines from frontend
+    if not private_key:
+        raise HTTPException(status_code=400, detail="private_key is required")
+
+    s = await mgr.get_skill(skill_id)
+    if not s:
+        raise HTTPException(status_code=404, detail="Skill not found")
+
+    import json, os
+
+    try:
+        from core.harness.infrastructure.crypto.signature import sign_skill
+
+        skill_dir = Path(s.metadata.get("filesystem", {}).get("skill_dir") or s.metadata.get("provenance", {}).get("skill_dir") or "")
+        if not skill_dir or not skill_dir.exists():
+            raise HTTPException(status_code=500, detail="Skill directory not found")
+
+        # Ensure integrity is computed (bundle_sha256 needed for signing)
+        mgr._enrich_skill_provenance_and_integrity(s.metadata, skill_dir=skill_dir)
+        integ = s.metadata.get("integrity", {})
+        bundle_sha256 = integ.get("bundle_sha256", "")
+        if not bundle_sha256:
+            raise HTTPException(status_code=500, detail="Could not compute bundle_sha256")
+
+        version = str(s.version or "0.1.0")
+
+        signature = sign_skill(
+            private_key=private_key,
+            skill_id=skill_id,
+            version=version,
+            bundle_sha256=bundle_sha256,
+        )
+
+        # Write SKILL.manifest.json with the signature
+        manifest_path = skill_dir / "SKILL.manifest.json"
+        manifest = {}
+        if manifest_path.exists():
+            try:
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+        manifest["signature"] = signature
+        manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
+
+        # Re-enrich provenance to pick up the new signature from the manifest
+        mgr._enrich_skill_provenance_and_integrity(s.metadata, skill_dir=skill_dir)
+
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid private key: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Signing failed: {str(e)}")
+
+    return {
+        "status": "signed",
+        "bundle_sha256": bundle_sha256,
+        "version": version,
+        "signature": signature,
     }
 
 
@@ -2231,3 +2332,216 @@ async def submit_skill_for_review(skill_id: str, rt: RuntimeDep = None):
             "warning_count": lint_report.get("summary", {}).get("warning_count", lint_report.get("warning_count", 0)),
         },
     }
+
+
+@router.get("/workspace/skills/seeds")
+async def list_skill_seeds(rt: RuntimeDep = None):
+    """List available skill seed templates from workspace_seeds/skills/."""
+    from pathlib import Path as _P
+    import yaml as _yaml
+
+    seeds_dir = _P(__file__).resolve().parents[3] / "core" / "workspace_seeds" / "skills"
+    if not seeds_dir.exists():
+        return {"seeds": [], "total": 0}
+
+    seeds = []
+    for item in sorted(seeds_dir.iterdir()):
+        if not item.is_dir():
+            continue
+        skill_md = item / "SKILL.md"
+        if not skill_md.exists():
+            continue
+        try:
+            raw = skill_md.read_text(encoding="utf-8")
+            fm = {}
+            if raw.startswith("---"):
+                parts = raw.split("---", 2)
+                if len(parts) >= 3:
+                    fm = _yaml.safe_load(parts[1]) or {}
+            installed = (_P.home() / ".aiplat" / "skills" / item.name).exists()
+            seeds.append({
+                "id": item.name,
+                "name": str(fm.get("display_name") or fm.get("name") or item.name),
+                "description": str(fm.get("description") or ""),
+                "category": str(fm.get("category") or ""),
+                "installed": installed,
+            })
+        except Exception:
+            continue
+    return {"seeds": seeds, "total": len(seeds)}
+
+
+@router.post("/workspace/skills/seeds/{seed_id}/install")
+async def install_skill_seed(seed_id: str, rt: RuntimeDep = None):
+    """Install a skill seed template into ~/.aiplat/skills/."""
+    import shutil as _shutil
+    from pathlib import Path as _P
+
+    seeds_dir = _P(__file__).resolve().parents[3] / "core" / "workspace_seeds" / "skills"
+    seed_dir = seeds_dir / seed_id
+    if not seed_dir.exists():
+        raise HTTPException(status_code=404, detail=f"Seed template '{seed_id}' not found")
+
+    workspace_dir = _P.home() / ".aiplat" / "skills"
+    dst = workspace_dir / seed_id
+    if dst.exists():
+        raise HTTPException(status_code=409, detail=f"Skill '{seed_id}' already installed")
+
+    try:
+        workspace_dir.mkdir(parents=True, exist_ok=True)
+        _shutil.copytree(seed_dir, dst)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to install seed: {str(e)}")
+
+    mgr = _ws_skill_mgr(rt)
+    if mgr and hasattr(mgr, 'reload'):
+        try:
+            mgr.reload()
+        except Exception:
+            pass
+
+    return {"status": "installed", "id": seed_id}
+
+
+@router.post("/workspace/skills/sign-all")
+async def sign_all_workspace_skills(request: Dict[str, Any], http_request: Request = None, rt: RuntimeDep = None):
+    """Batch-sign all workspace skills with a single Ed25519 private key."""
+    mgr = _ws_skill_mgr(rt)
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+
+    if http_request is not None:
+        deny = await rbac_guard(http_request=http_request, payload={}, action="sign", resource_type="skill", resource_id="*")
+        if deny:
+            return deny
+
+    private_key = str(request.get("private_key") or "").strip()
+    private_key = private_key.replace("\\n", "\n")  # normalize escaped newlines from frontend
+    if not private_key:
+        raise HTTPException(status_code=400, detail="private_key is required")
+
+    print("=== SIGN_ALL_DEBUG ===", flush=True)
+    print(f"len={len(private_key)} begins_with_BEGIN={'BEGIN' in private_key}", flush=True)
+    print(repr(private_key[:200]), flush=True)
+    print("=== END_DEBUG ===", flush=True)
+
+    from core.harness.infrastructure.crypto.signature import sign_skill
+    import json as _json
+
+    skill_ids = mgr.get_skill_ids() if hasattr(mgr, 'get_skill_ids') else list(getattr(mgr, '_skills', {}).keys())
+    results = []
+    signed = 0
+    failed = 0
+
+    for skill_id in skill_ids:
+        try:
+            s = await mgr.get_skill(skill_id)
+            if not s:
+                continue
+            skill_dir = Path(s.metadata.get("filesystem", {}).get("skill_dir") or s.metadata.get("provenance", {}).get("skill_dir") or "")
+            if not skill_dir or not skill_dir.exists():
+                failed += 1
+                continue
+
+            mgr._enrich_skill_provenance_and_integrity(s.metadata, skill_dir=skill_dir)
+            bundle = s.metadata.get("integrity", {}).get("bundle_sha256", "")
+            if not bundle:
+                failed += 1
+                continue
+
+            version = str(s.version or "0.1.0")
+            sig = sign_skill(private_key=private_key, skill_id=skill_id, version=version, bundle_sha256=bundle)
+
+            manifest_path = skill_dir / "SKILL.manifest.json"
+            manifest = {}
+            if manifest_path.exists():
+                try:
+                    manifest = _json.loads(manifest_path.read_text(encoding="utf-8"))
+                except Exception:
+                    pass
+            manifest["signature"] = sig
+            manifest["version"] = str(version)
+            manifest_path.write_text(_json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
+
+            mgr._enrich_skill_provenance_and_integrity(s.metadata, skill_dir=skill_dir)
+            results.append({"skill_id": skill_id, "status": "signed", "signature": sig[:16] + "..."})
+            signed += 1
+        except Exception as e:
+            results.append({"skill_id": skill_id, "status": "failed", "error": str(e)[:100]})
+            failed += 1
+
+    return {"total": len(skill_ids), "signed": signed, "failed": failed, "results": results}
+
+
+@router.post("/workspace/skills/auto-fill")
+async def skill_auto_fill(request: Dict[str, Any], rt: RuntimeDep = None):
+    """AI 生成：根据名称和描述，自动生成 Skill 的 YAML frontmatter + SOP。"""
+    name = str(request.get("name") or "").strip()
+    description = str(request.get("description") or "").strip()
+    if not name or not description:
+        raise HTTPException(status_code=400, detail="name and description are required")
+
+    try:
+        from core.harness.utils.prompt_loader import _async_prompt_resolve
+        prompt = await _async_prompt_resolve("skill-auto-fill",
+            skill_name=name,
+            description=description,
+        )
+        from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
+        model_name = best_model_for_purpose("skill_creation")
+        model = create_selected_adapter(model_name=model_name)
+        messages = [
+            {"role": "system", "content": "你是 AI Skill 设计专家。只输出 SKILL.md 格式，不要任何额外解释。"},
+            {"role": "user", "content": prompt},
+        ]
+        resp = await sys_llm_generate(model, messages)
+        text = str(resp.content if hasattr(resp, 'content') else resp)
+
+        # Parse YAML frontmatter + SOP body
+        import yaml as _yaml
+        import re as _re
+        fm = {}
+        sop = ""
+
+        # Try to extract YAML block
+        m = _re.search(r'```(?:yaml)?\n?(.*?)```', text, _re.DOTALL)
+        if m:
+            try:
+                fm = _yaml.safe_load(m.group(1)) or {}
+            except Exception:
+                try:
+                    docs = list(_yaml.safe_load_all(m.group(1)))
+                    fm = docs[0] if docs else {}
+                except Exception:
+                    pass
+        elif text.startswith('---'):
+            parts = text.split('---', 2)
+            if len(parts) >= 3:
+                try:
+                    fm = _yaml.safe_load(parts[1]) or {}
+                except Exception:
+                    try:
+                        docs = list(_yaml.safe_load_all(parts[1]))
+                        fm = docs[0] if docs else {}
+                    except Exception:
+                        pass
+                sop = parts[2].strip() if len(parts) > 2 else ""
+
+        if not fm:
+            fm = {"name": name, "display_name": name.replace("_", " ").title(), "description": description}
+
+        return {
+            "name": fm.get("name", name),
+            "display_name": fm.get("display_name", name.replace("_", " ").title()),
+            "description": fm.get("description", description),
+            "category": fm.get("category", "general"),
+            "version": fm.get("version", "1.0.0"),
+            "skill_kind": fm.get("skill_kind", "rule"),
+            "permissions": fm.get("permissions", []),
+            "trigger_conditions": fm.get("trigger_conditions", []),
+            "input_schema": fm.get("input_schema", {}),
+            "output_schema": fm.get("output_schema", {}),
+            "sop": sop or fm.get("sop_body", ""),
+        }
+    except Exception as e:
+        return {"error": f"Auto-fill failed: {str(e)}"}

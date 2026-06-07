@@ -195,6 +195,21 @@ const Network: React.FC = () => {
         }
       />
 
+      <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+        <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+          <div className="text-gray-300 font-medium md:col-span-2 border-b border-dark-border pb-1 mb-0.5">服务发现</div>
+          <div><span className="text-gray-300">服务名称/命名空间/ClusterIP</span><span className="ml-2 text-gray-600">Service 基本信息</span></div>
+          <div><span className="text-gray-300">类型</span><span className="ml-2 text-gray-600">ClusterIP / NodePort / LoadBalancer</span></div>
+          <div className="text-gray-300 font-medium md:col-span-2 border-b border-dark-border pb-1 mb-0.5 mt-1">Ingress</div>
+          <div><span className="text-gray-300">Ingress名称/域名/路径</span><span className="ml-2 text-gray-600">路由规则</span></div>
+          <div><span className="text-gray-300">TLS/后端服务</span><span className="ml-2 text-gray-600">已启用/未启用 + 后端</span></div>
+          <div className="text-gray-300 font-medium md:col-span-2 border-b border-dark-border pb-1 mb-0.5 mt-1">网络策略</div>
+          <div><span className="text-gray-300">策略名称/命名空间/选择器</span><span className="ml-2 text-gray-600">策略匹配规则</span></div>
+          <div><span className="text-gray-300">类型</span><span className="ml-2 text-gray-600">Ingress / Egress</span></div>
+        </div>
+      </details>
+
       <div className="grid grid-cols-4 gap-4">
         <motion.div
           initial={{ opacity: 0, y: 8 }}

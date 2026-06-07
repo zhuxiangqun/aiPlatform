@@ -222,11 +222,14 @@ def create_adapter(
             from core.harness.infrastructure.infra_llm_adapter import InfraLLMAdapter
 
             infra_config = LLMConfig()
-            infra_config.provider = provider
+            infra_config.provider = provider or "openai_compatible"
             infra_config.api_key = api_key or ""
             infra_config.model = model
             if base_url:
                 infra_config.base_url = base_url
+            elif provider == "openai_compatible":
+                # Fallback: default to DeepSeek for openai_compatible provider
+                infra_config.base_url = "https://api.deepseek.com"
             if kwargs.get("temperature") is not None:
                 infra_config.temperature = float(kwargs["temperature"])
             if kwargs.get("max_tokens") is not None:

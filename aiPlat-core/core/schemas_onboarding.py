@@ -66,6 +66,17 @@ class OnboardingTrustedSkillKeysRequest(BaseModel):
     details: Optional[str] = None
 
 
+class OnboardingGenerateSkillKeyRequest(BaseModel):
+    label: Optional[str] = None  # human-readable label for this key pair
+
+
+class OnboardingGenerateSkillKeyResponse(BaseModel):
+    key_id: str
+    public_key: str
+    private_key: str
+    label: Optional[str] = None
+
+
 class OnboardingContextConfigRequest(BaseModel):
     """
     Runtime context behavior toggles (persisted as global_setting: key='context').

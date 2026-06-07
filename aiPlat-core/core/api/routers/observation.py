@@ -20,7 +20,7 @@ from fastapi.responses import StreamingResponse
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.harness.observation.event_bus import EventBus
 
-router = APIRouter(prefix="/api/core/observation", tags=["observation"])
+router = APIRouter(prefix="/observation", tags=["observation"])
 
 # Per-run_id event buffer for diagnostics events (keeps events for 60s after completion)
 _diag_buffers: Dict[str, List[Dict[str, Any]]] = {}
@@ -61,8 +61,14 @@ async def stream_events(run_id: str):
                 existing = await store.list_syscall_events(run_id=run_id, limit=200)
                 items = existing.get("items") or existing.get("events") or []
                 yield f"data: {_json.dumps({'type': 'replay_start', 'count': len(items)})}\n\n"
+                seen_ids: set = set()
                 for ev in items:
                     if isinstance(ev, dict):
+                        eid = ev.get("id")
+                        if eid and eid in seen_ids:
+                            continue  # skip duplicate (DLQ double-write)
+                        if eid:
+                            seen_ids.add(eid)
                         yield f"data: {_json.dumps(ev, default=str)}\n\n"
                     else:
                         yield f"data: {_json.dumps(dict(ev), default=str)}\n\n"
@@ -70,16 +76,44 @@ async def stream_events(run_id: str):
             except Exception:
                 pass
 
-        # Phase 2: live streaming from EventBus
+        # Phase 2: live streaming from EventBus (if active), else signal done
         q = EventBus.subscribe(run_id)
         try:
             yield f"data: {_json.dumps({'type': 'connected', 'run_id': run_id})}\n\n"
 
             while True:
                 try:
-                    event = await asyncio.wait_for(q.get(), timeout=15)
+                    event = await asyncio.wait_for(q.get(), timeout=2)
+                    eid = event.get("id") if isinstance(event, dict) else None
+                    if eid and eid in seen_ids:
+                        continue  # skip duplicate from EventBus
+                    if eid:
+                        seen_ids.add(eid)
                     yield f"data: {_json.dumps(event, default=str)}\n\n"
                 except asyncio.TimeoutError:
+                    # Only send done if queue is empty AND run has finished
+                    if q.empty():
+                        try:
+                            # Check for finish events (MCP, diagnostics)
+                            finish_events = await store.list_syscall_events(
+                                run_id=run_id, name="finish", limit=1
+                            )
+                            items = (finish_events.get("items") or [])
+                            if items and items[0].get("status") in ("ok", "error"):
+                                yield f"data: {_json.dumps({'type': 'done'})}\n\n"
+                                return
+                            # Check for run_end events (agent/skill/tool executions)
+                            if hasattr(store, "has_run_end"):
+                                if await store.has_run_end(run_id=run_id):
+                                    yield f"data: {_json.dumps({'type': 'done'})}\n\n"
+                                    return
+                            # If no events at all, also done (stale run_id)
+                            any_events = await store.list_syscall_events(run_id=run_id, limit=1)
+                            if not (any_events.get("items") or []):
+                                yield f"data: {_json.dumps({'type': 'done'})}\n\n"
+                                return
+                        except Exception:
+                            pass
                     yield f"data: {_json.dumps({'type': 'heartbeat'})}\n\n"
         except asyncio.CancelledError:
             pass

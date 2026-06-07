@@ -245,10 +245,23 @@ const CapabilityPolicy: React.FC = () => {
               检测到 capabilities 字段缺失/非法：{capIssues.length} 个（建议修复对应 SKILL.md front matter）。
             </div>
           )}
+          <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+            <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+            <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+              <div><span className="text-gray-300">tool</span><span className="ml-2 text-gray-600">capability tool 名称</span></div>
+              <div><span className="text-gray-300">skills</span><span className="ml-2 text-gray-600">引用该 tool 的 Skill 数量</span></div>
+              <div><span className="text-gray-300">examples</span><span className="ml-2 text-gray-600">引用样例：[scope] skill_id: name</span></div>
+              <div><span className="text-gray-300">操作</span><span className="ml-2 text-gray-600">加入审批/deny 白名单</span></div>
+              <div><span className="text-gray-300">scope</span><span className="ml-2 text-gray-600">来源（workspace/core等）</span></div>
+              <div><span className="text-gray-300">skill_id</span><span className="ml-2 text-gray-600">所属 Skill 标识</span></div>
+              <div><span className="text-gray-300">name</span><span className="ml-2 text-gray-600">Skill 显示名称</span></div>
+              <div><span className="text-gray-300">issue / raw</span><span className="ml-2 text-gray-600">能力配置问题 / 原始 capabilities 数据</span></div>
+            </div>
+          </details>
           <Table
-            data={tools}
             rowKey={(r: any) => String(r.tool)}
             loading={loading}
+            data={tools as any[]}
             columns={[
               { key: 'tool', title: 'tool', dataIndex: 'tool', width: 220, render: (v: any) => <code className="text-xs bg-dark-hover px-1.5 py-0.5 rounded">{String(v)}</code> },
               { key: 'count', title: 'skills', dataIndex: 'count', width: 80 },

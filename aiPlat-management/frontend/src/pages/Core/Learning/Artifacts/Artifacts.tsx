@@ -287,6 +287,21 @@ const Artifacts: React.FC = () => {
         </div>
       </div>
 
+      <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+        <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+          <div><span className="text-gray-300">artifact_id</span><span className="ml-2 text-gray-600">学习制品唯一标识，点击查看详情</span></div>
+          <div><span className="text-gray-300">kind</span><span className="ml-2 text-gray-600">类型：release_candidate / prompt_revision / regression_report 等</span></div>
+          <div><span className="text-gray-300">status</span><span className="ml-2 text-gray-600"><span className="text-green-400">published</span> 已发布 · <span className="text-red-400">rolled_back</span> 已回滚 · <span className="text-gray-400">draft</span> 草稿</span></div>
+          <div><span className="text-gray-300">target</span><span className="ml-2 text-gray-600">关联的目标：type:id 格式</span></div>
+          <div><span className="text-gray-300">run/trace</span><span className="ml-2 text-gray-600">关联的执行 run_id + 链路 trace_id</span></div>
+          <div><span className="text-gray-300">created_at</span><span className="ml-2 text-gray-600">创建时间</span></div>
+          <div><span className="text-gray-300">version</span><span className="ml-2 text-gray-600">版本号</span></div>
+          <div><span className="text-gray-300">summary</span><span className="ml-2 text-gray-600">kind 相关的摘要信息（通过率/issues等）</span></div>
+          <div><span className="text-gray-300">操作</span><span className="ml-2 text-gray-600">查看详情</span></div>
+        </div>
+      </details>
+
       <Card>
         <CardHeader>
           <div className="flex flex-wrap items-center gap-3">

@@ -10,6 +10,7 @@ class SyscallEvent(BaseModel):
     id: Optional[str] = None
     trace_id: Optional[str] = None
     span_id: Optional[str] = None
+    parent_span_id: Optional[str] = None
     run_id: Optional[str] = None
     tenant_id: Optional[str] = None
     kind: str = ""

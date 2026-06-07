@@ -39,7 +39,7 @@ const NodeDetailPanel: React.FC<Props> = ({ nodeId, tab, onClose, graphData }) =
       .finally(() => setLoading(false));
   }, [nodeId, tab, graphData]);
 
-  const nodeData = graphData?.nodes?.find((n: any) => n.id === nodeId);
+  void graphData?.nodes?.find((n: any) => n.id === nodeId);
 
   return (
     <div className="w-80 shrink-0 border-l border-dark-border bg-dark-card overflow-y-auto">

@@ -18,7 +18,7 @@ from .schemas import ModelInfo, ModelType, ModelSource, ModelStatus, ModelConfig
 _ENV_MODEL_TEMPLATES = {
     "DEEPSEEK_API_KEY": (
         "openai_compatible", "chat", "https://api.deepseek.com", "chat", ["deepseek", "chat", "reasoning"],
-        ["AIPLAT_LLM_MODEL", "AIPLAT_AGENT_MODEL"],
+        ["AIPLAT_LLM_MODEL", "AIPLAT_AGENT_MODEL", "AIPLAT_DOC_LLM_MODEL"],
     ),
     "OPENAI_API_KEY": (
         "openai_compatible", "chat", "https://api.openai.com/v1", "chat", ["openai", "chat", "function_call"],
@@ -35,7 +35,6 @@ _NON_API_MODEL_ENVS = {
     "AIPLAT_EMBEDDING_MODEL": ("local-embedding", "embedding", "embedding", ["local", "embedding", "huggingface"]),
     "AIPLAT_RERANK_MODEL": ("reranker", "reranker", "reranker", ["reranker", "search"]),
     "AIPLAT_VIDEO_WHISPER_MODEL": ("whisper", "audio", "audio", ["whisper", "stt", "speech"]),
-    "AIPLAT_DOC_LLM_MODEL": ("openai_compatible", "chat", "chat", ["document", "chat"]),
 }
 
 
@@ -143,9 +142,11 @@ def _detect_system_capability_models() -> List[ModelInfo]:
     except ImportError:
         pass
 
-    # Tesseract (pytesseract)
+    # Tesseract (pytesseract + tesseract binary)
     try:
         import pytesseract  # noqa: F401
+        import shutil
+        tesseract_ok = shutil.which("tesseract") is not None
         models.append(ModelInfo(
             id="tesseract:default",
             name="Tesseract OCR", provider="tesseract",
@@ -153,7 +154,7 @@ def _detect_system_capability_models() -> List[ModelInfo]:
             display_name="Tesseract OCR", enabled=True,
             description="Open-source OCR engine (chi_sim+eng)",
             tags=["ocr", "tesseract", "document"], capabilities=["ocr"],
-            status=ModelStatus.AVAILABLE,
+            status=ModelStatus.AVAILABLE if tesseract_ok else ModelStatus.NOT_CONFIGURED,
             config=ModelConfig(), stats=ModelStats(),
             created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc),
         ))
@@ -243,7 +244,7 @@ class ConfigLoader:
         # 1. Remote chat models from environment variables (primary source)
         models.extend(_load_env_models())
 
-        # 2. Non-API models from env vars (embedding, reranker, whisper, doc_llm)
+        # 2. Non-API models from env vars (embedding, reranker, whisper)
         models.extend(_load_non_api_models())
 
         # 3. System capability models (OCR, doc-parser, default embedder)

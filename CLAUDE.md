@@ -141,6 +141,36 @@ tests/constitution/test_infra_agnostic.py    ← Infra 去应用化
     **Core 每种能力类型只有 1 个 Adapter**：LLM → InfraLLMAdapter，Embedding → InfraEmbeddingAdapter 等。
     不按 provider 分文件（禁止 `openai_adapter.py`、`deepseek_adapter.py` 等 per-provider 类）。
     
-    **Infra 相同协议合并 Provider**：OpenAI / DeepSeek / Qwen / LM Studio 均走 `openai_compatible.py`。
-    新增 OpenAI 兼容的模型提供商只需改配置，不需新代码。
+     **Infra 相同协议合并 Provider**：OpenAI / DeepSeek / Qwen / LM Studio 均走 `openai_compatible.py`。
+     新增 OpenAI 兼容的模型提供商只需改配置，不需新代码。
+
+15. **审计矩阵扩展——10 维覆盖（强制）**：2026-06 将审计矩阵从 6 维扩展到 10 维：
+
+    | # | 维度 | 检查手段 | 检查对象 |
+    |---|------|---------|---------|
+    | 1-6 | 原有 6 维（导入方向/职责归属/内核无关/基础设施独立/门面使用/接线完成） | `architecture_guard.sh` §1-§41 + `tests/constitution/` | Python 代码 |
+    | **7** | **前端代理路由** | `scripts/guard_frontend.py` §43 | `vite.config.ts` proxy 目标端口 |
+    | **8** | **子进程 Python 一致性** | `arch_guard_rules.yaml` §42 | 检测 `subprocess.run(["python3"` 等裸 python3 调用 |
+    | **9** | **跨语言 API 契约** | `scripts/guard_frontend.py` §44 | 检测 TS `fetch()` body 字段名 vs Python `data.get()` 字段名 |
+    | **10** | **MCP 集成冒烟测试** | `tests/constitution/test_mcp_integration.py` §45 | spawn → init → list_tools → tools/call 完整链路 |
+    | **11** | **模型解析集中化** | `arch_guard_rules.yaml` §40.2 + §40.4 | 禁止各模块直接读取 `AIPLAT_*_MODEL` env var；禁止硬编码模型名（`"deepseek-chat"`、`"gpt-4"`）；必须通过 `get_default_model(purpose)` 或 `create_selected_adapter()` 解析 |
+
+    **执行顺序（更新）**：
+    ```
+    1. bash scripts/architecture_guard.sh          ← 后端架构 + §42 子进程一致性 + §43-44 前端守卫
+    2. pytest tests/constitution/ -v --tb=short    ← Python 语义 + §45 MCP 集成冒烟
+    ```
+
+16. **已知例外与永久债务（2026-06）- 3 条**：
+
+    | 编号 | 章节 | 内容 | 分类 |
+    |------|------|------|------|
+    | A | §1 | `workflow_manager.py` → `platform/storage/sqlite.py` 跨层导入 | **已知例外** — 管理工具允许跨层访问 |
+    | B | §35 | 2 个 execute 端点（引擎 + 工作区）被标记为 WARNING | **永久告警** — 2 是正确数量，若增至 ≥3 升级为 ERROR |
+    | C | §40 | 模型注册/路由迁移尚未完成（33 条规则） | **迁移中** — CLAUDE.md §14 已规划从 core 迁到 infra，`model_registry.py`/`model_router.py` 标记 deprecated。`model_injection.py` 为集中注入点（canonical）。`kb_eval.py`/`packages_registry.py`/`prompt_eval.py` 等含裸 `sqlite3.connect()` 为已批准模式。`base.py:get_model()` 为 Agent 级别模型（与 model_injection 区分）。待到 infra ModelManager 提供完整 `select()` 后再统一迁移。 |
+
+    **验证命令（排查已知例外后）**：
+    ```bash
+    bash scripts/architecture_guard.sh  # 预期：1 ERROR (§1) + 2 WARNING (§35) = 3 total
+    ```
 

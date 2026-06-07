@@ -1,7 +1,9 @@
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from core.harness.kernel.runtime import get_kernel_runtime
+from core.harness.integration import KernelRuntime
+RuntimeDep = Optional[KernelRuntime]
 from core.observability.routing_service import (
     routing_explain_events,
     routing_metric_tags,
@@ -211,6 +213,23 @@ async def engine_routing_metrics(
             )
         ),
     }
+
+
+@router.post("/routing/learn")
+async def apply_routing_learning(rt: RuntimeDep = None):
+    """
+    Analyze routing strict_eval events and adjust per-skill routing weights.
+    
+    Call periodically to let the system learn which skills are correctly matched.
+    Returns the adjusted weights.
+    """
+    try:
+        from core.harness.routing.skill_routing import apply_learned_weights, get_all_weights
+        result = apply_learned_weights()
+        result["weights"] = get_all_weights()
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Routing learning failed: {e}")
 
 
 @router.get("/skills/observability/routing-metrics/tags")

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Brain, Code, Network, RefreshCw, Download, GitBranch, BookOpen, Layers, Maximize2, Minimize2, Compass, Globe } from 'lucide-react';
 import GraphCanvas from './GraphCanvas';
 import NodeDetailPanel from './NodeDetailPanel';
-import SearchBar from './SearchBar';
+import './SearchBar';
 import LayerLegend from './LayerLegend';
 import ArchitectureView from './ArchitectureView';
 
@@ -12,7 +12,7 @@ const SystemGraph: React.FC = () => {
   const [graphData, setGraphData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, _setSearchQuery] = useState('');
   const [activeLayers, setActiveLayers] = useState<Set<string>>(new Set(['infra', 'core', 'platform', 'app']));
   const [diffInput, setDiffInput] = useState('');
   const [diffNodes, setDiffNodes] = useState<Set<string>>(new Set());
@@ -338,7 +338,7 @@ const SystemGraph: React.FC = () => {
           >
             {fullscreen ? <><Minimize2 className="w-3 h-3" />退出</> : <><Maximize2 className="w-3 h-3" />全屏</>}
           </button>
-          <button onClick={fetchGraph} className="p-1.5 rounded text-gray-400 hover:text-gray-200 transition-colors" title="刷新">
+          <button onClick={() => fetchGraph()} className="p-1.5 rounded text-gray-400 hover:text-gray-200 transition-colors" title="刷新">
             <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
           </button>
           <button
@@ -430,7 +430,7 @@ const SystemGraph: React.FC = () => {
               selectedNode={selectedNode}
               onNodeSelect={setSelectedNode}
               searchQuery={searchQuery}
-              tab={tab}
+              tab={tab as any}
               activeLayers={activeLayers}
               diffNodes={diffNodes}
             />
@@ -439,7 +439,7 @@ const SystemGraph: React.FC = () => {
               加载中...
             </div>
           )}
-          {graphData?.categories && <LayerLegend tab={tab} categories={graphData.categories} />}
+          {graphData?.categories && <LayerLegend tab={tab as any} categories={graphData.categories as any} />}
         </div>
         )}
 
@@ -447,7 +447,7 @@ const SystemGraph: React.FC = () => {
         {selectedNode ? (
           <NodeDetailPanel
             nodeId={selectedNode}
-            tab={tab}
+            tab={tab as any}
             onClose={() => setSelectedNode(null)}
             graphData={graphData}
           />

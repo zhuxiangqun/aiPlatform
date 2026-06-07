@@ -277,6 +277,16 @@ const Rollouts: React.FC = () => {
 
       <Card>
         <div className="text-sm font-medium text-gray-200 mb-3">历史版本</div>
+        <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+          <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+          <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+            <div><span className="text-gray-300">版本</span><span className="ml-2 text-gray-600">Skill 配置版本号</span></div>
+            <div><span className="text-gray-300">创建时间</span><span className="ml-2 text-gray-600">版本创建时间</span></div>
+            <div><span className="text-gray-300">创建人</span><span className="ml-2 text-gray-600">创建者标识</span></div>
+            <div><span className="text-gray-300">备注</span><span className="ml-2 text-gray-600">版本说明</span></div>
+            <div><span className="text-gray-300">操作</span><span className="ml-2 text-gray-600">预览 / Diff / 回滚 / 发布</span></div>
+          </div>
+        </details>
         <Table columns={columns as any} data={versions} rowKey="version" loading={loading} emptyText="暂无历史版本（你可以先发布默认版本）" />
       </Card>
 

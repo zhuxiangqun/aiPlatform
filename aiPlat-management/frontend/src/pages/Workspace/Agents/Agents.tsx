@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, RotateCw, PlayCircle, PauseCircle, Trash2, Pencil, Zap, Clock, MessageSquare, ShieldCheck, Upload } from 'lucide-react';
+import { Plus, RotateCw, PlayCircle, PauseCircle, Trash2, Pencil, Zap, Clock, MessageSquare, ShieldCheck, Upload, Key } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Table, Select, Button, Modal, toast } from '../../../components/ui';
 import { useWorkspaceAgentStore } from '../../../stores';
@@ -12,11 +12,16 @@ import AgentVersionsModal from '../../../components/workspace/AgentVersionsModal
 import AgentHistoryModal from '../../../components/workspace/AgentHistoryModal';
 import ImportBar from '../../../components/workspace/ImportBar';
 import { ChatPanel } from '../../../components/core';
+import { getSourceLabel, extractProvenance } from '../../../utils/sourceLabel';
 
 const WorkspaceAgents: React.FC = () => {
   const { agents, loading, fetchAgents, startAgent, stopAgent, deleteAgent } = useWorkspaceAgentStore();
   const [typeFilter, setTypeFilter] = useState<string | undefined>();
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
+  const [hideProtected, setHideProtected] = useState(true);
+  const [seedsModalOpen, setSeedsModalOpen] = useState(false);
+  const [seeds, setSeeds] = useState<any[]>([]);
+  const [seedsLoading, setSeedsLoading] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [executeModalOpen, setExecuteModalOpen] = useState(false);
@@ -24,11 +29,17 @@ const WorkspaceAgents: React.FC = () => {
   const [versionsModalOpen, setVersionsModalOpen] = useState(false);
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; agent: Agent | null }>({ open: false, agent: null });
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; agent: Agent | null; hard: boolean }>({ open: false, agent: null, hard: false });
   const [testAllRunning, setTestAllRunning] = useState(false);
   const [testAllResults, setTestAllResults] = useState<{ agentId: string; status: string; ok: boolean }[]>([]);
   const [testAllOpen, setTestAllOpen] = useState(false);
   const [chatAgent, setChatAgent] = useState<Agent | null>(null);
+
+  // Batch signing state
+  const [batchSignOpen, setBatchSignOpen] = useState(false);
+  const [batchSignKey, setBatchSignKey] = useState('');
+  const [batchSigning, setBatchSigning] = useState(false);
+  const [batchResult, setBatchResult] = useState<{ total: number; signed: number; failed: number } | null>(null);
 
   useEffect(() => {
     fetchAgents();
@@ -85,7 +96,7 @@ const WorkspaceAgents: React.FC = () => {
           name,
           version: '0.1.0',
           description: (agent as any).metadata?.description || agent.description || '',
-          resources: [{ kind: 'agent', id: agent.name || agent.id }],
+          resources: [{ kind: 'agent', id: agent.id }],
         }),
       });
       if (!res.ok) { toast.error('导出失败'); return; }
@@ -101,11 +112,17 @@ const WorkspaceAgents: React.FC = () => {
   const handleDelete = async () => {
     if (!deleteConfirm.agent) return;
     try {
-      await deleteAgent(deleteConfirm.agent.id);
-      toast.success('Agent已删除');
-      setDeleteConfirm({ open: false, agent: null });
-    } catch {
-      toast.error('删除失败');
+      if (deleteConfirm.hard) {
+        await deleteAgent(deleteConfirm.agent.id);
+        toast.success('Agent已删除');
+      } else {
+        await workspaceAgentApi.deprecate(deleteConfirm.agent.id);
+        toast.success(`Agent "${deleteConfirm.agent.name}" 已标记为废弃`);
+        fetchAgents({ agent_type: typeFilter, status: statusFilter });
+      }
+      setDeleteConfirm({ open: false, agent: null, hard: false });
+    } catch (e: any) {
+      toast.error('操作失败', e?.message || String(e));
     }
   };
 
@@ -113,15 +130,73 @@ const WorkspaceAgents: React.FC = () => {
     try {
       await workspaceAgentApi.submitForReview(agent.id);
       toast.success(`Agent "${agent.name}" 已提交审批`);
-      fetchAgents();
+      fetchAgents({ agent_type: typeFilter, status: statusFilter });
     } catch (e: any) {
       toast.error('提交失败', e?.message || String(e));
     }
   };
 
+  const handleRestore = async (agent: Agent) => {
+    try {
+      await workspaceAgentApi.restore(agent.id);
+      toast.success(`Agent "${agent.name}" 已恢复`);
+      fetchAgents({ agent_type: typeFilter, status: statusFilter });
+    } catch (e: any) {
+      toast.error('恢复失败', e?.message || String(e));
+    }
+  };
+
+  const handleBatchSign = async () => {
+    if (!batchSignKey.trim()) return;
+    setBatchSigning(true);
+    setBatchResult(null);
+    let signed = 0;
+    let failed = 0;
+    const signable = agents.filter(a => {
+      const meta = (a as any)?.metadata || {};
+      const prov = meta?.provenance || {};
+      if (prov?.signature_verified) return false;
+      return true;
+    });
+    const total = signable.length;
+
+    for (const agent of signable) {
+      try {
+        await workspaceAgentApi.sign(agent.id, { private_key: batchSignKey.trim() });
+        signed++;
+      } catch {
+        failed++;
+      }
+    }
+    setBatchResult({ total, signed, failed });
+    setBatchSigning(false);
+    if (failed === 0 && total > 0) toast.success(`批量签名完成：${signed}/${total}`);
+    else if (total > 0) toast.warning(`批量签名：${signed} 成功, ${failed} 失败`);
+    fetchAgents({ agent_type: typeFilter, status: statusFilter });
+  };
+
+  const loadSeeds = async () => {
+    setSeedsLoading(true);
+    try {
+      const r = await workspaceAgentApi.listSeeds();
+      setSeeds(r.seeds || []);
+    } catch { setSeeds([]); }
+    finally { setSeedsLoading(false); }
+  };
+
+  const installSeed = async (seedId: string) => {
+    try {
+      await workspaceAgentApi.installSeed(seedId);
+      toast.success(`已安装：${seedId}`);
+      loadSeeds();
+      fetchAgents();
+    } catch (e: any) { toast.error('安装失败', e?.message || String(e)); }
+  };
+
   const filteredAgents = agents.filter(a => {
     if (typeFilter && a.agent_type !== typeFilter) return false;
     if (statusFilter && a.status !== statusFilter) return false;
+    if (hideProtected && ((a as any)?.metadata?.protected === true || (a as any)?.protected === true)) return false;
     return true;
   });
 
@@ -141,12 +216,20 @@ const WorkspaceAgents: React.FC = () => {
     },
     { title: '类型', dataIndex: 'agent_type', key: 'agent_type', width: 100, render: (t: string) => <span className="text-gray-400">{t}</span> },
     {
-      title: '模型',
-      dataIndex: 'config',
-      key: 'model',
-      width: 140,
-      render: (cfg: Record<string, any>) => (
-        <span className="text-xs text-gray-300 font-mono">{(cfg as any)?.model || (cfg?.model) || '-'}</span>
+      title: '来源',
+      key: 'source',
+      width: 80,
+      render: (_: unknown, record: Agent) => (
+        <span className="text-gray-400 text-xs">{getSourceLabel(extractProvenance(record))}</span>
+      ),
+    },
+    {
+      title: '描述',
+      dataIndex: 'description',
+      key: 'description',
+      ellipsis: true,
+      render: (desc: string) => (
+        <span className="text-xs text-gray-500">{desc || '-'}</span>
       ),
     },
     {
@@ -161,47 +244,16 @@ const WorkspaceAgents: React.FC = () => {
       },
     },
     {
-      title: '运行状态',
-      dataIndex: 'runtime_state',
-      key: 'runtime_state',
+      title: '治理',
+      key: 'governance',
       width: 90,
-      render: (s: string) => {
-        const labels: Record<string, string> = { running: '运行中', stopped: '已停止', initializing: '启动中', error: '错误', paused: '已暂停' };
-        const colors: Record<string, string> = { running: '#10b981', stopped: '#6b7280', initializing: '#f59e0b', error: '#ef4444', paused: '#f59e0b' };
-        return <span className="text-xs" style={{ color: colors[s] || '#888' }}>{labels[s] || (s || '已停止')}</span>;
-      },
-    },
-    {
-      title: '配置',
-      dataIndex: 'is_shell',
-      key: 'is_shell',
-      width: 70,
       render: (_: unknown, record: Agent) => {
-        if (record.is_shell) return <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-500/15 text-red-300 border border-red-500/25">空壳</span>;
-        return <span className="text-[10px] text-gray-500">OK</span>;
+        const prov: any = (record.metadata as any)?.provenance || {};
+        if (prov?.signature_verified) return <span className="text-xs text-green-400">已验签</span>;
+        if (prov?.signature) return <span className="text-xs text-blue-400">已签名</span>;
+        return <span className="text-xs text-gray-500">未签名</span>;
       },
     },
-    {
-      title: '启用',
-      dataIndex: 'status',
-      key: 'enabled',
-      width: 100,
-      render: (_s: string, record: Agent) => {
-        const enabled = (record as any).enabled !== false;
-        return (
-          <button onClick={async () => {
-            try {
-              const r: any = await workspaceAgentApi.toggleEnabled(record.id);
-              toast.success(r.enabled ? `${record.name} 已启用` : `${record.name} 已禁用`);
-              fetchAgents({ agent_type: typeFilter, status: statusFilter });
-            } catch { toast.error('切换失败'); }
-          }} className={`text-xs px-1.5 py-0.5 rounded ${enabled ? 'bg-green-500/10 text-green-400' : 'bg-dark-bg text-gray-600'}`}>
-            {enabled ? '已启用' : '已禁用'}
-          </button>
-        );
-      },
-    },
-    { title: 'ID', dataIndex: 'id', key: 'id', width: 160, render: (id: string) => <code className="text-xs bg-dark-hover px-1.5 py-0.5 rounded">{id}</code> },
     {
       title: '操作',
       key: 'actions',
@@ -209,6 +261,7 @@ const WorkspaceAgents: React.FC = () => {
       align: 'center' as const,
       render: (_: unknown, record: Agent) => {
         const isRunning = (record.runtime_state || '') === 'running';
+        const isProtected = Boolean((record as any)?.metadata?.protected === true || (record as any)?.protected === true);
         return (
         <div className="flex items-center justify-center gap-1">
           <button
@@ -255,9 +308,16 @@ const WorkspaceAgents: React.FC = () => {
               <ShieldCheck className="w-4 h-4" />
             </button>
           ) : null}
-          <button onClick={() => setDeleteConfirm({ open: true, agent: record })} className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors" title="删除">
+          {!isProtected && (
+          <button onClick={() => setDeleteConfirm({ open: true, agent: record, hard: false })} className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors" title="删除">
             <Trash2 className="w-4 h-4" />
           </button>
+          )}
+          {(record.status || '').toLowerCase() === 'deprecated' && (
+            <button onClick={() => handleRestore(record)} className="p-1.5 rounded-lg text-success hover:bg-success-light transition-colors" title="恢复">
+              <RotateCw size={14} />
+            </button>
+          )}
           <button onClick={() => handleExportPlugin(record)} className="p-1.5 rounded-lg text-purple-400 hover:bg-purple-400/10 transition-colors" title="导出为插件">
             <Upload className="w-4 h-4" />
           </button>
@@ -295,6 +355,8 @@ const WorkspaceAgents: React.FC = () => {
         </div>
         <div className="flex items-center gap-3">
           <Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddModalOpen(true)}>创建</Button>
+          <Button variant="secondary" icon={<Upload className="w-4 h-4" />} onClick={() => { loadSeeds(); setSeedsModalOpen(true); }}>从模板安装</Button>
+          <Button variant="secondary" icon={<Key className="w-4 h-4" />} onClick={() => setBatchSignOpen(true)}>批量签名</Button>
           <Button icon={<Zap className="w-4 h-4" />} onClick={handleTestAll} loading={testAllRunning} variant="primary">
             {testAllRunning ? '测试中...' : '测试全部'}
           </Button>
@@ -311,7 +373,25 @@ const WorkspaceAgents: React.FC = () => {
         <div className="w-44">
           <Select value={statusFilter || ''} onChange={(v: string) => { setStatusFilter(v || undefined); fetchAgents({ agent_type: typeFilter, status: v || undefined }); }} options={statusOptions} />
         </div>
+        <label className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer select-none">
+          <input type="checkbox" checked={hideProtected} onChange={(e) => setHideProtected(e.target.checked)} className="w-3.5 h-3.5" />
+          隐藏受保护
+        </label>
       </div>
+
+      <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+        <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+          <div><span className="text-gray-300">名称</span><span className="ml-2 text-gray-600">AGENT.md 的 display_name，点击查看详情</span></div>
+          <div><span className="text-gray-300">类型</span><span className="ml-2 text-gray-600">agent_type：react / plan / conversational / tool / rag</span></div>
+          <div><span className="text-gray-300">模型</span><span className="ml-2 text-gray-600">config.model，决定 Agent 调用的 LLM</span></div>
+          <div><span className="text-gray-300">上架状态</span><span className="ml-2 text-gray-600"><span className="text-gray-400">draft</span> 开发中 · <span className="text-yellow-400">ready</span> 待审 · <span className="text-blue-400">published</span> 已发布 · <span className="text-green-400">listed</span> 上架 · <span className="text-red-400">deprecated</span> 废弃</span></div>
+          <div><span className="text-gray-300">运行状态</span><span className="ml-2 text-gray-600"><span className="text-green-400">运行中</span> · <span className="text-yellow-400">启动中</span> · <span className="text-gray-400">已停止</span> · <span className="text-red-400">错误</span> · <span className="text-yellow-400">暂停</span></span></div>
+          <div><span className="text-gray-300">配置</span><span className="ml-2 text-gray-600"><span className="text-red-300">空壳</span>=缺少 system_prompt/skills/tools；<span className="text-gray-300">OK</span>=完整</span></div>
+          <div><span className="text-gray-300">启用</span><span className="ml-2 text-gray-600">点击切换。禁用后不可被调用。与上架状态独立</span></div>
+          <div><span className="text-gray-300">操作</span><span className="ml-2 text-gray-600">对话/启动/停止/执行/编辑/版本/审批/删除/导出</span></div>
+        </div>
+      </details>
 
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-dark-card rounded-xl border border-dark-border overflow-hidden">
         <Table columns={columns} data={filteredAgents} rowKey="id" loading={loading} emptyText="暂无 Agent" />
@@ -350,20 +430,33 @@ const WorkspaceAgents: React.FC = () => {
 
       <Modal
         open={deleteConfirm.open}
-        onClose={() => setDeleteConfirm({ open: false, agent: null })}
-        title="确认删除"
+        onClose={() => setDeleteConfirm({ open: false, agent: null, hard: false })}
+        title="删除 Agent"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setDeleteConfirm({ open: false, agent: null })}>
+            <Button variant="secondary" onClick={() => setDeleteConfirm({ open: false, agent: null, hard: false })}>
               取消
             </Button>
-            <Button variant="primary" onClick={handleDelete}>
-              确认
+            <Button variant="secondary" onClick={() => { setDeleteConfirm({ ...deleteConfirm, hard: false }); setTimeout(handleDelete, 0); }}>
+              软删除 (废弃)
+            </Button>
+            <Button variant="danger" onClick={() => { setDeleteConfirm({ ...deleteConfirm, hard: true }); setTimeout(() => {
+              if (deleteConfirm.agent) {
+                deleteAgent(deleteConfirm.agent.id).then(() => {
+                  toast.success('Agent已删除');
+                  setDeleteConfirm({ open: false, agent: null, hard: false });
+                }).catch(() => toast.error('删除失败'));
+              }
+            }, 0); }}>
+              硬删除
             </Button>
           </>
         }
       >
-        <div className="text-sm text-gray-300">确认删除 Agent “{deleteConfirm.agent?.name}”？（将删除 ~/.aiplat/agents 下对应目录）</div>
+        <div className="text-sm text-gray-300 space-y-2">
+          <p>Agent "{deleteConfirm.agent?.name}"</p>
+          <p className="text-xs text-gray-500">软删除：标记为废弃状态，可恢复。硬删除：删除 ~/.aiplat/agents 下对应目录，不可撤销。</p>
+        </div>
       </Modal>
 
       <Modal open={testAllOpen} onClose={() => { setTestAllOpen(false); setTestAllResults([]); }} title="Agent 批量测试结果" width={600}
@@ -384,11 +477,76 @@ const WorkspaceAgents: React.FC = () => {
         </div>
       </Modal>
 
+      {/* Batch Sign Modal */}
+      <Modal open={batchSignOpen} onClose={() => { setBatchSignOpen(false); setBatchResult(null); }}
+        title="批量签名" width={500}
+        footer={
+          <div className="flex gap-2 justify-end">
+            <Button variant="secondary" onClick={() => { setBatchSignOpen(false); setBatchResult(null); }}>关闭</Button>
+            <Button variant="primary" onClick={handleBatchSign} loading={batchSigning} disabled={!batchSignKey.trim()}>
+              {batchSigning ? '签名中...' : '一键签名'}
+            </Button>
+          </div>
+        }>
+        <div className="space-y-3 text-sm text-gray-300">
+          <p className="text-xs text-gray-500">输入 Ed25519 私钥，一键为所有未验签的 Agent 签名。</p>
+          <textarea className="w-full h-24 px-3 py-2 bg-dark-hover border border-dark-border rounded text-xs text-gray-200 placeholder-gray-500 font-mono resize-none"
+            placeholder="粘贴 Ed25519 私钥 PEM" value={batchSignKey} onChange={(e) => setBatchSignKey(e.target.value)} />
+          {batchResult && (
+            <div className="p-3 rounded bg-dark-hover border border-dark-border">
+              <p className="text-xs text-gray-400">结果：<span className="text-success">{batchResult.signed} 成功</span>
+                {batchResult.failed > 0 && <span className="text-error ml-2">{batchResult.failed} 失败</span>}
+                <span className="text-gray-500 ml-2">/ 总计 {batchResult.total}</span></p>
+            </div>
+          )}
+        </div>
+      </Modal>
+
       <AddAgentModal
         open={addModalOpen}
         onClose={() => setAddModalOpen(false)}
         onSuccess={() => fetchAgents({ agent_type: typeFilter, status: statusFilter })}
       />
+
+      <Modal
+        open={seedsModalOpen}
+        onClose={() => setSeedsModalOpen(false)}
+        title="从模板安装 Agent"
+        width={600}
+        footer={<Button onClick={() => setSeedsModalOpen(false)}>关闭</Button>}
+      >
+        <div className="space-y-3 text-sm text-gray-300">
+          <p className="text-xs text-gray-500">选择一个模板安装到 workspace。模板来自 workspace_seeds，安装后可自由编辑。</p>
+          {seedsLoading ? (
+            <div className="text-gray-500 text-center py-4">加载中...</div>
+          ) : seeds.length === 0 ? (
+            <div className="text-gray-500 text-center py-4">
+              暂无可用模板
+              <div className="text-[10px] text-gray-600 mt-1">将 AGENT.md 放入 aiPlat-core/core/workspace_seeds/agents/&lt;id&gt;/ 即可作为模板</div>
+            </div>
+          ) : (
+            seeds.map((s: any) => (
+              <div key={s.id} className="flex items-center justify-between p-3 rounded border border-dark-border bg-dark-bg">
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium text-gray-200">{s.name}</div>
+                  <div className="text-xs text-gray-500 mt-0.5">{s.description}</div>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {s.category && <span className="text-[10px] px-1.5 py-0.5 rounded bg-dark-hover text-gray-400">{s.category}</span>}
+                    {(s.tags || []).slice(0, 3).map((t: string) => (
+                      <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-dark-hover text-gray-500">{t}</span>
+                    ))}
+                  </div>
+                </div>
+                {s.installed ? (
+                  <span className="text-xs text-green-400 ml-3">已安装</span>
+                ) : (
+                  <Button variant="primary" size="sm" onClick={() => installSeed(s.id)}>安装</Button>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </Modal>
       </div>
       {chatAgent && (
         <AnimatePresence>

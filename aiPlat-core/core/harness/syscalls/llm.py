@@ -188,6 +188,52 @@ def _try_inject_claude_md(messages: List[Message]) -> None:
         logging.getLogger("llm").debug("best-effort skipped", exc_info=True)
 
 
+def _try_inject_governance_rules(messages: List[Message]) -> str:
+    """Inject post-retrieval governance rules + live retrieval context into system prompt.
+
+    Two-part injection:
+    1. Static rules: citation format, conflict handling, timeliness awareness
+    2. Live context: latest retrieval's actual conflicts, ages, governance stats
+    """
+    # Only inject when conversation context suggests knowledge retrieval
+    context_text = " ".join(str(m.get("content", ""))[:500] for m in messages[-3:])
+    triggers = ("知识库", "knowledge", "检索", "retrieve", "wiki", "Wiki",
+                "文档", "document", "信息", "查找", "搜索", "来源")
+    if not any(t in context_text for t in triggers):
+        return ""
+
+    # Try to get live governance context from last retrieval
+    live_ctx = ""
+    try:
+        from core.harness.knowledge.post_retrieval_governor import get_last_governance_context
+        ctx = get_last_governance_context()
+        if ctx:
+            live_ctx = "\n\n" + ctx
+    except ImportError:
+        pass
+
+    return """
+## 知识溯源规则（召回后治理）
+
+你引用知识库时需要遵守以下规则：
+
+1. **引用来源**：每条事实性陈述必须标注来源。
+   - Wiki 页面：使用 `[来源: wiki/页面标题]` 格式
+   - 知识库文档：使用 `[来源: 文档名]` 格式
+   - 多个来源共同支持同一观点时，列出所有来源
+
+2. **冲突处理**：如果检索结果中存在标记为矛盾的信息（⚠️ 矛盾观点），必须在回答中同时呈现冲突双方的立场，并明确指出存在分歧。不要猜测哪个是正确的。
+
+3. **时效性感知**：
+   - 优先采纳最近更新的信息（标记为更高时效性得分）
+   - 如果引用的信息来源超过 180 天未更新，请在回答中注明信息的最后更新时间
+   - 对于时效性敏感的问题（政策、价格、联系方式等），如无法确认信息是最新的，请说明"此信息基于 YYYY-MM-DD 的数据，最新情况可能有变化"
+
+4. **置信度透明**：如果检索到的信息得分较低或被标记为低可信度来源，请在回答中注明不确定的程度。
+
+5. **宁缺毋滥**：如果治理后的上下文质量不足以支撑一个可靠回答，请回复"当前知识库中未找到足够可靠的信息来回答这个问题，建议人工核实"，不要编造答案。
+""" + live_ctx
+
 
 def _try_inject_arch_rules(messages: List[Message]) -> str:
     u"""Inject architecture boundary rules into the system prompt.
@@ -286,6 +332,10 @@ def _try_inject_claude_md(messages: List[Message]) -> None:
         # Architecture rules guard (§5.1~§5.7, §5.29)
         arch_rules = _try_inject_arch_rules(messages)
         guard = guard + arch_rules if arch_rules else guard
+
+        # Knowledge governance guard (citation, conflict, timeliness)
+        gov_rules = _try_inject_governance_rules(messages)
+        guard = guard + gov_rules if gov_rules else guard
 
         if messages and messages[0].get("role") == "system":
             messages[0]["content"] = str(messages[0].get("content") or "") + guard
@@ -462,20 +512,29 @@ async def sys_llm_generate(
         from core.harness.infrastructure.model_router import get_model_router
         router = get_model_router()
         deployment = await router.select(model_name=model_name)
-        if deployment and deployment.api_key_resolved:
-            api_key = deployment.api_key_resolved
+        if deployment and getattr(deployment, 'api_key', ''):
+            api_key = deployment.api_key
         elif deployment:
-            # Try SecretsManager as fallback (P2-10 wiring)
-            try:
-                from core.harness.infrastructure.secrets_manager import get_secrets_manager
-                api_key = get_secrets_manager().get(deployment.api_key_env) or ""
-            except Exception:
-                api_key = ""
+            # Try resolving via env var name
+            import os as _llm_os
+            api_key = _llm_os.getenv(getattr(deployment, 'api_key_env', '') or '', '') or ""
+            if not api_key:
+                try:
+                    from core.harness.infrastructure.secrets_manager import get_secrets_manager
+                    api_key = get_secrets_manager().get(deployment.api_key_env) or ""
+                except Exception:
+                    api_key = ""
         else:
             api_key = ""
         if deployment and api_key:
             try:
                 from core.adapters.llm.base import create_adapter
+                # ── Log model selection ──
+                try:
+                    from core.harness.utils.model_injection import _log_model_selection
+                    _log_model_selection(model_name or deployment.name, deployment.name or model_name,
+                                         entry="create_adapter_legacy", source="sys_llm_generate")
+                except Exception: pass
                 model = create_adapter(
                     provider=deployment.provider,
                     api_key=api_key,
@@ -576,10 +635,14 @@ async def sys_llm_generate(
             await store.add_syscall_event({
                 "kind": "llm",
                 "name": "generate",
-                "action": "rejected_prompt_injection",
+                "status": "failed",
                 "trace_id": span.trace_id,
-                "span_id": getattr(span, "span_id", None),
+                        "span_id": getattr(span, "span_id", None),
+                        "parent_span_id": (trace_context or {}).get("parent_span_id") if isinstance(trace_context, dict) else None,
+                        "run_id": (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None,
+                "action": "rejected_prompt_injection",
                 "reason": "prompt_injection_detected",
+                "error": f"prompt_injection: {message_guard_stats['injection_alerts']} alert(s)",
                 "alerts": message_guard_stats["injection_alerts"],
             })
         raise RuntimeError(f"LLM call rejected: {message_guard_stats['injection_alerts']} prompt injection alert(s) detected")
@@ -594,7 +657,7 @@ async def sys_llm_generate(
         try:
             from core.harness.assembly import PromptAssembler
             # Phase 6.8 (optional): apply published prompt revisions (behavior change, gated).
-            if os.getenv("AIPLAT_APPLY_PROMPT_REVISIONS", "false").lower() in ("1", "true", "yes", "y"):
+            if os.getenv("AIPLAT_APPLY_PROMPT_REVISIONS", "true").lower() in ("1", "true", "yes", "y"):
                 try:
                     runtime = get_kernel_runtime()
                     store = getattr(runtime, "execution_store", None) if runtime else None
@@ -685,6 +748,12 @@ async def sys_llm_generate(
             if response_format is not None:
                 try: model._config.response_format = response_format
                 except: pass
+            # Mark gate coverage (Phase 3 GateTracer)
+            try:
+                from core.harness.kernel.execution_context import mark_gate_passed
+                mark_gate_passed("llm_generate_called")
+            except Exception:
+                pass
             return await model.generate(prepared)  # type: ignore[misc]
 
         retries = int(os.getenv("AIPLAT_LLM_RETRIES", "2") or "2")
@@ -715,6 +784,19 @@ async def sys_llm_generate(
                 usage = getattr(result, "usage", None) if isinstance(getattr(result, "usage", None), dict) else None
                 input_tokens = (usage.get("prompt_tokens") or 0) if usage else 0
                 output_tokens = (usage.get("completion_tokens") or 0) if usage else 0
+                # Fallback: estimate tokens from string length when provider omits usage
+                if input_tokens == 0 and output_tokens == 0:
+                    pc = len(str(prepared or "")) if isinstance(prepared, str) else sum(len(str(m.get("content", "")) or "") for m in prepared if isinstance(m, dict))
+                    cc = len(str(getattr(result, "content", "")) or "")
+                    if pc > 0 or cc > 0:
+                        input_tokens = pc // 4
+                        output_tokens = cc // 4
+                    # Write estimates back into usage dict so get_run_cost_summary can read them
+                    if usage is None:
+                        usage = {}
+                    usage["prompt_tokens"] = input_tokens
+                    usage["completion_tokens"] = output_tokens
+                    usage["total_tokens"] = input_tokens + output_tokens
                 cost = 0.0
                 if input_tokens > 0 or output_tokens > 0:
                     cost = round((input_tokens / 1_000_000) * 1.0 + (output_tokens / 1_000_000) * 3.0, 6)
@@ -863,16 +945,47 @@ async def sys_llm_generate_stream(
     if not model_name:
         model_name = getattr(model, 'model_name', '') or getattr(model, '_model_name', '') or ''
     if not model_name:
-        model_name = "deepseek-chat"
+        from core.harness.utils.model_injection import best_model_for_purpose
+        model_name = best_model_for_purpose("chat") or "deepseek-chat"  # noqa: model-legacy
 
     # Try streaming
     try:
         if hasattr(model, 'stream_generate'):
-            async for chunk in model.stream_generate(
-                messages,
-                config=_stream_config(model_name, temperature, max_tokens),
-            ):
-                yield chunk
+            # Track streaming calls with best-effort token estimation
+            start_ts = time.time()
+            total_text = []
+            try:
+                async for chunk in model.stream_generate(
+                    messages,
+                    config=_stream_config(model_name, temperature, max_tokens),
+                ):
+                    total_text.append(str(chunk) if chunk else "")
+                    yield chunk
+            finally:
+                try:
+                    end_ts = time.time()
+                    runtime = get_kernel_runtime()
+                    store = getattr(runtime, "execution_store", None) if runtime else None
+                    if store is not None:
+                        full_text = "".join(total_text)
+                        prompt_len = sum(len(str(m.get("content", "")) or "") for m in messages if isinstance(m, dict))
+                        est_input = prompt_len // 4
+                        est_output = len(full_text) // 4
+                        await store.add_syscall_event({
+                            "trace_id": "stream",
+                            "kind": "llm",
+                            "name": "generate_stream",
+                            "status": "success",
+                            "start_time": start_ts,
+                            "end_time": end_ts,
+                            "duration_ms": (end_ts - start_ts) * 1000.0,
+                            "input_tokens": est_input,
+                            "output_tokens": est_output,
+                            "args": {"model_name": model_name},
+                            "result": {"stream_chunks": len(total_text)},
+                        })
+                except Exception:
+                    pass
             return
     except Exception:
         pass

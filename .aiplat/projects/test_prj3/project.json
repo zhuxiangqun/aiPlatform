@@ -1,0 +1,19 @@
+{
+  "project_id": "test_prj3",
+  "description": "test",
+  "team_stages": [
+    {
+      "id": "pm",
+      "agent_id": "pm_agent",
+      "output_artifact": "prd",
+      "agent_type": "conversational",
+      "uses_file_output": false,
+      "scoring_dimensions": [],
+      "generate_test_plan": false,
+      "test_result_key": "",
+      "prompt_extra": "",
+      "failure_strategy": "fail_pipeline"
+    }
+  ],
+  "updated_at": "2026-06-03T18:12:23"
+}

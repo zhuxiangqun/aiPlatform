@@ -258,7 +258,7 @@ const Gateway: React.FC = () => {
             </Button>
           </div>
         }
-      />
+        />
 
       <div className="grid grid-cols-4 gap-4">
         <motion.div
@@ -301,6 +301,19 @@ const Gateway: React.FC = () => {
         </motion.div>
       </div>
 
+      <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+        <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+          <div><span className="text-gray-300">路由名称</span><span className="ml-2 text-gray-600">路由的显示名称</span></div>
+          <div><span className="text-gray-300">路径</span><span className="ml-2 text-gray-600">匹配的 API 路径前缀</span></div>
+          <div><span className="text-gray-300">后端服务</span><span className="ml-2 text-gray-600">转发到的目标微服务</span></div>
+          <div><span className="text-gray-300">方法</span><span className="ml-2 text-gray-600">允许的 HTTP 方法（GET/POST/PUT/DELETE）</span></div>
+          <div><span className="text-gray-300">限流</span><span className="ml-2 text-gray-600">每分钟最大请求数</span></div>
+          <div><span className="text-gray-300">状态</span><span className="ml-2 text-gray-600">开关——关闭后该路由不可访问</span></div>
+          <div><span className="text-gray-300">操作</span><span className="ml-2 text-gray-600">测试连通性 / 删除路由</span></div>
+        </div>
+      </details>
+
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -315,6 +328,20 @@ const Gateway: React.FC = () => {
           emptyText="暂无路由数据"
         />
       </motion.div>
+
+      <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mt-4 mb-3">
+        <summary className="text-gray-400 hover:text-gray-200 select-none">📖 Pairings &amp; Tokens 表头说明</summary>
+        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+          <div><span className="text-gray-300">channel</span><span className="ml-2 text-gray-600">渠道类型（telegram/slack/webchat等）</span></div>
+          <div><span className="text-gray-300">channel_user_id</span><span className="ml-2 text-gray-600">渠道侧用户唯一标识</span></div>
+          <div><span className="text-gray-300">user_id</span><span className="ml-2 text-gray-600">平台内用户 ID</span></div>
+          <div><span className="text-gray-300">session_id</span><span className="ml-2 text-gray-600">绑定的会话 ID（可选）</span></div>
+          <div><span className="text-gray-300">id</span><span className="ml-2 text-gray-600">Token 唯一标识</span></div>
+          <div><span className="text-gray-300">name</span><span className="ml-2 text-gray-600">Token 名称</span></div>
+          <div><span className="text-gray-300">enabled</span><span className="ml-2 text-gray-600">Token 是否启用</span></div>
+          <div><span className="text-gray-300">操作</span><span className="ml-2 text-gray-600">删除 Pairing/Token</span></div>
+        </div>
+      </details>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-dark-card rounded-xl border border-dark-border overflow-hidden">

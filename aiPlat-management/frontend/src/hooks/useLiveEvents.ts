@@ -49,7 +49,14 @@ export function useLiveEvents(runId: string | null) {
     es.onmessage = (e) => {
       try {
         const data = JSON.parse(e.data);
-        if (data.type === 'connected' || data.type === 'heartbeat') return;
+        // Close connection gracefully on done signal
+        if (data.type === 'done') {
+          es.close();
+          setStatus('done');
+          return;
+        }
+        // Filter out all control messages (no kind/name = not a business event)
+        if (!data.kind && !data.name) return;
         setEvents(prev => [...prev, data]);
       } catch {
         // skip malformed events

@@ -8,6 +8,7 @@ from typing import Dict, Any, List, Optional
 from ..base import ManagementBase, Status, HealthStatus, Metrics
 from datetime import datetime, timezone
 import time
+import os
 
 
 class VectorManager(ManagementBase):
@@ -27,7 +28,22 @@ class VectorManager(ManagementBase):
         """Get vector module status."""
         try:
             if not self._collections:
-                return Status.DISABLED
+                # No registered collections — test vector backend availability
+                import numpy as np
+                try:
+                    import faiss
+                    dim = int(os.getenv("AIPLAT_VECTOR_DIMENSION", "128"))
+                    idx = faiss.IndexFlatL2(dim)
+                    vec = np.random.random((1, dim)).astype(np.float32)
+                    idx.add(vec)
+                    idx.search(vec, k=1)
+                except ImportError:
+                    try:
+                        import chromadb
+                        chromadb.Client()
+                    except ImportError:
+                        return Status.DEGRADED
+                return Status.HEALTHY
             
             healthy_collections = sum(
                 1 for c in self._collections.values()

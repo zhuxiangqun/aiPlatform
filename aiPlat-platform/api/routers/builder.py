@@ -4,12 +4,17 @@ Each endpoint proxies to the local Builder service with proper type deserializat
 """
 from __future__ import annotations
 
+import json as _json
 import logging
+import os
 from typing import Any, Dict, List
+from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from builder.builder_project_service import BuilderProjectService
+
+_log = logging.getLogger(__name__)
 from builder.builder_team_service import BuilderTeamService
 from builder.builder_auth import require_builder_access, require_admin_access
 from core.schemas_builder import (
@@ -197,8 +202,29 @@ async def run_project_tests(project_id: str, _auth: str = Depends(require_builde
 
 
 @router.post("/projects/{project_id}/deploy-to-app")
-async def deploy_project_to_app(project_id: str, _auth: str = Depends(require_builder_access)):
-    """Deploy pipeline output to the app layer."""
+async def deploy_project_to_app(project_id: str, _auth: str = Depends(require_admin_access)):
+    """Deploy pipeline output to the app layer (requires admin approval)."""
+    # Verify project signature before deploy
+    try:
+        proj = _svc._projects.get(project_id)
+        if proj and proj.get("metadata", {}).get("provenance", {}).get("signature"):
+            import os, json as _json, hashlib as _hashlib
+            from core.harness.infrastructure.crypto.signature import verify_skill_signature
+            proj_dir = os.path.join(os.environ.get("AIPLAT_HOME", str(Path.home() / ".aiplat")), "projects", project_id)
+            manifest_path = os.path.join(proj_dir, "PROJECT.manifest.json")
+            proj_json = os.path.join(proj_dir, "project.json")
+            if os.path.exists(manifest_path) and os.path.exists(proj_json):
+                with open(manifest_path) as f: manifest = _json.load(f)
+                h = _hashlib.sha256(); h.update(Path(proj_json).read_bytes())
+                sig = manifest.get("signature")
+                if sig:
+                    r = verify_skill_signature(skill_id=project_id, version=manifest.get("version", "0.1.0"),
+                        bundle_sha256=h.hexdigest(), signature=sig, trusted_keys={})
+                    if not r.get("verified"):
+                        raise HTTPException(status_code=403, detail=f"Project signature verification failed before deploy")
+    except HTTPException: raise
+    except Exception:
+        _log.warning("部署签名验证失败，跳过: project_id=%s", project_id, exc_info=True)
     return await _svc.deploy_to_app(project_id)
 
 
@@ -235,3 +261,59 @@ async def export_project_state(project_id: str, _auth: str = Depends(require_bui
         content=state,
         headers={"Content-Disposition": f'attachment; filename="aiplat_{project_id}_export.json"'}
     )
+
+
+@router.post("/projects/{project_id}/sign")
+async def sign_project(project_id: str, req: Dict[str, Any], _auth: str = Depends(require_admin_access)):
+    """
+    Sign a project directory with an Ed25519 private key.
+    Writes PROJECT.manifest.json into the project directory.
+    """
+    private_key = str(req.get("private_key") or "").strip()
+    if not private_key:
+        raise HTTPException(status_code=400, detail="private_key is required")
+
+    proj = _svc._projects.get(project_id)
+    if not proj:
+        raise HTTPException(status_code=404, detail="project not found")
+
+    try:
+        from core.harness.infrastructure.crypto.signature import sign_skill as sign_proj
+        import hashlib
+
+        # Compute project integrity from the per-project JSON
+        proj_dir = Path(os.environ.get("AIPLAT_HOME", str(Path.home() / ".aiplat"))) / "projects" / project_id
+        proj_dir.mkdir(parents=True, exist_ok=True)
+        proj_json = proj_dir / "project.json"
+
+        # Save project to directory first
+        _svc._save_projects()
+
+        # Compute hash of project.json
+        h = hashlib.sha256()
+        if proj_json.exists():
+            h.update(proj_json.read_bytes())
+        bundle_sha256 = h.hexdigest()
+
+        version = req.get("version") or proj.get("version", "0.1.0")
+        signature = sign_proj(private_key=private_key, skill_id=project_id, version=str(version), bundle_sha256=bundle_sha256)
+
+        manifest_path = proj_dir / "PROJECT.manifest.json"
+        manifest = {}
+        if manifest_path.exists():
+            try:
+                manifest = _json.loads(manifest_path.read_text(encoding="utf-8"))
+            except Exception:
+                _log.warning("无法解析项目 manifest JSON: %s", manifest_path, exc_info=True)
+        manifest["signature"] = signature
+        manifest["version"] = str(version)
+        manifest_path.write_text(_json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
+
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid private key: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Signing failed: {str(e)}")
+
+    return {"status": "signed", "bundle_sha256": bundle_sha256, "version": str(version), "signature": signature}

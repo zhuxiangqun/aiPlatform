@@ -132,9 +132,13 @@ class MCPServerConfig:
 @dataclass
 class MCPClientConfig:
     """MCP Client configuration"""
-    server_url: str
+    name: str = ""
+    server_url: str = ""
     transport: TransportType = TransportType.SSE
     timeout: int = 30000
+    url: Optional[str] = None
+    command: Optional[str] = None
+    args: List[str] = field(default_factory=list)
     auth: Optional[Dict[str, Any]] = None
 
 

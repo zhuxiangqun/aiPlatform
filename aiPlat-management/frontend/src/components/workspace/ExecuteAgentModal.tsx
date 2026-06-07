@@ -3,7 +3,6 @@ import { workspaceAgentApi } from '../../services';
 import type { Agent } from '../../services';
 import { Button, Modal, Textarea, toast } from '../ui';
 import { toastGateError } from '../ui';
-import { TraceFlowGraph } from './TraceFlowGraph';
 import ExecutionViewer from '../ExecutionViewer/ExecutionViewer';
 import { browserTestApi } from '../../services/browserTestApi';
 
@@ -276,6 +275,7 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
               className="w-full h-10 px-3 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100"
               disabled={loading}>
               <option value="safe_readonly">safe_readonly（只读）</option>
+              <option value="mcp_readonly">mcp_readonly（MCP 工具）</option>
               <option value="workspace_default">workspace_default（默认）</option>
               <option value="browser">browser（浏览器/HTTP）</option>
               <option value="full">full（全量/高风险）</option>

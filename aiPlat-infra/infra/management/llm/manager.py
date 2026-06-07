@@ -148,6 +148,12 @@ class LLMManager(ManagementBase):
                     message="Some LLM services are degraded",
                     details={"models": len(self._models), "api": "connected"}
                 )
+            elif status == Status.DISABLED:
+                return HealthStatus(
+                    status=status,
+                    message="LLM services not configured (disabled)",
+                    details={"models": 0, "api": "not_configured"}
+                )
             else:
                 return HealthStatus(
                     status=status,

@@ -1,0 +1,40 @@
+# LLM Purpose Profiles — single source of truth for model selection strategy.
+# Edit this file to change which model is preferred for each task purpose.
+# Override path via AIPLAT_LLM_CONFIG_PATH env var.
+
+purpose_profiles:
+  wiki_curation:
+    prefer: [chat]
+    avoid: [reasoning]
+    prefer_local: true
+  agent:
+    prefer: [reasoning, chat]
+    avoid: []
+  chat:
+    prefer: [chat]
+    avoid: [reasoning]
+  code_gen:
+    prefer: [chat]
+    avoid: [reasoning]
+  document:
+    prefer: [chat]
+    avoid: [reasoning]
+  eval_code:
+    prefer: [chat, reasoning]
+    avoid: []
+  agent_creation:
+    prefer: [chat]
+    avoid: [reasoning]
+  query_translation:
+    prefer: [chat]
+    avoid: [reasoning]
+    prefer_local: true
+
+# Per-purpose explicit model overrides.
+# Set a model name here to skip auto-selection for that purpose.
+model_overrides:
+  agent: deepseek-reasoner
+
+# Fallback when auto-selection returns nothing.
+fallback:
+  ultimate_model: deepseek-chat

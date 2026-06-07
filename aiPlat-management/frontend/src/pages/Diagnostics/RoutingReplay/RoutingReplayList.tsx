@@ -89,8 +89,21 @@ const RoutingReplayList: React.FC = () => {
       <Card>
         <CardHeader title={`routing_explain（${scope}）`} />
         <CardContent>
+          <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+            <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+            <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+              <div><span className="text-gray-300">time</span><span className="ml-2 text-gray-600">路由决策发生时间</span></div>
+              <div><span className="text-gray-300">decision</span><span className="ml-2 text-gray-600">路由决策 ID</span></div>
+              <div><span className="text-gray-300">top1</span><span className="ml-2 text-gray-600">排名第一的 Skill ID</span></div>
+              <div><span className="text-gray-300">gap</span><span className="ml-2 text-gray-600">top1 与 top2 的得分差值</span></div>
+              <div><span className="text-gray-300">gate</span><span className="ml-2 text-gray-600">门控提示（approval/gate/deny等）</span></div>
+              <div><span className="text-gray-300">result</span><span className="ml-2 text-gray-600">路由结果状态</span></div>
+              <div><span className="text-gray-300">query</span><span className="ml-2 text-gray-600">用户查询内容摘要</span></div>
+              <div><span className="text-gray-300">op</span><span className="ml-2 text-gray-600">回放该路由决策</span></div>
+            </div>
+          </details>
           <Table
-            rowKey={(r: any) => String(r?.routing_decision_id || r?.created_at || Math.random())}
+            rowKey={(r: any) => String(r.routing_decision_id || r.id || '')}
             loading={loading}
             data={items}
             columns={[

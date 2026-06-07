@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
-import { Activity, GitBranch, Share2, Zap, Wrench, FolderSearch, Wand2, ShieldCheck, ArrowRight, AlertTriangle, Search, RefreshCw, BarChart3, ArrowLeftRight } from 'lucide-react';
+import { Activity, GitBranch, Share2, Zap, Wrench, FolderSearch, Wand2, ShieldCheck, AlertTriangle, BarChart3, ArrowLeftRight } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, Badge, Button, toast } from '../../components/ui';
 import { diagnosticsApi } from '../../services';
@@ -22,14 +22,6 @@ const toBadgeVariant = (status: string): 'success' | 'warning' | 'error' | 'info
 };
 
 // Map layer + component → diagnostic tools
-const LAYER_GUIDANCE: Record<string, { message: string; tool: string; href: string }> = {
-  'infra:llm': { message: 'LLM 组件异常，模型调用可能受影响', tool: 'Syscalls', href: '/diagnostics/syscalls' },
-  'infra:model': { message: '模型注册异常，检查模型列表', tool: 'Doctor', href: '/diagnostics/doctor' },
-  'infra:vector': { message: '向量数据库异常，检索可能降级', tool: 'Syscalls', href: '/diagnostics/syscalls' },
-  'core:harness': { message: '执行引擎异常，检查 pipeline 运行状态', tool: 'Runs', href: '/diagnostics/runs' },
-  'platform:gateway': { message: 'API 网关异常，检查端点可达性', tool: 'Links', href: '/diagnostics/links' },
-};
-
 const Diagnostics: React.FC = () => {
   const [health, setHealth] = useState<Record<string, Health | null>>({
     infra: null, core: null, platform: null, app: null,
@@ -93,6 +85,8 @@ const Diagnostics: React.FC = () => {
     e2e_smoke: '冒烟测试', doctor: 'Doctor',
     compliance: '合规审计', overview_issues: '概览问题',     skill_lint: 'Skill Lint',
     symbol_health: '符号健康', lsp: 'LSP 诊断', security: '安全扫描',
+    governance: '治理', cross_lang: '跨语言', domain_coupling: '领域耦合',
+    fragile_base: '脆弱基类', route_coverage: '路由覆盖',
   };
   const catColors: Record<string, string> = {
     core_runtime: 'bg-blue-400', code_intel: 'bg-violet-400', capability: 'bg-amber-400',
@@ -101,6 +95,8 @@ const Diagnostics: React.FC = () => {
     e2e_smoke: 'bg-orange-400', doctor: 'bg-red-400',
     compliance: 'bg-emerald-400', overview_issues: 'bg-rose-400', skill_lint: 'bg-violet-400',
     symbol_health: 'bg-teal-400', lsp: 'bg-fuchsia-400', security: 'bg-lime-400',
+    governance: 'bg-amber-400', cross_lang: 'bg-gray-400', domain_coupling: 'bg-gray-400',
+    fragile_base: 'bg-gray-400', route_coverage: 'bg-gray-400',
   };
   
   useEffect(() => {
@@ -173,24 +169,6 @@ const Diagnostics: React.FC = () => {
   }, [unhealthyLayers]);
 
   // Collect layer component guidance
-  const layerGuidance = useMemo(() => {
-    const guidance: any[] = [];
-    for (const layer of unhealthyLayers) {
-      const h = health[layer];
-      const checks = h?.checks || [];
-      for (const c of checks) {
-        if (c.status === 'unhealthy' || c.status === 'degraded' || c.status === 'unknown') {
-          const key = `${layer}:${c.component}`;
-          const g = LAYER_GUIDANCE[key];
-          if (g) {
-            guidance.push({ ...g, layer, component: c.component, status: c.status });
-          }
-        }
-      }
-    }
-    return guidance;
-  }, [health, unhealthyLayers]);
-
   return (
     <>
     <div className="space-y-6">
@@ -225,7 +203,7 @@ const Diagnostics: React.FC = () => {
               <Button variant="primary" size="sm" loading={diagRunning} onClick={runDiagnosticsInBg}>
                 🔍 一键诊断
               </Button>
-              <Button variant="outline" size="sm" loading={diagRunning} onClick={runQuickDiagnostics} title="跳过LSP/安全扫描等慢检查">
+              <Button variant="secondary" size="sm" loading={diagRunning} onClick={runQuickDiagnostics} title="跳过LSP/安全扫描等慢检查">
                 ⚡ 快速
               </Button>
             </div>

@@ -214,7 +214,7 @@ def _cross_encode_rerank(
     try:
         from sentence_transformers import CrossEncoder
         import os as _os
-        model_name = _os.getenv("AIPLAT_RERANK_MODEL", "jinaai/jina-reranker-v2-base-multilingual")
+        model_name = _os.getenv("AIPLAT_RERANK_MODEL", "jinaai/jina-reranker-v2-base-multilingual")  # noqa: env-legacy
         global _ce_model, _ce_model_name
         if "_ce_model" not in dir():
             globals()["_ce_model"] = None
@@ -340,16 +340,44 @@ def sys_wiki_retrieve(
     *,
     top_k: int = 8,
     link_depth: int = 0,
+    collection_ids: List[str] = None,
+    # ── Ontology-aware filtering ──
+    class_uri: str = None,
+    expand_subclasses: bool = False,
+    relation_filter: Dict[str, str] = None,
+    relation_boost: Dict[str, float] = None,
+    inference_expand: bool = True,
 ) -> List[Dict[str, Any]]:
     u"""Retrieve relevant text from wiki knowledge pages via semantic embedding.
 
     Uses WikiPageRetriever → embed_text_semantic() → InfraEmbeddingAdapter → infra ModelManager.
 
+    Args:
+        collection_ids: Wiki collections to search. Defaults to ["default"].
+        class_uri: Filter pages to those belonging to this T-Box class.
+        expand_subclasses: Recursively include subclass pages.
+        relation_filter: Only return pages related to target via relation_type.
+        relation_boost: Boost scores for pages with specific relation types.
+
     Returns: [{text, title, score, tags, summary, source}]
     """
     from core.harness.knowledge.wiki_retriever import WikiPageRetriever
 
-    retriever = WikiPageRetriever(wiki_titles=wiki_titles or [], link_depth=link_depth)
+    cids = collection_ids or ["default"]
+    # Default: cite/parent/support relations get positive boost
+    default_boost = relation_boost if relation_boost is not None else {
+        "cites": 0.3, "supports": 0.2, "parent": 0.15, "extends": 0.1
+    }
+    retriever = WikiPageRetriever(
+        wiki_titles=wiki_titles or [],
+        link_depth=link_depth,
+        collection_ids=cids,
+        class_uri=class_uri,
+        expand_subclasses=expand_subclasses,
+        relation_filter=relation_filter,
+        relation_boost=default_boost,
+        inference_expand=inference_expand,
+    )
     import asyncio
     try:
         loop = asyncio.get_event_loop()
@@ -358,21 +386,42 @@ def sys_wiki_retrieve(
             import concurrent.futures
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(
-                    _sync_wiki_retrieve, query, wiki_titles, top_k, link_depth
+                    _sync_wiki_retrieve, query, wiki_titles, top_k, link_depth, cids,
+                    class_uri, expand_subclasses, relation_filter, relation_boost, inference_expand
                 )
                 return future.result(timeout=30)
         else:
-            return _sync_wiki_retrieve(query, wiki_titles, top_k, link_depth)
+            return _sync_wiki_retrieve(query, wiki_titles, top_k, link_depth, cids,
+                                       class_uri, expand_subclasses, relation_filter, relation_boost,
+                                       inference_expand)
     except RuntimeError:
-        return _sync_wiki_retrieve(query, wiki_titles, top_k, link_depth)
+        return _sync_wiki_retrieve(query, wiki_titles, top_k, link_depth, cids,
+                                   class_uri, expand_subclasses, relation_filter, relation_boost,
+                                   inference_expand)
 
 
 def _sync_wiki_retrieve(query: str, wiki_titles: List[str] = None,
-                        top_k: int = 8, link_depth: int = 0) -> List[Dict[str, Any]]:
+                        top_k: int = 8, link_depth: int = 0,
+                        collection_ids: List[str] = None,
+                        class_uri: str = None,
+                        expand_subclasses: bool = False,
+                        relation_filter: Dict[str, str] = None,
+                        relation_boost: Dict[str, float] = None,
+                        inference_expand: bool = False) -> List[Dict[str, Any]]:
     from core.harness.knowledge.wiki_retriever import WikiPageRetriever
     from core.harness.knowledge.types import KnowledgeQuery
 
-    retriever = WikiPageRetriever(wiki_titles=wiki_titles or [], link_depth=link_depth)
+    cids = collection_ids or ["default"]
+    default_boost2 = relation_boost if relation_boost is not None else {
+        "cites": 0.3, "supports": 0.2, "parent": 0.15, "extends": 0.1
+    }
+    retriever = WikiPageRetriever(
+        wiki_titles=wiki_titles or [], link_depth=link_depth,
+        collection_ids=cids,
+        class_uri=class_uri, expand_subclasses=expand_subclasses,
+        relation_filter=relation_filter, relation_boost=default_boost2,
+        inference_expand=inference_expand,
+    )
     import asyncio
     try:
         results = asyncio.run(retriever.retrieve(KnowledgeQuery(query=query, limit=top_k)))
@@ -392,3 +441,149 @@ def _sync_wiki_retrieve(query: str, wiki_titles: List[str] = None,
         }
         for r in results
     ]
+
+
+def sys_knowledge_retrieve(
+    query: str,
+    *,
+    doc_ids: List[str] = None,
+    wiki_titles: List[str] = None,
+    tenant_id: str = "default",
+    collection_id: str = "default",
+    wiki_collection_ids: List[str] = None,
+    top_k: int = 8,
+    wiki_first: bool = True,
+    min_wiki_score: float = 0.3,
+    # ── Ontology-aware filtering ──
+    target_class: str = None,
+    expand_subclasses: bool = False,
+    inference_expand: bool = False,
+) -> List[Dict[str, Any]]:
+    """Unified knowledge retrieval — Wiki first, KB vector as fallback.
+
+    When knowledge has been curated into Wiki pages, Wiki retrieval provides
+    higher-quality results (cross-linked, LLM-edited, with typed relationships).
+    For new/uncurated documents, falls back to KB vector search (traditional RAG).
+
+    Args:
+        wiki_first: If True (default), try Wiki first, fall back to KB.
+                    If False, use KB directly (backward compat).
+
+    Returns:
+        List of {text, title, score, tags, summary, source, source_type}
+        where source_type is "wiki" or "kb".
+    """
+    import time as _time, logging
+    _t0 = _time.time()
+    _wiki_time = _kb_time = 0.0
+    results: List[Dict[str, Any]] = []
+
+    # ── Wiki-first path ──
+    if wiki_first:
+        _tw = _time.time()
+        try:
+            wiki_results = sys_wiki_retrieve(
+                query, wiki_titles=wiki_titles, top_k=top_k, link_depth=1,
+                collection_ids=wiki_collection_ids,
+                class_uri=target_class, expand_subclasses=expand_subclasses,
+                inference_expand=inference_expand,
+            )
+            # Tag wiki results
+            for wr in wiki_results:
+                wr["source_type"] = "wiki"
+            # Keep only results with decent scores
+            qualified = [wr for wr in wiki_results if wr.get("score", 0) >= min_wiki_score]
+            if len(qualified) >= max(1, top_k // 2):
+                # Wiki had sufficient quality results — use them
+                _wiki_time = _time.time() - _tw
+                logging.getLogger("retrieval").debug(
+                    f"sys_knowledge_retrieve: total={_time.time()-_t0:.3f}s wiki={_wiki_time:.3f}s kb=0 (wiki-only)")
+                results = qualified
+                remaining = 0
+            else:
+                # Otherwise: keep qualified wiki results, supplement with KB
+                results = qualified
+                remaining = top_k - len(qualified)
+        except Exception:
+            remaining = top_k
+            results = []
+    else:
+        remaining = top_k
+
+    _wiki_time = _time.time() - _tw
+    _tk = _time.time()
+
+    # ── KB vector fallback ──
+    if remaining > 0:
+        try:
+            kb_results = sys_kb_retrieve(
+                query, doc_ids=doc_ids or [],
+                collection_id=collection_id,
+                tenant_id=tenant_id,
+                top_k=remaining,
+            )
+            for kr in kb_results:
+                kr["title"] = kr.get("title") or kr.get("doc_id", "KB Document")
+                kr["source_type"] = "kb"
+                kr["summary"] = kr.get("text", "")[:200]
+                kr["score"] = kr.get("score", 0.5)
+            results.extend(kb_results)
+        except Exception:
+            pass
+
+    # ── Sort blended results by score ──
+    results.sort(key=lambda x: x.get("score", 0), reverse=True)
+    _total = _time.time() - _t0
+    _kb_time = _time.time() - _tk if remaining > 0 else 0
+    logging.getLogger("retrieval").debug(
+        f"sys_knowledge_retrieve: total={_total:.3f}s wiki={_wiki_time:.3f}s kb={_kb_time:.3f}s "
+        f"results={len(results)} wiki_first={wiki_first}")
+
+    # ── Post-Retrieval Governance ──
+    try:
+        from core.harness.knowledge.post_retrieval_governor import PostRetrievalGovernor
+        cid = wiki_collection_ids[0] if wiki_collection_ids else "default"
+        governor = PostRetrievalGovernor()
+        governed, gov_hints, gov_stats = governor.govern(results[:top_k * 2], query, cid)
+        if governed:
+            # Embed governance flag + stats in the first chunk (lists don't support attributes)
+            governed[0]["_governance_applied"] = True
+            governed[0]["_governance_stats"] = {
+                "raw": gov_stats.raw_count, "governed": gov_stats.governed_count,
+                "time_penalized": gov_stats.time_penalized,
+                "density_filtered": gov_stats.density_filtered,
+                "dedup_merged": gov_stats.dedup_merged,
+                "conflict_marked": gov_stats.conflict_marked,
+                "avg_composite": gov_stats.avg_composite_score,
+            }
+            governed[0]["_governance_hints"] = {
+                "has_conflicts": gov_hints.has_conflicts,
+                "conflict_pairs": gov_hints.conflict_pairs[:5],
+                "oldest_source_age": gov_hints.oldest_source_age,
+                "applied": gov_hints.governance_applied,
+            }
+            results = governed
+            logging.getLogger("retrieval").debug(
+                f"PostRetrievalGovernor: {gov_stats.raw_count}→{gov_stats.governed_count} "
+                f"time_pen={gov_stats.time_penalized} dedup={gov_stats.dedup_merged} "
+                f"cutoff={gov_stats.cutoff_score:.3f} avg={gov_stats.avg_composite_score:.3f}")
+    except Exception:
+        logging.getLogger("retrieval").debug("PostRetrievalGovernor skipped", exc_info=True)
+
+    # ── Latency tracking ──
+    try:
+        import os as _l_os, json as _l_json
+        lat_path = _l_os.path.join(
+            _l_os.path.expanduser(_l_os.getenv("AIPLAT_HOME", "~/.aiplat")),
+            "wiki", "retrieval_latency.json")
+        samples = []
+        if _l_os.path.exists(lat_path):
+            samples = _l_json.loads(open(lat_path).read())
+        samples.append({"ts": _t0, "total": round(_total, 4),
+                        "wiki": round(_wiki_time, 4), "kb": round(_kb_time, 4)})
+        _l_os.makedirs(_l_os.path.dirname(lat_path), exist_ok=True)
+        open(lat_path, "w").write(_l_json.dumps(samples[-1000:]))
+    except Exception:
+        pass
+
+    return results[:top_k]

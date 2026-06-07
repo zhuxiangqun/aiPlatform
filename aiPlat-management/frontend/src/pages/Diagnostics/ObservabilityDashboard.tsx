@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { BarChart3, Brain, Clock, AlertTriangle, Activity, Zap, Database, BellRing, ExternalLink, Settings, Save, RefreshCw } from 'lucide-react';
+import { BarChart3, Brain, Clock, AlertTriangle, Activity, Zap, Database, BellRing, ExternalLink, Settings, Save } from 'lucide-react';
 import { diagnosticsApi } from '../../services';
 
 interface LLMStats {
@@ -116,7 +116,7 @@ const ObservabilityDashboard: React.FC = () => {
     } finally {
       setAlertSaving(false);
     }
-  }, [alertConfig, fetchStats]);
+  }, [alertConfig]);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -139,7 +139,7 @@ const ObservabilityDashboard: React.FC = () => {
   if (error) return <div style={{ color: '#ef4444', padding: 40, textAlign: 'center' }}>{error}</div>;
   if (!stats) return null;
 
-  const { llm_stats: llm, syscall_by_kind: kinds, active_runs, throughput, error_timeline, model_usage, top_errors, active_alerts } = stats;
+  const { llm_stats: llm, syscall_by_kind: kinds, active_runs, throughput, error_timeline, model_usage, top_errors, active_alerts } = stats as any;
 
   const cardStyle: React.CSSProperties = {
     background: '#1f2937', borderRadius: 10, padding: '16px 20px',
@@ -149,8 +149,8 @@ const ObservabilityDashboard: React.FC = () => {
   const valueStyle: React.CSSProperties = { fontSize: 24, fontWeight: 700, color: '#e5e7eb' };
   const subStyle: React.CSSProperties = { fontSize: 11, color: '#9ca3af' };
 
-  const maxThroughput = Math.max(1, ...throughput.map(p => p.count));
-  const maxErrorTotal = Math.max(1, ...error_timeline.map(p => p.total));
+  const maxThroughput = Math.max(1, ...throughput.map((p: any) => p.count));
+  const maxErrorTotal = Math.max(1, ...error_timeline.map((p: any) => p.total));
 
   return (
     <div style={{ padding: '24px 32px', maxWidth: 1200, color: '#e5e7eb' }}>
@@ -257,7 +257,7 @@ const ObservabilityDashboard: React.FC = () => {
         <div style={{ ...cardStyle, marginBottom: 16 }}>
           <div style={labelStyle}>事件吞吐量 (最近 1 小时, 5 分钟窗口)</div>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 80, paddingTop: 8 }}>
-            {throughput.map((p, i) => (
+            {throughput.map((p: any, i: number) => (
               <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 12 }}>
                 <span style={{ fontSize: 9, color: '#6b7280', marginBottom: 2 }}>{p.count}</span>
                 <div style={{
@@ -282,7 +282,7 @@ const ObservabilityDashboard: React.FC = () => {
         <div style={{ ...cardStyle, marginBottom: 16 }}>
           <div style={labelStyle}><AlertTriangle size={14} /> 错误率趋势 (最近 6 小时, 30 分钟窗口)</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingTop: 8 }}>
-            {error_timeline.map((p, i) => (
+            {error_timeline.map((p: any, i: number) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 9, color: '#6b7280', width: 40 }}>{formatTs(p.ts)}</span>
                 <div style={{ flex: 1, background: '#374151', borderRadius: 3, height: 16, position: 'relative', overflow: 'hidden' }}>
@@ -314,7 +314,7 @@ const ObservabilityDashboard: React.FC = () => {
           {Object.keys(kinds).length === 0 ? (
             <div style={{ fontSize: 12, color: '#6b7280' }}>暂无数据</div>
           ) : (
-            Object.entries(kinds).map(([kind, k]) => (
+            Object.entries(kinds).map(([kind, k]: [string, any]) => (
               <div key={kind} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
                 <span style={{ fontSize: 13 }}>{KIND_ICONS[kind] || KIND_ICONS.default}</span>
                 <span style={{ fontSize: 12, color: '#e5e7eb', flex: 1 }}>{KIND_LABELS[kind] || kind}</span>
@@ -331,7 +331,7 @@ const ObservabilityDashboard: React.FC = () => {
           {model_usage.length === 0 ? (
             <div style={{ fontSize: 12, color: '#6b7280' }}>暂无数据</div>
           ) : (
-            model_usage.map((m, i) => (
+            model_usage.map((m: any, i: number) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
                 <span style={{
                   width: 8, height: 8, borderRadius: '50%',
@@ -353,7 +353,7 @@ const ObservabilityDashboard: React.FC = () => {
       {top_errors.length > 0 && (
         <div style={cardStyle}>
           <div style={{ ...labelStyle, marginBottom: 4 }}><AlertTriangle size={14} /> Top 错误 (24h)</div>
-          {top_errors.map((e, i) => (
+          {top_errors.map((e: any, i: number) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
               <span style={{ fontSize: 11, fontWeight: 600, color: '#ef4444', width: 28 }}>{e.count}x</span>
               <span style={{ fontSize: 11, color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

@@ -344,6 +344,16 @@ const SkillPacks: React.FC = () => {
         }
       />
 
+      <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+        <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+          <div><span className="text-gray-300">名称</span><span className="ml-2 text-gray-600">Skill Pack 名称，点击查看详情</span></div>
+          <div><span className="text-gray-300">skills</span><span className="ml-2 text-gray-600">打包的 Skill 数量</span></div>
+          <div><span className="text-gray-300">ID</span><span className="ml-2 text-gray-600">Pack 唯一标识，可复制</span></div>
+          <div><span className="text-gray-300">操作</span><span className="ml-2 text-gray-600">详情/编辑/发布版本/版本列表/安装/删除</span></div>
+        </div>
+      </details>
+
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-dark-card rounded-xl border border-dark-border overflow-hidden">
         <Table columns={columns} data={packs} rowKey="id" loading={loading} emptyText="暂无 Skill Pack" />
       </motion.div>

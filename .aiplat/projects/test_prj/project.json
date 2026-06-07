@@ -1,0 +1,28 @@
+{
+  "project_id": "test_prj",
+  "description": "test",
+  "confirmed_prd": {
+    "title": "消息PRD",
+    "functional_requirements": [
+      {
+        "id": "FR-01",
+        "name": "测试",
+        "description": "",
+        "acceptance_criteria": [
+          "测试"
+        ]
+      }
+    ],
+    "user_stories": [
+      {
+        "id": "FR-01",
+        "name": "测试",
+        "description": "",
+        "acceptance_criteria": [
+          "测试"
+        ]
+      }
+    ],
+    "scope": "Skill"
+  }
+}

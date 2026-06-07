@@ -1,6 +1,7 @@
 """Complex architecture guard checks: SKILL.md, AGENT.md, BOUNDARY.yaml, core/apps."""
 
 import subprocess
+import sys
 import re
 from pathlib import Path
 from typing import Any, Dict, List
@@ -376,7 +377,7 @@ class PytestCheck(ArchRule):
     def check(self, repo_root: Path) -> List[ArchIssue]:
         try:
             result = subprocess.run(
-                ["python3", "-m", "pytest",
+                [sys.executable, "-m", "pytest",
                  "aiPlat-platform/tests/test_builder.py",
                  "aiPlat-core/core/tests/unit/test_builder_pipeline_e2e.py",
                  "-q", "--tb=line"],
@@ -415,7 +416,7 @@ class ASTBehaviorCheck(ArchRule):
             return []
         try:
             result = subprocess.run(
-                ["python3", str(guard_script)],
+                [sys.executable, str(guard_script)],
                 capture_output=True, text=True, cwd=str(repo_root), timeout=30
             )
             output = result.stdout

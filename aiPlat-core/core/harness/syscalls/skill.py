@@ -230,6 +230,7 @@ async def sys_skill_call(
                     {
                         "trace_id": span.trace_id,
                         "span_id": getattr(span, "span_id", None),
+                        "parent_span_id": (trace_context or {}).get("parent_span_id") if isinstance(trace_context, dict) else None,
                         "run_id": (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None,
                         "kind": "skill",
                         "name": skill_name or "<unknown>",
@@ -298,10 +299,25 @@ async def sys_skill_call(
                         pass
                     try:
                         from core.harness.knowledge.wiki_engine import search_pages
-                        wiki_pages = search_pages(limit=1)
+                        kbs = (trace_context or {}).get("knowledge_bases") or []
+                        first_cid = kbs[0] if kbs else "default"
+                        wiki_pages = search_pages(limit=1, collection_id=first_cid)
                         if wiki_pages:
                             gc["wiki_available"] = True
-                            gc["wiki_pages"] = len(search_pages(limit=500))
+                            total = 0
+                            for cid in (kbs or ["default"]):
+                                total += len(search_pages(limit=500, collection_id=cid))
+                            gc["wiki_pages"] = total
+                            if kbs:
+                                gc["wiki_collections"] = kbs
+                    except Exception:
+                        pass
+                    try:
+                        from core.harness.knowledge.knowledge_ontology import CLASSES
+                        gc["ontology_classes"] = [
+                            {"label": c.label, "uri": c.uri, "categories": c.allowed_categories}
+                            for c in CLASSES if c.allowed_categories
+                        ]
                     except Exception:
                         pass
                     if gc:
@@ -421,23 +437,31 @@ async def sys_skill_call(
             if decision == "ask":
                 args["_approval_required"] = True
 
-            # Require explicit permissions declaration unless disabled
+            # Require explicit permissions declaration unless disabled or pre-governance
             require_perm = os.getenv("AIPLAT_EXEC_SKILL_REQUIRE_PERMISSIONS", "true").lower() in ("1", "true", "yes", "y")
             if require_perm:
                 try:
                     cfg = getattr(skill, "_config", None)
                     meta = getattr(cfg, "metadata", None) if cfg else None
-                    perms = []
-                    if isinstance(meta, dict):
-                        perms = meta.get("permissions") or meta.get("permission") or []
-                    if isinstance(perms, str):
-                        perms = [perms]
-                    if not isinstance(perms, list) or not [p for p in perms if str(p).strip()]:
-                        args["_approval_required"] = True  # fail-safe: require approval if permissions are missing
-                        args.setdefault("_policy_reason", "missing_permissions")
+                    # Pre-governance: skills without a signature haven't been through governance —
+                    # don't require permissions for development-phase skills
+                    prov = (meta or {}).get("provenance") if isinstance(meta, dict) and isinstance((meta or {}).get("provenance"), dict) else {}
+                    has_sig = bool(prov.get("signature"))
+                    if not has_sig:
+                        require_perm = False  # pre-governance, skip permissions check
+                    else:
+                        perms = []
+                        if isinstance(meta, dict):
+                            perms = meta.get("permissions") or meta.get("permission") or []
+                        if isinstance(perms, str):
+                            perms = [perms]
+                        if not isinstance(perms, list) or not [p for p in perms if str(p).strip()]:
+                            args["_approval_required"] = True  # fail-safe: require approval if permissions are missing
+                            args.setdefault("_policy_reason", "missing_permissions")
                 except Exception:
-                    args["_approval_required"] = True
-                    args.setdefault("_policy_reason", "missing_permissions")
+                    if require_perm:
+                        args["_approval_required"] = True
+                        args.setdefault("_policy_reason", "missing_permissions")
 
             # P0/P1: honor Skill Contract governance hints
             try:
@@ -459,6 +483,12 @@ async def sys_skill_call(
                 pr = None
             else:
                 pr = await policy_gate.check_skill(user_id=user_id, skill_name=skill_name or "<unknown>", skill_args=args)
+            # Mark gate coverage (Phase 3 GateTracer)
+            try:
+                from core.harness.kernel.execution_context import mark_gate_passed
+                mark_gate_passed("policy_gate_skill")
+            except Exception:
+                pass
             if pr is not None and pr.decision == PolicyDecision.DENY:
                 from core.harness.interfaces import SkillResult
                 # Emit syscall event for observability (deny)
@@ -570,6 +600,22 @@ async def sys_skill_call(
         # Fail-open for compatibility
         pass
 
+    # ── Phase R2: Toolset gate for skills (shared check_workspace_gate) ──
+    try:
+        from core.harness.tools.toolsets import check_workspace_gate
+        allowed, reason, active_toolset = check_workspace_gate("skill", skill_name or "<unknown>")
+        if not allowed:
+            from core.harness.interfaces import SkillResult
+            await _emit_routing_event("toolset_denied", extra={"reason": reason})
+            return SkillResult(
+                success=False, output=None,
+                error=f"toolset_denied: {reason}",
+                metadata={"toolset": active_toolset, "skill": skill_name},
+            )
+    except Exception:
+        import logging as _logging
+        _logging.getLogger("aiplat.syscall.skill").debug("Workspace gate check skipped", exc_info=True)
+
     async def _run():
         # P4: propagate approval_request_id across nested tool calls (when present).
         tok = None
@@ -639,6 +685,7 @@ async def sys_skill_call(
                     {
                         "trace_id": span.trace_id,
                         "span_id": getattr(span, "span_id", None),
+                        "parent_span_id": (trace_context or {}).get("parent_span_id") if isinstance(trace_context, dict) else None,
                         "run_id": (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None,
                         "kind": "skill",
                         "name": skill_name or "<unknown>",
@@ -688,6 +735,7 @@ async def sys_skill_call(
                     {
                         "trace_id": span.trace_id,
                         "span_id": getattr(span, "span_id", None),
+                        "parent_span_id": (trace_context or {}).get("parent_span_id") if isinstance(trace_context, dict) else None,
                         "run_id": (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None,
                         "kind": "skill",
                         "name": skill_name or "<unknown>",

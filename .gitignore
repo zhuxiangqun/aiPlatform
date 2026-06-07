@@ -86,3 +86,13 @@ deploy/*.zip
 deploy/**/*.tar
 deploy-kit/**/*.tar
 deploy-kit/images/*.tar
+
+# Runtime data - local wiki/pipelines/state
+.aiplat/wiki/
+.aiplat/videos/
+.aiplat/variables.json
+.aiplat/overview_cache.json
+.aiplat/code_graph.db
+.aiplat/cap_graph.db
+.aiplat/execution.db
+

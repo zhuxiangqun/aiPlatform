@@ -8,6 +8,7 @@ Manages AI models from three sources:
 """
 
 import asyncio
+import os
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timezone
 
@@ -17,6 +18,24 @@ from .storage import ExternalModelStorage
 from .config_loader import ConfigLoader
 from .local_model_scanner import scan_local_models
 from .health_checker import HealthChecker
+
+
+def _write_env_local(key: str, value: str) -> None:
+    """Write an env var to ~/.aiplat/.env.local, creating or updating the line."""
+    from pathlib import Path
+    env_file = Path.home() / ".aiplat" / ".env.local"
+    env_file.parent.mkdir(parents=True, exist_ok=True)
+    
+    lines = env_file.read_text().splitlines() if env_file.exists() else []
+    found = False
+    for i, line in enumerate(lines):
+        if line.startswith(f"{key}=") or line.startswith(f"export {key}="):
+            lines[i] = f"{key}={value}"
+            found = True
+            break
+    if not found:
+        lines.append(f"{key}={value}")
+    env_file.write_text("\n".join(lines) + "\n")
 
 
 class ModelManager:
@@ -113,24 +132,96 @@ class ModelManager:
     def get_default_model(self, purpose: str = "default") -> str:
         """Resolve purpose to model name via env vars (unique resolution point).
 
-        Purpose mapping:
-          "document" → AIPLAT_DOC_LLM_MODEL → AIPLAT_LLM_MODEL → AIPLAT_DEFAULT_CHAT_MODEL
-          "code"     → AIPLAT_CODE_GEN_MODEL → AIPLAT_LLM_MODEL → AIPLAT_DEFAULT_MODEL
-          "default"  → AIPLAT_DEFAULT_CHAT_MODEL → AIPLAT_LLM_MODEL → AIPLAT_DEFAULT_MODEL
+        Covers all 9 purposes for centralized, env-driven model selection.
         """
         import os
-        if purpose == "document":
-            return (os.getenv("AIPLAT_DOC_LLM_MODEL", "").strip()
-                    or os.getenv("AIPLAT_LLM_MODEL", "").strip()
-                    or os.getenv("AIPLAT_DEFAULT_CHAT_MODEL", "").strip()
-                    or os.getenv("AIPLAT_DEFAULT_MODEL", "").strip())
-        elif purpose == "code":
-            return (os.getenv("AIPLAT_CODE_GEN_MODEL", "").strip()
-                    or os.getenv("AIPLAT_LLM_MODEL", "").strip()
-                    or os.getenv("AIPLAT_DEFAULT_MODEL", "").strip())
+        purpose_env_map = {
+            "agent":       ("AIPLAT_AGENT_MODEL", "AIPLAT_DEFAULT_AGENT_MODEL"),
+            "reasoning":   ("AIPLAT_AGENT_MODEL", "AIPLAT_DEFAULT_AGENT_MODEL"),
+            "document":    ("AIPLAT_DOC_LLM_MODEL",),
+            "code_gen":    ("AIPLAT_CODE_GEN_MODEL",),
+            "code":        ("AIPLAT_CODE_GEN_MODEL",),
+            "query_translation": ("AIPLAT_QUERY_MODEL",),
+            "wiki_curation": ("AIPLAT_WIKI_CURATION_MODEL",),
+            "eval_code":   ("AIPLAT_EVAL_MODEL",),
+        }
+        if purpose in purpose_env_map:
+            for env_name in purpose_env_map[purpose]:
+                val = os.getenv(env_name, "").strip()
+                if val:
+                    return val
         return (os.getenv("AIPLAT_DEFAULT_CHAT_MODEL", "").strip()
                 or os.getenv("AIPLAT_LLM_MODEL", "").strip()
                 or os.getenv("AIPLAT_DEFAULT_MODEL", "").strip())
+
+    def select_by_purpose(self, purpose: str) -> Optional[str]:
+        """Select best model for purpose via capability scoring.
+
+        Loads PURPOSE_PROFILE from llm_profile.yaml, filters enabled chat models,
+        scores by capability match + source preference, returns best model name.
+        This is the canonical model selection for all core purpose-driven calls.
+        """
+        try:
+            import yaml
+            from pathlib import Path
+            config_path = os.getenv("AIPLAT_LLM_CONFIG_PATH",
+                str(Path(__file__).resolve().parent.parent.parent.parent /
+                    "config" / "infra" / "llm_profile.yaml"))
+            profile_data = yaml.safe_load(open(config_path))
+        except Exception:
+            profile_data = {}
+
+        profiles = profile_data.get("purpose_profiles", {})
+        profile = profiles.get(purpose, {"prefer": ["chat"], "avoid": []})
+        fallback_model = profile_data.get("fallback", {}).get("ultimate_model", "deepseek-chat")
+
+        # Priority: explicit model_overrides in config
+        overrides = profile_data.get("model_overrides", {})
+        if purpose in overrides:
+            override_name = overrides[purpose]
+            if override_name and override_name in self._models:
+                return override_name
+
+        # Filter chat models
+        chat_models = [m for m in self._models.values()
+                       if hasattr(m, 'type') and m.type.value == "chat" and m.enabled]
+
+        scored = []
+        for m in chat_models:
+            caps = set(m.capabilities or ["chat"])
+            if not any(c in caps for c in profile.get("prefer", ["chat"])):
+                continue
+            if any(c in caps for c in profile.get("avoid", [])):
+                continue
+
+            score = 0
+            if profile.get("prefer_local"):
+                if m.source.value in ("local", "external"):
+                    score += 120
+                else:
+                    score += 40
+            elif m.source.value == "config":
+                score += 100
+
+            if "reasoning" in caps:
+                if profile.get("prefer", [""])[0] == "reasoning":
+                    score += 80
+                else:
+                    score -= 30
+            else:
+                if profile.get("prefer", [""])[0] != "reasoning":
+                    score += 50
+
+            if "function_call" in caps:
+                score += 20
+
+            scored.append((score, m.name))
+
+        if not scored:
+            return fallback_model
+
+        scored.sort(key=lambda x: x[0], reverse=True)
+        return scored[0][1]  # model name
 
     def select(self, model_name: str = "", purpose: str = "") -> Optional[ModelInfo]:
         """Select model by name or purpose. Returns full ModelInfo with provider/base_url/api_key_env.
@@ -184,7 +275,21 @@ class ModelManager:
             return None
         
         if model.source == ModelSource.CONFIG:
-            raise ValueError("Config models cannot be modified")
+            # Config models: allow updating apiKeyEnv (env var name) and writing the key to .env.local
+            cfg_updates = updates.get("config") if isinstance(updates.get("config"), dict) else {}
+            api_key_val = cfg_updates.get("apiKey") or cfg_updates.get("api_key") or ""
+            api_key_env = cfg_updates.get("apiKeyEnv") or cfg_updates.get("api_key_env") or ""
+            if api_key_val and api_key_env:
+                _write_env_local(api_key_env, api_key_val)
+                os.environ[api_key_env] = api_key_val
+                model.config.api_key_env = api_key_env
+                model.updated_at = datetime.now(timezone.utc)
+                return model
+            if api_key_env and api_key_env != model.config.api_key_env:
+                model.config.api_key_env = api_key_env
+                model.updated_at = datetime.now(timezone.utc)
+                return model
+            raise ValueError("Config models: please provide apiKey + apiKeyEnv to update the key, or apiKeyEnv alone to change the env var name")
         
         # 更新字段
         for key, value in updates.items():

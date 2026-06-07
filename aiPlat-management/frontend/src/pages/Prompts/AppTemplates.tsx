@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Edit3, Trash2, RefreshCw } from 'lucide-react';
+import { Plus, Edit3, Trash2, RefreshCw, Key } from 'lucide-react';
 import { Button, Card, CardContent, CardHeader, Input, Modal, Table, Textarea, toast, Badge } from '../../components/ui';
+import { toastGateError } from '../../components/ui';
 import { promptAppApi } from '../../services';
 import PromptWorkbench from './PromptWorkbench';
 
@@ -23,6 +24,9 @@ const AppTemplates: React.FC = () => {
 
   const [workbenchOpen, setWorkbenchOpen] = useState(false);
   const [workbenchTpl, setWorkbenchTpl] = useState<any>(null);
+  const [signModal, setSignModal] = useState<{ open: boolean; tplId: string; tplName: string }>({ open: false, tplId: '', tplName: '' });
+  const [signKey, setSignKey] = useState('');
+  const [signing, setSigning] = useState(false);
 
   const fetchModels = async () => {
     try {
@@ -81,6 +85,26 @@ const AppTemplates: React.FC = () => {
     fetchAll();
   };
 
+  const handleDelete = async (id: string) => {
+    if (!confirm('确认删除此模板？')) return;
+    await promptAppApi.deleteTemplate(id);
+    toast.success('已删除');
+    fetchAll();
+  };
+
+  const handleSignTpl = async () => {
+    if (!signModal.tplId || !signKey.trim()) return;
+    setSigning(true);
+    try {
+      await promptAppApi.signTemplate(signModal.tplId, { private_key: signKey.trim() });
+      toast.success('签名成功');
+      setSignKey('');
+      setSignModal({ open: false, tplId: '', tplName: '' });
+    } catch (e: any) {
+      toastGateError(e, '签名失败');
+    } finally { setSigning(false); }
+  };
+
   const filtered = items.filter(i => !search || i.name?.toLowerCase().includes(search.toLowerCase()));
 
   const openWorkbench = (tpl: any) => {
@@ -100,6 +124,9 @@ const AppTemplates: React.FC = () => {
       <div className="flex gap-1">
         <Button size="sm" variant="primary" onClick={() => handleUseTemplate(id)}>使用</Button>
         <Button size="sm" variant="secondary" onClick={() => openWorkbench(r)}>🤖 工作台</Button>
+        <Button size="sm" variant="ghost" onClick={() => { setSignModal({ open: true, tplId: id, tplName: r.name || id }); }}>
+          <Key className="w-3 h-3" />
+        </Button>
         <Button size="sm" variant="ghost" onClick={() => handleDelete(id)}><Trash2 className="w-3 h-3" /></Button>
       </div>
     )},
@@ -148,7 +175,18 @@ const AppTemplates: React.FC = () => {
           </div>
           <Card>
             <CardHeader><Input value={search} onChange={e => setSearch(e.target.value)} placeholder="搜索模板..." className="w-64" /></CardHeader>
-            <CardContent><Table columns={tplColumns} data={filtered} rowKey="id" loading={loading} /></CardContent>
+            <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mx-3 mb-2">
+              <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+              <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+                <div><span className="text-gray-300">名称</span><span className="ml-2 text-gray-600">模板名称，点击跳转 Prompt 工作台</span></div>
+                <div><span className="text-gray-300">行业</span><span className="ml-2 text-gray-600">行业分类标签</span></div>
+                <div><span className="text-gray-300">标签</span><span className="ml-2 text-gray-600">业务标签（最多显示 3 个）</span></div>
+                <div><span className="text-gray-300">操作</span><span className="ml-2 text-gray-600">使用模板 / Prompt 工作台 / 删除</span></div>
+                <div><span className="text-gray-300">来源</span><span className="ml-2 text-gray-600">源自哪个模板 ID（← 实例表）</span></div>
+                <div><span className="text-gray-300">状态</span><span className="ml-2 text-gray-600">published=已发布 / 草稿</span></div>
+              </div>
+            </details>
+            <CardContent><Table columns={tplColumns as any} data={filtered as any} rowKey="id" loading={loading} /></CardContent>
           </Card>
         </>
       ) : (
@@ -157,7 +195,7 @@ const AppTemplates: React.FC = () => {
             {instances.length === 0 ? (
               <div className="text-center py-8 text-gray-500 text-sm">暂无实例。请从缺省模板库中点击"使用"创建。</div>
             ) : (
-              <Table columns={instColumns} data={instances} rowKey="id" loading={loading} />
+              <Table columns={instColumns as any} data={instances as any} rowKey="id" loading={loading} />
             )}
           </CardContent>
         </Card>
@@ -171,8 +209,31 @@ const AppTemplates: React.FC = () => {
           <div><label className="text-xs text-gray-400">名称</label><Input value={instEditForm.name || ''} onChange={e => setInstEditForm({ ...instEditForm, name: e.target.value })} /></div>
           <div><label className="text-xs text-gray-400">角色定义</label><Textarea value={instEditForm.system_prompt || ''} onChange={e => setInstEditForm({ ...instEditForm, system_prompt: e.target.value })} rows={2} /></div>
           <div><label className="text-xs text-gray-400">任务指令</label><Textarea value={instEditForm.user_prompt || ''} onChange={e => setInstEditForm({ ...instEditForm, user_prompt: e.target.value })} rows={4} /></div>
+          <div><label className="text-xs text-gray-400">输入变量</label><Input value={instEditForm.input_variables || ''} onChange={e => setInstEditForm({ ...instEditForm, input_variables: e.target.value })} placeholder="逗号分隔: var1, var2" /></div>
+          <div><label className="text-xs text-gray-400">输出格式</label><Input value={instEditForm.output_format || ''} onChange={e => setInstEditForm({ ...instEditForm, output_format: e.target.value })} placeholder="json / text / markdown" /></div>
+          <div><label className="text-xs text-gray-400">示例</label><Textarea value={instEditForm.examples || ''} onChange={e => setInstEditForm({ ...instEditForm, examples: e.target.value })} rows={2} /></div>
+          <div><label className="text-xs text-gray-400">约束</label><Textarea value={instEditForm.constraints || ''} onChange={e => setInstEditForm({ ...instEditForm, constraints: e.target.value })} rows={2} /></div>
+          <div><label className="text-xs text-gray-400">场景标签</label><Input value={instEditForm.scenario_tags || ''} onChange={e => setInstEditForm({ ...instEditForm, scenario_tags: e.target.value })} placeholder="逗号分隔" /></div>
           <div className="flex justify-end gap-2">
             <Button onClick={handleSaveInstance} loading={instSaving}>保存</Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal open={signModal.open} onClose={() => setSignModal({ open: false, tplId: '', tplName: '' })}
+        title={`签名：${signModal.tplName}`} width={500}
+        footer={<Button onClick={() => setSignModal({ open: false, tplId: '', tplName: '' })}>关闭</Button>}>
+        <div className="space-y-3">
+          <div className="text-xs text-gray-500">粘贴 Ed25519 私钥 PEM 为模板签名</div>
+          <div className="flex items-start gap-2">
+            <textarea className="flex-1 h-14 px-3 py-2 bg-dark-hover border border-dark-border rounded text-xs text-gray-200 placeholder-gray-500 font-mono resize-none"
+              placeholder="-----BEGIN PRIVATE KEY-----..."
+              value={signKey} onChange={(e) => setSignKey(e.target.value)} />
+            <div className="flex flex-col gap-1">
+              <Button variant="primary" size="sm" icon={<Key size={14} />} onClick={handleSignTpl} loading={signing} disabled={!signKey.trim() || signing}>
+                签名
+              </Button>
+            </div>
           </div>
         </div>
       </Modal>

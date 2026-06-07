@@ -155,7 +155,7 @@ class ExecutionStore:
                             DELETE FROM syscall_events
                             WHERE id IN (
                               SELECT id FROM syscall_events
-                              ORDER BY created_at DESC
+                    ORDER BY created_at ASC
                               LIMIT -1 OFFSET ?
                             );
                             """,
@@ -2783,6 +2783,77 @@ class ExecutionStore:
         return await anyio.to_thread.run_sync(_sync)
 
     # ==================== Syscall Events (Audit) ====================
+
+    async def _insert_event_raw(self, event: Dict[str, Any]) -> None:
+        """Pure SQL INSERT — no EventBus publish, no side effects. Used by DLQ worker."""
+        # Best-effort validation
+        try:
+            from core.harness.observation.event_schema import SyscallEvent
+            SyscallEvent.model_validate(event)
+        except Exception:
+            pass
+        await self.init()
+        db_path = self._config.db_path
+
+        error_code = event.get("error_code")
+        if not error_code:
+            try:
+                err_obj = event.get("error") if isinstance(event.get("error"), dict) else None
+                if isinstance(err_obj, dict) and err_obj.get("code"):
+                    error_code = err_obj.get("code")
+                else:
+                    err_str = event.get("error")
+                    if isinstance(err_str, str) and err_str.strip():
+                        error_code = err_str.strip().upper().replace(" ", "_")[:64]
+            except Exception:
+                error_code = None
+
+        payload = (
+            event.get("id") or str(uuid.uuid4()),
+            event.get("trace_id"),
+            event.get("span_id"),
+            event.get("run_id"),
+            event.get("tenant_id"),
+            event.get("kind") or "",
+            event.get("name") or "",
+            event.get("status") or "",
+            event.get("start_time"),
+            event.get("end_time"),
+            event.get("duration_ms"),
+            _json_dumps(event.get("args") or {}),
+            _json_dumps(event.get("result") or {}),
+            event.get("error") if isinstance(event.get("error"), str) else _json_dumps(event.get("error") or None),
+            error_code,
+            event.get("target_type"),
+            event.get("target_id"),
+            event.get("user_id"),
+            event.get("session_id"),
+            event.get("approval_request_id"),
+            float(event.get("created_at") or time.time()),
+            int(event.get("input_tokens") or 0),
+            int(event.get("output_tokens") or 0),
+            float(event.get("cost") or 0.0),
+        )
+
+        def _sync():
+            conn = sqlite3.connect(db_path)
+            try:
+                conn.execute(
+                    """
+                    INSERT INTO syscall_events(
+                      id, trace_id, span_id, run_id, tenant_id, kind, name, status, start_time, end_time, duration_ms,
+                      args_json, result_json, error, error_code, target_type, target_id, user_id, session_id,
+                      approval_request_id, created_at, input_tokens, output_tokens, cost
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                    """,
+                    payload,
+                )
+                conn.commit()
+            finally:
+                conn.close()
+
+        await anyio.to_thread.run_sync(_sync)
 
     async def add_syscall_event(self, event: Dict[str, Any]) -> None:
         """Append a syscall audit event (best-effort)."""

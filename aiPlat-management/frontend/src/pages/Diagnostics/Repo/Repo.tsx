@@ -311,6 +311,18 @@ const Repo: React.FC = () => {
               刷新
             </Button>
           </div>
+          <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+            <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明（变更 / 搜索 / 文件列表）</summary>
+            <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+              <div><span className="text-gray-300">created_at</span><span className="ml-2 text-gray-600">变更发生时间</span></div>
+              <div><span className="text-gray-300">change_id</span><span className="ml-2 text-gray-600">变更记录 ID</span></div>
+              <div><span className="text-gray-300">status / error</span><span className="ml-2 text-gray-600">变更状态 / 错误信息</span></div>
+              <div><span className="text-gray-300">name</span><span className="ml-2 text-gray-600">变更名称</span></div>
+              <div><span className="text-gray-300">path / line / col</span><span className="ml-2 text-gray-600">搜索命中：文件路径 · 行号 · 列号</span></div>
+              <div><span className="text-gray-300">preview</span><span className="ml-2 text-gray-600">搜索命中行的代码预览</span></div>
+              <div><span className="text-gray-300">tracked / size / mtime</span><span className="ml-2 text-gray-600">索引结果：是否已追踪 · 文件大小 · 修改时间</span></div>
+            </div>
+          </details>
           <Table
             className="mt-2"
             rowKey={(r: any) => String(r.id || r.created_at || Math.random())}

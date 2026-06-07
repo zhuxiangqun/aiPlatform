@@ -858,8 +858,18 @@ const ChangeControl: React.FC = () => {
           </div>
         </CardHeader>
         <CardContent>
+          <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+            <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+            <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+              <div><span className="text-gray-300">change_id</span><span className="ml-2 text-gray-600">变更记录唯一 ID</span></div>
+              <div><span className="text-gray-300">operation</span><span className="ml-2 text-gray-600">变更操作类型</span></div>
+              <div><span className="text-gray-300">status</span><span className="ml-2 text-gray-600">派生状态：success/completed/approval_required/blocked/failed</span></div>
+              <div><span className="text-gray-300">recommendation</span><span className="ml-2 text-gray-600">建议动作：continue/investigate/block</span></div>
+              <div><span className="text-gray-300">reason</span><span className="ml-2 text-gray-600">原因/缺失项描述</span></div>
+            </div>
+          </details>
           <Table
-            rowKey={(r: any) => String(r.change_id || r.target_id)}
+            rowKey={(r: any) => String(r.id || '')}
             loading={loading}
             data={items}
             columns={listColumns as any}

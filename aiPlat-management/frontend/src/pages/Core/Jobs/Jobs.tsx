@@ -536,6 +536,20 @@ const Jobs: React.FC = () => {
         }
       />
 
+      <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+        <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+          <div><span className="text-gray-300">名称</span><span className="ml-2 text-gray-600">Job 名称，唯一标识</span></div>
+          <div><span className="text-gray-300">kind</span><span className="ml-2 text-gray-600">Job 类型：webhook / cron / skill 等</span></div>
+          <div><span className="text-gray-300">target_id</span><span className="ml-2 text-gray-600">关联的目标资源 ID</span></div>
+          <div><span className="text-gray-300">cron</span><span className="ml-2 text-gray-600">Cron 表达式，定义调度规则</span></div>
+          <div><span className="text-gray-300">enabled</span><span className="ml-2 text-gray-600"><span className="text-green-300">true</span> 已启用 · <span className="text-gray-500">false</span> 已停用</span></div>
+          <div><span className="text-gray-300">last_run / next_run</span><span className="ml-2 text-gray-600">上次/下次执行时间</span></div>
+          <div><span className="text-gray-300">lock</span><span className="ml-2 text-gray-600">分布式锁状态。锁定时显示持有者，防止重复执行</span></div>
+          <div><span className="text-gray-300">操作</span><span className="ml-2 text-gray-600">执行记录/死信队列/编辑/触发/启用停用/删除</span></div>
+        </div>
+      </details>
+
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-dark-card rounded-xl border border-dark-border overflow-hidden">
         <Table columns={columns as any} data={jobs} rowKey="id" loading={loading} emptyText="暂无 Jobs" />
       </motion.div>

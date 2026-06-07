@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Badge, Button, Input, Modal, Select, Switch, Table, Tabs, Textarea, toast } from '../../../components/ui';
 import { workspaceSkillApi, workspaceSkillInstallerApi, type WorkspaceSkillInstallerPlan, SKILL_CATEGORIES } from '../../../services';
@@ -44,6 +44,11 @@ const SkillMarketplace: React.FC = () => {
   const [loadingInstalled, setLoadingInstalled] = useState(false);
   const [installedLoadedOnce, setInstalledLoadedOnce] = useState(false);
   const [updateModal, setUpdateModal] = useState<{ open: boolean; skillId: string; ref: string }>({ open: false, skillId: '', ref: '' });
+
+  // Zip upload mode
+  const [zipUploadMode, setZipUploadMode] = useState<'server' | 'upload'>('upload');
+  const [zipFile, setZipFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const metaObj = useMemo(() => {
     try {
@@ -143,10 +148,21 @@ const SkillMarketplace: React.FC = () => {
   const onPlan = async () => {
     setPlanning(true);
     try {
-      const payload = buildInstallerPayload();
-      const res: any = await workspaceSkillInstallerApi.plan(payload);
-      setPlan(res as any);
-      toast.success('已生成安装计划');
+      // Use upload API when zip file is selected
+      if (sourceType === 'zip' && zipFile) {
+        const res: any = await workspaceSkillInstallerApi.uploadPlan(zipFile, {
+          subdir: subdir.trim() || undefined,
+          skill_id: skillId.trim() || undefined,
+          auto_detect_subdir: autoDetect,
+        });
+        setPlan(res as any);
+        toast.success('已生成安装计划');
+      } else {
+        const payload = buildInstallerPayload();
+        const res: any = await workspaceSkillInstallerApi.plan(payload);
+        setPlan(res as any);
+        toast.success('已生成安装计划');
+      }
     } catch (e: any) {
       toastGateError(e, '生成计划失败');
     } finally {
@@ -157,7 +173,20 @@ const SkillMarketplace: React.FC = () => {
   const onInstall = async () => {
     setInstalling(true);
     try {
-      const payload: any = buildInstallerPayload();
+      // Use upload API when zip file is selected
+      if (sourceType === 'zip' && zipFile) {
+        const res: any = await workspaceSkillInstallerApi.uploadInstall(zipFile, {
+          subdir: subdir.trim() || undefined,
+          skill_id: skillId.trim() || undefined,
+          auto_detect_subdir: autoDetect,
+          allow_overwrite: allowOverwrite,
+          plan_id: plan?.plan_id,
+        });
+        toast.success(`安装完成：${(res?.installed || []).length} 个`);
+        setPlan(null); setConfirm(false);
+        await loadInstalled();
+      } else {
+        const payload: any = buildInstallerPayload();
       payload.confirm = confirm;
       payload.require_approval = requireApproval;
       payload.approval_request_id = approvalRequestId.trim() || undefined;
@@ -170,6 +199,7 @@ const SkillMarketplace: React.FC = () => {
       setPlan(null);
       setConfirm(false);
       await loadInstalled();
+      }
     } catch (e: any) {
       // Try to surface plan/approval guidance if server returns structured detail
       try {
@@ -268,6 +298,24 @@ const SkillMarketplace: React.FC = () => {
         <h1 className="text-xl font-semibold text-gray-200">Skill Marketplace / Installer</h1>
         <p className="text-sm text-gray-500 mt-1">从 Git/Zip/本地路径导入开源技能（支持 plan → plan_id → install 的强约束流程）。</p>
       </div>
+
+      <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group">
+        <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+          <div className="text-gray-300 font-medium md:col-span-2 border-b border-dark-border pb-1 mb-0.5">安装预览（浏览/导入 tab）</div>
+          <div><span className="text-gray-300">目录ID</span><span className="ml-2 text-gray-600">Skill 的 skill_id 目录名</span></div>
+          <div><span className="text-gray-300">名称</span><span className="ml-2 text-gray-600">SKILL.md 的 display_name</span></div>
+          <div><span className="text-gray-300">类型</span><span className="ml-2 text-gray-600">Skill 的类型标签</span></div>
+          <div><span className="text-gray-300">版本</span><span className="ml-2 text-gray-600">semver 版本号，用于更新/回滚判断</span></div>
+          <div><span className="text-gray-300">限制检查</span><span className="ml-2 text-gray-600"><span className="text-green-400">ok</span> 通过，<span className="text-red-400">fail</span> 存在冲突或限制</span></div>
+          <div><span className="text-gray-300">权限声明</span><span className="ml-2 text-gray-600">Skill 声明的权限列表</span></div>
+          <div className="text-gray-300 font-medium md:col-span-2 border-b border-dark-border pb-1 mb-0.5 mt-1">已安装</div>
+          <div><span className="text-gray-300">名称</span><span className="ml-2 text-gray-600">已安装 Skill 的显示名</span></div>
+          <div><span className="text-gray-300">描述</span><span className="ml-2 text-gray-600">SKILL.md 的 description</span></div>
+          <div><span className="text-gray-300">状态</span><span className="ml-2 text-gray-600"><span className="text-green-400">enabled</span> 已启用 · <span className="text-yellow-400">disabled</span> 已禁用</span></div>
+          <div><span className="text-gray-300">操作</span><span className="ml-2 text-gray-600">更新到最新版本 / 卸载此 Skill</span></div>
+        </div>
+      </details>
 
       <Tabs
         defaultActiveKey="browse"
@@ -383,6 +431,43 @@ const SkillMarketplace: React.FC = () => {
                           获取最新 HEAD
                         </Button>
                       </div>
+                    </>
+                  ) : sourceType === 'zip' ? (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => { setZipUploadMode('upload'); setPath(''); setZipFile(null); }}
+                          className={`text-xs px-3 py-1.5 rounded ${zipUploadMode === 'upload' ? 'bg-primary/20 text-primary' : 'text-gray-500 hover:text-gray-300'}`}>
+                          本地上传
+                        </button>
+                        <button onClick={() => { setZipUploadMode('server'); setZipFile(null); }}
+                          className={`text-xs px-3 py-1.5 rounded ${zipUploadMode === 'server' ? 'bg-primary/20 text-primary' : 'text-gray-500 hover:text-gray-300'}`}>
+                          服务器路径
+                        </button>
+                      </div>
+                      {zipUploadMode === 'upload' ? (
+                        <>
+                          <input ref={fileInputRef} type="file" accept=".zip" className="hidden"
+                            onChange={(e) => { const f = e.target.files?.[0]; if (f) { setZipFile(f); setPath(f.name); } }} />
+                          <div onClick={() => fileInputRef.current?.click()}
+                            className="border-2 border-dashed border-dark-border rounded-xl p-6 text-center cursor-pointer hover:border-primary/50 transition-colors">
+                            {zipFile ? (
+                              <div>
+                                <div className="text-lg mb-1">📦</div>
+                                <div className="text-sm text-gray-200">{zipFile.name}</div>
+                                <div className="text-xs text-gray-500 mt-1">{(zipFile.size / 1024).toFixed(0)} KB · 点击更换</div>
+                              </div>
+                            ) : (
+                              <div>
+                                <div className="text-lg mb-1">📤</div>
+                                <div className="text-sm text-gray-300">点击选择 .zip 文件或拖拽到此处</div>
+                                <div className="text-xs text-gray-500 mt-1">自动探测子目录并提取 SKILL.md</div>
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        <Input label="服务器本地路径" placeholder="/var/tmp/skills.zip" value={path} onChange={(e) => setPath(e.target.value)} />
+                      )}
                     </>
                   ) : (
                     <Input label="服务器本地路径" placeholder="/var/tmp/skills_bundle 或 /var/tmp/skills.zip" value={path} onChange={(e) => setPath(e.target.value)} />

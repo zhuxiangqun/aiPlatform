@@ -262,7 +262,18 @@ const GraphRunDetail: React.FC = () => {
                 key: 'checkpoints',
                 label: `Checkpoints (${Array.isArray(checkpoints) ? checkpoints.length : 0})`,
                 children: (
+                  <>
+                  <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-2">
+                    <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+                    <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+                      <div><span className="text-gray-300">checkpoint_id</span><span className="ml-2 text-gray-600">检查点唯一 ID</span></div>
+                      <div><span className="text-gray-300">step</span><span className="ml-2 text-gray-600">检查点步骤序号</span></div>
+                      <div><span className="text-gray-300">created_at</span><span className="ml-2 text-gray-600">检查点创建时间</span></div>
+                      <div><span className="text-gray-300">操作</span><span className="ml-2 text-gray-600">查看 state 快照</span></div>
+                    </div>
+                  </details>
                   <Table columns={checkpointColumns as any} data={checkpoints} rowKey="checkpoint_id" />
+                  </>
                 ),
               },
             ]}

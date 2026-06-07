@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Sparkles, Search } from 'lucide-react';
-import { Card, CardHeader, CardContent } from '../../../components/ui/card';
-import { Button } from '../../../components/ui/button';
+import { Card, CardHeader, CardContent, Button } from '../../../components/ui';
 
 interface CapNode {
   id: string;
@@ -280,14 +279,14 @@ export default function CapabilityGraphPage() {
       )}
 
       {/* Unresolved references warning */}
-      {health?.issues?.unresolved_refs?.length > 0 && (
+      {(health?.issues?.unresolved_refs?.length || 0) > 0 && (
         <Card className="border-red-500/20 bg-red-900/10">
           <CardHeader>
             <div className="text-sm font-medium text-red-300">未解析引用</div>
           </CardHeader>
           <CardContent>
             <div className="space-y-1">
-              {health.issues.unresolved_refs.map((ref, i) => (
+              {health?.issues?.unresolved_refs?.map((ref: any, i: number) => (
                 <div key={i} className="text-xs text-gray-400">
                   <span className="px-1.5 py-0.5 rounded text-[10px] border bg-purple-500/15 text-purple-300 border-purple-500/25">agent</span>
                   <span className="text-gray-200 ml-1">{ref.agent}</span>

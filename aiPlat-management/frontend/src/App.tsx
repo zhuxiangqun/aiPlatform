@@ -17,7 +17,6 @@ const withSuspense = (Component: React.LazyExoticComponent<React.FC>) => (
   </Suspense>
 );
 
-const Overview = lazy(() => import('./pages/Overview/Overview'));
 const SystemOverview = lazy(() => import('./pages/SystemOverview/SystemOverview'));
 const Alerts = lazy(() => import('./pages/Alerts/Alerts'));
 const InfraNodes = lazy(() => import('./pages/Infra/Nodes/Nodes'));
@@ -48,9 +47,9 @@ const CoreSkillPacks = lazy(() => import('./pages/Core/SkillPacks'));
 const WorkspaceAgents = lazy(() => import('./pages/Workspace/Agents/Agents'));
 const WorkspaceSkills = lazy(() => import('./pages/Workspace/Skills/Skills'));
 const WorkspaceSkillLint = lazy(() => import('./pages/Workspace/Skills/LintDashboard'));
-const WorkspaceSkillMarketplace = lazy(() => import('./pages/Workspace/SkillMarketplace/SkillMarketplace'));
 const WorkspaceMarketplace = lazy(() => import('./pages/Workspace/Marketplace'));
 const WorkspaceMCP = lazy(() => import('./pages/Workspace/MCP/MCP'));
+const WorkspaceTools = lazy(() => import('./pages/Workspace/Tools/Tools'));
 const CoreLearningArtifacts = lazy(() => import('./pages/Core/Learning/Artifacts'));
 const CoreLearningArtifactDetail = lazy(() => import('./pages/Core/Learning/Artifacts/ArtifactDetail'));
 const CoreApprovals = lazy(() => import('./pages/Core/Learning/Approvals'));
@@ -142,9 +141,9 @@ const router = createBrowserRouter([
       { path: 'workspace/agents', element: withSuspense(WorkspaceAgents) },
       { path: 'workspace/skills', element: withSuspense(WorkspaceSkills) },
       { path: 'workspace/skills-lint', element: withSuspense(WorkspaceSkillLint) },
-      { path: 'workspace/skill-marketplace', element: withSuspense(WorkspaceSkillMarketplace) },
       { path: 'workspace/marketplace', element: withSuspense(WorkspaceMarketplace) },
       { path: 'workspace/mcp', element: withSuspense(WorkspaceMCP) },
+      { path: 'workspace/tools', element: withSuspense(WorkspaceTools) },
       { path: 'workspace/teams', element: withSuspense(WorkspaceTeams) },
       { path: 'plugins', element: withSuspense(PackagePlugins) },
       { path: 'core/learning/artifacts', element: withSuspense(CoreLearningArtifacts) },

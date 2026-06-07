@@ -1,20 +1,53 @@
 ---
 name: e2e_test
 display_name: E2E 测试自动生成
-description: 输入任意 URL，自动探索站点、生成 Playwright 测试套件、运行测试、修复失败、补充覆盖，循环直到全部通过或达到上限。类似 AgentQX。
+description: 输入任意URL，自动探索站点、生成Playwright测试套件、运行测试、修复失败、补充覆盖。涉及代码生成和测试审查。 涉及测试用例相关操作。 主要进行生成。
 version: 1.0.0
 category: testing
 status: enabled
 effects:
-  - type: both
-    resources: ["browser:page", "filesystem:write"]
-    idempotent: false
-    rollback_available: true
+- type: both
+  resources:
+  - browser:page
+  - filesystem:write
+  idempotent: false
+  rollback_available: true
 output_schema:
   result:
     type: string
   markdown:
     type: string
+    required: true
+    description: 面向人阅读的 Markdown 输出
+metadata:
+  trigger_conditions:
+  - E2E测试
+  - 端到端测试
+  - 自动化测试用例
+  - 集成测试生成
+  - 站点遍历测试
+  - 站点测试
+  - 全链路测试
+  - 自动化遍历
+  keywords:
+    objects:
+    - 测试用例
+    - Playwright
+    - 自动化
+    actions:
+    - 生成
+    - 运行
+    - 修复
+    - 补充
+  negative_triggers:
+  - 不需要特定的编程语言知识
+  - 不要猜测或编造不存在的数据
+  sop_goal: 自动发现站点功能并生成 E2E 测试套件
+input_schema:
+  url:
+    type: string
+    required: true
+    description: 测试站点URL
 ---
 
 # E2E Test 自动生成
@@ -96,3 +129,8 @@ E2E Test Suite 生成完成
 - ❌ 不要盲目加 wait（尽量用 waitForSelector）
 - ❌ 不要为纯静态页面生成过多测试
 - ❌ 修复失败时不要重写整个测试文件，只改出错部分
+
+## Checklist
+- [ ] 输出格式符合规范
+- [ ] 正确处理错误和边界条件
+- [ ] 返回结果包含引用和来源标注

@@ -1135,6 +1135,7 @@ const SkillWizardV2Modal: React.FC<SkillWizardV2ModalProps> = ({ open, initial, 
     const props = (activeSchema?.properties && typeof activeSchema.properties === 'object') ? activeSchema.properties : {};
     for (const k of Object.keys(props)) {
       const ui = props?.[k]?.['x-ui'] || {};
+      if (ui['x-visible'] === false) continue;  // explicitly hidden fields
       const st = typeof ui.step === 'number' ? ui.step : undefined;
       if (typeof st !== 'number') continue;
       stepFields[st] = stepFields[st] || { basic: [], advanced: [] };

@@ -504,6 +504,18 @@ const SkillLintDashboard: React.FC = () => {
 
       <Card>
         <CardHeader title="巡检历史（最近 50 次）" />
+        <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mx-3 mb-2">
+          <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+          <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+            <div><span className="text-gray-300">时间</span><span className="ml-2 text-gray-600">巡检完成/开始/创建时间</span></div>
+            <div><span className="text-gray-300">状态</span><span className="ml-2 text-gray-600">success / fail</span></div>
+            <div><span className="text-gray-300">Skills</span><span className="ml-2 text-gray-600">巡检覆盖的 Skill 总数</span></div>
+            <div><span className="text-gray-300">Blocked</span><span className="ml-2 text-gray-600">被阻断的 Skill 数量（红标=有阻断）</span></div>
+            <div><span className="text-gray-300">Errors</span><span className="ml-2 text-gray-600">错误数量</span></div>
+            <div><span className="text-gray-300">Warnings</span><span className="ml-2 text-gray-600">警告数量</span></div>
+            <div><span className="text-gray-300">Scopes</span><span className="ml-2 text-gray-600">巡检范围（workspace/core 等）</span></div>
+          </div>
+        </details>
         <CardContent>
           <Table columns={runColumns as any} data={runs || []} rowKey="id" loading={loading} />
         </CardContent>

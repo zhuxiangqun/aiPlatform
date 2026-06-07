@@ -412,6 +412,9 @@ export const onboardingApi = {
   setTrustedSkillKeys: async (body: Record<string, unknown>) => {
     return apiClient.post<any>('/onboarding/trusted-skill-keys', body);
   },
+  generateSkillKey: async (body?: { label?: string }) => {
+    return apiClient.post<{ key_id: string; public_key: string; private_key: string; label?: string }>('/onboarding/generate-skill-key', body || {});
+  },
   createEvidence: async (body: Record<string, unknown>) => {
     return apiClient.post<any>('/onboarding/evidence/runs', body);
   },

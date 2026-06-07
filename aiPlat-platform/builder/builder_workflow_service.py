@@ -1,6 +1,7 @@
 """
-Workflow CRUD service — persists workflow definitions to platform SQLite.
-Used by api/routers/workflows.py router.
+Workflow CRUD service — persists workflow definitions via WorkflowManager (directory-backed).
+
+Backward-compatible: falls back to platform SQLite if WorkflowManager is unavailable.
 """
 from __future__ import annotations
 
@@ -8,15 +9,50 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from core.utils.ids import new_prefixed_id
-from storage.sqlite import list_workflows, get_workflow, create_workflow, update_workflow, delete_workflow
-from storage.sqlite import record_workflow_run, list_workflow_runs
 
 _logger = logging.getLogger("aiplat.platform.workflow_service")
+
+# Lazy init — created on first use
+_wf_mgr = None
+
+
+def _get_wf_mgr():
+    global _wf_mgr
+    if _wf_mgr is None:
+        try:
+            from core.management.workflow_manager import WorkflowManager
+            _wf_mgr = WorkflowManager(scope="workspace")
+        except Exception as e:
+            _logger.debug("WorkflowManager not available, falling back to SQLite: %s", e)
+            _wf_mgr = False
+    return _wf_mgr if _wf_mgr is not False else None
+
+
+def _verify_workflow_signature(mgr, wf) -> None:
+    """Best-effort signature verification for governed workflows (logs warning on failure)."""
+    try:
+        import asyncio
+        from core.security.skill_signature_gate import get_trusted_skill_pubkeys_map
+        from core.harness.kernel.runtime import get_kernel_runtime
+        rt = get_kernel_runtime()
+        store = getattr(rt, "execution_store", None) if rt else None
+        trusted = asyncio.new_event_loop().run_until_complete(
+            get_trusted_skill_pubkeys_map(store)
+        ) if store else {}
+        prov = mgr.compute_workflow_signature_verification(wf, trusted)
+        if prov.get("signature") and not prov.get("signature_verified"):
+            _logger.warning("Workflow %s signature verification failed: %s", wf.id, prov.get("signature_verified_reason", ""))
+    except Exception:
+        _logger.debug("Workflow %s signature verification skipped", wf.id, exc_info=True)
 
 
 class WorkflowService:
 
     async def list(self) -> List[Dict[str, Any]]:
+        mgr = _get_wf_mgr()
+        if mgr:
+            return mgr.list_workflow_dicts()
+        from storage.sqlite import list_workflows, list_workflow_runs
         wfs = list_workflows()
         for w in wfs:
             runs = list_workflow_runs(w["id"])
@@ -24,32 +60,63 @@ class WorkflowService:
         return wfs
 
     async def get(self, workflow_id: str) -> Optional[Dict[str, Any]]:
+        mgr = _get_wf_mgr()
+        if mgr:
+            return mgr.get_workflow_dict(workflow_id)
+        from storage.sqlite import get_workflow
         return get_workflow(workflow_id)
 
     async def create(self, name: str, description: str = "", nodes: List[Any] = None, edges: List[Any] = None) -> Dict[str, Any]:
-        if not name.strip():
-            raise ValueError("name is required")
+        mgr = _get_wf_mgr()
+        if mgr:
+            wf = mgr.create_workflow(name, description.strip(), nodes or [], edges or [])
+            return mgr.get_workflow_dict(wf.id) or {}
+        from storage.sqlite import create_workflow
         wid = new_prefixed_id("wf")
         return create_workflow(wid, name.strip(), description.strip(), nodes or [], edges or [])
 
     async def update(self, workflow_id: str, **kwargs: Any) -> Optional[Dict[str, Any]]:
+        mgr = _get_wf_mgr()
+        if mgr:
+            result = mgr.update_workflow(workflow_id, **kwargs)
+            if result is None:
+                raise ValueError(f"workflow not found: {workflow_id}")
+            return mgr.get_workflow_dict(workflow_id) or {}
+        from storage.sqlite import update_workflow
         result = update_workflow(workflow_id, **kwargs)
         if result is None:
             raise ValueError(f"workflow not found: {workflow_id}")
         return result
 
     async def delete(self, workflow_id: str) -> bool:
+        mgr = _get_wf_mgr()
+        if mgr:
+            return mgr.delete_workflow(workflow_id)
+        from storage.sqlite import delete_workflow
         return delete_workflow(workflow_id)
 
     async def list_runs(self, workflow_id: str) -> List[Dict[str, Any]]:
+        from storage.sqlite import list_workflow_runs
         return list_workflow_runs(workflow_id)
 
     async def execute(self, workflow_id: str, launch_name: str = "") -> Dict[str, Any]:
-        wf = get_workflow(workflow_id)
-        if not wf:
+        # Resolve workflow from manager or SQLite
+        mgr = _get_wf_mgr()
+        if mgr:
+            wf = mgr.get_workflow(workflow_id)
+            wf_dict = mgr.get_workflow_dict(workflow_id) if wf else None
+        else:
+            from storage.sqlite import get_workflow
+            wf_dict = get_workflow(workflow_id)
+        if not wf_dict:
             raise ValueError(f"workflow not found: {workflow_id}")
-        nodes = wf.get("nodes") or []
-        edges = wf.get("edges") or []
+
+        # Signature verification best-effort on governed workflows
+        if mgr and wf:
+            _verify_workflow_signature(mgr, wf)
+
+        nodes = wf_dict.get("nodes") or []
+        edges = wf_dict.get("edges") or []
         stages = []
         for i, n in enumerate(nodes):
             d = n.get("data", {}) or {}
@@ -116,11 +183,12 @@ class WorkflowService:
         from core.schemas_builder import ProjectCreateRequest
         svc = BuilderProjectService(team_service=BuilderTeamService())
         proj = await svc.create_project(ProjectCreateRequest(
-            name=launch_name or wf.get("name", "workflow"),
-            description=wf.get("description", ""),
+            name=launch_name or wf_dict.get("name", "workflow"),
+            description=wf_dict.get("description", ""),
             stages=stages,
         ))
-        record_workflow_run(workflow_id, proj.project_id, launch_name or wf.get("name", ""))
+        from storage.sqlite import record_workflow_run
+        record_workflow_run(workflow_id, proj.project_id, launch_name or wf_dict.get("name", ""))
         # Background execution via dedicated thread — API returns immediately.
         # PipelineEventBus writes progress to SQLite pipeline_events → frontend polls.
         import threading

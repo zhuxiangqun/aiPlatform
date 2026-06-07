@@ -840,7 +840,7 @@ async def lifespan(app: FastAPI):
                 schema = getattr(discovered, 'config_schema', {}) or {}
                 agent_config = AgentConfig(
                     name=getattr(discovered, 'display_name', agent_name),
-                    model=schema.get('model') or os.getenv("AIPLAT_DEFAULT_MODEL", "deepseek-chat"),
+                    model=schema.get('model') or best_model_for_purpose("chat") or "deepseek-chat",
                     metadata={
                         **schema,
                         'category': schema.get('category', ''),

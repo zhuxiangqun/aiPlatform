@@ -15,6 +15,7 @@ from __future__ import annotations
 import asyncio
 import os
 import shlex
+import sys
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -105,7 +106,7 @@ class SkillRunScriptTool(BaseTool):
 
             # Interpreter whitelist
             if target.suffix.lower() == ".py":
-                cmd = ["python3", str(target)]
+                cmd = [sys.executable, str(target)]
             elif target.suffix.lower() == ".sh":
                 cmd = ["bash", str(target)]
             else:

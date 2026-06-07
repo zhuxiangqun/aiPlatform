@@ -56,6 +56,11 @@ export default defineConfig({
         changeOrigin: true,
         timeout: 600000,
       },
+      '/api/core/workspace/mcp': {
+        target: 'http://localhost:8002',
+        changeOrigin: true,
+        timeout: 600000,
+      },
       '/api/core/workspace/skills/installer': {
         target: 'http://localhost:8002',
         changeOrigin: true,
@@ -72,7 +77,7 @@ export default defineConfig({
         timeout: 600000,
       },
       '/api/core': {
-        target: 'http://localhost:8000',
+        target: 'http://localhost:8002',
         changeOrigin: true,
         timeout: 600000,
       },

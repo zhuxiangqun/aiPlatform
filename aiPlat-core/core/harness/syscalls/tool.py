@@ -95,6 +95,7 @@ async def sys_tool_call(
                     {
                         "trace_id": span.trace_id,
                         "span_id": getattr(span, "span_id", None),
+                        "parent_span_id": (trace_context or {}).get("parent_span_id") if isinstance(trace_context, dict) else None,
                         "run_id": (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None,
                         "kind": "tool",
                         "name": tool_name or "<unknown>",
@@ -331,67 +332,74 @@ async def sys_tool_call(
         pass
 
     # Phase R2: Toolset gate (runtime allowlist). Fail-closed when a toolset is active.
+    # Uses shared check_workspace_gate() for consistency with skill/agent syscalls.
     try:
-        ws = get_active_workspace_context()
-        active_toolset = getattr(ws, "toolset", None) if ws else None
-        if active_toolset:
-            from core.harness.tools.toolsets import resolve_toolset, is_tool_allowed
+        from core.harness.tools.toolsets import check_workspace_gate
 
-            policy = resolve_toolset(str(active_toolset))
-            allowed, reason = is_tool_allowed(policy, tool_name or "<unknown>", args)
-            if not allowed:
+        allowed, reason, active_toolset = check_workspace_gate(
+            "tool", tool_name or "<unknown>", args
+        )
+        if not allowed:
+            try:
                 runtime = get_kernel_runtime()
                 store = getattr(runtime, "execution_store", None) if runtime else None
                 if store is not None:
-                    try:
-                        await store.add_syscall_event(
-                            {
-                                "trace_id": span.trace_id,
-                                "span_id": getattr(span, "span_id", None),
-                                "run_id": (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None,
-                                "kind": "tool",
-                                "name": tool_name or "<unknown>",
-                                "status": "toolset_denied",
-                                "target_type": _ar.target_type if _ar else None,
-                                "target_id": _ar.target_id if _ar else None,
-                                "tenant_id": args.get("_tenant_id"),
-                                "user_id": user_id,
-                                "session_id": session_id,
-                                "start_time": start_ts,
-                                "end_time": start_ts,
-                                "duration_ms": 0.0,
-                                "args": {"tool_args": args, "toolset": policy.name},
-                                "error": reason or "toolset_denied",
-                                "error_code": "TOOLSET_DENIED",
-                            }
-                        )
-                    except Exception:
-                        pass
-                await trace_gate.end(span, success=False)
-                try:
-                    runtime = get_kernel_runtime()
-                    store = getattr(runtime, "execution_store", None) if runtime else None
-                    if store is not None and _run_id:
-                        await store.append_run_event(
-                            run_id=str(_run_id),
-                            event_type="tool_end",
-                            trace_id=span.trace_id,
-                            tenant_id=args.get("_tenant_id"),
-                            payload={"tool": tool_name or "<unknown>", "status": "toolset_denied", "error": reason or "TOOLSET_DENIED"},
-                        )
-                except Exception:
-                    pass
-                return ToolResult(
-                    success=False,
-                    output=None,
-                    error="toolset_denied",
-                    metadata={"reason": reason, "tool": tool_name, "toolset": policy.name},
-                )
+                    await store.add_syscall_event(
+                        {
+                            "trace_id": span.trace_id,
+                            "span_id": getattr(span, "span_id", None),
+                            "run_id": (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None,
+                            "kind": "tool",
+                            "name": tool_name or "<unknown>",
+                            "status": "toolset_denied",
+                            "target_type": _ar.target_type if _ar else None,
+                            "target_id": _ar.target_id if _ar else None,
+                            "tenant_id": args.get("_tenant_id"),
+                            "user_id": user_id,
+                            "session_id": session_id,
+                            "start_time": start_ts,
+                            "end_time": start_ts,
+                            "duration_ms": 0.0,
+                            "args": {"tool_args": args, "toolset": active_toolset},
+                            "error": reason or "toolset_denied",
+                            "error_code": "TOOLSET_DENIED",
+                        }
+                    )
+            except Exception:
+                pass
+            await trace_gate.end(span, success=False)
+            try:
+                runtime = get_kernel_runtime()
+                store = getattr(runtime, "execution_store", None) if runtime else None
+                if store is not None and _run_id:
+                    await store.append_run_event(
+                        run_id=str(_run_id),
+                        event_type="tool_end",
+                        trace_id=span.trace_id,
+                        tenant_id=args.get("_tenant_id"),
+                        payload={"tool": tool_name or "<unknown>", "status": "toolset_denied", "error": reason or "TOOLSET_DENIED"},
+                    )
+            except Exception:
+                pass
+            return ToolResult(
+                success=False,
+                output=None,
+                error="toolset_denied",
+                metadata={"reason": reason, "tool": tool_name, "toolset": active_toolset},
+            )
     except Exception:
         # Best-effort: do not break existing behavior if toolset gate fails.
-        pass
+        import logging as _logging
+        _logging.getLogger("aiplat.syscall.tool").debug("Toolset gate check skipped", exc_info=True)
 
     # PolicyGate (permission; approval optional via env flag)
+    try:
+        # Mark gate coverage (Phase 3 GateTracer)
+        from core.harness.kernel.execution_context import mark_gate_passed
+        mark_gate_passed("policy_gate_tool")
+    except Exception:
+        pass
+
     try:
         # Unit tests / internal calls may not set request context. In that case, fail-open
         # so pure harness tests can execute dummy tools without wiring full policy runtime.
@@ -414,6 +422,7 @@ async def sys_tool_call(
                     {
                         "trace_id": span.trace_id,
                         "span_id": getattr(span, "span_id", None),
+                        "parent_span_id": (trace_context or {}).get("parent_span_id") if isinstance(trace_context, dict) else None,
                         "run_id": (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None,
                         "kind": "tool",
                         "name": tool_name or "<unknown>",
@@ -493,6 +502,7 @@ async def sys_tool_call(
                     {
                         "trace_id": span.trace_id,
                         "span_id": getattr(span, "span_id", None),
+                        "parent_span_id": (trace_context or {}).get("parent_span_id") if isinstance(trace_context, dict) else None,
                         "run_id": (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None,
                         "kind": "tool",
                         "name": tool_name or "<unknown>",
@@ -622,6 +632,7 @@ async def sys_tool_call(
                     {
                         "trace_id": span.trace_id,
                         "span_id": getattr(span, "span_id", None),
+                        "parent_span_id": (trace_context or {}).get("parent_span_id") if isinstance(trace_context, dict) else None,
                         "run_id": (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None,
                         "kind": "tool",
                         "name": tool_name or "<unknown>",
@@ -669,6 +680,7 @@ async def sys_tool_call(
                     {
                         "trace_id": span.trace_id,
                         "span_id": getattr(span, "span_id", None),
+                        "parent_span_id": (trace_context or {}).get("parent_span_id") if isinstance(trace_context, dict) else None,
                         "run_id": (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None,
                         "kind": "tool",
                         "name": tool_name or "<unknown>",

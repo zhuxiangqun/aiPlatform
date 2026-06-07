@@ -346,6 +346,18 @@ class AssetInstaller:
                         out.append(sub)
         return out
 
+    def _find_asset_dirs(self, root: Path) -> List[Path]:
+        """Recursively find all directories containing this asset type's file pattern."""
+        seen: set = set()
+        out: List[Path] = []
+        for entry in sorted(root.rglob(self._FILE_PATTERN)):
+            d = entry.parent
+            key = str(d.resolve())
+            if key not in seen:
+                seen.add(key)
+                out.append(d)
+        return out
+
     def _parse_asset_info(self, asset_dir: Path) -> Dict[str, Any]:
         """Parse frontmatter/metadata for the asset preview."""
         cfg_file = asset_dir / self._FILE_PATTERN
@@ -403,6 +415,8 @@ class AssetInstaller:
             pass
 
         assets = self._iter_asset_dirs(root)
+        if not assets and not subdir:
+            assets = self._find_asset_dirs(root)
         if not assets and not (converted and converted.get("converted")):
             raise ValueError(f"no_{self.ASSET_TYPE}s_found")
 
@@ -468,6 +482,8 @@ class AssetInstaller:
                        asset_id: Optional[str], subdir: Optional[str],
                        claude_plugin: bool = False) -> PlanResult:
         assets = self._iter_asset_dirs(root)
+        if not assets and not subdir:
+            assets = self._find_asset_dirs(root)
         if not assets:
             raise ValueError(f"no_{self.ASSET_TYPE}s_found")
 

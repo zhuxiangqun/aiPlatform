@@ -214,6 +214,17 @@ const Smoke: React.FC = () => {
 
           <div className="mt-4">
             <div className="text-sm text-gray-200 font-medium mb-2">runs</div>
+            <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+              <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+              <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+                <div><span className="text-gray-300">job_run_id</span><span className="ml-2 text-gray-600">冒烟测试 Run ID</span></div>
+                <div><span className="text-gray-300">status</span><span className="ml-2 text-gray-600">运行状态</span></div>
+                <div><span className="text-gray-300">created_at</span><span className="ml-2 text-gray-600">创建时间</span></div>
+                <div><span className="text-gray-300">started_at</span><span className="ml-2 text-gray-600">开始执行时间</span></div>
+                <div><span className="text-gray-300">finished_at</span><span className="ml-2 text-gray-600">完成时间</span></div>
+                <div><span className="text-gray-300">links</span><span className="ml-2 text-gray-600">关联跳转：Run / Syscalls / Audit</span></div>
+              </div>
+            </details>
             <Table
               rowKey={(r: any) => String(r.id)}
               loading={asLoading}

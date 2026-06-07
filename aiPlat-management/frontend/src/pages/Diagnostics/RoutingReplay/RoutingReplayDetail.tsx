@@ -312,6 +312,18 @@ const RoutingReplayDetail: React.FC = () => {
                 <Card>
                   <CardHeader title="Candidates（Top）" />
                   <CardContent>
+                    <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+                      <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+                      <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+                        <div><span className="text-gray-300">skill_id</span><span className="ml-2 text-gray-600">候选 Skill ID</span></div>
+                        <div><span className="text-gray-300">scope</span><span className="ml-2 text-gray-600">来源（workspace/core 等）</span></div>
+                        <div><span className="text-gray-300">kind</span><span className="ml-2 text-gray-600">Skill 类型</span></div>
+                        <div><span className="text-gray-300">score</span><span className="ml-2 text-gray-600">匹配得分（保留 1 位）</span></div>
+                        <div><span className="text-gray-300">perm</span><span className="ml-2 text-gray-600">权限判断</span></div>
+                        <div><span className="text-gray-300">exec_perm</span><span className="ml-2 text-gray-600">执行权限</span></div>
+                        <div><span className="text-gray-300">overlap</span><span className="ml-2 text-gray-600">与 query 的重叠词</span></div>
+                      </div>
+                    </details>
                     <Table
                       rowKey={(r: any) => String(r?.skill_id || r?.name || Math.random())}
                       data={candidatesTop}

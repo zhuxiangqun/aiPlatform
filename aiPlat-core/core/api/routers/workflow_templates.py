@@ -11,7 +11,10 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException
+import os
+import tempfile
+
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -152,6 +155,57 @@ async def workflow_installer_install(request: dict):
         return {"installed": res.installed, "skipped": res.skipped}
     except ValueError as e:
         return {"installed": [], "skipped": [{"reason": str(e)}]}
+
+
+@router.post("/workflows/installer/upload-plan")
+async def workflow_installer_upload_plan(
+    file: UploadFile = File(...),
+    subdir: str = Form(""),
+    auto_detect_subdir: str = Form("true"),
+):
+    from core.management.asset_installer import WorkflowInstaller
+    inst = WorkflowInstaller(target_base_dir=_templates_dir())
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
+            tmp.write(await file.read())
+            tmp_path = tmp.name
+        plan = inst.plan_from_zip(zip_path=tmp_path,
+            subdir=subdir or None,
+            auto_detect_subdir=auto_detect_subdir.lower() in ("true", "1", "yes"))
+        return {"status": "ok", "source": plan.source,
+                "workflows": plan.assets, "warnings": plan.warnings}
+    except ValueError as e:
+        return {"workflows": [], "warnings": [str(e)]}
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+@router.post("/workflows/installer/upload-install")
+async def workflow_installer_upload_install(
+    file: UploadFile = File(...),
+    subdir: str = Form(""),
+    auto_detect_subdir: str = Form("true"),
+    allow_overwrite: str = Form("false"),
+):
+    from core.management.asset_installer import WorkflowInstaller
+    inst = WorkflowInstaller(target_base_dir=_templates_dir())
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
+            tmp.write(await file.read())
+            tmp_path = tmp.name
+        res = inst.install_from_zip(zip_path=tmp_path,
+            subdir=subdir or None,
+            auto_detect_subdir=auto_detect_subdir.lower() in ("true", "1", "yes"),
+            allow_overwrite=allow_overwrite.lower() in ("true", "1", "yes"))
+        return {"status": "ok", "installed": res.installed, "skipped": res.skipped}
+    except ValueError as e:
+        return {"installed": [], "skipped": [{"reason": str(e)}]}
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
 
 
 @router.post("/workflow/templates/{template_name}/submit-for-review")

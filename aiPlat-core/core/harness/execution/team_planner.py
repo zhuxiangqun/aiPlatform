@@ -150,7 +150,8 @@ async def recommend_team_stages(
         "4. Set uses_file_output=True for agents that generate source files\n"
         "5. Set generate_test_plan=True for agents that validate/verify output\n"
         "6. Set hitl=True for stages that require human approval\n"
-        "7. Output JSON with team_name, reasoning, and stages array"
+        "7. Output JSON with team_name, reasoning, and stages array\n"
+        "8. If Agent Performance History is provided, prefer agents with higher first_pass_rate and lower rejection_rate when multiple agents could fulfill the same role. Include a brief note in reasoning about why you preferred certain agents."
     )
 
     result = await core_chat(ChatContext(

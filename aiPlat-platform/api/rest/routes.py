@@ -119,7 +119,7 @@ async def value_error_handler(request: Request, exc: ValueError):
 # to core's abstract interfaces (resolves core→platform reverse dependency).
 try:
     from core.api.core_facade import set_knowledge_db, set_knowledge_providers
-from core.api.facades.service_facade import llm_generate
+    from core.api.facades.service_facade import llm_generate
     from kb.db import KBSqlite
     from kb.storage import get_tenant_storage as _storage_root
     from kb.service import ingest_document, enqueue_ingest, load_doc_kinds, preview_document
@@ -406,6 +406,7 @@ CREATE TABLE IF NOT EXISTS documents (
   kind TEXT NOT NULL,
   status TEXT NOT NULL,
   version INTEGER NOT NULL DEFAULT 1,
+  wiki_status TEXT NOT NULL DEFAULT '',
   meta_json TEXT,
   created_at INTEGER NOT NULL,
   PRIMARY KEY (tenant_id, doc_id)
@@ -609,6 +610,12 @@ def _kb_ensure_schema(conn) -> None:
     # Schema migration: add version column for existing DBs
     try:
         conn.execute("ALTER TABLE documents ADD COLUMN version INTEGER NOT NULL DEFAULT 1")
+        conn.commit()
+    except Exception:
+        pass
+    # Schema migration: add wiki_status column for existing DBs
+    try:
+        conn.execute("ALTER TABLE documents ADD COLUMN wiki_status TEXT NOT NULL DEFAULT ''")
         conn.commit()
     except Exception:
         pass
@@ -1087,7 +1094,7 @@ async def kb_list_documents(collection_id: str, request: Request):
         _kb_ensure_schema(conn)
         rows = conn.execute(
             """
-            SELECT doc_id, collection_id, source_uri, kind, status, meta_json, created_at
+            SELECT doc_id, collection_id, source_uri, kind, status, wiki_status, meta_json, created_at
             FROM documents
             WHERE tenant_id=? AND collection_id=?
             ORDER BY created_at DESC
@@ -1127,7 +1134,7 @@ async def kb_delete_document(doc_id: str, request: Request):
         conn.execute("DELETE FROM kb_embeddings WHERE tenant_id=? AND doc_id=?", (identity.tenant_id, doc_id))
         conn.execute("DELETE FROM doc_sources WHERE tenant_id=? AND doc_id=?", (identity.tenant_id, doc_id))
         conn.execute("DELETE FROM url_cache WHERE tenant_id=? AND doc_id=?", (identity.tenant_id, doc_id))
-        for table in ("kb_graph", "analysis_runs", "analysis_batches"):
+        for table in ("kb_graph", "analysis_runs"):  # analysis_batches has no doc_id column
             try: conn.execute(f"DELETE FROM {table} WHERE tenant_id=? AND doc_id=?", (identity.tenant_id, doc_id))
             except Exception:
                 logging.getLogger("platform.routes").debug("Table %s cleanup skipped", table)
@@ -1147,6 +1154,19 @@ async def kb_delete_document(doc_id: str, request: Request):
         assets = Path(_kb_tenant_dir(identity.tenant_id)) / "assets" / doc_id
         if assets.exists():
             shutil.rmtree(str(assets), ignore_errors=True)
+    except Exception:
+        pass
+    # best-effort delete associated wiki pages (prevent orphans)
+    try:
+        from core.harness.knowledge.wiki_engine import search_pages, delete_page
+        pages = search_pages(limit=10000)
+        source_tag = f"kb:{doc_id}"
+        for p in pages:
+            if any(source_tag in str(s) for s in (p.get("source_articles") or [])):
+                try:
+                    delete_page(p["title"])
+                except Exception:
+                    pass
     except Exception:
         pass
     return {"status": "deleted", "doc_id": doc_id}
@@ -1440,7 +1460,7 @@ async def _auto_wiki_update(doc_id: str, file_path: str):
     """
     try:
         from core.api.core_facade import wiki_auto_update
-from core.api.facades.service_facade import llm_generate
+        from core.api.facades.service_facade import llm_generate
         await wiki_auto_update(doc_id, file_path)
     except Exception:
         pass
@@ -1544,7 +1564,7 @@ async def documents_categories(request: Request, collection_id: Optional[str] = 
         for r in kind_rows:
             k = str(r["kind"] or "").lower().strip()
             from core.api.core_facade import get_document_categories
-from core.api.facades.service_facade import llm_generate
+            from core.api.facades.service_facade import llm_generate
             cats = get_document_categories()
             cat_key = cats["kind_map"].get(k, k)
             kind_cats.append({
@@ -2592,8 +2612,7 @@ async def kb_create_with_ai(request: Request):
     if not prompt:
         raise HTTPException(status_code=400, detail="prompt_required")
     try:
-        from core.api.core_facade import 
-from core.api.facades.service_facade import llm_generate
+        from core.api.facades.service_facade import llm_generate
         from core.harness.utils.prompt_loader import _async_prompt_resolve
         sp = await _async_prompt_resolve("kb-doc-writer", title=title, prompt=prompt)
         resp = await llm_generate(None, [
@@ -2722,6 +2741,91 @@ def _auto_archive_docs(tenant_id: str) -> None:
     except Exception:
         pass
 
+
+
+# ── Vault Routes ──
+
+def _resolve_vault_path(vault_id: str, tenant_id: str = "default") -> str:
+    from kb.db import KBSqlite
+    from kb.storage import get_tenant_storage
+    db = KBSqlite(get_tenant_storage(tenant_id).db_path)
+    vault = db.get_vault(tenant_id=tenant_id, vault_id=vault_id)
+    if not vault:
+        raise HTTPException(status_code=404, detail=f"Vault '{vault_id}' not found")
+    return vault["vault_path"]
+
+
+@app.get("/platform/kb/vault/list")
+async def vault_list(tenant_id: str = "default"):
+    from kb.service import vault_list
+    return {"vaults": vault_list(tenant_id=tenant_id)}
+
+
+@app.post("/platform/kb/vault/connect")
+async def vault_connect(body: dict):
+    from kb.service import vault_connect
+    return vault_connect(tenant_id=body.get("tenant_id", "default"), vault_path=body["path"],
+                         label=body.get("label", ""), auto_index=body.get("auto_index", True))
+
+
+@app.post("/platform/kb/vault/disconnect")
+async def vault_disconnect(body: dict):
+    from kb.service import vault_disconnect
+    return vault_disconnect(tenant_id=body.get("tenant_id", "default"), vault_id=body["vault_id"])
+
+
+@app.get("/platform/kb/vault/{vault_id}/tree")
+async def vault_tree(vault_id: str, subdir: str = "", max_depth: int = 3):
+    from kb.service import vault_tree
+    return vault_tree(vault_path=_resolve_vault_path(vault_id), subdir=subdir,
+                      max_depth=max_depth, vault_id=vault_id)
+
+
+@app.get("/platform/kb/vault/{vault_id}/read")
+async def vault_read_file(vault_id: str, path: str):
+    """Read a single vault file's content + frontmatter."""
+    from kb.service import vault_read
+    return vault_read(file_path=path)
+
+
+@app.get("/platform/kb/vault/{vault_id}/index/status")
+async def vault_index_status(vault_id: str, tenant_id: str = "default"):
+    from kb.service import vault_index_status
+    return vault_index_status(tenant_id=tenant_id, vault_id=vault_id)
+
+
+@app.post("/platform/kb/vault/{vault_id}/index/start")
+async def vault_index_start(vault_id: str, tenant_id: str = "default", collection_id: str = "default"):
+    from kb.service import vault_start_indexer
+    return vault_start_indexer(vault_path=_resolve_vault_path(vault_id), tenant_id=tenant_id,
+                               collection_id=collection_id)
+
+
+@app.post("/platform/kb/vault/{vault_id}/index/stop")
+async def vault_index_stop(vault_id: str, tenant_id: str = "default"):
+    from kb.service import vault_stop_indexer
+    return vault_stop_indexer(tenant_id=tenant_id, vault_id=vault_id)
+
+
+@app.post("/platform/kb/vault/wiki")
+async def vault_send_to_wiki(body: dict):
+    from kb.service import vault_to_wiki
+    return await vault_to_wiki(file_path=body["file_path"],
+                               collection_id=body.get("collection_id", ""),
+                               vault_id=body.get("vault_id", ""),
+                               tenant_id=body.get("tenant_id", "default"))
+
+
+@app.get("/platform/kb/vault/wiki/backlinks")
+async def vault_wiki_backlinks(doc_id: str):
+    from core.harness.knowledge.wiki_engine import search_pages
+    pages = search_pages(limit=1000)
+    backlinks = []
+    for p in pages:
+        if any(f"kb:{doc_id}" in str(s) for s in (p.get("source_articles") or [])):
+            backlinks.append({"title": p["title"], "category": p.get("category", ""),
+                              "summary": p.get("summary", "")[:100]})
+    return {"pages": backlinks, "total": len(backlinks)}
 
 if __name__ == "__main__":
     import uvicorn

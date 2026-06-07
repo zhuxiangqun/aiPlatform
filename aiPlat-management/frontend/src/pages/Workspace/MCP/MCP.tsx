@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Badge, Table, Switch, Button, Modal, toast } from '../../../components/ui';
 import { useWorkspaceMcpStore } from '../../../stores';
 import type { McpServer } from '../../../services';
-import { workspaceMcpApi } from '../../../services';
+import { workspaceMcpApi, mcpApi } from '../../../services';
 import { ExecutionViewer } from '../../../components/ExecutionViewer';
 import AddMcpModal from '../../../components/workspace/AddMcpModal';
 import EditMcpModal from '../../../components/workspace/EditMcpModal';
@@ -29,9 +29,23 @@ const WorkspaceMCP: React.FC = () => {
   const [templateName, setTemplateName] = useState('');
   const [templateId, setTemplateId] = useState('');
   const [templateCreating, setTemplateCreating] = useState(false);
+  const [signing, setSigning] = useState(false);
+  const [signKey, setSignKey] = useState('');
+  const [signResult, setSignResult] = useState<string | null>(null);
+  const [seedsModalOpen, setSeedsModalOpen] = useState(false);
+  const [seeds, setSeeds] = useState<any[]>([]);
+  const [seedsLoading, setSeedsLoading] = useState(false);
   const [testRunId, setTestRunId] = useState('');
   const [testServerName, setTestServerName] = useState('');
   const [testModal, setTestModal] = useState(false);
+
+  // Test config panel state
+  const [testConfigOpen, setTestConfigOpen] = useState(false);
+  const [testToolName, setTestToolName] = useState('');
+  const [testToolArgs, setTestToolArgs] = useState('{}');
+  const [testAllowedTools, setTestAllowedTools] = useState<string[]>([]);
+  const [testToolSchemas, setTestToolSchemas] = useState<Record<string, any>>({});
+  const [testToolParams, setTestToolParams] = useState<Record<string, any>>({});
 
   useEffect(() => {
     fetchServers();
@@ -47,12 +61,47 @@ const WorkspaceMCP: React.FC = () => {
     }
   };
 
+  const handleSign = async () => {
+    if (!detailModal.server?.name || !signKey.trim()) return;
+    setSigning(true);
+    setSignResult(null);
+    try {
+      const res = await mcpApi.signServer(detailModal.server.name, { private_key: signKey.trim() });
+      setSignResult(res.signature);
+      toast.success('MCP 签名成功');
+      setSignKey('');
+    } catch (e: any) {
+      toastGateError(e, '签名失败');
+      setSignResult(null);
+    } finally {
+      setSigning(false);
+    }
+  };
+
+  const loadSeeds = async () => {
+    setSeedsLoading(true);
+    try {
+      const r = await mcpApi.listSeeds();
+      setSeeds(r.seeds || []);
+    } catch { setSeeds([]); }
+    finally { setSeedsLoading(false); }
+  };
+
+  const installSeed = async (seedId: string) => {
+    try {
+      await mcpApi.installSeed(seedId);
+      toast.success(`已安装：${seedId}`);
+      await loadSeeds();
+      fetchServers();
+    } catch (e: any) { toast.error('安装失败', e?.message || String(e)); }
+  };
+
   const handleToggle = async (s: McpServer) => {
     try {
       await setServerEnabled(s.name, !s.enabled);
       toast.success(!s.enabled ? '已启用' : '已禁用');
     } catch (e: any) {
-      toastGateError(e);
+      toastGateError(e, '操作失败');
     }
   };
 
@@ -68,22 +117,67 @@ const WorkspaceMCP: React.FC = () => {
 
   const handleTest = async (s: McpServer) => {
     if (!s.enabled) { toast.error('请先启用 MCP 再进行测试'); return; }
+    setTestServerName(s.name);
+    const allowed = s.allowed_tools || [];
+    setTestAllowedTools(allowed);
+    setTestToolName(allowed.length > 0 ? allowed[0] : '');
+    setTestToolArgs('{}');
+    setTestToolParams({});
+    setTestToolSchemas({});
+
+    // Fetch tool schemas: internal via discover, external via MCP tools/list
+    if (s.source === 'internal') {
+      try {
+        const r = await fetch('/api/core/workspace/tools/discover', { method: 'POST' });
+        const data = await r.json();
+        const schemas: Record<string, any> = {};
+        for (const t of data.tools || []) { schemas[t.name] = t.parameters || {}; }
+        setTestToolSchemas(schemas);
+      } catch { }
+    } else {
+      try {
+        const r = await fetch(`/api/core/workspace/mcp/servers/${s.name}/tools?timeout_seconds=10`);
+        const data = await r.json();
+        const schemas: Record<string, any> = {};
+        for (const t of data.tools || []) { schemas[t.name] = t.inputSchema || {}; }
+        setTestToolSchemas(schemas);
+      } catch { }
+    }
+    setTestConfigOpen(true);
+  };
+
+  const handleStartTest = async () => {
+    const srvName = testServerName;
+    if (!srvName) return;
+    setTestConfigOpen(false);
+    setTestModal(true);
+    setTestRunId('');
+    // Use schema-based params if available, otherwise JSON textarea
+    const schema = testToolSchemas[testToolName];
+    let args: any;
+    if (schema?.properties && Object.keys(schema.properties).length > 0) {
+      args = testToolParams;
+    } else {
+      try { args = JSON.parse(testToolArgs); } catch { args = {}; }
+    }
     try {
-      const res = await fetch(`/api/core/workspace/mcp/servers/${s.name}/test-invoke`, {
+      const body: any = {};
+      if (testToolName.trim()) body.tool = testToolName.trim();
+      if (Object.keys(args).length > 0) body.arguments = args;
+      const res = await fetch(`/api/core/workspace/mcp/servers/${srvName}/test-invoke`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) {
-        toast.error(`${s.name}: ${data.detail || data.message || `HTTP ${res.status}`}`);
+        toast.error(`${srvName}: ${data.detail || data.message || `HTTP ${res.status}`}`);
+        setTestModal(false);
         return;
       }
-      // Open ExecutionViewer live mode
       setTestRunId(data.run_id);
-      setTestServerName(s.name);
-      setTestModal(true);
     } catch (e: any) {
       toast.error(`测试请求失败: ${e?.message || ''}`);
+      setTestModal(false);
     }
   };
 
@@ -107,7 +201,7 @@ const WorkspaceMCP: React.FC = () => {
           name: s.name,
           version: '0.1.0',
           description: (s.metadata as any)?.description || '',
-          resources: [{ kind: 'mcp', id: s.name }],
+          resources: [{ kind: 'mcp', id: (s as any).id || s.name }],
         }),
       });
       if (!res.ok) { toast.error('导出失败'); return; }
@@ -157,7 +251,20 @@ const WorkspaceMCP: React.FC = () => {
         </button>
       ),
     },
-    { title: 'Transport', dataIndex: 'transport', key: 'transport', width: 100, render: (v: string) => <span className="text-gray-400">{v || '-'}</span> },
+    { title: 'Transport', dataIndex: 'transport', key: 'transport', width: 80, render: (v: string) => <span className="text-gray-400 text-xs">{v || '-'}</span> },
+    {
+      title: '来源', key: 'source', width: 70, align: 'center' as const,
+      render: (_: unknown, record: McpServer) => {
+        const isInternal = record.source === 'internal';
+        return (
+          <span className={`inline-flex px-1.5 py-0.5 rounded text-xs font-medium ${
+            isInternal ? 'bg-blue-500/15 text-blue-300 border border-blue-500/25' : 'bg-dark-hover text-gray-400 border border-dark-border'
+          }`}>
+            {isInternal ? '内部' : '外部'}
+          </span>
+        );
+      },
+    },
     {
       title: '描述',
       key: 'description',
@@ -179,6 +286,17 @@ const WorkspaceMCP: React.FC = () => {
         const labels: Record<string, string> = { draft: '草稿', ready: '待审核', published: '已发布', listed: '已上架', deprecated: '已废弃' };
         const colors: Record<string, string> = { draft: '#888', ready: '#f59e0b', published: '#3b82f6', listed: '#10b981', deprecated: '#6b7280' };
         return <span className="text-xs" style={{ color: colors[s] || '#888' }}>{labels[s] || s || '-'}</span>;
+      },
+    },
+    {
+      title: '治理',
+      key: 'governance',
+      width: 90,
+      render: (_: unknown, record: McpServer) => {
+        const prov: any = (record as any)?.provenance || {};
+        if (prov?.signature_verified) return <span className="text-xs text-green-400">已验签</span>;
+        if (prov?.signature) return <span className="text-xs text-blue-400">已签名</span>;
+        return <span className="text-xs text-gray-500">未签名</span>;
       },
     },
     {
@@ -271,7 +389,10 @@ const WorkspaceMCP: React.FC = () => {
           <Button variant="primary" icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>
             新增
           </Button>
-          <Button variant="outline" size="sm" icon={<Zap className="w-4 h-4" />} onClick={() => setTemplateModal(true)}>
+          <Button variant="secondary" icon={<Upload className="w-4 h-4" />} onClick={() => { loadSeeds(); setSeedsModalOpen(true); }}>
+            从模板安装
+          </Button>
+          <Button variant="secondary" size="sm" icon={<Zap className="w-4 h-4" />} onClick={() => setTemplateModal(true)}>
             从模板创建
           </Button>
           <Button icon={<RotateCw className="w-4 h-4" />} onClick={fetchServers} loading={loading}>
@@ -281,6 +402,20 @@ const WorkspaceMCP: React.FC = () => {
       </div>
 
       <ImportBar assetType="mcps" alsoScan={['agents', 'skills']} onImported={() => fetchServers()} />
+
+      <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+        <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+          <div><span className="text-gray-300">名称</span><span className="ml-2 text-gray-600">MCP Server 名称，点击查看详情</span></div>
+          <div><span className="text-gray-300">Transport</span><span className="ml-2 text-gray-600">传输方式：stdio / sse / http</span></div>
+          <div><span className="text-gray-300">来源</span><span className="ml-2 text-gray-600"><span className="text-blue-300">内部</span> 本地工作台工具 · <span className="text-gray-300">外部</span> 第三方 MCP Server</span></div>
+          <div><span className="text-gray-300">描述</span><span className="ml-2 text-gray-600">metadata.description，功能说明</span></div>
+          <div><span className="text-gray-300">上架状态</span><span className="ml-2 text-gray-600"><span className="text-gray-400">draft</span> 开发中 · <span className="text-yellow-400">ready</span> 待审 · <span className="text-blue-400">published</span> 已发布 · <span className="text-green-400">listed</span> 上架 · <span className="text-red-400">deprecated</span> 废弃</span></div>
+          <div><span className="text-gray-300">启用</span><span className="ml-2 text-gray-600">开关控制 MCP Server 是否可用。禁用后不可调用</span></div>
+          <div><span className="text-gray-300">allowed_tools</span><span className="ml-2 text-gray-600">该 MCP Server 提供的工具数量</span></div>
+          <div><span className="text-gray-300">操作</span><span className="ml-2 text-gray-600">测试/详情/编辑/审批/删除/导出</span></div>
+        </div>
+      </details>
 
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-dark-card rounded-xl border border-dark-border overflow-hidden">
         <Table columns={columns} data={servers} rowKey="name" loading={loading} emptyText="暂无 MCP Server" />
@@ -304,6 +439,33 @@ const WorkspaceMCP: React.FC = () => {
                 </Button>
               )}
             </div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 mb-1">签名</div>
+            {signResult ? (
+              <div className="flex items-center gap-2 text-green-400 text-xs">
+                <ShieldCheck size={14} />
+                <span className="font-mono">{signResult.slice(0, 16)}...</span>
+                <button onClick={() => setSignResult(null)} className="text-gray-500 hover:text-gray-300 ml-2">重新签名</button>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2">
+                <textarea
+                  className="flex-1 h-14 px-3 py-2 bg-dark-hover border border-dark-border rounded text-xs text-gray-200 placeholder-gray-500 font-mono resize-none"
+                  placeholder="粘贴 Ed25519 私钥 PEM"
+                  value={signKey}
+                  onChange={(e) => setSignKey(e.target.value)}
+                />
+                <div className="flex flex-col gap-1">
+                  <Button variant="primary" size="sm" onClick={handleSign} loading={signing} disabled={!signKey.trim() || signing}>
+                    签名
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => { try { window.open('/onboarding', '_blank', 'noopener,noreferrer'); } catch {} }}>
+                    生成密钥
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
           <div>
             <div className="text-xs text-gray-500">原始 metadata</div>
@@ -389,20 +551,163 @@ const WorkspaceMCP: React.FC = () => {
         </div>
       </Modal>
 
+      {/* Test Config Panel */}
+      <Modal
+        open={testConfigOpen}
+        onClose={() => setTestConfigOpen(false)}
+        title={`测试 MCP: ${testServerName}`}
+        width={500}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setTestConfigOpen(false)}>取消</Button>
+            <Button variant="primary" onClick={handleStartTest}>开始测试</Button>
+          </>
+        }
+      >
+        <div className="space-y-4 text-sm text-gray-300">
+          {testAllowedTools.length > 0 ? (
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">调用工具</label>
+              <select
+                value={testToolName}
+                onChange={(e) => { setTestToolName(e.target.value); setTestToolParams({}); }}
+                className="w-full h-10 px-3 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-200"
+              >
+                {testAllowedTools.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">调用工具</label>
+              <input
+                className="w-full h-10 px-3 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-200 placeholder-gray-500"
+                value={testToolName}
+                onChange={(e) => setTestToolName(e.target.value)}
+                placeholder="输入工具名称（留空则默认第一个）"
+              />
+            </div>
+          )}
+
+          {/* Schema-based fields or JSON fallback */}
+          {(() => {
+            const schema = testToolSchemas[testToolName];
+            const props = schema?.properties;
+            const required: string[] = schema?.required || [];
+
+            if (props && Object.keys(props).length > 0) {
+              return (
+                <div className="space-y-3">
+                  <label className="block text-xs text-gray-400">参数</label>
+                  {Object.entries(props as Record<string, any>).map(([name, spec]: [string, any]) => {
+                    const isRequired = required.includes(name);
+                    const fieldType = spec.type || 'string';
+                    const label = `${name}${isRequired ? ' *' : ''}`;
+                    if (fieldType === 'integer' || fieldType === 'number') {
+                      return (
+                        <div key={name}>
+                          <div className="text-xs text-gray-400 mb-1">{label}</div>
+                          <input
+                            type="number"
+                            className="w-full h-10 px-3 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-200"
+                            value={testToolParams[name] ?? ''}
+                            onChange={(e) => setTestToolParams(p => ({ ...p, [name]: e.target.value === '' ? '' : Number(e.target.value) }))}
+                            placeholder={spec.description || `输入 ${name}`}
+                          />
+                          {spec.description && <div className="text-xs text-gray-500 mt-0.5">{spec.description}</div>}
+                        </div>
+                      );
+                    }
+                    return (
+                      <div key={name}>
+                        <div className="text-xs text-gray-400 mb-1">{label}</div>
+                        <input
+                          className="w-full h-10 px-3 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-200"
+                          value={testToolParams[name] ?? ''}
+                          onChange={(e) => setTestToolParams(p => ({ ...p, [name]: e.target.value }))}
+                          placeholder={spec.description || `输入 ${name}`}
+                        />
+                        {spec.description && <div className="text-xs text-gray-500 mt-0.5">{spec.description}</div>}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            }
+
+            // Fallback: JSON textarea
+            return (
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">参数（JSON）</label>
+                <textarea
+                  className="w-full h-24 px-3 py-2 bg-dark-hover border border-dark-border rounded text-xs text-gray-200 placeholder-gray-500 font-mono resize-none"
+                  value={testToolArgs}
+                  onChange={(e) => setTestToolArgs(e.target.value)}
+                  placeholder='{"num": 5}'
+                />
+                <p className="text-xs text-gray-500 mt-1">留空或 `{}` 表示不传参数</p>
+              </div>
+            );
+          })()}
+        </div>
+      </Modal>
+
       {/* Test Execution Viewer Modal */}
       <Modal
         open={testModal}
-        onClose={() => setTestModal(false)}
+        onClose={() => { setTestModal(false); setTestRunId(''); }}
         title={`测试 MCP: ${testServerName}`}
         width={900}
-        footer={<Button onClick={() => setTestModal(false)}>关闭</Button>}
+        footer={<Button onClick={() => { setTestModal(false); setTestRunId(''); }}>关闭</Button>}
       >
-        <ExecutionViewer
-          title={testServerName}
-          live
-          runId={testRunId}
-          height={420}
-        />
+        {testRunId ? (
+          <ExecutionViewer
+            title={testServerName}
+            live
+            runId={testRunId}
+            height={420}
+          />
+        ) : (
+          <div className="text-sm text-gray-400 text-center py-8">正在启动测试...</div>
+        )}
+      </Modal>
+
+      <Modal
+        open={seedsModalOpen}
+        onClose={() => setSeedsModalOpen(false)}
+        title="从模板安装 MCP"
+        width={600}
+        footer={<Button onClick={() => setSeedsModalOpen(false)}>关闭</Button>}
+      >
+        <div className="space-y-3 text-sm text-gray-300">
+          <p className="text-xs text-gray-500">选择一个模板安装到 workspace。安装后可自由编辑配置。</p>
+          {seedsLoading ? (
+            <div className="text-gray-500 text-center py-4">加载中...</div>
+          ) : seeds.length === 0 ? (
+            <div className="text-gray-500 text-center py-4">
+              暂无可用模板
+              <div className="text-[10px] text-gray-600 mt-1">将 server.yaml + policy.yaml 放入 aiPlat-core/core/workspace_seeds/mcps/&lt;id&gt;/ 即可作为模板</div>
+            </div>
+          ) : (
+            seeds.map((s: any) => (
+              <div key={s.id} className="flex items-center justify-between p-3 rounded border border-dark-border bg-dark-bg">
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium text-gray-200">{s.name}</div>
+                  <div className="text-xs text-gray-500 mt-0.5">{s.description || s.id}</div>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-dark-hover text-gray-400 mt-1 inline-block">
+                    {s.transport || 'sse'}
+                  </span>
+                </div>
+                {s.installed ? (
+                  <span className="text-xs text-green-400 ml-3">已安装</span>
+                ) : (
+                  <Button variant="primary" size="sm" onClick={() => installSeed(s.id)}>安装</Button>
+                )}
+              </div>
+            ))
+          )}
+        </div>
       </Modal>
     </div>
   );

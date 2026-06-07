@@ -13,6 +13,7 @@ import asyncio
 import json
 import logging
 import os
+import sys
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
@@ -33,8 +34,10 @@ class McpClient:
 
     async def start(self) -> bool:
         try:
+            # All MCP servers share the same Python as the server (.venv)
+            command = sys.executable if self._command == "python3" else self._command
             self._process = await asyncio.create_subprocess_exec(
-                self._command, *self._args,
+                command, *self._args,
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,

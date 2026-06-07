@@ -150,6 +150,15 @@ async def set_trusted_skill_keys(request: Request, body: Dict[str, Any]) -> Dict
     return await core_client.set_trusted_skill_keys(b)
 
 
+@router.post("/generate-skill-key")
+async def generate_skill_key(request: Request, body: Dict[str, Any] = None) -> Dict[str, Any]:
+    """Generate an Ed25519 key pair for skill/agent/MCP signing."""
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="core_client not initialized")
+    return await core_client.generate_skill_key(body or {})
+
+
 @router.post("/llm-adapter")
 async def configure_llm_adapter(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
     """

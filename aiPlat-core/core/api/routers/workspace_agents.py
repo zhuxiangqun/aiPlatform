@@ -1,18 +1,22 @@
 from __future__ import annotations
 
+import json
 import logging
 import os
+import tempfile
 import time
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Annotated, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse
 
 from core.api.deps import actor_from_http, rbac_guard
 from core.api.utils.governance import gate_error_envelope, ui_url
 from core.harness.integration import KernelRuntime
 from core.harness.kernel.runtime import get_kernel_runtime
+from core.harness.syscalls.llm import sys_llm_generate
 from core.schemas_agents import AgentCreateRequest, AgentUpdateRequest, AgentAutoFillRequest, AgentAutoFillResponse, RoleDefinitionResponse
 
 router = APIRouter()
@@ -142,6 +146,8 @@ async def list_workspace_agents(
         return {"agents": [], "total": 0, "limit": limit, "offset": offset}
     tag_list = [t.strip() for t in tags.split(",")] if tags else None
     agents = await mgr.list_agents(agent_type, status, category, tag_list, limit, offset)
+    # Filter out engine agents (reserved IDs) — workspace page should only show workspace agents
+    agents = [a for a in agents if a.id not in (mgr._reserved_ids or set())]
     return {
         "agents": [
             {"id": a.id, "name": a.name,
@@ -152,8 +158,10 @@ async def list_workspace_agents(
              "is_shell": _detect_shell_agent(a),
              "category": a.category, "tags": a.tags, "phase": a.phase,
              "output_artifact": a.metadata.get("output_artifact", ""),
-             "config": a.config,
-             "skills": a.skills, "tools": a.tools, "metadata": a.metadata}
+              "config": a.config,
+              "skills": a.skills, "tools": a.tools,
+              "workflow_ids": a.workflow_ids, "agent_ids": a.agent_ids,
+              "metadata": a.metadata}
             for a in agents
         ],
         "total": mgr.get_agent_count().get("total", 0),
@@ -251,7 +259,7 @@ async def generate_role_definition(req: AgentAutoFillRequest) -> RoleDefinitionR
             {"role": "system", "content": await _async_prompt_resolve("agent-role-system")},
             {"role": "user", "content": prompt},
         ]
-        resp = await model.generate(messages, config=None)
+        resp = await sys_llm_generate(model, messages)
         content = resp.content if hasattr(resp, 'content') else str(resp)
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"LLM unavailable: {e}")
@@ -432,7 +440,7 @@ async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
             {"role": "system", "content": "你是一个 AI Agent 配置专家。只输出 JSON，不要加任何解释或 markdown 标记。"},
             {"role": "user", "content": prompt},
         ]
-        resp = await model.generate(messages, config=None)
+        resp = await sys_llm_generate(model, messages)
         content = resp.content if hasattr(resp, 'content') else str(resp)
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"LLM unavailable: {e}")
@@ -509,7 +517,7 @@ async def agent_auto_fill_batch(req: "AgentAutoFillBatchRequest") -> "AgentAutoF
             {"role": "system", "content": await _async_prompt_resolve("agent-role-system")},
             {"role": "user", "content": prompt},
         ]
-        resp = await model.generate(messages, config=None)
+        resp = await sys_llm_generate(model, messages)
         content = resp.content if hasattr(resp, 'content') else str(resp)
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"LLM unavailable: {e}")
@@ -675,6 +683,9 @@ async def get_workspace_agent(agent_id: str, rt: RuntimeDep = None):
         "config": agent.config,
         "skills": agent.skills,
         "tools": agent.tools,
+        "mcp_ids": agent.mcp_ids,
+        "workflow_ids": agent.workflow_ids,
+        "agent_ids": agent.agent_ids,
         "memory_config": agent.memory_config,
         "metadata": agent.metadata,
     }
@@ -1112,6 +1123,84 @@ async def execute_workspace_agent(agent_id: str, request: dict, http_request: Re
     return JSONResponse(status_code=200 if resp.get("ok") else 500, content=resp)
 
 
+@router.post("/workspace/agents/{agent_id}/sign")
+async def sign_workspace_agent(agent_id: str, request: Dict[str, Any], http_request: Request = None, rt: RuntimeDep = None):
+    """
+    Sign an agent with an Ed25519 private key, writing the signature to
+    AGENT.manifest.json and updating provenance metadata.
+
+    Body: { "private_key": "-----BEGIN PRIVATE KEY-----..." }
+    """
+    mgr = _ws_agent_mgr(rt)
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+
+    if http_request is not None:
+        deny = await rbac_guard(http_request=http_request, payload={}, action="sign", resource_type="agent", resource_id=str(agent_id))
+        if deny:
+            return deny
+
+    private_key = str(request.get("private_key") or "").strip()
+    private_key = private_key.replace("\\n", "\n")  # normalize escaped newlines from frontend
+    if not private_key:
+        raise HTTPException(status_code=400, detail="private_key is required")
+
+    agent = await mgr.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+    try:
+        from core.harness.infrastructure.crypto.signature import sign_skill as sign_agent
+
+        agent_dir = Path(agent.metadata.get("filesystem", {}).get("agent_dir") or agent.metadata.get("provenance", {}).get("agent_dir") or "")
+        if not agent_dir or not agent_dir.exists():
+            raise HTTPException(status_code=500, detail="Agent directory not found")
+
+        # Ensure integrity is computed
+        mgr._enrich_agent_provenance_and_integrity(agent.metadata, agent_dir=agent_dir)
+        integ = agent.metadata.get("integrity", {})
+        bundle_sha256 = integ.get("bundle_sha256", "")
+        if not bundle_sha256:
+            raise HTTPException(status_code=500, detail="Could not compute bundle_sha256")
+
+        version = str(getattr(agent, "version", "0.1.0") or "0.1.0")
+
+        signature = sign_agent(
+            private_key=private_key,
+            skill_id=agent_id,  # reuses the same canonical payload format
+            version=version,
+            bundle_sha256=bundle_sha256,
+        )
+
+        # Write AGENT.manifest.json with the signature
+        manifest_path = agent_dir / "AGENT.manifest.json"
+        manifest = {}
+        if manifest_path.exists():
+            try:
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+        manifest["signature"] = signature
+        manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
+
+        # Re-enrich provenance to pick up the new signature from the manifest
+        mgr._enrich_agent_provenance_and_integrity(agent.metadata, agent_dir=agent_dir)
+
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid private key: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Signing failed: {str(e)}")
+
+    return {
+        "status": "signed",
+        "bundle_sha256": bundle_sha256,
+        "version": version,
+        "signature": signature,
+    }
+
+
 @router.post("/workspace/agents/{agent_id}/toggle-enabled")
 async def toggle_agent_enabled(agent_id: str, rt: RuntimeDep = None):
     mgr = _ws_agent_mgr(rt)
@@ -1121,6 +1210,124 @@ async def toggle_agent_enabled(agent_id: str, rt: RuntimeDep = None):
     if result is None:
         raise HTTPException(status_code=404, detail="agent not found")
     return {"agent_id": agent_id, "enabled": result}
+
+
+@router.post("/workspace/agents/{agent_id}/enable")
+async def enable_workspace_agent(agent_id: str, http_request: Request = None, rt: RuntimeDep = None):
+    """
+    Enable an agent with governance gates: autosmoke + signature verification + approval.
+
+    On success, the agent is enabled and ready for execution.
+    """
+    mgr = _ws_agent_mgr(rt)
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+
+    if http_request is not None:
+        deny = await rbac_guard(http_request=http_request, payload={}, action="enable", resource_type="agent", resource_id=str(agent_id))
+        if deny:
+            return deny
+
+    agent = await mgr.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+    if agent.status == "deprecated":
+        raise HTTPException(status_code=409, detail="Deprecated agent cannot be enabled — use restore first")
+
+    store = _store(rt)
+    from core.governance.gating import gate_with_change_control, autosmoke_enforce, require_targets_verified
+
+    # 1. Autosmoke + change control gate
+    if store:
+        autosmoke_enforce(rt)
+        change_id = await gate_with_change_control(
+            store=store,
+            operation=f"{mgr._scope}.agent.enable",
+            user_id="admin",
+            target_type="agent",
+            target_id=agent_id,
+        )
+        await require_targets_verified(store=store, target_type="agent", targets=[agent_id])
+    else:
+        change_id = None
+
+    # 2. Signature verification gate
+    approval_request_id = None
+    try:
+        from core.security.skill_signature_gate import get_trusted_skill_pubkeys_map, signature_gate_eval
+
+        trusted = await get_trusted_skill_pubkeys_map(store) if store else {}
+        prov2 = mgr.compute_agent_signature_verification(agent, trusted) if hasattr(mgr, "compute_agent_signature_verification") else {}
+
+        gate = signature_gate_eval(
+            metadata=agent.metadata,
+            trusted_keys_count=len(trusted),
+        )
+        if gate.get("required") is True:
+            from core.security.skill_signature_gate import require_skill_signature_gate_approval, is_approval_resolved_approved
+            approval_request_id = await require_skill_signature_gate_approval(
+                skill_id=agent_id,
+                verified=prov2.get("signature_verified", False),
+                reason=prov2.get("signature_verified_reason") or gate.get("reason", ""),
+                key_id=prov2.get("signature_verified_key_id", ""),
+                user_id="admin",
+                details=f"enable workspace agent {agent_id}",
+            )
+            approved = await is_approval_resolved_approved(approval_request_id)
+            if not approved:
+                raise HTTPException(
+                    status_code=409,
+                    detail=gate_error_envelope(
+                        code="not_approved",
+                        message="Agent signature verification requires approval",
+                        approval_request_id=str(approval_request_id),
+                        next_actions=[{"type": "open_approvals", "label": "打开审批中心", "url": ui_url("/core/approvals"), "approval_request_id": str(approval_request_id)}],
+                    ),
+                )
+
+            if store:
+                try:
+                    from core.governance.changeset import record_changeset
+                    await record_changeset(
+                        store=store,
+                        name="enable_workspace_agent",
+                        target_type="agent",
+                        target_id=agent_id,
+                        status="approved",
+                        approval_request_id=approval_request_id,
+                        user_id="admin",
+                    )
+                except Exception:
+                    pass
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.warning(f"Agent enable signature gate error (non-blocking): {e}")
+
+    # 3. Actually enable
+    agent.enabled = True
+    agent.updated_at = datetime.now()
+
+    # Audit
+    if store:
+        try:
+            await store.add_audit_log(
+                action="enable_agent",
+                actor_id="admin",
+                target_type="agent",
+                target_id=agent_id,
+                status="ok",
+                metadata={"change_id": change_id, "approval_request_id": str(approval_request_id) if approval_request_id else None},
+            )
+        except Exception:
+            pass
+
+    return {
+        "status": "enabled",
+        "approval_request_id": str(approval_request_id) if approval_request_id else None,
+        "change_id": change_id,
+    }
 
 
 @router.get("/workspace/agents/{agent_id}/history")
@@ -1256,6 +1463,73 @@ async def workspace_agents_installer_resolve_head(request: dict, rt: RuntimeDep 
         return await mgr.installer_resolve_head(url=str(request.get("url", "")))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/workspace/agents/installer/upload-plan")
+async def workspace_agents_installer_upload_plan(
+    file: UploadFile = File(...),
+    subdir: str = Form(""),
+    asset_id: str = Form(""),
+    auto_detect_subdir: str = Form("true"),
+    rt: RuntimeDep = None,
+):
+    mgr = _ws_agent_mgr(rt)
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
+            tmp.write(await file.read())
+            tmp_path = tmp.name
+        plan = await mgr.installer_plan(
+            source_type="zip", path=tmp_path,
+            subdir=subdir or None, asset_id=asset_id or None,
+            auto_detect_subdir=auto_detect_subdir.lower() in ("true", "1", "yes"),
+        )
+        return {"status": "ok", **plan}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"upload_plan_failed: {e}")
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+@router.post("/workspace/agents/installer/upload-install")
+async def workspace_agents_installer_upload_install(
+    file: UploadFile = File(...),
+    subdir: str = Form(""),
+    asset_id: str = Form(""),
+    auto_detect_subdir: str = Form("true"),
+    allow_overwrite: str = Form("false"),
+    plan_id: str = Form(""),
+    http_request: Request = None,
+    rt: RuntimeDep = None,
+):
+    mgr = _ws_agent_mgr(rt)
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
+            tmp.write(await file.read())
+            tmp_path = tmp.name
+        result = await mgr.installer_install(
+            source_type="zip", path=tmp_path,
+            subdir=subdir or None, asset_id=asset_id or None,
+            auto_detect_subdir=auto_detect_subdir.lower() in ("true", "1", "yes"),
+            allow_overwrite=allow_overwrite.lower() in ("true", "1", "yes"),
+            confirm=True, plan_id=plan_id or None,
+        )
+        return {"status": "ok", **result}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"upload_install_failed: {e}")
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
 
 
 @router.post("/workspace/agents/{agent_id}/submit-for-review")
@@ -1416,3 +1690,76 @@ async def invoke_agent(agent_id: str, request: dict, http_request: Request, rt: 
         "status": resp.get("status", "completed"),
         "error": resp.get("error"),
     }
+
+
+@router.get("/workspace/agents/seeds")
+async def list_agent_seeds(rt: RuntimeDep = None):
+    """List available agent seed templates from workspace_seeds/agents/.
+    These are read-only templates that the user can optionally install.
+    """
+    from pathlib import Path as _P
+    import yaml as _yaml
+
+    seeds_dir = _P(__file__).resolve().parents[3] / "core" / "workspace_seeds" / "agents"
+    if not seeds_dir.exists():
+        return {"seeds": [], "total": 0}
+
+    seeds = []
+    for item in sorted(seeds_dir.iterdir()):
+        if not item.is_dir():
+            continue
+        agent_md = item / "AGENT.md"
+        if not agent_md.exists():
+            continue
+        try:
+            raw = agent_md.read_text(encoding="utf-8")
+            fm = {}
+            if raw.startswith("---"):
+                parts = raw.split("---", 2)
+                if len(parts) >= 3:
+                    fm = _yaml.safe_load(parts[1]) or {}
+            installed = (_P.home() / ".aiplat" / "agents" / item.name).exists()
+            seeds.append({
+                "id": item.name,
+                "name": str(fm.get("display_name") or fm.get("name") or item.name),
+                "description": str(fm.get("description") or ""),
+                "category": str(fm.get("category") or ""),
+                "tags": fm.get("tags") or [],
+                "installed": installed,
+            })
+        except Exception:
+            continue
+    return {"seeds": seeds, "total": len(seeds)}
+
+
+@router.post("/workspace/agents/seeds/{seed_id}/install")
+async def install_agent_seed(seed_id: str, rt: RuntimeDep = None):
+    """Install a workspace agent seed template into ~/.aiplat/agents/."""
+    import shutil as _shutil
+    from pathlib import Path as _P
+
+    seeds_dir = _P(__file__).resolve().parents[3] / "core" / "workspace_seeds" / "agents"
+    seed_dir = seeds_dir / seed_id
+    if not seed_dir.exists():
+        raise HTTPException(status_code=404, detail=f"Seed template '{seed_id}' not found")
+
+    workspace_dir = _P.home() / ".aiplat" / "agents"
+    dst = workspace_dir / seed_id
+    if dst.exists():
+        raise HTTPException(status_code=409, detail=f"Agent '{seed_id}' already installed")
+
+    try:
+        workspace_dir.mkdir(parents=True, exist_ok=True)
+        _shutil.copytree(seed_dir, dst)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to install seed: {str(e)}")
+
+    # Reload workspace agent manager so the new agent appears
+    mgr = _ws_agent_mgr(rt)
+    if mgr and hasattr(mgr, 'reload'):
+        try:
+            mgr.reload()
+        except Exception:
+            pass
+
+    return {"status": "installed", "id": seed_id}

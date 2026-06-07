@@ -7,6 +7,7 @@ import uuid
 
 from fastapi import APIRouter, HTTPException
 from core.harness.kernel.runtime import get_kernel_runtime
+from core.harness.syscalls.llm import sys_llm_generate
 from core.schemas_prompt_app import PromptTestCaseCreate, PromptTestCaseUpdate, PromptEvalRunCreate
 
 router = APIRouter()
@@ -218,7 +219,7 @@ async def _run_evaluation(run_id: str, req: PromptEvalRunCreate, case_rows, tpl,
                 if sp:
                     messages.append({"role": "system", "content": sp})
                 messages.append({"role": "user", "content": up})
-                resp = await model.generate(messages, config=None)
+                resp = await sys_llm_generate(model, messages)
                 output = resp.content if hasattr(resp, 'content') else str(resp)
 
                 # Simple scoring: compare with expected keys

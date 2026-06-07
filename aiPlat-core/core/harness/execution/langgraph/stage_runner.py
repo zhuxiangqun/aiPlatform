@@ -59,6 +59,16 @@ class StageRunner:
     @staticmethod
     def _load_global_skills(fallback: List[Any], filter_names: List[str] = None) -> List[Any]:
         try:
+            # Pre-filter: if active toolset disallows skills, return empty list
+            from core.harness.kernel.execution_context import get_active_workspace_context
+            from core.harness.tools.toolsets import resolve_toolset
+            ws = get_active_workspace_context()
+            active_t = getattr(ws, 'toolset', None) if ws else None
+            if active_t:
+                policy = resolve_toolset(str(active_t))
+                if not policy.skills_allowed:
+                    return []
+
             from core.harness.integration import _ensure_di
             from core.api.facades.skill_tool_facade import get_skill_registry as _import_skill_reg
             di = _ensure_di(); reg = di.resolve("SkillRegistry") if di else _import_skill_reg(); reg = reg() if callable(reg) else reg
@@ -75,7 +85,19 @@ class StageRunner:
             # DI: using harness-level tool registry resolver
             from core.harness.integration import _resolve_tool_registry; reg = _resolve_tool_registry()
             names = reg.list_tools()
-            return [reg.get(name) for name in names if reg.get(name) is not None]
+            tools = [reg.get(name) for name in names if reg.get(name) is not None]
+            # Pre-filter by active toolset to reduce selector computation
+            try:
+                from core.harness.kernel.execution_context import get_active_workspace_context
+                from core.harness.tools.toolsets import resolve_toolset, is_tool_allowed
+                ws = get_active_workspace_context()
+                active_t = getattr(ws, 'toolset', None) if ws else None
+                if active_t:
+                    policy = resolve_toolset(str(active_t))
+                    tools = [t for t in tools if is_tool_allowed(policy, getattr(t, 'name', ''))[0]]
+            except Exception:
+                pass
+            return tools
         except Exception:
             return fallback or []
 
@@ -133,11 +155,12 @@ class StageRunner:
                 "_run_id": str(state.get("_run_id", "")),
                 "_user_id": "system",
                 "_coding_policy_profile": "off",
-                "_agent_id": str(s.agent_id or s.id) if s else "",
+                "_agent_id": state.get("_agent_id") or (str(s.agent_id or s.id) if s else ""),
                 "_agent_namespace": str(s.agent_id or s.id) if s else "",
                 "_shared_state_board": state.get("_shared_state_board", []),
                 "_enable_query_rewrite": getattr(s, 'enable_query_rewrite', False) if s else False,
                 "_max_consecutive_llm_failures": getattr(s, 'max_consecutive_llm_failures', 3),
+                "_knowledge_bases": getattr(s, 'knowledge_bases', []) if s else [],
             },
         )
 
@@ -159,9 +182,10 @@ class StageRunner:
             except Exception:
                 pass
 
-        # Extract best output: prefer DONE output > observation > reasoning > action_result
+        # Extract best output: prefer reasoning (LLM output) > DONE output > observation > action_result
+        # reasoning is the actual LLM response; observation is often "No action to execute" filler.
         ctx = result.final_state.context
-        reasoning = ctx.get("output", "") or ctx.get("observation", "") or ctx.get("reasoning", "") or ctx.get("action_result", "")
+        reasoning = ctx.get("reasoning", "") or ctx.get("output", "") or ctx.get("observation", "") or ctx.get("action_result", "")
         step_count = int(getattr(result.final_state, "step_count", 0) or 0)
         tokens_used = int(getattr(result.final_state, "used_tokens", 0) or 0)
         if reasoning:

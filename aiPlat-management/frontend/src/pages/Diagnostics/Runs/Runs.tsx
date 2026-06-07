@@ -473,9 +473,20 @@ const Runs: React.FC = () => {
             key: 'events',
             label: 'Events',
             children: (
+              <>
+              <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+                <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+                <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+                  <div><span className="text-gray-300">seq</span><span className="ml-2 text-gray-600">事件序列号</span></div>
+                  <div><span className="text-gray-300">type</span><span className="ml-2 text-gray-600">事件类型（tool_start/tool_end/approval等）</span></div>
+                  <div><span className="text-gray-300">created_at</span><span className="ml-2 text-gray-600">事件创建时间</span></div>
+                  <div><span className="text-gray-300">payload</span><span className="ml-2 text-gray-600">事件载荷（JSON）</span></div>
+                </div>
+              </details>
               <div className="bg-dark-card rounded-xl border border-dark-border overflow-hidden">
                 <Table columns={columns as any} data={events} rowKey={(r: any) => String(r.seq)} loading={loading} emptyText="暂无 events" />
               </div>
+              </>
             ),
           },
           {

@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Button, Input, Modal, Select, Textarea, toast } from '../ui';
 import { diagnosticsApi } from '../../services';
+import ExecutionViewer from '../ExecutionViewer/ExecutionViewer';
 
 interface ParameterProperty {
   type?: string;
@@ -269,6 +270,11 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
                 </pre>
               )}
               {!result.output && renderError()}
+            </div>
+          )}
+          {(result as any)?.run_id && (
+            <div className="mt-4">
+              <ExecutionViewer runId={String((result as any).run_id)} live={true} title="Tool 执行流程" height={320} />
             </div>
           )}
         </div>

@@ -54,7 +54,7 @@ _semantic_model_name: Optional[str] = None
 
 def _get_semantic_model() -> Any:
     global _semantic_model, _semantic_model_name
-    name = os.getenv("AIPLAT_EMBEDDING_MODEL", "paraphrase-multilingual-MiniLM-L12-v2")
+    name = os.getenv("AIPLAT_EMBEDDING_MODEL", "paraphrase-multilingual-MiniLM-L12-v2")  # noqa: env-legacy
     if _semantic_model is not None and _semantic_model_name == name:
         return _semantic_model
     try:

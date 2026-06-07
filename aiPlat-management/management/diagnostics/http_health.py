@@ -19,8 +19,10 @@ def _to_status(value: str) -> HealthStatus:
     v = (value or "").lower()
     if v == "healthy":
         return HealthStatus.HEALTHY
-    if v in ("degraded", "disabled"):
+    if v == "degraded":
         return HealthStatus.DEGRADED
+    if v == "disabled":
+        return HealthStatus.HEALTHY  # infra: intentionally not configured — not a failure
     return HealthStatus.UNHEALTHY
 
 

@@ -133,6 +133,12 @@ class ResourcesManager(ManagementBase):
                     message=f"Some nodes are unhealthy: {healthy_count}/{len(self._nodes)} healthy",
                     details={"healthy_nodes": healthy_count, "total_nodes": len(self._nodes)}
                 )
+            elif status == Status.DISABLED:
+                return HealthStatus(
+                    status=status,
+                    message="Resource nodes not configured (disabled)",
+                    details={"nodes": 0}
+                )
             else:
                 return HealthStatus(
                     status=status,

@@ -1,23 +1,24 @@
 ---
 name: knowledge_ingest
 display_name: 知识库入库（文档）
-description: 多模态知识库入库：PDF/扫描件→渲染→OCR→预算表结构化→写入多租户 SQLite（MVP）。
+description: 多模态知识库入库：PDF/扫描件→渲染→OCR→表格结构化→导出到多租户SQLite。支持FTS5索引。涉及PDF相关操作。 主要进行导入。
 category: knowledge
 version: 0.1.0
 status: enabled
 execution_mode: prompt
 permissions:
-  - kb:write
+- kb:write
 effects:
-  - type: read
-    resources: ["filesystem:~/.aiplat"]
-    idempotent: true
-    rollback_available: false
+- type: read
+  resources:
+  - filesystem:~/.aiplat
+  idempotent: true
+  rollback_available: false
 triggers:
-  - 入库文档
-  - 上传到知识库
-  - 解析PDF并索引
-  - 扫描件OCR入库
+- 入库文档
+- 上传到知识库
+- 解析PDF并索引
+- 扫描件OCR入库
 input_schema:
   type: object
   properties:
@@ -57,21 +58,55 @@ input_schema:
     chunk_overlap:
       type: integer
       description: 相邻块重叠字符数（默认 50，保留上下文衔接）
-  required: [file_path]
+  required:
+  - file_path
 output_schema:
   type: object
   properties:
-    tenant_id: {type: string}
-    collection_id: {type: string}
-    doc_id: {type: string}
-    pages: {type: integer}
-    budget_rows: {type: integer}
+    tenant_id:
+      type: string
+    collection_id:
+      type: string
+    doc_id:
+      type: string
+    pages:
+      type: integer
+    budget_rows:
+      type: integer
     budget_pages:
       type: array
-      items: {type: integer}
-    assets_dir: {type: string}
+      items:
+        type: integer
+    assets_dir:
+      type: string
   markdown:
     type: string
+    required: true
+    description: 面向人阅读的 Markdown 输出
+metadata:
+  trigger_conditions:
+  - 导入文档
+  - 知识入库
+  - 文档上传
+  - 资料导入
+  - 文档入库
+  - 上传文档
+  - 导入PDF
+  - 文档处理
+  keywords:
+    objects:
+    - 文档
+    - PDF
+    - 知识库
+    actions:
+    - 导入
+    - 入库
+    - 转换
+    - 索引
+  negative_triggers:
+  - 不需要特定的编程语言知识
+  - 不要猜测或编造不存在的数据
+  sop_goal: 将多模态文档结构化为知识库条目
 ---
 
 # 知识库入库（文档）
@@ -93,3 +128,10 @@ output_schema:
 ## Tool
 - `kb_ingest`: KBIngestTool (core/apps/tools/kb_tools.py)
 
+## 目标
+将多模态文档结构化为知识库条目
+
+## Checklist
+- [ ] 输出格式符合规范
+- [ ] 正确处理错误和边界条件
+- [ ] 返回结果包含引用和来源标注

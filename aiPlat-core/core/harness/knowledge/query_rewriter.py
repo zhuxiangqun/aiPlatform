@@ -20,6 +20,7 @@ _ANAPHORA = re.compile(
 
 
 def needs_rewrite(query: str, history: List[dict]) -> bool:
+    """DEPRECATED: unused in production. Use rewrite_with_history() instead."""
     if not _ANAPHORA.search(query or ""):
         return False
     if len(query or "") > 30:
@@ -28,7 +29,8 @@ def needs_rewrite(query: str, history: List[dict]) -> bool:
 
 
 async def rewrite(query: str, history: List[dict], model) -> str:
-    """Rewrite anaphoric follow-up into standalone query (single-shot LLM call)."""
+    """DEPRECATED: unused in production. Use rewrite_with_history() instead.
+    Rewrite anaphoric follow-up into standalone query (single-shot LLM call)."""
     if not history or not model:
         return query
     hist_lines = _format_history(history, max_msgs=6)

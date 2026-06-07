@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Input, toast } from '../ui';
 import { workspaceAgentApi, skillApi, toolApi, packagesApi } from '../../services';
+import { toastGateError } from '../ui';
 import type { Agent } from '../../services';
 
 interface AgentDetailModalProps {
@@ -36,6 +37,9 @@ const AgentDetailModal: React.FC<AgentDetailModalProps> = ({ open, agent, onClos
   const [publishOpen, setPublishOpen] = useState(false);
   const [pubName, setPubName] = useState('');
   const [pubLoading, setPubLoading] = useState(false);
+  const [signing, setSigning] = useState(false);
+  const [signKey, setSignKey] = useState('');
+  const [signResult, setSignResult] = useState<string | null>(null);
 
   useEffect(() => {
     if (open && agent) {
@@ -119,6 +123,23 @@ const AgentDetailModal: React.FC<AgentDetailModalProps> = ({ open, agent, onClos
       setPublishOpen(false); setPubName('');
     } catch (e: any) { toast.error(`发布失败：${e?.message || e}`); }
     finally { setPubLoading(false); }
+  };
+
+  const handleSign = async () => {
+    if (!agent?.id || !signKey.trim()) return;
+    setSigning(true);
+    setSignResult(null);
+    try {
+      const res = await workspaceAgentApi.sign(agent.id, { private_key: signKey.trim() });
+      setSignResult(res.signature);
+      toast.success('签名成功');
+      setSignKey('');
+    } catch (e: any) {
+      toastGateError(e, '签名失败');
+      setSignResult(null);
+    } finally {
+      setSigning(false);
+    }
   };
 
   return (<>
@@ -265,6 +286,41 @@ const AgentDetailModal: React.FC<AgentDetailModalProps> = ({ open, agent, onClos
               </div>
             )}
             {history !== null && history.length === 0 && <div className="text-xs text-gray-500">暂无执行记录</div>}
+          </div>
+
+          <div>
+            <div className="text-sm text-gray-400 font-medium mb-2">签名</div>
+            {signResult ? (
+              <div className="flex items-center gap-2 text-green-400 text-xs">
+                <span>✓</span>
+                <span className="font-mono">{signResult.slice(0, 16)}...</span>
+                <button onClick={() => setSignResult(null)} className="text-gray-500 hover:text-gray-300 ml-2">重新签名</button>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2">
+                <textarea
+                  className="flex-1 h-14 px-3 py-2 bg-dark-card border border-dark-border rounded text-xs text-gray-200 placeholder-gray-500 font-mono resize-none"
+                  placeholder="粘贴 Ed25519 私钥 PEM"
+                  value={signKey}
+                  onChange={(e) => setSignKey(e.target.value)}
+                />
+                <div className="flex flex-col gap-1">
+                  <button
+                    className="px-3 py-1.5 rounded text-xs bg-primary text-white hover:bg-primary/90 disabled:opacity-50"
+                    onClick={handleSign}
+                    disabled={!signKey.trim() || signing}
+                  >
+                    {signing ? '签名中...' : '签名'}
+                  </button>
+                  <button
+                    className="px-3 py-1 rounded text-xs text-gray-500 hover:text-gray-300"
+                    onClick={() => { try { window.open('/onboarding', '_blank', 'noopener,noreferrer'); } catch {} }}
+                  >
+                    生成密钥
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

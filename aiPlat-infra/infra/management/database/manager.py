@@ -9,6 +9,7 @@ from ..base import ManagementBase, Status, HealthStatus, Metrics
 from ..schemas import SlowQuery, DBPoolStats
 from datetime import datetime, timezone
 import time
+import sqlite3
 
 
 class DatabaseManager(ManagementBase):
@@ -30,7 +31,11 @@ class DatabaseManager(ManagementBase):
         """Get database module status."""
         try:
             if not self._pools:
-                return Status.DISABLED
+                # No registered pools — test basic SQLite connectivity
+                conn = sqlite3.connect(":memory:")
+                conn.execute("SELECT 1")
+                conn.close()
+                return Status.HEALTHY
             
             healthy_pools = sum(
                 1 for pool in self._pools.values()

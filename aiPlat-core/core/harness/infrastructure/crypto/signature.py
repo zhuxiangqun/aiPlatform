@@ -54,6 +54,49 @@ def parse_ed25519_public_key(public_key: str):
     return Ed25519PublicKey.from_public_bytes(raw)
 
 
+def parse_ed25519_private_key(private_key: str):
+    """
+    Accept formats:
+    - PEM (-----BEGIN PRIVATE KEY----- ...)
+    - "ed25519:base64-raw-32-bytes"
+    - raw base64 (32 bytes)
+    """
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    from cryptography.hazmat.primitives import serialization
+
+    pk = (private_key or "").strip()
+    if not pk:
+        raise ValueError("empty_private_key")
+    if pk.startswith("-----BEGIN"):
+        return serialization.load_pem_private_key(pk.encode("utf-8"), password=None)
+    if pk.lower().startswith("ed25519:"):
+        raw = _b64decode_maybe(pk.split(":", 1)[1])
+        return Ed25519PrivateKey.from_private_bytes(raw)
+    raw = _b64decode_maybe(pk)
+    return Ed25519PrivateKey.from_private_bytes(raw)
+
+
+def generate_ed25519_key_pair():
+    """
+    Returns (private_key_pem: str, public_key_pem: str)
+    """
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    from cryptography.hazmat.primitives import serialization
+
+    sk = Ed25519PrivateKey.generate()
+    pk = sk.public_key()
+    sk_pem = sk.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    ).decode("utf-8")
+    pk_pem = pk.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    ).decode("utf-8")
+    return sk_pem, pk_pem
+
+
 def parse_ed25519_signature(signature: str) -> bytes:
     """
     Accept formats:
@@ -104,4 +147,23 @@ def verify_skill_signature(
         if ok:
             return {"verified": True, "key_id": kid, "error": None}
     return {"verified": False, "key_id": None, "error": "no_trusted_key_matched"}
+
+
+def sign_skill(
+    *,
+    private_key: str,
+    skill_id: str,
+    version: str,
+    bundle_sha256: str,
+) -> str:
+    """
+    Sign a skill's canonical payload with an Ed25519 private key.
+
+    Returns base64-encoded signature string (without "base64:" prefix).
+    Raises ValueError on key parse or sign failure.
+    """
+    sk = parse_ed25519_private_key(private_key)
+    msg = canonical_skill_payload(skill_id=skill_id, version=version, bundle_sha256=bundle_sha256)
+    sig = sk.sign(msg)
+    return base64.b64encode(sig).decode("utf-8")
 

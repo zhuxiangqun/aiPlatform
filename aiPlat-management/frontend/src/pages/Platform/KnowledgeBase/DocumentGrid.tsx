@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button, Badge, Modal, toast } from '../../../components/ui';
 import { kbApi } from '../../../services';
 import type { KBDocument } from '../../../services';
@@ -159,13 +159,9 @@ export const DocumentGrid: React.FC<Props> = ({ documents, loading, total, selec
                       <span className="text-[10px] text-gray-500">{CAT_LABELS[contentCat] || contentCat}</span>
                       {(doc.element_count ?? 0) > 0 && <span className="text-[10px] text-gray-600">{doc.element_count} 元素</span>}
                     </div>
-                    {/* Wiki pages generated from this document */}
+                    {/* Wiki indicator: unified ✅ badge */}
                     {wikiDocIds?.has(doc.doc_id) && (
-                      <details className="mt-1.5" onClick={(e) => e.stopPropagation()}>
-                        <summary className="text-[10px] text-blue-400 cursor-pointer hover:text-blue-300">
-                          📊 已生成知识页面
-                        </summary>
-                      </details>
+                      <span className="text-[11px] text-green-500/80 ml-1" title="已生成知识页面">✅</span>
                     )}
                   </div>
                   <div className="flex gap-0.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -248,9 +244,48 @@ export const DocumentGrid: React.FC<Props> = ({ documents, loading, total, selec
                 </div>
               )}
             </div>
+
+            {/* Wiki backlinks */}
+            {wikiDocIds?.has(detailDoc.doc_id) && (
+              <WikiBacklinks docId={detailDoc.doc_id} />
+            )}
           </div>
         </Modal>
       )}
     </div>
   );
 };
+
+// ── Wiki backlinks for document detail ──
+
+const WikiBacklinks = ({ docId }: { docId: string }) => {
+  const [pages, setPages] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch(`/api/platform/kb/vault/wiki/backlinks?doc_id=${encodeURIComponent(docId)}`)
+      .then(r => r.json())
+      .then(d => setPages(d.pages || []))
+      .catch(() => setPages([]));
+  }, [docId]);
+
+  return (
+    <div className="mt-3 p-2 rounded bg-dark-hover">
+      <div className="text-xs font-medium text-gray-400 mb-1">
+        Wiki 反向链接 {pages.length > 0 && <span className="text-gray-600">({pages.length})</span>}
+      </div>
+      {pages.length > 0 ? (
+        pages.map((p: any, i: number) => (
+          <div key={i} className="flex items-center gap-1 text-xs py-0.5">
+            <span className="text-primary font-medium">{p.title || '?'}</span>
+            <span className="text-gray-600">({p.category || ''})</span>
+            {p.summary && <span className="text-gray-500 truncate">- {String(p.summary).slice(0, 80)}</span>}
+          </div>
+        ))
+      ) : (
+        <div className="text-xs text-gray-600">暂无反向链接</div>
+      )}
+    </div>
+  );
+};
+
+export default DocumentGrid;

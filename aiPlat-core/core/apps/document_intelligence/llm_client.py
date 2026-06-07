@@ -22,7 +22,7 @@ def llm_enabled() -> bool:
 
 def _default_model_name() -> str:
     from core.harness.utils.model_injection import get_default_model
-    return get_default_model(purpose="document") or "deepseek-chat"
+    return get_default_model(purpose="document") or best_model_for_purpose("document") or "deepseek-chat"  # noqa: model-legacy
 
 
 async def chat_complete(

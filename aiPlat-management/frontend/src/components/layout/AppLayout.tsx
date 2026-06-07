@@ -2,13 +2,10 @@ import { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  LayoutDashboard, Server, Cpu, Database, Network, Monitor,
-  Bot, Sparkles, Brain, HardDrive, Shield, ShieldCheck,
-  FileText, Users, MessageSquare,
-  ChevronLeft, ChevronRight, Settings, LogOut, User,
-  Bell, ChevronDown, FolderOpen, BarChart3, Wrench,
-  Activity, Plug, Package, ShoppingBag, Box, Zap,
-  GitBranch, Globe, PenTool, Key, Rocket,
+  Activity, BarChart3, Bell, Bot, Box, Brain, ChevronDown, ChevronLeft,
+  ChevronRight, Cpu, Database, FileText, FolderOpen, HardDrive, Key,
+  LogOut, MessageSquare, Monitor, Network, Package, PenTool, Plug,
+  Rocket, Server, Settings, Shield, ShoppingBag, Sparkles, User, Users, Wrench,
   type LucideIcon,
 } from 'lucide-react';
 import { NotificationBellButton, NotificationProvider, ToastProvider } from '../ui';
@@ -63,8 +60,8 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
   { group: 'workspace', label: '应用能力层', items: [
     { key: '/workspace/agents', icon: Package, label: 'Agent库' },
     { key: '/workspace/skills', icon: Package, label: 'Skill库' },
-    { key: '/approval', icon: ShieldCheck, label: '审批中心' },
-    { key: '/core/workflows', icon: GitBranch, label: 'Workflow' },
+    { key: '/workspace/tools', icon: Wrench, label: 'Tool库' },
+    { key: '/core/workflows', icon: Wrench, label: 'Workflow库' },
     { key: '/workspace/marketplace', icon: ShoppingBag, label: '商城' },
     { key: '/core/skill-packs', icon: Package, label: '包管理' },
     { key: '/workspace/mcp', icon: Package, label: 'MCP库' },

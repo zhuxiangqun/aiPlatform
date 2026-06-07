@@ -231,6 +231,163 @@ class NoSummaryCheck(WikiRule):
         return issues
 
 
+class SemanticContradictionCheck(WikiRule):
+    """LLM-powered contradiction detection using embedding similarity.
+
+    Flags pages with very similar semantic content (cosine sim >= 0.85)
+    that are NOT already marked as contradictions. The idea: if two
+    pages discuss the same topic but are in different categories
+    (e.g., entities vs topics), they may contain conflicting claims.
+    """
+
+    code = "semantic_contradiction"
+    severity = "medium"
+    penalty_weight = 3
+    check_name = "语义矛盾候选"
+
+    def check(self, all_pages: Dict[str, Dict[str, Any]]) -> List[WikiIssue]:
+        issues = []
+        pages = [(t, p) for t, p in all_pages.items() if p.get("category") != "contradictions"]
+        if len(pages) < 2:
+            return issues
+
+        try:
+            from core.harness.knowledge.embedder import embed_text_semantic
+        except ImportError:
+            return issues
+
+        existing_contradictions: set = set()
+        for title, page in all_pages.items():
+            for c in (page.get("contradictions") or []):
+                if isinstance(c, str):
+                    existing_contradictions.add(tuple(sorted([title, c])))
+
+        for i in range(len(pages)):
+            for j in range(i + 1, len(pages)):
+                t1, p1 = pages[i]
+                t2, p2 = pages[j]
+                # Only flag cross-category pairs (entity vs topic = potential conflict)
+                if p1.get("category") == p2.get("category"):
+                    continue
+                # Skip already-marked contradictions
+                if tuple(sorted([t1, t2])) in existing_contradictions:
+                    continue
+                b1 = p1.get("body", "")[:2000]
+                b2 = p2.get("body", "")[:2000]
+                if not b1 or not b2:
+                    continue
+                try:
+                    sim = embed_text_semantic(b1, b2)
+                    if sim >= 0.85:
+                        issues.append(WikiIssue(
+                            check_type=self.code,
+                            severity=self.severity,
+                            page_a=t1,
+                            page_b=t2,
+                            description=f"语义相似度 {sim:.2f}，可能包含矛盾信息",
+                            suggestion=f"'{t1}' 和 '{t2}' 讨论相似主题但处于不同分类，建议检查是否存在冲突并添加交叉引用",
+                        ))
+                except Exception:
+                    continue
+        return issues
+
+
+class DuplicateCheck(WikiRule):
+    """Detect pages with highly similar content (potential duplicates).
+
+    Uses embedding cosine similarity with a threshold of 0.90.
+    Pages in the same category with similarity >= threshold are
+    flagged as potential duplicates that should be merged.
+    """
+
+    code = "duplicate_content"
+    severity = "medium"
+    penalty_weight = 2
+    check_name = "内容重复"
+
+    def check(self, all_pages: Dict[str, Dict[str, Any]]) -> List[WikiIssue]:
+        try:
+            from core.harness.knowledge.wiki_engine import detect_duplicate_pages
+            dupes = detect_duplicate_pages(threshold=0.90)
+        except Exception:
+            return []
+
+        issues = []
+        for d in dupes:
+            issues.append(WikiIssue(
+                check_type=self.code,
+                severity=self.severity,
+                page_a=d["page_a"],
+                page_b=d["page_b"],
+                description=f"相似度 {d['similarity']:.2f}，疑似重复",
+                suggestion=d.get("suggestion", "建议考虑合并或明确区分这两个页面"),
+            ))
+        return issues
+
+
+class OntologyValidationRule(WikiRule):
+    """Validate the knowledge base against ontology axioms A1-A7.
+
+    Uses the A-Box builder and validator to check:
+    - Concept pages without KB sources (A1)
+    - Asymmetric contradiction declarations (A3)
+    - parentOf cycles (A4)
+    - Source pages citing Wiki pages (A5)
+    - Invalid KB document references (A6)
+    """
+
+    code = "ontology_validation"
+    severity = "high"
+    penalty_weight = 5
+    check_name = "本体一致性验证"
+
+    def check(self, all_pages: Dict[str, Dict[str, Any]]) -> List[WikiIssue]:
+        issues = []
+        try:
+            from core.harness.knowledge.knowledge_validator import compute_ontology_metrics
+
+            # Reuse cached metrics (avoids duplicate A-Box build + validate)
+            metrics = compute_ontology_metrics(collection_id=self.collection_id)
+            consistency = metrics.get("consistency", {})
+            score = consistency.get("score", 100)
+            errors = consistency.get("errors", 0)
+            warnings = consistency.get("warnings", 0)
+
+            # If score is perfect, no issues to report
+            if score >= 100 and errors == 0 and warnings == 0:
+                return issues
+
+            # Build full A-Box only if metrics indicate violations (for detailed issue listing)
+            from core.harness.knowledge.knowledge_abox_builder import build_abox
+            from core.harness.knowledge.knowledge_validator import validate as onto_validate
+
+            onto = build_abox(collection_id=self.collection_id)
+            report = onto_validate(onto)
+
+            for v in report.violations:
+                severity = v.severity
+                page_a = v.entities[0] if v.entities else "unknown"
+                page_b = v.entities[1] if len(v.entities) > 1 else None
+
+                # Clean URI prefixes for display
+                page_a = page_a.replace("http://aiplat.local/knowledge#", "")
+                if page_b:
+                    page_b = page_b.replace("http://aiplat.local/knowledge#", "")
+
+                issues.append(WikiIssue(
+                    check_type=self.code,
+                    severity=severity,
+                    page_a=page_a,
+                    page_b=page_b,
+                    description=f"[{v.axiom_id}] {v.description}",
+                    suggestion=v.recommendation,
+                ))
+        except Exception:
+            pass
+
+        return issues
+
+
 # ============================================================
 # Registry
 # ============================================================
@@ -315,7 +472,7 @@ class WikiHealthRegistry:
         for title, page in all_pages.items():
             link_graph[title] = page.get("related", [])
 
-        return WikiHealthReport(
+        report = WikiHealthReport(
             health_score=score,
             total_pages=total_pages,
             stats={
@@ -337,6 +494,103 @@ class WikiHealthRegistry:
             checks=checks,
             link_graph=link_graph,
         )
+
+        # ── Persist health history for trend tracking ──
+        try:
+            _save_health_snapshot(report)
+        except Exception:
+            pass
+
+        return report
+
+
+def _save_health_snapshot(report: WikiHealthReport) -> None:
+    """Save a health report snapshot for trend tracking (keeps last 50)."""
+    import json as _json
+    from pathlib import Path
+    root = Path(os.environ.get("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))) / "wiki"
+    history_file = root / "health_history.json"
+
+    # Load existing history
+    existing: list = []
+    try:
+        if history_file.exists():
+            with open(history_file, "r", encoding="utf-8") as f:
+                existing = _json.load(f)
+    except Exception:
+        pass
+
+    snapshot = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "score": report.health_score,
+        "grade": report.grade,
+        "total_pages": report.total_pages,
+        "issues_total": len(report.issues),
+        "issues_by_type": {},
+        "checks": report.checks,
+    }
+    # Aggregate issue counts by type
+    for issue in report.issues:
+        t = issue.check_type
+        snapshot["issues_by_type"][t] = snapshot["issues_by_type"].get(t, 0) + 1
+
+    existing.insert(0, snapshot)
+    existing = existing[:50]
+
+    try:
+        history_file.write_text(_json.dumps(existing, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
+
+def get_health_trend() -> Dict[str, Any]:
+    """Read health history and compute trend metrics.
+
+    Returns:
+        - history: list of recent snapshots (last 10)
+        - trend: {score_delta, grade_trend, direction} comparing last 2 snapshots
+        - best: highest score + when
+    """
+    import json as _json
+    import os
+    from pathlib import Path
+    root = Path(os.environ.get("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))) / "wiki"
+    history_file = root / "health_history.json"
+
+    entries: list = []
+    try:
+        if history_file.exists():
+            with open(history_file, "r", encoding="utf-8") as f:
+                entries = _json.load(f)
+    except Exception:
+        pass
+
+    recent = entries[:10]
+
+    # Score trend (comparing latest 2)
+    score_delta = 0
+    grade_trend = "stable"
+    if len(recent) >= 2:
+        score_delta = recent[0].get("score", 0) - recent[1].get("score", 0)
+        if score_delta > 0:
+            grade_trend = "improving"
+        elif score_delta < 0:
+            grade_trend = "declining"
+        else:
+            grade_trend = "stable"
+
+    best_entry = max(entries, key=lambda e: e.get("score", 0)) if entries else {"score": None}
+
+    return {
+        "history": recent,
+        "trend": {
+            "score_delta": score_delta,
+            "grade_trend": grade_trend,
+            "direction": "↑" if score_delta > 0 else "↓" if score_delta < 0 else "→",
+        },
+        "best": {"score": best_entry.get("score"), "timestamp": best_entry.get("timestamp")},
+        "total_snapshots": len(entries),
+    }
 
 
 def _all_rules() -> List[type]:

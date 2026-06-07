@@ -384,6 +384,15 @@ const Policies: React.FC = () => {
           </div>
         </CardHeader>
         <CardContent>
+          <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+            <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+            <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+              <div><span className="text-gray-300">tenant_id</span><span className="ml-2 text-gray-600">租户唯一 ID，可复制</span></div>
+              <div><span className="text-gray-300">version</span><span className="ml-2 text-gray-600">策略版本号</span></div>
+              <div><span className="text-gray-300">updated_at</span><span className="ml-2 text-gray-600">最后更新时间</span></div>
+              <div><span className="text-gray-300">op</span><span className="ml-2 text-gray-600">编辑策略快照</span></div>
+            </div>
+          </details>
           <div className="bg-dark-card rounded-xl border border-dark-border overflow-hidden">
             <Table columns={columns as any} data={list} rowKey="tenant_id" loading={loading} emptyText="暂无 tenant policies" />
           </div>

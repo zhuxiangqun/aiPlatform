@@ -16,32 +16,42 @@ import sqlite3
 from core.adapters.llm.base import create_adapter
 
 
-def get_default_model(purpose: str = "default") -> str:
-    """Centralized default model selection — delegates to infra ModelManager.
+def _log_model_selection(purpose: str, selected: str, entry: str = "best_model_for_purpose",
+                         candidates: list = None, **extra):
+    """Append model selection to shared audit log for observability tab."""
+    try:
+        import os as _log_os, json as _log_json, time as _log_time
+        log_path = _log_os.path.join(
+            _log_os.path.expanduser(_log_os.getenv("AIPLAT_HOME", "~/.aiplat")),
+            "wiki", "model_selection_log.json")
+        samples = []
+        if _log_os.path.exists(log_path):
+            samples = _log_json.loads(open(log_path).read())
+        record = {"ts": _log_time.time(), "purpose": purpose,
+                  "selected": selected, "entry": entry}
+        if candidates:
+            record["candidates"] = [{"name": n, "score": s} for s, n in candidates[:5]]
+        if extra:
+            record["extra"] = str(extra)[:200]
+        samples.append(record)
+        _log_os.makedirs(_log_os.path.dirname(log_path), exist_ok=True)
+        _log_json.dump(samples[-1000:], open(log_path, "w"))
+    except Exception:
+        pass
 
-    Resolution chain: infra ModelManager.get_default_model() → env vars → fallback.
-    All modules MUST use this function instead of reading AIPLAT_*_MODEL env vars directly.
-    """
-    # Primary: infra ModelManager (unique source of truth)
+
+def get_default_model(purpose: str = "default") -> str:
+    """Centralized default model selection — pure delegation to infra ModelManager."""
     try:
         from infra.management.model.manager import ModelManager
         mgr = ModelManager()
         result = mgr.get_default_model(purpose)
         if result:
+            _log_model_selection(purpose, result, entry="get_default_model", source="infra_ModelManager")
             return result
     except Exception:
         pass
-
-    # Fallback: direct env var reading (backward compat)
-    if purpose in ("agent", "reasoning"):
-        return os.getenv("AIPLAT_AGENT_MODEL") or os.getenv("AIPLAT_DEFAULT_AGENT_MODEL") or os.getenv("AIPLAT_DEFAULT_MODEL", "")
-    if purpose == "document":
-        return os.getenv("AIPLAT_DOC_LLM_MODEL") or os.getenv("AIPLAT_LLM_MODEL") or os.getenv("AIPLAT_DEFAULT_CHAT_MODEL") or os.getenv("AIPLAT_DEFAULT_MODEL", "")
-    if purpose == "code_gen":
-        return os.getenv("AIPLAT_CODE_GEN_MODEL") or os.getenv("AIPLAT_LLM_MODEL") or os.getenv("AIPLAT_DEFAULT_MODEL", "")
-    if purpose == "query_translation":
-        return os.getenv("AIPLAT_QUERY_MODEL") or os.getenv("AIPLAT_DEFAULT_CHAT_MODEL") or os.getenv("AIPLAT_LLM_MODEL") or os.getenv("AIPLAT_DEFAULT_MODEL", "")
-    return os.getenv("AIPLAT_DEFAULT_CHAT_MODEL") or os.getenv("AIPLAT_LLM_MODEL") or os.getenv("AIPLAT_DEFAULT_MODEL", "")
+    return ""
 
 
 def _norm_provider(p: str) -> str:
@@ -137,6 +147,10 @@ def create_selected_adapter(*, model_name: str) -> Any:
     # model_name (explicit parameter) > model_env (global) > store default
     selected_model = model_name or model_env or (default_llm.get("model") if default_llm else "") or get_default_model()
 
+    # ── Log model selection ──
+    _log_model_selection("create_adapter", selected_model, entry="create_selected_adapter",
+                         input_name=model_name, default_llm=str(default_llm)[:100] if default_llm else None)
+
     # Provider resolution
     provider = _norm_provider(provider_env or os.getenv("AIPLAT_DEFAULT_PROVIDER", ""))
 
@@ -154,7 +168,8 @@ def create_selected_adapter(*, model_name: str) -> Any:
         if selected_model in ("gpt-4", "gpt-4o", "gpt-3.5-turbo"):
             selected_model = get_default_model()
         # DeepSeek API is OpenAI-compatible — use openai adapter with DeepSeek base_url.
-        return create_adapter(provider="openai", api_key=api_key or None, model=selected_model, base_url=base_url)
+        _register_adapter(provider="openai", model_name=selected_model, base_url=base_url)
+        return create_adapter(provider="openai", api_key=api_key or None, model=selected_model, base_url=base_url)  # noqa: canonical-injection
 
     # Generic providers
     # If no explicit env provider set, try default_llm adapter config.
@@ -166,6 +181,7 @@ def create_selected_adapter(*, model_name: str) -> Any:
             api_key = str(ad.get("api_key") or api_key_env or get_llm_api_key("deepseek") or "")
             if provider in {"openai", "deepseek"}:
                 provider = "openai"
+            _register_adapter(provider=provider, model_name=selected_model, base_url=base_url)
             return create_adapter(provider=provider, api_key=api_key or None, model=selected_model, base_url=base_url or None)
 
     base_url = base_url_env or get_llm_base_url("deepseek")
@@ -261,115 +277,71 @@ def ensure_skill_model(skill: Any, *, model_name: str, force: bool = False) -> A
     return cur
 
 
-# ── Task-aware model selection (§model selection by purpose) ─────────────────
-
-PURPOSE_PROFILE: dict = {
-    "wiki_curation": {
-        "prefer": ["chat"],
-        "avoid": ["reasoning"],
-    },
-    "eval_code": {
-        "prefer": ["chat", "reasoning"],
-        "avoid": [],
-    },
-    "agent": {
-        "prefer": ["reasoning", "chat"],
-        "avoid": [],
-    },
-    "chat": {
-        "prefer": ["chat"],
-        "avoid": ["reasoning"],
-    },
-    "code_gen": {
-        "prefer": ["chat"],
-        "avoid": ["reasoning"],
-    },
-    "document": {
-        "prefer": ["chat"],
-        "avoid": ["reasoning"],
-    },
-    "agent_creation": {
-        "prefer": ["chat"],
-        "avoid": ["reasoning"],
-    },
-    "query_translation": {
-        "prefer": ["chat"],
-        "avoid": ["reasoning"],
-        "prefer_local": True,  # Prefer local models (Ollama/LM Studio) — 0 cost
-    },
-}
-
-_DEFAULT_PROFILE = {"prefer": ["chat"], "avoid": []}
-
-
-def _select_from_infra(purpose: str) -> Optional[str]:
-    """Select the best model for a purpose from infra ModelManager by capability matching."""
-    try:
-        from infra.management.model.manager import ModelManager
-        mgr = ModelManager()
-        # Access pre-loaded models directly (they're populated in __init__ before
-        # async scanning; sync access avoids coroutine issues)
-        models = list(mgr._models.values()) if hasattr(mgr, "_models") else []
-    except Exception:
-        return None
-
-    if not models:
-        return None
-
-    profile = PURPOSE_PROFILE.get(purpose, _DEFAULT_PROFILE)
-    chat_models = [m for m in models if hasattr(m, 'type') and m.type.value == "chat" and m.enabled]
-
-    scored: list = []
-    for m in chat_models:
-        caps = set(m.capabilities or ["chat"])
-
-        # Must have at least one preferred capability
-        if not any(c in caps for c in profile["prefer"]):
-            continue
-
-        # Must not have any avoided capability
-        if any(c in caps for c in profile["avoid"]):
-            continue
-
-        score = 0
-        if profile.get("prefer_local"):
-            # Prefer local models for low-stakes tasks (e.g., NL→graph translation)
-            if m.source.value in ("local", "external"):
-                score += 120
-            else:
-                score += 40  # Remote still acceptable as fallback
-        elif m.source.value == "config":
-            score += 100  # Remote API > local for production tasks
-        if "reasoning" in caps:
-            if profile["prefer"][0] == "reasoning":
-                score += 80  # Reasoning-required tasks: reasoning is a plus
-            else:
-                score -= 30  # Non-reasoning tasks: reasoning is unwanted overhead
-        else:
-            if profile["prefer"][0] != "reasoning":
-                score += 50  # Non-reasoning for non-reasoning tasks: cheaper, faster
-        if "function_call" in caps:
-            score += 20
-        if m.name == "deepseek-chat" and profile["prefer"][0] != "reasoning":
-            score += 30  # Preferred default for non-reasoning tasks
-
-        scored.append((score, m.name))
-
-    if not scored:
-        return None
-
-    scored.sort(key=lambda x: x[0], reverse=True)
-    return scored[0][1]
-
-
 def best_model_for_purpose(purpose: str) -> str:
     """Select the best LLM model for a given task purpose.
 
     Resolution chain:
-      1. infra ModelManager — match by task profile (capability, cost, source)
-      2. get_default_model(purpose) — env var + system default (fallback)
+      1. Explicit model_overrides in llm_profile.yaml (infra)
+      2. Auto-selection via capability scoring (infra ModelManager.select_by_purpose)
+      3. Env var resolution (infra ModelManager.get_default_model)
+      4. Ultimate fallback (llm_profile.yaml fallback.ultimate_model)
     """
-    selected = _select_from_infra(purpose)
-    if selected:
-        return selected
-    return get_default_model(purpose=purpose) or "deepseek-chat"
+    # 1. Capability-based auto-selection (infra — canonical)
+    try:
+        from infra.management.model.manager import ModelManager
+        mgr = ModelManager()
+        selected = mgr.select_by_purpose(purpose)
+        if selected:
+            _log_model_selection(purpose, selected, entry="best_model_for_purpose", source="infra_select_by_purpose")
+            return selected
+    except Exception:
+        pass
+
+    # 2. Env var fallback
+    model_name = get_default_model(purpose=purpose) or "deepseek-chat"
+    _log_model_selection(purpose, model_name, entry="best_model_for_purpose", source="fallback")
+    return model_name
+
+
+def _register_adapter(provider: str, model_name: str, base_url: str = "", api_key: str = "") -> None:
+    """Best-effort register adapter for Doctor/management visibility (DB + in-memory)."""
+    try:
+        from core.services.execution_store import get_execution_store
+        from core.harness.kernel.runtime import get_kernel_runtime
+        import asyncio
+
+        store = get_execution_store()
+        record = {
+            "name": f"llm-{provider}",
+            "provider": provider,
+            "description": f"Auto-registered LLM adapter for {provider} ({model_name})",
+            "api_base_url": base_url,
+            "api_key": api_key,
+            "models": [{"name": model_name}],
+            "status": "active",
+        }
+        # 1) Persist to DB
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(store.upsert_adapter(record))
+        except RuntimeError:
+            pass
+
+        # 2) Register in-memory (so list_adapters() returns it immediately)
+        runtime = get_kernel_runtime()
+        am = getattr(runtime, "adapter_manager", None) if runtime else None
+        if am and hasattr(am, "_adapters"):
+            from core.management.adapter_manager import AdapterInfo
+            import uuid
+            from datetime import datetime, timezone
+            now = datetime.now(timezone.utc)
+            adapter_id = f"adapter-{uuid.uuid4().hex[:8]}"
+            info = AdapterInfo(
+                id=adapter_id, name=record["name"], provider=provider,
+                description=record["description"], status="active", api_key=api_key,
+                api_base_url=base_url, models=[{"name": model_name}],
+                created_at=now, updated_at=now,
+            )
+            am._adapters[adapter_id] = info
+    except Exception:
+        pass  # best-effort

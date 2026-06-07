@@ -384,6 +384,19 @@ const Audit: React.FC = () => {
           {error && <div className="text-sm text-error mt-2">{error}</div>}
         </CardHeader>
         <CardContent>
+          <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+            <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+            <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+              <div><span className="text-gray-300">time</span><span className="ml-2 text-gray-600">审计事件发生时间</span></div>
+              <div><span className="text-gray-300">action</span><span className="ml-2 text-gray-600">操作类型，点击可筛选同类事件</span></div>
+              <div><span className="text-gray-300">status</span><span className="ml-2 text-gray-600">执行结果（ok/success/warn/fail/error）</span></div>
+              <div><span className="text-gray-300">actor</span><span className="ml-2 text-gray-600">执行操作的用户/Agent ID</span></div>
+              <div><span className="text-gray-300">run_id</span><span className="ml-2 text-gray-600">关联的 Run ID，可跳转/筛选</span></div>
+              <div><span className="text-gray-300">change_id</span><span className="ml-2 text-gray-600">变更记录 ID</span></div>
+              <div><span className="text-gray-300">tenant</span><span className="ml-2 text-gray-600">租户 ID，点击可筛选</span></div>
+              <div><span className="text-gray-300">trace_id</span><span className="ml-2 text-gray-600">关联的链路追踪 ID</span></div>
+            </div>
+          </details>
           <div className="bg-dark-card rounded-xl border border-dark-border overflow-hidden">
             <Table columns={columns as any} data={items} rowKey="id" loading={loading} emptyText="暂无审计记录" />
           </div>

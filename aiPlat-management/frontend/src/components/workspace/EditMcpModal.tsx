@@ -23,7 +23,21 @@ const MCP_TEMPLATES = [
   { value: 'http_internal', label: 'HTTP（内部服务）' },
   { value: 'stdio_launcher_dev', label: 'STDIO + Launcher（dev/staging）' },
   { value: 'stdio_launcher_prod', label: 'STDIO + Launcher（prod 受控）' },
+  { value: 'local_tools', label: '📦 本地工作台工具' },
 ];
+
+const LOCAL_TOOLS_HELP = `### 📦 本地工作台工具
+**自动扫描 ~/.aiplat/tools/ 下的 Python 工具文件，以 MCP 协议暴露给 Agent。**
+
+#### 工具管理
+- 点击"发现工具（tools/list）"查看当前可用工具
+- 在 allowed_tools 中只保留需要暴露的工具
+- 在 ~/.aiplat/tools/ 下新增 .py 后，重新启用即可同步
+
+#### 命令配置
+- command: python3（使用系统 Python 解释器）
+- args: ["-m", "core.apps.mcp.local_tools_server"]
+- 子进程自动继承服务器的 PYTHONPATH 环境变量`;
 
 const MCP_HELP = `### 如何配置 MCP Server
 **transport 选择：**
@@ -102,17 +116,21 @@ const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSu
     }
   }, [autoDiscover, fetching, open, server?.name]);
 
+  const isInternal = server?.source === 'internal';
+
   const hint = useMemo(() => {
+    if (isInternal) return 'STDIO 模式 — 自动连接 ~/.aiplat/tools/ 下的 Python 工具。';
     if (transport === 'stdio') return 'stdio 模式通常使用 command + args（例如：node / python / 本地可执行文件）。';
     return 'sse/http 模式通常使用 url（例如：http://localhost:0/mcp）。';
-  }, [transport]);
+  }, [transport, isInternal]);
 
   const riskHint = useMemo(() => {
+    if (isInternal) return '低风险（L1）：本地工作台工具，仅暴露 ~/.aiplat/tools/ 下已勾选的文件。';
     if (transport === 'stdio') {
-      return '高风险（L3）：等同于在 core 所在机器上启动本机进程执行。prod 建议使用“服务器白名单 + 命令前缀白名单 + metadata.prod_allowed=true”，并可进一步开启“统一 launcher”强约束。';
+      return '高风险（L3）：等同于在 core 所在机器上启动本机进程执行。prod 建议使用"服务器白名单 + 命令前缀白名单 + metadata.prod_allowed=true"，并可进一步开启"统一 launcher"强约束。';
     }
     return '中风险（L2）：远程服务型 MCP。建议配置鉴权（auth）并用 allowed_tools 做最小白名单。';
-  }, [transport]);
+  }, [transport, isInternal]);
 
   const applyLauncherTemplate = () => {
     const serverName = (server?.name || 'server_name').trim() || 'server_name';
@@ -171,6 +189,16 @@ const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSu
       setMetadataText(JSON.stringify({ ...baseMeta, description: baseMeta.description || 'STDIO MCP（prod 受控，launcher）', prod_allowed: true }, null, 2));
       return;
     }
+    if (template === 'local_tools') {
+      setTransport('stdio');
+      setUrl('');
+      setCommand('python3');
+      setArgsText(JSON.stringify(['-m', 'core.apps.mcp.local_tools_server'], null, 2));
+      setAuthText('');
+      setAllowedToolsText('');
+      setMetadataText(JSON.stringify({ ...baseMeta, description: baseMeta.description || '本地工作台工具（~/.aiplat/tools/）', prod_allowed: false }, null, 2));
+      return;
+    }
   };
 
   const markProdAllowed = () => {
@@ -206,15 +234,26 @@ const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSu
     if (!server?.name) return;
     setDiscoveringTools(true);
     try {
-      const res = await workspaceMcpApi.discoverTools(server.name, { timeout_seconds: 25 });
-      const tools = (res as any).tools || [];
+      let tools: { name: string; description: string }[] = [];
+
+      if (isInternal) {
+        // Local tools: scan ~/.aiplat/tools/ directly
+        const res = await fetch('/api/core/workspace/tools/discover', { method: 'POST' });
+        const data = await res.json();
+        tools = (data.tools || []).map((t: any) => ({ name: t.name, description: t.description || '' }));
+      } else {
+        // External MCP: connect and call tools/list
+        const res = await workspaceMcpApi.discoverTools(server.name, { timeout_seconds: 25 });
+        tools = ((res as any).tools || []).map((t: any) => ({ name: t.name, description: t.description || '' }));
+      }
+
       if (!tools.length) {
-        toast.error('未发现工具（tools/list 返回为空）');
+        toast.error('未发现工具');
         setDiscoveredTools([]);
         setShowTools(false);
         return;
       }
-      setDiscoveredTools(tools.map((t: any) => ({ name: t.name, description: t.description || '', selected: true })));
+      setDiscoveredTools(tools.map(t => ({ ...t, selected: true })));
       setShowTools(true);
     } catch (e: any) {
       toast.error('发现工具失败', String(e?.message || ''));
@@ -292,6 +331,7 @@ const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSu
         command: command.trim() || undefined,
         args,
         allowed_tools,
+        source: isInternal ? 'internal' : 'external',
         ...(auth ? { auth } : {}),
         ...(metadata ? { metadata } : {}),
       } as any);
@@ -330,20 +370,35 @@ const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSu
         <div className="space-y-4">
           <Input label="名称（只读）" value={server?.name || ''} onChange={() => {}} disabled />
 
-          <Alert type={transport === 'stdio' ? 'warning' : 'info'} title="风险提示">
+          <Alert type={isInternal ? 'success' : transport === 'stdio' ? 'warning' : 'info'} title="风险提示">
             {riskHint}
           </Alert>
 
-          <div className="flex items-end justify-between gap-3">
-            <div className="flex-1">
-              <Select label="模板" value={template} onChange={(v) => setTemplate(v)} options={MCP_TEMPLATES} />
+          <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group">
+            <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+            <div className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1.5">
+              <div><span className="text-gray-300">名称</span><span className="ml-2 text-gray-600">只读，不可修改。修改名称需要删除重建。</span></div>
+              <div><span className="text-gray-300">Transport</span><span className="ml-2 text-gray-600">传输方式。sse/http 用于远程服务，stdio 用于本机进程。</span></div>
+              <div><span className="text-gray-300">enabled</span><span className="ml-2 text-gray-600">开关。启用后 aiPlat 才会连接此 MCP Server 并注册其工具。</span></div>
+              <div><span className="text-gray-300">url / command + args</span><span className="ml-2 text-gray-600">远程服务填 url，本机进程填 command（可执行文件路径）+ args（参数数组）。</span></div>
+              <div><span className="text-gray-300">allowed_tools</span><span className="ml-2 text-gray-600">该 MCP Server 暴露给 Agent 的工具白名单。点"发现工具"获取列表，只保留需要的。</span></div>
+              <div><span className="text-gray-300">auth</span><span className="ml-2 text-gray-600">鉴权配置（JSON）。SSE/HTTP 推荐配置 bearer token。</span></div>
+              <div><span className="text-gray-300">metadata</span><span className="ml-2 text-gray-600">扩展元数据（JSON）。包含 description、prod_allowed 等字段。</span></div>
             </div>
-            <Button variant="secondary" onClick={applyMcpTemplate} disabled={loading}>
-              应用模板
-            </Button>
-          </div>
+          </details>
 
-          {transport === 'stdio' && (
+          {!isInternal && (
+            <div className="flex items-end justify-between gap-3">
+              <div className="flex-1">
+                <Select label="模板" value={template} onChange={(v) => setTemplate(v)} options={MCP_TEMPLATES} />
+              </div>
+              <Button variant="secondary" onClick={applyMcpTemplate} disabled={loading}>
+                应用模板
+              </Button>
+            </div>
+          )}
+
+          {!isInternal && transport === 'stdio' && (
             <div className="flex items-center justify-end">
               <Button variant="secondary" onClick={handlePolicyCheck} disabled={loading}>
                 prod 放行检查
@@ -359,8 +414,8 @@ const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSu
             </div>
           </div>
 
-          <Input label="url（sse/http）" value={url} onChange={(e: any) => setUrl(e.target.value)} placeholder="http://localhost:0/mcp" />
-          {transport === 'stdio' && (
+          {!isInternal && <Input label="url（sse/http）" value={url} onChange={(e: any) => setUrl(e.target.value)} placeholder="http://localhost:0/mcp" />}
+          {!isInternal && transport === 'stdio' && (
             <div className="flex items-end justify-between gap-3">
               <Input
                 label="prod launcher（可选）"
@@ -436,7 +491,10 @@ const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSu
           ) : (
             <>
               <div className="text-sm font-medium text-gray-200 mb-2">使用说明 / 示例</div>
-              <div className="text-xs text-gray-300 whitespace-pre-wrap leading-relaxed">{MCP_HELP}</div>
+              <div className="text-xs text-gray-300 whitespace-pre-wrap leading-relaxed">
+                {isInternal ? LOCAL_TOOLS_HELP : MCP_HELP}
+              </div>
+              {!isInternal && (
               <div className="mt-3 space-y-2">
                 <div className="text-xs font-medium text-gray-300">常用片段（复制）</div>
                 <div className="flex gap-2 flex-wrap">
@@ -460,6 +518,7 @@ const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSu
                   </Button>
                 </div>
               </div>
+              )}
             </>
           )}
         </div>

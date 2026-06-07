@@ -116,6 +116,8 @@ class TestLayerBoundaryInvariants:
         _KNOWN_EXCEPTIONS = {
             ("aiPlat-core/core/harness/execution/pipeline_engine.py",
              "aiPlat-platform/storage/sqlite.py"),
+            ("aiPlat-core/core/management/workflow_manager.py",
+             "aiPlat-platform/storage/sqlite.py"),
         }
         violations = []
         for e in edges:

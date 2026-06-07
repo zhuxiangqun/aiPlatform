@@ -250,6 +250,23 @@ const Scheduler: React.FC = () => {
         }
       />
 
+      <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+        <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+          <div className="text-gray-300 font-medium md:col-span-2 border-b border-dark-border pb-1 mb-0.5">资源配额</div>
+          <div><span className="text-gray-300">配额名称/GPU配额/已使用</span><span className="ml-2 text-gray-600">分配/已用 GPU 数</span></div>
+          <div><span className="text-gray-300">团队/用户</span><span className="ml-2 text-gray-600">配额归属</span></div>
+          <div><span className="text-gray-300">状态</span><span className="ml-2 text-gray-600"><span className="text-red-400">满额</span> 已用尽 · <span className="text-green-400">正常</span></span></div>
+          <div className="text-gray-300 font-medium md:col-span-2 border-b border-dark-border pb-1 mb-0.5 mt-1">调度策略</div>
+          <div><span className="text-gray-300">策略名称/类型/优先级</span><span className="ml-2 text-gray-600">策略标识 + 类型 + 优先级</span></div>
+          <div><span className="text-gray-300">状态</span><span className="ml-2 text-gray-600"><span className="text-green-400">已启用</span> · <span className="text-gray-500">已禁用</span></span></div>
+          <div className="text-gray-300 font-medium md:col-span-2 border-b border-dark-border pb-1 mb-0.5 mt-1">任务队列</div>
+          <div><span className="text-gray-300">任务名称/GPU需求/队列/优先级</span><span className="ml-2 text-gray-600">任务详情</span></div>
+          <div><span className="text-gray-300">提交者</span><span className="ml-2 text-gray-600">提交用户</span></div>
+          <div><span className="text-gray-300">状态</span><span className="ml-2 text-gray-600"><span className="text-blue-400">执行中</span> · <span className="text-yellow-400">等待中</span> · <span className="text-green-400">已完成</span> · <span className="text-red-400">失败</span></span></div>
+        </div>
+      </details>
+
       <div className="grid grid-cols-4 gap-4">
         <motion.div
           initial={{ opacity: 0, y: 8 }}

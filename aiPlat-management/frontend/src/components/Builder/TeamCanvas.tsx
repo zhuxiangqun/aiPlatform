@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronUp, ChevronDown, X, CheckCircle, ArrowRight, GitFork, Plus, Trash2 } from 'lucide-react';
+import { ChevronUp, ChevronDown, X, CheckCircle, ArrowRight, GitFork, Plus } from 'lucide-react';
 import type { PipelineStageConfig } from '../../services';
 import { Card, CardHeader, CardContent, Button } from '../../components/ui';
 

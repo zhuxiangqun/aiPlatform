@@ -1,23 +1,24 @@
 ---
 name: knowledge_query
 display_name: 知识库查询
-description: 多模态知识库查询（MVP）：支持“投资预算”类问答，返回结构化条目与 citations（bbox/页码）。
+description: 多模态知识库查询（MVP）：支持“投资预算”类问答，返回结构化条目与 citations（bbox/页码）。 涉及知识库相关操作。 主要进行查询。
 category: knowledge
 version: 0.1.0
 status: enabled
 execution_mode: prompt
 permissions:
-  - kb:read
+- kb:read
 effects:
-  - type: read
-    resources: ["filesystem:~/.aiplat"]
-    idempotent: true
-    rollback_available: false
+- type: read
+  resources:
+  - filesystem:~/.aiplat
+  idempotent: true
+  rollback_available: false
 triggers:
-  - 查询知识库
-  - 问答文档内容
-  - 投资预算是多少
-  - 预算有哪些
+- 查询知识库
+- 问答文档内容
+- 投资预算是多少
+- 预算有哪些
 input_schema:
   type: object
   properties:
@@ -36,21 +37,52 @@ input_schema:
     limit:
       type: integer
       description: 返回条数上限（默认 50）
-  required: [question]
+  required:
+  - question
 output_schema:
   type: object
   properties:
-    answer: {type: string}
+    answer:
+      type: string
     items:
       type: array
-      items: {type: object}
+      items:
+        type: object
     citations:
       type: array
-      items: {type: object}
-    tenant_id: {type: string}
-    collection_id: {type: string}
+      items:
+        type: object
+    tenant_id:
+      type: string
+    collection_id:
+      type: string
   markdown:
     type: string
+    required: true
+    description: 面向人阅读的 Markdown 输出
+metadata:
+  trigger_conditions:
+  - 知识库查询
+  - 查知识库
+  - 检索知识
+  - 搜索知识库
+  - budget查询
+  - FTS5搜索
+  - 知识检索
+  keywords:
+    objects:
+    - 知识库
+    - SQL
+    - 条目
+    - budget
+    actions:
+    - 查询
+    - 检索
+    - 搜索
+  negative_triggers:
+  - 不需要特定的编程语言知识
+  - 不要猜测或编造不存在的数据
+  sop_goal: 从结构化知识库返回带引用的精准答案
 ---
 
 # 知识库查询
@@ -79,3 +111,10 @@ output_schema:
 ## Tool（后备）
 - `kb_query`: KBQueryTool (core/apps/tools/kb_tools.py)
 
+## 目标
+从结构化知识库返回带引用的精准答案
+
+## Checklist
+- [ ] 输出格式符合规范
+- [ ] 正确处理错误和边界条件
+- [ ] 返回结果包含引用和来源标注

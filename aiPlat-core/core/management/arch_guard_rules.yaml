@@ -437,7 +437,7 @@ rules:
       pattern: "@router\\.(post|get|put)\\(.*\\{agent_id\\}/execute"
       paths: ["aiPlat-core/core/api/routers"]
       exclude: ["__pycache__", "tests/"]
-    message: "duplicate execute endpoints detected (expect 2: engine + workspace)"
+    message: "duplicate execute endpoints detected (expect 2: engine + workspace — this is a permanent info-level warning, 2 is correct)"
 
   # ═══ Section 36: system_prompt Flow Integrity ═══
   - id: sysprompt_flow_corefacade
@@ -508,7 +508,7 @@ rules:
       paths: ["aiPlat-platform", "aiPlat-app"]
       exclude: ["__pycache__", "tests/", "generated/"]
       grep_exclude: ["# noqa: llm-approved"]
-     message: "platform/app directly calling LLM API — use CoreFacade.llm_complete() or sys_llm_generate"
+    message: "platform/app directly calling LLM API — use CoreFacade.llm_complete() or sys_llm_generate"
 
   # ═══ Section 39: Diagnostic Graph Rebuild ═══
   - id: diag_single_graph_build
@@ -520,5 +520,190 @@ rules:
       pattern: "build_graph\\("
       paths: ["aiPlat-core/core/api/routers/diagnostics.py"]
       exclude: ["__pycache__", "tests/"]
-      grep_exclude: ["_get_or_build_graph\\b"]
+      grep_exclude: ["_get_or_build_graph\\b", "build_graph_approved"]
     message: "diagnostics.py calls build_graph() — use _get_or_build_graph() instead"
+
+  # ═══ Section 40: Dual-Mechanism Prevention (system-level) ═══
+
+  # 40.1: No hardcoded model/provider — use centralized resolution
+  - id: model_hardcode_dual_path
+    section: "§40"
+    section_name: "模型解析双路径防护"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: 'create_adapter\s*\(\s*provider\s*=\s*"'
+      paths: ["aiPlat-core/"]
+      exclude: ["__pycache__", "tests/", "adapters/llm/base.py", "harness/infrastructure/", "harness/knowledge/"]
+      grep_exclude: ["# noqa: adapter-legacy", "# noqa: canonical-injection"]
+    message: "hardcoded model provider in create_adapter() — use create_selected_adapter() or get_default_model()"
+
+  # 40.2: No direct env var model reads bypassing centralized resolution
+  - id: model_env_bypass
+    section: "§40"
+    section_name: "模型解析双路径防护"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: 'os\.getenv\s*\(\s*"AIPLAT_\w*MODEL\w*"\s*[,)]'
+      paths: ["aiPlat-core/", "aiPlat-platform/"]
+      exclude: ["__pycache__", "tests/", "harness/utils/model_injection.py",
+                "harness/infrastructure/", "infra/"]
+      grep_exclude: ["# noqa: env-legacy"]
+    message: "direct env var read for AIPLAT_*_MODEL — use get_default_model() or create_selected_adapter()"
+
+  # 40.3: No raw sqlite3.connect in core/api — use execution_store
+  - id: raw_sqlite_api_layer
+    section: "§40"
+    section_name: "数据库双路径防护"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: 'sqlite3\.connect\s*\('
+      paths: ["aiPlat-core/core/api/", "aiPlat-core/core/harness/syscalls/"]
+      exclude: ["__pycache__", "tests/"]
+      grep_exclude: ["execution_store", "infra_bridge", "# noqa: sqlite-approved",
+                     "kb_eval\\.py", "packages_registry\\.py", "overview\\.py",
+                     "prompt_eval\\.py", "prompt_app\\.py", "entropy\\.py",
+                     "wiki\\.py", "diagnostics\\.py", "retrieval\\.py"]
+    message: "raw sqlite3.connect() in API/syscall layer — use execution_store or infra_bridge"
+
+  # 40.4: No hardcoded model name strings — use best_model_for_purpose() or create_selected_adapter()
+  - id: model_name_hardcode
+    section: "§40"
+    section_name: "模型名称硬编码防护"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: '"(deepseek-chat|gpt-4[^a-z]|gpt-3\.5|deepseek-reasoner|claude-3)"'
+      paths: ["aiPlat-core/", "aiPlat-platform/"]
+      exclude: ["__pycache__", "tests/", "model_registry.py", "model_injection.py",
+                "arch_guard_rules.yaml", "infra/", "agent_config_validator.py"]
+      grep_exclude: ["# noqa: model-legacy"]
+    message: "hardcoded model name — use best_model_for_purpose() or create_selected_adapter()"
+
+  # 40.5: No indirect workspace_context access — use ContextVar
+  - id: indirect_workspace_context
+    section: "§40"
+    section_name: "上下文双路径防护"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: 'getattr\s*\([a-zA-Z_]+\s*,\s*["\u2018]workspace_context["\u2019]\s*[,\)]'
+      paths: ["aiPlat-core/core/harness/"]
+      exclude: ["__pycache__", "tests/", "kernel/execution_context.py", "tools/toolsets.py"]
+    message: "indirect workspace_context attribute access — use get_active_workspace_context() ContextVar"
+
+  # 40.5: No bare except:pass in gate paths (must log)
+  - id: bare_except_pass_gate
+    section: "§40"
+    section_name: "静默吞错防护"
+    level: warning
+    check:
+      type: grep_forbidden
+      pattern: 'except Exception:\s*\n\s*pass'
+      paths: ["aiPlat-core/core/harness/syscalls/", "aiPlat-core/core/api/routers/"]
+      exclude: ["__pycache__", "tests/"]
+    message: "bare except:pass in syscall/router — add logging.debug(exc_info=True) for diagnostics"
+
+  # 40.6: No duplicate function signatures across syscall modules
+  - id: duplicate_syscall_signatures
+    section: "§40"
+    section_name: "并行实现检测"
+    level: warning
+    check:
+      type: grep_forbidden
+      pattern: 'def create_adapter\b|def resolve_model\b|def get_model\b'
+      paths: ["aiPlat-core/core/harness/syscalls/", "aiPlat-core/core/apps/"]
+      exclude: ["__pycache__", "tests/", "adapters/llm/base.py"]
+      grep_exclude: ["# re-export from", "import", "# noqa: agent-model"]
+    message: "potential duplicate model resolution function — centralized resolution is in model_injection.py"
+
+  # ═══ Section 41: Utilization Guard — detect dead/inactive mechanisms ═══
+  # Catches patterns that existing architecture guard (§1-§40) cannot detect:
+  # §1-§40 catch: "wrong pattern exists" (grep_forbidden)
+  # §41 catches:    "initialized but never updated" / "0 callers" / "set but never read"
+  #
+  # Why existing guards missed these:
+  # - architecture_guard: grep-based → can't check runtime state or caller counts
+  # - diagnostics: SQL-based → aggregates data, doesn't detect dead wiring
+  # - convergence_checker: AST-based → checks gate reachability, not utilization
+  #
+  # §41 fills the gap: static analysis of default values, callback assignments, dead code.
+
+  # 41.1: Detect fields initialized to None and never reassigned
+  - id: dead_callback_assignment
+    section: "§41"
+    section_name: "利用化守卫 — 死代码检测"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: 'self\._persist_callback\s*=\s*None'
+      paths: ["aiPlat-core/core/harness/memory/"]
+      exclude: ["__pycache__", "tests/"]
+      grep_exclude: ["# wiring: active", "# noqa: pending-wire"]
+    message: "_persist_callback is None — long-term memory persistence is disabled. Wire it or mark # noqa: pending-wire."
+
+  # 41.2: Detect values initialized but never updated (budget_remaining, context_pressure, etc.)
+  - id: dead_budget_tracking
+    section: "§41"
+    section_name: "利用化守卫 — 死代码检测"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: 'budget_remaining\s*[=:]\s*1\.0'
+      paths: ["aiPlat-core/core/harness/interfaces/", "aiPlat-core/core/harness/execution/"]
+      exclude: ["__pycache__", "tests/"]
+    message: "budget_remaining initialized to 1.0 but never updated — token budget exhaustion is dead code. Add budget_remaining = 1.0 - used_tokens/max_tokens in _reason()."
+
+  # 41.3: Detect DI registrations without corresponding di.resolve() calls
+  - id: dead_di_registration
+    section: "§41"
+    section_name: "利用化守卫 — DI 容器"
+    level: warning
+    check:
+      type: grep_forbidden
+      pattern: 'di_factory\(\s*"AgentRegistry"|di_factory\(\s*"TraceService"|di_factory\(\s*"PermissionManager"|di_factory\(\s*"SubagentCoordinator"|di_factory\(\s*"IAgent"|di_factory\(\s*"ISkill"|di_factory\(\s*"ITool"'
+      paths: ["aiPlat-core/core/harness/integration.py"]
+      exclude: ["__pycache__", "tests/"]
+      grep_exclude: ["# wiring: live", "# noqa: di-live"]
+    message: "DI registration without di.resolve() caller — check if this service is actually used through DI"
+
+  # 41.4: Detect env-var defaults that disable critical features
+  - id: disabled_by_default
+    section: "§41"
+    section_name: "利用化守卫 — 默认禁用"
+    level: warning
+    check:
+      type: grep_forbidden
+      pattern: 'os\.getenv\("AIPLAT_APPLY_PROMPT_REVISIONS", "false"\)|os\.getenv\("AIPLAT_SYSCALL_ENFORCE_APPROVAL", "false"\)|os\.getenv\("AIPLAT_APPROVALS_DISABLED", "true"\)'
+      paths: ["aiPlat-core/core/harness/syscalls/", "aiPlat-core/core/harness/infrastructure/"]
+      exclude: ["__pycache__", "tests/"]
+      grep_exclude: ["# noqa: planned-phase4", "# noqa: known-design"]
+    message: "critical feature is disabled by default via env var — consider enabling by default"
+
+  # 41.5: Detect threshold too high for practical use
+  - id: impractical_threshold
+    section: "§41"
+    section_name: "利用化守卫 — 阈值过高"
+    level: warning
+    check:
+      type: grep_forbidden
+      pattern: 'AIPLAT_TOOL_SELECTOR_THRESHOLD", "1[5-9]"|"1[5-9]"'
+      paths: ["aiPlat-core/core/harness/execution/tool_selector.py"]
+      exclude: ["__pycache__", "tests/"]
+    message: "tool selector threshold is too high for most sessions — uses default(15) which is a no-op. Consider 5-10."
+
+  # ═══ Section 42: Subprocess Python Consistency ═══
+  - id: subprocess_bare_python3
+    section: "§42"
+    section_name: "Subprocess — Python Binary Consistency"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: 'subprocess\.run\(\["python3"|subprocess\.run\(\["python"|asyncio\.create_subprocess_exec\("python3"|asyncio\.create_subprocess_exec\("python"'
+      paths: ["aiPlat-core/core"]
+      exclude: ["__pycache__", "tests/", "conftest.py"]
+      grep_exclude: ["exec_drivers/docker\\.py", "exec_drivers/ssh\\.py", "capability_convergence\\.py", "arch_guard_rules/", "sys\\.executable", 'if.*command.*==.*"python3"', "scripts/architecture_guard\\.py"]
+    message: "bare 'python3' in subprocess call — use sys.executable to ensure venv Python is used"
+

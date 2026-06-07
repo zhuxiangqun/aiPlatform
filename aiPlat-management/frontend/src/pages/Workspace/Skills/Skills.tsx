@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Copy, Info, Plus, RotateCw, Trash2, Pencil, Play, Layers, Clock, ShieldCheck, Upload } from 'lucide-react';
+import { Copy, Info, Plus, RotateCw, Trash2, Pencil, Play, Layers, Clock, ShieldCheck, Upload, Key } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Badge, Table, Select, Switch, Button, Modal, toast } from '../../../components/ui';
 import { useWorkspaceSkillStore } from '../../../stores';
@@ -13,17 +13,13 @@ import ExecuteSkillModal from '../../../components/workspace/ExecuteSkillModal';
 import SkillVersionsModal from '../../../components/workspace/SkillVersionsModal';
 import SkillExecutionsModal from '../../../components/workspace/SkillExecutionsModal';
 import ImportBar from '../../../components/workspace/ImportBar';
-
-const categoryConfig: Record<string, { color: string; text: string }> = {
-  general: { color: 'bg-dark-hover text-gray-300 border-gray-200', text: '通用' },
-  execution: { color: 'bg-orange-50 text-orange-300 border-orange-200', text: '执行' },
-  retrieval: { color: 'bg-teal-50 text-teal-300 border-teal-200', text: '检索' },
-  analysis: { color: 'bg-indigo-50 text-indigo-300 border-indigo-200', text: '分析' },
-  generation: { color: 'bg-pink-50 text-pink-300 border-pink-200', text: '生成' },
-  transformation: { color: 'bg-yellow-50 text-yellow-300 border-yellow-200', text: '转换' },
-};
+import { getSourceLabel, extractProvenance } from '../../../utils/sourceLabel';
+import { SKILL_CATEGORIES } from '../../../utils/categoryConfig';
 
 const governanceBadge = (record: any) => {
+  const prov = (record?.metadata as any)?.provenance || {};
+  if (prov?.signature_verified === true) return <Badge variant={'success' as any}>已验签</Badge>;
+  if (prov?.signature) return <Badge variant={'info' as any}>已签名</Badge>;
   const g = (record?.metadata as any)?.governance || {};
   const v = (record?.metadata as any)?.verification || {};
   const st = String((g?.status || v?.status || '')).toLowerCase();
@@ -31,26 +27,10 @@ const governanceBadge = (record: any) => {
   if (st === 'published') return <Badge variant={'success' as any}>published</Badge>;
   if (st === 'failed') return <Badge variant={'error' as any}>failed</Badge>;
   if (st === 'pending') return <Badge variant={'warning' as any}>pending</Badge>;
-  return <Badge variant={'default' as any}>n/a</Badge>;
+  return <Badge variant={'default' as any}>未签名</Badge>;
 };
 
-const lintBadge = (record: any) => {
-  const l = (record as any)?.lint;
-  if (!l) return <Badge variant={'default' as any}>lint:n/a</Badge>;
-  const e = Number(l.error_count || 0);
-  const w = Number(l.warning_count || 0);
-  const risk = String(l.risk_level || 'low');
-  const blocked = Boolean(l.blocked);
-  const v = blocked || e > 0 ? ('error' as any) : w > 0 ? ('warning' as any) : ('success' as any);
-  return (
-    <div className="flex items-center gap-1 justify-center">
-      <Badge variant={v}>{`E${e}/W${w}`}</Badge>
-      <span className="text-[10px] text-gray-400">{risk}</span>
-    </div>
-  );
-};
-
-const SKILL_CATEGORIES = [
+const SKILL_CATEGORY_OPTIONS = [
   { value: '', label: '全部' },
   { value: 'general', label: '通用' },
   { value: 'execution', label: '执行' },
@@ -61,7 +41,7 @@ const SKILL_CATEGORIES = [
 ];
 
 const WorkspaceSkills: React.FC = () => {
-  const { skills, loading, fetchSkills, toggleSkill, deleteSkill, restoreSkill } = useWorkspaceSkillStore();
+  const { skills, loading, fetchSkills, deleteSkill, restoreSkill } = useWorkspaceSkillStore();
   const location = useLocation() as any;
   const navigate = useNavigate();
   const [categoryFilter, setCategoryFilter] = useState<string>('');
@@ -80,6 +60,16 @@ const WorkspaceSkills: React.FC = () => {
   const [skillMdOpen, setSkillMdOpen] = useState(false);
   const [skillMdLoading, setSkillMdLoading] = useState(false);
   const [skillMd, setSkillMd] = useState<{ path: string; content: string } | null>(null);
+  const [seedsModalOpen, setSeedsModalOpen] = useState(false);
+  const [seeds, setSeeds] = useState<any[]>([]);
+  const [seedsLoading, setSeedsLoading] = useState(false);
+  const [signing, setSigning] = useState(false);
+  const [signKey, setSignKey] = useState('');
+  const [signResult, setSignResult] = useState<string | null>(null);
+  const [batchSignOpen, setBatchSignOpen] = useState(false);
+  const [batchSignKey, setBatchSignKey] = useState('');
+  const [batchSigning, setBatchSigning] = useState(false);
+  const [batchResult, setBatchResult] = useState<{ total: number; signed: number; failed: number } | null>(null);
 
   useEffect(() => {
     fetchSkills();
@@ -98,41 +88,6 @@ const WorkspaceSkills: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location?.key]);
 
-  const handleToggle = async (skill: Skill) => {
-    try {
-      if ((skill.status || '').toLowerCase() === 'deprecated') {
-        toast.error('已弃用的 Skill 不能直接切换开关（可先“恢复”再启用）');
-        return;
-      }
-      const res: any = await toggleSkill(skill.id, !skill.enabled);
-      if (res?.status === 'approval_required' && res?.approval_request_id) {
-        toast.error(`需要审批：${res.approval_request_id}`);
-        try {
-          window.open('/core/approvals', '_blank', 'noopener,noreferrer');
-        } catch {
-          // ignore
-        }
-        return;
-      }
-      if (res?.status === 'publish_required' && res?.candidate_id) {
-        toast.error(`需要发布候选：${String(res.candidate_id).slice(0, 10)}...`);
-        try {
-          window.open('/core/learning/releases', '_blank', 'noopener,noreferrer');
-        } catch {
-          // ignore
-        }
-        return;
-      }
-      toast.success(skill.enabled ? `Skill "${skill.name}" 已禁用` : `Skill "${skill.name}" 已启用`);
-      const sum = res?.lint_summary || res?.lint?.summary;
-      if (sum && (Number(sum.error_count || 0) > 0 || Number(sum.warning_count || 0) > 0)) {
-        toast.warning('Skill Lint', `E${sum.error_count || 0}/W${sum.warning_count || 0}（risk=${sum.risk_level || 'low'}）`);
-      }
-    } catch (e: any) {
-      toastGateError(e, '操作失败');
-    }
-  };
-
   const handleExportPlugin = async (skill: any) => {
     try {
       const name = (skill.name || skill.id || 'skill').replace(/\s+/g, '_');
@@ -143,7 +98,7 @@ const WorkspaceSkills: React.FC = () => {
           name,
           version: '0.1.0',
           description: (skill as any).metadata?.description || skill.description || '',
-          resources: [{ kind: 'skill', id: skill.name || skill.id }],
+          resources: [{ kind: 'skill', id: skill.id }],
         }),
       });
       if (!res.ok) { toast.error('导出失败'); return; }
@@ -186,6 +141,56 @@ const WorkspaceSkills: React.FC = () => {
     }
   };
 
+  const loadSeeds = async () => {
+    setSeedsLoading(true);
+    try {
+      const r = await workspaceSkillApi.listSeeds();
+      setSeeds(r.seeds || []);
+    } catch { setSeeds([]); }
+    finally { setSeedsLoading(false); }
+  };
+
+  const installSeed = async (seedId: string) => {
+    try {
+      await workspaceSkillApi.installSeed(seedId);
+      toast.success(`已安装：${seedId}`);
+      loadSeeds();
+      fetchSkills();
+    } catch (e: any) { toast.error('安装失败', e?.message || String(e)); }
+  };
+
+  const handleBatchSign = async () => {
+    if (!batchSignKey.trim()) return;
+    setBatchSigning(true);
+    setBatchResult(null);
+    try {
+      const res = await workspaceSkillApi.signAll({ private_key: batchSignKey.trim() });
+      setBatchResult({ total: res.total, signed: res.signed, failed: res.failed });
+      toast.success(`批量签名完成：${res.signed} 成功 / ${res.failed} 失败`);
+      fetchSkills();
+    } catch (e: any) {
+      toastGateError(e, '批量签名失败');
+    } finally { setBatchSigning(false); }
+  };
+
+  const handleSign = async () => {
+    if (!detailModal.skill?.id || !signKey.trim()) return;
+    setSigning(true);
+    setSignResult(null);
+    try {
+      const res = await workspaceSkillApi.sign(detailModal.skill.id, { private_key: signKey.trim() });
+      setSignResult(res.signature);
+      toast.success('签名成功');
+      setSignKey('');
+      fetchSkills();
+    } catch (e: any) {
+      toastGateError(e, '签名失败');
+      setSignResult(null);
+    } finally {
+      setSigning(false);
+    }
+  };
+
   const copyText = async (text: string) => {
     if (!text) return;
     try {
@@ -199,9 +204,9 @@ const WorkspaceSkills: React.FC = () => {
   const filteredSkills = skills.filter(s => {
     if (filterSkillIds && filterSkillIds.length && !filterSkillIds.includes(s.id)) return false;
     if (categoryFilter && s.category !== categoryFilter) return false;
-    if (enabledOnly && !s.enabled) return false;
+    if (enabledOnly && !['published', 'listed'].includes((s.status || '').toLowerCase())) return false;
     if (statusFilter) {
-      const st = (s.status || (s.enabled ? 'enabled' : 'disabled')).toLowerCase();
+      const st = (s.status || 'draft').toLowerCase();
       if (st !== statusFilter) return false;
     }
     return true;
@@ -225,33 +230,17 @@ const WorkspaceSkills: React.FC = () => {
       key: 'category',
       width: 100,
       render: (c: string) => {
-        const cfg = categoryConfig[c] || { color: 'bg-dark-hover text-gray-300 border-gray-200', text: c };
+        const cfg = SKILL_CATEGORIES[c] || { color: 'bg-dark-hover text-gray-300 border-gray-200', text: c };
         return <span className={`inline-flex px-2 py-1 rounded-md text-xs font-medium border ${cfg.color}`}>{cfg.text}</span>;
       },
     },
     {
       title: '来源',
       key: 'source',
-      width: 220,
-      render: (_: unknown, record: Skill) => {
-        const sp: any = (record as any)?.metadata?.skill_pack;
-        const packId = sp?.pack_id || sp?.packId || sp?.id;
-        const ver = sp?.version;
-        if (!packId) return <span className="text-gray-500">-</span>;
-        return (
-          <div className="flex items-center gap-2">
-            <code className="text-xs bg-dark-hover px-1.5 py-0.5 rounded">{String(packId).slice(0, 10)}...</code>
-            <span className="text-xs text-gray-400">{ver ? `v${ver}` : ''}</span>
-            <button
-              className="text-xs text-primary hover:underline"
-              onClick={() => navigate('/core/skill-packs', { state: { openPackId: String(packId) } })}
-              title="打开 Skill Pack"
-            >
-              查看包
-            </button>
-          </div>
-        );
-      },
+      width: 80,
+      render: (_: unknown, record: Skill) => (
+        <span className="text-gray-400 text-xs">{getSourceLabel(extractProvenance(record))}</span>
+      ),
     },
     {
       title: '上架状态',
@@ -266,22 +255,6 @@ const WorkspaceSkills: React.FC = () => {
       },
     },
     {
-      title: '启用',
-      key: 'enabled',
-      width: 140,
-      align: 'center' as const,
-      render: (_: unknown, record: Skill) => {
-        const st = (record.status || (record.enabled ? 'enabled' : 'disabled')).toLowerCase();
-        if (st === 'deprecated') return <Badge variant={'error' as any}>deprecated</Badge>;
-        return (
-          <div className="flex items-center justify-center gap-2">
-            <Badge variant={(record.enabled ? 'success' : 'warning') as any}>{record.enabled ? 'enabled' : 'disabled'}</Badge>
-            <Switch checked={record.enabled} onChange={() => handleToggle(record)} />
-          </div>
-        );
-      },
-    },
-    {
       title: '治理',
       key: 'governance',
       width: 110,
@@ -289,16 +262,9 @@ const WorkspaceSkills: React.FC = () => {
       render: (_: unknown, record: Skill) => <div className="flex items-center justify-center">{governanceBadge(record)}</div>,
     },
     {
-      title: 'Lint',
-      key: 'lint',
-      width: 120,
-      align: 'center' as const,
-      render: (_: unknown, record: Skill) => <div className="flex items-center justify-center">{lintBadge(record)}</div>,
-    },
-    {
       title: '操作',
       key: 'actions',
-      width: 120,
+      width: 160,
       align: 'center' as const,
       render: (_: unknown, record: Skill) => (
         <div className="flex items-center justify-center gap-1">
@@ -389,6 +355,12 @@ const WorkspaceSkills: React.FC = () => {
           <Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddModalOpen(true)}>
             创建
           </Button>
+          <Button variant="secondary" icon={<Upload className="w-4 h-4" />} onClick={() => { loadSeeds(); setSeedsModalOpen(true); }}>
+            从模板安装
+          </Button>
+          <Button variant="secondary" icon={<ShieldCheck className="w-4 h-4" />} onClick={() => setBatchSignOpen(true)}>
+            批量签名
+          </Button>
           <Button icon={<RotateCw className="w-4 h-4" />} onClick={() => fetchSkills()} loading={loading}>
             刷新
           </Button>
@@ -422,7 +394,7 @@ const WorkspaceSkills: React.FC = () => {
 
       <div className="flex flex-wrap items-center gap-4">
         <div className="w-44">
-          <Select value={categoryFilter} onChange={(v: string) => { setCategoryFilter(v); fetchSkills({ category: v || undefined, enabled_only: enabledOnly, status: statusFilter || undefined }); }} options={SKILL_CATEGORIES} />
+          <Select value={categoryFilter} onChange={(v: string) => { setCategoryFilter(v); fetchSkills({ category: v || undefined, enabled_only: enabledOnly, status: statusFilter || undefined }); }} options={SKILL_CATEGORY_OPTIONS} />
         </div>
         <div className="w-44">
           <Select
@@ -445,55 +417,16 @@ const WorkspaceSkills: React.FC = () => {
       </div>
 
       {/* Legend */}
-      <details className="bg-dark-card border border-dark-border rounded-lg p-3 text-xs text-gray-500 cursor-pointer group">
+      <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group">
         <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
-        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <div className="text-gray-300 font-medium mb-1">名称 / 描述</div>
-            <div className="text-gray-600">SKILL.md 的 <span className="text-gray-300">display_name</span>（显示名）和 <span className="text-gray-300">description</span>（功能描述）。括号标注来源范围。</div>
-          </div>
-          <div>
-            <div className="text-gray-300 font-medium mb-1">分类</div>
-            <div className="text-gray-600">SKILL.md 的 <span className="text-gray-300">category</span>：生成 / 分析 / 检索 / 执行 / design / document / tool / text 等。</div>
-          </div>
-          <div>
-            <div className="text-gray-300 font-medium mb-1">来源</div>
-            <div className="text-gray-600"><span className="text-gray-300">-</span> = workspace 自定义创建；<span className="text-gray-300">engine</span> = 引擎内置（只读）；<span className="text-gray-300">skill-pack</span> = 从包安装。</div>
-          </div>
-          <div>
-            <div className="text-gray-300 font-medium mb-1">上架状态</div>
-            <div className="space-y-0.5">
-              <div><span className="text-green-400">draft</span> <span className="text-gray-600">— 草稿，仅创建者可见</span></div>
-              <div><span className="text-yellow-400">ready</span> <span className="text-gray-600">— 待审批</span></div>
-              <div><span className="text-green-400">published</span> <span className="text-gray-600">— 已发布</span></div>
-              <div><span className="text-green-400">listed</span> <span className="text-gray-600">— 已上架（商城可见）</span></div>
-              <div><span className="text-red-400">deprecated</span> <span className="text-gray-600">— 已废弃，不建议使用</span></div>
-              <div><span className="text-gray-400">enabled</span> <span className="text-gray-600">— 旧版状态标记</span></div>
-            </div>
-          </div>
-          <div>
-            <div className="text-gray-300 font-medium mb-1">启用</div>
-            <div className="text-gray-600">开关控制该 Skill 是否可被 Agent 调用。关闭后已绑定的 Agent 仍可使用，但新调用会被拒绝。</div>
-          </div>
-          <div>
-            <div className="text-gray-300 font-medium mb-1">治理</div>
-            <div className="space-y-0.5">
-              <div><span className="text-green-400">verified</span> <span className="text-gray-600">— 已通过系统校验</span></div>
-              <div><span className="text-green-400">published</span> <span className="text-gray-600">— 已发布上线</span></div>
-              <div><span className="text-yellow-400">pending</span> <span className="text-gray-600">— 待审批</span></div>
-              <div><span className="text-red-400">failed</span> <span className="text-gray-600">— 校验未通过</span></div>
-              <div><span className="text-gray-400">n/a</span> <span className="text-gray-600">— 未设置治理状态</span></div>
-            </div>
-          </div>
-          <div>
-            <div className="text-gray-300 font-medium mb-1">Lint（静态检查）</div>
-            <div className="text-gray-600">
-              <span className="text-red-300 font-mono">E{"{数字}"}</span> = 错误数（必须修复），
-              <span className="text-yellow-300 font-mono">W{"{数字}"}</span> = 警告数（建议修复），
-              <span className="text-gray-300">low / medium / high</span> = 风险等级。
-              E0/W0 且绿色 = 通过全部检查。
-            </div>
-          </div>
+        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+          <div><span className="text-gray-300">名称/描述</span><span className="ml-2 text-gray-600">SKILL.md 的 display_name + description</span></div>
+          <div><span className="text-gray-300">分类</span><span className="ml-2 text-gray-600">category：生成/分析/检索/执行/design/document/tool/text</span></div>
+          <div><span className="text-gray-300">上架状态</span><span className="ml-2 text-gray-600"><span className="text-gray-400">draft</span> 开发中 · <span className="text-yellow-400">ready</span> 待审 · <span className="text-green-400">published</span> 已发布 · <span className="text-green-400">listed</span> 上架 · <span className="text-red-400">deprecated</span> 废弃</span></div>
+          <div><span className="text-gray-300">启用</span><span className="ml-2 text-gray-600">即上架状态。draft 可直接执行测试。published/listed 为可用</span></div>
+          <div><span className="text-gray-300">治理</span><span className="ml-2 text-gray-600"><span className="text-green-400">已验签</span> 签名验证通过 · <span className="text-blue-400">已签名</span> 已写入签名 · <span className="text-yellow-400">pending</span> 等待中 · <span className="text-red-400">failed</span> 未通过 · <span className="text-gray-400">未签名</span> 缺少签名</span></div>
+          <div><span className="text-gray-300">Lint</span><span className="ml-2 text-gray-600"><span className="text-red-300">E数</span>=错误 <span className="text-yellow-300">W数</span>=警告 low/medium/high=风险</span></div>
+          <div><span className="text-gray-300">操作</span><span className="ml-2 text-gray-600">版本/历史/执行/编辑/审批/弃用/导出/详情</span></div>
         </div>
       </details>
 
@@ -674,8 +607,52 @@ const WorkspaceSkills: React.FC = () => {
               <pre className="text-xs bg-dark-hover rounded p-2 overflow-auto max-h-40">
                 {JSON.stringify((detailModal.skill as any)?.metadata?.provenance || {}, null, 2)}
               </pre>
-            </div>
-            <div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 mb-1">签名</div>
+            {signResult ? (
+              <div className="flex items-center gap-2 text-success text-xs">
+                <ShieldCheck size={14} />
+                <span>已签名 · {signResult.slice(0, 16)}...</span>
+                <Button variant="ghost" onClick={() => setSignResult(null)}>重新签名</Button>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2">
+                <textarea
+                  className="flex-1 h-16 px-3 py-2 bg-dark-hover border border-dark-border rounded-lg text-xs text-gray-200 placeholder-gray-500 font-mono focus:outline-none focus:border-primary resize-none"
+                  placeholder="粘贴 Ed25519 私钥 PEM（-----BEGIN PRIVATE KEY-----...）"
+                  value={signKey}
+                  onChange={(e) => setSignKey(e.target.value)}
+                />
+                <div className="flex flex-col gap-1">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    icon={<Key size={14} />}
+                    onClick={handleSign}
+                    loading={signing}
+                    disabled={!signKey.trim() || signing}
+                  >
+                    签名
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      try {
+                        window.open('/onboarding', '_blank', 'noopener,noreferrer');
+                      } catch {
+                        // ignore
+                      }
+                    }}
+                  >
+                    生成密钥
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+          <div>
               <div className="text-xs text-gray-500">integrity</div>
               <pre className="text-xs bg-dark-hover rounded p-2 overflow-auto max-h-40">
                 {JSON.stringify((detailModal.skill as any)?.metadata?.integrity || {}, null, 2)}
@@ -741,6 +718,83 @@ const WorkspaceSkills: React.FC = () => {
         onClose={() => setAddModalOpen(false)}
         onSuccess={fetchSkills}
       />
+
+      <Modal
+        open={seedsModalOpen}
+        onClose={() => setSeedsModalOpen(false)}
+        title="从模板安装 Skill"
+        width={600}
+        footer={<Button onClick={() => setSeedsModalOpen(false)}>关闭</Button>}
+      >
+        <div className="space-y-3 text-sm text-gray-300">
+          <p className="text-xs text-gray-500">选择一个模板安装到 workspace。安装后可自由编辑 SKILL.md。</p>
+          {seedsLoading ? (
+            <div className="text-gray-500 text-center py-4">加载中...</div>
+          ) : seeds.length === 0 ? (
+            <div className="text-gray-500 text-center py-4">
+              暂无可用模板
+              <div className="text-[10px] text-gray-600 mt-1">将 SKILL.md 放入 aiPlat-core/core/workspace_seeds/skills/&lt;id&gt;/ 即可作为模板</div>
+            </div>
+          ) : (
+            seeds.map((s: any) => (
+              <div key={s.id} className="flex items-center justify-between p-3 rounded border border-dark-border bg-dark-bg">
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium text-gray-200">{s.name}</div>
+                  <div className="text-xs text-gray-500 mt-0.5">{s.description}</div>
+                  {s.category && <span className="text-[10px] px-1.5 py-0.5 rounded bg-dark-hover text-gray-400 mt-1 inline-block">{s.category}</span>}
+                </div>
+                {s.installed ? (
+                  <span className="text-xs text-green-400 ml-3">已安装</span>
+                ) : (
+                  <Button variant="primary" size="sm" onClick={() => installSeed(s.id)}>安装</Button>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </Modal>
+
+      <Modal
+        open={batchSignOpen}
+        onClose={() => { setBatchSignOpen(false); setBatchResult(null); }}
+        title="批量签名"
+        width={500}
+        footer={<Button onClick={() => { setBatchSignOpen(false); setBatchResult(null); }}>关闭</Button>}
+      >
+        <div className="space-y-3 text-sm text-gray-300">
+          <p className="text-xs text-gray-500">对所有 workspace Skill 使用同一个私钥签名。私钥不会保存。</p>
+          {batchResult ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-green-400">
+                <ShieldCheck size={16} />
+                <span>完成：{batchResult.signed} 成功 / {batchResult.failed} 失败 / {batchResult.total} 总计</span>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <textarea
+                className="w-full h-24 px-3 py-2 bg-dark-hover border border-dark-border rounded text-xs text-gray-200 placeholder-gray-500 font-mono resize-none"
+                placeholder="粘贴 Ed25519 私钥 PEM（-----BEGIN PRIVATE KEY-----...）"
+                value={batchSignKey}
+                onChange={(e) => setBatchSignKey(e.target.value)}
+              />
+              <div className="flex gap-2">
+                <Button
+                  variant="primary"
+                  onClick={handleBatchSign}
+                  loading={batchSigning}
+                  disabled={!batchSignKey.trim() || batchSigning}
+                >
+                  开始批量签名
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => { try { window.open('/onboarding', '_blank', 'noopener,noreferrer'); } catch {} }}>
+                  生成密钥
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 };

@@ -9,11 +9,12 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 import time as _time
 import uuid
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 
 from core.api.deps import actor_from_http, rbac_guard
 from core.api.utils.governance import gate_error_envelope, governance_links, ui_url
@@ -1416,6 +1417,91 @@ async def workspace_skills_installer_uninstall(skill_id: str, http_request: Requ
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"installer_uninstall_failed:{e}")
+
+
+@router.post("/workspace/skills/installer/upload-plan")
+async def workspace_skills_installer_upload_plan(
+    file: UploadFile = File(...),
+    subdir: str = Form(""),
+    skill_id: str = Form(""),
+    auto_detect_subdir: str = Form("true"),
+    rt: RuntimeDep = Depends(get_kernel_runtime),
+):
+    """Plan from uploaded zip file — no filesystem write."""
+    ws_mgr = _ws_skill_manager(rt)
+    if not ws_mgr:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
+            content = await file.read()
+            tmp.write(content)
+            tmp_path = tmp.name
+
+        auto_detect = auto_detect_subdir.lower() in ("true", "1", "yes")
+        plan = await ws_mgr.installer_plan(
+            source_type="zip",
+            path=tmp_path,
+            subdir=subdir or None,
+            skill_id=skill_id or None,
+            auto_detect_subdir=auto_detect,
+        )
+        return {"status": "ok", **plan}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"upload_plan_failed: {e}")
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+@router.post("/workspace/skills/installer/upload-install")
+async def workspace_skills_installer_upload_install(
+    file: UploadFile = File(...),
+    subdir: str = Form(""),
+    skill_id: str = Form(""),
+    auto_detect_subdir: str = Form("true"),
+    allow_overwrite: str = Form("false"),
+    plan_id: str = Form(""),
+    http_request: Request = None,
+    rt: RuntimeDep = Depends(get_kernel_runtime),
+):
+    """Install from uploaded zip file."""
+    ws_mgr = _ws_skill_manager(rt)
+    if not ws_mgr:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+
+    deny = await rbac_guard(
+        http_request=http_request, payload={"scope": "workspace", "source_type": "zip"},
+        action="install", resource_type="skill", resource_id=skill_id if skill_id else None,
+    )
+    if deny:
+        return deny
+
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
+            content = await file.read()
+            tmp.write(content)
+            tmp_path = tmp.name
+
+        result = await ws_mgr.installer_install(
+            source_type="zip", path=tmp_path,
+            subdir=subdir or None, skill_id=skill_id or None,
+            auto_detect_subdir=auto_detect_subdir.lower() in ("true", "1", "yes"),
+            allow_overwrite=allow_overwrite.lower() in ("true", "1", "yes"),
+            confirm=True, plan_id=plan_id or None,
+        )
+        return {"status": "ok", **result}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"upload_install_failed: {e}")
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
 
 
 @router.get("/workspace/skills/installer/catalog")

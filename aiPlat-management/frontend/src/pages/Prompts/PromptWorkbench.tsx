@@ -104,7 +104,7 @@ const PromptWorkbench: React.FC<Props> = ({ template, models, open, onClose, onS
     const tplText = template.user_prompt || template.system_prompt || '';
     const dv = [...new Set(tplText.match(/\$\{(\w+)\}/g)?.map((m: string) => m.slice(2, -1)) || [])];
     const vo: Record<string, string> = {};
-    dv.forEach(v => { vo[v] = ''; });
+    dv.forEach((v: any) => { vo[v as string] = ''; });
     setNewCase({ name: '', variables: dv.length > 0 ? JSON.stringify(vo) : '{}', expected_keys: '' });
     // Reset optimize state
     setOptimizeMessages([]);
@@ -202,7 +202,7 @@ const PromptWorkbench: React.FC<Props> = ({ template, models, open, onClose, onS
       toast.success('用例已添加');
       const dv = [...new Set((editForm.user_prompt || '').match(/\$\{(\w+)\}/g)?.map((m: string) => m.slice(2, -1)) || [])];
       const vo: Record<string, string> = {};
-      dv.forEach(v => { vo[v] = ''; });
+    dv.forEach((v: any) => { (vo as any)[v] = ''; });
       setNewCase({ name: '', variables: dv.length > 0 ? JSON.stringify(vo) : '{}', expected_keys: '' });
       loadEvalData();
     } catch (e: any) { toast.error('添加失败', e?.message); }
@@ -237,7 +237,7 @@ const PromptWorkbench: React.FC<Props> = ({ template, models, open, onClose, onS
 
   const handleStartOptimize = async () => {
     const up = editForm.user_prompt || editForm.system_prompt || '';
-    if (!up) { toast.warn('模板无内容可优化'); return; }
+    if (!up) { (toast as any).warn('模板无内容可优化'); return; }
     setOptimizeLoading(true);
     try {
       const r = await promptOptimizeApi.run({ prompt: up, model: optimizeModel });
@@ -325,14 +325,14 @@ const PromptWorkbench: React.FC<Props> = ({ template, models, open, onClose, onS
   const handleApplyVersion = async () => {
     const v = optimizeVersions[optimizeActiveVersion];
     if (!v?.optimized || !template) return;
-    setEditForm(prev => ({ ...prev, user_prompt: v.optimized }));
+    setEditForm((prev: any) => ({ ...prev, user_prompt: v.optimized }));
     // Auto-switch to variables from optimized
     if (v.suggested_vars?.length > 0) {
       const existing = Array.isArray(editForm.variables) ? editForm.variables : [];
       const newVars = v.suggested_vars
         .filter((sv: string) => !existing.some((e: any) => (e.name || e) === sv))
         .map((sv: string) => ({ name: sv, type: 'text', description: '' }));
-      setEditForm(prev => ({ ...prev, user_prompt: v.optimized, variables: [...existing, ...newVars] }));
+      setEditForm((prev: any) => ({ ...prev, user_prompt: v.optimized, variables: [...existing, ...newVars] }));
     }
     toast.success('已应用至编辑区，请确认后保存');
     setTab('edit');
@@ -399,7 +399,7 @@ const PromptWorkbench: React.FC<Props> = ({ template, models, open, onClose, onS
                     <div>
                       <label className="text-xs text-gray-400">输入变量 <span className="text-gray-600">(自动检测)</span></label>
                       <div className="flex flex-col gap-2 mt-1">
-                        {detected.map((v: string) => {
+                        {(detected as string[]).map((v: string) => {
                           const existing = vars.find((x: any) => (x.name || x) === v) || {};
                           return (
                             <div key={v} className="bg-dark-bg rounded px-3 py-1.5 text-xs flex items-center gap-2">
@@ -431,7 +431,7 @@ const PromptWorkbench: React.FC<Props> = ({ template, models, open, onClose, onS
                 <div><label className="text-xs text-gray-400">示例 <span className="text-gray-600">(输入→输出参考)</span></label><Textarea value={editForm.examples || ''} onChange={e => setEditForm({ ...editForm, examples: e.target.value })} rows={3} placeholder={(() => {
                   const d = [...new Set((editForm.user_prompt || '').match(/\$\{(\w+)\}/g)?.map((m: string) => m.slice(2, -1)) || [])];
                   const sv: Record<string, string> = {};
-                  d.slice(0, 3).forEach(v => { sv[v] = v + '示例'; });
+                  d.slice(0, 3).forEach((v: any) => { (sv as any)[v] = v + '示例'; });
                   return d.length > 0 ? `输入：${JSON.stringify(sv)}\n输出：（在此填写期望的输出效果或参考示例）` : '输入：{"变量1":"示例值"}\n输出：（在此填写期望的输出效果）';
                 })()} /></div>
                 <div><label className="text-xs text-gray-400">约束 <span className="text-gray-600">(不能做什么)</span></label><Textarea value={editForm.constraints || ''} onChange={e => setEditForm({ ...editForm, constraints: e.target.value })} rows={2} placeholder="· 日期使用yyyy年mm月dd日格式\n· 不使用昵称" /></div>
@@ -649,7 +649,7 @@ const PromptWorkbench: React.FC<Props> = ({ template, models, open, onClose, onS
                                 try { results = typeof runDetail.results_json === 'string' ? JSON.parse(runDetail.results_json) : runDetail.results_json; } catch { }
                                 return results.map((res: any, ri: number) => {
                                   const tc = evalCases.find(c => c.id === res.case_id);
-                                  const expectedKeys = (tc?.expected_keys || '').split(',').filter(Boolean).map(k => k.trim().toLowerCase());
+                                   const expectedKeys = (tc?.expected_keys || '').split(',').filter(Boolean).map((k: any) => k.trim().toLowerCase());
                                   return (
                                     <div key={ri} className="bg-dark-bg border border-dark-border rounded-lg p-3">
                                       <div className="flex items-start gap-4">

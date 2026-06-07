@@ -363,6 +363,17 @@ async def list_models(
         raise HTTPException(status_code=503, detail=f"Infra API unavailable: {str(e)}")
 
 
+@router.get("/models/provider-models")
+async def get_provider_models(request: Request):
+    """Get dynamic model catalog for provider dropdown."""
+    try:
+        client = get_infra_client(request)
+        result = await client.get_provider_models()
+        return result
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Infra API unavailable: {str(e)}")
+
+
 @router.get("/models/providers")
 async def get_model_providers(request: Request):
     """Get supported providers."""

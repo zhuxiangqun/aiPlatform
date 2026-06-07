@@ -1,19 +1,20 @@
 ---
 name: wiki_query
 display_name: Wiki 查询
-description: 在持久化 Wiki 中搜索知识，沿链接图展开，合成答案。支持输出 Markdown、Mermaid 图表、对比表格。与传统 RAG 不同——知识已由 LLM 编缉过，交叉链接已存在，查询精度远超向量检索。
+description: 在持久化 Wiki 中搜索知识，沿链接图展开，合成答案。支持输出 Markdown、Mermaid 图表、对比表格。与传统 RAG 不同——知识已由 LLM 编缉过，交叉链接已存在，查询精度远超向量检索。 主要进行查询。
 category: knowledge
 version: 1.0.0
 status: enabled
 execution_mode: prompt
 permissions:
-  - "wiki:read"
-  - "llm:generate"
+- wiki:read
+- llm:generate
 effects:
-  - type: read
-    resources: ["filesystem:~/.aiplat/wiki"]
-    idempotent: true
-    rollback_available: false
+- type: read
+  resources:
+  - filesystem:~/.aiplat/wiki
+  idempotent: true
+  rollback_available: false
 input_schema:
   question:
     type: string
@@ -36,6 +37,30 @@ output_schema:
     type: string
   markdown:
     type: string
+    required: true
+    description: 面向人阅读的 Markdown 输出
+metadata:
+  trigger_conditions:
+  - Wiki查询
+  - 搜索Wiki
+  - 知识库搜索
+  - 搜索知识库
+  - 查找Wiki
+  - 知识检索
+  keywords:
+    objects:
+    - Wiki
+    - 知识库
+    - 页面
+    actions:
+    - 查询
+    - 搜索
+    - 合成
+    - 展开
+  negative_triggers:
+  - 不需要特定的编程语言知识
+  - 不要猜测或编造不存在的数据
+  sop_goal: 搜索 Wiki 并合成答案
 ---
 
 ## SOP
@@ -100,3 +125,11 @@ top-20 chunks 中有大量噪音。参见 [[knowledge_accumulation]]。
 | 每次查询从零开始 | 知识已经编缉好 |
 | 需要 reranker 去噪 | 链接本身就是高质量筛选 |
 | 回答后扔掉 | 好答案存回 wiki |
+
+## 目标
+搜索 Wiki 并合成答案
+
+## Checklist
+- [ ] 输出格式符合规范
+- [ ] 正确处理错误和边界条件
+- [ ] 返回结果包含引用和来源标注

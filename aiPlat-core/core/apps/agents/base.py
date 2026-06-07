@@ -68,6 +68,10 @@ class BaseAgent(IAgent):
         # Initialize model if not provided
         if not self._model and config.metadata.get("model"):
             from ...adapters.llm import create_adapter
+            try:
+                from core.harness.utils.model_injection import _log_model_selection
+                _log_model_selection("agent_init", config.model, entry="create_adapter_legacy", source="AgentBase")
+            except Exception: pass
             provider = config.metadata.get("provider", "openai")
             self._model = create_adapter(
                 provider=provider,
@@ -258,7 +262,7 @@ class BaseAgent(IAgent):
         """Get agent configuration"""
         return self._config
 
-    def get_model(self) -> Optional[ILLMAdapter]:
+    def get_model(self) -> Optional[ILLMAdapter]:  # noqa: agent-model — per-agent model, distinct from model_injection
         """Get model adapter"""
         return self._model
 

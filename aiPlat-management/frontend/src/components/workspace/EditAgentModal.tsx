@@ -40,6 +40,8 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
   const [agentOptions, setAgentOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [modelOptions, setModelOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [selectedModel, setSelectedModel] = useState<string>('');
+  const [knowledgeBases, setKnowledgeBases] = useState<string[]>([]);
+  const [kbOptions, setKbOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [defaultToolset, setDefaultToolset] = useState<string>('workspace_default');
   // Pipeline/Builder configuration fields
   const [generateTestPlan, setGenerateTestPlan] = useState(false);
@@ -60,10 +62,15 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       setDefaultToolset(String((agent as any)?.metadata?.toolset || 'workspace_default'));
       setSkills(agent.skills || []);
       setTools(agent.tools || []);
-      setMcpIds((agent as any)?.mcp_ids || []);
-      setWorkflowIds((agent as any)?.workflow_ids || []);
-      setAgentIds((agent as any)?.agent_ids || []);
-      setConfigText(agent.metadata?.config ? JSON.stringify(agent.metadata.config, null, 2) : (agent as any)?.config ? JSON.stringify((agent as any).config, null, 2) : '');
+      setMcpIds((agent as any)?.mcp_ids || (agent as any)?.metadata?.mcp_servers || []);
+      // Auto-select mcp_readonly toolset if agent has MCP servers bound
+      const hasMcp = ((agent as any)?.mcp_ids || (agent as any)?.metadata?.mcp_servers || []).length > 0;
+      if (hasMcp && String((agent as any)?.metadata?.toolset || 'workspace_default') === 'workspace_default') {
+        setDefaultToolset('mcp_readonly');
+      }
+      setWorkflowIds((agent as any)?.workflow_ids || (agent as any)?.metadata?.workflows || []);
+      setAgentIds((agent as any)?.agent_ids || (agent as any)?.metadata?.agent_ids || []);
+      setConfigText((agent as any)?.config ? JSON.stringify((agent as any).config, null, 2) : agent.metadata?.config ? JSON.stringify(agent.metadata.config, null, 2) : '');
       setMemoryConfigText((agent as any)?.memory_config ? JSON.stringify((agent as any).memory_config, null, 2) : '{\n  "type": "short_term",\n  "recall_count": 5\n}');
       setSopText('');
       setAgentStatus(agent.status || 'draft');
@@ -84,8 +91,10 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       setPhaseDescription(String(md.phase_description || ''));
       setHitlAfterExecute(Boolean(md.hitl_after_execute));
       setHitlAfterPhase(String(md.hitl_after_phase || ''));
+      setKnowledgeBases(Array.isArray(md.knowledge_bases) ? md.knowledge_bases : []);
       fetchOptions();
       fetchSop();
+      fetchWikiCollections();
       // init selectedModel from config if possible
       try {
         const cfg = (agent as any)?.config || {};
@@ -177,6 +186,18 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       setToolOptions([]);
       setModelOptions([]);
     }
+  };
+
+  const fetchWikiCollections = async () => {
+    try {
+      const r = await fetch('/api/core/wiki/collections');
+      const data = await r.json();
+      const cols = data.collections || [];
+      setKbOptions(cols.map((c: any) => ({
+        value: c.collection_id,
+        label: `${c.collection_id} (${c.page_count} 页)`,
+      })));
+    } catch { }
   };
 
   const handleAutoFill = async () => {
@@ -283,6 +304,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       metadata.hitl_after_execute = hitlAfterExecute;
       metadata.hitl_after_phase = hitlAfterPhase.trim() || undefined;
       metadata.loop_type = loopType;
+      metadata.knowledge_bases = knowledgeBases;
 
       await workspaceAgentApi.update(agent.id, { name: name.trim() || undefined, status: agentStatus || undefined, config, skills: skills.length ? skills : undefined, tools: tools.length ? tools : undefined, mcp_ids: mcpIds.length ? mcpIds : undefined, workflow_ids: workflowIds.length ? workflowIds : undefined, agent_ids: agentIds.length ? agentIds : undefined, memory_config, metadata });
 
@@ -411,6 +433,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
           >
             <option value="workspace_default">workspace_default（默认）</option>
             <option value="safe_readonly">safe_readonly（只读）</option>
+            <option value="mcp_readonly">mcp_readonly（MCP 工具）</option>
             <option value="browser">browser（浏览器/HTTP）</option>
             <option value="full">full（全量/高风险）</option>
           </select>
@@ -506,6 +529,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
         {agentOptions.length > 0 && (
           <MultiSelect label="绑定子 Agent" options={agentOptions} selected={agentIds} onChange={setAgentIds} hint="当前 Agent 可以将任务委派给选中的子 Agent" />
         )}
+        {kbOptions.length > 0 && <MultiSelect label="知识库（Wiki 集合）" options={kbOptions} selected={knowledgeBases} onChange={setKnowledgeBases} hint="指定 Agent 使用的 Wiki 知识库集合；不选则默认用 default" />}
 
         <div className="grid grid-cols-2 gap-4">
           <div>

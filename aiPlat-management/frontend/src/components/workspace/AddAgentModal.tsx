@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { workspaceAgentApi, workspaceSkillApi, promptAppApi } from '../../services';
 import { modelApi, toolApi, type Model } from '../../services';
 import { workspaceMcpApi, workflowTemplateApi } from '../../services';
-import { Alert, Button, Input, Modal, Textarea, toast, MultiSelect } from '../ui';
+import { Alert, Button, Input, Modal, Select, Textarea, toast, MultiSelect } from '../ui';
 import PromptDiffModal from './PromptDiffModal';
 import { diagnosticsApi } from '../../services';
 
@@ -61,6 +61,8 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
   const [agentOptions, setAgentOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [modelOptions, setModelOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [selectedModel, setSelectedModel] = useState<string>('');
+  const [knowledgeBases, setKnowledgeBases] = useState<string[]>([]);
+  const [kbOptions, setKbOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [autoSmoke, setAutoSmoke] = useState(true);
   const [autoFillLoading, setAutoFillLoading] = useState(false);
   const [appTemplates, setAppTemplates] = useState<any[]>([]);
@@ -89,8 +91,10 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
       setMemoryConfigText('{\n  "type": "short_term",\n  "recall_count": 5\n}');
       setSopText('');
       setSelectedAppTemplateId('');
+      setKnowledgeBases([]);
       fetchOptions();
       fetchAppTemplates();
+      fetchWikiCollections();
     }
   }, [open]);
 
@@ -113,6 +117,18 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
     try {
       const r = await promptAppApi.list();
       setAppTemplates((r as any).items || []);
+    } catch { }
+  };
+
+  const fetchWikiCollections = async () => {
+    try {
+      const r = await fetch('/api/core/wiki/collections');
+      const data = await r.json();
+      const cols = data.collections || [];
+      setKbOptions(cols.map((c: any) => ({
+        value: c.collection_id,
+        label: `${c.collection_id} (${c.page_count} 页)`,
+      })));
     } catch { }
   };
 
@@ -207,7 +223,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
       if (result.agent_ids?.length) setAgentIds(result.agent_ids.filter((a: string) => agentOptions.some(o => o.value === a)));
       if (result.memory_config) setMemoryConfigText(JSON.stringify(result.memory_config, null, 2));
       if (result.sop_text) setSopText(result.sop_text);
-      if (result.template_id) setSelectedAppTemplateId(result.template_id);
+      if ((result as any).template_id) setSelectedAppTemplateId((result as any).template_id);
       toast.success(`智能填充完成`, result.reasoning || 'AI 已根据描述推荐配置');
     } catch (e: any) {
       toast.error('智能填充失败', e?.message || String(e));
@@ -349,6 +365,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
 
       const metadata: Record<string, unknown> = {};
       if (description.trim()) metadata.description = description.trim();
+      if (knowledgeBases.length > 0) metadata.knowledge_bases = knowledgeBases;
 
       const created = await workspaceAgentApi.create({ name: name.trim(), agent_type: selectedType, config, skills, tools, mcp_ids: mcpIds, workflow_ids: workflowIds, agent_ids: agentIds, memory_config, metadata });
       const agentId = String((created as any).id || '');
@@ -399,17 +416,15 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
     >
       <div className="space-y-4">
         {appTemplates.length > 0 && (
-          <div>
-            <label className="text-sm font-medium text-gray-300 mb-1 block">基于应用模板创建（可选）</label>
-            <select value={selectedAppTemplateId} onChange={e => setSelectedAppTemplateId(e.target.value)}
-              className="w-full bg-dark-bg border border-dark-border rounded px-3 py-2 text-sm text-gray-200 outline-none">
-              <option value="">不使用模板</option>
-              {appTemplates.map((t: any) => (
-                <option key={t.id} value={t.id}>{t.name} ({t.category || '通用'})</option>
-              ))}
-            </select>
-            <p className="text-[10px] text-gray-600 mt-0.5">选择后自动填入名称和 System Prompt，可选择「AI 智能填充」补充 Skills/Tools</p>
-          </div>
+          <Select
+            label="模板"
+            value={selectedAppTemplateId}
+            onChange={(v) => setSelectedAppTemplateId(v)}
+            options={[
+              { value: '', label: '不使用模板' },
+              ...appTemplates.map((t: any) => ({ value: t.id, label: `${t.name} (${t.category || '通用'})` })),
+            ]}
+          />
         )}
         <Input label="名称" value={name} onChange={(e: any) => setName(e.target.value)} placeholder="例如：数据分析助手" />
         <div className="flex items-center gap-2">
@@ -422,6 +437,9 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
           <Button variant="secondary" size="sm" onClick={handleAutoFill} loading={autoFillLoading}>
             ✨ AI 智能填充
           </Button>
+          <Button variant="secondary" size="sm" onClick={() => setWizOpen(true)} disabled={loading}>
+            向导
+          </Button>
           <span className="text-xs text-gray-500">根据名称和功能描述自动推荐 Skills / Tools / MCP / 配置 / SOP</span>
         </div>
 
@@ -431,46 +449,35 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
         </label>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <div className="text-sm font-medium text-gray-300 mb-2">模型（来自基础设施模型库）</div>
-            <select
-              value={selectedModel}
-              onChange={(e) => {
-                const v = e.target.value;
-                setSelectedModel(v);
-                try {
-                  const cfg = configText?.trim() ? JSON.parse(configText) : {};
-                  cfg.model = v;
-                  setConfigText(JSON.stringify(cfg, null, 2));
-                } catch {
-                  setConfigText(JSON.stringify({ model: v, temperature: 0.3 }, null, 2));
-                }
-              }}
-              className="w-full h-10 px-3 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100"
-            >
-              {modelOptions.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <Select
+            label="模型"
+            value={selectedModel}
+            onChange={(v) => {
+              setSelectedModel(v);
+              try {
+                const cfg = configText?.trim() ? JSON.parse(configText) : {};
+                cfg.model = v;
+                setConfigText(JSON.stringify(cfg, null, 2));
+              } catch {
+                setConfigText(JSON.stringify({ model: v, temperature: 0.3 }, null, 2));
+              }
+            }}
+            options={modelOptions}
+          />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <div className="text-sm font-medium text-gray-300 mb-2">类型</div>
-            <select
-              value={selectedType}
-              onChange={(e) => handleTypeChange(e.target.value)}
-              className="w-full h-10 px-3 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100"
-            >
-              <option value="base">基础 - 简单对话</option>
-              <option value="react">ReAct - 推理+行动</option>
-              <option value="plan">规划型 - 任务分解</option>
-              <option value="tool">工具型 - 工具调用</option>
-            </select>
-          </div>
+          <Select
+            label="Agent 类型"
+            value={selectedType}
+            onChange={(v) => handleTypeChange(v)}
+            options={[
+              { value: 'base', label: '基础 - 简单对话' },
+              { value: 'react', label: 'ReAct - 推理+行动' },
+              { value: 'plan', label: '规划型 - 任务分解' },
+              { value: 'tool', label: '工具型 - 工具调用' },
+            ]}
+          />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -481,6 +488,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
         {mcpOptions.length > 0 && <MultiSelect label="绑定 MCP" options={mcpOptions} selected={mcpIds} onChange={setMcpIds} hint="MCP 服务器提供的工具会全局注册到工具池" />}
         {workflowOptions.length > 0 && <MultiSelect label="绑定 Workflow" options={workflowOptions} selected={workflowIds} onChange={setWorkflowIds} />}
         {agentOptions.length > 0 && <MultiSelect label="绑定子 Agent" options={agentOptions} selected={agentIds} onChange={setAgentIds} hint="当前 Agent 可以将任务委派给选中的子 Agent" />}
+        {kbOptions.length > 0 && <MultiSelect label="知识库（Wiki 集合）" options={kbOptions} selected={knowledgeBases} onChange={setKnowledgeBases} hint="指定 Agent 使用的 Wiki 知识库集合；不选则默认用 default" />}
 
         {template && (
           <Alert type="info" title={template.name}>
@@ -538,7 +546,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
     <Modal
       open={wizOpen}
       onClose={() => setWizOpen(false)}
-      title="智能生成：主动消歧"
+       title="Agent 向导"
       width={760}
       footer={
         <>

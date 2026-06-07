@@ -5,6 +5,7 @@ export interface ExecutionNode {
   group?: string;
   status: 'idle' | 'running' | 'completed' | 'failed' | 'warning';
   parentId?: string;
+  parentSpanId?: string;
   startTime?: number;
   duration?: number;
   details?: Record<string, any>;

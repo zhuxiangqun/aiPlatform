@@ -4,5 +4,6 @@ export { useMemoryStore } from './memoryStore';
 export { useMcpStore } from './mcpStore';
 export { useWorkspaceSkillStore } from './workspaceSkillStore';
 export { useWorkspaceAgentStore } from './workspaceAgentStore';
+export { useWorkspaceToolStore } from './workspaceToolStore';
 export { useWorkspaceMcpStore } from './workspaceMcpStore';
 export { useKBStore } from './kbStore';

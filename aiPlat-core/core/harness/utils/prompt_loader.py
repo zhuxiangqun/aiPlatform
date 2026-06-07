@@ -97,6 +97,12 @@ def auto_classify(template_id: str) -> str:
             result = "admin"
             break
 
+    # Fallback: if template has no callers, check its own category metadata
+    if result == "app" and not callers:
+        meta = _METADATA.get(template_id, {})
+        if meta.get("category") in ("engine", "admin"):
+            result = "admin"
+
     # Cache
     _CLASSIFICATION_CACHE[template_id] = result
     return result
@@ -109,6 +115,15 @@ def list_templates() -> List[Tuple[str, str, Dict]]:
         meta = _METADATA.get(tid, {})
         result.append((tid, _DEFAULT_PROMPTS[tid], meta))
     return result
+
+
+def _substitute(template: str, variables: Dict[str, Any]) -> str:
+    """Replace ${var} placeholders in template with variable values."""
+    import re
+    def _replacer(match):
+        key = match.group(1)
+        return str(variables.get(key, match.group(0)))
+    return re.sub(r'\$\{(\w+)\}', _replacer, template)
 
 
 def _sync_resolve(template_id: str, **variables) -> str:
@@ -134,6 +149,33 @@ def _sync_resolve(template_id: str, **variables) -> str:
 def get_metadata(template_id: str) -> Optional[Dict]:
     """Get template metadata (variables, role, category, immutable)."""
     return _METADATA.get(template_id)
+
+
+_DB_TEMPLATE_CACHE: Dict[str, tuple[float, str]] = {}
+
+async def _async_prompt_resolve(template_id: str, **variables) -> str:
+    """Async resolve: checks DB template (with TTL cache), falls back to sync defaults."""
+    now = time.time()
+    # Check TTL cache first to avoid repeated DB hits
+    cached = _DB_TEMPLATE_CACHE.get(template_id)
+    if cached and now - cached[0] < 60:  # 60s TTL
+        return _substitute(str(cached[1]), variables)
+
+    try:
+        from core.harness.kernel.runtime import get_kernel_runtime
+        rt = get_kernel_runtime()
+        store = getattr(rt, "execution_store", None) if rt else None
+        if store:
+            try:
+                db_template = await store.get_prompt_template(template_id)
+                if db_template:
+                    _DB_TEMPLATE_CACHE[template_id] = (now, str(db_template))
+                    return _substitute(str(db_template), variables)
+            except Exception:
+                pass
+    except Exception:
+        pass
+    return _sync_resolve(template_id, **variables)
 
 
 # ── Default prompt templates ──────────────────────────────────────
@@ -532,7 +574,130 @@ ${wf_catalog}
 - 只输出 JSON，不要任何解释""",
     category="agent",
     variables=["count", "agent_list", "skills_catalog", "tools_catalog",
-               "mcp_catalog", "agent_catalog", "wf_catalog"])
+                "mcp_catalog", "agent_catalog", "wf_catalog"])
+
+_register("tool-auto-fill", """你是一个 Python 工具开发者。请根据以下需求，生成一个符合 aiPlat 规范的 TOOL_DEF 代码。
+
+## 工具名称
+${tool_name}
+
+## 功能描述
+${description}
+
+## TOOL_DEF 格式规范
+```python
+TOOL_DEF = {
+    "id": "tool_name",
+    "name": "tool_name",
+    "description": "功能说明，必须包含所有参数名、类型和是否必填。示例：Calculate square of number. Parameters: num(number, required) - the value to square. Example: {\\"num\\": 5} returns {\\"result\\": 25}.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "param1": {"type": "string", "description": "参数说明"},
+            "param2": {"type": "integer", "description": "参数说明"}
+        },
+        "required": ["param1"]
+    },
+    "execute": lambda params: {"result": "..."}
+}
+```
+
+## 要求
+1. `description` 字段必须包含所有输入参数的名称、类型、是否必填，以及一个调用示例
+2. 参数说明使用英文（方便其他 LLM 理解），功能描述可包含中文
+3. `execute` 必须是有效的 Python lambda 或函数，不能是字符串
+4. 参数类型只能是 string / integer / number / boolean / object
+5. 如果工具不需要输入参数，parameters 设为 {}
+6. 只输出 ```python 代码块，不要任何额外解释""",
+    category="tool",
+    variables=["tool_name", "description"])
+
+_register("mcp-auto-fill", """你是一个 MCP (Model Context Protocol) 服务器配置专家。请根据以下需求，推荐最优的 MCP 服务器配置。
+
+## 名称
+${server_name}
+
+## 功能描述
+${description}
+
+## 输出格式
+只输出以下 JSON（不要任何额外文本或代码块标记）：
+{
+  "transport": "sse" | "stdio" | "http",
+  "url": "可访问地址（sse/http 类型必填，stdio 为空字符串）",
+  "command": "可执行文件（stdio 类型必填，如 python3、node、/opt/bin/tool）",
+  "args": ["参数列表"],
+  "allowed_tools": ["工具名列表，至少写 3-6 个合理名称"],
+  "auth": {"type": "bearer" | "none", "token": "留空供用户填写"} | null,
+  "metadata": {"description": "一句话描述", "risk_level": "low" | "medium" | "high"}
+}
+
+## 规则
+1. 如果功能描述中提到"本地"、"文件系统"、"工具"、"脚本" → transport 选 stdio，command 选 python3
+2. 如果是远程 API、服务调用 → transport 选 sse 或 http，填写合理的 url（localhost:0 占位）
+3. args 是字符串数组，如 ["-m", "module_name"]
+4. 必须输出合法 JSON，不要有任何 markdown 标记、注释或额外解释""",
+    category="engine",
+    variables=["server_name", "description"])
+
+_register("skill-auto-fill", """你是一个 AI Skill 设计专家。请根据以下需求，设计一个完整的 Skill。
+
+## Skill 名称
+${skill_name}
+
+## 功能描述
+${description}
+
+## 输出格式
+输出一个完整的 SKILL.md，包含 YAML frontmatter 和 Markdown SOP。
+
+```yaml
+---
+name: ${skill_name}
+display_name: 中文显示名
+description: 一句话描述
+category: development|design|analysis|retrieval|document|execution|generation|text|tool|general
+version: 1.0.0
+status: draft
+skill_kind: rule
+permissions: []
+trigger_conditions: []
+input_schema:
+  type: object
+  properties:
+    input:
+      type: string
+      description: 输入参数
+output_schema:
+  type: object
+  properties:
+    result:
+      type: string
+      description: 输出结果
+---
+# SOP 标题
+
+## 目标
+一行话描述
+
+## 工作流程
+1. 第一步
+2. 第二步
+3. 第三步
+
+## 约束
+- 约束1
+- 约束2
+```
+
+## 要求
+1. trigger_conditions 至少 3 个中文触发短语
+2. input_schema 和 output_schema 用 JSON Schema 格式
+3. SOP 用中文写 3-5 个步骤
+4. category 必须从给定选项中选一个最匹配的
+5. 只输出 YAML + Markdown，不要任何额外解释""",
+    category="skill",
+    variables=["skill_name", "description"])
 
 # === OPERATOR — Evaluation ===
 _register("eval-metrics-design", """你是一个 Agent 评估指标设计专家。请根据 Agent 的定义和执行历史，设计一套评分维度。

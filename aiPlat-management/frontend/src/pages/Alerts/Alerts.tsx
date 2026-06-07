@@ -221,6 +221,21 @@ const Alerts: React.FC = () => {
         }
       />
 
+      <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+        <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+          <div className="text-gray-300 font-medium md:col-span-2 border-b border-dark-border pb-1 mb-0.5">活跃告警</div>
+          <div><span className="text-gray-300">严重程度</span><span className="ml-2 text-gray-600"><span className="text-red-400">critical</span> 高危 · <span className="text-yellow-400">warning</span> 中危 · <span className="text-gray-400">info</span> 低危</span></div>
+          <div><span className="text-gray-300">告警名称</span><span className="ml-2 text-gray-600">告警规则触发的描述</span></div>
+          <div><span className="text-gray-300">来源/层级</span><span className="ml-2 text-gray-600">告警来自哪个系统组件</span></div>
+          <div><span className="text-gray-300">状态</span><span className="ml-2 text-gray-600"><span className="text-red-400">firing</span> 触发中 · <span className="text-green-400">resolved</span> 已解决</span></div>
+          <div className="text-gray-300 font-medium md:col-span-2 border-b border-dark-border pb-1 mb-0.5 mt-1">告警规则</div>
+          <div><span className="text-gray-300">规则名称/类型</span><span className="ml-2 text-gray-600">规则标识 + 类型</span></div>
+          <div><span className="text-gray-300">条件/阈值/持续时间</span><span className="ml-2 text-gray-600">触发条件详情</span></div>
+          <div><span className="text-gray-300">状态</span><span className="ml-2 text-gray-600"><span className="text-green-400">enabled</span> 已启用 · <span className="text-gray-500">disabled</span> 已禁用</span></div>
+        </div>
+      </details>
+
       <div className="grid grid-cols-4 gap-4">
         <motion.div
           initial={{ opacity: 0, y: 8 }}

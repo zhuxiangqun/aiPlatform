@@ -160,7 +160,7 @@ class MaterialsChatAgent(BaseAgent):
                                 {"role": "system", "content": "你是知识库问答助手。基于提供的文档内容，准确简洁地回答用户问题。如果文档内容不足以回答，请如实告知。请直接用中文回答，不需要JSON格式。"},
                                 {"role": "user", "content": f"文档内容：\n{retrieved_docs[:4000]}\n\n用户问题：{enhanced_question}\n\n请回答："},
                             ],
-                            model_name="deepseek-chat",
+                            model_name=best_model_for_purpose("chat") or "deepseek-chat",  # noqa: model-legacy
                             temperature=0.3,
                             max_tokens=2000,
                         ):
@@ -179,7 +179,7 @@ class MaterialsChatAgent(BaseAgent):
                                 {"role": "system", "content": "你是知识库问答助手。基于提供的文档内容，准确简洁地回答用户问题。如果文档内容不足以回答，请如实告知。请直接用中文回答，不需要JSON格式。"},
                                 {"role": "user", "content": f"文档内容：\n{retrieved_docs[:4000]}\n\n用户问题：{enhanced_question}\n\n请回答："},
                             ],
-                            model_name="deepseek-chat",
+                            model_name=best_model_for_purpose("chat") or "deepseek-chat",  # noqa: model-legacy
                             temperature=0.3,
                             max_tokens=2000,
                         )

@@ -95,17 +95,34 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
   const [inputSchemaText, setInputSchemaText] = useState('{}');
   const [outputSchemaText, setOutputSchemaText] = useState('{}');
   const [sopText, setSopText] = useState('');
-  const [wizOpen, setWizOpen] = useState(false);
-  const [wizKind, setWizKind] = useState<'prompt' | 'retrieval' | 'execution' | 'transformation'>('prompt');
-  const [wizStructured, setWizStructured] = useState(false);
-  const [wizMayWrite, setWizMayWrite] = useState(false);
-  const [genWarnings, setGenWarnings] = useState<string[]>([]);
   const [autoSmoke, setAutoSmoke] = useState(true);
   const [optimizeOpen, setOptimizeOpen] = useState(false);
   const [optimizePrompt, setOptimizePrompt] = useState('');
   const [wizV2Open, setWizV2Open] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
 
   const categoryOptions = useMemo(() => SKILL_CATEGORIES, []);
+
+  const handleAiFill = async () => {
+    if (!name.trim() || !description.trim()) return;
+    setAiLoading(true);
+    try {
+      const res = await workspaceSkillApi.autoFill({ name: name.trim(), description: description.trim() });
+      if (res.error) { toast.error('AI 生成失败', res.error); return; }
+      setDisplayName(res.display_name || name);
+      setDescription(res.description || description);
+      setCategory(res.category || 'general');
+      setSkillKind((res.skill_kind === 'executable' ? 'executable' : 'rule') as any);
+      setTriggerText(JSON.stringify(res.trigger_conditions || [], null, 2));
+      setPermissionsText(JSON.stringify(res.permissions || [], null, 2));
+      setInputSchemaText(JSON.stringify(res.input_schema || {}, null, 2));
+      setOutputSchemaText(JSON.stringify(res.output_schema || {}, null, 2));
+      setSopText(res.sop || '');
+      toast.success('AI 已生成 Skill 模板');
+    } catch (e: any) {
+      toast.error('AI 生成失败', e?.detail || e?.message || String(e));
+    } finally { setAiLoading(false); }
+  };
 
   const applyTemplate = (cat: string) => {
     const key = SKILL_TEMPLATES[cat] ? cat : 'general';
@@ -115,75 +132,6 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
     setOutputSchemaText(JSON.stringify(tmpl.output_schema, null, 2));
     setSopText(tmpl.sop);
     setSkillKind(cat === 'execution' ? 'executable' : 'rule');
-  };
-
-  const openWizard = () => {
-    setWizOpen(true);
-    // best-effort guess
-    const text = `${name} ${description}`.toLowerCase();
-    if (text.includes('检索') || text.includes('召回') || text.includes('rag') || text.includes('知识库')) setWizKind('retrieval');
-    else if (text.includes('执行') || text.includes('调用') || text.includes('自动化') || text.includes('创建') || text.includes('更新')) setWizKind('execution');
-    else if (text.includes('转换') || text.includes('格式') || text.includes('抽取')) setWizKind('transformation');
-    else setWizKind('prompt');
-    setWizStructured(text.includes('json') || text.includes('结构化') || text.includes('schema'));
-    setWizMayWrite(text.includes('写入') || text.includes('更新') || text.includes('创建') || text.includes('删除') || text.includes('修改'));
-  };
-
-  const applyWizardGenerate = () => {
-    const nm = name.trim() || '新建Skill';
-    const desc = description.trim();
-    const structured = wizStructured;
-    const mayWrite = wizMayWrite;
-    let cat = category;
-
-    // map wizard kind to category + template
-    if (wizKind === 'retrieval') cat = 'retrieval';
-    else if (wizKind === 'execution') cat = 'execution';
-    else if (wizKind === 'transformation') cat = 'transformation';
-    else cat = 'analysis';
-
-    setCategory(cat);
-    setSkillKind(wizKind === 'execution' ? 'executable' : 'rule');
-    const key = SKILL_TEMPLATES[cat] ? cat : 'general';
-    const base = SKILL_TEMPLATES[key];
-
-    // config
-    const cfg: any = { ...(base.config || {}) };
-    cfg.timeout_seconds = cfg.timeout_seconds ?? (wizKind === 'execution' ? 120 : 60);
-    if (mayWrite) cfg.require_confirmation = true;
-
-    // schemas
-    const input: any = { ...(base.input_schema || {}) };
-    const output: any = { ...(base.output_schema || {}) };
-    // ensure a minimal common input
-    if (!input.input && wizKind === 'prompt') input.prompt = input.prompt || { type: 'string', required: true, description: '指令/要点' };
-    if (!input.context) input.context = { type: 'object', required: false, description: '上下文/约束（可选）' };
-    if (structured) {
-      output.result = output.result || { type: 'object', required: true, description: '结构化结果' };
-    }
-
-    // SOP
-    const sop = [
-      `1. 明确目标与边界：${nm}${desc ? `（${desc}）` : ''}。`,
-      wizKind === 'retrieval' ? '2. 明确检索数据域/filters，执行召回并返回证据片段。'
-        : wizKind === 'execution' ? '2. 校验参数与权限边界，生成执行计划（plan），必要时要求二次确认。'
-          : wizKind === 'transformation' ? '2. 明确输入格式与目标格式，执行抽取/转换并校验结果。'
-            : '2. 提取关键信息与约束，按要求分析并给出可验证依据。',
-      structured ? '3. 输出必须包含结构化 result 字段，并保持字段稳定。' : '3. 输出清晰结论与下一步建议。',
-      '4. 自检：完整性、一致性、边界条件与失败提示。',
-    ].join('\n');
-
-    setConfigText(JSON.stringify(cfg, null, 2));
-    setInputSchemaText(JSON.stringify(input, null, 2));
-    setOutputSchemaText(JSON.stringify(output, null, 2));
-    if (!sopText.trim()) setSopText(sop);
-
-    // lint warnings
-    const warns: string[] = [];
-    if (!name.trim()) warns.push('建议先填写 Skill 名称，再生成模板。');
-    if (wizKind === 'execution' && !mayWrite) warns.push('你选择了“执行类 Skill”，如果涉及写入外部系统建议勾选“可能写入/修改”。');
-    if (wizKind === 'retrieval' && !desc) warns.push('检索类 Skill 建议在描述中写清楚数据域/权限边界。');
-    setGenWarnings(warns);
   };
 
   const handleSubmit = async () => {
@@ -317,9 +265,12 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
         创建后自动运行全链路冒烟（会创建/清理资源）
       </label>
       <div className="space-y-4">
-        <Input label="名称" value={name} onChange={(e: any) => setName(e.target.value)} placeholder="例如：我的客服助手" />
+        <div className="flex gap-2 items-end">
+          <div className="flex-1"><Input label="名称" value={name} onChange={(e: any) => setName(e.target.value)} placeholder="例如：我的客服助手" /></div>
+          <Button variant="secondary" size="sm" onClick={handleAiFill} loading={aiLoading}
+            disabled={!name.trim() || !description.trim() || aiLoading}>AI 生成</Button>
+        </div>
         <Input label="Skill ID（可选，留空则自动生成）" value={skillId} onChange={(e: any) => setSkillId(e.target.value)} placeholder="例如：customer_support（建议小写/下划线）" />
-        <Input label="display_name（可选，默认等于名称）" value={displayName} onChange={(e: any) => setDisplayName(e.target.value)} placeholder="用于 SKILL.md display_name" />
         <div className="flex items-end justify-between gap-3">
           <div className="flex-1">
             <Select
@@ -337,9 +288,6 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
           </Button>
           <Button variant="primary" onClick={() => setWizV2Open(true)} disabled={loading}>
             向导 v2（推荐）
-          </Button>
-          <Button variant="secondary" onClick={openWizard} disabled={loading}>
-            旧向导
           </Button>
         </div>
         <Select
@@ -372,16 +320,6 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
             setOptimizeOpen(true);
           }}>🤖 AI 优化 SOP</Button>
         </div>
-        {genWarnings.length > 0 && (
-          <div className="text-sm text-yellow-300">
-            <div className="font-medium mb-1">生成提示</div>
-            <ul className="list-disc pl-5 space-y-1">
-              {genWarnings.map((w, i) => (
-                <li key={i}>{w}</li>
-              ))}
-            </ul>
-          </div>
-        )}
       </div>
     </Modal>
 
@@ -443,66 +381,6 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
         setWizV2Open(false);
       }}
     />
-
-    <Modal
-      open={wizOpen}
-      onClose={() => setWizOpen(false)}
-      title="Skill 生成向导"
-      width={760}
-      footer={
-        <>
-          <Button variant="secondary" onClick={() => setWizOpen(false)} disabled={loading}>
-            取消
-          </Button>
-          <Button
-            variant="primary"
-            onClick={() => {
-              applyWizardGenerate();
-              setWizOpen(false);
-            }}
-            disabled={loading}
-          >
-            生成
-          </Button>
-        </>
-      }
-    >
-      <div className="space-y-4">
-        <div className="text-sm text-gray-300">
-          通过向导明确 Skill 类型与输出形态，避免“检索/执行/分析”歧义。
-        </div>
-
-        <div>
-          <div className="text-sm font-medium text-gray-300 mb-2">Skill 类型</div>
-          <select
-            value={wizKind}
-            onChange={(e) => setWizKind(e.target.value as any)}
-            className="w-full h-10 px-3 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100"
-          >
-            <option value="prompt">分析/提示式（不依赖外部系统）</option>
-            <option value="retrieval">检索/召回式（知识库/RAG）</option>
-            <option value="execution">执行式（生成执行计划/调用外部系统）</option>
-            <option value="transformation">转换/抽取式（格式转换、字段抽取）</option>
-          </select>
-        </div>
-
-        <div>
-          <div className="text-sm font-medium text-gray-300 mb-2">输出是否需要结构化（JSON）？</div>
-          <label className="flex items-center gap-2 text-sm text-gray-200">
-            <input type="checkbox" checked={wizStructured} onChange={() => setWizStructured(!wizStructured)} />
-            是（会补一个稳定的 result/object 输出结构）
-          </label>
-        </div>
-
-        <div>
-          <div className="text-sm font-medium text-gray-300 mb-2">是否可能写入/修改外部系统？</div>
-          <label className="flex items-center gap-2 text-sm text-gray-200">
-            <input type="checkbox" checked={wizMayWrite} onChange={() => setWizMayWrite(!wizMayWrite)} />
-            可能（会在 config/SOP 里加入二次确认提示）
-          </label>
-        </div>
-      </div>
-    </Modal>
 
     <PromptDiffModal
       open={optimizeOpen}

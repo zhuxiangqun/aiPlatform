@@ -29,7 +29,7 @@ def _normalize_language(language: Optional[str]) -> Optional[str]:
 
 
 def transcribe_audio(audio_path: str, language: Optional[str] = None) -> List[Dict[str, Any]]:
-    model_name = os.getenv("AIPLAT_VIDEO_WHISPER_MODEL", "base")
+    model_name = os.getenv("AIPLAT_VIDEO_WHISPER_MODEL", "base")  # noqa: env-legacy
     whisper_language = _normalize_language(language)
     device = os.getenv("AIPLAT_WHISPER_DEVICE", "cpu")
     compute_type = os.getenv("AIPLAT_WHISPER_COMPUTE_TYPE", "int8")

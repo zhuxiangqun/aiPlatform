@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Play, Zap, Clock, AlertTriangle, Brain, Copy, RefreshCw, Plus, X } from 'lucide-react';
-import { Card, CardHeader, CardContent, Button, Input, toast } from '../../components/ui';
+import { Play, Zap, Clock, AlertTriangle, Brain, Copy, Plus } from 'lucide-react';
+import { Card, CardHeader, CardContent, Button, toast } from '../../components/ui';
 
 interface ModelInfo {
   name: string;
@@ -64,11 +64,6 @@ const ModelPlayground: React.FC = () => {
   const copyResult = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success('已复制到剪贴板');
-  };
-
-  const cardStyle: React.CSSProperties = {
-    background: '#1f2937', borderRadius: 10, padding: '12px 16px',
-    border: '1px solid #374151',
   };
 
   return (
@@ -179,9 +174,7 @@ const ModelPlayground: React.FC = () => {
             const color = COLORS[i % COLORS.length];
             const isError = r.status === 'error';
             return (
-              <Card key={r.model} className="border-dark-border bg-dark-card" style={{
-                borderTop: `3px solid ${isError ? '#ef4444' : color}`,
-              }}>
+              <Card key={r.model} className="border-dark-border bg-dark-card" {...({ style: { borderTop: `3px solid ${isError ? '#ef4444' : color}` } } as any)}>
                 <CardHeader>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ width: 10, height: 10, borderRadius: '50%', background: color }} />

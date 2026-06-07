@@ -144,7 +144,64 @@ class SubagentCoordinator:
                 user_id="subagent_coordinator",
                 messages=messages,
             )
-            result = await agent.execute(agent_ctx)
+
+            # ── Propagate parent's workspace context (toolset + mcp_ids) to child agent ──
+            sub_ws_token = None
+            try:
+                from core.harness.kernel.execution_context import (
+                    get_active_workspace_context,
+                    set_active_workspace_context,
+                    reset_active_workspace_context,
+                    ActiveWorkspaceContext,
+                )
+                parent_ws = get_active_workspace_context()
+                if parent_ws:
+                    sub_ws_token = set_active_workspace_context(
+                        ActiveWorkspaceContext(
+                            toolset=getattr(parent_ws, "toolset", None),
+                            mcp_ids=list(getattr(parent_ws, "mcp_ids", []) or []) or None,
+                            repo_root=getattr(parent_ws, "repo_root", None),
+                        )
+                    )
+            except Exception:
+                sub_ws_token = None
+
+            # ── Also propagate request context (user_id, session_id) to sub-agent ──
+            req_token = None
+            try:
+                from core.harness.kernel.execution_context import (
+                    get_active_request_context,
+                    set_active_request_context,
+                    reset_active_request_context,
+                    ActiveRequestContext,
+                )
+                parent_req = get_active_request_context()
+                if parent_req:
+                    req_token = set_active_request_context(
+                        ActiveRequestContext(
+                            user_id=getattr(parent_req, "user_id", "subagent_coordinator"),
+                            session_id=getattr(parent_req, "session_id", f"subagent-{subagent_name}"),
+                            entrypoint="subagent",
+                        )
+                    )
+            except Exception:
+                req_token = None
+
+            try:
+                result = await agent.execute(agent_ctx)
+            finally:
+                if req_token is not None:
+                    try:
+                        from core.harness.kernel.execution_context import reset_active_request_context
+                        reset_active_request_context(req_token)
+                    except Exception:
+                        pass
+                if sub_ws_token is not None:
+                    try:
+                        from core.harness.kernel.execution_context import reset_active_workspace_context
+                        reset_active_workspace_context(sub_ws_token)
+                    except Exception:
+                        pass
 
             if result.success:
                 output = result.output or ""

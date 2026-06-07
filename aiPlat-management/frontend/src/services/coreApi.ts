@@ -165,6 +165,14 @@ export const workspaceAgentApi = {
     return apiClient.delete<{ status: string; id: string }>(`/core/workspace/agents/${agentId}`);
   },
 
+  deprecate: async (agentId: string) => {
+    return apiClient.put<{ status: string; id: string }>(`/core/workspace/agents/${agentId}`, { status: 'deprecated' });
+  },
+
+  restore: async (agentId: string) => {
+    return apiClient.put<{ status: string; id: string }>(`/core/workspace/agents/${agentId}`, { status: 'draft' });
+  },
+
   start: async (agentId: string) => {
     return apiClient.post<{ status: string; id: string }>(`/core/workspace/agents/${agentId}/start`);
   },
@@ -179,6 +187,22 @@ export const workspaceAgentApi = {
 
   toggleEnabled: async (agentId: string) => {
     return apiClient.post<{ agent_id: string; enabled: boolean }>(`/core/workspace/agents/${agentId}/toggle-enabled`);
+  },
+
+  listSeeds: async () => {
+    return apiClient.get<{ seeds: { id: string; name: string; description: string; category: string; tags: string[]; installed: boolean }[]; total: number }>('/core/workspace/agents/seeds');
+  },
+
+  installSeed: async (seedId: string) => {
+    return apiClient.post<{ status: string; id: string }>(`/core/workspace/agents/seeds/${encodeURIComponent(seedId)}/install`);
+  },
+
+  enable: async (agentId: string) => {
+    return apiClient.post<{ status: string; approval_request_id?: string; change_id?: string }>(`/core/workspace/agents/${agentId}/enable`);
+  },
+
+  sign: async (agentId: string, data: { private_key: string }) => {
+    return apiClient.post<{ status: string; bundle_sha256: string; version: string; signature: string }>(`/core/workspace/agents/${agentId}/sign`, data);
   },
 
   update: async (agentId: string, data: { name?: string; status?: string; config?: Record<string, unknown>; skills?: string[]; tools?: string[]; mcp_ids?: string[]; workflow_ids?: string[]; agent_ids?: string[]; memory_config?: Record<string, unknown>; metadata?: Record<string, unknown> }) => {
@@ -321,8 +345,15 @@ export const promptApi = {
 // ==================== Prompt App Templates ====================
 
 export const promptAppApi = {
-  list: (params?: { category?: string; status?: string; limit?: number; offset?: number }) =>
-    apiClient.get<any>('/core/prompts/app/templates', { params }),
+  list: (params?: { category?: string; status?: string; limit?: number; offset?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.category) q.set('category', params.category);
+    if (params?.status) q.set('status', params.status);
+    if (params?.limit) q.set('limit', String(params.limit));
+    if (params?.offset) q.set('offset', String(params.offset));
+    const qs = q.toString();
+    return apiClient.get<any>(`/core/prompts/app/templates${qs ? '?' + qs : ''}`);
+  },
   get: (id: string) =>
     apiClient.get<any>(`/core/prompts/app/templates/${encodeURIComponent(id)}`),
   create: (body: any) =>
@@ -348,19 +379,27 @@ export const promptAppApi = {
   createInstance: (body: any) => apiClient.post<any>('/core/prompts/app/instances', body),
   updateInstance: (id: string, body: any) => apiClient.put<any>(`/core/prompts/app/instances/${encodeURIComponent(id)}`, body),
   deleteInstance: (id: string) => apiClient.delete<any>(`/core/prompts/app/instances/${encodeURIComponent(id)}`),
+  signTemplate: (templateId: string, data: { private_key: string; version?: string }) =>
+    apiClient.post<{ status: string; bundle_sha256: string; version: string; signature: string }>(`/core/prompts/app/templates/${encodeURIComponent(templateId)}/sign`, data),
+  deleteTemplate: (id: string) =>
+    apiClient.delete<any>(`/core/prompts/app/templates/${encodeURIComponent(id)}`),
 };
 
 export const promptEvalApi = {
-  listTestCases: (templateId?: string) =>
-    apiClient.get<any>('/core/prompts/eval/test-cases', { params: templateId ? { template_id: templateId } : {} }),
+  listTestCases: (templateId?: string) => {
+    const q = templateId ? `?template_id=${encodeURIComponent(templateId)}` : '';
+    return apiClient.get<any>(`/core/prompts/eval/test-cases${q}`);
+  },
   createTestCase: (body: any) =>
     apiClient.post<any>('/core/prompts/eval/test-cases', body),
   deleteTestCase: (id: string) =>
     apiClient.delete<any>(`/core/prompts/eval/test-cases/${encodeURIComponent(id)}`),
   createRun: (body: any) =>
     apiClient.post<any>('/core/prompts/eval/runs', body),
-  listRuns: (templateId?: string) =>
-    apiClient.get<any>('/core/prompts/eval/runs', { params: templateId ? { template_id: templateId } : {} }),
+  listRuns: (templateId?: string) => {
+    const q = templateId ? `?template_id=${encodeURIComponent(templateId)}` : '';
+    return apiClient.get<any>(`/core/prompts/eval/runs${q}`);
+  },
   getRun: (id: string) =>
     apiClient.get<any>(`/core/prompts/eval/runs/${encodeURIComponent(id)}`),
 };
@@ -553,6 +592,7 @@ export interface McpServer {
   auth?: Record<string, unknown>;
   allowed_tools?: string[];
   metadata?: Record<string, unknown>;
+  source?: string;  // "internal" = 本地工作台工具, "external" = 外部 MCP Server
 }
 
 export interface McpServerListResponse {
@@ -574,6 +614,18 @@ export const mcpApi = {
 
   reloadServers: async () => {
     return apiClient.post<{ status: string; servers: string[] }>('/core/mcp/servers/reload', {});
+  },
+
+  signServer: async (serverName: string, data: { private_key: string; version?: string }) => {
+    return apiClient.post<{ status: string; bundle_sha256: string; version: string; signature: string }>(`/core/mcp/servers/${serverName}/sign`, data);
+  },
+
+  listSeeds: async () => {
+    return apiClient.get<{ seeds: { id: string; name: string; transport: string; description: string; installed: boolean }[]; total: number }>('/core/mcp/servers/seeds');
+  },
+
+  installSeed: async (seedId: string) => {
+    return apiClient.post<{ status: string; id: string }>(`/core/mcp/servers/seeds/${encodeURIComponent(seedId)}/install`);
   },
 };
 
@@ -869,6 +921,10 @@ export const workspaceSkillApi = {
     return apiClient.post<{ status: string }>(`/core/workspace/skills/${skillId}/restore`);
   },
 
+  sign: async (skillId: string, data: { private_key: string }) => {
+    return apiClient.post<{ status: string; bundle_sha256: string; version: string; signature: string }>(`/core/workspace/skills/${skillId}/sign`, data);
+  },
+
   submitForReview: async (skillId: string) => {
     return apiClient.post<{ status: string; skill_id: string; new_status: string; governance: string; lint: Record<string, unknown> }>(`/core/workspace/skills/${skillId}/submit-for-review`);
   },
@@ -1078,6 +1134,22 @@ export const workspaceSkillApi = {
   rollbackVersion: async (skillId: string, version: string) => {
     return apiClient.post<{ status: string; active_version: string | null }>(`/core/workspace/skills/${skillId}/versions/${version}/rollback`, {});
   },
+
+  listSeeds: async () => {
+    return apiClient.get<{ seeds: { id: string; name: string; description: string; category: string; installed: boolean }[]; total: number }>('/core/workspace/skills/seeds');
+  },
+
+  installSeed: async (seedId: string) => {
+    return apiClient.post<{ status: string; id: string }>(`/core/workspace/skills/seeds/${encodeURIComponent(seedId)}/install`);
+  },
+
+  signAll: async (data: { private_key: string }) => {
+    return apiClient.post<{ total: number; signed: number; failed: number; results: { skill_id: string; status: string }[] }>('/core/workspace/skills/sign-all', data);
+  },
+
+  autoFill: async (data: { name: string; description: string }) => {
+    return apiClient.post<{ name: string; display_name: string; description: string; category: string; version: string; skill_kind: string; permissions: string[]; trigger_conditions: string[]; input_schema: any; output_schema: any; sop: string; error?: string }>('/core/workspace/skills/auto-fill', data);
+  },
 };
 
 // ==================== Workspace Skill Installer (Open-source skills) ====================
@@ -1170,6 +1242,30 @@ export const workspaceSkillInstallerApi = {
     return apiClient.get<{ catalog: any[]; source: string; total: number }>(
       `/core/workspace/skills/installer/catalog${qs ? '?' + qs : ''}`
     );
+  },
+
+  uploadPlan: async (file: File, params?: { subdir?: string; skill_id?: string; auto_detect_subdir?: boolean }) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    if (params?.subdir) fd.append('subdir', params.subdir);
+    if (params?.skill_id) fd.append('skill_id', params.skill_id);
+    if (params?.auto_detect_subdir != null) fd.append('auto_detect_subdir', String(params.auto_detect_subdir));
+    const res = await fetch('/api/core/workspace/skills/installer/upload-plan', { method: 'POST', body: fd });
+    if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error((err as any).detail || 'upload plan failed'); }
+    return res.json() as Promise<WorkspaceSkillInstallerPlan & { status: string }>;
+  },
+
+  uploadInstall: async (file: File, params?: { subdir?: string; skill_id?: string; auto_detect_subdir?: boolean; allow_overwrite?: boolean; plan_id?: string }) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    if (params?.subdir) fd.append('subdir', params.subdir);
+    if (params?.skill_id) fd.append('skill_id', params.skill_id);
+    if (params?.auto_detect_subdir != null) fd.append('auto_detect_subdir', String(params.auto_detect_subdir));
+    if (params?.allow_overwrite != null) fd.append('allow_overwrite', String(params.allow_overwrite));
+    if (params?.plan_id) fd.append('plan_id', params.plan_id);
+    const res = await fetch('/api/core/workspace/skills/installer/upload-install', { method: 'POST', body: fd });
+    if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error((err as any).detail || 'upload install failed'); }
+    return res.json() as Promise<{ status: string; installed?: string[] }>;
   },
 };
 
@@ -1690,8 +1786,17 @@ export interface ToolInfo {
   protected?: boolean;
   status?: string;
   enabled?: boolean;
+  available?: boolean;
+  unavailable_reason?: string;
   config?: Record<string, unknown>;
   parameters?: Record<string, unknown>;
+  provenance?: {
+    scope?: string;
+    tool_path?: string;
+    signature?: string;
+    signature_verified?: boolean;
+    signature_key_id?: string;
+  };
   stats?: {
     call_count: number;
     success_count: number;
@@ -1740,6 +1845,69 @@ export const toolApi = {
 
   updateConfig: async (toolName: string, config: Record<string, unknown>) => {
     return apiClient.put<{ status: string }>(`/core/tools/${toolName}`, { config });
+  },
+
+  sign: async (toolName: string, data: { private_key: string; version?: string }) => {
+    return apiClient.post<{ status: string; bundle_sha256: string; version: string; signature: string }>(`/core/tools/${toolName}/sign`, data);
+  },
+
+  create: async (data: { name: string; description?: string; code: string }) => {
+    return apiClient.post<{ status: string; name: string; path: string }>('/core/tools', data);
+  },
+
+  autoFill: async (data: { name: string; description: string }) => {
+    return apiClient.post<{ code: string; warning?: string; error?: string }>('/core/tools/auto-fill', data);
+  },
+
+  deleteTool: async (toolName: string) => {
+    return apiClient.delete<{ status: string; name: string }>(`/core/tools/${encodeURIComponent(toolName)}`);
+  },
+};
+
+// ==================== Workspace Tool API ====================
+
+export const workspaceToolApi = {
+  list: async (params?: { limit?: number; offset?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.limit) query.set('limit', String(params.limit));
+    if (params?.offset) query.set('offset', String(params.offset));
+    const qs = query.toString();
+    return apiClient.get<{ tools: ToolInfo[]; total: number }>(`/core/workspace/tools${qs ? '?' + qs : ''}`);
+  },
+
+  delete: async (toolName: string) => {
+    return apiClient.delete<{ status: string; name: string }>(`/core/workspace/tools/${encodeURIComponent(toolName)}`);
+  },
+
+  update: async (toolName: string, data: { description?: string; category?: string }) => {
+    return apiClient.put<{ status: string; name: string }>(`/core/workspace/tools/${encodeURIComponent(toolName)}`, data);
+  },
+
+  sign: async (toolName: string, data: { private_key: string }) => {
+    return apiClient.post<{ status: string }>(`/core/workspace/tools/${encodeURIComponent(toolName)}/sign`, data);
+  },
+
+  create: async (data: { name: string; description?: string; code: string }) => {
+    return apiClient.post<{ status: string; name: string; path: string }>('/core/workspace/tools', data);
+  },
+
+  getSource: async (toolName: string) => {
+    return apiClient.get<{ name: string; path: string; source: string; description: string; category: string }>(
+      `/core/workspace/tools/${encodeURIComponent(toolName)}/source`
+    );
+  },
+
+  updateSource: async (toolName: string, data: { source: string }) => {
+    return apiClient.put<{ status: string; name: string }>(
+      `/core/workspace/tools/${encodeURIComponent(toolName)}/source`,
+      data
+    );
+  },
+
+  reload: async (toolName: string) => {
+    return apiClient.post<{ status: string; name: string }>(
+      `/core/workspace/tools/${encodeURIComponent(toolName)}/reload`
+    );
   },
 };
 
@@ -2125,6 +2293,9 @@ export const workflowApi = {
   },
   toggleEnabled: async (id: string) => {
     return apiClient.post<any>(`/platform/workflows/${id}/toggle-enabled`);
+  },
+  sign: async (id: string, data: { private_key: string; version?: string }) => {
+    return apiClient.post<{ status: string; bundle_sha256: string; version: string; signature: string }>(`/platform/workflows/${id}/sign`, data);
   },
 };
 

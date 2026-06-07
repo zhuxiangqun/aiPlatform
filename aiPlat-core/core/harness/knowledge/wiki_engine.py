@@ -19,6 +19,7 @@ import os
 import re
 import json as _json
 import time
+import logging
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -28,12 +29,87 @@ from typing import Any, Dict, List, Optional, Tuple
 FRONTMATTER_FIELDS = {
     "title": "", "category": "entities", "tags": [], "related": [],
     "contradictions": [], "source_articles": [], "last_updated": "",
-    "summary": "", "version": "1", "stale_references": [],
+    "summary": "", "version": "1", "stale_references": [], "images": [],
 }
 
-def _wiki_root() -> Path:
+def _wiki_root(collection_id: str = "default") -> Path:
     home = os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
-    return Path(home) / "wiki"
+    root = Path(home) / "wiki"
+    _migrate_legacy_wiki(root)
+    return root / "collections" / (collection_id or "default")
+
+
+def _migrate_legacy_wiki(root: Path) -> None:
+    """Auto-migrate legacy flat wiki structure to collections/default/."""
+    legacy_idx = root / "index.json"
+    collections_dir = root / "collections"
+    if collections_dir.exists():
+        return
+    if not legacy_idx.exists() and not (root / "entities").exists():
+        collections_dir.mkdir(parents=True, exist_ok=True)
+        return
+    import shutil
+    default_root = collections_dir / "default"
+    default_root.mkdir(parents=True, exist_ok=True)
+    # Move directories
+    for d in ["entities", "topics", "contradictions", "atoms", "_sources"]:
+        src = root / d
+        if src.exists():
+            shutil.move(str(src), str(default_root / d))
+    # Move files
+    for f in ["index.json", "proposals.json", "schema.yml",
+              "changelog.json", "health_history.json", "fts.db"]:
+        src = root / f
+        if src.exists():
+            shutil.move(str(src), str(default_root / f))
+    _init_global_index(root)
+
+def _init_global_index(root: Path) -> None:
+    gidx = root / "index.json"
+    if not gidx.exists():
+        gidx.write_text(_json.dumps({"collections": {}, "last_updated": ""}, indent=2))
+
+def list_collections() -> List[Dict[str, Any]]:
+    home = os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
+    root = Path(home) / "wiki"
+    _migrate_legacy_wiki(root)
+    collections_dir = root / "collections"
+    if not collections_dir.exists():
+        return []
+    result = []
+    for d in sorted(collections_dir.iterdir()):
+        if d.is_dir() and not d.name.startswith("."):
+            idx = d / "index.json"
+            page_count = 0
+            try:
+                if idx.exists():
+                    pages = _json.loads(idx.read_text(encoding="utf-8")).get("pages", {})
+                    page_count = len(pages)
+            except Exception:
+                pass
+            result.append({"collection_id": d.name, "page_count": page_count})
+    return result
+
+def create_collection(collection_id: str) -> Dict[str, Any]:
+    home = os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
+    root = Path(home) / "wiki"
+    _migrate_legacy_wiki(root)
+    coll_dir = root / "collections" / collection_id
+    if coll_dir.exists():
+        return {"status": "exists", "collection_id": collection_id}
+    _ensure_dirs(collection_id)
+    return {"status": "created", "collection_id": collection_id}
+
+def delete_collection(collection_id: str) -> Dict[str, Any]:
+    if collection_id == "default":
+        return {"status": "protected", "reason": "cannot delete default collection"}
+    import shutil
+    home = os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
+    coll_dir = Path(home) / "wiki" / "collections" / collection_id
+    if not coll_dir.exists():
+        return {"status": "not_found"}
+    shutil.rmtree(str(coll_dir))
+    return {"status": "deleted", "collection_id": collection_id}
 
 
 def parse_title_from_uri(source_uri: str) -> str:
@@ -61,9 +137,9 @@ def parse_title_from_uri(source_uri: str) -> str:
         return parts[0][:60]
     return fname[:60]
 
-def _ensure_dirs():
-    root = _wiki_root()
-    for d in ["entities", "topics", "contradictions"]:
+def _ensure_dirs(collection_id: str = "default"):
+    root = _wiki_root(collection_id)
+    for d in ["entities", "topics", "contradictions", "atoms"]:
         (root / d).mkdir(parents=True, exist_ok=True)
     idx = root / "index.json"
     if not idx.exists():
@@ -93,6 +169,9 @@ FRONTMATTER_FIELDS = {
     "related": [],
     "contradictions": [],
     "source_articles": [],
+    "stale_references": [],
+    "relationships": [],
+    "images": [],
     "last_updated": "",
     "summary": "",
 }
@@ -126,13 +205,13 @@ def _parse_frontmatter(text: str) -> Tuple[Dict[str, Any], str]:
     return fm, body
 
 
-def read_page(title_or_path: str, *, category: str = "entities") -> Optional[Dict[str, Any]]:
+def read_page(title_or_path: str, *, category: str = "entities", collection_id: str = "default") -> Optional[Dict[str, Any]]:
     """Read a wiki page. Returns {title, category, tags, body, fm, path} or None."""
-    _ensure_dirs()
-    root = _wiki_root()
+    _ensure_dirs(collection_id)
+    root = _wiki_root(collection_id)
     name = re.sub(r"[<>:\"/\\|?*]", "_", title_or_path)[:120]
     # Try exact match first
-    for cat in [category, "entities", "topics", "contradictions"]:
+    for cat in [category, "entities", "topics", "contradictions", "atoms"]:
         p = root / cat / f"{name}.md"
         if p.exists():
             text = p.read_text(encoding="utf-8")
@@ -140,6 +219,8 @@ def read_page(title_or_path: str, *, category: str = "entities") -> Optional[Dic
             return {"title": fm.get("title", name), "category": cat, "tags": fm.get("tags", []),
                     "related": fm.get("related", []), "contradictions": fm.get("contradictions", []),
                     "source_articles": fm.get("source_articles", []),
+                    "stale_references": fm.get("stale_references", []),
+                    "relationships": fm.get("relationships", []),
                     "last_updated": fm.get("last_updated", ""), "summary": fm.get("summary", ""),
                     "body": body, "fm": fm, "path": str(p)}
     return None
@@ -148,12 +229,39 @@ def read_page(title_or_path: str, *, category: str = "entities") -> Optional[Dic
 def write_page(title: str, body: str, *, category: str = "entities", tags: List[str] = None,
                related: List[str] = None, contradictions: List[str] = None,
                source_articles: List[str] = None, stale_references: List[str] = None,
-               version: str = "1", summary: str = "") -> str:
+               relationships: List[Dict[str, str]] = None,
+               images: List[Dict[str, str]] = None,
+               version: str = "1", summary: str = "", collection_id: str = "default") -> str:
     """Create or update a wiki page. Returns the file path."""
-    _ensure_dirs()
-    root = _wiki_root()
+    _ensure_dirs(collection_id)
+    root = _wiki_root(collection_id)
+
+    # ── Schema validation against T-Box ──
+    import os as _os
+    schema_mode = _os.getenv("AIPLAT_WIKI_SCHEMA_MODE", "warning")
+    if schema_mode != "off":
+        from core.harness.knowledge.knowledge_ontology import validate_page_against_schema
+        page_data = {
+            "title": title, "category": category, "summary": summary or "",
+            "body": body, "tags": tags or [], "related": related or [],
+            "contradictions": contradictions or [],
+            "source_articles": source_articles or [],
+            "relationships": relationships or [],
+        }
+        result = validate_page_against_schema(page_data, mode=schema_mode, collection_id=collection_id)
+        if not result.is_valid:
+            raise ValueError(
+                f"Schema [{result.class_label}] validation failed: "
+                f"missing {result.missing_required}. {result.suggestion}"
+            )
+        if result.warnings:
+            _logger = logging.getLogger("wiki_engine")
+            for w in result.warnings:
+                if w:
+                    _logger.warning(f"Schema warning for '{title}': {w}")
+
     name = re.sub(r"[<>:\"/\\|?*]", "_", title)[:120]
-    existing = read_page(title, category=category)
+    existing = read_page(title, category=category, collection_id=collection_id)
     now = datetime.now(timezone.utc).isoformat()
 
     # Merge with existing if updating
@@ -162,10 +270,18 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
         related = related if related is not None else list(set(
             (existing.get("related") or [])))      # replace, not merge (enable dead link cleanup)
         contradictions = list(set((existing.get("contradictions") or []) + (contradictions or [])))
-        source_articles = list(set((existing.get("source_articles") or []) + (source_articles or [])))
-        stale_references = stale_references if stale_references is not None else (existing.get("stale_references") or [])
+        # source_articles: explicit pass = replace; None = merge with existing
+        source_articles = source_articles if source_articles is not None else \
+            list(set((existing.get("source_articles") or []) + (source_articles or [])))
+        # stale_references: explicit pass = replace; None = keep existing
+        stale_references = stale_references if stale_references is not None else \
+            (existing.get("stale_references") or [])
         version = version or existing.get("version", "1")
         summary = summary or existing.get("summary", "")
+        existing_rels = existing.get("relationships") or []
+        relationships = relationships if relationships is not None else existing_rels
+        existing_imgs = existing.get("images") or []
+        images = images if images is not None else existing_imgs
 
     fm_lines = [
         f"title: {title}",
@@ -175,23 +291,115 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
         f"contradictions: [{', '.join(contradictions or [])}]",
         f"source_articles: [{', '.join(source_articles or [])}]",
         f"stale_references: [{', '.join(stale_references or [])}]",
+        f"relationships: {_json.dumps(relationships or [], ensure_ascii=False)}",
         f"last_updated: {now}",
         f"version: {version or '1'}",
         f"summary: {summary[:500]}",
+        f"images: {_json.dumps(images or [], ensure_ascii=False)}",
     ]
 
-    content = "---\n" + "\n".join(fm_lines) + "\n---\n\n" + body
+    # Append image descriptions to body for RAG visibility
+    enriched_body = body
+    if images:
+        img_section = "\n\n## 文档附图\n\n"
+        for img in images:
+            desc = img.get("description", "")
+            path = img.get("path", "")
+            fname = os.path.basename(path) if path else "image"
+            if desc:
+                img_section += f"- **{fname}**: {desc}\n"
+        enriched_body = body + img_section
+
+    content = "---\n" + "\n".join(fm_lines) + "\n---\n\n" + enriched_body
     p = root / category / f"{name}.md"
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(content, encoding="utf-8")
 
     # Update index
-    _update_index(title, category, tags or [], related or [])
+    _update_index(title, category, tags or [], related or [], collection_id=collection_id)
+
+    # ── Cache page vector for fast retrieval ──
+    try:
+        from core.harness.knowledge.embedder import embed_text_semantic
+        vec = embed_text_semantic(body[:5000])
+        if vec:
+            cache_path = _wiki_root(collection_id) / "vectors.json"
+            cache = {}
+            if cache_path.exists():
+                import json as _cache_json
+                cache = _cache_json.loads(cache_path.read_text(encoding="utf-8"))
+            cache[title] = vec
+            cache_path.write_text(_cache_json.dumps(cache, ensure_ascii=False))
+    except Exception:
+        pass
+
+    # ── Incremental inference on create ──
+    if relationships or contradictions:
+        try:
+            from core.harness.knowledge.knowledge_ontology import get_ontology, AI, OntologyTriple
+            onto = get_ontology()
+            if any(r.get("type") == "contradicts" for r in (relationships or [])):
+                for r in (relationships or []):
+                    if r.get("type") == "contradicts":
+                        target = r.get("target", "")
+                        if target:
+                            onto.triples.append(OntologyTriple(
+                                f"{AI}{target}", f"{AI}contradicts", f"{AI}{title}"))
+            if contradictions:
+                for c in contradictions:
+                    onto.triples.append(OntologyTriple(
+                        f"{AI}{c}", f"{AI}contradicts", f"{AI}{title}"))
+            if any(r.get("type") == "parent" for r in (relationships or [])):
+                for r in (relationships or []):
+                    if r.get("type") == "parent":
+                        target = r.get("target", "")
+                        if target:
+                            onto.triples.append(OntologyTriple(
+                                f"{AI}{target}", f"{AI}childOf", f"{AI}{title}"))
+        except Exception:
+            pass
+
+    # ── Invalidate inference cache (page written) ──
+    try:
+        import os as _os
+        cache_path = _wiki_root(collection_id) / "inference_cache.json"
+        if cache_path.exists():
+            _os.remove(cache_path)
+    except Exception:
+        pass
+
+    # ── KB↔Wiki bidirectional link: update kb.sqlite3 ──
+    try:
+        kb_srcs = [s[3:] for s in (source_articles or []) if isinstance(s, str) and s.startswith("kb:")]
+        if kb_srcs:
+            kb_db = _os.path.join(_os.path.expanduser(
+                _os.getenv("AIPLAT_KB_TENANTS_DIR", "~/.aiplat/kb/tenants")), "default", "kb.sqlite3")
+            if _os.path.exists(kb_db):
+                import sqlite3 as _sq3
+                conn = _sq3.connect(kb_db)
+                for doc_id in kb_srcs:
+                    # Atomic JSON append: add title to wiki_pages array if not present
+                    conn.execute("""
+                        UPDATE documents
+                        SET meta_json = CASE
+                            WHEN json_extract(COALESCE(meta_json, '{}'), '$.wiki_pages') IS NULL
+                            THEN json_set(COALESCE(meta_json, '{}'), '$.wiki_pages', json_array(?))
+                            WHEN ? NOT IN (SELECT value FROM json_each(json_extract(meta_json, '$.wiki_pages')))
+                            THEN json_set(meta_json, '$.wiki_pages', json_insert(json_extract(meta_json, '$.wiki_pages'), '$[#]', ?))
+                            ELSE meta_json
+                        END
+                        WHERE doc_id = ? AND tenant_id = 'default'
+                    """, (title, title, title, doc_id))
+                conn.commit()
+                conn.close()
+    except Exception:
+        pass
+
     return str(p)
 
 
-def _update_index(title: str, category: str, tags: List[str], related: List[str]):
-    idx_path = _wiki_root() / "index.json"
+def _update_index(title: str, category: str, tags: List[str], related: List[str], collection_id: str = "default"):
+    idx_path = _wiki_root(collection_id) / "index.json"
     try:
         idx = _json.loads(idx_path.read_text(encoding="utf-8"))
     except Exception:
@@ -202,25 +410,26 @@ def _update_index(title: str, category: str, tags: List[str], related: List[str]
     idx_path.write_text(_json.dumps(idx, indent=2, ensure_ascii=False))
 
 
-def update_page(title: str, **kwargs) -> bool:
+def update_page(title: str, *, collection_id: str = "default", **kwargs) -> bool:
     u"""Update specific frontmatter fields of an existing wiki page, preserving others."""
     existing = None
-    for cat_dir in _wiki_root().iterdir():
+    for cat_dir in _wiki_root(collection_id).iterdir():
         if not cat_dir.is_dir() or cat_dir.name == "contradictions":
             continue
-        test = read_page(title, category=cat_dir.name)
+        test = read_page(title, category=cat_dir.name, collection_id=collection_id)
         if test:
             existing = test
             break
     if not existing:
         return False
 
-    for key in ("summary", "category", "tags", "related", "contradictions", "source_articles"):
+    for key in ("summary", "category", "tags", "related", "contradictions",
+                  "source_articles", "stale_references", "relationships"):
         if key in kwargs and kwargs[key] is not None:
             value = kwargs[key]
             # Filter dead links from related
             if key == "related" and isinstance(value, list):
-                all_titles = set(p["title"] for p in search_pages(limit=1000))
+                all_titles = set(p["title"] for p in search_pages(limit=1000, collection_id=collection_id))
                 value = [r for r in value if r in all_titles or r == title]
             existing[key] = value
 
@@ -234,15 +443,18 @@ def update_page(title: str, **kwargs) -> bool:
                related=existing.get("related", []),
                summary=existing.get("summary", ""),
                contradictions=existing.get("contradictions", []),
-               source_articles=existing.get("source_articles", []))
+               source_articles=existing.get("source_articles", []),
+               stale_references=existing.get("stale_references", []),
+               relationships=existing.get("relationships", []),
+               collection_id=collection_id)
     return True
 
 
-def delete_page(title: str) -> bool:
+def delete_page(title: str, collection_id: str = "default") -> bool:
     u"""Delete a wiki page by title, removing from disk and index."""
     found = None
     cat_name = ""
-    for cat_dir in _wiki_root().iterdir():
+    for cat_dir in _wiki_root(collection_id).iterdir():
         if not cat_dir.is_dir() or cat_dir.name == "contradictions":
             continue
         md_path = cat_dir / f"{title}.md"
@@ -254,7 +466,7 @@ def delete_page(title: str) -> bool:
         return False
 
     found.unlink()
-    idx_path = _wiki_root() / "index.json"
+    idx_path = _wiki_root(collection_id) / "index.json"
     if idx_path.exists():
         try:
             idx = _json.loads(idx_path.read_text(encoding="utf-8"))
@@ -262,13 +474,51 @@ def delete_page(title: str) -> bool:
             idx_path.write_text(_json.dumps(idx, indent=2, ensure_ascii=False))
         except Exception:
             pass
+
+    # ── Cascade: mark stale references in pages that cited the deleted page ──
+    try:
+        all_pages = search_pages(limit=1000, collection_id=collection_id)
+        cascade_count = 0
+        for p in all_pages:
+            ptitle = p.get("title", "")
+            if ptitle == title:
+                continue
+            needs_update = False
+            updated_related = list(p.get("related") or [])
+            updated_contra = list(p.get("contradictions") or [])
+            stale = list(p.get("stale_references") or [])
+
+            if title in updated_related:
+                updated_related.remove(title)
+                needs_update = True
+            if title in updated_contra:
+                updated_contra.remove(title)
+                needs_update = True
+            if title not in stale:
+                stale.append(title)
+                needs_update = True
+
+            if needs_update:
+                update_page(ptitle, related=updated_related,
+                            contradictions=updated_contra,
+                            stale_references=stale,
+                            collection_id=collection_id)
+                cascade_count += 1
+
+        if cascade_count:
+            logging.getLogger("wiki_engine").info(
+                f"delete_page('{title}'): cascaded {cascade_count} referencing pages")
+    except Exception as e:
+        logging.getLogger("wiki_engine").warning(
+            f"delete_page cascade failed for '{title}': {e}")
+
     return True
 
 
-def delete_all_pages() -> Dict[str, Any]:
+def delete_all_pages(*, collection_id: str = "default") -> Dict[str, Any]:
     u"""Delete ALL wiki pages, reset index, and clear KB document wiki_pages references."""
-    _ensure_dirs()
-    root = _wiki_root()
+    _ensure_dirs(collection_id)
+    root = _wiki_root(collection_id)
     deleted = 0
 
     for cat_dir in root.iterdir():
@@ -309,13 +559,13 @@ def delete_all_pages() -> Dict[str, Any]:
 
 # ── Knowledge proposals (merge/update/supplement/contradict) ──────
 
-def _proposals_path() -> Path:
-    return _wiki_root() / "proposals.json"
+def _proposals_path(collection_id: str = "default") -> Path:
+    return _wiki_root(collection_id) / "proposals.json"
 
 
-def load_proposals() -> List[Dict[str, Any]]:
+def load_proposals(*, collection_id: str = "default") -> List[Dict[str, Any]]:
     u"""Load all proposals from disk."""
-    pp = _proposals_path()
+    pp = _proposals_path(collection_id)
     if not pp.exists():
         return []
     try:
@@ -325,11 +575,11 @@ def load_proposals() -> List[Dict[str, Any]]:
         return []
 
 
-def save_proposal(proposal: Dict[str, Any]) -> str:
+def save_proposal(proposal: Dict[str, Any], collection_id: str = "default") -> str:
     u"""Add or update a proposal. Returns the proposal id."""
-    pp = _proposals_path()
-    _ensure_dirs()
-    proposals = load_proposals()
+    pp = _proposals_path(collection_id)
+    _ensure_dirs(collection_id)
+    proposals = load_proposals(collection_id=collection_id)
     pid = proposal.get("id") or f"prop_{int(time.time() * 1000):x}"
     proposal["id"] = pid
     # Update existing or append
@@ -344,26 +594,26 @@ def save_proposal(proposal: Dict[str, Any]) -> str:
     return pid
 
 
-def update_proposal_status(proposal_id: str, status: str) -> bool:
+def update_proposal_status(proposal_id: str, status: str, collection_id: str = "default") -> bool:
     u"""Update a proposal's status (pending→approved→rejected)."""
-    proposals = load_proposals()
+    proposals = load_proposals(collection_id=collection_id)
     for p in proposals:
         if p.get("id") == proposal_id:
             p["status"] = status
             p["resolved_at"] = datetime.now(timezone.utc).isoformat()
-            pp = _proposals_path()
+            pp = _proposals_path(collection_id)
             pp.write_text(_json.dumps({"proposals": proposals, "last_updated": datetime.now(timezone.utc).isoformat()},
                                       indent=2, ensure_ascii=False))
             return True
     return False
 
 
-def apply_proposal(proposal_id: str) -> Dict[str, Any]:
+def apply_proposal(proposal_id: str, collection_id: str = "default") -> Dict[str, Any]:
     u"""Execute an approved proposal: merge, update, supplement, or contrad.
 
     Returns: {success: bool, message: str, action: str}
     """
-    proposals = load_proposals()
+    proposals = load_proposals(collection_id=collection_id)
     prop = next((p for p in proposals if p.get("id") == proposal_id), None)
     if not prop:
         return {"success": False, "message": "proposal not found", "action": ""}
@@ -386,7 +636,13 @@ def apply_proposal(proposal_id: str) -> Dict[str, Any]:
 
 
 def _execute_merge(prop, from_title, to_title) -> Dict[str, Any]:
-    u"""Merge two pages: combine bodies, update links, delete merged page."""
+    u"""Merge two pages: combine bodies, update links, delete merged page.
+
+    M1: Schema revalidation after merge
+    M2: A-Box triple redirect (cites/contradicts/parentOf from source → target)
+    M3: Ontology-guided suggestions via llm_curate_page (same parent class hint)
+    M4: Re-check contradiction relationships after merge
+    """
     from_page = read_page(from_title)
     to_page = read_page(to_title)
     if not from_page or not to_page:
@@ -412,9 +668,90 @@ def _execute_merge(prop, from_title, to_title) -> Dict[str, Any]:
             new_related = [to_title if r == from_title else r for r in p["related"]]
             update_page(p["title"], related=new_related)
             updated += 1
+
+    # ── M2: A-Box triple redirect ──
+    triple_updates = 0
+    try:
+        from core.harness.knowledge.knowledge_ontology import get_ontology
+        onto = get_ontology()
+        new_triples = []
+        for t in list(onto.triples):
+            old_subject = str(t.subject)
+            old_object = str(t.object)
+            changed = False
+            new_sub, new_obj = old_subject, old_object
+            if from_title in old_subject:
+                new_sub = old_subject.replace(from_title, to_title)
+                changed = True
+            if from_title in old_object:
+                new_obj = old_object.replace(from_title, to_title)
+                changed = True
+            if changed:
+                from core.harness.knowledge.knowledge_ontology import OntologyTriple
+                new_triples.append(OntologyTriple(
+                    subject=new_sub, predicate=str(t.predicate), object=new_obj,
+                ))
+                onto.triples.remove(t)
+                triple_updates += 1
+        onto.triples.extend(new_triples)
+    except Exception:
+        pass
+
+    # ── M1: Schema revalidation ──
+    validation = {}
+    try:
+        from core.harness.knowledge.knowledge_ontology import validate_page_against_schema
+        merged_page = read_page(to_title)
+        if merged_page:
+            val = validate_page_against_schema(merged_page, mode="warning")
+            validation = {"valid": val.is_valid, "class": val.class_label,
+                          "missing": val.missing_required, "warnings": val.warnings[:3]}
+    except Exception:
+        validation = {"valid": None, "note": "validation skipped"}
+
+    # ── M4: Re-check contradictions after merge ──
+    contradiction_cleanups = 0
+    try:
+        all_pages_post = search_pages(limit=1000)
+        for p in all_pages_post:
+            contras = list(p.get("contradictions") or [])
+            if not contras:
+                continue
+            changed = False
+            new_contras = []
+            for c in contras:
+                if not isinstance(c, str):
+                    new_contras.append(c)
+                    continue
+                # Replace merged-from title with merged-to title
+                if c == from_title:
+                    new_contras.append(to_title)
+                    changed = True
+                elif c == to_title:
+                    # Self-contradiction: page now contradicts itself → remove
+                    changed = True
+                    contradiction_cleanups += 1
+                    # Don't add to new_contras (skip)
+                else:
+                    new_contras.append(c)
+            if changed and p["title"] != from_title:  # skip the deleted page
+                try:
+                    update_page(p["title"], contradictions=new_contras)
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
     delete_page(from_title)
     update_proposal_status(prop["id"], "resolved")
-    return {"success": True, "message": f"merged '{from_title}' into '{to_title}', updated {updated} references", "action": "merge"}
+    return {
+        "success": True,
+        "message": f"merged '{from_title}' into '{to_title}', updated {updated} references",
+        "action": "merge",
+        "triple_updates": triple_updates,
+        "schema_validation": validation,
+        "contradiction_cleanups": contradiction_cleanups,
+    }
 
 
 def _execute_update(prop, from_title, to_title) -> Dict[str, Any]:
@@ -465,10 +802,10 @@ def _execute_contradict(prop, from_title, to_title) -> Dict[str, Any]:
 # ── Search ─────────────────────────────────────────────────────
 
 def search_pages(query: str = "", *, tags: List[str] = None, category: str = "",
-                  limit: int = 20) -> List[Dict[str, Any]]:
+                  limit: int = 20, collection_id: str = "default") -> List[Dict[str, Any]]:
     """Search wiki pages by title, tags, and body content."""
-    _ensure_dirs()
-    root = _wiki_root()
+    _ensure_dirs(collection_id)
+    root = _wiki_root(collection_id)
     results: List[Dict[str, Any]] = []
     query_lower = query.lower() if query else ""
 
@@ -476,7 +813,7 @@ def search_pages(query: str = "", *, tags: List[str] = None, category: str = "",
         if category and cat_dir.name != category:
             continue
         for md_file in cat_dir.glob("*.md"):
-            page = read_page(md_file.stem, category=cat_dir.name)
+            page = read_page(md_file.stem, category=cat_dir.name, collection_id=collection_id)
             if not page:
                 continue
 
@@ -499,6 +836,8 @@ def search_pages(query: str = "", *, tags: List[str] = None, category: str = "",
                 "related": page.get("related", []), "path": page["path"],
                 "contradictions": page.get("contradictions", []),
                 "source_articles": page.get("source_articles", []),
+                "stale_references": page.get("stale_references", []),
+                "relationships": page.get("relationships", []),
                 "last_updated": page.get("last_updated", ""),
             })
 
@@ -506,9 +845,9 @@ def search_pages(query: str = "", *, tags: List[str] = None, category: str = "",
     return results[:limit]
 
 
-def traverse_links(start_title: str, depth: int = 2) -> List[Dict[str, Any]]:
+def traverse_links(start_title: str, depth: int = 2, collection_id: str = "default") -> List[Dict[str, Any]]:
     """BFS traverse wiki link graph starting from a page."""
-    _ensure_dirs()
+    _ensure_dirs(collection_id)
     visited: set = set()
     queue: List[Tuple[str, int]] = [(start_title, 0)]
     results: List[Dict[str, Any]] = []
@@ -518,7 +857,7 @@ def traverse_links(start_title: str, depth: int = 2) -> List[Dict[str, Any]]:
         if title in visited or d > depth:
             continue
         visited.add(title)
-        page = read_page(title)
+        page = read_page(title, collection_id=collection_id)
         if not page:
             continue
         results.append(page)
@@ -545,24 +884,24 @@ def wiki_health_report() -> Dict[str, Any]:
     return get_wiki_registry().run().to_dict()
 
 
-def list_all_pages() -> List[Dict[str, Any]]:
+def list_all_pages(*, collection_id: str = "default") -> List[Dict[str, Any]]:
     """Return summary of all wiki pages for index display."""
-    return search_pages(limit=1000)
+    return search_pages(limit=1000, collection_id=collection_id)
 
 
 # ── Graph export (ECharts force-layout) ──────────────────────────
 
-def build_graph(*, category: str = "", keyword: str = "", source: str = "", max_nodes: int = 300) -> Dict[str, Any]:
+def build_graph(*, category: str = "", keyword: str = "", source: str = "", max_nodes: int = 300, collection_id: str = "default") -> Dict[str, Any]:
     u"""Build node/edge graph for ECharts force-layout visualization."""
-    _ensure_dirs()
-    root = _wiki_root()
+    _ensure_dirs(collection_id)
+    root = _wiki_root(collection_id)
     all_pages: Dict[str, Dict[str, Any]] = {}
 
     for cat_dir in sorted(root.iterdir()):
         if not cat_dir.is_dir() or cat_dir.name == "contradictions":
             continue
         for md_file in sorted(cat_dir.glob("*.md")):
-            page = read_page(md_file.stem, category=cat_dir.name)
+            page = read_page(md_file.stem, category=cat_dir.name, collection_id=collection_id)
             if page:
                 all_pages[page["title"]] = page
 
@@ -660,6 +999,153 @@ def auto_link_page(title: str, body: str, all_titles: List[str],
     return [s[0] for s in scored[:5]]
 
 
+def detect_duplicate_pages(threshold: float = 0.90, collection_id: str = "default") -> List[Dict[str, Any]]:
+    """Multi-dimensional duplicate page detection across all wiki pages.
+
+    L1 (Embedding): cosine similarity >= threshold → content duplicates
+    L2 (Ontology): same T-Box class + same parentOf target + title similarity > 0.6
+    L3 (Structural): same category + shared >= 2 related pages
+    L4 (Evidence): same source_doc_id + overlapping evidence range
+
+    Returns: [{page_a, page_b, similarity, layer, suggestion}]
+    """
+    dupes: List[Dict[str, Any]] = []
+    seen_pairs: set = set()
+
+    from core.harness.knowledge.embedder import embed_text_semantic, embed_texts_semantic, cosine_similarity
+    from core.harness.knowledge.knowledge_ontology import CLASSES, OBJECT_PROPERTIES, get_ontology
+
+    all_pages = search_pages(limit=10000, collection_id=collection_id)
+
+    # Index pages by title for fast lookup
+    page_map: Dict[str, Dict[str, Any]] = {}
+    for p in all_pages:
+        page_map[p["title"]] = p
+
+    titles = [p["title"] for p in all_pages]
+    titles_set = set(titles)
+
+    # ── L1: Embedding similarity ──
+    texts = [(p.get("body") or p.get("summary", ""))[:2000] for p in all_pages]
+    vecs = embed_texts_semantic(texts)
+    if vecs and len(vecs) == len(all_pages):
+        for i in range(len(all_pages)):
+            for j in range(i + 1, len(all_pages)):
+                a, b = all_pages[i], all_pages[j]
+                vi, vj = vecs[i], vecs[j]
+                if vi is None or vj is None:
+                    continue
+                sim = cosine_similarity(vi, vj)
+                if sim >= threshold:
+                    pair = tuple(sorted([a["title"], b["title"]]))
+                    if pair not in seen_pairs:
+                        seen_pairs.add(pair)
+                        dupes.append({
+                            "page_a": a["title"], "page_b": b["title"],
+                            "similarity": round(sim, 3), "layer": "L1_content",
+                            "suggestion": f"内容几乎相同 (sim={sim:.2f})，建议合并",
+                        })
+
+    # ── L2: Ontology-aware duplicates (same class + same parent + title similarity) ──
+    try:
+        onto = get_ontology()
+        # Collect parentOf relations from A-Box
+        parent_map: Dict[str, str] = {}  # child → parent
+        for t in onto.triples:
+            if "parentOf" in t.predicate:
+                parent_map[str(t.object)] = str(t.subject)
+
+        # Group pages by their T-Box class category
+        class_groups: Dict[str, List[Dict[str, Any]]] = {}
+        for p in all_pages:
+            cat = p.get("category", "")
+            class_groups.setdefault(cat, []).append(p)
+
+        for cat_pages in class_groups.values():
+            if len(cat_pages) < 2:
+                continue
+            for i in range(len(cat_pages)):
+                for j in range(i + 1, len(cat_pages)):
+                    a, b = cat_pages[i], cat_pages[j]
+                    # Check same parent
+                    pa = parent_map.get(a["title"], "")
+                    pb = parent_map.get(b["title"], "")
+                    if pa and pb and pa == pb:
+                        # Title similarity via word overlap
+                        ta = set(a["title"].lower().replace(" ", ""))
+                        tb = set(b["title"].lower().replace(" ", ""))
+                        if ta and tb:
+                            title_sim = len(ta & tb) / max(len(ta | tb), 1)
+                            if title_sim > 0.6:
+                                pair = tuple(sorted([a["title"], b["title"]]))
+                                if pair not in seen_pairs:
+                                    seen_pairs.add(pair)
+                                    dupes.append({
+                                        "page_a": a["title"], "page_b": b["title"],
+                                        "similarity": round(title_sim, 3), "layer": "L2_ontology",
+                                        "suggestion": f"相同父概念 '{pa}' 且标题相似，可能是同一概念的不同表述",
+                                    })
+    except Exception:
+        pass
+
+    # ── L3: Structural duplicates (same category + shared >= 2 related pages) ──
+    for i in range(len(all_pages)):
+        for j in range(i + 1, len(all_pages)):
+            a, b = all_pages[i], all_pages[j]
+            if a.get("category") != b.get("category"):
+                continue
+            related_a = a.get("related") or []
+            related_b = b.get("related") or []
+            shared = set(related_a) & set(related_b) & titles_set
+            if len(shared) >= 2:
+                pair = tuple(sorted([a["title"], b["title"]]))
+                if pair not in seen_pairs:
+                    seen_pairs.add(pair)
+                    dupes.append({
+                        "page_a": a["title"], "page_b": b["title"],
+                        "similarity": round(len(shared) / max(len(set(related_a) | set(related_b)), 1), 3),
+                        "layer": "L3_structural",
+                        "suggestion": f"共享 {len(shared)} 个相关页面（{', '.join(list(shared)[:3])}），可能覆盖同一子领域",
+                    })
+
+    # ── L4: Evidence duplicates (same source + overlapping evidence) ──
+    evidence_groups: Dict[str, List[Dict[str, Any]]] = {}
+    for p in all_pages:
+        body = p.get("body", "")
+        src_match = re.search(r"<!-- source_doc_id:\s*(kb:\w+)", body)
+        if not src_match:
+            continue
+        sid = src_match.group(1)
+        ev_match = re.search(r"evidence_start:\s*(\d+).*?evidence_end:\s*(\d+)", body, re.DOTALL)
+        if ev_match:
+            evidence_groups.setdefault(sid, []).append({
+                "title": p["title"],
+                "start": int(ev_match.group(1)),
+                "end": int(ev_match.group(2)),
+            })
+
+    for sid, group in evidence_groups.items():
+        if len(group) < 2:
+            continue
+        for i in range(len(group)):
+            for j in range(i + 1, len(group)):
+                a, b = group[i], group[j]
+                # Overlap: a.start < b.end and b.start < a.end
+                if a["start"] < b["end"] and b["start"] < a["end"]:
+                    pair = tuple(sorted([a["title"], b["title"]]))
+                    if pair not in seen_pairs:
+                        seen_pairs.add(pair)
+                        overlap = (min(a["end"], b["end"]) - max(a["start"], b["start"]))
+                        dupes.append({
+                            "page_a": a["title"], "page_b": b["title"],
+                            "similarity": round(overlap / max(a["end"] - a["start"], 1), 3),
+                            "layer": "L4_evidence",
+                            "suggestion": f"引用同一来源 {sid} 的重叠段落 (offset {a['start']}-{a['end']} vs {b['start']}-{b['end']})",
+                        })
+
+    return dupes
+
+
 # ── LLM-powered curation ────────────────────────────────────────
 
 async def llm_curate_page(title: str, body: str, *, existing_titles: List[str] = None,
@@ -681,10 +1167,36 @@ async def llm_curate_page(title: str, body: str, *, existing_titles: List[str] =
     from core.harness.utils.prompt_loader import _async_prompt_resolve
     prompt_content = f"""=== CONTENT (first 8000 chars) ===
 Title: {title}
+Source: {source_doc_id or 'unknown'}
 {body[:8000]}
 
 === EXISTING WIKI PAGES ===
 {existing_list}
+"""
+    # M3: Enrich prompt with ontology parent/child context
+    try:
+        from core.harness.knowledge.knowledge_ontology import get_ontology
+        onto = get_ontology()
+        parent_map = {}
+        for t in onto.triples:
+            if "parentOf" in str(t.predicate):
+                parent_map[str(t.object)] = str(t.subject)
+        siblings: Dict[str, List[str]] = {}
+        for t in existing_titles[:100]:
+            if t in parent_map:
+                p = parent_map[t].split("#")[-1] if "#" in parent_map[t] else parent_map[t]
+                siblings.setdefault(p, []).append(t)
+        if siblings:
+            onto_hint = "\n=== ONTOLOGY HINTS (same-parent page groups = prime merge candidates) ===\n"
+            for parent, children in list(siblings.items())[:5]:
+                if len(children) >= 2:
+                    onto_hint += f"  Under '{parent}': {', '.join(children[:5])}\n"
+            onto_hint += "Check if the new content extends, contradicts, or should be merged into any of these groups.\n"
+            prompt_content += onto_hint
+    except Exception:
+        pass
+
+    prompt_content += """
 
 === TASKS ===
 1. Generate a 2-3 sentence Chinese summary of the key insight (max 300 chars)
@@ -695,9 +1207,15 @@ Title: {title}
      "title": "a short readable title (Chinese preferred, 5-15 chars)",
      "body": "the knowledge content (2-8 sentences, self-contained, Chinese preferred)",
      "category": "entities" | "topics",
-     "tags": ["keyword1", "keyword2"]
+     "tags": ["keyword1", "keyword2"],
+     "source_doc_id": "{source_doc_id}",
+     "evidence_text": "direct quote from source (50-200 chars, MUST be verbatim from input)",
+     "confidence": 0.85,
+     "contradicts_atom_index": null,
+     "supports_atom_index": null
    }}
    Aim to extract 2-6 atoms if the content is long/complex. Each atom should be a coherent knowledge unit.
+   Mark contradictions_atom_index when two atoms make opposing claims. Mark supports_atom_index when one supports another.
 
 3. Suggest the best overall category: entities or topics
 
@@ -711,7 +1229,7 @@ Title: {title}
 
 === OUTPUT FORMAT ===
 Reply with ONLY a JSON object (no markdown fences, no explanation):
-{{"title":"优化的可读标题","summary":"...","category":"entities","tags":["tag1","tag2"],"related":["Existing Page"],"entities_found":["概念1","概念2"],"knowledge_atoms":[{{"title":"原子标题","body":"知识片段正文","category":"entities","tags":["tag"]}}],"contradictions":[{{"a":"PageA","b":"PageB","detail":"why"}}],"merge_candidates":[{{"target":"PageTitle","reason":"duplicate"}}]}}
+{{"title":"优化的可读标题","summary":"...","category":"entities","tags":["tag1","tag2"],"related":["Existing Page"],"entities_found":["概念1","概念2"],"knowledge_atoms":[{{"title":"原子标题","body":"知识片段正文","category":"entities","tags":["tag"],"source_doc_id":"{source_doc_id}","evidence_text":"原文直接引用（50-200字，必须逐字从输入中引用）","confidence":0.85,"contradicts_atom_index":null,"supports_atom_index":null}}],"contradictions":[{{"a":"PageA","b":"PageB","detail":"why"}}],"merge_candidates":[{{"target":"PageTitle","reason":"duplicate"}}]}}
 """
 
     prompt = await _async_prompt_resolve("wiki-curator", content=prompt_content)
@@ -764,7 +1282,623 @@ Reply with ONLY a JSON object (no markdown fences, no explanation):
     return result
 
 
+# ── Knowledge Atom Operations ────────────────────────────────────
+
+def write_atom(atom_data: Dict[str, Any], *, collection_id: str = "default") -> str:
+    """Write a KnowledgeAtom as a wiki page (category='atoms').
+
+    Atom frontmatter includes evidence tracking fields:
+    source_doc_id, evidence_start, evidence_end, evidence_text, confidence.
+
+    Evidence metadata is stored as HTML comments in body (transparent to readers).
+    Returns the file path.
+    """
+    title = atom_data.get("title", "unnamed_atom")
+    body = atom_data.get("body", "")
+    # Embed evidence metadata as HTML comments for round-trip preservation
+    meta_parts = []
+    if atom_data.get("source_doc_id"):
+        meta_parts.append(f"<!-- source_doc_id: {atom_data['source_doc_id']} -->")
+    if atom_data.get("evidence_start") is not None:
+        meta_parts.append(f"<!-- evidence_start: {atom_data['evidence_start']} -->")
+    if atom_data.get("evidence_end") is not None:
+        meta_parts.append(f"<!-- evidence_end: {atom_data['evidence_end']} -->")
+    if atom_data.get("confidence") is not None:
+        meta_parts.append(f"<!-- confidence: {atom_data['confidence']} -->")
+    if meta_parts:
+        body = "\n".join(meta_parts) + "\n" + body
+    
+    return write_page(
+        title, body,
+        category="atoms",
+        tags=atom_data.get("tags", []),
+        summary=atom_data.get("evidence_text", body[:200]),
+        source_articles=[atom_data.get("source_doc_id", "")] if atom_data.get("source_doc_id") else [],
+        relationships=atom_data.get("relationships", []),
+        collection_id=collection_id,
+    )
+
+
+def write_atoms_batch(atoms: List[Dict[str, Any]], *, collection_id: str = "default") -> Dict[str, int]:
+    """Batch write KnowledgeAtom list. Returns {written, failed} counts."""
+    written = 0
+    failed = 0
+    for atom in atoms:
+        try:
+            write_atom(atom, collection_id=collection_id)
+            written += 1
+        except Exception:
+            failed += 1
+    return {"written": written, "failed": failed}
+
+
+def detect_contradicting_atoms(atoms: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Detect contradiction pairs in a list of extracted atoms.
+
+    Detection logic:
+    1. Explicit: atom.contradicts_atom_index != null
+    2. Semantic: same title prefix (>10 chars overlap), different conclusions
+
+    Returns: [{atom_a_index, atom_b_index, type, reason}]
+    """
+    contradictions = []
+
+    # Explicit contradictions (LLM marked during extraction)
+    for i, a in enumerate(atoms):
+        j = a.get("contradicts_atom_index")
+        if j is not None and isinstance(j, int) and 0 <= j < len(atoms) and j != i:
+            contradictions.append({
+                "atom_a_index": i,
+                "atom_b_index": j,
+                "type": "explicit",
+                "reason": f"LLM marked as contradiction between #{i} and #{j}",
+            })
+
+    # Semantic: group by title prefix (first 15 chars)
+    title_groups: Dict[str, List[int]] = {}
+    for i, a in enumerate(atoms):
+        prefix = str(a.get("title", ""))[:15]
+        if len(prefix) >= 5:
+            title_groups.setdefault(prefix, []).append(i)
+
+    for prefix, indices in title_groups.items():
+        if len(indices) >= 2:
+            contradictions.append({
+                "atom_a_index": indices[0],
+                "atom_b_index": indices[1],
+                "type": "semantic",
+                "reason": f"Similar topic prefix '{prefix}', potential opposing claims",
+            })
+
+    return contradictions
+
+
+def build_contradiction_page(atoms: List[Dict[str, Any]], contradiction: Dict,
+                              *, collection_id: str = "default") -> Optional[str]:
+    """Create a ContradictionPage from a detected contradiction pair."""
+    a = atoms[contradiction["atom_a_index"]]
+    b = atoms[contradiction["atom_b_index"]]
+
+    title = f"Contradiction: {str(a.get('title',''))[:30]} vs {str(b.get('title',''))[:30]}"
+    body_parts = [
+        f"## 断言 A",
+        a.get("body", ""),
+        f"\n来源: {a.get('source_doc_id', 'unknown')}",
+        f"证据: {a.get('evidence_text', '')}",
+        f"\n## 断言 B",
+        b.get("body", ""),
+        f"\n来源: {b.get('source_doc_id', 'unknown')}",
+        f"证据: {b.get('evidence_text', '')}",
+        f"\n## 冲突分析",
+        contradiction.get("reason", "语义矛盾"),
+    ]
+    body = "\n".join(body_parts)
+
+    return write_page(
+        title, body,
+        category="contradictions",
+        contradictions=[str(a.get("title", ""))[:80], str(b.get("title", ""))[:80]],
+        source_articles=[
+            a.get("source_doc_id", ""),
+            b.get("source_doc_id", ""),
+        ],
+        collection_id=collection_id,
+    )
+
+
+async def atomize_document(doc_text: str, doc_id: str, *,
+                            collection_id: str = "default",
+                            max_atoms: int = 20,
+                            model_name: str = "") -> Dict[str, Any]:
+    """Full pipeline: raw document → KnowledgeAtom extraction → schema validation → write → contradiction detection.
+
+    Uses T-Box schema to guide LLM extraction, ensuring every atom has:
+    - Required fields (title, body, source_doc_id)
+    - Evidence positions (evidence_start, evidence_end, evidence_text)
+    - Confidence score
+
+    Returns:
+        {atoms_extracted, atoms_written, contradictions_found,
+         contradiction_pages_created, atoms: [...], contradictions: [...]}
+    """
+    result = {"atoms_extracted": 0, "atoms_written": 0, "contradictions_found": 0,
+              "contradiction_pages_created": 0, "atoms": [], "contradictions": [],
+              "error": None}
+
+    # Step 1: Build ontology-driven extraction prompt
+    from core.harness.knowledge.knowledge_ontology import build_atom_extraction_prompt
+    prompt = build_atom_extraction_prompt(doc_text, doc_id, max_atoms=max_atoms)
+
+    # Step 2: Call LLM to extract atoms
+    try:
+        from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
+        model = create_selected_adapter(
+            model_name=model_name or best_model_for_purpose("wiki_curation")
+        )
+        messages = [{"role": "system", "content": "You are a knowledge extraction expert. Return ONLY valid JSON array."},
+                     {"role": "user", "content": prompt}]
+        resp = await model.generate(messages, config=None)
+        content = resp.content if hasattr(resp, 'content') else str(resp)
+    except Exception as e:
+        result["error"] = f"LLM extraction failed: {e}"
+        return result
+
+    # Step 3: Parse LLM JSON output
+    import re, json as _json
+    try:
+        if content.startswith("```"):
+            content = content.strip("`").strip()
+            if content.startswith("json"):
+                content = content[4:].strip()
+        json_match = re.search(r'\[[\s\S]*\]', content)
+        if json_match:
+            atoms = _json.loads(json_match.group(0))
+        else:
+            atoms = []
+    except Exception:
+        atoms = []
+    
+    result["atoms_extracted"] = len(atoms)
+
+    # Step 4: Schema validate each atom
+    from core.harness.knowledge.knowledge_ontology import validate_page_against_schema
+    valid_atoms = []
+    for atom in atoms:
+        if not isinstance(atom, dict):
+            continue
+        atom["category"] = atom.get("category", "atoms")
+        r = validate_page_against_schema(atom, mode="warning")
+        if r.is_valid or not r.missing_required:
+            valid_atoms.append(atom)
+        else:
+            logging.getLogger("wiki_engine").warning(
+                f"atomize_document: skipping atom '{atom.get('title','?')}': missing {r.missing_required}")
+
+    # Step 5: Write valid atoms
+    if valid_atoms:
+        write_result = write_atoms_batch(valid_atoms, collection_id=collection_id)
+        result["atoms_written"] = write_result["written"]
+        result["atoms"] = valid_atoms
+
+    # Step 6: Detect contradictions
+    if len(valid_atoms) >= 2:
+        contradictions = detect_contradicting_atoms(valid_atoms)
+        result["contradictions_found"] = len(contradictions)
+        result["contradictions"] = contradictions
+
+        # Step 7: Create contradiction pages
+        for c in contradictions:
+            try:
+                build_contradiction_page(valid_atoms, c, collection_id=collection_id)
+                result["contradiction_pages_created"] += 1
+            except Exception:
+                pass
+
+    return result
+
+
+def clean_stale_references(collection_id: str = "default") -> Dict[str, Any]:
+    """Scan all wiki pages, move stale kb: references from source_articles to stale_references.
+
+    A reference is stale when the kb:doc_id prefix maps to a doc_id that
+    does not exist in the KB SQLite documents table.
+
+    Returns:
+        {scanned, affected, stale_refs_moved, details: [{page, removed, added_to_stale}], abox_rebuilt}
+    """
+    import os as _os, sqlite3 as _sq
+
+    all_pages = search_pages(limit=10000, collection_id=collection_id)
+    result = {"scanned": len(all_pages), "affected": 0, "stale_refs_moved": 0, "details": []}
+
+    # Step 1: Get known KB document IDs
+    kb_dir = _os.path.expanduser(_os.getenv("AIPLAT_KB_TENANTS_DIR", "~/.aiplat/kb/tenants"))
+    known_doc_ids: set = set()
+    kb_db = _os.path.join(kb_dir, "default", "kb.sqlite3")
+    if _os.path.exists(kb_db):
+        try:
+            conn = _sq.connect(kb_db)
+            rows = conn.execute("SELECT doc_id FROM documents WHERE status='ready'").fetchall()
+            known_doc_ids = {r[0] for r in rows}
+            conn.close()
+        except Exception:
+            pass
+
+    # Step 2: Scan each page for stale kb:/upload:/vault: references
+    for page in all_pages:
+        title = page.get("title", "")
+        source_articles = list(page.get("source_articles") or [])
+        stale_refs = list(page.get("stale_references") or [])
+
+        removed = []
+        kept = []
+        for s in source_articles:
+            is_stale = False
+            if isinstance(s, str):
+                if s.startswith("kb:"):
+                    doc_id = s[3:]
+                    is_stale = doc_id not in known_doc_ids
+                elif s.startswith("upload:") or s.startswith("vault:"):
+                    # upload: and vault: sources never map to KB documents
+                    is_stale = True
+            
+            if is_stale:
+                removed.append(s)
+                if s not in stale_refs:
+                    stale_refs.append(s)
+            else:
+                kept.append(s)
+
+        if removed:
+            update_page(
+                title,
+                source_articles=kept,
+                stale_references=stale_refs,
+                collection_id=collection_id,
+            )
+            result["details"].append({
+                "page": title,
+                "removed": removed,
+                "added_to_stale": [s for s in removed if s not in page.get("stale_references", [])],
+            })
+            result["stale_refs_moved"] += len(removed)
+            result["affected"] += 1
+
+    # Step 3: Rebuild A-Box to refresh validator consistency
+    try:
+        from core.harness.knowledge.knowledge_abox_builder import rebuild_full
+        rebuild_full(collection_id=collection_id)
+        result["abox_rebuilt"] = True
+    except Exception as e:
+        result["abox_rebuilt"] = False
+        result["abox_error"] = str(e)
+
+    return result
+
+
+def _parse_json_response(content: str) -> Optional[Dict]:
+    """Parse JSON from LLM response with fallback cleanup."""
+    import re as _re, json as _json
+    if not content:
+        return None
+    if content.startswith("```"):
+        content = content.strip("`").strip()
+        if content.startswith("json"):
+            content = content[4:].strip()
+    json_match = _re.search(r'[\{\[][\s\S]*[\}\]]', content)
+    if json_match:
+        try:
+            return _json.loads(json_match.group(0))
+        except _json.JSONDecodeError:
+            cleaned = _re.sub(r',\s*[\}\]]', lambda m: m.group(0)[-1], json_match.group(0))
+            try:
+                return _json.loads(cleaned)
+            except _json.JSONDecodeError:
+                pass
+    return None
+
+
+async def _extract_sub_concepts(title: str, body: str, collection_id: str,
+                                 model_name: str = "") -> List[Dict]:
+    """LLM: extract sub-concepts from a topic page as atom candidates."""
+    prompt = f"""Read the topic page below and extract 3-5 sub-concepts as standalone knowledge atoms.
+
+For each sub-concept:
+  - title: readable name (Chinese, 5-15 chars)
+  - body: definition (2-4 sentences, self-contained)
+  - evidence_text: verbatim quote from the page body (50-150 chars)
+  - confidence: 0.5-1.0
+  - tags: 2-4 keywords
+
+=== TOPIC PAGE ({title}) ===
+{body[:6000]}
+
+=== OUTPUT ===
+Return ONLY a JSON array (no markdown fences):
+[{{"title":"...","body":"...","evidence_text":"...","confidence":0.8,"tags":["..."]}}]
+"""
+    from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
+    model = create_selected_adapter(
+        model_name=model_name or best_model_for_purpose("wiki_curation")
+    )
+    resp = await model.generate(
+        [{"role": "system", "content": "Return ONLY valid JSON array."},
+         {"role": "user", "content": prompt}],
+        config=None
+    )
+    content = resp.content if hasattr(resp, 'content') else str(resp)
+    result = _parse_json_response(content)
+    return result if isinstance(result, list) else []
+
+
+async def _detect_page_contradiction(a_page: Dict, b_page: Dict,
+                                       model_name: str = "") -> Dict:
+    """LLM: detect if two pages have contradictory claims."""
+    prompt = f"""Analyze these two wiki pages for contradictory claims.
+
+Page A: {a_page.get('title','')}
+{a_page.get('body','')[:3000]}
+
+Page B: {b_page.get('title','')}
+{b_page.get('body','')[:3000]}
+
+Do they contain mutually contradictory claims? Only flag as contradiction if:
+- They make OPPOSITE claims about the SAME specific thing
+- One says X is true/useful, the other says X is false/harmful/ineffective
+- NOT just different perspectives on different topics
+
+Return ONLY a JSON object:
+{{"has_contradiction": true|false, "reason": "specific contradiction description"}}
+"""
+    from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
+    model = create_selected_adapter(
+        model_name=model_name or best_model_for_purpose("wiki_curation")
+    )
+    resp = await model.generate(
+        [{"role": "system", "content": "Return ONLY valid JSON."},
+         {"role": "user", "content": prompt}],
+        config=None
+    )
+    content = resp.content if hasattr(resp, 'content') else str(resp)
+    result = _parse_json_response(content)
+    return result if isinstance(result, dict) else {"has_contradiction": False}
+
+
+def build_contradiction_page_by_data(a_page: Dict, b_page: Dict, *,
+                                     reason: str = "",
+                                     collection_id: str = "default") -> Optional[str]:
+    """Create a ContradictionPage from two page dicts."""
+    a_title = a_page.get("title", "?")
+    b_title = b_page.get("title", "?")
+    title = f"Contradiction: {a_title[:30]} vs {b_title[:30]}"
+    body_parts = [
+        f"## {a_title}",
+        a_page.get("body", "")[:2000],
+        f"\n## {b_title}",
+        b_page.get("body", "")[:2000],
+        f"\n## 冲突原因",
+        reason or "自动检测到的语义矛盾",
+    ]
+    return write_page(
+        title, "\n".join(body_parts),
+        category="contradictions",
+        contradictions=[a_title, b_title],
+        source_articles=list(set(
+            (a_page.get("source_articles") or []) +
+            (b_page.get("source_articles") or [])
+        ))[:5],
+        collection_id=collection_id,
+    )
+
+
+async def seed_instances(collection_id: str = "default",
+                          model_name: str = "") -> Dict[str, Any]:
+    """Create seed instances for empty T-Box categories (atoms, contradictions).
+
+    Uses LLM to extract sub-concepts from TopicPages and detect contradictions
+    between related page pairs. Creates 3-5 atoms and 2-3 contradiction pages.
+    """
+    import asyncio as _asyncio
+
+    result = {"atoms_created": 0, "contradictions_created": 0, "details": []}
+
+    all_pages = search_pages(limit=10000, collection_id=collection_id)
+
+    # ── Step 1: Sub-concept atoms from TopicPages ──
+    topics = [p for p in all_pages
+              if p.get("category") == "topics" and len(p.get("body", "")) > 500]
+    for topic in topics[:3]:
+        try:
+            atoms = await _extract_sub_concepts(
+                topic["title"], topic.get("body", ""),
+                collection_id, model_name=model_name
+            )
+            for atom in atoms[:3]:
+                existing = read_page(atom["title"], collection_id=collection_id)
+                if existing:
+                    continue
+                write_atom({
+                    "title": atom["title"],
+                    "body": atom.get("body", ""),
+                    "source_doc_id": f"kb:seed_{collection_id}",
+                    "evidence_text": atom.get("evidence_text", ""),
+                    "confidence": float(atom.get("confidence", 0.7)),
+                    "tags": atom.get("tags", []),
+                }, collection_id=collection_id)
+                result["atoms_created"] += 1
+            result["details"].append(
+                {"step": "sub_concept", "source": topic["title"],
+                 "extracted": len(atoms), "created": min(len(atoms), 3)})
+        except Exception as e:
+            result["details"].append({"step": "sub_concept", "source": topic["title"], "error": str(e)})
+
+    # ── Step 2: Contradiction detection from tag-sharing pages ──
+    tag_groups: Dict[str, List[str]] = {}
+    for p in all_pages:
+        for t in (p.get("tags") or []):
+            tag_groups.setdefault(t, []).append(p["title"])
+    candidate_pairs = set()
+    for tag, titles in tag_groups.items():
+        if len(titles) >= 2:
+            for i in range(len(titles)):
+                for j in range(i + 1, len(titles)):
+                    candidate_pairs.add(tuple(sorted([titles[i], titles[j]])))
+
+    for a_title, b_title in list(candidate_pairs)[:3]:
+        try:
+            a_page = read_page(a_title, collection_id=collection_id)
+            b_page = read_page(b_title, collection_id=collection_id)
+            if not a_page or not b_page:
+                continue
+            contradiction = await _detect_page_contradiction(
+                a_page, b_page, model_name=model_name
+            )
+            if contradiction and contradiction.get("has_contradiction"):
+                build_contradiction_page_by_data(
+                    a_page, b_page,
+                    reason=contradiction.get("reason", "semantic contradiction"),
+                    collection_id=collection_id,
+                )
+                result["contradictions_created"] += 1
+                result["details"].append(
+                    {"step": "contradiction", "pair": [a_title, b_title],
+                     "reason": contradiction.get("reason", "")[:80]})
+        except Exception as e:
+            result["details"].append(
+                {"step": "contradiction", "pair": [a_title, b_title], "error": str(e)})
+
+    return result
+
+
+def backfill_evidence_for_page_sync(title: str, *, collection_id: str = "default") -> Dict[str, Any]:
+    """Extract evidence annotations from a wiki page's own content (non-LLM fallback).
+
+    Identifies the first 2-3 sentences as evidence_text and embeds them
+    as HTML comments for the evidence-chain API. This is a lightweight
+    self-referencing backfill for pages where original KB sources are gone.
+
+    Returns:
+        {title, claims_extracted, updated}
+    """
+    page = read_page(title, collection_id=collection_id)
+    if not page:
+        return {"title": title, "error": "page not found"}
+
+    body = page.get("body", "")
+    if len(body) < 50:
+        return {"title": title, "error": "body too short"}
+
+    # Check if already has evidence
+    if "<!-- evidence_text:" in body:
+        return {"title": title, "already_backfilled": True, "updated": False}
+
+    # Extract first 1-2 sentences as evidence
+    import re as _re
+    sentences = _re.split(r'(?<=[。！？\n])\s*', body.strip())
+    evidence_parts = []
+    for s in sentences[:5]:
+        s = s.strip()
+        if len(s) >= 20 and len(s) <= 300:
+            evidence_parts.append(s)
+            if len(evidence_parts) >= 2:
+                break
+
+    if not evidence_parts:
+        evidence_parts = [body[:200].strip()]
+
+    evidence_text = " ".join(evidence_parts)[:300]
+    confidence = 0.6  # Self-referencing: moderate confidence
+
+    comment = (
+        f"<!-- evidence_text: {evidence_text} -->\n"
+        f"<!-- evidence_confidence: {confidence} -->\n"
+    )
+    new_body = comment + body
+
+    write_page(
+        title, new_body,
+        category=page.get("category", "entities"),
+        tags=page.get("tags", []),
+        related=page.get("related", []),
+        contradictions=page.get("contradictions", []),
+        source_articles=page.get("source_articles", []),
+        summary=page.get("summary", ""),
+        collection_id=collection_id,
+    )
+
+    return {
+        "title": title,
+        "claims_extracted": 1,
+        "evidence_text": evidence_text[:80] + "...",
+        "updated": True,
+    }
+
+
+def backfill_evidence_batch_sync(collection_id: str = "default",
+                                  limit: int = 50) -> Dict[str, Any]:
+    """Batch backfill evidence for all pages that have kb: source_articles but no evidence.
+
+    Uses the sync (non-LLM) backfill method. Processes all matching pages.
+    Records failures to a tracking file.
+
+    Returns:
+        {total_candidates, succeeded, failed, details: [...]}
+    """
+    import os as _os, time as _time
+
+    all_pages = search_pages(limit=10000, collection_id=collection_id)
+
+    # Find pages needing backfill
+    candidates = []
+    for p in all_pages:
+        full = read_page(p["title"], collection_id=collection_id)
+        if not full or not full.get("body"):
+            continue
+        body = full.get("body", "")
+        has_source = any(s.startswith("kb:") for s in (p.get("source_articles") or []))
+        has_evidence = "<!-- evidence_text:" in body
+        if has_source and not has_evidence:
+            candidates.append(p["title"])
+
+    candidates = candidates[:limit]
+    result = {"total_candidates": len(candidates), "succeeded": 0, "failed": 0,
+              "details": [], "failures_file": None}
+    failures = []
+
+    for title in candidates:
+        try:
+            r = backfill_evidence_for_page_sync(title, collection_id=collection_id)
+            result["details"].append(r)
+            if r.get("updated"):
+                result["succeeded"] += 1
+            elif not r.get("already_backfilled"):
+                failures.append({"title": title, "error": r.get("error", "unknown")})
+                result["failed"] += 1
+            else:
+                result["succeeded"] += 1  # already backfilled counts as success
+        except Exception as e:
+            failures.append({"title": title, "error": str(e)})
+            result["failed"] += 1
+
+    if failures:
+        fail_path = _os.path.join(
+            _os.path.expanduser(_os.getenv("AIPLAT_HOME", "~/.aiplat")),
+            "wiki", "collections", collection_id, "backfill_failures.json"
+        )
+        _os.makedirs(_os.path.dirname(fail_path), exist_ok=True)
+        import json as _json
+        with open(fail_path, "w") as f:
+            _json.dump({"timestamp": _time.time(), "failures": failures}, f, indent=2)
+        result["failures_file"] = fail_path
+
+    return result
+
+
 __all__ = [
     "read_page", "write_page", "search_pages", "traverse_links",
     "detect_contradictions", "list_all_pages", "llm_curate_page", "_wiki_root",
+    "write_atom", "write_atoms_batch", "atomize_document",
+    "detect_contradicting_atoms", "build_contradiction_page",
+    "create_collection", "delete_collection", "list_collections",
+    "update_page", "delete_page", "delete_all_pages",
 ]

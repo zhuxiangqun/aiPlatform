@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, Button } from '../../components/ui';
-import { Wrench, RefreshCw, CheckCircle, AlertTriangle, ExternalLink, Sparkles, Play, Zap } from 'lucide-react';
+import { Wrench, RefreshCw, CheckCircle, AlertTriangle, ExternalLink, Sparkles, Play, Zap, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const RepairCenter: React.FC = () => {
@@ -63,6 +63,7 @@ const RepairCenter: React.FC = () => {
     wiki_health: { icon: <ExternalLink className="w-4 h-4" />, title: 'Wiki 健康', color: 'text-blue-400' },
     capability: { icon: <Play className="w-4 h-4" />, title: '能力健康', color: 'text-amber-400' },
     lsp: { icon: <AlertTriangle className="w-4 h-4" />, title: 'LSP 类型错误', color: 'text-red-400' },
+    governance: { icon: <ShieldCheck className="w-4 h-4" />, title: '治理', color: 'text-amber-400' },
   };
 
   return (

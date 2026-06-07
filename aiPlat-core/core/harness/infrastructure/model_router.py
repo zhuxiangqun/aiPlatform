@@ -56,11 +56,20 @@ def _resolve_infra():
 
 def _infra_to_entry(mi) -> ModelEntry:
     """Convert infra ModelInfo to core ModelEntry (runtime state)."""
+    import os as _os
     cfg = mi.config if mi.config else type('cfg', (), {'api_key_env': '', 'base_url': ''})()
+    api_key_env = getattr(cfg, 'api_key_env', '') or ""
+    # Resolve API key from env var
+    if not api_key_env:
+        for env_name in ("DEEPSEEK_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY"):
+            if _os.getenv(env_name, "").strip():
+                api_key_env = env_name
+                break
     return ModelEntry(
         name=mi.name,
         provider=mi.provider or "",
-        api_key_env=getattr(cfg, 'api_key_env', '') or "",
+        api_key=_os.getenv(api_key_env, "") or "",
+        api_key_env=api_key_env,
         base_url=getattr(cfg, 'base_url', '') or "",
         enabled=getattr(mi, 'enabled', True),
         capabilities=getattr(mi, 'capabilities', []) or ["chat"],
@@ -135,14 +144,13 @@ class ModelRouter:
 
     def _get_or_create_entry(self, model_name: str) -> Optional[ModelEntry]:
         """Get or create a ModelEntry, synced from infra."""
-        if model_name in self._entries:
-            return self._entries[model_name]
+        # Always refresh from infra to pick up env var changes
         if self._mgr:
-            mi = self._mgr._models.get(model_name)
-            if mi:
-                entry = _infra_to_entry(mi)
-                self._entries[model_name] = entry
-                return entry
+            for mi_id, mi in self._mgr._models.items():
+                if mi.name == model_name or mi_id.endswith(f":{model_name}"):
+                    entry = _infra_to_entry(mi)
+                    self._entries[model_name] = entry
+                    return entry
         return None
 
     def _get_cheaper_alternative(self, model_name: str) -> Optional[ModelEntry]:

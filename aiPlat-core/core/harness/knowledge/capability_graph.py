@@ -412,6 +412,23 @@ def _scan_tools(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):
                 if len(parts) >= 2:
                     server_name = parts[1]
                     edges.append({"from": f"mcp_server:{server_name}", "to": f"tool:{name}", "relation": "provides"})
+
+        # Also register syscall functions that don't have a matching Tool wrapper
+        try:
+            from core.harness.syscalls import __all__ as _syscall_all
+            for func_name in _syscall_all:
+                tgt = f"tool:{func_name}"
+                if tgt not in nodes and func_name.startswith("sys_"):
+                    nodes[tgt] = {
+                        "id": tgt,
+                        "type": "syscall",
+                        "label": func_name,
+                        "raw_id": func_name,
+                        "description": f"Syscall: {func_name}",
+                        "category": "syscall",
+                    }
+        except Exception:
+            pass
     except Exception:
         pass
 
@@ -570,7 +587,7 @@ def _scan_entry_points(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, s
         "agent.execute": _re.compile(r'@router\.\w+\([\"\'][\w/]*agents?/[\w{}_]*execute'),
         "agent.create": _re.compile(r'@router\.\w+\([\"\'][\w/]*agents?[\"\']'),
         "skill.execute": _re.compile(r'@router\.\w+\([\"\'][\w/]*skills?/[\w{}_]*execute'),
-        "sfp.injection": _re.compile(r'system_prompt|_sys_prompt'),
+        "prompt.injection": _re.compile(r'@router\.\w+\([\"\']prompt[\w/]*inject'),
     }
 
     found: Dict[str, List[str]] = {}
@@ -581,6 +598,9 @@ def _scan_entry_points(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, s
             continue
         for cap_name, pattern in capability_patterns.items():
             if pattern.search(content):
+                # workspace_agents.py provides workspace-scoped agent creation — not a duplicate
+                if cap_name == "agent.create" and py_file.name == "workspace_agents.py":
+                    continue
                 found.setdefault(cap_name, []).append(str(py_file.name))
 
     for cap_name, files in found.items():

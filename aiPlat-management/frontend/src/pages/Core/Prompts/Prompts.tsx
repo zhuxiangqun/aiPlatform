@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Copy, Eye, GitCompare, RefreshCw, Pencil, Plus, Trash2, RotateCcw, ExternalLink, Megaphone } from 'lucide-react';
+import { Copy, Eye, GitCompare, RefreshCw, Pencil, Trash2, RotateCcw, ExternalLink, Megaphone } from 'lucide-react';
 
 import { Badge, Button, Card, CardContent, CardHeader, Input, Modal, Select, Table, Textarea, toast } from '../../../components/ui';
 import { promptApi, type PromptTemplateRow } from '../../../services';
@@ -125,20 +125,6 @@ const Prompts: React.FC = () => {
     } finally {
       setViewLoading(false);
     }
-  };
-
-  const openCreate = () => {
-    setSelectedId('');
-    setCurrent(null);
-    setEdit({
-      template_id: '',
-      name: '',
-      template: '',
-      require_approval: true,
-      approval_request_id: '',
-      details: '',
-    });
-    setOpenEdit(true);
   };
 
   const openEditExisting = async (templateId: string) => {
@@ -486,6 +472,17 @@ const Prompts: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+        <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+          <div><span className="text-gray-300">template_id</span><span className="ml-2 text-gray-600">Prompt 模板唯一标识符</span></div>
+          <div><span className="text-gray-300">name</span><span className="ml-2 text-gray-600">模板名称</span></div>
+          <div><span className="text-gray-300">version</span><span className="ml-2 text-gray-600">semver 版本号</span></div>
+          <div><span className="text-gray-300">verify</span><span className="ml-2 text-gray-600"><span className="text-green-400">verified</span> 已校验 · <span className="text-yellow-400">pending</span> 等待中 · <span className="text-red-400">failed</span> 未通过</span></div>
+          <div><span className="text-gray-300">操作</span><span className="ml-2 text-gray-600">复制/查看/发布(灰度)/编辑/对比/版本历史</span></div>
+        </div>
+      </details>
 
       <Card>
         <CardHeader>

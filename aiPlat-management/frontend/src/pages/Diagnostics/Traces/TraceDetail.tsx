@@ -210,7 +210,20 @@ const TraceDetail: React.FC = () => {
                   key: 'spans',
                   label: `Spans (${Array.isArray(spans) ? spans.length : 0})`,
                   children: (
+                    <>
+                    <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-2">
+                      <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+                      <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+                        <div><span className="text-gray-300">span_id</span><span className="ml-2 text-gray-600">Span 唯一 ID</span></div>
+                        <div><span className="text-gray-300">name</span><span className="ml-2 text-gray-600">Span 名称</span></div>
+                        <div><span className="text-gray-300">status</span><span className="ml-2 text-gray-600">healthy/success/degraded/warn/failed/error</span></div>
+                        <div><span className="text-gray-300">duration_ms</span><span className="ml-2 text-gray-600">耗时（毫秒）</span></div>
+                        <div><span className="text-gray-300">parent_span_id</span><span className="ml-2 text-gray-600">父 Span ID</span></div>
+                        <div><span className="text-gray-300">操作</span><span className="ml-2 text-gray-600">查看 Span 详情</span></div>
+                      </div>
+                    </details>
                     <Table columns={spanColumns as any} data={spans} rowKey={(r: any) => String(r.span_id || r.name || Math.random())} />
+                    </>
                   ),
                 },
               ]}

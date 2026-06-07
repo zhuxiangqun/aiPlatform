@@ -24,6 +24,7 @@ export {
   knowledgeApi,
   harnessApi,
   toolApi,
+  workspaceToolApi,
   learningApi,
   approvalsApi,
   jobApi,

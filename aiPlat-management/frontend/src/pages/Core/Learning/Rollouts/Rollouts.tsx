@@ -228,6 +228,23 @@ const Rollouts: React.FC = () => {
         </Button>
       </div>
 
+      <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
+        <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+          <div className="text-gray-300 font-medium md:col-span-2 border-b border-dark-border pb-1 mb-0.5">Rollouts（灰度配置）</div>
+          <div><span className="text-gray-300">target</span><span className="ml-2 text-gray-600">type:id 格式的目标</span></div>
+          <div><span className="text-gray-300">candidate_id</span><span className="ml-2 text-gray-600">发布候选 artifact_id</span></div>
+          <div><span className="text-gray-300">mode</span><span className="ml-2 text-gray-600">percentage 百分比 / all 全量</span></div>
+          <div><span className="text-gray-300">percentage</span><span className="ml-2 text-gray-600">灰度百分比（mode=percentage 时有效）</span></div>
+          <div><span className="text-gray-300">enabled</span><span className="ml-2 text-gray-600"><span className="text-green-400">true</span> 启用 · <span className="text-gray-500">false</span> 停用</span></div>
+          <div className="text-gray-300 font-medium md:col-span-2 border-b border-dark-border pb-1 mb-0.5 mt-1">Metrics Snapshots（指标快照）</div>
+          <div><span className="text-gray-300">metric_key</span><span className="ml-2 text-gray-600">指标键名</span></div>
+          <div><span className="text-gray-300">value</span><span className="ml-2 text-gray-600">指标值</span></div>
+          <div><span className="text-gray-300">created_at</span><span className="ml-2 text-gray-600">快照时间</span></div>
+          <div><span className="text-gray-300">window</span><span className="ml-2 text-gray-600">统计窗口（start ~ end）</span></div>
+        </div>
+      </details>
+
       <Card>
         <CardHeader>
           <div className="text-sm font-semibold text-gray-200">Rollouts（灰度配置）</div>

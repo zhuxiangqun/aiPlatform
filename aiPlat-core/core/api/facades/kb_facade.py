@@ -102,14 +102,20 @@ async def kb_summarize_document(*, tenant_id: str, collection_id: str, doc_id: s
 def kb_parse_document(file_path: str, kind: str) -> Any:
     from core.harness.document import parsers
     dispatch = {
-        "docx": parsers.parse_docx, "word": parsers.parse_docx,
-        "pptx": parsers.parse_pptx, "ppt": parsers.parse_pptx,
-        "xlsx": parsers.parse_xlsx, "xls": parsers.parse_xlsx,
-        "csv": parsers.parse_csv, "pdf": parsers.parse_pdf,
+        # Office formats → MarkItDown (preserves heading/table/list structure)
+        "docx": parsers.parse_markitdown, "word": parsers.parse_markitdown,
+        "pptx": parsers.parse_markitdown, "ppt": parsers.parse_markitdown,
+        "xlsx": parsers.parse_markitdown, "xls": parsers.parse_markitdown,
+        "pdf": parsers.parse_markitdown,
+        "html": parsers.parse_html, "htm": parsers.parse_html,
+        # Lightweight formats → dedicated parsers
+        "csv": parsers.parse_csv,
         "md": parsers.parse_markdown, "markdown": parsers.parse_markdown,
+        "json": parsers.parse_json_document,
+        "eml": parsers.parse_eml,
+        # Media → keep existing pipelines (Whisper/OCR)
         "audio": parsers.parse_audio, "mp3": parsers.parse_audio, "wav": parsers.parse_audio,
         "image": parsers.parse_image, "png": parsers.parse_image, "jpg": parsers.parse_image,
-        "json": parsers.parse_json_document, "eml": parsers.parse_eml,
     }
     parser = dispatch.get(str(kind).lower())
     return parser(file_path) if parser else []
@@ -121,7 +127,7 @@ def kb_chunk_document(elements: Any, kind: str = "pdf", target_size: int = 1000,
 
 
 def get_document_categories() -> list:
-    return ["pdf", "docx", "pptx", "html", "txt", "markdown", "image"]
+    return ["pdf", "docx", "pptx", "xlsx", "html", "txt", "markdown", "image", "audio", "video"]
 
 
 def set_knowledge_providers(*args: Any, **kwargs: Any) -> None:

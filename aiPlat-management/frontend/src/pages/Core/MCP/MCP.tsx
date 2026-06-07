@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { RotateCw, Server, Wrench, Power, PowerOff, Eye, Clipboard } from 'lucide-react';
-import { Button, Modal, toast, Badge } from '../../../components/ui';
+import { RotateCw, Server, Wrench, Power, PowerOff, Eye, Copy } from 'lucide-react';
+import { Button, Modal, toast, Table, Switch } from '../../../components/ui';
 import { mcpApi } from '../../../services';
 import { toastGateError } from '../../../components/ui';
+import { getSourceLabel, extractProvenance } from '../../../utils/sourceLabel';
 
 interface MCPTool {
   name: string;
@@ -16,6 +16,10 @@ interface MCPServer {
   url?: string;
   enabled: boolean;
   tools?: MCPTool[];
+  transport?: string;
+  command?: string;
+  args?: string[];
+  metadata?: Record<string, unknown>;
 }
 
 const MCP: React.FC = () => {
@@ -59,7 +63,7 @@ const MCP: React.FC = () => {
     setDetailServer(srv);
     setToolsLoading(true);
     try {
-      const res = await mcpApi.discoverTools ? mcpApi.discoverTools(srv.name) :
+      const res = await (mcpApi as any).discoverTools?.(srv.name) ||
         (await fetch(`/api/core/mcp/servers/${srv.name}/tools`)).json();
       setDetailTools((res as any)?.tools || []);
     } catch {
@@ -90,48 +94,62 @@ const MCP: React.FC = () => {
           <p className="text-xs text-gray-600 mt-1">用户自定义 MCP 请到 应用能力层 → MCP 库 管理</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {servers.map((srv) => (
-            <motion.div
-              key={srv.name}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="p-4 rounded-xl bg-dark-card border border-dark-border hover:border-primary/30 transition-colors"
-            >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <Server className="w-5 h-5 text-blue-400" />
-                    <span className="text-sm font-medium text-gray-100">{srv.name}</span>
-                    <span className="text-[10px] text-gray-500 bg-dark-bg px-1.5 py-0.5 rounded font-mono">{(srv as any).transport || '?'}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2 py-0.5 rounded text-xs ${srv.enabled ? 'bg-green-900/50 text-green-300' : 'bg-gray-700/50 text-gray-400'}`}>
-                      {srv.enabled ? '已启用' : '已禁用'}
-                    </span>
-                    <button onClick={() => handleToggle(srv)} className="p-1.5 rounded hover:bg-dark-hover" title={srv.enabled ? '禁用' : '启用'}>
-                      {srv.enabled ? <PowerOff className="w-4 h-4 text-amber-400" /> : <Power className="w-4 h-4 text-green-400" />}
-                    </button>
-                    <button onClick={() => handleDiscover(srv)} className="p-1.5 rounded hover:bg-dark-hover" title="发现工具">
-                      <Wrench className="w-4 h-4 text-gray-400" />
-                    </button>
-                    <button onClick={() => setConfigModal({ open: true, server: srv })} className="p-1.5 rounded hover:bg-dark-hover" title="查看配置">
-                      <Eye className="w-4 h-4 text-gray-400" />
-                    </button>
-                  </div>
+        <Table
+          rowKey="name"
+          loading={loading}
+          data={servers}
+          columns={[
+            {
+              title: '名称', dataIndex: 'name', key: 'name',
+              render: (name: string, record: MCPServer) => (
+                <button onClick={() => handleDiscover(record)}
+                  className="text-primary hover:text-primary-hover font-medium">{name}</button>
+              ),
+            },
+            {
+              title: 'Transport', key: 'transport', width: 80,
+              render: (_: unknown, record: MCPServer) => (
+                <span className="text-xs text-gray-400 font-mono">{(record as any).transport || '-'}</span>
+              ),
+            },
+            {
+              title: '来源', key: 'source', width: 80,
+              render: (_: unknown, record: MCPServer) => (
+                <span className="text-gray-400 text-xs">{getSourceLabel(extractProvenance(record))}</span>
+              ),
+            },
+            {
+              title: '描述', key: 'description', width: 220,
+              render: (_: unknown, record: MCPServer) => (
+                <span className="text-xs text-gray-500 truncate block max-w-[200px]">
+                  {(record as any)?.metadata?.description || (record as any)?.description || '-'}
+                </span>
+              ),
+            },
+            {
+              title: '启用', key: 'enabled', width: 100, align: 'center' as const,
+              render: (_: unknown, record: MCPServer) => (
+                <Switch checked={record.enabled} onChange={() => handleToggle(record)} />
+              ),
+            },
+            {
+              title: '操作', key: 'actions', width: 160, align: 'center' as const,
+              render: (_: unknown, record: MCPServer) => (
+                <div className="flex items-center justify-center gap-1">
+                  <button onClick={() => handleToggle(record)} className="p-1.5 rounded hover:bg-dark-hover" title={record.enabled ? '禁用' : '启用'}>
+                    {record.enabled ? <PowerOff className="w-4 h-4 text-amber-400" /> : <Power className="w-4 h-4 text-green-400" />}
+                  </button>
+                  <button onClick={() => handleDiscover(record)} className="p-1.5 rounded hover:bg-dark-hover" title="发现工具">
+                    <Wrench className="w-4 h-4 text-gray-400" />
+                  </button>
+                  <button onClick={() => setConfigModal({ open: true, server: record })} className="p-1.5 rounded hover:bg-dark-hover" title="查看配置">
+                    <Eye className="w-4 h-4 text-gray-400" />
+                  </button>
                 </div>
-                {srv.url && <div className="text-xs text-gray-500 mb-1 font-mono truncate">{srv.url}</div>}
-                {(srv as any).command && <div className="text-xs text-gray-600 mb-1 font-mono truncate">{(srv as any).command} {[...((srv as any).args || [])].join(' ')}</div>}
-                {(srv as any).metadata?.description && <div className="text-xs text-gray-600 mb-1 truncate">{((srv as any).metadata as any).description}</div>}
-              {srv.tools && srv.tools.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {srv.tools.slice(0, 6).map((t) => (
-                    <Badge key={t.name} variant="default" className="text-[10px]">{t.name}</Badge>
-                  ))}
-                </div>
-              )}
-            </motion.div>
-          ))}
-        </div>
+              ),
+            },
+          ]}
+        />
       )}
 
       {/* Detail Modal */}
@@ -172,7 +190,7 @@ const MCP: React.FC = () => {
             <Button variant="ghost" onClick={() => {
               navigator.clipboard.writeText(JSON.stringify(configModal.server, null, 2));
               toast.success('已复制配置 JSON');
-            }} icon={<Clipboard className="w-4 h-4" />}>复制 JSON</Button>
+            }} icon={<Copy className="w-4 h-4" />}>复制 JSON</Button>
             <Button onClick={() => setConfigModal({ open: false, server: null })}>关闭</Button>
           </div>
         }

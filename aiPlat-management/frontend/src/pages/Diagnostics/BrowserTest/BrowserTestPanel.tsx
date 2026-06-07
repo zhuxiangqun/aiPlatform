@@ -269,6 +269,18 @@ const BrowserTestPanel: React.FC = () => {
                 </div>
                 {expandedPages.has(p.url) && (
                   <div style={{ padding: '0 14px 10px' }}>
+                    <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-2">
+                      <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
+                      <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+                        <div><span className="text-gray-300">#</span><span className="ml-2 text-gray-600">步骤序号</span></div>
+                        <div><span className="text-gray-300">操作</span><span className="ml-2 text-gray-600">浏览器操作类型（click/type/navigate等）</span></div>
+                        <div><span className="text-gray-300">元素角色</span><span className="ml-2 text-gray-600">目标元素的 ARIA role</span></div>
+                        <div><span className="text-gray-300">元素文本</span><span className="ml-2 text-gray-600">目标元素的文本内容（截断40字）</span></div>
+                        <div><span className="text-gray-300">结果</span><span className="ml-2 text-gray-600">通过/失败/跳过</span></div>
+                        <div><span className="text-gray-300">耗时</span><span className="ml-2 text-gray-600">步骤执行时间（毫秒）</span></div>
+                        <div><span className="text-gray-300">错误</span><span className="ml-2 text-gray-600">失败时的错误信息（截断60字）</span></div>
+                      </div>
+                    </details>
                     <Table
                       columns={[
                         { title: '#', dataIndex: 'step_id', key: 'step_id', width: 50 },

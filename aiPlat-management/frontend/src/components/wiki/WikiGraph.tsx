@@ -98,7 +98,7 @@ const WikiGraph: React.FC<WikiGraphProps> = ({ onSelectPage, exploreTitles, onEx
         shadowColor: CAT_GLOW[cat] || 'rgba(59,130,246,0.3)',
       },
     }));
-    if (!categories.length) categories.push({ name: 'entities' });
+    if (!categories.length) categories.push({ name: 'entities' } as any);
 
     const qLower = keyword.trim().toLowerCase();
     const matchedIds = qLower

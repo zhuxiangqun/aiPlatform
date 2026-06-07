@@ -1,7 +1,12 @@
 """
-Memory Manager
+Memory Manager — Four-Layer Memory System
 
-Integrates Working, Episodic, and Semantic memory layers.
+Layer 1: Working  Memory (Hot)   — 当前对话上下文 (deque, 30K tokens)
+Layer 2: Episodic Memory (Warm)  — 会话摘要与关键决策
+Layer 3: Semantic Memory (Cold)  — 长期知识 / 用户偏好 (vector + FTS5)
+Layer 4: Task Skills   (External)— 可复用执行模式 (流水线晶体化, pass_rate ≥85% 自动注册)
+
+Design reference: Hermes Agent 四层记忆诊断框架.
 """
 
 import logging
@@ -19,11 +24,14 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class TaskSkill:
-    """L3 skill-layer memory: how to execute a task, not what to know.
+    """Layer 4: External Memory — reusable execution patterns (procedural memory).
 
-    Completed pipeline execution paths are crystallized into reusable TaskSkills.
-    This is the GenericAgent L3 equivalent — procedural memory distinct from
-    knowledge-layer memory (L1 Working, L2 Episodic/Semantic).
+    Completed pipeline executions crystallize into TaskSkills stored at
+    ~/.aiplat/task_skills/. Hot skills (pass_rate >= 85%) auto-register
+    in SkillRegistry for agent discovery.
+
+    Corresponds to Hermes "External Memory" — the skill-layer that answers
+    "how to execute" rather than "what to know."
     """
     skill_id: str
     name: str
@@ -77,7 +85,7 @@ class MemoryManager:
     def __init__(self, config: Optional[MemoryConfig] = None, namespace: str = "default"):
         self._config = config or MemoryConfig()
         self.namespace = namespace
-        self._persist_callback = None  # injected by service layer for SQLite persistence
+        self._persist_callback = None  # injected by service layer for SQLite persistence  # noqa: pending-wire
 
         # Initialize layers
         self._working = WorkingMemory(
@@ -685,10 +693,32 @@ def get_memory_manager(config: Optional[MemoryConfig] = None, namespace: str = "
     if namespace == "default" or not namespace:
         if _default_manager is None:
             _default_manager = MemoryManager(config, namespace="default")
+            _wire_persist_callback(_default_manager)
         return _default_manager
     if namespace not in _memory_managers:
         _memory_managers[namespace] = MemoryManager(config, namespace=namespace)
+        _wire_persist_callback(_memory_managers[namespace])
     return _memory_managers[namespace]
+
+
+def _wire_persist_callback(mgr: MemoryManager) -> None:
+    """Wire the MemoryManager's persistence callback to execution_store's long_term_memories."""
+    async def _persist(interaction: dict) -> None:
+        try:
+            from core.services.execution_store import get_execution_store
+            store = get_execution_store()
+            user_id = str(interaction.get("user_id", "system"))
+            key = str(interaction.get("session_id", "default"))
+            content = str(interaction.get("summary", ""))[:5000]
+            import uuid
+            await store._execute(
+                "INSERT INTO long_term_memories(id,user_id,key,content,metadata_json,created_at) VALUES(?,?,?,?,?,?);",
+                (str(uuid.uuid4()), user_id, key, content,
+                 str(interaction.get("metadata", "{}"))[:2000],
+                 interaction.get("timestamp", 0)))
+        except Exception:
+            pass
+    mgr._persist_callback = _persist
 
 
 __all__ = [

@@ -1,19 +1,20 @@
 ---
 name: skill_eval_trigger
 display_name: 技能触发评测
-description: 对指定 Skill 进行触发评测（正负例）并产出指标。引擎内置（engine）：仅核心能力层默认可用；对外（workspace）需白名单/审批后方可调用。
+description: 对指定Skill进行触发评测（正负例）并产出优化建议。涉及代码生成和接口审查。 涉及Skill相关操作。 主要进行评测。
 category: ops
 version: 1.0.0
 status: enabled
 protected: true
 execution_mode: prompt
 permissions:
-  - "llm:generate"
+- llm:generate
 effects:
-  - type: read
-    resources: ["filesystem:~/.aiplat"]
-    idempotent: true
-    rollback_available: false
+- type: read
+  resources:
+  - filesystem:~/.aiplat
+  idempotent: true
+  rollback_available: false
 input_schema:
   skill_id:
     type: string
@@ -25,6 +26,28 @@ output_schema:
     type: string
     required: true
     description: 面向人阅读的 Markdown 输出，与结构化字段一致
+metadata:
+  trigger_conditions:
+  - 触发评测
+  - 触发测试
+  - 技能触发
+  - 触发评估
+  - 匹配率
+  - 召回率
+  keywords:
+    objects:
+    - Skill
+    - 触发
+    - 评测
+    actions:
+    - 评测
+    - 测试
+    - 匹配
+    - 计算
+  negative_triggers:
+  - 不需要特定的编程语言知识
+  - 不要猜测或编造不存在的数据
+  sop_goal: 评测 Skill 触发条件的准确性
 ---
 
 # 技能触发评测（Engine）
@@ -33,3 +56,11 @@ output_schema:
 1. 加载指定 Skill 的正负例测试集。
 2. 对每个用例执行触发评测，记录准确率/召回率/F1。
 3. 输出指标报告：precision, recall, F1, 误触发 case 列表。
+
+## 目标
+评测 Skill 触发条件的准确性
+
+## Checklist
+- [ ] 输出格式符合规范
+- [ ] 正确处理错误和边界条件
+- [ ] 返回结果包含引用和来源标注

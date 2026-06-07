@@ -81,6 +81,10 @@ def signature_gate_eval(*, metadata: Optional[Dict[str, Any]], trusted_keys_coun
     reason = prov.get("signature_verified_reason")
     if verified:
         return {"required": False, "verified": True, "reason": None}
+    # Pre-governance: skill has integrity data but never been signed —
+    # this is a development-phase skill that hasn't gone through governance
+    if not sig:
+        return {"required": False, "verified": False, "reason": "pre_governance_no_signature"}
     if not bundle:
         return {"required": True, "verified": False, "reason": "missing_bundle_sha256"}
     if not sig:

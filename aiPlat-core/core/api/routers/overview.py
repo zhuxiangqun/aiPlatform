@@ -57,8 +57,8 @@ def _save_ov_cache():
         pass
 
 
-# Load persisted cache on module init
-_load_ov_cache()
+# Load persisted cache on module init — SKIP: governance data may change across restarts
+# _load_ov_cache()
 
 
 def _safe_enum_value(obj, attr: str) -> str:
@@ -100,9 +100,9 @@ async def _get_real_llm_metrics() -> Dict[str, Any]:
             avg_lat = round(row[3] or 0, 1)
             success_rate = round(success / max(total, 1) * 100, 1) if total > 0 else None
 
-            # Token aggregation
+            # Token aggregation (use dedicated INTEGER columns, indexed for performance)
             token_row = conn.execute(
-                "SELECT COALESCE(SUM(CAST(json_extract(result_json, '$.total_tokens') AS INTEGER)), 0)"
+                "SELECT COALESCE(SUM(input_tokens + output_tokens), 0)"
                 " FROM syscall_events"
                 " WHERE kind='llm' AND status='success' AND start_time > ?",
                 (cutoff,)
@@ -358,8 +358,49 @@ async def system_overview(refresh: bool = Query(False)) -> Dict[str, Any]:
         workflow_count = sum(1 for n in cg.nodes.values() if n["type"] == "workflow")
         core["skills"] = {"total": skill_count}
         core["tools"] = tool_count
-        core["mcp_servers"] = mcp_count
         core["workflows"] = workflow_count
+        # MCP: count + quick connectivity probe
+        try:
+            import json, sys
+            from core.management.mcp_manager import WorkspaceMCPManager
+            mgr = WorkspaceMCPManager()
+            servers = mgr.list_servers()
+            enabled = [s for s in servers if getattr(s, "enabled", False)]
+            core["mcp_servers"] = {
+                "total": len(servers),
+                "enabled": len(enabled),
+                "disabled": len(servers) - len(enabled),
+            }
+            # Quick smoke: can we spawn the local_tools_server?
+            try:
+                proc = await asyncio.create_subprocess_exec(
+                    sys.executable, "-m", "core.apps.mcp.local_tools_server",
+                    stdin=asyncio.subprocess.PIPE,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                try:
+                    init = json.dumps({"jsonrpc": "2.0", "id": 0, "method": "initialize",
+                        "params": {"protocolVersion": "2024-11-05", "capabilities": {"tools": {}},
+                        "clientInfo": {"name": "overview", "version": "1.0.0"}}}) + "\n"
+                    proc.stdin.write(init.encode("utf-8"))
+                    await proc.stdin.drain()
+                    line = await asyncio.wait_for(proc.stdout.readline(), timeout=5)
+                    resp = json.loads(line.decode("utf-8"))
+                    core["mcp_servers"]["alive"] = "result" in resp
+                except Exception:
+                    core["mcp_servers"]["alive"] = False
+                finally:
+                    try:
+                        proc.terminate()
+                        await asyncio.wait_for(proc.wait(), timeout=2)
+                    except Exception:
+                        pass
+            except Exception:
+                core["mcp_servers"]["alive"] = False
+        except Exception as e:
+            core["mcp_servers"] = {"total": mcp_count, "alive": None}
+            _log.debug(f"Overview MCP probe failed: {e}")
         # Skill lint health
         try:
             from core.management.skill_linter import lint_skill
@@ -457,8 +498,88 @@ async def system_overview(refresh: bool = Query(False)) -> Dict[str, Any]:
             "grade": cap_report.get("grade"),
         }
     except Exception as e:
-        _log.warning(f"Overview agent scan failed: {e}")
+        _log.warning(f"Overview capability health scan failed: {e}")
         core["capability_health"] = {"error": "unavailable"}
+
+    # -- Governance --
+    try:
+        import json as _json
+        home = os.environ.get("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
+        entity_globs = {
+            "skills": ("skills", "SKILL.manifest.json"),
+            "agents": ("agents", "AGENT.manifest.json"),
+            "mcps": ("mcps", "MCP.manifest.json"),
+            "workflows": ("workflows", "WORKFLOW.manifest.json"),
+            "projects": ("projects", "PROJECT.manifest.json"),
+            "prompt_apps": ("prompt-apps", "TEMPLATE.manifest.json"),
+        }
+        gov_total = 0
+        gov_governed = 0
+        gov_unsigned = 0
+        gov_no_manifest = 0
+
+        # Scan both workspace and engine directories
+        engine_root = Path(__file__).resolve().parents[3] / "core" / "engine"
+        extra_paths = [
+            (engine_root / "skills", "SKILL.manifest.json"),
+            (engine_root / "agents", "AGENT.manifest.json"),
+            (engine_root / "mcps", "MCP.manifest.json"),
+        ]
+
+        all_dirs: list[tuple[Path, str]] = []
+        for ent_type, (subdir, mf_name) in entity_globs.items():
+            all_dirs.append((Path(home) / subdir, mf_name))
+        for p, mf_name in extra_paths:
+            if p.exists() and p.is_dir():
+                all_dirs.append((p, mf_name))
+
+        for base_dir, mf_name in all_dirs:
+            if not base_dir.is_dir():
+                continue
+            for edir in base_dir.iterdir():
+                if not edir.is_dir() or edir.name.startswith("."):
+                    continue
+                gov_total += 1
+                mf = edir / mf_name
+                if not mf.exists():
+                    gov_no_manifest += 1
+                    continue
+                try:
+                    with open(mf) as f:
+                        mdata = _json.load(f)
+                    if mdata.get("signature"):
+                        gov_governed += 1
+                    else:
+                        gov_unsigned += 1
+                except Exception:
+                    gov_unsigned += 1
+
+        has_keys = False
+        try:
+            from core.harness.kernel.runtime import get_kernel_runtime as _ov_rt
+            _rt = _ov_rt()
+            store = getattr(_rt, "execution_store", None) if _rt else None
+            if store:
+                gs = await store.get_global_setting(key="trusted_skill_pubkeys")
+                keys = (gs.get("keys") or []) if gs and isinstance(gs, dict) else []
+                has_keys = len(keys) > 0
+        except Exception:
+            pass
+
+        score = 100
+        score -= gov_no_manifest * 2
+        score -= gov_unsigned * 2
+        if not has_keys and gov_total > 0:
+            score -= 20
+        score = max(0, score)
+
+        core["governance"] = {
+            "total": gov_total, "governed": gov_governed,
+            "unsigned": gov_unsigned, "no_manifest": gov_no_manifest,
+            "has_trusted_keys": has_keys, "score": score,
+        }
+    except Exception:
+        core["governance"] = {"error": "unavailable"}
 
     # -- Code Graph stats (symbol health + dead code) --
     try:
@@ -469,7 +590,29 @@ async def system_overview(refresh: bool = Query(False)) -> Dict[str, Any]:
         total_files = len(_nodes)
         total_syms = sum(len(n.get('symbols', [])) for n in _nodes.values())
         files_with_syms = sum(1 for n in _nodes.values() if n.get('symbols'))
-        dead_code = sum(1 for n in _nodes.values() if int(n.get('in', 0)) == 0 and len(n.get('symbols', [])) > 0)
+        # Exclude files legitimately with 0 in-degree (dynamic dispatch, DI, registry, etc.)
+        def _is_dead_code(nid: str, n) -> bool:
+            exc = ('tests/', '/test_', '/generated/', '/apps/agents/', '/apps/skills/',
+                   '/engine/agents/', '/engine/skills/', '/infrastructure/gates/',
+                   '/scripts/', '/arch_guard_rules/', '/lint_rules/',
+                   '/management/api/', '/management/dashboard/', '/core/api/routers/',
+                   '/core/apps/tools/', '/core/tools/',
+                   '/core/harness/execution/langgraph/', '/core/harness/syscalls/',
+                   '/core/adapters/llm/', '/core/utils/', '/workspace_seeds/',
+                   '/builder/', '/kb/poc/', '/kb/intelligence/',
+                   '/infra/utils/', '/infra/management/model/',
+                   '/management/model/',
+            )
+            if any(p in nid for p in exc): return True
+            sf = ('server.py', 'main.py', '__init__.py', '.sh', '.cfg', '.tsx', '.ts', '.jsx',
+                  '/execution/conditional.py', '_adapter.py', '/vector/utils.py',
+                  'core/schemas_tools.py', 'core/schemas.py', '/knowledge/reranker.py',
+                  'infra/management/config.py', '/auth/rbac.py', 'management/run.py')
+            if any(nid.endswith(s) for s in sf): return True
+            if nid.startswith('aiPlat-app/') or nid.startswith('aiplat-app/'): return True
+            return False
+        dead_code = sum(1 for nid, n in _nodes.items()
+                       if not _is_dead_code(nid, n) and int(n.get('in', 0)) == 0 and len(n.get('symbols', [])) > 0)
         cross_calls = sum(1 for e in _edges if e.get('kind') == 'calls' and e['from'] != e['to'])
         core["code_graph"] = {
             "files": total_files,

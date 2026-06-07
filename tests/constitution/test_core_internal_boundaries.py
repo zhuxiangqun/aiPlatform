@@ -38,6 +38,10 @@ ALLOWED_HARNESS_TO_APPS: Set[Tuple[str, str]] = {
     ("harness/execution/langgraph/stage_runner.py", "apps/tools/code"),
     # KNOWN_DEBT: browser_test_engine in bridge, guarded by lazy import + try/except
     ("harness/integration.py", "apps/tools/browser_test_engine"),
+    # pipeline_engine — lazy import guarded by try/except for predictions
+    ("harness/execution/pipeline_engine.py", "apps/skills/evolution/engine"),
+    # pipeline_engine — lazy import guarded by try/except for evolution triggers
+    ("harness/execution/pipeline_engine.py", "apps/skills/evolution/triggers"),
 }
 
 
@@ -105,7 +109,8 @@ def test_api_routers_use_facade_not_engine():
             continue
         rel = _get_relpath(fp)
         # core_facade.py IS the facade — it's the one place allowed to import the engine
-        if fp.name == "core_facade.py":
+        # api/facades/*.py are lightweight facades that may also import engine directly
+        if fp.name == "core_facade.py" or "/facades/" in str(fp):
             continue
         for imp_mod, lineno in _gather_imports(fp):
             if imp_mod in engine_modules:

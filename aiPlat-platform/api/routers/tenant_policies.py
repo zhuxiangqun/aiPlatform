@@ -24,7 +24,17 @@ RuntimeDep = Annotated[Optional[KernelRuntime], Depends(get_kernel_runtime)]
 
 
 def _store(rt: Optional[KernelRuntime]):
-    return getattr(rt, "execution_store", None) if rt else None
+    store = getattr(rt, "execution_store", None) if rt else None
+    if store:
+        return store
+    # Fallback: platform lifespan sets this singleton on onboarding module
+    try:
+        from api.routers.onboarding import _execution_store as _onb_store
+        if _onb_store:
+            return _onb_store
+    except Exception:
+        pass
+    return None
 
 
 def _new_change_id() -> str:

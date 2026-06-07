@@ -1,20 +1,54 @@
 ---
 name: browser_automation
 display_name: 浏览器自动化
-description: 【必须使用 browser 工具实际操作网页，禁止凭记忆回答】自动化网页交互：导航、点击、输入、滚动、截图、提取内容、搜索、表单填写、数据采集。
+description: 【必须使用 browser 工具实际操作网页，禁止凭记忆回答】自动化网页交互：导航、点击、输入、滚动、截图、提取内容。涉及代码生成和接口审查。 涉及浏览器相关操作。 主要进行自动化。
 version: 1.1.0
 category: browser
 status: enabled
 effects:
-  - type: read
-    resources: ["browser:page", "filesystem:read"]
-    idempotent: false
-    rollback_available: false
+- type: read
+  resources:
+  - browser:page
+  - filesystem:read
+  idempotent: false
+  rollback_available: false
 output_schema:
   result:
     type: string
   markdown:
     type: string
+    required: true
+    description: 面向人阅读的 Markdown 输出
+metadata:
+  trigger_conditions:
+  - 浏览器操作
+  - 自动化网页
+  - UI测试
+  - 网页抓取
+  - Playwright
+  - Selenium测试
+  - 浏览器自动化
+  - Web自动化
+  keywords:
+    objects:
+    - 浏览器
+    - 网页
+    - UI
+    - 前端页面
+    actions:
+    - 自动化
+    - 操作
+    - 测试
+    - 截图
+  negative_triggers:
+  - 不需要特定的编程语言知识
+  - 不要猜测或编造不存在的数据
+  sop_goal: 通过浏览器自动化执行网页操作和提取数据
+input_schema:
+  url:
+    type: string
+    required: true
+    description: 目标网页地址
 ---
 
 # Browser Automation
@@ -86,3 +120,11 @@ output_schema:
 2. 是否到达了目标页面？（goto 返回 status=200）
 3. 交互结果是否正确？（检查返回数据）
 4. 截图或提取的数据是否真实？
+
+## 目标
+通过浏览器自动化执行网页操作和提取数据
+
+## Checklist
+- [ ] 输出格式符合规范
+- [ ] 正确处理错误和边界条件
+- [ ] 返回结果包含引用和来源标注
