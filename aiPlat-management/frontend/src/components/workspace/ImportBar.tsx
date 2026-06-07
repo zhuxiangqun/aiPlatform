@@ -194,7 +194,7 @@ const ImportBar: React.FC<ImportBarProps> = ({ onImported, assetType, alsoScan }
                         <div className="text-xs text-gray-500">{(zipFile.size / 1024).toFixed(0)} KB</div>
                       </div>
                     </div>
-                    <Button variant="secondary" size="sm" onClick={handlePreview} loading={loading} disabled={installing}>🔍 预览</Button>
+                    <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); handlePreview(); }} loading={loading} disabled={installing}>🔍 预览</Button>
                   </div>
                 ) : (
                   <div>

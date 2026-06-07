@@ -1095,7 +1095,6 @@ async def workspace_mcps_installer_upload_install(
             source_type="zip", path=tmp_path, subdir=subdir or None,
             auto_detect_subdir=auto_detect_subdir.lower() in ("true", "1", "yes"),
             allow_overwrite=allow_overwrite.lower() in ("true", "1", "yes"),
-            confirm=True, plan_id=plan_id or None,
         )
         return {"status": "ok", **result}
     except ValueError as e:

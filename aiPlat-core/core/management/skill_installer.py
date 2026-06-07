@@ -525,6 +525,12 @@ class SkillInstaller:
                     raise RuntimeError("failed_to_remove_existing_skill_dir")
 
             shutil.copytree(sd, dst)
+            # Auto-adapt: detect pattern → generate handler.py / enrich frontmatter
+            try:
+                from core.management.skill_adapter import adapt_skill
+                adapt_skill(dst)
+            except Exception:
+                pass
             try:
                 src2 = dict(source or {})
                 src2["skill_id"] = sd.name

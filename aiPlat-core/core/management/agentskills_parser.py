@@ -132,8 +132,20 @@ def convert_agentskills_to_aiplat(raw_md: str, skill_dir_name: str = "") -> str:
         f"category: {category}",
         "version: 0.1.0",
         "status: draft",
-        "execution_mode: prompt",
     ]
+
+    # Auto-detect tool references in SOP body
+    try:
+        from core.management.skill_adapter import _TOOL_REF_PATTERN
+        has_tools = bool(_TOOL_REF_PATTERN.findall(body))
+        execution_type = "prompt"  # default
+    except ImportError:
+        has_tools = False
+        execution_type = "prompt"
+
+    lines.append(f"execution_type: {execution_type}")
+    lines.append(f"execution_mode: prompt")
+
     # Carry over agentskills.io optional fields
     if fm.get("license"):
         lines.append(f"license: {fm.get('license')}")

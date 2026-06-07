@@ -1340,6 +1340,7 @@ from core.api.routers.prompt_eval import router as prompt_eval_router  # noqa: E
 from core.api.routers.prompt_optimize import router as prompt_optimize_router  # noqa: E402
 from core.api.routers.personas import router as personas_router  # noqa: E402
 from core.api.routers.skill_evals import router as skill_evals_router  # noqa: E402
+from core.api.routers.workspace_tools import router as workspace_tools_router  # noqa: E402
 from core.api.routers.agents import router as agents_router  # noqa: E402
 from core.api.routers.workspace_agents import router as workspace_agents_router  # noqa: E402
 from core.api.routers.syscalls import router as syscalls_router  # noqa: E402
@@ -1408,6 +1409,7 @@ api_router.include_router(harness_admin_router)
 api_router.include_router(evaluation_policies_router)
 api_router.include_router(learning_misc_router)
 api_router.include_router(tools_router)
+api_router.include_router(workspace_tools_router)
 api_router.include_router(executions_trace_router)
 api_router.include_router(catalog_router)
 api_router.include_router(code_intel_router)

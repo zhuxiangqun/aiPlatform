@@ -1520,7 +1520,6 @@ async def workspace_agents_installer_upload_install(
             subdir=subdir or None, asset_id=asset_id or None,
             auto_detect_subdir=auto_detect_subdir.lower() in ("true", "1", "yes"),
             allow_overwrite=allow_overwrite.lower() in ("true", "1", "yes"),
-            confirm=True, plan_id=plan_id or None,
         )
         return {"status": "ok", **result}
     except ValueError as e:
