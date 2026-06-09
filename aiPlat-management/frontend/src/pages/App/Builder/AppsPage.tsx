@@ -13,6 +13,7 @@ const AppsPage: React.FC = () => {
   const [apps, setApps] = useState<any[]>([]);
   const [workflows, setWorkflows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [newWfId, setNewWfId] = useState('');
@@ -33,9 +34,12 @@ const AppsPage: React.FC = () => {
   useEffect(() => { refresh(); }, [refresh]);
 
   const handleDelete = async (id: string) => {
+    if (deleting) return;
     if (!window.confirm('确认删除此 App？')) return;
+    setDeleting(id);
     try { await appApi.delete(id); toast.success('已删除'); refresh(); }
     catch (e: any) { toast.error('删除失败', e?.detail || ''); }
+    finally { setDeleting(null); }
   };
 
   const handleOpen = (app: any) => {
@@ -86,8 +90,8 @@ const AppsPage: React.FC = () => {
                     className="flex-1 flex items-center justify-center gap-1 py-2 text-[10px] text-gray-500 hover:text-blue-400 hover:bg-dark-hover rounded-bl-xl transition-colors">
                     <Icon className="w-3 h-3" /> 打开
                   </button>
-                  <button onClick={e => { e.stopPropagation(); handleDelete(app.id); }}
-                    className="flex-1 flex items-center justify-center gap-1 py-2 text-[10px] text-gray-500 hover:text-red-400 hover:bg-dark-hover rounded-br-xl transition-colors">
+                  <button onClick={e => { e.stopPropagation(); handleDelete(app.id); }} disabled={!!deleting}
+                    className="flex-1 flex items-center justify-center gap-1 py-2 text-[10px] text-gray-500 hover:text-red-400 hover:bg-dark-hover rounded-br-xl transition-colors disabled:opacity-40">
                     <Trash2 className="w-3 h-3" /> 删除
                   </button>
                 </div>

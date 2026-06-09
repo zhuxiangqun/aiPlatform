@@ -50,7 +50,7 @@ def create_agent(
     if isinstance(config, dict):
         config = AgentConfig(
             name=config.get("name", "agent"),
-            model=config.get("model") or best_model_for_purpose("chat") or "gpt-4",
+            model=config.get("model") or best_model_for_purpose("chat"),
             temperature=float(config.get("temperature", 0.3)),
             max_tokens=int(config.get("max_tokens", 4096)),
             timeout=int(config.get("timeout", 600)),
@@ -1209,7 +1209,7 @@ async def run_workspace_agent(
     def _resolve_model():
         from core.harness.utils.model_injection import create_selected_adapter
         cfg = getattr(agent_info, "config", None)
-        model_name = cfg.get("model") or best_model_for_purpose("chat") or "deepseek-chat"  # noqa: model-legacy if isinstance(cfg, dict) else "deepseek-chat"
+        model_name = cfg.get("model") or best_model_for_purpose("chat")  # noqa: model-legacy if isinstance(cfg, dict) else "deepseek-chat"
         try:
             return create_selected_adapter(model_name=model_name)
         except Exception:
@@ -1393,7 +1393,9 @@ async def run_workspace_agent(
         error_msg = "Timeout (300s)"
     except Exception as e:
         status = "failed"
-        error_msg = str(e)[:500]
+        error_msg = str(e) or repr(e) or type(e).__name__
+        _log = __import__('logging').getLogger(__name__)
+        _log.error(f"Agent {agent_id} execution failed (run_id={run_id}): {error_msg}", exc_info=True)
     finally:
         if ws_token is not None:
             try:
@@ -1497,9 +1499,13 @@ async def run_workspace_agent(
     except Exception:
         pass
 
-    is_error = status != "completed" or (result_text and "STAGE_ERROR" in result_text)
+    # Extract real error from StageRunner output if present
+    if (result_text or "") and "STAGE_ERROR:" in result_text:
+        error_msg = result_text.split("STAGE_ERROR:", 1)[1].strip() or "unknown stage error"
+        status = "failed"
+    is_error = status != "completed"
     resp = {"ok": not is_error, "status": status if not is_error else "failed",
-            "output": result_text if not is_error else None, "error": error_msg if is_error else None, "run_id": run_id}
+            "output": result_text if not is_error else None, "error": error_msg if is_error else None, "run_id": run_id, "execution_id": run_id}
     if tokens:
         resp["tokens"] = tokens
     return resp
@@ -1513,7 +1519,7 @@ def get_chat_service_model(rt: Any = None) -> Any:
             return rt.adapter_manager.get_default_adapter()
         except Exception:
             pass
-    model_name = get_default_model(purpose="chat") or get_default_model() or "deepseek-chat"
+    model_name = get_default_model(purpose="chat") or get_default_model()
     return create_selected_adapter(model_name=model_name)
 
 

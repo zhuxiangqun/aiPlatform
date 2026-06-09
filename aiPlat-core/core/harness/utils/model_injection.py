@@ -192,6 +192,8 @@ def create_selected_adapter(*, model_name: str) -> Any:
             "Set AIPLAT_LLM_API_KEY or DEEPSEEK_API_KEY environment variable. "
             "Without a valid API key, the pipeline cannot produce real outputs."
         )
+    _register_adapter(provider=provider, model_name=selected_model, base_url=base_url)
+    return create_adapter(provider=provider, api_key=api_key, model=selected_model, base_url=base_url)
 
 
 def _bind_model(obj: Any, adapter: Any) -> None:
@@ -251,6 +253,12 @@ def ensure_agent_model(agent: Any, *, model_name: str, force: bool = False) -> A
         cur_provider = getattr(getattr(cur, "metadata", None), "provider", None)
         api_key = get_llm_api_key("openai") or ""
         if cur_provider == "openai" and not api_key:
+            _log = __import__('logging').getLogger(__name__)
+            _log.warning(
+                "Auto-fallback to mock adapter: No OpenAI API key configured. "
+                "All LLM responses will be 'DONE: ok'. "
+                "Set AIPLAT_LLM_API_KEY or DEEPSEEK_API_KEY for real model execution."
+            )
             _bind_model(agent, adapter)
             return adapter
     except Exception:
@@ -298,9 +306,21 @@ def best_model_for_purpose(purpose: str) -> str:
         pass
 
     # 2. Env var fallback
-    model_name = get_default_model(purpose=purpose) or "deepseek-chat"
+    model_name = get_default_model(purpose=purpose) or "deepseek-chat"  # noqa: model-legacy — canonical ultimate fallback for best_model_for_purpose
     _log_model_selection(purpose, model_name, entry="best_model_for_purpose", source="fallback")
     return model_name
+
+
+def best_model_for_agent_type(agent_type: str) -> str:
+    """Select best model for an agent based on its type.
+    
+    Canonical mapping (aligned with pipeline_engine.py):
+      react/plan/reflection → reasoning-capable model
+      others → chat model
+    """
+    if agent_type in ("react", "plan", "reflection"):
+        return best_model_for_purpose("agent")
+    return best_model_for_purpose("chat")
 
 
 def _register_adapter(provider: str, model_name: str, base_url: str = "", api_key: str = "") -> None:

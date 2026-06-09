@@ -83,6 +83,7 @@ def wrap_execution_result_as_run_summary(result: Any) -> Dict[str, Any]:
     out.setdefault("legacy_status", legacy_status)
     out["ok"] = ok0
     out["run_id"] = str(run_id)
+    out["execution_id"] = str(run_id)
     out["trace_id"] = trace_id
     out["status"] = run_status
     out["output"] = payload.get("output")

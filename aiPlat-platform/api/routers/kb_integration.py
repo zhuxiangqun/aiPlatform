@@ -41,11 +41,12 @@ async def kb_slack_query(request: Request):
         doc_content = "\n\n---\n\n".join(r["text"][:500] for r in results[:3]) if results else ""
 
         from core.harness.utils.prompt_loader import _async_prompt_resolve
+        from core.harness.utils.model_injection import best_model_for_purpose
         sp = await _async_prompt_resolve("kb-qa", scenario="widget", documents=doc_content, question=question)
         resp = await llm_generate(
             None,
             [{"role": "user", "content": sp}],
-            model_name="deepseek-chat", temperature=0.3, max_tokens=1000,
+            model_name=best_model_for_purpose("chat"), temperature=0.3, max_tokens=1000,
         )
         answer = getattr(resp, "content", "") or str(resp)
         return {"answer": answer.strip(), "sources": [{"doc_id": r["doc_id"], "text": r["text"][:200]} for r in results[:3]]}

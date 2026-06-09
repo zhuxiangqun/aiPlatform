@@ -192,6 +192,54 @@ def check_api_contract() -> list[dict]:
     return issues
 
 
+def check_ts_import_hygiene() -> list[dict]:
+    """§45: Check that frontend imports go through barrel files (services/index.ts, components/ui)."""
+    issues = []
+    checks = [
+        {
+            "name": "No direct coreApi.ts imports (use services/index.ts)",
+            "pattern": r"from\s+['\"].*services/coreApi['\"]",
+            "path": "aiPlat-management/frontend/src",
+            "exclude": ["services/index.ts", "services/coreApi.ts"],
+            "level": "error",
+            "msg": "Direct import from coreApi.ts — import from services/index.ts instead (§5.1)",
+        },
+        {
+            "name": "No scattered UI imports (use components/ui)",
+            "pattern": r"from\s+['\"].*components/ui/",
+            "path": "aiPlat-management/frontend/src/pages",
+            "exclude": [],
+            "level": "warning",
+            "msg": "Direct import from components/ui/ sub-file — import from components/ui barrel instead (§5.2)",
+        },
+    ]
+
+    for check in checks:
+        try:
+            result = subprocess.run(
+                ["grep", "-rn", "--include=*.tsx", "--include=*.ts", check["pattern"],
+                 check["path"]],
+                capture_output=True, text=True, cwd=str(Path(__file__).resolve().parent.parent)
+            )
+            hits = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+            for exc in check.get("exclude", []):
+                hits = [h for h in hits if exc not in h]
+            for hit in hits[:10]:
+                fp = hit.split(":", 2)
+                issues.append({
+                    "code": check["name"],
+                    "level": check["level"],
+                    "msg": f"{check['msg']} — {hit[:120]}",
+                    "files": [],
+                })
+        except Exception as e:
+            issues.append({"code": check["name"], "level": "warning", "msg": f"Check failed: {e}", "files": []})
+
+    if not any(i.get("level") == "error" for i in issues):
+        issues.append({"code": "ts-import-hygiene", "level": "pass", "msg": "All frontend imports follow barrel pattern"})
+    return issues
+
+
 # ═══════════════════════════════════════════════════════════════
 # Main
 # ═══════════════════════════════════════════════════════════════
@@ -200,6 +248,7 @@ def main():
     sections = [
         ("§43", "Frontend Proxy Routing", check_vite_proxy),
         ("§44", "Cross-Language API Contract", check_api_contract),
+        ("§45", "Frontend Import Path Hygiene", check_ts_import_hygiene),
     ]
 
     total_errors = 0

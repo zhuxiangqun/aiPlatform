@@ -18,6 +18,7 @@ const Gateway: React.FC = () => {
   const [routes, setRoutes] = useState<GatewayRoute[]>([]);
   const [loading, setLoading] = useState(false);
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; route: GatewayRoute | null }>({ open: false, route: null });
+  const [deleting, setDeleting] = useState(false);
 
   const [pairings, setPairings] = useState<GatewayPairing[]>([]);
   const [pairingsLoading, setPairingsLoading] = useState(false);
@@ -90,8 +91,9 @@ const Gateway: React.FC = () => {
   };
 
   const handleDelete = async () => {
-    if (!deleteModal.route) return;
+    if (!deleteModal.route || deleting) return;
     try {
+      setDeleting(true);
       await gatewayApi.delete(deleteModal.route.id);
       toast.success('路由已删除');
       setDeleteModal({ open: false, route: null });
@@ -99,6 +101,7 @@ const Gateway: React.FC = () => {
     } catch {
       toast.error('删除失败');
     }
+    finally { setDeleting(false); }
   };
 
   const submitPairing = async () => {
@@ -121,6 +124,7 @@ const Gateway: React.FC = () => {
   };
 
   const deletePairing = async (p: GatewayPairing) => {
+    if (!window.confirm('确定删除此 Pairing？')) return;
     try {
       await gatewayAdminApi.deletePairing({ channel: p.channel, channel_user_id: p.channel_user_id });
       toast.success('Pairing 已删除');
@@ -145,6 +149,7 @@ const Gateway: React.FC = () => {
   };
 
   const deleteToken = async (t: GatewayToken) => {
+    if (!window.confirm('确定删除此 Token？')) return;
     try {
       await gatewayAdminApi.deleteToken(t.id);
       toast.success('Token 已删除');
@@ -452,10 +457,10 @@ const Gateway: React.FC = () => {
         title="确认删除"
         footer={
           <>
-            <Button onClick={() => setDeleteModal({ open: false, route: null })}>
+            <Button disabled={deleting} onClick={() => setDeleteModal({ open: false, route: null })}>
               取消
             </Button>
-            <Button variant="danger" onClick={handleDelete}>
+            <Button variant="danger" loading={deleting} onClick={handleDelete}>
               确认删除
             </Button>
           </>

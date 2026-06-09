@@ -132,3 +132,12 @@ def get_document_categories() -> list:
 
 def set_knowledge_providers(*args: Any, **kwargs: Any) -> None:
     pass
+
+
+def get_embedding_model_name() -> str:
+    """Return the currently configured embedding model name via infra resolution chain."""
+    try:
+        from core.harness.infrastructure.base_model_adapter import resolve_model_name
+        return resolve_model_name("embedding")
+    except Exception:
+        return "unknown"

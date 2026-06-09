@@ -100,6 +100,27 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
   const [optimizePrompt, setOptimizePrompt] = useState('');
   const [wizV2Open, setWizV2Open] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
+  // Import mode
+  const [sourceMode, setSourceMode] = useState<'manual' | 'url' | 'file'>('manual');
+  const [importUrl, setImportUrl] = useState('');
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importDetecting, setImportDetecting] = useState(false);
+  const [importResult, setImportResult] = useState<any>(null);
+  const [importMeta, setImportMeta] = useState<Record<string, any>>({});
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Reset import state when switching modes; clear stale template defaults for import
+  React.useEffect(() => {
+    setImportUrl('');
+    setImportFile(null);
+    setImportResult(null);
+    setImportMeta({});
+    if (sourceMode !== 'manual') {
+      setConfigText('');
+      setDescription('');
+      setCategory('general');
+    }
+  }, [sourceMode]);
 
   const categoryOptions = useMemo(() => SKILL_CATEGORIES, []);
 
@@ -122,6 +143,68 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
     } catch (e: any) {
       toast.error('AI 生成失败', e?.detail || e?.message || String(e));
     } finally { setAiLoading(false); }
+  };
+
+  const handleImportDetect = async () => {
+    if (sourceMode === 'url' && !importUrl.trim()) { toast.warning('请输入 GitHub URL'); return; }
+    if (sourceMode === 'file' && !importFile) { toast.warning('请选择本地 Zip 文件'); return; }
+    setImportDetecting(true);
+    setImportResult(null);
+    try {
+      const payload: any = { name: name.trim() || '', description: description.trim() || '' };
+      if (sourceMode === 'url') {
+        payload.url = importUrl.trim();
+      } else if (sourceMode === 'file' && importFile) {
+        const buf = await importFile.arrayBuffer();
+        const bytes = new Uint8Array(buf);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+        payload.file_content = btoa(binary);
+      }
+      const res = await workspaceSkillApi.importDetect(payload);
+      if (res.error) { toast.error('检测失败', res.error); return; }
+      setImportResult(res);
+      if (res.detected_name && !name) setName(res.detected_name);
+      if (res.detected_description && !description) setDescription(res.detected_description);
+      if (res.category) setCategory(res.category);
+      if (res.display_name) setDisplayName(res.display_name);
+      if (res.sop_body) setSopText(res.sop_body);
+      if (res.input_schema && Object.keys(res.input_schema).length > 0) setInputSchemaText(JSON.stringify(res.input_schema, null, 2));
+      if (res.output_schema && Object.keys(res.output_schema).length > 0) setOutputSchemaText(JSON.stringify(res.output_schema, null, 2));
+      if (res.permissions?.length) setPermissionsText(JSON.stringify(res.permissions, null, 2));
+      else if (sourceMode !== 'manual') setPermissionsText('[]');
+      if (res.trigger_conditions?.length) setTriggerText(res.trigger_conditions.join('\n'));
+      else if (sourceMode !== 'manual') setTriggerText('');
+      if (res.timeout) {
+        try {
+          const cfg = configText.trim() ? JSON.parse(configText) : {};
+          cfg.timeout_seconds = res.timeout;
+          setConfigText(JSON.stringify(cfg, null, 2));
+        } catch { setConfigText(JSON.stringify({ timeout_seconds: res.timeout }, null, 2)); }
+      }
+      if (res.execution_type) {
+        setSkillKind(res.execution_type === 'handler' ? 'executable' : 'rule');
+      }
+      setImportMeta({
+        tools: res.tools || [],
+        execution_type: res.execution_type || 'prompt',
+        timeout: res.timeout,
+        ...(sourceMode === 'url' && importUrl.trim() ? { source_url: importUrl.trim() } : {}),
+      });
+      // Store separate for file mode (binary content)
+      if (sourceMode === 'file' && importFile) {
+        try {
+          const buf2 = await importFile.arrayBuffer();
+          const bytes2 = new Uint8Array(buf2);
+          let binary2 = '';
+          for (let i = 0; i < bytes2.length; i++) binary2 += String.fromCharCode(bytes2[i]);
+          setImportMeta((prev: any) => ({ ...prev, source_file_content: btoa(binary2) }));
+        } catch { }
+      }
+      toast.success('AI 检测完成');
+    } catch (e: any) {
+      toast.error('检测失败', e?.detail || e?.message || String(e));
+    } finally { setImportDetecting(false); }
   };
 
   const applyTemplate = (cat: string) => {
@@ -206,6 +289,7 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
         output_schema,
         template: category,
         sop: sopText || '',
+        metadata: importMeta,
       } as any);
 
       toast.success('已创建');
@@ -264,12 +348,83 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
         <input type="checkbox" checked={autoSmoke} onChange={(e) => setAutoSmoke(e.target.checked)} />
         创建后自动运行全链路冒烟（会创建/清理资源）
       </label>
+
+      {/* ── Source / Import ── */}
+      <div className="flex items-center gap-4 mb-3">
+        <span className="text-sm text-gray-400">来源:</span>
+        <label className="flex items-center gap-1 text-sm cursor-pointer">
+          <input type="radio" name="sourceMode" checked={sourceMode === 'manual'} onChange={() => setSourceMode('manual')} />
+          <span className="text-gray-300">✏️ 手动创建</span>
+        </label>
+        <label className="flex items-center gap-1 text-sm cursor-pointer">
+          <input type="radio" name="sourceMode" checked={sourceMode === 'url'} onChange={() => setSourceMode('url')} />
+          <span className="text-gray-300">🔗 从 GitHub 导入</span>
+        </label>
+        <label className="flex items-center gap-1 text-sm cursor-pointer">
+          <input type="radio" name="sourceMode" checked={sourceMode === 'file'} onChange={() => setSourceMode('file')} />
+          <span className="text-gray-300">📦 从本地导入</span>
+        </label>
+      </div>
+
+      {(sourceMode === 'url' || sourceMode === 'file') && (
+        <div className="p-4 rounded-lg border border-blue-500/30 bg-blue-500/5 mb-3">
+          <div className="flex gap-2 items-end">
+            <div className="flex-1">
+              {sourceMode === 'url' ? (
+                <Input label="GitHub URL" value={importUrl} onChange={(e: any) => setImportUrl(e.target.value)}
+                  placeholder="https://github.com/user/skill-repo" />
+              ) : (
+                <div>
+                  <div className="text-xs font-medium text-gray-300 mb-1">本地 Zip 文件</div>
+                  <div className="flex gap-2 items-center">
+                    <Button variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()} disabled={importDetecting}>
+                      📁 选择文件
+                    </Button>
+                    <input ref={fileInputRef} type="file" accept=".zip" style={{ display: 'none' }}
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) { setImportFile(f); setImportUrl(''); } }} />
+                    <span className="text-xs text-gray-400">{importFile ? importFile.name : '未选择文件'}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+            <Button variant="primary" size="sm" onClick={handleImportDetect} loading={importDetecting}
+              disabled={(sourceMode === 'url' && !importUrl.trim()) || (sourceMode === 'file' && !importFile)}>
+              🔍 AI 检测
+            </Button>
+          </div>
+
+          {importResult && !importResult.error && (
+            <div className="mt-3 p-3 rounded-lg border border-green-500/30 bg-green-500/5">
+              <div className="text-sm font-medium text-green-300 mb-2">✨ AI 推荐配置（基于 SOP 分析）</div>
+              <div className="grid grid-cols-2 gap-2 text-xs text-gray-300">
+                <div><span className="text-gray-500">执行方式:</span> {importResult.execution_type || '-'}</div>
+                <div><span className="text-gray-500">超时:</span> {importResult.timeout ? `${importResult.timeout}s` : '-'}</div>
+                <div><span className="text-gray-500">分类:</span> {importResult.category || '-'}</div>
+                <div><span className="text-gray-500">绑定工具:</span> {(importResult.tools || []).join(', ') || '-'}</div>
+              </div>
+              {importResult.reasoning && (
+                <div className="text-xs text-gray-400 mt-2 italic">"{(importResult.reasoning as string).slice(0, 200)}"</div>
+              )}
+              <div className="text-xs text-gray-500 mt-2">以上配置已自动填入表单</div>
+            </div>
+          )}
+          {importResult?.error && (
+            <div className="mt-2 text-xs text-red-400">{importResult.error}</div>
+          )}
+        </div>
+      )}
+
       <div className="space-y-4">
         <div className="flex gap-2 items-end">
           <div className="flex-1"><Input label="名称" value={name} onChange={(e: any) => setName(e.target.value)} placeholder="例如：我的客服助手" /></div>
-          <Button variant="secondary" size="sm" onClick={handleAiFill} loading={aiLoading}
-            disabled={!name.trim() || !description.trim() || aiLoading}>AI 生成</Button>
+          {sourceMode === 'manual' && (
+            <Button variant="secondary" size="sm" onClick={handleAiFill} loading={aiLoading}
+              disabled={!name.trim() || !description.trim() || aiLoading}>✨ AI 智能填充</Button>
+          )}
         </div>
+        {sourceMode === 'manual' && (
+          <div className="text-xs text-gray-500 -mt-2">根据名称和功能描述自动生成分类、显示名、输入/输出 schema、权限、触发词、SOP 等</div>
+        )}
         <Input label="Skill ID（可选，留空则自动生成）" value={skillId} onChange={(e: any) => setSkillId(e.target.value)} placeholder="例如：customer_support（建议小写/下划线）" />
         <div className="flex items-end justify-between gap-3">
           <div className="flex-1">
@@ -278,17 +433,21 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
               value={category}
               onChange={(v) => {
                 setCategory(v);
-                applyTemplate(v);
+                if (sourceMode === 'manual') applyTemplate(v);
               }}
               options={categoryOptions}
             />
           </div>
-          <Button variant="secondary" onClick={() => applyTemplate(category)} disabled={loading}>
-            应用模板
-          </Button>
-          <Button variant="primary" onClick={() => setWizV2Open(true)} disabled={loading}>
-            向导 v2（推荐）
-          </Button>
+          {sourceMode === 'manual' && (
+            <Button variant="secondary" onClick={() => applyTemplate(category)} disabled={loading}>
+              应用模板
+            </Button>
+          )}
+          {sourceMode === 'manual' && (
+            <Button variant="primary" onClick={() => setWizV2Open(true)} disabled={loading}>
+              向导 v2（推荐）
+            </Button>
+          )}
         </div>
         <Select
           label="形态"

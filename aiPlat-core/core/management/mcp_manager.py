@@ -22,7 +22,7 @@ import yaml
 class MCPServerInfo:
     name: str
     enabled: bool = True
-    status: str = "draft"  # draft | ready | published | listed | deprecated
+    status: str = "ready"  # draft | ready | published | listed | deprecated
     transport: str = "sse"  # sse|stdio|http etc
     url: Optional[str] = None
     command: Optional[str] = None
@@ -33,6 +33,19 @@ class MCPServerInfo:
     metadata: Dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+def _notify_resource_mutated(resource_type: str, action: str, resource_id: str) -> None:
+    """Fire-and-forget publish to EventBus so graph caches know to invalidate."""
+    try:
+        from core.harness.observability.events import EventBus, EventType
+        EventBus.get_instance().emit(
+            event_type=EventType.RESOURCE_MUTATED,
+            source="MCPManager",
+            data={"resource_type": resource_type, "action": action, "resource_id": resource_id},
+        )
+    except Exception:
+        pass
 
 
 class MCPManager:
@@ -95,7 +108,7 @@ class MCPManager:
 
                 name = str(data.get("name") or item.name)
                 enabled = bool(data.get("enabled", True))
-                status = str(data.get("status") or "draft")
+                status = str(data.get("status") or "ready")
                 transport = str(data.get("transport") or "sse")
                 url = data.get("url")
                 command = data.get("command")
@@ -325,6 +338,7 @@ class MCPManager:
         policy_yaml.write_text(yaml.safe_dump(pol, sort_keys=False, allow_unicode=True), encoding="utf-8")
 
         self.reload()
+        _notify_resource_mutated("mcp_server", "upserted", info.name)
         return self._servers[info.name]
 
     def set_enabled(self, name: str, enabled: bool) -> bool:
@@ -342,6 +356,7 @@ class MCPManager:
             import shutil as _shutil
             _shutil.rmtree(server_dir, ignore_errors=True)
         self._servers.pop(name, None)
+        _notify_resource_mutated("mcp_server", "deleted", name)
         return True
 
     # ── Installer methods (workspace scope only) ────────────────────────

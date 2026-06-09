@@ -34,12 +34,25 @@ class WorkflowInfo:
     description: str = ""
     nodes: List[Dict[str, Any]] = field(default_factory=list)
     edges: List[Dict[str, Any]] = field(default_factory=list)
-    status: str = "draft"  # draft | ready | published | listed | deprecated
+    status: str = "ready"  # draft | ready | published | listed | deprecated
     enabled: bool = True
     metadata: Dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     version: str = "1.0.0"
+
+
+def _notify_resource_mutated(resource_type: str, action: str, resource_id: str) -> None:
+    """Fire-and-forget publish to EventBus so graph caches know to invalidate."""
+    try:
+        from core.harness.observability.events import EventBus, EventType
+        EventBus.get_instance().emit(
+            event_type=EventType.RESOURCE_MUTATED,
+            source="WorkflowManager",
+            data={"resource_type": resource_type, "action": action, "resource_id": resource_id},
+        )
+    except Exception:
+        pass
 
 
 class WorkflowManager:
@@ -95,7 +108,7 @@ class WorkflowManager:
                     description=str(data.get("description") or ""),
                     nodes=data.get("nodes") if isinstance(data.get("nodes"), list) else [],
                     edges=data.get("edges") if isinstance(data.get("edges"), list) else [],
-                    status=str(data.get("status") or "draft"),
+                    status=str(data.get("status") or "ready"),
                     enabled=bool(data.get("enabled", True)),
                     metadata=data.get("metadata") if isinstance(data.get("metadata"), dict) else {},
                     created_at=now,
@@ -119,7 +132,10 @@ class WorkflowManager:
     def _migrate_from_sqlite(self) -> None:
         """One-time migration: import workflow definitions from platform SQLite into directories."""
         try:
-            from storage.sqlite import list_workflows, get_workflow
+            from importlib import import_module
+            pkg = import_module("storage.sqlite")
+            list_workflows = pkg.list_workflows
+            get_workflow = pkg.get_workflow
         except Exception:
             return
 
@@ -331,6 +347,7 @@ class WorkflowManager:
         self._workflows[wf_id] = wf
         self._write_workflow_json(wf)
         self._enrich_workflow_provenance_and_integrity(wf.metadata, workflow_dir=wf_dir)
+        _notify_resource_mutated("workflow", "created", wf_id)
         return wf
 
     def update_workflow(self, workflow_id: str, **kwargs: Any) -> Optional[WorkflowInfo]:
@@ -354,6 +371,7 @@ class WorkflowManager:
         wf_dir = Path(wf.metadata.get("filesystem", {}).get("server_dir") or "")
         if wf_dir.exists():
             self._enrich_workflow_provenance_and_integrity(wf.metadata, workflow_dir=wf_dir)
+        _notify_resource_mutated("workflow", "updated", workflow_id)
         return wf
 
     def delete_workflow(self, workflow_id: str) -> bool:
@@ -364,6 +382,7 @@ class WorkflowManager:
         if wf_dir.exists():
             import shutil
             shutil.rmtree(wf_dir, ignore_errors=True)
+        _notify_resource_mutated("workflow", "deleted", workflow_id)
         return True
 
     def toggle_enabled(self, workflow_id: str) -> Optional[bool]:

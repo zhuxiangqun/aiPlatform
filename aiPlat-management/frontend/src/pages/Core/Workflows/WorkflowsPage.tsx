@@ -12,6 +12,7 @@ const WorkflowsPage: React.FC = () => {
   const [lastRuns, setLastRuns] = useState<Record<string, any>>({});
   const [pubApps, setPubApps] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [detailWf, setDetailWf] = useState<any>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [signKey, setSignKey] = useState('');
@@ -40,12 +41,15 @@ const WorkflowsPage: React.FC = () => {
   useEffect(() => { refresh(); }, [refresh]);
 
   const handleDelete = async (id: string) => {
+    if (deleting) return;
     if (!window.confirm('确认删除此 workflow？')) return;
+    setDeleting(id);
     try {
       await workflowApi.delete(id);
       toast.success('已删除');
       refresh();
     } catch (e: any) { toast.error('删除失败', e?.detail || ''); }
+    finally { setDeleting(null); }
   };
 
   const handleSubmitForReview = async (wf: any) => {
@@ -198,8 +202,8 @@ const WorkflowsPage: React.FC = () => {
                     className="flex-1 flex items-center justify-center gap-1 py-2 text-[10px] text-gray-500 hover:text-blue-400 hover:bg-dark-hover transition-colors">
                     📱 App
                   </button>
-                  <button onClick={e => { e.stopPropagation(); handleDelete(wf.id); }}
-                    className="flex-1 flex items-center justify-center gap-1 py-2 text-[10px] text-gray-500 hover:text-red-400 hover:bg-dark-hover rounded-br-xl transition-colors">
+                  <button onClick={e => { e.stopPropagation(); handleDelete(wf.id); }} disabled={!!deleting}
+                    className="flex-1 flex items-center justify-center gap-1 py-2 text-[10px] text-gray-500 hover:text-red-400 hover:bg-dark-hover rounded-br-xl transition-colors disabled:opacity-40">
                     <Trash2 className="w-3 h-3" /> 删除
                   </button>
                   {(wf.status || '').toLowerCase() === 'draft' || !wf.status ? (

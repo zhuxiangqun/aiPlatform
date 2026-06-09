@@ -24,9 +24,14 @@ import asyncio
 class EmbeddingProvider:
     def __init__(self, *, backend: str = "", model_name: str = "", cache_size: int = 1000):
         self._backend = backend or os.getenv("AIPLAT_EMBEDDING_BACKEND", "transform")
-        self._model_name = model_name or os.getenv(
-            "AIPLAT_EMBEDDING_MODEL", "all-MiniLM-L6-v2"
-        )
+        if model_name:
+            self._model_name = model_name
+        else:
+            try:
+                from core.harness.infrastructure.base_model_adapter import resolve_model_name
+                self._model_name = resolve_model_name("embedding")
+            except Exception:
+                self._model_name = "all-MiniLM-L6-v2"
         self._model: Any = None
         self._cache: Dict[str, List[float]] = {}
         self._cache_size = cache_size

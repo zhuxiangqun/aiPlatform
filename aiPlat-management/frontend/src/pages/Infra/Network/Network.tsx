@@ -66,6 +66,7 @@ const Network: React.FC = () => {
   };
 
   const handleDeleteIngress = async (ingressName: string) => {
+    if (!window.confirm('确定删除此 Ingress？')) return;
     try {
       await networkApi.deleteIngress(ingressName);
       toast.success('Ingress 删除成功');

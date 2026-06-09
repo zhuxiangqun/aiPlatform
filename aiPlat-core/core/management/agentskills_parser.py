@@ -138,10 +138,10 @@ def convert_agentskills_to_aiplat(raw_md: str, skill_dir_name: str = "") -> str:
     try:
         from core.management.skill_adapter import _TOOL_REF_PATTERN
         has_tools = bool(_TOOL_REF_PATTERN.findall(body))
-        execution_type = "prompt"  # default
+        execution_type = "prompt"  # default — LLM-only (no real handler); add handler.py to upgrade
     except ImportError:
         has_tools = False
-        execution_type = "prompt"
+        execution_type = "prompt"  # default — LLM-only (no real handler)
 
     lines.append(f"execution_type: {execution_type}")
     lines.append(f"execution_mode: prompt")

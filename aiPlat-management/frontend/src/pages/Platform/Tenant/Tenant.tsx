@@ -17,6 +17,7 @@ const Tenant: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; tenant: TenantInfo | null }>({ open: false, tenant: null });
+  const [deleting, setDeleting] = useState(false);
 
   const fetchTenants = useCallback(async () => {
     setLoading(true);
@@ -36,8 +37,9 @@ const Tenant: React.FC = () => {
   }, [fetchTenants]);
 
   const handleDelete = async () => {
-    if (!deleteModal.tenant) return;
+    if (!deleteModal.tenant || deleting) return;
     try {
+      setDeleting(true);
       await tenantApi.delete(deleteModal.tenant.id);
       toast.success('租户已删除');
       setDeleteModal({ open: false, tenant: null });
@@ -45,6 +47,7 @@ const Tenant: React.FC = () => {
     } catch {
       toast.error('删除失败');
     }
+    finally { setDeleting(false); }
   };
 
   const handleToggleSuspend = async (tenant: TenantInfo) => {
@@ -247,10 +250,10 @@ const Tenant: React.FC = () => {
         title="确认删除"
         footer={
           <>
-            <Button onClick={() => setDeleteModal({ open: false, tenant: null })}>
+            <Button disabled={deleting} onClick={() => setDeleteModal({ open: false, tenant: null })}>
               取消
             </Button>
-            <Button variant="danger" onClick={handleDelete}>
+            <Button variant="danger" loading={deleting} onClick={handleDelete}>
               确认删除
             </Button>
           </>

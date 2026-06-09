@@ -133,6 +133,15 @@ async def create_workspace_tool(request: dict, http_request: Request):
     except Exception:
         pass
 
+    # Auto-grant EXECUTE permission for system/admin on newly created workspace tools
+    try:
+        from core.apps.tools.permission import get_permission_manager, Permission
+        pm = get_permission_manager()
+        for uid in ("system", "admin"):
+            pm.grant_permission(uid, name, Permission.EXECUTE, granted_by="auto_create")
+    except Exception:
+        pass
+
     return {"status": "created", "name": name, "path": str(tool_file)}
 
 

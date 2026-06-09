@@ -7,7 +7,7 @@ Backends (tried in order):
   3. Raise RuntimeError if neither available
 
 Configuration:
-  AIPLAT_VIDEO_WHISPER_MODEL  — model size (base/small/medium/large, default: base)
+  model env var  — model size (base/small/medium/large, default: base), resolved via resolve_model_name("audio")
   AIPLAT_VIDEO_TRANSCRIBE_LANG — language hint (zh/en/auto, default: auto)
 
 Callers:
@@ -29,7 +29,6 @@ def _normalize_language(language: Optional[str]) -> Optional[str]:
 
 
 def transcribe_audio(audio_path: str, language: Optional[str] = None) -> List[Dict[str, Any]]:
-    model_name = os.getenv("AIPLAT_VIDEO_WHISPER_MODEL", "base")  # noqa: env-legacy
     whisper_language = _normalize_language(language)
     device = os.getenv("AIPLAT_WHISPER_DEVICE", "cpu")
     compute_type = os.getenv("AIPLAT_WHISPER_COMPUTE_TYPE", "int8")
@@ -44,7 +43,9 @@ def transcribe_audio(audio_path: str, language: Optional[str] = None) -> List[Di
 
     try:
         from faster_whisper import WhisperModel
+        from core.harness.infrastructure.base_model_adapter import resolve_model_name
 
+        model_name = resolve_model_name("audio")
         model = WhisperModel(model_name, device=device, compute_type=compute_type)
         segs, _info = model.transcribe(audio_path, language=whisper_language, vad_filter=True)
         out: List[Dict[str, Any]] = []

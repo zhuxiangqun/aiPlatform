@@ -82,6 +82,7 @@ const Scheduler: React.FC = () => {
   };
 
   const handleDeleteQuota = async (quotaId: string) => {
+    if (!window.confirm('确定删除此配额？')) return;
     try {
       await schedulerApi.deleteQuota(quotaId);
       toast.success('配额删除成功');
@@ -116,6 +117,7 @@ const Scheduler: React.FC = () => {
   };
 
   const handleDeletePolicy = async (policyId: string) => {
+    if (!window.confirm('确定删除此策略？')) return;
     try {
       await schedulerApi.deletePolicy(policyId);
       toast.success('策略删除成功');

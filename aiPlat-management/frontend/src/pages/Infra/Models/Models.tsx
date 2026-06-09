@@ -29,6 +29,7 @@ const Models: React.FC = () => {
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editingModel, setEditingModel] = useState<Model | null>(null);
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; model: Model | null }>({ open: false, model: null });
+  const [deleting, setDeleting] = useState(false);
 
   const fetchModels = async () => {
     setLoading(true);
@@ -67,8 +68,9 @@ const Models: React.FC = () => {
   };
 
   const handleDelete = async () => {
-    if (!deleteModal.model) return;
+    if (!deleteModal.model || deleting) return;
     try {
+      setDeleting(true);
       await modelApi.delete(deleteModal.model.id);
       toast.success('模型已删除');
       setDeleteModal({ open: false, model: null });
@@ -76,6 +78,7 @@ const Models: React.FC = () => {
     } catch (error) {
       toast.error('删除失败');
     }
+    finally { setDeleting(false); }
   };
 
   const handleEdit = (model: Model) => {
@@ -316,10 +319,10 @@ const Models: React.FC = () => {
         title="确认删除"
         footer={
           <>
-            <Button onClick={() => setDeleteModal({ open: false, model: null })}>
+            <Button disabled={deleting} onClick={() => setDeleteModal({ open: false, model: null })}>
               取消
             </Button>
-            <Button variant="danger" onClick={handleDelete}>
+            <Button variant="danger" loading={deleting} onClick={handleDelete}>
               删除
             </Button>
           </>

@@ -241,7 +241,17 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
         role_definition: roleDefinition,
       });
       clearTimeout(timeout);
-      if (result.config) setConfigText(JSON.stringify(result.config, null, 2));
+      if (result.agent_type) setSelectedType(result.agent_type);
+      if (result.config) {
+        setConfigText(JSON.stringify(result.config, null, 2));
+        const cfgModel = (result.config as any)?.model as string | undefined;
+        if (cfgModel) {
+          const norm = (s: string) => s.toLowerCase().replace(/^[a-z_]+:/, '').replace(/[-_]/g, '');
+          const match = modelOptions.find(o => o.value === cfgModel)
+            || modelOptions.find(o => norm(o.value) === norm(cfgModel));
+          if (match) setSelectedModel(match.value);
+        }
+      }
       if (result.skills?.length) setSkills(result.skills.filter((s: string) => skillOptions.some(o => o.value === s)));
       if (result.tools?.length) setTools(result.tools.filter((t: string) => toolOptions.some(o => o.value === t)));
       if (result.mcp_ids?.length) setMcpIds(result.mcp_ids.filter((m: string) => mcpOptions.some(o => o.value === m)));
@@ -380,7 +390,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
             value={description}
             onChange={(e: any) => setDescription(e.target.value)}
             rows={3}
-            placeholder="描述这个 Agent 的功能目标、工作流程和适用场景，AI 智能填充将根据此描述推荐 Skills / Tools / MCP / 子 Agent / Workflow"
+            placeholder="描述这个 Agent 的功能目标、工作流程和适用场景，AI 智能填充将根据此描述推荐 Agent 类型、模型、Skills / Tools / MCP / 子 Agent / Workflow / 配置 / SOP / 记忆配置"
           />
         </div>
         <div className="mb-2">

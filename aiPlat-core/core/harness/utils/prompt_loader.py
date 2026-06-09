@@ -500,9 +500,6 @@ ${agent_catalog}
 ## 可用 Workflow 模板
 ${wf_catalog}
 
-## 可用的用户应用模板 (Prompt Templates)
-${app_template_catalog}
-
 ## Agent 类型说明
 - base: 基础 Agent，通用聊天/问答
 - react: ReAct 模式，适合需要工具调用、多步推理、结构化输出的 Agent
@@ -512,16 +509,19 @@ ${app_template_catalog}
 
 ## 任务
 根据用户的功能描述${role_phrase}，推荐最匹配的配置。输出严格 JSON（无 markdown 标记）:
-{"agent_type":"react|plan|tool|base|conversational","config":{"model":"deepseek-chat","temperature":0.3,"max_tokens":4096,"system_prompt":"从角色定义推导的系统提示词(中文)"},"skills":["技能名1"],"tools":["工具名1"],"mcp_ids":[],"agent_ids":["可委派的子Agent ID"],"workflow_ids":["已有Workflow模板名"],"template_id":"最匹配的用户应用模板ID(如tech-proposal,无则为空字符串)","memory_config":{"type":"short_term","recall_count":5},"sop_text":"6章节SOP","reasoning":"为什么这样选择的简要解释(中文)"}}
+{"agent_type":"react|plan|tool|base|conversational","config":{"model":"auto","temperature":0.3,"max_tokens":4096,"system_prompt":"从角色定义推导的系统提示词(中文)"},"skills":["技能名1"],"tools":["工具名1"],"mcp_ids":[],"agent_ids":["可委派的子Agent ID"],"workflow_ids":["已有Workflow模板名"],"memory_config":{"type":"short_term","recall_count":5},"sop_text":"6章节SOP","reasoning":"为什么这样选择的简要解释(中文)"}}
 
 
 ## 原则
-- skills 应同时包含：用户描述中直接需要的 + 执行描述中隐含需要的
+- skills 选择最精干集合：功能覆盖度高的技能优先
+  - 比较候选 skills 的 capabilities 标签，如果 skill A 的 capabilities 集合完全覆盖了 skill B，只选 A、不选 B
+  - 如果一个 skill 的 capabilities 已包含用户需要的大部分功能，就无需再选其他重叠的
+- tools 只在 Skill 本身不提供所需能力时才补充，尽量不选（通常选 0 个）
 - agent_ids 从"可委派的子Agent"中选择，只选与用户流程实际相关的角色
 - workflow_ids 从"已有 Workflow 模板"中选择匹配的模板名，如无匹配可为空数组""",
     category="agent",
     variables=["name", "description", "role_section", "skills_catalog", "tools_catalog",
-               "mcp_catalog", "agent_catalog", "wf_catalog", "app_template_catalog", "role_phrase"])
+               "mcp_catalog", "agent_catalog", "wf_catalog", "role_phrase"])
 
 _register("agent-role-definition", """你是一个 AI Agent 角色定义专家。根据用户的名称和功能描述，生成一份结构化的角色定义。
 
@@ -565,7 +565,7 @@ ${wf_catalog}
 
 ## 任务
 为以上每个 Agent 推荐配置。输出严格 JSON（无 markdown 标记），格式为:
-{"<agent名>":{"agent_type":"...","config":{...},"skills":[...],"tools":[...],"mcp_ids":[],"agent_ids":[],"workflow_ids":[],"memory_config":{...},"sop_text":"...","reasoning":"..."},...}
+{"<agent名>":{"agent_type":"...","config":{"model":"auto","temperature":0.3,"max_tokens":4096},"skills":[...],"tools":[...],"mcp_ids":[],"agent_ids":[],"workflow_ids":[],"memory_config":{...},"sop_text":"...","reasoning":"..."},...}
 
 ## 原则
 - 每个 Agent 根据名称推断角色定位，选择匹配的技能和工具
@@ -620,6 +620,9 @@ ${server_name}
 ## 功能描述
 ${description}
 
+## 已有 MCP 服务器（避免重复）
+${mcp_catalog}
+
 ## 输出格式
 只输出以下 JSON（不要任何额外文本或代码块标记）：
 {
@@ -638,7 +641,7 @@ ${description}
 3. args 是字符串数组，如 ["-m", "module_name"]
 4. 必须输出合法 JSON，不要有任何 markdown 标记、注释或额外解释""",
     category="engine",
-    variables=["server_name", "description"])
+    variables=["server_name", "description", "mcp_catalog"])
 
 _register("skill-auto-fill", """你是一个 AI Skill 设计专家。请根据以下需求，设计一个完整的 Skill。
 
@@ -647,6 +650,9 @@ ${skill_name}
 
 ## 功能描述
 ${description}
+
+## 已有技能（避免重复，功能重叠时复用而非新建）
+${skills_catalog}
 
 ## 输出格式
 输出一个完整的 SKILL.md，包含 YAML frontmatter 和 Markdown SOP。
@@ -658,10 +664,11 @@ display_name: 中文显示名
 description: 一句话描述
 category: development|design|analysis|retrieval|document|execution|generation|text|tool|general
 version: 1.0.0
-status: draft
+status: enabled
 skill_kind: rule
 permissions: []
 trigger_conditions: []
+capabilities: [核心能力1, 核心能力2]
 input_schema:
   type: object
   properties:
@@ -692,12 +699,14 @@ output_schema:
 
 ## 要求
 1. trigger_conditions 至少 3 个中文触发短语
-2. input_schema 和 output_schema 用 JSON Schema 格式
-3. SOP 用中文写 3-5 个步骤
-4. category 必须从给定选项中选一个最匹配的
-5. 只输出 YAML + Markdown，不要任何额外解释""",
+2. capabilities 至少 2 个，用中文描述核心能力标签
+3. input_schema 和 output_schema 用 JSON Schema 格式
+4. SOP 用中文写 3-5 个步骤
+5. category 必须从给定选项中选一个最匹配的
+6. 参考已有技能的 capabilities，避免重复创建功能重叠的技能
+7. 只输出 YAML + Markdown，不要任何额外解释""",
     category="skill",
-    variables=["skill_name", "description"])
+    variables=["skill_name", "description", "skills_catalog"])
 
 # === OPERATOR — Evaluation ===
 _register("eval-metrics-design", """你是一个 Agent 评估指标设计专家。请根据 Agent 的定义和执行历史，设计一套评分维度。
@@ -749,6 +758,39 @@ ${passages}
     category="knowledge",
     variables=["passages", "question"])
 
+_register("kb-chat-system-role", """你是知识库问答助手。基于提供的文档内容，准确简洁地回答用户问题。如果文档内容不足以回答，请如实告知。请直接用中文回答，不需要JSON格式。""",
+    category="knowledge",
+    variables=[])
+
+_register("agent-import-detect", """你是一个 Agent 配置助手。阅读以下 AGENT.md 正文，推断该 Agent 需要的完整配置。
+
+## Agent 类型:
+- base: 基础对话 Agent
+- react: ReAct 模式（推理+行动）
+- plan: 规划型 Agent（任务分解）
+- tool: 工具型 Agent（工具调用）
+
+## 可用工具列表:
+- calculator: 数学计算
+- search: 互联网搜索
+- webfetch: 网页抓取
+- file_operations: 文件读写
+- browser: 浏览器自动化
+- http: HTTP 请求
+- database: 数据库查询
+- repo: Git 仓库
+
+## 执行方式:
+- agent 通过 ReAct loop 执行 SOP 步骤
+- tools 用于原子操作
+- skills 用于可复用能力模块
+- MCP 用于外部服务集成
+
+输出 JSON（无 markdown 标记, 字段完整）:
+{"agent_type":"react","skills":["code_review","summarization"],"tools":["search","file_operations"],"mcp_ids":[],"sop_text":"1. 接收任务\\n2. 分析需求\\n3. 执行操作\\n4. 输出结果","config":{"temperature":0.1,"max_tokens":4096},"reasoning":"AGENT.md 描述了多步推理需求，适合 ReAct 模式..."}""",
+    category="agent",
+    variables=[])
+
 _register("kb-doc-writer", """你是文档写作助手。按用户要求生成知识库文档。
 
 标题: ${title}
@@ -785,33 +827,13 @@ Requirements:
     category="skills",
     variables=["language"])
 
-_register("skill-executor-fork", """你是一个专用技能代理（fork mode）。
-
-技能名称：${skill_name}
-技能描述：${skill_desc}
-${sop}
-
-你的任务：严格执行该技能并输出结果。
-
-执行规则：
-1. 严格按照 SOP 的步骤执行
-2. 每步完成后检查结果
-3. 遇到错误记录并尝试修复
-4. 完成后输出最终结果和关键依据""",
+_register("skill-executor-fork", """${sop}""",
     category="skills",
-    variables=["skill_name", "skill_desc", "sop"])
+    variables=["sop"])
 
-_register("skill-executor-inline", """你是一个可复用技能（Skill）执行器。
-
-技能名称：${skill_name}
-技能描述：${skill_desc}
-${sop}
-
-下面是该技能的 SOP（必须严格遵循）。
-
-请严格按照 SOP 执行，输出执行结果。""",
+_register("skill-executor-inline", """${sop}""",
     category="skills",
-    variables=["skill_name", "skill_desc", "sop"])
+    variables=["sop"])
 
 # === OPERATOR — Document Intelligence ===
 _register("doc-summarizer", """你是文档总结助手。请仅基于提供的候选句生成总结。
@@ -848,3 +870,104 @@ Question: ${question}
 Provide insights and analysis.""",
     category="skills",
     variables=["data", "analysis_type", "question"])
+
+_register("skill-import-detect", """你是一个 Skill 配置助手。阅读以下 SOP 正文，推断该技能需要的完整配置。
+
+## 可用工具列表（从以下选择相关的）:
+- code: 执行代码或脚本 (Python/Shell)
+- search: 互联网搜索
+- webfetch: 抓取网页内容
+- http: 发送 HTTP 请求调用外部 API
+- browser: 自动化浏览器交互
+- file_operations: 读写文件
+- database: 执行数据库查询
+- repo: Git 仓库操作
+
+## 执行方式:
+- prompt: SOP 需要 LLM 多步推理和决策（大多数情况下选这个）
+- handler: SOP 只是简单脚本调用，无需 LLM 推理
+
+## 分类:
+retrieval, generation, analysis, execution, document, design, text, tool, general
+
+## 权限（aiPlat 权限格式）:
+- llm:generate — LLM 文本生成
+- network:outbound — 外部网络请求（搜索、API调用、网页抓取）
+- code:execute — 执行代码/脚本
+- file:read / file:write / file:execute — 文件操作
+- browser:navigate — 浏览器自动化
+- database:query — 数据库查询
+- repo:read / repo:write — Git 仓库操作
+
+## trigger_conditions:
+推断用户会用什么话说来触发此技能（从用户意图角度，非从 SOP 正文提取）：
+- 思考：用户为什么想用这个技能？会说什么话？
+- 通用搜索/调研类技能：用简短高信号词（"research", "find out", "look up"），3-6 个即可
+- 窄领域技能：用领域触发词（"merge code", "generate test"）
+- 过于宽泛的通用技能（任何话题都可能触发）→ 返回空数组 []，让用户手动调用
+- ❌ 禁止从 SOP 正文中提取技术术语、命令名、LAW 编号作为触发词
+
+输出 JSON（无 markdown 标记, 字段完整）:
+{"tools":["code","search","webfetch"],"execution_type":"prompt","timeout":300,"category":"retrieval","permissions":["network:outbound"],"trigger_conditions":["research","find out","look up","what's happening","recent news"],"reasoning":"SOP 包含 Bash 脚本执行和多平台搜索，需要 code 和 search 工具..."}""",
+    category="skills",
+    variables=[])
+
+_register("skill-auto-fill-system-role", """你是 AI Skill 设计专家。只输出 SKILL.md 格式，不要任何额外解释。""",
+    category="skills",
+    variables=[])
+
+_register("agent-auto-fill-system-role", """你是一个 AI Agent 配置专家。只输出 JSON，不要加任何解释或 markdown 标记。""",
+    category="agent",
+    variables=[])
+
+_register("mcp-auto-fill-system-role", """你是 MCP 服务器配置专家。只输出 JSON，不要任何额外解释。""",
+    category="tool",
+    variables=[])
+
+_register("tool-auto-fill-system-role", """你是 Python 工具开发者。只输出代码，不要任何解释。""",
+    category="tool",
+    variables=[])
+
+_register("kb-planner", """你是一个任务规划器。将以下用户任务拆解为 2-5 个执行步骤。
+可用工具：${tools_desc}
+
+任务：${task}
+
+输出 JSON 数组：{"steps":[{"action":"retrieve","query":"..."}, ...]}""",
+    category="knowledge",
+    variables=["tools_desc", "task"])
+
+_register("prompt-optimize-system-role", """你是 Prompt 优化专家。只输出 JSON，不要任何解释。""",
+    category="general",
+    variables=[])
+
+_register("prompt-optimize", """你是 Prompt 优化专家。请分析并优化以下 Prompt 模板。${context}
+
+当前 Prompt：
+${prompt}
+
+请输出优化建议 JSON：
+{
+  "optimized": "优化后的完整文本（保留所有${var}变量不变）",
+  "changes": [
+    "改动1：具体说明改了哪里及原因",
+    "改动2：..."
+  ],
+  "suggested_vars": ["新增变量1", "新增变量2"],
+  "analysis": "一句话分析",
+  "score_before": 7,
+  "score_after": 9
+}
+
+要求：
+- 必须保留所有现存的${变量名}占位符
+- 针对该行业/场景优化措辞和结构
+- 每条改动说明必须具体
+
+只输出 JSON。""",
+    category="general",
+    variables=["context", "prompt"])
+
+_register("pipeline-test-assistant", """你是一个流水线测试助手。以下是当前配置的流水线，请根据用户消息给出有帮助的回复。${stage_ctx}""",
+    category="general",
+    variables=[])

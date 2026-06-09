@@ -63,16 +63,15 @@ class KBPlannerAgent:
     async def _decompose_task(self, task: str, doc_ids: List[str], tenant_id: str) -> Dict[str, Any]:
         """LLM decomposes task into steps."""
         from core.harness.syscalls.llm import sys_llm_generate
-        prompt = (
-            f"你是一个任务规划器。将以下用户任务拆解为 2-5 个执行步骤。\n"
-            f"可用工具：retrieve(查询词) — 从 {len(doc_ids)} 个文档检索；"
-            f"summarize(内容) — 总结；analyze(内容) — 分析；generate(内容) — 生成。\n\n"
-            f"任务：{task}\n\n"
-            f"输出 JSON 数组：{{\"steps\":[{{\"action\":\"retrieve\",\"query\":\"...\"}}, ...]}}"
+        from core.harness.utils.prompt_loader import _sync_resolve
+        prompt = _sync_resolve("kb-planner",
+            tools_desc=f"retrieve(查询词) — 从 {len(doc_ids)} 个文档检索；"
+                       f"summarize(内容) — 总结；analyze(内容) — 分析；generate(内容) — 生成。",
+            task=task,
         )
         resp = await sys_llm_generate(
             None, [{"role": "user", "content": prompt}],
-            model_name=best_model_for_purpose("chat") or "deepseek-chat",  # noqa: model-legacy temperature=0.1, max_tokens=500,
+            model_name=best_model_for_purpose("chat"),  # noqa: model-legacy temperature=0.1, max_tokens=500,
         )
         import json, re
         raw = getattr(resp, "content", "") or str(resp)
@@ -96,7 +95,7 @@ class KBPlannerAgent:
             from core.harness.syscalls.llm import sys_llm_generate
             resp = await sys_llm_generate(
                 None, [{"role": "user", "content": f"请{action}以下内容：\n{content[:4000]}"}],
-                model_name=best_model_for_purpose("chat") or "deepseek-chat",  # noqa: model-legacy temperature=0.3, max_tokens=1000,
+                model_name=best_model_for_purpose("chat"),  # noqa: model-legacy temperature=0.3, max_tokens=1000,
             )
             return getattr(resp, "content", "") or str(resp)
         return str(step)
@@ -106,6 +105,6 @@ class KBPlannerAgent:
         steps_text = "\n".join(f"Step: {r['step']}\nResult: {r['result'][:500]}" for r in results)
         resp = await sys_llm_generate(
             None, [{"role": "user", "content": f"基于以下中间结果，完成原始任务。\n\n任务：{task}\n\n中间结果：\n{steps_text[:4000]}\n\n请给出最终答案："}],
-            model_name=best_model_for_purpose("chat") or "deepseek-chat",  # noqa: model-legacy temperature=0.3, max_tokens=2000,
+            model_name=best_model_for_purpose("chat"),  # noqa: model-legacy temperature=0.3, max_tokens=2000,
         )
         return getattr(resp, "content", "") or str(resp)

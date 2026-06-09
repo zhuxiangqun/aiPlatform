@@ -675,8 +675,8 @@ class HarnessIntegration:
             pass
 
         # Build LLM adapter (same rules as auto-eval)
-        provider = str(os.getenv("AIPLAT_AUTO_EVAL_LLM_PROVIDER") or os.getenv("LLM_PROVIDER") or "mock").strip().lower()  # noqa: env-legacy
-        model = str(os.getenv("AIPLAT_AUTO_EVAL_LLM_MODEL") or os.getenv("LLM_MODEL") or "mock").strip()  # noqa: env-legacy
+        provider = str(os.getenv("AIPLAT_AUTO_EVAL_LLM_PROVIDER") or os.getenv("LLM_PROVIDER") or "").strip().lower()  # noqa: env-legacy
+        model = str(os.getenv("AIPLAT_AUTO_EVAL_LLM_MODEL") or os.getenv("LLM_MODEL") or "").strip()  # noqa: env-legacy
         api_key = get_llm_api_key(provider)
         base_url = get_llm_base_url(provider)
         try:
@@ -1578,7 +1578,7 @@ class HarnessIntegration:
 
         # Resolve model name from AgentManager metadata (best effort)
         agent_info = await runtime.agent_manager.get_agent(agent_id)
-        model_name = agent_info.config.get("model") if agent_info else best_model_for_purpose("chat") or "gpt-4"
+        model_name = agent_info.config.get("model") if agent_info else best_model_for_purpose("chat")
 
         # Ensure agent model is usable and consistent (agent + internal loop).
         try:

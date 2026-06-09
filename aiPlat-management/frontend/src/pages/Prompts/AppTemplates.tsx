@@ -27,6 +27,7 @@ const AppTemplates: React.FC = () => {
   const [signModal, setSignModal] = useState<{ open: boolean; tplId: string; tplName: string }>({ open: false, tplId: '', tplName: '' });
   const [signKey, setSignKey] = useState('');
   const [signing, setSigning] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   const fetchModels = async () => {
     try {
@@ -79,17 +80,25 @@ const AppTemplates: React.FC = () => {
   };
 
   const handleDeleteInstance = async (id: string) => {
+    if (deleting) return;
     if (!confirm('确认删除？')) return;
-    await promptAppApi.deleteInstance(id);
-    toast.success('已删除');
-    fetchAll();
+    setDeleting(id);
+    try {
+      await promptAppApi.deleteInstance(id);
+      toast.success('已删除');
+      fetchAll();
+    } finally { setDeleting(null); }
   };
 
   const handleDelete = async (id: string) => {
+    if (deleting) return;
     if (!confirm('确认删除此模板？')) return;
-    await promptAppApi.deleteTemplate(id);
-    toast.success('已删除');
-    fetchAll();
+    setDeleting(id);
+    try {
+      await promptAppApi.deleteTemplate(id);
+      toast.success('已删除');
+      fetchAll();
+    } finally { setDeleting(null); }
   };
 
   const handleSignTpl = async () => {
@@ -127,7 +136,7 @@ const AppTemplates: React.FC = () => {
         <Button size="sm" variant="ghost" onClick={() => { setSignModal({ open: true, tplId: id, tplName: r.name || id }); }}>
           <Key className="w-3 h-3" />
         </Button>
-        <Button size="sm" variant="ghost" onClick={() => handleDelete(id)}><Trash2 className="w-3 h-3" /></Button>
+        <Button size="sm" variant="ghost" disabled={!!deleting} onClick={() => handleDelete(id)}><Trash2 className="w-3 h-3" /></Button>
       </div>
     )},
   ];
@@ -139,7 +148,7 @@ const AppTemplates: React.FC = () => {
     { title: '操作', dataIndex: 'id', render: (id: string, r: any) => (
       <div className="flex gap-1">
         <Button size="sm" variant="ghost" onClick={() => handleEditInstance(id, r)}><Edit3 className="w-3 h-3" /></Button>
-        <Button size="sm" variant="ghost" onClick={() => handleDeleteInstance(id)}><Trash2 className="w-3 h-3" /></Button>
+        <Button size="sm" variant="ghost" disabled={!!deleting} onClick={() => handleDeleteInstance(id)}><Trash2 className="w-3 h-3" /></Button>
       </div>
     )},
   ];

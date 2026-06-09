@@ -15,6 +15,7 @@ const Memory: React.FC = () => {
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [longTermOpen, setLongTermOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; sessionId: string | null }>({ open: false, sessionId: null });
+  const [deleting, setDeleting] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [importPreview, setImportPreview] = useState<any>(null);
@@ -40,14 +41,16 @@ const Memory: React.FC = () => {
   };
 
   const handleDelete = async () => {
-    if (!deleteConfirm.sessionId) return;
+    if (!deleteConfirm.sessionId || deleting) return;
     try {
+      setDeleting(true);
       await deleteSession(deleteConfirm.sessionId);
       toast.success('会话已删除');
       setDeleteConfirm({ open: false, sessionId: null });
     } catch {
       toast.error('删除失败');
     }
+    finally { setDeleting(false); }
   };
 
   const handleExport = async () => {
@@ -209,10 +212,10 @@ const Memory: React.FC = () => {
         title="确认删除"
         footer={
           <>
-            <Button onClick={() => setDeleteConfirm({ open: false, sessionId: null })}>
+            <Button disabled={deleting} onClick={() => setDeleteConfirm({ open: false, sessionId: null })}>
               取消
             </Button>
-            <Button variant="danger" onClick={handleDelete}>
+            <Button variant="danger" loading={deleting} onClick={handleDelete}>
               确认删除
             </Button>
           </>

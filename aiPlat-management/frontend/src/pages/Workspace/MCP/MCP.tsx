@@ -41,6 +41,7 @@ const WorkspaceMCP: React.FC = () => {
 
   // Test config panel state
   const [testConfigOpen, setTestConfigOpen] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [testToolName, setTestToolName] = useState('');
   const [testToolArgs, setTestToolArgs] = useState('{}');
   const [testAllowedTools, setTestAllowedTools] = useState<string[]>([]);
@@ -182,13 +183,17 @@ const WorkspaceMCP: React.FC = () => {
   };
 
   const handleDelete = async (s: McpServer) => {
+    if (deleting) return;
     if (!window.confirm(`确定要删除 MCP "${s.name}" 吗？此操作不可撤销，将删除整个配置目录。`)) return;
+    setDeleting(s.id);
     try {
       await workspaceMcpApi.deleteServer(s.name);
       toast.success(`已删除 "${s.name}"`);
       fetchServers();
     } catch (e: any) {
       toastGateError(e, '删除失败');
+    } finally {
+      setDeleting(null);
     }
   };
 
@@ -358,7 +363,8 @@ const WorkspaceMCP: React.FC = () => {
           ) : null}
           <button
             onClick={() => handleDelete(record)}
-            className="p-1.5 rounded-lg text-red-400 hover:bg-red-400/10 transition-colors"
+            disabled={!!deleting}
+            className="p-1.5 rounded-lg text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-40"
             title="删除"
           >
             <Trash2 className="w-4 h-4" />

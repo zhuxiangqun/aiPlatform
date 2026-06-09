@@ -334,6 +334,7 @@ async def optimize_prompt(req: PromptOptimizeRequest):
             raise HTTPException(status_code=400, detail="No prompt text to optimize")
 
         from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
+        from core.harness.utils.prompt_loader import _async_prompt_resolve
         model_name = req.model or best_model_for_purpose("default")
         model = create_selected_adapter(model_name=model_name)
 
@@ -352,7 +353,7 @@ async def optimize_prompt(req: PromptOptimizeRequest):
 只输出 JSON，不要其他内容。"""
 
         resp = await sys_llm_generate(model, [
-            {"role": "system", "content": "你是 Prompt 优化专家。只输出 JSON。"},
+            {"role": "system", "content": await _async_prompt_resolve("prompt-optimize-system-role")},
             {"role": "user", "content": optimize_prompt_text},
         ], config=None)
 

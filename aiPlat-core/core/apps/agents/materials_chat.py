@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from typing import Any, Dict, List, Optional
 
+from core.harness.utils.prompt_loader import _sync_resolve as _resolve
+
 from .base import BaseAgent, AgentMetadata
 from core.apps.document_intelligence.answer_strategy import choose_answer_strategy
 from core.apps.document_intelligence.question_analysis import analyze_question
@@ -157,10 +159,10 @@ class MaterialsChatAgent(BaseAgent):
                         async for chunk in sys_llm_generate_stream(
                             None,
                             [
-                                {"role": "system", "content": "你是知识库问答助手。基于提供的文档内容，准确简洁地回答用户问题。如果文档内容不足以回答，请如实告知。请直接用中文回答，不需要JSON格式。"},
+                                {"role": "system", "content": _resolve("kb-chat-system-role")},
                                 {"role": "user", "content": f"文档内容：\n{retrieved_docs[:4000]}\n\n用户问题：{enhanced_question}\n\n请回答："},
                             ],
-                            model_name=best_model_for_purpose("chat") or "deepseek-chat",  # noqa: model-legacy
+                            model_name=best_model_for_purpose("chat"),  # noqa: model-legacy
                             temperature=0.3,
                             max_tokens=2000,
                         ):
@@ -176,10 +178,10 @@ class MaterialsChatAgent(BaseAgent):
                         resp = await sys_llm_generate(
                             None,
                             [
-                                {"role": "system", "content": "你是知识库问答助手。基于提供的文档内容，准确简洁地回答用户问题。如果文档内容不足以回答，请如实告知。请直接用中文回答，不需要JSON格式。"},
+                                {"role": "system", "content": _resolve("kb-chat-system-role")},
                                 {"role": "user", "content": f"文档内容：\n{retrieved_docs[:4000]}\n\n用户问题：{enhanced_question}\n\n请回答："},
                             ],
-                            model_name=best_model_for_purpose("chat") or "deepseek-chat",  # noqa: model-legacy
+                            model_name=best_model_for_purpose("chat"),  # noqa: model-legacy
                             temperature=0.3,
                             max_tokens=2000,
                         )

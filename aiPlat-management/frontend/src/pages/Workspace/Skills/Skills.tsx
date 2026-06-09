@@ -52,6 +52,7 @@ const WorkspaceSkills: React.FC = () => {
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; skill: Skill | null; hard: boolean }>({ open: false, skill: null, hard: false });
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [executeModalOpen, setExecuteModalOpen] = useState(false);
   const [editSkill, setEditSkill] = useState<Skill | null>(null);
   const [executeSkill, setExecuteSkill] = useState<Skill | null>(null);
@@ -112,13 +113,16 @@ const WorkspaceSkills: React.FC = () => {
   };
 
   const handleDelete = async () => {
-    if (!deleteConfirm.skill) return;
+    if (!deleteConfirm.skill || deleting) return;
+    setDeleting(true);
     try {
       await deleteSkill(deleteConfirm.skill.id, { delete_files: deleteConfirm.hard });
       toast.success(deleteConfirm.hard ? 'Skill已彻底删除' : 'Skill已弃用（deprecated）');
       setDeleteConfirm({ open: false, skill: null, hard: false });
-    } catch {
-      toast.error('删除失败');
+    } catch (e: any) {
+      toast.error('删除失败', e?.message || '');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -689,10 +693,10 @@ const WorkspaceSkills: React.FC = () => {
         title="确认删除"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setDeleteConfirm({ open: false, skill: null, hard: false })}>
+            <Button variant="secondary" onClick={() => setDeleteConfirm({ open: false, skill: null, hard: false })} disabled={deleting}>
               取消
             </Button>
-            <Button variant="primary" onClick={handleDelete}>
+            <Button variant="primary" onClick={handleDelete} loading={deleting}>
               确认
             </Button>
           </>

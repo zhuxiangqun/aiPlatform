@@ -72,6 +72,19 @@ class SkillVersion:
     changes: str
 
 
+def _notify_resource_mutated(resource_type: str, action: str, resource_id: str) -> None:
+    """Fire-and-forget publish to EventBus so graph caches know to invalidate."""
+    try:
+        from core.harness.observability.events import EventBus, EventType
+        EventBus.get_instance().emit(
+            event_type=EventType.RESOURCE_MUTATED,
+            source="SkillManager",
+            data={"resource_type": resource_type, "action": action, "resource_id": resource_id},
+        )
+    except Exception:
+        pass
+
+
 class SkillManager:
     """
     Skill Manager - Manages Skill instances
@@ -106,13 +119,13 @@ class SkillManager:
 
     def _load_directory_skills(self) -> None:
         """Load directory-based skills from filesystem into management plane."""
-        try:
-            now = datetime.now(timezone.utc)
-            # Load low priority first, then allow high priority (repo) to override
-            for base_dir in self._resolve_skills_paths():
-                if not base_dir.exists():
-                    continue
-                for item in base_dir.iterdir():
+        now = datetime.now(timezone.utc)
+        # Load low priority first, then allow high priority (repo) to override
+        for base_dir in self._resolve_skills_paths():
+            if not base_dir.exists():
+                continue
+            for item in base_dir.iterdir():
+                try:
                     if not item.is_dir():
                         continue
                     if item.name.startswith(".") or item.name in ["__pycache__", "scripts", "references", "assets"]:
@@ -202,19 +215,22 @@ class SkillManager:
                     self._executions.setdefault(skill_id, [])
                     self._versions.setdefault(skill_id, [SkillVersion(version=version, status="current", created_at=now, changes="Loaded from filesystem")])
                     self._bound_agents.setdefault(skill_id, [])
+                except Exception:
+                    import logging
+                    logging.getLogger(__name__).warning(
+                        f"Failed to load skill directory {item}: continuing to next skill", exc_info=True
+                    )
+                    continue
 
-            # Bridge to execution-layer registry
-            for _id, info in self._skills.items():
-                self._bridge_to_registry(info)
-                if info.status == "disabled":
-                    try:
-                        from core.apps.skills import get_skill_registry
-
-                        get_skill_registry().disable(_id)
-                    except Exception:
-                        pass
-        except Exception:
-            return
+        # Bridge to execution-layer registry
+        for _id, info in self._skills.items():
+            self._bridge_to_registry(info)
+            if info.status == "disabled":
+                try:
+                    from core.apps.skills import get_skill_registry
+                    get_skill_registry().disable(_id)
+                except Exception:
+                    pass
 
     def _detect_skill_kind(self, *, skill_dir: Path, front_matter: Dict[str, Any]) -> tuple[str, Dict[str, Any]]:
         """
@@ -606,6 +622,15 @@ class SkillManager:
         ]
         self._bound_agents[skill_id] = []
 
+        # Auto-grant EXECUTE permission for system/admin on newly created workspace skills
+        try:
+            from core.apps.tools.permission import get_permission_manager, Permission
+            pm = get_permission_manager()
+            for uid in ("system", "admin"):
+                pm.grant_permission(uid, skill_id, Permission.EXECUTE, granted_by="auto_create")
+        except Exception:
+            pass
+
         # Materialize directory-based skill on filesystem (SKILL.md + skeleton).
         # This makes skill definitions explicit, versionable, and compatible with Agent Skill / SOP mode.
         try:
@@ -681,6 +706,7 @@ class SkillManager:
         # Register in execution-layer after filesystem materialization (so SOP can be injected)
         self._bridge_to_registry(skill)
         
+        _notify_resource_mutated("skill", "created", skill_id)
         return skill
 
     def _resolve_skills_base_path(self) -> Path:
@@ -970,6 +996,9 @@ class SkillManager:
                                 cfg.metadata["version"] = skill_info.version
                                 cfg.metadata["capabilities"] = norm_caps
                                 cfg.metadata["skill_kind"] = (skill_info.metadata or {}).get("skill_kind") if isinstance(skill_info.metadata, dict) else "rule"
+                                cfg.metadata["execution_type"] = (skill_info.metadata or {}).get("execution_type", "") if isinstance(skill_info.metadata, dict) else ""
+                                cfg.metadata["execution_mode"] = (skill_info.metadata or {}).get("execution_mode", "inline") if isinstance(skill_info.metadata, dict) else "inline"
+                                cfg.metadata["timeout"] = (skill_info.metadata or {}).get("timeout") if isinstance(skill_info.metadata, dict) else None
                                 # Optional governance fields
                                 if isinstance(skill_info.metadata, dict) and isinstance(skill_info.metadata.get("permissions"), list):
                                     cfg.metadata["permissions"] = list(skill_info.metadata.get("permissions") or [])
@@ -1007,6 +1036,9 @@ class SkillManager:
                         "version": skill_info.version,
                         "capabilities": norm_caps,
                         "skill_kind": (skill_info.metadata or {}).get("skill_kind") if isinstance(skill_info.metadata, dict) else "rule",
+                        "execution_type": (skill_info.metadata or {}).get("execution_type", ""),
+                        "execution_mode": (skill_info.metadata or {}).get("execution_mode", "inline"),
+                        "timeout": (skill_info.metadata or {}).get("timeout"),
                         "permissions": (skill_info.metadata or {}).get("permissions") if isinstance(skill_info.metadata, dict) else [],
                         "runtime": (skill_info.metadata or {}).get("runtime") if isinstance(skill_info.metadata, dict) else None,
                         "entrypoint": (skill_info.metadata or {}).get("entrypoint") if isinstance(skill_info.metadata, dict) else None,
@@ -1170,6 +1202,7 @@ class SkillManager:
                 if isinstance(skill.metadata["filesystem"], dict):
                     skill.metadata["filesystem"]["error"] = str(e)
         
+        _notify_resource_mutated("skill", "updated", skill_id)
         return skill
 
     def _split_front_matter(self, content: str) -> tuple[dict | None, str]:
@@ -1212,7 +1245,8 @@ class SkillManager:
         # v2 governance/routing fields (persist if present)
         try:
             if isinstance(getattr(skill, "metadata", None), dict):
-                for k in ("skill_kind", "permissions", "decision_tree", "resources"):
+                for k in ("skill_kind", "permissions", "decision_tree", "resources",
+                          "tools", "execution_type", "timeout"):
                     if k in skill.metadata and skill.metadata.get(k) is not None:
                         manifest[k] = skill.metadata.get(k)
         except Exception:
@@ -1320,6 +1354,7 @@ class SkillManager:
             self._executions.pop(skill_id, None)
             self._versions.pop(skill_id, None)
             self._bound_agents.pop(skill_id, None)
+            _notify_resource_mutated("skill", "deleted", skill_id)
             return True
 
         # Soft delete: keep skill in memory and on disk, mark deprecated and disable at runtime
@@ -1594,8 +1629,8 @@ class SkillManager:
             
             if skill and hasattr(skill, 'set_model'):
                 try:
-                    from core.adapters.llm import create_adapter
-                    model = create_adapter(provider="openai", model="deepseek-chat")
+                    from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
+                    model = create_selected_adapter(model_name=best_model_for_purpose("chat"))
                     skill.set_model(model)
                 except Exception:
                     pass

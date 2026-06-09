@@ -119,11 +119,14 @@ def _seed_default_permissions(
             perm_mgr.grant_permission(user_id, name, Permission.EXECUTE, granted_by="bootstrap")
 
 
-def _create_llm_adapter(model_name: str = "deepseek-chat"):
+def _create_llm_adapter(model_name: str = None):
     """Create an LLM adapter instance from a model name.
     
     Uses AdapterManager if available, otherwise falls back to create_adapter().
     """
+    if not model_name:
+        from core.harness.utils.model_injection import best_model_for_purpose
+        model_name = best_model_for_purpose("chat")
     try:
         from core.harness.utils.model_injection import create_selected_adapter
 
@@ -132,8 +135,11 @@ def _create_llm_adapter(model_name: str = "deepseek-chat"):
         return None
 
 
-def _inject_model_into_agent(agent: object, model_name: str = "deepseek-chat"):
+def _inject_model_into_agent(agent: object, model_name: str = None):
     """Inject LLM adapter into an agent if it doesn't have one."""
+    if not model_name:
+        from core.harness.utils.model_injection import best_model_for_purpose
+        model_name = best_model_for_purpose("chat")
     if hasattr(agent, '_model') and agent._model is None:
         adapter = _create_llm_adapter(model_name)
         if adapter and hasattr(agent, 'set_model'):
@@ -142,8 +148,11 @@ def _inject_model_into_agent(agent: object, model_name: str = "deepseek-chat"):
             agent._model = adapter
 
 
-def _inject_model_into_skill(skill: object, model_name: str = "deepseek-chat"):
+def _inject_model_into_skill(skill: object, model_name: str = None):
     """Inject LLM adapter into a skill if it doesn't have one."""
+    if not model_name:
+        from core.harness.utils.model_injection import best_model_for_purpose
+        model_name = best_model_for_purpose("chat")
     if hasattr(skill, '_model') and skill._model is None:
         adapter = _create_llm_adapter(model_name)
         if adapter and hasattr(skill, 'set_model'):
@@ -840,7 +849,7 @@ async def lifespan(app: FastAPI):
                 schema = getattr(discovered, 'config_schema', {}) or {}
                 agent_config = AgentConfig(
                     name=getattr(discovered, 'display_name', agent_name),
-                    model=schema.get('model') or best_model_for_purpose("chat") or "deepseek-chat",
+                    model=schema.get('model') or best_model_for_purpose("chat"),
                     metadata={
                         **schema,
                         'category': schema.get('category', ''),
@@ -1269,6 +1278,14 @@ async def lifespan(app: FastAPI):
 
     from core.harness.observation.event_bus import EventBus
     EventBus.start()
+    
+    # Wire graph sync handler to keep capability + code graphs in sync with resource mutations
+    try:
+        from core.harness.knowledge.graph_sync import GraphSyncHandler
+        await GraphSyncHandler.wire()
+    except Exception:
+        pass
+    
     yield
 
     # Shutdown background services

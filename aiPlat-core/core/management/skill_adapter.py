@@ -89,8 +89,8 @@ def detect_pattern(skill_dir: str | Path) -> SkillProfile:
     if has_scripts:
         main_script = None
         py_files = list(scripts_dir.glob("*.py"))
-        # Heuristic: pick the largest or most "main"-looking script
-        for candidate in ["last30days.py", "main.py", "run.py", "index.py", "app.py"]:
+        # Heuristic: pick the main script by naming convention or size
+        for candidate in ["main.py", "run.py", "index.py", "app.py"]:
             if (scripts_dir / candidate).exists():
                 main_script = candidate
                 break
@@ -186,14 +186,19 @@ async def execute(params: dict) -> dict:
 '''
     (root / "handler.py").write_text(handler_code, encoding="utf-8")
 
-    # Rewrite SKILL.md
+    # Enrich SKILL.md frontmatter — preserve original body
     skill_md = root / "SKILL.md"
-    existing = ""
-    if skill_md.exists():
-        existing = skill_md.read_text(encoding="utf-8", errors="replace")
+    if not skill_md.exists():
+        # No SKILL.md — create minimal one with original body
+        body = f"Auto-generated skill for {skill_name}.\nScript: {script_rel}"
+        new_md = _build_enriched_skill_md(skill_name, desc, body, script_rel, root)
+        skill_md.write_text(new_md, encoding="utf-8")
+        return {"adapted": True, "pattern": "script_based", "actions": ["generated_handler_py", "created_skill_md"]}
 
-    # Extract description from existing frontmatter
-    desc = skill_name
+    existing = skill_md.read_text(encoding="utf-8", errors="replace")
+    body = ""
+
+    # Parse existing frontmatter to extract description + body
     if existing.startswith("---"):
         parts = existing.split("---", 2)
         if len(parts) >= 3:
@@ -201,35 +206,176 @@ async def execute(params: dict) -> dict:
                 import yaml
                 fm = yaml.safe_load(parts[1]) or {}
                 desc = str(fm.get("description", fm.get("name", skill_name)))[:200]
+                # Preserve upstream version if present
+                if fm.get("version"):
+                    v = str(fm.get("version", "1.0.0"))
+                    version = v
+                if fm.get("license"):
+                    pass
             except Exception:
                 pass
+            body = parts[2]
 
-    new_skill_md = f"""---
-name: {skill_name}
-description: {desc}
-execution_type: handler
-execution_mode: inline
-category: general
-version: 1.0.0
-status: draft
-input_schema:
-  query:
-    type: string
-    required: true
-    description: 查询主题
-output_schema:
-  output:
-    type: string
-    description: 搜索引擎的原始输出
----
-## SOP
+    if not body:
+        body = existing  # no frontmatter, use whole file as body
 
-本 skill 通过 handler.py 包装 `{script_rel}` 执行。
-Agent 通过 sys_skill_call("{skill_name}", {{query: "topic"}}) 调用。
-"""
-    skill_md.write_text(new_skill_md, encoding="utf-8")
+    # Build enriched frontmatter + preserve body
+    new_md = _build_enriched_skill_md(skill_name, desc, body, script_rel, root)
+    skill_md.write_text(new_md, encoding="utf-8")
 
-    return {"adapted": True, "pattern": "script_based", "actions": ["generated_handler_py", "rewrote_skill_md"]}
+    return {"adapted": True, "pattern": "script_based", "actions": ["generated_handler_py", "enriched_skill_md"]}
+
+
+def _build_enriched_skill_md(skill_name: str, desc: str, body: str,
+                               script_rel: str, root: Optional[Path] = None) -> str:
+    """Build enriched SKILL.md frontmatter while preserving original body."""
+    import json as _json
+
+    # ── Category inference ──
+    category = _infer_category(skill_name, desc, body)
+
+    # ── Permissions inference ──
+    permissions, effects = _infer_permissions(body, root)
+
+    # ── Capabilities ──
+    capabilities = _infer_capabilities(skill_name, desc, body)
+
+    # ── Trigger keywords ──
+    trigger_keywords = _infer_trigger_keywords(skill_name, desc)
+
+    # ── Build frontmatter ──
+    lines = [
+        "---",
+        f"name: {skill_name}",
+        f"description: {desc[:500]}",
+        "execution_type: handler",
+        "execution_mode: inline",
+        f"category: {category}",
+        "version: 1.0.0",
+        "status: draft",
+        "protected: false",
+        "",
+        f"permissions: {_json.dumps(permissions, ensure_ascii=False)}",
+        f"capabilities: {_json.dumps(capabilities, ensure_ascii=False)}",
+        f"trigger_keywords: {_json.dumps(trigger_keywords, ensure_ascii=False)}",
+        f"input_schema:",
+        f"  query:",
+        f"    type: string",
+        f"    required: true",
+        f"    description: 查询主题或话题",
+        f"output_schema:",
+        f"  output:",
+        f"    type: string",
+        f"    description: 搜索引擎的原始输出",
+        f"  stderr:",
+        f"    type: string",
+        f"    description: 执行过程中的诊断输出",
+        "",
+        f"effects:",
+        f"  - type: read",
+        f"    resources: [filesystem:~/.aiplat, filesystem:~/Documents]",
+        f"    idempotent: true",
+    ]
+    if effects.get("write"):
+        lines.append(f"  - type: write")
+        lines.append(f"    resources: [filesystem:~/Documents/Last30Days]")
+        lines.append(f"    idempotent: false")
+    if effects.get("execute"):
+        lines.append(f"  - type: execute")
+        lines.append(f"    resources: [process:python3]")
+        lines.append(f"    idempotent: true")
+        lines.append(f"    rollback_available: false")
+
+    lines.append("")
+    lines.append("---")
+    if body.strip():
+        lines.append("")
+        lines.append(body.strip())
+
+    return "\n".join(lines) + "\n"
+
+
+# ── Inference helpers ──
+
+def _infer_category(name: str, desc: str, body: str) -> str:
+    """Guess category from name, description, and body content."""
+    combined = f"{name} {desc[:200]} {body[:500]}".lower()
+    if any(k in combined for k in ("search", "检索", "查找", "查询", "research", "reddit", "twitter", "x ", "youtube")):
+        return "retrieval"
+    if any(k in combined for k in ("code", "代码", "generate", "生成", "write")):
+        return "generation"
+    if any(k in combined for k in ("doc", "文档", "pdf", "parse", "解析", "ingest", "import")):
+        return "document"
+    if any(k in combined for k in ("analysis", "分析", "insight", "洞察")):
+        return "analysis"
+    if any(k in combined for k in ("review", "审查", "check", "检查", "lint")):
+        return "analysis"
+    return "general"
+
+
+def _infer_permissions(body: str, root: Optional[Path] = None) -> tuple:
+    """Infer required permissions and effects from script behavior."""
+    permissions = []
+    effects = {"read": True}
+
+    # Detect from source code in scripts/ directory
+    if root and (root / "scripts").is_dir():
+        scripts_text = ""
+        for sf in sorted((root / "scripts").rglob("*.py"))[:15]:
+            try:
+                scripts_text += sf.read_text(encoding="utf-8", errors="replace")[:200]
+            except Exception:
+                pass
+        combined = f"{body[:500]} {scripts_text}"
+    else:
+        combined = body[:1000]
+
+    if any(k in combined for k in ("requests.", "urllib", "http.client", "httpx", "api.", "reddit.com",
+                                     "github.com", "x.com", "twitter", "youtube", "scrapecreators")):
+        permissions.append("network:outbound")
+        effects["read"] = True
+
+    if any(k in combined for k in ("save", "write", "open(", "json.dump", "yaml.dump", "store", "persist")):
+        effects["write"] = True
+
+    if any(k in combined for k in ("subprocess", "os.system", "Popen", "shutil")):
+        effects["execute"] = True
+
+    return permissions, effects
+
+
+def _infer_capabilities(name: str, desc: str, body: str) -> list:
+    """Infer capability labels from skill content."""
+    combined = f"{name} {desc[:200]} {body[:500]}".lower()
+    caps = []
+    if any(k in combined for k in ("search", "检索", "查找", "query", "research")):
+        caps.append("multi_source_search")
+    if any(k in combined for k in ("platform", "cross-platform", "跨平台", "multi_platform", "multi-source")):
+        caps.append("cross_platform_research")
+    if any(k in combined for k in ("30", "last", "recent", "today", "week", "month")):
+        caps.append("time_ranged_analysis")
+    if any(k in combined for k in ("prompt", "code", "generate", "生成")):
+        caps.append("content_generation")
+    if any(k in combined for k in ("compare", "vs", "versus", "对比", "比较")):
+        caps.append("comparative_analysis")
+    return caps or ["data_processing"]
+
+
+def _infer_trigger_keywords(name: str, desc: str) -> list:
+    """Extract trigger keywords from name and description."""
+    keywords = []
+    # From name
+    parts = name.replace("-", " ").replace("_", " ").split()
+    for p in parts[:5]:
+        if len(p) > 1 and p.lower() not in ("skill", "tool", "agent"):
+            keywords.append(p.lower())
+    # From description
+    desc_lower = desc.lower()
+    for kw in ("search", "research", "检索", "搜索", "查找", "查询", "trend", "趋势",
+               "generate", "生成", "analyze", "分析", "review", "审查"):
+        if kw in desc_lower and kw not in keywords:
+            keywords.append(kw)
+    return keywords[:8]
 
 
 def _adapt_tool_composition(root: Path, profile: SkillProfile) -> dict:

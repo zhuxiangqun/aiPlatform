@@ -86,6 +86,19 @@ class AgentVersion:
     changes: str
 
 
+def _notify_resource_mutated(resource_type: str, action: str, resource_id: str) -> None:
+    """Fire-and-forget publish to EventBus so graph caches know to invalidate."""
+    try:
+        from core.harness.observability.events import EventBus, EventType
+        EventBus.get_instance().emit(
+            event_type=EventType.RESOURCE_MUTATED,
+            source="AgentManager",
+            data={"resource_type": resource_type, "action": action, "resource_id": resource_id},
+        )
+    except Exception:
+        pass
+
+
 class AgentManager:
     """
     Agent Manager - Manages Agent instances
@@ -146,13 +159,13 @@ class AgentManager:
 
     def _load_directory_agents(self) -> None:
         """Load directory-based agents from filesystem into management plane."""
-        try:
-            now = datetime.now(timezone.utc)
-            # low -> high, high overrides
-            for base_dir in self._resolve_agents_paths():
-                if not base_dir.exists():
-                    continue
-                for item in base_dir.iterdir():
+        now = datetime.now(timezone.utc)
+        # low -> high, high overrides
+        for base_dir in self._resolve_agents_paths():
+            if not base_dir.exists():
+                continue
+            for item in base_dir.iterdir():
+                try:
                     if not item.is_dir():
                         continue
                     if item.name.startswith(".") or item.name in ["__pycache__"]:
@@ -193,7 +206,7 @@ class AgentManager:
                     if not isinstance(config, dict):
                         config = {}
                     if not config.get("model"):
-                        config["model"] = fm.get("model") or best_model_for_purpose("chat") or "deepseek-chat"  # noqa: model-legacy
+                        config["model"] = fm.get("model") or best_model_for_purpose("chat")  # noqa: model-legacy
 
                     category = str(fm.get("category") or "")
                     tags = fm.get("tags") or []
@@ -240,11 +253,15 @@ class AgentManager:
                     self._tool_bindings.setdefault(agent_id, [])
                     self._execution_history.setdefault(agent_id, [])
                     self._versions.setdefault(agent_id, [AgentVersion(version=version, status="current", created_at=now, changes="Loaded from filesystem")])
+                except Exception:
+                    import logging
+                    logging.getLogger(__name__).warning(
+                        f"Failed to load agent directory {item}: continuing to next agent", exc_info=True
+                    )
+                    continue
 
-            for agent_id, agent_info in self._agents.items():
-                self._bridge_to_registry(agent_info)
-        except Exception:
-            return
+        for agent_id, agent_info in self._agents.items():
+            self._bridge_to_registry(agent_info)
 
     def _normalize_status(self, status: str) -> str:
         """Normalize status to governance lifecycle values."""
@@ -439,7 +456,7 @@ class AgentManager:
                         if not isinstance(config, dict):
                             config = {}
                         if not config.get("model"):
-                            config["model"] = fm.get("model") or best_model_for_purpose("chat") or "deepseek-chat"  # noqa: model-legacy
+                            config["model"] = fm.get("model") or best_model_for_purpose("chat")  # noqa: model-legacy
                         skills = fm.get("skills") or fm.get("required_skills") or []
                         skills = skills if isinstance(skills, list) else []
                         tools = fm.get("tools") or fm.get("required_tools") or []
@@ -498,7 +515,7 @@ class AgentManager:
             id=agent_id,
             name=name,
             type=agent_type,
-            status="draft",
+            status="ready",  # ready by default — auto-smoke gates verify before execute
             runtime_state=AgentStateEnum.INITIALIZING.value,
             config=config,
             skills=skills or [],
@@ -589,8 +606,8 @@ class AgentManager:
         except Exception:
             pass
         
+        _notify_resource_mutated("agent", "created", agent.id)
         return agent
-    
     def _bridge_to_registry(self, agent_info: AgentInfo) -> None:
         """Bridge: register agent in execution-layer AgentRegistry."""
         try:
@@ -601,9 +618,10 @@ class AgentManager:
             agent_id = agent_info.id
             agent_type = agent_info.type
             
+            from core.harness.utils.model_injection import best_model_for_agent_type
             agent_config = AgentConfig(
                 name=agent_info.name,
-                model=agent_info.config.get("model", "deepseek-chat"),
+                model=agent_info.config.get("model") or best_model_for_agent_type(agent_info.type),
                 temperature=agent_info.config.get("temperature", 0.7),
                 max_tokens=agent_info.config.get("max_tokens", 4096),
                 timeout=agent_info.config.get("timeout", 30),
@@ -782,6 +800,7 @@ class AgentManager:
         except Exception:
             pass
         
+        _notify_resource_mutated("agent", "updated", agent.id)
         return agent
 
     # ==================== SOP (AGENT.md body section) ====================
@@ -1053,6 +1072,7 @@ class AgentManager:
         except Exception:
             pass
 
+        _notify_resource_mutated("agent", "deleted", agent_id)
         return True
     
     async def toggle_enabled(self, agent_id: str) -> Optional[bool]:

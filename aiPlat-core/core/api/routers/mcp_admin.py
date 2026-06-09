@@ -394,6 +394,15 @@ async def upsert_workspace_mcp_server(request: dict, http_request: Request):
         )
         saved = mgr.upsert_server(info)
 
+        # Auto-grant EXECUTE permission for system/admin on newly created MCP servers
+        try:
+            from core.apps.tools.permission import get_permission_manager, Permission
+            pm = get_permission_manager()
+            for uid in ("system", "admin"):
+                pm.grant_permission(uid, saved.name, Permission.EXECUTE, granted_by="auto_create")
+        except Exception:
+            pass
+
         if store:
             await audit_event(store=store, kind="mcp_admin", name="workspace.mcp.upsert", status="success", args={"server_name": saved.name, "transport": saved.transport, "command": saved.command, "url": saved.url})
 
@@ -448,17 +457,31 @@ async def mcp_auto_fill(request: dict):
         raise HTTPException(status_code=400, detail="name and description are required")
 
     try:
+        # Build existing MCP catalog for context
+        from core.management.mcp_manager import MCPManager as _Mgr
+        mgr = _Mgr()
+        ws_mgr = _Mgr(scope="workspace")
+        all_servers = list(mgr.list_servers() or []) + list(ws_mgr.list_servers() or [])
+        mcp_catalog = "\n".join(
+            (lambda s: f"  - {s.name}: enabled={getattr(s,'enabled',True)} transport={getattr(s,'transport','')}"
+                       + (f" | {str(getattr(s,'metadata',{}).get('description','') or '')[:80]}" if getattr(s,'metadata',{}).get('description','') else "")
+                       + (f" | tools: {', '.join(str(t) for t in (getattr(s,'allowed_tools',[]) or [])[:3])}" if getattr(s,'allowed_tools',[]) else ""))(s)
+            for s in all_servers
+        ) or "(无)"
+
         from core.harness.utils.prompt_loader import _async_prompt_resolve
         prompt = await _async_prompt_resolve("mcp-auto-fill",
             server_name=name,
             description=description,
+            mcp_catalog=mcp_catalog,
         )
         from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
         from core.harness.syscalls.llm import sys_llm_generate
         model_name = best_model_for_purpose("tool_creation")
         model = create_selected_adapter(model_name=model_name)
+        from core.harness.utils.prompt_loader import _async_prompt_resolve
         messages = [
-            {"role": "system", "content": "你是 MCP 服务器配置专家。只输出 JSON，不要任何额外解释。"},
+            {"role": "system", "content": await _async_prompt_resolve("mcp-auto-fill-system-role")},
             {"role": "user", "content": prompt},
         ]
         resp = await sys_llm_generate(model, messages)

@@ -15,6 +15,9 @@ def new_change_id() -> str:
 
 
 def autosmoke_enforce(*, store: Any) -> bool:
+    # Dev mode: when global approvals are disabled, skip auto-smoke too
+    if os.getenv("AIPLAT_APPROVALS_DISABLED", "").lower() in ("1", "true", "yes"):
+        return False
     # Env override has highest priority.
     v = (os.getenv("AIPLAT_AUTOSMOKE_ENFORCE", "") or "").strip().lower()
     if v:

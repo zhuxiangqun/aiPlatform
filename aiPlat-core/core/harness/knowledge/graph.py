@@ -58,6 +58,7 @@ async def extract_entities(
         return []
     try:
         from core.harness.syscalls.llm import sys_llm_generate
+        from core.harness.utils.model_injection import best_model_for_purpose
         prompt = (
             "Extract key entities and their relationships from the text below. "
             "Output ONLY a JSON array of {source_entity, relation, target_entity} objects. "
@@ -68,7 +69,7 @@ async def extract_entities(
         resp = await sys_llm_generate(
             None,
             [{"role": "user", "content": prompt}],
-            model_name="deepseek-chat",
+            model_name=best_model_for_purpose("chat"),
             temperature=0.1,
             max_tokens=800,
         )

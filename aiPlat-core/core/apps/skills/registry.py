@@ -164,6 +164,7 @@ class SkillRegistry:
                             uses_file_output = bool(fm.get("uses_file_output"))
                             version = str(fm.get("version", "1.0.0"))
                             execution_mode = str(fm.get("execution_mode", "inline"))
+                            execution_type = str(fm.get("execution_type", ""))
                             protected = bool(fm.get("protected", False))
                             executable = bool(fm.get("executable", False))
                             permissions = fm.get("permissions") or []
@@ -236,6 +237,8 @@ class SkillRegistry:
                     if cfg and hasattr(cfg, "metadata"):
                         if execution_mode:
                             cfg.metadata["execution_mode"] = execution_mode
+                        if execution_type:
+                            cfg.metadata["execution_type"] = execution_type
                         if protected:
                             cfg.metadata["protected"] = protected
                         if executable:
@@ -912,13 +915,182 @@ class _GenericSkill(BaseSkill):
                 error=f"No LLM adapter configured for skill '{self._config.name}'"
             )
 
+        # ── Resolve execution_type: declared > auto-detected > default ──
+        meta = (self._config.metadata or {})
+        exec_type = meta.get("execution_type", "")
+        if not exec_type:
+            # Auto-detect: check for handler.py + SOP complexity
+            handler_exists = False
+            skill_dir = ""
+            fs_check = meta.get("filesystem", {}) or {}
+            sd = fs_check.get("skill_dir", "")
+            if sd:
+                skill_dir = str(sd)
+                if os.path.isfile(os.path.join(sd, "handler.py")):
+                    handler_exists = True
+
+            _log = __import__('logging').getLogger(__name__)
+            if handler_exists:
+                sop = meta.get("sop_markdown", "") or self._config.description or ""
+                sop_lower = sop.lower()
+                complex_kw = ("step 1", "plan", "search", "query", "retriev",
+                             "synthesi", "multi-source", "multi_step", "cross_platform",
+                             "judge agent", "子任务", "步骤1", "规划")
+                is_complex = any(k in sop_lower for k in complex_kw) or sop.count("\n##") >= 3
+                exec_type = "hybrid" if is_complex else "handler"
+                _log.info(
+                    "Skill '%s': auto-detected execution_type='%s' (handler=%s sop_complex=%s). "
+                    "Add explicit execution_type to SKILL.md to suppress this.",
+                    self._config.name, exec_type, handler_exists, is_complex
+                )
+            else:
+                exec_type = "prompt"
+                _log.info(
+                    "Skill '%s': no handler.py, auto-detected execution_type='prompt' (LLM simulation).",
+                    self._config.name
+                )
+            meta["execution_type"] = exec_type  # cache for subsequent calls
+        # Warn if prompt mode but handler.py exists (likely misconfiguration)
+        if exec_type == "prompt":
+            fs_check = meta.get("filesystem", {}) or {}
+            sd = fs_check.get("skill_dir", "")
+            if sd:
+                hp = os.path.join(str(sd), "handler.py")
+                if os.path.isfile(hp):
+                    _log2 = __import__('logging').getLogger(__name__)
+                    _log2.warning(
+                        "Skill '%s' has execution_type='prompt' but handler.py exists. "
+                        "Consider changing to execution_type: handler for real execution.",
+                        self._config.name
+                    )
+        if exec_type == "handler":
+            handler_path = meta.get("handler_path")
+            if not handler_path:
+                fs = meta.get("filesystem", {}) or {}
+                skill_dir = fs.get("skill_dir", "")
+                if skill_dir:
+                    hp = os.path.join(str(skill_dir), "handler.py")
+                    if os.path.isfile(hp):
+                        handler_path = hp
+            if handler_path and os.path.isfile(str(handler_path)):
+                try:
+                    import importlib.util as _iu
+                    spec = _iu.spec_from_file_location(f"skill_handler_{self._config.name}", str(handler_path))
+                    if spec and spec.loader:
+                        hmod = _iu.module_from_spec(spec)
+                        spec.loader.exec_module(hmod)
+                        if hasattr(hmod, "execute") and callable(hmod.execute):
+                            result = hmod.execute(params)
+                            import asyncio
+                            if asyncio.iscoroutine(result):
+                                result = await result
+                            if isinstance(result, dict):
+                                return SkillResult(
+                                    success=not result.get("error"),
+                                    output=result,
+                                    error=result.get("error"),
+                                    metadata={"skill": self._config.name, "handler_executed": True},
+                                )
+                except Exception as e:
+                    return SkillResult(success=False, error=str(e), metadata={"skill": self._config.name, "handler_failed": True})
+            else:
+                # exec_type=handler but no valid handler.py → fail explicitly
+                return SkillResult(
+                    success=False,
+                    error=f"Handler execution declared but handler.py not found or invalid for skill '{self._config.name}'. "
+                          f"Add a valid handler.py or change execution_type to 'prompt'.",
+                    metadata={"skill": self._config.name, "expected_handler": True},
+                )
+
+        # ── Hybrid execution: LLM planning + handler real execution ──
+        if exec_type == "hybrid":
+            # Resolve handler path (same logic as handler mode)
+            handler_path = meta.get("handler_path")
+            if not handler_path:
+                fs = meta.get("filesystem", {}) or {}
+                skill_dir = fs.get("skill_dir", "")
+                if skill_dir:
+                    hp = os.path.join(str(skill_dir), "handler.py")
+                    if os.path.isfile(hp):
+                        handler_path = hp
+            if not handler_path or not os.path.isfile(str(handler_path)):
+                return SkillResult(
+                    success=False,
+                    error=f"Hybrid execution declared but handler.py not found for skill '{self._config.name}'.",
+                    metadata={"skill": self._config.name, "expected_handler": True},
+                )
+
+            # Step 1: LLM generates execution plan from SOP + user input
+            sop = ""
+            try:
+                sop = meta.get("sop_markdown", "")
+            except Exception:
+                sop = ""
+            user_input = params.get("prompt", params.get("input", ""))
+            if not user_input:
+                user_input = f"Execute skill '{self._config.name}': {self._config.description}\nInput(JSON): {params}"
+
+            # Use SOP as system prompt — it already contains full instructions 
+            # including --plan format, just like Claude Code reads it.
+            plan_system_prompt = sop or self._config.description
+            _log = __import__('logging').getLogger(__name__)
+            _log.warning("Hybrid mode: LLM planning for skill '%s'", self._config.name)
+            try:
+                from ...harness.syscalls.llm import sys_llm_generate
+                plan_response = await sys_llm_generate(
+                    self._model,
+                    [
+                        {"role": "system", "content": plan_system_prompt},
+                        {"role": "user", "content": f"Task: {user_input}"},
+                    ],
+                )
+                plan_text = getattr(plan_response, "content", "") or ""
+                from core.utils.json_utils import parse_json
+                plan = parse_json(plan_text)
+                if not isinstance(plan, dict):
+                    plan = {}
+                _log.warning(
+                    "Hybrid LLM plan for skill '%s': args=%s plan_text_preview=%s",
+                    self._config.name,
+                    plan.get("args") or plan.get("arguments") or "(empty)",
+                    (plan_text or "")[:300]
+                )
+            except Exception as e:
+                return SkillResult(success=False, error=f"LLM planning failed: {e}", metadata={"skill": self._config.name})
+
+            # Step 2: Call handler with the LLM-generated plan
+            try:
+                import importlib.util as _iu
+                spec = _iu.spec_from_file_location(f"skill_handler_{self._config.name}", str(handler_path))
+                if spec and spec.loader:
+                    hmod = _iu.module_from_spec(spec)
+                    spec.loader.exec_module(hmod)
+                    if hasattr(hmod, "execute") and callable(hmod.execute):
+                        # Merge plan args into params for handler
+                        handler_params = dict(params or {})
+                        handler_params["_plan"] = plan
+                        handler_params["_plan_args"] = plan.get("args") or plan.get("arguments") or []
+                        result = hmod.execute(handler_params)
+                        import asyncio
+                        if asyncio.iscoroutine(result):
+                            result = await result
+                        if isinstance(result, dict):
+                            return SkillResult(
+                                success=not result.get("error"),
+                                output=result,
+                                error=result.get("error"),
+                                metadata={"skill": self._config.name, "handler_executed": True, "llm_planned": True},
+                            )
+                return SkillResult(success=False, error="Handler execution failed", metadata={"skill": self._config.name})
+            except Exception as e:
+                return SkillResult(success=False, error=str(e), metadata={"skill": self._config.name, "handler_failed": True})
+
         # Canonical JSON extraction via CoreFacade (replaces local _extract_json).
         from core.utils.json_utils import parse_json
 
         prompt = params.get("prompt", params.get("input", ""))
         if not prompt:
-            # Prefer schema-driven prompt: feed the full params as JSON so SOP can reference fields.
-            prompt = f"Execute skill '{self._config.name}': {self._config.description}\nInput(JSON): {params}"
+            prompt = str(self._config.description) + "\nInput: " + str(params) if params else ""
 
         # Organization-level coding policy profile (Phase-1).
         coding_profile = str((params or {}).get("_coding_policy_profile") or "").strip().lower()
@@ -953,16 +1125,11 @@ class _GenericSkill(BaseSkill):
             from core.harness.utils.prompt_loader import _sync_resolve
             system_parts = [
                 _sync_resolve("skill-executor-inline",
-                    skill_name=str(self._config.name),
-                    skill_desc=str(self._config.description),
-                    sop=(sop if sop else ""),
+                    sop=(sop if sop else f"Skill: {self._config.name}\n{self._config.description}"),
                 ),
             ]
             if policy_block:
                 system_parts.append(policy_block)
-            if sop:
-                system_parts.append("下面是该技能的SOP（必须严格遵循）：")
-                system_parts.append(sop)
 
             # If output_schema exists, require strict JSON output with those top-level keys.
             out_schema = {}
@@ -984,7 +1151,7 @@ class _GenericSkill(BaseSkill):
                 agent = create_react_agent(
                     config=AgentConfig(
                         name=f"skill-inline-{self._config.name}",
-                        model=str(getattr(self._model, "model", None) or "deepseek-chat"),
+                        model=str(getattr(self._model, "model", None) or ""),
                         metadata={"role": "skill-agent", "skill": self._config.name},
                     ),
                     model=self._model,

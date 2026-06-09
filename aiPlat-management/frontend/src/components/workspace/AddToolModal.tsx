@@ -105,6 +105,7 @@ const AddToolModal: React.FC<{ open: boolean; onClose: () => void; onSuccess: ()
             disabled={!name.trim() || !description.trim() || aiLoading}>
             ✨ AI 智能填充
           </Button>
+          <span className="text-xs text-gray-500">根据名称和功能描述自动生成工具代码（参数定义 + execute 函数）</span>
         </div>
 
         <div><div className="text-xs text-gray-400 mb-1">名称（英文，如 my_calculator）</div>

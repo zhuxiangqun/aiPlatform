@@ -133,7 +133,7 @@ class ExecutionStore:
             os.makedirs(os.path.dirname(db_path) or ".", exist_ok=True)
 
             def _init_sync():
-                conn = sqlite3.connect(db_path)
+                conn = sqlite3.connect(db_path, timeout=5.0)
                 try:
                     from .execution_store_schema import execute_schema
                     execute_schema(conn)
@@ -3844,7 +3844,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> None:
-            conn = sqlite3.connect(db_path)
+            conn = sqlite3.connect(db_path, timeout=5.0)
             try:
                 conn.execute(
                     """

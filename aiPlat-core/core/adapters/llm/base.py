@@ -196,7 +196,7 @@ class RetryableAdapterMixin:
 def create_adapter(
     provider: str,
     api_key: Optional[str] = None,
-    model: str = "deepseek-chat",
+    model: str = "deepseek-chat",  # noqa: interface-default — base adapter default
     base_url: Optional[str] = None,
     **kwargs
 ) -> ILLMAdapter:

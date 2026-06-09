@@ -82,6 +82,7 @@ const Storage: React.FC = () => {
   };
 
   const handleDeletePVC = async (pvcName: string) => {
+    if (!window.confirm('确定删除此 PVC？')) return;
     try {
       await storageApi.deletePVC(pvcName);
       toast.success('PVC 删除成功');
@@ -106,6 +107,7 @@ const Storage: React.FC = () => {
   };
 
   const handleDeleteCollection = async (name: string) => {
+    if (!window.confirm('确定删除此 Collection？')) return;
     try {
       await storageApi.deleteCollection(name);
       toast.success('Collection 删除成功');

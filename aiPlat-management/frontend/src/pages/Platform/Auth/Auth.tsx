@@ -25,6 +25,7 @@ const Auth: React.FC = () => {
   const [roleFilter, setRoleFilter] = useState<string | undefined>();
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; user: AuthUser | null }>({ open: false, user: null });
+  const [deleting, setDeleting] = useState(false);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -44,8 +45,9 @@ const Auth: React.FC = () => {
   }, [fetchUsers]);
 
   const handleDelete = async () => {
-    if (!deleteModal.user) return;
+    if (!deleteModal.user || deleting) return;
     try {
+      setDeleting(true);
       await authApi.delete(deleteModal.user.id);
       toast.success('用户已删除');
       setDeleteModal({ open: false, user: null });
@@ -53,6 +55,7 @@ const Auth: React.FC = () => {
     } catch {
       toast.error('删除失败');
     }
+    finally { setDeleting(false); }
   };
 
   const handleToggleLock = async (user: AuthUser) => {
@@ -250,10 +253,10 @@ const Auth: React.FC = () => {
         title="确认删除"
         footer={
           <>
-            <Button onClick={() => setDeleteModal({ open: false, user: null })}>
+            <Button disabled={deleting} onClick={() => setDeleteModal({ open: false, user: null })}>
               取消
             </Button>
-            <Button variant="danger" onClick={handleDelete}>
+            <Button variant="danger" loading={deleting} onClick={handleDelete}>
               确认删除
             </Button>
           </>

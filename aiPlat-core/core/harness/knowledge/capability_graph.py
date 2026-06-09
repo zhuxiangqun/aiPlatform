@@ -175,10 +175,39 @@ def build_capability_graph() -> CapabilityGraphResult:
 
             if len(stale_ids) > 10:
                 pass  # fall through to full rebuild below
+            elif stale_ids:
+                 pass  # incremental path handled above, shouldn't reach here
             else:
-                # 0 stale: compute degrees and return
-                _finalize(nodes, edges)
-                return _cache_and_return(nodes, edges)
+                # 0 stale — but check for NEW files on disk not in cache
+                cache_ids = set(nodes.keys())
+                # Quick scan: count expected nodes per type
+                new_detected = False
+                for dtype, prefix, subdir in [("agent", "agent:", "agents"), ("skill", "skill:", "skills")]:
+                    engine_dir = _find_engine_dir(subdir)
+                    if engine_dir and engine_dir.exists():
+                        for d in engine_dir.iterdir():
+                            if d.is_dir() and (d / ("AGENT.md" if dtype == "agent" else "SKILL.md")).exists():
+                                if f"{prefix}{d.name}" not in cache_ids:
+                                    new_detected = True
+                                    break
+                    # workspace
+                    import os as _os2
+                    ws = Path(_os2.getenv("AIPLAT_HOME", _os2.path.expanduser("~/.aiplat"))) / subdir
+                    if ws.exists():
+                        for d in ws.iterdir():
+                            if d.is_dir() and (d / ("AGENT.md" if dtype == "agent" else "SKILL.md")).exists():
+                                if f"workspace_{prefix}{d.name}" not in cache_ids:
+                                    new_detected = True
+                                    break
+                    if new_detected:
+                        break
+                
+                if new_detected:
+                    pass  # fall through to full rebuild
+                else:
+                    # Still 0 stale + 0 new: compute degrees and return
+                    _finalize(nodes, edges)
+                    return _cache_and_return(nodes, edges)
     except Exception:
         pass
 
@@ -306,12 +335,10 @@ def clear_capability_cache():
 # Dimension scanners
 # ---------------------------------------------------------------------------
 
-def _scan_agents(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):
-    """Scan core/engine/agents/*/AGENT.md."""
-    agents_root = _find_engine_dir("agents")
+def _scan_agents_dir(agents_root: Path, *, node_prefix: str, nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):
+    """Scan an agents root directory for AGENT.md files and populate nodes/edges."""
     if not agents_root or not agents_root.exists():
         return
-
     for agent_dir in sorted(agents_root.iterdir()):
         if not agent_dir.is_dir():
             continue
@@ -322,8 +349,9 @@ def _scan_agents(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):
         text = md_file.read_text(encoding="utf-8", errors="ignore")
         fm = _parse_frontmatter(text)
 
-        nodes[f"agent:{agent_id}"] = {
-            "id": f"agent:{agent_id}",
+        node_id = f"{node_prefix}:{agent_id}" if node_prefix else f"agent:{agent_id}"
+        nodes[node_id] = {
+            "id": node_id,
             "type": "agent",
             "label": fm.get("name", agent_id),
             "raw_id": agent_id,
@@ -340,22 +368,33 @@ def _scan_agents(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):
         if isinstance(skill_refs, str):
             skill_refs = [skill_refs]
         for skill_ref in skill_refs:
-            edges.append({"from": f"agent:{agent_id}", "to": f"skill:{skill_ref}", "relation": "requires"})
+            edges.append({"from": node_id, "to": f"skill:{skill_ref}", "relation": "requires"})
 
         # agent → tool edges
         tool_refs = fm.get("required_tools") or fm.get("tools") or []
         if isinstance(tool_refs, str):
             tool_refs = [tool_refs]
         for tool_ref in tool_refs:
-            edges.append({"from": f"agent:{agent_id}", "to": f"tool:{tool_ref}", "relation": "requires"})
+            edges.append({"from": node_id, "to": f"tool:{tool_ref}", "relation": "requires"})
 
 
-def _scan_skills(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):
-    """Scan core/engine/skills/*/SKILL.md."""
-    skills_root = _find_engine_dir("skills")
+def _scan_agents(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):
+    """Scan engine and workspace agents directories."""
+    # Engine agents (core/engine/agents/)
+    engine_root = _find_engine_dir("agents")
+    _scan_agents_dir(engine_root, node_prefix="agent", nodes=nodes, edges=edges)
+
+    # Workspace agents (~/.aiplat/agents/)
+    import os as _os
+    aiplat_home = _os.getenv("AIPLAT_HOME", _os.path.expanduser("~/.aiplat"))
+    workspace_root = Path(aiplat_home) / "agents"
+    _scan_agents_dir(workspace_root, node_prefix="workspace_agent", nodes=nodes, edges=edges)
+
+
+def _scan_skills_dir(skills_root: Path, *, node_prefix: str, nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):
+    """Scan a skills root directory for SKILL.md files and populate nodes/edges."""
     if not skills_root or not skills_root.exists():
         return
-
     for skill_dir in sorted(skills_root.iterdir()):
         if not skill_dir.is_dir():
             continue
@@ -369,8 +408,9 @@ def _scan_skills(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):
 
         deps = _extract_syscalls_from_sop(body)
 
-        nodes[f"skill:{skill_id}"] = {
-            "id": f"skill:{skill_id}",
+        node_id = f"{node_prefix}:{skill_id}" if node_prefix else f"skill:{skill_id}"
+        nodes[node_id] = {
+            "id": node_id,
             "type": "skill",
             "label": fm.get("name", skill_id),
             "raw_id": skill_id,
@@ -381,9 +421,21 @@ def _scan_skills(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):
             "path": str(skill_dir),
         }
 
-        # skill → syscall edges
         for syscall_name in deps:
-            edges.append({"from": f"skill:{skill_id}", "to": f"syscall:{syscall_name}", "relation": "uses"})
+            edges.append({"from": node_id, "to": f"syscall:{syscall_name}", "relation": "uses"})
+
+
+def _scan_skills(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):
+    """Scan engine and workspace skills directories."""
+    # Engine skills (core/engine/skills/)
+    engine_root = _find_engine_dir("skills")
+    _scan_skills_dir(engine_root, node_prefix="skill", nodes=nodes, edges=edges)
+
+    # Workspace skills (~/.aiplat/skills/)
+    import os as _os
+    aiplat_home = _os.getenv("AIPLAT_HOME", _os.path.expanduser("~/.aiplat"))
+    workspace_root = Path(aiplat_home) / "skills"
+    _scan_skills_dir(workspace_root, node_prefix="workspace_skill", nodes=nodes, edges=edges)
 
 
 def _scan_tools(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):

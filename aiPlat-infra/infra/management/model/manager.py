@@ -45,6 +45,7 @@ class ModelManager:
         self.config = config or {}
         self._models: Dict[str, ModelInfo] = {}
         self._providers: Dict[str, Any] = {}
+        self._local_scanned = False
         
         # 初始化组件
         config_path = self.config.get("config_path")
@@ -70,7 +71,16 @@ class ModelManager:
         for model in external_models:
             self._models[model.id] = model
         
-        # 3. 本地 Ollama 模型将在启动时异步扫描
+        # 3. 扫描本地 Ollama / LM Studio / vLLM 模型（同步，短超时）
+        try:
+            loop = asyncio.new_event_loop()
+            try:
+                loop.run_until_complete(asyncio.wait_for(
+                    self._scan_local_models(), timeout=10.0))
+            finally:
+                loop.close()
+        except Exception:
+            pass
     
     async def initialize(self):
         """异步初始化 - 扫描本地模型"""
@@ -104,7 +114,10 @@ class ModelManager:
         enabled: Optional[bool] = None,
         status: Optional[str] = None
     ) -> List[ModelInfo]:
-        """获取模型列表"""
+        """获取模型列表（首次调用自动扫描本地模型）"""
+        if not self._local_scanned:
+            self._local_scanned = True
+            await self._scan_local_models()
         models = list(self._models.values())
         
         # 过滤
@@ -179,8 +192,14 @@ class ModelManager:
         overrides = profile_data.get("model_overrides", {})
         if purpose in overrides:
             override_name = overrides[purpose]
-            if override_name and override_name in self._models:
-                return override_name
+            if override_name:
+                # Match by model name (not ID — IDs have provider prefix)
+                for m in self._models.values():
+                    if m.name == override_name and m.enabled:
+                        return m.name
+                # Fallback: try matching by ID
+                if override_name in self._models:
+                    return override_name
 
         # Filter chat models
         chat_models = [m for m in self._models.values()
@@ -188,7 +207,7 @@ class ModelManager:
 
         scored = []
         for m in chat_models:
-            caps = set(m.capabilities or ["chat"])
+            caps = set(m.capabilities or ["chat"]) | set(m.tags or [])
             if not any(c in caps for c in profile.get("prefer", ["chat"])):
                 continue
             if any(c in caps for c in profile.get("avoid", [])):
@@ -196,8 +215,10 @@ class ModelManager:
 
             score = 0
             if profile.get("prefer_local"):
-                if m.source.value in ("local", "external"):
+                if m.source.value == "local":
                     score += 120
+                elif m.source.value == "external":
+                    score += 60
                 else:
                     score += 40
             elif m.source.value == "config":
@@ -220,7 +241,7 @@ class ModelManager:
         if not scored:
             return fallback_model
 
-        scored.sort(key=lambda x: x[0], reverse=True)
+        scored.sort(key=lambda x: (x[0], x[1] == fallback_model), reverse=True)
         return scored[0][1]  # model name
 
     def select(self, model_name: str = "", purpose: str = "") -> Optional[ModelInfo]:
@@ -378,9 +399,13 @@ class ModelManager:
     async def scan_local_models(self, endpoint: str = None) -> List[ModelInfo]:
         """重新扫描本地 Ollama 模型"""
         if endpoint:
-            self._scanner.set_endpoint(endpoint)
+            endpoints = [endpoint]
+        else:
+            endpoints = self._config_loader.get_local_scan_endpoints()
+        if not endpoints:
+            return []
         
-        local_models = await self._scanner.scan()
+        local_models = await scan_local_models(endpoints)
         
         # 更新本地模型列表（移除旧的 local 模型，添加新的）
         for key in list(self._models.keys()):

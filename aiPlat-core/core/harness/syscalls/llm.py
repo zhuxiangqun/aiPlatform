@@ -534,7 +534,8 @@ async def sys_llm_generate(
                     from core.harness.utils.model_injection import _log_model_selection
                     _log_model_selection(model_name or deployment.name, deployment.name or model_name,
                                          entry="create_adapter_legacy", source="sys_llm_generate")
-                except Exception: pass
+                except Exception:
+                    pass  # noqa: model-selection logging is best-effort, must not break LLM invocation
                 model = create_adapter(
                     provider=deployment.provider,
                     api_key=api_key,
@@ -946,7 +947,7 @@ async def sys_llm_generate_stream(
         model_name = getattr(model, 'model_name', '') or getattr(model, '_model_name', '') or ''
     if not model_name:
         from core.harness.utils.model_injection import best_model_for_purpose
-        model_name = best_model_for_purpose("chat") or "deepseek-chat"  # noqa: model-legacy
+        model_name = best_model_for_purpose("chat")  # noqa: model-legacy
 
     # Try streaming
     try:

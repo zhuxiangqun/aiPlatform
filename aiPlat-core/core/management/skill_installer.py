@@ -30,6 +30,33 @@ from urllib.parse import urlparse
 _REF_RE = re.compile(r"^[A-Za-z0-9._/\-]{1,128}$")
 
 
+def _apply_overrides(skill_dir: Path, overrides: Dict[str, Any]) -> None:
+    """Apply AI-recommended config overrides to SKILL.md frontmatter."""
+    md = skill_dir / "SKILL.md"
+    if not md.exists():
+        return
+    try:
+        import yaml
+        raw = md.read_text(encoding="utf-8")
+        if raw.startswith("---"):
+            parts = raw.split("---", 2)
+            if len(parts) >= 3:
+                fm = yaml.safe_load(parts[1]) or {}
+                body = parts[2]
+                # Merge overrides into frontmatter
+                for key in ("tools", "execution_type", "timeout", "category",
+                           "capabilities", "trigger_keywords", "display_name"):
+                    if key in overrides and overrides[key]:
+                        fm[key] = overrides[key]
+                # If new execution_type is prompt, remove handler artifacts
+                if fm.get("execution_type") == "prompt":
+                    fm.pop("executable", None)
+                header = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True).strip()
+                md.write_text(f"---\n{header}\n---{body}", encoding="utf-8")
+    except Exception:
+        pass
+
+
 def _run(cmd: List[str], *, cwd: Optional[str] = None, timeout_s: int = 60) -> str:
     cp = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout_s)
     if cp.returncode != 0:
@@ -331,6 +358,7 @@ class SkillInstaller:
         auto_detect_subdir: bool = True,
         allow_overwrite: bool = False,
         metadata: Optional[Dict[str, Any]] = None,
+        overrides: Optional[Dict[str, Any]] = None,
     ) -> InstallResult:
         if not _allowlisted_git_url(url):
             raise ValueError("git_url_not_allowed")
@@ -353,6 +381,7 @@ class SkillInstaller:
                 skill_id=skill_id,
                 subdir=subdir,
                 allow_overwrite=allow_overwrite,
+                overrides=overrides,
             )
 
     def install_from_path(
@@ -364,6 +393,7 @@ class SkillInstaller:
         auto_detect_subdir: bool = True,
         allow_overwrite: bool = False,
         metadata: Optional[Dict[str, Any]] = None,
+        overrides: Optional[Dict[str, Any]] = None,
     ) -> InstallResult:
         root = Path(path).expanduser().resolve()
         if not root.exists() or not root.is_dir():
@@ -376,6 +406,7 @@ class SkillInstaller:
             skill_id=skill_id,
             subdir=subdir,
             allow_overwrite=allow_overwrite,
+            overrides=overrides,
         )
 
     def install_from_zip(
@@ -387,6 +418,7 @@ class SkillInstaller:
         auto_detect_subdir: bool = True,
         allow_overwrite: bool = False,
         metadata: Optional[Dict[str, Any]] = None,
+        overrides: Optional[Dict[str, Any]] = None,
     ) -> InstallResult:
         zp = Path(zip_path).expanduser().resolve()
         if not zp.exists() or not zp.is_file():
@@ -404,6 +436,7 @@ class SkillInstaller:
                 skill_id=skill_id,
                 subdir=subdir,
                 allow_overwrite=allow_overwrite,
+                overrides=overrides,
             )
 
     def plan_from_git(
@@ -492,6 +525,7 @@ class SkillInstaller:
         skill_id: Optional[str],
         subdir: Optional[str],
         allow_overwrite: bool,
+        overrides: Optional[Dict[str, Any]] = None,
     ) -> InstallResult:
         skills = _iter_skill_dirs(root, subdir=subdir)
         if not skills and not subdir:
@@ -531,6 +565,9 @@ class SkillInstaller:
                 adapt_skill(dst)
             except Exception:
                 pass
+            # Apply AI-recommended overrides (tools, execution_type, timeout, etc.)
+            if overrides:
+                _apply_overrides(dst, overrides)
             try:
                 src2 = dict(source or {})
                 src2["skill_id"] = sd.name

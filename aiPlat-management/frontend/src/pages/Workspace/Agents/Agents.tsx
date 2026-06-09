@@ -30,6 +30,7 @@ const WorkspaceAgents: React.FC = () => {
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; agent: Agent | null; hard: boolean }>({ open: false, agent: null, hard: false });
+  const [deleting, setDeleting] = useState(false);
   const [testAllRunning, setTestAllRunning] = useState(false);
   const [testAllResults, setTestAllResults] = useState<{ agentId: string; status: string; ok: boolean }[]>([]);
   const [testAllOpen, setTestAllOpen] = useState(false);
@@ -110,7 +111,8 @@ const WorkspaceAgents: React.FC = () => {
   };
 
   const handleDelete = async () => {
-    if (!deleteConfirm.agent) return;
+    if (!deleteConfirm.agent || deleting) return;
+    setDeleting(true);
     try {
       if (deleteConfirm.hard) {
         await deleteAgent(deleteConfirm.agent.id);
@@ -123,6 +125,8 @@ const WorkspaceAgents: React.FC = () => {
       setDeleteConfirm({ open: false, agent: null, hard: false });
     } catch (e: any) {
       toast.error('操作失败', e?.message || String(e));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -434,20 +438,13 @@ const WorkspaceAgents: React.FC = () => {
         title="删除 Agent"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setDeleteConfirm({ open: false, agent: null, hard: false })}>
+            <Button variant="secondary" onClick={() => setDeleteConfirm({ open: false, agent: null, hard: false })} disabled={deleting}>
               取消
             </Button>
-            <Button variant="secondary" onClick={() => { setDeleteConfirm({ ...deleteConfirm, hard: false }); setTimeout(handleDelete, 0); }}>
+            <Button variant="secondary" onClick={() => { setDeleteConfirm({ ...deleteConfirm, hard: false }); handleDelete(); }} loading={deleting}>
               软删除 (废弃)
             </Button>
-            <Button variant="danger" onClick={() => { setDeleteConfirm({ ...deleteConfirm, hard: true }); setTimeout(() => {
-              if (deleteConfirm.agent) {
-                deleteAgent(deleteConfirm.agent.id).then(() => {
-                  toast.success('Agent已删除');
-                  setDeleteConfirm({ open: false, agent: null, hard: false });
-                }).catch(() => toast.error('删除失败'));
-              }
-            }, 0); }}>
+            <Button variant="danger" onClick={() => { setDeleteConfirm({ ...deleteConfirm, hard: true }); handleDelete(); }} loading={deleting}>
               硬删除
             </Button>
           </>

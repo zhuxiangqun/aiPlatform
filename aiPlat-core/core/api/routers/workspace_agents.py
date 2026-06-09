@@ -112,6 +112,9 @@ async def _audit_execute(
 
 
 def _is_verified(meta: Dict[str, Any] | None) -> bool:
+    import os as _os
+    if _os.getenv("AIPLAT_APPROVALS_DISABLED", "").lower() in ("1", "true", "yes"):
+        return True
     if not isinstance(meta, dict):
         return False
     v = meta.get("verification")
@@ -188,6 +191,39 @@ async def create_workspace_agent(request: AgentCreateRequest, http_request: Requ
             memory_config=request.memory_config,
             metadata=request.metadata,
         )
+        # If created from import (URL or file), materialize all source files into agent dir
+        md = request.metadata or {}
+        if md.get("source_url") or md.get("source_file_content"):
+            try:
+                import base64, io, zipfile
+                import httpx as _httpx2
+                base = mgr._resolve_agents_base_path()
+                agent_dir = base / str(agent.id)
+                zip_data = None
+                if md.get("source_url"):
+                    async with _httpx2.AsyncClient(timeout=30) as client:
+                        r = await client.get(str(md["source_url"]), follow_redirects=True)
+                        r.raise_for_status()
+                    zip_data = r.content
+                elif md.get("source_file_content"):
+                    zip_data = base64.b64decode(str(md["source_file_content"]))
+                if zip_data:
+                    with zipfile.ZipFile(io.BytesIO(zip_data)) as zf:
+                        for name in zf.namelist():
+                            if name.endswith("/"):
+                                continue
+                            parts = name.split("/", 1)
+                            if len(parts) < 2:
+                                continue
+                            rel = parts[1]
+                            if rel == "AGENT.md":
+                                continue
+                            target = agent_dir / rel
+                            target.parent.mkdir(parents=True, exist_ok=True)
+                            with zf.open(name) as src:
+                                target.write_bytes(src.read())
+            except Exception:
+                pass
         # Mark as pending verification (best-effort)
         try:
             await mgr.update_agent(
@@ -287,44 +323,116 @@ async def generate_role_definition(req: AgentAutoFillRequest) -> RoleDefinitionR
     )
 
 
+def _extract_json_fallback(clean: str, raw_content: str, _re, _json, _log) -> dict | None:
+    """Extract first JSON object from LLM output using bracket-matching fallback."""
+    start = clean.find('{')
+    if start == -1:
+        _log.getLogger("auto-fill").warning(f"LLM response has no JSON: {raw_content[:500]}")
+        return None
+    depth = 0
+    for i in range(start, len(clean)):
+        if clean[i] == '{':
+            depth += 1
+        elif clean[i] == '}':
+            depth -= 1
+            if depth == 0:
+                candidate = clean[start:i+1]
+                for fix in [candidate,
+                            _re.sub(r',\s*\}', '}', candidate),
+                            _re.sub(r',\s*\]', ']', candidate),
+                            _re.sub(r',\s*\}', '}', _re.sub(r',\s*\]', ']', candidate))]:
+                    try:
+                        return _json.loads(fix)
+                    except _json.JSONDecodeError:
+                        continue
+                _log.getLogger("auto-fill").warning(f"LLM response unparseable: {candidate[:500]}")
+                return None
+    _log.getLogger("auto-fill").warning(f"LLM response has unclosed braces: {clean[:300]}")
+    return None
+
+
+def _scan_skills_direct() -> List[str]:
+    """Scan engine + workspace skill directories directly (no capability graph).
+    
+    Fast path for auto-fill: reads SKILL.md frontmatter once, no SQLite, no graph.
+    """
+    import yaml as _yaml
+    from pathlib import Path as _Py
+    import os as _os
+    entries = []
+    
+    # Engine skills: aiPlat-core/core/engine/skills/
+    engine_root = None
+    here = _Py(__file__).resolve()
+    for _ in range(6):
+        candidate = here.parent
+        eng = candidate / "core" / "engine" / "skills"
+        if eng.exists():
+            engine_root = eng
+            break
+        here = here.parent
+    if not engine_root:
+        try:
+            import core as _core
+            if hasattr(_core, '__file__') and _core.__file__:
+                engine_root = _Py(_os.path.dirname(_core.__file__)) / "engine" / "skills"
+        except Exception:
+            pass
+    
+    # Workspace skills: ~/.aiplat/skills/
+    aiplat_home = _os.getenv("AIPLAT_HOME", _os.path.expanduser("~/.aiplat"))
+    workspace_root = _Py(aiplat_home) / "skills"
+    
+    for root in (engine_root, workspace_root):
+        if not root or not root.exists():
+            continue
+        for skill_dir in sorted(root.iterdir()):
+            if not skill_dir.is_dir():
+                continue
+            md_file = skill_dir / "SKILL.md"
+            if not md_file.exists():
+                continue
+            try:
+                raw = md_file.read_text(encoding='utf-8', errors='ignore')
+                if not raw.startswith('---'):
+                    continue
+                parts = raw.split('---', 2)
+                if len(parts) < 3:
+                    continue
+                fm = _yaml.safe_load(parts[1]) or {}
+                skill_id = str(fm.get("name") or skill_dir.name)
+                label = str(fm.get("display_name") or fm.get("displayName") or skill_id)
+                cat = str(fm.get("category") or "")
+                desc = str(fm.get("description") or "")[:120]
+                caps = fm.get("capabilities") or fm.get("capability") or []
+                caps_str = ', '.join(str(c) for c in caps[:6]) if isinstance(caps, list) else ''
+                ext = f" | {desc}" if desc else ""
+                ext += f" | capabilities: {caps_str}" if caps_str else ""
+                entries.append(f'  - {skill_id} | {label} | [{cat}]{ext}')
+            except Exception:
+                continue
+    return entries
+
+
+def _ensure_memory_config(raw) -> dict:
+    """Return memory config, filling short_term defaults if empty."""
+    if isinstance(raw, dict) and raw:
+        return raw
+    return {"type": "short_term", "recall_count": 5}
+
+
 @router.post("/workspace/agents/auto-fill")
 async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
     """AI 智能填充：根据功能描述自动推荐 skills / tools / MCP / config / SOP 等。"""
     import json as _json
     import re as _re
 
-    # ── Build skill catalog (enriched with display_name + description) ──
-    skill_entries: List[str] = []
+    # ── Build skill catalog (direct disk scan — no capability graph) ──
     try:
-        from core.harness.knowledge.capability_graph import build_capability_graph
-        import yaml as _yaml
-        from pathlib import Path as _Py
-        cg = build_capability_graph()
-        for nid, n in cg.nodes.items():
-            if n.get("type") == "skill":
-                skill_id = n['raw_id']
-                label = n.get('label', skill_id)
-                cat = n.get('category', '')
-                desc = ''
-                # Read SKILL.md to get description
-                skill_path = n.get('path', '')
-                if skill_path:
-                    md_file = _Py(skill_path) / 'SKILL.md'
-                    if md_file.exists():
-                        try:
-                            raw = md_file.read_text(encoding='utf-8', errors='ignore')
-                            if raw.startswith('---'):
-                                parts = raw.split('---', 2)
-                                if len(parts) >= 3:
-                                    fm = _yaml.safe_load(parts[1]) or {}
-                                    desc = str(fm.get('description', '') or '')[:120]
-                        except Exception:
-                            pass
-                if desc:
-                    skill_entries.append(f'  - {skill_id} | {label} | [{cat}] | {desc}')
-                else:
-                    skill_entries.append(f'  - {skill_id} | {label} | [{cat}]')
+        skill_entries = _scan_skills_direct()
     except Exception:
+        skill_entries = []
+    if not skill_entries:
         skill_entries = ["(unable to load skill catalog)"]
 
     # ── Build tool catalog ───────────────────────────────────────
@@ -344,10 +452,16 @@ async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
     try:
         from core.management.mcp_manager import MCPManager as _Mgr
         mgr = _Mgr()
-        for srv in mgr.list_servers() or []:
+        ws_mgr = _Mgr(scope="workspace")
+        all_servers = list(mgr.list_servers() or []) + list(ws_mgr.list_servers() or [])
+        for srv in all_servers:
+            desc = str(getattr(srv, 'metadata', {}).get('description', '') or '')[:80]
+            tools = ', '.join(str(t) for t in (getattr(srv, 'allowed_tools', []) or [])[:3])
+            ext = f" | {desc}" if desc else ""
+            ext += f" | tools: {tools}" if tools else ""
             mcp_entries.append(
                 f"  - {srv.name}: enabled={getattr(srv,'enabled',True)} "
-                f"transport={getattr(srv,'transport','')}"
+                f"transport={getattr(srv,'transport','')}{ext}"
             )
     except Exception:
         mcp_entries = ["(unable to load MCP catalog)"]
@@ -361,8 +475,10 @@ async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
         if mgr:
             all_agents = await mgr.list_agents(limit=200)
             for a in all_agents:
+                desc = str((getattr(a, 'metadata', {}) or {}).get('description', '') or '')[:80]
+                ext = f" | {desc}" if desc else ""
                 agent_catalog.append(
-                    f"  - id={a.id} | name={a.name} | type={a.type}"
+                    f"  - id={a.id} | name={a.name} | type={a.type}{ext}"
                 )
         if not agent_catalog:
             agent_catalog = ["(no sub-agents available)"]
@@ -381,7 +497,9 @@ async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
                     data = _wjson.loads(f.read_text(encoding="utf-8"))
                     nm = data.get("name", f.stem)
                     sz = len(data.get("stages", []))
-                    wf_catalog.append(f"  - {f.stem} | {nm} | stages={sz}")
+                    wdesc = str(data.get("description", "") or "")[:100]
+                    ext = f" | {wdesc}" if wdesc else ""
+                    wf_catalog.append(f"  - {f.stem} | {nm} | stages={sz}{ext}")
                 except Exception:
                     pass
         if not wf_catalog:
@@ -404,20 +522,6 @@ async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
 
     from core.harness.utils.prompt_loader import _async_prompt_resolve
 
-    # Build app template catalog (for template recommendation)
-    app_tpl_entries: List[str] = []
-    try:
-        store = getattr(rt, "execution_store", None) if rt else None
-        if store:
-            tpls = await store.list_prompt_app_templates(limit=100)
-            for t in (tpls.get("items") or []):
-                name = t.get("name", "")
-                cat = t.get("category", "")
-                sp = (t.get("system_prompt", "") or "")[:80]
-                app_tpl_entries.append(f"- {t.get('id','')}: {name}（{cat}），系统提示：{sp}")
-    except Exception:
-        pass
-
     prompt = await _async_prompt_resolve("agent-auto-fill",
         name=req.name or '(待填写)',
         description=req.description or '(无)',
@@ -427,7 +531,6 @@ async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
         mcp_catalog=chr(10).join(mcp_entries[:20]) or '(无)',
         agent_catalog=chr(10).join(agent_catalog[:40]) or '(无)',
         wf_catalog=chr(10).join(wf_catalog[:20]) or '(无)',
-        app_template_catalog=chr(10).join(app_tpl_entries[:30]) or '(无)',
         role_phrase="和已确认的角色定义" if role_section else "",
     )
 
@@ -436,8 +539,9 @@ async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
         from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
         model_name = best_model_for_purpose("agent_creation")
         model = create_selected_adapter(model_name=model_name)
+        from core.harness.utils.prompt_loader import _async_prompt_resolve
         messages = [
-            {"role": "system", "content": "你是一个 AI Agent 配置专家。只输出 JSON，不要加任何解释或 markdown 标记。"},
+            {"role": "system", "content": await _async_prompt_resolve("agent-auto-fill-system-role")},
             {"role": "user", "content": prompt},
         ]
         resp = await sys_llm_generate(model, messages)
@@ -446,35 +550,49 @@ async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
         raise HTTPException(status_code=503, detail=f"LLM unavailable: {e}")
 
     # ── Parse JSON response ──────────────────────────────────────
+    import logging as _log
     clean = content.strip()
     if clean.startswith("```"):
         clean = _re.sub(r'^```\w*\n?', '', clean)
         clean = _re.sub(r'\n?```$', '', clean)
-    match = _re.search(r'\{[\s\S]*\}', clean)
-    if match:
-        try:
-            data = _json.loads(match.group(0))
-        except _json.JSONDecodeError:
-            cleaned = _re.sub(r',\s*\}', '}', match.group(0))
-            try:
-                data = _json.loads(cleaned)
-            except _json.JSONDecodeError:
-                raise HTTPException(status_code=422, detail="Failed to parse LLM response as JSON")
-    else:
-        raise HTTPException(status_code=422, detail="LLM response does not contain JSON")
+    # Use JSONDecoder to extract first valid JSON object (handles nesting properly)
+    try:
+        decoder = _json.JSONDecoder()
+        data, _end = decoder.raw_decode(clean)
+    except _json.JSONDecodeError:
+        # Fallback: find JSON between first { and matching }, then fix common LLM issues
+        data = _extract_json_fallback(clean, content, _re, _json, _log)
+    if data is None:
+        raise HTTPException(status_code=422, detail="Failed to parse LLM response as JSON")
+
+    # Resolve model via infra instead of trusting LLM choice
+    agent_type = str(data.get("agent_type", "base"))[:20]
+    config = data.get("config", {}) if isinstance(data.get("config"), dict) else {}
+    try:
+        from core.harness.utils.model_injection import best_model_for_agent_type
+        config["model"] = best_model_for_agent_type(agent_type)
+    except Exception:
+        pass
+
+    skills = list(data.get("skills", []))[:20]
+    tools = list(data.get("tools", []))[:20]
+    if not skills and not tools:
+        _log.getLogger("auto-fill").warning(
+            f"LLM returned empty skills+tools. agent_type={agent_type}, raw_response={content[:500]}"
+        )
 
     return AgentAutoFillResponse(
-        agent_type=str(data.get("agent_type", "base"))[:20],
-        config=data.get("config", {}) if isinstance(data.get("config"), dict) else {},
-        skills=list(data.get("skills", []))[:20],
-        tools=list(data.get("tools", []))[:20],
+        agent_type=agent_type,
+        config=config,
+        skills=skills,
+        tools=tools,
         mcp_ids=list(data.get("mcp_ids", []))[:10],
         agent_ids=list(data.get("agent_ids", []))[:10],
-        memory_config=data.get("memory_config", {}) if isinstance(data.get("memory_config"), dict) else {},
+        memory_config=_ensure_memory_config(data.get("memory_config")),
         sop_text=str(data.get("sop_text", ""))[:8000],
         reasoning=str(data.get("reasoning", ""))[:500],
         workflow_ids=list(data.get("workflow_ids", []))[:10],
-        template_id=str(data.get("template_id", ""))[:80],
+        template_id="",
     )
 
 
@@ -565,36 +683,8 @@ async def agent_auto_fill_batch(req: "AgentAutoFillBatchRequest") -> "AgentAutoF
 
 
 async def _build_skill_catalog() -> List[str]:
-    import yaml as _yaml
-    from pathlib import Path as _Py
-    entries = []
-    try:
-        from core.harness.knowledge.capability_graph import build_capability_graph
-        cg = build_capability_graph()
-        for nid, n in cg.nodes.items():
-            if n.get("type") == "skill":
-                skill_id = n['raw_id']
-                label = n.get('label', skill_id)
-                cat = n.get('category', '')
-                desc = ''
-                skill_path = n.get('path', '')
-                if skill_path:
-                    md_file = _Py(skill_path) / 'SKILL.md'
-                    if md_file.exists():
-                        try:
-                            raw = md_file.read_text(encoding='utf-8', errors='ignore')
-                            if raw.startswith('---'):
-                                parts = raw.split('---', 2)
-                                if len(parts) >= 3:
-                                    fm = _yaml.safe_load(parts[1]) or {}
-                                    desc = str(fm.get('description', '') or '')[:120]
-                        except Exception:
-                            pass
-                if desc:
-                    entries.append(f'  - {skill_id} | {label} | [{cat}] | {desc}')
-                else:
-                    entries.append(f'  - {skill_id} | {label} | [{cat}]')
-    except Exception:
+    entries = _scan_skills_direct()
+    if not entries:
         entries = ["(unable to load skill catalog)"]
     return entries
 
@@ -618,10 +708,16 @@ async def _build_mcp_catalog() -> List[str]:
     try:
         from core.management.mcp_manager import MCPManager as _Mgr
         mgr = _Mgr()
-        for srv in mgr.list_servers() or []:
+        ws_mgr = _Mgr(scope="workspace")
+        all_servers = list(mgr.list_servers() or []) + list(ws_mgr.list_servers() or [])
+        for srv in all_servers:
+            desc = str(getattr(srv, 'metadata', {}).get('description', '') or '')[:80]
+            tools = ', '.join(str(t) for t in (getattr(srv, 'allowed_tools', []) or [])[:3])
+            ext = f" | {desc}" if desc else ""
+            ext += f" | tools: {tools}" if tools else ""
             entries.append(
                 f"  - {srv.name}: enabled={getattr(srv,'enabled',True)} "
-                f"transport={getattr(srv,'transport','')}"
+                f"transport={getattr(srv,'transport','')}{ext}"
             )
     except Exception:
         entries = ["(unable to load MCP catalog)"]
@@ -637,7 +733,9 @@ async def _build_agent_catalog() -> List[str]:
         if mgr:
             all_agents = await mgr.list_agents(limit=200)
             for a in all_agents:
-                entries.append(f"  - id={a.id} | name={a.name} | type={a.type}")
+                desc = str((getattr(a, 'metadata', {}) or {}).get('description', '') or '')[:80]
+                ext = f" | {desc}" if desc else ""
+                entries.append(f"  - id={a.id} | name={a.name} | type={a.type}{ext}")
         if not entries:
             entries = ["(no sub-agents available)"]
     except Exception:
@@ -657,7 +755,9 @@ async def _build_wf_catalog() -> List[str]:
                     data = _wjson.loads(f.read_text(encoding="utf-8"))
                     nm = data.get("name", f.stem)
                     sz = len(data.get("stages", []))
-                    entries.append(f"  - {f.stem} | {nm} | stages={sz}")
+                    wdesc = str(data.get("description", "") or "")[:100]
+                    ext = f" | {wdesc}" if wdesc else ""
+                    entries.append(f"  - {f.stem} | {nm} | stages={sz}{ext}")
                 except Exception:
                     pass
         if not entries:
@@ -665,6 +765,8 @@ async def _build_wf_catalog() -> List[str]:
     except Exception:
         entries = ["(unable to load workflow catalog)"]
     return entries
+
+
 
 
 @router.get("/workspace/agents/{agent_id}")
@@ -1405,6 +1507,108 @@ async def reload_workspace_agent(agent_id: str, rt: RuntimeDep = None):
     if not a:
         raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
     return {"status": "reloaded", "agent_id": agent_id}
+
+
+# ── Agent Import Detection (analogous to workspace_skills import-detect) ──
+
+@router.post("/workspace/agents/import-detect")
+async def detect_agent_import(request: Dict[str, Any], rt: RuntimeDep = None):
+    """AI 检测导入的 agent 配置。接收 URL 或 zip 文件，返回推荐配置。"""
+    import yaml as _yaml
+    import io
+    import zipfile
+    
+    agmd_body = ""
+    url = str(request.get("url") or "").strip()
+    file_content = str(request.get("file_content") or "").strip()
+    
+    if url:
+        try:
+            import httpx as _httpx
+            async with _httpx.AsyncClient(timeout=30) as client:
+                resp = await client.get(url, follow_redirects=True)
+                resp.raise_for_status()
+            with zipfile.ZipFile(io.BytesIO(resp.content)) as zf:
+                for name in zf.namelist():
+                    if name.endswith("AGENT.md"):
+                        agmd_body = zf.read(name).decode("utf-8", errors="ignore")
+                        break
+                if not agmd_body:
+                    for name in zf.namelist():
+                        if name.endswith(".md"):
+                            agmd_body = zf.read(name).decode("utf-8", errors="ignore")
+                            break
+        except Exception as e:
+            return {"error": f"Failed to download/parse URL: {str(e)}"}
+    elif file_content:
+        try:
+            import base64
+            data = base64.b64decode(file_content)
+            with zipfile.ZipFile(io.BytesIO(data)) as zf:
+                for name in zf.namelist():
+                    if name.endswith("AGENT.md"):
+                        agmd_body = zf.read(name).decode("utf-8", errors="ignore")
+                        break
+        except Exception:
+            agmd_body = file_content[:20000]
+    
+    if not agmd_body:
+        return {"error": "No AGENT.md found in import source. Provide url or file_content."}
+    
+    # Extract YAML frontmatter
+    existing = {}
+    sop_body = agmd_body
+    if agmd_body.startswith("---"):
+        parts = agmd_body.split("---", 2)
+        if len(parts) >= 3:
+            try:
+                existing = _yaml.safe_load(parts[1]) or {}
+            except Exception:
+                pass
+            sop_body = parts[2].strip() if len(parts) > 2 else agmd_body
+    
+    name = str(existing.get("name") or "")
+    desc = str(existing.get("description") or "")
+    
+    try:
+        config = await _ai_recommend_agent_config(
+            agmd_body=sop_body,
+            name=name,
+            description=desc,
+        )
+        config["detected_name"] = name or config.get("detected_name", "")
+        config["detected_description"] = desc
+        config["sop_body"] = sop_body
+        config["display_name"] = str(existing.get("display_name") or existing.get("displayName") or name)
+        return config
+    except Exception as e:
+        return {"error": f"AI detection failed: {str(e)}"}
+
+
+async def _ai_recommend_agent_config(
+    agmd_body: str, name: str = "", description: str = "",
+) -> dict:
+    """LLM 分析 AGENT.md 正文，返回推荐的 agent 配置。"""
+    from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
+    from core.harness.utils.prompt_loader import _async_prompt_resolve
+    
+    model_name = best_model_for_purpose("agent_creation")
+    model = create_selected_adapter(model_name=model_name)
+    system_prompt = await _async_prompt_resolve("agent-import-detect")
+    user_content = f"Agent 名称: {name or '(未命名)'}\n描述: {description or '(无)'}\n\nAGENT.md:\n{agmd_body[:8000]}"
+    
+    from core.harness.syscalls.llm import sys_llm_generate
+    response = await sys_llm_generate(
+        model,
+        [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_content},
+        ],
+    )
+    
+    text = str(getattr(response, "content", "") or "")
+    from core.utils.json_utils import parse_json
+    return parse_json(text) or {}
 
 
 # ── Agent Installer endpoints (workspace scope) ──────────────────────

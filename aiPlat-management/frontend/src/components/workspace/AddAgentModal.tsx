@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { workspaceAgentApi, workspaceSkillApi, promptAppApi } from '../../services';
+import { workspaceAgentApi, workspaceSkillApi } from '../../services';
 import { modelApi, toolApi, type Model } from '../../services';
 import { workspaceMcpApi, workflowTemplateApi } from '../../services';
 import { Alert, Button, Input, Modal, Select, Textarea, toast, MultiSelect } from '../ui';
@@ -16,22 +16,22 @@ const AGENT_TYPE_TEMPLATES: Record<string, AgentConfigTemplate> = {
   base: {
     name: '基础Agent',
     description: '最基础的对话Agent，适用于简单问答场景',
-    config: { model: 'gpt-4', temperature: 0.7, max_tokens: 2048, system_prompt: '你是一个有帮助的AI助手。' },
+    config: { model: '', temperature: 0.7, max_tokens: 2048, system_prompt: '你是一个有帮助的AI助手。' },
   },
   react: {
     name: 'ReAct Agent',
     description: '使用ReAct（Reasoning + Acting）模式，具备推理和工具调用能力',
-    config: { model: 'gpt-4', temperature: 0.0, max_tokens: 4096, reasoning_steps: 3, system_prompt: '你是一个使用ReAct模式的推理Agent。' },
+    config: { model: '', temperature: 0.0, max_tokens: 4096, reasoning_steps: 3, system_prompt: '你是一个使用ReAct模式的推理Agent。' },
   },
   plan: {
     name: '规划型Agent',
     description: '具备任务分解和规划能力，适合复杂多步骤任务',
-    config: { model: 'gpt-4', temperature: 0.1, max_tokens: 8192, planning_enabled: true, max_subtasks: 10, system_prompt: '你是一个任务规划Agent。' },
+    config: { model: '', temperature: 0.1, max_tokens: 8192, planning_enabled: true, max_subtasks: 10, system_prompt: '你是一个任务规划Agent。' },
   },
   tool: {
     name: '工具型Agent',
     description: '专注于工具调用和自动化执行的Agent',
-    config: { model: 'gpt-4', temperature: 0.0, max_tokens: 2048, system_prompt: '你是一个工具型Agent。' },
+    config: { model: '', temperature: 0.0, max_tokens: 2048, system_prompt: '你是一个工具型Agent。' },
   },
 };
 
@@ -65,10 +65,9 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
   const [kbOptions, setKbOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [autoSmoke, setAutoSmoke] = useState(true);
   const [autoFillLoading, setAutoFillLoading] = useState(false);
-  const [appTemplates, setAppTemplates] = useState<any[]>([]);
-  const [selectedAppTemplateId, setSelectedAppTemplateId] = useState('');
   const [optimizeOpen, setOptimizeOpen] = useState(false);
   const [optimizePrompt, setOptimizePrompt] = useState('');
+  const [configEdited, setConfigEdited] = useState(false);
 
   // Disambiguation wizard
   const [wizOpen, setWizOpen] = useState(false);
@@ -76,6 +75,15 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
   const [wizSources, setWizSources] = useState<string[]>([]);
   const [wizMayWrite, setWizMayWrite] = useState(false);
   const [genWarnings, setGenWarnings] = useState<string[]>([]);
+
+  // Import mode (file/URL import with AI detection)
+  const [sourceMode, setSourceMode] = useState<'manual' | 'url' | 'file'>('manual');
+  const [importUrl, setImportUrl] = useState('');
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importDetecting, setImportDetecting] = useState(false);
+  const [importResult, setImportResult] = useState<any>(null);
+  const [importMeta, setImportMeta] = useState<Record<string, any>>({});
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) {
@@ -90,34 +98,66 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
       setConfigText(JSON.stringify(AGENT_TYPE_TEMPLATES.base.config, null, 2));
       setMemoryConfigText('{\n  "type": "short_term",\n  "recall_count": 5\n}');
       setSopText('');
-      setSelectedAppTemplateId('');
       setKnowledgeBases([]);
+      setConfigEdited(false);
       fetchOptions();
-      fetchAppTemplates();
       fetchWikiCollections();
     }
   }, [open]);
 
-  // Auto-apply template when selected (by user or AI)
-  useEffect(() => {
-    if (!selectedAppTemplateId) return;
-    const tpl = appTemplates.find(t => t.id === selectedAppTemplateId);
-    if (!tpl) return;
-    if (tpl.name && !name) setName(tpl.name);
-    const sp = [tpl.system_prompt, tpl.user_prompt].filter(Boolean).join('\n\n');
-    if (!sp) return;
-    try {
-      const cfg = JSON.parse(configText);
-      cfg.system_prompt = sp;
-      setConfigText(JSON.stringify(cfg, null, 2));
-    } catch { }
-  }, [selectedAppTemplateId, appTemplates]);
+  React.useEffect(() => {
+    setImportUrl('');
+    setImportFile(null);
+    setImportResult(null);
+    setImportMeta({});
+  }, [sourceMode]);
 
-  const fetchAppTemplates = async () => {
+  const handleImportDetect = async () => {
+    if (sourceMode === 'url' && !importUrl.trim()) { toast.warning('请输入 GitHub URL'); return; }
+    if (sourceMode === 'file' && !importFile) { toast.warning('请选择本地 Zip 文件'); return; }
+    setImportDetecting(true);
     try {
-      const r = await promptAppApi.list();
-      setAppTemplates((r as any).items || []);
-    } catch { }
+      const payload: any = {};
+      if (sourceMode === 'url') {
+        payload.url = importUrl.trim();
+      } else if (sourceMode === 'file' && importFile) {
+        const buf = await importFile.arrayBuffer();
+        const bytes = new Uint8Array(buf);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+        payload.file_content = btoa(binary);
+      }
+      const res = await workspaceAgentApi.importDetect(payload);
+      if (res.error) { toast.error('检测失败', res.error); return; }
+      setImportResult(res);
+      if (res.detected_name && !name) setName(res.detected_name);
+      if (res.detected_description && !description) setDescription(res.detected_description);
+      if (res.agent_type) setSelectedType(res.agent_type);
+      if (res.sop_body) setSopText(res.sop_body);
+      if (res.config) {
+        setConfigText(JSON.stringify(res.config, null, 2));
+        setConfigEdited(true);
+      }
+      if (res.skills?.length) setSkills(res.skills);
+      if (res.tools?.length) setTools(res.tools);
+      if (res.mcp_ids?.length) setMcpIds(res.mcp_ids);
+      setImportMeta({
+        ...(res.tools ? { tools: res.tools } : {}),
+        ...(sourceMode === 'url' && importUrl.trim() ? { source_url: importUrl.trim() } : {}),
+      });
+      if (sourceMode === 'file' && importFile) {
+        try {
+          const buf2 = await importFile.arrayBuffer();
+          const bytes2 = new Uint8Array(buf2);
+          let binary2 = '';
+          for (let i = 0; i < bytes2.length; i++) binary2 += String.fromCharCode(bytes2[i]);
+          setImportMeta((prev: any) => ({ ...prev, source_file_content: btoa(binary2) }));
+        } catch { }
+      }
+      toast.success('AI 检测完成');
+    } catch (e: any) {
+      toast.error('检测失败', e?.detail || e?.message || String(e));
+    } finally { setImportDetecting(false); }
   };
 
   const fetchWikiCollections = async () => {
@@ -216,14 +256,26 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
       const result = await workspaceAgentApi.autoFill({ name: name.trim(), description: description.trim() });
       // Populate form fields from AI response
       if (result.agent_type) setSelectedType(result.agent_type);
-      if (result.config) setConfigText(JSON.stringify(result.config, null, 2));
+      if (result.config) {
+        setConfigText(JSON.stringify(result.config, null, 2));
+        // sync model to dropdown
+        const cfgModel = (result.config as any)?.model as string | undefined;
+        if (cfgModel) {
+          // match model ID/name against dropdown options (handle id vs name differences, e.g. "ollama:qwen2-5-coder-7b" vs "qwen2.5-coder:7b")
+          const norm = (s: string) => s.toLowerCase().replace(/^[a-z_]+:/, '').replace(/[-_]/g, '');
+          const match = modelOptions.find(o => o.value === cfgModel)
+            || modelOptions.find(o => norm(o.value) === norm(cfgModel));
+          if (match) setSelectedModel(match.value);
+        }
+      }
       if (result.skills?.length) setSkills(result.skills.filter((s: string) => skillOptions.some(o => o.value === s)));
       if (result.tools?.length) setTools(result.tools.filter((t: string) => toolOptions.some(o => o.value === t)));
       if (result.mcp_ids?.length) setMcpIds(result.mcp_ids.filter((m: string) => mcpOptions.some(o => o.value === m)));
       if (result.agent_ids?.length) setAgentIds(result.agent_ids.filter((a: string) => agentOptions.some(o => o.value === a)));
+      if (result.workflow_ids?.length) setWorkflowIds(result.workflow_ids.filter((w: string) => Array.isArray(workflowOptions) && workflowOptions.some(o => o.value === w)));
       if (result.memory_config) setMemoryConfigText(JSON.stringify(result.memory_config, null, 2));
       if (result.sop_text) setSopText(result.sop_text);
-      if ((result as any).template_id) setSelectedAppTemplateId((result as any).template_id);
+      setConfigEdited(true);
       toast.success(`智能填充完成`, result.reasoning || 'AI 已根据描述推荐配置');
     } catch (e: any) {
       toast.error('智能填充失败', e?.message || String(e));
@@ -303,6 +355,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
     if (!sopText.trim()) setSopText(sop);
     if (skills.length === 0 && recSkills.size > 0) setSkills(Array.from(recSkills));
     if (tools.length === 0 && recTools.size > 0) setTools(Array.from(recTools));
+    setConfigEdited(true);
 
     // post-generate lint (best-effort)
     const warns: string[] = [];
@@ -325,6 +378,10 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
   };
 
   const handleTypeChange = (type: string) => {
+    if (configEdited) {
+      const ok = window.confirm('切换 Agent 类型将重置配置（包括 AI 填充内容）。确定继续？');
+      if (!ok) return;
+    }
     setSelectedType(type);
     const template = AGENT_TYPE_TEMPLATES[type];
     if (template) {
@@ -332,6 +389,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
       if (selectedModel) next.model = selectedModel;
       setConfigText(JSON.stringify(next, null, 2));
     }
+    setConfigEdited(false);
   };
 
   const handleSubmit = async () => {
@@ -363,7 +421,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
         }
       }
 
-      const metadata: Record<string, unknown> = {};
+      const metadata: Record<string, unknown> = { ...importMeta };
       if (description.trim()) metadata.description = description.trim();
       if (knowledgeBases.length > 0) metadata.knowledge_bases = knowledgeBases;
 
@@ -414,18 +472,72 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
         </>
       }
     >
+      {/* ── Source / Import ── */}
+      <div className="flex items-center gap-4 mb-3">
+        <span className="text-sm text-gray-400">来源:</span>
+        <label className="flex items-center gap-1 text-sm cursor-pointer">
+          <input type="radio" name="sourceMode" checked={sourceMode === 'manual'} onChange={() => setSourceMode('manual')} />
+          <span className="text-gray-300">手动创建</span>
+        </label>
+        <label className="flex items-center gap-1 text-sm cursor-pointer">
+          <input type="radio" name="sourceMode" checked={sourceMode === 'url'} onChange={() => setSourceMode('url')} />
+          <span className="text-gray-300">从 GitHub 导入</span>
+        </label>
+        <label className="flex items-center gap-1 text-sm cursor-pointer">
+          <input type="radio" name="sourceMode" checked={sourceMode === 'file'} onChange={() => setSourceMode('file')} />
+          <span className="text-gray-300">从本地导入</span>
+        </label>
+      </div>
+
+      {(sourceMode === 'url' || sourceMode === 'file') && (
+        <div className="p-4 rounded-lg border border-blue-500/30 bg-blue-500/5 mb-3">
+          <div className="flex gap-2 items-end">
+            <div className="flex-1">
+              {sourceMode === 'url' ? (
+                <Input label="GitHub URL" value={importUrl} onChange={(e: any) => setImportUrl(e.target.value)}
+                  placeholder="https://github.com/user/agent-repo" />
+              ) : (
+                <div>
+                  <div className="text-xs font-medium text-gray-300 mb-1">本地 Zip 文件</div>
+                  <div className="flex gap-2 items-center">
+                    <Button variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()} disabled={importDetecting}>
+                      选择文件
+                    </Button>
+                    <input ref={fileInputRef} type="file" accept=".zip" style={{ display: 'none' }}
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) { setImportFile(f); setImportUrl(''); } }} />
+                    <span className="text-xs text-gray-400">{importFile ? importFile.name : '未选择文件'}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+            <Button variant="primary" size="sm" onClick={handleImportDetect} loading={importDetecting}
+              disabled={(sourceMode === 'url' && !importUrl.trim()) || (sourceMode === 'file' && !importFile)}>
+              AI 检测
+            </Button>
+          </div>
+
+          {importResult && !importResult.error && (
+            <div className="mt-3 p-3 rounded-lg border border-green-500/30 bg-green-500/5">
+              <div className="text-sm font-medium text-green-300 mb-2">AI 推荐配置（基于 AGENT.md 分析）</div>
+              <div className="grid grid-cols-2 gap-2 text-xs text-gray-300">
+                <div><span className="text-gray-500">类型:</span> {importResult.agent_type || '-'}</div>
+                <div><span className="text-gray-500">技能:</span> {(importResult.skills || []).join(', ') || '-'}</div>
+                <div><span className="text-gray-500">工具:</span> {(importResult.tools || []).join(', ') || '-'}</div>
+                <div><span className="text-gray-500">MCP:</span> {(importResult.mcp_ids || []).join(', ') || '-'}</div>
+              </div>
+              {importResult.reasoning && (
+                <div className="text-xs text-gray-400 mt-2 italic">"{(importResult.reasoning as string).slice(0, 200)}"</div>
+              )}
+              <div className="text-xs text-gray-500 mt-2">以上配置已自动填入表单</div>
+            </div>
+          )}
+          {importResult?.error && (
+            <div className="mt-2 text-xs text-red-400">{importResult.error}</div>
+          )}
+        </div>
+      )}
+
       <div className="space-y-4">
-        {appTemplates.length > 0 && (
-          <Select
-            label="模板"
-            value={selectedAppTemplateId}
-            onChange={(v) => setSelectedAppTemplateId(v)}
-            options={[
-              { value: '', label: '不使用模板' },
-              ...appTemplates.map((t: any) => ({ value: t.id, label: `${t.name} (${t.category || '通用'})` })),
-            ]}
-          />
-        )}
         <Input label="名称" value={name} onChange={(e: any) => setName(e.target.value)} placeholder="例如：数据分析助手" />
         <div className="flex items-center gap-2">
           <div className="flex-1">
@@ -433,15 +545,17 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
             <Textarea value={description} onChange={(e: any) => setDescription(e.target.value)} placeholder="描述这个 Agent 的任务目标和能力边界，AI 将根据描述自动推荐技能、工具和配置" />
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" onClick={handleAutoFill} loading={autoFillLoading}>
-            ✨ AI 智能填充
-          </Button>
-          <Button variant="secondary" size="sm" onClick={() => setWizOpen(true)} disabled={loading}>
-            向导
-          </Button>
-          <span className="text-xs text-gray-500">根据名称和功能描述自动推荐 Skills / Tools / MCP / 配置 / SOP</span>
-        </div>
+          {sourceMode === 'manual' && (
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="sm" onClick={handleAutoFill} loading={autoFillLoading}>
+              ✨ AI 智能填充
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => setWizOpen(true)} disabled={loading}>
+              向导
+            </Button>
+            <span className="text-xs text-gray-500">根据名称和功能描述自动推荐 Agent 类型、模型、Skills / Tools / MCP / 子 Agent / Workflow / 配置 / SOP / 记忆配置</span>
+          </div>
+          )}
 
         <label className="flex items-center gap-2 text-sm text-gray-400">
           <input type="checkbox" checked={autoSmoke} onChange={(e) => setAutoSmoke(e.target.checked)} />
@@ -461,6 +575,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
               } catch {
                 setConfigText(JSON.stringify({ model: v, temperature: 0.3 }, null, 2));
               }
+              setConfigEdited(true);
             }}
             options={modelOptions}
           />
@@ -496,7 +611,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
           </Alert>
         )}
 
-        <Textarea label="配置（JSON）" value={configText} onChange={(e: any) => setConfigText(e.target.value)} rows={10} />
+        <Textarea label="配置（JSON）" value={configText} onChange={(e: any) => { setConfigText(e.target.value); setConfigEdited(true); }} rows={10} />
         <div className="flex gap-2">
           <Button variant="ghost" size="sm" onClick={() => {
             try {

@@ -213,8 +213,8 @@ def _cross_encode_rerank(
         pass
     try:
         from sentence_transformers import CrossEncoder
-        import os as _os
-        model_name = _os.getenv("AIPLAT_RERANK_MODEL", "jinaai/jina-reranker-v2-base-multilingual")  # noqa: env-legacy
+        from core.harness.infrastructure.base_model_adapter import resolve_model_name
+        model_name = resolve_model_name("reranker")
         global _ce_model, _ce_model_name
         if "_ce_model" not in dir():
             globals()["_ce_model"] = None

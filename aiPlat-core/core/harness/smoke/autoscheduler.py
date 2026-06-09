@@ -59,7 +59,12 @@ async def _dedup_seconds(execution_store: Any) -> int:
 
 
 def _default_agent_model() -> str:
-    return (os.getenv("AIPLAT_AUTOSMOKE_AGENT_MODEL") or os.getenv("AIPLAT_AGENT_MODEL") or "deepseek-reasoner").strip()
+    try:
+        from core.harness.utils.model_injection import best_model_for_agent_type
+        return best_model_for_agent_type("react")
+    except Exception:
+        from core.harness.utils.model_injection import best_model_for_purpose
+        return best_model_for_purpose("chat")
 
 async def _autosmoke_webhook_delivery(execution_store: Any) -> Dict[str, Any]:
     """

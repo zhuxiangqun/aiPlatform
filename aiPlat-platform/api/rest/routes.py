@@ -794,9 +794,11 @@ async def kb_reindex(request: Request):
             if not text.strip():
                 continue
             vec = await embed_text(text[:4000])
+            from core.api.facades.kb_facade import get_embedding_model_name
+            emb_model = get_embedding_model_name()
             conn.execute(
                 "UPDATE kb_embeddings SET vector_json=?, model=?, dim=? WHERE tenant_id=? AND element_id=?",
-                (_j.dumps(vec), os.getenv("AIPLAT_EMBEDDING_MODEL", "jinaai/jina-embeddings-v2-base-zh"),
+                (_j.dumps(vec), emb_model,
                  len(vec), identity.tenant_id, r["element_id"]),
             )
             conn.commit()
@@ -2614,11 +2616,12 @@ async def kb_create_with_ai(request: Request):
     try:
         from core.api.facades.service_facade import llm_generate
         from core.harness.utils.prompt_loader import _async_prompt_resolve
+        from core.harness.utils.model_injection import best_model_for_purpose
         sp = await _async_prompt_resolve("kb-doc-writer", title=title, prompt=prompt)
         resp = await llm_generate(None, [
             {"role": "user", "content": sp},
             {"role": "user", "content": f"标题：{title}\n要求：{prompt}\n\n请生成完整文档内容："},
-        ], model_name="deepseek-chat", temperature=0.7, max_tokens=4000)
+        ], model_name=best_model_for_purpose("chat"), temperature=0.7, max_tokens=4000)
         content = getattr(resp, "content", "") or str(resp)
         # Save as document
         import time as _t, os as _os, sqlite3 as _sql

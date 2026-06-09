@@ -16,6 +16,7 @@ const Variables: React.FC = () => {
   const [variables, setVariables] = useState<VariableDef[]>([]);
   const [editing, setEditing] = useState<VariableDef | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   const fetchVariables = () => {
     variablesApi.list().then((r: any) => setVariables(r?.variables || [])).catch(() => setVariables([]));
@@ -40,8 +41,11 @@ const Variables: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
+    if (deleting) return;
     if (!confirm('确定删除？')) return;
+    setDeleting(id);
     try { await variablesApi.delete(id); toast.success('已删除'); fetchVariables(); } catch (e: any) { toast.error('删除失败'); }
+    finally { setDeleting(null); }
   };
 
   const scopeIcon = (scope: string) => scope === 'global' ? <Globe className="w-3.5 h-3.5" /> : <Workflow className="w-3.5 h-3.5" />;
@@ -84,7 +88,7 @@ const Variables: React.FC = () => {
                 <code className="hidden md:block text-[10px] bg-dark-bg px-1.5 py-0.5 rounded text-gray-400">{`{{${v.name}}}`}</code>
                 <div className="flex items-center gap-1 justify-end">
                   <button onClick={() => { setEditing(v); setEditOpen(true); }} className="p-1 rounded hover:bg-dark-hover"><Pencil className="w-3.5 h-3.5 text-gray-400" /></button>
-                  <button onClick={() => handleDelete(v.id)} className="p-1 rounded hover:bg-red-900/20"><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
+                  <button onClick={() => handleDelete(v.id)} disabled={!!deleting} className="p-1 rounded hover:bg-red-900/20 disabled:opacity-40"><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
                 </div>
               </div>
             </motion.div>

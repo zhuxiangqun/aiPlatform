@@ -379,12 +379,9 @@ async def describe_images(image_paths: List[str],
     import base64
 
     try:
-        from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
+        from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose, get_default_model
         if not model_name:
-            model_name = best_model_for_purpose("vision") or best_model_for_purpose("multimodal")
-        if not model_name:
-            model_name = (os.getenv("AIPLAT_VISION_MODEL") or
-                         os.getenv("AIPLAT_LLM_MODEL") or "")
+            model_name = best_model_for_purpose("vision") or best_model_for_purpose("multimodal") or get_default_model(purpose="vision")
         if not model_name:
             return [{"path": p, "description": "", "error": "no vision model configured"}
                     for p in image_paths]

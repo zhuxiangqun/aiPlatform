@@ -3,32 +3,59 @@
 # Override path via AIPLAT_LLM_CONFIG_PATH env var.
 
 purpose_profiles:
-  wiki_curation:
-    prefer: [chat]
-    avoid: [reasoning]
-    prefer_local: true
+  # ── Runtime agent execution ──
   agent:
     prefer: [reasoning, chat]
     avoid: []
+
+  # ── General chat / generation / document ──
   chat:
-    prefer: [chat]
-    avoid: [reasoning]
-  code_gen:
     prefer: [chat]
     avoid: [reasoning]
   document:
     prefer: [chat]
     avoid: [reasoning]
-  eval_code:
-    prefer: [chat, reasoning]
-    avoid: []
+  code_gen:
+    prefer: [chat, code]
+    avoid: [reasoning]
+
+  # ── AI auto-fill (prefer local for speed) ──
   agent_creation:
     prefer: [chat]
     avoid: [reasoning]
+    prefer_local: true
+  skill_creation:
+    prefer: [chat]
+    avoid: [reasoning]
+    prefer_local: true
+  tool_creation:
+    prefer: [chat]
+    avoid: [reasoning]
+    prefer_local: true
+
+  # ── Evaluation / knowledge ──
+  eval_code:
+    prefer: [chat, reasoning]
+    avoid: []
+  wiki_curation:
+    prefer: [chat]
+    avoid: [reasoning]
+    prefer_local: true
   query_translation:
     prefer: [chat]
     avoid: [reasoning]
     prefer_local: true
+
+  # ── Vision / multimodal / fallback ──
+  vision:
+    prefer: [chat, vision]
+    avoid: []
+  multimodal:
+    prefer: [chat]
+    avoid: []
+  default:
+    prefer: [chat]
+    avoid: [reasoning]
 
 # Per-purpose explicit model overrides.
 # Set a model name here to skip auto-selection for that purpose.

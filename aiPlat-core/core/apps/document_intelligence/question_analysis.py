@@ -18,7 +18,7 @@ async def _llm_classify_intent(question: str) -> str:
         )
         resp = await sys_llm_generate(
             None, [{"role": "user", "content": prompt}],
-            model_name=best_model_for_purpose("chat") or "deepseek-chat",  # noqa: model-legacy temperature=0.0, max_tokens=20,
+            model_name=best_model_for_purpose("chat"),  # noqa: model-legacy temperature=0.0, max_tokens=20,
         )
         result = (getattr(resp, "content", "") or str(resp)).strip().lower()
         valid = {"fact_lookup", "summary", "compare", "evidence_trace", "applicability_analysis", "follow_up"}

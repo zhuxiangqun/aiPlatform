@@ -48,7 +48,7 @@ def _models_from_env(api_key_env: str, provider: str, model_type: str,
     if not api_key:
         return []
 
-    seen = set()
+    seen = {}  # dict preserves insertion order (set does not)
     for env_name in model_envs:
         val = os.getenv(env_name, "").strip()
         if not val:
@@ -57,25 +57,34 @@ def _models_from_env(api_key_env: str, provider: str, model_type: str,
             name = name.strip()
             if not name or name in seen:
                 continue
-            seen.add(name)
+            seen[name] = True
     # Also check AIPLAT_LLM_MODEL as fallback
     if not seen:
         for env_name in ["AIPLAT_LLM_MODEL", "AIPLAT_DOC_LLM_MODEL", "AIPLAT_CODE_GEN_MODEL", "AIPLAT_AGENT_MODEL"]:
             val = os.getenv(env_name, "").strip()
             if val and val not in seen:
-                seen.add(val)
+                seen[val] = True
     if not seen:
         return []
 
     models = []
     for name in seen:
         safe_id = f"{provider}:{re.sub(r'[^a-zA-Z0-9_-]', '-', name.lower())}"
+        # Infer capabilities from model name in addition to template capability
+        caps = [capability] if capability else []
+        nl = name.lower()
+        if "reasoner" in nl or "reasoning" in nl:
+            caps.append("reasoning")
+        if "code" in nl or "coder" in nl:
+            caps.append("code")
+        if "vision" in nl or "vl" in nl:
+            caps.append("vision")
         models.append(ModelInfo(
             id=safe_id, name=name, provider=provider,
             type=ModelType(model_type), source=ModelSource.CONFIG,
             display_name=name, enabled=True,
             description=f"Remote model ({provider}) — from env",
-            tags=tags[:], capabilities=[capability],
+            tags=tags[:], capabilities=caps,
             status=ModelStatus.AVAILABLE,
             config=ModelConfig(api_key_env=api_key_env, base_url=base_url),
             stats=ModelStats(), created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc),

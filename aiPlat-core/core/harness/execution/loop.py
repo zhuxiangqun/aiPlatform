@@ -13,6 +13,7 @@ import os
 import time
 import re
 import uuid
+import logging
 
 from ..interfaces.loop import (
     ILoop,
@@ -77,6 +78,31 @@ class BaseLoop(ILoop):
 
                 # Execute step
                 self._current_state = await self.step(self._current_state)
+
+                # Emit step_end so ExecutionViewer can mark step as completed
+                try:
+                    from core.services.execution_store import get_execution_store
+                    store = get_execution_store()
+                    step_num = self._current_state.step_count
+                    agent_id = self._current_state.context.get("_agent_id") or "react"
+                    step_span_id = f"step:{agent_id}:{step_num}"
+                    end_ts = time.time()
+                    await store.add_syscall_event({
+                        "id": f"{self._current_state.context.get('_run_id','?')}:step_end:{step_num}",
+                        "span_id": step_span_id,
+                        "parent_span_id": f"agent:{agent_id}:start",
+                        "kind": "step", "name": f"step_{step_num}", "status": self._current_state.current.value,
+                        "run_id": self._current_state.context.get("_run_id") or "",
+                        "start_time": end_ts,
+                        "duration_ms": 0,
+                        "args": {
+                            "reasoning": str(self._current_state.context.get("reasoning", ""))[:200],
+                            "action_result": str(self._current_state.context.get("action_result", ""))[:200],
+                        },
+                        "step_number": step_num,
+                    })
+                except Exception:
+                    pass
 
                 await self._trigger_hook(
                     HookPhase.POST_CONTRACT_CHECK,
@@ -147,7 +173,6 @@ class BaseLoop(ILoop):
         """Determine if loop should continue"""
         # Hard safety cap: prevent runaway loops regardless of config
         if state.step_count >= 1000:
-            import logging
             logging.getLogger("aiplat.loop").error(
                 "SAFETY STOP: loop exceeded 1000 steps (run_id=%s, agent=%s, steps=%d)",
                 state.context.get("_run_id", "?"),

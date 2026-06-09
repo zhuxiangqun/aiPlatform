@@ -606,14 +606,12 @@ async def list_models():
             groups.setdefault(provider, []).append(e)
         return {"models": entries, "by_provider": groups}
     except Exception:
-        # Fallback: return models from env vars
+        # Fallback: return models from centralized model resolution
+        from core.harness.utils.model_injection import get_default_model
         models = []
-        for env_var, default_name in [
-            ("AIPLAT_LLM_MODEL", "deepseek-chat"),
-            ("AIPLAT_AGENT_MODEL", "deepseek-reasoner"),
-        ]:
-            name = os.getenv(env_var, default_name)
-        models.append({"name": name, "provider": "deepseek"})
+        for purpose in ("chat", "agent"):
+            name = get_default_model(purpose=purpose) or ""
+            models.append({"name": name, "provider": "deepseek"})
         return {"models": models, "by_provider": {"deepseek": models}}
 
 @router.get("/approvals/pending")

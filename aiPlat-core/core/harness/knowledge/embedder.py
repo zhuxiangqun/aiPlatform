@@ -47,21 +47,13 @@ def cosine_similarity(a: List[float], b: List[float]) -> float:
 
 
 # ── Semantic embedding (synchronous, sentence-transformers) ───────────────
-
-_semantic_model: Any = None
-_semantic_model_name: Optional[str] = None
-
+# Model resolution delegated to base_model_adapter.resolve_model_name("embedding")
+# which handles: env var → infra ModelManager → default.
 
 def _get_semantic_model() -> Any:
-    global _semantic_model, _semantic_model_name
-    name = os.getenv("AIPLAT_EMBEDDING_MODEL", "paraphrase-multilingual-MiniLM-L12-v2")  # noqa: env-legacy
-    if _semantic_model is not None and _semantic_model_name == name:
-        return _semantic_model
     try:
         from core.harness.infrastructure.base_model_adapter import create_adapter
-        _semantic_model = create_adapter("embedding", model_name=name)
-        _semantic_model_name = name
-        return _semantic_model
+        return create_adapter("embedding")
     except Exception:
         return None
 
@@ -139,9 +131,13 @@ class SemanticEmbedder:
     
     def __init__(self, *, backend: str = "", model_name: str = ""):
         backend = backend or _backend_name()
-        model_name = model_name or os.getenv(
-            "AIPLAT_EMBEDDING_MODEL", "all-MiniLM-L6-v2"
-        )
+        model_name = model_name or ""
+        if not model_name:
+            try:
+                from core.harness.infrastructure.base_model_adapter import resolve_model_name
+                model_name = resolve_model_name("embedding")
+            except Exception:
+                model_name = "all-MiniLM-L6-v2"
         self._backend = backend if backend != "hash" else "transform"
         self._model_name = model_name
     

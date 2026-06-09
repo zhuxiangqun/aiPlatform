@@ -46,11 +46,11 @@ class SkillExecutor:
     def __init__(
         self,
         registry: Optional[SkillRegistry] = None,
-        default_timeout: float = 60.0,
+        default_timeout: float = None,
         discovery=None
     ):
         self._registry = registry or get_skill_registry()
-        self._default_timeout = default_timeout
+        self._default_timeout = default_timeout or float(os.getenv("AIPLAT_SKILL_DEFAULT_TIMEOUT", "60"))
         self._executions: Dict[str, ExecutionRecord] = {}
         self._discovery = discovery
 
@@ -119,7 +119,19 @@ class SkillExecutor:
             if tool_names:
                 context.tools = list(tool_names)
 
-        effective_timeout = timeout or self._default_timeout
+        # Priority: explicit timeout > skill SKILL.md timeout > env var default
+        effective_timeout = timeout
+        if not effective_timeout:
+            try:
+                cfg = getattr(skill, '_config', None)
+                meta = getattr(cfg, 'metadata', None) if cfg else None
+                skill_timeout = meta.get('timeout') if isinstance(meta, dict) else None
+                if skill_timeout is not None:
+                    effective_timeout = float(skill_timeout)
+            except Exception:
+                pass
+        if not effective_timeout:
+            effective_timeout = self._default_timeout
 
         # Workflow check: if SKILL.md has steps:, execute as multi-step pipeline
         workflow_steps = None
@@ -259,10 +271,8 @@ class SkillExecutor:
             try:
                 config = skill.get_config()
                 prompt = params.get("prompt", params.get("input", ""))
-                if not prompt:
-                    prompt = f"Execute skill '{config.name}': {config.description}"
-                    if params:
-                        prompt += f"\nInput: {params}"
+                if not prompt and params:
+                    prompt = str(params)
 
                 from core.apps.agents.conversational import create_conversational_agent
                 from core.harness.interfaces import AgentConfig, AgentContext
@@ -272,7 +282,7 @@ class SkillExecutor:
                 if model is None:
                     try:
                         from core.harness.utils.model_injection import create_selected_adapter
-                        model = create_selected_adapter(model_name=(params.get("model") or best_model_for_purpose("chat") or "deepseek-chat"))
+                        model = create_selected_adapter(model_name=(params.get("model") or best_model_for_purpose("chat")))
                     except Exception:
                         model = None
 
@@ -295,7 +305,7 @@ class SkillExecutor:
                 except Exception:
                     sop_text = ""
 
-                sop_block = f"技能SOP（必须遵循）：\n{sop_text}\n" if sop_text else ""
+                sop_block = sop_text if sop_text else f"Skill: {skill_name}\n{config.description}"
                 coding_profile = str((params or {}).get("_coding_policy_profile") or "").strip().lower()
                 policy_block = ""
                 if coding_profile == "karpathy_v1":
@@ -309,9 +319,7 @@ class SkillExecutor:
 
                 from core.harness.utils.prompt_loader import _sync_resolve
                 system_prompt = _sync_resolve("skill-executor-fork",
-                    skill_name=str(getattr(config, 'name', skill_name)),
-                    skill_desc=str(getattr(config, 'description', '')),
-                    sop=(sop_block if sop_block else ""),
+                    sop=sop_block,
                 )
                 if policy_block:
                     system_prompt = policy_block + "\n" + system_prompt

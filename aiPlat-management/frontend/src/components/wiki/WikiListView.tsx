@@ -20,6 +20,17 @@ interface WikiListViewProps {
 
 const WikiListView: React.FC<WikiListViewProps> = ({ pages, onSelect, onDelete, sourceBadge }) => {
   const [mode, setMode] = useState<'flat' | 'group'>('group');
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  const handleDelete = async (title: string) => {
+    if (deleting) return;
+    setDeleting(title);
+    try {
+      await onDelete(title);
+    } finally {
+      setDeleting(null);
+    }
+  };
 
   return (
     <div className="space-y-2">
@@ -44,8 +55,8 @@ const WikiListView: React.FC<WikiListViewProps> = ({ pages, onSelect, onDelete, 
               <span className={`text-[10px] px-1.5 py-0.5 rounded ${sourceBadge(p.category)}`}>{p.category}</span>
               {p.related?.length > 0 && <span className="text-[10px] text-blue-500">↗ {p.related.length} 关联</span>}
               <div className="flex-1" />
-              <button onClick={(e) => { e.stopPropagation(); onDelete(p.title); }}
-                className="text-gray-600 hover:text-red-400 transition-colors" title="删除">
+              <button onClick={(e) => { e.stopPropagation(); handleDelete(p.title); }} disabled={!!deleting}
+                className="text-gray-600 hover:text-red-400 transition-colors disabled:opacity-40" title="删除">
                 <Trash2 className="w-3 h-3" />
               </button>
             </div>

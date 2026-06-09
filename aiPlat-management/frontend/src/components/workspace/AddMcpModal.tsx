@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
 import { workspaceMcpApi } from '../../services';
 import type { McpServer } from '../../services';
@@ -89,16 +89,6 @@ const AddMcpModal: React.FC<AddMcpModalProps> = ({ open, onClose, onSuccess, onC
   const [checkedTools, setCheckedTools] = useState<Set<string>>(new Set());
 
   const isLocalTools = template === 'local_tools';
-
-  // Auto-apply template when dropdown changes (no need to click "应用模板")
-  const prevTemplate = useRef<string | null>(null);
-  useEffect(() => {
-    if (prevTemplate.current !== null && template !== prevTemplate.current) {
-      applyMcpTemplate();
-    }
-    prevTemplate.current = template;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [template]);
 
   const hint = useMemo(() => {
     if (isLocalTools) return 'STDIO 模式 — 自动连接 ~/.aiplat/tools/ 下的 Python 工具。';
@@ -486,6 +476,9 @@ const AddMcpModal: React.FC<AddMcpModalProps> = ({ open, onClose, onSuccess, onC
             <div className="flex-1">
               <Select label="模板" value={template} onChange={(v) => setTemplate(v)} options={MCP_TEMPLATES} />
             </div>
+            <Button variant="secondary" onClick={() => applyMcpTemplate()} disabled={loading}>
+              应用模板
+            </Button>
             <Button variant="secondary" onClick={() => { handleDiscover(); }} disabled={loading}>
               发现工具
             </Button>
@@ -500,6 +493,7 @@ const AddMcpModal: React.FC<AddMcpModalProps> = ({ open, onClose, onSuccess, onC
               disabled={!name.trim() || aiLoading}>
               ✨ AI 智能填充
             </Button>
+            <span className="text-xs text-gray-500">根据名称和功能描述自动推荐 transport / url / command / Args / allowed_tools / 鉴权配置</span>
           </div>
 
           {!isLocalTools && (

@@ -190,7 +190,7 @@ class PipelineEngine:
     _PLAN_UPGRADE_TYPES = frozenset({"plan", "plan_execute", "reflection"})
 
     def _load_eval_model(self) -> Any:
-        eval_model_name = best_model_for_purpose("eval_code") or best_model_for_purpose("chat") or "deepseek-chat"
+        eval_model_name = best_model_for_purpose("eval_code") or best_model_for_purpose("chat")
         if eval_model_name:
             return self._load_default_model(model_name=eval_model_name, category="eval")
         return self._model
@@ -206,7 +206,7 @@ class PipelineEngine:
             return False
         action = fclass.get("constraint_action", "")
         if action == "switch_fallback_model":
-            fb_model = best_model_for_purpose("chat") or "deepseek-chat"
+            fb_model = best_model_for_purpose("chat")
             try:
                 self._stage_runner._model = PipelineEngine._load_default_model(fb_model)
                 state["_last_action_reason"] = f"constraint_switch_model:{fb_model}"
@@ -237,9 +237,9 @@ class PipelineEngine:
         from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
         if not model_name:
             if category == "agent":
-                model_name = best_model_for_purpose("agent") or "deepseek-reasoner"
+                model_name = best_model_for_purpose("agent")
             else:
-                model_name = best_model_for_purpose("chat") or "deepseek-chat"
+                model_name = best_model_for_purpose("chat")
         return create_selected_adapter(model_name=model_name)
 
     async def _run_stage_core(
@@ -314,7 +314,7 @@ class PipelineEngine:
                 jinja_ctx.update({k: v for k, v in state.items() if not k.startswith('_')})
                 llm_prompt = self._render_jinja2(canvas_prompt, jinja_ctx)
             state[f"_stage_input_{stage.id}"] = llm_prompt[:5000]
-            llm_model_name = node_cfg.get('model') or (best_model_for_purpose("chat") or "deepseek-chat")
+            llm_model_name = node_cfg.get('model') or (best_model_for_purpose("chat"))
             llm_memory_window = int(node_cfg.get('memory_window', 0))
             if llm_memory_window > 0 and isinstance(llm_prompt, str) and len(llm_prompt) > llm_memory_window:
                 llm_prompt = llm_prompt[-llm_memory_window:]
@@ -523,7 +523,7 @@ Passages:
 Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                         from core.harness.syscalls.llm import sys_llm_generate
                         rerank_resp = await sys_llm_generate(
-                            best_model_for_purpose("chat") or "deepseek-chat",
+                            best_model_for_purpose("chat"),
                             [{"role": "user", "content": rerank_prompt}],
                             trace_context={"source": f"workflow_knowledge_rerank_{stage.id}"}
                         )
@@ -1676,8 +1676,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                 is_short = len(str(state.get("description", ""))) < 200
                 is_first_run = state.get("iteration", 0) <= 2
                 if not has_errors and is_short and is_first_run:
-                    import os
-                    simple_model = os.getenv("AIPLAT_SIMPLE_TASK_MODEL") or best_model_for_purpose("chat") or "deepseek-chat"
+                    simple_model = best_model_for_purpose("chat")
                     stage_model = PipelineEngine._load_default_model(simple_model)
                     self._stage_runner._model = stage_model
                     state.setdefault("_model_log", []).append({

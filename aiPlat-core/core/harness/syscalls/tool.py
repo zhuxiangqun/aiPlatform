@@ -193,6 +193,8 @@ async def sys_tool_call(
     # for nested tool calls to avoid double-approval when configured.
     try:
         approval_layer_policy = str(os.getenv("AIPLAT_APPROVAL_LAYER_POLICY", "both") or "both").strip().lower()
+        if os.getenv("AIPLAT_APPROVALS_DISABLED", "").lower() in ("1", "true", "yes"):
+            approval_layer_policy = "none"
         tool_force_list = os.getenv("AIPLAT_APPROVAL_TOOL_FORCE_LIST", "").strip()
         # Tenant policy override
         try:

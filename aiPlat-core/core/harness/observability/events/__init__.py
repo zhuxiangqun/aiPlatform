@@ -27,6 +27,8 @@ class EventType(Enum):
     COORDINATION_COMPLETED = "coordination_completed"
     SKILL_INVOKED = "skill_invoked"
     SKILL_COMPLETED = "skill_completed"
+    # Resource lifecycle events
+    RESOURCE_MUTATED = "resource_mutated"
 
 
 class EventPriority(Enum):

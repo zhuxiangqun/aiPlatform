@@ -132,10 +132,12 @@ class HealthChecker:
     async def _check_openai_connectivity(self, model: ModelInfo) -> Dict[str, Any]:
         """检查 OpenAI 兼容提供商连通性（服务器可达即可，不要求 /v1/models 端点存在）"""
         base_url = model.config.base_url or "https://api.openai.com"
+        base = base_url.rstrip('/')
+        url = f"{base}/models" if base.endswith('/v1') else f"{base}/v1/models"
 
         async with aiohttp.ClientSession() as session:
             async with session.get(
-                f"{base_url}/v1/models",
+                url,
                 headers=self._get_auth_headers(model),
                 timeout=aiohttp.ClientTimeout(total=10)
             ) as resp:
@@ -155,11 +157,13 @@ class HealthChecker:
             return {"success": False, "error": "API key not configured"}
         
         base_url = model.config.base_url or "https://api.openai.com"
+        base = base_url.rstrip('/')
+        url = f"{base}/chat/completions" if base.endswith('/v1') else f"{base}/v1/chat/completions"
         start_time = time.time()
         
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                f"{base_url}/v1/chat/completions",
+                url,
                 headers={
                     "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json"
@@ -248,10 +252,12 @@ class HealthChecker:
         
         api_key = os.environ.get(model.config.api_key_env or "DEEPSEEK_API_KEY", "")
         base_url = model.config.base_url or "https://api.deepseek.com"
+        base = base_url.rstrip('/')
+        url = f"{base}/models" if base.endswith('/v1') else f"{base}/v1/models"
         
         async with aiohttp.ClientSession() as session:
             async with session.get(
-                f"{base_url}/v1/models",
+                url,
                 headers={"Authorization": f"Bearer {api_key}"} if api_key else {},
                 timeout=aiohttp.ClientTimeout(total=10)
             ) as resp:
@@ -269,11 +275,13 @@ class HealthChecker:
             return {"success": False, "error": "API key not configured"}
         
         base_url = model.config.base_url or "https://api.deepseek.com"
+        base = base_url.rstrip('/')
+        url = f"{base}/chat/completions" if base.endswith('/v1') else f"{base}/v1/chat/completions"
         start_time = time.time()
         
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                f"{base_url}/v1/chat/completions",
+                url,
                 headers={
                     "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json"

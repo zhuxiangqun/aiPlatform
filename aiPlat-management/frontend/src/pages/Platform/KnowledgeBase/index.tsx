@@ -161,6 +161,7 @@ const KnowledgeBasePage: React.FC = () => {
     } catch (e: any) { toast.error(`添加失败：${e?.message || e}`); }
   };
   const deleteEvalSample = async (id: string) => {
+    if (!window.confirm('确定删除此评估样本？')) return;
     try { await kbApi.deleteEvalSample(id); await refreshEvalSamples(); } catch {}
   };
   const runEval = async () => {

@@ -29,6 +29,7 @@ const TeamAssemblyPage: React.FC = () => {
   const [teamName, setTeamName] = useState('');
   const [saving, setSaving] = useState(false);
   const [savedTeams, setSavedTeams] = useState<TeamConfig[]>([]);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<{ role: string; content: string }[]>([]);
@@ -92,11 +93,15 @@ const TeamAssemblyPage: React.FC = () => {
   }, [getTemplates]);
 
   const deleteTemplate = useCallback((name: string) => {
-    const all = getTemplates().filter(t => t.name !== name);
-    localStorage.setItem('aiplat_pipeline_templates', JSON.stringify(all));
-    toast.success(`已删除模板 "${name}"`);
-    setShowTemplates(false);
-  }, [getTemplates]);
+    if (deleting) return;
+    setDeleting(name);
+    try {
+      const all = getTemplates().filter(t => t.name !== name);
+      localStorage.setItem('aiplat_pipeline_templates', JSON.stringify(all));
+      toast.success(`已删除模板 "${name}"`);
+      setShowTemplates(false);
+    } finally { setDeleting(null); }
+  }, [getTemplates, deleting]);
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
   const [viewingTeam, setViewingTeam] = useState<TeamConfig | null>(null);
   const [showBuilder, setShowBuilder] = useState(false);
@@ -459,8 +464,8 @@ const TeamAssemblyPage: React.FC = () => {
                               <span style={{ flex: 1 }} onClick={() => loadTemplate(t.name)}>
                                 📋 {t.name} <span style={{ color: '#6b7280', fontSize: 10 }}>({t.stages.length} 阶段)</span>
                               </span>
-                              <button onClick={() => deleteTemplate(t.name)} style={{
-                                background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 14, padding: '0 4px',
+                              <button onClick={() => deleteTemplate(t.name)} disabled={!!deleting} style={{
+                                background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 14, padding: '0 4px', opacity: deleting ? 0.4 : 1,
                               }} title="删除模板">✕</button>
                             </div>
                           ))

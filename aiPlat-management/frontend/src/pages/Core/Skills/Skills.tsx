@@ -18,6 +18,7 @@ const Skills: React.FC = () => {
   const [editSkill, setEditSkill] = useState<Skill | null>(null);
   const [executeSkill, setExecuteSkill] = useState<Skill | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; skill: Skill | null; hard: boolean }>({ open: false, skill: null, hard: false });
+  const [deleting, setDeleting] = useState(false);
   const [detailSkillId, setDetailSkillId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -26,13 +27,16 @@ const Skills: React.FC = () => {
 
 
   const handleDelete = async () => {
-    if (!deleteConfirm.skill) return;
+    if (!deleteConfirm.skill || deleting) return;
+    setDeleting(true);
     try {
       await deleteSkill(deleteConfirm.skill.id, { delete_files: deleteConfirm.hard });
       toast.success(deleteConfirm.hard ? 'Skill已彻底删除' : 'Skill已弃用（deprecated）');
       setDeleteConfirm({ open: false, skill: null, hard: false });
-    } catch {
-      toast.error('删除失败');
+    } catch (e: any) {
+      toast.error('删除失败', e?.message || '');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -248,10 +252,10 @@ const Skills: React.FC = () => {
         title={deleteConfirm.hard ? '确认彻底删除' : '确认弃用'}
         footer={
           <>
-            <Button onClick={() => setDeleteConfirm({ open: false, skill: null, hard: false })}>
+            <Button onClick={() => setDeleteConfirm({ open: false, skill: null, hard: false })} disabled={deleting}>
               取消
             </Button>
-            <Button variant={deleteConfirm.hard ? 'danger' : 'secondary'} onClick={handleDelete}>
+            <Button variant={deleteConfirm.hard ? 'danger' : 'secondary'} onClick={handleDelete} loading={deleting}>
               {deleteConfirm.hard ? '彻底删除' : '弃用'}
             </Button>
           </>

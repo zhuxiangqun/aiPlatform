@@ -141,6 +141,15 @@ export const workspaceAgentApi = {
     }>('/core/workspace/agents/auto-fill', data);
   },
 
+  importDetect: async (data: { url?: string; file_content?: string }) => {
+    return apiClient.post<{
+      detected_name: string; detected_description: string; agent_type: string;
+      skills: string[]; tools: string[]; mcp_ids: string[];
+      sop_body: string; display_name: string; config: Record<string, unknown>;
+      reasoning: string; error?: string;
+    }>('/core/workspace/agents/import-detect', data);
+  },
+
   autoFillWithRole: async (data: { name: string; description: string; role_definition: Record<string, unknown> }) => {
     return apiClient.post<{
       agent_type: string; config: Record<string, unknown>;
@@ -1149,6 +1158,15 @@ export const workspaceSkillApi = {
 
   autoFill: async (data: { name: string; description: string }) => {
     return apiClient.post<{ name: string; display_name: string; description: string; category: string; version: string; skill_kind: string; permissions: string[]; trigger_conditions: string[]; input_schema: any; output_schema: any; sop: string; error?: string }>('/core/workspace/skills/auto-fill', data);
+  },
+
+  importDetect: async (data: { url?: string; file_content?: string; sop_body?: string; name?: string; description?: string }) => {
+    return apiClient.post<{
+      tools?: string[]; execution_type?: string; timeout?: number;
+      category?: string; capabilities?: string[]; trigger_keywords?: string[];
+      reasoning?: string; detected_name?: string; detected_description?: string;
+      error?: string;
+    }>('/core/workspace/skills/import-detect', data);
   },
 };
 

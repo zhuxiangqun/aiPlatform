@@ -660,7 +660,7 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
             pass
 
     _publish("diagnostics_started", categories=[
-        "core_runtime","code_intel","capability","skill_lint",
+        "core_runtime","code_intel","capability","skill_lint","skill_realness",
         "wiki_health","compliance","overview_issues","traces",
         "graph_runs","context_metrics","e2e_smoke","symbol_health",
         "doctor","lsp","security","arch_guard",
@@ -750,6 +750,54 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
             _LINT_CACHE = result
             _LINT_CACHE_TS = time.time()
             return result
+        except Exception:
+            return {"status": "unavailable", "score": 0}
+
+    async def _check_skill_realness():
+        """Check workspace skills for execution_type declarations and handler existence."""
+        try:
+            from pathlib import Path as _P
+            aiplat_home = os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
+            skills_dir = _P(aiplat_home) / "skills"
+            issues = []
+            if not skills_dir.exists():
+                return {"status": "pass", "score": 100, "items": [], "details": {"total": 0}}
+            
+            for skill_dir in sorted(skills_dir.iterdir()):
+                if not skill_dir.is_dir() or skill_dir.name.startswith("."):
+                    continue
+                md = skill_dir / "SKILL.md"
+                if not md.exists():
+                    continue
+                try:
+                    raw = md.read_text(encoding="utf-8", errors="ignore")
+                    if not raw.startswith("---"):
+                        continue
+                    parts = raw.split("---", 2)
+                    if len(parts) < 3:
+                        continue
+                    import yaml as _yaml
+                    fm = _yaml.safe_load(parts[1]) or {}
+                    name = fm.get("name", skill_dir.name)
+                    exec_type = fm.get("execution_type", "")
+                    handler_exists = (skill_dir / "handler.py").exists()
+                    
+                    if not exec_type:
+                        issues.append(f"'{name}': 缺少 execution_type 声明（默认 prompt=LLM模拟）")
+                    elif exec_type == "handler" and not handler_exists:
+                        issues.append(f"'{name}': execution_type=handler 但 handler.py 不存在")
+                    elif exec_type == "prompt" and handler_exists:
+                        issues.append(f"'{name}': 有 handler.py 但 execution_type 声明为 prompt（误配？）")
+                except Exception:
+                    pass
+            
+            total = len(list(skills_dir.iterdir())) if skills_dir.exists() else 0
+            return {
+                "status": "warning" if issues else "pass",
+                "score": max(0, 100 - len(issues) * 5),
+                "details": {"total": total, "issues_count": len(issues)},
+                "items": [{"check": i, "result": "⚠️", "detail": i} for i in issues[:20]],
+            }
         except Exception:
             return {"status": "unavailable", "score": 0}
 
@@ -1772,6 +1820,7 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
         ("fragile_base", _check_fragile_base()),
         ("capability", _check_capability()),
         ("skill_lint", _check_skill_lint()),
+        ("skill_realness", _check_skill_realness()),
         ("wiki_health", _check_wiki_health()),
         ("compliance", _check_compliance()),
         ("overview_issues", _check_overview_issues()),
@@ -2344,9 +2393,9 @@ async def list_playground_models():
         models = _list_models_from_infra()
         if not models:
             # Fallback: env-based models
-            import os
+            from core.harness.utils.model_injection import best_model_for_purpose
             models = []
-            default = os.getenv("AIPLAT_LLM_MODEL", "") or os.getenv("AIPLAT_DEFAULT_PROVIDER_MODEL", "")
+            default = best_model_for_purpose("chat")
             if default:
                 models.append({"name": default, "provider": "env", "status": "available"})
         return {"models": models}
@@ -2445,7 +2494,8 @@ async def playground_chat(data: dict = None):
                 lines.append(f"  {i+1}. {name}" + (f" ({phase})" if phase else ""))
             stage_ctx = "流水线阶段:\n" + "\n".join(lines)
 
-        system = "你是一个流水线测试助手。以下是当前配置的流水线，请根据用户消息给出有帮助的回复。"
+        from core.harness.utils.prompt_loader import _async_prompt_resolve
+        system = await _async_prompt_resolve("pipeline-test-assistant", stage_ctx="")
         if stage_ctx:
             system += f"\n\n{stage_ctx}"
 

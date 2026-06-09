@@ -63,6 +63,7 @@ const WorkspaceTools: React.FC = () => {
   const [batchResult, setBatchResult] = useState<{ total: number; signed: number; failed: number } | null>(null);
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; tool: ToolInfo | null }>({ open: false, tool: null });
+  const [deleting, setDeleting] = useState(false);
 
   const [seedsModalOpen, setSeedsModalOpen] = useState(false);
   const [seeds, setSeeds] = useState<any[]>([]);
@@ -74,12 +75,14 @@ const WorkspaceTools: React.FC = () => {
   // --- Handlers ---
 
   const handleDelete = async () => {
-    if (!deleteConfirm.tool?.name) return;
+    if (!deleteConfirm.tool?.name || deleting) return;
     try {
+      setDeleting(true);
       await deleteTool(deleteConfirm.tool.name);
       toast.success('已删除');
       setDeleteConfirm({ open: false, tool: null });
     } catch (e: any) { toast.error('删除失败', e?.detail || String(e)); }
+    finally { setDeleting(false); }
   };
 
   const handleSign = async () => {
@@ -488,8 +491,8 @@ TOOL_DEF = {
         title="确认删除" width={440}
         footer={
           <div className="flex gap-2 justify-end">
-            <Button variant="secondary" onClick={() => setDeleteConfirm({ open: false, tool: null })}>取消</Button>
-            <Button variant="danger" onClick={handleDelete}>确认删除</Button>
+            <Button variant="secondary" disabled={deleting} onClick={() => setDeleteConfirm({ open: false, tool: null })}>取消</Button>
+            <Button variant="danger" loading={deleting} onClick={handleDelete}>确认删除</Button>
           </div>
         }>
         <p className="text-gray-400 text-sm">确定要删除 Tool "{deleteConfirm.tool?.name}" 吗？将删除对应的 .py 文件，不可撤销。</p>

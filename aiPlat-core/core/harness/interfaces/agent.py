@@ -26,7 +26,7 @@ class AgentStatus(Enum):
 class AgentConfig:
     """Agent configuration"""
     name: str
-    model: str = "deepseek-chat"
+    model: str = "deepseek-chat"  # noqa: interface-default — AgentConfig base default
     temperature: float = 0.7
     max_tokens: int = 4096
     timeout: int = 30

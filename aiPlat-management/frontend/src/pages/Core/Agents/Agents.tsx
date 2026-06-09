@@ -20,6 +20,7 @@ const Agents: React.FC = () => {
   const [testAllResults, setTestAllResults] = useState<{ agentId: string; status: string; ok: boolean }[]>([]);
   const [testAllOpen, setTestAllOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; agent: Agent | null }>({ open: false, agent: null });
+  const [deleting, setDeleting] = useState(false);
 
   React.useEffect(() => {
     fetchAgents();
@@ -67,14 +68,16 @@ const Agents: React.FC = () => {
   };
 
   const handleDelete = async () => {
-    if (!deleteConfirm.agent) return;
+    if (!deleteConfirm.agent || deleting) return;
     try {
+      setDeleting(true);
       await deleteAgent(deleteConfirm.agent.id);
       toast.success('Agent已删除');
       setDeleteConfirm({ open: false, agent: null });
     } catch {
       toast.error('删除失败');
     }
+    finally { setDeleting(false); }
   };
 
   const columns = [
@@ -275,10 +278,10 @@ const Agents: React.FC = () => {
         title="确认删除"
         footer={
           <>
-            <Button onClick={() => setDeleteConfirm({ open: false, agent: null })}>
+            <Button disabled={deleting} onClick={() => setDeleteConfirm({ open: false, agent: null })}>
               取消
             </Button>
-            <Button variant="danger" onClick={handleDelete}>
+            <Button variant="danger" loading={deleting} onClick={handleDelete}>
               确认删除
             </Button>
           </>

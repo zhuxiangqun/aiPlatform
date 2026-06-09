@@ -926,6 +926,41 @@ aiPlat-core/core/apps/mcp/  ← Layer 1：唯一 MCP 实现
 
 边界定义在 `_check_arch_boundary()` 函数中，层保护规则在 `_LAYER_PROTECTION` 字典中。
 
+### 5.35 提示词模板管理（强制——防硬编码）
+
+所有 LLM 调用的 system prompt 和 user prompt（超过 1 行的业务逻辑类提示词）必须通过 `prompt_loader` 统一管理，禁止在 router / management / service 代码中硬编码多行提示词字符串。
+
+#### 注册模板
+
+在 `core/harness/utils/prompt_loader.py` 中使用 `_register()` 注册新模板：
+
+```python
+_register("my-template-id", """提示词正文，使用 ${variable} 占位符。""",
+    category="skills",
+    variables=["variable"])
+```
+
+#### 加载模板
+
+| 场景 | 方法 | 说明 |
+|------|------|------|
+| 异步（router/service） | `await _async_prompt_resolve("id", var="value")` | 先查 DB，后回退到默认 |
+| 同步（engine/harness） | `_sync_resolve("id", var="value")` | 缓存优先，无 DB 依赖 |
+
+#### 强制规则
+
+| ❌ 禁止 | ✅ 应做 |
+|--------|--------|
+| `system_prompt = "你是一个..."` 多行字符串硬编码 | `_register("skill-import-detect", """...""")` 注册为模板 |
+| f-string 拼接提示词主体 | 模板用 `${var}` 占位符，调用时传参 |
+| 同一提示词在多个位置重复定义 | 统一为一个模板 ID，多处引用 |
+
+#### 例外（不需要模板化）
+
+- 纯数据/JSON 字符串拼接（如 `f"技能名称: {name}"`）
+- 单行简短系统角色已注册为模板的继续用模板
+- 日志/错误消息字符串不在此范围
+
 ---
 
 ## 6) 输出要求（每次提交给用户的结果必须包含）

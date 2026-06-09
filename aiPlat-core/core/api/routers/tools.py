@@ -278,10 +278,11 @@ async def tool_auto_fill(request: dict):
             description=description,
         )
         from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
+        from core.harness.utils.prompt_loader import _async_prompt_resolve
         model_name = best_model_for_purpose("tool_creation")
         model = create_selected_adapter(model_name=model_name)
         messages = [
-            {"role": "system", "content": "你是 Python 工具开发者。只输出代码，不要任何解释。"},
+            {"role": "system", "content": await _async_prompt_resolve("tool-auto-fill-system-role")},
             {"role": "user", "content": prompt},
         ]
         resp = await sys_llm_generate(model, messages)

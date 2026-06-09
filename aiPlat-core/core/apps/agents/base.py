@@ -71,7 +71,8 @@ class BaseAgent(IAgent):
             try:
                 from core.harness.utils.model_injection import _log_model_selection
                 _log_model_selection("agent_init", config.model, entry="create_adapter_legacy", source="AgentBase")
-            except Exception: pass
+            except Exception:
+                pass  # noqa: model-selection logging is best-effort, must not break agent init
             provider = config.metadata.get("provider", "openai")
             self._model = create_adapter(
                 provider=provider,

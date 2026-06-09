@@ -811,7 +811,7 @@ async def graph_chat(req: Dict[str, Any]) -> StreamingResponse:
 
             # Stream LLM response via SSE
             from core.harness.syscalls.llm import sys_llm_generate_stream
-            async for chunk in sys_llm_generate_stream(best_model_for_purpose("query_translation") or "deepseek-chat", prompt, max_tokens=600):  # noqa: model-legacy
+            async for chunk in sys_llm_generate_stream(best_model_for_purpose("query_translation"), prompt, max_tokens=600):  # noqa: model-legacy
                 if chunk:
                     yield f"data: {json.dumps({'token': chunk}, ensure_ascii=False)}\n\n"
             yield "data: [DONE]\n\n"

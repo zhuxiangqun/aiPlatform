@@ -207,7 +207,8 @@ class CodeGenerationSkill(BaseSkill):
                 try:
                     from core.harness.utils.model_injection import _log_model_selection
                     _log_model_selection("skill_fallback", entry.name, entry="create_adapter_legacy", source="SkillBase")
-                except Exception: pass
+                except Exception:
+                    pass  # noqa: model-selection logging is best-effort, must not break skill fallback
                 return create_adapter(
                     provider=entry.provider,
                     model=entry.name,
@@ -218,7 +219,7 @@ class CodeGenerationSkill(BaseSkill):
             pass
         try:
             from core.harness.utils.model_injection import create_selected_adapter, get_default_model
-            return create_selected_adapter(model_name=get_default_model(purpose="code_gen") or best_model_for_purpose("chat") or "deepseek-chat")  # noqa: model-legacy
+            return create_selected_adapter(model_name=get_default_model(purpose="code_gen") or best_model_for_purpose("chat"))  # noqa: model-legacy
         except Exception:
             return None
 

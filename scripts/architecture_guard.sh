@@ -20,3 +20,14 @@ cd "$WORKSPACE_ROOT"
 python3 scripts/architecture_guard.py "$@"
 python3 aiPlat-core/core/management/capability_convergence.py "$@" --force
 python3 scripts/guard_frontend.py
+
+# Constitution tests — Python-level semantic checks
+echo ""
+echo "═══════════════════════════════════════════════════════════════"
+echo "  CONSTITUTION TESTS: pytest (prompt_loading + skill_config + agent_md)"
+echo "═══════════════════════════════════════════════════════════════"
+python3 -m pytest aiPlat-core/core/tests/unit/test_prompt_loading.py \
+                 aiPlat-core/core/tests/unit/test_skill_config.py \
+                 aiPlat-core/core/tests/unit/test_agent_md_config.py \
+                 aiPlat-core/core/tests/unit/test_core_module_deps.py \
+                 -v --tb=short 2>&1 | tail -25

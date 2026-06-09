@@ -47,33 +47,14 @@ async def optimize_prompt(req: PromptOptimizeRequest):
                     "optimized": "", "changes": [], "analysis": "",
                     "hint": "请配置 AIPLAT_LLM_API_KEY 或启动 Ollama/LM Studio 本地模型"}
 
-        optimize_prompt = f"""你是 Prompt 优化专家。请分析并优化以下 Prompt 模板。{context_text}
-
-当前 Prompt：
-{req.prompt[:3000]}
-
-请输出优化建议 JSON：
-{{
-  "optimized": "优化后的完整文本（保留所有${{var}}变量不变）",
-  "changes": [
-    "改动1：具体说明改了哪里及原因",
-    "改动2：..."
-  ],
-  "suggested_vars": ["新增变量1", "新增变量2"],
-  "analysis": "一句话分析",
-  "score_before": 7,
-  "score_after": 9
-}}
-
-要求：
-- 必须保留所有现存的${{变量名}}占位符
-- 针对该行业/场景优化措辞和结构
-- 每条改动说明必须具体
-
-只输出 JSON。"""
+        from core.harness.utils.prompt_loader import _async_prompt_resolve
+        optimize_prompt = await _async_prompt_resolve("prompt-optimize",
+            context=context_text,
+            prompt=req.prompt[:3000],
+        )
 
         resp = await sys_llm_generate(model, [
-            {"role": "system", "content": "你是 Prompt 优化专家。只输出 JSON，不要任何解释。"},
+            {"role": "system", "content": await _async_prompt_resolve("prompt-optimize-system-role")},
             {"role": "user", "content": optimize_prompt},
         ], config=None)
 

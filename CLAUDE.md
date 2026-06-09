@@ -144,21 +144,25 @@ tests/constitution/test_infra_agnostic.py    ← Infra 去应用化
      **Infra 相同协议合并 Provider**：OpenAI / DeepSeek / Qwen / LM Studio 均走 `openai_compatible.py`。
      新增 OpenAI 兼容的模型提供商只需改配置，不需新代码。
 
-15. **审计矩阵扩展——10 维覆盖（强制）**：2026-06 将审计矩阵从 6 维扩展到 10 维：
+15. **审计矩阵扩展——15 维覆盖（强制）**：2026-06 将审计矩阵从 10 维扩展到 15 维：
 
     | # | 维度 | 检查手段 | 检查对象 |
     |---|------|---------|---------|
-    | 1-6 | 原有 6 维（导入方向/职责归属/内核无关/基础设施独立/门面使用/接线完成） | `architecture_guard.sh` §1-§41 + `tests/constitution/` | Python 代码 |
+    | 1-6 | 原有 6 维（导入方向/职责归属/内核无关/基础设施独立/门面使用/接线完成） | `architecture_guard.sh` §1-§41 + `tests/` | Python 代码 |
     | **7** | **前端代理路由** | `scripts/guard_frontend.py` §43 | `vite.config.ts` proxy 目标端口 |
     | **8** | **子进程 Python 一致性** | `arch_guard_rules.yaml` §42 | 检测 `subprocess.run(["python3"` 等裸 python3 调用 |
     | **9** | **跨语言 API 契约** | `scripts/guard_frontend.py` §44 | 检测 TS `fetch()` body 字段名 vs Python `data.get()` 字段名 |
-    | **10** | **MCP 集成冒烟测试** | `tests/constitution/test_mcp_integration.py` §45 | spawn → init → list_tools → tools/call 完整链路 |
-    | **11** | **模型解析集中化** | `arch_guard_rules.yaml` §40.2 + §40.4 | 禁止各模块直接读取 `AIPLAT_*_MODEL` env var；禁止硬编码模型名（`"deepseek-chat"`、`"gpt-4"`）；必须通过 `get_default_model(purpose)` 或 `create_selected_adapter()` 解析 |
+    | **10** | **MCP 集成冒烟测试** | `tests/` MCP 相关 | spawn → init → list_tools → tools/call 完整链路 |
+    | **11** | **模型解析集中化** | `arch_guard_rules.yaml` §40.2 + §40.4 | 禁止各模块直接读取 `AIPLAT_*_MODEL` env var；禁止硬编码模型名 |
+    | **12** | **提示词模板管理** | `arch_guard_rules.yaml` §45 | 检测 router/apps 中硬编码 `你是一个`/`"You are a"` 多行 Prompt |
+    | **13** | **Skill 执行真实性** | `arch_guard_rules.yaml` §46 | `execution_type:handler` 必须有 `handler.py`；`prompt`+`handler.py` → WARNING |
+    | **14** | **接线完成度标记** | `arch_guard_rules.yaml` §47 | 检测 `# TODO: wire/0 caller/待接线` 死代码标记 |
+    | **15** | **Agent 边界** | `arch_guard_rules.yaml` §48+§50 | 禁止 Agent 直访 Harness 内部；禁止直接调用其他 Agent |
 
     **执行顺序（更新）**：
     ```
-    1. bash scripts/architecture_guard.sh          ← 后端架构 + §42 子进程一致性 + §43-44 前端守卫
-    2. pytest tests/constitution/ -v --tb=short    ← Python 语义 + §45 MCP 集成冒烟
+    1. bash scripts/architecture_guard.sh          ← 后端架构 §1-§52 + §42 子进程一致性 + §43-45 前端守卫
+    2. pytest tests/ -v --tb=short                  ← Python 语义检查
     ```
 
 16. **已知例外与永久债务（2026-06）- 3 条**：
@@ -173,4 +177,37 @@ tests/constitution/test_infra_agnostic.py    ← Infra 去应用化
     ```bash
     bash scripts/architecture_guard.sh  # 预期：1 ERROR (§1) + 2 WARNING (§35) = 3 total
     ```
+
+## 17. 技能执行真实性（强制——2026-06 新增 §44）
+
+所有 workspace 技能的 `SKILL.md` 必须显式声明 `execution_type`：
+- `handler` — 有 `handler.py` 真实执行代码
+- `python_class` — 有 Python 类实现
+- `prompt` — 纯 LLM 推理（仅适用于 text_generation/summarization 等 LLM 本身就是执行引擎的场景）
+
+### 强制规则
+
+| # | 规则 | 说明 |
+|---|------|------|
+| 1 | `execution_type` 必须在 `SKILL.md` frontmatter 中**显式声明**，无声明时默认走 `prompt` 模式并**记录 WARNING** |
+| 2 | `execution_type: handler` 必须在同级目录下存在可执行的 `handler.py`，否则**报错而非静默走 LLM 模拟** |
+| 3 | 有 `handler.py` 但 `execution_type` 声明为 `prompt` → **WARNING**（可能误配） |
+
+### 禁止
+
+| ❌ 禁止 | ✅ 应做 |
+|--------|--------|
+| `execution_type` 未声明，静默走 LLM 模拟 | 显式声明 `execution_type: handler/prompt/python_class` |
+| `execution_type: handler` 但 `handler.py` 不存在 | 要么补 `handler.py`，要么改声明为 `prompt` |
+| 搜索工具失败时静默返回 mock 假数据 | 返回 error；如需 mock 设定 `AIPLAT_MOCK_SEARCH_ENABLED=true` |
+
+### 生产环境审计
+
+设置 `AIPLAT_EXECUTION_AUDIT=true` 后，每次 `sys_skill_call` 执行时记录：
+- `skill_name` — 哪个技能
+- `execution_type` — 声明模式
+- `actual_mode` — handler/prompt/mock（实际走的是哪个路径）
+- `success` — 是否成功
+
+审计事件写入 `execution_store` 的 `audit_log` 表，可通过诊断中心查看。
 

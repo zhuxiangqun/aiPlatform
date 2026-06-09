@@ -191,7 +191,7 @@ class RagEvaluator:
                 None,
                 [{"role": "system", "content": _sync_resolve("rag-evaluator")},
                  {"role": "user", "content": f"上下文：\n{ctx_text[:8000]}\n\n问题：{sample.question}\n请基于上述上下文回答："}],
-                model_name=best_model_for_purpose("chat") or "deepseek-chat",  # noqa: model-legacy temperature=0.1, max_tokens=2000,
+                model_name=best_model_for_purpose("chat"),  # noqa: model-legacy temperature=0.1, max_tokens=2000,
             )
             answer = (getattr(resp, "content", "") or str(resp)).strip()
         except Exception:
@@ -243,7 +243,7 @@ class RagEvaluator:
 
         _api_key = _os.getenv("AIPLAT_LLM_API_KEY") or _os.getenv("DEEPSEEK_API_KEY", "")
         _base_url = _os.getenv("AIPLAT_LLM_BASE_URL") or "https://api.deepseek.com/v1"
-        _model = _best_model_for_purpose("chat") or "deepseek-chat"
+        _model = _best_model_for_purpose("chat")
         _wrapped_llm = None
         if _api_key:
             try:

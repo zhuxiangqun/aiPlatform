@@ -186,7 +186,11 @@ async def _audit_execute(
 def _governance_publish_gate(meta: Dict[str, Any] | None) -> Dict[str, Any]:
     """
     If a workspace skill has a governance candidate, it must be published before enable/execute.
+    Skipped when AIPLAT_APPROVALS_DISABLED=1 (dev mode).
     """
+    import os as _os
+    if _os.getenv("AIPLAT_APPROVALS_DISABLED", "").lower() in ("1", "true", "yes"):
+        return {"required": False}
     if not isinstance(meta, dict):
         return {"required": False}
     gov = meta.get("governance")
@@ -421,6 +425,38 @@ async def create_workspace_skill(request: SkillCreateRequest, http_request: Requ
             version=getattr(request, "version", None),
             status=getattr(request, "status", None),
         )
+        # If created from import (URL or file), materialize all source files into skill dir
+        if md.get("source_url") or md.get("source_file_content"):
+            try:
+                import base64, io, zipfile
+                import httpx as _httpx2
+                base = mgr._resolve_skills_base_path()
+                skill_dir = base / str(skill.id)
+                zip_data = None
+                if md.get("source_url"):
+                    async with _httpx2.AsyncClient(timeout=30) as client:
+                        r = await client.get(str(md["source_url"]), follow_redirects=True)
+                        r.raise_for_status()
+                    zip_data = r.content
+                elif md.get("source_file_content"):
+                    zip_data = base64.b64decode(str(md["source_file_content"]))
+                if zip_data:
+                    with zipfile.ZipFile(io.BytesIO(zip_data)) as zf:
+                        for name in zf.namelist():
+                            if name.endswith("/"):
+                                continue
+                            parts = name.split("/", 1)
+                            if len(parts) < 2:
+                                continue
+                            rel = parts[1]
+                            if rel == "SKILL.md":
+                                continue
+                            target = skill_dir / rel
+                            target.parent.mkdir(parents=True, exist_ok=True)
+                            with zf.open(name) as src:
+                                target.write_bytes(src.read())
+            except Exception:
+                pass
         # Mark as pending verification (best-effort)
         eval_artifact_id: Optional[str] = None
         candidate_id: Optional[str] = None
@@ -1297,16 +1333,23 @@ async def delete_workspace_skill(skill_id: str, delete_files: bool = False, http
         store = _store(rt)
         if store is not None and http_request is not None:
             actor = actor_from_http(http_request, {"delete_files": bool(delete_files)})
-            await store.add_audit_log(
-                action="workspace_skill_delete",
-                status="ok",
-                tenant_id=str(actor.get("tenant_id") or "") or None,
-                actor_id=str(actor.get("actor_id") or "") or None,
-                actor_role=str(actor.get("actor_role") or "") or None,
-                resource_type="skill",
-                resource_id=str(skill_id),
-                detail={"delete_files": bool(delete_files)},
-            )
+            try:
+                import asyncio
+                await asyncio.wait_for(
+                    store.add_audit_log(
+                        action="workspace_skill_delete",
+                        status="ok",
+                        tenant_id=str(actor.get("tenant_id") or "") or None,
+                        actor_id=str(actor.get("actor_id") or "") or None,
+                        actor_role=str(actor.get("actor_role") or "") or None,
+                        resource_type="skill",
+                        resource_id=str(skill_id),
+                        detail={"delete_files": bool(delete_files)},
+                    ),
+                    timeout=5.0,
+                )
+            except (asyncio.TimeoutError, Exception):
+                pass
     except Exception:
         pass
     return {"status": "deleted", "id": skill_id, "delete_files": delete_files}
@@ -2482,16 +2525,28 @@ async def skill_auto_fill(request: Dict[str, Any], rt: RuntimeDep = None):
         raise HTTPException(status_code=400, detail="name and description are required")
 
     try:
+        # Build existing skill catalog for context (avoid overlap)
+        skills_catalog = "(无)"
+        try:
+            from core.api.routers.workspace_agents import _scan_skills_direct
+            entries = _scan_skills_direct()
+            if entries:
+                skills_catalog = "\n".join(entries[:50])
+        except Exception:
+            pass
+
         from core.harness.utils.prompt_loader import _async_prompt_resolve
         prompt = await _async_prompt_resolve("skill-auto-fill",
             skill_name=name,
             description=description,
+            skills_catalog=skills_catalog,
         )
         from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
         model_name = best_model_for_purpose("skill_creation")
         model = create_selected_adapter(model_name=model_name)
+        from core.harness.utils.prompt_loader import _async_prompt_resolve
         messages = [
-            {"role": "system", "content": "你是 AI Skill 设计专家。只输出 SKILL.md 格式，不要任何额外解释。"},
+            {"role": "system", "content": await _async_prompt_resolve("skill-auto-fill-system-role")},
             {"role": "user", "content": prompt},
         ]
         resp = await sys_llm_generate(model, messages)
@@ -2539,9 +2594,131 @@ async def skill_auto_fill(request: Dict[str, Any], rt: RuntimeDep = None):
             "skill_kind": fm.get("skill_kind", "rule"),
             "permissions": fm.get("permissions", []),
             "trigger_conditions": fm.get("trigger_conditions", []),
+            "capabilities": fm.get("capabilities", []),
             "input_schema": fm.get("input_schema", {}),
             "output_schema": fm.get("output_schema", {}),
             "sop": sop or fm.get("sop_body", ""),
         }
     except Exception as e:
         return {"error": f"Auto-fill failed: {str(e)}"}
+
+
+# ==================== Skill Import Detection (AI) ====================
+
+@router.post("/workspace/skills/import-detect")
+async def detect_skill_import(request: Dict[str, Any], rt: RuntimeDep = None):
+    """AI 检测导入的 skill 配置。接收 URL 或 SOP 正文，返回推荐配置。"""
+    import yaml as _yaml
+    
+    sop_body = ""
+    # Support URL download
+    url = str(request.get("url") or "").strip()
+    file_content = str(request.get("file_content") or "").strip()
+    raw_sop = str(request.get("sop_body") or "").strip()
+    
+    if url:
+        try:
+            import tempfile, zipfile, io
+            import httpx as _httpx
+            async with _httpx.AsyncClient(timeout=30) as client:
+                resp = await client.get(url, follow_redirects=True)
+                resp.raise_for_status()
+            with zipfile.ZipFile(io.BytesIO(resp.content)) as zf:
+                # Find SKILL.md in zip
+                for name in zf.namelist():
+                    if name.endswith("SKILL.md"):
+                        sop_body = zf.read(name).decode("utf-8", errors="ignore")
+                        break
+                if not sop_body:
+                    # Try .md files
+                    for name in zf.namelist():
+                        if name.endswith(".md"):
+                            sop_body = zf.read(name).decode("utf-8", errors="ignore")
+                            break
+        except Exception as e:
+            return {"error": f"Failed to download/parse URL: {str(e)}"}
+    elif file_content:
+        # base64 encoded zip
+        try:
+            import base64, zipfile, io
+            data = base64.b64decode(file_content)
+            with zipfile.ZipFile(io.BytesIO(data)) as zf:
+                for name in zf.namelist():
+                    if name.endswith("SKILL.md"):
+                        sop_body = zf.read(name).decode("utf-8", errors="ignore")
+                        break
+        except Exception:
+            sop_body = file_content[:20000]  # treat as raw text
+    elif raw_sop:
+        sop_body = raw_sop[:20000]
+    
+    if not sop_body:
+        return {"error": "No SOP content found. Provide url, file_content, or sop_body."}
+    
+    # Extract YAML frontmatter for existing metadata
+    existing = {}
+    if sop_body.startswith("---"):
+        parts = sop_body.split("---", 2)
+        if len(parts) >= 3:
+            try:
+                existing = _yaml.safe_load(parts[1]) or {}
+            except Exception:
+                pass
+            sop_body = parts[2].strip() if len(parts) > 2 else sop_body
+    
+    name = str(existing.get("name") or "")
+    desc = str(existing.get("description") or "")
+    
+    # AI recommendation
+    try:
+        config = await _ai_recommend_skill_config(
+            sop_body=sop_body,
+            name=name,
+            description=desc,
+        )
+        # Merge AI recommendations with existing SKILL.md frontmatter fields
+        config["detected_name"] = name or config.get("detected_name", "")
+        config["detected_description"] = desc
+        config["sop_body"] = sop_body  # pass SOP body for UI
+        config["display_name"] = str(existing.get("display_name") or existing.get("displayName") or name)
+        config["input_schema"] = existing.get("input_schema", {})
+        config["output_schema"] = existing.get("output_schema", {})
+        config["permissions"] = existing.get("permissions") or config.get("permissions", [])
+        config["trigger_conditions"] = (
+            existing.get("trigger_conditions")
+            or existing.get("trigger_keywords")
+            or config.get("trigger_conditions", [])
+        )
+        config["version"] = str(existing.get("version", "1.0.0"))
+        return config
+    except Exception as e:
+        return {"error": f"AI detection failed: {str(e)}"}
+
+
+async def _ai_recommend_skill_config(
+    sop_body: str, name: str = "", description: str = "",
+) -> dict:
+    """LLM 分析 SOP 正文，返回推荐的 skill 配置。"""
+    import json as _json
+    
+    from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
+    
+
+    model_name = best_model_for_purpose("skill_creation")
+    model = create_selected_adapter(model_name=model_name)
+    from core.harness.utils.prompt_loader import _async_prompt_resolve
+    system_prompt = await _async_prompt_resolve("skill-import-detect")
+    user_content = f"技能名称: {name or '(未命名)'}\n描述: {description or '(无)'}\n\nSOP:\n{sop_body[:8000]}"
+    
+    response = await sys_llm_generate(
+        model,
+        [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_content},
+        ],
+    )
+    
+    text = str(getattr(response, "content", "") or "")
+    from core.utils.json_utils import parse_json
+    config = parse_json(text) or {}
+    return config

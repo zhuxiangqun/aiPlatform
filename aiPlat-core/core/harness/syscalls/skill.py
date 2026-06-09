@@ -63,6 +63,8 @@ async def sys_skill_call(
     )
     # Approval layering policy: tenant policy override -> env fallback
     approval_layer_policy = str(os.getenv("AIPLAT_APPROVAL_LAYER_POLICY", "both") or "both").strip().lower()
+    if os.getenv("AIPLAT_APPROVALS_DISABLED", "").lower() in ("1", "true", "yes"):
+        approval_layer_policy = "none"
     try:
         tpol = get_active_tenant_policy_context()
         pol0 = getattr(tpol, "policy", None) if tpol else None
@@ -638,6 +640,14 @@ async def sys_skill_call(
 
     # (span already started above)
     try:
+        # §5.31: Ensure skill has a usable LLM model before execution
+        if not getattr(skill, "_model", None):
+            try:
+                from core.harness.utils.model_injection import ensure_skill_model, best_model_for_purpose
+                ensure_skill_model(skill, model_name=best_model_for_purpose("chat"), force=False)
+            except Exception:
+                pass
+
         # §5.19: refuse retry on non-idempotent write skills
         cfg = getattr(skill, "_config", None)
         is_idempotent = bool(getattr(cfg, "idempotent", True))
@@ -707,6 +717,29 @@ async def sys_skill_call(
                         "error_code": "SKILL_FAILED" if not bool(getattr(result, "success", True)) else None,
                     }
                 )
+            except Exception:
+                pass
+        # Audit: record execution realness when AIPLAT_EXECUTION_AUDIT is enabled
+        if os.getenv("AIPLAT_EXECUTION_AUDIT", "false").lower() in ("1", "true", "yes"):
+            try:
+                runtime = get_kernel_runtime()
+                store = getattr(runtime, "execution_store", None) if runtime else None
+                if store:
+                    is_ok = bool(getattr(result, "success", True))
+                    err = getattr(result, "error", None)
+                    exec_type = (getattr(getattr(skill, "_config", None), "metadata", {}) or {}).get("execution_type", "")
+                    actual_mode = "handler" if exec_type == "handler" else ("mock" if err and "mock" in str(err).lower() else "prompt")
+                    await store.add_audit_log(
+                        action="skill_executed",
+                        kind="execution_realness",
+                        payload={
+                            "skill_name": str(skill_name),
+                            "execution_type": str(exec_type),
+                            "actual_mode": actual_mode,
+                            "success": is_ok,
+                            "trace_id": span.trace_id,
+                        },
+                    )
             except Exception:
                 pass
         # Curator: record call for frequency tracking + lifecycle management

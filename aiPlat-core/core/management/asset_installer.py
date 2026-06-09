@@ -443,30 +443,8 @@ class AssetInstaller:
                     raise RuntimeError("failed_to_remove_existing_dir")
 
             shutil.copytree(ad, dst)
-            # Force status=draft on installed assets (must go through test→review→publish→list)
-            cfg_file = dst / self._FILE_PATTERN
-            if cfg_file.exists():
-                try:
-                    raw = cfg_file.read_text(encoding="utf-8", errors="replace")
-                    if raw.startswith("---"):
-                        parts = raw.split("---", 2)
-                        if len(parts) >= 3:
-                            fm_lines = parts[1].split("\n")
-                            new_fm: List[str] = []
-                            has_status = False
-                            for ln in fm_lines:
-                                stripped = ln.strip()
-                                if stripped.startswith("status:"):
-                                    new_fm.append("status: draft")
-                                    has_status = True
-                                else:
-                                    new_fm.append(ln)
-                            if not has_status:
-                                new_fm.append("status: draft")
-                            raw = "---\n" + "\n".join(new_fm) + "\n---" + parts[2]
-                            cfg_file.write_text(raw, encoding="utf-8")
-                except Exception:
-                    pass
+            # Enrich frontmatter: status, category, execution_type, tool crosswalk
+            self._enrich_asset_frontmatter(dst)
             try:
                 src2 = dict(source or {})
                 src2["asset_id"] = ad.name
@@ -477,6 +455,92 @@ class AssetInstaller:
 
         return InstallResult(installed=installed, skipped=skipped,
                              converted=converted)
+
+    def _enrich_asset_frontmatter(self, dst: Path) -> None:
+        """Post-install: enrich frontmatter with defaults + tool crosswalk."""
+        cfg_file = dst / self._FILE_PATTERN
+        if not cfg_file.exists():
+            return
+
+        try:
+            raw = cfg_file.read_text(encoding="utf-8", errors="replace")
+            # Split YAML frontmatter from body
+            if not raw.startswith("---"):
+                # No frontmatter — add minimal one
+                name = dst.name.replace("-", " ").title()
+                enriched = f"""---
+name: {name}
+description: {name}
+execution_type: prompt
+category: general
+status: draft
+_auto_adapted: true
+---
+{raw}"""
+                cfg_file.write_text(enriched, encoding="utf-8")
+                return
+
+            parts = raw.split("---", 2)
+            if len(parts) < 3:
+                return
+
+            import yaml
+            fm = yaml.safe_load(parts[1]) or {}
+            if not isinstance(fm, dict):
+                fm = {}
+            body = parts[2]
+
+            # Apply defaults
+            fm.setdefault("status", "draft")
+            fm["_auto_adapted"] = True
+
+            if self.ASSET_TYPE == "agent":
+                fm.setdefault("category", "general")
+                fm.setdefault("execution_type", "prompt")
+            elif self.ASSET_TYPE == "mcp":
+                fm.setdefault("transport", "stdio")
+                fm.setdefault("auth", "none")
+            elif self.ASSET_TYPE == "workflow":
+                fm.setdefault("trigger", "manual")
+
+            # Tool crosswalk: detect external tool names in SOP body
+            try:
+                from core.management.skill_adapter import _TOOL_REF_PATTERN
+                detected = set(_TOOL_REF_PATTERN.findall(body))
+                if detected:
+                    from core.management.skill_adapter import TOOL_NAME_CROSSWALK
+                    mapped = []
+                    missing = []
+                    for tool in detected:
+                        m = TOOL_NAME_CROSSWALK.get(tool)
+                        if m and m.primary:
+                            mapped.append(m.primary)
+                        else:
+                            missing.append(tool)
+                    if mapped:
+                        fm.setdefault("tools", [])
+                        existing = fm["tools"]
+                        if isinstance(existing, list):
+                            for mt in mapped:
+                                if mt not in existing:
+                                    existing.append(mt)
+                    if missing:
+                        fm["missing_capabilities"] = missing
+                        critical = [t for t in missing
+                                  if TOOL_NAME_CROSSWALK.get(t, None) and TOOL_NAME_CROSSWALK[t].critical]
+                        if critical:
+                            fm["status"] = "draft"
+                            fm["block_reason"] = f"missing critical tools: {', '.join(critical)}"
+            except ImportError:
+                pass
+
+            # Write back
+            new_fm = yaml.dump(dict(fm), allow_unicode=True, sort_keys=False).strip()
+            new_content = f"---\n{new_fm}\n---{body}"
+            cfg_file.write_text(new_content, encoding="utf-8")
+
+        except Exception:
+            pass
 
     def _plan_from_dir(self, *, root: Path, source: Dict[str, Any],
                        asset_id: Optional[str], subdir: Optional[str],

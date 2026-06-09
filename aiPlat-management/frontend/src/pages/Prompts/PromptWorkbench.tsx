@@ -71,6 +71,7 @@ const PromptWorkbench: React.FC<Props> = ({ template, models, open, onClose, onS
   const [optimizeRefineInput, setOptimizeRefineInput] = useState('');
   const [chatExpanded, setChatExpanded] = useState(false);
   const [templatePreviewExpanded, setTemplatePreviewExpanded] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   // Test comparison state
   const [testVars, setTestVars] = useState<Array<{name: string; value: string}>>([]);
@@ -117,6 +118,15 @@ const PromptWorkbench: React.FC<Props> = ({ template, models, open, onClose, onS
     // Load eval data
     loadEvalData();
   }, [template]);
+
+  const handleDeleteCase = async (caseId: string) => {
+    if (deleting) return;
+    setDeleting(caseId);
+    try {
+      await promptEvalApi.deleteTestCase(caseId);
+      loadEvalData();
+    } finally { setDeleting(null); }
+  };
 
   const loadEvalData = async () => {
     if (!template?.id) return;
@@ -580,8 +590,8 @@ const PromptWorkbench: React.FC<Props> = ({ template, models, open, onClose, onS
                     }
                     return (
                       <div key={c.id} className="bg-dark-bg border border-dark-border rounded-lg p-2.5 relative group">
-                        <button onClick={async () => { await promptEvalApi.deleteTestCase(c.id); loadEvalData(); }}
-                          className="absolute top-1.5 right-1.5 text-gray-600 hover:text-red-400 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">✕</button>
+                        <button onClick={() => handleDeleteCase(c.id)} disabled={!!deleting}
+                          className="absolute top-1.5 right-1.5 text-gray-600 hover:text-red-400 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-40">✕</button>
                         <div className="text-xs text-gray-200 font-medium mb-1.5 truncate pr-4">#{i + 1} {c.name}</div>
                         <div className="space-y-0.5 mb-1.5">
                           {Object.entries(vars).map(([k, v]) => (

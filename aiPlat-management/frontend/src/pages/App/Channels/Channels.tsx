@@ -26,6 +26,7 @@ const Channels: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState<string | undefined>();
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; channel: Channel | null }>({ open: false, channel: null });
+  const [deleting, setDeleting] = useState(false);
 
   const fetchChannels = useCallback(async () => {
     setLoading(true);
@@ -45,8 +46,9 @@ const Channels: React.FC = () => {
   }, [fetchChannels]);
 
   const handleDelete = async () => {
-    if (!deleteModal.channel) return;
+    if (!deleteModal.channel || deleting) return;
     try {
+      setDeleting(true);
       await channelApi.delete(deleteModal.channel.id);
       toast.success('渠道已删除');
       setDeleteModal({ open: false, channel: null });
@@ -54,6 +56,7 @@ const Channels: React.FC = () => {
     } catch {
       toast.error('删除失败');
     }
+    finally { setDeleting(false); }
   };
 
   const handleTest = async (channel: Channel) => {
@@ -258,10 +261,10 @@ const Channels: React.FC = () => {
         title="确认删除"
         footer={
           <>
-            <Button onClick={() => setDeleteModal({ open: false, channel: null })}>
+            <Button disabled={deleting} onClick={() => setDeleteModal({ open: false, channel: null })}>
               取消
             </Button>
-            <Button variant="danger" onClick={handleDelete}>
+            <Button variant="danger" loading={deleting} onClick={handleDelete}>
               确认删除
             </Button>
           </>

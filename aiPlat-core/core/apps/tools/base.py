@@ -518,7 +518,9 @@ class SearchTool(BaseTool):
                 return results
                 
         except Exception:
-            return self._mock_results(query, num_results)
+            if os.getenv("AIPLAT_MOCK_SEARCH_ENABLED", "false").lower() in ("1", "true", "yes"):
+                return self._mock_results(query, num_results)
+            return [{"title": f"Search failed for '{query}'", "url": "", "snippet": "Search failed and mock fallback is disabled. Set AIPLAT_MOCK_SEARCH_ENABLED=true to enable mock.", "source": "error"}]
 
     def _mock_results(self, query: str, num_results: int) -> List[Dict[str, Any]]:
         """Fallback mock results"""
