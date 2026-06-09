@@ -146,6 +146,8 @@ async def list_tools(limit: int = 100, offset: int = 0, available_only: bool = F
         # Workspace tools (from discovery) have provenance metadata with scope
         meta = getattr(tool._config, 'metadata', {}) if hasattr(tool, '_config') else {}
         prov = (meta or {}).get('provenance', {}) if isinstance(meta, dict) else {}
+        if prov.get("scope") == "workspace":
+            continue  # workspace tools belong in /workspace/tools, not here
         info["protected"] = True if not prov.get("scope") else False
         info["scope"] = prov.get("scope") or "engine"
         if prov:

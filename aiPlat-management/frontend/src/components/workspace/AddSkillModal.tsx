@@ -406,6 +406,12 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
                 <div className="text-xs text-gray-400 mt-2 italic">"{(importResult.reasoning as string).slice(0, 200)}"</div>
               )}
               <div className="text-xs text-gray-500 mt-2">以上配置已自动填入表单</div>
+              {(importResult.tools_missing || []).length > 0 && (
+                <div className="mt-2 p-2 rounded border border-amber-500/30 bg-amber-500/5 text-xs text-amber-300">
+                  ⚠️ 系统缺少以下工具: <strong>{(importResult.tools_missing as string[]).join(', ')}</strong>
+                  <div className="mt-1 text-amber-400">技能可能无法完整运行，建议先在工具管理页面安装对应工具。</div>
+                </div>
+              )}
             </div>
           )}
           {importResult?.error && (
@@ -460,6 +466,14 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
         />
         <Input label="描述" value={description} onChange={(e: any) => setDescription(e.target.value)} placeholder="描述用途" />
         <Textarea label="trigger_conditions（每行一条，可选）" rows={3} value={triggerText} onChange={(e: any) => setTriggerText(e.target.value)} placeholder="例如：\n帮我查一下...\n检索..." />
+        {!triggerText.trim() && sourceMode !== 'manual' && (
+          <div className="text-xs text-blue-400 bg-blue-500/5 border border-blue-500/20 rounded p-2 -mt-2 mb-1">
+            💡 此技能未声明触发词，需要手动填写才能被自动匹配。建议 3-6 个中文触发词，例如：
+            <code className="ml-1 px-1 bg-blue-900/30 rounded text-blue-300">最近30天</code>
+            <code className="ml-1 px-1 bg-blue-900/30 rounded text-blue-300">帮我调研</code>
+            <code className="ml-1 px-1 bg-blue-900/30 rounded text-blue-300">查一下最近</code>
+          </div>
+        )}
         <Textarea
           label="permissions（JSON 数组或逗号/换行分隔）"
           rows={3}

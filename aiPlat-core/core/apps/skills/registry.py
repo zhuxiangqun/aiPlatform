@@ -1123,25 +1123,28 @@ class _GenericSkill(BaseSkill):
                 allowed_tools = []
 
             from core.harness.utils.prompt_loader import _sync_resolve
-            system_parts = [
-                _sync_resolve("skill-executor-inline",
-                    sop=(sop if sop else f"Skill: {self._config.name}\n{self._config.description}"),
-                ),
-            ]
-            if policy_block:
-                system_parts.append(policy_block)
 
-            # If output_schema exists, require strict JSON output with those top-level keys.
+            # Check output_schema BEFORE building system prompt — JSON output
+            # instruction MUST come first to override any formatting rules in SOP
             out_schema = {}
             try:
                 out_schema = self._config.output_schema or {}
             except Exception:
                 out_schema = {}
-            if isinstance(out_schema, dict) and out_schema:
-                keys = list(out_schema.keys())
-                system_parts.append("输出要求：你必须返回严格 JSON（不要输出任何额外文本/解释/代码块外内容）。")
-                system_parts.append(f"JSON 顶层字段必须包含：{keys}")
-                system_parts.append("如果某字段无法给出，请给出空值（空数组/空对象/空字符串），但不要遗漏字段。")
+            out_keys = list(out_schema.keys()) if isinstance(out_schema, dict) and out_schema else []
+
+            system_parts = []
+            if out_keys:
+                system_parts.append(
+                    _sync_resolve("skill-executor-json-override", keys=str(out_keys))
+                )
+            system_parts.append(
+                _sync_resolve("skill-executor-inline",
+                    sop=(sop if sop else f"Skill: {self._config.name}\n{self._config.description}"),
+                ),
+            )
+            if policy_block:
+                system_parts.append(policy_block)
 
             # If tools are available, run as a tool-capable ReAct agent (SkillTool-like orchestration).
             if allowed_tools:

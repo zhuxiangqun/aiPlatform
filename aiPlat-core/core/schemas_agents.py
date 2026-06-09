@@ -20,6 +20,8 @@ class AgentCreateRequest(BaseModel):
     agent_ids: List[str] = Field(default_factory=list)
     memory_config: Optional[Dict[str, Any]] = None
     metadata: Optional[Dict[str, Any]] = None
+    trigger_conditions: Optional[List[str]] = None
+    permissions: Optional[List[str]] = None
 
 
 class AgentUpdateRequest(BaseModel):
@@ -33,6 +35,8 @@ class AgentUpdateRequest(BaseModel):
     agent_ids: Optional[List[str]] = None
     memory_config: Optional[Dict[str, Any]] = None
     metadata: Optional[Dict[str, Any]] = None
+    trigger_conditions: Optional[List[str]] = None
+    permissions: Optional[List[str]] = None
 
 
 class AgentOutput(BaseModel):

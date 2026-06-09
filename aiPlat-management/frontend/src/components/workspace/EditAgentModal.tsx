@@ -32,6 +32,8 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
   const [description, setDescription] = useState('');
   const [memoryConfigText, setMemoryConfigText] = useState('');
   const [sopText, setSopText] = useState('');
+  const [triggerText, setTriggerText] = useState('');
+  const [permissionsText, setPermissionsText] = useState('["llm:generate"]');
   const [sopLoading, setSopLoading] = useState(false);
   const [skillOptions, setSkillOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [toolOptions, setToolOptions] = useState<Array<{ value: string; label: string }>>([]);
@@ -73,6 +75,8 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       setConfigText((agent as any)?.config ? JSON.stringify((agent as any).config, null, 2) : agent.metadata?.config ? JSON.stringify(agent.metadata.config, null, 2) : '');
       setMemoryConfigText((agent as any)?.memory_config ? JSON.stringify((agent as any).memory_config, null, 2) : '{\n  "type": "short_term",\n  "recall_count": 5\n}');
       setSopText('');
+      setTriggerText(((agent as any)?.metadata?.trigger_conditions || []).join('\n'));
+      setPermissionsText(JSON.stringify((agent as any)?.metadata?.permissions || ["llm:generate"], null, 2));
       setAgentStatus(agent.status || 'draft');
       // Pipeline config fields from metadata
       const md = (agent as any)?.metadata || {};
@@ -316,7 +320,10 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       metadata.loop_type = loopType;
       metadata.knowledge_bases = knowledgeBases;
 
-      await workspaceAgentApi.update(agent.id, { name: name.trim() || undefined, status: agentStatus || undefined, config, skills: skills.length ? skills : undefined, tools: tools.length ? tools : undefined, mcp_ids: mcpIds.length ? mcpIds : undefined, workflow_ids: workflowIds.length ? workflowIds : undefined, agent_ids: agentIds.length ? agentIds : undefined, memory_config, metadata });
+      await workspaceAgentApi.update(agent.id, { name: name.trim() || undefined, status: agentStatus || undefined, config, skills: skills.length ? skills : undefined, tools: tools.length ? tools : undefined, mcp_ids: mcpIds.length ? mcpIds : undefined, workflow_ids: workflowIds.length ? workflowIds : undefined, agent_ids: agentIds.length ? agentIds : undefined, memory_config, metadata,
+        ...(triggerText.trim() ? { trigger_conditions: triggerText.split('\n').map(s => s.trim()).filter(Boolean) } : {}),
+        ...(permissionsText.trim() ? { permissions: JSON.parse(permissionsText) as string[] } : {}),
+      });
 
       // update SOP (best-effort; do not block binding changes)
       try {
@@ -393,6 +400,8 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
             placeholder="描述这个 Agent 的功能目标、工作流程和适用场景，AI 智能填充将根据此描述推荐 Agent 类型、模型、Skills / Tools / MCP / 子 Agent / Workflow / 配置 / SOP / 记忆配置"
           />
         </div>
+        <Textarea label="trigger_conditions（每行一条，可选）" rows={3} value={triggerText} onChange={(e: any) => setTriggerText(e.target.value)} placeholder="例如：\n帮我分析代码...\n代码审查" />
+        <Textarea label="permissions（JSON 数组）" rows={3} value={permissionsText} onChange={(e: any) => setPermissionsText(e.target.value)} placeholder='["llm:generate"]' />
         <div className="mb-2">
           <label className="block text-sm font-medium text-gray-300 mb-1">状态</label>
           {['draft', 'ready'].includes(agentStatus) ? (

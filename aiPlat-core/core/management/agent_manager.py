@@ -573,6 +573,8 @@ class AgentManager:
                     "loop_type": (agent_type if agent_type == "react" else (metadata.get("loop_type") if isinstance(metadata, dict) else "react")) or "react",
                     "memory_config": memory_config or {"type": "short_term", "recall_count": 5},
                     "knowledge_bases": metadata.get("knowledge_bases") if isinstance(metadata, dict) else [],
+                    "trigger_conditions": metadata.get("trigger_conditions") if isinstance(metadata, dict) else [],
+                    "permissions": metadata.get("permissions") if isinstance(metadata, dict) else [],
                 }
                 header = yaml.safe_dump(manifest, sort_keys=False, allow_unicode=True).strip()
                 body = f"""
@@ -786,6 +788,8 @@ class AgentManager:
                     "fallback_result_key": (agent.metadata or {}).get("fallback_result_key") or fm.get("fallback_result_key", ""),
                     "retry_llm_on_rate_limit": (agent.metadata or {}).get("retry_llm_on_rate_limit", fm.get("retry_llm_on_rate_limit", True)),
                     "max_consecutive_llm_failures": (agent.metadata or {}).get("max_consecutive_llm_failures") or fm.get("max_consecutive_llm_failures", 3),
+                    "trigger_conditions": (agent.metadata or {}).get("trigger_conditions") or fm.get("trigger_conditions", []),
+                    "permissions": (agent.metadata or {}).get("permissions") or fm.get("permissions", []),
                     "auto_hitl": (agent.metadata or {}).get("auto_hitl", fm.get("auto_hitl", False)),
                     "phase_description": (agent.metadata or {}).get("phase_description") or fm.get("phase_description", ""),
                     "hitl_after_execute": (agent.metadata or {}).get("hitl_after_execute", fm.get("hitl_after_execute", False)),

@@ -1,0 +1,26 @@
+# Skill frontmatter tool declarations → aiPlat tool names
+# Supports 1→N mapping (one source tool → multiple aiPlat tools)
+# Sources: Claude Code allowed-tools / aiPlat native tools / OpenClaw / etc.
+#
+# Override path: AIPLAT_SKILL_TOOL_MAP_PATH env var (optional)
+
+mappings:
+  # ── Claude Code allowed-tools ──
+  bash: [code]
+  read: [file_operations]
+  write: [file_operations]
+  edit: [file_operations]
+  glob: [code]
+  grep: [code]
+  websearch: [search, webfetch]
+  webfetch: [webfetch]
+  askuserquestion: []  # no equivalent in aiPlat
+
+  # ── aiPlat native tools (pass-through) ──
+  code: [code]
+  search: [search]
+  http: [http]
+  browser: [browser]
+  file_operations: [file_operations]
+  database: [database]
+  repo: [repo]

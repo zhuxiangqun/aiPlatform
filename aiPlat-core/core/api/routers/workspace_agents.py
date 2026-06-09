@@ -189,7 +189,11 @@ async def create_workspace_agent(request: AgentCreateRequest, http_request: Requ
             workflow_ids=request.workflow_ids,
             agent_ids=request.agent_ids,
             memory_config=request.memory_config,
-            metadata=request.metadata,
+            metadata={**(request.metadata or {}),
+                      **({"trigger_conditions": getattr(request, "trigger_conditions", None)}
+                         if getattr(request, "trigger_conditions", None) else {}),
+                      **({"permissions": getattr(request, "permissions", None)}
+                         if getattr(request, "permissions", None) else {}),},
         )
         # If created from import (URL or file), materialize all source files into agent dir
         md = request.metadata or {}
@@ -1517,6 +1521,7 @@ async def detect_agent_import(request: Dict[str, Any], rt: RuntimeDep = None):
     import yaml as _yaml
     import io
     import zipfile
+    from .workspace_skills import _load_tool_mapping
     
     agmd_body = ""
     url = str(request.get("url") or "").strip()
@@ -1569,7 +1574,25 @@ async def detect_agent_import(request: Dict[str, Any], rt: RuntimeDep = None):
     
     name = str(existing.get("name") or "")
     desc = str(existing.get("description") or "")
-    
+
+    # Determine tools from frontmatter declarations (config-driven mapping)
+    tool_map = _load_tool_mapping()
+    declared_tools = None
+    for key in ("tools", "allowed-tools", "allowedTools"):
+        val = existing.get(key)
+        if val:
+            if isinstance(val, str):
+                declared_tools = [t.strip().lower() for t in val.split(",") if t.strip()]
+            elif isinstance(val, list):
+                declared_tools = [str(t).strip().lower() for t in val if str(t).strip()]
+            break
+
+    if declared_tools:
+        mapped = set()
+        for t in declared_tools:
+            mapped.update(tool_map.get(t, [t]))
+        declared_tools = sorted(mapped)
+
     try:
         config = await _ai_recommend_agent_config(
             agmd_body=sop_body,
@@ -1580,21 +1603,144 @@ async def detect_agent_import(request: Dict[str, Any], rt: RuntimeDep = None):
         config["detected_description"] = desc
         config["sop_body"] = sop_body
         config["display_name"] = str(existing.get("display_name") or existing.get("displayName") or name)
+        # Use frontmatter-declared trigger_conditions if present
+        config["trigger_conditions"] = (
+            existing.get("trigger_conditions")
+            or existing.get("trigger_keywords")
+            or []
+        )
+        # Use frontmatter-declared permissions if present
+        config["permissions"] = existing.get("permissions") or []
+        # Override AI-inferred tools with deterministic frontmatter mapping
+        if declared_tools:
+            config["tools"] = declared_tools
+        # Cross-validate tools against ToolRegistry
+        try:
+            from core.apps.tools.base import get_tool_registry
+            registry = get_tool_registry()
+            registered = set(registry.list_tools() or [])
+            recommended = config.get("tools", [])
+            config["tools_available"] = [t for t in recommended if t in registered]
+            config["tools_missing"] = [t for t in recommended if t not in registered]
+        except Exception:
+            config["tools_available"] = config.get("tools", [])
+            config["tools_missing"] = []
+        # Cross-validate skills against SkillRegistry
+        try:
+            from core.apps.skills import get_skill_registry
+            reg = get_skill_registry()
+            rec = config.get("skills", [])
+            config["skills_available"] = [s for s in rec if reg.get(s)]
+            config["skills_missing"] = [s for s in rec if not reg.get(s)]
+        except Exception:
+            config["skills_available"] = config.get("skills", [])
+            config["skills_missing"] = []
+        # Cross-validate MCP servers
+        try:
+            from core.management.mcp_manager import MCPManager
+            mgr = MCPManager()
+            servers = {getattr(s, "name", ""): True for s in (mgr.list_servers() or [])}
+            rec = config.get("mcp_ids", [])
+            config["mcp_available"] = [m for m in rec if m in servers]
+            config["mcp_missing"] = [m for m in rec if m not in servers]
+        except Exception:
+            config["mcp_available"] = config.get("mcp_ids", [])
+            config["mcp_missing"] = []
+        # Cross-validate sub-agents
+        try:
+            from core.management.agent_manager import WorkspaceAgentManager
+            wam = WorkspaceAgentManager()
+            agents = {getattr(a, "name", ""): True for a in (wam.list_agents() or [])}
+            rec = config.get("agent_ids", [])
+            config["agents_available"] = [a for a in rec if a in agents]
+            config["agents_missing"] = [a for a in rec if a not in agents]
+        except Exception:
+            config["agents_available"] = config.get("agent_ids", [])
+            config["agents_missing"] = []
         return config
     except Exception as e:
         return {"error": f"AI detection failed: {str(e)}"}
 
 
+def _build_skills_catalog() -> str:
+    """Build a catalog string of available skills for AI prompt injection."""
+    try:
+        from core.apps.skills.registry import _scan_skills_direct
+        entries = _scan_skills_direct()
+        return "\n".join(entries[:30]) if entries else "(no skills registered)"
+    except Exception:
+        return "(unable to load skill catalog)"
+
+
+def _build_mcp_catalog() -> str:
+    """Build a catalog string of available MCP servers."""
+    try:
+        from core.management.mcp_manager import MCPManager
+        mgr = MCPManager()
+        servers = mgr.list_servers() or []
+        lines = []
+        for s in servers[:20]:
+            name = getattr(s, "name", "") or s.get("name", "")
+            desc = getattr(s, "description", "") or s.get("description", "") if isinstance(s, dict) else (getattr(s, "description", "") or "")
+            lines.append(f"- {name}: {str(desc)[:100]}" if desc else f"- {name}")
+        return "\n".join(lines) if lines else "(no MCP servers registered)"
+    except Exception:
+        return "(unable to load MCP catalog)"
+
+
+def _build_agent_catalog() -> str:
+    """Build a catalog string of available sub-agents."""
+    try:
+        from core.management.agent_manager import WorkspaceAgentManager
+        mgr = WorkspaceAgentManager()
+        agents = mgr.list_agents() if hasattr(mgr, "list_agents") else []
+        lines = []
+        for a in (agents or [])[:20]:
+            name = getattr(a, "name", "") or a.get("name", "") if isinstance(a, dict) else ""
+            lines.append(f"- {name}")
+        return "\n".join(lines) if lines else "(no sub-agents registered)"
+    except Exception:
+        return "(unable to load agent catalog)"
+
+
 async def _ai_recommend_agent_config(
     agmd_body: str, name: str = "", description: str = "",
 ) -> dict:
-    """LLM 分析 AGENT.md 正文，返回推荐的 agent 配置。"""
+    """分析 AGENT.md 正文，返回推荐的 agent 配置。
+
+    首次调用走 LLM，后续被 SOP 哈希缓存命中（秒级返回）。
+    """
+    import hashlib
+    from core.utils.json_utils import parse_json
+
+    cache_key = hashlib.sha256(agmd_body[:8000].encode()).hexdigest()
+
+    # ── 确定性推断（agent_type） ──
+    combined = f"{name} {description} {agmd_body[:2000]}".lower()
+    agent_type = "react"  # default
+    if any(k in combined for k in ("base", "simple", "basic", "conversation")):
+        agent_type = "base"
+    elif any(k in combined for k in ("plan", "task", "decompose", "分解", "规划")):
+        agent_type = "plan"
+    elif any(k in combined for k in ("tool", "execute", "exec", "run")):
+        agent_type = "tool"
+
+    # ── 缓存命中 ──
+    if cache_key in _AGENT_IMPORT_CACHE:
+        return _AGENT_IMPORT_CACHE[cache_key]
+
     from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
     from core.harness.utils.prompt_loader import _async_prompt_resolve
-    
+    from .workspace_skills import _build_available_tools_list
+
     model_name = best_model_for_purpose("agent_creation")
     model = create_selected_adapter(model_name=model_name)
-    system_prompt = await _async_prompt_resolve("agent-import-detect")
+    system_prompt = await _async_prompt_resolve("agent-import-detect",
+        available_tools_list=_build_available_tools_list(),
+        skills_catalog=_build_skills_catalog(),
+        mcp_catalog=_build_mcp_catalog(),
+        agent_catalog=_build_agent_catalog(),
+    )
     user_content = f"Agent 名称: {name or '(未命名)'}\n描述: {description or '(无)'}\n\nAGENT.md:\n{agmd_body[:8000]}"
     
     from core.harness.syscalls.llm import sys_llm_generate
@@ -1607,9 +1753,14 @@ async def _ai_recommend_agent_config(
     )
     
     text = str(getattr(response, "content", "") or "")
-    from core.utils.json_utils import parse_json
-    return parse_json(text) or {}
+    config = parse_json(text) or {}
+    if not config.get("agent_type"):
+        config["agent_type"] = agent_type
+    _AGENT_IMPORT_CACHE[cache_key] = config
+    return config
 
+
+_AGENT_IMPORT_CACHE: dict = {}
 
 # ── Agent Installer endpoints (workspace scope) ──────────────────────
 

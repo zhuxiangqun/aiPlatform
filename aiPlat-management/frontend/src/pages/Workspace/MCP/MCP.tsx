@@ -10,6 +10,7 @@ import AddMcpModal from '../../../components/workspace/AddMcpModal';
 import EditMcpModal from '../../../components/workspace/EditMcpModal';
 import { toastGateError } from '../../../components/ui';
 import ImportBar from '../../../components/workspace/ImportBar';
+import { getSourceLabel, extractProvenance } from '../../../utils/sourceLabel';
 
 const MCP_TEMPLATES = [
   { id: 'http_bridge', name: 'HTTP API 桥接', icon: '🌐', desc: '调用任何 REST/HTTP API', tools: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] },
@@ -258,17 +259,10 @@ const WorkspaceMCP: React.FC = () => {
     },
     { title: 'Transport', dataIndex: 'transport', key: 'transport', width: 80, render: (v: string) => <span className="text-gray-400 text-xs">{v || '-'}</span> },
     {
-      title: '来源', key: 'source', width: 70, align: 'center' as const,
-      render: (_: unknown, record: McpServer) => {
-        const isInternal = record.source === 'internal';
-        return (
-          <span className={`inline-flex px-1.5 py-0.5 rounded text-xs font-medium ${
-            isInternal ? 'bg-blue-500/15 text-blue-300 border border-blue-500/25' : 'bg-dark-hover text-gray-400 border border-dark-border'
-          }`}>
-            {isInternal ? '内部' : '外部'}
-          </span>
-        );
-      },
+      title: '来源', key: 'source', width: 80, align: 'center' as const,
+      render: (_: unknown, record: McpServer) => (
+        <span className="text-gray-400 text-xs">{getSourceLabel(extractProvenance(record))}</span>
+      ),
     },
     {
       title: '描述',

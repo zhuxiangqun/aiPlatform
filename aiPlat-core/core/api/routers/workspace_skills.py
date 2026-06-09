@@ -2668,21 +2668,42 @@ async def detect_skill_import(request: Dict[str, Any], rt: RuntimeDep = None):
     
     name = str(existing.get("name") or "")
     desc = str(existing.get("description") or "")
-    
-    # AI recommendation
+
+    # Determine tools from frontmatter declarations (config-driven mapping)
+    # Resolve declared tools from any known frontmatter key
+    tool_map = _load_tool_mapping()
+    declared_tools = None
+    for key in ("tools", "allowed-tools", "allowedTools"):
+        val = existing.get(key)
+        if val:
+            if isinstance(val, str):
+                declared_tools = [t.strip().lower() for t in val.split(",") if t.strip()]
+            elif isinstance(val, list):
+                declared_tools = [str(t).strip().lower() for t in val if str(t).strip()]
+            break
+
+    if declared_tools:
+        mapped = set()
+        for t in declared_tools:
+            targets = tool_map.get(t, [t])  # unknown tools pass through as-is
+            mapped.update(targets)
+        declared_tools = sorted(mapped)
+
+    # AI recommendation (or deterministic if frontmatter has enough info)
     try:
         config = await _ai_recommend_skill_config(
             sop_body=sop_body,
             name=name,
             description=desc,
+            declared_tools=declared_tools,
         )
         # Merge AI recommendations with existing SKILL.md frontmatter fields
         config["detected_name"] = name or config.get("detected_name", "")
         config["detected_description"] = desc
         config["sop_body"] = sop_body  # pass SOP body for UI
         config["display_name"] = str(existing.get("display_name") or existing.get("displayName") or name)
-        config["input_schema"] = existing.get("input_schema", {})
-        config["output_schema"] = existing.get("output_schema", {})
+        config["input_schema"] = existing.get("input_schema") or config.get("input_schema", {})
+        config["output_schema"] = existing.get("output_schema") or config.get("output_schema", {})
         config["permissions"] = existing.get("permissions") or config.get("permissions", [])
         config["trigger_conditions"] = (
             existing.get("trigger_conditions")
@@ -2690,26 +2711,121 @@ async def detect_skill_import(request: Dict[str, Any], rt: RuntimeDep = None):
             or config.get("trigger_conditions", [])
         )
         config["version"] = str(existing.get("version", "1.0.0"))
+        # Override AI-inferred tools with deterministic frontmatter mapping
+        if declared_tools:
+            config["tools"] = declared_tools
+        # Cross-validate recommended tools against ToolRegistry
+        try:
+            from core.apps.tools.base import get_tool_registry
+            registry = get_tool_registry()
+            registered = set(registry.list_tools() or [])
+            recommended = config.get("tools", [])
+            config["tools_available"] = [t for t in recommended if t in registered]
+            config["tools_missing"] = [t for t in recommended if t not in registered]
+        except Exception:
+            config["tools_available"] = config.get("tools", [])
+            config["tools_missing"] = []
         return config
     except Exception as e:
         return {"error": f"AI detection failed: {str(e)}"}
 
 
+def _load_tool_mapping() -> dict:
+    """Load frontmatter tool → aiPlat tool mapping from YAML config.
+
+    Maps any source tool name (Claude Code / aiPlat / OpenClaw) to one or more
+    aiPlat registry tool names.  Supports 1→N with list values; unknown tools
+    pass through as-is (single-element list).
+
+    Config: aiPlat-infra/config/skill_tool_mapping.yaml
+    Override: AIPLAT_SKILL_TOOL_MAP_PATH env var
+    """
+    import os, yaml
+    from pathlib import Path
+
+    config_path = os.getenv(
+        "AIPLAT_SKILL_TOOL_MAP_PATH",
+        str(Path(__file__).resolve().parent.parent.parent.parent.parent /
+            "aiPlat-infra" / "config" / "skill_tool_mapping.yaml"),
+    )
+    try:
+        data = yaml.safe_load(Path(config_path).read_text(encoding="utf-8"))
+        raw = data.get("mappings", {})
+        return {str(k).strip().lower(): list(v) if isinstance(v, list) else [str(v)]
+                for k, v in raw.items()}
+    except Exception:
+        pass
+    # Minimal fallback if config file is missing or unreadable
+    return {
+        "bash": ["code"], "read": ["file_operations"], "write": ["file_operations"],
+        "edit": ["file_operations"], "glob": ["code"], "grep": ["code"],
+        "websearch": ["search", "webfetch"], "webfetch": ["webfetch"],
+        "askuserquestion": [],
+        "code": ["code"], "search": ["search"], "http": ["http"],
+        "browser": ["browser"], "file_operations": ["file_operations"],
+        "database": ["database"], "repo": ["repo"],
+    }
+
+
+def _build_available_tools_list() -> str:
+    """Build a dynamic tool catalog string from the ToolRegistry for use in AI prompts."""
+    try:
+        from core.apps.tools.base import get_tool_registry
+        registry = get_tool_registry()
+        lines = []
+        for name in sorted(registry.list_tools() or []):
+            tool = registry.get(name)
+            desc = getattr(tool, 'description', '') if tool else ''
+            lines.append(f"- {name}: {str(desc)[:120]}" if desc else f"- {name}")
+        return "\n".join(lines) if lines else "(no tools registered)"
+    except Exception:
+        return "- code: 执行代码或脚本\n- search: 互联网搜索\n- webfetch: 抓取网页内容\n- http: HTTP API 调用\n- browser: 浏览器自动化\n- file_operations: 读写文件\n- database: 数据库查询\n- repo: Git 仓库操作"
+
+
 async def _ai_recommend_skill_config(
     sop_body: str, name: str = "", description: str = "",
+    *, declared_tools: list = None,
 ) -> dict:
-    """LLM 分析 SOP 正文，返回推荐的 skill 配置。"""
-    import json as _json
+    """分析 SOP 正文，返回推荐的 skill 配置。
+
+    优先使用确定性推断（秒级），仅在必要时才调用 LLM（首次且无 frontmatter 声明时）。
+    同一 SOP 的 LLM 结果会被哈希缓存，二次导入瞬时返回。
+    """
+    import hashlib
+    from core.utils.json_utils import parse_json
+
+    # ── SOP 哈希缓存：同一 ZIP 重复导入 → 瞬时返回 ──
+    cache_key = hashlib.sha256(sop_body[:8000].encode()).hexdigest()
     
+    # ── 确定性推断 ──
+    det = _deterministic_skill_recommend(sop_body, name, description, declared_tools=declared_tools)
+
+    # 检查确定性推断结果 —— 是否需要 LLM 补充
+    needs_llm = not det["tools"] or not det["trigger_conditions"]
+
+    if not needs_llm:
+        return det
+
+    # ── 已缓存且不需要 LLM? 跳过 ──
+    if cache_key in _SKILL_IMPORT_CACHE:
+        cached = _SKILL_IMPORT_CACHE[cache_key]
+        # Merge deterministic with cached (deterministic wins for tools)
+        for k, v in det.items():
+            if v is not None:
+                cached[k] = v
+        return cached
+
+    # ── LLM 补充（仅首次，且确实需要） ──
     from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
-    
+    from core.harness.utils.prompt_loader import _async_prompt_resolve
 
     model_name = best_model_for_purpose("skill_creation")
     model = create_selected_adapter(model_name=model_name)
-    from core.harness.utils.prompt_loader import _async_prompt_resolve
-    system_prompt = await _async_prompt_resolve("skill-import-detect")
+    system_prompt = await _async_prompt_resolve("skill-import-detect",
+        available_tools_list=_build_available_tools_list(),
+    )
     user_content = f"技能名称: {name or '(未命名)'}\n描述: {description or '(无)'}\n\nSOP:\n{sop_body[:8000]}"
-    
+
     response = await sys_llm_generate(
         model,
         [
@@ -2717,8 +2833,41 @@ async def _ai_recommend_skill_config(
             {"role": "user", "content": user_content},
         ],
     )
-    
+
     text = str(getattr(response, "content", "") or "")
-    from core.utils.json_utils import parse_json
     config = parse_json(text) or {}
+    # Deterministic wins over LLM for tools + schemas
+    if det["tools"]:
+        config["tools"] = det["tools"]
+    if not config.get("input_schema") or not isinstance(config.get("input_schema"), dict) or not config["input_schema"]:
+        config["input_schema"] = det["input_schema"]
+    if not config.get("output_schema") or not isinstance(config.get("output_schema"), dict) or not config["output_schema"]:
+        config["output_schema"] = det["output_schema"]
+    if det["permissions"]:
+        config["permissions"] = det["permissions"]
+    if det.get("trigger_conditions") and not config.get("trigger_conditions"):
+        config["trigger_conditions"] = det["trigger_conditions"]
+    _SKILL_IMPORT_CACHE[cache_key] = config
     return config
+
+
+# ── SOP 哈希缓存（进程内存，重启后清空） ──
+_SKILL_IMPORT_CACHE: dict = {}
+
+
+def _deterministic_skill_recommend(sop_body: str, name: str = "", description: str = "", *, declared_tools: list = None) -> dict:
+    """Deterministic skill config — assembles frontmatter declarations + safe defaults.
+
+    Returns a dict with None for fields that need LLM or user input.
+    No keyword inference / guessing — only what's explicitly declared in frontmatter.
+    """
+    return {
+        "tools": (declared_tools or None),
+        "execution_type": "prompt",
+        "category": "general",      # user or LLM adjusts
+        "permissions": None,        # LLM infers from tools/SOP
+        "trigger_conditions": None, # user fills manually or from frontmatter
+        "input_schema":  {"topic": {"type": "string", "required": True, "description": "输入内容"}},
+        "output_schema": {"report": {"type": "string", "required": True, "description": "输出结果"}},
+        "timeout": 300,
+    }

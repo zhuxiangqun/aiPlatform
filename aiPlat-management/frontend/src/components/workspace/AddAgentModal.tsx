@@ -54,6 +54,8 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
   const [configText, setConfigText] = useState('');
   const [memoryConfigText, setMemoryConfigText] = useState('{\n  "type": "short_term",\n  "recall_count": 5\n}');
   const [sopText, setSopText] = useState('');
+  const [triggerText, setTriggerText] = useState('');
+  const [permissionsText, setPermissionsText] = useState('["llm:generate"]');
   const [skillOptions, setSkillOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [toolOptions, setToolOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [mcpOptions, setMcpOptions] = useState<Array<{ value: string; label: string }>>([]);
@@ -98,6 +100,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
       setConfigText(JSON.stringify(AGENT_TYPE_TEMPLATES.base.config, null, 2));
       setMemoryConfigText('{\n  "type": "short_term",\n  "recall_count": 5\n}');
       setSopText('');
+      setTriggerText('');
       setKnowledgeBases([]);
       setConfigEdited(false);
       fetchOptions();
@@ -134,6 +137,8 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
       if (res.detected_description && !description) setDescription(res.detected_description);
       if (res.agent_type) setSelectedType(res.agent_type);
       if (res.sop_body) setSopText(res.sop_body);
+      if (res.trigger_conditions?.length) setTriggerText(res.trigger_conditions.join('\n'));
+      else if (sourceMode !== 'manual') setTriggerText('');
       if (res.config) {
         setConfigText(JSON.stringify(res.config, null, 2));
         setConfigEdited(true);
@@ -141,6 +146,8 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
       if (res.skills?.length) setSkills(res.skills);
       if (res.tools?.length) setTools(res.tools);
       if (res.mcp_ids?.length) setMcpIds(res.mcp_ids);
+      if (res.agent_ids?.length) setAgentIds(res.agent_ids);
+      if (res.permissions?.length) setPermissionsText(JSON.stringify(res.permissions, null, 2));
       setImportMeta({
         ...(res.tools ? { tools: res.tools } : {}),
         ...(sourceMode === 'url' && importUrl.trim() ? { source_url: importUrl.trim() } : {}),
@@ -425,7 +432,10 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
       if (description.trim()) metadata.description = description.trim();
       if (knowledgeBases.length > 0) metadata.knowledge_bases = knowledgeBases;
 
-      const created = await workspaceAgentApi.create({ name: name.trim(), agent_type: selectedType, config, skills, tools, mcp_ids: mcpIds, workflow_ids: workflowIds, agent_ids: agentIds, memory_config, metadata });
+      const created = await workspaceAgentApi.create({ name: name.trim(), agent_type: selectedType, config, skills, tools, mcp_ids: mcpIds, workflow_ids: workflowIds, agent_ids: agentIds, memory_config, metadata,
+        ...(triggerText.trim() ? { trigger_conditions: triggerText.split('\n').map(s => s.trim()).filter(Boolean) } : {}),
+        ...(permissionsText.trim() ? { permissions: JSON.parse(permissionsText) as string[] } : {}),
+      });
       const agentId = String((created as any).id || '');
       // SOP is optional; best-effort write after create.
       if (agentId && sopText.trim()) {
@@ -524,11 +534,33 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
                 <div><span className="text-gray-500">技能:</span> {(importResult.skills || []).join(', ') || '-'}</div>
                 <div><span className="text-gray-500">工具:</span> {(importResult.tools || []).join(', ') || '-'}</div>
                 <div><span className="text-gray-500">MCP:</span> {(importResult.mcp_ids || []).join(', ') || '-'}</div>
+                <div><span className="text-gray-500">触发词:</span> {(importResult.trigger_conditions || []).join(', ') || <span className="text-gray-400 italic">未声明</span>}</div>
               </div>
               {importResult.reasoning && (
                 <div className="text-xs text-gray-400 mt-2 italic">"{(importResult.reasoning as string).slice(0, 200)}"</div>
               )}
               <div className="text-xs text-gray-500 mt-2">以上配置已自动填入表单</div>
+              {(importResult.tools_missing || []).length > 0 && (
+                <div className="mt-2 p-2 rounded border border-amber-500/30 bg-amber-500/5 text-xs text-amber-300">
+                  ⚠️ 系统缺少以下工具: <strong>{(importResult.tools_missing as string[]).join(', ')}</strong>
+                  <div className="mt-1 text-amber-400">Agent 可能无法完整运行，建议先在工具管理页面安装对应工具。</div>
+                </div>
+              )}
+              {(importResult.skills_missing || []).length > 0 && (
+                <div className="mt-2 p-2 rounded border border-amber-500/30 bg-amber-500/5 text-xs text-amber-300">
+                  ⚠️ 系统缺少以下 Skills: <strong>{(importResult.skills_missing as string[]).join(', ')}</strong>
+                </div>
+              )}
+              {(importResult.mcp_missing || []).length > 0 && (
+                <div className="mt-2 p-2 rounded border border-amber-500/30 bg-amber-500/5 text-xs text-amber-300">
+                  ⚠️ 系统缺少以下 MCP Server: <strong>{(importResult.mcp_missing as string[]).join(', ')}</strong>
+                </div>
+              )}
+              {(importResult.agents_missing || []).length > 0 && (
+                <div className="mt-2 p-2 rounded border border-amber-500/30 bg-amber-500/5 text-xs text-amber-300">
+                  ⚠️ 系统缺少以下子 Agent: <strong>{(importResult.agents_missing as string[]).join(', ')}</strong>
+                </div>
+              )}
             </div>
           )}
           {importResult?.error && (
@@ -545,6 +577,13 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
             <Textarea value={description} onChange={(e: any) => setDescription(e.target.value)} placeholder="描述这个 Agent 的任务目标和能力边界，AI 将根据描述自动推荐技能、工具和配置" />
           </div>
         </div>
+        <Textarea label="trigger_conditions（每行一条，可选）" rows={3} value={triggerText} onChange={(e: any) => setTriggerText(e.target.value)} placeholder="例如：\n帮我分析代码...\n代码审查\nreview" />
+        {!triggerText.trim() && sourceMode !== 'manual' && (
+          <div className="text-xs text-blue-400 bg-blue-500/5 border border-blue-500/20 rounded p-2 -mt-2 mb-1">
+            💡 此 Agent 未声明触发词，需要手动填写才能被自动匹配。建议 3-6 个中文触发词。
+          </div>
+        )}
+        <Textarea label="permissions（JSON 数组）" rows={3} value={permissionsText} onChange={(e: any) => setPermissionsText(e.target.value)} placeholder='["llm:generate", "network:outbound"]' />
           {sourceMode === 'manual' && (
           <div className="flex items-center gap-2">
             <Button variant="secondary" size="sm" onClick={handleAutoFill} loading={autoFillLoading}>

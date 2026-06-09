@@ -770,15 +770,17 @@ _register("agent-import-detect", """你是一个 Agent 配置助手。阅读以�
 - plan: 规划型 Agent（任务分解）
 - tool: 工具型 Agent（工具调用）
 
-## 可用工具列表:
-- calculator: 数学计算
-- search: 互联网搜索
-- webfetch: 网页抓取
-- file_operations: 文件读写
-- browser: 浏览器自动化
-- http: HTTP 请求
-- database: 数据库查询
-- repo: Git 仓库
+## 可用工具列表（从以下选择，只能选实际存在的）:
+${available_tools_list}
+
+## 可用 Skills（从以下选择实际存在的）:
+${skills_catalog}
+
+## 可用 MCP Server（从以下选择实际存在的）:
+${mcp_catalog}
+
+## 可用子 Agent（可从以下委派任务）:
+${agent_catalog}
 
 ## 执行方式:
 - agent 通过 ReAct loop 执行 SOP 步骤
@@ -787,9 +789,9 @@ _register("agent-import-detect", """你是一个 Agent 配置助手。阅读以�
 - MCP 用于外部服务集成
 
 输出 JSON（无 markdown 标记, 字段完整）:
-{"agent_type":"react","skills":["code_review","summarization"],"tools":["search","file_operations"],"mcp_ids":[],"sop_text":"1. 接收任务\\n2. 分析需求\\n3. 执行操作\\n4. 输出结果","config":{"temperature":0.1,"max_tokens":4096},"reasoning":"AGENT.md 描述了多步推理需求，适合 ReAct 模式..."}""",
+{"agent_type":"react","skills":["code_review","summarization"],"tools":["search","file_operations"],"mcp_ids":[],"agent_ids":[],"sop_text":"1. 接收任务\\n2. 分析需求\\n3. 执行操作\\n4. 输出结果","config":{"temperature":0.1,"max_tokens":4096},"reasoning":"AGENT.md 描述了多步推理需求，适合 ReAct 模式..."}""",
     category="agent",
-    variables=[])
+    variables=["available_tools_list", "skills_catalog", "mcp_catalog", "agent_catalog"])
 
 _register("kb-doc-writer", """你是文档写作助手。按用户要求生成知识库文档。
 
@@ -873,15 +875,10 @@ Provide insights and analysis.""",
 
 _register("skill-import-detect", """你是一个 Skill 配置助手。阅读以下 SOP 正文，推断该技能需要的完整配置。
 
-## 可用工具列表（从以下选择相关的）:
-- code: 执行代码或脚本 (Python/Shell)
-- search: 互联网搜索
-- webfetch: 抓取网页内容
-- http: 发送 HTTP 请求调用外部 API
-- browser: 自动化浏览器交互
-- file_operations: 读写文件
-- database: 执行数据库查询
-- repo: Git 仓库操作
+## 可用工具列表（从以下选择相关的，只能选列表中实际存在的工具）:
+${available_tools_list}
+
+⚠️ 如果用户消息中提到 "import_source_tools"，说明 SKILL.md frontmatter 中已有工具声明，必须直接使用那些工具名，不要修改或新增。
 
 ## 执行方式:
 - prompt: SOP 需要 LLM 多步推理和决策（大多数情况下选这个）
@@ -902,19 +899,31 @@ retrieval, generation, analysis, execution, document, design, text, tool, genera
 ## trigger_conditions:
 推断用户会用什么话说来触发此技能（从用户意图角度，非从 SOP 正文提取）：
 - 思考：用户为什么想用这个技能？会说什么话？
-- 通用搜索/调研类技能：用简短高信号词（"research", "find out", "look up"），3-6 个即可
+- 通用搜索/调研类技能：用简短高信号词（"research", "帮我调研"），3-6 个即可
+- **必须同时提供中英文触发词**，覆盖两种语言的用户输入场景
 - 窄领域技能：用领域触发词（"merge code", "generate test"）
 - 过于宽泛的通用技能（任何话题都可能触发）→ 返回空数组 []，让用户手动调用
 - ❌ 禁止从 SOP 正文中提取技术术语、命令名、LAW 编号作为触发词
 
+## input_schema 和 output_schema:
+根据 SOP 正文推断技能的输入输出结构：
+- input_schema: 用户调用时需提供什么参数（字段名、类型、是否必填、描述）
+- output_schema: 技能执行后返回什么（字段名、类型、是否必填、描述）
+- 两个 schema 都不能为空对象 {}，至少各一个字段
+- 通用技能格式示例：input_schema={"topic":{"type":"string","required":true}} output_schema={"report":{"type":"string","required":true}}
+
 输出 JSON（无 markdown 标记, 字段完整）:
-{"tools":["code","search","webfetch"],"execution_type":"prompt","timeout":300,"category":"retrieval","permissions":["network:outbound"],"trigger_conditions":["research","find out","look up","what's happening","recent news"],"reasoning":"SOP 包含 Bash 脚本执行和多平台搜索，需要 code 和 search 工具..."}""",
+{"tools":["code","search","webfetch"],"execution_type":"prompt","timeout":300,"category":"retrieval","permissions":["network:outbound"],"trigger_conditions":["research","find out","帮我调研","look up","最近有什么","recent news","帮我查一下"],"input_schema":{"topic":{"type":"string","required":true,"description":"要调研的话题"}},"output_schema":{"report":{"type":"string","required":true,"description":"调研报告（Markdown）"}},"reasoning":"SOP 包含 Bash 脚本执行和多平台搜索，需要 code 和 search 工具..."}""",
     category="skills",
-    variables=[])
+    variables=["available_tools_list"])
 
 _register("skill-auto-fill-system-role", """你是 AI Skill 设计专家。只输出 SKILL.md 格式，不要任何额外解释。""",
     category="skills",
     variables=[])
+
+_register("skill-executor-json-override", """【最高优先级 — 覆盖 SOP 中的输出格式规定】你必须忽略 SOP 原文中的输出格式规则（如 BADGE、LAW、What I learned 等），只输出严格 JSON。顶层字段必须包含：${keys}。不要输出任何额外文本/解释/markdown 标记/代码块。如果某字段无法给出，填充空值（空数组/空对象/空字符串），但不要遗漏字段。""",
+    category="skills",
+    variables=["keys"])
 
 _register("agent-auto-fill-system-role", """你是一个 AI Agent 配置专家。只输出 JSON，不要加任何解释或 markdown 标记。""",
     category="agent",
