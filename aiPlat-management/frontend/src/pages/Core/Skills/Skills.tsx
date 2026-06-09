@@ -7,6 +7,7 @@ import { useSkillStore } from '../../../stores';
 import type { Skill } from '../../../services';
 import { getSourceLabel, extractProvenance } from '../../../utils/sourceLabel';
 import { SKILL_CATEGORIES } from '../../../utils/categoryConfig';
+import { StatusBadge } from '../../../utils/statusLabel';
 
 const Skills: React.FC = () => {
   const { skills, loading, fetchSkills, deleteSkill, restoreSkill } = useSkillStore();
@@ -101,6 +102,12 @@ const Skills: React.FC = () => {
       render: (_: unknown, record: Skill) => (
         <span className="text-gray-400 text-xs">{getSourceLabel(extractProvenance(record))}</span>
       ),
+    },
+    {
+      title: '上架状态',
+      key: 'status',
+      width: 80,
+      render: (_: unknown, record: Skill) => <StatusBadge status={record.status} />,
     },
     {
       title: '操作',

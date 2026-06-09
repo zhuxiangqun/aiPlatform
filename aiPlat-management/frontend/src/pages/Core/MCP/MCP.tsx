@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { RotateCw, Server, Wrench, Power, PowerOff, Eye, Copy } from 'lucide-react';
-import { Button, Modal, toast, Table, Switch } from '../../../components/ui';
+import { Button, Modal, toast, Table, Switch, Badge } from '../../../components/ui';
 import { mcpApi } from '../../../services';
 import { toastGateError } from '../../../components/ui';
 import { getSourceLabel, extractProvenance } from '../../../utils/sourceLabel';
@@ -129,7 +129,16 @@ const MCP: React.FC = () => {
             {
               title: '启用', key: 'enabled', width: 100, align: 'center' as const,
               render: (_: unknown, record: MCPServer) => (
-                <Switch checked={record.enabled} onChange={() => handleToggle(record)} />
+                <div className="flex items-center gap-2 justify-center">
+                  <Badge variant={record.enabled ? 'success' as any : 'warning' as any}>{record.enabled ? 'enabled' : 'disabled'}</Badge>
+                  <Switch checked={record.enabled} onChange={() => handleToggle(record)} />
+                </div>
+              ),
+            },
+            {
+              title: '工具数', key: 'tool_count', width: 65, align: 'center' as const,
+              render: (_: unknown, record: MCPServer) => (
+                <span className="text-xs text-gray-400">{(record as any).allowed_tools?.length || (record as any).tools?.length || 0}</span>
               ),
             },
             {

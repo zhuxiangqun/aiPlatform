@@ -15,20 +15,9 @@ import SkillExecutionsModal from '../../../components/workspace/SkillExecutionsM
 import ImportBar from '../../../components/workspace/ImportBar';
 import { getSourceLabel, extractProvenance } from '../../../utils/sourceLabel';
 import { SKILL_CATEGORIES } from '../../../utils/categoryConfig';
+import { GovDetailBadge } from '../../../utils/statusLabel';
 
-const governanceBadge = (record: any) => {
-  const prov = (record?.metadata as any)?.provenance || {};
-  if (prov?.signature_verified === true) return <Badge variant={'success' as any}>已验签</Badge>;
-  if (prov?.signature) return <Badge variant={'info' as any}>已签名</Badge>;
-  const g = (record?.metadata as any)?.governance || {};
-  const v = (record?.metadata as any)?.verification || {};
-  const st = String((g?.status || v?.status || '')).toLowerCase();
-  if (st === 'verified') return <Badge variant={'success' as any}>verified</Badge>;
-  if (st === 'published') return <Badge variant={'success' as any}>published</Badge>;
-  if (st === 'failed') return <Badge variant={'error' as any}>failed</Badge>;
-  if (st === 'pending') return <Badge variant={'warning' as any}>pending</Badge>;
-  return <Badge variant={'default' as any}>未签名</Badge>;
-};
+const governanceBadge = (record: any) => <GovDetailBadge record={record} />;
 
 const SKILL_CATEGORY_OPTIONS = [
   { value: '', label: '全部' },

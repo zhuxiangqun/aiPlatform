@@ -8,6 +8,7 @@ import AddToolModal from '../../../components/workspace/AddToolModal';
 import { workspaceToolApi, toolApi } from '../../../services';
 import type { ToolInfo } from '../../../services';
 import { getSourceLabel, extractProvenance } from '../../../utils/sourceLabel';
+import { StatusBadge } from '../../../utils/statusLabel';
 import { TOOL_CATEGORIES } from '../../../utils/categoryConfig';
 
 const governanceBadge = (record: any) => {
@@ -267,10 +268,9 @@ TOOL_DEF = {
     },
     {
       title: '上架状态', key: 'status', width: 80,
-      render: (_: unknown, record: any) => {
-        if (record.available === false) return <Badge variant={'error' as any}>不可用</Badge>;
-        return <Badge variant={'success' as any}>可用</Badge>;
-      },
+      render: (_: unknown, record: any) => (
+        <StatusBadge status={record.available === false ? 'deprecated' : 'listed'} />
+      ),
     },
     {
       title: '治理', key: 'governance', width: 90, render: (_: unknown, record: any) => governanceBadge(record),

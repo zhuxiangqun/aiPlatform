@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Table, Select, Button, Modal, toast } from '../../../components/ui';
 import { EditAgentModal, ExecuteAgentModal, AgentDetailModal, ChatPanel } from '../../../components/core';
 import { getSourceLabel, extractProvenance } from '../../../utils/sourceLabel';
+import { getCategoryColor } from '../../../utils/statusLabel';
 import { useAgentStore } from '../../../stores';
 import { agentApi, type Agent } from '../../../services';
 
@@ -100,9 +101,10 @@ const Agents: React.FC = () => {
       dataIndex: 'category',
       key: 'category',
       width: 70,
-      render: (cat: string) => (
-        <span className="text-xs text-gray-400">{cat || '-'}</span>
-      ),
+      render: (cat: string) => {
+        const c = getCategoryColor(cat);
+        return <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium" style={{ color: c, background: `${c}15`, border: `1px solid ${c}30` }}>{cat || '-'}</span>;
+      },
     },
     {
       title: '来源',
@@ -131,6 +133,13 @@ const Agents: React.FC = () => {
         if (prov?.signature) return <span className="text-xs text-blue-400">已签名</span>;
         return <span className="text-xs text-gray-500">未签名</span>;
       },
+    },
+    {
+      title: '类型',
+      dataIndex: 'agent_type',
+      key: 'agent_type',
+      width: 65,
+      render: (t: string) => <span className="text-xs text-gray-400">{t || '-'}</span>,
     },
     {
       title: '操作',
