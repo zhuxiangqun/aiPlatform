@@ -365,6 +365,9 @@ const ChangeControl: React.FC = () => {
         </Modal>
         <div className="flex items-center justify-between">
           <div className="space-y-1">
+            <Link to="/diagnostics" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200 transition-colors">
+              <ArrowLeft className="w-3 h-3" />返回诊断中心
+            </Link>
             <div className="flex items-center gap-2">
               <Button variant="secondary" onClick={() => navigate('/diagnostics/change-control')}>
                 <ArrowLeft size={14} className="mr-1" />

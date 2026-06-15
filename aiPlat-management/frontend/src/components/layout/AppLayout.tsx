@@ -3,7 +3,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Activity, BarChart3, Bell, Bot, Box, Brain, ChevronDown, ChevronLeft,
-  ChevronRight, Cpu, Database, FileText, FolderOpen, HardDrive, Key,
+  ChevronRight, Cpu, Database, FileText, FolderOpen, GitBranch, HardDrive, Key,
   LogOut, MessageSquare, Monitor, Network, Package, PenTool, Plug,
   Rocket, Server, Settings, Shield, ShoppingBag, Sparkles, User, Users, Wrench,
   type LucideIcon,
@@ -58,13 +58,13 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
   ]},
   { divider: true },
   { group: 'workspace', label: '应用能力层', items: [
-    { key: '/workspace/agents', icon: Package, label: 'Agent库' },
-    { key: '/workspace/skills', icon: Package, label: 'Skill库' },
+    { key: '/workspace/agents', icon: Bot, label: 'Agent库' },
+    { key: '/workspace/skills', icon: Sparkles, label: 'Skill库' },
     { key: '/workspace/tools', icon: Wrench, label: 'Tool库' },
-    { key: '/core/workflows', icon: Wrench, label: 'Workflow库' },
+    { key: '/core/workflows', icon: GitBranch, label: 'Workflow库' },
     { key: '/workspace/marketplace', icon: ShoppingBag, label: '商城' },
     { key: '/core/skill-packs', icon: Package, label: '包管理' },
-    { key: '/workspace/mcp', icon: Package, label: 'MCP库' },
+    { key: '/workspace/mcp', icon: Plug, label: 'MCP库' },
     { key: '/workspace/teams', icon: Users, label: '团队组装' },
     { key: '/plugins', icon: Box, label: '插件管理' },
   ]},

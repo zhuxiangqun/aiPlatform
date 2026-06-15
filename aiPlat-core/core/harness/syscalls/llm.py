@@ -5,12 +5,17 @@ This module intentionally keeps behavior identical to direct adapter calls,
 while providing a single choke point for future gates:
 - TraceGate (span + token usage persistence)
 - ResilienceGate (retry/timeout/fallback)
+
+Phase 6 (Tool Contracts): LLMResult provides structured return with
+error classification and truncation awareness.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Union
 
+import asyncio
 import os
 import logging
 import time
@@ -21,6 +26,101 @@ from core.harness.kernel.execution_context import get_active_release_context, ge
 
 
 Message = Dict[str, Any]
+
+
+@dataclass
+class LLMResult:
+    u"""Structured LLM generation result.
+
+    Replaces the opaque Any return type. Provides:
+      - content + finish_reason for response interpretation
+      - truncated flag so Agent knows NOT to treat partial output as complete
+      - error_type + error_action for failure classification
+      - dict-like access (.get("content")) for backward compatibility
+    """
+    content: str = ""
+    finish_reason: str = ""            # "stop" | "length" | "content_filter" | "tool_calls"
+    tokens_used: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    model_name: str = ""
+    truncated: bool = False            # True when finish_reason="length" — result is INCOMPLETE
+    error_type: str = ""               # "" | "rate_limit" | "timeout" | "content_filter" | "model_unavailable"
+    error_action: str = ""             # "retry" | "reduce" | "escalate" | "none"
+
+    def get(self, key: str, default: Any = None) -> Any:
+        u"""Dict-like access for backward compatibility."""
+        return getattr(self, key, default)
+
+    def __bool__(self) -> bool:
+        return bool(self.content) or self.finish_reason == "stop"
+
+
+def _wrap_llm_result(raw: Any, model_name: str = "") -> LLMResult:
+    u"""Wrap a model response into structured LLMResult.
+
+    Handles the variety of return types from different model adapters:
+      - Object with .content / .usage / .model
+      - Dict with "content" / "choices" keys (OpenAI format)
+      - Plain string
+
+    Detects truncation when finish_reason != "stop".
+    """
+    if raw is None:
+        return LLMResult(error_type="model_unavailable", error_action="escalate")
+
+    content = ""
+    finish_reason = "stop"
+    tokens_used = 0
+    input_tokens = 0
+    output_tokens = 0
+
+    # Extract from common model response shapes
+    if isinstance(raw, str):
+        content = raw
+    elif isinstance(raw, dict):
+        content = raw.get("content", "") or raw.get("text", "")
+        if "choices" in raw and raw["choices"]:
+            c0 = raw["choices"][0] if isinstance(raw["choices"], list) else raw["choices"]
+            if isinstance(c0, dict):
+                content = content or c0.get("message", {}).get("content", "")
+                finish_reason = c0.get("finish_reason", finish_reason)
+        usage = raw.get("usage", {})
+        if isinstance(usage, dict):
+            tokens_used = usage.get("total_tokens", 0)
+            input_tokens = usage.get("prompt_tokens", 0)
+            output_tokens = usage.get("completion_tokens", 0)
+    else:
+        # Object with attributes (common for model adapters)
+        content = getattr(raw, "content", "") or str(raw)
+        finish_reason = getattr(raw, "finish_reason", "stop")
+        usage = getattr(raw, "usage", None)
+        if usage is not None:
+            tokens_used = getattr(usage, "total_tokens", 0) or 0
+            input_tokens = getattr(usage, "prompt_tokens", 0) or 0
+            output_tokens = getattr(usage, "completion_tokens", 0) or 0
+        if not model_name:
+            model_name = getattr(raw, "model", "")
+
+    truncated = finish_reason == "length"
+    error_type = ""
+    error_action = ""
+
+    if truncated:
+        error_type = "truncated"
+        error_action = "retry"  # reduce prompt length and retry
+
+    return LLMResult(
+        content=str(content),
+        finish_reason=finish_reason,
+        tokens_used=tokens_used,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        model_name=model_name,
+        truncated=truncated,
+        error_type=error_type,
+        error_action=error_action,
+    )
 
 def _guard_messages(messages: List[Message]) -> tuple[List[Message], Dict[str, Any]]:
     """
@@ -566,6 +666,16 @@ async def sys_llm_generate(
     _ar = get_active_release_context()
     _pr = get_active_request_context()
 
+    # SandboxGate — pre-LLM rate limit check
+    try:
+        from core.harness.infrastructure.gates.sandbox_gate import get_sandbox, Verdict
+        sb = get_sandbox()
+        sb_result = await sb.check(kind="llm", tool_name="llm:" + (model_name or "generate"))
+        if sb_result.verdict == Verdict.REJECT:
+            logging.getLogger("aiplat.sandbox").warning("Sandbox rejected LLM call: %s", sb_result.reason)
+    except Exception:
+        pass
+
     if model is None or not hasattr(model, "generate"):
         end_ts = time.time()
         await trace_gate.end(span, success=False)
@@ -630,6 +740,7 @@ async def sys_llm_generate(
     # §5.18: Refuse LLM call when prompt injection detected
     if message_guard_stats and message_guard_stats.get("injection_alerts", 0) > 0:
         await trace_gate.end(span, success=False)
+        end_ts = time.time()
         runtime = get_kernel_runtime()
         store = getattr(runtime, "execution_store", None) if runtime else None
         if store is not None:
@@ -641,6 +752,9 @@ async def sys_llm_generate(
                         "span_id": getattr(span, "span_id", None),
                         "parent_span_id": (trace_context or {}).get("parent_span_id") if isinstance(trace_context, dict) else None,
                         "run_id": (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None,
+                "start_time": start_ts,
+                "end_time": end_ts,
+                "duration_ms": (end_ts - start_ts) * 1000.0,
                 "action": "rejected_prompt_injection",
                 "reason": "prompt_injection_detected",
                 "error": f"prompt_injection: {message_guard_stats['injection_alerts']} alert(s)",
@@ -742,13 +856,13 @@ async def sys_llm_generate(
             # Apply per-call overrides to model adapter config
             if temperature is not None:
                 try: model._config.temperature = temperature
-                except: pass
+                except Exception: pass
             if max_tokens is not None:
                 try: model._config.max_tokens = max_tokens
-                except: pass
+                except Exception: pass
             if response_format is not None:
                 try: model._config.response_format = response_format
-                except: pass
+                except Exception: pass
             # Mark gate coverage (Phase 3 GateTracer)
             try:
                 from core.harness.kernel.execution_context import mark_gate_passed
@@ -757,10 +871,29 @@ async def sys_llm_generate(
                 pass
             return await model.generate(prepared)  # type: ignore[misc]
 
-        retries = int(os.getenv("AIPLAT_LLM_RETRIES", "2") or "2")
-        timeout_seconds = os.getenv("AIPLAT_LLM_TIMEOUT_SECONDS")
-        timeout = float(timeout_seconds) if timeout_seconds else None
-        result = await res_gate.run(_call, retries=retries, timeout_seconds=timeout)
+        # Set ActiveTraceContext for downstream event emission
+        from core.harness.kernel.execution_context import ActiveTraceContext, set_active_trace_context, reset_active_trace_context
+        run_id_val = str((trace_context or {}).get("run_id") or "") if isinstance(trace_context, dict) else ""
+        span_id_val = getattr(span, "span_id", "")
+        trace_token = set_active_trace_context(ActiveTraceContext(
+            run_id=run_id_val,
+            span_id=str(span_id_val),
+            parent_span_id=str((trace_context or {}).get("parent_span_id") or "") if isinstance(trace_context, dict) else "",
+        )) if run_id_val else None
+        try:
+            retries = int(os.getenv("AIPLAT_LLM_RETRIES", "2") or "2")
+            timeout_seconds = os.getenv("AIPLAT_LLM_TIMEOUT_SECONDS")
+            timeout = float(timeout_seconds) if timeout_seconds else None
+            result = await res_gate.run(
+                _call, retries=retries, timeout_seconds=timeout,
+                retry_on=(asyncio.TimeoutError, ConnectionError, OSError, RuntimeError),
+            )
+        finally:
+            if trace_token is not None:
+                try:
+                    reset_active_trace_context(trace_token)
+                except Exception:
+                    pass
         end_ts = time.time()
         await trace_gate.end(span, success=True)
         runtime = get_kernel_runtime()
@@ -805,6 +938,7 @@ async def sys_llm_generate(
                     {
                         "trace_id": span.trace_id,
                         "span_id": getattr(span, "span_id", None),
+                        "parent_span_id": (trace_context or {}).get("parent_span_id") if isinstance(trace_context, dict) else None,
                         "run_id": (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None,
                         "kind": "llm",
                         "name": "generate",
@@ -839,7 +973,7 @@ async def sys_llm_generate(
         # Notify router of success
         if model_name and deployment:
             router.mark_success(model_name, deployment)
-        return result
+        return _wrap_llm_result(result, model_name or "")
     except Exception:
         end_ts = time.time()
         await trace_gate.end(span, success=False)
@@ -856,6 +990,7 @@ async def sys_llm_generate(
                     {
                         "trace_id": span.trace_id,
                         "span_id": getattr(span, "span_id", None),
+                        "parent_span_id": (trace_context or {}).get("parent_span_id") if isinstance(trace_context, dict) else None,
                         "run_id": (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None,
                         "kind": "llm",
                         "name": "generate",

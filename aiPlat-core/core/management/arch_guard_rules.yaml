@@ -1051,3 +1051,109 @@ if collisions:
       grep_exclude: ["_exec_test_runner", "arch_guard_rules/", "# noqa: eval-state-mutation"]
     message: "evaluation function mutating state — evaluation functions must be pure, state changes belong in _exec_test_runner per §5.23.4"
 
+  # ═══ Section 61: Installed Skill Structure Compliance ═══
+  - id: skill_empty_scripts_dir
+    section: "§61"
+    section_name: "Skill 安装结构合规"
+    level: warning
+    check:
+      type: cmd_output
+      cmd: "find ~/.aiplat/skills/ -maxdepth 2 -name scripts -type d -empty 2>/dev/null"
+      ok_pattern: "^$"
+    message: "Empty scripts/ directory in installed skill — likely Path B zip import nesting artifact. Re-import via installer."
+
+  - id: skill_nested_skill_md
+    section: "§61"
+    section_name: "Skill 安装结构合规"
+    level: error
+    check:
+      type: cmd_output
+      cmd: "find ~/.aiplat/skills/*/skills/ -name 'SKILL.md' 2>/dev/null"
+      ok_pattern: "^$"
+    message: "Nested skills/*/SKILL.md — broken zip import structure. Run adapt_skill() or re-import."
+
+  - id: skill_nested_revisions
+    section: "§61"
+    section_name: "Skill 安装结构合规"
+    level: warning
+    check:
+      type: cmd_output
+      cmd: "find ~/.aiplat/skills/ -path '*/.revisions/*/SKILL.md' 2>/dev/null"
+      ok_pattern: "SKILL.md"
+    message: ".revisions/ backup SKILL.md present — expected after updates, safe to ignore unless excessive."
+
+  - id: skill_handler_for_scripts
+    section: "§61"
+    section_name: "Skill 安装结构合规"
+    level: warning
+    check:
+      type: cmd_output
+      cmd: "for d in ~/.aiplat/skills/*/; do [ -f \"$d/scripts/\"*.py ] 2>/dev/null && [ ! -f \"$d/handler.py\" ] && echo \"$d\"; done"
+      ok_pattern: "^$"
+    message: "Skill has scripts/*.py but no handler.py — should have execution_type: handler + handler.py"
+
+  # ═══ Section 62: Installed Agent/Workflow/MCP Structure Compliance ═══
+  - id: agent_nested_path
+    section: "§62"
+    section_name: "Agent 安装结构合规"
+    level: error
+    check:
+      type: cmd_output
+      cmd: "find ~/.aiplat/agents/ -mindepth 3 -name 'AGENT.md' -not -path '*/.revisions/*' 2>/dev/null"
+      ok_pattern: "^$"
+    message: "Nested AGENT.md at depth >=3 — broken zip import. Flatten directories or re-import."
+
+  - id: workflow_nested_path
+    section: "§63"
+    section_name: "Workflow 安装结构合规"
+    level: error
+    check:
+      type: cmd_output
+      cmd: "find ~/.aiplat/workflows/ -mindepth 3 -name 'workflow.yaml' 2>/dev/null"
+      ok_pattern: "^$"
+    message: "Nested workflow.yaml at depth >=3 — broken zip import structure."
+
+  - id: mcp_nested_path
+    section: "§64"
+    section_name: "MCP 安装结构合规"
+    level: error
+    check:
+      type: cmd_output
+      cmd: "find ~/.aiplat/mcps/ -mindepth 3 -name 'server.yaml' 2>/dev/null"
+      ok_pattern: "^$"
+    message: "Nested server.yaml at depth >=3 — broken zip import structure."
+
+  - id: skill_nested_revisions
+    section: "§61"
+    section_name: "Skill 安装结构合规"
+    level: warning
+    check:
+      type: cmd_output
+      cmd: "find ~/.aiplat/skills/ -path '*/skills/*/SKILL.md' -not -path '*/.revisions/*' 2>/dev/null"
+      ok_pattern: "^$"
+    message: "Nested skills/*/SKILL.md (not in .revisions/) — broken zip import. Run adapt_skill() or re-import."
+
+  - id: agent_split_1_bug
+    section: "§62"
+    section_name: "Agent 导入链路合规"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: 'split\("/",\s*1\)'
+      paths: ["aiPlat-core/core/api/routers/workspace_agents.py"]
+      exclude: ["__pycache__", "tests/", "arch_guard_rules/"]
+      grep_exclude: ["# noqa: split-1-approved", "shlex.split"]
+    message: "agent CREATE endpoint uses split('/',1) — will produce nested paths for GitHub release zips. Use _find_asset_dirs + copytree instead."
+
+  - id: mgmt_proxy_coverage_overview
+    section: "§63"
+    section_name: "管理端代理路由覆盖"
+    level: warning
+    check:
+      type: grep_required
+      pattern: "@router\\.get\\(\"/overview\"\\)"
+      paths: ["aiPlat-management/management/api/core.py"]
+      exclude: ["__pycache__", "tests/"]
+      grep_exclude: []
+    message: "管理端缺少 /overview 代理路由。在 core/api/routers/overview.py 新增 @router 后，必须在 management/api/core.py 同步添加代理路由。"
+

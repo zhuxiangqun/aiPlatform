@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { diagnosticsApi } from '../../services';
 import { Card, CardContent, CardHeader, Badge, Button } from '../../components/ui';
 import { ActionableFixes } from '../../components/common/ActionableFixes';
-import { Copy, ChevronDown, ChevronRight, Shield, Cpu, Layers, Activity, CheckCircle, AlertTriangle, XCircle, Info } from 'lucide-react';
+import { ArrowLeft, Copy, ChevronDown, ChevronRight, Shield, Cpu, Layers, Activity, CheckCircle, AlertTriangle, XCircle, Info } from 'lucide-react';
 
 const LAYER_LABELS: Record<string, string> = { infra: '基础设施', core: 'AI引擎', platform: '平台服务', app: '应用接入' };
 const LAYER_ICONS: Record<string, any> = { infra: Cpu, core: Layers, platform: Shield, app: Activity };
@@ -134,6 +134,10 @@ const Doctor: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <Link to="/diagnostics" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200 transition-colors mb-4">
+        <ArrowLeft className="w-3 h-3" />返回诊断中心
+      </Link>
 
       {error && <div className="text-sm text-error bg-error-light border border-dark-border rounded-lg p-3">{error}</div>}
 

@@ -85,7 +85,7 @@ CORE_TABLES = [
 SYS_TABLES = [
     # ── Syscall Events ──
     """CREATE TABLE IF NOT EXISTS syscall_events (
-      id INTEGER PRIMARY KEY AUTOINCREMENT, trace_id TEXT, span_id TEXT,
+      id INTEGER PRIMARY KEY AUTOINCREMENT, trace_id TEXT, span_id TEXT, parent_span_id TEXT,
       run_id TEXT, kind TEXT, name TEXT, status TEXT, target_type TEXT,
       target_id TEXT, tenant_id TEXT, user_id TEXT, session_id TEXT,
       start_time REAL, end_time REAL, duration_ms REAL, args_json TEXT,
@@ -174,7 +174,7 @@ REMAINING_TABLES = [
     "CREATE TABLE IF NOT EXISTS job_runs (run_id TEXT PRIMARY KEY, job_id TEXT, status TEXT, started_at REAL, finished_at REAL, output_json TEXT, error TEXT);",
     "CREATE TABLE IF NOT EXISTS job_delivery_attempts (attempt_id TEXT PRIMARY KEY, job_run_id TEXT, connector TEXT, attempt INTEGER, status TEXT, payload_json TEXT, created_at REAL);",
     "CREATE TABLE IF NOT EXISTS job_delivery_dlq (dlq_id TEXT PRIMARY KEY, job_run_id TEXT, connector TEXT, attempts INTEGER, last_error TEXT, payload_json TEXT, created_at REAL, resolved INTEGER DEFAULT 0);",
-    "CREATE TABLE IF NOT EXISTS long_term_memories (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, key TEXT, content TEXT NOT NULL, metadata_json TEXT, created_at REAL NOT NULL);",
+    "CREATE TABLE IF NOT EXISTS long_term_memories (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, key TEXT, content TEXT NOT NULL, metadata_json TEXT, created_at REAL NOT NULL, updated_at REAL NOT NULL DEFAULT 0, relevance_decay REAL NOT NULL DEFAULT 1.0);",
     "CREATE TABLE IF NOT EXISTS memory_blocks (block_id TEXT PRIMARY KEY, session_id TEXT, block_type TEXT, content TEXT, created_at REAL);",
     "CREATE TABLE IF NOT EXISTS memory_messages (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, user_id TEXT NOT NULL, role TEXT NOT NULL, content TEXT NOT NULL, metadata_json TEXT, trace_id TEXT, run_id TEXT, created_at REAL NOT NULL, FOREIGN KEY(session_id) REFERENCES memory_sessions(id) ON DELETE CASCADE);",
     "CREATE TABLE IF NOT EXISTS memory_sessions (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, agent_type TEXT, session_type TEXT, status TEXT, metadata_json TEXT, message_count INTEGER NOT NULL DEFAULT 0, created_at REAL NOT NULL, updated_at REAL NOT NULL);",

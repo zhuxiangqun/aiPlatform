@@ -159,6 +159,7 @@ class AgentManager:
 
     def _load_directory_agents(self) -> None:
         """Load directory-based agents from filesystem into management plane."""
+        from core.harness.utils.model_injection import best_model_for_purpose
         now = datetime.now(timezone.utc)
         # low -> high, high overrides
         for base_dir in self._resolve_agents_paths():
@@ -413,6 +414,7 @@ class AgentManager:
     def _seed_data(self):
         import os as _os
         import yaml as _yaml
+        from core.harness.utils.model_injection import best_model_for_purpose
 
         now = datetime.now(timezone.utc)
 

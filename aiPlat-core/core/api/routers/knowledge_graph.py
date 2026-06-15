@@ -65,7 +65,7 @@ def get_code_graph(
     with BFS depth=depth (default 2). Otherwise returns the full graph.
     """
     try:
-        from core.harness.knowledge.code_graph import build_graph, default_roots, repo_root, count_cycles, health_score
+        from core.harness.knowledge.code_graph import build_graph, default_roots, repo_root, count_cycles, effective_cycles, health_score
 
         r = repo_root()
         roots = [(r / d).resolve() for d in default_roots()]
@@ -137,7 +137,8 @@ def get_code_graph(
 
         # Health metrics
         cycles = count_cycles(nodes_raw)
-        health = health_score(nodes=nodes_raw, edges=edges_raw, issues=issues, cycles_back_edges=cycles)
+        effective = effective_cycles(nodes_raw)
+        health = health_score(nodes=nodes_raw, edges=edges_raw, issues=issues, cycles_back_edges=effective)
 
         return {
             "nodes": nodes_list,
@@ -864,7 +865,7 @@ def get_codebase_stats() -> Dict[str, Any]:
     """Return global codebase statistics for the SystemOverview panel."""
     try:
         from core.harness.knowledge.code_graph import (
-            build_graph, default_roots, repo_root, health_score, count_cycles
+            build_graph, default_roots, repo_root, health_score, count_cycles, effective_cycles
         )
         r = repo_root()
         roots = [(r / d).resolve() for d in default_roots()]
@@ -874,7 +875,7 @@ def get_codebase_stats() -> Dict[str, Any]:
         cross_calls = sum(1 for e in edges if e.get("cross"))
         total_symbols = sum(len(n.get("symbols", [])) for n in nodes.values())
         cycles = count_cycles(nodes)
-        health = health_score(nodes=nodes, edges=edges, issues=[], cycles_back_edges=cycles)
+        health = health_score(nodes=nodes, edges=edges, issues=[], cycles_back_edges=effective_cycles(nodes))
 
         layers: Dict[str, Dict[str, int]] = {}
         for p, n in nodes.items():

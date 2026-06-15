@@ -1,5 +1,6 @@
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import PageHeader from '../../../components/common/PageHeader';
 import { Badge, Button, Card, CardContent, CardHeader, Modal, Select, Table, Tabs } from '../../../components/ui';
 import { skillApi, workspaceSkillApi } from '../../../services';
@@ -235,6 +236,9 @@ const RoutingReplayDetail: React.FC = () => {
 
   return (
     <div className="p-6 space-y-4">
+      <Link to="/diagnostics" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200 transition-colors">
+        <ArrowLeft className="w-3 h-3" />返回诊断中心
+      </Link>
       <PageHeader title={`Routing Replay Detail`} description={`decision_id=${rid} · scope=${scope}`} />
 
       <Tabs

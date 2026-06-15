@@ -244,9 +244,11 @@ class ArchYAMLRule(ArchRule):
         return []
 
     def _check_cmd_output(self, repo_root: Path) -> List[ArchIssue]:
+        import shlex
         cmd = self._check_def.get("cmd", "")
         ok_pattern = self._check_def.get("ok_pattern", "^PASS")
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True,
+        result = subprocess.run(shlex.split(cmd) if isinstance(cmd, str) else cmd,
+                                capture_output=True, text=True,
                                 cwd=str(repo_root), timeout=120).stdout
         if re.search(ok_pattern, result):
             return []

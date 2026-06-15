@@ -1394,22 +1394,19 @@ def vault_start_indexer(
                 # Auto-wiki: send newly detected files to Wiki directly
                 if auto_wiki and total > 0:
                     for fpath in md_files:
+                        if fpath.name.startswith("."):
+                            continue
+                        file_path_str = str(fpath)
+                        import concurrent.futures as _cf2
                         try:
-                            if fpath.name.startswith("."):
-                                continue
-                            file_path_str = str(fpath)
-                            import asyncio as _asyncio
-                            loop = _asyncio.new_event_loop()
-                            try:
-                                result = loop.run_until_complete(
+                            with _cf2.ThreadPoolExecutor(max_workers=1) as _pool:
+                                result = _pool.submit(asyncio.run,
                                     vault_to_wiki(file_path=file_path_str,
                                                   collection_id=collection_id,
                                                   vault_id=vault_id,
-                                                  tenant_id=tenant_id))
+                                                  tenant_id=tenant_id)).result(timeout=120)
                                 if result.get("status") in ("created", "skipped"):
                                     wikified += 1
-                            finally:
-                                loop.close()
                         except Exception:
                             pass
 

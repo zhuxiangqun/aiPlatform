@@ -18,14 +18,22 @@ import os
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING
 
-from core.harness.knowledge.knowledge_ontology import (
-    AI, KnowledgeOntology, OntologyTriple,
-    get_ontology, reset_ontology,
-)
+if TYPE_CHECKING:
+    from core.harness.knowledge.knowledge_ontology import KnowledgeOntology, OntologyTriple
+
+AI = "http://aiplat.local/knowledge#"
 
 logger = logging.getLogger(__name__)
+
+# ── A-Box cache (module-level, 60s TTL, invalidated on wiki page writes) ──
+_ABOX_CACHE: Dict[str, tuple] = {}  # collection_id → (timestamp, ontology)
+
+
+def invalidate_abox_cache(collection_id: str = "default") -> None:
+    """Invalidate cached A-Box for a collection. Call from write_page/delete_page."""
+    _ABOX_CACHE.pop(collection_id, None)
 
 
 def _wiki_root(collection_id: str = "default") -> Path:
@@ -37,14 +45,17 @@ def _wiki_root(collection_id: str = "default") -> Path:
 def build_abox(partial: Optional[str] = None, *, collection_id: str = "default") -> KnowledgeOntology:
     """
     Build A-Box from current Wiki + KB data.
-    
-    Args:
-        partial: If set to a doc_id or page title, only rebuild that slice.
-                 If None, full rebuild.
-        collection_id: Wiki collection to build A-Box for.
-    
-    Returns the ontology with populated triples.
+    Full rebuilds are cached per collection_id for 60s to avoid redundant computation.
     """
+    # Check cache (full rebuild only; partial rebuilds are always fresh)
+    if partial is None:
+        cached = _ABOX_CACHE.get(collection_id)
+        if cached:
+            ts, onto = cached
+            if time.time() - ts < 60:
+                return onto
+
+    from core.harness.knowledge.knowledge_ontology import get_ontology
     onto = get_ontology()
     start = time.time()
     
@@ -66,9 +77,16 @@ def build_abox(partial: Optional[str] = None, *, collection_id: str = "default")
     # ── Step 3: Validate cross-references ──
     _cross_validate_sources(onto, wiki_pages, kb_docs)
     
+    # ── Step 4: Cross-modal relation extraction ──
+    _extract_cross_modal_relations(onto)
+    
     logger.info(f"A-Box built: {len(onto.triples)} triples, {len(wiki_pages)} Wiki pages, "
                 f"{len(kb_docs)} KB docs, {time.time() - start:.2f}s")
-    
+
+    # Cache full rebuilds
+    if partial is None:
+        _ABOX_CACHE[collection_id] = (time.time(), onto)
+
     return onto
 
 
@@ -179,6 +197,7 @@ def _scan_kb_documents(partial: Optional[str] = None) -> List[Dict[str, Any]]:
 
 def _build_wiki_triples(onto: KnowledgeOntology, pages: List[Dict[str, Any]]) -> None:
     """Build triples from Wiki page frontmatter data."""
+    from core.harness.knowledge.knowledge_ontology import OntologyTriple
     now = datetime.now(timezone.utc).isoformat()
     
     for fm in pages:
@@ -211,7 +230,22 @@ def _build_wiki_triples(onto: KnowledgeOntology, pages: List[Dict[str, Any]]) ->
         
         _add_data(onto, page_uri, "created_at", fm.get("created_at", now))
         _add_data(onto, page_uri, "updated_at", fm.get("last_updated", now))
-        
+
+        # Lifecycle state (Phase 1 — entity lifecycle state machine)
+        lifecycle = fm.get("lifecycle_state", "published")
+        _add_data(onto, page_uri, "lifecycleState", lifecycle)
+
+        # Generation provenance
+        gen = fm.get("_generated_by")
+        if gen:
+            import json as _json
+            _add_data(onto, page_uri, "generatedBy", _json.dumps(gen, ensure_ascii=False) if isinstance(gen, dict) else str(gen))
+
+        # Quality score (Phase 4 — accumulated from pipeline feedback)
+        quality_score = fm.get("quality_score")
+        if quality_score is not None:
+            _add_data(onto, page_uri, "qualityScore", str(quality_score))
+
         # Source articles → hasSource (only kb: prefix maps to KBDocument)
         for src in (fm.get("source_articles") or []):
             if isinstance(src, str) and src.strip() and src.startswith("kb:"):
@@ -249,6 +283,8 @@ def _build_wiki_triples(onto: KnowledgeOntology, pages: List[Dict[str, Any]]) ->
                 "example_of": f"{AI}example_of",
                 "extends": f"{AI}extends",
                 "parent": f"{AI}parentOf",
+                "parentOf": f"{AI}parentOf",
+                "childOf": f"{AI}childOf",
                 "derived_from": f"{AI}hasSource",
                 "related": f"{AI}cites",
             }
@@ -273,6 +309,7 @@ def _build_wiki_triples(onto: KnowledgeOntology, pages: List[Dict[str, Any]]) ->
 
 def _build_kb_triples(onto: KnowledgeOntology, docs: List[Dict[str, Any]]) -> None:
     """Build triples from KB document records."""
+    from core.harness.knowledge.knowledge_ontology import OntologyTriple
     for d in docs:
         doc_uri = f"{AI}{_safe_uri(str(d.get('doc_id', '')))}"
         if not doc_uri:
@@ -315,6 +352,7 @@ def _cross_validate_sources(onto: KnowledgeOntology, pages: List[Dict[str, Any]]
 
 def _add_data(onto: KnowledgeOntology, subject: str, prop: str, value: str) -> None:
     """Add a data property triple if the value is non-empty."""
+    from core.harness.knowledge.knowledge_ontology import OntologyTriple
     if value:
         onto.triples.append(OntologyTriple(
             subject, f"{AI}{prop}", f'"{value}"'
@@ -344,5 +382,114 @@ def rebuild_for_page(title: str, *, collection_id: str = "default") -> Knowledge
 
 def rebuild_full(*, collection_id: str = "default") -> KnowledgeOntology:
     """Full A-Box rebuild from scratch."""
+    from core.harness.knowledge.knowledge_ontology import reset_ontology
     reset_ontology()
     return build_abox(collection_id=collection_id)
+
+
+def _extract_cross_modal_relations(onto: KnowledgeOntology) -> None:
+    u"""Extract cross-modal relations from KB elements.
+
+    Scans kb_elements table for text→image, text→table, and image→section
+    relationships based on page proximity and keyword matching.
+
+    Relations created:
+      - AI:refersToImage: text element mentions image on same/adjacent page
+      - AI:refersToTable: text element mentions table on same/adjacent page
+      - AI:explains: text explains a table/image on same page
+      - AI:belongsToSection: image/table belongs to the nearest section heading
+    """
+    import sqlite3
+
+    kb_dir = Path(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))) / "kb" / "tenants"
+    if not kb_dir.exists():
+        return
+
+    from core.harness.knowledge.knowledge_ontology import OntologyTriple
+
+    for tenant_dir in kb_dir.iterdir():
+        if not tenant_dir.is_dir():
+            continue
+        db_path = tenant_dir / "kb.sqlite3"
+        if not db_path.exists():
+            continue
+
+        try:
+            conn = sqlite3.connect(str(db_path))
+            conn.row_factory = sqlite3.Row
+
+            # Load all elements grouped by doc_id + page
+            rows = conn.execute(
+                "SELECT element_id, doc_id, type, page_idx, text, bbox_json "
+                "FROM kb_elements WHERE type IN ('text', 'table', 'image') "
+                "ORDER BY doc_id, page_idx, element_id"
+            ).fetchall()
+            conn.close()
+
+            if not rows:
+                continue
+
+            # Group by (doc_id, page_idx)
+            by_page: dict = {}
+            for r in rows:
+                key = (r["doc_id"], r["page_idx"] or 0)
+                by_page.setdefault(key, []).append(dict(r))
+
+            for (doc_id, page), elements in by_page.items():
+                texts = [e for e in elements if e["type"] == "text"]
+                tables = [e for e in elements if e["type"] == "table"]
+                images = [e for e in elements if e["type"] == "image"]
+
+                # 1. Text → Image/Table references by keyword
+                IMAGE_KEYWORDS = ("如图", "见图", "下图", "上图", "图中", "如下面图", "如下图的")
+                TABLE_KEYWORDS = ("如下表", "下表", "上表", "见表", "表中", "如表中", "如下面表")
+
+                for text_elem in texts:
+                    txt = (text_elem.get("text") or "").lower()
+
+                    for img_kw in IMAGE_KEYWORDS:
+                        if img_kw.lower() in txt:
+                            for img_elem in images:
+                                text_uri = f"{AI}kb_elem_{text_elem['element_id']}"
+                                img_uri = f"{AI}kb_elem_{img_elem['element_id']}"
+                                onto.triples.append(
+                                    OntologyTriple(text_uri, f"{AI}refersToImage", img_uri)
+                                )
+                                onto.triples.append(
+                                    OntologyTriple(text_uri, f"{AI}explains", img_uri)
+                                )
+                            break  # match once per text element per keyword type
+
+                    for tbl_kw in TABLE_KEYWORDS:
+                        if tbl_kw.lower() in txt:
+                            for tbl_elem in tables:
+                                text_uri = f"{AI}kb_elem_{text_elem['element_id']}"
+                                tbl_uri = f"{AI}kb_elem_{tbl_elem['element_id']}"
+                                onto.triples.append(
+                                    OntologyTriple(text_uri, f"{AI}refersToTable", tbl_uri)
+                                )
+                                onto.triples.append(
+                                    OntologyTriple(text_uri, f"{AI}explains", tbl_uri)
+                                )
+                            break
+
+                # 2. Image/Table → nearest section heading
+                # Find the first text element on this page that looks like a heading
+                headings = [
+                    t for t in texts
+                    if (t.get("text") or "").strip() and len((t.get("text") or "").strip()) < 80
+                    and not any(kw in (t.get("text") or "").lower() for kw in ("如图", "下表", "见图", "见表"))
+                ]
+                if headings:
+                    section_uri = f"{AI}kb_elem_{headings[0]['element_id']}"
+                    for tbl_elem in tables:
+                        onto.triples.append(
+                            OntologyTriple(f"{AI}kb_elem_{tbl_elem['element_id']}", f"{AI}belongsToSection", section_uri)
+                        )
+                    for img_elem in images:
+                        onto.triples.append(
+                            OntologyTriple(f"{AI}kb_elem_{img_elem['element_id']}", f"{AI}belongsToSection", section_uri)
+                        )
+
+        except Exception:
+            continue

@@ -51,6 +51,8 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 安全执行原子化文件读写编辑操作
+
+protected: true
 ---
 
 # 文件操作（Engine）

@@ -54,6 +54,8 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 检测 Wiki 的矛盾和死链接
+
+protected: true
 ---
 
 ## SOP

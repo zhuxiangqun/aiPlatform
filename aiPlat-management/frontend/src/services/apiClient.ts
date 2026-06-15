@@ -40,34 +40,48 @@ class ApiClient {
       // ignore (SSR / privacy mode)
     }
 
+    const TIMEOUT_MS = 30_000;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
     const config: RequestInit = {
       ...options,
       headers: {
         ...defaultHeaders,
         ...options.headers,
       },
+      signal: controller.signal,
     };
 
-    const response = await fetch(url, config);
+    try {
+      const response = await fetch(url, config);
+      clearTimeout(timeoutId);
 
-    if (!response.ok) {
-      // Try parse structured error envelope from core (FastAPI style).
-      const payload: any = await response.json().catch(() => null);
-      const d = payload?.detail;
-      const msg =
-        (typeof d === 'string' ? d : null) ||
-        (d && typeof d === 'object' ? (d.message || d.code) : null) ||
-        payload?.message ||
-        `HTTP error! status: ${response.status}`;
-      const err: any = new Error(String(msg));
-      // attach raw info for UI handlers
-      err.status = response.status;
-      err.payload = payload;
-      err.detail = d;
+      if (!response.ok) {
+        // Try parse structured error envelope from core (FastAPI style).
+        const payload: any = await response.json().catch(() => null);
+        const d = payload?.detail;
+        const msg =
+          (typeof d === 'string' ? d : null) ||
+          (d && typeof d === 'object' ? (d.message || d.code) : null) ||
+          payload?.message ||
+          `HTTP error! status: ${response.status}`;
+        const err: any = new Error(String(msg));
+        // attach raw info for UI handlers
+        err.status = response.status;
+        err.payload = payload;
+        err.detail = d;
+        throw err;
+      }
+
+      return response.json();
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        throw new Error('请求超时，请检查后端服务是否正常运行');
+      }
       throw err;
     }
-
-    return response.json();
   }
 
   async get<T>(endpoint: string): Promise<T> {

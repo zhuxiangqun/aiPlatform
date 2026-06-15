@@ -17,6 +17,25 @@ import aiohttp
 from .schemas import ModelInfo, ModelType, ModelSource, ModelStatus, ModelConfig, ModelStats
 from datetime import datetime, timezone
 
+# Ollama model families known to support native tool/function calling
+_OLLAMA_TOOL_CALLING = {
+    "llama3.1", "llama3.2", "llama3.3", "llama3",
+    "mistral", "mistral-nemo", "mixtral",
+    "qwen2.5", "qwen3",
+    "command-r", "command-r-plus",
+    "phi4", "phi3.5",
+    "nemotron", "nemotron-mini",
+    "granite3.2", "granite3.1",
+}
+
+
+def _ollama_supports_tool_calling(model_name: str) -> bool:
+    """Fuzzy-match Ollama model name against known tool-calling families."""
+    base = model_name.split(":")[0].lower().strip()
+    import re
+    base = re.sub(r"[-_.]\d*[bBkKqQ]$", "", base)
+    return base in _OLLAMA_TOOL_CALLING
+
 
 async def _scan_openai_compatible(endpoint: str, provider_label: str, source: ModelSource) -> List[ModelInfo]:
     """Scan an OpenAI-compatible endpoint for available models."""
@@ -64,6 +83,9 @@ async def _scan_ollama(endpoint: str) -> List[ModelInfo]:
                         caps = ["chat"]
                         if details.get("embedding"):
                             caps.append("embedding")
+                        if _ollama_supports_tool_calling(name):
+                            caps.append("function_call")
+                            caps.append("json_mode")
                         models.append(ModelInfo(
                             id=safe_id, name=name, provider="ollama",
                             type=ModelType.CHAT, source=ModelSource.LOCAL,

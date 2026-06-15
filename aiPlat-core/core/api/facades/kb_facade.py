@@ -25,13 +25,16 @@ def kb_transcribe_audio(audio_path: str, language: str = "auto") -> Any:
 
 
 def kb_embed_text(text: str, dim: int = 128) -> Any:
-    import asyncio as _asyncio
+    """Embed text into a vector. Safe to call from sync or async context."""
+    import asyncio as _asyncio, concurrent.futures as _cf
     from core.harness.knowledge.embedder import embed_text as _embed_async, hash_embed
     try:
-        loop = _asyncio.get_event_loop()
-        if loop.is_running():
-            return _asyncio.ensure_future(_embed_async(text, dim))
-        return _asyncio.run(_embed_async(text, dim))
+        try:
+            loop = _asyncio.get_running_loop()
+            with _cf.ThreadPoolExecutor(max_workers=1) as pool:
+                return pool.submit(_asyncio.run, _embed_async(text, dim)).result(timeout=30)
+        except RuntimeError:
+            return _asyncio.run(_embed_async(text, dim))
     except Exception:
         return hash_embed(text, dim)
 

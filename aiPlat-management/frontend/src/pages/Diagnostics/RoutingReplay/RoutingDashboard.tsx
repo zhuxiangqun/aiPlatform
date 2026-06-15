@@ -1,4 +1,6 @@
 import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import PageHeader from '../../../components/common/PageHeader';
 import { Badge, Button, Card, CardContent, CardHeader, Input, Modal, Select } from '../../../components/ui';
 import { skillApi, workspaceSkillApi } from '../../../services';
@@ -543,6 +545,9 @@ const RoutingDashboard: React.FC = () => {
 
   return (
     <div className="p-6 space-y-4">
+      <Link to="/diagnostics" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200 transition-colors">
+        <ArrowLeft className="w-3 h-3" />返回诊断中心
+      </Link>
       <PageHeader title="Routing Dashboard" description="Pin 常用图表，形成 TensorBoard 风格的大屏（本地保存 + 可分享链接）。" />
 
       <Card>

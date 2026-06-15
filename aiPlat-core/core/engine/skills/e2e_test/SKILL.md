@@ -48,6 +48,8 @@ input_schema:
     type: string
     required: true
     description: 测试站点URL
+
+protected: true
 ---
 
 # E2E Test 自动生成

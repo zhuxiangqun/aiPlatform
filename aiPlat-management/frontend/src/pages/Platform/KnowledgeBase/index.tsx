@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Card, CardContent, CardHeader, Input, Textarea, toast } from '../../../components/ui';
-import { Plus, AlertTriangle, Database, Trash2 } from 'lucide-react';
+import { Plus, AlertTriangle, Database, RefreshCw, Trash2 } from 'lucide-react';
 import { useKBStore } from '../../../stores';
 import { kbApi } from '../../../services';
 import { DocumentGrid } from './DocumentGrid';
@@ -92,6 +92,27 @@ const KnowledgeBasePage: React.FC = () => {
   const [drillSample, setDrillSample] = useState<any>(null);
   const [csvFile, setCsvFile] = useState<File | null>(null);
 
+  // ── Data freshness tracking ──
+  const [lastRefresh, setLastRefresh] = useState<Record<string, number>>({});
+  const markFresh = (key: string) => setLastRefresh(prev => ({ ...prev, [key]: Date.now() }));
+  const freshnessAgo = (key: string): string => {
+    const ts = lastRefresh[key];
+    if (!ts) return '从未刷新';
+    const sec = Math.round((Date.now() - ts) / 1000);
+    if (sec < 5) return '刚刚';
+    if (sec < 60) return `${sec}秒前`;
+    if (sec < 3600) return `${Math.round(sec / 60)}分钟前`;
+    return `${Math.round(sec / 3600)}小时前`;
+  };
+  const freshnessColor = (key: string): string => {
+    const ts = lastRefresh[key];
+    if (!ts) return '#ef4444';
+    const sec = (Date.now() - ts) / 1000;
+    if (sec < 60) return '#22c55e';
+    if (sec < 300) return '#eab308';
+    return '#ef4444';
+  };
+
   const updateEvalForm = (field: string, value: string) => {
     setEvalForm(prev => ({ ...prev, [field]: value }));
   };
@@ -149,7 +170,7 @@ const KnowledgeBasePage: React.FC = () => {
   };
 
   const refreshEvalSamples = async () => {
-    try { const r = await kbApi.listEvalSamples(50, 0); setEvalSamples(r.items || []); } catch {}
+    try { const r = await kbApi.listEvalSamples(50, 0); setEvalSamples(r.items || []); markFresh('eval'); } catch {}
   };
   const addEvalSample = async () => {
     if (!evalForm.question.trim() || !evalForm.ground_truth.trim()) { toast.error('问题和标准答案必填'); return; }
@@ -182,6 +203,13 @@ const KnowledgeBasePage: React.FC = () => {
     else if (activeTab === 'observe') { fetchOntoMetrics(); fetchModelLog(); fetchEvolutionHistory(); }
   }, [activeTab]);
 
+  // Auto-refresh ontology metrics every 60s (cache-friendly, TTL=5min)
+  useEffect(() => {
+    if (activeTab !== 'ontology' && activeTab !== 'observe') return;
+    const interval = setInterval(() => fetchOntoMetrics(false), 60_000);
+    return () => clearInterval(interval);
+  }, [activeTab]);
+
   // ── Wiki functions ──
   const fetchWikiPages = async () => {
     void (wikiLoading);
@@ -189,7 +217,7 @@ const KnowledgeBasePage: React.FC = () => {
       let url = `${WIKI_API}/pages?limit=100&source=kb&collection=${wikiCollection}`;
       if (wikiQuery) url += `&query=${encodeURIComponent(wikiQuery)}`;
       if (wikiCategory) url += `&category=${encodeURIComponent(wikiCategory)}`;
-      const res = await fetch(url); setWikiPages((await res.json()).items || []);
+      const res = await fetch(url); setWikiPages((await res.json()).items || []); markFresh('wiki');
     } catch {} finally { void (wikiLoading); }
   };
   const readWikiPage = async (title: string) => {
@@ -310,8 +338,32 @@ const KnowledgeBasePage: React.FC = () => {
   const fetchOntoMetrics = async (refresh = false) => {
     try {
       const r = await fetch(`${WIKI_API}/ontology/metrics?collection=${wikiCollection}&refresh=${refresh}`);
-      setOntoMetrics(await r.json());
+      setOntoMetrics(await r.json()); markFresh('onto');
     } catch {}
+  };
+
+  const [refreshMetricsLoading, setRefreshMetricsLoading] = useState(false);
+  const handleForceRefresh = async () => {
+    setRefreshMetricsLoading(true);
+    try {
+      const r = await fetch(`${WIKI_API}/ontology/metrics?collection=${wikiCollection}&refresh=true`);
+      const data = await r.json();
+      setOntoMetrics(data); markFresh('onto');
+      if (data.source === 'recomputing') {
+        toast('后台重新计算中，预计 1-3 分钟...');
+        // Poll until cache is ready
+        for (let i = 0; i < 30; i++) {
+          await new Promise(r => setTimeout(r, 3000));
+          const pr = await fetch(`${WIKI_API}/ontology/metrics?collection=${wikiCollection}&refresh=false`);
+          const d2 = await pr.json();
+          if (d2.source === 'cache') {
+            setOntoMetrics(d2); markFresh('onto');
+            toast.success('指标已更新');
+            break;
+          }
+        }
+      }
+    } catch {} finally { setRefreshMetricsLoading(false); }
   };
   const fetchMetricsHistory = async () => {
     try {
@@ -323,13 +375,13 @@ const KnowledgeBasePage: React.FC = () => {
   const fetchGoldenRegression = async () => {
     try {
       const r = await fetch(`${WIKI_API}/ontology/golden-regression?collection=${wikiCollection}`);
-      setGoldenResults(await r.json());
+      setGoldenResults(await r.json()); markFresh('golden');
     } catch {}
   };
   const fetchPatterns = async () => {
     try {
       const r = await fetch(`${WIKI_API}/ontology/patterns?collection=${wikiCollection}`);
-      setPatterns(await r.json());
+      setPatterns(await r.json()); markFresh('patterns');
     } catch {}
   };
   const fetchOntoClasses = async () => {
@@ -342,13 +394,13 @@ const KnowledgeBasePage: React.FC = () => {
   const fetchModelLog = async () => {
     try {
       const r = await fetch('/api/core/maintain/model-log');
-      setModelLog((await r.json()).entries || []);
+      setModelLog((await r.json()).entries || []); markFresh('observe');
     } catch {}
   };
   const fetchEvolutionHistory = async () => {
     try {
       const r = await fetch(`${WIKI_API}/evolution-history?collection=${wikiCollection}`);
-      setEvolutionHistory((await r.json()).generations || []);
+      setEvolutionHistory((await r.json()).generations || []); markFresh('evolution');
     } catch {}
   };
   const handleEvolve = async () => {
@@ -441,7 +493,7 @@ const KnowledgeBasePage: React.FC = () => {
 
   const runLint = async () => {
     setLintLoading(true);
-    try { const res = await fetch(`${WIKI_API}/lint?collection=${wikiCollection}`); setLintResult(await res.json()); } catch {} finally { setLintLoading(false); }
+    try { const res = await fetch(`${WIKI_API}/lint?collection=${wikiCollection}`); setLintResult(await res.json()); markFresh('health'); } catch {} finally { setLintLoading(false); }
   };
   const fetchHealthTrend = async () => {
     try { const res = await fetch(`${WIKI_API}/health-trend`); setHealthTrend(await res.json()); } catch {}
@@ -604,7 +656,7 @@ const KnowledgeBasePage: React.FC = () => {
           {/* Time-series chart */}
           {timeSeries && timeSeries.days && timeSeries.days.length > 1 && (
             <Card>
-              <CardHeader><div className="font-semibold text-gray-100">评估趋势 (近 {timeSeries.days.length} 天)</div></CardHeader>
+              <CardHeader><div className="font-semibold text-gray-100">评估趋势 (近 {timeSeries.days.length} 天)<span style={{fontSize:11,color:freshnessColor('eval'),marginLeft:8}}>● {freshnessAgo('eval')}</span></div></CardHeader>
               <CardContent>
                 <div className="grid grid-cols-4 gap-3">
                   {['faithfulness', 'answer_relevancy', 'context_precision', 'context_recall'].map(k => (
@@ -941,6 +993,7 @@ const KnowledgeBasePage: React.FC = () => {
                 {ontoMetrics && <span className="ml-2 text-gray-500">
                   覆盖率 {ontoMetrics.coverage?.percentage}% · {ontoSuggestions.filter((s: any) => s.status === 'pending').length} 待处理
                 </span>}
+                <span style={{fontSize:10,color:freshnessColor('onto'),marginLeft:6}}>● {freshnessAgo('onto')}</span>
               </button>
               {ontoPanelOpen && (
                 <div className="mt-2 space-y-2">
@@ -967,7 +1020,7 @@ const KnowledgeBasePage: React.FC = () => {
                   )}
                   {/* Action buttons */}
                   <div className="flex gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => fetchOntoMetrics(true)} className="text-[10px]">刷新指标</Button>
+                    <Button variant="ghost" size="sm" onClick={handleForceRefresh} loading={refreshMetricsLoading} className="text-[10px]">刷新指标</Button>
                     <Button variant="ghost" size="sm" onClick={generateOntoSuggestions} loading={ontoGenerating} className="text-[10px]">生成建议</Button>
                     <Button variant="ghost" size="sm" onClick={() => handleExportOwl('turtle')} className="text-[10px]" title="导出 OWL/RDF (Turtle)">📥 导出OWL</Button>
                   </div>
@@ -1016,7 +1069,7 @@ const KnowledgeBasePage: React.FC = () => {
 
       {activeTab === 'observe' && (
         <div className="space-y-4">
-          <h2 className="text-base font-medium text-gray-200">系统观测</h2>
+          <h2 className="text-base font-medium text-gray-200">系统观测<span style={{fontSize:11,color:freshnessColor('observe'),marginLeft:8}}>● {freshnessAgo('observe')}</span></h2>
 
           {/* Metrics Overview */}
           {ontoMetrics && (
@@ -1209,6 +1262,7 @@ const KnowledgeBasePage: React.FC = () => {
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs font-medium text-gray-300">
                 知识进化 {evolutionHistory.length > 0 && `(第 ${evolutionHistory.length} 代)`}
+                <span style={{fontSize:10,color:freshnessColor('evolution'),marginLeft:6}}>● {freshnessAgo('evolution')}</span>
               </span>
               <div className="flex gap-2">
                 <Button variant="ghost" size="sm" onClick={fetchEvolutionHistory} className="text-[10px]">刷新</Button>
@@ -1238,7 +1292,7 @@ const KnowledgeBasePage: React.FC = () => {
 
           {/* Quick Actions */}
           <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={() => fetchOntoMetrics(true)} className="text-xs">刷新指标</Button>
+            <Button variant="ghost" size="sm" onClick={handleForceRefresh} loading={refreshMetricsLoading} className="text-xs">刷新指标</Button>
             <Button variant="ghost" size="sm" onClick={fetchModelLog} className="text-xs">刷新模型日志</Button>
           </div>
         </div>
@@ -1247,8 +1301,8 @@ const KnowledgeBasePage: React.FC = () => {
       {activeTab === 'ontology' && (
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <h2 className="text-base font-medium text-gray-200">本体健康</h2>
-            <Button variant="ghost" size="sm" onClick={() => fetchOntoMetrics(true)} className="text-xs">刷新指标</Button>
+            <h2 className="text-base font-medium text-gray-200">本体健康<span style={{fontSize:11,color:freshnessColor('onto'),marginLeft:8}}>● {freshnessAgo('onto')}</span></h2>
+            <Button variant="ghost" size="sm" onClick={handleForceRefresh} loading={refreshMetricsLoading} className="text-xs">刷新指标</Button>
             <Button variant="ghost" size="sm" onClick={generateOntoSuggestions} loading={ontoGenerating} className="text-xs">生成建议</Button>
             <Button variant="ghost" size="sm" onClick={handleBatchAtomize} loading={batchAtomizing} className="text-xs">批量原子化</Button>
             <Button variant="ghost" size="sm" onClick={handleSeedInstances} loading={seeding} className="text-xs">种子实例</Button>
@@ -1432,6 +1486,7 @@ const KnowledgeBasePage: React.FC = () => {
                     (goldenResults.pass_rate || 0) < 75 ? 'text-red-400' :
                     (goldenResults.pass_rate || 0) < 90 ? 'text-amber-400' : 'text-green-400'
                   }>{goldenResults.passed}/{goldenResults.total} ({goldenResults.pass_rate}%)</span>
+                  <span style={{fontSize:10,color:freshnessColor('golden'),marginLeft:6}}>● {freshnessAgo('golden')}</span>
                   {ontoMetrics?.golden_regression?.alert && (
                     <span className="ml-2 text-[10px] text-red-400">⚠️ {ontoMetrics.golden_regression.alert}</span>
                   )}
@@ -1516,7 +1571,7 @@ const KnowledgeBasePage: React.FC = () => {
           <WikiHealthDashboard />
           <Card className="mt-4">
           <CardHeader><div className="text-sm font-medium flex items-center justify-between">
-            <span><AlertTriangle className="w-3 h-3 inline mr-1" />知识库健康检查</span>
+            <span><AlertTriangle className="w-3 h-3 inline mr-1" />知识库健康检查<span style={{fontSize:11,color:freshnessColor('health'),marginLeft:6}}>● {freshnessAgo('health')}</span></span>
             {lintResult && (
               <span className={`text-xs px-2 py-0.5 rounded font-semibold ${
                 lintResult.health_score >= 90 ? 'bg-green-900/50 text-green-300' :

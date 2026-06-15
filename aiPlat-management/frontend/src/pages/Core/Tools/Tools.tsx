@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RotateCw, Wrench, Play, Settings } from 'lucide-react';
+import { RotateCw, Wrench, Play, Settings, Info } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Table, Button } from '../../../components/ui';
 import { ToolDetailModal, ExecuteToolModal, EditToolConfigModal } from '../../../components/core';
@@ -125,7 +125,7 @@ const Tools: React.FC = () => {
             className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors"
             title="详情"
           >
-            <Wrench className="w-4 h-4" />
+            <Info className="w-4 h-4" />
           </button>
         </div>
         );

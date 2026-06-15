@@ -41,7 +41,7 @@ def derive_risk_level(*, permissions: List[str], explicit: str | None = None) ->
         return e
     try:
         # reuse linter logic to keep a single source of truth
-        from core.management.skill_linter import risk_level_from_permissions
+        from core.management.skill_linter_base import risk_level_from_permissions
 
         return str(risk_level_from_permissions(permissions) or "low")
     except Exception:

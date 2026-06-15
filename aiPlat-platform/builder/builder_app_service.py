@@ -42,7 +42,7 @@ class AppService:
             try:
                 wf = get_workflow(a["workflow_id"])
                 a["workflow_name"] = wf.get("name", "") if wf else ""
-            except:
+            except Exception:
                 a["workflow_name"] = ""
         return apps
 
@@ -55,7 +55,7 @@ class AppService:
             app["workflow_name"] = wf.get("name", "") if wf else ""
             app["nodes"] = (wf.get("nodes") or []) if wf else []
             app["edges"] = (wf.get("edges") or []) if wf else []
-        except:
+        except Exception:
             app["workflow_name"] = ""
             app["nodes"] = []
             app["edges"] = []
@@ -114,17 +114,9 @@ class AppService:
         ))
         from storage.sqlite import record_workflow_run
         record_workflow_run(app["workflow_id"], proj.project_id, f"api:{user_input[:30]}")
-        import threading
-        def _run():
-            import asyncio
-            loop = asyncio.new_event_loop()
-            try:
-                loop.run_until_complete(svc.start_pipeline(proj.project_id))
-            except Exception:
-                pass
-            finally:
-                loop.close()
-        threading.Thread(target=_run, daemon=True).start()
+        import asyncio as _asyncio, concurrent.futures as _cf
+        _cf.ThreadPoolExecutor(max_workers=1).submit(
+            _asyncio.run, svc.start_pipeline(proj.project_id)).result(timeout=300)
         return {"run_id": proj.project_id, "app_id": app_id, "mode": "api"}
 
     async def run_chat(self, app_id: str, message: str) -> Dict[str, Any]:
@@ -151,17 +143,9 @@ class AppService:
         ))
         from storage.sqlite import record_workflow_run
         record_workflow_run(app["workflow_id"], proj.project_id, f"chat:{message[:30]}")
-        import threading
-        def _run():
-            import asyncio
-            loop = asyncio.new_event_loop()
-            try:
-                loop.run_until_complete(svc.start_pipeline(proj.project_id))
-            except Exception:
-                pass
-            finally:
-                loop.close()
-        threading.Thread(target=_run, daemon=True).start()
+        import asyncio as _asyncio, concurrent.futures as _cf
+        _cf.ThreadPoolExecutor(max_workers=1).submit(
+            _asyncio.run, svc.start_pipeline(proj.project_id)).result(timeout=300)
         return {"run_id": proj.project_id, "app_id": app_id, "input": message, "mode": "chat"}
 
     async def run_webhook(self, app_id: str, secret: str, body: Dict[str, Any]) -> Dict[str, Any]:
@@ -190,15 +174,7 @@ class AppService:
         ))
         from storage.sqlite import record_workflow_run
         record_workflow_run(app["workflow_id"], proj.project_id, f"webhook:{user_input[:30]}")
-        import threading
-        def _run():
-            import asyncio
-            loop = asyncio.new_event_loop()
-            try:
-                loop.run_until_complete(svc.start_pipeline(proj.project_id))
-            except Exception:
-                pass
-            finally:
-                loop.close()
-        threading.Thread(target=_run, daemon=True).start()
+        import asyncio as _asyncio, concurrent.futures as _cf
+        _cf.ThreadPoolExecutor(max_workers=1).submit(
+            _asyncio.run, svc.start_pipeline(proj.project_id)).result(timeout=300)
         return {"run_id": proj.project_id, "app_id": app_id, "mode": "webhook"}

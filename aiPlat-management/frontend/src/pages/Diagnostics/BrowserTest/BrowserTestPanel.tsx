@@ -9,6 +9,8 @@
  *   - 页面级操作明细表
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import {
   Badge,
   Button,
@@ -149,6 +151,9 @@ const BrowserTestPanel: React.FC = () => {
 
   return (
     <div style={{ padding: 20, maxWidth: 1100 }}>
+      <Link to="/diagnostics" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200 transition-colors mb-4">
+        <ArrowLeft className="w-3 h-3" />返回诊断中心
+      </Link>
       <h2 style={{ margin: 0 }}>浏览器自动化测试</h2>
       <p style={{ color: '#888', margin: '4px 0 16px' }}>
         自动遍历所有页面，对每个交互元素执行操作，输出测试报告

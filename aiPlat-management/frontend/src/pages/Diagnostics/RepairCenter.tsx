@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, Button } from '../../components/ui';
-import { Wrench, RefreshCw, CheckCircle, AlertTriangle, ExternalLink, Sparkles, Play, Zap, ShieldCheck } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Wrench, RefreshCw, CheckCircle, AlertTriangle, ExternalLink, Sparkles, Play, Zap, ShieldCheck } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 
 const RepairCenter: React.FC = () => {
   const [data, setData] = useState<any>(null);
@@ -77,6 +77,10 @@ const RepairCenter: React.FC = () => {
           <RefreshCw className="w-3 h-3 mr-1" />刷新
         </Button>
       </div>
+
+      <Link to="/diagnostics" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200 transition-colors mb-4">
+        <ArrowLeft className="w-3 h-3" />返回诊断中心
+      </Link>
 
       {summary.needs_diagnostics && (
         <Card className="border-primary/30 bg-primary/5">

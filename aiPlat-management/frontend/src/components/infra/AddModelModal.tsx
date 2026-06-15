@@ -22,6 +22,7 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
   const [type, setType] = useState<'chat' | 'embedding' | 'rerank'>('chat');
   const [description, setDescription] = useState('');
   const [tags, setTags] = useState('');
+  const [capabilities, setCapabilities] = useState<string[]>([]);
 
   const [baseUrl, setBaseUrl] = useState('');
   const [apiKeyEnv, setApiKeyEnv] = useState('');
@@ -76,6 +77,7 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
       setType((catalog ? catalog.type : (editingModel.type || 'chat')) as 'chat' | 'embedding' | 'rerank');
       setDescription(editingModel.description || '');
       setTags((editingModel.tags || []).join(', '));
+      setCapabilities(editingModel.capabilities || []);
       setBaseUrl(editingModel.config?.baseUrl || PROVIDER_BASE[editingModel.provider || '']?.baseUrl || '');
       setApiKeyEnv(editingModel.config?.apiKeyEnv || PROVIDER_BASE[editingModel.provider || '']?.apiKeyEnv || '');
       setTemperature(String(catalog?.temperature ?? editingModel.config?.temperature ?? 0.7));
@@ -92,6 +94,7 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
     setType('chat');
     setDescription('');
     setTags('');
+    setCapabilities([]);
     setBaseUrl('');
     setApiKeyEnv('');
     setTemperature('0.7');
@@ -158,6 +161,7 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
           .split(',')
           .map((t) => t.trim())
           .filter(Boolean),
+        capabilities,
         config: {
           baseUrl: baseUrl.trim(),
           apiKeyEnv: apiKeyEnv.trim(),
@@ -225,6 +229,19 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
 
         <Textarea label="description" rows={3} value={description} onChange={(e: any) => setDescription(e.target.value)} disabled={isConfigModel} />
         <Input label="tags（逗号分隔）" value={tags} onChange={(e: any) => setTags(e.target.value)} placeholder="tag1,tag2" disabled={isConfigModel} />
+        <div className="mt-2">
+          <div className="text-xs text-gray-400 mb-1">capabilities（能力标签）</div>
+          <div className="flex flex-wrap gap-2">
+            {['chat', 'reasoning', 'function_call', 'json_mode', 'vision', 'code', 'embedding', 'ocr', 'doc-parser', 'audio'].map(cap => (
+              <label key={cap} className={`flex items-center gap-1 px-2 py-1 rounded text-xs cursor-pointer ${capabilities.includes(cap) ? 'bg-blue-500/15 text-blue-300 border border-blue-500/25' : 'bg-dark-hover text-gray-400 border border-dark-border'}`}>
+                <input type="checkbox" className="w-3 h-3" checked={capabilities.includes(cap)}
+                  onChange={(e) => setCapabilities(e.target.checked ? [...capabilities, cap] : capabilities.filter(c => c !== cap))}
+                  disabled={isConfigModel} />
+                {cap}
+              </label>
+            ))}
+          </div>
+        </div>
 
         <div className="border-t border-dark-border pt-4">
           <div className="text-sm font-semibold text-gray-200 mb-3">连接配置</div>

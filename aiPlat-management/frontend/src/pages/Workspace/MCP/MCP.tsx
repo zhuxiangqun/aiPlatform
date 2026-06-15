@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Copy, Info, Pencil, Plus, RotateCw, ShieldCheck, Zap, Play, Trash2, Upload } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Badge, Table, Switch, Button, Modal, toast } from '../../../components/ui';
+import { Badge, Table, Switch, Button, Modal, Select, toast } from '../../../components/ui';
 import { useWorkspaceMcpStore } from '../../../stores';
 import type { McpServer } from '../../../services';
 import { workspaceMcpApi, mcpApi } from '../../../services';
@@ -11,6 +11,7 @@ import EditMcpModal from '../../../components/workspace/EditMcpModal';
 import { toastGateError } from '../../../components/ui';
 import ImportBar from '../../../components/workspace/ImportBar';
 import { getSourceLabel, extractProvenance } from '../../../utils/sourceLabel';
+import { StatusBadge } from '../../../utils/statusLabel';
 
 const MCP_TEMPLATES = [
   { id: 'http_bridge', name: 'HTTP API 桥接', icon: '🌐', desc: '调用任何 REST/HTTP API', tools: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] },
@@ -43,6 +44,7 @@ const WorkspaceMCP: React.FC = () => {
   // Test config panel state
   const [testConfigOpen, setTestConfigOpen] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [mcpDelete, setMcpDelete] = useState<{ open: boolean; server: any; hard: boolean }>({ open: false, server: null, hard: true });
   const [testToolName, setTestToolName] = useState('');
   const [testToolArgs, setTestToolArgs] = useState('{}');
   const [testAllowedTools, setTestAllowedTools] = useState<string[]>([]);
@@ -183,13 +185,14 @@ const WorkspaceMCP: React.FC = () => {
     }
   };
 
-  const handleDelete = async (s: McpServer) => {
-    if (deleting) return;
-    if (!window.confirm(`确定要删除 MCP "${s.name}" 吗？此操作不可撤销，将删除整个配置目录。`)) return;
+  const handleDeleteConfirm = async () => {
+    const s = mcpDelete.server;
+    if (!s || deleting) return;
     setDeleting(s.id);
     try {
       await workspaceMcpApi.deleteServer(s.name);
       toast.success(`已删除 "${s.name}"`);
+      setMcpDelete({ open: false, server: null, hard: true });
       fetchServers();
     } catch (e: any) {
       toastGateError(e, '删除失败');
@@ -277,15 +280,9 @@ const WorkspaceMCP: React.FC = () => {
     },
     {
       title: '上架状态',
-      dataIndex: 'status',
-      key: 'listing_status',
-      width: 120,
-      align: 'center' as const,
-      render: (s: string) => {
-        const labels: Record<string, string> = { draft: '草稿', ready: '待审核', published: '已发布', listed: '已上架', deprecated: '已废弃' };
-        const colors: Record<string, string> = { draft: '#888', ready: '#f59e0b', published: '#3b82f6', listed: '#10b981', deprecated: '#6b7280' };
-        return <span className="text-xs" style={{ color: colors[s] || '#888' }}>{labels[s] || s || '-'}</span>;
-      },
+      key: 'status',
+      width: 80,
+      render: (_: unknown, record: McpServer) => <StatusBadge status={(record as any).status} />,
     },
     {
       title: '治理',
@@ -356,7 +353,7 @@ const WorkspaceMCP: React.FC = () => {
             </button>
           ) : null}
           <button
-            onClick={() => handleDelete(record)}
+            onClick={() => setMcpDelete({ open: true, server: record, hard: true })}
             disabled={!!deleting}
             className="p-1.5 rounded-lg text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-40"
             title="删除"
@@ -708,6 +705,17 @@ const WorkspaceMCP: React.FC = () => {
             ))
           )}
         </div>
+      </Modal>
+
+      <Modal open={mcpDelete.open} onClose={() => setMcpDelete({ open: false, server: null, hard: true })} title="确认删除"
+        footer={
+          <>
+            <Button onClick={() => setMcpDelete({ open: false, server: null, hard: true })}>取消</Button>
+            <Button variant="danger" onClick={handleDeleteConfirm} loading={!!deleting}>确认删除</Button>
+          </>
+        }>
+        <p className="text-sm text-gray-300 mb-3">将对 MCP "{mcpDelete.server?.name}" 执行删除操作：</p>
+        <p className="text-xs text-gray-500 mb-2">此操作不可撤销，将删除整个配置目录。</p>
       </Modal>
     </div>
   );

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { RefreshCw, Play } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft, RefreshCw, Play } from 'lucide-react';
 
 import { Button, Card, CardContent, CardHeader, Input, Select, Textarea, toast, Badge, Table } from '../../../components/ui';
 import { diagnosticsApi } from '../../../services';
@@ -126,6 +127,10 @@ const ContextDiagnostics: React.FC = () => {
           刷新配置
         </Button>
       </div>
+
+      <Link to="/diagnostics" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200 transition-colors mb-4">
+        <ArrowLeft className="w-3 h-3" />返回诊断中心
+      </Link>
 
       <Card>
         <CardHeader>

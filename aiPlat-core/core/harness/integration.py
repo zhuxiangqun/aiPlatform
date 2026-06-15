@@ -59,7 +59,11 @@ def _ensure_di():
 
         def _subagent_coordinator_factory():
             from core.apps.agents.subagent.coordinator import get_subagent_coordinator  # noqa
-            return get_subagent_coordinator()
+            from core.api.core_facade import create_agent, get_tool_registry
+            return get_subagent_coordinator(
+                create_agent_fn=create_agent,
+                get_tool_registry_fn=get_tool_registry,
+            )
 
         def _skill_permission_resolver_factory():
             from core.apps.tools.skill_tools import resolve_skill_permission, resolve_executable_skill_permission  # noqa
@@ -248,13 +252,6 @@ from .feedback_loops import (
     ProductionFeedbackLoop,
     EvolutionEngine,
 )
-from .memory import (
-    MemoryBase,
-    MemoryScope,
-    ShortTermMemory,
-    LongTermMemory,
-    SessionManager,
-)
 from .syscalls import sys_tool_call
 from core.harness.utils.llm_env import get_llm_api_key, get_llm_base_url
 
@@ -334,6 +331,7 @@ class HarnessIntegration:
                 self._evolution = EvolutionEngine()
         
         if self._config.enable_memory:
+            from .memory import ShortTermMemory, SessionManager
             self._memory = ShortTermMemory(self._config.memory_config)
             self._session_manager = SessionManager()
         
@@ -447,6 +445,22 @@ class HarnessIntegration:
                     run_id=run_id,
                 )
 
+        # ── Stream mode: return run_id immediately, execute in background ──
+        stream_mode = False
+        try:
+            if isinstance(request.payload, dict):
+                opts = request.payload.get("options", {}) if isinstance(request.payload.get("options"), dict) else {}
+                stream_mode = str(opts.get("stream", "")).lower() in ("1", "true", "yes")
+        except Exception:
+            pass
+        if stream_mode:
+            asyncio.create_task(self._execute_stream_background(request))
+            return ExecutionResult(
+                ok=True,
+                run_id=run_id,
+                payload={"run_id": run_id, "status": "running", "stream": True},
+            )
+
         # Best-effort cancellation: if a cancel was requested before execution starts, abort early.
         try:
             if store is not None and await store.is_cancel_requested(run_id=run_id):  # type: ignore[arg-type]
@@ -506,6 +520,46 @@ class HarnessIntegration:
             error_detail=self._error_detail("UNSUPPORTED_KIND", f"Unsupported kind: {request.kind}"),
             http_status=400,
         )
+
+    async def _execute_stream_background(self, request: "ExecutionRequest") -> None:
+        """Run execution in background for stream mode (returns run_id immediately)."""
+        import time as _time
+        run_id = request.run_id
+        runtime = getattr(self, "_runtime", None)
+        store = runtime.execution_store if runtime and hasattr(runtime, "execution_store") else None
+
+        try:
+            if store:
+                await store.append_run_event(
+                    run_id=run_id, event_type="run_start", trace_id=None, tenant_id=None,
+                    payload={"kind": str(request.kind), "status": "running", "stream": True},
+                )
+        except Exception:
+            pass
+
+        result = None
+        try:
+            if request.kind == "agent":
+                result = await self._execute_agent(request)
+            elif request.kind == "skill":
+                result = await self._execute_skill(request)
+            elif request.kind == "tool":
+                result = await self._execute_tool(request)
+            elif request.kind == "graph":
+                result = await self._execute_graph(request)
+            else:
+                result = ExecutionResult(ok=False, error=f"Unsupported kind: {request.kind}", run_id=run_id)
+        except Exception as e:
+            result = ExecutionResult(ok=False, error=str(e), run_id=run_id)
+
+        try:
+            if store:
+                await store.append_run_event(
+                    run_id=run_id, event_type="run_end", trace_id=None, tenant_id=None,
+                    payload={"status": "completed" if (result and result.ok) else "failed"},
+                )
+        except Exception:
+            pass
 
     async def _execute_skill_lint_scan(self, req: "ExecutionRequest") -> "ExecutionResult":
         """Scheduled lint scan over skills (workspace/engine), returns aggregated report."""
@@ -3266,6 +3320,7 @@ class KernelRuntime:
         if self._feedback:
             self._feedback.clear()
         if self._memory:
+            from .memory import MemoryScope
             await self._memory.clear(MemoryScope.SESSION)
 
 

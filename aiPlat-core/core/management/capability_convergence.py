@@ -93,12 +93,11 @@ def _build_or_load_symbol_graph(repo_root: Path, force_rebuild: bool = False) ->
     if not force_rebuild:
         try:
             sys.path.insert(0, str(repo_root / "aiPlat-core"))
-            from core.harness.knowledge.code_graph_persist import GraphPersister
+            from core.harness.knowledge.code_graph_persist import has_cache, load_nodes, load_edges
 
-            persister = GraphPersister()
-            if persister.has_cache():
-                nodes = persister.load_nodes()
-                edges = persister.load_edges()
+            if has_cache():
+                nodes = load_nodes()
+                edges = load_edges()
                 from core.harness.knowledge.code_graph import _build_symbol_graph
                 return _build_symbol_graph(nodes, edges, repo_root)
         except Exception:

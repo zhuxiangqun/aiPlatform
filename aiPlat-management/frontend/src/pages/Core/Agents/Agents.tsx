@@ -20,7 +20,7 @@ const Agents: React.FC = () => {
   const [testAllRunning, setTestAllRunning] = useState(false);
   const [testAllResults, setTestAllResults] = useState<{ agentId: string; status: string; ok: boolean }[]>([]);
   const [testAllOpen, setTestAllOpen] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; agent: Agent | null }>({ open: false, agent: null });
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; agent: Agent | null; hard: boolean }>({ open: false, agent: null, hard: true });
   const [deleting, setDeleting] = useState(false);
 
   React.useEffect(() => {
@@ -74,7 +74,7 @@ const Agents: React.FC = () => {
       setDeleting(true);
       await deleteAgent(deleteConfirm.agent.id);
       toast.success('Agent已删除');
-      setDeleteConfirm({ open: false, agent: null });
+      setDeleteConfirm({ open: false, agent: null, hard: true });
     } catch {
       toast.error('删除失败');
     }
@@ -189,7 +189,7 @@ const Agents: React.FC = () => {
           </button>
           {!isProtected && (
             <button
-              onClick={() => setDeleteConfirm({ open: true, agent: record })}
+                onClick={() => setDeleteConfirm({ open: true, agent: record, hard: true })}
               className="p-1.5 rounded-lg text-error hover:bg-error-light transition-colors"
               title="删除"
             >
@@ -283,22 +283,30 @@ const Agents: React.FC = () => {
       {/* Delete Confirmation Modal */}
       <Modal
         open={deleteConfirm.open}
-        onClose={() => setDeleteConfirm({ open: false, agent: null })}
+        onClose={() => setDeleteConfirm({ open: false, agent: null, hard: true })}
         title="确认删除"
         footer={
           <>
-            <Button disabled={deleting} onClick={() => setDeleteConfirm({ open: false, agent: null })}>
+            <Button disabled={deleting} onClick={() => setDeleteConfirm({ open: false, agent: null, hard: true })}>
               取消
             </Button>
             <Button variant="danger" loading={deleting} onClick={handleDelete}>
-              确认删除
+              确认
             </Button>
           </>
         }
       >
-        <p className="text-gray-400">
-          确定要删除Agent "{deleteConfirm.agent?.name}" 吗？此操作不可撤销，请谨慎操作。
-        </p>
+        <p className="text-sm text-gray-300 mb-3">将对 Agent "{deleteConfirm.agent?.name}" 执行删除操作：</p>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-gray-400">删除方式</span>
+          <Select
+            value={deleteConfirm.hard ? 'hard' : 'soft'}
+            onChange={(v: string) => setDeleteConfirm({ ...deleteConfirm, hard: v === 'hard' })}
+            options={[
+              { value: 'hard', label: '硬删除 (删除目录，不可撤销)' },
+            ]}
+          />
+        </div>
       </Modal>
 
       <EditAgentModal

@@ -36,9 +36,9 @@ def _verify_workflow_signature(mgr, wf) -> None:
         from core.harness.kernel.runtime import get_kernel_runtime
         rt = get_kernel_runtime()
         store = getattr(rt, "execution_store", None) if rt else None
-        trusted = asyncio.new_event_loop().run_until_complete(
-            get_trusted_skill_pubkeys_map(store)
-        ) if store else {}
+        import concurrent.futures as _cf
+        with _cf.ThreadPoolExecutor(max_workers=1) as _pool:
+            trusted = _pool.submit(asyncio.run, get_trusted_skill_pubkeys_map(store)).result(timeout=10) if store else {}
         prov = mgr.compute_workflow_signature_verification(wf, trusted)
         if prov.get("signature") and not prov.get("signature_verified"):
             _logger.warning("Workflow %s signature verification failed: %s", wf.id, prov.get("signature_verified_reason", ""))
@@ -191,18 +191,9 @@ class WorkflowService:
         record_workflow_run(workflow_id, proj.project_id, launch_name or wf_dict.get("name", ""))
         # Background execution via dedicated thread — API returns immediately.
         # PipelineEventBus writes progress to SQLite pipeline_events → frontend polls.
-        import threading
-        def _run():
-            import asyncio
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                loop.run_until_complete(svc.start_pipeline(proj.project_id))
-            except Exception:
-                pass
-            finally:
-                loop.close()
-        threading.Thread(target=_run, daemon=True).start()
+        import asyncio as _asyncio, concurrent.futures as _cf
+        _cf.ThreadPoolExecutor(max_workers=1).submit(
+            _asyncio.run, svc.start_pipeline(proj.project_id)).result(timeout=300)
         return {"project_id": proj.project_id, "workflow_id": workflow_id, "run_id": proj.project_id}
 
     async def list_runs(self, workflow_id: str) -> list:

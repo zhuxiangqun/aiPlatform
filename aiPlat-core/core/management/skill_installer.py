@@ -14,6 +14,7 @@ Security posture (production):
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import shutil
@@ -21,6 +22,10 @@ import subprocess
 import tempfile
 import time
 import zipfile
+
+logger = logging.getLogger(__name__)
+
+
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -126,6 +131,60 @@ def _iter_skill_dirs(root: Path, *, subdir: Optional[str] = None) -> List[Path]:
 
 
 def _find_skill_dirs(root: Path) -> List[Path]:
+    """Recursively find all directories containing a SKILL.md file.
+
+    No subdir guessing needed — works regardless of nesting depth.
+    Returns distinct skill directory paths (each SKILL.md's parent dir).
+    """
+    seen: set = set()
+    out: List[Path] = []
+    for entry in sorted(root.rglob("SKILL.md")):
+        skill_dir = entry.parent
+        key = str(skill_dir.resolve())
+        if key not in seen:
+            seen.add(key)
+            out.append(skill_dir)
+    return out
+
+
+def _record_import_audit(skill_dir: Path, skill_name: str, source: dict) -> None:
+    """Record an import audit event (best-effort, non-blocking)."""
+    try:
+        from core.harness.kernel import get_kernel_runtime
+        rt = get_kernel_runtime()
+        store = getattr(rt, "execution_store", None) if rt else None
+        if store is None:
+            return
+        source_type = str((source or {}).get("source_type", "zip"))
+        has_handler = (skill_dir / "handler.py").exists()
+        has_scripts = (skill_dir / "scripts").is_dir()
+        # Count lint issues if available
+        lint_errs = 0
+        lint_warns = 0
+        try:
+            from core.management.skill_linter import lint_skill
+            report = lint_skill(str(skill_dir))
+            lint_errs = report.get("error_count", 0) if isinstance(report, dict) else 0
+            lint_warns = report.get("warn_count", 0) if isinstance(report, dict) else 0
+        except Exception:
+            pass
+        import anyio
+        anyio.run(
+            store.add_import_audit,
+            skill_id=str(skill_dir.name),
+            skill_name=skill_name,
+            source_type=source_type,
+            pattern="handler" if has_handler else ("scripts" if has_scripts else "prompt"),
+            adapted=has_handler,
+            lint_errors=lint_errs,
+            lint_warnings=lint_warns,
+            details={"skill_dir": str(skill_dir), "handler_exists": has_handler, "scripts_exists": has_scripts},
+        )
+    except Exception:
+        pass
+
+
+
     """Recursively find all directories containing a SKILL.md file.
 
     No subdir guessing needed — works regardless of nesting depth.
@@ -552,6 +611,12 @@ class SkillInstaller:
             if dst.exists():
                 if not allow_overwrite:
                     skipped.append({"skill_id": sd.name, "reason": "already_exists"})
+                    # Still run adapter on existing dir in case previous import was broken
+                    try:
+                        from core.management.skill_adapter import adapt_skill
+                        adapt_skill(dst)
+                    except Exception as exc:
+                        logger.warning("adapt_skill failed on existing dir %s: %s", dst, exc)
                     continue
                 try:
                     shutil.rmtree(dst)
@@ -563,8 +628,8 @@ class SkillInstaller:
             try:
                 from core.management.skill_adapter import adapt_skill
                 adapt_skill(dst)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("adapt_skill failed for %s: %s", sd.name, exc)
             # Apply AI-recommended overrides (tools, execution_type, timeout, etc.)
             if overrides:
                 _apply_overrides(dst, overrides)
@@ -572,6 +637,11 @@ class SkillInstaller:
                 src2 = dict(source or {})
                 src2["skill_id"] = sd.name
                 _write_manifest(dst, source=src2)
+            except Exception:
+                pass
+            # Record import audit for compliance tracking
+            try:
+                _record_import_audit(dst, sd.name, source)
             except Exception:
                 pass
             installed.append(sd.name)

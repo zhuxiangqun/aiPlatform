@@ -62,6 +62,8 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 持续编缉和维护 Wiki 知识库
+
+protected: true
 ---
 
 ## SOP

@@ -408,7 +408,12 @@ class WikiPageRetriever(IRetriever):
             highlight = page["title"]
             if page.get("summary"):
                 highlight += f": {page['summary'][:120]}"
-            results.append(KnowledgeResult(entry=entry, score=sim, highlight=highlight))
+            results.append(KnowledgeResult(
+                entry=entry, score=sim, highlight=highlight,
+                source_page=page.get("title", ""),
+                source_category=page.get("category", ""),
+                evidence_range=page.get("body", "")[:200] if page.get("body") else "",
+            ))
             self._entries[entry.id] = entry
 
         # ── Contradiction-aware: surface conflicting pages ──
@@ -451,6 +456,9 @@ class WikiPageRetriever(IRetriever):
                                     c_highlight += f": {cp['summary'][:80]}"
                                 results.append(KnowledgeResult(
                                     entry=c_entry, score=0.25, highlight=c_highlight,
+                                    source_page=clean_target,
+                                    source_category="contradictions",
+                                    evidence_range="contradiction_with:" + result.entry.title[:40],
                                 ))
                                 self._entries[c_entry.id] = c_entry
                                 seen_titles.add(clean_target)

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Zap, Wrench, Server, FileText, Database, Layers, Key, Settings2, Globe, Activity, Box } from 'lucide-react';
+import { Sparkles, Wrench, Plug, FileText, Database, GitBranch, Key, Settings2, Globe, Activity, Box } from 'lucide-react';
 import { skillApi, toolApi, mcpApi, knowledgeApi } from '../../../services';
 
 interface ResourceCard {
@@ -34,12 +34,12 @@ const Resources: React.FC = () => {
   }, []);
 
   const resources: ResourceCard[] = [
-    { title: 'Skills', icon: <Zap className="w-8 h-8" />, count: counts.skills, desc: 'AI 能力单元：引擎内置 25 + 工作区 19，声明式 SKILL.md 配置', path: '/core/skills', color: 'text-amber-400 border-amber-500/30 bg-amber-500/5' },
+    { title: 'Skills', icon: <Sparkles className="w-8 h-8" />, count: counts.skills, desc: 'AI 能力单元：引擎内置 25 + 工作区 19，声明式 SKILL.md 配置', path: '/core/skills', color: 'text-amber-400 border-amber-500/30 bg-amber-500/5' },
     { title: 'Tools', icon: <Wrench className="w-8 h-8" />, count: counts.tools, desc: '原子操作工具：搜索引擎/计算器/HTTP/数据库/代码执行/文件操作', path: '/core/tools', color: 'text-purple-400 border-purple-500/30 bg-purple-500/5' },
-    { title: 'MCP Servers', icon: <Server className="w-8 h-8" />, count: counts.mcp, desc: 'Model Context Protocol 服务器：连接外部工具服务到 Agent 和工作流', path: '/core/mcp', color: 'text-cyan-400 border-cyan-500/30 bg-cyan-500/5' },
+    { title: 'MCP Servers', icon: <Plug className="w-8 h-8" />, count: counts.mcp, desc: 'Model Context Protocol 服务器：连接外部工具服务到 Agent 和工作流', path: '/core/mcp', color: 'text-cyan-400 border-cyan-500/30 bg-cyan-500/5' },
     { title: 'Prompts', icon: <FileText className="w-8 h-8" />, count: 0, desc: 'Prompt 模板库：可复用的提示词模板，支持变量插入和版本管理', path: '/core/prompts', color: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/5' },
     { title: 'Memory', icon: <Database className="w-8 h-8" />, count: 0, desc: '记忆系统：Working/Episodic/Semantic 三层架构，会话上下文持久化', path: '/core/memory', color: 'text-rose-400 border-rose-500/30 bg-rose-500/5' },
-    { title: 'Workflow', icon: <Layers className="w-8 h-8" />, count: 0, desc: '工作流编辑器：拖拽排序 Pipeline 阶段，配置 Agent/Skill/Model', path: '/core/workflow-editor', color: 'text-blue-400 border-blue-500/30 bg-blue-500/5' },
+    { title: 'Workflow', icon: <GitBranch className="w-8 h-8" />, count: 0, desc: '工作流编辑器：拖拽排序 Pipeline 阶段，配置 Agent/Skill/Model', path: '/core/workflow-editor', color: 'text-blue-400 border-blue-500/30 bg-blue-500/5' },
     { title: 'Workflow 画布', icon: <Box className="w-8 h-8" />, count: 0, desc: 'ReactFlow 可视化画布：自由拖拽节点+连线+Agent面板+双击编辑', path: '/core/workflow-canvas', color: 'text-violet-400 border-violet-500/30 bg-violet-500/5' },
     { title: 'Credentials', icon: <Key className="w-8 h-8" />, count: 0, desc: '凭证管理：API Key / Token 集中管理，绑定到工具后 Agent 自动调用外部服务', path: '/core/credentials', color: 'text-yellow-400 border-yellow-500/30 bg-yellow-500/5' },
     { title: 'Variables', icon: <Settings2 className="w-8 h-8" />, count: 0, desc: '变量管理：全局/工作流变量定义，通过 {{{{变量名}}}} 在 Agent SOP 中引用', path: '/core/variables', color: 'text-indigo-400 border-indigo-500/30 bg-indigo-500/5' },

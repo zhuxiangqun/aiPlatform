@@ -175,6 +175,34 @@ class PlanResult:
     claude_plugin: bool = False
 
 
+def _record_asset_import_audit(asset_dir: Path, asset_name: str, asset_type: str, source: dict) -> None:
+    """Record an import audit event for any asset type (best-effort, non-blocking)."""
+    try:
+        from core.harness.kernel import get_kernel_runtime
+        rt = get_kernel_runtime()
+        store = getattr(rt, "execution_store", None) if rt else None
+        if store is None or not hasattr(store, "add_import_audit"):
+            return
+        source_type = str((source or {}).get("source_type", "zip"))
+        pattern = asset_type
+        adapted = False
+        try:
+            import anyio
+            anyio.run(
+                store.add_import_audit,
+                skill_id=f"{asset_type}:{asset_name}",
+                skill_name=asset_name,
+                source_type=source_type,
+                pattern=pattern,
+                adapted=adapted,
+                details={"asset_type": asset_type, "asset_dir": str(asset_dir)},
+            )
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+
 class AssetInstaller:
     """
     Generic installer for third-party open-source assets.
@@ -436,6 +464,11 @@ class AssetInstaller:
             if dst.exists():
                 if not allow_overwrite:
                     skipped.append({"id": ad.name, "reason": "already_exists"})
+                    # Still run enrichment on existing dir (may be broken from previous import)
+                    try:
+                        self._enrich_asset_frontmatter(dst)
+                    except Exception:
+                        pass
                     continue
                 try:
                     shutil.rmtree(dst)
@@ -449,6 +482,11 @@ class AssetInstaller:
                 src2 = dict(source or {})
                 src2["asset_id"] = ad.name
                 self._write_manifest(dst, source=src2)
+            except Exception:
+                pass
+            # Record import audit (best-effort)
+            try:
+                _record_asset_import_audit(dst, ad.name, self.ASSET_TYPE, source)
             except Exception:
                 pass
             installed.append(ad.name)

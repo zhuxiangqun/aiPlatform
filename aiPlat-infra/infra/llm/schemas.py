@@ -19,6 +19,7 @@ class ChatRequest:
     stream: bool = False
     stop: Optional[List[str]] = None
     tools: Optional[List[dict]] = None
+    timeout: int = 30
 
 
 @dataclass

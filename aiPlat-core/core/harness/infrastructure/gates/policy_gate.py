@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 import os
 import hashlib
 import fnmatch
@@ -709,3 +709,180 @@ class PolicyGate:
         if not force_approval:
             return PolicyResult(decision=PolicyDecision.ALLOW)
         return PolicyResult(decision=PolicyDecision.APPROVAL_REQUIRED, reason=f"Workflow '{workflow_id}' requires approval")
+
+
+async def check_stage_ontology_guard(
+    stage: Any,
+    state: Dict[str, Any],
+    collection_id: str = "default",
+) -> Optional[str]:
+    u"""Check ontology constraints before pipeline stage execution.
+
+    Returns violation reason string if blocked, None if allowed.
+    Currently enforces:
+      - A1: ConceptPage must have at least one valid KB document source.
+      - Unresolved contradictions in entities the stage depends on.
+
+    Args:
+        stage: PipelineStageConfig instance.
+        state: pipeline state dict.
+        collection_id: wiki collection scope.
+
+    Returns:
+        Violation string or None.
+    """
+    AI = "http://aiplat.local/knowledge#"
+    ontology_class = getattr(stage, 'ontology_class', '') or ''
+    ontology_relations = getattr(stage, 'ontology_relations', None) or []
+
+    if not ontology_class:
+        return None  # stage not producing ontology entities — skip
+
+    # A1 guard: ConceptPage must reference existing KB documents
+    if ontology_class == "ConceptPage":
+        for rel in ontology_relations:
+            if not isinstance(rel, dict):
+                continue
+            target_doc = rel.get("target_kb_doc", "")
+            if not target_doc:
+                continue
+
+            # Check if KBDocument exists in onto A-Box
+            try:
+                from core.harness.knowledge.knowledge_ontology import get_ontology
+                onto = get_ontology()
+                kb_uri = f"{AI}{target_doc}"
+                alias_uri = f"{AI}kb:{target_doc.lstrip('kb:')}"
+
+                exists = any(
+                    t.predicate == "rdf:type"
+                    and f"{AI}KBDocument" in t.object
+                    and t.subject in (kb_uri, alias_uri)
+                    for t in onto.triples
+                )
+
+                if not exists:
+                    return (
+                        f"Ontology A1 violation: KB document '{target_doc}' not registered. "
+                        f"Stage '{getattr(stage, 'id', '?')}' would produce a source-less ConceptPage."
+                    )
+            except Exception as e:
+                return f"Ontology guard: failed to check KB document existence — {e}"
+
+    # Contradiction guard: warn if dependencies reference contradicted entities
+    input_artifacts = getattr(stage, 'input_artifacts', None) or []
+    if input_artifacts:
+        try:
+            from core.harness.knowledge.knowledge_ontology import get_ontology
+            AI = "http://aiplat.local/knowledge#"
+            onto = get_ontology()
+            contradicted = {
+                t.subject.replace(AI, "")
+                for t in onto.triples
+                if t.predicate == f"{AI}lifecycleState"
+                and t.object.strip('"') == "contradicted"
+            }
+
+            for art_key in input_artifacts:
+                art = state.get(art_key)
+                if isinstance(art, dict):
+                    for ref_title in art.values():
+                        if isinstance(ref_title, str) and ref_title in contradicted:
+                            # Warning only — don't block execution
+                            import logging
+                            logging.getLogger("policy_gate").warning(
+                                "Ontology: stage %s depends on contradicted entity '%s'",
+                                getattr(stage, 'id', '?'), ref_title,
+                            )
+        except Exception:
+            pass
+
+    return None
+
+
+async def check_kb_access(
+    entity_uri: str,
+    action: str,
+    actor_role: str = "",
+    actor_scopes: Optional[List[str]] = None,
+    tenant_id: str = "default",
+    collection_id: str = "default",
+) -> PolicyResult:
+    u"""Three-layer fused permission computation for knowledge base access.
+
+    Layer 1 — RBAC scope coarse filter.
+    Layer 2 — Markings lineage check (propagated via ontology relations).
+    Layer 3 — Per-object permission fine check.
+
+    Any layer DENY → overall DENY. Reason MUST state which layer blocked.
+    """
+    actor_scopes = actor_scopes or []
+    actor_scopes_set = set(actor_scopes)
+
+    # Layer 1: RBAC scope check
+    action_scope_map = {
+        "read": ["kb:read", "agent:read", "skill:read"],
+        "read_body": ["kb:read", "agent:read"],
+        "cite": ["kb:read", "agent:execute"],
+        "update": ["kb:write"],
+        "state_change": ["kb:write"],
+        "delete": ["kb:write"],
+        "admin": ["admin"],
+    }
+    required_scopes = set(action_scope_map.get(action, ["kb:read"]))
+    if "admin" not in actor_scopes_set:
+        if required_scopes and not (required_scopes & actor_scopes_set):
+            return PolicyResult(
+                decision=PolicyDecision.DENY,
+                reason=f"Layer1-RBAC: lacks scopes {sorted(required_scopes)} (has {sorted(actor_scopes_set)})",
+            )
+
+    # Layer 2: Markings check
+    try:
+        from core.harness.knowledge.knowledge_markings import (
+            load_markings_config, resolve_effective_markings, MarkingLevel,
+        )
+        from core.harness.knowledge.knowledge_ontology import get_ontology
+
+        marking_config = load_markings_config(collection_id)
+        onto = get_ontology()
+        effective, _traces = resolve_effective_markings(
+            entity_uri, marking_config, onto.triples, max_depth=5,
+        )
+        for m in effective:
+            if m.level >= MarkingLevel.INTERNAL:
+                required_scope = m.scope or f"kb:read:{m.label.lower()}"
+                if "admin" not in actor_scopes_set and required_scope not in actor_scopes_set:
+                    return PolicyResult(
+                        decision=PolicyDecision.DENY,
+                        reason=(
+                            f"Layer2-Marking: entity requires scope '{required_scope}' "
+                            f"due to '{m.label}' (level={m.level.name}"
+                            f", from {m.propagated_from or 'direct'})"
+                        ),
+                    )
+    except Exception as e:
+        logger.warning("Marking check failed for %s: %s", entity_uri, str(e)[:200])
+
+    # Layer 3: Per-object permission (optional — only enforced when explicitly defined)
+    try:
+        from core.policy.object_permission import check_object_permission
+        from core.policy.object_permission import _load as _load_perms
+        all_perms = _load_perms(collection_id)
+        entity_has_rules = any(p.entity_uri == entity_uri for p in all_perms)
+        if entity_has_rules and not check_object_permission(
+            entity_uri, actor_role, action,
+            tenant_id=tenant_id, collection_id=collection_id,
+        ):
+            return PolicyResult(
+                decision=PolicyDecision.DENY,
+                reason=(
+                    f"Layer3-ObjectPerm: no permission for "
+                    f"role='{actor_role}' action='{action}' on '{entity_uri}'"
+                ),
+            )
+    except Exception as e:
+        logger.warning("Object permission check failed for %s: %s", entity_uri, str(e)[:200])
+
+    return PolicyResult(decision=PolicyDecision.ALLOW)
+

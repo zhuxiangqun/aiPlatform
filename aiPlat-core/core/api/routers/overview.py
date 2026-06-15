@@ -144,16 +144,97 @@ async def get_llm_metrics():
     return await _get_real_llm_metrics()
 
 
+async def _scan_governance() -> Dict[str, Any]:
+    """
+    Shared governance scan — returns total/governed/unsigned/no_manifest/has_trusted_keys/score.
+    Used by both system_overview() and diagnostics._check_governance().
+    """
+    import json as _json
+    home = os.environ.get("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
+    entity_globs = {
+        "skills": ("skills", "SKILL.manifest.json"),
+        "agents": ("agents", "AGENT.manifest.json"),
+        "mcps": ("mcps", "MCP.manifest.json"),
+        "workflows": ("workflows", "WORKFLOW.manifest.json"),
+        "projects": ("projects", "PROJECT.manifest.json"),
+        "prompt_apps": ("prompt-apps", "TEMPLATE.manifest.json"),
+    }
+    gov_total = 0
+    gov_governed = 0
+    gov_unsigned = 0
+    gov_no_manifest = 0
+
+    engine_root = Path(__file__).resolve().parents[3] / "core" / "engine"
+    extra_paths = [
+        (engine_root / "skills", "SKILL.manifest.json"),
+        (engine_root / "agents", "AGENT.manifest.json"),
+        (engine_root / "mcps", "MCP.manifest.json"),
+    ]
+
+    all_dirs: list[tuple[Path, str]] = []
+    for ent_type, (subdir, mf_name) in entity_globs.items():
+        all_dirs.append((Path(home) / subdir, mf_name))
+    for p, mf_name in extra_paths:
+        if p.exists() and p.is_dir():
+            all_dirs.append((p, mf_name))
+
+    for base_dir, mf_name in all_dirs:
+        if not base_dir.is_dir():
+            continue
+        for edir in base_dir.iterdir():
+            if not edir.is_dir() or edir.name.startswith("."):
+                continue
+            gov_total += 1
+            mf = edir / mf_name
+            if not mf.exists():
+                gov_no_manifest += 1
+                continue
+            try:
+                with open(mf) as f:
+                    mdata = _json.load(f)
+                if mdata.get("signature"):
+                    gov_governed += 1
+                else:
+                    gov_unsigned += 1
+            except Exception:
+                gov_unsigned += 1
+
+    has_keys = False
+    try:
+        from core.harness.kernel.runtime import get_kernel_runtime as _g_rt
+        _g_runtime = _g_rt()
+        store = getattr(_g_runtime, "execution_store", None) if _g_runtime else None
+        if store:
+            gs = await store.get_global_setting(key="trusted_skill_pubkeys")
+            keys = (gs.get("value", {}).get("keys") or []) if gs and isinstance(gs, dict) else []
+            has_keys = len(keys) > 0
+    except Exception:
+        pass
+
+    score = 100
+    score -= gov_no_manifest * 2
+    score -= gov_unsigned * 0.5
+    if not has_keys and gov_total > 0:
+        score -= 20
+    score = max(0, score)
+
+    return {
+        "total": gov_total, "governed": gov_governed,
+        "unsigned": gov_unsigned, "no_manifest": gov_no_manifest,
+        "has_trusted_keys": has_keys, "score": score,
+    }
+
+
 @router.get("/overview")
 async def system_overview(refresh: bool = Query(False)) -> Dict[str, Any]:
-    u"""Aggregated system state organized by architecture layer. Cached persistently."""
+    u"""Aggregated system state organized by architecture layer."""
     global _OV_CACHE, _OV_CACHE_TS
 
     # Force refresh — clear cache
     if refresh:
         _OV_CACHE = None
 
-    # Cache hit — return deep copy if available
+    # Return cached result if available
     if _OV_CACHE is not None:
         import json
         return json.loads(json.dumps(_OV_CACHE))
@@ -275,13 +356,22 @@ async def system_overview(refresh: bool = Query(False)) -> Dict[str, Any]:
     if down_count > 0:
         infra_issues += 1
 
-    # Aggregate infra status
-    if infra_issues >= 3:
-        infra["status"] = "unhealthy"
-    elif infra_issues >= 1:
-        infra["status"] = "degraded"
-    else:
-        infra["status"] = "healthy"
+    # Aggregate infra status — delegate to authoritative /health endpoint
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            r = await client.get("http://localhost:8001/api/infra/health")
+            if r.status_code == 200:
+                hc = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
+                infra["status"] = hc.get("status", "healthy")
+            else:
+                infra["status"] = "degraded"
+    except Exception:
+        if infra_issues >= 3:
+            infra["status"] = "unhealthy"
+        elif infra_issues >= 1:
+            infra["status"] = "degraded"
+        else:
+            infra["status"] = "healthy"
 
     result["infra"] = infra
 
@@ -434,12 +524,16 @@ async def system_overview(refresh: bool = Query(False)) -> Dict[str, Any]:
             active = len(getattr(store, "_active", {}) or {})
             completed = 0
             try:
-                if hasattr(store, "_db") and store._db:
-                    row = store._db.execute(
+                import sqlite3 as _inner_sql3
+                conn = _inner_sql3.connect(store._config.db_path)
+                try:
+                    row = conn.execute(
                         "SELECT COUNT(*) FROM graph_runs WHERE status IN ('completed','finished')"
                     ).fetchone()
                     if row:
                         completed = row[0]
+                finally:
+                    conn.close()
             except Exception:
                 pass
             core["pipeline"] = {"active": active, "completed": completed}
@@ -469,22 +563,23 @@ async def system_overview(refresh: bool = Query(False)) -> Dict[str, Any]:
     try:
         if rt and hasattr(rt, "execution_store") and rt.execution_store:
             store = rt.execution_store
-            if hasattr(store, "_db") and store._db:
-                db = store._db
-                llm_1h = db.execute(
-                    "SELECT COUNT(*) FROM syscall_events WHERE kind='llm_generate' AND created_at > datetime('now','-1 hour')"
+            import sqlite3 as _inner_sql3
+            conn = _inner_sql3.connect(store._config.db_path)
+            try:
+                llm_1h = conn.execute(
+                    "SELECT COUNT(*) FROM syscall_events WHERE kind='llm' AND start_time > unixepoch('now','-1 hour')"
                 ).fetchone()[0]
-                tool_1h = db.execute(
-                    "SELECT COUNT(*) FROM syscall_events WHERE kind='tool_call' AND created_at > datetime('now','-1 hour')"
+                tool_1h = conn.execute(
+                    "SELECT COUNT(*) FROM syscall_events WHERE kind='tool' AND start_time > unixepoch('now','-1 hour')"
                 ).fetchone()[0]
-                skill_1h = db.execute(
-                    "SELECT COUNT(*) FROM syscall_events WHERE kind='skill_call' AND created_at > datetime('now','-1 hour')"
+                skill_1h = conn.execute(
+                    "SELECT COUNT(*) FROM syscall_events WHERE kind='skill' AND start_time > unixepoch('now','-1 hour')"
                 ).fetchone()[0]
-                core["syscalls"] = {"llm_generate_1h": llm_1h, "tool_call_1h": tool_1h, "skill_call_1h": skill_1h}
-            else:
-                core["syscalls"] = {"llm_generate_1h": 0, "tool_call_1h": 0, "skill_call_1h": 0}
+                core["syscalls"] = {"llm_1h": llm_1h, "tool_1h": tool_1h, "skill_1h": skill_1h}
+            finally:
+                conn.close()
         else:
-            core["syscalls"] = {"llm_generate_1h": 0, "tool_call_1h": 0, "skill_call_1h": 0, "note": "runtime not initialized"}
+            core["syscalls"] = {"llm_1h": 0, "tool_1h": 0, "skill_1h": 0, "note": "runtime not initialized"}
     except Exception as e:
         _log.warning(f"Syscall probe failed: {e}")
         core["syscalls"] = {"llm_generate_1h": 0, "tool_call_1h": 0, "skill_call_1h": 0, "note": "unavailable"}
@@ -503,81 +598,7 @@ async def system_overview(refresh: bool = Query(False)) -> Dict[str, Any]:
 
     # -- Governance --
     try:
-        import json as _json
-        home = os.environ.get("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
-        entity_globs = {
-            "skills": ("skills", "SKILL.manifest.json"),
-            "agents": ("agents", "AGENT.manifest.json"),
-            "mcps": ("mcps", "MCP.manifest.json"),
-            "workflows": ("workflows", "WORKFLOW.manifest.json"),
-            "projects": ("projects", "PROJECT.manifest.json"),
-            "prompt_apps": ("prompt-apps", "TEMPLATE.manifest.json"),
-        }
-        gov_total = 0
-        gov_governed = 0
-        gov_unsigned = 0
-        gov_no_manifest = 0
-
-        # Scan both workspace and engine directories
-        engine_root = Path(__file__).resolve().parents[3] / "core" / "engine"
-        extra_paths = [
-            (engine_root / "skills", "SKILL.manifest.json"),
-            (engine_root / "agents", "AGENT.manifest.json"),
-            (engine_root / "mcps", "MCP.manifest.json"),
-        ]
-
-        all_dirs: list[tuple[Path, str]] = []
-        for ent_type, (subdir, mf_name) in entity_globs.items():
-            all_dirs.append((Path(home) / subdir, mf_name))
-        for p, mf_name in extra_paths:
-            if p.exists() and p.is_dir():
-                all_dirs.append((p, mf_name))
-
-        for base_dir, mf_name in all_dirs:
-            if not base_dir.is_dir():
-                continue
-            for edir in base_dir.iterdir():
-                if not edir.is_dir() or edir.name.startswith("."):
-                    continue
-                gov_total += 1
-                mf = edir / mf_name
-                if not mf.exists():
-                    gov_no_manifest += 1
-                    continue
-                try:
-                    with open(mf) as f:
-                        mdata = _json.load(f)
-                    if mdata.get("signature"):
-                        gov_governed += 1
-                    else:
-                        gov_unsigned += 1
-                except Exception:
-                    gov_unsigned += 1
-
-        has_keys = False
-        try:
-            from core.harness.kernel.runtime import get_kernel_runtime as _ov_rt
-            _rt = _ov_rt()
-            store = getattr(_rt, "execution_store", None) if _rt else None
-            if store:
-                gs = await store.get_global_setting(key="trusted_skill_pubkeys")
-                keys = (gs.get("keys") or []) if gs and isinstance(gs, dict) else []
-                has_keys = len(keys) > 0
-        except Exception:
-            pass
-
-        score = 100
-        score -= gov_no_manifest * 2
-        score -= gov_unsigned * 2
-        if not has_keys and gov_total > 0:
-            score -= 20
-        score = max(0, score)
-
-        core["governance"] = {
-            "total": gov_total, "governed": gov_governed,
-            "unsigned": gov_unsigned, "no_manifest": gov_no_manifest,
-            "has_trusted_keys": has_keys, "score": score,
-        }
+        core["governance"] = await _scan_governance()
     except Exception:
         core["governance"] = {"error": "unavailable"}
 
@@ -591,28 +612,11 @@ async def system_overview(refresh: bool = Query(False)) -> Dict[str, Any]:
         total_syms = sum(len(n.get('symbols', [])) for n in _nodes.values())
         files_with_syms = sum(1 for n in _nodes.values() if n.get('symbols'))
         # Exclude files legitimately with 0 in-degree (dynamic dispatch, DI, registry, etc.)
-        def _is_dead_code(nid: str, n) -> bool:
-            exc = ('tests/', '/test_', '/generated/', '/apps/agents/', '/apps/skills/',
-                   '/engine/agents/', '/engine/skills/', '/infrastructure/gates/',
-                   '/scripts/', '/arch_guard_rules/', '/lint_rules/',
-                   '/management/api/', '/management/dashboard/', '/core/api/routers/',
-                   '/core/apps/tools/', '/core/tools/',
-                   '/core/harness/execution/langgraph/', '/core/harness/syscalls/',
-                   '/core/adapters/llm/', '/core/utils/', '/workspace_seeds/',
-                   '/builder/', '/kb/poc/', '/kb/intelligence/',
-                   '/infra/utils/', '/infra/management/model/',
-                   '/management/model/',
-            )
-            if any(p in nid for p in exc): return True
-            sf = ('server.py', 'main.py', '__init__.py', '.sh', '.cfg', '.tsx', '.ts', '.jsx',
-                  '/execution/conditional.py', '_adapter.py', '/vector/utils.py',
-                  'core/schemas_tools.py', 'core/schemas.py', '/knowledge/reranker.py',
-                  'infra/management/config.py', '/auth/rbac.py', 'management/run.py')
-            if any(nid.endswith(s) for s in sf): return True
-            if nid.startswith('aiPlat-app/') or nid.startswith('aiplat-app/'): return True
-            return False
+        from core.harness.knowledge.symbol_health import is_excluded_from_dead_code
         dead_code = sum(1 for nid, n in _nodes.items()
-                       if not _is_dead_code(nid, n) and int(n.get('in', 0)) == 0 and len(n.get('symbols', [])) > 0)
+                        if not is_excluded_from_dead_code(nid)
+                        and int(n.get('in', 0)) == 0
+                        and len(n.get('symbols', [])) > 0)
         cross_calls = sum(1 for e in _edges if e.get('kind') == 'calls' and e['from'] != e['to'])
         core["code_graph"] = {
             "files": total_files,
@@ -627,13 +631,19 @@ async def system_overview(refresh: bool = Query(False)) -> Dict[str, Any]:
         core["code_graph"] = {"error": "unavailable"}
         core_issues += 1
 
-    # Aggregate core status
-    if core_issues >= 2:
-        core["status"] = "unhealthy"
-    elif core_issues == 1:
-        core["status"] = "degraded"
-    else:
-        core["status"] = "healthy"
+    # Aggregate core status — delegate to the authoritative /api/core/health
+    try:
+        from core.api.routers.health import health_check
+        hc = await health_check(rt=rt)
+        core["status"] = hc.get("status", "healthy")
+    except Exception:
+        # Fallback: use the issue-counting heuristic
+        if core_issues >= 2:
+            core["status"] = "unhealthy"
+        elif core_issues == 1:
+            core["status"] = "degraded"
+        else:
+            core["status"] = "healthy"
 
     result["core"] = core
 
@@ -729,13 +739,23 @@ async def system_overview(refresh: bool = Query(False)) -> Dict[str, Any]:
             platform.setdefault(key, {})["error"] = "unavailable"
         platform_issues = 4
 
-    # Aggregate platform status
-    if platform_issues >= 4:
-        platform["status"] = "unhealthy"
-    elif platform_issues >= 1:
-        platform["status"] = "degraded"
-    else:
-        platform["status"] = "healthy"
+    # Aggregate platform status — delegate to authoritative /health endpoint
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            r = await client.get("http://localhost:8003/health")
+            if r.status_code == 200:
+                hc = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
+                platform["status"] = hc.get("status", "healthy")
+            else:
+                platform["status"] = "degraded"
+    except Exception:
+        # Fallback: use the issue-counting heuristic
+        if platform_issues >= 4:
+            platform["status"] = "unhealthy"
+        elif platform_issues >= 1:
+            platform["status"] = "degraded"
+        else:
+            platform["status"] = "healthy"
 
     result["platform"] = platform
 
@@ -801,13 +821,23 @@ async def system_overview(refresh: bool = Query(False)) -> Dict[str, Any]:
             app_layer.setdefault(key, {})["error"] = "unavailable"
         app_issues = 3
 
-    # Aggregate app status
-    if app_issues >= 2:
-        app_layer["status"] = "unhealthy"
-    elif app_issues >= 1:
-        app_layer["status"] = "degraded"
-    else:
-        app_layer["status"] = "healthy"
+    # Aggregate app status — delegate to authoritative /health endpoint
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            r = await client.get("http://localhost:8004/health")
+            if r.status_code == 200:
+                hc = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
+                app_layer["status"] = hc.get("status", "healthy")
+            else:
+                app_layer["status"] = "degraded"
+    except Exception:
+        # Fallback: use the issue-counting heuristic
+        if app_issues >= 2:
+            app_layer["status"] = "unhealthy"
+        elif app_issues >= 1:
+            app_layer["status"] = "degraded"
+        else:
+            app_layer["status"] = "healthy"
 
     result["app"] = app_layer
 

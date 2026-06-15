@@ -133,67 +133,81 @@ def _load_adapter_from_store(adapter_id: str) -> Optional[dict]:
 
 
 def create_selected_adapter(*, model_name: str) -> Any:
-    """Create adapter based on env vars, with dev-friendly fallback to mock."""
+    """Create adapter for a model. Delegates to infra ModelManager for model info."""
     from core.harness.utils.llm_env import get_llm_api_key, get_llm_base_url
 
-    # Highest priority: explicit env overrides
+    selected_model = model_name
+    if not selected_model:
+        model_env = os.getenv("AIPLAT_LLM_MODEL", "").strip()
+        default_llm = _load_default_llm_from_store() if not os.getenv("AIPLAT_LLM_PROVIDER", "") else None
+        selected_model = model_env or (default_llm.get("model") if default_llm else "") or get_default_model()
+
+    _log_model_selection("create_adapter", selected_model, entry="create_selected_adapter",
+                         input_name=model_name)
+
+    # ── Unified model resolution: infra ModelManager is the single source of truth ──
+    provider = "openai"
+    base_url = ""
+    api_key = ""
+    needs_api_key = True
+
+    from infra.management.model.manager import ModelManager
+    mgr = ModelManager()
+    model_info = mgr.select(model_name=selected_model)
+    if model_info:
+        provider = model_info.provider or "openai"
+        if model_info.config and model_info.config.base_url:
+            base_url = model_info.config.base_url
+        if model_info.source.value == "local":
+            # Local model (Ollama, LM Studio, etc.) — no API key needed
+            api_key = "local"
+            needs_api_key = False
+            if not base_url:
+                base_url = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+            # Normalize Ollama URL: add /v1 suffix
+            if base_url and not base_url.rstrip("/").endswith("/v1"):
+                base_url = base_url.rstrip("/") + "/v1"
+
+    # Env var overrides (highest priority)
     provider_env = os.getenv("AIPLAT_LLM_PROVIDER", "").strip()
-    model_env = os.getenv("AIPLAT_LLM_MODEL", "").strip()
     base_url_env = os.getenv("AIPLAT_LLM_BASE_URL", "").strip()
     api_key_env = (os.getenv("AIPLAT_LLM_API_KEY") or "").strip()
 
-    # Next priority: global default routing stored in ExecutionStore (set by Onboarding)
-    default_llm = None if provider_env else _load_default_llm_from_store()
-    # model_name (explicit parameter) > model_env (global) > store default
-    selected_model = model_name or model_env or (default_llm.get("model") if default_llm else "") or get_default_model()
+    if provider_env:
+        provider = _norm_provider(provider_env)
+    if base_url_env:
+        base_url = base_url_env
+    if api_key_env:
+        api_key = api_key_env
 
-    # ── Log model selection ──
-    _log_model_selection("create_adapter", selected_model, entry="create_selected_adapter",
-                         input_name=model_name, default_llm=str(default_llm)[:100] if default_llm else None)
+    # If model not found in registry, fall back to env var resolution
+    if not model_info:
+        if not api_key:
+            api_key = api_key_env or get_llm_api_key("deepseek") or ""
+        if not base_url:
+            base_url = base_url_env or get_llm_base_url("deepseek") or ""
 
-    # Provider resolution
-    provider = _norm_provider(provider_env or os.getenv("AIPLAT_DEFAULT_PROVIDER", ""))
+    # Provider normalization for OpenAI-compatible adapters
+    adapter_provider = provider
+    if provider in {"deepseek", "ollama", "lmstudio", "omlx", "vllm", "openai_compatible"}:
+        adapter_provider = "openai"
+    elif provider == "anthropic":
+        adapter_provider = "anthropic"
 
-    # Provider-specific defaults (OpenAI-compatible).
-    if provider == "deepseek":
-        # DeepSeek官方文档：可用 base_url=https://api.deepseek.com 或 https://api.deepseek.com/v1
-        # 为兼容 OpenAI SDK 的默认 /v1 路径，这里默认使用 /v1。
-        base_url = (
-            os.getenv("AIPLAT_LLM_BASE_URL")
-            or os.getenv("DEEPSEEK_BASE_URL")
-            or "https://api.deepseek.com/v1"
-        )
-        api_key = os.getenv("AIPLAT_LLM_API_KEY") or ""
-        # If user kept default model_name (gpt-4), map to deepseek-chat by default.
-        if selected_model in ("gpt-4", "gpt-4o", "gpt-3.5-turbo"):
-            selected_model = get_default_model()
-        # DeepSeek API is OpenAI-compatible — use openai adapter with DeepSeek base_url.
-        _register_adapter(provider="openai", model_name=selected_model, base_url=base_url)
-        return create_adapter(provider="openai", api_key=api_key or None, model=selected_model, base_url=base_url)  # noqa: canonical-injection
+    if needs_api_key and not api_key:
+        default_llm = _load_default_llm_from_store()
+        if default_llm and default_llm.get("adapter_id"):
+            ad = _load_adapter_from_store(str(default_llm.get("adapter_id")))
+            if ad:
+                api_key = str(ad.get("api_key") or "")
+        if not api_key:
+            raise RuntimeError(
+                f"No API key configured for remote model '{selected_model}'. "
+                "Set AIPLAT_LLM_API_KEY or DEEPSEEK_API_KEY environment variable."
+            )
 
-    # Generic providers
-    # If no explicit env provider set, try default_llm adapter config.
-    if default_llm and default_llm.get("adapter_id"):
-        ad = _load_adapter_from_store(str(default_llm.get("adapter_id")))
-        if ad:
-            provider = _norm_provider(str(ad.get("provider") or provider))
-            base_url = str(ad.get("api_base_url") or base_url_env or get_llm_base_url("deepseek") or "")
-            api_key = str(ad.get("api_key") or api_key_env or get_llm_api_key("deepseek") or "")
-            if provider in {"openai", "deepseek"}:
-                provider = "openai"
-            _register_adapter(provider=provider, model_name=selected_model, base_url=base_url)
-            return create_adapter(provider=provider, api_key=api_key or None, model=selected_model, base_url=base_url or None)
-
-    base_url = base_url_env or get_llm_base_url("deepseek")
-    api_key = (get_llm_api_key("deepseek") or api_key_env or "")
-    if not api_key:
-        raise RuntimeError(
-            "No API key configured for LLM. "
-            "Set AIPLAT_LLM_API_KEY or DEEPSEEK_API_KEY environment variable. "
-            "Without a valid API key, the pipeline cannot produce real outputs."
-        )
-    _register_adapter(provider=provider, model_name=selected_model, base_url=base_url)
-    return create_adapter(provider=provider, api_key=api_key, model=selected_model, base_url=base_url)
+    _register_adapter(provider=adapter_provider, model_name=selected_model, base_url=base_url)
+    return create_adapter(provider=adapter_provider, api_key=api_key or None, model=selected_model, base_url=base_url or None)
 
 
 def _bind_model(obj: Any, adapter: Any) -> None:
@@ -248,22 +262,6 @@ def ensure_agent_model(agent: Any, *, model_name: str, force: bool = False) -> A
         _bind_model(agent, adapter)
         return adapter
 
-    # If current is openai but no api key, override to mock (prevents empty output).
-    try:
-        cur_provider = getattr(getattr(cur, "metadata", None), "provider", None)
-        api_key = get_llm_api_key("openai") or ""
-        if cur_provider == "openai" and not api_key:
-            _log = __import__('logging').getLogger(__name__)
-            _log.warning(
-                "Auto-fallback to mock adapter: No OpenAI API key configured. "
-                "All LLM responses will be 'DONE: ok'. "
-                "Set AIPLAT_LLM_API_KEY or DEEPSEEK_API_KEY for real model execution."
-            )
-            _bind_model(agent, adapter)
-            return adapter
-    except Exception:
-        pass
-
     # Still ensure loop model matches agent model (root cause of flakiness)
     try:
         loop = getattr(agent, "_loop", None)
@@ -285,42 +283,165 @@ def ensure_skill_model(skill: Any, *, model_name: str, force: bool = False) -> A
     return cur
 
 
+async def create_adapter_with_fallback(purpose: str, timeout: int = 60) -> Any:
+    """Try models in order, fallback on timeout. Returns (adapter, model_name).
+
+    Usage:
+        adapter, model_name = await create_adapter_with_fallback("wiki_curation", timeout=60)
+    """
+    import asyncio, logging as _logging
+    _fb_log = _logging.getLogger("aiplat.model_fallback")
+
+    try:
+        from infra.management.model.manager import ModelManager
+        mgr = ModelManager()
+        candidates = mgr.select_by_purpose_list(purpose)
+    except Exception:
+        candidates = []
+
+    # Purpose-specific env var override (comma-separated for fallback list)
+    if not candidates or len(candidates) == 1:
+        env_val = os.getenv(f"AIPLAT_{purpose.upper()}_MODEL", "").strip()
+        if env_val:
+            env_models = [m.strip() for m in env_val.split(",") if m.strip()]
+            candidates = env_models
+
+    if not candidates:
+        candidate = best_model_for_purpose(purpose)
+        candidates = [candidate] if candidate else []
+
+    last_error = None
+    for i, model_name in enumerate(candidates):
+        try:
+            adapter = create_selected_adapter(model_name=model_name)
+            _fb_log.info(f"Model '{model_name}' ({i+1}/{len(candidates)}) selected for '{purpose}'")
+            return adapter, model_name
+        except asyncio.TimeoutError:
+            _fb_log.warning(f"Model '{model_name}' ({i+1}/{len(candidates)}) timed out for '{purpose}'")
+            last_error = f"timeout after {timeout}s"
+            continue
+        except Exception as e:
+            _fb_log.warning(f"Model '{model_name}' ({i+1}/{len(candidates)}) failed for '{purpose}': {e}")
+            last_error = str(e)
+            continue
+
+    raise RuntimeError(f"All {len(candidates)} models failed for '{purpose}': {last_error}")
+
+
+async def generate_with_fallback(purpose: str,
+                                   messages: list,
+                                   timeout: int = 60,
+                                   config=None) -> tuple:
+    """Generate with automatic model fallback on timeout.
+
+    Returns (LLMResponse, model_name). Tries each candidate model; on timeout
+    or error, moves to the next automatically. The caller gets the response
+    from the first model that succeeds within timeout.
+
+    Usage:
+        resp, model = await generate_with_fallback(
+            "wiki_curation",
+            messages=[{"role": "user", "content": "hello"}],
+            timeout=60
+        )
+    """
+    import asyncio as _asyncio, logging as _logging
+    _fb_log = _logging.getLogger("aiplat.model_fallback")
+
+    candidates = []
+
+    # Env var override (comma-separated list for fallback order)
+    env_val = os.getenv(f"AIPLAT_{purpose.upper()}_MODEL", "").strip()
+    if env_val:
+        candidates = [m.strip() for m in env_val.split(",") if m.strip()]
+
+    # Fallback to infra auto-selection
+    if not candidates:
+        try:
+            from infra.management.model.manager import ModelManager
+            mgr = ModelManager()
+            candidates = mgr.select_by_purpose_list(purpose)
+        except Exception:
+            pass
+
+    if not candidates:
+        candidates = [best_model_for_purpose(purpose)]
+
+    last_error = None
+    errors = []
+    for i, model_name in enumerate(candidates):
+        try:
+            adapter = create_selected_adapter(model_name=model_name)
+            resp = await _asyncio.wait_for(
+                adapter.generate(messages, config=config),
+                timeout=timeout
+            )
+            _fb_log.info(f"'{purpose}' completed with '{model_name}' "
+                         f"({i+1}/{len(candidates)}, {timeout}s)")
+            return resp, model_name
+        except _asyncio.TimeoutError:
+            msg = f"timeout after {timeout}s"
+            _fb_log.warning(f"'{model_name}' timed out ({i+1}/{len(candidates)}, {timeout}s)")
+            errors.append({"model": model_name, "error": msg, "transient": True})
+            last_error = msg
+            continue
+        except Exception as e:
+            err_str = str(e)
+            # Permanent errors → stop fallback immediately
+            permanent_keywords = ("API key", "401", "403", "404", "api_key", "unauthorized",
+                                  "invalid api key", "not found", "model not found")
+            is_permanent = any(kw in err_str.lower() for kw in permanent_keywords)
+            _fb_log.warning(f"'{model_name}' failed ({i+1}/{len(candidates)}): {e}")
+            errors.append({"model": model_name, "error": err_str, "permanent": is_permanent})
+            if is_permanent:
+                _fb_log.error(f"Permanent error on '{model_name}': {err_str}. Stopping fallback.")
+                raise RuntimeError(
+                    f"Model '{model_name}' failed with permanent error: {err_str}. "
+                    f"Tried {i+1}/{len(candidates)} candidates. Errors: {errors}"
+                ) from e
+            last_error = err_str
+            continue
+
+    raise RuntimeError(f"All {len(candidates)} models failed for '{purpose}'. "
+                       f"Errors: {errors}")
+
+
 def best_model_for_purpose(purpose: str) -> str:
     """Select the best LLM model for a given task purpose.
 
     Resolution chain:
-      1. Explicit model_overrides in llm_profile.yaml (infra)
-      2. Auto-selection via capability scoring (infra ModelManager.select_by_purpose)
-      3. Env var resolution (infra ModelManager.get_default_model)
-      4. Ultimate fallback (llm_profile.yaml fallback.ultimate_model)
+      0. Explicit purpose-specific env var (AIPLAT_{PURPOSE}_MODEL)
+         If env var contains commas, only the first model name is returned.
+      1. Capability-based auto-selection (infra ModelManager.select_by_purpose)
+      2. Env var resolution (infra ModelManager.get_default_model)
+      3. Ultimate fallback (llm_profile.yaml fallback.ultimate_model)
     """
-    # 1. Capability-based auto-selection (infra — canonical)
+    import os as _os
+    purpose_env = f"AIPLAT_{purpose.upper()}_MODEL"
+    env_val = _os.getenv(purpose_env, "").strip()
+    if env_val:
+        # If comma-separated list, take the first (fallback handled by generate_with_fallback)
+        first_model = env_val.split(",")[0].strip()
+        _log_model_selection(purpose, first_model, entry="best_model_for_purpose",
+                             source="env_" + purpose_env)
+        return first_model
+
+    # 1. Capability-based auto-selection (infra)
     try:
         from infra.management.model.manager import ModelManager
         mgr = ModelManager()
         selected = mgr.select_by_purpose(purpose)
         if selected:
-            _log_model_selection(purpose, selected, entry="best_model_for_purpose", source="infra_select_by_purpose")
+            _log_model_selection(purpose, selected, entry="best_model_for_purpose",
+                                 source="infra_select_by_purpose")
             return selected
     except Exception:
         pass
 
-    # 2. Env var fallback
-    model_name = get_default_model(purpose=purpose) or "deepseek-chat"  # noqa: model-legacy — canonical ultimate fallback for best_model_for_purpose
+    # 2. Env var fallback via infra
+    model_name = get_default_model(purpose=purpose) or "deepseek-chat"
     _log_model_selection(purpose, model_name, entry="best_model_for_purpose", source="fallback")
     return model_name
-
-
-def best_model_for_agent_type(agent_type: str) -> str:
-    """Select best model for an agent based on its type.
-    
-    Canonical mapping (aligned with pipeline_engine.py):
-      react/plan/reflection → reasoning-capable model
-      others → chat model
-    """
-    if agent_type in ("react", "plan", "reflection"):
-        return best_model_for_purpose("agent")
-    return best_model_for_purpose("chat")
 
 
 def _register_adapter(provider: str, model_name: str, base_url: str = "", api_key: str = "") -> None:

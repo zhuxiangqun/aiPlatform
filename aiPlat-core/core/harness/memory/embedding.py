@@ -98,7 +98,7 @@ class EmbeddingProvider:
         try:
             from sentence_transformers import SentenceTransformer
             if self._model is None:
-                self._model = SentenceTransformer(self._model_name)
+                self._model = SentenceTransformer(self._model_name, local_files_only=True)
             loop = asyncio.get_running_loop()
             embeddings = await loop.run_in_executor(
                 None, lambda: self._model.encode(texts, show_progress_bar=False).tolist()

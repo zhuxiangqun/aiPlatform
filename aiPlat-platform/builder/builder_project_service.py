@@ -809,9 +809,9 @@ class BuilderProjectService:
                         from core.harness.kernel.runtime import get_kernel_runtime
                         rt = get_kernel_runtime()
                         store = getattr(rt, "execution_store", None) if rt else None
-                        trusted = _asyncio.new_event_loop().run_until_complete(
-                            get_trusted_skill_pubkeys_map(store)
-                        ) if store else {}
+                        import concurrent.futures as _cf2
+                        with _cf2.ThreadPoolExecutor(max_workers=1) as _pool:
+                            trusted = _pool.submit(_asyncio.run, get_trusted_skill_pubkeys_map(store)).result(timeout=10) if store else {}
                         r = verify_skill_signature(
                             skill_id=project_id,
                             version=manifest.get("version", "0.1.0"),
@@ -1249,7 +1249,8 @@ def _run_tests_for_project(project_id: str, deploy_dir: str) -> dict:
             test_dir = os.path.join(deploy_dir, "test")
         if os.path.isdir(test_dir):
             try:
-                r = subprocess.run(["python", "-m", "pytest", test_dir, "-q"], capture_output=True, text=True, timeout=60)
+                import sys as _sys
+                r = subprocess.run([_sys.executable, "-m", "pytest", test_dir, "-q"], capture_output=True, text=True, timeout=60)
                 results["repo_tests"] = {"passed": r.returncode == 0, "output": r.stdout[:2000]}
                 results["all_passed"] = r.returncode == 0
             except Exception as e:

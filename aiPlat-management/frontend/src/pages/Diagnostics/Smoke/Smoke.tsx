@@ -1,4 +1,6 @@
 import React, { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import { diagnosticsApi, onboardingApi } from '../../../services';
 import { Button, Card, CardContent, CardHeader, Input, Select, Textarea, toast, Badge, Table } from '../../../components/ui';
 import { toastGateError } from '../../../components/ui';
@@ -134,6 +136,10 @@ const Smoke: React.FC = () => {
         <h1 className="text-2xl font-semibold text-gray-200">全链路冒烟</h1>
         <p className="text-sm text-gray-500 mt-1">生产级 E2E：创建→执行→审计→立即清理（best-effort）</p>
       </div>
+
+      <Link to="/diagnostics" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200 transition-colors">
+        <ArrowLeft className="w-3 h-3" />返回诊断中心
+      </Link>
 
       <Card>
         <CardHeader>

@@ -171,6 +171,7 @@ class SkillRegistry:
                             input_schema = fm.get("input_schema") or {}
                             output_schema = fm.get("output_schema") or {}
                             effects = fm.get("effects") or []
+                            skill_chain = fm.get("skill_chain") or []
                             skip_conditions = fm.get("skip_when") or fm.get("skip_conditions") or []
                             triggers = fm.get("triggers") or []
                             body = parts[2].strip()
@@ -265,6 +266,7 @@ class SkillRegistry:
                               "input_schema": input_schema,
                               "output_schema": output_schema,
                               "effects": effects,
+                              "skill_chain": skill_chain,
                               "skip_conditions": skip_conditions,
                               "triggers": triggers,
                               "layer_dirs": layer_dirs}
@@ -382,6 +384,196 @@ class SkillRegistry:
     def get_body(self, name: str) -> str:
         """Get cached SKILL.md body content for a skill."""
         return self._body_cache.get(name, "")
+
+    def get_stub(self, name: str) -> str:
+        u"""Get a one-line stub for Agent prompt injection (progressive disclosure).
+
+        Returns: '<name>: <one-line description>' — ~50 tokens per skill.
+        Full body is injected only when the skill is actually called via sys_skill_call.
+        """
+        body = self._body_cache.get(name, "")
+        if body:
+            return self._body_cache.get(f"{name}_stub", "") or f"{name}: {body[:80].split(chr(10))[0]}"
+        return name
+
+    def get_all_stubs(self) -> str:
+        u"""Get all skill stubs as a compressed list for Agent prompt injection.
+
+        Returns a short string of "Available skills: name1: desc1, name2: desc2, ..."
+        Limited to ~300 tokens to keep the system prompt lean.
+        """
+        stubs = []
+        for name in sorted(self._skills.keys())[:30]:
+            stub = self.get_stub(name)
+            stubs.append(stub)
+        return "Available skills (" + str(len(stubs)) + "): " + "; ".join(stubs)
+
+    # ── Agentic Skill Router: search → inspect → select ─────
+
+    def search_corpus(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
+        u"""Agentic search: find ALL skills (incl disabled) by keyword matching.
+
+        Returns candidates with ref, name, description snippet, score, and
+        truncated flag so Agent knows when results are cut off.
+        """
+        query_lower = query.lower()
+        terms = [t.strip() for t in query_lower.split() if len(t.strip()) >= 2]
+        if not terms:
+            terms = [query_lower]
+
+        results = []
+        for name, skill in self._skills.items():
+            score = 0
+            matched_terms = []
+
+            cfg = getattr(skill, "_config", None)
+            meta = getattr(cfg, "metadata", None) if cfg else {}
+            desc = str(cfg.description if cfg and cfg.description else meta.get("description", ""))
+            triggers = meta.get("triggers", []) or meta.get("trigger_keywords", [])
+            tags = meta.get("tags", [])
+            body = self._body_cache.get(name, "")
+            is_disabled = not self._enabled.get(name, True)
+
+            # Name match (highest weight)
+            if query_lower in name.lower():
+                score += 50
+                matched_terms.append(f"name:{name}")
+            for t in terms:
+                if t in name.lower():
+                    score += 20
+                    matched_terms.append(f"name:{t}")
+
+            # Description match
+            desc_lower = desc.lower()
+            if query_lower in desc_lower:
+                score += 30
+                matched_terms.append("description:full")
+            for t in terms:
+                if t in desc_lower:
+                    score += 8
+                    matched_terms.append(f"desc:{t}")
+
+            # Trigger/tag match
+            for trigger in [str(tg).lower() for tg in triggers]:
+                if query_lower in trigger or any(t in trigger for t in terms):
+                    score += 15
+                    matched_terms.append(f"trigger:{trigger[:30]}")
+                    break
+            for tag in [str(t).lower() for t in tags]:
+                if any(t in tag for t in terms):
+                    score += 10
+                    matched_terms.append(f"tag:{tag}")
+                    break
+
+            if score > 0:
+                # β coefficient: amplify silenced skills with history
+                if is_disabled:
+                    inspect_count = getattr(self, "_corpus_inspect_counts", {}).get(name, 0)
+                    auto_enabled_before = getattr(self, "_corpus_auto_enabled", set())
+                    if inspect_count > 0:
+                        score += min(20, int(inspect_count * 4))
+                        matched_terms.append(f"β:{inspect_count}")
+                    if name in auto_enabled_before:
+                        score += 10
+                        matched_terms.append("β:auto")
+
+                desc_snippet = desc[:200]
+                results.append({
+                    "ref": f"corpus-{name}",
+                    "name": name,
+                    "description_snippet": desc_snippet,
+                    "score": min(100, score),
+                    "matched_terms": matched_terms[:5],
+                    "truncated": len(desc) > 200,
+                    "disabled": is_disabled,
+                })
+
+        results.sort(key=lambda x: x["score"], reverse=True)
+        total = len(results)
+        limited = results[:limit]
+
+        # Mark truncation at result-set level
+        if total > limit:
+            for r in limited:
+                r["total_matches"] = total
+                r["returned"] = len(limited)
+
+        return limited
+
+    def inspect_corpus(self, ref: str) -> Optional[Dict[str, Any]]:
+        u"""Agentic inspect: return full metadata (NOT body) for a candidate.
+
+        Gives Agent enough detail to decide without loading the full SKILL.md.
+        Tracks inspect count for β coefficient amplification.
+        """
+        name = ref.replace("corpus-", "", 1) if ref.startswith("corpus-") else ref
+        skill = self._skills.get(name)
+        if not skill:
+            return None
+
+        # Track inspect count for β bonus
+        if not hasattr(self, "_corpus_inspect_counts"):
+            self._corpus_inspect_counts: Dict[str, int] = {}
+        self._corpus_inspect_counts[name] = self._corpus_inspect_counts.get(name, 0) + 1
+
+        cfg = getattr(skill, "_config", None)
+        meta = getattr(cfg, "metadata", None) if cfg else {}
+
+        return {
+            "ref": f"corpus-{name}",
+            "name": name,
+            "description": str(cfg.description if cfg and cfg.description else meta.get("description", "")),
+            "triggers": meta.get("triggers", []) or meta.get("trigger_keywords", []),
+            "tags": meta.get("tags", []),
+            "execution_type": meta.get("execution_type", "prompt"),
+            "category": meta.get("category", "general"),
+            "skill_chain": meta.get("skill_chain", []),
+            "disabled": not self._enabled.get(name, True),
+        }
+
+    def select_corpus(
+        self, ref: str, query: str, reason: str, confidence: str = "medium"
+    ) -> Dict[str, Any]:
+        u"""Agentic select: record audit + return body. Enables skill if auto-threshold met.
+
+        This is the commit point — Agent confirms "I want this skill".
+        """
+        name = ref.replace("corpus-", "", 1) if ref.startswith("corpus-") else ref
+        skill = self._skills.get(name)
+        if not skill:
+            raise ValueError(f"Skill not found: {ref}")
+
+        # Audit log
+        if not hasattr(self, "_routing_audit"):
+            self._routing_audit: List[Dict] = []
+        self._routing_audit.append({
+            "ref": ref,
+            "name": name,
+            "query": query,
+            "reason": reason,
+            "confidence": confidence,
+            "timestamp": __import__("time").strftime("%Y-%m-%dT%H:%M:%SZ", __import__("time").gmtime()),
+        })
+
+        # Auto-enable if this skill gets selected frequently
+        count = sum(1 for r in self._routing_audit if r["name"] == name)
+        if count >= 3 and not self.is_enabled(name):
+            self.enable(name)
+            if not hasattr(self, "_corpus_auto_enabled"):
+                self._corpus_auto_enabled = set()
+            self._corpus_auto_enabled.add(name)
+            __import__("logging").getLogger(__name__).info(
+                "Auto-enabled '%s' after %d routed selections", name, count,
+            )
+
+        # Return body
+        body = self._body_cache.get(name, "")
+        return {
+            "name": name,
+            "body": body,
+            "audited": True,
+            "enabled_after": self.is_enabled(name),
+        }
 
     def seed_for_platform(self) -> None:
         """Seed skills for platform process: built-in + discovered workspace skills."""
@@ -893,6 +1085,34 @@ _global_registry = SkillRegistry()
 def get_skill_registry() -> SkillRegistry:
     """Get global skill registry"""
     return _global_registry
+
+
+async def _bg_curator_scan(interval_hours: int = 6):
+    u"""Background curator: periodically scan workspace for new/updated SKILL.md files.
+
+    Runs every N hours, scanning ~/.aiplat/skills/ for changes.
+    """
+    import asyncio, os as _os
+
+    while True:
+        await asyncio.sleep(interval_hours * 3600)
+        try:
+            workspace = _os.path.expanduser(_os.getenv("AIPLAT_WORKSPACE_SKILLS", "~/.aiplat/skills"))
+            _global_registry.scan_folder(workspace)
+        except Exception:
+            pass
+
+
+def start_bg_curator(interval_hours: int = 6):
+    u"""Start the background curator task. Safe to call multiple times."""
+    import asyncio
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(_bg_curator_scan(interval_hours))
+    except RuntimeError:
+        pass  # no event loop yet — will start when loop starts
+
+
 class _GenericSkill(BaseSkill):
     """Generic skill for skills without a dedicated subclass.
     
@@ -909,13 +1129,7 @@ class _GenericSkill(BaseSkill):
         self._model = model
     
     async def execute(self, context, params):
-        if not self._model:
-            return SkillResult(
-                success=False,
-                error=f"No LLM adapter configured for skill '{self._config.name}'"
-            )
-
-        # ── Resolve execution_type: declared > auto-detected > default ──
+        # ── Resolve execution_type FIRST (handler-type skills don't need an LLM) ──
         meta = (self._config.metadata or {})
         exec_type = meta.get("execution_type", "")
         if not exec_type:
@@ -950,6 +1164,14 @@ class _GenericSkill(BaseSkill):
                     self._config.name
                 )
             meta["execution_type"] = exec_type  # cache for subsequent calls
+
+        # Require model for non-handler execution types (handler uses real code, no LLM needed)
+        if exec_type != "handler" and not self._model:
+            return SkillResult(
+                success=False,
+                error=f"No LLM adapter configured for skill '{self._config.name}'"
+            )
+
         # Warn if prompt mode but handler.py exists (likely misconfiguration)
         if exec_type == "prompt":
             fs_check = meta.get("filesystem", {}) or {}
@@ -1122,6 +1344,18 @@ class _GenericSkill(BaseSkill):
             except Exception:
                 allowed_tools = []
 
+            if not allowed_tools:
+                try:
+                    from core.harness.kernel.execution_context import get_active_workspace_context
+                    from core.harness.tools.toolsets import resolve_toolset
+                    ws = get_active_workspace_context()
+                    active_toolset = getattr(ws, 'toolset', None) if ws else None
+                    if active_toolset:
+                        policy = resolve_toolset(str(active_toolset))
+                        allowed_tools = list(policy.allow)
+                except Exception:
+                    pass
+
             from core.harness.utils.prompt_loader import _sync_resolve
 
             # Check output_schema BEFORE building system prompt — JSON output
@@ -1134,7 +1368,7 @@ class _GenericSkill(BaseSkill):
             out_keys = list(out_schema.keys()) if isinstance(out_schema, dict) and out_schema else []
 
             system_parts = []
-            if out_keys:
+            if out_keys and not allowed_tools:
                 system_parts.append(
                     _sync_resolve("skill-executor-json-override", keys=str(out_keys))
                 )
@@ -1148,9 +1382,10 @@ class _GenericSkill(BaseSkill):
 
             # If tools are available, run as a tool-capable ReAct agent (SkillTool-like orchestration).
             if allowed_tools:
-                from ...apps.agents.react import create_react_agent
+                from ...apps.agents.react import create_react_agent, ReActAgentConfig
                 from ...harness.interfaces import AgentConfig, AgentContext
 
+                max_steps = int((self._config.config or {}).get("max_steps", 50))
                 agent = create_react_agent(
                     config=AgentConfig(
                         name=f"skill-inline-{self._config.name}",
@@ -1158,6 +1393,7 @@ class _GenericSkill(BaseSkill):
                         metadata={"role": "skill-agent", "skill": self._config.name},
                     ),
                     model=self._model,
+                    loop_config=ReActAgentConfig(max_steps=max_steps),
                 )
 
                 task = "\n".join(system_parts) + "\n\n用户输入：\n" + prompt
@@ -1166,10 +1402,25 @@ class _GenericSkill(BaseSkill):
                     session_id=getattr(context, "session_id", "skill"),
                     user_id=getattr(context, "user_id", "system"),
                     messages=[{"role": "user", "content": task}],
-                    variables={"messages": msgs, **(getattr(context, "variables", {}) or {})},
+                    variables={"messages": msgs,
+                               **(getattr(context, "variables", {}) or {}),
+                               "_run_id": getattr(context, "session_id", ""),
+                    },
                     tools=allowed_tools,
                 )
                 result = await agent.execute(agent_ctx)
+                # Log stop reason for debugging skill execution limits
+                try:
+                    import logging
+                    _log = logging.getLogger("aiplat.skills")
+                    sr = getattr(result, "metadata", {}) or {}
+                    sr = sr.get("stop_reason", "unknown") if isinstance(sr, dict) else "unknown"
+                    sc = getattr(result, "metadata", {}) or {}
+                    sc = sc.get("steps", 0) if isinstance(sc, dict) else 0
+                    _log.info("skill=%s stop_reason=%s steps=%s max_steps=%s",
+                               self._config.name, sr, sc, max_steps)
+                except Exception:
+                    pass
                 if isinstance(out_schema, dict) and out_schema:
                     parsed = parse_json(str(result.output or ""))
                     if isinstance(parsed, dict):
@@ -1180,28 +1431,35 @@ class _GenericSkill(BaseSkill):
                             metadata={"skill": self._config.name, "agent": result.metadata, "tools": allowed_tools, "parsed_json": True},
                         )
                     return SkillResult(
-                        success=False,
-                        output={"raw": result.output},
-                        error="json_parse_failed",
-                        metadata={"skill": self._config.name, "agent": result.metadata, "tools": allowed_tools},
+                        success=True,
+                        output={out_keys[0]: str(result.output)} if out_keys else {"text": result.output},
+                        metadata={"skill": self._config.name, "agent": result.metadata, "tools": allowed_tools, "parsed_json": False},
                     )
                 return SkillResult(success=bool(result.success), output={"text": result.output}, error=result.error, metadata={"skill": self._config.name, "agent": result.metadata, "tools": allowed_tools})
 
             # Fallback: plain LLM generation (no tools)
             from ...harness.syscalls.llm import sys_llm_generate
 
+            run_id = ((getattr(context, "variables", {}) or {}).get("_run_id")
+                      or getattr(context, "session_id", ""))
+            parent_span_id = (getattr(context, "metadata", {}) or {}).get("_span_id")
             response = await sys_llm_generate(
                 self._model,
                 [
                     {"role": "system", "content": "\n".join(system_parts)},
                     {"role": "user", "content": prompt},
                 ],
+                trace_context={"run_id": run_id, "parent_span_id": parent_span_id},
             )
             if isinstance(out_schema, dict) and out_schema:
                 parsed = parse_json(str(getattr(response, "content", "") or ""))
                 if isinstance(parsed, dict):
                     return SkillResult(success=True, output=parsed, metadata={"model": getattr(response, "model", None), "skill": self._config.name, "parsed_json": True})
-                return SkillResult(success=False, output={"raw": getattr(response, "content", None)}, error="json_parse_failed", metadata={"model": getattr(response, "model", None), "skill": self._config.name})
+                return SkillResult(
+                    success=True,
+                    output={out_keys[0]: str(getattr(response, "content", ""))} if out_keys else {"text": getattr(response, "content", None)},
+                    metadata={"model": getattr(response, "model", None), "skill": self._config.name, "parsed_json": False},
+                )
             return SkillResult(success=True, output={"text": response.content}, metadata={"model": response.model, "skill": self._config.name})
         except Exception as e:
             return SkillResult(success=False, error=str(e))

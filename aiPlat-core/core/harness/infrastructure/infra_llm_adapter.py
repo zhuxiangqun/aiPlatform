@@ -69,6 +69,8 @@ class InfraLLMAdapter(ILLMAdapter):
                 req.max_tokens = config.max_tokens
             if config.model:
                 req.model = config.model
+            if config.timeout:
+                req.timeout = config.timeout
 
         resp = await self._client.achat(req)
         usage = {}

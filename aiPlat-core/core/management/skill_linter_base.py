@@ -21,6 +21,32 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 
+def risk_level_from_permissions(perms: List[str]) -> str:
+    """
+    Compute a conservative risk label for enforcement policy.
+    - low: llm only / no tool side-effects
+    - medium: read-only tools (webfetch/websearch/knowledge retrieval)
+    - high: any write/exec/network sensitive operations
+    """
+    pset = {str(p).strip().lower() for p in (perms or []) if str(p).strip()}
+    if not pset:
+        return "low"
+    high_markers = {
+        "tool:run_command", "tool:bash", "tool:shell",
+        "tool:workspace_fs_write", "tool:file_write", "tool:file_delete",
+        "tool:network", "tool:api_calling",
+    }
+    if any(p in pset for p in high_markers):
+        return "high"
+    if any(p in {"code:execute", "tool:shell", "tool:bash", "tool:run_command", "file:delete"} for p in pset):
+        return "high"
+    if any(("write" in p or "delete" in p) for p in pset):
+        return "high"
+    if any(p.startswith("tool:") for p in pset):
+        return "medium"
+    return "low"
+
+
 # ============================================================
 # Data classes (shared with skill_linter.py facade)
 # ============================================================
@@ -281,7 +307,6 @@ class RuleRegistry:
 
     def run_all(self, skill: Any) -> LintReport:
         """Run all rules against a skill, return aggregated report."""
-        from core.management.skill_linter import risk_level_from_permissions
 
         sid = ""
         try:
@@ -290,11 +315,17 @@ class RuleRegistry:
             sid = ""
         sid = sid or "<unknown>"
 
+        # Infer entity type for scope-based rule filtering
+        entity_type = self._infer_type(skill)
+
         errors: List[LintIssue] = []
         warnings: List[LintIssue] = []
 
         for rule in self._rules:
             try:
+                rule_scope = getattr(rule, "scope", None)
+                if rule_scope and entity_type not in rule_scope:
+                    continue
                 issues = rule.check(skill)
                 for issue in issues:
                     if issue.level == "error":
@@ -311,6 +342,16 @@ class RuleRegistry:
         blocked = bool(risk == "high" and len(errors) > 0)
 
         return LintReport(skill_id=sid, risk_level=risk, blocked=blocked, errors=errors, warnings=warnings)
+
+    def _infer_type(self, skill: Any) -> str:
+        """Infer entity type from object structure: skill / agent / mcp / workflow."""
+        meta = getattr(skill, "metadata", None) if not isinstance(skill, dict) else skill.get("metadata")
+        if isinstance(meta, dict):
+            if meta.get("agent_type"):
+                return "agent"
+            if meta.get("transport") or meta.get("mcp_name"):
+                return "mcp"
+        return "skill"
 
     def propose_fixes(self, skill: Any, lint: Dict[str, Any]) -> List[FixProposal]:
         """Generate fix proposals by asking each rule that reported an issue."""

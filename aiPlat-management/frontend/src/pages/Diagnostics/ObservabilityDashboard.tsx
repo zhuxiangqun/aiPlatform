@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { BarChart3, Brain, Clock, AlertTriangle, Activity, Zap, Database, BellRing, ExternalLink, Settings, Save } from 'lucide-react';
+import { ArrowLeft, BarChart3, Brain, Clock, AlertTriangle, Activity, Zap, Database, BellRing, ExternalLink, Settings, Save } from 'lucide-react';
 import { diagnosticsApi } from '../../services';
 
 interface LLMStats {
@@ -53,7 +53,7 @@ interface Stats {
 }
 
 const KIND_ICONS: Record<string, string> = {
-  sys_llm_generate: '🧠', sys_tool_call: '🔧', sys_skill_call: '🎯',
+  sys_llm_generate: '🧠', sys_tool_call: '🔧', sys_skill_call: '⚡',
   sys_observe: '👁️', sys_reason: '💭', default: '📋',
 };
 const KIND_LABELS: Record<string, string> = {
@@ -159,6 +159,10 @@ const ObservabilityDashboard: React.FC = () => {
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>可观测性仪表板</h1>
         <span style={{ fontSize: 11, color: '#6b7280', marginLeft: 8 }}>每 30s 自动刷新</span>
       </div>
+
+      <Link to="/diagnostics" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200 transition-colors mb-4">
+        <ArrowLeft className="w-3 h-3" />返回诊断中心
+      </Link>
 
       {/* Active alerts */}
       {active_alerts && active_alerts.length > 0 && (

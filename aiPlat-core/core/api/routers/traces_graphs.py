@@ -331,3 +331,57 @@ async def resume_and_execute_compiled_graph(run_id: str, request: dict, rt: Runt
                 pass
     return {"parent_run_id": run_id, "run_id": resumed.get("run_id"), "checkpoint_id": resumed.get("checkpoint_id"), "final_state": final_state}
 
+
+
+@router.post("/graphs/runs/{run_id}/stages/{stage_id}/step-run")
+async def step_run_stage(run_id: str, stage_id: str, request: dict, http_request: Request):
+    """Step-Run: execute a single pipeline stage with mock input for debugging.
+
+    Body: { "mock_input": { "key": "value" } }
+    Returns: { "stage_id": stage_id, "output": {...}, "elapsed_ms": 123 }
+    """
+    rt = get_kernel_runtime()
+    store = rt.execution_store if rt else None
+    if not store:
+        raise HTTPException(status_code=503, detail="Store not available")
+
+    import time, json
+    mock_input = (request or {}).get("mock_input", {}) if isinstance(request, dict) else {}
+
+    # Check run exists
+    run_data = await store.get_graph_run(run_id)
+    if not run_data:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    try:
+        from core.harness.execution.pipeline_engine import PipelineEngine
+
+        # Load the graph run state
+        state = run_data.get("initial_state_json") or {}
+        if isinstance(state, str):
+            state = json.loads(state)
+
+        # Create engine and exec isolated stage
+        engine = PipelineEngine(
+            config=getattr(rt, "pipeline_config", None),
+            execution_store=store,
+        )
+        start = time.time()
+        result = await engine._exec_isolated_stage(
+            stage_id=stage_id,
+            mock_input=mock_input,
+            state_ctx=state,
+        )
+        elapsed = (time.time() - start) * 1000
+
+        return {
+            "stage_id": stage_id,
+            "output": result,
+            "elapsed_ms": round(elapsed, 1),
+            "status": "completed",
+        }
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"stage_id": stage_id, "error": str(e), "status": "failed"},
+        )

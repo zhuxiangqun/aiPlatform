@@ -24,7 +24,7 @@ async def get_tenant_policy(tenant_id: str):
         client = get_core_client()
         return await client._platform_req("GET", f"{_POLICIES_BASE}/{tenant_id}")
     except Exception:
-        return None  # tenant policy not created yet — normal empty state
+        raise HTTPException(status_code=404, detail="Tenant policy not found")
 
 
 @router.put("/tenants/{tenant_id}")

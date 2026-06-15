@@ -35,6 +35,20 @@ def get_core_client() -> CoreAPIClient:
     return _core_client
 
 
+# ==================== System Overview ====================
+
+
+@router.get("/overview")
+async def get_overview(request: Request):
+    """Get aggregated system overview (4-layer health + stats)."""
+    try:
+        client = get_core_client()
+        refresh = request.query_params.get("refresh", "false") == "true"
+        return await client.get_overview(refresh=refresh)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
 # ==================== Runs (Platform Execution Contract) ====================
 
 

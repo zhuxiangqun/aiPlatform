@@ -9,17 +9,10 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from .intent_analyzer import StructuredIntent
-
-
-@dataclass
-class ChainStep:
-    """A single step in the execution chain."""
-    id: str
-    role: str
-    depends_on: List[str] = field(default_factory=list)
+from .types import ChainStep
 
 
 def _load_chain_templates() -> Dict[str, List[Dict[str, Any]]]:
@@ -72,7 +65,7 @@ async def plan_chain(intent: StructuredIntent, model: Any = None) -> List[ChainS
 
 async def _llm_plan_chain(intent: StructuredIntent, model: Any) -> List[ChainStep]:
     """Use LLM to generate execution chain from intent."""
-    from core.api.intents import core_chat, ChatContext
+    from core.harness.syscalls.llm import sys_llm_generate as _llm
     prompt = (
         f"Given the following user intent for a {intent.app_type or 'software'} project, "
         f"produce an execution chain as a JSON array of steps. "
@@ -80,17 +73,17 @@ async def _llm_plan_chain(intent: StructuredIntent, model: Any) -> List[ChainSte
         f"Intent: {intent.summary or intent.raw_text or 'build a software application'}\n"
         f"Output ONLY JSON array."
     )
-    result = await core_chat(ChatContext(
-        agent_name="chain_planner",
-        session_id="chain_plan",
-        user_input=prompt, model=model,
-    ))
-    import json as _json
+    resp = await _llm(
+        prompt=[{"role": "user", "content": prompt}],
+        model=model,
+        temperature=0.1,
+        max_tokens=2000,
+    )
     try:
-        data = _json.loads(result.reply)
+        data = _json.loads(resp.text) if hasattr(resp, 'text') else _json.loads(str(resp))
         if isinstance(data, list):
             return [ChainStep(id=s.get("id", ""), role=s.get("role", ""),
-                             depends_on=s.get("depends_on", [])) for s in data if isinstance(s, dict)]
+                              depends_on=s.get("depends_on", [])) for s in data if isinstance(s, dict)]
     except Exception:
         pass
     return []

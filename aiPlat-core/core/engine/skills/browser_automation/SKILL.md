@@ -49,6 +49,8 @@ input_schema:
     type: string
     required: true
     description: 目标网页地址
+
+protected: true
 ---
 
 # Browser Automation

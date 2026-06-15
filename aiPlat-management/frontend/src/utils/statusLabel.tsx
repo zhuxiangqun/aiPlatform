@@ -3,7 +3,7 @@
  *
  * Used by all Core and Workspace list pages for consistent rendering.
  */
-import type React from 'react';
+import React from 'react';
 
 // ── Listing Status (上架状态) ──────────────────────────────────
 
@@ -23,14 +23,20 @@ export function getStatusColor(status?: string | null): string {
   return STATUS_MAP[status || '']?.color || '#6b7280';
 }
 
-/** Inline status badge (matching existing page style) */
+/** Inline status badge */
 export function StatusBadge({ status }: { status?: string | null }) {
-  const color = getStatusColor(status);
-  return React.createElement('span', {
-    className: 'inline-flex px-2 py-0.5 rounded text-xs font-medium',
-    style: { color, background: `${color}15`, border: `1px solid ${color}30` },
-    children: getStatusLabel(status),
-  });
+  // Map legacy enabled/disabled to standard format
+  const normalized = status === 'enabled' ? 'listed' : status === 'disabled' ? 'deprecated' : status;
+  const color = getStatusColor(normalized);
+  const label = status === 'enabled' ? '已启用' : status === 'disabled' ? '已禁用' : getStatusLabel(normalized);
+  return (
+    <span
+      className="inline-flex px-2 py-0.5 rounded text-xs font-medium"
+      style={{ color, background: `${color}15`, border: `1px solid ${color}30` }}
+    >
+      {label}
+    </span>
+  );
 }
 
 // ── Governance (治理) ──────────────────────────────────────────
@@ -64,24 +70,30 @@ export function getGovDetailLabel(record: Record<string, any> | null | undefined
   return { label: '未签名', color: '#6b7280' };
 }
 
-/** Rich governance badge (用于 Workspace Skills — 含 verification status) */
+/** Rich governance badge (Workspace Skills) */
 export function GovDetailBadge({ record }: { record?: Record<string, any> | null }) {
   const { label, color } = getGovDetailLabel(record);
-  return React.createElement('span', {
-    className: 'inline-flex px-2 py-0.5 rounded text-xs font-medium',
-    style: { color, background: `${color}15`, border: `1px solid ${color}30` },
-    children: label,
-  });
+  return (
+    <span
+      className="inline-flex px-2 py-0.5 rounded text-xs font-medium"
+      style={{ color, background: `${color}15`, border: `1px solid ${color}30` }}
+    >
+      {label}
+    </span>
+  );
 }
 
 /** Inline governance badge */
 export function GovBadge({ prov }: { prov?: Record<string, any> | null }) {
   const color = getGovColor(prov);
-  return React.createElement('span', {
-    className: 'inline-flex px-2 py-0.5 rounded text-xs font-medium',
-    style: { color, background: `${color}15`, border: `1px solid ${color}30` },
-    children: getGovLabel(prov),
-  });
+  return (
+    <span
+      className="inline-flex px-2 py-0.5 rounded text-xs font-medium"
+      style={{ color, background: `${color}15`, border: `1px solid ${color}30` }}
+    >
+      {getGovLabel(prov)}
+    </span>
+  );
 }
 
 // ── Category (分类) ────────────────────────────────────────────

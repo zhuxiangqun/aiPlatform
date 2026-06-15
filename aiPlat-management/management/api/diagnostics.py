@@ -1476,3 +1476,58 @@ async def get_layer_links_ui(
         "run": full.get("run"),
         "lineage": full.get("lineage"),
     }
+
+
+@router.get("/observability/stats")
+async def observability_stats(request: Request):
+    """Proxy to core /api/core/diagnostics/observability/stats"""
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="Core client not initialized")
+    try:
+        return await core_client._request("GET", "/api/core/diagnostics/code-intel/scan", params=params)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/eval/summary")
+async def eval_summary(request: Request):
+    """Proxy to core /api/core/diagnostics/eval/summary"""
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="Core client not initialized")
+    try:
+        return await core_client._request("GET", "/api/core/diagnostics/eval/summary", timeout=httpx.Timeout(30.0, connect=10.0))
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/eval/ab-scores")
+async def eval_ab_scores(request: Request, template_id: Optional[str] = None, limit: int = 50):
+    """Proxy to core /api/core/diagnostics/eval/ab-scores"""
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="Core client not initialized")
+    params = {"limit": limit}
+    if template_id:
+        params["template_id"] = template_id
+    try:
+        return await core_client._request("GET", "/api/core/diagnostics/eval/ab-scores", params=params)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
+@router.get("/code-intel/scan")
+async def code_intel_scan(request: Request, path: Optional[str] = None, limit: int = 50, offset: int = 0):
+    """Proxy to core /api/core/diagnostics/code-intel/scan"""
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="Core client not initialized")
+    params = {"limit": limit, "offset": offset}
+    if path:
+        params["path"] = path
+    try:
+        return await core_client._request("GET", "/api/core/diagnostics/code-intel/scan",
+            params=params, timeout=httpx.Timeout(120.0, connect=15.0))
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")

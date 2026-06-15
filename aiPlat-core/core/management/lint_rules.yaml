@@ -102,3 +102,13 @@ rules:
       type: field_not_empty
       path: metadata.trigger_conditions
     message: "缺少 trigger_conditions/trigger_keywords，可能降低自动路由命中率"
+
+  # ---- 编排模式复杂度 ----
+  - id: overengineered_pipeline
+    level: warning
+    category: governance
+    check:
+      type: field_enum
+      path: pipeline_mode
+      allowed: [chain, router, parallel, orchestrator, evaluator_optimizer, agent]
+    message: "Anthropic 建议首选 chain/router/parallel 链式模式；orchestrator/agent 仅在前述不足时使用（参见 Building Effective Agents 白皮书）"

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import PageHeader from '../../../components/common/PageHeader';
 import { Button, Card, CardContent, CardHeader, Input, Select, Table, toast } from '../../../components/ui';
 import { skillApi, workspaceSkillApi } from '../../../services';
@@ -60,6 +61,9 @@ const RoutingReplayList: React.FC = () => {
 
   return (
     <div className="p-6 space-y-4">
+      <Link to="/diagnostics" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200 transition-colors">
+        <ArrowLeft className="w-3 h-3" />返回诊断中心
+      </Link>
       <PageHeader title="Routing Replay" description="逐条回放路由决策：候选、分差、门控原因、严格未命中（避免黑盒）。" />
 
       <Card>

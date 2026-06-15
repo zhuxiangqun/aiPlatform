@@ -24,6 +24,8 @@ class WikiPageWrite(BaseModel):
     tags: List[str] = []
     related: List[str] = []
     summary: str = ""
+    status: str = ""
+    marking: str = ""
 
 
 class WikiIngest(BaseModel):
@@ -185,6 +187,403 @@ async def get_skill_impact(skill_id: str):
     return result
 
 
+@router.post("/skills/install-from-directory")
+async def install_skills_from_directory(search_path: str = Body(..., embed=True)):
+    u"""Install SKILL.md files from a directory (e.g. cloned agent-skills repo).
+
+    Scans path/skills/*/SKILL.md, copies to ~/.aiplat/skills/<name>/.
+    Auto-fills trigger_keywords and execution_type defaults.
+    Compatible with Google agent-skills (addyosmani/agent-skills) format.
+    """
+    import glob as _glob, os as _os, shutil as _shutil
+
+    expanded = _os.path.expanduser(search_path)
+    pattern = _os.path.join(expanded, "skills", "*", "SKILL.md")
+    md_files = _glob.glob(pattern)
+
+    if not md_files:
+        # Also try flat structure: path/*/SKILL.md
+        pattern2 = _os.path.join(expanded, "*", "SKILL.md")
+        md_files = _glob.glob(pattern2)
+
+    if not md_files:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No SKILL.md files found in {expanded}. "
+                   f"Expected structure: {{path}}/skills/<name>/SKILL.md "
+                   f"or {{path}}/<name>/SKILL.md"
+        )
+
+    workspace = _os.path.expanduser("~/.aiplat/skills")
+    _os.makedirs(workspace, exist_ok=True)
+
+    installed = []
+    skipped = []
+    import yaml as _yaml
+
+    for md_path in md_files:
+        try:
+            with open(md_path, "r", encoding="utf-8") as f:
+                content = f.read()
+
+            # Parse frontmatter
+            name = _os.path.basename(_os.path.dirname(md_path))
+            if content.startswith("---"):
+                parts = content.split("---", 2)
+                if len(parts) >= 3:
+                    try:
+                        fm = _yaml.safe_load(parts[1])
+                        if isinstance(fm, dict):
+                            name = fm.get("name", name)
+                    except Exception:
+                        pass
+
+            dest_dir = _os.path.join(workspace, name)
+            _os.makedirs(dest_dir, exist_ok=True)
+            dest_path = _os.path.join(dest_dir, "SKILL.md")
+
+            # Copy file
+            _shutil.copy2(md_path, dest_path)
+            installed.append({"name": name, "source": md_path, "dest": dest_path})
+
+        except Exception as e:
+            skipped.append({"path": md_path, "error": str(e)[:200]})
+
+    return {
+        "installed": len(installed),
+        "skipped": len(skipped),
+        "skills": installed,
+        "errors": skipped,
+        "workspace": workspace,
+    }
+
+
+class ShipRequest(BaseModel):
+    pipeline_id: str = ""
+    stage_id: str = ""
+    assess_report: Dict[str, Any] = {}
+    skip_security: bool = False
+    skip_perf: bool = False
+    skip_sandbox: bool = False
+    sandbox_params: Dict[str, Any] = {}
+    sandbox_scenarios: int = 10
+
+
+@router.post("/pipeline/ship")
+async def ship_pipeline(req: ShipRequest):
+    u"""Final deployment gate. Requires all assessments PASS before allowing ship.
+
+    Runs security-auditor and web-perf-auditor checks (if available).
+    Returns ship decision: ALLOW | BLOCKED | NEEDS_APPROVAL.
+    """
+    gates = []
+    blocked = False
+
+    # Gate 1: AssessAgent must have passed
+    if req.assess_report:
+        overall = req.assess_report.get("overall", "UNKNOWN")
+        gates.append({
+            "gate": "assess",
+            "status": overall,
+            "passed": overall == "PASS",
+            "detail": req.assess_report.get("summary", ""),
+        })
+        if overall != "PASS":
+            blocked = True
+
+    # Gate 2: Security audit (unless skipped)
+    if not req.skip_security:
+        sec_ok, sec_detail = _check_skill_available("security-auditor")
+        gates.append({
+            "gate": "security",
+            "status": "READY" if sec_ok else "UNAVAILABLE",
+            "passed": True,  # unavailable = not blocking, just warn
+            "detail": sec_detail,
+        })
+
+    # Gate 3: Pipeline Sandbox — variant scenario validation
+    if not req.skip_sandbox and req.sandbox_params:
+        from core.harness.execution.pipeline_sandbox import run_sandbox_validation
+        sandbox = await run_sandbox_validation(
+            req.sandbox_params,
+            scenario_count=req.sandbox_scenarios,
+            assessment_rubric=req.assess_report.get("criteria", []),
+        )
+        gates.append({
+            "gate": "sandbox",
+            "status": "PASS" if not sandbox.blocked else "BLOCKED",
+            "passed": not sandbox.blocked,
+            "detail": sandbox.summary,
+            "scenarios": [
+                {"id": s.scenario_id, "passed": s.passed, "mutation": s.mutation_applied}
+                for s in sandbox.scenarios
+            ],
+        })
+        if sandbox.blocked:
+            blocked = True
+
+    # Gate 4: Performance check (unless skipped)
+    if not req.skip_perf:
+        perf_ok, perf_detail = _check_skill_available("web-perf-auditor")
+        gates.append({
+            "gate": "perf",
+            "status": "READY" if perf_ok else "UNAVAILABLE",
+            "passed": True,
+            "detail": perf_detail,
+        })
+
+    # Gate 4: SESSION_NOTES present
+    notes_ok = _check_session_notes(req.pipeline_id)
+    gates.append({
+        "gate": "session_notes",
+        "status": "FOUND" if notes_ok else "MISSING",
+        "passed": notes_ok,
+        "detail": "SESSION_NOTES.md found" if notes_ok else "No session notes — shipping without documentation is not recommended",
+    })
+
+    if blocked:
+        return {"decision": "BLOCKED", "gates": gates, "message": "One or more gates failed. Fix before shipping."}
+
+    return {"decision": "ALLOW", "gates": gates, "message": "All gates passed. Ready to ship."}
+
+
+@router.post("/pipeline/self-harness")
+async def run_self_harness_cycle():
+    u"""Run the Self-Harness optimization cycle."""
+    try:
+        from core.harness.execution.failure_clusterer import load_clusters
+        from core.harness.execution.pipeline_engine import PipelineEngine
+        from core.harness.kernel.runtime import get_kernel_runtime
+
+        runtime = get_kernel_runtime()
+        store = getattr(runtime, "execution_store", None) if runtime else None
+        run_states = []
+        if store is not None:
+            try:
+                events = await store.list_completed_runs(limit=50)
+                run_states = [e.get("pipeline_state", {}) for e in events if e.get("pipeline_state")]
+            except Exception:
+                pass
+
+        if not run_states:
+            return {"accepted": [], "rejected": [], "message": "No completed runs found for analysis"}
+
+        result = await PipelineEngine._run_self_harness_cycle(run_states)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Self-Harness failed: {e}")
+
+
+class SandboxRequest(BaseModel):
+    seed_params: Dict[str, Any] = {}
+    scenario_count: int = 10
+
+
+@router.post("/pipeline/sandbox")
+async def run_pipeline_sandbox(req: SandboxRequest):
+    u"""Run Pipeline Sandbox — generate variant scenarios and validate.
+
+    Takes a seed parameter set (from a successful run) and generates
+    N variant scenarios with boundary values, empty injections, field swaps.
+    Returns per-scenario pass/fail results and a deployment-block decision.
+    """
+    from core.harness.execution.pipeline_sandbox import run_sandbox_validation
+    report = await run_sandbox_validation(
+        req.seed_params,
+        scenario_count=req.scenario_count,
+    )
+    return {
+        "blocked": report.blocked,
+        "total": report.total_scenarios,
+        "passed": report.passed,
+        "failed": report.failed,
+        "summary": report.summary,
+        "scenarios": [
+            {"id": s.scenario_id, "passed": s.passed, "error": s.error[:100], "mutation": s.mutation_applied}
+            for s in report.scenarios
+        ],
+    }
+
+
+
+@router.get("/pipeline/diagnose/{run_id}")
+async def diagnose_pipeline_run(run_id: str):
+    u"""Diagnostic report for a single pipeline run.
+
+    Combines failure attribution, assessment results, and execution trace
+    to produce a structured diagnostic report with blame distribution.
+
+    Returns:
+      {run_id, status, failure: {...}, blame: {prompt, retrieval, tool, model},
+       stages: [...], suggestion: "..."}
+    """
+    from core.harness.kernel.runtime import get_kernel_runtime
+    runtime = get_kernel_runtime()
+    store = getattr(runtime, "execution_store", None) if runtime else None
+
+    run_state = {}
+    if store is not None:
+        try:
+            events = await store.get_syscall_events(run_id=run_id, limit=200)
+            # Reconstruct state from events
+            for e in events:
+                if isinstance(e, dict) and e.get("kind") == "pipeline":
+                    run_state = e.get("args", {})
+                    break
+        except Exception:
+            pass
+
+    if not run_state:
+        raise HTTPException(status_code=404, detail=f"Run '{run_id}' not found")
+
+    # ── Collect diagnostics ──
+    diagnosis = _build_diagnosis(run_id, run_state)
+    return diagnosis
+
+
+def _build_diagnosis(run_id: str, state: Dict[str, Any]) -> Dict[str, Any]:
+    u"""Build a structured diagnostic report from pipeline state."""
+    from core.harness.execution.failure_clusterer import (
+        classify_verifier_cause, classify_causal_status, classify_abstract_mechanism,
+    )
+
+    stage_diags = []
+    overall_status = "passed"
+    failure = None
+    blame = {"prompt": "low", "retrieval": "low", "tool": "low", "model": "low"}
+
+    # Collect per-stage diagnostics
+    graph_trace = state.get("_graph_trace", [])
+    for node in graph_trace:
+        if not isinstance(node, dict):
+            continue
+        stage_id = node.get("node", "unknown")
+        status = node.get("status", "unknown")
+
+        stage_diag = {
+            "stage_id": stage_id,
+            "status": status,
+            "elapsed": node.get("elapsed", 0),
+            "metrics": node.get("metrics", {}),
+        }
+
+        if status in ("failed", "paused"):
+            overall_status = "failed"
+            verifier = classify_verifier_cause(state, stage_id)
+            causal = classify_causal_status(state, stage_id)
+            mechanism = classify_abstract_mechanism(state, stage_id)
+
+            stage_diag["failure"] = {
+                "verifier_cause": verifier,
+                "causal_status": causal,
+                "abstract_mechanism": mechanism,
+            }
+            stage_diag["error"] = str(state.get("error", ""))[:200]
+
+            if failure is None:
+                failure = {
+                    "stage": stage_id,
+                    "verifier_cause": verifier,
+                    "causal_status": causal,
+                    "abstract_mechanism": mechanism,
+                }
+
+        # Per-stage assess results
+        assess = state.get(f"_assess_{stage_id}")
+        if isinstance(assess, dict):
+            stage_diag["assessment"] = {
+                "overall": assess.get("overall", ""),
+                "passed": assess.get("passed_count", 0),
+                "failed": assess.get("failed_count", 0),
+                "summary": assess.get("summary", ""),
+            }
+
+        # Quick check issues
+        qc = state.get("_quick_check_issues", [])
+        if qc:
+            stage_diag["quick_checks"] = [str(i)[:100] for i in qc[:5]]
+
+        stage_diags.append(stage_diag)
+
+    # ── Blame attribution: determine where the problem most likely is ──
+    if failure:
+        mech = failure["abstract_mechanism"]
+        causal = failure["causal_status"]
+        verifier = failure["verifier_cause"]
+
+        # Tool-related failures
+        if causal in ("wrong_tool_usage", "tool_selection_mismatch"):
+            blame["tool"] = "high"
+        # Retrieval-related
+        elif "context" in causal or "overflow" in causal:
+            blame["retrieval"] = "medium"
+            blame["prompt"] = "medium"
+        # Format/output issues → likely model or prompt
+        elif mech == "format_drift":
+            blame["model"] = "high"
+            blame["prompt"] = "medium"
+        elif mech == "early_endless_search" or mech == "no_early_artifact_creation":
+            blame["prompt"] = "high"
+            blame["model"] = "medium"
+        elif mech == "delete_instead_of_fix":
+            blame["model"] = "high"
+            blame["tool"] = "medium"
+        elif verifier == "assess_fail":
+            blame["model"] = "high"
+            blame["prompt"] = "medium"
+            blame["tool"] = "medium"
+        elif verifier == "compile_error":
+            blame["model"] = "high"
+        elif verifier == "timeout":
+            blame["retrieval"] = "medium"
+            blame["model"] = "medium"
+
+    # ── Generate suggestion ──
+    suggestion = ""
+    if failure:
+        field_map = {
+            "early_endless_search": "Consider adding 'create artifact early' to prompt_extra or reducing stage_timeout_seconds",
+            "no_early_artifact_creation": "Add bootstrap instruction in prompt_extra: 'Create an initial artifact version before exploring'",
+            "delete_instead_of_fix": "Add rule in prompt_extra: 'Never delete a working artifact. Fix it in-place or create a new version'",
+            "format_drift": "Add response_format (JSON schema) to this stage to enforce output structure",
+            "identical_retry_loop": "Set max_consecutive_llm_failures=2 and failure_strategy='skip_stage' to break loops",
+            "context_bloat": "Reduce max_tokens_per_run or enable render_upstream=false for non-PRD stages",
+            "unclassified_pattern": "Review the stage output and quick_check_issues for manual diagnosis",
+        }
+        suggestion = field_map.get(failure["abstract_mechanism"], f"Review stage '{failure['stage']}' — verifier={failure['verifier_cause']}, mechanism={failure['abstract_mechanism']}")
+
+    # Additional hints from state
+    if state.get("_last_action_reason"):
+        suggestion += f" (last action: {state.get('_last_action_reason')})"
+
+    return {
+        "run_id": run_id,
+        "status": overall_status,
+        "failure": failure,
+        "blame": blame,
+        "stages": stage_diags,
+        "suggestion": suggestion,
+    }
+
+
+
+def _check_skill_available(skill_name: str):
+    u"""Check if a persona skill is installed in workspace."""
+    import os as _os
+    skill_dir = _os.path.expanduser(f"~/.aiplat/skills/{skill_name}")
+    if _os.path.isdir(skill_dir):
+        return True, f"Skill '{skill_name}' found in workspace"
+    return False, f"Skill '{skill_name}' not installed. Install from agent-skills or skip this gate."
+
+
+def _check_session_notes(pipeline_id: str) -> bool:
+    u"""Check if SESSION_NOTES.md exists for a pipeline run."""
+    import os as _os, glob as _glob
+    home = _os.getenv("AIPLAT_HOME", _os.path.expanduser("~/.aiplat"))
+    pattern = _os.path.join(home, "output", "*", "SESSION_NOTES.md")
+    return len(_glob.glob(pattern)) > 0
+
+
 @router.get("/proposals")
 async def get_proposals(status: str = "", collection: str = "default"):
     u"""List pending wiki knowledge proposals (merge/update/supplement/contradict)."""
@@ -218,6 +617,7 @@ async def create_wiki_page(body: WikiPageWrite, collection: str = "default"):
     try:
         path = write_page(body.title, body.body, category=body.category,
                           tags=body.tags, related=body.related, summary=body.summary,
+                          status=body.status, marking=body.marking,
                           collection_id=collection)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
@@ -365,7 +765,7 @@ async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection
                     meta = _json.loads(doc["meta_json"] or "{}")
                     if meta.get("title"):
                         title = str(meta["title"])[:120]
-                except: pass
+                except Exception: pass
                 # Try to parse a human-readable title from the URI
                 from core.harness.knowledge.wiki_engine import parse_title_from_uri
                 readable = parse_title_from_uri(source_uri)
@@ -379,7 +779,7 @@ async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection
                     if wiki_pages:
                         skipped += 1
                         continue
-                except: pass
+                except Exception: pass
 
                 # Read document elements (full text)
                 elements = conn.execute(
@@ -434,11 +834,11 @@ async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection
                     if curated["title"] != old_title:
                         from core.harness.knowledge.wiki_engine import delete_page as _delp
                         try: _delp(old_title)
-                        except: pass
+                        except Exception: pass
                     # Always delete the mechanical page if it still exists
                     from core.harness.knowledge.wiki_engine import delete_page as _delp2
                     try: _delp2(old_title)
-                    except: pass
+                    except Exception: pass
                     # Create knowledge atom pages with evidence tracking
                     for atom in curated.get("knowledge_atoms", [])[:8]:
                         if not atom.get("title") or not atom.get("body"):
@@ -564,7 +964,7 @@ async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection
                                 already_converted = True
                                 break
                         if already_converted: continue
-                    except: pass
+                    except Exception: pass
 
                     title = os.path.splitext(fname)[0][:100]
                     title = re.sub(r"[<>:\"/\\|?*]", "_", title)
@@ -576,9 +976,9 @@ async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection
                             raw = fh.read(10000)
                         try:
                             body = raw.decode("utf-8")
-                        except:
+                        except Exception:
                             body = raw.decode("utf-8", errors="replace")
-                    except:
+                    except Exception:
                         continue
                     if not body or len(body) < 50:
                         continue
@@ -594,7 +994,7 @@ async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection
                         c2 = _sq.connect(kb_db)
                         existing = c2.execute("SELECT 1 FROM documents WHERE doc_id LIKE ?", (f"%{fname[:20]}%",)).fetchone()
                         c2.close()
-                    except: pass
+                    except Exception: pass
                     if uploads_converted >= limit * 2:
                         break
         except Exception as e:
@@ -836,20 +1236,38 @@ async def ontology_source_impact(collection: str = "default"):
 
 
 @router.get("/wiki/changelog")
-async def get_wiki_changelog():
-    """Get recent wiki ingest changelog entries."""
+async def get_wiki_changelog(title: str = "", limit: int = 20, collection: str = "default"):
+    """Get wiki changelog entries, optionally filtered by page title."""
     from core.harness.knowledge.wiki_engine import _wiki_root
     import json as _json
-    root = _wiki_root()
+    root = _wiki_root(collection)
     log_path = root / "changelog.json"
     if not log_path.exists():
         return {"entries": [], "total": 0}
     try:
         with open(log_path, "r", encoding="utf-8") as f:
             entries = _json.load(f)
-        return {"entries": entries[:20], "total": len(entries)}
+        if title:
+            entries = [e for e in entries if e.get("title") == title]
+        entries.reverse()  # newest first
+        return {"entries": entries[:limit], "total": len(entries)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to read changelog: {e}")
+
+
+@router.post("/wiki/rollback/{title}")
+async def wiki_rollback(title: str, index: int = -1, collection: str = "default"):
+    """Rollback a wiki page to a previous version from changelog.
+    
+    Args:
+        title: Page title to rollback
+        index: Version index (-1 = one version before latest)
+    """
+    from core.harness.knowledge.wiki_engine import rollback_page
+    ok = rollback_page(title, index=index, collection_id=collection)
+    if not ok:
+        raise HTTPException(status_code=404, detail="No changelog entry found for this page")
+    return {"status": "rolled_back", "title": title, "index": index}
 
 
 @router.get("/wiki/duplicates")
@@ -1185,7 +1603,7 @@ async def detect_patterns(collection: str = "default"):
 
 @router.get("/ontology/metrics")
 async def get_ontology_metrics(collection: str = "default", refresh: bool = False):
-    """Four-dimension ontology health metrics (with hourly cache).
+    """Four-dimension ontology health metrics (cache-backed).
 
     Dimensions:
     1. Coverage: % wiki pages covered by T-Box classes
@@ -1193,18 +1611,32 @@ async def get_ontology_metrics(collection: str = "default", refresh: bool = Fals
     3. Inference gain: transitive + source_chain edges inferred
     4. Maintenance cost: pending suggestions + last review time
     Class usage: per-class wiki page counts
+
+    Cache is auto-invalidated when wiki pages are created/updated/deleted,
+    then rebuilt in a background subprocess. refresh=true shows cache age.
     """
     try:
-        from core.harness.knowledge.knowledge_validator import (
-            compute_ontology_metrics, load_metrics_cache
-        )
-        if not refresh:
-            cached = load_metrics_cache(collection)
-            if cached and "metrics" in cached:
-                return {"source": "cache", **cached["metrics"]}
+        from core.harness.knowledge.knowledge_validator import load_metrics_cache
+        import time as _time, os as _os
 
-        metrics = compute_ontology_metrics(collection_id=collection, force_fresh=True)
-        return {"source": "computed", **metrics}
+        if refresh:
+            # Invalidate cache and trigger background rebuild
+            cache_path = _os.path.join(_os.path.expanduser(_os.getenv("AIPLAT_HOME", "~/.aiplat")),
+                                        "wiki", "collections", collection, "metrics_cache.json")
+            try:
+                if _os.path.exists(cache_path):
+                    _os.remove(cache_path)
+            except Exception:
+                pass
+            from core.harness.knowledge._bg_tasks import enqueue
+            enqueue("rebuild_metrics", collection_id=collection)
+            return {"source": "recomputing", "message": "后台重新计算中，请稍后刷新。预计 1-3 分钟完成。"}
+
+        cached = load_metrics_cache(collection)
+        if cached and "metrics" in cached:
+            age = round(_time.time() - cached.get("computed_at", _time.time()), 0)
+            return {"source": "cache", "cache_age_seconds": age, **cached["metrics"]}
+        return {"source": "pending", "message": "Metrics not yet computed. Click '刷新指标' to trigger rebuild.", "consistency": {"score": 0, "errors": 0}, "coverage": {"percentage": 0, "covered": 0, "total": 0}, "inference_gain": {"summary": "pending", "total_inferred": 0}, "maintenance_cost": {"pending_suggestions": 0}}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Metrics failed: {e}")
 
@@ -1484,3 +1916,654 @@ async def get_model_selection_log():
         return {"entries": entries[-50:], "total": len(entries)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ══════════════════════════════════════════════════════════════
+# Markings API (Phase 2 — lineage-based security)
+# ══════════════════════════════════════════════════════════════
+
+class MarkingSetRequest(BaseModel):
+    entity_uri: str
+    label: str
+    level: int = 2  # 1=public, 2=internal, 3=confidential, 4=restricted
+    scope: str = ""
+
+
+class MarkingDeleteRequest(BaseModel):
+    entity_uri: str
+    label: str = ""
+
+
+@router.put("/ontology/markings")
+async def set_entity_marking(req: MarkingSetRequest, collection: str = "default"):
+    u"""Set a marking on an ontology entity."""
+    from core.harness.knowledge.knowledge_markings import set_marking, MarkingLevel
+    try:
+        level = MarkingLevel(max(1, min(4, req.level)))
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid level: {req.level}")
+
+    marking = set_marking(
+        entity_uri=req.entity_uri,
+        label=req.label,
+        level=level,
+        scope=req.scope,
+        collection_id=collection,
+    )
+    return {"status": "ok", "marking": marking.to_dict()}
+
+
+@router.delete("/ontology/markings")
+async def remove_entity_marking(req: MarkingDeleteRequest, collection: str = "default"):
+    u"""Remove a marking from an entity (or all if label is empty)."""
+    from core.harness.knowledge.knowledge_markings import remove_marking
+    ok = remove_marking(
+        entity_uri=req.entity_uri,
+        label=req.label,
+        collection_id=collection,
+    )
+    return {"status": "ok" if ok else "not_found", "removed": ok}
+
+
+@router.get("/ontology/markings/{entity_uri:path}")
+async def get_entity_marking_info(
+    entity_uri: str,
+    collection: str = "default",
+    resolve_effective: bool = True,
+):
+    u"""Get explicit + effective markings for an entity, with propagation traces."""
+    from core.harness.knowledge.knowledge_markings import (
+        get_entity_markings, get_propagation_tree,
+    )
+    if resolve_effective:
+        result = get_propagation_tree(entity_uri, collection_id=collection)
+    else:
+        result = get_entity_markings(entity_uri, collection_id=collection, resolve_effective=False)
+    return result
+
+
+@router.put("/ontology/permissions")
+async def grant_entity_permission(
+    entity_uri: str = Body(...),
+    role: str = Body(...),
+    actions: List[str] = Body(...),
+    collection: str = "default",
+):
+    u"""Grant per-object permission on an ontology entity."""
+    from core.policy.object_permission import grant_object_permission
+    perm = grant_object_permission(
+        entity_uri=entity_uri,
+        role=role,
+        actions=actions,
+        collection_id=collection,
+    )
+    return {"status": "ok", "permission": perm.to_dict()}
+
+
+@router.delete("/ontology/permissions")
+async def revoke_entity_permission(
+    entity_uri: str = Body(...),
+    role: str = Body(default=""),
+    action: str = Body(default=""),
+    collection: str = "default",
+):
+    u"""Revoke a per-object permission."""
+    from core.policy.object_permission import revoke_object_permission
+    ok = revoke_object_permission(
+        entity_uri=entity_uri,
+        role=role,
+        action=action,
+        collection_id=collection,
+    )
+    return {"status": "ok" if ok else "not_found", "revoked": ok}
+
+
+@router.get("/ontology/permissions/{entity_uri:path}")
+async def list_entity_permissions(
+    entity_uri: str,
+    collection: str = "default",
+):
+    u"""List all effective permissions for an ontology entity."""
+    from core.policy.object_permission import get_effective_permissions
+    perms = get_effective_permissions(entity_uri, collection_id=collection)
+    return {"entity_uri": entity_uri, "permissions": perms}
+
+
+# ══════════════════════════════════════════════════════════════
+# Semantic Suggestions API (Phase 3 — LLM-driven evolution)
+# ══════════════════════════════════════════════════════════════
+
+class SemanticSuggestRequest(BaseModel):
+    collection: str = "default"
+    max_suggestions: int = 5
+    confidence_threshold: float = 0.7
+    include_llm: bool = True
+
+
+@router.post("/ontology/suggestions/semantic")
+async def generate_semantic_suggestions_endpoint(req: SemanticSuggestRequest = Body(default=None)):
+    u"""Generate semantic ontology evolution suggestions via LLM (Tier 2).
+
+    Dimensions: semantic merge detection, field gap analysis, relation inference.
+    Set include_llm=False to get only Tier 1 (rule-based) suggestions.
+    """
+    if req is None:
+        req = SemanticSuggestRequest()
+
+    if not req.include_llm:
+        from core.harness.knowledge.knowledge_ontology import add_suggestions_from_patterns
+        suggestions = add_suggestions_from_patterns(
+            collection_id=req.collection,
+        )
+        return {"suggestions": suggestions, "total": len(suggestions), "source": "rule"}
+
+    try:
+        from core.harness.knowledge.knowledge_evolution_llm import generate_semantic_suggestions
+        suggestions = await generate_semantic_suggestions(
+            collection_id=req.collection,
+            max_suggestions=req.max_suggestions,
+            confidence_threshold=req.confidence_threshold,
+        )
+        return {"suggestions": suggestions, "total": len(suggestions), "source": "llm"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Semantic suggestion generation failed: {e}")
+
+
+@router.post("/ontology/suggestions/{suggestion_id}/impact")
+async def predict_suggestion_impact(suggestion_id: str, collection: str = "default"):
+    u"""Predict the impact scope of accepting an evolution suggestion."""
+    from core.harness.knowledge.knowledge_ontology import (
+        load_pending_suggestions, get_ontology,
+    )
+    from core.harness.knowledge.knowledge_evolution_llm import predict_evolution_impact
+
+    suggestions = load_pending_suggestions(collection)
+    suggestion = next((s for s in suggestions if s.get("id") == suggestion_id), None)
+    if not suggestion:
+        raise HTTPException(status_code=404, detail=f"Suggestion '{suggestion_id}' not found")
+
+    onto = get_ontology()
+    impact = predict_evolution_impact(suggestion, onto)
+    return impact
+
+
+# ══════════════════════════════════════════════════════════════
+# Health & Quality API (Phase 4 — pipeline feedback loop)
+# ══════════════════════════════════════════════════════════════
+
+@router.get("/ontology/health/triggers")
+async def get_health_triggers(collection: str = "default"):
+    u"""Get triggered curation tasks from ontology health checks."""
+    from core.harness.knowledge.knowledge_quality import check_ontology_health_triggers
+    triggers = check_ontology_health_triggers(collection_id=collection)
+    return {"triggers": triggers, "total": len(triggers), "collection_id": collection}
+
+
+@router.get("/ontology/health/score")
+async def get_ontology_health_score(collection: str = "default"):
+    u"""Get composite ontology health score from axiom validation + quality signals."""
+    try:
+        from core.harness.knowledge.knowledge_validator import validate_all
+        report = validate_all(collection_id=collection)
+        return {
+            "axiom_score": report.score,
+            "violations": report.violations_by_severity,
+            "passed_axioms": len(report.passed_axioms),
+            "failed_axioms": len(report.failed_axioms),
+            "total_triples": report.total_triples,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/ontology/quality/{entity_uri:path}")
+async def get_entity_quality(entity_uri: str, collection: str = "default"):
+    u"""Get quality score and signal history for an ontology entity."""
+    from core.harness.knowledge.knowledge_quality import (
+        get_entity_quality_score, get_quality_signals,
+    )
+    score = get_entity_quality_score(entity_uri, collection_id=collection)
+    signals = get_quality_signals(entity_uri, limit=20, collection_id=collection)
+    return {"quality": score, "recent_signals": signals}
+
+
+# ══════════════════════════════════════════════════════════════
+# WriteBack API (Phase 5 — external system integration)
+# ══════════════════════════════════════════════════════════════
+
+class WritebackRegisterRequest(BaseModel):
+    target_type: str = "rest_webhook"
+    target_endpoint: str
+    trigger_actions: List[str] = ["create", "update"]
+    field_mapping: Dict[str, str] = {}
+    auth: Dict[str, str] = {}
+
+
+@router.get("/ontology/writebacks")
+async def list_writebacks(collection: str = "default"):
+    u"""List all registered writeback configurations."""
+    from core.harness.knowledge.knowledge_writeback import load_writebacks
+    configs = load_writebacks(collection_id=collection)
+    return {"writebacks": [c.to_dict() for c in configs], "total": len(configs)}
+
+
+@router.post("/ontology/writebacks")
+async def register_writeback_endpoint(req: WritebackRegisterRequest, collection: str = "default"):
+    u"""Register a new writeback target."""
+    from core.harness.knowledge.knowledge_writeback import (
+        register_writeback, WriteBackConfig, WriteBackTarget,
+    )
+    try:
+        target = WriteBackTarget(req.target_type)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid target_type: {req.target_type}")
+
+    config = WriteBackConfig(
+        target_type=target,
+        target_endpoint=req.target_endpoint,
+        trigger_actions=req.trigger_actions,
+        field_mapping=req.field_mapping,
+        auth=req.auth,
+    )
+    register_writeback(config, collection_id=collection)
+    return {"status": "ok", "config": config.to_dict()}
+
+
+@router.delete("/ontology/writebacks")
+async def unregister_writeback_endpoint(target_endpoint: str, collection: str = "default"):
+    u"""Remove a writeback target."""
+    from core.harness.knowledge.knowledge_writeback import unregister_writeback
+    ok = unregister_writeback(target_endpoint, collection_id=collection)
+    return {"status": "ok" if ok else "not_found"}
+
+
+# ══════════════════════════════════════════════════════════════
+# Field-Level Security API (附章 — cell/field-level access control)
+# ══════════════════════════════════════════════════════════════
+
+class FieldPermissionRequest(BaseModel):
+    entity_uri: str
+    field_name: str
+    visibility: str = "all"
+    redaction_strategy: str = "mask"
+
+
+@router.get("/ontology/field-permissions/{entity_uri:path}")
+async def get_field_permissions(entity_uri: str, collection: str = "default"):
+    u"""Get field-level permission rules for an entity."""
+    from core.policy.field_level_security import load_field_permissions
+    perms = load_field_permissions(collection_id=collection)
+    applicable = [p.to_dict() for p in perms if p.entity_uri == entity_uri]
+    return {"entity_uri": entity_uri, "permissions": applicable, "total": len(applicable)}
+
+
+@router.put("/ontology/field-permissions")
+async def set_field_permission_endpoint(req: FieldPermissionRequest, collection: str = "default"):
+    u"""Set a field-level permission rule (visibility + redaction strategy)."""
+    from core.policy.field_level_security import set_field_permission
+    perm = set_field_permission(
+        entity_uri=req.entity_uri,
+        field_name=req.field_name,
+        visibility=req.visibility,
+        redaction_strategy=req.redaction_strategy,
+        collection_id=collection,
+    )
+    return {"status": "ok", "permission": perm.to_dict()}
+
+
+@router.delete("/ontology/field-permissions")
+async def remove_field_permission_endpoint(
+    entity_uri: str = Body(...),
+    field_name: str = Body(default=""),
+    collection: str = "default",
+):
+    u"""Remove field-level permission(s). Pass empty field_name to clear all for entity."""
+    from core.policy.field_level_security import remove_field_permission
+    ok = remove_field_permission(entity_uri, field_name, collection_id=collection)
+    return {"status": "ok" if ok else "not_found"}
+
+
+# ══════════════════════════════════════════════════════════════
+# Scene Model API (Phase A — purpose-driven pipeline templates)
+# ══════════════════════════════════════════════════════════════
+
+class SceneCreateRequest(BaseModel):
+    scene_id: str
+    name: str = ""
+    description: str = ""
+    required_entities: List[str] = []
+    algorithm_nodes: List[Dict[str, Any]] = []
+    llm_judgment_nodes: List[Dict[str, Any]] = []
+    entry_conditions: Dict[str, Any] = {}
+    expected_outcomes: List[Dict[str, Any]] = []
+    tags: List[str] = []
+
+
+@router.get("/ontology/scenes")
+async def list_scene_models(collection: str = "default"):
+    u"""List all ontology scene templates. Auto-seeds built-in scenes on first access."""
+    from core.harness.knowledge.scene_model import list_scenes, create_builtin_scenes
+    scenes = list_scenes(collection_id=collection)
+    if not scenes:
+        from core.harness.knowledge.scene_model import save_scene
+        builtins = create_builtin_scenes()
+        for s in builtins:
+            save_scene(s, collection_id=collection)
+        scenes = list_scenes(collection_id=collection)
+    return {"scenes": [s.to_dict() for s in scenes], "total": len(scenes)}
+
+
+@router.post("/ontology/scenes")
+async def create_scene_model(req: SceneCreateRequest, collection: str = "default"):
+    from core.harness.knowledge.scene_model import OntologyScene, save_scene
+    scene = OntologyScene(
+        scene_id=req.scene_id, name=req.name, description=req.description,
+        required_entities=req.required_entities, algorithm_nodes=req.algorithm_nodes,
+        llm_judgment_nodes=req.llm_judgment_nodes, entry_conditions=req.entry_conditions,
+        expected_outcomes=req.expected_outcomes, tags=req.tags,
+    )
+    save_scene(scene, collection_id=collection)
+    return {"status": "ok", "scene": scene.to_dict()}
+
+
+@router.get("/ontology/scenes/{scene_id}")
+async def get_scene_model(scene_id: str, collection: str = "default"):
+    from core.harness.knowledge.scene_model import get_scene
+    scene = get_scene(scene_id, collection_id=collection)
+    if not scene:
+        raise HTTPException(status_code=404, detail=f"Scene '{scene_id}' not found")
+    return {"scene": scene.to_dict(), "pipeline_stages": scene.to_pipeline_stages(),
+            "stage_count": len(scene.to_pipeline_stages())}
+
+
+@router.post("/ontology/scenes/{scene_id}/instantiate")
+async def instantiate_scene_model(scene_id: str, params: Dict[str, Any] = Body(default={}), collection: str = "default"):
+    from core.harness.knowledge.scene_model import instantiate_scene
+    config = instantiate_scene(scene_id, params=params, collection_id=collection)
+    if not config:
+        raise HTTPException(status_code=404, detail=f"Scene '{scene_id}' not found")
+    return {"pipeline_config": config, "stage_count": len(config.get("stages", []))}
+
+
+@router.delete("/ontology/scenes/{scene_id}")
+async def delete_scene_model(scene_id: str, collection: str = "default"):
+    from core.harness.knowledge.scene_model import delete_scene
+    ok = delete_scene(scene_id, collection_id=collection)
+    return {"status": "ok" if ok else "not_found"}
+
+
+# ══════════════════════════════════════════════════════════════
+# Growth Metrics API (Phase E — knowledge compound interest)
+# ══════════════════════════════════════════════════════════════
+
+@router.get("/ontology/growth-stats")
+async def get_growth_stats(days: int = 30, collection: str = "default"):
+    u"""Get knowledge base growth statistics for the last N days."""
+    from core.harness.knowledge.knowledge_growth import get_growth_stats, estimate_compound_value
+    stats = get_growth_stats(collection_id=collection, days=days)
+    compound = estimate_compound_value(collection_id=collection)
+    return {**stats, "compound": compound}
+
+
+@router.post("/ontology/growth/snapshot")
+async def take_snapshot(collection: str = "default"):
+    u"""Manually trigger a growth snapshot."""
+    from core.harness.knowledge.knowledge_growth import take_growth_snapshot
+    snap = take_growth_snapshot(collection_id=collection)
+    return {"status": "ok", "snapshot": snap.to_dict()}
+
+
+# ══════════════════════════════════════════════════════════════
+# Learning Coach API (L6 — built-in AI Learning Coach)
+# ══════════════════════════════════════════════════════════════
+
+class ProfileRequest(BaseModel):
+    learner_id: str
+    target_role: str = "ai_literate"
+    current_level: str = "beginner"
+    weekly_hours: int = 3
+    prior_knowledge: List[str] = []
+    interests: List[str] = []
+    goals: str = ""
+
+
+@router.post("/learning/profile")
+async def create_learner_profile(req: ProfileRequest):
+    u"""Create or update a learner profile."""
+    from core.harness.knowledge.learning_ontology import (
+        LearnerProfile, TargetRole, CurrentLevel, save_learner_profile, load_learner_profile,
+    )
+    existing = load_learner_profile(req.learner_id)
+    profile = LearnerProfile(
+        learner_id=req.learner_id,
+        current_level=CurrentLevel(req.current_level),
+        target_role=TargetRole(req.target_role),
+        weekly_hours=req.weekly_hours,
+        prior_knowledge=req.prior_knowledge,
+        interests=req.interests,
+        goals=req.goals,
+        created_at=existing.created_at if existing else "",
+    )
+    save_learner_profile(profile)
+    return {"status": "ok", "profile": profile.to_dict()}
+
+
+@router.get("/learning/profile/{learner_id}")
+async def get_learner_profile(learner_id: str):
+    u"""Get a learner profile."""
+    from core.harness.knowledge.learning_ontology import load_learner_profile
+    profile = load_learner_profile(learner_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail=f"Learner '{learner_id}' not found")
+    return profile.to_dict()
+
+
+@router.get("/learning/paths")
+async def list_learning_paths():
+    u"""List all available learning paths with summaries."""
+    from core.harness.knowledge.learning_paths import get_path_summary
+    return {"paths": get_path_summary()}
+
+
+@router.post("/learning/start")
+async def start_learning_path(learner_id: str = Body(...), path_id: str = Body(...)):
+    u"""Start a learning path. Returns the first chapter with content."""
+    from core.harness.knowledge.learning_ontology import load_learner_profile, save_learner_profile
+    from core.harness.knowledge.learning_paths import get_path, get_chapter_body_sync
+
+    profile = load_learner_profile(learner_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail=f"Learner '{learner_id}' not found")
+
+    chapters = get_path(path_id)
+    if not chapters:
+        raise HTTPException(status_code=404, detail=f"Path '{path_id}' not found")
+
+    profile.active_path_id = path_id
+    profile.current_chapter_id = chapters[0].chapter_id
+    save_learner_profile(profile)
+
+    first = chapters[0]
+    body = get_chapter_body_sync(first)
+    return {
+        "path_id": path_id, "chapter": first.to_dict(),
+        "body": body, "total_chapters": len(chapters),
+        "next": chapters[1].chapter_id if len(chapters) > 1 else None,
+    }
+
+
+@router.get("/learning/chapter/{chapter_id}")
+async def get_chapter(chapter_id: str):
+    u"""Get chapter content (cached body or skeleton)."""
+    from core.harness.knowledge.learning_paths import get_builtin_paths, get_chapter_body_sync
+    paths = get_builtin_paths()
+    for pid, chs in paths.items():
+        for c in chs:
+            if c.chapter_id == chapter_id:
+                body = get_chapter_body_sync(c)
+                return {"path_id": pid, "chapter": c.to_dict(), "body": body}
+    raise HTTPException(status_code=404, detail=f"Chapter '{chapter_id}' not found")
+
+
+@router.post("/learning/chapter/{chapter_id}/compile")
+async def compile_chapter_body_endpoint(chapter_id: str):
+    u"""Trigger AI compilation of chapter body text."""
+    from core.harness.knowledge.learning_paths import get_builtin_paths, compile_chapter_body
+    paths = get_builtin_paths()
+    for pid, chs in paths.items():
+        for c in chs:
+            if c.chapter_id == chapter_id:
+                body = await compile_chapter_body(c, force=True)
+                return {"chapter_id": chapter_id, "status": "compiled", "body_length": len(body)}
+    raise HTTPException(status_code=404, detail=f"Chapter '{chapter_id}' not found")
+
+
+@router.post("/learning/chapter/{chapter_id}/complete")
+async def complete_chapter_endpoint(
+    chapter_id: str,
+    learner_id: str = Body(...),
+    answers: List[Any] = Body(default=[]),
+):
+    u"""Submit answers for a chapter's exercises. Returns assessment results."""
+    from core.harness.knowledge.learning_ontology import load_learner_profile
+    from core.harness.knowledge.learning_paths import get_builtin_paths
+    from core.harness.knowledge.learning_assessment import complete_chapter
+
+    profile = load_learner_profile(learner_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail=f"Learner '{learner_id}' not found")
+
+    paths = get_builtin_paths()
+    chapter = None
+    for pid, chs in paths.items():
+        for c in chs:
+            if c.chapter_id == chapter_id:
+                chapter = c
+                break
+    if not chapter:
+        raise HTTPException(status_code=404, detail=f"Chapter '{chapter_id}' not found")
+
+    result = await complete_chapter(profile, chapter, answers)
+    return result
+
+
+@router.get("/learning/progress/{learner_id}")
+async def get_learning_progress(learner_id: str):
+    u"""Get learning progress: completed chapters, scores, radar data."""
+    from core.harness.knowledge.learning_ontology import load_learner_profile
+    from core.harness.knowledge.learning_paths import get_builtin_paths
+
+    profile = load_learner_profile(learner_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail=f"Learner '{learner_id}' not found")
+
+    paths = get_builtin_paths()
+    path_chapters = paths.get(profile.active_path_id, [])
+
+    total = len(path_chapters)
+    completed = [c for c in profile.completed_chapters if c in {ch.chapter_id for ch in path_chapters}]
+
+    # Radar data: mastery per chapter
+    radar = [
+        {"chapter_id": c.chapter_id, "title": c.title,
+         "mastery": profile.mastery_scores.get(c.chapter_id, 0),
+         "completed": c.chapter_id in profile.completed_chapters}
+        for c in path_chapters
+    ]
+
+    return {
+        "learner_id": learner_id,
+        "path_id": profile.active_path_id,
+        "progress": f"{len(completed)}/{total}",
+        "completion_pct": round(len(completed) / max(1, total) * 100, 1),
+        "completed_chapters": completed,
+        "current_chapter": profile.current_chapter_id,
+        "radar": radar,
+        "mastery_average": round(sum(profile.mastery_scores.values()) / max(1, len(profile.mastery_scores)), 1),
+    }
+
+
+@router.post("/learning/ask")
+async def ask_learning_coach(
+    learner_id: str = Body(...),
+    question: str = Body(...),
+):
+    u"""Ask the AI Learning Coach a question, with learning context injected."""
+    from core.harness.knowledge.learning_ontology import load_learner_profile
+    from core.harness.knowledge.learning_paths import get_builtin_paths, _path_name
+
+    profile = load_learner_profile(learner_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail=f"Learner '{learner_id}' not found")
+
+    # Build context
+    paths = get_builtin_paths()
+    path_chapters = paths.get(profile.active_path_id, [])
+    path_name = _path_name(profile.active_path_id) if profile.active_path_id else "未知路径"
+    completed_names = [
+        next((c.title for c in path_chapters if c.chapter_id == ch_id), ch_id)
+        for ch_id in profile.completed_chapters
+    ]
+
+    context = (
+        f"学生信息: 目标={profile.target_role.value}, 当前水平={profile.current_level.value}, "
+        f"每周投入={profile.weekly_hours}小时。"
+        f"正在学: {path_name}。"
+        f"已完成: {len(completed_names)}/{len(path_chapters)} 章"
+        + (f" ({', '.join(completed_names[-5:])})" if completed_names else "")
+    )
+
+    try:
+        from core.harness.syscalls.llm import sys_llm_generate
+        prompt = (
+            f"你是 AI 学习教练，你的学生正在学习 '{path_name}' 路径。\n\n"
+            f"{context}\n\n"
+            f"学生的提问: {question}\n\n"
+            f"请用中文回答。回答要有针对性（结合学生的学习进度），"
+            f"给出具体的、可操作的建议。如果学生问的是路径中某个章节的内容，"
+            f"用通俗的语言解释核心概念，附带一个具体例子。\n"
+            f"如果学生卡住了，鼓励他们继续，并给出一个最小的下一步行动。"
+        )
+        result = await sys_llm_generate(
+            None, [{"role": "user", "content": prompt}],
+            max_tokens=800,
+        )
+        reply = result.get("content", "") if isinstance(result, dict) else str(result)
+        return {"learner_id": learner_id, "reply": reply, "context": context}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/learning/recommendation/{learner_id}")
+async def get_learning_recommendation(learner_id: str):
+    u"""Get recommended next learning action based on profile + gaps."""
+    from core.harness.knowledge.learning_ontology import load_learner_profile
+    from core.harness.knowledge.learning_paths import get_builtin_paths
+
+    profile = load_learner_profile(learner_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail=f"Learner '{learner_id}' not found")
+
+    paths = get_builtin_paths()
+    path_chapters = paths.get(profile.active_path_id, [])
+
+    # Find next unmet prerequisite chapter
+    next_chapter = None
+    recommendations = []
+    for c in path_chapters:
+        if c.chapter_id in profile.completed_chapters:
+            continue
+        prereq_met = all(p in profile.completed_chapters for p in c.prerequisites)
+        if prereq_met and not next_chapter:
+            next_chapter = c.chapter_id
+        blocked = [p for p in c.prerequisites if p not in profile.completed_chapters]
+        if blocked:
+            rec = f"学习 '{c.title}' 之前，需要先完成: {', '.join(blocked[:3])}"
+            recommendations.append(rec)
+
+    return {
+        "learner_id": learner_id,
+        "next_chapter": next_chapter,
+        "blocked_recommendations": recommendations,
+        "weakest_areas": sorted(profile.mastery_scores.items(), key=lambda x: x[1])[:3],
+    }

@@ -64,6 +64,17 @@ class BaseLoop(ILoop):
         await self._trigger_hook(HookPhase.SESSION_START, {"state": state, "config": config})
         await self._trigger_hook(HookPhase.PRE_LOOP, {"state": state})
         
+        # PraxisRecorder — session-level execution recording
+        try:
+            from core.harness.practice.recorder import PraxisRecorder
+            run_id = getattr(state, "context", {}).get("_run_id", "") or ""
+            agent_id = getattr(state, "context", {}).get("_agent_id", "") or ""
+            recorder = PraxisRecorder(session_id=run_id, run_id=run_id, agent_id=agent_id)
+            recorder.start()
+            self._praxis_recorder = recorder
+        except Exception:
+            self._praxis_recorder = None
+        
         try:
             while self.should_continue(self._current_state):
                 # Contract check (optional hooks may block)
@@ -134,6 +145,19 @@ class BaseLoop(ILoop):
 
             # Persist stop_reason for observability (MUST be in output event)
             self._current_state.context["_stop_reason"] = stop_reason
+
+            # Save Praxis recording for replay
+            if hasattr(self, '_praxis_recorder') and self._praxis_recorder:
+                try:
+                    session = self._praxis_recorder.finish(stop_reason or "unknown")
+                    from core.services.execution_store import get_execution_store
+                    store = get_execution_store()
+                    await store.upsert_global_setting(
+                        key=f"praxis:{session.run_id}",
+                        value={"session": session.to_dict()},
+                    )
+                except Exception:
+                    pass
 
             # Post-loop hook
             await self._trigger_hook(HookPhase.POST_LOOP, {"state": self._current_state})
@@ -441,6 +465,21 @@ class ReActLoop(BaseLoop):
             "state": state.current.value
         })
 
+        # Context Reflect: inject clean-boundary note after compaction refresh
+        if state.metadata.pop("context_reflect", False):
+            reflect_note = (
+                "\n\n[SYSTEM NOTE: Context Reflect]\n"
+                "Your context has just been refreshed via compaction. "
+                "The conversation history above is a compressed summary of the prior session. "
+                "Treat this as a clean mental state: rely on what is in the summary, "
+                "not on memories of details that may no longer be present. "
+                "Verify facts against the current state before acting on them. "
+                "Do NOT skip validation steps just because the context is shorter now."
+            )
+            msgs = state.context.get("messages") or []
+            if msgs and isinstance(msgs, list):
+                msgs.append({"role": "user", "content": reflect_note})
+
         # Resume semantics: if kernel is resuming from a paused state, we may skip reasoning
         # and re-run the previous action after approval is granted.
         if state.metadata.pop("resume_skip_reason", False):
@@ -556,7 +595,44 @@ class ReActLoop(BaseLoop):
         action_result = await self._act(state)
         state.context["action_result"] = action_result
         self._update_streak(action_result)
+
+        # Track for Howl stall detection
+        if not hasattr(self, '_recent_actions'):
+            self._recent_actions = []
+        if not hasattr(self, '_recent_errors'):
+            self._recent_errors = []
+        if not hasattr(self, '_last_output_time'):
+            self._last_output_time = 0.0
+        tool_name = getattr(parsed, 'tool_name', '') or getattr(parsed, 'fn', '') or str(parsed)[:40] if parsed else ''
+        act_status = "completed" if action_result and "error" not in str(action_result).lower() else "failed"
+        self._recent_actions.append({"tool": tool_name, "status": act_status, "step": state.step_count})
+        if act_status == "failed":
+            self._recent_errors.append({"tool": tool_name, "error": str(action_result)[:100], "step": state.step_count})
+        if action_result and len(str(action_result)) > 20:
+            import time as _time
+            self._last_output_time = _time.time()
+        # Keep last 10 entries
+        if len(self._recent_actions) > 10:
+            self._recent_actions = self._recent_actions[-10:]
+        if len(self._recent_errors) > 5:
+            self._recent_errors = self._recent_errors[-5:]
+
         await self._trigger_hook(HookPhase.POST_ACT, state.context)
+
+        # Schema retry — if action failed due to schema validation, inject hint and retry
+        action_error = str(getattr(action_result, "error", "")) if action_result else ""
+        if "schema_validation_failed" in action_error:
+            if not hasattr(self, '_schema_retry_count'):
+                self._schema_retry_count = 0
+            if self._schema_retry_count < 3:
+                self._schema_retry_count += 1
+                hint = action_error.split("schema_validation_failed: ", 1)[-1] if ": " in action_error else action_error
+                state.messages.append({"role": "user", "content": hint})
+                state.context["_schema_retry"] = self._schema_retry_count
+                state.current = LoopStateEnum.REASONING
+                return state
+            else:
+                state.context["_schema_retry_exhausted"] = True
 
         # If a syscall requested pause (approval_required / policy_denied), stop here.
         if state.metadata.get("pause_requested"):
@@ -574,6 +650,22 @@ class ReActLoop(BaseLoop):
         # Format: "TODO_DONE:<todo_id>" (can appear multiple times)
         try:
             await self._apply_todo_done_markers(state, f"{state.context.get('action_result','')}\n{observation}", source="observation")
+        except Exception:
+            pass
+
+        # Howl — runtime stall detection & intervention
+        try:
+            from core.harness.intervention.howl import Howl
+            if not hasattr(self, '_howl'):
+                self._howl = Howl()
+            intervention = self._howl.check(
+                last_actions=getattr(self, '_recent_actions', [])[-5:],
+                tool_errors=getattr(self, '_recent_errors', [])[-3:],
+                last_output_time=getattr(self, '_last_output_time', 0.0),
+            )
+            if intervention.triggered:
+                state.messages.append({"role": "user", "content": intervention.hint_message})
+                state.context["_howl_stall"] = intervention.details
         except Exception:
             pass
 
@@ -1549,6 +1641,8 @@ class ReActLoop(BaseLoop):
                 "after": len(result),
                 "ratio": round(ratio, 2),
             }
+            # Context Reflect: mark next step for clean-context boundary injection
+            state.metadata["context_reflect"] = True
             return
         except Exception:
             # fallback: legacy single-threshold compaction below
@@ -1854,6 +1948,8 @@ class ReActLoop(BaseLoop):
             end_ts = time.time()
             await store.add_syscall_event({
                 "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
+                "span_id": state.context.get("_current_step_span_id"),
+                "parent_span_id": state.context.get("_current_step_span_id") or "",
                 "run_id": state.context.get("_run_id") or state.context.get("run_id"),
                 "tenant_id": state.context.get("tenant_id"),
                 "kind": "routing", "name": "routing_decision", "status": "decision",
@@ -2040,6 +2136,8 @@ class ReActLoop(BaseLoop):
             end_ts = time.time()
             await store.add_syscall_event({
                 "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
+                "span_id": state.context.get("_current_step_span_id"),
+                "parent_span_id": state.context.get("_current_step_span_id") or "",
                 "run_id": state.context.get("_run_id") or state.context.get("run_id"),
                 "tenant_id": state.context.get("tenant_id"),
                 "kind": "routing", "name": "routing_strict_eval", "status": "eval",
@@ -2200,12 +2298,16 @@ class ReActLoop(BaseLoop):
                         user_id=state.context.get("user_id", "system"),
                         variables=skill_args,
                     )
+                    _run_id = state.context.get("_run_id")
+                    if _run_id and isinstance(skill_context.variables, dict):
+                        skill_context.variables["_run_id"] = _run_id
                     result = await sys_skill_call(
                         skill, skill_args, context=skill_context,
                         user_id=skill_context.user_id, session_id=skill_context.session_id,
                         trace_context={
                             "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
                             "run_id": state.context.get("_run_id") or state.context.get("run_id"),
+                            "parent_span_id": state.context.get("_current_step_span_id"),
                             "tenant_id": state.context.get("tenant_id"),
                             "routing_decision_id": routing_decision_id,
                             "coding_policy_profile": prof,
@@ -2274,6 +2376,7 @@ class ReActLoop(BaseLoop):
                         trace_context={
                             "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
                             "run_id": state.context.get("_run_id") or state.context.get("run_id"),
+                            "parent_span_id": state.context.get("_current_step_span_id"),
                             "tenant_id": state.context.get("tenant_id"),
                             "routing_decision_id": routing_decision_id,
                             "coding_policy_profile": str(state.context.get("_coding_policy_profile") or "off"),
@@ -2477,10 +2580,11 @@ class PlanExecuteLoop(BaseLoop):
             response = await sys_llm_generate(
                 self._model,
                 prompt,
-                trace_context={
-                    "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
-                    "run_id": state.context.get("_run_id") or state.context.get("run_id"),
-                },
+                                trace_context={
+                                    "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
+                                    "run_id": state.context.get("_run_id") or state.context.get("run_id"),
+                                    "parent_span_id": state.context.get("_current_step_span_id"),
+                                },
             )
             try:
                 usage = getattr(response, "usage", None)
@@ -2568,6 +2672,7 @@ class PlanExecuteLoop(BaseLoop):
                                 trace_context={
                                     "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
                                     "run_id": state.context.get("_run_id") or state.context.get("run_id"),
+                                    "parent_span_id": state.context.get("_current_step_span_id"),
                                 },
                             )
                             step_result = result.output if hasattr(result, "output") else str(result)
@@ -2589,10 +2694,11 @@ class PlanExecuteLoop(BaseLoop):
                     response = await sys_llm_generate(
                         self._model,
                         prompt,
-                        trace_context={
-                            "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
-                            "run_id": state.context.get("_run_id") or state.context.get("run_id"),
-                        },
+                                trace_context={
+                                    "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
+                                    "run_id": state.context.get("_run_id") or state.context.get("run_id"),
+                                    "parent_span_id": state.context.get("_current_step_span_id"),
+                                },
                     )
                     step_result = response.content
                 except Exception as e:

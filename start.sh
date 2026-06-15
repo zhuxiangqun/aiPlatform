@@ -41,6 +41,7 @@ export PATH="$VENV_DIR/bin:$PATH"
 export AIPLAT_HOME="${AIPLAT_HOME:-$HOME/.aiplat}"
 export AIPLAT_PROJECT_ROOT="${AIPLAT_PROJECT_ROOT:-$PROJECT_ROOT}"
 export AIPLAT_KB_TENANTS_DIR="${AIPLAT_KB_TENANTS_DIR:-$AIPLAT_HOME/kb/tenants}"
+export AIPLAT_REPO_ROOT="${AIPLAT_REPO_ROOT:-$PROJECT_ROOT}"
 mkdir -p "$AIPLAT_HOME/logs"
 
 # Execution DB retention: keep last 7 days of syscall events, auto-prune on start
@@ -72,6 +73,12 @@ export MKL_NUM_THREADS="${MKL_NUM_THREADS:-1}"
 export AIPLAT_APPROVALS_DISABLED="${AIPLAT_APPROVALS_DISABLED:-1}"
 export AIPLAT_ENABLE_ORCHESTRATOR="${AIPLAT_ENABLE_ORCHESTRATOR:-false}"
 export PYTHONUNBUFFERED=1
+
+# Model loading: force offline mode so sentence-transformers / transformers don't
+# attempt to reach huggingface.co on startup (model files are already cached locally).
+export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
+export TRANSFORMERS_OFFLINE="${TRANSFORMERS_OFFLINE:-1}"
+export HF_DATASETS_OFFLINE="${HF_DATASETS_OFFLINE:-1}"
 
 # Infra: port→service mapping for network manager (was hardcoded, now env-driven).
 # Format: "port=service:name,port=service:name,..."
@@ -327,7 +334,7 @@ cd "$PROJECT_ROOT/aiPlat-core/core"
 export AIPLAT_EXECUTION_DB_PATH="${AIPLAT_EXECUTION_DB_PATH:-$PROJECT_ROOT/aiPlat-core/core/data/aiplat_executions.sqlite3}"
 mkdir -p "$(dirname "$AIPLAT_EXECUTION_DB_PATH")"
 echo "Execution DB: $AIPLAT_EXECUTION_DB_PATH"
-PYTHONPATH="$PROJECT_ROOT/aiPlat-core" nohup "$PY" -m uvicorn server:app --host 0.0.0.0 --port 8002 > "$AIPLAT_HOME/logs/core.log" 2>&1 &
+PYTHONPATH="$PROJECT_ROOT/aiPlat-core" nohup "$PY" -m uvicorn server:app --host 0.0.0.0 --port 8002 --reload --reload-dir "$PROJECT_ROOT/aiPlat-core/core" > "$AIPLAT_HOME/logs/core.log" 2>&1 &
 CORE_PID=$!
 echo "PID: $CORE_PID"
 
@@ -417,7 +424,7 @@ echo "============================================================"
 kill_port_if_any 8000
 
 cd "$PROJECT_ROOT/aiPlat-management"
-nohup "$PY" -m uvicorn management.server:create_app --host 0.0.0.0 --port 8000 --factory > "$AIPLAT_HOME/logs/management.log" 2>&1 &
+nohup "$PY" -m uvicorn management.server:create_app --host 0.0.0.0 --port 8000 --factory --reload --reload-dir "$PROJECT_ROOT/aiPlat-management/management" > "$AIPLAT_HOME/logs/management.log" 2>&1 &
 MGMT_PID=$!
 echo "PID: $MGMT_PID"
 

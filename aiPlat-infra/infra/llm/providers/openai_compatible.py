@@ -28,15 +28,18 @@ class OpenAICompatibleClient(LLMClient):
     def _get_client(self):
         if self._client is None:
             import openai
+            import httpx
             base_url = self.config.base_url or None
             # Normalize: Ollama/LM Studio/oMLX may lack /v1 suffix
             if base_url and not base_url.rstrip("/").endswith("/v1"):
                 provider = (self.config.provider or "").lower()
                 if provider in ("ollama", "lmstudio", "omlx", "vllm"):
                     base_url = base_url.rstrip("/") + "/v1"
+            timeout_sec = self.config.timeout or 30
             self._client = openai.OpenAI(
                 api_key=self.config.api_key,
                 base_url=base_url,
+                timeout=httpx.Timeout(timeout=timeout_sec, connect=5.0),
             )
         return self._client
 
@@ -47,7 +50,7 @@ class OpenAICompatibleClient(LLMClient):
         messages = [{"role": m.role, "content": m.content} for m in request.messages]
 
         try:
-            response = client.chat.completions.create(
+            create_kwargs: dict = dict(
                 model=request.model,
                 messages=messages,
                 temperature=request.temperature,
@@ -56,6 +59,10 @@ class OpenAICompatibleClient(LLMClient):
                 stop=request.stop,
                 stream=False,
             )
+            if request.timeout:
+                import httpx
+                create_kwargs["timeout"] = httpx.Timeout(timeout=request.timeout, connect=5.0)
+            response = client.chat.completions.create(**create_kwargs)
 
             latency = time.time() - start
             resp = response.choices[0].message

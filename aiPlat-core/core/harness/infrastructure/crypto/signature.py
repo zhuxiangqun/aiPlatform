@@ -97,6 +97,9 @@ def generate_ed25519_key_pair():
     return sk_pem, pk_pem
 
 
+generate_keypair = generate_ed25519_key_pair
+
+
 def parse_ed25519_signature(signature: str) -> bytes:
     """
     Accept formats:

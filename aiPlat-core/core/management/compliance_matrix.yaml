@@ -1,0 +1,266 @@
+# Compliance Matrix — 架构合规矩阵
+#
+# 每条规范（requirement）必须映射到至少一个可执行检查（check）。
+# 新增规范时：先登记 → 确认有检查 → 再合入。
+# 审计时：遍历所有 requirement → 逐一运行 checks → FAIL = 违规，MISSING = 合规缺口。
+
+version: "1.0"
+updated: "2026-06-10"
+
+requirements:
+
+  # Layer 0: 导入管线
+  - id: IMP-001
+    requirement: "所有 zip 导入必须走统一的 Installer 管线，不可在 create 端点内联实现"
+    severity: critical
+    applies_to: [skill, agent, mcp, workflow]
+    checks:
+      - type: arch_guard
+        rule: agent_split_1_bug
+      - type: arch_guard
+        rule: skill_empty_scripts_dir
+
+  - id: IMP-002
+    requirement: "导入后目录结构必须扁平（无 skills/<name>/ 等嵌套）"
+    severity: error
+    applies_to: [skill, agent, mcp, workflow]
+    checks:
+      - type: arch_guard
+        rule: skill_nested_skill_md
+      - type: arch_guard
+        rule: agent_nested_path
+      - type: arch_guard
+        rule: mcp_nested_path
+      - type: arch_guard
+        rule: workflow_nested_path
+
+  - id: IMP-003
+    requirement: "SCRIPT_BASED Skill 必须生成 handler.py"
+    severity: error
+    applies_to: [skill]
+    checks:
+      - type: arch_guard
+        rule: skill_handler_for_scripts
+      - type: lint
+        rule: exec_type_dir_mismatch
+
+  - id: IMP-004
+    requirement: "导入后必须记录 audit 事件（import_audits 表）"
+    severity: warning
+    applies_to: [skill, agent, mcp, workflow]
+    checks:
+      - type: manual
+        description: "检查 import_audits 表最近 7 天记录"
+        verify: "SELECT count(*) FROM import_audits WHERE created_at > datetime('now','-7 days')"
+
+  - id: IMP-005
+    requirement: "allow_overwrite=false 时也应修复已有目录的前端内容"
+    severity: warning
+    applies_to: [skill, agent, mcp, workflow]
+    checks:
+      - type: manual
+        description: "检查 _install_from_dir allow_overwrite 分支执行了 _enrich_asset_frontmatter"
+
+  # Layer 1: 运行时执行合规
+  - id: RUN-001
+    requirement: "Skill execution_type 声明必须与实际内容一致"
+    severity: error
+    applies_to: [skill]
+    checks:
+      - type: lint
+        rule: exec_type_dir_mismatch
+      - type: lint
+        rule: nested_skill_dir
+
+  - id: RUN-002
+    requirement: "handler 型 Skill 不应检查 LLM model"
+    severity: error
+    applies_to: [skill]
+    checks:
+      - type: pytest
+        test: tests/unit/test_skill_config.py
+
+  - id: RUN-003
+    requirement: "Agent 必须有至少一个 skill 或 tool 绑定"
+    severity: warning
+    applies_to: [agent]
+    checks:
+      - type: lint
+        rule: agent_bare
+
+  - id: RUN-004
+    requirement: "MCP transport 配置必须自洽（stdio→command, sse/http→url）"
+    severity: error
+    applies_to: [mcp]
+    checks:
+      - type: lint
+        rule: mcp_transport
+
+  # Layer 2: Core 层架构边界
+  - id: CORE-001
+    requirement: "Core 引擎禁止硬编码业务概念（角色名、artifact key、评分维度）"
+    severity: critical
+    applies_to: [core]
+    checks:
+      - type: pytest
+        test: tests/constitution/test_kernel_agnostic.py
+      - type: arch_guard
+        rule: kernel_agnostic_state_keys
+      - type: arch_guard
+        rule: kernel_agnostic_role_names
+
+  - id: CORE-002
+    requirement: "LLM/Embedding/Reranker 调用必须通过 infra 适配器"
+    severity: critical
+    applies_to: [core]
+    checks:
+      - type: pytest
+        test: tests/constitution/test_layer_boundaries.py
+      - type: arch_guard
+        rule: core_direct_model_import
+      - type: arch_guard
+        rule: core_bypass_infra_adapter
+
+  - id: CORE-003
+    requirement: "外部调用 Core 必须通过 CoreFacade，不可直接 import 引擎内部"
+    severity: critical
+    applies_to: [platform, management]
+    checks:
+      - type: pytest
+        test: tests/constitution/test_layer_boundaries.py
+      - type: arch_guard
+        rule: layer_import_app_to_core
+      - type: arch_guard
+        rule: direct_engine_import_by_router
+
+  - id: CORE-004
+    requirement: "模型解析必须走统一 get_default_model(purpose)，禁止各模块直接读 AIPLAT_*_MODEL"
+    severity: critical
+    applies_to: [core]
+    checks:
+      - type: arch_guard
+        rule: direct_env_model_read
+
+  - id: CORE-005
+    requirement: "API 入口唯一性：同一能力禁止多个并行实现路径"
+    severity: error
+    applies_to: [core]
+    checks:
+      - type: arch_guard
+        rule: parallel_implementation_detect
+      - type: pytest
+        test: tests/constitution/test_api_convergence.py
+
+  # Layer 3: Infra 层架构边界
+  - id: INFRA-001
+    requirement: "Infra 层禁止包含特定应用知识（服务名映射、GPU 型号、开发者路径）"
+    severity: critical
+    applies_to: [infra]
+    checks:
+      - type: pytest
+        test: tests/constitution/test_infra_agnostic.py
+
+  - id: INFRA-002
+    requirement: "ModelManager 是唯一的模型目录，禁止 core 自行维护模型列表"
+    severity: critical
+    applies_to: [core, infra]
+    checks:
+      - type: arch_guard
+        rule: model_registry_deprecated_usage
+      - type: pytest
+        test: tests/constitution/test_model_manager_single_source.py
+
+  - id: INFRA-003
+    requirement: "相同协议的模型 Provider 必须合并（OpenAI/DeepSeek 走 openai_compatible.py）"
+    severity: warning
+    applies_to: [infra]
+    checks:
+      - type: arch_guard
+        rule: provider_file_per_model
+
+  # Layer 4: 前端代理与跨语言契约
+  - id: FE-001
+    requirement: "子进程必须使用与当前进程相同的 Python 解释器"
+    severity: error
+    applies_to: [core]
+    checks:
+      - type: arch_guard
+        rule: bare_python3_subprocess
+
+  - id: FE-002
+    requirement: "前端 fetch() body 字段名必须与后端 data.get() 一致"
+    severity: error
+    applies_to: [management]
+    checks:
+      - type: frontend_guard
+        script: scripts/guard_frontend.py
+
+  # Layer 5: 资产质量
+  - id: QUAL-001
+    requirement: "Agent AGENT.md 必须包含 name + agent_type"
+    severity: error
+    applies_to: [agent]
+    checks:
+      - type: lint
+        rule: agent_frontmatter
+
+  - id: QUAL-002
+    requirement: "Agent 必须有 system_prompt"
+    severity: warning
+    applies_to: [agent]
+    checks:
+      - type: lint
+        rule: agent_system_prompt
+
+  - id: QUAL-003
+    requirement: "MCP server.yaml 必须包含 name + transport"
+    severity: error
+    applies_to: [mcp]
+    checks:
+      - type: lint
+        rule: mcp_config
+
+  - id: QUAL-004
+    requirement: "MCP 必须有 policy.yaml 声明工具权限"
+    severity: warning
+    applies_to: [mcp]
+    checks:
+      - type: lint
+        rule: mcp_policy
+
+  - id: QUAL-005
+    requirement: "Workflow 必须定义 trigger + steps"
+    severity: warning
+    applies_to: [workflow]
+    checks:
+      - type: lint
+        rule: workflow_trigger
+      - type: lint
+        rule: workflow_steps
+
+  - id: QUAL-006
+    requirement: "Workflow workflow.yaml 必须包含 name"
+    severity: error
+    applies_to: [workflow]
+    checks:
+      - type: lint
+        rule: workflow_config
+
+  # Layer 6: 持久化与可观测性
+  - id: OBSV-001
+    requirement: "所有 syscall 事件必须包含 parent_span_id 用于构建执行树"
+    severity: error
+    applies_to: [core]
+    checks:
+      - type: arch_guard
+        rule: syscall_events_missing_parent_span
+      - type: manual
+        description: "检查 syscall_events 表 parent_span_id NOT NULL 覆盖率"
+
+  - id: OBSV-002
+    requirement: "SQLite schema 版本必须与代码 CURRENT_SCHEMA_VERSION 一致"
+    severity: error
+    applies_to: [core]
+    checks:
+      - type: manual
+        description: "确认 db schema_migrations.MAX(version) == execution_store.CURRENT_SCHEMA_VERSION"

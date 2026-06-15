@@ -13,6 +13,7 @@ import AgentHistoryModal from '../../../components/workspace/AgentHistoryModal';
 import ImportBar from '../../../components/workspace/ImportBar';
 import { ChatPanel } from '../../../components/core';
 import { getSourceLabel, extractProvenance } from '../../../utils/sourceLabel';
+import { StatusBadge } from '../../../utils/statusLabel';
 
 const WorkspaceAgents: React.FC = () => {
   const { agents, loading, fetchAgents, startAgent, stopAgent, deleteAgent } = useWorkspaceAgentStore();
@@ -238,14 +239,9 @@ const WorkspaceAgents: React.FC = () => {
     },
     {
       title: '上架状态',
-      dataIndex: 'status',
-      key: 'listing_status',
-      width: 130,
-      render: (s: string) => {
-        const labels: Record<string, string> = { draft: '草稿', ready: '待审核', published: '已发布', listed: '已上架', deprecated: '已废弃' };
-        const colors: Record<string, string> = { draft: '#888', ready: '#f59e0b', published: '#3b82f6', listed: '#10b981', deprecated: '#6b7280' };
-        return <span className="text-xs" style={{ color: colors[s] || '#888' }}>{labels[s] || s}</span>;
-      },
+      key: 'status',
+      width: 80,
+      render: (_: unknown, record: Agent) => <StatusBadge status={record.status} />,
     },
     {
       title: '治理',
@@ -441,18 +437,25 @@ const WorkspaceAgents: React.FC = () => {
             <Button variant="secondary" onClick={() => setDeleteConfirm({ open: false, agent: null, hard: false })} disabled={deleting}>
               取消
             </Button>
-            <Button variant="secondary" onClick={() => { setDeleteConfirm({ ...deleteConfirm, hard: false }); handleDelete(); }} loading={deleting}>
-              软删除 (废弃)
-            </Button>
-            <Button variant="danger" onClick={() => { setDeleteConfirm({ ...deleteConfirm, hard: true }); handleDelete(); }} loading={deleting}>
-              硬删除
+            <Button variant="danger" onClick={handleDelete} loading={deleting}>
+              确认
             </Button>
           </>
         }
       >
-        <div className="text-sm text-gray-300 space-y-2">
-          <p>Agent "{deleteConfirm.agent?.name}"</p>
-          <p className="text-xs text-gray-500">软删除：标记为废弃状态，可恢复。硬删除：删除 ~/.aiplat/agents 下对应目录，不可撤销。</p>
+        <div className="text-sm text-gray-300 space-y-3">
+          <p>将对 Agent "{deleteConfirm.agent?.name}" 执行删除操作：</p>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-400">删除方式</span>
+            <Select
+              value={deleteConfirm.hard ? 'hard' : 'soft'}
+              onChange={(v: string) => setDeleteConfirm({ ...deleteConfirm, hard: v === 'hard' })}
+              options={[
+                { value: 'soft', label: '软删除 (废弃，可恢复)' },
+                { value: 'hard', label: '硬删除 (删除目录，不可撤销)' },
+              ]}
+            />
+          </div>
         </div>
       </Modal>
 

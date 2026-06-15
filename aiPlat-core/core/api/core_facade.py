@@ -828,7 +828,7 @@ async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "")
             if curated["title"] != old_title:
                 from core.harness.knowledge.wiki_engine import delete_page
                 try: delete_page(old_title)
-                except: pass
+                except Exception: pass
             # Create knowledge atom pages with evidence tracking
             from core.harness.knowledge.wiki_engine import write_atom
             for atom in curated.get("knowledge_atoms", [])[:6]:
@@ -1050,14 +1050,18 @@ def kb_transcribe_audio(audio_path: str, language: str = "auto") -> Any:
 
 
 def kb_embed_text(text: str, dim: int = 128) -> Any:
-    """Embed text into a vector (async, use kb_embed_text_sync for sync)."""
-    import asyncio as _asyncio
+    """Embed text into a vector. Safe to call from sync or async context."""
+    import asyncio as _asyncio, concurrent.futures as _cf
     from core.harness.knowledge.embedder import embed_text as _embed_async, hash_embed
     try:
-        loop = _asyncio.get_event_loop()
-        if loop.is_running():
-            return _asyncio.ensure_future(_embed_async(text, dim))
-        return _asyncio.run(_embed_async(text, dim))
+        try:
+            loop = _asyncio.get_running_loop()
+            # In async context → run embedding in a thread pool to avoid blocking
+            with _cf.ThreadPoolExecutor(max_workers=1) as pool:
+                return pool.submit(_asyncio.run, _embed_async(text, dim)).result(timeout=30)
+        except RuntimeError:
+            # No running event loop → safe to use asyncio.run()
+            return _asyncio.run(_embed_async(text, dim))
     except Exception:
         return hash_embed(text, dim)
 
@@ -1145,9 +1149,13 @@ from core.apps.agents.discovery import AgentDiscovery, AgentLoader, AgentRegistr
 
 async def run_workspace_agent(
     agent_info: Any, user_message: str, *, max_steps: int = 10,
-    toolset: str = "", session_id: str = "",
+    toolset: str = "", session_id: str = "", stream: bool = False,
 ) -> Dict[str, Any]:
-    """Execute a single workspace agent via StageRunner → ReActLoop."""
+    """Execute a single workspace agent via StageRunner → ReActLoop.
+    
+    When stream=True, returns immediately with {run_id, status: "running"} and
+    executes the ReAct loop as a background asyncio task.
+    """
     import asyncio as _asyncio, os as _os
 
     agent_id = str(getattr(agent_info, "id", "unknown"))
@@ -1190,6 +1198,29 @@ async def run_workspace_agent(
     except Exception:
         pass
 
+    # ── Stream mode: return immediately, execute in background ──
+    if stream:
+        _asyncio.ensure_future(_execute_workspace_agent_background(
+            agent_info=agent_info, agent_id=agent_id, run_id=run_id,
+            user_message=user_message, max_steps=max_steps, toolset=toolset,
+            session_id=session_id,
+        ))
+        return {"ok": True, "status": "running", "output": None, "run_id": run_id, "execution_id": run_id}
+
+    return await _execute_workspace_agent_background(
+        agent_info=agent_info, agent_id=agent_id, run_id=run_id,
+        user_message=user_message, max_steps=max_steps, toolset=toolset,
+        session_id=session_id,
+    )
+
+
+async def _execute_workspace_agent_background(
+    agent_info: Any, agent_id: str, run_id: str, *, user_message: str,
+    max_steps: int = 10, toolset: str = "", session_id: str = "",
+) -> Dict[str, Any]:
+    """Core execution logic used by both synchronous and stream paths."""
+    import asyncio as _asyncio, os as _os, time as _time, json as _json
+    _now = _time.time()
     sop_body = ""
     meta = getattr(agent_info, "metadata", None)
     if isinstance(meta, dict):
@@ -1361,12 +1392,14 @@ async def run_workspace_agent(
     except Exception:
         pass
 
-    # ── Emit agent_start via EventBus so ExecutionViewer sees live events ──
+    # ── Emit agent_start via syscall_events so both SSE replay and EventBus see it ──
     # Delay 0.3s to give frontend SSE EventSource time to connect before execution begins.
+    await _asyncio.sleep(0.3)
     try:
-        from core.harness.observation.event_bus import EventBus
+        from core.services.execution_store import get_execution_store as _get_es_agent
+        _es_agent = _get_es_agent()
         t0_agent = _time.time()
-        EventBus.publish(run_id, {
+        await _es_agent.add_syscall_event({
             "id": f"{run_id}:agent_start",
             "parent_span_id": None,
             "kind": "agent",
@@ -1379,7 +1412,6 @@ async def run_workspace_agent(
             "target_type": str(agent_id),
             "duration_ms": 0,
         })
-        await _asyncio.sleep(0.3)
     except Exception:
         t0_agent = _now
 
@@ -1521,6 +1553,359 @@ def get_chat_service_model(rt: Any = None) -> Any:
             pass
     model_name = get_default_model(purpose="chat") or get_default_model()
     return create_selected_adapter(model_name=model_name)
+
+
+# ── Ontology Facade (Phase 1: semantic↔action loop closure) ──
+
+def get_ontology_context(
+    question: str = "",
+    *,
+    max_pages: int = 10,
+    collection_id: str = "default",
+    include_contradictions: bool = True,
+    include_state_summary: bool = True,
+) -> Dict[str, Any]:
+    u"""Query ontology state — lifecycle summary, contradictions, health score.
+
+    Use this from platform/management to get ontology context without importing
+    harness-internal modules.
+    """
+    from core.harness.syscalls.ontology_context import sys_ontology_context
+    return sys_ontology_context(
+        question=question,
+        max_pages=max_pages,
+        collection_id=collection_id,
+        include_contradictions=include_contradictions,
+        include_state_summary=include_state_summary,
+    )
+
+
+def get_entity_lifecycle_summary(
+    collection_id: str = "default",
+) -> Dict[str, Any]:
+    u"""Return lifecycle state counts across all ontology entities."""
+    from core.harness.knowledge.knowledge_action import get_entity_lifecycle_summary
+    from core.harness.knowledge.knowledge_ontology import get_ontology
+    onto = get_ontology()
+    return get_entity_lifecycle_summary(onto, collection_id=collection_id)
+
+
+# ── Semantic Ontology Evolution Facade (Phase 3) ──
+
+async def generate_ontology_suggestions(
+    collection_id: str = "default",
+    *,
+    max_suggestions: int = 5,
+    confidence_threshold: float = 0.7,
+    include_llm: bool = True,
+) -> Dict[str, Any]:
+    u"""Generate ontology evolution suggestions (Tier 1 rule-based + Tier 2 LLM-driven).
+
+    Use this from platform to trigger intelligent ontology evolution without
+    importing harness-internal modules.
+    """
+    if not include_llm:
+        from core.harness.knowledge.knowledge_ontology import add_suggestions_from_patterns
+        suggestions = add_suggestions_from_patterns(
+            collection_id=collection_id,
+            include_llm=False,
+        )
+        return {"suggestions": suggestions, "total": len(suggestions), "source": "rule"}
+
+    from core.harness.knowledge.knowledge_evolution_llm import generate_semantic_suggestions
+    suggestions = await generate_semantic_suggestions(
+        collection_id=collection_id,
+        max_suggestions=max_suggestions,
+        confidence_threshold=confidence_threshold,
+    )
+    return {"suggestions": suggestions, "total": len(suggestions), "source": "llm"}
+
+
+def predict_evolution_impact_for(
+    suggestion: Dict[str, Any],
+    collection_id: str = "default",
+) -> Dict[str, Any]:
+    u"""Predict the impact scope of accepting an evolution suggestion."""
+    from core.harness.knowledge.knowledge_ontology import get_ontology
+    from core.harness.knowledge.knowledge_evolution_llm import predict_evolution_impact
+    onto = get_ontology()
+    return predict_evolution_impact(suggestion, onto)
+
+
+# ── Ontology Health & Quality Facade (Phase 4) ──
+
+def check_ontology_health_triggers(collection_id: str = "default") -> List[Dict[str, Any]]:
+    u"""Check ontology health and return triggered curation tasks.
+
+    Use this from platform schedules/cron to auto-detect and flag
+    quality issues in the knowledge base.
+    """
+    from core.harness.knowledge.knowledge_quality import check_ontology_health_triggers as _check
+    return _check(collection_id=collection_id)
+
+
+def get_entity_quality(entity_uri: str, *, collection_id: str = "default") -> Dict[str, Any]:
+    u"""Get quality score and recent signals for an ontology entity."""
+    from core.harness.knowledge.knowledge_quality import (
+        get_entity_quality_score, get_quality_signals,
+    )
+    score = get_entity_quality_score(entity_uri, collection_id=collection_id)
+    signals = get_quality_signals(entity_uri, limit=10, collection_id=collection_id)
+    return {"quality": score, "recent_signals": signals}
+
+
+# ── Field-Level Security Facade (附章 — cell/field redaction) ──
+
+def apply_field_security(
+    data: Dict[str, Any],
+    *,
+    entity_uri: str = "",
+    actor_role: str = "",
+    actor_scopes: Optional[List[str]] = None,
+    collection_id: str = "default",
+) -> Dict[str, Any]:
+    u"""Apply field-level security redaction to entity data.
+
+    Sensitive fields are redacted based on visibility rules stored per-collection.
+    Admin bypasses all restrictions.
+    """
+    from core.policy.field_level_security import apply_field_level_security
+    return apply_field_level_security(
+        data, entity_uri,
+        actor_role=actor_role, actor_scopes=actor_scopes,
+        collection_id=collection_id,
+    )
+
+
+# ── Growth & Obsidian Facade (Phase E + Phase F) ──
+
+def get_growth_stats(days: int = 30, *, collection_id: str = "default") -> Dict[str, Any]:
+    u"""Get knowledge base growth statistics for the last N days."""
+    from core.harness.knowledge.knowledge_growth import get_growth_stats as _gs
+    return _gs(collection_id=collection_id, days=days)
+
+
+def check_obsidian_compatibility(collection_id: str = "default") -> Dict[str, Any]:
+    u"""Verify that the wiki directory is 100% compatible with Obsidian vault format.
+
+    Checks:
+      - All .md files have valid YAML frontmatter
+      - [[wikilinks]] are used for internal references
+      - Directory structure is flat enough for Obsidian graph view
+      - No file naming conflicts (special characters Obsidian can't handle)
+    """
+    import os as _os, re as _re
+    from core.harness.knowledge.wiki_engine import _wiki_root
+
+    root = _wiki_root(collection_id)
+    issues = []
+    md_count = 0
+    frontmatter_ok = 0
+    wikilinks_found = 0
+
+    for dirpath, _dirs, files in _os.walk(str(root)):
+        for fname in files:
+            if not fname.endswith(".md"):
+                continue
+            md_count += 1
+            fpath = _os.path.join(dirpath, fname)
+
+            # Check Obsidian-safe filename
+            safe_name = _re.sub(r'[\\/:*?"<>|]', '_', fname)
+            if safe_name != fname:
+                issues.append(f"Unsafe filename: {fname} → rename to {safe_name}")
+
+            try:
+                text = open(fpath, "r", encoding="utf-8").read()
+            except Exception:
+                issues.append(f"Cannot read: {fname}")
+                continue
+
+            # Check frontmatter
+            if text.startswith("---"):
+                parts = text.split("---", 2)
+                if len(parts) >= 3:
+                    frontmatter_ok += 1
+
+            # Check wikilinks
+            if "[[" in text:
+                wikilinks_found += 1
+
+    return {
+        "obsidian_compatible": len(issues) == 0,
+        "md_files": md_count,
+        "frontmatter_ok": frontmatter_ok,
+        "wikilinks_used_in": wikilinks_found,
+        "issues": issues[:20],
+        "vault_path": str(root),
+        "instructions": (
+            "Open Obsidian → Open folder as vault → select this path. "
+            "Your AI-curated knowledge base is now a visual graph."
+        ) if len(issues) == 0 else "Fix the issues above before opening in Obsidian.",
+    }
+
+
+# ── Learning Coach Facade (L6 — AI Learning Coach) ──
+
+def get_learning_paths() -> List[Dict[str, Any]]:
+    u"""List all available learning paths with summaries."""
+    from core.harness.knowledge.learning_paths import get_path_summary
+    return get_path_summary()
+
+
+def get_learner_profile(learner_id: str) -> Optional[Dict[str, Any]]:
+    u"""Get a learner profile."""
+    from core.harness.knowledge.learning_ontology import load_learner_profile
+    profile = load_learner_profile(learner_id)
+    return profile.to_dict() if profile else None
+
+
+async def complete_chapter_for_learner(
+    learner_id: str,
+    chapter_id: str,
+    answers: List[Any],
+) -> Dict[str, Any]:
+    u"""Assess all exercises in a chapter and return results."""
+    from core.harness.knowledge.learning_ontology import load_learner_profile
+    from core.harness.knowledge.learning_paths import get_builtin_paths
+    from core.harness.knowledge.learning_assessment import complete_chapter
+
+    profile = load_learner_profile(learner_id)
+    if not profile:
+        return {"error": f"Learner '{learner_id}' not found"}
+
+    paths = get_builtin_paths()
+    chapter = None
+    for chs in paths.values():
+        for c in chs:
+            if c.chapter_id == chapter_id:
+                chapter = c
+                break
+    if not chapter:
+        return {"error": f"Chapter '{chapter_id}' not found"}
+
+    return await complete_chapter(profile, chapter, answers)
+
+
+# ── Scene Model Facade (Phase A — purpose-driven pipeline templates) ──
+
+def get_scene_template(scene_id: str, *, collection_id: str = "default") -> Optional[Dict[str, Any]]:
+    u"""Get a scene template by ID."""
+    from core.harness.knowledge.scene_model import get_scene
+    scene = get_scene(scene_id, collection_id=collection_id)
+    return scene.to_dict() if scene else None
+
+
+def instantiate_scene(
+    scene_id: str,
+    *,
+    params: Optional[Dict[str, Any]] = None,
+    collection_id: str = "default",
+) -> Optional[Dict[str, Any]]:
+    u"""Instantiate a scene template into a PipelineConfig dict."""
+    from core.harness.knowledge.scene_model import instantiate_scene as _inst
+    return _inst(scene_id, params=params, collection_id=collection_id)
+
+
+# ── Verification Facade (Phase C — stage output verification + replay) ──
+
+def verify_stage_output(
+    artifact: Dict[str, Any],
+    expected_outcomes: List[Dict[str, Any]],
+    stage_id: str = "",
+) -> Dict[str, Any]:
+    u"""Verify stage output against expected outcomes. Returns verification result dict."""
+    from core.harness.execution.verification import verify_against_expected
+    result = verify_against_expected(artifact, expected_outcomes, stage_id=stage_id)
+    return result.to_dict()
+
+
+def list_algorithms() -> List[Dict[str, Any]]:
+    u"""List all registered deterministic algorithm functions."""
+    from core.harness.execution.algorithm_node import list_algorithms as _list
+    return _list()
+
+
+# ── WriteBack Facade (Phase 5 — external system integration) ──
+
+def register_writeback_target(
+    target_type: str,
+    target_endpoint: str,
+    *,
+    trigger_actions: Optional[List[str]] = None,
+    field_mapping: Optional[Dict[str, str]] = None,
+    collection_id: str = "default",
+) -> Dict[str, Any]:
+    u"""Register a writeback target for ontology actions."""
+    from core.harness.knowledge.knowledge_writeback import (
+        register_writeback, WriteBackConfig, WriteBackTarget,
+    )
+    config = WriteBackConfig(
+        target_type=WriteBackTarget(target_type),
+        target_endpoint=target_endpoint,
+        trigger_actions=trigger_actions or ["create", "update"],
+        field_mapping=field_mapping or {},
+    )
+    register_writeback(config, collection_id=collection_id)
+    return {"status": "ok", "config": config.to_dict()}
+
+
+def list_writeback_targets(collection_id: str = "default") -> List[Dict[str, Any]]:
+    u"""List all registered writeback targets."""
+    from core.harness.knowledge.knowledge_writeback import load_writebacks
+    return [c.to_dict() for c in load_writebacks(collection_id=collection_id)]
+
+
+# ── Markings & Object Permissions Facade (Phase 2) ──
+
+def get_entity_markings(
+    entity_uri: str,
+    *,
+    collection_id: str = "default",
+    resolve_effective: bool = True,
+) -> Dict[str, Any]:
+    u"""Get explicit and effective markings for an entity."""
+    from core.harness.knowledge.knowledge_markings import get_entity_markings as _get
+    return _get(entity_uri, collection_id=collection_id, resolve_effective=resolve_effective)
+
+
+def set_entity_marking(
+    entity_uri: str,
+    label: str,
+    level: int,
+    scope: str = "",
+    *,
+    collection_id: str = "default",
+) -> Dict[str, Any]:
+    u"""Set a marking on an entity."""
+    from core.harness.knowledge.knowledge_markings import set_marking, MarkingLevel
+    marking = set_marking(entity_uri, label, MarkingLevel(level), scope,
+                          collection_id=collection_id)
+    return {"status": "ok", "marking": marking.to_dict()}
+
+
+def check_kb_entity_access(
+    entity_uri: str,
+    action: str,
+    *,
+    actor_scopes: Optional[List[str]] = None,
+    actor_role: str = "",
+    collection_id: str = "default",
+) -> Dict[str, Any]:
+    u"""Check if an actor can access a knowledge entity (three-layer fusion).
+
+    Use this from platform/management to check permissions without
+    importing harness-internal modules.
+    """
+    from core.harness.infrastructure.gates.policy_gate import check_kb_access
+    import asyncio
+    return asyncio.run(check_kb_access(
+        entity_uri=entity_uri,
+        action=action,
+        actor_scopes=actor_scopes or [],
+        actor_role=actor_role,
+        collection_id=collection_id,
+    ))
 
 
 # ── Backward-compatible re-exports (platform imports these from CoreFacade) ──

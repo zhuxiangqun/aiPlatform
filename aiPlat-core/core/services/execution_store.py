@@ -116,7 +116,7 @@ class ExecutionStoreConfig:
 
 
 class ExecutionStore:
-    CURRENT_SCHEMA_VERSION = 47
+    CURRENT_SCHEMA_VERSION = 50
 
     def __init__(self, config: ExecutionStoreConfig):
         self._config = config
@@ -1812,6 +1812,58 @@ class ExecutionStore:
                         _set_version(47)
                         current = 47
 
+                    # ---- Migration v48: syscall_events parent_span_id linkage ----
+                    if current < 48:
+                        try:
+                            conn.execute("ALTER TABLE syscall_events ADD COLUMN parent_span_id TEXT;")
+                        except sqlite3.OperationalError:
+                            pass
+                        try:
+                            conn.execute(
+                                "CREATE INDEX IF NOT EXISTS idx_syscall_events_parent_span ON syscall_events(parent_span_id);"
+                            )
+                        except sqlite3.OperationalError:
+                            pass
+                        _set_version(48)
+                        current = 48
+
+                    # ---- Migration v49: import_audits table ----
+                    if current < 49:
+                        conn.execute(
+                            """
+                            CREATE TABLE IF NOT EXISTS import_audits (
+                              id INTEGER PRIMARY KEY AUTOINCREMENT,
+                              skill_id TEXT NOT NULL,
+                              skill_name TEXT,
+                              source_type TEXT,
+                              pattern TEXT,
+                              adapted INTEGER DEFAULT 0,
+                              lint_errors INTEGER DEFAULT 0,
+                              lint_warnings INTEGER DEFAULT 0,
+                              details_json TEXT,
+                              created_at REAL NOT NULL
+                            );
+                            """
+                        )
+                        conn.execute(
+                            "CREATE INDEX IF NOT EXISTS idx_import_audits_skill ON import_audits(skill_id, created_at DESC);"
+                        )
+                        _set_version(49)
+                        current = 49
+
+                    # ---- Migration v50: memory relevance_decay + updated_at ----
+                    if current < 50:
+                        try:
+                            conn.execute("ALTER TABLE long_term_memories ADD COLUMN updated_at REAL NOT NULL DEFAULT 0;")
+                        except Exception:
+                            pass
+                        try:
+                            conn.execute("ALTER TABLE long_term_memories ADD COLUMN relevance_decay REAL NOT NULL DEFAULT 1.0;")
+                        except Exception:
+                            pass
+                        _set_version(50)
+                        current = 50
+
                     # If legacy db exists with tables but without meta, upgrade meta to current
                     if current < self.CURRENT_SCHEMA_VERSION:
                         _set_version(self.CURRENT_SCHEMA_VERSION)
@@ -2833,6 +2885,7 @@ class ExecutionStore:
             int(event.get("input_tokens") or 0),
             int(event.get("output_tokens") or 0),
             float(event.get("cost") or 0.0),
+            event.get("parent_span_id"),
         )
 
         def _sync():
@@ -2843,9 +2896,9 @@ class ExecutionStore:
                     INSERT INTO syscall_events(
                       id, trace_id, span_id, run_id, tenant_id, kind, name, status, start_time, end_time, duration_ms,
                       args_json, result_json, error, error_code, target_type, target_id, user_id, session_id,
-                      approval_request_id, created_at, input_tokens, output_tokens, cost
+                      approval_request_id, created_at, input_tokens, output_tokens, cost, parent_span_id
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
                     """,
                     payload,
                 )
@@ -2908,6 +2961,7 @@ class ExecutionStore:
             int(event.get("input_tokens") or 0),
             int(event.get("output_tokens") or 0),
             float(event.get("cost") or 0.0),
+            event.get("parent_span_id"),
         )
 
         def _sync():
@@ -2918,9 +2972,9 @@ class ExecutionStore:
                     INSERT INTO syscall_events(
                       id, trace_id, span_id, run_id, tenant_id, kind, name, status, start_time, end_time, duration_ms,
                       args_json, result_json, error, error_code, target_type, target_id, user_id, session_id,
-                      approval_request_id, created_at, input_tokens, output_tokens, cost
+                      approval_request_id, created_at, input_tokens, output_tokens, cost, parent_span_id
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
                     """,
                     payload,
                 )
@@ -2945,6 +2999,49 @@ class ExecutionStore:
             export_syscall_as_span(event)
         except Exception:
             pass
+
+    async def add_import_audit(
+        self,
+        *,
+        skill_id: str,
+        skill_name: str = "",
+        source_type: str = "",
+        pattern: str = "",
+        adapted: bool = False,
+        lint_errors: int = 0,
+        lint_warnings: int = 0,
+        details: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Record an import audit event for skill compliance tracking."""
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync():
+            conn = sqlite3.connect(db_path)
+            try:
+                conn.execute(
+                    """
+                    INSERT INTO import_audits(skill_id, skill_name, source_type, pattern, adapted,
+                      lint_errors, lint_warnings, details_json, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        str(skill_id),
+                        str(skill_name),
+                        str(source_type),
+                        str(pattern),
+                        1 if adapted else 0,
+                        int(lint_errors),
+                        int(lint_warnings),
+                        _json_dumps(details or {}),
+                        float(time.time()),
+                    ),
+                )
+                conn.commit()
+            finally:
+                conn.close()
+
+        await anyio.to_thread.run_sync(_sync)
 
     async def list_syscall_events(
         self,
@@ -3030,6 +3127,7 @@ class ExecutionStore:
                             "id": r["id"],
                             "trace_id": r["trace_id"],
                             "span_id": r["span_id"] if "span_id" in r.keys() else None,
+                            "parent_span_id": r["parent_span_id"] if "parent_span_id" in r.keys() else None,
                             "run_id": r["run_id"],
                             "kind": r["kind"],
                             "name": r["name"],
@@ -7337,12 +7435,14 @@ class ExecutionStore:
                 "content": str(content or ""),
                 "metadata_json": _json_dumps(metadata or {}),
                 "created_at": now,
+                "updated_at": now,
+                "relevance_decay": 1.0,
             }
             conn = sqlite3.connect(db_path)
             try:
                 conn.execute(
-                    "INSERT INTO long_term_memories(id,user_id,key,content,metadata_json,created_at) VALUES(?,?,?,?,?,?);",
-                    (rec["id"], rec["user_id"], rec["key"], rec["content"], rec["metadata_json"], rec["created_at"]),
+                    "INSERT INTO long_term_memories(id,user_id,key,content,metadata_json,created_at,updated_at,relevance_decay) VALUES(?,?,?,?,?,?,?,?);",
+                    (rec["id"], rec["user_id"], rec["key"], rec["content"], rec["metadata_json"], rec["created_at"], rec["updated_at"], rec["relevance_decay"]),
                 )
                 # Best-effort: keep FTS in sync if available.
                 try:
@@ -7376,23 +7476,29 @@ class ExecutionStore:
             conn.row_factory = sqlite3.Row
             try:
                 uid = str(user_id or "system")
+                import time as _time
+                now = _time.time()
+                # Decay constant: half-life ~60 days (lambda = ln(2)/60 ≈ 0.0116)
+                decay_lambda = 0.0116
+
                 # Prefer FTS when available; fallback to LIKE.
                 try:
-                    # Basic query escaping for quotes.
                     q_fts = str(query or "").replace('"', '""').strip()
                     if q_fts:
                         rows = conn.execute(
                             """
-                            SELECT m.* FROM long_term_memories m
+                            SELECT m.*,
+                                   (m.relevance_decay * exp(? * (m.created_at - ?))) AS decayed_score
+                            FROM long_term_memories m
                             JOIN (
                               SELECT id FROM long_term_memories_fts
                               WHERE long_term_memories_fts MATCH ?
                                 AND user_id = ?
                               LIMIT ?
                             ) f ON f.id = m.id
-                            ORDER BY m.created_at DESC;
+                            ORDER BY decayed_score DESC;
                             """,
-                            (q_fts, uid, int(limit)),
+                            (decay_lambda, now, q_fts, uid, int(limit)),
                         ).fetchall()
                         return [dict(r) for r in rows]
                 except Exception:
@@ -7401,12 +7507,13 @@ class ExecutionStore:
                 q = f"%{query}%"
                 rows = conn.execute(
                     """
-                    SELECT * FROM long_term_memories
+                    SELECT *, (relevance_decay * exp(? * (created_at - ?))) AS decayed_score
+                    FROM long_term_memories
                     WHERE user_id = ? AND (content LIKE ? OR key LIKE ?)
-                    ORDER BY created_at DESC
+                    ORDER BY decayed_score DESC
                     LIMIT ?;
                     """,
-                    (uid, q, q, int(limit)),
+                    (decay_lambda, now, uid, q, q, int(limit)),
                 ).fetchall()
                 return [dict(r) for r in rows]
             finally:

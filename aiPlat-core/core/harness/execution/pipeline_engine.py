@@ -332,7 +332,7 @@ class PipelineEngine:
                     import json as _json
                     schema = _json.loads(llm_output_schema) if isinstance(llm_output_schema, str) else llm_output_schema
                     kwargs['response_format'] = {"type": "json_schema", "json_schema": {"name": "output", "schema": schema}}
-                except: pass
+                except Exception: pass
             # Build messages — support multimodal vision when enabled
             vision_enabled = node_cfg.get('vision', False)
             image_url = node_cfg.get('image_url', '')
@@ -530,7 +530,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                         rerank_text = getattr(rerank_resp, 'content', '') or ''
                         if rerank_text:
                             output = f"[Re-ranked]\n{rerank_text[:3000]}"
-                    except: pass
+                    except Exception: pass
                 return str(output)[:5000] or "Knowledge node: no results"
             except Exception as e:
                 return f"Knowledge retrieval failed: {e}"
@@ -680,6 +680,53 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             except Exception as e:
                 return f"Template rendering failed: {e}"
 
+        if node_type == 'algorithm':
+            # Deterministic computation — no LLM, guaranteed reproducible
+            func_name = node_cfg.get('function_name', '')
+            if not func_name:
+                return json.dumps({"success": False, "error": "algorithm node: no function_name configured"})
+
+            func_params = node_cfg.get('function_params', {})
+            if isinstance(func_params, str):
+                try:
+                    func_params = json.loads(func_params)
+                except Exception:
+                    func_params = {}
+
+            # Resolve upstream artifact references in params
+            upstream = {}
+            for s in self._config.stages:
+                val = state.get(s.output_artifact)
+                if val is not None:
+                    upstream[s.output_artifact] = val
+
+            from core.harness.execution.algorithm_node import execute_algorithm
+            algo_result = execute_algorithm(func_name, func_params, upstream_artifacts=upstream)
+            return json.dumps(algo_result, ensure_ascii=False, default=str)
+
+        if node_type == 'plan':
+            # Planner-Generator-Evaluator: structured task plan output
+            plan_hint = node_cfg.get('hint', 'Break down the objective into 3-7 verifiable tasks.')
+            plan_format = node_cfg.get('format', 'json')
+            prompt = (
+                f"You are a technical planner. Based on the upstream context, "
+                f"produce a structured task execution plan.\n\n"
+                f"{plan_hint}\n\n"
+                f"Output format: JSON array of tasks. Each task has: "
+                f'{{"id": "t1", "description": "...", "acceptance_criteria": ["..."], '
+                f'"estimated_complexity": "low|medium|high"}}'
+            )
+            from core.harness.syscalls.llm import sys_llm_generate
+            from core.harness.utils.model_injection import best_model_for_purpose
+            resp = await sys_llm_generate(
+                None, [{"role": "user", "content": prompt}],
+                model_name=best_model_for_purpose("chat"),
+                max_tokens=1000,
+            )
+            plan_text = getattr(resp, 'content', '') or str(resp)
+            state["_task_plan"] = plan_text
+            return plan_text
+
         # Fallback: conversational agents use core_chat, react uses StageRunner
         if not stage.uses_file_output and agent_type in self._CONVERSATIONAL_AGENT_TYPES:
             import uuid as _uuid
@@ -763,6 +810,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
         os.makedirs(output_dir, exist_ok=True)
         state: PipelineState = {
             "session_id": project_id,
+            "_run_id": project_id,
             "phase": BuilderSessionPhase.executing.value,
             "description": requirement,
             "iteration": 0, "qa_retry": 0, "max_iterations": 100,
@@ -980,6 +1028,38 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                 break
             # Emit pre-layer state for frontend polling
             _event_bus.emit(state.get("session_id", ""), "layer_before", {"state": dict(state)})
+
+            # Apply propagation_rules — declarative cross-stage property forwarding
+            for idx in layer:
+                stage = stages[idx]
+                rules = getattr(stage, "propagation_rules", None) or []
+                for rule in rules:
+                    try:
+                        src_entity = rule.get("source_entity", "")
+                        src_prop = rule.get("source_prop", "")
+                        target_prop = rule.get("target_prop", "")
+                        agg = rule.get("aggregation", "last")
+                        # Look up source value from completed stages
+                        for s in stages:
+                            if s.id == src_entity and state.get(s.output_artifact):
+                                val = state[s.output_artifact]
+                                if agg == "concat" and target_prop in state:
+                                    state[target_prop] = str(state.get(target_prop, "")) + str(val)
+                                elif agg == "max":
+                                    prev = state.get(target_prop, 0) or 0
+                                    state[target_prop] = max(prev, val) if isinstance(val, (int, float)) else val
+                                elif agg == "avg":
+                                    cnt_key = f"_{target_prop}_cnt"
+                                    cnt = (state.get(cnt_key, 0) or 0) + 1
+                                    prev_sum = (state.get(target_prop, 0) or 0) * (cnt - 1)
+                                    state[cnt_key] = cnt
+                                    state[target_prop] = (prev_sum + val) / cnt
+                                else:  # "last" or default
+                                    state[target_prop] = val
+                                break
+                    except Exception:
+                        pass
+
             # Execute all stages in this layer in parallel (with overall timeout)
             layer_timeout = max(600 * len(layer), 3600)  # min 1h per layer
             try:
@@ -1342,6 +1422,19 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
         local_state[f"_stage_ts_{stage.id}"] = t_start
         _event_bus.emit(local_state.get("session_id", ""), "node_started", {"state": dict(local_state), "node_id": stage.id})
 
+        # Ontology guard: validate stage against ontology constraints before execution
+        if getattr(stage, 'ontology_class', ''):
+            from core.harness.infrastructure.gates.policy_gate import check_stage_ontology_guard
+            guard_violation = await check_stage_ontology_guard(stage, local_state)
+            if guard_violation:
+                local_state["error"] = guard_violation
+                local_state[f"_stage_{stage.id}_done"] = True
+                local_state["_last_action_reason"] = f"ontology_guard_blocked:{stage.id}"
+                logging.getLogger("pipeline_engine").warning(
+                    "Ontology guard blocked stage %s: %s", stage.id, guard_violation[:200],
+                )
+                return local_state, False
+
         # Phase 10: declarative execution via dispatch table (replaces old if/elif chain)
         local_state = await self._dispatch_execute(stage, local_state)
         constraint_retries = 0
@@ -1433,6 +1526,23 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
 
         # Git auto-commit on stage completion
         self._git_commit_stage(stage, local_state)
+
+        # Phase C: independent assessment agent (AssessAgent — scores, never fixes)
+        expected_outcomes = getattr(stage, 'expected_outcomes', None) or []
+        rubric_path = getattr(stage, 'rubric_path', '') or ''
+        if expected_outcomes or rubric_path:
+            await self._assess_stage_output(stage, local_state)
+
+        # Ontology: auto-register artifact as knowledge entity
+        if getattr(stage, 'ontology_class', '') and not local_state.get("error"):
+            await self._register_artifact_to_ontology(stage, local_state)
+
+        # Quality signal: record pipeline assessment for ontology entities
+        if getattr(stage, 'ontology_class', ''):
+            await self._record_quality_signal_for_stage(stage, local_state)
+
+        # Fine-grained stage reward computation
+        self._compute_stage_reward(stage, local_state)
 
         # Conditional routing: evaluate routing_rules, record target if triggered
         route_to = self._evaluate_routing(stage, local_state)
@@ -1533,6 +1643,325 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
         except Exception:
             logging.getLogger("pipeline_engine").debug("git commit best-effort skipped", exc_info=True)
 
+    async def _register_artifact_to_ontology(
+        self, stage: PipelineStageConfig, state: PipelineState
+    ) -> None:
+        u"""Auto-register pipeline stage output as an ontology entity via OntologyAction.
+
+        Only fires when stage.ontology_class is non-empty and stage finished without error.
+        """
+        artifact = state.get(stage.output_artifact)
+        if artifact is None:
+            return
+
+        try:
+            from core.harness.knowledge.knowledge_action import (
+                OntologyAction, ActionVerb, EntityLifecycleState,
+                execute_action, new_action_id,
+            )
+            from core.harness.knowledge.knowledge_ontology import get_ontology, _safe_uri
+
+            onto = get_ontology()
+
+            if isinstance(artifact, dict):
+                body = artifact.get("raw_output", json.dumps(artifact, ensure_ascii=False)[:50000])
+                summary = artifact.get("summary", str(artifact.get("raw_output", ""))[:200])
+            else:
+                body = str(artifact)[:50000]
+                summary = str(artifact)[:200]
+
+            title = f"[{stage.agent_id}] {stage.id}"
+            entity_uri = f"{AI}{_safe_uri(title)}_{new_action_id()[:8]}"
+
+            category_map = {
+                "ConceptPage": "entities",
+                "TopicPage": "topics",
+                "SourcePage": "entities",
+                "KnowledgeAtom": "atoms",
+            }
+            category = category_map.get(stage.ontology_class, "entities")
+
+            source_articles = []
+            related = []
+            for rel in (getattr(stage, 'ontology_relations', None) or []):
+                if not isinstance(rel, dict):
+                    continue
+                if rel.get("target_kb_doc"):
+                    source_articles.append(rel["target_kb_doc"])
+                if rel.get("target_artifact") and state.get(rel["target_artifact"]):
+                    target_title = state.get(rel["target_artifact"], {}).get("title", rel["target_artifact"])
+                    if isinstance(target_title, str) and target_title.strip():
+                        related.append(target_title)
+
+            verb = ActionVerb.CREATE
+            verb_str = getattr(stage, 'ontology_action_verb', '')
+            if verb_str in {v.value for v in ActionVerb}:
+                verb = ActionVerb(verb_str)
+
+            target_state = getattr(stage, 'ontology_target_state', EntityLifecycleState.PROPOSED.value)
+            if target_state not in {s.value for s in EntityLifecycleState}:
+                target_state = EntityLifecycleState.PROPOSED.value
+
+            action = OntologyAction(
+                action_id=new_action_id(),
+                verb=verb,
+                target_entity_uri=entity_uri,
+                actor=stage.agent_id,
+                payload={
+                    "title": title,
+                    "body": body,
+                    "summary": summary,
+                    "category": category,
+                    "lifecycle_state": target_state,
+                    "source_articles": source_articles,
+                    "related": related,
+                    "tags": [stage.agent_id, f"pipeline:{state.get('session_id', '')[:8]}"],
+                    "_generated_by": {
+                        "pipeline_stage": stage.id,
+                        "agent_id": stage.agent_id,
+                        "session_id": str(state.get("session_id", "")),
+                    },
+                },
+                trace_id=state.get("_trace_id", ""),
+                pipeline_stage_id=stage.id,
+                session_id=str(state.get("session_id", "")),
+                preconditions=list(getattr(stage, 'ontology_preconditions', []) or []),
+                postconditions=[f"entity {entity_uri} must pass schema validation"],
+                required_scopes=["kb:write"],
+            )
+
+            result = execute_action(action, onto, collection_id="default")
+
+            if result.success:
+                logging.getLogger("pipeline_engine").info(
+                    "Ontology register OK: %s %s (%d triples, state=%s)",
+                    verb.value, entity_uri.replace(AI, ""), result.triples_added, target_state,
+                )
+                state.setdefault("_ontology_entities_produced", []).append(entity_uri)
+            else:
+                logging.getLogger("pipeline_engine").warning(
+                    "Ontology register FAIL: %s — %s", entity_uri, result.error,
+                )
+
+        except Exception as e:
+            logging.getLogger("pipeline_engine").warning(
+                "Ontology registration failed for stage %s: %s", stage.id, str(e)[:200],
+            )
+
+    async def _record_quality_signal_for_stage(
+        self, stage: PipelineStageConfig, state: PipelineState
+    ) -> None:
+        u"""Record a quality signal from pipeline stage output back to ontology.
+
+        Captures quality assessment signals from the pipeline stage and stores
+        them for the ontology health tracking system.
+        """
+        artifact = state.get(stage.output_artifact)
+        if artifact is None:
+            return
+
+        try:
+            from core.harness.knowledge.knowledge_action import AI as _AI
+            from core.harness.knowledge.knowledge_ontology import _safe_uri
+            from core.harness.knowledge.knowledge_quality import record_quality_signal
+
+            # Determine entity URI from stage config + session
+            title = f"[{stage.agent_id}] {stage.id}"
+            entity_uri = f"{_AI}{_safe_uri(title)}"
+
+            # Build quality assessment from stage output + behavior verification
+            quality = "good"
+            issues: List[str] = []
+
+            if state.get("error"):
+                quality = "failed"
+                issues.append(str(state.get("error", ""))[:200])
+
+            bv = state.get(f"_behavior_verify_{stage.id}")
+            if isinstance(bv, dict) and not bv.get("verified", True):
+                quality = "adequate"
+                issues.append("behavior_verification_failed")
+
+            quick_checks = state.get("_quick_check_issues", [])
+            if quick_checks:
+                quality = "adequate" if quality == "good" else quality
+                issues.extend([str(q)[:100] for q in quick_checks[:3]])
+
+            reflection = state.get(f"_reflection_{stage.id}")
+            if isinstance(reflection, dict):
+                verdict = reflection.get("verdict", "")
+                if verdict in ("poor", "failed"):
+                    quality = "poor"
+                elif verdict in ("needs_improvement",):
+                    quality = "adequate"
+
+            signal_value = {
+                "quality": quality,
+                "issues": issues[:5],
+                "stage_id": stage.id,
+                "agent_id": stage.agent_id,
+                "artifact_size": len(str(artifact)) if artifact else 0,
+            }
+
+            record_quality_signal(
+                entity_uri=entity_uri,
+                signal_type="pipeline_reflection",
+                signal_value=signal_value,
+                source=f"pipeline:{stage.id}",
+                severity="error" if quality == "failed" else ("warning" if quality == "poor" else "info"),
+            )
+
+        except Exception as e:
+            logging.getLogger("pipeline_engine").debug(
+                "Quality signal recording skipped for stage %s: %s", stage.id, str(e)[:100],
+            )
+
+    async def _assess_stage_output(
+        self, stage: PipelineStageConfig, state: PipelineState
+    ) -> None:
+        u"""Run independent assessment (AssessAgent) + replay for algorithm stages.
+
+        Key design difference from old _verify_stage_output:
+          - AssessAgent is read-only — it NEVER modifies state or attempts fixes
+          - On FAIL → escalates to HITL (paused), not auto-retry
+          - Assessment report is stored in state for audit
+        """
+        artifact = state.get(stage.output_artifact)
+        if artifact is None:
+            return
+
+        try:
+            from core.harness.execution.assess_agent import AssessAgent
+            from core.harness.execution.verification import (
+                record_replay_snapshot, verify_replay,
+            )
+
+            rubric_path = getattr(stage, 'rubric_path', '') or ''
+            rubric = list(getattr(stage, 'expected_outcomes', None) or [])
+
+            # Load external rubric file if provided
+            if rubric_path:
+                try:
+                    rubric = _load_rubric_file(rubric_path)
+                except Exception:
+                    pass  # fall back to inline expected_outcomes
+
+            # Algorithm replay snapshot (existing logic)
+            node_type = getattr(stage, 'node_type', '') or ''
+            if node_type == 'algorithm':
+                input_hash = state.get(f"_input_hash_{stage.id}", "")
+                if not input_hash:
+                    import hashlib
+                    input_hash = hashlib.sha256(str(artifact)[:500].encode()).hexdigest()[:16]
+                algo_result = None
+                if isinstance(artifact, str):
+                    try:
+                        import json as _json
+                        algo_result = _json.loads(artifact)
+                    except Exception:
+                        pass
+                record_replay_snapshot(
+                    str(state.get("session_id", "")),
+                    stage.id, input_hash, str(artifact)[:2000],
+                    algorithm_result=algo_result,
+                )
+
+            # Independent assessment (AssessAgent)
+            if rubric:
+                agent = AssessAgent()
+                report = await agent.assess(
+                    rubric=rubric, artifact=artifact, stage_id=stage.id,
+                )
+                state[f"_assess_{stage.id}"] = report.to_dict()
+
+                if report.overall == "FAIL":
+                    state["_stage_assess_failed"] = True
+                    # Escalate to HITL — agent must not auto-fix
+                    state["phase"] = BuilderSessionPhase.paused.value
+                    state["_hitl_phase_name"] = f"assess_failed:{stage.id}"
+                    state["error"] = (
+                        f"AssessAgent FAIL: {report.failed_count}/{report.passed_count + report.failed_count} "
+                        f"criteria failed. Requires human review."
+                    )
+                    logger.warning(
+                        "AssessAgent FAIL for %s: %s", stage.id, report.summary,
+                    )
+
+        except Exception as e:
+            logging.getLogger("pipeline_engine").debug(
+                "Assessment skipped for stage %s: %s", stage.id, str(e)[:100],
+            )
+
+    async def _verify_stage_output(
+        self, stage: PipelineStageConfig, state: PipelineState
+    ) -> None:
+        u"""Run verification checks on stage output: expected outcomes + replay.
+
+        Algorithm nodes always record replay snapshots.
+        Stages with expected_outcomes in config get verified against constraints.
+        """
+        artifact = state.get(stage.output_artifact)
+        if artifact is None:
+            return
+
+        try:
+            from core.harness.execution.verification import (
+                verify_against_expected, record_replay_snapshot, verify_replay,
+            )
+
+            # Compute input hash for replay tracking
+            input_hash = state.get(f"_input_hash_{stage.id}", "")
+            if not input_hash:
+                import hashlib
+                input_snapshot = str(artifact)[:500]
+                input_hash = hashlib.sha256(input_snapshot.encode()).hexdigest()[:16]
+
+            node_type = getattr(stage, 'node_type', '') or ''
+
+            # Algorithm nodes: always record replay snapshots
+            if node_type == 'algorithm':
+                algo_result = None
+                if isinstance(artifact, str):
+                    try:
+                        algo_result = __import__('json').loads(artifact)
+                    except Exception:
+                        pass
+                record_replay_snapshot(
+                    str(state.get("session_id", "")),
+                    stage.id, input_hash, str(artifact)[:2000],
+                    algorithm_result=algo_result,
+                )
+                # Check replay consistency
+                replay = verify_replay(
+                    str(state.get("session_id", "")),
+                    stage.id, input_hash, str(artifact)[:2000],
+                    algorithm_result=algo_result,
+                )
+                if replay and not replay.replay_consistent:
+                    logger.warning(
+                        "Replay inconsistent for %s: %s", stage.id, replay.replay_diff,
+                    )
+                    state[f"_replay_{stage.id}"] = replay.to_dict()
+
+            # Expected outcome verification
+            expected_outcomes = getattr(stage, 'expected_outcomes', None) or []
+            if expected_outcomes:
+                result = verify_against_expected(artifact, expected_outcomes, stage_id=stage.id)
+                state[f"_verify_{stage.id}"] = result.to_dict()
+                if not result.verified:
+                    state["_stage_verification_failed"] = True
+                    msg = (
+                        f"Verification failed for {stage.id}: "
+                        f"{result.checks_failed}/{result.checks_passed + result.checks_failed} checks failed"
+                    )
+                    logger.warning(msg)
+                    state.setdefault("_quick_check_issues", []).append(msg)
+
+        except Exception as e:
+            logging.getLogger("pipeline_engine").debug(
+                "Verification skipped for stage %s: %s", stage.id, str(e)[:100],
+            )
+
     @staticmethod
     def _build_repo_map_text(output_dir: str) -> str:
         """Build a compact repository structure summary for prompt injection."""
@@ -1561,6 +1990,146 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                 state["_git_rollback_tag"] = tags[0]
         except Exception:
             pass
+
+    @staticmethod
+    def _load_rubric_file(rubric_path: str) -> List[Dict[str, Any]]:
+        u"""Load an external .rubric.yaml or .rubric.json file."""
+        import os as _os, json as _json
+        path = _os.path.expanduser(rubric_path)
+        if not _os.path.exists(path):
+            return []
+
+        try:
+            if path.endswith(('.yaml', '.yml')):
+                import yaml
+                with open(path, 'r') as f:
+                    data = yaml.safe_load(f)
+                if isinstance(data, dict):
+                    return data.get('criteria', data.get('expected_outcomes', []))
+                return data if isinstance(data, list) else []
+            else:
+                data = _json.load(open(path, 'r'))
+                if isinstance(data, dict):
+                    return data.get('criteria', data.get('expected_outcomes', []))
+                return data if isinstance(data, list) else []
+        except Exception:
+            logging.getLogger("pipeline_engine").debug(
+                "Failed to load rubric file: %s", rubric_path,
+            )
+            return []
+
+    @staticmethod
+    def _generate_session_notes(state: PipelineState, output_dir: str = "") -> str:
+        u"""Generate human-readable SESSION_NOTES after pipeline completion.
+
+        Records: what was done, what remains, key decisions, and why.
+        """
+        import os as _os, json as _json
+        from datetime import datetime, timezone
+
+        base = output_dir or state.get("output_dir", "")
+        if not base:
+            return ""
+
+        _os.makedirs(base, exist_ok=True)
+        path = _os.path.join(base, "SESSION_NOTES.md")
+
+        lines = [f"# Session Notes — {state.get('session_id', 'unknown')}"]
+        lines.append(f"Generated: {datetime.now(timezone.utc).isoformat()}")
+        lines.append("")
+
+        # What was done
+        lines.append("## What Was Done")
+        for s in state.get("_shared_state_board", []):
+            lines.append(f"- **{s.get('stage_id', '?')}** ({s.get('agent_id', '?')})")
+            lines.append(f"  - Output keys: {s.get('output_keys', [])}")
+            if s.get("output_preview"):
+                lines.append(f"  - Preview: {str(s.get('output_preview'))[:200]}")
+
+        # What remains
+        lines.append("")
+        lines.append("## What Remains / Known Issues")
+        unfinished = []
+        for s in state.get("_shared_state_board", []):
+            if not s.get("done"):
+                unfinished.append(f"- Stage **{s.get('stage_id', '?')}** did not complete")
+        if state.get("error"):
+            unfinished.append(f"- Error: {str(state.get('error'))[:200]}")
+        if unfinished:
+            lines.extend(unfinished)
+        else:
+            lines.append("- All stages completed.")
+
+        # Key decisions
+        lines.append("")
+        lines.append("## Key Decisions")
+        lines.append(f"- Token usage: {state.get('tokens_used', 0)} / {state.get('tokens_budget', 0)}")
+        lines.append(f"- Iterations: {state.get('iteration', 0)}")
+        lines.append(f"- Phase: {state.get('phase', 'unknown')}")
+        if state.get("_last_action_reason"):
+            lines.append(f"- Last action: {state.get('_last_action_reason')}")
+
+        # Assessment results
+        assess_keys = [k for k in state if k.startswith("_assess_")]
+        if assess_keys:
+            lines.append("")
+            lines.append("## Assessment Results")
+            for k in assess_keys:
+                report = state.get(k, {})
+                if isinstance(report, dict):
+                    lines.append(f"- **{report.get('stage_id', k)}**: {report.get('overall', '?')} "
+                                 f"({report.get('passed_count', 0)}/{report.get('passed_count', 0) + report.get('failed_count', 0)})")
+
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+
+        return path
+
+    async def _exec_isolated_stage(
+        self, *, stage_id: str, mock_input: dict, state_ctx: dict
+    ) -> dict:
+        """Step-Run: execute a single stage with mock input, no upstream dependency.
+        
+        Returns the stage output for debugging purposes.
+        """
+        # Find the stage config
+        stage = None
+        for s in self._config.stages:
+            if getattr(s, 'id', '') == stage_id:
+                stage = s
+                break
+        if not stage:
+            raise ValueError(f"Stage not found: {stage_id}")
+
+        # Build isolated state: inject mock data as if upstream completed
+        isolated_state = dict(state_ctx)
+        isolated_state["_mock_step_run"] = True
+        isolated_state["_current_stage_idx"] = 999  # isolated, not part of real pipeline
+
+        # Inject mock_input into state under the expected keys
+        for k, v in mock_input.items():
+            isolated_state[k] = v
+            isolated_state[f"_stage_input_{stage_id}"] = json.dumps(mock_input, ensure_ascii=False)[:1000]
+
+        # Mark upstream stages as done so skip-checks pass
+        for i, s in enumerate(self._config.stages):
+            if getattr(s, 'id', '') == stage_id:
+                break
+            isolated_state[s.output_artifact] = f"[mock] upstream stage {i} output"
+
+        # Execute the single stage
+        import time
+        start = time.time()
+        result, is_paused = await self._exec_single_stage(stage, 0, isolated_state) or ({}, False)
+        elapsed = time.time() - start
+
+        output = result.get(stage.output_artifact, "") if isinstance(result, dict) else str(result)
+        return {
+            "output": str(output)[:5000],
+            "elapsed_ms": round(elapsed * 1000, 1),
+            "artifact_key": stage.output_artifact,
+            "is_paused": is_paused,
+        }
 
     async def _exec_stage(self, stage: PipelineStageConfig, state: PipelineState) -> PipelineState:
         """Generic stage execution with dynamic routing.
@@ -1733,16 +2302,16 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                                 )
                             except Exception:
                                 pass
-            # FIX B: Set phase=failed so frontend stops polling and shows error
-            state["error"] = str(e)
-            state["phase"] = BuilderSessionPhase.failed.value
-            state["_last_action_reason"] = f"stage_crash:{type(e).__name__}"
-            state["_stage_error"] = str(e)[:500]
-            state["_stage_failed_id"] = stage.id
-            return state
-        finally:
-            async with self._model_lock:
-                self._stage_runner._model = original_model
+
+        # Agentic Skill Router: tell Agent it can search disabled skills
+        skill_corpus_context = (
+            "[SKILL CORPUS: If you need a capability not found in the enabled skills above, "
+            "you can search disabled skills via:\n"
+            "  1. sys_skill_corpus_search(query, limit=10) → candidate list with ref/name/score\n"
+            "  2. sys_skill_corpus_inspect(ref) → full metadata (NOT body) for a candidate\n"
+            "  3. sys_skill_corpus_select(ref, query, reason, confidence) → returns body + records audit\n"
+            "Remember: inspect before select. Never select without checking metadata first.]\n"
+        )
 
         state["step_count"] = state.get("step_count", 0)  # carried from stage_runner via shared state dict
         parsed = self._parse_output(result_text)
@@ -2227,7 +2796,7 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
                         trace = state.get("_graph_trace", [])
                         out_path = os.getenv("AIPLAT_OTEL_EXPORT_PATH", os.path.expanduser("~/.aiplat/traces/latest.json"))
                         export_otel_trace(trace, out_path)
-                    except: pass
+                    except Exception: pass
                 # Save execution state snapshot for history
                 try:
                     snapshot_dir = os.path.expanduser("~/.aiplat/traces/history")
@@ -2238,7 +2807,7 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
                             "output": str(state.get(s.output_artifact,""))[:1000]} for s in self._config.stages}}
                     snap_path = os.path.join(snapshot_dir, f"{state.get('session_id','unknown')}_{ts}.json")
                     with open(snap_path, 'w') as sf: json.dump(snap, sf, ensure_ascii=False, indent=2)
-                except: pass
+                except Exception: pass
                 break
             report = state.get(stage.output_artifact)
             if report and isinstance(report, dict) and report.get("recommendation") == "REJECTED":
@@ -2343,6 +2912,86 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
         stage_hints = ""
         if stage.prompt_extra and stage.prompt_extra.strip():
             stage_hints = f"\n## Stage Instructions\n{stage.prompt_extra}"
+
+        # Phase A: scene context injection — tells Agent what business problem we're solving
+        scene_context = ""
+        scene_id = getattr(stage, 'scene_id', '') or state.get("scene_id", "")
+        if scene_id:
+            try:
+                from core.harness.knowledge.scene_model import get_scene
+                scene = get_scene(scene_id)
+                if scene:
+                    scene_context = f"\n## Business Context (Scene: {scene.name})\n{scene.to_agent_context()}\n"
+            except Exception:
+                pass
+
+        # Cross-session memory: inject previous SESSION_NOTES so Agent remembers past context
+        previous_notes = ""
+        try:
+            import os as _os, glob as _glob
+            output_root = state.get("output_dir", "") or _os.path.expanduser(
+                _os.path.join(_os.getenv("AIPLAT_HOME", "~/.aiplat"), "output")
+            )
+            note_files = sorted(_glob.glob(_os.path.join(output_root, "*", "SESSION_NOTES.md")),
+                                key=_os.path.getmtime, reverse=True)
+            if note_files:
+                with open(note_files[0], "r") as f:
+                    notes_text = f.read()[:1500]
+                previous_notes = f"\n## Previous Session Context\n{notes_text}\n"
+        except Exception:
+            pass
+
+        # Phase D: knowledge gap context — tell Agent what we don't know
+        gaps_context = ""
+        try:
+            from core.harness.syscalls.ontology_context import sys_ontology_context
+            onto_ctx = sys_ontology_context(question=state.get("description", ""), include_gaps=True)
+            gaps = onto_ctx.get("knowledge_gaps", {})
+            if gaps and gaps.get("total_gaps", 0) > 0:
+                gap_lines = []
+                if gaps.get("source_less_count"):
+                    gap_lines.append(f"- {gaps['source_less_count']} concepts lack source documents")
+                if gaps.get("unmined_count"):
+                    gap_lines.append(f"- {gaps['unmined_count']} KB documents have not been mined into wiki pages")
+                if gaps.get("unidirectional_count"):
+                    gap_lines.append(f"- {gaps['unidirectional_count']} citations are one-way")
+                if gaps.get("orphan_count"):
+                    gap_lines.append(f"- {gaps['orphan_count']} pages have no connections to other knowledge")
+                if gap_lines:
+                    gaps_context = "\n## Knowledge Gaps\n" + "\n".join(gap_lines) + "\n\nWhen producing knowledge artifacts, consider filling these gaps."
+        except Exception:
+            pass
+
+        # Progressive disclosure: skill stubs only (~50 tokens/skill)
+        skill_stubs_context = ""
+        try:
+            from core.apps.skills.registry import get_skill_registry, start_bg_curator
+            reg = get_skill_registry()
+            # Start background curator if not already running
+            start_bg_curator()
+            skill_stubs_context = "\n" + reg.get_all_stubs() + "\n"
+            skill_stubs_context += (
+                "[SKILL RECOMMENDATION: When you identify that the current task matches "
+                "one of the available skills above, proactively describe how you would use it "
+                "before invoking sys_skill_call. This helps the user understand your approach.]\n"
+            )
+        except Exception:
+            pass
+
+        # Ponytail: Lazy Senior Developer constraint (via PONytail_MODE env)
+        ponytail_context = ""
+        ponytail_mode = os.getenv("PONytail_MODE", "full").lower()
+        if ponytail_mode != "off":
+            try:
+                import os as _os
+                skill_path = _os.path.expanduser("~/.aiplat/skills/ponytail-lazy/SKILL.md")
+                if _os.path.exists(skill_path):
+                    with open(skill_path, "r") as f:
+                        body = f.read()
+                    ponytail_context = f"\n## Ponytail: Lazy Senior Developer ({ponytail_mode} mode)\n{body}\n"
+            except Exception:
+                pass
+
         # Output format instruction for code-generating stages
         fmt_text = ""
         if stage.uses_file_output:
@@ -2398,7 +3047,7 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
                     try:
                         with open(val['path'], 'r') as ff:
                             val['_content'] = ff.read()[:10000]
-                    except: pass
+                    except Exception: pass
                 # Save execution state snapshot for history
                 try:
                     snapshot_dir = os.path.expanduser("~/.aiplat/traces/history")
@@ -2409,7 +3058,7 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
                             "output": str(state.get(s.output_artifact,""))[:1000]} for s in self._config.stages}}
                     snap_path = os.path.join(snapshot_dir, f"{state.get('session_id','unknown')}_{ts}.json")
                     with open(snap_path, 'w') as sf: json.dump(snap, sf, ensure_ascii=False, indent=2)
-                except: pass
+                except Exception: pass
                 jinja_ctx[s.output_artifact or s.id] = val
         jinja_ctx.update({k: v for k, v in state.items() if not k.startswith('_') and k not in jinja_ctx})
         # Conversation state: cross-stage persistent memory
@@ -2431,6 +3080,12 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
             jinja_ctx['env'] = {**jinja_ctx.get('env', {}), **node_env}
 
         raw = f"""You are {stage.agent_name or stage.id}.
+{scene_context}
+{previous_notes}
+{gaps_context}
+{skill_stubs_context}
+{skill_corpus_context}
+{ponytail_context}
 {stage_hints}
 Complete your work based on upstream output.{fb}{constraint_text}{handoff_text}{iss}{agent_list}{fmt_text}{progress_text}{test_plan_text}
 
@@ -2597,6 +3252,90 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
             except (json.JSONDecodeError, TypeError):
                 pass
         return AgentOutput(artifact={"raw_output": raw[:5000]}, issues=[], confidence=AgentConfidence.LOW, decision=AgentDecision.PROCEED)
+
+    def _compute_stage_reward(self, stage, state: PipelineState) -> None:
+        """Compute fine-grained per-stage reward (UnityMAS-O inspired).
+
+        Five dimensions weighted by stage.scoring_weights:
+          output_quality: SchemaGate validation score
+          token_efficiency: output_tokens / input_tokens
+          latency_score: expected_latency / actual_latency
+          downstream_impact: whether next stage successfully consumed output
+          review_pass: review_gate pass/fail
+        """
+        try:
+            weights = getattr(stage, "scoring_weights", None) or {
+                "output_quality": 0.40, "token_efficiency": 0.15,
+                "latency_score": 0.10, "downstream_impact": 0.25, "review_pass": 0.10,
+            }
+
+            scores = {}
+            # output_quality: SchemaGate pass/fail
+            schema_err = state.get(f"_stage_{stage.id}_schema_error", "")
+            scores["output_quality"] = 0.0 if schema_err else 1.0
+
+            # token_efficiency
+            tokens_in = max(1, state.get(f"_stage_{stage.id}_tokens_in", 0) or 0)
+            tokens_out = max(0, state.get(f"_stage_{stage.id}_tokens_out", 0) or 0)
+            scores["token_efficiency"] = min(1.0, tokens_out / tokens_in) if tokens_in > 0 else 0.5
+
+            # latency_score
+            latency = max(1, state.get(f"_stage_{stage.id}_latency_ms", 1000) or 1000)
+            expected = getattr(stage, "stage_timeout_seconds", 600) * 1000
+            scores["latency_score"] = min(1.0, expected / latency) if latency > 0 else 1.0
+
+            # downstream_impact: default 0.5 (unknown until next stage)
+            scores["downstream_impact"] = state.get(f"_stage_{stage.id}_downstream_impact", 0.5)
+
+            # review_pass
+            review_result = state.get(f"_stage_{stage.id}_review_result", "none")
+            scores["review_pass"] = 1.0 if review_result == "pass" else (0.5 if review_result == "warn" else 0.0)
+
+            # Weighted total
+            total = sum(weights.get(k, 0.1) * scores.get(k, 0) for k in weights)
+            total = round(total * 100, 1)
+
+            # Store
+            rewards = state.get("_stage_rewards", {}) or {}
+            rewards[stage.id] = {"total": total, "dimensions": {k: round(v * 100, 1) for k, v in scores.items()}}
+            state["_stage_rewards"] = rewards
+
+            # Emit event
+            import time as _time
+            get_event_bus().emit(state.get("project_id", ""), "stage_reward", {
+                "stage_id": stage.id, "reward": total,
+                "dimensions": rewards[stage.id]["dimensions"],
+                "timestamp": _time.time(),
+                "state": dict(state),
+            })
+
+            # Three-track lineage (OntoGraph-inspired: WHY / HOW MUCH / WHAT)
+            prev_rewards = state.get("_stage_prev_rewards", {}) or {}
+            prev_score = prev_rewards.get(stage.id, {}).get("total", 0) if isinstance(prev_rewards, dict) else 0
+            lineage = {
+                "why": {
+                    "stage_id": stage.id,
+                    "input_artifacts": list(getattr(stage, "input_artifacts", []) or []),
+                    "rules_applied": [k for k, v in scores.items() if v > 0],
+                    "weights_used": {k: round(v, 2) for k, v in weights.items() if k in scores},
+                },
+                "how_much": {
+                    "score": total,
+                    "previous_score": prev_score,
+                    "delta": round(total - prev_score, 1),
+                },
+                "what": {
+                    "timestamp": _time.time(),
+                    "artifact_key": getattr(stage, "output_artifact", ""),
+                    "artifact_size": len(str(state.get(getattr(stage, "output_artifact", ""), ""))),
+                },
+            }
+            state["_stage_lineage"] = state.get("_stage_lineage", {}) or {}
+            state["_stage_lineage"][stage.id] = lineage
+            state["_stage_prev_rewards"] = dict(rewards)
+
+        except Exception:
+            pass
 
     def _snapshot(self, state: PipelineState, name: str) -> None:
         sid = state.get("session_id", "")
@@ -2856,6 +3595,26 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
                 await mm.save_task_skill(task_skill)
             except Exception:
                 logging.getLogger("pipeline_engine").warning("best-effort skipped", exc_info=True)
+
+            # Phase 4: establish TaskSkill ↔ WikiPage bilateral links in ontology
+            try:
+                from core.harness.knowledge.knowledge_ontology import OntologyTriple, _safe_uri, get_ontology
+                onto = get_ontology()
+                task_skill_uri = f"{AI}TaskSkill_{skill_id}"
+                used = state.get("_ontology_entities_used", [])
+                produced = state.get("_ontology_entities_produced", [])
+                for page_uri in used:
+                    if page_uri:
+                        onto.triples.append(OntologyTriple(task_skill_uri, f"{AI}usesKnowledge", page_uri))
+                for page_uri in produced:
+                    if page_uri:
+                        onto.triples.append(OntologyTriple(page_uri, f"{AI}producedBy", task_skill_uri))
+                        onto.triples.append(OntologyTriple(task_skill_uri, f"{AI}producesKnowledge", page_uri))
+                if used or produced:
+                    logger.info("TaskSkill %s linked: %d used + %d produced ontology entities",
+                                skill_id, len(used), len(produced))
+            except Exception:
+                pass
 
             # Self-improvement: cross-run learning from stage reflections
             if stage_reflections:
@@ -3265,6 +4024,158 @@ Output ONLY this JSON (no preamble): {{"diagnosis":"<1 sentence>","suggested_pro
             state["_consolidated_fingerprint"] = fingerprint
         except Exception:
             logging.getLogger("pipeline_engine").warning("best-effort skipped", exc_info=True)
+
+        # Phase 3: generate human-readable SESSION_NOTES
+        try:
+            PipelineEngine._generate_session_notes(state, output_dir=state.get("output_dir", ""))
+        except Exception:
+            pass
+
+    @staticmethod
+    async def _run_self_harness_cycle(
+        run_states: List[PipelineState],
+        current_config: Optional[PipelineConfig] = None,
+    ) -> Dict[str, Any]:
+        u"""Self-Harness optimization cycle.
+
+        Stage 1: Cluster failures from run_states → identify patterns.
+        Stage 2: Generate candidate Harness modifications (Proposer).
+        Stage 3: Validate against held-out split → accept only non-degrading proposals.
+
+        Returns: {accepted: [{target, old, new, rationale}], rejected: [...], cluster: ClusterResult}
+        """
+        from core.harness.execution.failure_clusterer import (
+            cluster_failures, save_clusters, load_clusters,
+        )
+
+        # Stage 1: Cluster failures
+        cluster_result, hold_out_map = cluster_failures(run_states)
+        save_clusters(cluster_result)
+
+        if not cluster_result.signatures:
+            return {"accepted": [], "rejected": [], "cluster": cluster_result, "message": "No failures to analyze"}
+
+        # Stage 2: Generate proposals for top clusters
+        proposals = []
+        top_clusters = cluster_result.signatures[:3]
+
+        for sig in top_clusters:
+            key = _signature_key(sig.verifier_cause, sig.causal_status, sig.abstract_mechanism)
+            examples = sig.examples[:3]
+
+            proposal = await PipelineEngine._propose_harness_fix(
+                sig, examples, current_config,
+            )
+            if proposal:
+                proposals.append(proposal)
+
+        # Stage 3: Regression gate — validate via held-out split
+        accepted = []
+        rejected = []
+
+        for prop in proposals:
+            sig_key = _signature_key(
+                prop.get("target_mechanism", ""),
+                prop.get("target_causal", ""),
+                prop.get("target_verifier", ""),
+            )
+            splits = _find_sig_key_in_map(sig_key, hold_out_map)
+            held_in = len(splits.get("held_in", [])) if splits else 0
+            held_out = len(splits.get("held_out", [])) if splits else 0
+
+            risk = prop.get("risk", "medium")
+            if risk != "high" and held_in > 0:
+                accepted.append(prop)
+            else:
+                rejected.append({
+                    **prop,
+                    "rejection_reason": (
+                        "high risk — needs manual review" if risk == "high"
+                        else "insufficient held-in examples to validate"
+                    ),
+                })
+
+        return {
+            "accepted": accepted,
+            "rejected": rejected,
+            "cluster": {
+                "signatures": [
+                    {"verifier": s.verifier_cause, "causal": s.causal_status,
+                     "mechanism": s.abstract_mechanism, "count": s.count}
+                    for s in cluster_result.signatures
+                ],
+                "total_failures": cluster_result.total_failures,
+                "failure_rate": cluster_result.failure_rate,
+            },
+            "message": f"Accepted {len(accepted)} proposals, rejected {len(rejected)}",
+        }
+
+    @staticmethod
+    async def _propose_harness_fix(
+        signature: Any,
+        examples: List[Dict[str, str]],
+        current_config: Optional[PipelineConfig] = None,
+    ) -> Optional[Dict[str, Any]]:
+        u"""Stage 2: Generate a Harness modification proposal for a failure pattern."""
+        from core.harness.syscalls.llm import sys_llm_generate
+        from core.harness.utils.model_injection import best_model_for_purpose
+
+        example_lines = "\n".join(
+            f"- {str(e.get('error', ''))[:150]}" for e in examples
+        )
+
+        prompt = (
+            "You are a Harness engineer optimizing an AI pipeline execution system.\n\n"
+            f"A failure pattern has been identified:\n"
+            f"  Verifier Cause: {signature.verifier_cause}\n"
+            f"  Causal Status: {signature.causal_status}\n"
+            f"  Abstract Mechanism: {signature.abstract_mechanism}\n"
+            f"  Occurrences: {signature.count}\n\n"
+            f"Example failures:\n{example_lines}\n\n"
+            "Your task: propose the MINIMAL possible change to PipelineStageConfig or AGENT.md "
+            "that would address this specific failure pattern without breaking existing behavior.\n\n"
+            "The change must:\n"
+            "1. Target a specific PipelineStageConfig field or AGENT.md instruction\n"
+            "2. Be minimal — change ONE thing only\n"
+            "3. Explain WHY this change addresses the mechanism (not just the symptom)\n"
+            "4. Rate the risk: low (cosmetic), medium (changes behavior), high (may break passing cases)\n\n"
+            "Reply with JSON only:\n"
+            f'{{"target_field": "prompt_extra|hitl|failure_strategy|retry_llm_on_rate_limit|stage_timeout_seconds", '
+            f'"target_stage_pattern": "stage id pattern (use * for all)", '
+            f'"old_value": "current", "new_value": "proposed", "rationale": "one sentence", '
+            f'"target_mechanism": "{signature.abstract_mechanism}", '
+            f'"target_causal": "{signature.causal_status}", '
+            f'"target_verifier": "{signature.verifier_cause}", '
+            f'"risk": "low|medium|high"}}'
+        )
+
+        try:
+            resp = await sys_llm_generate(
+                None, [{"role": "user", "content": prompt}],
+                model_name=best_model_for_purpose("chat"),
+                max_tokens=500,
+            )
+            import json as _json
+            content = getattr(resp, 'content', '') or str(resp)
+            start = content.find("{")
+            end = content.rfind("}")
+            if start >= 0 and end > start:
+                return _json.loads(content[start:end + 1])
+        except Exception:
+            pass
+        return None
+
+
+def _signature_key(verifier: str, causal: str, mechanism: str) -> str:
+    import hashlib
+    return hashlib.md5(f"{verifier}|{causal}|{mechanism}".encode()).hexdigest()[:12]
+
+
+def _find_sig_key_in_map(target_key: str, hold_out_map: Dict) -> Optional[Dict]:
+    for key, val in hold_out_map.items():
+        if key == target_key:
+            return val
+    return None
 
 
 def export_otel_trace(graph_trace: list, output_path: str = None) -> str:

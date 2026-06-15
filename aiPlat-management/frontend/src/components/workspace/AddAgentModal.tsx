@@ -282,6 +282,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
       if (result.workflow_ids?.length) setWorkflowIds(result.workflow_ids.filter((w: string) => Array.isArray(workflowOptions) && workflowOptions.some(o => o.value === w)));
       if (result.memory_config) setMemoryConfigText(JSON.stringify(result.memory_config, null, 2));
       if (result.sop_text) setSopText(result.sop_text);
+      if (result.trigger_conditions?.length) setTriggerText(result.trigger_conditions.join('\n'));
       setConfigEdited(true);
       toast.success(`智能填充完成`, result.reasoning || 'AI 已根据描述推荐配置');
     } catch (e: any) {

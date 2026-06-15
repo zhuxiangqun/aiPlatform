@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Copy, Eye, Play, RefreshCw, Share2 } from 'lucide-react';
+import { ArrowLeft, Copy, Eye, Play, RefreshCw, Share2 } from 'lucide-react';
 
 import { Badge, Button, Card, CardContent, CardHeader, Modal, Table, Tabs, notify, toast } from '../../../components/ui';
 import { diagnosticsApi } from '../../../services';
@@ -140,6 +140,9 @@ const GraphRunDetail: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      <Link to="/diagnostics" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200 transition-colors">
+        <ArrowLeft className="w-3 h-3" />返回诊断中心
+      </Link>
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-gray-200">Graph Run</h1>

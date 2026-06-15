@@ -44,9 +44,30 @@ class SkillWorkflowRunner:
         timeout: Optional[float] = None,
     ) -> SkillResult:
         """Execute a sequence of skills, piping outputs."""
+        import uuid as _uuid, time as _time
         workflow_input = copy.deepcopy(initial_params or {})
         last_result: Optional[SkillResult] = None
         session_id = context.session_id if context else "workflow"
+
+        # Emit workflow_start root event for unified execution tree
+        _run_id = (getattr(context, "variables", {}) or {}).get("_run_id") or session_id
+        workflow_span_id = f"workflow:{_run_id}:start"
+        try:
+            from core.services.execution_store import get_execution_store
+            _es = get_execution_store()
+            await _es.add_syscall_event({
+                "id": f"{_run_id}:workflow_start",
+                "parent_span_id": None,
+                "kind": "pipeline",
+                "name": "workflow_start",
+                "status": "running",
+                "span_id": workflow_span_id,
+                "run_id": _run_id,
+                "start_time": _time.time(),
+                "duration_ms": 0,
+            })
+        except Exception:
+            pass
 
         for i, step in enumerate(steps):
             step_name, step_config = self._parse_step(step)
@@ -57,13 +78,41 @@ class SkillWorkflowRunner:
             else:
                 step_timeout = timeout
 
+            step_span_id = f"step:workflow:{_run_id}:{i}"
+            # Emit workflow step_start event
+            try:
+                from core.services.execution_store import get_execution_store
+                _es = get_execution_store()
+                await _es.add_syscall_event({
+                    "id": f"{_run_id}:wstep:{i}",
+                    "span_id": step_span_id,
+                    "parent_span_id": workflow_span_id,
+                    "kind": "step",
+                    "name": f"step_{i}",
+                    "status": "running",
+                    "run_id": _run_id,
+                    "start_time": _time.time(),
+                    "step_number": i,
+                    "args": {"skill_name": step_name},
+                })
+            except Exception:
+                pass
+
             try:
                 from .executor import SkillExecutor
                 executor = SkillExecutor()
+                step_run_id = (getattr(context, "variables", {}) or {}).get("_run_id") or ""
+                _tools = list(getattr(context, "tools", []) or [])
+                step_ctx = context or SkillContext(
+                    session_id=session_id,
+                    user_id="system",
+                    tools=_tools,
+                    variables={"_run_id": step_run_id, "_parent_span_id": step_span_id} if step_run_id else {"_parent_span_id": step_span_id},
+                )
                 result = await executor.execute(
                     skill_name=step_name,
                     params=step_params,
-                    context=context or SkillContext(session_id=session_id, user_id="system"),
+                    context=step_ctx,
                     timeout=step_timeout,
                 )
             except Exception as e:

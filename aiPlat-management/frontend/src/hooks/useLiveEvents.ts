@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 
 export interface LiveEvent {
+  id?: string;
   trace_id?: string;
   span_id?: string;
+  parent_span_id?: string;
   run_id?: string;
   kind?: string;
   name?: string;

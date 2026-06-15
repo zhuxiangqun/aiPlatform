@@ -13,8 +13,6 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Set
 
-from core.harness.knowledge.wiki_engine import read_page
-
 
 # ============================================================
 # Data classes
@@ -312,8 +310,16 @@ class DuplicateCheck(WikiRule):
         except Exception:
             return []
 
+        # Per-layer cap to prevent one noisy category from flooding results
+        layer_cap: Dict[str, int] = {"L1_content": 10, "L2_ontology": 5, "L3_structural": 5, "L4_evidence": 5}
+        layer_count: Dict[str, int] = {}
         issues = []
         for d in dupes:
+            layer = d.get("layer", "")
+            lc = layer_count.get(layer, 0)
+            if lc >= layer_cap.get(layer, 10):
+                continue
+            layer_count[layer] = lc + 1
             issues.append(WikiIssue(
                 check_type=self.code,
                 severity=self.severity,
@@ -388,6 +394,61 @@ class OntologyValidationRule(WikiRule):
         return issues
 
 
+class OntologyCoverageCheck(WikiRule):
+    """Check how many Wiki pages are correctly classified under T-Box CLASSES."""
+
+    code = "ontology_coverage"
+    severity = "medium"
+    penalty_weight = 2
+    check_name = "本体覆盖度"
+
+    def check(self, all_pages: Dict[str, Dict[str, Any]]) -> List[WikiIssue]:
+        from core.harness.knowledge.knowledge_ontology import CLASSES
+
+        issues = []
+        classified = 0
+        unclassified = 0
+
+        # Collect all allowed categories from T-Box
+        all_allowed: Set[str] = set()
+        for cls in CLASSES:
+            for cat in cls.allowed_categories:
+                all_allowed.add(cat)
+
+        for title, page in all_pages.items():
+            category = page.get("category", "")
+            if not category:
+                unclassified += 1
+                issues.append(WikiIssue(
+                    check_type=self.code, severity=self.severity,
+                    page_a=title, description=f"页面 '{title}' 缺少 category 字段",
+                    suggestion="在页面 frontmatter 中添加 category 字段",
+                ))
+            elif category not in all_allowed:
+                unclassified += 1
+                issues.append(WikiIssue(
+                    check_type=self.code, severity=self.severity,
+                    page_a=title,
+                    description=f"页面分类 '{category}' 未在 T-Box CLASSES 中注册",
+                    suggestion=f"在 knowledge_ontology.py 的 CLASSES 中添加 allowed_categories=['{category}']",
+                ))
+            else:
+                classified += 1
+
+        total = classified + unclassified
+        if total > 0:
+            coverage_pct = round(classified / total * 100, 1)
+            if coverage_pct < 80:
+                issues.append(WikiIssue(
+                    check_type=self.code, severity="high",
+                    page_a="整体",
+                    description=f"本体覆盖度: {coverage_pct}% ({classified}/{total} 页面已分类)",
+                    suggestion=f"将 {unclassified} 个未分类页面的 category 注册到 T-Box CLASSES",
+                ))
+
+        return issues
+
+
 # ============================================================
 # Registry
 # ============================================================
@@ -402,7 +463,7 @@ class WikiHealthRegistry:
         self._rules.append(rule)
 
     def run(self) -> WikiHealthReport:
-        from core.harness.knowledge.wiki_engine import _ensure_dirs, _wiki_root
+        from core.harness.knowledge.wiki_engine import read_page, _ensure_dirs, _wiki_root
 
         _ensure_dirs()
         root = _wiki_root()

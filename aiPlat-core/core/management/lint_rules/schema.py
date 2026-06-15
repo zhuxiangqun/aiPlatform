@@ -9,6 +9,7 @@ class ChangeContractCheck(LintRule):
     code = "missing_change_contract"
     level = "warning"
     category = "schema"
+    scope = ["skill"]
 
     _REQUIRED_KEYS = ["change_plan", "changed_files", "unrelated_changes", "acceptance_criteria", "rollback_plan"]
 
@@ -46,6 +47,7 @@ class MarkdownSchemaCheck(LintRule):
     code = "invalid_markdown_schema"
     level = "error"
     category = "schema"
+    scope = ["skill"]
 
     def check(self, skill: Any) -> List[LintIssue]:
         output_schema = getattr(skill, "output_schema", None) if not isinstance(skill, dict) else skill.get("output_schema")
@@ -67,6 +69,7 @@ class MarkdownRequiredCheck(LintRule):
     code = "markdown_required"
     level = "warning"
     category = "schema"
+    scope = ["skill"]
 
     def check(self, skill: Any) -> List[LintIssue]:
         output_schema = getattr(skill, "output_schema", None) if not isinstance(skill, dict) else skill.get("output_schema")
@@ -88,6 +91,7 @@ class MarkdownTypeCheck(LintRule):
     code = "markdown_type"
     level = "error"
     category = "schema"
+    scope = ["skill"]
 
     def check(self, skill: Any) -> List[LintIssue]:
         output_schema = getattr(skill, "output_schema", None) if not isinstance(skill, dict) else skill.get("output_schema")

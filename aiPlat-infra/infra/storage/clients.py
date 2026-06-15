@@ -225,9 +225,9 @@ class GCSStorageClient(ObjectStorage):
 
     def get_presigned_url(self, key: str, expires: int) -> str:
         if not self._client:
-            import asyncio
-
-            asyncio.run(self.connect())
+            import asyncio, concurrent.futures as _cf
+            with _cf.ThreadPoolExecutor(max_workers=1) as _pool:
+                _pool.submit(asyncio.run, self.connect()).result(timeout=30)
         bucket = self._client.bucket(
             self.config.object.bucket if self.config.object else os.getenv("AIPLAT_STORAGE_BUCKET", "")
         )
@@ -281,9 +281,9 @@ class AzureStorageClient(ObjectStorage):
 
     def get_presigned_url(self, key: str, expires: int) -> str:
         if not self._client:
-            import asyncio
-
-            asyncio.run(self.connect())
+            import asyncio, concurrent.futures as _cf
+            with _cf.ThreadPoolExecutor(max_workers=1) as _pool:
+                _pool.submit(asyncio.run, self.connect()).result(timeout=30)
             container = self.config.object.bucket or os.getenv("AIPLAT_STORAGE_CONTAINER", "")
         from azure.storage.blob import generate_blob_sas, BlobSasPermissions
 

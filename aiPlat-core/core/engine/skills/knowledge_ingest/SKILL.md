@@ -58,6 +58,14 @@ input_schema:
     chunk_overlap:
       type: integer
       description: 相邻块重叠字符数（默认 50，保留上下文衔接）
+    enable_vlm_description:
+      type: boolean
+      description: 用VLM生成图片/图表/架构图的结构化描述（推荐开启，图表类文档必须）
+      default: true
+    vlm_model:
+      type: string
+      description: VLM模型（默认 gpt-4o-mini，开源可用 qwen2.5-vl）
+      default: gpt-4o-mini
   required:
   - file_path
 output_schema:
@@ -107,6 +115,8 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 将多模态文档结构化为知识库条目
+
+protected: true
 ---
 
 # 知识库入库（文档）

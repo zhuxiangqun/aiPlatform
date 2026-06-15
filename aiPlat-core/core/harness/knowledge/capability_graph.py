@@ -207,6 +207,7 @@ def build_capability_graph() -> CapabilityGraphResult:
                 else:
                     # Still 0 stale + 0 new: compute degrees and return
                     _finalize(nodes, edges)
+                    _resolve_cross_namespace_edges(nodes, edges)
                     return _cache_and_return(nodes, edges)
     except Exception:
         pass
@@ -223,6 +224,7 @@ def build_capability_graph() -> CapabilityGraphResult:
     _scan_entry_points(nodes, edges)
 
     _finalize(nodes, edges)
+    _resolve_cross_namespace_edges(nodes, edges)
     _save_cap_graph(nodes, edges)
     return _cache_and_return(nodes, edges)
 
@@ -287,6 +289,33 @@ def _finalize(nodes, edges):
                     break
 
 
+def _resolve_cross_namespace_edges(nodes: dict, edges: list):
+    """Resolve workspace_skill: → skill: cross-namespace references.
+
+    Workspace agents can use engine skills, but the edge builder creates
+    workspace_skill: edges. This function fixes unresolved edges by falling
+    back to the engine namespace.
+    """
+    node_ids = set(nodes.keys())
+    fixed = 0
+    namespace_fallbacks = [
+        ("workspace_skill:", "skill:"),
+        ("workspace_agent:", "agent:"),
+    ]
+    for e in edges:
+        target = e.get("to", "")
+        if target in node_ids:
+            continue
+        for ws_prefix, eng_prefix in namespace_fallbacks:
+            if target.startswith(ws_prefix):
+                eng_target = eng_prefix + target[len(ws_prefix):]
+                if eng_target in node_ids:
+                    e["to"] = eng_target
+                    fixed += 1
+                    break
+    return fixed
+
+
 def _save_cap_graph(nodes, edges):
     """Persist to SQLite."""
     try:
@@ -336,18 +365,31 @@ def clear_capability_cache():
 # ---------------------------------------------------------------------------
 
 def _scan_agents_dir(agents_root: Path, *, node_prefix: str, nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):
-    """Scan an agents root directory for AGENT.md files and populate nodes/edges."""
+    """Scan an agents root directory for AGENT.md files and populate nodes/edges.
+
+    Uses rglob to recursively find AGENT.md files (catches nested imports).
+    Workspace agents reference workspace_skill: namespace, not skill:.
+    """
     if not agents_root or not agents_root.exists():
         return
-    for agent_dir in sorted(agents_root.iterdir()):
-        if not agent_dir.is_dir():
+    seen_dirs: set = set()
+    # Determine skill namespace based on agent scope
+    skill_prefix = "workspace_skill" if node_prefix == "workspace_agent" else "skill"
+    for md_file in sorted(agents_root.rglob("AGENT.md")):
+        # Skip .revisions and __pycache__ directories
+        if ".revisions" in md_file.parts or "__pycache__" in md_file.parts:
             continue
-        md_file = agent_dir / "AGENT.md"
-        if not md_file.exists():
+        agent_dir = md_file.parent
+        if str(agent_dir.resolve()) in seen_dirs:
             continue
+        seen_dirs.add(str(agent_dir.resolve()))
         agent_id = agent_dir.name
         text = md_file.read_text(encoding="utf-8", errors="ignore")
         fm = _parse_frontmatter(text)
+
+        # Detect nesting
+        depth = len(agent_dir.relative_to(agents_root).parts)
+        is_nested = depth > 1
 
         node_id = f"{node_prefix}:{agent_id}" if node_prefix else f"agent:{agent_id}"
         nodes[node_id] = {
@@ -361,14 +403,24 @@ def _scan_agents_dir(agents_root: Path, *, node_prefix: str, nodes: Dict[str, Di
             "tags": fm.get("tags", []),
             "domain": _infer_domain(fm.get("category", ""), fm.get("tags", [])),
             "path": str(agent_dir),
+            "nested": is_nested,
+            "nesting_depth": depth,
         }
 
+        if is_nested:
+            nodes[node_id]["_issues"] = nodes[node_id].get("_issues", []) + [{
+                "code": "nested_agent_dir",
+                "level": "error",
+                "message": f"Agent at depth {depth} under agents root — likely broken zip import. Move to {agents_root}/{agent_id}/",
+            }]
+
         # agent → skill edges (accept required_skills OR skills field)
+        # Use skill_prefix for correct namespace (workspace agents → workspace_skill:)
         skill_refs = fm.get("required_skills") or fm.get("skills") or []
         if isinstance(skill_refs, str):
             skill_refs = [skill_refs]
         for skill_ref in skill_refs:
-            edges.append({"from": node_id, "to": f"skill:{skill_ref}", "relation": "requires"})
+            edges.append({"from": node_id, "to": f"{skill_prefix}:{skill_ref}", "relation": "requires"})
 
         # agent → tool edges
         tool_refs = fm.get("required_tools") or fm.get("tools") or []
@@ -376,6 +428,14 @@ def _scan_agents_dir(agents_root: Path, *, node_prefix: str, nodes: Dict[str, Di
             tool_refs = [tool_refs]
         for tool_ref in tool_refs:
             edges.append({"from": node_id, "to": f"tool:{tool_ref}", "relation": "requires"})
+
+        # system_prompt presence
+        if not fm.get("system_prompt"):
+            nodes[node_id]["_issues"] = nodes[node_id].get("_issues", []) + [{
+                "code": "missing_system_prompt",
+                "level": "warning",
+                "message": "Missing system_prompt — runtime will use CLAUDE.md as fallback",
+            }]
 
 
 def _scan_agents(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):
@@ -392,21 +452,32 @@ def _scan_agents(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):
 
 
 def _scan_skills_dir(skills_root: Path, *, node_prefix: str, nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):
-    """Scan a skills root directory for SKILL.md files and populate nodes/edges."""
+    """Scan a skills root directory for SKILL.md files and populate nodes/edges.
+
+    Uses rglob to recursively find SKILL.md files (catches nested imports).
+    Reports nesting as warnings via node metadata.
+    """
     if not skills_root or not skills_root.exists():
         return
-    for skill_dir in sorted(skills_root.iterdir()):
-        if not skill_dir.is_dir():
+    seen_dirs: set = set()
+    for md_file in sorted(skills_root.rglob("SKILL.md")):
+        # Skip .revisions and __pycache__ directories
+        if ".revisions" in md_file.parts or "__pycache__" in md_file.parts:
             continue
-        md_file = skill_dir / "SKILL.md"
-        if not md_file.exists():
+        skill_dir = md_file.parent
+        if str(skill_dir.resolve()) in seen_dirs:
             continue
+        seen_dirs.add(str(skill_dir.resolve()))
         skill_id = skill_dir.name
         text = md_file.read_text(encoding="utf-8", errors="ignore")
         fm = _parse_frontmatter(text)
         body = text.split("---", 2)[2] if text.count("---") >= 2 else text
 
         deps = _extract_syscalls_from_sop(body)
+
+        # Detect nesting: if skill_dir is not a direct child of skills_root
+        depth = len(skill_dir.relative_to(skills_root).parts)
+        is_nested = depth > 1
 
         node_id = f"{node_prefix}:{skill_id}" if node_prefix else f"skill:{skill_id}"
         nodes[node_id] = {
@@ -419,10 +490,56 @@ def _scan_skills_dir(skills_root: Path, *, node_prefix: str, nodes: Dict[str, Di
             "effects": fm.get("effects", []),
             "syscalls_used": deps,
             "path": str(skill_dir),
+            "nested": is_nested,
+            "nesting_depth": depth,
         }
 
+        # Mark nested skills with a warning issue
+        if is_nested:
+            nodes[node_id]["_issues"] = nodes[node_id].get("_issues", []) + [{
+                "code": "nested_skill_dir",
+                "level": "error",
+                "message": f"Skill at depth {depth} under skills root — likely broken zip import. Move to {skills_root}/{skill_id}/",
+            }]
+
+        # syscall → skill edges
         for syscall_name in deps:
             edges.append({"from": node_id, "to": f"syscall:{syscall_name}", "relation": "uses"})
+
+        # skill → tool edges (from frontmatter tools: field — NEW)
+        tool_refs = fm.get("tools") or []
+        if isinstance(tool_refs, str):
+            tool_refs = [t.strip() for t in tool_refs.split(",") if t.strip()]
+        for tool_ref in tool_refs:
+            if isinstance(tool_ref, str) and tool_ref.strip():
+                edges.append({"from": node_id, "to": f"tool:{tool_ref.strip()}", "relation": "requires"})
+
+        # skill → model edge (if model field is declared)
+        model = fm.get("model")
+        if isinstance(model, str) and model.strip():
+            edges.append({"from": node_id, "to": f"model:{model.strip()}", "relation": "requires"})
+
+        # execution_type visibility
+        exec_type = fm.get("execution_type", "")
+        if exec_type:
+            nodes[node_id]["execution_type"] = str(exec_type)
+
+        # handler.py presence check
+        handler_path = skill_dir / "handler.py"
+        if handler_path.exists():
+            nodes[node_id]["has_handler"] = True
+        if exec_type == "handler" and not handler_path.exists():
+            nodes[node_id]["_issues"] = nodes[node_id].get("_issues", []) + [{
+                "code": "handler_missing",
+                "level": "error",
+                "message": f"execution_type=handler but handler.py not found",
+            }]
+        if handler_path.exists() and exec_type != "handler":
+            nodes[node_id]["_issues"] = nodes[node_id].get("_issues", []) + [{
+                "code": "handler_unused",
+                "level": "warning",
+                "message": f"handler.py exists but execution_type is '{exec_type}' (not 'handler')",
+            }]
 
 
 def _scan_skills(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):
@@ -439,7 +556,7 @@ def _scan_skills(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):
 
 
 def _scan_tools(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):
-    """Scan ToolRegistry for registered tools."""
+    """Scan ToolRegistry for registered tools, with disk-based fallbacks."""
     try:
         from core.harness.integration import get_tool_registry
         reg = get_tool_registry()
@@ -465,7 +582,7 @@ def _scan_tools(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):
                     server_name = parts[1]
                     edges.append({"from": f"mcp_server:{server_name}", "to": f"tool:{name}", "relation": "provides"})
 
-        # Also register syscall functions that don't have a matching Tool wrapper
+        # Fallback 1: syscall functions from harness
         try:
             from core.harness.syscalls import __all__ as _syscall_all
             for func_name in _syscall_all:
@@ -481,8 +598,88 @@ def _scan_tools(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):
                     }
         except Exception:
             pass
+
+        # Fallback 2: discover tools from source files (in case runtime registry is empty)
+        if len(tool_names) == 0:
+            _scan_tool_source_files(nodes)
+
     except Exception:
-        pass
+        # Cold start: ToolRegistry unavailable, use file-based discovery
+        _scan_tool_source_files(nodes)
+
+
+def _scan_tool_source_files(nodes: Dict[str, Dict[str, Any]]):
+    """Discover tools by scanning tool source files (cold-start fallback)."""
+    import ast as _ast
+    import os as _os
+
+    search_dirs = [
+        Path(__file__).parent.parent.parent / "apps" / "tools",  # engine tools
+        Path(_os.path.expanduser("~/.aiplat/tools")),  # workspace tools
+    ]
+
+    for search_dir in search_dirs:
+        if not search_dir.exists():
+            continue
+        for py_file in search_dir.rglob("*.py"):
+            if py_file.name.startswith("_"):
+                continue
+            try:
+                tree = _ast.parse(py_file.read_text(encoding="utf-8", errors="ignore"))
+                for node in _ast.walk(tree):
+                    # Pattern: class Foo(BaseTool) with name="xxx" in config
+                    if isinstance(node, _ast.ClassDef):
+                        for base in getattr(node, 'bases', []):
+                            base_name = getattr(base, 'id', '') if isinstance(base, _ast.Name) else ''
+                            if base_name in ("BaseTool", "Tool"):
+                                _extract_tool_name_from_class(nodes, node, py_file)
+                    # Pattern: TOOL_DEF = {"name": "xxx", ...}
+                    if isinstance(node, _ast.Assign):
+                        for target in getattr(node, 'targets', []):
+                            if isinstance(target, _ast.Name) and target.id == "TOOL_DEF":
+                                _extract_tool_name_from_dict(nodes, node, py_file)
+            except Exception:
+                continue
+
+
+def _extract_tool_name_from_class(nodes: dict, cls_node, py_file: Path):
+    """Extract tool name from ToolConfig in class definition."""
+    import ast as _ast
+    for item in _ast.walk(cls_node):
+        if isinstance(item, _ast.Call) and isinstance(getattr(item, 'func', None), _ast.Name):
+            if item.func.id in ("ToolConfig",):
+                for kw in getattr(item, 'keywords', []):
+                    if kw.arg == "name" and isinstance(kw.value, _ast.Constant):
+                        name = kw.value.value
+                        if name not in nodes:
+                            nodes[f"tool:{name}"] = {
+                                "id": f"tool:{name}",
+                                "type": "tool",
+                                "label": name,
+                                "raw_id": name,
+                                "description": "",
+                                "category": "",
+                            }
+                        return
+
+
+def _extract_tool_name_from_dict(nodes: dict, assign_node, py_file: Path):
+    """Extract tool name from TOOL_DEF dict."""
+    import ast as _ast
+    if isinstance(assign_node.value, _ast.Dict):
+        for k, v in zip(getattr(assign_node.value, 'keys', []) or [], getattr(assign_node.value, 'values', []) or []):
+            if isinstance(k, _ast.Constant) and k.value == "name" and isinstance(v, _ast.Constant):
+                name = v.value
+                if f"tool:{name}" not in nodes:
+                    nodes[f"tool:{name}"] = {
+                        "id": f"tool:{name}",
+                        "type": "tool",
+                        "label": name,
+                        "raw_id": name,
+                        "description": "",
+                        "category": "",
+                    }
+                return
 
 
 def _scan_mcp_servers(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):

@@ -78,6 +78,7 @@ class AgentAutoFillResponse(BaseModel):
     sop_text: str = ""
     reasoning: str = ""
     workflow_ids: List[str] = Field(default_factory=list)
+    trigger_conditions: List[str] = Field(default_factory=list)
     template_id: str = ""  # recommended prompt app template
 
 

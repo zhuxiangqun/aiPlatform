@@ -54,6 +54,22 @@ def _resolve_infra():
         return None
 
 
+def _placeholder_entry(model_name: str) -> ModelEntry:
+    u"""Create a fallback entry for models not yet in infra ModelManager."""
+    import os as _os
+    return ModelEntry(
+        name=model_name,
+        provider="openai",
+        enabled=True,
+        cooldown_until=0.0,
+        cost_per_1k_input=0.0,
+        cost_per_1k_output=0.0,
+        api_key=_os.getenv("DEEPSEEK_API_KEY", "") or _os.getenv("OPENAI_API_KEY", ""),
+        api_key_env="DEEPSEEK_API_KEY",
+        base_url=_os.getenv("AIPLAT_LLM_BASE_URL", "") or "https://api.deepseek.com/v1",
+    )
+
+
 def _infra_to_entry(mi) -> ModelEntry:
     """Convert infra ModelInfo to core ModelEntry (runtime state)."""
     import os as _os
@@ -123,6 +139,10 @@ class ModelRouter:
 
         # Get or create runtime entry
         entry = self._get_or_create_entry(model_name)
+        if entry is None:
+            # Fallback: model not in ModelManager but known from env vars
+            entry = _placeholder_entry(model_name)
+            self._entries[model_name] = entry
         if not entry.enabled or entry.in_cooldown:
             return None
 

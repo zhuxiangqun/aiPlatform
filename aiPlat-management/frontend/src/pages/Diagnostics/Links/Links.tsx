@@ -192,6 +192,9 @@ const Links: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      <Link to="/diagnostics" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200 transition-colors">
+        <ArrowLeft className="w-3 h-3" />返回诊断中心
+      </Link>
       <div>
         <div className="flex items-start justify-between gap-3">
           <div>

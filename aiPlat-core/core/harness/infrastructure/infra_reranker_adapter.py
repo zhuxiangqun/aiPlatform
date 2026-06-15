@@ -16,7 +16,7 @@ class InfraRerankerAdapter(BaseModelAdapter):
     def _load_model(self, name: str) -> Any:
         try:
             from sentence_transformers import CrossEncoder
-            return CrossEncoder(name, max_length=512, trust_remote_code=True)
+            return CrossEncoder(name, max_length=512, trust_remote_code=True, local_files_only=True)
         except ImportError:
             return None
 

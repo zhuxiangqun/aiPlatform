@@ -3,7 +3,7 @@ import { workspaceAgentApi } from '../../services';
 import type { Agent } from '../../services';
 import { Button, Modal, Textarea, toast } from '../ui';
 import { toastGateError } from '../ui';
-import ExecutionViewer from '../ExecutionViewer/ExecutionViewer';
+import ExecutionViewer, { StructuredDetail } from '../ExecutionViewer/ExecutionViewer';
 import { browserTestApi } from '../../services/browserTestApi';
 
 interface ExecuteAgentModalProps {
@@ -27,6 +27,8 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
   const [caseExcelPath, setCaseExcelPath] = useState('');
   const [caseUploadedPath, setCaseUploadedPath] = useState('');
   const [autoApprove, setAutoApprove] = useState(true);
+  const [flowFullscreen, setFlowFullscreen] = useState(false);
+  const [selectedFlowNode, setSelectedFlowNode] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isSiteTester = agent?.skills?.includes('site_tester') || agent?.name === 'site_tester_agent' || agent?.name === '全站自动化测试' || agent?.display_name === '全站自动化测试' || false;
@@ -130,9 +132,14 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
     if (input.trim()) { try { parsedInput = JSON.parse(input); } catch { parsedInput = { message: input }; } }
     setLoading(true);
     try {
-      const result = await workspaceAgentApi.execute(agent.id, { input: parsedInput, options: { ...((parsedInput.options || {}) as Record<string, unknown>), toolset }, config: (parsedInput.config || {}) as Record<string, unknown> });
+      const streamOpts = { ...((parsedInput.options || {}) as Record<string, unknown>), toolset, stream: true };
+      const result = await workspaceAgentApi.execute(agent.id, { input: parsedInput, options: streamOpts, config: (parsedInput.config || {}) as Record<string, unknown> });
       const status = String((result as any)?.status || 'ok');
-      setResult({ status, execution_id: String((result as any)?.execution_id || ''), run_id: String((result as any)?.run_id || (result as any)?.execution_id || ''), output: (result as any)?.output, error: (result as any)?.error, tokens: (result as any)?.tokens });
+      const runId = (result as any)?.run_id || (result as any)?.execution_id || '';
+      setResult({ status, execution_id: String((result as any)?.execution_id || ''), run_id: runId, output: (result as any)?.output, error: (result as any)?.error, tokens: (result as any)?.tokens });
+      if (runId && (status === 'running' || status === 'completed' || status === 'accepted')) {
+        setFlowFullscreen(true);
+      }
       if (status === 'completed') toast.success('执行成功'); else toast.success(`状态: ${status}`);
     } catch (e: any) { setResult({ status: 'failed', error: String(e?.message || e?.detail || '执行失败') }); toastGateError(e, '执行失败'); }
     finally { setLoading(false); }
@@ -305,7 +312,7 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
                   </div>
                 </div>
               )}
-              {result && (
+              {result && !flowFullscreen && (
                 <div className="mt-4 p-4 rounded-lg border border-dark-border bg-dark-bg">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-gray-100">执行结果（简版）</span>
@@ -337,7 +344,7 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
                   )}
                   {result.run_id && (
                     <div className="mt-3">
-                      <ExecutionViewer runId={result.run_id} live={true} title="ReAct 执行流程" height={400} />
+                      <Button variant="primary" onClick={() => setFlowFullscreen(true)}>▶ 查看执行流程（全屏）</Button>
                     </div>
                   )}
             </div>
@@ -417,6 +424,46 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
           )}
         </div>
       </div>
+
+      {/* ── 全屏执行流程弹窗 ── */}
+      {flowFullscreen && result && result.run_id && (
+        <div className="fixed inset-0 z-[60] bg-dark-bg flex flex-col">
+          <div className="h-10 flex items-center justify-between px-4 border-b border-dark-border bg-dark-card flex-shrink-0">
+            <span className="text-sm font-medium text-gray-200">
+              ▶ ReAct 执行流程 · {agent?.name || 'Agent'}
+            </span>
+            <div className="flex items-center gap-2">
+              <span className={`text-xs px-2 py-0.5 rounded ${result.status === 'completed' ? 'bg-green-900/50 text-green-300' : result.status === 'failed' ? 'bg-red-900/50 text-red-300' : 'bg-blue-900/50 text-blue-300'}`}>
+                {result.status}
+              </span>
+              <Button variant="secondary" onClick={() => setFlowFullscreen(false)}>✕ 关闭</Button>
+            </div>
+          </div>
+          <ExecutionViewer
+            runId={result.run_id}
+            live={true}
+            title=""
+            height={window.innerHeight - 40}
+            onNodeClick={(node: any) => setSelectedFlowNode(node)}
+          />
+          {selectedFlowNode && (
+            <div className="fixed bottom-0 left-0 right-0 z-[70] border-t border-dark-border bg-dark-card p-4 max-h-72 overflow-y-auto shadow-2xl">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-semibold" style={{ color: selectedFlowNode.color || '#e5e7eb' }}>
+                  {selectedFlowNode.icon} {selectedFlowNode.name}
+                </span>
+                <button onClick={() => setSelectedFlowNode(null)} className="text-gray-500 hover:text-gray-300 text-lg">✕</button>
+              </div>
+              <div className="flex gap-4 text-xs mb-3">
+                <span className="text-gray-400">类型: {selectedFlowNode.type}</span>
+                <span className="text-gray-400">状态: {selectedFlowNode.status}</span>
+                {selectedFlowNode.duration ? <span className="text-gray-400">耗时: {selectedFlowNode.duration}ms</span> : null}
+              </div>
+              <StructuredDetail node={selectedFlowNode} />
+            </div>
+          )}
+        </div>
+      )}
     </Modal>
   );
 };

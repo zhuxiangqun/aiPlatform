@@ -238,21 +238,17 @@ def search_fts(query: str, limit: int = 20) -> List[str]:
 
 
 def _detect_layer(path: str) -> str:
-    """Detect architecture layer from file path."""
-    if path.startswith("aiPlat-infra"):
+    """Detect architecture layer from file path (sync'd with code_graph._layer_bucket)."""
+    if path.startswith("aiPlat-infra") or path.startswith("aiPlat-infra/"):
         return "infra"
-    elif path.startswith("aiPlat-core"):
-        if "/core/harness/" in path or "/core/management/" in path or "/core/apps/" in path:
-            return "core"
-        elif "/core/api/" in path or "/core/services/" in path:
-            return "core"
+    if path.startswith("aiPlat-core") or path.startswith("aiPlat-core/"):
         return "core"
-    elif path.startswith("aiPlat-platform"):
+    if path.startswith("aiPlat-platform") or path.startswith("aiPlat-platform/"):
         return "platform"
-    elif path.startswith("aiPlat-app"):
+    if path.startswith("aiPlat-app") or path.startswith("aiPlat-app/"):
         return "app"
-    elif path.startswith("aiPlat-management"):
-        return "management"
+    if path.startswith("aiPlat-management") or path.startswith("aiPlat-management/"):
+        return "app"
     return "unknown"
 
 

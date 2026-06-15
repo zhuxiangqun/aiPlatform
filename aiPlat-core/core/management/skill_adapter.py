@@ -85,6 +85,11 @@ def detect_pattern(skill_dir: str | Path) -> SkillProfile:
 
     # Check script-based
     scripts_dir = root / "scripts"
+    if not (scripts_dir.is_dir() and bool(list(scripts_dir.glob("*.py")))):
+        # Fallback: check nested skills/<name>/scripts/ (Path B zip import artifact)
+        nested = root / "skills" / root.name / "scripts"
+        if nested.is_dir() and bool(list(nested.glob("*.py"))):
+            scripts_dir = nested
     has_scripts = scripts_dir.is_dir() and bool(list(scripts_dir.glob("*.py")))
     if has_scripts:
         main_script = None
@@ -166,7 +171,7 @@ def _adapt_script_based(root: Path, profile: SkillProfile) -> dict:
 
     # Generate handler.py
     handler_code = f'''"""Auto-generated handler for {skill_name} — wraps {script_rel}."""
-import subprocess, sys, json
+import subprocess, sys, json, time
 from pathlib import Path
 
 async def execute(params: dict) -> dict:
@@ -175,12 +180,28 @@ async def execute(params: dict) -> dict:
     if not topic:
         return {{"error": "query or topic parameter required"}}
     try:
+        start = time.time()
         result = subprocess.run(
             [sys.executable, str(script), topic, "--emit=compact"],
             capture_output=True, text=True, timeout=300,
             cwd=str(Path(__file__).parent),
         )
-        return {{"topic": topic, "output": result.stdout, "stderr": result.stderr[:500]}}
+        elapsed = time.time() - start
+        # Emit engine stage events via ActiveTraceContext (set by sys_skill_call)
+        try:
+            from core.harness.kernel.execution_context import emit_trace_event
+            emit_trace_event("skill", "{skill_name}", "completed",
+                             args={{"topic": topic}}, duration_ms=elapsed * 1000)
+            if result.stderr:
+                # Parse engine progress from stderr if available
+                for line in result.stderr.split(chr(10))[:20]:
+                    if "Processing" in line:
+                        emit_trace_event("tool", "process", "completed",
+                                         args={{"detail": line[:200]}})
+        except Exception:
+            pass
+        return {{"topic": topic, "output": result.stdout, "stderr": result.stderr[:500],
+                 "success": result.returncode == 0}}
     except subprocess.TimeoutExpired:
         return {{"topic": topic, "error": "execution timed out after 300s"}}
 '''

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Copy, ExternalLink, Share2 } from 'lucide-react';
+import { ArrowLeft, Copy, ExternalLink, Share2 } from 'lucide-react';
 
 import { Badge, Button, Card, CardContent, CardHeader, Input, Pagination, Table } from '../../../components/ui';
 import { diagnosticsApi } from '../../../services';
@@ -110,6 +110,10 @@ const Traces: React.FC = () => {
         <h1 className="text-2xl font-semibold text-gray-200">Traces</h1>
         <p className="text-sm text-gray-500 mt-1">链路追踪列表（默认不加载 spans）</p>
       </div>
+
+      <Link to="/diagnostics" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200 transition-colors mb-4">
+        <ArrowLeft className="w-3 h-3" />返回诊断中心
+      </Link>
 
       <Card>
         <CardHeader>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RotateCw, Server, Wrench, Power, PowerOff, Eye, Copy } from 'lucide-react';
+import { RotateCw, Server, Wrench, Power, PowerOff, Eye, Copy, Search } from 'lucide-react';
 import { Button, Modal, toast, Table, Switch, Badge } from '../../../components/ui';
 import { mcpApi } from '../../../services';
 import { toastGateError } from '../../../components/ui';
@@ -148,8 +148,8 @@ const MCP: React.FC = () => {
                   <button onClick={() => handleToggle(record)} className="p-1.5 rounded hover:bg-dark-hover" title={record.enabled ? '禁用' : '启用'}>
                     {record.enabled ? <PowerOff className="w-4 h-4 text-amber-400" /> : <Power className="w-4 h-4 text-green-400" />}
                   </button>
-                  <button onClick={() => handleDiscover(record)} className="p-1.5 rounded hover:bg-dark-hover" title="发现工具">
-                    <Wrench className="w-4 h-4 text-gray-400" />
+                   <button onClick={() => handleDiscover(record)} className="p-1.5 rounded hover:bg-dark-hover" title="发现工具">
+                    <Search className="w-4 h-4 text-gray-400" />
                   </button>
                   <button onClick={() => setConfigModal({ open: true, server: record })} className="p-1.5 rounded hover:bg-dark-hover" title="查看配置">
                     <Eye className="w-4 h-4 text-gray-400" />

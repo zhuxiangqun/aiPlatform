@@ -336,3 +336,168 @@ def reset_active_change_contract(token) -> None:
 
 def get_active_change_contract() -> Optional[ActiveChangeContract]:
     return _change_contract_ctx.get()
+
+
+# ---------------------------------------------------------------------------
+# ActiveTraceContext — per-execution trace context for downstream event emission
+# ---------------------------------------------------------------------------
+# Handler Skills, Workflow Code nodes, MCP adapters, and any other code that
+# runs outside the syscall boundary need a way to emit observable events
+# through the unified add_syscall_event → SQLite + EventBus + SSE pipeline.
+#
+# This context is set by every syscall entry point (sys_skill_call, sys_tool_call,
+# sys_llm_generate, sys_agent_call) before delegating to downstream code.
+# Downstream code calls emit_trace_event() — a one-liner that reads the context
+# and calls add_syscall_event() automatically.
+
+
+@dataclass
+class ActiveTraceContext:
+    run_id: str
+    span_id: str
+    parent_span_id: str = ""
+
+
+_active_trace_ctx: ContextVar[Optional[ActiveTraceContext]] = ContextVar("active_trace_ctx", default=None)
+
+
+def set_active_trace_context(ctx: Optional[ActiveTraceContext]):
+    """Set active trace context for current async task. Returns a token for reset()."""
+    return _active_trace_ctx.set(ctx)
+
+
+def reset_active_trace_context(token) -> None:
+    """Reset to previous value using token returned by set_active_trace_context()."""
+    _active_trace_ctx.reset(token)
+
+
+def get_active_trace_context() -> Optional[ActiveTraceContext]:
+    return _active_trace_ctx.get()
+
+
+async def emit_trace_event_async(
+    kind: str,
+    name: str,
+    status: str = "completed",
+    *,
+    args: Optional[Dict[str, Any]] = None,
+    result: Optional[Dict[str, Any]] = None,
+    duration_ms: float = 0.0,
+    error: Optional[str] = None,
+) -> Optional[str]:
+    """
+    Emit a syscall event using the current trace context (async version).
+    For use in async handlers, code nodes, MCP adapters, etc.
+    Writes through the unified add_syscall_event → SQLite + EventBus + SSE path.
+    """
+    import uuid
+    import time as _time
+
+    ctx = get_active_trace_context()
+    if not ctx:
+        return None
+
+    try:
+        from core.harness.kernel.runtime import get_kernel_runtime
+        rt = get_kernel_runtime()
+        store = rt.execution_store if rt and hasattr(rt, "execution_store") else None
+        if not store:
+            return None
+
+        eid = str(uuid.uuid4())
+        event = {
+            "id": eid,
+            "run_id": ctx.run_id,
+            "span_id": f"{ctx.span_id}:{name}" if ctx.span_id else f"trace:{name}:{eid[:8]}",
+            "parent_span_id": ctx.span_id or ctx.parent_span_id,
+            "kind": kind,
+            "name": name,
+            "status": status,
+            "start_time": _time.time(),
+            "end_time": _time.time(),
+            "duration_ms": duration_ms,
+            "args": args or {},
+            "result": result or {},
+            "error": error,
+            "created_at": _time.time(),
+        }
+        await store.add_syscall_event(event)
+        return eid
+    except Exception:
+        return None
+
+
+def emit_trace_event(
+    kind: str,
+    name: str,
+    status: str = "completed",
+    *,
+    args: Optional[Dict[str, Any]] = None,
+    result: Optional[Dict[str, Any]] = None,
+    duration_ms: float = 0.0,
+    error: Optional[str] = None,
+) -> Optional[str]:
+    """
+    Emit a syscall event using the current trace context (sync wrapper).
+    For use in sync code. Schedules via asyncio.create_task if loop is running.
+    Prefer emit_trace_event_async() in async contexts.
+    """
+    import asyncio
+    import uuid
+
+    ctx = get_active_trace_context()
+    if not ctx:
+        return None
+
+    eid = str(uuid.uuid4())
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            loop.create_task(_async_emit(ctx, kind, name, status, args, result, duration_ms, error, eid))
+            return eid
+    except Exception:
+        pass
+    return None
+
+
+async def _async_emit(
+    ctx: ActiveTraceContext,
+    kind: str,
+    name: str,
+    status: str,
+    args: Optional[Dict],
+    result: Optional[Dict],
+    duration_ms: float,
+    error: Optional[str],
+    eid: str,
+) -> Optional[str]:
+    """Internal: async event emission via the unified add_syscall_event path."""
+    import time as _time
+
+    try:
+        from core.harness.kernel.runtime import get_kernel_runtime
+        rt = get_kernel_runtime()
+        store = rt.execution_store if rt and hasattr(rt, "execution_store") else None
+        if not store:
+            return None
+
+        event = {
+            "id": eid,
+            "run_id": ctx.run_id,
+            "span_id": f"{ctx.span_id}:{name}" if ctx.span_id else f"trace:{name}:{eid[:8]}",
+            "parent_span_id": ctx.parent_span_id or ctx.span_id,
+            "kind": kind,
+            "name": name,
+            "status": status,
+            "start_time": _time.time(),
+            "end_time": _time.time(),
+            "duration_ms": duration_ms,
+            "args": args or {},
+            "result": result or {},
+            "error": error,
+            "created_at": _time.time(),
+        }
+        await store.add_syscall_event(event)
+        return eid
+    except Exception:
+        return None

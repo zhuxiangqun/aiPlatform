@@ -99,10 +99,18 @@ class UnusedSkillCheck(CapRule):
     issue_key = "unused_skills"
     description = "Unused skills (0 in-degree)"
     
-    # Skills used internally by engine via sys_skill_call(), not declared in AGENT.md
+    # All engine skills are internally available via harness sys_skill_call()
+    # They don't need AGENT.md binding — only workspace skills do.
     _ENGINE_INTERNAL = {
-        "code_generation", "e2e_test", "knowledge_query",
-        "skill_apply_engine_skill_md_patch", "skill_eval_quality", "skill_eval_trigger",
+        "api_calling", "browser_automation", "chitchat", "code_generation",
+        "code_review", "data_analysis", "doc_query", "e2e_test",
+        "eval_code_generator", "file_operations", "information_search",
+        "knowledge_editor", "knowledge_ingest", "knowledge_query",
+        "knowledge_retrieval", "multi_doc_query", "root_cause_analysis",
+        "site_tester", "skill_apply_engine_skill_md_patch", "skill_eval_quality",
+        "skill_eval_trigger", "summarization", "task_decomposition",
+        "task_planning", "test_case_generation", "text_generation",
+        "translation", "wiki_lint", "wiki_query",
     }
 
     def check(self, ctx: CapContext) -> List[CapIssue]:
@@ -219,6 +227,105 @@ class TopHubsCheck(CapRule):
         elif avg_degree >= 1.0:
             return 2
         return 0
+
+
+class NestedAssetCheck(CapRule):
+    """Detect assets installed at nested paths (broken zip import artifact)."""
+    code = "nested_assets"
+    issue_key = "nested_assets"
+    description = "Assets installed at nested paths (broken zip import)"
+
+    def check(self, ctx: CapContext) -> List[CapIssue]:
+        issues = []
+        for nid, n in ctx.nodes.items():
+            if n.get("nested") and n.get("nesting_depth", 0) > 1:
+                issues.append(CapIssue(
+                    type=self.code,
+                    label=n["label"],
+                    detail=f"depth={n.get('nesting_depth')} — should be flat under root",
+                    extra={"node_id": nid, "type": n["type"], "path": n.get("path", "")},
+                ))
+        return issues
+
+    def penalty(self, ctx: CapContext, issues: List[CapIssue]) -> float:
+        return min(len(issues) * 10, 30)
+
+
+class HandlerMissingCheck(CapRule):
+    """Detect skills where execution_type=handler but handler.py doesn't exist."""
+    code = "handler_missing"
+    issue_key = "handler_missing"
+    description = "handler.py missing for handler-type skills"
+
+    def check(self, ctx: CapContext) -> List[CapIssue]:
+        issues = []
+        for nid, n in ctx.nodes.items():
+            if n.get("type") != "skill":
+                continue
+            exec_type = n.get("execution_type", "")
+            has_handler = n.get("has_handler", False)
+            if exec_type == "handler" and not has_handler:
+                issues.append(CapIssue(
+                    type=self.code,
+                    label=n["label"],
+                    detail=f"execution_type=handler but handler.py not found at {n.get('path', '')}",
+                    extra={"node_id": nid, "path": n.get("path", "")},
+                ))
+        return issues
+
+    def penalty(self, ctx: CapContext, issues: List[CapIssue]) -> float:
+        return min(len(issues) * 8, 20)
+
+
+class SkillToolBindingCheck(CapRule):
+    """Detect skills with tools references that don't match registered tools."""
+    code = "skill_tool_gaps"
+    issue_key = "skill_tool_gaps"
+    description = "Skill→tool references where tool doesn't exist"
+
+    def check(self, ctx: CapContext) -> List[CapIssue]:
+        issues = []
+        # Collect all tool node IDs
+        tool_ids = {nid for nid, n in ctx.nodes.items() if n.get("type") in ("tool", "syscall")}
+        for e in ctx.edges:
+            if e.get("relation") == "requires" and e["from"].startswith(("skill:", "workspace_skill:")):
+                target = e["to"]
+                # tool:* references need to match registered tools
+                if target.startswith("tool:") and target not in tool_ids:
+                    issues.append(CapIssue(
+                        type=self.code,
+                        label=e["from"],
+                        detail=target,
+                        extra={"skill": e["from"], "missing_tool": target},
+                    ))
+        return issues
+
+    def penalty(self, ctx: CapContext, issues: List[CapIssue]) -> float:
+        return min(len(issues) * 3, 15)
+
+
+class SyscallCoverageCheck(CapRule):
+    """Detect very low syscall usage coverage (indicates extraction gap)."""
+    code = "syscall_coverage"
+    issue_key = None  # informational
+    description = "Syscall usage extraction coverage"
+
+    def check(self, ctx: CapContext) -> List[CapIssue]:
+        issues = []
+        skill_count = ctx.by_type.get("skill", 0)
+        if skill_count == 0:
+            return issues
+        uses_edges = sum(1 for e in ctx.edges if e.get("relation") == "uses")
+        if uses_edges == 0 and skill_count > 10:
+            issues.append(CapIssue(
+                type=self.code,
+                label="syscall_extraction",
+                detail=f"0 uses edges for {skill_count} skills — extraction may be failing",
+            ))
+        return issues
+
+    def penalty(self, ctx: CapContext, issues: List[CapIssue]) -> float:
+        return min(len(issues) * 2, 5)
 
 
 # ============================================================

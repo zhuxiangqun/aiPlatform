@@ -107,10 +107,9 @@ class PromptAppManager:
             result = getattr(store, "list_prompt_app_templates", None)
             if not callable(result):
                 return
-            import asyncio
-            loop = asyncio.new_event_loop()
-            items = loop.run_until_complete(result(limit=10000, offset=0))
-            loop.close()
+            import concurrent.futures as _cf
+            with _cf.ThreadPoolExecutor(max_workers=1) as _pool:
+                items = _pool.submit(asyncio.run, result(limit=10000, offset=0)).result(timeout=30)
         except Exception:
             return
 

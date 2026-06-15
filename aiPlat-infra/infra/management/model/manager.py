@@ -71,14 +71,15 @@ class ModelManager:
         for model in external_models:
             self._models[model.id] = model
         
-        # 3. 扫描本地 Ollama / LM Studio / vLLM 模型（同步，短超时）
+        # 3. 扫描本地 Ollama / LM Studio / vLLM 模型
         try:
-            loop = asyncio.new_event_loop()
-            try:
-                loop.run_until_complete(asyncio.wait_for(
-                    self._scan_local_models(), timeout=10.0))
-            finally:
-                loop.close()
+            # Use a separate thread to run the async scan synchronously,
+            # avoiding "cannot run event loop while another is running" errors
+            # when called from within uvicorn's existing event loop.
+            import concurrent.futures as _cfutures
+            with _cfutures.ThreadPoolExecutor(max_workers=1) as _pool:
+                _future = _pool.submit(self._scan_local_models_sync)
+                _future.result(timeout=10.0)
         except Exception:
             pass
     
@@ -104,6 +105,15 @@ class ModelManager:
                         existing.config.base_url = model.config.base_url
         except Exception:
             pass
+
+    def _scan_local_models_sync(self):
+        """Sync wrapper for _scan_local_models — runs in a dedicated event loop."""
+        new_loop = asyncio.new_event_loop()
+        try:
+            new_loop.run_until_complete(
+                asyncio.wait_for(self._scan_local_models(), timeout=10.0))
+        finally:
+            new_loop.close()
     
     # ===== 查询接口 =====
     
@@ -169,10 +179,16 @@ class ModelManager:
 
     def select_by_purpose(self, purpose: str) -> Optional[str]:
         """Select best model for purpose via capability scoring.
+        
+        See select_by_purpose_list() for full candidate list.
+        """
+        candidates = self.select_by_purpose_list(purpose)
+        return candidates[0] if candidates else None
 
-        Loads PURPOSE_PROFILE from llm_profile.yaml, filters enabled chat models,
-        scores by capability match + source preference, returns best model name.
-        This is the canonical model selection for all core purpose-driven calls.
+    def select_by_purpose_list(self, purpose: str) -> List[str]:
+        """Return all eligible models for purpose, scored and sorted (best first).
+        
+        Useful for fallback: if the top model times out, try the next one.
         """
         try:
             import yaml
@@ -193,13 +209,11 @@ class ModelManager:
         if purpose in overrides:
             override_name = overrides[purpose]
             if override_name:
-                # Match by model name (not ID — IDs have provider prefix)
                 for m in self._models.values():
                     if m.name == override_name and m.enabled:
-                        return m.name
-                # Fallback: try matching by ID
+                        return [m.name]
                 if override_name in self._models:
-                    return override_name
+                    return [override_name]
 
         # Filter chat models
         chat_models = [m for m in self._models.values()
@@ -211,6 +225,10 @@ class ModelManager:
             if not any(c in caps for c in profile.get("prefer", ["chat"])):
                 continue
             if any(c in caps for c in profile.get("avoid", [])):
+                continue
+            # Hard require: model MUST have these capabilities (capabilities field only, not tags)
+            require = profile.get("require", {}).get("capabilities", [])
+            if require and not all(c in (set(m.capabilities or []) if m.capabilities else ["chat"]) for c in require):
                 continue
 
             score = 0
@@ -239,16 +257,16 @@ class ModelManager:
             scored.append((score, m.name))
 
         if not scored:
-            return fallback_model
+            return [fallback_model] if fallback_model else []
 
         scored.sort(key=lambda x: (x[0], x[1] == fallback_model), reverse=True)
-        return scored[0][1]  # model name
+        return [name for score, name in scored]
 
     def select(self, model_name: str = "", purpose: str = "") -> Optional[ModelInfo]:
         """Select model by name or purpose. Returns full ModelInfo with provider/base_url/api_key_env.
 
         Resolution order:
-          1. model_name given → use directly
+          1. model_name given → find by name first (user-friendly), then by ID
           2. purpose given → resolve via get_default_model(purpose)
           3. fallback → get_default_model("default")
         Returns None if model not found in registry.
@@ -260,6 +278,10 @@ class ModelManager:
             name = self.get_default_model("default")
         if not name:
             return None
+        # Search by name first (user-friendly), then by ID
+        for m in self._models.values():
+            if m.name == name:
+                return m
         return self._models.get(name)
 
     # ===== 管理接口 =====

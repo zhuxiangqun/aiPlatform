@@ -163,6 +163,29 @@ class SkillExecutor:
                 self._registry.record_execution(skill_name, success=False, latency=record.latency)
                 return SkillResult(success=False, error="Parameter validation failed")
 
+            _run_id = (getattr(context, "variables", {}) or {}).get("_run_id") or getattr(context, "session_id", "")
+            _parent_span_id = (getattr(context, "variables", {}) or {}).get("_parent_span_id") or None
+            # Emit skill_start root event for unified tree (mirrors agent_start in core_facade)
+            try:
+                from core.services.execution_store import get_execution_store
+                _es = get_execution_store()
+                await _es.add_syscall_event({
+                    "id": f"{_run_id}:skill_start",
+                    "parent_span_id": _parent_span_id,
+                    "kind": "skill",
+                    "name": "skill_start",
+                    "status": "running",
+                    "span_id": f"skill:{skill_name}:start",
+                    "run_id": _run_id,
+                    "start_time": time.time(),
+                    "target_type": skill_name,
+                    "duration_ms": 0,
+                })
+            except Exception:
+                pass
+            tc = {"run_id": _run_id}
+            if _parent_span_id:
+                tc["parent_span_id"] = _parent_span_id
             result = await asyncio.wait_for(
                 sys_skill_call(
                     skill,
@@ -170,6 +193,7 @@ class SkillExecutor:
                     context=context,
                     user_id=context.user_id,
                     session_id=context.session_id,
+                    trace_context=tc,
                 ),
                 timeout=effective_timeout
             )
@@ -356,7 +380,11 @@ class SkillExecutor:
                     session_id=context.session_id if context else "fork",
                     user_id=context.user_id if context else "system",
                     messages=[{"role": "user", "content": task}],
-                    variables={"messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}], **(params or {})},
+                    variables={
+                        "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}],
+                        "_run_id": (getattr(context, "variables", {}) or {}).get("_run_id") or getattr(context, "session_id", ""),
+                        **(params or {}),
+                    },
                     tools=list(getattr(context, "tools", []) or []) if context else [],
                 )
 

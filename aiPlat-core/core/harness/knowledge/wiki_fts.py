@@ -92,3 +92,34 @@ def fts_search(query: str, limit: int = 10) -> List[Dict[str, Any]]:
 def fts_rebuild_on_update() -> None:
     u"""Rebuild FTS index if wiki pages have changed. Call after import/curate."""
     fts_index_pages()
+
+
+def fts_upsert_page(title: str, tags: list = None, summary: str = "", body_preview: str = "") -> None:
+    """Insert or update a single page in the FTS index."""
+    conn = _get_conn()
+    try:
+        tags_str = " ".join(tags or [])
+        body_text = (body_preview or "")[:5000]
+        # Delete old entry by title match (FTS5 content table)
+        conn.execute("DELETE FROM wiki_fts WHERE title = ?", (title,))
+        conn.execute(
+            "INSERT INTO wiki_fts(title, tags, summary, body_preview) VALUES(?, ?, ?, ?)",
+            (title, tags_str, summary or "", body_text)
+        )
+        conn.commit()
+    except Exception:
+        pass
+    finally:
+        conn.close()
+
+
+def fts_delete_page(title: str) -> None:
+    """Remove a page from the FTS index."""
+    conn = _get_conn()
+    try:
+        conn.execute("DELETE FROM wiki_fts WHERE title = ?", (title,))
+        conn.commit()
+    except Exception:
+        pass
+    finally:
+        conn.close()

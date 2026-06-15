@@ -16,6 +16,25 @@ import os
 import sqlite3
 from typing import Any, Dict, List, Optional, Tuple
 
+import asyncio as _asyncio
+import concurrent.futures as _cfutures
+
+
+def _run_async_in_sync(coro):
+    """Safely run an async coroutine from sync context.
+    
+    Uses asyncio.run() if no event loop is running, otherwise offloads
+    to a thread pool to avoid 'cannot run event loop' crashes in uvicorn.
+    """
+    try:
+        loop = _asyncio.get_running_loop()
+        # Already in event loop → run in a fresh loop inside a thread
+        with _cfutures.ThreadPoolExecutor(max_workers=1) as pool:
+            return pool.submit(_asyncio.run, coro).result(timeout=120)
+    except RuntimeError:
+        # No running event loop → safe to use asyncio.run()
+        return _asyncio.run(coro)
+
 
 def sys_kb_retrieve(
     query: str,
@@ -24,12 +43,21 @@ def sys_kb_retrieve(
     collection_id: str = "default",
     tenant_id: str = "default",
     top_k: int = 8,
+    actor_scopes: List[str] = None,
 ) -> List[Dict[str, Any]]:
     """Retrieve relevant text from KB documents via unified KnowledgeRetriever.
 
     Uses SqliteEmbeddingRetriever → KnowledgeRetriever.search() (vector + BM25 + RRF + multi-factor rerank + CRAG quality gate).
 
-    Returns list of {text, doc_id, element_id, score, type, page_idx, start_s, end_s}.
+    返回: [{text, doc_id, element_id, score, type, page_idx, start_s, end_s}]
+
+    边界:
+      - 只读，不修改系统状态
+      - 结果可能被截断（top_k），不能作为"不存在"的证据
+      - 分数不可跨查询比较——每次检索的分数是相对的
+    退路:
+      - 未命中 → 扩大 top_k 或用 sys_wiki_retrieve 回退
+      - 需要全文 → 用 KB 文档导出 API
     """
     if not query:
         return []
@@ -84,14 +112,13 @@ def sys_kb_retrieve(
 
         # ── Unified retrieval via KnowledgeRetriever (replaces kw+vec+RRF+rerank) ──
         from core.harness.knowledge.sqlite_retriever import create_sqlite_retriever
-        import asyncio as _asyncio
         retriever = create_sqlite_retriever(
             db_path=db_path, tenant_id=tenant_id, collection_id=collection_id,
             retrieval_strategy="hybrid", rerank_enabled=True,
             rerank_method="multi_factor", rerank_top_k=top_k * 2,
             quality_gate_enabled=True,
         )
-        kb_results = _asyncio.run(retriever.search(query, limit=top_k * 2))
+        kb_results = _run_async_in_sync(retriever.search(query, limit=top_k * 2))
         for kr in kb_results:
             results.append({
                 "text": str(kr.entry.content),
@@ -123,6 +150,10 @@ def sys_kb_retrieve(
 
     finally:
         conn.close()
+
+    # Phase 6: Security filter for standalone KB retrieval
+    if actor_scopes is not None and results:
+        results = _filter_by_security(results, actor_scopes, collection_id)
 
     return results
 
@@ -359,7 +390,15 @@ def sys_wiki_retrieve(
         relation_filter: Only return pages related to target via relation_type.
         relation_boost: Boost scores for pages with specific relation types.
 
-    Returns: [{text, title, score, tags, summary, source}]
+    返回: [{text, title, score, tags, summary, source}]
+
+    边界:
+      - 只读，不修改系统状态
+      - 受 inference_cache.json 缓存控制——新建页面最多 300 秒延迟
+      - 分数不可跨查询比较
+    退路:
+      - 未命中 → sys_kb_retrieve 做文档级回退
+      - 结果太多 → 缩小 collection_ids 范围
     """
     from core.harness.knowledge.wiki_retriever import WikiPageRetriever
 
@@ -382,9 +421,8 @@ def sys_wiki_retrieve(
     try:
         loop = asyncio.get_event_loop()
         if loop.is_running():
-            # In async context, create a new task
-            import concurrent.futures
-            with concurrent.futures.ThreadPoolExecutor() as executor:
+            # In async context, use a thread pool to run sync retrieval
+            with _cfutures.ThreadPoolExecutor(max_workers=1) as executor:
                 future = executor.submit(
                     _sync_wiki_retrieve, query, wiki_titles, top_k, link_depth, cids,
                     class_uri, expand_subclasses, relation_filter, relation_boost, inference_expand
@@ -422,13 +460,7 @@ def _sync_wiki_retrieve(query: str, wiki_titles: List[str] = None,
         relation_filter=relation_filter, relation_boost=default_boost2,
         inference_expand=inference_expand,
     )
-    import asyncio
-    try:
-        results = asyncio.run(retriever.retrieve(KnowledgeQuery(query=query, limit=top_k)))
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        results = loop.run_until_complete(retriever.retrieve(KnowledgeQuery(query=query, limit=top_k)))
+    results = _run_async_in_sync(retriever.retrieve(KnowledgeQuery(query=query, limit=top_k)))
 
     return [
         {
@@ -458,6 +490,8 @@ def sys_knowledge_retrieve(
     target_class: str = None,
     expand_subclasses: bool = False,
     inference_expand: bool = False,
+    # ── Security (Phase 6 fix) ──
+    actor_scopes: List[str] = None,
 ) -> List[Dict[str, Any]]:
     """Unified knowledge retrieval — Wiki first, KB vector as fallback.
 
@@ -467,11 +501,19 @@ def sys_knowledge_retrieve(
 
     Args:
         wiki_first: If True (default), try Wiki first, fall back to KB.
-                    If False, use KB directly (backward compat).
+                     If False, use KB directly (backward compat).
 
     Returns:
         List of {text, title, score, tags, summary, source, source_type}
         where source_type is "wiki" or "kb".
+
+    边界:
+      - 只读——不产生系统状态变化
+      - Wiki 和 KB 分数量纲不同（归一化处理，可通过 AIPLAT_WIKI_BOOST 调权）
+      - 传入 actor_scopes 时按 markings 安全过滤；不传时不过滤（向后兼容）
+    退路:
+      - Wiki 结果质量不足（< min_wiki_score）→ 自动补充 KB 结果
+      - 需要精确过滤 → 用 target_class / relation_filter 参数
     """
     import time as _time, logging
     _t0 = _time.time()
@@ -531,8 +573,18 @@ def sys_knowledge_retrieve(
         except Exception:
             pass
 
-    # ── Sort blended results by score ──
-    results.sort(key=lambda x: x.get("score", 0), reverse=True)
+    # ── Score normalization: Wiki & KB have different score scales ──
+    # Normalize each source independently (min-max with percentile cutoff),
+    # then apply Wiki 1.1x boost for LLM-curated content.
+    wiki_items = [r for r in results if r.get("source_type") == "wiki"]
+    kb_items = [r for r in results if r.get("source_type") == "kb"]
+
+    wiki_boost = float(os.getenv("AIPLAT_WIKI_BOOST", "1.1"))
+    _normalize_scores(wiki_items, boost=wiki_boost)
+    _normalize_scores(kb_items, boost=1.0)
+
+    # ── Sort blended results by normalized score ──
+    results.sort(key=lambda x: x.get("normalized_score", x.get("score", 0)), reverse=True)
     _total = _time.time() - _t0
     _kb_time = _time.time() - _tk if remaining > 0 else 0
     logging.getLogger("retrieval").debug(
@@ -570,6 +622,10 @@ def sys_knowledge_retrieve(
     except Exception:
         logging.getLogger("retrieval").debug("PostRetrievalGovernor skipped", exc_info=True)
 
+    # ── Phase 6: Security filter ──
+    if actor_scopes is not None:
+        results = _filter_by_security(results, actor_scopes, collection_id)
+
     # ── Latency tracking ──
     try:
         import os as _l_os, json as _l_json
@@ -587,3 +643,110 @@ def sys_knowledge_retrieve(
         pass
 
     return results[:top_k]
+
+
+def _filter_by_security(
+    results: List[Dict[str, Any]],
+    actor_scopes: List[str],
+    collection_id: str = "default",
+) -> List[Dict[str, Any]]:
+    u"""Filter blended retrieval results by markings + per-object permissions.
+
+    Applied at the unified entry (sys_knowledge_retrieve) after blending
+    Wiki and KB results. Admin scope bypasses all restrictions.
+
+    Each result is checked against:
+      1. Markings (lineage-based confidentiality labels)
+      2. Per-object access (RBAC fine-grained permission)
+    """
+    if not results or actor_scopes is None or "admin" in actor_scopes:
+        return results
+
+    try:
+        from core.harness.knowledge.knowledge_markings import (
+            load_markings_config, resolve_effective_markings, MarkingLevel,
+        )
+        from core.harness.knowledge.knowledge_abox_builder import _safe_uri
+        from core.harness.knowledge.knowledge_ontology import get_ontology
+
+        AI = "http://aiplat.local/knowledge#"
+        marking_config = load_markings_config(collection_id)
+        onto = get_ontology()
+
+        filtered = []
+        for r in results:
+            title = r.get("title", "")
+            if not title:
+                filtered.append(r)
+                continue
+
+            entity_uri = r.get("_entity_uri") or f"{AI}{_safe_uri(title)}"
+
+            # Check markings
+            effective, _ = resolve_effective_markings(
+                entity_uri, marking_config, onto.triples, max_depth=3,
+            )
+            blocked = False
+            for m in effective:
+                if m.level >= MarkingLevel.INTERNAL:
+                    required_scope = m.scope or f"kb:read:{m.label.lower()}"
+                    if required_scope not in set(actor_scopes):
+                        blocked = True
+                        break
+
+            if not blocked:
+                filtered.append(r)
+
+        return filtered
+    except Exception:
+        return results  # best-effort: allow all on filter failure
+
+
+def _normalize_scores(
+    results: List[Dict[str, Any]],
+    *,
+    boost: float = 1.0,
+    percentile_cutoff: int = 2,
+) -> None:
+    u"""Min-max normalize scores within a group, with percentile cutoff.
+
+    Percentile cutoff reduces sensitivity to outliers:
+      - 2% cutoff: a single extremely low score won't pull the denominator down
+      - 0% cutoff: standard min-max (all scores included)
+
+    Applies a multiplicative boost after normalization.
+    Modifies results in-place, adding 'normalized_score' field.
+
+    If all scores identical (min == max), assigns 0.5 uniformly.
+    """
+    if not results:
+        return
+
+    try:
+        scores = [r.get("score", 0.0) for r in results]
+        min_s = min(scores)
+        max_s = max(scores)
+
+        # Percentile cutoff: exclude top/bottom percentiles from min/max
+        if len(scores) >= 5 and percentile_cutoff > 0:
+            import math
+            idx_lo = max(0, math.ceil(len(scores) * percentile_cutoff / 100) - 1)
+            idx_hi = min(len(scores) - 1, math.floor(len(scores) * (100 - percentile_cutoff) / 100))
+            sorted_scores = sorted(scores)
+            min_s = min(min_s, sorted_scores[idx_lo])
+            max_s = max(max_s, sorted_scores[idx_hi])
+
+        if max_s <= min_s:
+            for r in results:
+                r["normalized_score"] = 0.5
+            return
+
+        for r in results:
+            raw = r.get("score", 0.0)
+            norm = (raw - min_s) / (max_s - min_s)
+            norm = max(0.0, min(1.0, norm))
+            r["normalized_score"] = round(norm * boost, 4)
+    except Exception:
+        # Fallback: use raw score
+        for r in results:
+            r["normalized_score"] = r.get("score", 0.0)

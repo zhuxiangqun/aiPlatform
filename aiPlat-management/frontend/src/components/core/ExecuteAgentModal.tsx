@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { agentApi, type Agent } from '../../services';
 import { Button, Modal, Textarea, toast } from '../ui';
 import { toastGateError } from '../ui';
-import ExecutionViewer from '../ExecutionViewer/ExecutionViewer';
+import ExecutionViewer, { StructuredDetail } from '../ExecutionViewer/ExecutionViewer';
 
 interface ExecuteAgentModalProps {
   open: boolean;
@@ -18,6 +18,8 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
   const [forceReAct, setForceReAct] = useState(true);
   const [compareMode, setCompareMode] = useState(false);
   const [compareModel, setCompareModel] = useState('deepseek-chat');
+  const [flowFullscreen, setFlowFullscreen] = useState(false);
+  const [selectedFlowNode, setSelectedFlowNode] = useState<any>(null);
 
   const handleExecute = async () => {
     if (!agent) return;
@@ -31,10 +33,15 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
     try {
       const result = await agentApi.execute(agent.id, {
         input: parsedInput,
-        options: { force_react: forceReAct },
+        options: { force_react: forceReAct, stream: true },
       });
       setResult(result);
-      toast.success((result as any)?.status === 'completed' ? '执行成功' : `状态: ${(result as any)?.status}`);
+      const status = String((result as any)?.status || '');
+      const runId = (result as any)?.run_id || (result as any)?.execution_id || '';
+      if (runId && (status === 'running' || status === 'completed' || status === 'accepted')) {
+        setFlowFullscreen(true);
+      }
+      toast.success(status === 'completed' ? '执行成功' : `状态: ${status}`);
 
       if (compareMode) {
         // Run same prompt against comparison model
@@ -107,7 +114,7 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
         )}
       </div>
 
-      {result && (
+      {result && !flowFullscreen && (
         <div className="mt-4 space-y-3">
           {compareMode && compareResult ? (
             <div className="grid grid-cols-2 gap-3">
@@ -119,7 +126,47 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
           )}
           {(result as any)?.run_id && (
             <div className="mt-3">
-              <ExecutionViewer runId={String((result as any).run_id)} live={true} title="ReAct 执行流程" height={400} />
+              <Button variant="primary" onClick={() => setFlowFullscreen(true)}>▶ 查看执行流程（全屏）</Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── 全屏执行流程弹窗 ── */}
+      {flowFullscreen && result && (result as any)?.run_id && (
+        <div className="fixed inset-0 z-[60] bg-dark-bg flex flex-col">
+          <div className="h-10 flex items-center justify-between px-4 border-b border-dark-border bg-dark-card flex-shrink-0">
+            <span className="text-sm font-medium text-gray-200">
+              ▶ ReAct 执行流程 · {agent?.name || 'Agent'}
+            </span>
+            <div className="flex items-center gap-2">
+              <span className={`text-xs px-2 py-0.5 rounded ${(result as any)?.status === 'completed' ? 'bg-green-900/50 text-green-300' : 'bg-blue-900/50 text-blue-300'}`}>
+                {(result as any)?.status || 'running'}
+              </span>
+              <Button variant="secondary" onClick={() => setFlowFullscreen(false)}>✕ 关闭</Button>
+            </div>
+          </div>
+          <ExecutionViewer
+            runId={String((result as any).run_id)}
+            live={true}
+            title=""
+            height={window.innerHeight - 40}
+            onNodeClick={(node: any) => setSelectedFlowNode(node)}
+          />
+          {selectedFlowNode && (
+            <div className="fixed bottom-0 left-0 right-0 z-[70] border-t border-dark-border bg-dark-card p-4 max-h-72 overflow-y-auto shadow-2xl">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-semibold" style={{ color: selectedFlowNode.color || '#e5e7eb' }}>
+                  {selectedFlowNode.icon} {selectedFlowNode.name}
+                </span>
+                <button onClick={() => setSelectedFlowNode(null)} className="text-gray-500 hover:text-gray-300 text-lg">✕</button>
+              </div>
+              <div className="flex gap-4 text-xs mb-3">
+                <span className="text-gray-400">类型: {selectedFlowNode.type}</span>
+                <span className="text-gray-400">状态: {selectedFlowNode.status}</span>
+                {selectedFlowNode.duration ? <span className="text-gray-400">耗时: {selectedFlowNode.duration}ms</span> : null}
+              </div>
+              <StructuredDetail node={selectedFlowNode} />
             </div>
           )}
         </div>

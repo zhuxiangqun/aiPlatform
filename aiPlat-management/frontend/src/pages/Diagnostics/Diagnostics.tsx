@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Activity, GitBranch, Share2, Zap, Wrench, FolderSearch, Wand2, ShieldCheck, AlertTriangle, BarChart3, ArrowLeftRight } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, Badge, Button, toast } from '../../components/ui';
@@ -21,7 +21,34 @@ const toBadgeVariant = (status: string): 'success' | 'warning' | 'error' | 'info
   return 'default';
 };
 
-// Map layer + component → diagnostic tools
+// Map diagnostic category → recommended toolbox tools (score below threshold or violations > 0)
+const DIAG_TO_TOOL: Record<string, { tool: string; threshold: number }[]> = {
+  code_intel: [{ tool: 'Code Intel', threshold: 75 }, { tool: 'Repo', threshold: 70 }],
+  arch_guard: [{ tool: 'Code Intel', threshold: 100 }],
+  skill_lint: [{ tool: 'Doctor', threshold: 75 }],
+  wiki_health: [{ tool: 'Doctor', threshold: 60 }],
+  capability: [{ tool: 'Capability→Policy', threshold: 75 }],
+  core_runtime: [{ tool: 'Doctor', threshold: 80 }, { tool: 'Syscalls', threshold: 80 }, { tool: 'Runs', threshold: 75 }],
+  traces: [{ tool: 'Traces', threshold: 80 }],
+  graph_runs: [{ tool: 'Graph Runs', threshold: 80 }],
+  context_metrics: [{ tool: 'Context', threshold: 80 }],
+  e2e_smoke: [{ tool: 'E2E Smoke', threshold: 75 }],
+  symbol_health: [{ tool: 'Code Intel', threshold: 75 }],
+  lsp: [{ tool: 'Code Intel', threshold: 75 }],
+  security: [{ tool: 'Audit Logs', threshold: 75 }],
+  governance: [{ tool: 'Tenant Policies', threshold: 75 }],
+  compliance: [{ tool: 'Audit Logs', threshold: 80 }, { tool: 'Tenant Policies', threshold: 75 }],
+  overview_issues: [{ tool: 'Doctor', threshold: 80 }],
+  doctor: [{ tool: 'Doctor', threshold: 80 }],
+  cross_lang: [{ tool: 'Code Intel', threshold: 80 }],
+  domain_coupling: [{ tool: 'Code Intel', threshold: 80 }],
+  fragile_base: [{ tool: 'Code Intel', threshold: 80 }],
+  route_coverage: [{ tool: 'Links', threshold: 80 }, { tool: 'Traces', threshold: 75 }],
+  mcp: [{ tool: 'Syscalls', threshold: 75 }],
+  frontend: [{ tool: 'Code Intel', threshold: 80 }],
+  skill_realness: [{ tool: 'Doctor', threshold: 75 }],
+};
+
 const Diagnostics: React.FC = () => {
   const [health, setHealth] = useState<Record<string, Health | null>>({
     infra: null, core: null, platform: null, app: null,
@@ -36,7 +63,11 @@ const Diagnostics: React.FC = () => {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailCategory, setDetailCategory] = useState('');
   const [diagRunning, setDiagRunning] = useState(false);
+  const [quickDiagRunning, setQuickDiagRunning] = useState(false);
+  const [diagMode, setDiagMode] = useState<'full' | 'quick' | null>(null);
   const [expandedCat, setExpandedCat] = useState<string | null>(null);
+  // 防止手动运行后 useEffect 中 latest 覆盖结果
+  const manualRunRef = useRef(false);
 
   const runGuard = async () => {
     setGuardRunning(true); setGuardResult(null);
@@ -50,7 +81,9 @@ const Diagnostics: React.FC = () => {
 
   const runDiagnosticsInBg = async () => {
     setDiagRunning(true);
-    setDiagResult(null);  // clear stale cache to avoid confusion
+    setDiagMode('full');
+    setDiagResult(null);
+    manualRunRef.current = true;
     try {
       const res = await fetch('/api/core/diagnostics/run-all', { method: 'POST' });
       const data = await res.json();
@@ -64,16 +97,18 @@ const Diagnostics: React.FC = () => {
   };
 
   const runQuickDiagnostics = async () => {
-    setDiagRunning(true);
+    setQuickDiagRunning(true);
+    setDiagMode('quick');
     setDiagResult(null);
+    manualRunRef.current = true;
     try {
       const res = await fetch('/api/core/diagnostics/run-all?quick=true', { method: 'POST' });
       const data = await res.json();
       setDiagResult(data);
       setDiagRunId(data.run_id || '');
-      setDiagRunning(false);
+      setQuickDiagRunning(false);
     } catch (e: any) {
-      setDiagRunning(false);
+      setQuickDiagRunning(false);
       toast.error('快速诊断失败', e?.message || e);
     }
   };
@@ -120,14 +155,16 @@ const Diagnostics: React.FC = () => {
     return () => { mounted = false; };
   }, []);
 
+  const isRunning = diagRunning || quickDiagRunning;
+
   // Load cached diagnostic on mount — skip if user already clicked manual run
   useEffect(() => {
-    if (diagRunning) return;
+    if (isRunning || manualRunRef.current) return;
     fetch('/api/core/diagnostics/latest')
       .then(r => r.json())
       .then(data => { if (data.cached !== false && data.overall_score != null) setDiagResult(data); })
       .catch(() => {});
-  }, [diagRunning]);
+  }, [isRunning]);
 
   const items = useMemo(() => [
     { title: 'Doctor', desc: '一键聚合诊断报告', href: '/diagnostics/doctor', icon: Activity },
@@ -151,6 +188,7 @@ const Diagnostics: React.FC = () => {
     { title: 'Observability', desc: 'LLM 调用 / 延迟 / Token 消耗 / 错误率', href: '/diagnostics/observability', icon: BarChart3 },
     { title: 'Run 对比', desc: '并排对比两次执行的差异', href: '/diagnostics/run-comparison', icon: ArrowLeftRight },
     { title: 'Model Playground', desc: '同一 Prompt 并发多模型输出对比', href: '/diagnostics/model-playground', icon: Zap },
+    { title: 'Eval Dashboard', desc: '统一评估：Arena排名、AB评分、进化适应度、Token效率', href: '/diagnostics/eval', icon: BarChart3 },
   ], []);
 
   // Count unhealthy/degraded layers
@@ -158,15 +196,31 @@ const Diagnostics: React.FC = () => {
     l => health[l]?.status && health[l]!.status !== 'healthy' && health[l]!.status !== 'error'
   );
 
-  // Compute recommended tools from Layer Health guidance
+  // Compute recommended tools from Layer Health + unified diagnostic results
   const recommendedTools = useMemo(() => {
     const tools = new Set<string>();
+    // From layer health: Doctor + Syscalls
     if (unhealthyLayers.length > 0) {
       tools.add('Doctor');
       tools.add('Syscalls');
     }
+    // From unified diagnostic results
+    if (diagResult?.categories) {
+      for (const [key, cat] of Object.entries(diagResult.categories) as [string, any][]) {
+        const mappings = DIAG_TO_TOOL[key];
+        if (!mappings) continue;
+        const score = cat?.score;
+        const violations = cat?.violations ?? 0;
+        for (const m of mappings) {
+          if ((m.threshold < 100 && score != null && score < m.threshold) ||
+              (m.threshold >= 100 && violations > 0)) {
+            tools.add(m.tool);
+          }
+        }
+      }
+    }
     return tools;
-  }, [unhealthyLayers]);
+  }, [unhealthyLayers, diagResult]);
 
   // Collect layer component guidance
   return (
@@ -200,10 +254,10 @@ const Diagnostics: React.FC = () => {
               )}
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="primary" size="sm" loading={diagRunning} onClick={runDiagnosticsInBg}>
+              <Button variant="primary" size="sm" loading={diagRunning} disabled={quickDiagRunning} onClick={runDiagnosticsInBg}>
                 🔍 一键诊断
               </Button>
-              <Button variant="secondary" size="sm" loading={diagRunning} onClick={runQuickDiagnostics} title="跳过LSP/安全扫描等慢检查">
+              <Button variant="secondary" size="sm" loading={quickDiagRunning} disabled={diagRunning} onClick={runQuickDiagnostics} title="跳过LSP/安全扫描等慢检查">
                 ⚡ 快速
               </Button>
             </div>
@@ -213,6 +267,11 @@ const Diagnostics: React.FC = () => {
           <CardContent>
             {/* Summary bar */}
             <div className="flex items-center gap-4 mb-4 text-xs">
+              {diagMode && (
+                <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${diagMode === 'quick' ? 'bg-amber-900/40 text-amber-300' : 'bg-blue-900/40 text-blue-300'}`}>
+                  {diagMode === 'quick' ? '⚡ 快速模式' : '🔍 完整模式'}
+                </span>
+              )}
               <span className="text-green-400">✅ {diagResult.pass} 通过</span>
               <span className="text-yellow-400">⚠️ {diagResult.warn} 警告</span>
               <span className="text-red-400">❌ {diagResult.fail} 失败</span>
@@ -374,7 +433,7 @@ const Diagnostics: React.FC = () => {
       </Card>
 
       {/* ═══════ 确认流程: 诊断确认 ═══ */}
-      {unhealthyLayers.length > 0 && (
+      {recommendedTools.size > 0 && (
         <Card className="border-primary/30 bg-primary/5">
           <CardHeader>
             <div className="flex items-center gap-2 text-sm font-semibold text-gray-200">
@@ -388,20 +447,33 @@ const Diagnostics: React.FC = () => {
                 <div className="w-5 h-5 rounded-full bg-primary/20 text-primary flex items-center justify-center shrink-0 mt-0.5 font-bold">1</div>
                 <div>
                   <div className="text-yellow-300 font-medium mb-1">
-                    Layer 健康确认：{unhealthyLayers.join('、')} 层显示非健康状态
+                    {unhealthyLayers.length > 0
+                      ? `Layer 健康确认：${unhealthyLayers.join('、')} 层显示非健康状态`
+                      : '综合诊断发现需关注项'}
                   </div>
                   <div className="text-gray-500 space-y-1">
+                    {unhealthyLayers.length > 0 && (
+                      <>
+                        <div className="flex items-center gap-1">
+                          <span className="text-gray-600">→</span>
+                          <Link to="/diagnostics/doctor" className="text-blue-400 hover:text-blue-300">
+                            打开 Doctor 查看每个组件的详细诊断报告
+                          </Link>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-gray-600">→</span>
+                          <Link to="/diagnostics/syscalls" className="text-blue-400 hover:text-blue-300">
+                            打开 Syscalls 查看调用链是否有异常事件
+                          </Link>
+                        </div>
+                      </>
+                    )}
                     <div className="flex items-center gap-1">
                       <span className="text-gray-600">→</span>
-                      <Link to="/diagnostics/doctor" className="text-blue-400 hover:text-blue-300">
-                        打开 Doctor 查看每个组件的详细诊断报告
-                      </Link>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="text-gray-600">→</span>
-                      <Link to="/diagnostics/syscalls" className="text-blue-400 hover:text-blue-300">
-                        打开 Syscalls 查看调用链是否有异常事件
-                      </Link>
+                      <span className="text-gray-400">
+                        查看下方「诊断工具箱」中标记
+                        <span className="text-yellow-400"> ← 推荐</span> 的工具进行深入排查
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -426,6 +498,27 @@ const Diagnostics: React.FC = () => {
 
         </div>
       </details>
+
+      {/* Anthropic 5 Patterns — execution mode recommendation */}
+      {diagResult && (
+        <Card className="bg-dark-card border-primary/20 mb-4">
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2 text-xs text-gray-400">
+              <span className="text-blue-400">💡</span>
+              <span>
+                执行模式建议：Anthropic 推荐首选
+                <span className="text-green-400">链式/路由/并行</span>模式；
+                只有子任务不可预知时才用
+                <span className="text-yellow-400"> orchestrator/agent</span>。
+                <a href="https://www.anthropic.com/engineering/building-effective-agents" target="_blank" rel="noreferrer"
+                   className="text-blue-400 hover:text-blue-300 ml-1 underline">
+                  Building Effective Agents →
+                </a>
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* ═══════════ 诊断工具箱（折叠） ═══════ */}
       <details className="bg-dark-card border border-dark-border rounded-lg overflow-hidden">

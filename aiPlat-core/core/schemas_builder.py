@@ -259,6 +259,9 @@ class PipelineStageConfig(BaseModel):
     review_gate: str = "quick"           # "none" | "quick" | "llm" | "hitl" — default quick for safety
     tdd_enforce: bool = False
     context_isolation: str = "shared"   # "shared" | "isolated"
+    context_profile: str = "code"        # "minimal" | "code" | "debug" | "deep"
+    # Anthropic 5 patterns: chain | router | parallel | orchestrator | evaluator_optimizer
+    pipeline_mode: str = "chain"          # "chain" | "router" | "parallel" | "orchestrator" | "evaluator_optimizer" | "agent"
     eval_model: str = ""  # dedicated evaluator model (empty = fallback to stage.model or AIPLAT_EVAL_MODEL)
     routing_rules: List[dict] = Field(default_factory=list)  # declarative conditional routing
     deviation_tolerance: float = 0.0  # [0.0, 10.0] Accept output when overall score >= this (0=disabled)
@@ -267,6 +270,15 @@ class PipelineStageConfig(BaseModel):
     # Empty list = use system DEFAULT_FAILURE_MODE_CONSTRAINTS
     enable_query_rewrite: bool = True  # rewrite ambiguous follow-up queries before retrieval
     scoring_dimensions: List[Dict[str, Any]] = Field(default_factory=list)
+    # Fine-grained per-stage reward weights (UnityMAS-O inspired)
+    scoring_weights: Dict[str, float] = Field(default_factory=lambda: {
+        "output_quality": 0.40, "token_efficiency": 0.15,
+        "latency_score": 0.10, "downstream_impact": 0.25,
+        "review_pass": 0.10,
+    })
+    # Declarative cross-entity property propagation (OntoGraph-inspired)
+    propagation_rules: List[Dict[str, Any]] = Field(default_factory=list)
+    # [{source_entity, source_prop, target_entity, target_prop, aggregation}]
     coverage_trace_fields: Dict[str, str] = Field(default_factory=lambda: {"components_key": "components", "api_contracts_key": "api_contracts", "data_model_key": "data_model", "files_key": "files", "test_cases_key": "test_cases"})
     # Debate pattern: stage uses adversarial multi-agent debate (TradingAgents-inspired)
     debate_participants: List[Dict[str, Any]] = Field(default_factory=list)
@@ -280,6 +292,20 @@ class PipelineStageConfig(BaseModel):
     render_schema_fields: List[Dict[str, Any]] = Field(default_factory=list)
     # Knowledge base binding: collections the agent's wiki search is scoped to
     knowledge_bases: List[str] = Field(default_factory=list)
+    # Ontology integration: stage output → ontology entity auto-registration
+    ontology_class: str = ""
+    ontology_relations: List[Dict[str, str]] = Field(default_factory=list)
+    ontology_action_verb: str = ""
+    ontology_preconditions: List[str] = Field(default_factory=list)
+    ontology_target_state: str = "proposed"
+    # Verification: expected outcomes for stage output validation
+    expected_outcomes: List[Dict[str, Any]] = Field(default_factory=list)
+    # External rubric file (YAML/JSON) for independent assessment
+    rubric_path: str = ""
+    # Scene model: scene ID for context injection and template tracking
+    scene_id: str = ""
+    # Planner-Generator-Evaluator separation: stage ID for structured planning
+    planning_stage_id: str = ""
 
 
 class PipelineConfig(BaseModel):

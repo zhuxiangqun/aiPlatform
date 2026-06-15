@@ -247,6 +247,31 @@ CLASSES: List[OntologyClass] = [
     OntologyClass(f"{AI}ExampleRelation", "案例关系",
         parent=f"{AI}WikiRelation",
         equivalent_to=[f"{AI}WikiRelation AND ({AI}relation_type == 'example_of')"]),
+
+    # Phase 4 — Cross-domain: TaskSkill ↔ Knowledge bridge
+    OntologyClass(f"{AI}TaskSkill", "任务技能",
+        parent=f"{AI}KnowledgeEntity",
+        optional_fields=["skill_id", "name", "pipeline_id", "agent_sequence",
+                          "artifacts", "pass_rate", "keywords", "created_at"]),
+
+    # Learning domain (L1 — AI Learning Coach T-Box)
+    OntologyClass(f"{AI}LearningPath", "学习路径",
+        parent=f"{AI}KnowledgeEntity",
+        optional_fields=["description", "target_role", "chapter_count", "tags"]),
+    OntologyClass(f"{AI}Chapter", "学习章节",
+        parent=f"{AI}KnowledgeEntity",
+        optional_fields=["title", "path_id", "order", "estimated_minutes",
+                          "concepts", "status", "mastery_score"]),
+    OntologyClass(f"{AI}Material", "学习材料",
+        parent=f"{AI}KnowledgeEntity",
+        optional_fields=["type", "title", "content", "source_url"]),
+    OntologyClass(f"{AI}Exercise", "练习题",
+        parent=f"{AI}KnowledgeEntity",
+        optional_fields=["exercise_type", "question", "options_json", "rubric"]),
+    OntologyClass(f"{AI}Assessment", "评估结果",
+        parent=f"{AI}KnowledgeEntity",
+        optional_fields=["learner_id", "score", "passed", "feedback",
+                          "weak_points_json", "submitted_at"]),
 ]
 
 # ══════════════════════════════════════════════════════════════
@@ -315,6 +340,38 @@ OBJECT_PROPERTIES: List[OntologyObjectProperty] = [
     OntologyObjectProperty(f"{AI}supportsClaim", "支撑断言",
         domain=[f"{AI}Claim"], range=[f"{AI}Claim"],
         is_asymmetric=True),
+
+    # Phase 4 — TaskSkill↔WikiPage cross-domain links
+    OntologyObjectProperty(f"{AI}usesKnowledge", "使用知识",
+        domain=[f"{AI}TaskSkill"], range=[f"{AI}WikiPage"]),
+    OntologyObjectProperty(f"{AI}producesKnowledge", "产出知识",
+        domain=[f"{AI}TaskSkill"], range=[f"{AI}WikiPage"]),
+    OntologyObjectProperty(f"{AI}producedBy", "由谁产出",
+        domain=[f"{AI}WikiPage"], range=[f"{AI}TaskSkill"]),
+
+    # Learning domain relations (L1)
+    OntologyObjectProperty(f"{AI}prerequisiteOf", "前置依赖",
+        domain=[f"{AI}Chapter"], range=[f"{AI}Chapter"],
+        is_asymmetric=True),
+    OntologyObjectProperty(f"{AI}containsChapter", "包含章节",
+        domain=[f"{AI}LearningPath"], range=[f"{AI}Chapter"]),
+    OntologyObjectProperty(f"{AI}assesses", "评估关联",
+        domain=[f"{AI}Assessment"], range=[f"{AI}Exercise"],
+        is_asymmetric=True),
+
+    # Cross-modal relations (Phase CM — document structure preservation)
+    OntologyObjectProperty(f"{AI}explains", "文字解释",
+        domain=[f"{AI}WikiPage", f"{AI}KBDocument"], range=[f"{AI}KBDocument"],
+        is_asymmetric=True),
+    OntologyObjectProperty(f"{AI}belongsToSection", "属于章节",
+        domain=[f"{AI}KBDocument"], range=[f"{AI}WikiPage"],
+        is_asymmetric=True),
+    OntologyObjectProperty(f"{AI}refersToImage", "引用图片",
+        domain=[f"{AI}WikiPage"], range=[f"{AI}KBDocument"],
+        is_asymmetric=True),
+    OntologyObjectProperty(f"{AI}refersToTable", "引用表格",
+        domain=[f"{AI}WikiPage"], range=[f"{AI}KBDocument"],
+        is_asymmetric=True),
 ]
 
 # ══════════════════════════════════════════════════════════════
@@ -382,6 +439,27 @@ DATA_PROPERTIES: List[OntologyDataProperty] = [
         domain=[f"{AI}Resolution"], range="xsd:string"),
     OntologyDataProperty(f"{AI}source_doc_id", "来源文档ID",
         domain=[f"{AI}KnowledgeAtom"], range="xsd:string"),
+    # Lifecycle state management (Phase 1 — entity lifecycle state machine)
+    OntologyDataProperty(f"{AI}lifecycleState", "生命周期状态",
+        domain=[f"{AI}KnowledgeEntity"], range="xsd:string",
+        is_functional=True, min_cardinality=0),
+    OntologyDataProperty(f"{AI}generatedBy", "生成溯源",
+        domain=[f"{AI}KnowledgeEntity"], range="xsd:string"),
+    OntologyDataProperty(f"{AI}qualityScore", "质量评分",
+        domain=[f"{AI}KnowledgeEntity"], range="xsd:integer",
+        is_functional=True, min_cardinality=0),
+    OntologyDataProperty(f"{AI}fieldLevelPermission", "字段级权限",
+        domain=[f"{AI}KnowledgeEntity"], range="xsd:string"),
+    # Learning domain (L1)
+    OntologyDataProperty(f"{AI}estimatedMinutes", "预估学习时间",
+        domain=[f"{AI}Chapter"], range="xsd:integer"),
+    OntologyDataProperty(f"{AI}masteryScore", "掌握度评分",
+        domain=[f"{AI}Chapter", f"{AI}Assessment"], range="xsd:float",
+        is_functional=True),
+    OntologyDataProperty(f"{AI}exerciseType", "习题类型",
+        domain=[f"{AI}Exercise"], range="xsd:string"),
+    OntologyDataProperty(f"{AI}chapterStatus", "章节状态",
+        domain=[f"{AI}Chapter"], range="xsd:string"),
 ]
 
 # ══════════════════════════════════════════════════════════════
@@ -467,6 +545,14 @@ AXIOMS: List[OntologyAxiom] = [
                 FILTER NOT EXISTS { ?b <{AI}isCitedBy> ?a }
             }
         """.replace("{AI}", AI),
+    ),
+    OntologyAxiom(
+        id="A8",
+        description="键区分度: 新增 WikiPage/KnowledgeAtom 的 title+summary 与已有实体余弦相似度必须 < 0.85，除非声明为同义词",
+        severity="warning",
+        sparql_violation_query="""
+            (checked at write time via check_key_discrimination)
+        """,
     ),
 ]
 
@@ -645,7 +731,9 @@ def validate_page_against_schema(
                        "source_articles", "summary", "tags", "related",
                        "contradictions", "source_doc_id", "evidence_start",
                        "evidence_end", "evidence_text", "confidence",
-                       "contradicts_atom_index", "supports_atom_index"])
+                       "contradicts_atom_index", "supports_atom_index",
+                       "lifecycle_state", "_generated_by", "quality_score",
+                       "field_level_permission"])
     known = set(cls.required_fields + cls.optional_fields) | base_known
     # Also inherit parent class fields
     parent = cls.parent
@@ -937,6 +1025,13 @@ def _turtle_id(uri: str) -> str:
     return f"<{uri}>"
 
 
+def _safe_uri(name: str) -> str:
+    """Convert a name to a URI-safe string, stripping unsafe characters."""
+    import re
+    safe = re.sub(r'[<>:"/\\|?*#]', '_', str(name))
+    return safe[:120]
+
+
 # ══════════════════════════════════════════════════════════════
 # Ontology Evolution — Suggestions Storage (Layer 3)
 # ══════════════════════════════════════════════════════════════
@@ -1092,12 +1187,19 @@ def generate_code_for_suggestion(suggestion_id: str, *, collection_id: str = "de
         }
 
 
-def add_suggestions_from_patterns(collection_id: str = "default") -> List[Dict[str, Any]]:
-    """Generate ontology suggestions from detected patterns (Layer 2 — without LLM).
+def add_suggestions_from_patterns(
+    collection_id: str = "default",
+    *,
+    include_llm: bool = False,
+    max_llm_suggestions: int = 5,
+) -> List[Dict[str, Any]]:
+    """Generate ontology suggestions from detected patterns.
 
-    Uses rule-based analysis of OntologyPatterns to create actionable suggestions.
-    For LLM-powered suggestions, call POST /ontology/suggestions which uses
-    the full generate_ontology_suggestions() pipeline.
+    Tier 1: Rule-based analysis of OntologyPatterns (always).
+    Tier 2: LLM-driven semantic suggestions (opt-in via include_llm=True).
+
+    For LLM-powered suggestions standalone, call:
+      POST /ontology/suggestions/semantic  (uses knowledge_evolution_llm.generate_semantic_suggestions)
     """
     from core.harness.knowledge.knowledge_validator import detect_ontology_patterns
     patterns = detect_ontology_patterns(collection_id)
@@ -1155,18 +1257,82 @@ def add_suggestions_from_patterns(collection_id: str = "default") -> List[Dict[s
                 "generated_at": _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime()),
             })
 
-    # Merge existing suggestions with new ones (avoid duplicates)
+    # Merge existing suggestions with new ones (dedup by id AND by description+type for resolved ones)
     existing = load_pending_suggestions(collection_id)
     existing_ids = {s.get("id") for s in existing}
-    merged = existing + [s for s in new_suggestions if s["id"] not in existing_ids]
+    # Skip new suggestions whose description+type already has a resolved (accepted/rejected) entry
+    resolved_descriptions = {
+        (s.get("description"), s.get("type"))
+        for s in existing if s.get("status") in ("accepted", "rejected")
+    }
+    new_unique = []
+    for s in new_suggestions:
+        if s["id"] in existing_ids:
+            continue
+        desc_key = (s.get("description"), s.get("type"))
+        if desc_key in resolved_descriptions:
+            continue
+        new_unique.append(s)
+    merged = existing + new_unique
 
     if merged != existing:
         save_suggestions(merged, collection_id)
 
+    # Tier 2: LLM-driven semantic suggestions (opt-in)
+    if include_llm:
+        try:
+            import asyncio as _asyncio
+            from core.harness.knowledge.knowledge_evolution_llm import generate_semantic_suggestions
+            llm = _asyncio.run(
+                generate_semantic_suggestions(
+                    collection_id,
+                    max_suggestions=max_llm_suggestions,
+                )
+            )
+            merged_ids = {s.get("id") for s in merged}
+            for s in llm:
+                sid = s.get("id", "")
+                if sid and sid not in merged_ids:
+                    merged.append(s)
+        except Exception:
+            logger.warning("LLM-driven suggestions generation failed for %s", collection_id, exc_info=True)
+
     return merged
 
 
-def check_schema_readiness(collection_id: str = "default") -> Dict[str, Any]:
+def check_key_discrimination(
+    title: str, summary: str = "", *, collection_id: str = "default"
+) -> Tuple[bool, List[str]]:
+    u"""A8: Check that a new entity's key has sufficient discrimination from existing ones.
+
+    Uses cosine similarity of hash embeddings (zero-dependency, deterministic).
+    Returns (ok, warnings) — ok=False means similarity > 0.85 with an existing entity.
+
+    From Neuron 2025 KV-memory paper: hippocampus enforces 'repulsion' to maximize
+    key distinctness. This is the computational equivalent.
+    """
+    from core.harness.knowledge.embedder import hash_embed, cosine_similarity
+    from core.harness.knowledge.knowledge_abox_builder import _scan_wiki_pages
+
+    warnings = []
+    text = f"{title}: {summary}" if summary else title
+    new_vec = hash_embed(text, dim=128)
+
+    existing = _scan_wiki_pages(collection_id=collection_id)
+    for page in existing:
+        existing_title = str(page.get("title", ""))
+        if existing_title == title:
+            continue  # same title → replacement, not duplication
+        existing_text = f"{existing_title}: {str(page.get('summary', ''))[:200]}"
+        existing_vec = hash_embed(existing_text, dim=128)
+        sim = cosine_similarity(new_vec, existing_vec)
+        if sim > 0.85:
+            warnings.append(
+                f"A8: '{title}' similarity {sim:.2f} with existing '{existing_title}'. "
+                f"Consider using existing page or merging."
+            )
+
+    return len(warnings) == 0, warnings
     """Scan all wiki pages and report ERROR-mode schema compliance.
 
     Returns a readiness report showing which pages would be rejected

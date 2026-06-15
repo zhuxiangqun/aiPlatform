@@ -262,6 +262,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       if (result.agent_ids?.length) setAgentIds(result.agent_ids.filter((a: string) => agentOptions.some(o => o.value === a)));
       if (result.memory_config) setMemoryConfigText(JSON.stringify(result.memory_config, null, 2));
       if (result.sop_text) setSopText(result.sop_text);
+      if (result.trigger_conditions?.length) setTriggerText(result.trigger_conditions.join('\n'));
       if (result.workflow_ids?.length) setWorkflowIds(result.workflow_ids.filter((w: string) => Array.isArray(workflowOptions) && workflowOptions.some(o => o.value === w)));
       try {
         const md = { ...(agent.metadata || {}), role_definition: roleDefinition, role_description: description.trim() };

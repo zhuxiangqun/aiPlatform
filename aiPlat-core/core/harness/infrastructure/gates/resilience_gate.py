@@ -27,7 +27,11 @@ class ResilienceGate:
         *,
         retries: int = 0,
         timeout_seconds: Optional[float] = None,
-        retry_on: Sequence[Type[BaseException]] = (asyncio.TimeoutError,),
+        retry_on: Sequence[Type[BaseException]] = (
+            asyncio.TimeoutError,
+            ConnectionError,
+            OSError,
+        ),
         backoff_base_seconds: float = 0.2,
         backoff_max_seconds: float = 2.0,
     ) -> T:

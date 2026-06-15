@@ -52,6 +52,8 @@ input_schema:
   query:
     type: string
     required: true
+
+protected: true
 ---
 你是一个多文档知识库查询助手。你的任务是根据用户的问题，从多个指定的知识库文档中检索相关内容，并生成综合性回答。
 

@@ -710,12 +710,13 @@ def _wire_persist_callback(mgr: MemoryManager) -> None:
             user_id = str(interaction.get("user_id", "system"))
             key = str(interaction.get("session_id", "default"))
             content = str(interaction.get("summary", ""))[:5000]
-            import uuid
+            import uuid, time as _time
+            now = _time.time()
             await store._execute(
-                "INSERT INTO long_term_memories(id,user_id,key,content,metadata_json,created_at) VALUES(?,?,?,?,?,?);",
+                "INSERT INTO long_term_memories(id,user_id,key,content,metadata_json,created_at,updated_at,relevance_decay) VALUES(?,?,?,?,?,?,?,?);",
                 (str(uuid.uuid4()), user_id, key, content,
                  str(interaction.get("metadata", "{}"))[:2000],
-                 interaction.get("timestamp", 0)))
+                 interaction.get("timestamp", now), now, 1.0))
         except Exception:
             pass
     mgr._persist_callback = _persist

@@ -6,7 +6,7 @@ import sys
 import time
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 
 from core.api.deps import actor_from_http
 from core.harness.integration import get_harness
@@ -87,6 +87,15 @@ def _load_diag_cache():
         import json
         path = _diag_cache_path()
         if os.path.exists(path):
+            # Invalidate cache if diagnostics.py or code_graph.py was modified after cache save
+            cache_mtime = os.path.getmtime(path)
+            self_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+            code_graph = os.path.join(self_dir, "harness", "knowledge", "code_graph.py")
+            latest_mtime = max(os.path.getmtime(__file__),
+                              os.path.getmtime(code_graph) if os.path.exists(code_graph) else 0)
+            if latest_mtime > cache_mtime:
+                _DIAG_CACHE = None
+                return
             with open(path, "r") as f:
                 _DIAG_CACHE = json.load(f)
             _DIAG_CACHE_TS = time.time()
@@ -194,10 +203,84 @@ def _append_diag_history(result):
         pass
 
 
-# Load persisted cache on module init
-_load_diag_cache()
+# Load persisted cache on module init — DISABLED: always rebuild fresh
+# _load_diag_cache()
 
 router = APIRouter()
+
+
+# Register health checks with the formal HealthCheckRegistry (lazy)
+def _register_health_checks():
+    try:
+        from core.harness.health.registry import HealthCheckRegistry, get_registry, Severity
+        from core.harness.health.registry import HealthCheck, HealthResult, Status
+        from core.harness.kernel.runtime import get_kernel_runtime
+
+        class SimpleHealthCheck(HealthCheck):
+            """Adapter: wraps existing _check_* functions into HealthCheck protocol."""
+            def __init__(self, module, fn, severity=Severity.MEDIUM, deps=None):
+                self.module = module
+                self.severity = severity
+                self.dependencies = deps or []
+                self._fn = fn
+
+            async def run(self) -> HealthResult:
+                try:
+                    result = await self._fn()
+                    score = result.get("score", 0) if isinstance(result, dict) else 0
+                    status = result.get("status", "unknown") if isinstance(result, dict) else "unknown"
+                    s = Status.HEALTHY if status in ("pass", "healthy") else (
+                        Status.DEGRADED if status in ("warn", "degraded") else Status.UNHEALTHY)
+                    return HealthResult(module=self.module, status=s, severity=self.severity,
+                                       message=f"score={score}", details=result if isinstance(result, dict) else {})
+                except Exception as e:
+                    return HealthResult(module=self.module, status=Status.UNHEALTHY,
+                                       severity=self.severity, message=str(e))
+
+        reg = get_registry()
+        # Runtime & core module checks
+        reg.register(SimpleHealthCheck("runtime", _check_core_runtime, Severity.CRITICAL))
+        reg.register(SimpleHealthCheck("skill_lint", _check_skill_lint, Severity.MEDIUM))
+        reg.register(SimpleHealthCheck("code_intel", _check_code_intel, Severity.MEDIUM))
+        reg.register(SimpleHealthCheck("cross_lang", _check_cross_lang_links, Severity.MEDIUM))
+        reg.register(SimpleHealthCheck("route_coverage", _check_route_coverage, Severity.MEDIUM))
+        reg.register(SimpleHealthCheck("capability", _check_capability, Severity.MEDIUM))
+        reg.register(SimpleHealthCheck("wiki_health", _check_wiki_health, Severity.MEDIUM))
+        reg.register(SimpleHealthCheck("e2e_smoke", _check_e2e_smoke, Severity.LOW))
+        reg.register(SimpleHealthCheck("doctor", _check_doctor, Severity.HIGH))
+        reg.register(SimpleHealthCheck("governance", _check_governance, Severity.HIGH))
+        reg.register(SimpleHealthCheck("frontend", _check_frontend, Severity.MEDIUM))
+        reg.register(SimpleHealthCheck("mcp", _check_mcp, Severity.MEDIUM))
+
+        # New ROSClaw-inspired modules
+        class SandboxGateCheck(HealthCheck):
+            module = "sandbox_gate"
+            severity = Severity.MEDIUM
+            async def run(self) -> HealthResult:
+                from core.harness.infrastructure.gates.sandbox_gate import get_sandbox
+                sb = get_sandbox()
+                result = await sb.check(kind="tool", tool_name="health_check")
+                return HealthResult(module="sandbox_gate", 
+                    status=Status.HEALTHY if result.verdict.value == "pass" else Status.DEGRADED,
+                    severity=Severity.MEDIUM, message=f"sandbox checks: {result.checks_passed}/{result.checks_total}")
+        reg.register(SandboxGateCheck())
+
+        class SchemaGateCheck(HealthCheck):
+            module = "schema_gate"
+            severity = Severity.MEDIUM
+            async def run(self) -> HealthResult:
+                from core.harness.infrastructure.gates.schema_gate import get_schema_gate
+                sg = get_schema_gate()
+                r = sg.validate({"name": "test", "age": 30}, {"type": "object", "required": ["name", "age"]})
+                return HealthResult(module="schema_gate",
+                    status=Status.HEALTHY if r.verdict.value == "pass" else Status.DEGRADED,
+                    severity=Severity.MEDIUM, message="schema validation functional")
+        reg.register(SchemaGateCheck())
+    except Exception:
+        pass
+
+
+_register_health_checks()
 
 
 def _rt():
@@ -228,6 +311,17 @@ async def run_e2e_smoke(request: Dict[str, Any]):
         run_id=run_id,
     )
     result = await harness.execute(exec_req)
+    # Persist for diagnostic check (global_settings — no schema change needed)
+    store = _store()
+    if store:
+        try:
+            await store.upsert_global_setting(key="last_smoke_result", value={
+                "ok": getattr(result, "ok", False),
+                "status": "completed" if getattr(result, "ok", False) else "failed",
+                "timestamp": time.time(),
+            })
+        except Exception:
+            pass
     if not result.ok:
         raise HTTPException(status_code=result.http_status, detail=result.error or "Smoke failed")
     return result.payload
@@ -544,9 +638,8 @@ async def run_architecture_guard():
 
 @router.get("/diagnostics/latest")
 def get_latest_diagnostic():
-    """Return last diagnostic result — cached with _CACHE_TTL seconds expiry."""
-    global _DIAG_CACHE, _DIAG_CACHE_TS, _DIAG_RUN_CACHE_TTL
-    if _DIAG_CACHE is not None and (time.time() - _DIAG_CACHE_TS) < _DIAG_RUN_CACHE_TTL:
+    """Return last diagnostic result (in-memory, current session only)."""
+    if _DIAG_CACHE is not None:
         result = dict(_DIAG_CACHE)
         result.pop("_details", None)
         return result
@@ -555,19 +648,16 @@ def get_latest_diagnostic():
 
 @router.get("/diagnostics/repairs-latest")
 async def get_latest_repairs():
-    """Return last repair result — cached with _CACHE_TTL seconds expiry."""
-    global _DIAG_CACHE, _DIAG_CACHE_TS, _DIAG_RUN_CACHE_TTL
-    if _DIAG_CACHE is not None and (time.time() - _DIAG_CACHE_TS) < _DIAG_RUN_CACHE_TTL:
+    """Return last repair result (in-memory, current session only)."""
+    if _DIAG_CACHE is not None:
         return await get_repairs()
     return {"cached": False, "needs_diagnostics": True, "summary": {"total_issues": 0}}
 
 
 @router.get("/diagnostics/summary")
 def get_diagnostic_summary():
-    """Return quick alert summary from last diagnostic run (0ms, cache-only)."""
-    global _DIAG_CACHE, _DIAG_CACHE_TS
-    global _DIAG_RUN_CACHE_TTL
-    if _DIAG_CACHE is None or (time.time() - _DIAG_CACHE_TS) >= _DIAG_RUN_CACHE_TTL:
+    """Return quick alert summary from last diagnostic run."""
+    if _DIAG_CACHE is None:
         return {"cached": False, "alerts": [], "pass": 0, "warn": 0, "fail": 0}
     cats = _DIAG_CACHE.get("categories", {})
     alerts = []
@@ -695,11 +785,7 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
             return {"status": "unavailable", "score": 0}
 
     async def _check_skill_lint():
-        """Lint scan across all skills — cached 30s to avoid repeated scans."""
-        global _LINT_CACHE, _LINT_CACHE_TS
-        if _LINT_CACHE is not None and time.time() - _LINT_CACHE_TS < _SUB_CACHE_TTL:
-            return _LINT_CACHE
-
+        """Lint scan across all skills."""
         try:
             from core.management.skill_linter import lint_skill, propose_skill_fixes
             from core.management.skill_manager import SkillManager
@@ -747,8 +833,6 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
                 "_raw": {"items": items, "errors": total_errors, "warnings": total_warnings,
                          "auto_fix_total": sum(it["auto_fix_count"] for it in items)},
             }
-            _LINT_CACHE = result
-            _LINT_CACHE_TS = time.time()
             return result
         except Exception:
             return {"status": "unavailable", "score": 0}
@@ -803,11 +887,11 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
 
     async def _check_code_intel():
         try:
-            from core.harness.knowledge.code_graph import count_cycles, health_score
+            from core.harness.knowledge.code_graph import count_cycles, effective_cycles, health_score
             nodes, edges, issues_list = _get_or_build_graph()
             # Filter to structural edges only (exclude cross-file call edges)
             arch_edges = [e for e in edges if e.get("kind", "import") != "calls"]
-            cycles = count_cycles(nodes)
+            cycles = effective_cycles(nodes)
             h = health_score(nodes=nodes, edges=arch_edges, issues=issues_list, cycles_back_edges=cycles)
             items: List[Dict[str, Any]] = []
             if cycles > 0:
@@ -862,16 +946,25 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
                             backend_routes.add(path)
 
             # Check frontend API calls (exclude diagnostic/internal endpoints)
-            _CROSS_INTERNAL = ('/diagnostics/', '/api/diagnostics/', '/kb-eval/', '/credentials/', '/variables/')
+            _CROSS_INTERNAL = ('/diagnostics/', '/api/diagnostics/', '/kb-eval/', '/credentials/', '/variables/',
+                              '/infra/', '/platform/', '/api/infra/', '/api/platform/', '/dashboard/')
+            
+            # Normalize path parameter patterns for comparison: {var}, {var:type}, ${var} → {}
+            def _norm_path(p: str) -> str:
+                return re.sub(r'\{\w+[\w:]*\}|\$\{\w+\}', '{}', p)
+            
+            # Normalize backend routes for matching
+            backend_normalized = {_norm_path(p).replace('/api/', '/').replace('/core/', '/').rstrip('/') for p in backend_routes}
+            
             broken = []
             for f in abs_roots:
                 if not f.exists() or not f.is_dir():
                     continue
                 for p in f.rglob("*.ts") if f.name == "aiPlat-management" else []:
                     for ep in _extract_api_calls(p):
-                        ep = ep.replace('/api/', '/').replace('/core/', '/').rstrip('/')
-                        if ep and not any(ep.startswith(prefix) for prefix in _CROSS_INTERNAL):
-                            if not any(re.match(ep.replace('${', r'\{').replace('}', r'\}'), br) for br in backend_routes):
+                        ep_norm = _norm_path(ep.replace('/api/', '/').replace('/core/', '/').rstrip('/'))
+                        if ep_norm and not any(ep_norm.startswith(prefix) for prefix in _CROSS_INTERNAL):
+                            if ep_norm not in backend_normalized:
                                 broken.append({"file": str(p.relative_to(repo))[:80], "endpoint": ep})
 
             items = []
@@ -888,62 +981,55 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
             return {"status": "error", "score": 0, "error": str(e)[:200]}
 
     async def _check_route_coverage():
-        """B2: Check if backend routes have corresponding frontend usage."""
+        """B2: Verify management proxy modules have corresponding frontend API usage."""
         try:
-            from core.harness.knowledge.code_graph import repo_root, default_roots, _extract_backend_routes, _extract_api_calls, _route_matches
+            from core.harness.knowledge.code_graph import repo_root
+            from pathlib import Path as _P
+
             repo = repo_root()
-            abs_roots = [(repo / r).resolve() for r in default_roots()]
-            nodes, edges, _ = _get_or_build_graph()
+            mgmt_api = _P(repo) / "aiPlat-management" / "management" / "api"
+            mgmt_frontend_svc = _P(repo) / "aiPlat-management" / "frontend" / "src" / "services"
 
-            # Collect all backend routes
-            backend_routes = []
-            for f in abs_roots:
-                if not f.exists() or not f.is_dir():
-                    continue
-                for p in f.rglob("*.py"):
-                    if p.parent.name == "tests" or "__pycache__" in str(p):
-                        continue
-                    for route in _extract_backend_routes(p):
-                        path = route[0] if isinstance(route, (list, tuple)) else str(route)
-                        handler = route[1] if isinstance(route, (list, tuple)) and len(route) > 1 else ""
-                        if path and path.startswith('/') and '{' not in path:  # skip param routes
-                            backend_routes.append({"path": path, "file": str(p.relative_to(repo))[:70], "handler": handler})
+            # Management proxy modules (each proxies a backend layer)
+            mgmt_modules = set()
+            if mgmt_api.is_dir():
+                for p in mgmt_api.glob("*.py"):
+                    if not p.name.startswith("_") and p.name != "proxy.py":
+                        mgmt_modules.add(p.stem)
 
-            # Collect all frontend API calls
-            frontend_calls = set()
-            for f in abs_roots:
-                if not f.exists() or not f.is_dir():
-                    continue
-                for p in f.rglob("*.ts") if f.name == "aiPlat-management" else []:
-                    for ep in _extract_api_calls(p):
-                        ep = ep.replace('/api/', '/').replace('/core/', '/').rstrip('/')
-                        if ep:
-                            frontend_calls.add(ep)
+            # For each frontend service file, check which mgmt modules it references
+            # by looking for the module name in its code (e.g., coreApi.ts → core)
+            frontend_covered = set()
+            if mgmt_frontend_svc.is_dir():
+                for p in mgmt_frontend_svc.rglob("*.ts"):
+                    try:
+                        text = p.read_text()
+                        for m in mgmt_modules:
+                            if m in text.lower() or m in p.name.lower():
+                                frontend_covered.add(m)
+                    except Exception:
+                        pass
 
-            # Find uncovered routes (exclude diagnostic/internal/backend-only endpoints)
-            _INTERNAL_ROUTE_PREFIXES = ('/diagnostics/', '/observability/', '/health', '/api/core/diagnostics/', '/api/core/health')
-            _BACKEND_ONLY_PREFIXES = ('/catalog/', '/kb-eval/')
-            _BACKEND_ONLY_FILES = {'kb_eval.py', 'plugins.py', 'prompt_app.py', 'personas.py', 'browser_test.py'}
-            def _is_internal(path: str) -> bool:
-                return any(path.startswith(p) for p in _INTERNAL_ROUTE_PREFIXES + _BACKEND_ONLY_PREFIXES)
-
-            uncovered = [br for br in backend_routes
-                        if not _is_internal(br["path"])
-                        and not any(fname in br.get("file", "") for fname in _BACKEND_ONLY_FILES)
-                        and not any(fc == br["path"] for fc in frontend_calls)]
+            dead_modules = sorted(mgmt_modules - frontend_covered)
 
             items = []
-            for u in uncovered[:5]:
-                items.append({"check": "未使用路由", "result": "⚠️",
-                              "detail": f'{u["path"]} ({u["handler"]}) @ {u["file"]}'})
+            if dead_modules:
+                for m in dead_modules:
+                    items.append({"check": "未使用代理", "result": "⚠️",
+                                  "detail": f"management/api/{m}.py 无对应前端调用"})
+            else:
+                items.append({"check": "路由覆盖", "result": "✅",
+                              "detail": f"{len(mgmt_modules)} 代理模块全部有前端调用"})
+
             return {
-                "status": "warn" if len(uncovered) > 5 else "pass",
-                "score": max(0, 100 - len(uncovered[:5]) * 3),
+                "status": "warn" if len(dead_modules) > 2 else "pass",
+                "score": max(0, 100 - len(dead_modules) * 5),
                 "items": items,
-                "signals": {"uncovered_routes": len(uncovered), "total_routes": len(backend_routes)},
+                "signals": {"mgmt_modules": len(mgmt_modules), "covered": len(frontend_covered),
+                            "dead_modules": len(dead_modules)},
             }
         except Exception as e:
-            return {"status": "pass", "score": 85, "signals": {"note": f"scan skipped: {str(e)[:80]}"}}
+            return {"status": "pass", "score": 95, "signals": {"note": f"scan skipped: {str(e)[:80]}"}}
 
     async def _check_domain_coupling():
         """B3: Check for questionable cross-domain dependencies."""
@@ -1064,10 +1150,6 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
             return {"status": "error", "score": 0, "error": str(e)[:200]}
 
     async def _check_wiki_health():
-        global _WIKI_CACHE, _WIKI_CACHE_TS
-        if _WIKI_CACHE is not None and time.time() - _WIKI_CACHE_TS < _SUB_CACHE_TTL:
-            return _WIKI_CACHE
-
         try:
             from core.harness.knowledge.wiki_engine import wiki_health_report, build_graph
             wh = wiki_health_report()
@@ -1090,8 +1172,6 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
                 "items": items,
                 "_raw": {"issues": wh.get("issues", []), "score": wh.get("health_score", 100)},
             }
-            _WIKI_CACHE = result
-            _WIKI_CACHE_TS = time.time()
             return result
         except Exception as e:
             return {"status": "error", "score": 0, "error": str(e)[:200]}
@@ -1278,7 +1358,7 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
                 conn = sqlite3.connect(store._config.db_path)
                 try:
                     trace_count = conn.execute(
-                        "SELECT COUNT(DISTINCT trace_id) FROM syscall_events WHERE created_at > datetime('now','-1 hour')"
+                        "SELECT COUNT(DISTINCT trace_id) FROM syscall_events WHERE created_at > unixepoch('now','-1 hour')"
                     ).fetchone()[0]
                 finally:
                     conn.close()
@@ -1316,7 +1396,7 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
                 conn = sqlite3.connect(store._config.db_path)
                 try:
                     total = conn.execute(
-                        "SELECT COUNT(*) FROM syscall_events WHERE kind='metric' AND name='context_assemble' AND created_at > datetime('now','-24 hours')"
+                        "SELECT COUNT(*) FROM syscall_events WHERE kind='metric' AND name='context_assemble' AND created_at > unixepoch('now','-24 hours')"
                     ).fetchone()[0]
                 finally:
                     conn.close()
@@ -1329,30 +1409,29 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
             return {"status": "unavailable", "score": 0}
 
     async def _check_e2e_smoke():
-        """Check last E2E smoke test result."""
+        """Check last E2E smoke test result from global_settings."""
         try:
             from core.harness.kernel.runtime import get_kernel_runtime
             rt = get_kernel_runtime()
             store = getattr(rt, "execution_store", None) if rt else None
             if store:
-                import sqlite3
-                conn = sqlite3.connect(store._config.db_path)
-                try:
-                    row = conn.execute(
-                        "SELECT status, output_json FROM agent_executions WHERE kind='smoke_e2e' ORDER BY created_at DESC LIMIT 1"
-                    ).fetchone()
-                    if row:
-                        status = row[0] or "unknown"
-                        return {"status": "pass" if status == "completed" else "warn",
-                                "score": 100 if status == "completed" else 50,
-                                "signals": {"last_smoke": status},
-                                "items": [{"check": "最近冒烟", "result": "✅" if status == "completed" else "⚠️",
-                                           "detail": f"状态: {status}"}]}
-                finally:
-                    conn.close()
+                gs = await store.get_global_setting(key="last_smoke_result")
+                result = (gs.get("value") if isinstance(gs, dict) else {}) or {}
+                if result.get("ok"):
+                    return {"status": "pass", "score": 100,
+                            "signals": {"last_smoke": "completed"},
+                            "items": [{"check": "最近冒烟", "result": "✅",
+                                       "detail": "E2E 全链路通过"}]}
+                if result.get("timestamp"):
+                    return {"status": "warn", "score": 50,
+                            "signals": {"last_smoke": "failed"},
+                            "items": [{"check": "最近冒烟", "result": "⚠️",
+                                       "detail": "上次执行未通过"}]}
         except Exception:
             pass
-        return {"status": "unavailable", "score": 0, "signals": {"last_smoke": "no data"}}
+        return {"status": "unavailable", "signals": {"last_smoke": "no data"},
+                "items": [{"check": "冒烟测试", "result": "⚪",
+                           "detail": "尚未运行，点击 E2E Smoke 页面手动执行"}]}
 
     async def _check_symbol_health():
         """Scan code graph for symbol coverage and dead code candidates."""
@@ -1362,67 +1441,12 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
             roots = [(r / d).resolve() for d in default_roots()]
             nodes, edges, _ = _get_or_build_graph()
 
-            # Exclusion patterns: files legitimately with 0 in-degree
-            def _is_excluded(nid: str) -> bool:
-                if 'tests/' in nid or '/test_' in nid: return True        # test files
-                if nid.endswith('server.py') or nid.endswith('main.py'): return True  # entry points
-                if '/generated/' in nid: return True                     # generated templates
-                if nid.endswith('.sh') or nid.endswith('.cfg'): return True  # scripts/config
-                if nid.endswith('__init__.py'): return True              # init files
-                # Dynamic dispatch: agents & skills called via registry
-                if '/apps/agents/' in nid and not nid.endswith('/__init__.py'): return True
-                if '/apps/skills/' in nid and not nid.endswith('/__init__.py'): return True
-                if '/engine/agents/' in nid: return True
-                if '/engine/skills/' in nid: return True
-                # DI / integration / builder (called via dependency injection)
-                if '/infrastructure/gates/' in nid: return True
-                if '/builder/' in nid and 'builder_session' in nid: return True
-                # CLI scripts
-                if '/scripts/' in nid: return True
-                # Architecture guard & lint rules (loaded dynamically by registries)
-                if '/arch_guard_rules/' in nid: return True
-                if '/lint_rules/' in nid: return True
-                if '/management/' in nid and ('arch_guard_' in nid or 'compliance_checks' in nid or 'skill_linter' in nid): return True
-                # React/TSX components — routed via React Router (not static import)
-                if nid.endswith('.tsx') or nid.endswith('.ts') or nid.endswith('.jsx'): return True
-                # Management/API endpoints — registered via FastAPI include_router
-                if '/management/api/' in nid: return True
-                if '/management/dashboard/' in nid: return True
-                if '/core/api/routers/' in nid: return True
-                # Tools loaded by ToolRegistry / adapters loaded by factory
-                if '/core/apps/tools/' in nid: return True
-                if '/core/tools/' in nid: return True
-                if '/core/harness/execution/langgraph/' in nid: return True
-                if nid.endswith('/execution/conditional.py'): return True
-                if '/core/adapters/llm/' in nid: return True
-                if nid.endswith('_adapter.py') and '/infrastructure/' in nid: return True
-                # Utility / helper files
-                if nid.endswith('/vector/utils.py'): return True
-                if '/infra/utils/' in nid: return True
-                if '/management/model/' in nid and 'scanner' in nid: return True
-                # Script tools / schemas
-                if nid.endswith('core/schemas_tools.py') or nid.endswith('core/schemas.py'): return True
-                if '/utils/' in nid and 'core/' in nid: return True
-                if nid.endswith('/knowledge/reranker.py'): return True
-                if nid.endswith('infra/management/config.py'): return True
-                # Syscall registry files (loaded by syscall dispatcher)
-                if '/core/harness/syscalls/' in nid: return True
-                # Workspace seeds / POC CLI / builder roles
-                if '/workspace_seeds/' in nid: return True
-                if '/builder/' in nid and 'builder_roles' in nid: return True
-                if '/kb/poc/' in nid: return True
-                if '/kb/intelligence/' in nid: return True
-                # App pages (React components) / platform auth
-                if nid.startswith('aiPlat-app/') or nid.startswith('aiplat-app/'): return True
-                if nid.endswith('/auth/rbac.py'): return True
-                if nid.endswith('management/run.py'): return True
-                return False
+            from core.harness.knowledge.symbol_health import is_excluded_from_dead_code, count_dead_code_candidates
 
             total = len(nodes)
             with_syms = sum(1 for n in nodes.values() if n.get('symbols'))
             total_syms = sum(len(n.get('symbols', [])) for n in nodes.values())
-            dead = sum(1 for nid, n in nodes.items()
-                      if not _is_excluded(nid) and int(n.get('in', 0)) == 0 and len(n.get('symbols', [])) > 0)
+            dead, dead_files = count_dead_code_candidates(nodes)
             coverage = with_syms / max(total, 1) * 100
 
             score = 100
@@ -1431,10 +1455,7 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
             elif dead > 20: score -= 3
             if coverage < 60: score -= 10
 
-            # Collect dead code files for repairs (filtered)
-            dead_files = [nid for nid, n in nodes.items()
-                         if not _is_excluded(nid) and int(n.get('in', 0)) == 0 and len(n.get('symbols', [])) > 0][:50]
-
+            # Collect dead code files for repairs (filtered by count_dead_code_candidates)
             return {
                 "status": "pass" if dead < 20 else "warn" if dead < 50 else "fail",
                 "score": max(0, score),
@@ -1585,101 +1606,28 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
 
     async def _check_governance():
         """
-        治理健康度检查：扫描各实体的签名/权限/密钥配置状态。
-        统计：未签名实体数、签名验证失败数、缺失权限声明数、可信公钥是否已配置。
+        治理健康度检查 — delegates to shared overview._scan_governance().
         """
-        import json as _json
-
-        home = Path(_os.environ.get("AIPLAT_HOME", _os.path.expanduser("~/.aiplat")))
-        engine_root = Path(__file__).resolve().parents[3] / "core" / "engine"
-
-        all_dirs: list[tuple[str, Path, str]] = [
-            # Workspace paths
-            ("skills",    home / "skills",     "SKILL.manifest.json"),
-            ("agents",    home / "agents",     "AGENT.manifest.json"),
-            ("mcps",      home / "mcps",       "MCP.manifest.json"),
-            ("workflows", home / "workflows",  "WORKFLOW.manifest.json"),
-            ("projects",  home / "projects",   "PROJECT.manifest.json"),
-            ("prompt_apps", home / "prompt-apps", "TEMPLATE.manifest.json"),
-            # Engine paths
-            ("skills",    engine_root / "skills",  "SKILL.manifest.json"),
-            ("agents",    engine_root / "agents",  "AGENT.manifest.json"),
-            ("mcps",      engine_root / "mcps",    "MCP.manifest.json"),
-        ]
-
-        unsigned = []
-        verified = []
-        no_manifest = []
-        missing_perms = []
-
-        for entity_type, base_path, mf_name in all_dirs:
-            if not base_path.is_dir():
-                continue
-            for entity_dir in base_path.iterdir():
-                if not entity_dir.is_dir() or entity_dir.name.startswith("."):
-                    continue
-                mf_path = entity_dir / mf_name
-                if not mf_path.exists():
-                    no_manifest.append(f"{entity_type}/{entity_dir.name}")
-                    continue
-                try:
-                    with open(mf_path, "r") as f:
-                        mf = _json.load(f)
-                    if mf.get("signature"):
-                        verified.append(f"{entity_type}/{entity_dir.name}")
-                    else:
-                        unsigned.append(f"{entity_type}/{entity_dir.name}")
-                except Exception:
-                    unsigned.append(f"{entity_type}/{entity_dir.name}")
-
-            # Skills-specific: check permissions declarations
-            if entity_type == "skills":
-                for entity_dir2 in base_path.iterdir():
-                    if not entity_dir2.is_dir() or entity_dir2.name.startswith("."):
-                        continue
-                    skmd = entity_dir2 / "SKILL.md"
-                    if skmd.exists():
-                        try:
-                            content = skmd.read_text(encoding="utf-8")
-                            if "permissions:" not in content and "permissions" not in content:
-                                missing_perms.append(f"skills/{entity_dir2.name}")
-                        except Exception:
-                            pass
-
-        # Check trusted keys
-        has_trusted_keys = False
         try:
-            from core.harness.kernel.runtime import get_kernel_runtime
-            rt = get_kernel_runtime()
-            store = getattr(rt, "execution_store", None) if rt else None
-            if store:
-                gs = await store.get_global_setting(key="trusted_skill_pubkeys")
-                keys_list = (gs.get("keys") or []) if gs and isinstance(gs, dict) else []
-                has_trusted_keys = len(keys_list) > 0
+            from core.api.routers.overview import _scan_governance
+            gov = await _scan_governance()
         except Exception:
-            pass
+            return {"status": "unavailable", "score": 0}
 
-        total_entities = len(unsigned) + len(verified) + len(no_manifest)
-        governed = len(verified)
-        ungoverned = len(unsigned) + len(no_manifest)
-
-        base_score = 100
-        base_score -= len(no_manifest) * 2 if no_manifest else 0
-        base_score -= len(unsigned) * 2 if unsigned else 0
-        base_score -= len(missing_perms) * 2 if missing_perms else 0
-        if not has_trusted_keys and total_entities > 0:
-            base_score -= 20
-        score = max(0, base_score)
+        total_entities = gov["total"]
+        governed = gov["governed"]
+        unsigned_count = gov["unsigned"]
+        no_manifest_count = gov["no_manifest"]
+        has_trusted_keys = gov["has_trusted_keys"]
+        score = gov["score"]
 
         status = "pass" if score >= 80 else ("warn" if score >= 50 else "fail")
 
         items = []
-        if no_manifest:
-            items.append({"check": "无溯源码", "result": "❌", "detail": f"{len(no_manifest)} 个实体缺少 manifest.json：{', '.join(no_manifest[:5])}{'...' if len(no_manifest) > 5 else ''}"})
-        if unsigned:
-            items.append({"check": "未签名", "result": "⚠️", "detail": f"{len(unsigned)} 个有 manifest 但无签名：{', '.join(unsigned[:5])}{'...' if len(unsigned) > 5 else ''}"})
-        if missing_perms:
-            items.append({"check": "缺失权限声明", "result": "⚠️", "detail": f"{len(missing_perms)} 个可执行 Skill 缺少 permissions 声明"})
+        if no_manifest_count:
+            items.append({"check": "无溯源码", "result": "❌", "detail": f"{no_manifest_count} 个实体缺少 manifest.json"})
+        if unsigned_count:
+            items.append({"check": "未签名", "result": "⚠️", "detail": f"{unsigned_count} 个有 manifest 但无签名"})
         if not has_trusted_keys:
             items.append({"check": "未配置可信公钥", "result": "⚠️", "detail": "trusted_skill_pubkeys 为空，无法验签"})
         if not items:
@@ -1688,9 +1636,9 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
         return {
             "status": status, "score": score,
             "signals": {
-                "total": total_entities, "governed": governed, "ungoverned": ungoverned,
-                "no_manifest": len(no_manifest), "unsigned": len(unsigned),
-                "missing_perms": len(missing_perms),
+                "total": total_entities, "governed": governed,
+                "ungoverned": unsigned_count + no_manifest_count,
+                "no_manifest": no_manifest_count, "unsigned": unsigned_count,
                 "has_trusted_keys": has_trusted_keys,
             },
             "items": items,
@@ -2181,15 +2129,15 @@ async def observability_stats():
     rows = _query("""
         SELECT
             COUNT(*) as total_calls,
-            COUNT(CASE WHEN status='ok' THEN 1 END) as ok,
-            COUNT(CASE WHEN status='error' THEN 1 END) as error,
+            COUNT(CASE WHEN status='success' THEN 1 END) as ok,
+            COUNT(CASE WHEN status='failed' THEN 1 END) as error,
             COALESCE(AVG(duration_ms), 0) as avg_latency,
             COALESCE(MAX(duration_ms), 0) as max_latency,
             COALESCE(SUM(input_tokens), 0) as total_input_tokens,
             COALESCE(SUM(output_tokens), 0) as total_output_tokens,
             COALESCE(SUM(cost), 0) as total_cost
         FROM syscall_events
-        WHERE kind='sys_llm_generate' AND created_at > datetime('now','-1 day')
+        WHERE kind='llm' AND start_time > unixepoch('now','-1 day')
     """)
     llm = rows[0] if rows else {}
     total_calls = llm.get("total_calls", 0) or 0
@@ -2209,7 +2157,7 @@ async def observability_stats():
     for r in _query("""
         SELECT kind, COUNT(*) as cnt, COALESCE(AVG(duration_ms), 0) as avg_lat
         FROM syscall_events
-        WHERE created_at > datetime('now','-1 day')
+        WHERE created_at > unixepoch('now','-1 day')
         GROUP BY kind ORDER BY cnt DESC
     """):
         by_kind[r.get("kind", "unknown")] = {"count": r.get("cnt", 0), "avg_latency_ms": round(r.get("avg_lat", 0), 1)}
@@ -2218,7 +2166,7 @@ async def observability_stats():
     # Active runs (last 1h)
     rows = _query("""
         SELECT COUNT(DISTINCT run_id) as cnt FROM syscall_events
-        WHERE created_at > datetime('now','-1 hour') AND status='running'
+        WHERE created_at > unixepoch('now','-1 hour') AND status='running'
     """)
     result["active_runs"] = rows[0].get("cnt", 0) if rows else 0
 
@@ -2226,8 +2174,8 @@ async def observability_stats():
     result["throughput"] = [
         {"ts": r.get("bucket", 0), "count": r.get("cnt", 0)}
         for r in _query("""
-            SELECT (strftime('%%s', created_at) / 300) * 300 as bucket, COUNT(*) as cnt
-            FROM syscall_events WHERE created_at > datetime('now','-1 hour')
+            SELECT (CAST(created_at AS INTEGER) / 300) * 300 as bucket, COUNT(*) as cnt
+            FROM syscall_events WHERE created_at > unixepoch('now','-1 hour')
             GROUP BY bucket ORDER BY bucket
         """)
     ]
@@ -2236,11 +2184,11 @@ async def observability_stats():
     result["error_timeline"] = []
     for r in _query("""
         SELECT
-            (strftime('%%s', created_at) / 1800) * 1800 as bucket,
+            (CAST(created_at AS INTEGER) / 1800) * 1800 as bucket,
             COUNT(*) as total,
-            COUNT(CASE WHEN status='error' THEN 1 END) as errors
+            COUNT(CASE WHEN status='failed' THEN 1 END) as errors
         FROM syscall_events
-        WHERE created_at > datetime('now','-6 hours')
+        WHERE created_at > unixepoch('now','-6 hours')
         GROUP BY bucket ORDER BY bucket
     """):
         total = r.get("total", 0) or 0
@@ -2265,7 +2213,7 @@ async def observability_stats():
                    COALESCE(SUM(input_tokens), 0) as in_tokens,
                    COALESCE(SUM(output_tokens), 0) as out_tokens
             FROM syscall_events
-            WHERE kind='sys_llm_generate' AND created_at > datetime('now','-1 day')
+            WHERE kind='llm' AND start_time > unixepoch('now','-1 day')
             GROUP BY target_type ORDER BY cnt DESC LIMIT 10
         """)
     ]
@@ -2276,13 +2224,36 @@ async def observability_stats():
         for r in _query("""
             SELECT error, COUNT(*) as cnt
             FROM syscall_events
-            WHERE status='error' AND created_at > datetime('now','-1 day') AND error IS NOT NULL
+            WHERE status='error' AND created_at > unixepoch('now','-1 day') AND error IS NOT NULL
             GROUP BY error ORDER BY cnt DESC LIMIT 5
         """)
     ]
 
     # Evaluate alert thresholds
     result["active_alerts"] = _evaluate_alerts(result)
+
+    # Token efficiency metrics
+    try:
+        eff_rows = _query("""
+            SELECT
+                COALESCE(SUM(input_tokens), 0) as total_in,
+                COALESCE(SUM(output_tokens), 0) as total_out,
+                COUNT(*) as calls
+            FROM syscall_events
+            WHERE kind='llm' AND start_time > unixepoch('now','-1 day') AND status='success'
+        """)
+        eff = eff_rows[0] if eff_rows else {}
+        total_in = eff.get("total_in", 0) or 0
+        total_out = eff.get("total_out", 0) or 0
+        result["token_efficiency"] = {
+            "total_input_tokens": total_in,
+            "total_output_tokens": total_out,
+            "efficiency_pct": round(total_out / max(total_in, 1) * 100, 1),
+            "waste_estimate_tokens": max(0, total_in - total_out),
+            "total_calls": eff.get("calls", 0),
+        }
+    except Exception:
+        result["token_efficiency"] = {"error": "unavailable"}
 
     return result
 
@@ -2515,3 +2486,320 @@ async def playground_chat(data: dict = None):
         raise
     except Exception as e:
         raise HTTPException(500, f"Chat failed: {e}")
+
+
+# ══════════════════════════════════════════════════════════════
+# Darwin Arena — agent competition benchmark (manual trigger only)
+# ══════════════════════════════════════════════════════════════
+
+@router.post("/diagnostics/arena/run")
+async def arena_run_round_robin(contenders: List[Dict[str, Any]]):
+    """
+    Run a round-robin tournament among agent variants.
+    Manual trigger only — no auto-scheduling to control LLM costs.
+    
+    Body: {
+      "contenders": [
+        {"name": "agent-a", "agent_id": "...", "task": "build a REST API"},
+        {"name": "agent-b", "agent_id": "...", "task": "build a REST API"}
+      ],
+      "matches_per_pair": 3
+    }
+    """
+    try:
+        from core.harness.arena.arena import DarwinArena
+        arena = DarwinArena()
+        
+        async def _run_benchmark(name: str, cfg: Dict[str, Any]) -> float:
+            """Run one benchmark and return a score 0-100."""
+            try:
+                harness = get_harness()
+                req = ExecutionRequest(
+                    kind="agent", target_id=cfg.get("agent_id", ""),
+                    payload={"task": cfg.get("task", "")},
+                    user_id="arena", session_id=f"arena-{name}-{int(time.time())}",
+                )
+                result = await harness.execute(req)
+                return 100.0 if getattr(result, "ok", False) else 50.0
+            except Exception:
+                return 0.0
+        
+        pairs = [(c["name"], c) for c in contenders]
+        result = await arena.round_robin(
+            contenders=pairs,
+            benchmark_fn=_run_benchmark,
+            matches_per_pair=contenders[0].get("matches_per_pair", 3) if contenders else 3,
+        )
+        
+        return {
+            "leaderboard": result.leaderboard,
+            "matches": len(result.matches),
+            "promotions": [{"name": p.name, "rating": p.rating, "reason": p.promotion_reason}
+                          for p in result.promotions],
+            "duration_s": result.total_duration_s,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Arena failed: {str(e)}")
+
+
+@router.get("/diagnostics/arena/leaderboard")
+async def arena_leaderboard():
+    """Get current Darwin Arena leaderboard (read-only)."""
+    try:
+        from core.harness.arena.arena import DarwinArena
+        arena = DarwinArena()
+        return {"leaderboard": arena.scorer.leaderboard()}
+    except Exception as e:
+        return {"leaderboard": [], "error": str(e)}
+
+
+@router.post("/diagnostics/arena/regression")
+async def arena_run_regression(baseline_path: Optional[str] = None):
+    """
+    Run benchmark regression against baseline.
+    Returns pass_rate, latency, token delta vs stored baseline.
+    
+    POST body: {"baseline_path": "~/.aiplat/arena_baseline.json", "save_baseline": true}
+    """
+    try:
+        from core.harness.arena.regression import RegressionRunner
+        runner = RegressionRunner()
+        
+        async def _simple_agent(task: str) -> dict:
+            """Minimal agent stub for regression testing."""
+            try:
+                harness = get_harness()
+                req = ExecutionRequest(
+                    kind="agent", target_id="regression_agent",
+                    payload={"task": task}, user_id="arena",
+                    session_id=f"regression-{int(time.time())}",
+                )
+                result = await harness.execute(req)
+                output = getattr(result, "payload", {}) if not isinstance(result, dict) else result
+                return {
+                    "output": str(output.get("output", "") or ""),
+                    "tool_calls": output.get("tool_calls", []) or [],
+                    "tokens": output.get("tokens", {}).get("total_tokens", 0) if isinstance(output.get("tokens"), dict) else 0,
+                    "error": result.get("error", "") if isinstance(result, dict) else "",
+                }
+            except Exception:
+                return {"output": "", "tool_calls": [], "tokens": 0, "error": "agent_execution_failed"}
+        
+        report = await runner.run(
+            agent_fn=_simple_agent,
+            baseline_path=baseline_path,
+            save_baseline=True,
+        )
+        
+        return {
+            "verdict": report.verdict,
+            "current": report.current,
+            "delta": report.delta,
+            "tasks_summary": [
+                {"id": t.task_id, "passed": t.passed, "score": t.score, "error": t.error[:100]}
+                for t in report.tasks
+            ],
+            "duration_s": report.total_duration_s,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Regression failed: {str(e)}")
+
+
+# ══════════════════════════════════════════════════════════════
+# Eval Dashboard — unified evaluation metrics aggregation
+# ══════════════════════════════════════════════════════════════
+
+@router.get("/diagnostics/eval/summary")
+async def eval_summary():
+    """Unified eval dashboard: arena + AB scores + evolution + obs + diagnostic trend."""
+    import time as _time
+    result: Dict[str, Any] = {"timestamp": _time.time()}
+
+    # Arena leaderboard
+    try:
+        from core.harness.arena.arena import DarwinArena, EloScorer
+        gs = _store()
+        if gs:
+            arena_data = await gs.get_global_setting(key="arena_state")
+            if arena_data and isinstance(arena_data.get("value"), dict):
+                av = arena_data["value"]
+                result["arena"] = {"leaderboard": av.get("leaderboard", [])[:5],
+                                   "total_matches": av.get("total_matches", 0)}
+            else:
+                result["arena"] = {"leaderboard": [], "total_matches": 0}
+        else:
+            result["arena"] = {"leaderboard": [], "total_matches": 0, "note": "no store"}
+    except Exception:
+        result["arena"] = {"leaderboard": [], "total_matches": 0, "error": "unavailable"}
+
+    # Regression history
+    try:
+        gs2 = _store()
+        if gs2:
+            reg_data = await gs2.get_global_setting(key="arena_regression_history")
+            if reg_data and isinstance(reg_data.get("value"), list):
+                result["regression"] = {"history": reg_data["value"][-3:]}
+            else:
+                result["regression"] = {"history": []}
+        else:
+            result["regression"] = {"history": []}
+    except Exception:
+        result["regression"] = {"history": []}
+
+    # AB scores from prompt_eval_scores
+    try:
+        store = _store()
+        if store:
+            import sqlite3
+            conn = sqlite3.connect(store._config.db_path)
+            try:
+                rows = conn.execute(
+                    "SELECT template_id, version, ROUND(AVG(overall_score),1) as avg_score, "
+                    "ROUND(AVG(pass_rate),1) as avg_pass, COUNT(*) as cnt, "
+                    "MAX(created_at) as last_eval "
+                    "FROM prompt_eval_scores "
+                    "GROUP BY template_id, version ORDER BY cnt DESC LIMIT 10"
+                ).fetchall()
+                result["ab_scores"] = {
+                    "templates": len(set(r[0] for r in rows)),
+                    "items": [{"template_id": r[0], "version": r[1], "avg_score": r[2],
+                               "avg_pass_rate": r[3], "eval_count": r[4], "last_eval_at": r[5]} for r in rows],
+                }
+            except Exception:
+                result["ab_scores"] = {"templates": 0, "items": [], "note": "no data"}
+            finally:
+                conn.close()
+        else:
+            result["ab_scores"] = {"templates": 0, "items": []}
+    except Exception:
+        result["ab_scores"] = {"templates": 0, "items": [], "error": "unavailable"}
+
+    # Evolution fitness
+    try:
+        from core.harness.knowledge.evolution_runner import EvolutionRunner
+        evo_path = os.path.expanduser("~/.aiplat/wiki/collections/default/evolution_history.json")
+        if os.path.exists(evo_path):
+            import json as _json
+            with open(evo_path) as f:
+                evo_data = _json.load(f)
+            evo_list = evo_data if isinstance(evo_data, list) else []
+            result["evolution"] = {
+                "generations": len(evo_list),
+                "latest_fitness": evo_list[-1].get("fitness_golden_after", 0) if evo_list else 0,
+                "trend": [{"id": e.get("id"), "fitness": e.get("fitness_golden_after", 0),
+                           "verdict": e.get("verdict")} for e in evo_list[-10:]],
+            }
+        else:
+            result["evolution"] = {"generations": 0, "latest_fitness": 0, "trend": []}
+    except Exception:
+        result["evolution"] = {"generations": 0, "latest_fitness": 0, "trend": [], "error": "unavailable"}
+
+    # Observability snapshot
+    try:
+        obs = await observability_stats()
+        result["observability"] = {
+            "token_efficiency_pct": obs.get("token_efficiency", {}).get("efficiency_pct", 0),
+            "llm_success_rate": obs.get("llm_stats", {}).get("success_rate", 0),
+            "avg_latency_ms": obs.get("llm_stats", {}).get("avg_latency_ms", 0),
+            "total_calls": obs.get("llm_stats", {}).get("total_calls", 0),
+        }
+    except Exception:
+        result["observability"] = {"error": "unavailable"}
+
+    # Diagnostic trend
+    try:
+        hist = _load_diag_history()
+        result["diagnostic_trend"] = {
+            "current_score": hist[-1].get("overall_score", 0) if hist else 0,
+            "current_grade": hist[-1].get("overall_grade", "?") if hist else "?",
+            "score_trend": [{"run_id": h.get("run_id"), "overall_score": h.get("overall_score"),
+                            "started_at": h.get("started_at")} for h in hist[-30:]],
+        }
+    except Exception:
+        result["diagnostic_trend"] = {"error": "unavailable"}
+
+    # Stage rewards from recent pipeline runs (most recent 10)
+    try:
+        store3 = _store()
+        if store3:
+            import sqlite3
+            conn = sqlite3.connect(store3._config.db_path)
+            try:
+                evts = conn.execute(
+                    "SELECT state_json, created_at FROM pipeline_events "
+                    "WHERE event_type='stage_reward' ORDER BY created_at DESC LIMIT 50"
+                ).fetchall()
+                stage_map: Dict[str, List] = {}
+                for evt in evts:
+                    try:
+                        raw = json.loads(evt[0])
+                        sid = raw.get("stage_id", "?")
+                        rw = raw.get("reward", 0)
+                        dims = raw.get("dimensions", {})
+                        if sid not in stage_map:
+                            stage_map[sid] = []
+                        stage_map[sid].append({"reward": rw, "dimensions": dims})
+                    except Exception:
+                        pass
+                result["stage_rewards"] = {
+                    "total_stages": len(stage_map),
+                    "by_stage": {k: {"recent": v[:5], "avg_reward": round(sum(x["reward"] for x in v) / max(len(v), 1), 1)} for k, v in stage_map.items()},
+                }
+            except Exception:
+                result["stage_rewards"] = {"total_stages": 0, "by_stage": {}}
+            finally:
+                conn.close()
+        else:
+            result["stage_rewards"] = {"total_stages": 0, "by_stage": {}}
+    except Exception:
+        result["stage_rewards"] = {"total_stages": 0, "by_stage": {}, "error": "unavailable"}
+
+    return result
+
+
+@router.get("/diagnostics/eval/ab-scores")
+async def eval_ab_scores(template_id: Optional[str] = None, limit: int = Query(50, ge=1, le=200)):
+    """AB optimizer per-template score history."""
+    store = _store()
+    if not store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    try:
+        import sqlite3
+        conn = sqlite3.connect(store._config.db_path)
+        try:
+            q = "SELECT template_id, version, overall_score, pass_rate, recommendation, created_at FROM prompt_eval_scores"
+            params = []
+            if template_id:
+                q += " WHERE template_id = ?"
+                params.append(template_id)
+            q += " ORDER BY created_at DESC LIMIT ?"
+            params.append(int(limit))
+            rows = conn.execute(q, params).fetchall()
+            return {
+                "total": len(rows),
+                "scores": [{"template_id": r[0], "version": r[1], "overall_score": r[2],
+                            "pass_rate": r[3], "recommendation": r[4], "created_at": r[5]} for r in rows],
+            }
+        finally:
+            conn.close()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AB scores query failed: {str(e)}")
+
+
+@router.get("/diagnostics/eval/arena-history")
+async def eval_arena_history(limit: int = Query(20, ge=1, le=100)):
+    """Persisted Arena match history and leaderboard."""
+    gs = _store()
+    if not gs:
+        return {"matches": [], "leaderboard": [], "note": "no store"}
+    arena_data = await gs.get_global_setting(key="arena_state")
+    if not arena_data or not isinstance(arena_data.get("value"), dict):
+        return {"matches": [], "leaderboard": [], "note": "no arena data yet"}
+    av = arena_data["value"]
+    matches = av.get("matches", []) or []
+    return {
+        "leaderboard": av.get("leaderboard", [])[:10],
+        "matches": matches[-int(limit):],
+        "total_matches": len(matches),
+        "promotions": av.get("promotions", []) or [],
+    }

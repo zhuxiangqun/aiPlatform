@@ -51,8 +51,8 @@ DEFAULT_TOOLSETS: Dict[str, ToolsetPolicy] = {
     # Default workspace toolset: allow write but still blocks dangerous tools by default.
     "workspace_default": ToolsetPolicy(
         name="workspace_default",
-        description="工作区默认工具集：允许文件读写（含 patch/删除），以及基础 webfetch/search；不含 http/browser/code/database",
-        allowed_tools={"calculator", "search", "file_operations", "webfetch", "repo"},
+        description="工作区默认工具集：允许文件读写（含 patch/删除），基础 webfetch/search/code；不含 http/browser/database",
+        allowed_tools={"calculator", "search", "file_operations", "webfetch", "repo", "code"},
         file_operations_allowed_ops={"read", "list", "write", "delete"},
         # repo tool is allowed for read-only developer introspection
         repo_allowed_ops={"status", "diff", "log", "ls_files", "show", "branch_list"},

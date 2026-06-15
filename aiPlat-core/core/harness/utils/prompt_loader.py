@@ -509,7 +509,7 @@ ${wf_catalog}
 
 ## 任务
 根据用户的功能描述${role_phrase}，推荐最匹配的配置。输出严格 JSON（无 markdown 标记）:
-{"agent_type":"react|plan|tool|base|conversational","config":{"model":"auto","temperature":0.3,"max_tokens":4096,"system_prompt":"从角色定义推导的系统提示词(中文)"},"skills":["技能名1"],"tools":["工具名1"],"mcp_ids":[],"agent_ids":["可委派的子Agent ID"],"workflow_ids":["已有Workflow模板名"],"memory_config":{"type":"short_term","recall_count":5},"sop_text":"6章节SOP","reasoning":"为什么这样选择的简要解释(中文)"}}
+{"agent_type":"react|plan|tool|base|conversational","config":{"model":"auto","temperature":0.3,"max_tokens":4096,"system_prompt":"从角色定义推导的系统提示词(中文)"},"skills":["技能名1"],"tools":["工具名1"],"mcp_ids":[],"agent_ids":["可委派的子Agent ID"],"workflow_ids":["已有Workflow模板名"],"memory_config":{"type":"short_term","recall_count":5},"sop_text":"6章节SOP","trigger_conditions":["条件1","条件2"],"reasoning":"为什么这样选择的简要解释(中文)"}}
 
 
 ## 原则
@@ -518,7 +518,8 @@ ${wf_catalog}
   - 如果一个 skill 的 capabilities 已包含用户需要的大部分功能，就无需再选其他重叠的
 - tools 只在 Skill 本身不提供所需能力时才补充，尽量不选（通常选 0 个）
 - agent_ids 从"可委派的子Agent"中选择，只选与用户流程实际相关的角色
-- workflow_ids 从"已有 Workflow 模板"中选择匹配的模板名，如无匹配可为空数组""",
+- workflow_ids 从"已有 Workflow 模板"中选择匹配的模板名，如无匹配可为空数组
+- trigger_conditions 为用户最可能用到的触发短语（5~8个），每行一个，来自功能描述中的关键词、典型任务短语、用户常用表达，中英混合，不带标点符号""",
     category="agent",
     variables=["name", "description", "role_section", "skills_catalog", "tools_catalog",
                "mcp_catalog", "agent_catalog", "wf_catalog", "role_phrase"])
@@ -910,10 +911,10 @@ retrieval, generation, analysis, execution, document, design, text, tool, genera
 - input_schema: 用户调用时需提供什么参数（字段名、类型、是否必填、描述）
 - output_schema: 技能执行后返回什么（字段名、类型、是否必填、描述）
 - 两个 schema 都不能为空对象 {}，至少各一个字段
-- 通用技能格式示例：input_schema={"topic":{"type":"string","required":true}} output_schema={"report":{"type":"string","required":true}}
+- 通用技能格式示例：input_schema={"topic":{"type":"string","required":true}} output_schema={"report":{"type":"string","required":true},"markdown":{"type":"string","required":true}}
 
 输出 JSON（无 markdown 标记, 字段完整）:
-{"tools":["code","search","webfetch"],"execution_type":"prompt","timeout":300,"category":"retrieval","permissions":["network:outbound"],"trigger_conditions":["research","find out","帮我调研","look up","最近有什么","recent news","帮我查一下"],"input_schema":{"topic":{"type":"string","required":true,"description":"要调研的话题"}},"output_schema":{"report":{"type":"string","required":true,"description":"调研报告（Markdown）"}},"reasoning":"SOP 包含 Bash 脚本执行和多平台搜索，需要 code 和 search 工具..."}""",
+{"tools":["code","search","webfetch"],"execution_type":"prompt","timeout":300,"category":"retrieval","permissions":["network:outbound"],"trigger_conditions":["research","find out","帮我调研","look up","最近有什么","recent news","帮我查一下"],"input_schema":{"topic":{"type":"string","required":true,"description":"要调研的话题"}},"output_schema":{"report":{"type":"string","required":true,"description":"调研报告（Markdown）"},"markdown":{"type":"string","required":true,"description":"Markdown 格式输出"}},"reasoning":"SOP 包含 Bash 脚本执行和多平台搜索，需要 code 和 search 工具..."}""",
     category="skills",
     variables=["available_tools_list"])
 

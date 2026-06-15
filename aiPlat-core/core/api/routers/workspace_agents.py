@@ -199,8 +199,10 @@ async def create_workspace_agent(request: AgentCreateRequest, http_request: Requ
         md = request.metadata or {}
         if md.get("source_url") or md.get("source_file_content"):
             try:
-                import base64, io, zipfile
+                import base64, io, shutil, tempfile, zipfile
                 import httpx as _httpx2
+                from pathlib import Path as _Path
+
                 base = mgr._resolve_agents_base_path()
                 agent_dir = base / str(agent.id)
                 zip_data = None
@@ -212,20 +214,47 @@ async def create_workspace_agent(request: AgentCreateRequest, http_request: Requ
                 elif md.get("source_file_content"):
                     zip_data = base64.b64decode(str(md["source_file_content"]))
                 if zip_data:
-                    with zipfile.ZipFile(io.BytesIO(zip_data)) as zf:
-                        for name in zf.namelist():
-                            if name.endswith("/"):
-                                continue
-                            parts = name.split("/", 1)
-                            if len(parts) < 2:
-                                continue
-                            rel = parts[1]
-                            if rel == "AGENT.md":
-                                continue
-                            target = agent_dir / rel
-                            target.parent.mkdir(parents=True, exist_ok=True)
-                            with zf.open(name) as src:
-                                target.write_bytes(src.read())
+                    with tempfile.TemporaryDirectory(prefix="aiplat-agent-create-") as td:
+                        root = _Path(td) / "unzipped"
+                        root.mkdir(parents=True, exist_ok=True)
+                        with zipfile.ZipFile(io.BytesIO(zip_data)) as zf:
+                            zf.extractall(str(root))
+                        # Find agent dirs by searching for AGENT.md recursively
+                        agent_dirs = sorted(root.rglob("AGENT.md"))
+                        if agent_dirs:
+                            sd = agent_dirs[0].parent
+                            for item in sd.iterdir():
+                                src = sd / item.name
+                                dst = agent_dir / item.name
+                                if dst.exists():
+                                    if dst.is_dir():
+                                        shutil.rmtree(dst)
+                                    else:
+                                        dst.unlink()
+                                if src.is_dir():
+                                    shutil.copytree(src, dst)
+                                else:
+                                    shutil.copy2(src, dst)
+                            # Enrich frontmatter after extraction
+                            try:
+                                from core.management.asset_installer import AgentInstaller
+                                inst = AgentInstaller(target_base_dir=base)
+                                inst._enrich_asset_frontmatter(agent_dir)
+                            except Exception:
+                                pass
+                        else:
+                            # Fallback: flat zip without AGENT.md wrapper dir
+                            with zipfile.ZipFile(io.BytesIO(zip_data)) as zf:
+                                for name in zf.namelist():
+                                    if name.endswith("/"):
+                                        continue
+                                    rel = "/".join(name.split("/")[1:]) if "/" in name else name
+                                    if not rel or rel == "AGENT.md":
+                                        continue
+                                    target = agent_dir / rel
+                                    target.parent.mkdir(parents=True, exist_ok=True)
+                                    with zf.open(name) as src:
+                                        target.write_bytes(src.read())
             except Exception:
                 pass
         # Mark as pending verification (best-effort)
@@ -596,6 +625,7 @@ async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
         sop_text=str(data.get("sop_text", ""))[:8000],
         reasoning=str(data.get("reasoning", ""))[:500],
         workflow_ids=list(data.get("workflow_ids", []))[:10],
+        trigger_conditions=list(data.get("trigger_conditions", []))[:20],
         template_id="",
     )
 
@@ -1214,12 +1244,14 @@ async def execute_workspace_agent(agent_id: str, request: dict, http_request: Re
 
     # Delegate to CoreFacade
     from core.api.core_facade import run_workspace_agent
+    stream_mode = str(opts.get("stream", "")).lower() in ("1", "true", "yes")
     resp = await run_workspace_agent(
         agent_info=agent,
         user_message=user_message,
         max_steps=int(user_config.get("max_steps", 10)),
         toolset=str(opts.get("toolset", "")),
         session_id=str(payload.get("session_id", "") or f"ws-{agent_id}"),
+        stream=stream_mode,
     )
 
     try:

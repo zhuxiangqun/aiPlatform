@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, RefreshCw, ClipboardCopy, ExternalLink, FileText, Hammer, GitBranch, GitCommit } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft, Search, RefreshCw, ClipboardCopy, ExternalLink, FileText, Hammer, GitBranch, GitCommit } from 'lucide-react';
 import { Button, Card, CardContent, CardHeader, Input, Table, toast } from '../../../components/ui';
 import { diagnosticsApi, toolApi } from '../../../services';
 import { toastGateError } from '../../../components/ui';
@@ -233,6 +234,10 @@ const Repo: React.FC = () => {
         <h1 className="text-2xl font-semibold text-gray-200">Repo 索引 / 搜索</h1>
         <p className="text-sm text-gray-500 mt-1">.gitignore-aware 文件集（tracked + untracked excluding ignored）</p>
       </div>
+
+      <Link to="/diagnostics" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200 transition-colors mb-4">
+        <ArrowLeft className="w-3 h-3" />返回诊断中心
+      </Link>
 
       <Card>
         <CardHeader>

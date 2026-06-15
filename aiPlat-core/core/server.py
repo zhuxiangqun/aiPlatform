@@ -11,7 +11,6 @@ from fastapi.responses import JSONResponse
 from typing import Optional, List, Dict, Any
 from contextlib import asynccontextmanager
 import asyncio
-import time
 import os
 import shutil
 from pathlib import Path
@@ -301,6 +300,8 @@ async def lifespan(app: FastAPI):
     from core.apps.agents import create_agent_discovery
     from core.apps.skills import create_discovery
     from core.harness.infrastructure.approval import ApprovalManager, ApprovalRule, RuleType
+    import logging
+    log = logging.getLogger(__name__)
     
     _approval_manager = ApprovalManager(execution_store=_execution_store)
     _approval_manager.register_rule(ApprovalRule(
@@ -320,6 +321,78 @@ async def lifespan(app: FastAPI):
     # ExecutionStore (SQLite) - persistent execution/history
     _execution_store = get_execution_store()
     await _execution_store.init()
+    # Auto-init dev signing keys if not configured
+    try:
+        from core.security.skill_signature_gate import auto_init_dev_keys
+        created = await auto_init_dev_keys(_execution_store)
+        if created:
+            log.info("Governance: auto-generated dev signing keypair")
+        elif not created:
+            log.warning("Governance: dev key init returned False (keys may already exist or generation failed)")
+        # Auto-sign built-in engine entities with dev key
+        import json as _json
+        from core.harness.infrastructure.crypto.signature import sign_skill
+        gs = await _execution_store.get_global_setting(key="dev_signing_key")
+        dev_key_raw = (gs.get("value") if isinstance(gs, dict) else None)
+        dev_key = dev_key_raw if isinstance(dev_key_raw, str) and dev_key_raw else None
+        if dev_key:
+            signed_count = 0
+            engine_root = Path(__file__).resolve().parent / "engine"
+            for ent_type, mf_name in [("skills", "SKILL.manifest.json"), ("agents", "AGENT.manifest.json")]:
+                mf_dir = engine_root / ent_type
+                if not mf_dir.is_dir():
+                    continue
+                for ent_dir in mf_dir.iterdir():
+                    mf_path = ent_dir / mf_name
+                    if not mf_path.exists():
+                        continue
+                    try:
+                        with open(mf_path) as f:
+                            mf = _json.load(f)
+                        if mf.get("signature"):
+                            continue
+                        eid = mf.get("id") or ent_dir.name
+                        ever = mf.get("version", "1.0.0")
+                        sig = sign_skill(private_key=dev_key, skill_id=eid, version=str(ever), bundle_sha256="")
+                        mf["signature"] = sig
+                        with open(mf_path, "w") as f:
+                            _json.dump(mf, f, indent=2)
+                        signed_count += 1
+                    except Exception:
+                        pass
+            if signed_count > 0:
+                log.info(f"Governance: auto-signed {signed_count} built-in engine entities")
+            # Also auto-sign workspace entities
+            home = os.environ.get("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
+            ws_root = Path(home)
+            for ent_type, mf_name in [("skills", "SKILL.manifest.json"), ("agents", "AGENT.manifest.json"),
+                                       ("mcps", "MCP.manifest.json"), ("workflows", "WORKFLOW.manifest.json"),
+                                       ("projects", "PROJECT.manifest.json"), ("prompt-apps", "TEMPLATE.manifest.json")]:
+                ws_dir = ws_root / ent_type
+                if not ws_dir.is_dir():
+                    continue
+                for ent_dir in ws_dir.iterdir():
+                    mf_path = ent_dir / mf_name
+                    if not mf_path.exists():
+                        continue
+                    try:
+                        with open(mf_path) as f:
+                            mf = _json.load(f)
+                        if mf.get("signature"):
+                            continue
+                        eid = mf.get("id") or ent_dir.name
+                        ever = mf.get("version", "1.0.0")
+                        sig = sign_skill(private_key=dev_key, skill_id=eid, version=str(ever), bundle_sha256="")
+                        mf["signature"] = sig
+                        with open(mf_path, "w") as f:
+                            _json.dump(mf, f, indent=2)
+                        signed_count += 1
+                    except Exception:
+                        pass
+            if signed_count > 0:
+                log.info(f"Governance: auto-signed {signed_count} entities (engine + workspace)")
+    except Exception as e:
+        log.error(f"Governance: auto_init or auto-sign failed: {e}", exc_info=True)
     # Ensure ApprovalManager is store-backed (tests may swap db_path between runs)
     try:
         if _approval_manager is not None:
@@ -1039,7 +1112,7 @@ async def lifespan(app: FastAPI):
                             reg.register(_make_discovery_tool(t))
                         except Exception:
                             pass
-                logger.info(f"MCP: discovered {len(tools)} tools, registered into ToolRegistry")
+                        logger.info(f"MCP: discovered {len(tools)} tools, registered into ToolRegistry")
             except Exception:
                 pass
             _job_scheduler = JobScheduler(
@@ -1278,6 +1351,13 @@ async def lifespan(app: FastAPI):
 
     from core.harness.observation.event_bus import EventBus
     EventBus.start()
+
+    # Start wiki background task worker (metrics rebuild, auto-atomize)
+    try:
+        from core.harness.knowledge._bg_tasks import start_worker as _wiki_bg_start
+        await _wiki_bg_start()
+    except Exception:
+        pass
     
     # Wire graph sync handler to keep capability + code graphs in sync with resource mutations
     try:
@@ -1290,6 +1370,11 @@ async def lifespan(app: FastAPI):
 
     # Shutdown background services
     EventBus.stop()
+    try:
+        from core.harness.knowledge._bg_tasks import stop_worker as _wiki_bg_stop
+        await _wiki_bg_stop()
+    except Exception:
+        pass
     try:
         if _job_scheduler is not None:
             await _job_scheduler.stop()

@@ -99,34 +99,9 @@ def _token_set_for_conflict(*, triggers: List[str], keywords: Dict[str, Any], ne
 
 
 def risk_level_from_permissions(perms: List[str]) -> str:
-    """
-    Compute a conservative risk label for enforcement policy.
-    - low: llm only / no tool side-effects
-    - medium: read-only tools (webfetch/websearch/knowledge retrieval)
-    - high: any write/exec/network sensitive operations
-    """
-    pset = {str(p).strip().lower() for p in (perms or []) if str(p).strip()}
-    if not pset:
-        return "low"
-
-    high_markers = {
-        "tool:run_command",
-        "tool:bash",
-        "tool:shell",
-        "tool:workspace_fs_write",
-        "tool:file_write",
-        "tool:file_delete",
-        "tool:network",
-        "tool:api_calling",
-    }
-    if any(p in pset for p in high_markers):
-        return "high"
-    if any(("write" in p or "delete" in p or "exec" in p or "bash" in p) for p in pset):
-        return "high"
-    if any(p.startswith("tool:") for p in pset):
-        # treat any tool usage as medium unless explicitly high
-        return "medium"
-    return "low"
+    # Re-export from base to avoid circular imports
+    from core.management.skill_linter_base import risk_level_from_permissions as _rlp
+    return _rlp(perms)
 
 
 def _read_skill_md_body(skill: Any) -> str:

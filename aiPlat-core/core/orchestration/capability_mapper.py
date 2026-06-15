@@ -10,7 +10,7 @@ import json
 import os
 from typing import Any, Dict, List, Optional
 
-from .chain_planner import ChainStep
+from .types import ChainStep
 
 
 def _load_role_agent_map() -> Dict[str, str]:

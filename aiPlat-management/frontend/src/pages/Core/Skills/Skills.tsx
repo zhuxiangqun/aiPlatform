@@ -159,22 +159,13 @@ const Skills: React.FC = () => {
             </button>
           )}
           {!isProtected && (
-            <>
               <button
                 onClick={() => setDeleteConfirm({ open: true, skill: record, hard: false })}
-                className="p-1.5 rounded-lg text-amber-300 hover:bg-dark-hover transition-colors"
-                title="弃用（soft delete）"
+                className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors"
+                title="删除"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
-              <button
-                onClick={() => setDeleteConfirm({ open: true, skill: record, hard: true })}
-                className="p-1.5 rounded-lg text-error hover:bg-error-light transition-colors"
-                title="彻底删除（hard delete）"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </>
           )}
         </div>
         );
@@ -256,23 +247,30 @@ const Skills: React.FC = () => {
       <Modal
         open={deleteConfirm.open}
         onClose={() => setDeleteConfirm({ open: false, skill: null, hard: false })}
-        title={deleteConfirm.hard ? '确认彻底删除' : '确认弃用'}
+        title="确认删除"
         footer={
           <>
             <Button onClick={() => setDeleteConfirm({ open: false, skill: null, hard: false })} disabled={deleting}>
               取消
             </Button>
-            <Button variant={deleteConfirm.hard ? 'danger' : 'secondary'} onClick={handleDelete} loading={deleting}>
-              {deleteConfirm.hard ? '彻底删除' : '弃用'}
+            <Button variant="danger" onClick={handleDelete} loading={deleting}>
+              确认
             </Button>
           </>
         }
       >
-        <p className="text-gray-400">
-          {deleteConfirm.hard
-            ? `确定要彻底删除 Skill "${deleteConfirm.skill?.name}" 吗？将删除磁盘目录与 SKILL.md，且不可恢复。`
-            : `确定要弃用 Skill "${deleteConfirm.skill?.name}" 吗？将标记为 deprecated 并保留目录与 SOP，可后续恢复或硬删除。`}
-        </p>
+        <p className="text-sm text-gray-300 mb-3">将对 Skill "{deleteConfirm.skill?.name}" 执行删除操作：</p>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-gray-400">删除方式</span>
+          <Select
+            value={deleteConfirm.hard ? 'hard' : 'soft'}
+            onChange={(v: string) => setDeleteConfirm({ ...deleteConfirm, hard: v === 'hard' })}
+            options={[
+              { value: 'soft', label: '弃用 (deprecated，可恢复)' },
+              { value: 'hard', label: '硬删除 (删除目录，不可撤销)' },
+            ]}
+          />
+        </div>
       </Modal>
 
       {/* Skill Detail Modal */}

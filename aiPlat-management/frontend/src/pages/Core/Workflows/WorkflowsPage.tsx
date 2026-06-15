@@ -38,15 +38,18 @@ const WorkflowsPage: React.FC = () => {
     finally { setLoading(false); }
   }, []);
 
+  const [deleteConfirm, setDeleteConfirm] = useState<{ wf: any } | null>(null);
+
   useEffect(() => { refresh(); }, [refresh]);
 
-  const handleDelete = async (id: string) => {
-    if (deleting) return;
-    if (!window.confirm('确认删除此 workflow？')) return;
-    setDeleting(id);
+  const handleDelete = async () => {
+    const wf = deleteConfirm?.wf;
+    if (!wf || deleting) return;
+    setDeleting(wf.id);
     try {
-      await workflowApi.delete(id);
+      await workflowApi.delete(wf.id);
       toast.success('已删除');
+      setDeleteConfirm(null);
       refresh();
     } catch (e: any) { toast.error('删除失败', e?.detail || ''); }
     finally { setDeleting(null); }
@@ -202,7 +205,7 @@ const WorkflowsPage: React.FC = () => {
                     className="flex-1 flex items-center justify-center gap-1 py-2 text-[10px] text-gray-500 hover:text-blue-400 hover:bg-dark-hover transition-colors">
                     📱 App
                   </button>
-                  <button onClick={e => { e.stopPropagation(); handleDelete(wf.id); }} disabled={!!deleting}
+                  <button onClick={e => { e.stopPropagation(); setDeleteConfirm({ wf }); }} disabled={!!deleting}
                     className="flex-1 flex items-center justify-center gap-1 py-2 text-[10px] text-gray-500 hover:text-red-400 hover:bg-dark-hover rounded-br-xl transition-colors disabled:opacity-40">
                     <Trash2 className="w-3 h-3" /> 删除
                   </button>
@@ -219,6 +222,15 @@ const WorkflowsPage: React.FC = () => {
         </div>
       )}
 
+      <Modal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} title="确认删除" 
+        footer={
+          <>
+            <Button onClick={() => setDeleteConfirm(null)}>取消</Button>
+            <Button variant="danger" onClick={handleDelete} loading={!!deleting}>确认删除</Button>
+          </>
+        }>
+        <p className="text-sm text-gray-300">确定要删除 Workflow "{deleteConfirm?.wf?.name}" 吗？此操作不可撤销。</p>
+      </Modal>
     </div>
   );
 };

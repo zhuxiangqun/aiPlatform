@@ -1,0 +1,29 @@
+# Known-safe cycles — all imports are function-scoped or TYPE_CHECKING
+# DO NOT add new entries here without verifying the imports are truly lazy
+execution_store → event_bus
+base → infra_llm_adapter
+knowledge_ontology → knowledge_validator
+embedder → retriever
+wiki_engine → wiki_health_rules
+retrieval → wiki_retriever
+workspace_agents → workspace_skills
+executor → skill_workflow_runner
+builder_project_service → builder
+service → video
+knowledge_abox_builder → knowledge_ontology → knowledge_validator
+knowledge_ontology → knowledge_validator → wiki_engine
+knowledge_validator → wiki_engine → wiki_health_rules
+knowledge_validator → retrieval → wiki_retriever
+integration → __init__ → manager
+core_facade → pipeline_engine → intents
+knowledge_abox_builder → knowledge_ontology → knowledge_validator → wiki_engine
+knowledge_ontology → knowledge_validator → retrieval → wiki_retriever
+core_facade → stage_runner → loop → integration
+knowledge_abox_builder → knowledge_ontology → knowledge_validator → wiki_engine → wiki_health_rules
+post_retrieval_governor → knowledge_abox_builder → knowledge_ontology → knowledge_validator → retrieval
+knowledge_abox_builder → knowledge_ontology → knowledge_validator → retrieval → wiki_retriever
+core_facade → stage_runner → loop → integration → coordinator
+loop → integration → __init__ → manager → profile_builder
+post_retrieval_governor → knowledge_abox_builder → knowledge_ontology → knowledge_validator → retrieval → wiki_retriever
+llm → post_retrieval_governor → knowledge_abox_builder → knowledge_ontology → knowledge_validator → retrieval → graph
+llm → post_retrieval_governor → knowledge_abox_builder → knowledge_ontology → knowledge_validator → wiki_engine → embedder → retriever → hyde_expander

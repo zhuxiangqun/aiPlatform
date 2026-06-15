@@ -413,6 +413,16 @@ async def create_workspace_skill(request: SkillCreateRequest, http_request: Requ
         md["template"] = request.template
         md["sop"] = request.sop
 
+        # Defensive metadata — suppress common lint warnings for imported skills
+        if not md.get("keywords"):
+            md["keywords"] = {
+                "objects": ["topic", "data", "content"],
+                "actions": ["search", "research", "analyze"],
+                "constraints": ["调研", "只读"],
+            }
+        if not md.get("negative_triggers"):
+            md["negative_triggers"] = ["不相关", "不在讨论范围"]
+
         skill = await mgr.create_skill(
             name=str(getattr(request, "display_name", None) or request.name),
             skill_id=getattr(request, "skill_id", None),
@@ -428,8 +438,11 @@ async def create_workspace_skill(request: SkillCreateRequest, http_request: Requ
         # If created from import (URL or file), materialize all source files into skill dir
         if md.get("source_url") or md.get("source_file_content"):
             try:
-                import base64, io, zipfile
+                import base64, io, shutil, tempfile, zipfile
                 import httpx as _httpx2
+                from core.management.skill_installer import _find_skill_dirs
+                from core.management.skill_adapter import adapt_skill
+
                 base = mgr._resolve_skills_base_path()
                 skill_dir = base / str(skill.id)
                 zip_data = None
@@ -441,20 +454,46 @@ async def create_workspace_skill(request: SkillCreateRequest, http_request: Requ
                 elif md.get("source_file_content"):
                     zip_data = base64.b64decode(str(md["source_file_content"]))
                 if zip_data:
-                    with zipfile.ZipFile(io.BytesIO(zip_data)) as zf:
-                        for name in zf.namelist():
-                            if name.endswith("/"):
-                                continue
-                            parts = name.split("/", 1)
-                            if len(parts) < 2:
-                                continue
-                            rel = parts[1]
-                            if rel == "SKILL.md":
-                                continue
-                            target = skill_dir / rel
-                            target.parent.mkdir(parents=True, exist_ok=True)
-                            with zf.open(name) as src:
-                                target.write_bytes(src.read())
+                    with tempfile.TemporaryDirectory(prefix="aiplat-skill-create-") as td:
+                        root = Path(td) / "unzipped"
+                        root.mkdir(parents=True, exist_ok=True)
+                        with zipfile.ZipFile(io.BytesIO(zip_data)) as zf:
+                            zf.extractall(str(root))
+                        # Use _find_skill_dirs to locate the actual skill dir (handles arbitrary nesting)
+                        skill_dirs = _find_skill_dirs(root)
+                        if not skill_dirs:
+                            # Fallback: copy all files directly (legacy flat zip)
+                            with zipfile.ZipFile(io.BytesIO(zip_data)) as zf:
+                                for name in zf.namelist():
+                                    if name.endswith("/"):
+                                        continue
+                                    rel = "/".join(name.split("/")[1:]) if "/" in name else name
+                                    if not rel or rel == "SKILL.md":
+                                        continue
+                                    target = skill_dir / rel
+                                    target.parent.mkdir(parents=True, exist_ok=True)
+                                    with zf.open(name) as src:
+                                        target.write_bytes(src.read())
+                        else:
+                            # Copy the discovered skill dir contents + run adapter
+                            sd = skill_dirs[0]
+                            for item in sd.iterdir():
+                                src = sd / item.name
+                                dst = skill_dir / item.name
+                                if dst.exists():
+                                    if dst.is_dir():
+                                        shutil.rmtree(dst)
+                                    else:
+                                        dst.unlink()
+                                if src.is_dir():
+                                    shutil.copytree(src, dst)
+                                else:
+                                    shutil.copy2(src, dst)
+                        # Run adapter to generate handler.py + enrich frontmatter
+                        try:
+                            adapt_skill(skill_dir)
+                        except Exception:
+                            pass
             except Exception:
                 pass
         # Mark as pending verification (best-effort)
@@ -2843,6 +2882,8 @@ async def _ai_recommend_skill_config(
         config["input_schema"] = det["input_schema"]
     if not config.get("output_schema") or not isinstance(config.get("output_schema"), dict) or not config["output_schema"]:
         config["output_schema"] = det["output_schema"]
+    elif isinstance(config.get("output_schema"), dict) and "markdown" not in config["output_schema"]:
+        config["output_schema"]["markdown"] = det["output_schema"]["markdown"]
     if det["permissions"]:
         config["permissions"] = det["permissions"]
     if det.get("trigger_conditions") and not config.get("trigger_conditions"):
@@ -2868,6 +2909,9 @@ def _deterministic_skill_recommend(sop_body: str, name: str = "", description: s
         "permissions": None,        # LLM infers from tools/SOP
         "trigger_conditions": None, # user fills manually or from frontmatter
         "input_schema":  {"topic": {"type": "string", "required": True, "description": "输入内容"}},
-        "output_schema": {"report": {"type": "string", "required": True, "description": "输出结果"}},
+        "output_schema": {
+            "report": {"type": "string", "required": True, "description": "输出结果"},
+            "markdown": {"type": "string", "required": True, "description": "Markdown 格式输出"},
+        },
         "timeout": 300,
     }

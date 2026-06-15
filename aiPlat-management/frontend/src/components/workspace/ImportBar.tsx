@@ -41,7 +41,7 @@ const LABELS: Record<string, string> = {
   agents: 'Agents', skills: 'Skills', mcps: 'MCPs', workflows: 'Workflows',
 };
 
-type ImportMode = 'git' | 'zip';
+type ImportMode = 'git' | 'zip' | 'local';
 
 const ImportBar: React.FC<ImportBarProps> = ({ onImported, assetType, alsoScan }) => {
   const [open, setOpen] = useState(false);
@@ -50,6 +50,7 @@ const ImportBar: React.FC<ImportBarProps> = ({ onImported, assetType, alsoScan }
   const [ref, setRef] = useState('main');
   const [zipFile, setZipFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [localPath, setLocalPath] = useState('~/agent-skills');
   const [loading, setLoading] = useState(false);
   const [plan, setPlan] = useState<any>(null);
   const [installing, setInstalling] = useState(false);
@@ -146,6 +147,23 @@ const ImportBar: React.FC<ImportBarProps> = ({ onImported, assetType, alsoScan }
     finally { setInstalling(false); }
   };
 
+  const handleLocalInstall = async () => {
+    if (!localPath.trim()) return;
+    setInstalling(true);
+    try {
+      const res = await fetch('/api/core/skills/install-from-directory', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ search_path: localPath }),
+      });
+      const d = await res.json();
+      if (!res.ok) { toast.error(`导入失败：${d.detail || res.statusText}`); return; }
+      toast.success(`已从本地目录导入 ${d.installed} 个技能`);
+      setOpen(false); setPlan(null);
+      onImported();
+    } catch (e: any) { toast.error(`导入失败：${e?.message || e}`); }
+    finally { setInstalling(false); }
+  };
+
   return (
     <>
       {!open ? (
@@ -168,6 +186,10 @@ const ImportBar: React.FC<ImportBarProps> = ({ onImported, assetType, alsoScan }
             <button onClick={() => { setImportMode('zip'); setUrl(''); }}
               className={`text-xs px-3 py-1.5 rounded ${importMode === 'zip' ? 'bg-primary/20 text-primary' : 'text-gray-500 hover:text-gray-300'}`}>
               本地 Zip
+            </button>
+            <button onClick={() => { setImportMode('local'); }}
+              className={`text-xs px-3 py-1.5 rounded ${importMode === 'local' ? 'bg-primary/20 text-primary' : 'text-gray-500 hover:text-gray-300'}`}>
+              本地目录
             </button>
           </div>
 
@@ -207,18 +229,28 @@ const ImportBar: React.FC<ImportBarProps> = ({ onImported, assetType, alsoScan }
             </div>
           )}
 
+          {importMode === 'local' && (
+            <div className="flex gap-2 mb-2">
+              <Input placeholder="本地目录路径 如 ~/agent-skills" value={localPath} onChange={(e: any) => setLocalPath(e.target.value)}
+                className="flex-1" disabled={installing} />
+              <Button variant="primary" onClick={handleLocalInstall} loading={installing}>⬇ 导入</Button>
+            </div>
+          )}
+
           <div className="text-xs text-gray-500">
             {importMode === 'git'
               ? '支持 GitHub / Git 仓库。自动检测格式并转换。导入后需测试审核后上架。'
+              : importMode === 'local'
+              ? '从本地目录导入 skills/*/SKILL.md。兼容 Google agent-skills 格式。一键导入全部技能。'
               : '上传包含 SKILL.md 的 zip 文件。支持 last30days、Claude Code Plugin 等格式。导入后需测试审核后上架。'}
           </div>
           {plan && (
             <div className="mt-3 p-3 rounded-lg border border-dark-border bg-dark-bg">
               <div className="text-xs font-medium text-gray-200 mb-2">将要导入：</div>
               {plan.agents && <div className="text-xs text-blue-300">🤖 Agents: {plan.agents.map((a: any) => a.name || a.id).join(', ')}</div>}
-              {plan.skills && <div className="text-xs text-green-300">📋 Skills: {plan.skills.map((s: any) => s.name || s.skill_id).join(', ')}</div>}
+              {plan.skills && <div className="text-xs text-green-300">⚡ Skills: {plan.skills.map((s: any) => s.name || s.skill_id).join(', ')}</div>}
               {plan.mcps && <div className="text-xs text-yellow-300">🔌 MCPs: {plan.mcps.map((m: any) => m.name || m.id).join(', ')}</div>}
-              {plan.workflows && <div className="text-xs text-purple-300">🔀 Workflows: {plan.workflows.map((w: any) => w.name || w.id).join(', ')}</div>}
+              {plan.workflows && <div className="text-xs text-purple-300">⚙️ Workflows: {plan.workflows.map((w: any) => w.name || w.id).join(', ')}</div>}
               <div className="mt-3">
                 <Button variant="primary" onClick={handleInstall} loading={installing}>⬇ 导入到应用库</Button>
                 <button onClick={() => setPlan(null)} className="ml-3 text-xs text-gray-500 hover:text-gray-300" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>取消</button>

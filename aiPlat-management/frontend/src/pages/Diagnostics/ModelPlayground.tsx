@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Play, Zap, Clock, AlertTriangle, Brain, Copy, Plus } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft, Play, Zap, Clock, AlertTriangle, Brain, Copy, Plus } from 'lucide-react';
 import { Card, CardHeader, CardContent, Button, toast } from '../../components/ui';
 
 interface ModelInfo {
@@ -73,6 +74,10 @@ const ModelPlayground: React.FC = () => {
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>模型 Playground</h1>
         <span style={{ fontSize: 11, color: '#6b7280' }}>对比多个 LLM 的输出</span>
       </div>
+
+      <Link to="/diagnostics" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200 transition-colors mb-4">
+        <ArrowLeft className="w-3 h-3" />返回诊断中心
+      </Link>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16, marginBottom: 20 }}>
         {/* Prompt input */}

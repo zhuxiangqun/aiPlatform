@@ -61,6 +61,8 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 搜索 Wiki 并合成答案
+
+protected: true
 ---
 
 ## SOP

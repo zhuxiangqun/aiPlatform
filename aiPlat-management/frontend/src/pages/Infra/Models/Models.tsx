@@ -147,6 +147,18 @@ const Models: React.FC = () => {
     },
     { key: 'provider', title: 'Provider', dataIndex: 'provider' },
     {
+      key: 'capabilities',
+      title: '能力',
+      width: 140,
+      render: (_: unknown, record: Model) => (
+        <div className="flex flex-wrap gap-1">
+          {(record.capabilities || []).map((cap: string) => (
+            <span key={cap} className="px-2 py-0.5 rounded text-xs bg-dark-hover text-gray-400">{cap}</span>
+          ))}
+        </div>
+      ),
+    },
+    {
       key: 'status',
       title: '状态',
       render: (_: unknown, record: Model) => {
@@ -289,6 +301,7 @@ const Models: React.FC = () => {
             <div><span className="text-gray-300">类型</span><span className="ml-2 text-gray-600">LLM / EMBEDDING / RERANKER / AUDIO / IMAGE</span></div>
             <div><span className="text-gray-300">来源</span><span className="ml-2 text-gray-600">内置（自动发现）/ 本地（Ollama等）/ 自定义</span></div>
             <div><span className="text-gray-300">Provider</span><span className="ml-2 text-gray-600">模型提供商标识（openai_compatible/deepseek等）</span></div>
+            <div><span className="text-gray-300">能力</span><span className="ml-2 text-gray-600">chat/reasoning/function_call/json_mode/vision/code/embedding/ocr/audio</span></div>
             <div><span className="text-gray-300">状态</span><span className="ml-2 text-gray-600">可用 / 不可用 / 错误 / 未配置</span></div>
             <div><span className="text-gray-300">启用</span><span className="ml-2 text-gray-600">开关——内置模型不可禁用</span></div>
             <div><span className="text-gray-300">操作</span><span className="ml-2 text-gray-600">测试连通性 / 编辑 / 删除。内置模型仅可测试</span></div>

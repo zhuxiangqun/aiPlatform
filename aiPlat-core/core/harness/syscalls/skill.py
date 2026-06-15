@@ -86,6 +86,7 @@ async def sys_skill_call(
                 {
                     "trace_id": span.trace_id,
                     "span_id": getattr(span, "span_id", None),
+                    "parent_span_id": (trace_context or {}).get("parent_span_id") if isinstance(trace_context, dict) else None,
                     "run_id": (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None,
                     "kind": "routing",
                     "name": "skill_route",
@@ -198,6 +199,7 @@ async def sys_skill_call(
                 {
                     "trace_id": span.trace_id,
                     "span_id": getattr(span, "span_id", None),
+                    "parent_span_id": (trace_context or {}).get("parent_span_id") if isinstance(trace_context, dict) else None,
                     "run_id": (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None,
                     "kind": "routing",
                     "name": "skill_candidates",
@@ -475,6 +477,17 @@ async def sys_skill_call(
             except Exception:
                 pass
 
+            # SandboxGate — pre-execution safety validation
+            try:
+                from core.harness.infrastructure.gates.sandbox_gate import get_sandbox, Verdict
+                sb = get_sandbox()
+                sb_result = await sb.check(kind="skill", tool_name=f"skill:{skill_name or ''}", tool_args=args)
+                if sb_result.verdict == Verdict.REJECT:
+                    return SkillResult(ok=False, error=f"Sandbox rejected: {sb_result.reason}",
+                                      error_code="SANDBOX_REJECT")
+            except Exception:
+                pass
+
             # PolicyGate approval flow (mirrors sys_tool_call behavior)
             # tool_only: bypass skill-level approvals entirely (let tools request approvals).
             if approval_layer_policy == "tool_only":
@@ -630,7 +643,35 @@ async def sys_skill_call(
         except Exception:
             tok = None
         try:
-            return await skill.execute(ctx, prepared_params)  # type: ignore[misc]
+            # Inject span_id so child syscall events can reference parent
+            if ctx and hasattr(ctx, 'metadata') and isinstance(ctx.metadata, dict):
+                ctx.metadata["_span_id"] = getattr(span, "span_id", None)
+            # Set ActiveTraceContext for downstream event emission (handlers, tools, etc.)
+            from core.harness.kernel.execution_context import ActiveTraceContext, set_active_trace_context, reset_active_trace_context
+            run_id_val = (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else ""
+            span_id_val = getattr(span, "span_id", "")
+            trace_token = set_active_trace_context(ActiveTraceContext(
+                run_id=str(run_id_val),
+                span_id=str(span_id_val),
+                parent_span_id=str((trace_context or {}).get("parent_span_id") or "") if isinstance(trace_context, dict) else "",
+            )) if run_id_val else None
+            try:
+                # Check for skill_chain: execute dependencies first
+                chain = _get_skill_chain(skill)
+                if chain:
+                    from core.apps.skills.registry import get_skill_registry
+                    reg = get_skill_registry()
+                    for dep_name in chain:
+                        dep = reg.get(dep_name)
+                        if dep and hasattr(dep, 'execute'):
+                            await dep.execute(ctx, prepared_params)
+                return await skill.execute(ctx, prepared_params)  # type: ignore[misc]
+            finally:
+                if trace_token is not None:
+                    try:
+                        reset_active_trace_context(trace_token)
+                    except Exception:
+                        pass
         finally:
             if tok is not None:
                 try:
@@ -644,7 +685,7 @@ async def sys_skill_call(
         if not getattr(skill, "_model", None):
             try:
                 from core.harness.utils.model_injection import ensure_skill_model, best_model_for_purpose
-                ensure_skill_model(skill, model_name=best_model_for_purpose("chat"), force=False)
+                ensure_skill_model(skill, model_name=best_model_for_purpose("skill_execution"), force=False)
             except Exception:
                 pass
 
@@ -756,6 +797,24 @@ async def sys_skill_call(
             curator.record_call(skill_name) if skill_name else None
         except Exception:
             pass
+        # SchemaGate — JSON Schema enforcement
+        if bool(getattr(result, "success", True)):
+            try:
+                from core.harness.infrastructure.gates.schema_gate import get_schema_gate, SchemaVerdict
+                cfg = getattr(skill, "_config", None)
+                output_schema = getattr(cfg, "output_schema", None) if cfg else None
+                if not output_schema:
+                    meta = getattr(cfg, "metadata", None) if cfg else None
+                    output_schema = getattr(meta, "output_schema", None) if isinstance(meta, dict) else None
+                if output_schema:
+                    sg = get_schema_gate()
+                    s_result = sg.validate(getattr(result, "output", None), output_schema)
+                    if s_result.verdict == SchemaVerdict.FAIL:
+                        setattr(result, "success", False)
+                        setattr(result, "error", f"schema_validation_failed{': ' + s_result.retry_hint[:200] if s_result.retry_hint else ''}")
+            except Exception:
+                pass
+
         return result
     except Exception:
         end_ts = time.time()
@@ -841,3 +900,18 @@ async def sys_skill_call_stream(
         yield SkillStreamEvent(event_type="done", data=SkillResult(success=False, error=str(e)), progress=1.0)
     finally:
         await trace_gate.end(span, success=True)
+
+
+def _get_skill_chain(skill: Any) -> List[str]:
+    u"""Extract skill_chain from skill metadata (SKILL.md frontmatter).
+    Returns ordered list of skill names to execute as prerequisites.
+    """
+    try:
+        cfg = getattr(skill, "_config", None)
+        meta = getattr(cfg, "metadata", None) if cfg else None
+        if isinstance(meta, dict):
+            chain = meta.get("skill_chain", [])
+            return [str(s) for s in chain] if chain else []
+    except Exception:
+        pass
+    return []

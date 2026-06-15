@@ -47,7 +47,9 @@ def _verify_template_signature(template_id: str) -> Optional[bool]:
         if not prov.get("signature"): return None
         rt = get_kernel_runtime()
         store = getattr(rt, "execution_store", None) if rt else None
-        trusted = asyncio.new_event_loop().run_until_complete(get_trusted_skill_pubkeys_map(store)) if store else {}
+        import concurrent.futures as _cf
+        with _cf.ThreadPoolExecutor(max_workers=1) as _pool:
+            trusted = _pool.submit(asyncio.run, get_trusted_skill_pubkeys_map(store)).result(timeout=10) if store else {}
         result = mgr.compute_signature_verification(tpl, trusted)
         return result.get("signature_verified")
     except Exception:

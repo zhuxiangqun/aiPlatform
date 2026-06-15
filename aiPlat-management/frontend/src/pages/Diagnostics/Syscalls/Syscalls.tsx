@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown, ChevronRight, Copy, ExternalLink, RotateCw, Search, Share2 } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronRight, Copy, ExternalLink, RotateCw, Search, Share2 } from 'lucide-react';
 import { Button, Input, Select, Table, toast } from '../../../components/ui';
 import { diagnosticsApi } from '../../../services';
 
@@ -335,6 +335,10 @@ const Syscalls: React.FC = () => {
         <h1 className="text-2xl font-semibold text-gray-200">Syscalls</h1>
         <p className="text-sm text-gray-500 mt-1">查询 syscall_events（tool/llm/skill 调用事件）</p>
       </div>
+
+      <Link to="/diagnostics" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200 transition-colors mb-4">
+        <ArrowLeft className="w-3 h-3" />返回诊断中心
+      </Link>
 
       <div className="flex flex-wrap items-end gap-3">
         <Input label="trace_id" value={traceId} onChange={(e: any) => setTraceId(e.target.value)} />

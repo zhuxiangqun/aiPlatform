@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Download, RefreshCw, Trash2, RotateCw, Eye, Package, Activity } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft, Download, RefreshCw, Trash2, RotateCw, Eye, Package, Activity } from 'lucide-react';
 import { Button, Card, CardContent, CardHeader, Input, Table, toast, Tabs, Modal, Pagination } from '../../../components/ui';
 import { diagnosticsApi } from '../../../services';
 import { gatewayDlqApi, jobApi, opsApi, quotaApi } from '../../../services';
@@ -514,6 +515,10 @@ const Ops: React.FC = () => {
         <h1 className="text-2xl font-semibold text-gray-200">运维控制台</h1>
         <p className="text-sm text-gray-500 mt-1">导出（CSV）/ DLQ / 配额用量</p>
       </div>
+
+      <Link to="/diagnostics" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200 transition-colors mb-4">
+        <ArrowLeft className="w-3 h-3" />返回诊断中心
+      </Link>
 
       <Card>
         <CardHeader>

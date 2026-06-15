@@ -137,7 +137,7 @@ export const workspaceAgentApi = {
       agent_type: string; config: Record<string, unknown>;
       skills: string[]; tools: string[]; mcp_ids: string[]; agent_ids: string[];
       memory_config: Record<string, unknown>; sop_text: string; reasoning: string;
-      workflow_ids: string[];
+      workflow_ids: string[]; trigger_conditions: string[];
     }>('/core/workspace/agents/auto-fill', data);
   },
 
@@ -155,7 +155,7 @@ export const workspaceAgentApi = {
       agent_type: string; config: Record<string, unknown>;
       skills: string[]; tools: string[]; mcp_ids: string[]; agent_ids: string[];
       memory_config: Record<string, unknown>; sop_text: string; reasoning: string;
-      workflow_ids: string[];
+      workflow_ids: string[]; trigger_conditions: string[];
     }>('/core/workspace/agents/auto-fill', data);
   },
 
@@ -810,7 +810,7 @@ export const skillApi = {
   },
 
   execute: async (skillId: string, data: { input?: Record<string, unknown>; context?: Record<string, unknown>; options?: { toolset?: string }; config?: Record<string, unknown> }) => {
-    return apiClient.post<{ execution_id: string; status: string; output?: unknown; error?: string; duration_ms?: number }>(`/core/skills/${skillId}/execute`, data);
+    return apiClient.post<{ execution_id: string; run_id: string; trace_id?: string; ok: boolean; status: string; output?: unknown; error?: any; duration_ms?: number; tokens?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } }>(`/core/skills/${skillId}/execute`, data);
   },
 
   lint: async (skillId: string) => {
@@ -946,7 +946,7 @@ export const workspaceSkillApi = {
   },
 
   execute: async (skillId: string, data: { input?: Record<string, unknown>; context?: Record<string, unknown>; options?: { toolset?: string }; config?: Record<string, unknown> }) => {
-    return apiClient.post<{ execution_id: string; status: string; output?: unknown; error?: string; duration_ms?: number }>(`/core/workspace/skills/${skillId}/execute`, data);
+    return apiClient.post<{ execution_id: string; run_id: string; trace_id?: string; ok: boolean; status: string; output?: unknown; error?: any; duration_ms?: number; tokens?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } }>(`/core/workspace/skills/${skillId}/execute`, data);
   },
 
   getExecutionHelp: async (skillId: string) => {
@@ -2357,5 +2357,29 @@ export const packagesApi = {
   },
   listInstalls: async () => {
     return apiClient.get<{ installs: { name: string; version: string; installed_at: number }[] }>('/core/packages/installs');
+  },
+};
+
+// ── Overview API ──
+export const overviewApi = {
+  /** GET /api/core/overview[?refresh=true] */
+  getOverview: async (refresh = false) => {
+    const qs = refresh ? '?refresh=true' : '';
+    return apiClient.get<any>(`/core/overview${qs}`);
+  },
+
+  /** GET /api/core/knowledge-graph/stats */
+  getKnowledgeGraphStats: async () => {
+    return apiClient.get<any>('/core/knowledge-graph/stats');
+  },
+
+  /** GET /api/core/diagnostics/history */
+  getDiagnosticsHistory: async () => {
+    return apiClient.get<any>('/core/diagnostics/history');
+  },
+
+  /** GET /api/core/diagnostics/summary */
+  getDiagnosticsSummary: async () => {
+    return apiClient.get<any>('/core/diagnostics/summary');
   },
 };

@@ -50,6 +50,8 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 追溯故障根因并给出修复建议
+
+protected: true
 ---
 
 # 根因分析（Engine）

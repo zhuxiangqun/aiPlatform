@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
-import { ArrowLeftRight, Play, Search } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft, ArrowLeftRight, Play, Search } from 'lucide-react';
 import { ExecutionViewer } from '../../components/ExecutionViewer';
 import { Card, CardContent, Button, Input, toast } from '../../components/ui';
 
@@ -28,6 +29,10 @@ const RunComparison: React.FC = () => {
         <ArrowLeftRight size={22} color="#8b5cf6" />
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Run 对比</h1>
       </div>
+
+      <Link to="/diagnostics" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200 transition-colors mb-4">
+        <ArrowLeft className="w-3 h-3" />返回诊断中心
+      </Link>
 
       <Card className="border-dark-border bg-dark-card" {...({ style: { marginBottom: 20 } } as any)}>
         <CardContent>

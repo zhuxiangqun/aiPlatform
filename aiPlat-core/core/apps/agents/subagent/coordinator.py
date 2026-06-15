@@ -48,9 +48,11 @@ class SubagentCoordinator:
     collects summarized results for the parent agent.
     """
 
-    def __init__(self):
+    def __init__(self, create_agent_fn=None, get_tool_registry_fn=None):
         self._registry = None
         self._active_instances: Dict[str, SubagentInstance] = {}
+        self._create_agent_fn = create_agent_fn
+        self._get_tool_registry_fn = get_tool_registry_fn
     
     async def _get_registry(self):
         if self._registry is None:
@@ -117,8 +119,12 @@ class SubagentCoordinator:
                     })
             messages.append({"role": "user", "content": task})
 
-            # Create agent and bind allowed tools
-            from core.api.core_facade import create_agent, get_tool_registry
+            # Create agent via injected factory (DI) or fallback to import
+            if self._create_agent_fn:
+                create_agent = self._create_agent_fn
+                get_tool_registry = self._get_tool_registry_fn
+            else:
+                from core.api.core_facade import create_agent, get_tool_registry
             agent = create_agent(
                 agent_type="conversational",
                 config={
@@ -138,11 +144,13 @@ class SubagentCoordinator:
                         agent.add_tool(tool)
 
             # Execute and collect output
+            import uuid as _uuid
             from core.harness.interfaces.agent import AgentContext
             agent_ctx = AgentContext(
                 session_id=f"subagent-{subagent_name}",
                 user_id="subagent_coordinator",
                 messages=messages,
+                variables={"_run_id": f"run_{_uuid.uuid4().hex[:16]}"},
             )
 
             # ── Propagate parent's workspace context (toolset + mcp_ids) to child agent ──
@@ -363,11 +371,14 @@ class SubagentCoordinator:
 _coordinator: Optional[SubagentCoordinator] = None
 
 
-def get_subagent_coordinator() -> SubagentCoordinator:
-    """Get global Subagent coordinator"""
+def get_subagent_coordinator(create_agent_fn=None, get_tool_registry_fn=None) -> SubagentCoordinator:
+    """Get global Subagent coordinator. Optional DI callables for agent creation."""
     global _coordinator
     if _coordinator is None:
-        _coordinator = SubagentCoordinator()
+        _coordinator = SubagentCoordinator(
+            create_agent_fn=create_agent_fn,
+            get_tool_registry_fn=get_tool_registry_fn,
+        )
     return _coordinator
 
 

@@ -291,7 +291,8 @@ class CoreAPIClient:
 
     # ===== Diagnostics: E2E smoke =====
     async def run_e2e_smoke(self, body: Dict[str, Any]) -> Dict[str, Any]:
-        return await self._request("POST", "/api/core/diagnostics/e2e/smoke", json=body or {})
+        return await self._request("POST", "/api/core/diagnostics/e2e/smoke",
+            json=body or {}, timeout=httpx.Timeout(180.0, connect=15.0))
 
     # ===== Adapters =====
 
@@ -1281,6 +1282,17 @@ class CoreAPIClient:
         """Get model call distribution."""
         return await self._request("GET", f"/api/core/adapters/{adapter_id}/model-distribution")
     
+    # ===== System Overview =====
+
+    async def get_overview(self, refresh: bool = False) -> Dict[str, Any]:
+        """Get system overview (4-layer health)."""
+        params = {"refresh": "true"} if refresh else {}
+        return await self._request("GET", "/api/core/overview", params=params)
+
+    async def get_llm_metrics(self) -> Dict[str, Any]:
+        """Get LLM call metrics (24h window)."""
+        return await self._request("GET", "/api/core/diagnostics/llm/metrics")
+
     # ===== Harness Management =====
     
     async def get_harness_status(self) -> Dict[str, Any]:

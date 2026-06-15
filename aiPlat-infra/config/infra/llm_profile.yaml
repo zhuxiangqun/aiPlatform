@@ -7,6 +7,17 @@ purpose_profiles:
   agent:
     prefer: [reasoning, chat]
     avoid: []
+  # Skill/Agent execution with tool calling — require function_call capability
+  skill_execution:
+    prefer: [chat]
+    avoid: []
+    require:
+      capabilities: [function_call, json_mode]
+  agent_execution:
+    prefer: [chat, reasoning]
+    avoid: []
+    require:
+      capabilities: [function_call, json_mode]
 
   # ── General chat / generation / document ──
   chat:

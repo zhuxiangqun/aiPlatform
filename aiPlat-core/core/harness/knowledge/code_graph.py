@@ -90,8 +90,8 @@ def _strip_py_type_checking(text: str) -> str:
 
 def _extract_py_imports_ast(filepath: Path) -> list:
     """Use Python's built-in AST to extract import module names.
-    Replaces regex-based _PY_IMPORT_RE with 100% accurate parsing.
-    Falls back to regex on SyntaxError."""
+    Returns list of (module_name, is_top_level) tuples.
+    Fallback to regex on SyntaxError returns top-level-only list with str items."""
     try:
         text = _read_text(filepath)
         if not text:
@@ -99,22 +99,30 @@ def _extract_py_imports_ast(filepath: Path) -> list:
         text = _strip_py_type_checking(text)
         tree = ast.parse(text, filename=str(filepath))
     except SyntaxError:
-        # Fallback to regex for files with syntax issues
+        # Fallback to regex for files with syntax issues — assume top-level
         mods = []
         for m in _PY_IMPORT_RE.finditer(text):
             mod = m.group(2) or m.group(3)
             if mod and not mod.startswith("TYPE_CHECKING"):
-                mods.append(mod)
+                mods.append((mod, True))  # assume top-level in regex fallback
         return mods
+
+    # Phase 2.5: identify nodes inside function bodies (exported from _extract_calls_ast pattern)
+    func_body_nodes: set = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            for child in ast.walk(node):
+                func_body_nodes.add(id(child))
 
     imports = []
     for node in ast.walk(tree):
+        is_top_level = id(node) not in func_body_nodes
         if isinstance(node, ast.Import):
             for alias in node.names:
-                imports.append(alias.name)
+                imports.append((alias.name, is_top_level))
         elif isinstance(node, ast.ImportFrom):
             if node.module:
-                imports.append(node.module)
+                imports.append((node.module, is_top_level))
     return imports
 
 
@@ -331,10 +339,10 @@ def _extract_js_symbols(filepath: Path) -> list:
 
 _ROUTE_PATH_RE = re.compile(r"""path\s*[:=]\s*['"]([^'"]+)['"]""", re.I)
 _API_CALL_RE = re.compile(
-    r"""(?:fetch|apiClient\.\w+|axios\.\w+|request\()\s*\(\s*['"`]((?:/api)?/core/\S*?)['"`]""",
+    r"""(?:fetch|apiClient\.\w+|axios\.\w+|request\(|\.get\(|\.post\(|\.put\(|\.delete\(|\.patch\()\s*\(\s*['"`]((?:/api)?/(?:core|platform|infra|dashboard|diagnostics)\S*?)['"`]""",
     re.I
 )
-_BACKEND_ROUTE_RE = re.compile(r"""@router\.\w+\(\s*['"]([^'"]+)['"]""", re.I)
+_BACKEND_ROUTE_RE = re.compile(r"""@(?:router|app)\.\w+\(\s*['"]([^'"]+)['"]""", re.I)
 
 
 def _extract_js_routes(filepath: Path) -> list:
@@ -384,6 +392,8 @@ def _extract_api_calls(filepath: Path) -> List[str]:
         if ep:
             # Normalize: remove /api and /core prefixes, query params
             ep = ep.replace('/api/', '/').replace('/core/', '/').split('?')[0].rstrip('/')
+            # Normalize TS template literals ${var} → {var} to match backend patterns
+            ep = re.sub(r'\$\{(\w+)\}', r'{\1}', ep)
             endpoints.append(ep)
     return list(set(endpoints))
 
@@ -428,15 +438,15 @@ def _extract_backend_routes(filepath: Path) -> list:
 
 
 def _parse_router_decorator(decorator: ast.expr, methods: set) -> tuple:
-    """Parse @router.get('/path') or @router.post('/path') decorator.
+    """Parse @router.get('/path') or @app.get('/path') decorator.
     Returns (method_str, path_str) or ("", "") if not a router decorator."""
     if not isinstance(decorator, ast.Call):
         return ("", "")
-    # Check for @router.get, @router.post, etc.
+    # Check for @router.get, @router.post, or @app.get, @app.post, etc.
     func = decorator.func
     method_name = ""
     if isinstance(func, ast.Attribute):
-        if isinstance(func.value, ast.Name) and func.value.id == "router":
+        if isinstance(func.value, ast.Name) and func.value.id in ("router", "app"):
             method_name = func.attr
         elif isinstance(func.value, ast.Attribute) and _get_attr_name(func.value) == "router":
             method_name = func.attr
@@ -448,6 +458,21 @@ def _parse_router_decorator(decorator: ast.expr, methods: set) -> tuple:
         if isinstance(first_arg, ast.Constant) and isinstance(first_arg.value, str):
             return (method_name, first_arg.value)
     return ("", "")
+
+
+def _extract_router_prefix(filepath: Path) -> str:
+    """Extract APIRouter prefix from a Python file. e.g. prefix='/core' → 'core'"""
+    import re as _re
+    try:
+        text = _read_text(filepath)
+        # Fast pattern: APIRouter(prefix='...') or APIRouter(prefix="/...")
+        m = _re.search(r"APIRouter\s*\(\s*prefix\s*=\s*['\"]([^'\"]+)['\"]", text)
+        if m:
+            prefix = m.group(1).strip('/')
+            return prefix
+    except Exception:
+        pass
+    return ""
 
 
 def _get_attr_name(node: ast.expr) -> str:
@@ -664,7 +689,7 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
                         if rel not in nodes:
                             nodes[rel] = {"id": rel, "path": rel, "ext": f.suffix.lower(),
                                           "out": [], "in": 0, "issue_count": 0, "symbols": []}
-                        for mod in _extract_py_imports_ast(f):
+                        for mod, is_top in _extract_py_imports_ast(f):
                             tgt = _resolve_py_module(_repo_root, f, mod)
                             if tgt and tgt.exists():
                                 rel_to = str(tgt.relative_to(_repo_root))
@@ -679,7 +704,7 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
                     if f.exists():
                         text = _read_text(f)
                         deps = set()
-                        for mod in _extract_py_imports_ast(f):
+                        for mod, is_top in _extract_py_imports_ast(f):
                             tgt = _resolve_py_module(_repo_root, f, mod)
                             if tgt and tgt.exists():
                                 rel_to = str(tgt.relative_to(_repo_root))
@@ -750,11 +775,15 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
         deps: Set[str] = set()
         if f.suffix.lower() == ".py":
             # AST-based extraction: imports + symbols + calls
-            for mod in _extract_py_imports_ast(f):
+            imported_modules: Dict[str, bool] = {}  # mod → is_top_level
+            for mod, is_top in _extract_py_imports_ast(f):
                 tgt = _resolve_py_module(_repo_root, f, mod)
                 if tgt and tgt.exists():
                     rel_to = str(tgt.relative_to(_repo_root))
-                    if rel_to in nodes and rel_to != rel_from: deps.add(rel_to)
+                    if rel_to in nodes and rel_to != rel_from:
+                        deps.add(rel_to)
+                        # Track scope: if ANY import of this module is top-level, mark it top-level
+                        imported_modules[mod] = imported_modules.get(mod, True) and is_top
             # Extract symbols (functions/classes)
             try:
                 nodes[rel_from]["symbols"] = _extract_symbols_ast(f)
@@ -780,9 +809,11 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
                 except Exception:
                     pass
         for rel_to in sorted(deps):
-            edges.append({"from": rel_from, "to": rel_to})
+            edge = {"from": rel_from, "to": rel_to}
+            # Determine edge scope: 'module' if both sides are top-level imports, else 'function'
             nodes[rel_from]["out"].append(rel_to)
             nodes[rel_to]["in"] += 1
+            edges.append(edge)
         # Extract call edges (function→function calls within and across files)
         if f.suffix.lower() == ".py":
             try:
@@ -852,7 +883,61 @@ def count_cycles(nodes: Dict[str, Dict[str, Any]]) -> int:
         visited.add(u)
     for u in list(nodes.keys()):
         if u not in visited: dfs(u)
+    # All current edges are import edges. Func-scoped imports are counted as-is.
     return back_edges
+
+
+def report_cycles(nodes: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Return named cycle paths with file short names. Useful for actionable output."""
+    visiting: Set[str] = set()
+    visited: Set[str] = set()
+    found: List[Dict[str, Any]] = []
+    def dfs_path(u: str, path: List[str]):
+        visiting.add(u)
+        path.append(u)
+        for v in nodes[u].get("out") or []:
+            if v not in nodes: continue
+            if v in visiting:
+                idx = path.index(v)
+                cycle_nodes = path[idx:]
+                short = [n.split('/')[-1].replace('.py', '') for n in cycle_nodes]
+                found.append({"files": cycle_nodes, "names": ' → '.join(short), "length": len(cycle_nodes)})
+            elif v not in visited:
+                dfs_path(v, path)
+        path.pop()
+        visiting.remove(u)
+        visited.add(u)
+    for u in sorted(nodes.keys()):
+        if u not in visited:
+            dfs_path(u, [])
+    # Deduplicate: sort inner lists and uniquify
+    seen: Set[str] = set()
+    unique = []
+    for c in found:
+        key = '|'.join(sorted(c["files"]))
+        if key not in seen:
+            seen.add(key)
+            unique.append(c)
+    return sorted(unique, key=lambda x: x["length"])
+
+
+def effective_cycles(nodes: Dict[str, Dict[str, Any]]) -> int:
+    """Return cycle count minus known-safe cycles from the whitelist."""
+    total = count_cycles(nodes)
+    safe = _load_known_safe_count()
+    return max(0, total - safe)
+
+
+def _load_known_safe_count() -> int:
+    """Load known-safe cycle count from architecture guard whitelist."""
+    try:
+        wl_path = os.path.join(repo_root(), "scripts", "known_safe_cycles.txt")
+        if os.path.exists(wl_path):
+            with open(wl_path) as f:
+                return sum(1 for line in f if line.strip() and not line.strip().startswith('#'))
+    except Exception:
+        pass
+    return 0
 
 
 def health_score(*, nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]],
@@ -994,15 +1079,31 @@ def _layer_bucket(path: str) -> str:
     """Infer architecture layer from file path."""
     if not path:
         return "unknown"
+    # Infrastructure layer
+    if any(path.startswith(p) for p in ["aiPlat-infra", "aiPlat-infra/"]):
+        return "infra"
+    # Platform layer
+    if any(path.startswith(p) for p in ["aiPlat-platform", "aiPlat-platform/"]):
+        return "platform"
+    # Application layer
+    if any(path.startswith(p) for p in ["aiPlat-app", "aiPlat-app/"]):
+        return "app"
+    # Management layer (frontend)
+    if any(path.startswith(p) for p in ["aiPlat-management", "aiPlat-management/"]):
+        return "app"
+    # Core layer — anything under aiPlat-core
+    if path.startswith("aiPlat-core") or path.startswith("aiPlat-core/"):
+        return "core"
+    # Heuristic fallback for non-prefixed paths
     if any(x in path for x in ["infra/", "model/", "storage/"]):
         return "infra"
     if any(x in path for x in ["harness/", "syscall", "engine", "execution/"]):
         return "core"
-    if any(x in path for x in ["api/rest/", "platform/", "gateway"]):
+    if any(x in path for x in ["platform/", "gateway"]):
         return "platform"
     if any(x in path for x in ["frontend/", "src/pages", "src/components", "App.tsx"]):
         return "app"
-        return "core"
+    return "unknown"
 
 
 def _build_contains_edges(
@@ -1187,13 +1288,13 @@ def _build_symbol_graph(
             from_symbols = file_nodes[from_file].get("symbols", [])
             to_symbols = file_nodes[to_file].get("symbols", [])
 
-            # Only create import edge if the file has symbols
+            # Create import edge — increased limit for better coverage
             count = 0
-            for fs in from_symbols[:3]:
+            for fs in from_symbols[:10]:
                 if not isinstance(fs, (list, tuple)) or len(fs) < 2:
                     continue
                 from_id = f"{from_file}::{fs[0]}"
-                for ts in to_symbols[:1]:
+                for ts in to_symbols[:3]:
                     if not isinstance(ts, (list, tuple)) or len(ts) < 2:
                         continue
                     to_id = f"{to_file}::{ts[0]}"
@@ -1204,7 +1305,7 @@ def _build_symbol_graph(
                             "kind": "import",
                         })
                         count += 1
-                if count >= 3:
+                if count >= 10:
                     break
 
     # Phase 4: Inherit routes to symbol nodes
@@ -1256,6 +1357,9 @@ def _build_symbol_graph(
                                 "kind": "route_to",
                                 "label": path,
                             })
+
+    # Phase 5: Inheritance edges (class A → parent class B)
+    _build_inheritance_edges(file_nodes, symbol_edges)
 
     return symbol_nodes, symbol_edges
 

@@ -524,7 +524,9 @@ platform → infra (禁止，应通过 core)
 - [项目 README](../README.md)
 - [开发规范](guides/DEVELOPMENT.md) - 代码规范、提交规范、分支策略、PR流程
 - [部署指南](guides/DEPLOYMENT.md) - 部署架构、环境管理、监控告警、故障排查
+- [接入指引](getting-started.md) - 知识库本体系统快速上手（文档入库、本体管理、安全配置、Pipeline、学习教练、外部集成）
+- [架构总览](architecture/system-overview.md) - 知识库本体系统 v2.1 架构全貌（Mermaid 图 + 闭环清单）
 
 ---
 
-*最后更新: 2026-04-13*
+*最后更新: 2026-06-15*

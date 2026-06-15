@@ -40,14 +40,18 @@ export const TraceFlowGraph: React.FC<Props> = ({ runId }) => {
 
   const nodes: ExecutionNode[] = useMemo(() => {
     if (!events.length) return [];
-    // Build parent-child relationships from span_id
+    // Build parent-child relationships: span_id → first event (keep first for parent lookup)
     const spanMap = new Map<string, SyscallEvent>();
     for (const e of events) {
-      const sid = e.span_id || `ev_${e.id}`;
-      spanMap.set(sid, e);
+      const sid = e.span_id;
+      if (sid && !spanMap.has(sid)) spanMap.set(sid, e);
     }
 
-    return events.map((e, i) => {
+    const seen = new Map<string, ExecutionNode>(); // dedup by span_id::name
+    const result: ExecutionNode[] = [];
+
+    for (let i = 0; i < events.length; i++) {
+      const e = events[i];
       const kind = e.kind?.replace(/^sys_/, '') || 'default';
       const name = e.name || e.kind || 'unknown';
       const status = e.status === 'ok' ? 'completed' as const
@@ -55,18 +59,34 @@ export const TraceFlowGraph: React.FC<Props> = ({ runId }) => {
       const parentSid = (e as any).parent_span_id || '';
       const parent = parentSid ? spanMap.get(parentSid) : null;
 
-      return {
-        id: e.span_id || `ev_${e.id}`,
+      const nodeId = (e.span_id && name) ? `${e.span_id}::${name}` : `ev_${e.id || i}`;
+
+      // Dedup: merge status updates for same span_id::name (keep latest non-idle)
+      const existing = seen.get(nodeId);
+      if (existing) {
+        if (status !== 'idle') {
+          existing.status = status;
+          existing.duration = e.duration_ms || existing.duration;
+        }
+        continue; // reuse existing node
+      }
+
+      const node: ExecutionNode = {
+        id: nodeId,
         type: kind,
         name: name.length > 40 ? name.slice(0, 38) + '...' : name,
-        group: parent ? String(events.findIndex(pe => pe.id === parent.id)) : `root_${i}`,
+        group: parent ? String(events.findIndex(pe => pe.id === parent.id)) : (e.span_id || `root_${i}`),
         status,
         duration: e.duration_ms || 0,
-        parentId: parent ? (parent.span_id || `ev_${parent.id}`) : undefined,
+        parentId: parent ? (parent.span_id && parent.name ? `${parent.span_id}::${parent.name}` : `ev_${parent.id}`) : undefined,
         color: '',
         icon: '',
       };
-    });
+
+      seen.set(nodeId, node);
+      result.push(node);
+    }
+    return result;
   }, [events]);
 
   if (loading) return <div className="text-xs text-gray-500 py-4 text-center">加载中...</div>;

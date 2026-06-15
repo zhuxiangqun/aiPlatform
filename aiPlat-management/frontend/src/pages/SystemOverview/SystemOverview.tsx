@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, Button } from '../../components/ui';
-import { RefreshCw, Server, Cpu, Bot, Globe, MessageSquare, Database, Zap, Brain, Activity, Flame, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { overviewApi } from '../../services';
+import { RefreshCw, Server, Cpu, Bot, Globe, MessageSquare, Database, Zap, Brain, AlertTriangle } from 'lucide-react';
 import DiagnosticTrendChart from './DiagnosticTrendChart';
 
 const SystemOverview: React.FC = () => {
@@ -12,12 +13,9 @@ const SystemOverview: React.FC = () => {
   const fetchData = async (force = false) => {
     setLoading(true);
     try {
-      const url = force ? '/api/core/overview?refresh=true' : '/api/core/overview';
-      const r = await fetch(url);
-      const overview = await r.json();
+      const overview = await overviewApi.getOverview(force);
       try {
-        const s = await fetch('/api/core/knowledge-graph/stats');
-        overview.codebase_stats = await s.json();
+        overview.codebase_stats = await overviewApi.getKnowledgeGraphStats();
       } catch { }
       setData(overview);
     } catch { }
@@ -26,22 +24,22 @@ const SystemOverview: React.FC = () => {
 
   const fetchHistory = async () => {
     try {
-      const r = await fetch('/api/core/diagnostics/history');
-      const h = await r.json();
+      const h = await overviewApi.getDiagnosticsHistory();
       setHistory(h.history || []);
     } catch { }
   };
 
   const fetchSummary = async () => {
     try {
-      const r = await fetch('/api/core/diagnostics/summary');
-      setDiagSummary(await r.json());
+      const ds = await overviewApi.getDiagnosticsSummary();
+      setDiagSummary(ds);
     } catch { }
   };
 
   useEffect(() => {
-    fetchData(false);   // read from cache — no diagnostics on initial load
-    // No auto-refresh — manual only to reduce resource usage
+    fetchData(false);
+    fetchHistory();
+    fetchSummary();
   }, []);
 
   const infra = data?.infra || {};
@@ -89,8 +87,9 @@ const SystemOverview: React.FC = () => {
        <div className="flex items-center justify-between">
          <div>
            <h1 className="text-lg font-semibold text-gray-100">系统概览</h1>
-           <p className="text-xs text-gray-500 mt-0.5">
+            <p className="text-xs text-gray-500 mt-0.5">
               四层架构运行状态 · 手动刷新
+              <span className="text-gray-600 ml-2">「健康」= 服务存活，详细评分见诊断中心</span>
              {diagSummary?.last_run && (
                <span className="text-gray-600"> · 诊断 {diagSummary.last_run}</span>
              )}
@@ -112,71 +111,28 @@ const SystemOverview: React.FC = () => {
            <RefreshCw className="w-3 h-3 mr-1" />刷新
          </Button>
          </div>
-       </div>
+        </div>
 
-      {/* ═══ CODEBASE STATS — live from sysgraph ═══ */}
-      {data?.codebase_stats && (
-        <Card className="bg-dark-card border-dark-border">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 text-xs text-gray-400 mb-2">
-              <Activity className="w-3 h-3 text-blue-400" />
-              Codebase Stats
-              <span className="text-gray-600">· {data.codebase_stats.total_files} files · {data.codebase_stats.total_symbols} symbols</span>
-              <span className={`ml-auto text-[10px] px-1.5 py-0.5 rounded ${(data.codebase_stats.health_score || 0) >= 80 ? 'bg-green-900/20 text-green-300' : (data.codebase_stats.health_score || 0) >= 60 ? 'bg-yellow-900/20 text-yellow-300' : 'bg-red-900/20 text-red-300'}`}>
-                健康 {(data.codebase_stats.health_score || 0)}/{data.codebase_stats.health_grade || '?'}
-              </span>
-            </div>
-            <div className="text-[10px] text-gray-600 mb-2">
-              {'健康分基于循环依赖、平均耦合度、代码风险问题综合计算。A (>90) B (75-90) C (60-75) D (40-60) F (<40)'}
-            </div>
-            <div className="grid grid-cols-5 gap-3 text-[10px]">
-              {Object.entries(data.codebase_stats.layers || {}).map(([layer, info]: [string, any]) => (
-                <div key={layer} className="bg-dark-bg rounded px-2 py-1.5 text-center">
-                  <div className="text-gray-400 uppercase">{layer}</div>
-                  <div className="text-gray-200 font-medium">{info.files}</div>
-                  <div className="text-gray-500">{info.symbols} sym</div>
-                </div>
-              ))}
-            </div>
-            <details className="bg-dark-bg border border-dark-border rounded px-2 py-1 text-[10px] text-gray-500 cursor-pointer group mt-1">
-              <summary className="text-gray-500 hover:text-gray-300 select-none">📖 表头说明</summary>
-              <div className="mt-1 text-gray-600">infra=基础设施 core=AI引擎 platform=平台服务 app=应用接入 management=管理端 · 文件数 / sym(符号数=函数+类)</div>
-            </details>
-            <div className="flex gap-2 mt-2 text-[10px] text-gray-500">
-              <span>边: {(data.codebase_stats.total_edges || 0).toLocaleString()} (导入:{data.codebase_stats.import_edges} 跨文件调用:{data.codebase_stats.cross_calls})</span>
-              <span>· 环: {data.codebase_stats.cycles || 0}</span>
-            </div>
-
-            {/* Hotspots */}
-            <div className="mt-2 pt-2 border-t border-dark-border/50">
-              <div className="flex items-center gap-1.5 text-[10px] text-gray-400 mb-1.5">
-                <Flame className="w-3 h-3 text-orange-400" />
-                Hotspots
-                <span className="text-gray-600">— 被依赖最多的文件(Top Imported) / 依赖最多的文件(Top Dependents)</span>
-              </div>
-              <div className="grid grid-cols-2 gap-3 text-[10px]">
-                <div>
-                  <div className="text-gray-500 mb-0.5">Top Imported</div>
-                  {(data.codebase_stats.top_imported || []).slice(0, 5).map((f: any) => (
-                    <div key={f.path} className="flex justify-between text-gray-300">
-                      <span className="truncate max-w-[100px]" title={f.path}>{f.path}</span>
-                      <span className="text-gray-500 ml-1">{f.in} in</span>
-                    </div>
-                  ))}
-                </div>
-                <div>
-                  <div className="text-gray-500 mb-0.5">Top Dependents</div>
-                  {(data.codebase_stats.top_dependents || []).slice(0, 5).map((f: any) => (
-                    <div key={f.path} className="flex justify-between text-gray-300">
-                      <span className="truncate max-w-[100px]" title={f.path}>{f.path}</span>
-                      <span className="text-gray-500 ml-1">{f.out} out</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Compact status summary — details in Diagnostics Center */}
+      {data && (
+        <div className="flex items-center gap-3 text-xs text-gray-400 mb-2">
+          {data.codebase_stats && (
+            <span className={data.codebase_stats.health_score >= 75 ? 'text-green-400' : data.codebase_stats.health_score >= 50 ? 'text-yellow-400' : 'text-red-400'}>
+              架构 {(data.codebase_stats.health_score ?? '?')}/{data.codebase_stats.health_grade ?? '?'} ({(data.codebase_stats.cycles ?? 0)} 环)
+            </span>
+          )}
+          {core.governance && !core.governance.error && (
+            <span className={core.governance.has_trusted_keys ? 'text-green-400' : 'text-red-400'}>
+              治理: {core.governance.has_trusted_keys ? '✅' : '⚠️ 未配置'}
+            </span>
+          )}
+          {core.skills?.lint && (
+            <span className={(core.skills.lint.errors ?? 0) > 0 ? 'text-red-400' : 'text-green-400'}>
+              Lint: {(core.skills.lint.errors ?? 0) > 0 ? '⚠️' : '✅'}
+            </span>
+          )}
+          <span className="text-gray-600 text-[10px]">详查→诊断中心</span>
+        </div>
       )}
 
       {/* ═══ DIAGNOSTIC TREND CHART ═══ */}
@@ -241,16 +197,16 @@ const SystemOverview: React.FC = () => {
                         const max = Math.max(...infra.llm.hourly_trend.map((x: any) => x.count), 1);
                         const pct = (h.count / max) * 100;
                         const color = h.latency_ms > 2000 ? 'bg-red-500/60' : h.latency_ms > 1000 ? 'bg-yellow-500/60' : 'bg-green-500/50';
-                        return (
-                          <div key={h.hour} className="flex-1 relative group" title={`${h.hour}h: ${h.count} req, ${h.latency_ms}ms`}>
-                            <div className={`w-full rounded-t-sm ${color}`} style={{ height: `${Math.max(pct, 5)}%` }} />
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
+                         return (
+                           <div key={h.hour} className="flex-1 relative group" title={`${h.hour}h: ${h.count} req, ${h.latency_ms}ms`}>
+                             <div className={`w-full rounded-t-sm ${color}`} style={{ height: `${Math.max(pct, 5)}%` }} />
+                           </div>
+                         );
+                       })}
+                     </div>
+                   )}
+                 </div>
+               )}
 
               {/* Servers */}
               <div className="pb-1.5 border-b border-dark-border/50">
@@ -345,20 +301,15 @@ const SystemOverview: React.FC = () => {
               <div className="pb-1.5 border-b border-dark-border/50">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Skill</span>
-                  <span className="text-gray-300">{core.skills?.total ?? '—'}</span>
-                </div>
-                {core.skills?.lint && (
-                  <div className="flex justify-between mt-0.5">
-                    <span className="text-gray-600 text-[10px]">Lint 健康</span>
-                    <span className="text-[10px]">
-                      <span className={core.skills.lint.errors > 0 ? 'text-red-400' : 'text-green-400'}>
-                        {core.skills.lint.errors}E
+                  <span className="text-gray-300">
+                    {core.skills?.total ?? '—'}
+                    {core.skills?.lint && (
+                      <span className={core.skills.lint.errors > 0 ? 'text-red-400 ml-1' : 'text-green-400 ml-1'}>
+                        {core.skills.lint.errors > 0 ? '⚠️' : '✅'}
                       </span>
-                      {' '}
-                      <span className="text-yellow-400">{core.skills.lint.warnings}W</span>
-                    </span>
-                  </div>
-                )}
+                    )}
+                  </span>
+                </div>
               </div>
 
               {/* Tools / MCP / Workflows */}
@@ -408,9 +359,9 @@ const SystemOverview: React.FC = () => {
                 <div className="flex justify-between mt-0.5">
                   <span className="text-gray-500">Syscall (1h)</span>
                   <span className="text-gray-300 text-[10px]">
-                    llm:{core.syscalls?.llm_generate_1h ?? '—'}
-                    {' '}tool:{core.syscalls?.tool_call_1h ?? '—'}
-                    {' '}skill:{core.syscalls?.skill_call_1h ?? '—'}
+                    llm:{core.syscalls?.llm_1h ?? '—'}
+                    {' '}tool:{core.syscalls?.tool_1h ?? '—'}
+                    {' '}skill:{core.syscalls?.skill_1h ?? '—'}
                   </span>
                 </div>
               </div>
@@ -418,27 +369,10 @@ const SystemOverview: React.FC = () => {
               {/* Governance */}
               {core.governance && !core.governance.error && (
                 <div className="pb-1.5 border-b border-dark-border/50">
-                  <div className="flex items-center gap-1.5 text-gray-400 font-medium mb-1">
-                    <ShieldCheck className="w-3 h-3" />治理
-                  </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">已治理</span>
-                    <span className={core.governance.governed > 0 ? 'text-green-400' : 'text-gray-500'}>
-                      {core.governance.governed}/{core.governance.total}
-                    </span>
-                  </div>
-                  <div className="flex justify-between mt-0.5">
-                    <span className="text-gray-600 text-[10px]">未治理</span>
-                    <span className="text-[10px]">
-                      {core.governance.unsigned > 0 && <span className="text-amber-400">{core.governance.unsigned} 未签名 </span>}
-                      {core.governance.no_manifest > 0 && <span className="text-red-400">{core.governance.no_manifest} 无溯源码 </span>}
-                      {core.governance.unsigned === 0 && core.governance.no_manifest === 0 && <span className="text-green-400">全部已签名</span>}
-                    </span>
-                  </div>
-                  <div className="flex justify-between mt-0.5">
-                    <span className="text-gray-600 text-[10px]">可信公钥</span>
-                    <span className={`text-[10px] ${core.governance.has_trusted_keys ? 'text-green-400' : 'text-red-400'}`}>
-                      {core.governance.has_trusted_keys ? '已配置' : '未配置'}
+                    <span className="text-gray-500">治理</span>
+                    <span className={core.governance.has_trusted_keys ? 'text-green-400' : 'text-red-400'}>
+                      {core.governance.has_trusted_keys ? '✅' : '⚠️ 未配置'}
                     </span>
                   </div>
                 </div>
@@ -455,24 +389,6 @@ const SystemOverview: React.FC = () => {
                   </span>
                 </div>
               </div>
-              {core.code_graph && !core.code_graph.error && (
-                <div className="pt-1.5 border-t border-dark-border/50">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">代码架构</span>
-                    <span className="text-gray-300 text-[10px]">
-                      文件 {core.code_graph.files}
-                      {core.code_graph.cross_file_calls != null && ` · 跨文件调用 ${core.code_graph.cross_file_calls}`}
-                      {' · '}符号 {core.code_graph.symbols}
-                      {' · '}覆盖 {core.code_graph.coverage_pct}%
-                    </span>
-                  </div>
-                  {core.code_graph.dead_code_candidates > 0 && (
-                    <div className="text-[10px] text-yellow-400 mt-0.5">
-                      ⚠️ {core.code_graph.dead_code_candidates} 死代码候选
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
             <details className="bg-dark-bg border border-dark-border rounded px-2 py-1 text-[10px] text-gray-500 cursor-pointer group mt-2">
               <summary className="text-gray-500 hover:text-gray-300 select-none">📖 表头说明</summary>
@@ -592,25 +508,6 @@ const SystemOverview: React.FC = () => {
               <div>
                 <MetricRow label="Apps" value={app.apps?.count ?? '—'} />
               </div>
-
-              {/* Capability Health through core */}
-              {core.capability_health?.score != null && (
-                <div className="mt-2 pt-2 border-t border-dark-border/50">
-                  <div className="flex items-center gap-1.5 text-gray-400 font-medium mb-1">
-                    <Activity className="w-3 h-3" />能力健康
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">评分</span>
-                    <span className={`text-xs font-bold ${
-                      (core.capability_health.score ?? 0) >= 75 ? 'text-green-400' :
-                        (core.capability_health.score ?? 0) >= 50 ? 'text-yellow-400' : 'text-red-400'
-                    }`}>
-                      {core.capability_health.score}
-                      <span className="text-gray-500 ml-1">/ {core.capability_health.grade}</span>
-                    </span>
-                  </div>
-                </div>
-              )}
 
               {app.channels?.error && app.sessions?.error && (
                 <div className="text-yellow-400 text-[10px] mt-1">App 服务未响应</div>

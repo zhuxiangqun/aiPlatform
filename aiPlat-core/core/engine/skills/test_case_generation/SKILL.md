@@ -48,6 +48,8 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 根据验收标准生成测试用例
+
+protected: true
 ---
 
 # 测试用例生成（Engine）

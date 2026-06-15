@@ -9,6 +9,7 @@ class TriggerTooFewCheck(LintRule):
     code = "triggers_too_few"
     level = "warning"
     category = "trigger"
+    scope = ["skill"]
 
     def check(self, skill: Any) -> List[LintIssue]:
         meta = self._get_meta(skill)
@@ -31,6 +32,7 @@ class MissingKeywordsCheck(LintRule):
     code = "missing_keywords"
     level = "warning"
     category = "trigger"
+    scope = ["skill"]
 
     def check(self, skill: Any) -> List[LintIssue]:
         meta = self._get_meta(skill)
@@ -55,6 +57,7 @@ class GenericDescriptionCheck(LintRule):
     code = "generic_description"
     level = "warning"
     category = "trigger"
+    scope = ["skill"]
 
     _BUILTIN_OBJECTS = ("代码", "sql", "日志", "合同", "发票", "订单", "pdf", "csv", "表格", "权限", "schema", "配置", "报错", "接口", "数据库")
     _BUILTIN_ACTIONS = ("审查", "排查", "优化", "生成", "转换", "对账", "导出", "review", "analyze", "generate", "fix")
@@ -90,6 +93,7 @@ class MissingNegativeTriggersCheck(LintRule):
     code = "missing_negative_triggers"
     level = "warning"
     category = "trigger"
+    scope = ["skill"]
 
     def check(self, skill: Any) -> List[LintIssue]:
         desc = str(getattr(skill, "description", "") or (skill.get("description") if isinstance(skill, dict) else "") or "").strip()
@@ -114,6 +118,7 @@ class RoutingDisambigCheck(LintRule):
     code = "routing_needs_disambiguation"
     level = "warning"
     category = "trigger"
+    scope = ["skill"]
 
     def check(self, skill: Any) -> List[LintIssue]:
         meta = self._get_meta(skill)

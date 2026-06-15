@@ -1,0 +1,103 @@
+# Darwin Arena Benchmark Tasks
+# Each task defines: id, description, expected behavior, success criteria.
+
+tasks:
+  - id: "code-gen-fibonacci"
+    category: "code_generation"
+    task: "Write a Python function fibonacci(n) that returns the nth Fibonacci number"
+    expected_tools: ["file_write"]
+    pass_criteria:
+      - "output contains a complete Python function"
+      - "at least one tool_call made"
+    cost_budget_tokens: 5000
+    timeout_s: 30
+
+  - id: "text-summarize"
+    category: "summarization"
+    task: "Summarize: 'The quick brown fox jumps over the lazy dog. This sentence contains every letter of the English alphabet at least once.'"
+    expected_tools: []
+    pass_criteria:
+      - "output is non-empty"
+      - "output is shorter than input"
+    cost_budget_tokens: 2000
+    timeout_s: 15
+
+  - id: "data-query-simple"
+    category: "data_query"
+    task: "Calculate the sum of numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]"
+    expected_tools: ["calculator"]
+    pass_criteria:
+      - "output contains the correct answer (55)"
+    cost_budget_tokens: 3000
+    timeout_s: 20
+
+  - id: "file-read-write"
+    category: "file_operations"
+    task: "Read the file /tmp/arena_test_input.txt, append 'DONE' to it, and confirm"
+    expected_tools: ["file_read", "file_write"]
+    pass_criteria:
+      - "at least 2 tool_calls"
+    cost_budget_tokens: 4000
+    timeout_s: 25
+
+  - id: "json-format-enforcement"
+    category: "structured_output"
+    task: "Output a JSON object with fields: name (string), age (integer), skills (array of strings)"
+    expected_tools: []
+    pass_criteria:
+      - "output is valid JSON"
+      - "output has required fields (name, age, skills)"
+      - "age is an integer"
+      - "skills is an array"
+    cost_budget_tokens: 2000
+    timeout_s: 15
+
+  - id: "translate-simple"
+    category: "translation"
+    task: "Translate 'Hello, how are you?' to Chinese"
+    expected_tools: []
+    pass_criteria:
+      - "output is non-empty"
+      - "output is in Chinese"
+    cost_budget_tokens: 2000
+    timeout_s: 15
+
+  - id: "multi-step-logic"
+    category: "reasoning"
+    task: "If all A are B, and all B are C, what can you conclude about A and C? Explain in one sentence."
+    expected_tools: []
+    pass_criteria:
+      - "output mentions syllogism or logical conclusion"
+      - "output is exactly one sentence"
+    cost_budget_tokens: 3000
+    timeout_s: 20
+
+  - id: "error-recovery-invalid"
+    category: "resilience"
+    task: "Try to read file /nonexistent/path.txt. If it fails, explain the error and continue."
+    expected_tools: ["file_read"]
+    pass_criteria:
+      - "output explains the error"
+      - "does not crash or hang"
+    cost_budget_tokens: 3000
+    timeout_s: 20
+
+  - id: "api-parameter-test"
+    category: "api_calling"
+    task: "Search the web for 'rosclaw open source robot framework'"
+    expected_tools: ["web_search"]
+    pass_criteria:
+      - "at least one tool_call"
+      - "output contains search results or reference"
+    cost_budget_tokens: 5000
+    timeout_s: 30
+
+  - id: "empty-input-handling"
+    category: "robustness"
+    task: ""
+    expected_tools: []
+    pass_criteria:
+      - "output asks for more information or clarification"
+      - "does not crash"
+    cost_budget_tokens: 1500
+    timeout_s: 10

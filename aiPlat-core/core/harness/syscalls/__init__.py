@@ -19,6 +19,8 @@ __all__ = [
     "sys_agent_call", "sys_workflow_call",
     "sys_kb_retrieve", "sys_wiki_retrieve", "sys_wiki_context",
     "sys_knowledge_retrieve",
+    "sys_ontology_context",
+    "sys_skill_corpus_search", "sys_skill_corpus_inspect", "sys_skill_corpus_select",
     "sys_code_intel_context", "sys_code_intel_blast",
     "sys_code_intel_callers", "sys_code_intel_callees",
     "sys_code_intel_affected", "sys_code_intel_search",
@@ -35,6 +37,8 @@ _LAZY_MODULES = {
     "workflow": ["sys_workflow_call"],
     "retrieval": ["sys_kb_retrieve", "sys_wiki_retrieve", "sys_knowledge_retrieve"],
     "wiki_context": ["sys_wiki_context"],
+    "ontology_context": ["sys_ontology_context"],
+    "skill_corpus": ["sys_skill_corpus_search", "sys_skill_corpus_inspect", "sys_skill_corpus_select"],
     "code_intel_syscall": [
         "sys_code_intel_context", "sys_code_intel_blast",
         "sys_code_intel_callers", "sys_code_intel_callees",

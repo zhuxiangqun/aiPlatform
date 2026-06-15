@@ -102,5 +102,31 @@ def is_approval_resolved_approved(approval_manager: Any, approval_request_id: st
     r = approval_manager.get_request(str(approval_request_id))
     if not r:
         return False
-    return r.status in (RequestStatus.APPROVED, RequestStatus.AUTO_APPROVED)
+
+
+async def auto_init_dev_keys(execution_store: Any) -> bool:
+    """
+    Auto-initialize signature keys for development environments.
+    If trusted_skill_pubkeys is not configured, generate a keypair and store it.
+    Returns True if keys were created, False if they already existed.
+    """
+    import time as _time
+    try:
+        if execution_store is None:
+            return False
+        gs = await execution_store.get_global_setting(key="trusted_skill_pubkeys")
+        existing = (gs.get("value", {}) if isinstance(gs, dict) else {}) or {}
+        keys = existing.get("keys") if isinstance(existing, dict) else []
+        if isinstance(keys, list) and len(keys) > 0:
+            return False
+        from core.harness.infrastructure.crypto.signature import generate_keypair
+        private_key, public_key = generate_keypair()
+        key_id = f"dev-auto-{int(_time.time())}"
+        new_keys = [{"key_id": key_id, "public_key": public_key.decode() if isinstance(public_key, bytes) else str(public_key)}]
+        await execution_store.upsert_global_setting(key="trusted_skill_pubkeys", value={"keys": new_keys})
+        dev_key = private_key.decode() if isinstance(private_key, bytes) else str(private_key)
+        await execution_store.upsert_global_setting(key="dev_signing_key", value=dev_key)
+        return True
+    except Exception:
+        return False
 

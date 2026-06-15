@@ -16,7 +16,7 @@ class InfraEmbeddingAdapter(BaseModelAdapter):
     def _load_model(self, name: str) -> Any:
         try:
             from sentence_transformers import SentenceTransformer
-            return SentenceTransformer(name)
+            return SentenceTransformer(name, local_files_only=True)
         except ImportError:
             return None
 

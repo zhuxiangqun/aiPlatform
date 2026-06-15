@@ -488,6 +488,7 @@ class SkillManager:
             input_schema = {}
             output_schema = {}
 
+            fm: dict = {}
             if raw.startswith("---"):
                 parts = raw.split("---", 2)
                 if len(parts) >= 3:
@@ -505,6 +506,7 @@ class SkillManager:
                         if not isinstance(output_schema, dict):
                             output_schema = {}
                     except Exception:
+                        fm = {}
                         pass
 
             if name in self._skills:
@@ -513,8 +515,11 @@ class SkillManager:
             self._skills[name] = SkillInfo(
                 id=name, name=display_name, type=skill_type, description=description,
                 status=status, input_schema=input_schema, output_schema=output_schema,
-                config={"version": "1.0.0"}, dependencies=[],
-                version="1.0.0", created_at=now, updated_at=now, created_by="system"
+                config=fm.get("config") if isinstance(fm, dict) else {"version": "1.0.0"},
+                dependencies=fm.get("dependencies") if isinstance(fm, dict) else [],
+                version=str(fm.get("version", "1.0.0")) if isinstance(fm, dict) else "1.0.0",
+                metadata=fm if isinstance(fm, dict) else {},
+                created_at=now, updated_at=now, created_by="system"
             )
             self._stats[name] = SkillStats()
             self._executions[name] = []
@@ -1630,7 +1635,7 @@ class SkillManager:
             if skill and hasattr(skill, 'set_model'):
                 try:
                     from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
-                    model = create_selected_adapter(model_name=best_model_for_purpose("chat"))
+                    model = create_selected_adapter(model_name=best_model_for_purpose("skill_execution"))
                     skill.set_model(model)
                 except Exception:
                     pass

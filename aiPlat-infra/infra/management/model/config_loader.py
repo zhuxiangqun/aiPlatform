@@ -17,15 +17,15 @@ from .schemas import ModelInfo, ModelType, ModelSource, ModelStatus, ModelConfig
 
 _ENV_MODEL_TEMPLATES = {
     "DEEPSEEK_API_KEY": (
-        "openai_compatible", "chat", "https://api.deepseek.com", "chat", ["deepseek", "chat", "reasoning"],
+        "openai_compatible", "chat", "https://api.deepseek.com", "chat", ["deepseek", "chat", "reasoning", "function_call"],
         ["AIPLAT_LLM_MODEL", "AIPLAT_AGENT_MODEL", "AIPLAT_DOC_LLM_MODEL"],
     ),
     "OPENAI_API_KEY": (
-        "openai_compatible", "chat", "https://api.openai.com/v1", "chat", ["openai", "chat", "function_call"],
+        "openai_compatible", "chat", "https://api.openai.com/v1", "chat", ["openai", "chat", "function_call", "vision"],
         ["OPENAI_MODEL", "OPENAI_AGENT_MODEL", "AIPLAT_LLM_MODEL"],
     ),
     "ANTHROPIC_API_KEY": (
-        "anthropic", "chat", "https://api.anthropic.com", "chat", ["anthropic", "chat"],
+        "anthropic", "chat", "https://api.anthropic.com", "chat", ["anthropic", "chat", "function_call"],
         ["ANTHROPIC_MODEL", "AIPLAT_LLM_MODEL"],
     ),
 }
@@ -79,6 +79,10 @@ def _models_from_env(api_key_env: str, provider: str, model_type: str,
             caps.append("code")
         if "vision" in nl or "vl" in nl:
             caps.append("vision")
+        # All OpenAI-compatible and Anthropic cloud models support function_call + json_mode
+        if provider in ("openai_compatible", "anthropic"):
+            caps.append("function_call")
+            caps.append("json_mode")
         models.append(ModelInfo(
             id=safe_id, name=name, provider=provider,
             type=ModelType(model_type), source=ModelSource.CONFIG,

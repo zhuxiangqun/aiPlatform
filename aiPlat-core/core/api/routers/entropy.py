@@ -185,7 +185,7 @@ async def run_readiness_audit():
     try:
         from core.api.deps import rbac_guard
         has_rbac = True
-    except: pass
+    except Exception: pass
     readiness.append(_ok("权限校验", has_rbac, f"RBAC: {'✅' if has_rbac else '❌'}"))
 
     has_entropy = False
@@ -198,7 +198,7 @@ async def run_readiness_audit():
         rows = conn.execute("SELECT name FROM sqlite_master WHERE name='entropy_ledger'").fetchall()
         has_entropy = len(rows) > 0
         conn.close()
-    except: pass
+    except Exception: pass
     readiness.append(_ok("熵审计", has_entropy, f"entropy_ledger v42: {'✅' if has_entropy else '❌'}"))
 
     has_chg = (core_src / "api" / "routers" / "change_control.py").exists() or (core_src / "governance" / "gating.py").exists()
@@ -239,7 +239,7 @@ async def run_readiness_audit():
         )
         plat_imports = [l.strip() for l in result.stdout.split("\n") if l.strip()
                         and "tests/" not in l and "poc/" not in l]
-    except: pass
+    except Exception: pass
     boundary_items.append(_ok("平台层→core.harness 直导入", len(plat_imports) == 0,
         f"{len(plat_imports)} 处违规" if plat_imports else "0 处违规"))
 
@@ -252,7 +252,7 @@ async def run_readiness_audit():
             capture_output=True, text=True, timeout=10
         )
         app_imports = [l.strip() for l in result.stdout.split("\n") if l.strip() and "tests/" not in l and "api/rest/routes" not in l]
-    except: pass
+    except Exception: pass
     boundary_items.append(_ok("应用层→core/infra 直导入", len(app_imports) == 0,
         f"{len(app_imports)} 处违规" if app_imports else "0 处违规"))
 
@@ -264,7 +264,7 @@ async def run_readiness_audit():
             capture_output=True, text=True, timeout=10
         )
         core_reverse = [l.strip() for l in result.stdout.split("\n") if l.strip() and "tests/" not in l]
-    except: pass
+    except Exception: pass
     boundary_items.append(_ok("Harness→apps 反向依赖", len(core_reverse) <= 26,
         f"{len(core_reverse)} 处 lazy import (Phase 9 DI refactor scope)" if core_reverse else "0 处"))
 
@@ -276,7 +276,7 @@ async def run_readiness_audit():
             capture_output=True, text=True, timeout=10
         )
         model_loads = [l.strip() for l in result.stdout.split("\n") if l.strip() and "infra_" not in l and "tests/" not in l]
-    except: pass
+    except Exception: pass
     boundary_items.append(_ok("Core 直加载模型（绕过 infra）", len(model_loads) <= 10,
         f"{len(model_loads)} 处 legacy fallback in adapters (intentional)" if model_loads else "0 处"))
 

@@ -39,6 +39,15 @@ async def sys_tool_call(
 
     Notes:
     - Injects `_user_id` / `_session_id` into args for downstream wrappers.
+
+    边界:
+      - 是否修改系统状态取决于具体工具——不能假设无副作用
+      - tool_args 无 schema 校验时靠工具自身处理非法参数
+      - 被 PolicyGate 拒绝时返回 ToolResult 而非抛异常——调用者必须检查 success 字段
+    退路:
+      - 权限不足 → 返回 approval_required，非自动重试
+      - 工具不存在 → 返回 ToolResult(error="tool_not_found")
+      - 需要只读操作 → 检查工具的 get_risk_level() 或 metadata.risk_level
     """
     policy_gate = PolicyGate()
     trace_gate = TraceGate()
@@ -350,6 +359,7 @@ async def sys_tool_call(
                         {
                             "trace_id": span.trace_id,
                             "span_id": getattr(span, "span_id", None),
+                            "parent_span_id": (trace_context or {}).get("parent_span_id") if isinstance(trace_context, dict) else None,
                             "run_id": (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None,
                             "kind": "tool",
                             "name": tool_name or "<unknown>",
@@ -393,6 +403,22 @@ async def sys_tool_call(
         # Best-effort: do not break existing behavior if toolset gate fails.
         import logging as _logging
         _logging.getLogger("aiplat.syscall.tool").debug("Toolset gate check skipped", exc_info=True)
+
+    # SandboxGate — pre-execution safety validation (filesystem, rate limit, patterns)
+    try:
+        from core.harness.infrastructure.gates.sandbox_gate import get_sandbox, Verdict
+        sb = get_sandbox()
+        sb_result = await sb.check(
+            kind="tool", tool_name=tool_name or "", tool_args=args,
+            file_path=args.get("path", "") or args.get("file_path", "") or args.get("target", ""),
+        )
+        if sb_result.verdict == Verdict.REJECT:
+            return ToolResult(ok=False, error=f"Sandbox rejected: {sb_result.reason}",
+                            error_code="SANDBOX_REJECT", output={"sandbox_details": sb_result.details})
+        elif sb_result.verdict == Verdict.WARN:
+            logging.getLogger("aiplat.sandbox").warning("Sandbox warning for %s: %s", tool_name, sb_result.reason)
+    except Exception:
+        logging.getLogger("aiplat.sandbox").debug("SandboxGate skipped", exc_info=True)
 
     # PolicyGate (permission; approval optional via env flag)
     try:
@@ -598,12 +624,34 @@ async def sys_tool_call(
 
     prepared_args = ctx_gate.prepare_tool_args(args, context=trace_context or {})
 
+    # Phase 11: LLM parameter completion — fill in missing/inferred params
+    try:
+        prepared_args = await _llm_complete_params(tool, prepared_args, tool_name or "")
+    except Exception:
+        pass  # best-effort: continue with original args on failure
+
     async def _run():
         return await tool.execute(prepared_args)  # type: ignore[misc]
 
     try:
-        retries = int(os.getenv("AIPLAT_TOOL_RETRIES", "0") or "0")
-        result = await res_gate.run(_run, retries=retries, timeout_seconds=timeout_seconds)
+        # Set ActiveTraceContext for downstream event emission
+        from core.harness.kernel.execution_context import ActiveTraceContext, set_active_trace_context, reset_active_trace_context
+        run_id_val = str((trace_context or {}).get("run_id") or "") if isinstance(trace_context, dict) else ""
+        span_id_val = getattr(span, "span_id", "")
+        trace_token = set_active_trace_context(ActiveTraceContext(
+            run_id=run_id_val,
+            span_id=str(span_id_val),
+            parent_span_id=str((trace_context or {}).get("parent_span_id") or "") if isinstance(trace_context, dict) else "",
+        )) if run_id_val else None
+        try:
+            retries = int(os.getenv("AIPLAT_TOOL_RETRIES", "0") or "0")
+            result = await res_gate.run(_run, retries=retries, timeout_seconds=timeout_seconds)
+        finally:
+            if trace_token is not None:
+                try:
+                    reset_active_trace_context(trace_token)
+                except Exception:
+                    pass
         end_ts = time.time()
         await trace_gate.end(span, success=bool(getattr(result, "success", True)))
         runtime = get_kernel_runtime()
@@ -721,3 +769,69 @@ def _sanitize_tool_output_for_syscall_event(*, tool_name: str, output: Any) -> A
         return out
     except Exception:
         return output
+
+
+async def _llm_complete_params(tool: Any, args: Dict[str, Any], tool_name: str) -> Dict[str, Any]:
+    u"""LLM parameter completion: fill inferred/context-dependent params.
+
+    If the tool has a __tool_contract__ with param_draft, use LLM to
+    complete parameter values based on the current context.
+
+    Args:
+        tool: the tool object (may have __tool_contract__).
+        args: the current parameter dict.
+        tool_name: tool identifier for logging.
+
+    Returns:
+        Completed args dict (or original if no draft).
+    """
+    contract = getattr(tool, "__tool_contract__", None)
+    if not isinstance(contract, dict):
+        return args
+
+    param_draft = contract.get("param_draft", {})
+    if not param_draft:
+        return args
+
+    # Only complete if args have placeholder values (None, empty str, or "auto")
+    needs_completion = any(
+        args.get(k) in (None, "", "auto")
+        for k in param_draft
+    )
+    if not needs_completion:
+        return args
+
+    try:
+        from core.harness.syscalls.llm import sys_llm_generate
+        from core.harness.utils.model_injection import best_model_for_purpose
+
+        prompt = (
+            f"Complete the parameters for tool call '{tool_name}'.\n\n"
+            f"Parameter hints:\n"
+            + "\n".join(f"  {k}: {v}" for k, v in param_draft.items())
+            + f"\n\nCurrent args: {args}\n"
+            f"Fill in missing/inferred values. Return JSON only:\n"
+            f"{str(args)} with missing fields completed."
+        )
+
+        resp = await sys_llm_generate(
+            None, [{"role": "user", "content": prompt}],
+            model_name=best_model_for_purpose("chat"),
+            max_tokens=300,
+        )
+        content = getattr(resp, "content", "") or str(resp)
+        import json as _json
+        start = content.find("{")
+        end = content.rfind("}")
+        if start >= 0 and end > start:
+            completed = _json.loads(content[start:end + 1])
+            if isinstance(completed, dict):
+                # Merge: keep original explicit args, fill in completed ones
+                merged = dict(args)
+                for k, v in completed.items():
+                    if args.get(k) in (None, "", "auto"):
+                        merged[k] = v
+                return merged
+    except Exception:
+        pass
+    return args

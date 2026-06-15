@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { RefreshCw, Save, Search, PlusCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft, RefreshCw, Save, Search, PlusCircle } from 'lucide-react';
 
 import { Badge, Button, Card, CardContent, CardHeader, Input, Table, Textarea, toast } from '../../../components/ui';
 import { policyApi, skillApi, workspaceSkillApi } from '../../../services';
@@ -196,6 +197,10 @@ const CapabilityPolicy: React.FC = () => {
           刷新 skills
         </Button>
       </div>
+
+      <Link to="/diagnostics" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200 transition-colors mb-4">
+        <ArrowLeft className="w-3 h-3" />返回诊断中心
+      </Link>
 
       <Card>
         <CardHeader>

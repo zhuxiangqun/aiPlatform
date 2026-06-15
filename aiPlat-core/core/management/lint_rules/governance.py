@@ -66,7 +66,7 @@ class HighRiskConstraintsCheck(LintRule):
 
     @staticmethod
     def _risk_level(perms: List[str]) -> str:
-        from core.management.skill_linter import risk_level_from_permissions
+        from core.management.skill_linter_base import risk_level_from_permissions
         return risk_level_from_permissions(perms)
 
 
@@ -100,5 +100,5 @@ class RequiredQuestionsCheck(LintRule):
 
     @staticmethod
     def _risk_level(perms: List[str]) -> str:
-        from core.management.skill_linter import risk_level_from_permissions
+        from core.management.skill_linter_base import risk_level_from_permissions
         return risk_level_from_permissions(perms)

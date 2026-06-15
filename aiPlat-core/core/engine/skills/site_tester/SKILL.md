@@ -47,6 +47,8 @@ input_schema:
     type: string
     required: true
     description: 测试站点URL
+
+protected: true
 ---
 
 # 全站自动化测试 (Site Tester)

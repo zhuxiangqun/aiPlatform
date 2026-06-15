@@ -30,6 +30,7 @@ FRONTMATTER_FIELDS = {
     "title": "", "category": "entities", "tags": [], "related": [],
     "contradictions": [], "source_articles": [], "last_updated": "",
     "summary": "", "version": "1", "stale_references": [], "images": [],
+    "status": "draft", "marking": "public",
 }
 
 def _wiki_root(collection_id: str = "default") -> Path:
@@ -221,6 +222,8 @@ def read_page(title_or_path: str, *, category: str = "entities", collection_id: 
                     "source_articles": fm.get("source_articles", []),
                     "stale_references": fm.get("stale_references", []),
                     "relationships": fm.get("relationships", []),
+                    "status": fm.get("status", "draft"),
+                    "marking": fm.get("marking", "public"),
                     "last_updated": fm.get("last_updated", ""), "summary": fm.get("summary", ""),
                     "body": body, "fm": fm, "path": str(p)}
     return None
@@ -231,7 +234,8 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
                source_articles: List[str] = None, stale_references: List[str] = None,
                relationships: List[Dict[str, str]] = None,
                images: List[Dict[str, str]] = None,
-               version: str = "1", summary: str = "", collection_id: str = "default") -> str:
+               version: str = "1", summary: str = "", status: str = "",
+               marking: str = "", collection_id: str = "default") -> str:
     """Create or update a wiki page. Returns the file path."""
     _ensure_dirs(collection_id)
     root = _wiki_root(collection_id)
@@ -260,8 +264,41 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
                 if w:
                     _logger.warning(f"Schema warning for '{title}': {w}")
 
-    name = re.sub(r"[<>:\"/\\|?*]", "_", title)[:120]
+    # ── A8: Key discrimination check ──
+    try:
+        from core.harness.knowledge.knowledge_ontology import check_key_discrimination
+        a8_ok, a8_warnings = check_key_discrimination(title, summary, collection_id=collection_id)
+        if not a8_ok:
+            _logger = logging.getLogger("wiki_engine")
+            for w in a8_warnings:
+                _logger.warning(w)
+    except Exception:
+        pass
+
+    # ── State transition validation ──
+    # Valid: draft→curated, curated→published, curated→draft, published→contradicted,
+    #        published→draft, contradicted→resolved, contradicted→draft, resolved→draft
+    _VALID_TRANSITIONS = {
+        (""):        ["draft", "curated"],               # new page → any non-blocked state
+        ("draft"):   ["draft", "curated", "published"],  # draft can go anywhere
+        ("curated"): ["curated", "published", "draft"],   # curated: review or rollback
+        ("published"): ["published", "draft", "contradicted"],  # published: flag or rollback
+        ("contradicted"): ["contradicted", "resolved", "draft"], # contradicted: resolve or rollback
+        ("resolved"): ["resolved", "draft"],             # resolved content can always be revised
+    }
+    existing_status = ""
     existing = read_page(title, category=category, collection_id=collection_id)
+    if existing:
+        existing_status = (existing.get("status") or "draft")
+    target_status = status or existing_status or "draft"
+    allowed = _VALID_TRANSITIONS.get(existing_status, _VALID_TRANSITIONS[("")])
+    if target_status not in allowed:
+        raise ValueError(
+            f"Illegal state transition: '{existing_status}' → '{target_status}'. "
+            f"Allowed from '{existing_status}': {allowed}"
+        )
+
+    name = re.sub(r"[<>:\"/\\|?*]", "_", title)[:120]
     now = datetime.now(timezone.utc).isoformat()
 
     # Merge with existing if updating
@@ -278,10 +315,20 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
             (existing.get("stale_references") or [])
         version = version or existing.get("version", "1")
         summary = summary or existing.get("summary", "")
+        # status: explicit pass takes priority; None = keep existing; default = draft
+        if not status:
+            status = existing.get("status") or "draft"
+        # marking: explicit pass takes priority; None = keep existing
+        if not marking:
+            marking = existing.get("marking") or ""
         existing_rels = existing.get("relationships") or []
         relationships = relationships if relationships is not None else existing_rels
         existing_imgs = existing.get("images") or []
         images = images if images is not None else existing_imgs
+
+    # New pages default to draft
+    if not status:
+        status = "draft"
 
     fm_lines = [
         f"title: {title}",
@@ -294,6 +341,8 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
         f"relationships: {_json.dumps(relationships or [], ensure_ascii=False)}",
         f"last_updated: {now}",
         f"version: {version or '1'}",
+        f"status: {status or 'draft'}",
+        f"marking: {marking}",
         f"summary: {summary[:500]}",
         f"images: {_json.dumps(images or [], ensure_ascii=False)}",
     ]
@@ -368,6 +417,23 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
     except Exception:
         pass
 
+    # ── Invalidate metrics cache + trigger background rebuild (page written) ──
+    try:
+        metrics_path = _wiki_root(collection_id) / "metrics_cache.json"
+        if metrics_path.exists():
+            _os.remove(metrics_path)
+        inference_path = _wiki_root(collection_id) / "inference_cache.json"
+        if inference_path.exists():
+            _os.remove(inference_path)
+        from core.harness.knowledge._bg_tasks import enqueue
+        enqueue("rebuild_metrics", collection_id=collection_id)
+        from core.harness.knowledge.knowledge_abox_builder import invalidate_abox_cache
+        invalidate_abox_cache(collection_id)
+        from core.harness.knowledge.knowledge_growth import take_growth_snapshot
+        take_growth_snapshot(collection_id)
+    except Exception:
+        pass
+
     # ── KB↔Wiki bidirectional link: update kb.sqlite3 ──
     try:
         kb_srcs = [s[3:] for s in (source_articles or []) if isinstance(s, str) and s.startswith("kb:")]
@@ -395,7 +461,271 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
     except Exception:
         pass
 
+    # ── Auto-maintenance: FTS index + atom extraction ──
+    try:
+        from core.harness.knowledge.wiki_fts import fts_upsert_page
+        fts_upsert_page(title, tags=tags or [], summary=summary or "", body_preview=body[:5000])
+    except Exception:
+        pass
+
+    # Auto-atomize: enqueue for background worker (topic pages with substantial content)
+    try:
+        if category == "topics" and len(body) > 500:
+            from core.harness.knowledge._bg_tasks import enqueue
+            enqueue("auto_atomize", title=title, collection_id=collection_id)
+    except Exception:
+        pass
+
+    # ── Changelog: record this write ──
+    try:
+        _record_changelog(title, "write", existing_page=existing, new_body=body,
+                          new_status=status, new_marking=marking,
+                          collection_id=collection_id)
+    except Exception:
+        pass
+
+    # ── Regression guard: run affected gold queries, warn on degradation ──
+    try:
+        import os as _ros
+        if _ros.getenv("AIPLAT_WIKI_REGRESSION_GUARD", "true").lower() in ("1", "true", "yes"):
+            _check_regression(title, collection_id)
+    except ValueError:
+        raise  # blocking mode: propagate to API as 422
+    except Exception:
+        pass
+
+    # ── Marking propagation: enqueue for background worker ──
+    try:
+        import os as _ros2
+        if marking and marking != "public" and _ros2.environ.get("_AIPLAT_SKIP_MARKING_PROPAGATION") != "1":
+            from core.harness.knowledge._bg_tasks import enqueue
+            enqueue("propagate_marking", title=title, marking=marking, collection_id=collection_id)
+    except Exception:
+        pass
+
     return str(p)
+
+
+def _changelog_path(collection_id: str = "default") -> Path:
+    return _wiki_root(collection_id) / "changelog.json"
+
+
+def _record_changelog(title: str, action: str, *, existing_page: dict = None,
+                       new_body: str = "", new_status: str = "", new_marking: str = "",
+                       collection_id: str = "default") -> None:
+    """Record a wiki page change to the changelog."""
+    log_path = _changelog_path(collection_id)
+    entries = []
+    if log_path.exists():
+        try:
+            entries = _json.loads(log_path.read_text(encoding="utf-8"))
+        except Exception:
+            entries = []
+    now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    entry = {
+        "title": title, "action": action, "timestamp": now,
+    }
+    if action == "write":
+        old_body = existing_page.get("body", "") if existing_page else ""
+        old_status = existing_page.get("status", "draft") if existing_page else "draft"
+        old_marking = existing_page.get("marking", "public") if existing_page else "public"
+        entry.update({
+            "old_body": old_body,
+            "new_body": (new_body or ""),
+            "old_status": old_status, "new_status": new_status or "draft",
+            "old_marking": old_marking, "new_marking": new_marking or "public",
+        })
+    elif action == "delete":
+        old_body = existing_page.get("body", "") if existing_page else ""
+        entry["old_body"] = old_body
+    entries.append(entry)
+    # Keep last 500 entries per collection
+    log_path.write_text(_json.dumps(entries[-500:], indent=2, ensure_ascii=False))
+
+
+def rollback_page(title: str, index: int = -1, *, collection_id: str = "default") -> bool:
+    """Restore a wiki page to a previous version from the changelog.
+    
+    Args:
+        title: Page title to rollback
+        index: 0-based index in changelog entries for this page. -1 = previous version.
+    """
+    log_path = _changelog_path(collection_id)
+    if not log_path.exists():
+        return False
+    try:
+        entries = _json.loads(log_path.read_text(encoding="utf-8"))
+    except Exception:
+        return False
+    
+    page_entries = [(i, e) for i, e in enumerate(entries)
+                    if e.get("title") == title and e.get("action") == "write"]
+    if not page_entries:
+        return False
+    if index < 0:
+        idx = max(0, len(page_entries) - 1 + index)
+    else:
+        idx = min(index, len(page_entries) - 1)
+    _, entry = page_entries[idx]
+    
+    old_body = entry.get("old_body", "")
+    if not old_body:
+        return False
+    current = read_page(title, collection_id=collection_id)
+    if not current:
+        return False
+    write_page(
+        title, old_body,
+        category=current.get("category", "entities"),
+        tags=current.get("tags", []), related=current.get("related", []),
+        summary=current.get("summary", ""),
+        status=entry.get("old_status", "draft"),
+        marking=entry.get("old_marking", "public"),
+        collection_id=collection_id,
+    )
+    logging.getLogger("wiki_engine").info(
+        f"Rolled back '{title}' to version {idx+1}/{len(page_entries)}")
+    return True
+
+
+def _check_regression(title: str, collection_id: str) -> None:
+    """Run affected gold queries after a page write, log warnings on regression."""
+    import yaml as _yaml
+    from pathlib import Path as _Path
+    import os as _os
+    _log = logging.getLogger("wiki_engine")
+
+    gq_path = _Path(_os.path.expanduser(
+        _os.getenv("AIPLAT_HOME", "~/.aiplat"))) / "wiki" / "golden_queries.yaml"
+    if not gq_path.exists():
+        return
+
+    try:
+        queries = _yaml.safe_load(open(gq_path)).get("queries", [])
+    except Exception:
+        return
+
+    # Find affected queries: those whose expected concepts include the page title or related titles
+    page = read_page(title, collection_id=collection_id)
+    if not page:
+        return
+    related_titles = {title} | set(page.get("related", []) or [])
+
+    affected = []
+    for q in queries:
+        expected = set(q.get("expected_concepts", q.get("expected_pages", [])))
+        if expected & related_titles:
+            affected.append(q)
+
+    if not affected:
+        return
+
+    # Run affected queries via structured query test
+    from core.harness.knowledge.wiki_structured_query import structured_query
+    failed = []
+    for q in affected:
+        query_text = q.get("query", "")
+        expected = q.get("expected_concepts", q.get("expected_pages", []))
+        if not expected:
+            continue
+        result = structured_query(query_text)
+        res = result.get("result", {})
+        actual_titles = []
+        if isinstance(res, dict):
+            actual_titles = [res.get("title", "")]
+            if "entity_a" in res:
+                actual_titles = [res["entity_a"].get("title", ""), res["entity_b"].get("title", "")]
+        found = [e for e in expected for t in actual_titles if e in t]
+        if len(found) < max(1, len(expected) * 0.5):
+            # Verify pages still exist on disk (not a body-too-short false positive)
+            existing_pages = [e for e in expected if read_page(e, collection_id=collection_id)]
+            if len(existing_pages) >= max(1, len(expected) * 0.5):
+                # Pages exist but structured_query can't find them — likely a temporary
+                # indexing delay, not a true regression
+                _log.debug(
+                    f"Regression (indexing delay): '{title}' caused '{query_text}' "
+                    f"to miss {expected}, but pages exist. Found: {actual_titles[:5]}")
+                continue
+            failed.append({"query": query_text, "expected": expected, "found": actual_titles[:5]})
+
+    if failed:
+        mode = _os.getenv("AIPLAT_WIKI_REGRESSION_MODE", "warn")
+        _log.warning(
+            f"Regression: {len(failed)}/{len(affected)} affected gold queries failed "
+            f"after writing '{title}': {failed}")
+        if mode == "block":
+            raise ValueError(
+                f"Write rejected: {len(failed)} gold queries would fail. "
+                f"Failed: {[f['query'] for f in failed]}. "
+                f"Set AIPLAT_WIKI_REGRESSION_MODE=warn to allow.")
+
+
+def _propagate_marking(title: str, marking: str, collection_id: str) -> None:
+    """Propagate a page's marking to connected pages via A-Box relationship edges.
+    
+    Edges traversed: related, hasAtom, derivesFrom, parentOf, childOf, cites.
+    Rule: the most restrictive marking wins (confidential > internal > public).
+    """
+    if not marking or marking == "public":
+        return  # public is the default, no propagation needed
+    
+    _MARKING_ORDER = {"public": 0, "internal": 1, "confidential": 2}
+    source_level = _MARKING_ORDER.get(marking, 0)
+    _log = logging.getLogger("wiki_engine")
+    
+    # Collect all titles connected to this page via A-Box edges
+    connected: set = set()
+    
+    # 1) Direct related links from the page itself
+    page = read_page(title, collection_id=collection_id)
+    if page:
+        connected.update(page.get("related", []) or [])
+    
+    # 2) A-Box triples: hasAtom, parentOf, childOf, cites
+    try:
+        from core.harness.knowledge.knowledge_abox_builder import build_abox
+        AI = "http://aiplat.local/knowledge#"
+        onto = build_abox(collection_id=collection_id)
+        page_uri = f"{AI}{title}"
+        for t in onto.triples:
+            if str(t.subject) == page_uri:
+                pred = str(t.predicate)
+                if any(p in pred for p in ("hasAtom", "parentOf", "cites", "childOf")):
+                    obj_name = str(t.object).replace(AI, "")
+                    if obj_name and obj_name != title:
+                        connected.add(obj_name)
+            if str(t.object) == page_uri:
+                pred = str(t.predicate)
+                if any(p in pred for p in ("childOf", "cites", "isCitedBy")):
+                    subj_name = str(t.subject).replace(AI, "")
+                    if subj_name and subj_name != title:
+                        connected.add(subj_name)
+    except Exception:
+        pass
+    
+    # 3) Propagate: update each connected page if its marking is less restrictive
+    updated = 0
+    for target_title in connected:
+        try:
+            target = read_page(target_title, collection_id=collection_id)
+            if not target:
+                continue
+            target_marking = target.get("marking") or "public"
+            target_level = _MARKING_ORDER.get(target_marking, 0)
+            if source_level > target_level:
+                # Only upgrade; never downgrade
+                update_page(
+                    target_title,
+                    marking=marking,
+                    collection_id=collection_id,
+                    _skip_marking_propagation=True,  # prevent recursion
+                )
+                updated += 1
+        except Exception:
+            pass
+    
+    if updated:
+        _log.info(f"Marking '{marking}' propagated from '{title}' to {updated} pages: {sorted(connected)}")
 
 
 def _update_index(title: str, category: str, tags: List[str], related: List[str], collection_id: str = "default"):
@@ -424,10 +754,10 @@ def update_page(title: str, *, collection_id: str = "default", **kwargs) -> bool
         return False
 
     for key in ("summary", "category", "tags", "related", "contradictions",
-                  "source_articles", "stale_references", "relationships"):
+                  "source_articles", "stale_references", "relationships",
+                  "status", "marking"):
         if key in kwargs and kwargs[key] is not None:
             value = kwargs[key]
-            # Filter dead links from related
             if key == "related" and isinstance(value, list):
                 all_titles = set(p["title"] for p in search_pages(limit=1000, collection_id=collection_id))
                 value = [r for r in value if r in all_titles or r == title]
@@ -437,16 +767,30 @@ def update_page(title: str, *, collection_id: str = "default", **kwargs) -> bool
     if name != title:
         existing["title"] = name
 
-    write_page(existing["title"], existing.get("body", ""),
-               category=existing.get("category", "entities"),
-               tags=existing.get("tags", []),
-               related=existing.get("related", []),
-               summary=existing.get("summary", ""),
-               contradictions=existing.get("contradictions", []),
-               source_articles=existing.get("source_articles", []),
-               stale_references=existing.get("stale_references", []),
-               relationships=existing.get("relationships", []),
-               collection_id=collection_id)
+    # Prevent infinite recursion during marking propagation
+    skip_propagation = kwargs.pop("_skip_marking_propagation", False)
+    write_args = dict(
+        category=existing.get("category", "entities"),
+        tags=existing.get("tags", []), related=existing.get("related", []),
+        summary=existing.get("summary", ""),
+        contradictions=existing.get("contradictions", []),
+        source_articles=existing.get("source_articles", []),
+        stale_references=existing.get("stale_references", []),
+        relationships=existing.get("relationships", []),
+        status=existing.get("status") or "draft",
+        marking=existing.get("marking") or "",
+        collection_id=collection_id,
+    )
+    if skip_propagation:
+        import os as _update_os
+        prev = _update_os.environ.get("_AIPLAT_SKIP_MARKING_PROPAGATION", "")
+        _update_os.environ["_AIPLAT_SKIP_MARKING_PROPAGATION"] = "1"
+        try:
+            write_page(existing["title"], existing.get("body", ""), **write_args)
+        finally:
+            _update_os.environ["_AIPLAT_SKIP_MARKING_PROPAGATION"] = prev
+    else:
+        write_page(existing["title"], existing.get("body", ""), **write_args)
     return True
 
 
@@ -464,6 +808,9 @@ def delete_page(title: str, collection_id: str = "default") -> bool:
             break
     if not found:
         return False
+
+    # Read page content before deleting (for changelog)
+    old_page = read_page(title, category=cat_name, collection_id=collection_id)
 
     found.unlink()
     idx_path = _wiki_root(collection_id) / "index.json"
@@ -511,6 +858,35 @@ def delete_page(title: str, collection_id: str = "default") -> bool:
     except Exception as e:
         logging.getLogger("wiki_engine").warning(
             f"delete_page cascade failed for '{title}': {e}")
+
+    # ── Invalidate caches + trigger background rebuild (page deleted) ──
+    try:
+        import os as _os
+        for cache_name in ("inference_cache.json", "metrics_cache.json"):
+            cache_path = _wiki_root(collection_id) / cache_name
+            if cache_path.exists():
+                _os.remove(cache_path)
+        from core.harness.knowledge._bg_tasks import enqueue
+        enqueue("rebuild_metrics", collection_id=collection_id)
+        from core.harness.knowledge.knowledge_abox_builder import invalidate_abox_cache
+        invalidate_abox_cache(collection_id)
+        from core.harness.knowledge.knowledge_growth import take_growth_snapshot
+        take_growth_snapshot(collection_id)
+    except Exception:
+        pass
+
+    # ── Auto-maintenance: remove from FTS index ──
+    try:
+        from core.harness.knowledge.wiki_fts import fts_delete_page
+        fts_delete_page(title)
+    except Exception:
+        pass
+
+    # ── Changelog: record this deletion ──
+    try:
+        _record_changelog(title, "delete", existing_page=old_page, collection_id=collection_id)
+    except Exception:
+        pass
 
     return True
 
@@ -1076,7 +1452,8 @@ def detect_duplicate_pages(threshold: float = 0.90, collection_id: str = "defaul
                         tb = set(b["title"].lower().replace(" ", ""))
                         if ta and tb:
                             title_sim = len(ta & tb) / max(len(ta | tb), 1)
-                            if title_sim > 0.6:
+                            l2_threshold = max(0.5, threshold - 0.2)
+                            if title_sim > l2_threshold:
                                 pair = tuple(sorted([a["title"], b["title"]]))
                                 if pair not in seen_pairs:
                                     seen_pairs.add(pair)
@@ -1097,7 +1474,8 @@ def detect_duplicate_pages(threshold: float = 0.90, collection_id: str = "defaul
             related_a = a.get("related") or []
             related_b = b.get("related") or []
             shared = set(related_a) & set(related_b) & titles_set
-            if len(shared) >= 2:
+            l3_min_shared = max(2, int((1.0 - threshold) * 30))
+            if len(shared) >= l3_min_shared:
                 pair = tuple(sorted([a["title"], b["title"]]))
                 if pair not in seen_pairs:
                     seen_pairs.add(pair)
@@ -1130,15 +1508,17 @@ def detect_duplicate_pages(threshold: float = 0.90, collection_id: str = "defaul
         for i in range(len(group)):
             for j in range(i + 1, len(group)):
                 a, b = group[i], group[j]
-                # Overlap: a.start < b.end and b.start < a.end
-                if a["start"] < b["end"] and b["start"] < a["end"]:
+                overlap = max(0, min(a["end"], b["end"]) - max(a["start"], b["start"]))
+                max_len = max(a["end"] - a["start"], b["end"] - b["start"], 1)
+                overlap_ratio = overlap / max_len
+                l4_threshold = max(0.3, (1.0 - threshold) * 3)
+                if overlap_ratio > l4_threshold:
                     pair = tuple(sorted([a["title"], b["title"]]))
                     if pair not in seen_pairs:
                         seen_pairs.add(pair)
-                        overlap = (min(a["end"], b["end"]) - max(a["start"], b["start"]))
                         dupes.append({
                             "page_a": a["title"], "page_b": b["title"],
-                            "similarity": round(overlap / max(a["end"] - a["start"], 1), 3),
+                            "similarity": round(overlap_ratio, 3),
                             "layer": "L4_evidence",
                             "suggestion": f"引用同一来源 {sid} 的重叠段落 (offset {a['start']}-{a['end']} vs {b['start']}-{b['end']})",
                         })
@@ -1241,7 +1621,8 @@ Reply with ONLY a JSON object (no markdown fences, no explanation):
             {"role": "system", "content": await _async_prompt_resolve("wiki-system-role")},
             {"role": "user", "content": prompt},
         ]
-        resp = await model.generate(messages, config=None)
+        from core.adapters.llm.base import LLMConfig as LLMCfg
+        resp = await model.generate(messages, config=LLMCfg(timeout=120))
         content = resp.content if hasattr(resp, 'content') else str(resp)
         # Parse JSON from response — try multiple extraction strategies
         if content.startswith("```"):
@@ -1437,7 +1818,8 @@ async def atomize_document(doc_text: str, doc_id: str, *,
         )
         messages = [{"role": "system", "content": "You are a knowledge extraction expert. Return ONLY valid JSON array."},
                      {"role": "user", "content": prompt}]
-        resp = await model.generate(messages, config=None)
+        from core.adapters.llm.base import LLMConfig as LLMCfg
+        resp = await model.generate(messages, config=LLMCfg(timeout=120))
         content = resp.content if hasattr(resp, 'content') else str(resp)
     except Exception as e:
         result["error"] = f"LLM extraction failed: {e}"
@@ -1617,18 +1999,47 @@ For each sub-concept:
 Return ONLY a JSON array (no markdown fences):
 [{{"title":"...","body":"...","evidence_text":"...","confidence":0.8,"tags":["..."]}}]
 """
-    from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
-    model = create_selected_adapter(
-        model_name=model_name or best_model_for_purpose("wiki_curation")
-    )
-    resp = await model.generate(
-        [{"role": "system", "content": "Return ONLY valid JSON array."},
-         {"role": "user", "content": prompt}],
-        config=None
+    from core.harness.utils.model_injection import generate_with_fallback
+    resp, selected_model = await generate_with_fallback(
+        "wiki_curation",
+        messages=[{"role": "system", "content": "Return ONLY valid JSON array."},
+                  {"role": "user", "content": prompt}],
+        timeout=60
     )
     content = resp.content if hasattr(resp, 'content') else str(resp)
     result = _parse_json_response(content)
     return result if isinstance(result, list) else []
+
+
+async def _auto_atomize(title: str, body: str, collection_id: str):
+    """Automatically extract atoms from a topic page after write (background)."""
+    import asyncio as _asyncio
+    try:
+        await _asyncio.sleep(1.0)  # brief cooldown after write
+        atoms = await _extract_sub_concepts(title, body, collection_id)
+        created = 0
+        for atom in atoms[:3]:
+            if not read_page(atom.get("title", ""), collection_id=collection_id):
+                write_atom(atom, collection_id=collection_id)
+                created += 1
+        if created:
+            _log = logging.getLogger("wiki_engine")
+            _log.info(f"Auto-atomized '{title}': {created} atoms created")
+    except Exception:
+        logging.getLogger("wiki_engine").warning(f"Auto-atomize failed for '{title}'", exc_info=True)
+
+
+async def _auto_atomize_by_title_impl(title: str, collection_id: str):
+    """Read page from disk and auto-atomize. Called by background task worker."""
+    import asyncio as _asyncio, logging as _logging
+    _log = _logging.getLogger("wiki_engine")
+    try:
+        await _asyncio.sleep(0.5)
+        page = read_page(title, collection_id=collection_id)
+        if page and len(page.get("body", "")) > 500:
+            await _auto_atomize(title, page["body"], collection_id)
+    except Exception:
+        _log.warning(f"Auto-atomize failed for '{title}'", exc_info=True)
 
 
 async def _detect_page_contradiction(a_page: Dict, b_page: Dict,

@@ -121,13 +121,23 @@ class KnowledgeResult:
     entry: KnowledgeEntry
     score: float
     highlight: Optional[str] = None
-    
+    source_page: str = ""           # Wiki page title (provenance)
+    source_category: str = ""       # Wiki page category
+    evidence_range: str = ""        # e.g. "source_doc_id:kb_001, offset:100-500"
+
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        d = {
             "entry": self.entry.to_dict(),
             "score": self.score,
             "highlight": self.highlight,
         }
+        if self.source_page:
+            d["source_page"] = self.source_page
+        if self.source_category:
+            d["source_category"] = self.source_category
+        if self.evidence_range:
+            d["evidence_range"] = self.evidence_range
+        return d
 
 
 __all__ = [

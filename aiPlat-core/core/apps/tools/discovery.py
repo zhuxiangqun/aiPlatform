@@ -60,7 +60,9 @@ def _verify_tool_signature(tool_id: str, entry: Dict[str, Any]) -> None:
         if sig and bundle:
             rt = get_kernel_runtime()
             store = getattr(rt, "execution_store", None) if rt else None
-            trusted = asyncio.new_event_loop().run_until_complete(get_trusted_skill_pubkeys_map(store)) if store else {}
+            import concurrent.futures as _cf
+            with _cf.ThreadPoolExecutor(max_workers=1) as _pool:
+                trusted = _pool.submit(asyncio.run, get_trusted_skill_pubkeys_map(store)).result(timeout=10) if store else {}
             verify_skill_signature(skill_id=tool_id, version="0.1.0", bundle_sha256=bundle, signature=sig, trusted_keys=trusted)
     except Exception:
         pass
