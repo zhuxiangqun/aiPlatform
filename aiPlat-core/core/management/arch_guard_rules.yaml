@@ -1512,3 +1512,83 @@ if collisions:
       grep_exclude: ["detail", "status_code", "# noqa: error-structured"]
     message: "HTTPException 可能缺少结构化错误字段 — 参考 §5.76 保证 code/message/details 完整性"
 
+  # ═══ Section 68: Final Coverage Gap Closure — last 6 enforceable rules ═══
+
+  # 68.1: Tool system — names must be globally unique (§5.11)
+  - id: tool_name_uniqueness
+    section: "§68"
+    section_name: "工具命名唯一 — Tool name 全局不重复"
+    level: warning
+    check:
+      type: grep_forbidden
+      pattern: 'name\s*=\s*"'
+      paths: ["aiPlat-core/core/apps/tools/"]
+      exclude: ["__pycache__", "tests/", "__init__.py"]
+      grep_exclude: ["# noqa: tool-name-unique"]
+    message: "检测到潜在的工具名称 — 确保全局唯一 (§5.11)。重复名称会导致运行时冲突。"
+
+  # 68.2: Module dependency matrix — detect reverse imports (§5.14)
+  - id: module_reverse_dependency
+    section: "§68"
+    section_name: "模块依赖方向 — 禁止反向依赖违反矩阵"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: 'from core\.harness\.execution\..*import.*from core\.harness\.memory'
+      paths: ["aiPlat-core/core/harness/"]
+      exclude: ["__pycache__", "tests/", "integration.py"]
+      grep_exclude: ["# noqa: dep-matrix-ok"]
+    message: "可能的模块反向依赖 — 检查 §5.14 依赖矩阵。memory 层不应反向依赖 execution 层。"
+
+  # 68.3: Agent message communication — must not call other Agent.execute() directly (§5.15)
+  - id: agent_direct_execute_other
+    section: "§68"
+    section_name: "Agent 消息通信 — 禁止直接调用其他 Agent 的 execute()"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: '\.execute\s*\(.*context\)'
+      paths: ["aiPlat-core/core/apps/agents/"]
+      exclude: ["__pycache__", "tests/", "base.py", "multi_agent.py", "multi_agent_orchestrator.py"]
+      grep_exclude: ["super()", "harness", "StageRunner", "# noqa: agent-comms-ok"]
+    message: "Agent 直接调用另一个Agent的execute()可能绕过消息通信协议 — 使用 TASK_ASSIGN 消息模式 (§5.15)"
+
+  # 68.4: Agent boundary — must not access Harness internal state (§5.16)
+  - id: agent_harness_internal_access
+    section: "§68"
+    section_name: "Agent 边界 — 禁止直访 Harness 内部状态"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: 'self\.harness\.(?!execute|submit|query_tool|query_skill)'
+      paths: ["aiPlat-core/core/apps/agents/"]
+      exclude: ["__pycache__", "tests/", "base.py"]
+      grep_exclude: ["# noqa: harness-boundary-ok"]
+    message: "Agent 访问 Harness 内部状态 (budget_remaining/core_state等) — 应通过只读接口传递 (§5.16)"
+
+  # 68.5: Metrics regression — avg_degree must not increase (§5.3)
+  - id: metrics_regression_guard
+    section: "§68"
+    section_name: "指标回归 — avg_degree 不得持续上升"
+    level: warning
+    check:
+      type: grep_forbidden
+      pattern: 'from core\.harness\.\w+ import.*from core\.harness\.\w+'
+      paths: ["aiPlat-core/core/harness/"]
+      exclude: ["__pycache__", "tests/", "integration.py", "registry.py"]
+      grep_exclude: ["# noqa: harness-import-ok"]
+    message: "harness 内新增跨模块 import — 可能导致 avg_degree 上升。请确认是否可通过已有 facade 访问 (§5.3)"
+
+  # 68.6: Engine agnostic — no business concept strings in engine (§5.5)
+  - id: engine_business_agnostic
+    section: "§68"
+    section_name: "引擎无关应用 — 禁止引擎层硬编码业务概念"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: '(?:phase|stage_name|agent_role)\s*[=:]\s*["\u2018](?:design|development|testing|review|deploy)'
+      paths: ["aiPlat-core/core/harness/execution/"]
+      exclude: ["__pycache__", "tests/", "langgraph/"]
+      grep_exclude: ["PipelineStageConfig", "config\\.", "# noqa: engine-config-driven"]
+    message: "引擎层硬编码业务阶段名 (design/development/testing等) — 应使用 PipelineStageConfig 字段驱动 (§5.5)"
+
