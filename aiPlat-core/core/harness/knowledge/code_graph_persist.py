@@ -237,6 +237,57 @@ def search_fts(query: str, limit: int = 20) -> List[str]:
         conn.close()
 
 
+def cross_edges_cached() -> bool:
+    """Check if cross-call edges and frontend-backend links have been computed."""
+    conn = _get_conn()
+    try:
+        row = conn.execute("SELECT value FROM meta WHERE key='cross_edges_computed'").fetchone()
+        return row is not None and row[0] == "1"
+    finally:
+        conn.close()
+
+
+def set_cross_edges_cached():
+    """Mark that cross-call edges and frontend-backend links have been computed."""
+    conn = _get_conn()
+    try:
+        conn.execute("INSERT OR REPLACE INTO meta (key, value) VALUES ('cross_edges_computed', '1')")
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def clear_cross_edges_cache():
+    """Invalidate cross-call edges cache (e.g., after file changes)."""
+    conn = _get_conn()
+    try:
+        conn.execute("DELETE FROM edges WHERE kind IN ('calls', 'cross_call')")
+        conn.execute("DELETE FROM meta WHERE key='cross_edges_computed'")
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def save_cross_edges(edges: List[Dict[str, str]]):
+    """Persist computed cross-call/cross-language edges to SQLite."""
+    import sqlite3
+    conn = sqlite3.connect(_db_path())
+    try:
+        # Remove old cross edges before inserting new ones
+        conn.execute("DELETE FROM edges WHERE kind IN ('calls', 'cross_call')")
+        for e in edges:
+            if e.get("kind") in ("calls", "cross_call"):
+                conn.execute(
+                    "INSERT OR REPLACE INTO edges (from_file, to_file, kind, label, line, cross) VALUES (?,?,?,?,?,?)",
+                    (e["from"], e["to"], e.get("kind", "calls"),
+                     e.get("label", ""), e.get("line", 0),
+                     1 if e.get("cross") else 0)
+                )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def _detect_layer(path: str) -> str:
     """Detect architecture layer from file path (sync'd with code_graph._layer_bucket)."""
     if path.startswith("aiPlat-infra") or path.startswith("aiPlat-infra/"):

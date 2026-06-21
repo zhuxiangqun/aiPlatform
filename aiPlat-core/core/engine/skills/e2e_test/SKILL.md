@@ -1,7 +1,8 @@
 ---
 name: e2e_test
 display_name: E2E 测试自动生成
-description: 输入任意URL，自动探索站点、生成Playwright测试套件、运行测试、修复失败、补充覆盖。涉及代码生成和测试审查。 涉及测试用例相关操作。 主要进行生成。
+description: 输入任意URL，自动探索站点、生成Playwright测试套件、运行测试、修复失败、补充覆盖。涉及代码生成和测试审查。 涉及测试用例相关操作。
+  主要进行生成。
 version: 1.0.0
 category: testing
 status: enabled
@@ -48,9 +49,29 @@ input_schema:
     type: string
     required: true
     description: 测试站点URL
-
 protected: true
+keywords:
+  objects:
+  - 测试用例
+  - E2E
+  - 端到端
+  - 页面
+  actions:
+  - 测试
+  - 验证
+  - 检查
+  constraints:
+  - 浏览器
+  - 页面路径
+trigger_conditions:
+- when: 用户要求端到端测试
+  query: E2E测试/端到端/浏览器测试
+- when: 不应用场景
+  description: 跳过条件：用户仅讨论测试策略而非实际执行测试时不触发。
+skip_when: 跳过条件：用户仅讨论测试策略而非实际执行测试时不触发。
 ---
+
+
 
 # E2E Test 自动生成
 

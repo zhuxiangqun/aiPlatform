@@ -18,7 +18,7 @@ from core.harness.knowledge.code_graph import (
     _strip_py_type_checking, _is_code_file, _should_skip, _read_text,
     _resolve_js_relative, _resolve_py_module, _detect_issues,
     build_graph as _build_graph,
-    build_symbol_graph as _build_symbol_graph,
+    convert_file_graph_to_symbols,
     count_cycles as _count_cycles,
     health_score as _health_score,
     blast,
@@ -564,7 +564,7 @@ async def scan_code_intel(
     # Symbol mode: convert to per-function/class nodes
     if mode == "symbol":
         _root = repo_root()
-        symbol_nodes, symbol_edges = _build_symbol_graph(res.nodes, res.edges, _root)
+        symbol_nodes, symbol_edges = convert_file_graph_to_symbols(res.nodes, res.edges, _root)
         return {
             "status": "ok",
             "mode": "symbol",

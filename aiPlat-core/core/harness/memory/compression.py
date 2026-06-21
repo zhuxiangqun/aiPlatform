@@ -12,11 +12,11 @@ from enum import Enum
 
 class CompressionLevel(Enum):
     """Compression level based on token usage"""
-    NORMAL = (0, 0.70)
-    WARNING = (0.70, 0.80)
-    REPLACE = (0.80, 0.85)
-    PRUNE = (0.85, 0.90)
-    AGGRESSIVE = (0.90, 0.99)
+    NORMAL = (0, 0.85)
+    WARNING = (0.85, 0.90)
+    REPLACE = (0.90, 0.93)
+    PRUNE = (0.93, 0.96)
+    AGGRESSIVE = (0.96, 0.99)
     EMERGENCY = (0.99, 1.0)
 
 
@@ -45,10 +45,10 @@ class ContextCompression:
 
     def _init_thresholds(self) -> Dict[CompressionLevel, float]:
         return {
-            CompressionLevel.NORMAL: 0.70,
-            CompressionLevel.WARNING: 0.80,
-            CompressionLevel.REPLACE: 0.85,
-            CompressionLevel.PRUNE: 0.90,
+            CompressionLevel.NORMAL: 0.85,
+            CompressionLevel.WARNING: 0.90,
+            CompressionLevel.REPLACE: 0.93,
+            CompressionLevel.PRUNE: 0.96,
             CompressionLevel.AGGRESSIVE: 0.99,
             CompressionLevel.EMERGENCY: 1.0
         }

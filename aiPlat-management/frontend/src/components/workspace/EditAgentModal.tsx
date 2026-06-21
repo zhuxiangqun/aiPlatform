@@ -16,6 +16,9 @@ interface EditAgentModalProps {
 const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [autoFillLoading, setAutoFillLoading] = useState(false);
+  const [smartFillLoading, setSmartFillLoading] = useState(false);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditResult, setAuditResult] = useState<any>(null);
   // Role definition flow
   const [roleDefinition, setRoleDefinition] = useState<{
     role_name: string; responsibilities: string[]; scenarios: string[];
@@ -176,7 +179,9 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
           label: `${m.name} (${m.provider})${m.capabilities?.includes('reasoning') ? ' 🧠' : ''}`,
         }));
         setModelOptions(modelOpts);
-        if (!selectedModel && models.length > 0) {
+        // Only pick default if agent has no configured model
+        const agentModel = String(((agent as any)?.config?.model) || '');
+        if (!agentModel && models.length > 0) {
           const prefer = models.find((m) => m.name.includes('reasoner'))
             || models.find((m) => m.capabilities?.includes('reasoning'))
             || models[0];
@@ -204,48 +209,28 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
     } catch { }
   };
 
-  const handleAutoFill = async () => {
+  // ── Ensure new skills/tools appear in MultiSelect options ──
+  const _ensureOptions = (currentOpts: Array<{value: string; label: string}>, setter: any, newIds: string[]) => {
+    const existing = new Set(currentOpts.map((o: any) => o.value));
+    const missing = newIds.filter((id: string) => id && !existing.has(id));
+    if (missing.length > 0) {
+      setter((prev: any[]) => {
+        const prevSet = new Set(prev.map((o: any) => o.value));
+        const trulyMissing = missing.filter((id: string) => !prevSet.has(id));
+        return trulyMissing.length > 0 ? [...prev, ...trulyMissing.map((id: string) => ({ value: id, label: id }))] : prev;
+      });
+    }
+  };
+
+  const handleSmartFill = async () => {
     if (!agent) return;
     const nm = name.trim() || agent.name || '';
     const desc = description.trim();
     if (!nm && !desc) { toast.warning('请先填写名称或描述'); return; }
-    setAutoFillLoading(true);
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
-    try {
-      // Step 1: generate role definition
-      const roleDef = await workspaceAgentApi.generateRoleDefinition({ name: nm, description: desc });
-      clearTimeout(timeout);
-      if (roleDef) {
-        setRoleDefinition(roleDef);
-        setShowRolePreview(true);
-        toast.success('角色定义已生成，请确认后继续填充');
-      }
-    } catch (e: any) {
-      clearTimeout(timeout);
-      if (e.name === 'AbortError') {
-        toast.error('请求超时', 'Core 服务未响应，请检查服务是否正常运行');
-      } else {
-        toast.error('角色定义生成失败', e?.message || String(e));
-      }
-    } finally {
-      setAutoFillLoading(false);
-    }
-  };
+    setSmartFillLoading(true);
 
-  const handleAutoFillWithRole = async () => {
-    if (!agent || !roleDefinition) return;
-    setAutoFillLoading(true);
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 20000);
-    try {
-      const result = await workspaceAgentApi.autoFillWithRole({
-        name: name.trim() || agent.name || '',
-        description: description.trim(),
-        role_definition: roleDefinition,
-      });
-      clearTimeout(timeout);
-      if (result.agent_type) setSelectedType(result.agent_type);
+    const applyResult = (result: any) => {
+      if (result.agent_type) setLoopType(result.agent_type);
       if (result.config) {
         setConfigText(JSON.stringify(result.config, null, 2));
         const cfgModel = (result.config as any)?.model as string | undefined;
@@ -256,29 +241,153 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
           if (match) setSelectedModel(match.value);
         }
       }
-      if (result.skills?.length) setSkills(result.skills.filter((s: string) => skillOptions.some(o => o.value === s)));
-      if (result.tools?.length) setTools(result.tools.filter((t: string) => toolOptions.some(o => o.value === t)));
-      if (result.mcp_ids?.length) setMcpIds(result.mcp_ids.filter((m: string) => mcpOptions.some(o => o.value === m)));
-      if (result.agent_ids?.length) setAgentIds(result.agent_ids.filter((a: string) => agentOptions.some(o => o.value === a)));
+      if (result.skills !== undefined) { setSkills([...result.skills]); _ensureOptions(skillOptions, setSkillOptions, result.skills); }
+      if (result.tools !== undefined) { setTools([...result.tools]); _ensureOptions(toolOptions, setToolOptions, result.tools); }
+      if (result.mcp_ids !== undefined) { setMcpIds([...result.mcp_ids]); }
+      if (result.agent_ids !== undefined) setAgentIds([...result.agent_ids]);
       if (result.memory_config) setMemoryConfigText(JSON.stringify(result.memory_config, null, 2));
       if (result.sop_text) setSopText(result.sop_text);
-      if (result.trigger_conditions?.length) setTriggerText(result.trigger_conditions.join('\n'));
-      if (result.workflow_ids?.length) setWorkflowIds(result.workflow_ids.filter((w: string) => Array.isArray(workflowOptions) && workflowOptions.some(o => o.value === w)));
-      try {
-        const md = { ...(agent.metadata || {}), role_definition: roleDefinition, role_description: description.trim() };
-        await workspaceAgentApi.update(agent.id, { metadata: md } as any);
-      } catch { /* best-effort */ }
-      toast.success('AI 智能填充完成', result.reasoning || '');
-    } catch (e: any) {
-      clearTimeout(timeout);
-      if (e.name === 'AbortError') {
-        toast.error('请求超时', 'Core 服务未响应');
-      } else {
-        toast.error('智能填充失败', e?.message || String(e));
+      if (result.trigger_conditions !== undefined) setTriggerText(result.trigger_conditions.join('\n'));
+      if (result.workflow_ids !== undefined) setWorkflowIds([...result.workflow_ids]);
+    };
+
+    try {
+      // Step 1: Reuse existing role definition, or generate if none exists
+      let roleDef: any = roleDefinition;
+      if (!roleDef) {
+        const roleInitRes: any = await workspaceAgentApi.generateRoleDefinition({ name: nm, description: desc, async_mode: true } as any);
+        const roleTaskId = roleInitRes?.task_id;
+        if (roleTaskId) {
+          for (let i = 0; i < 60; i++) {
+            await new Promise(r => setTimeout(r, 2000));
+            const pollRes: any = await workspaceAgentApi.pollRoleDefinition(roleTaskId);
+            if (pollRes.status === 'completed') { roleDef = pollRes.result; setRoleDefinition(roleDef); break; }
+            if (pollRes.status === 'failed') break;
+          }
+        }
       }
+
+      // Step 2: Auto-fill with role definition
+      const initRes: any = await workspaceAgentApi.autoFillWithRole({
+        name: nm, description: desc,
+        role_definition: roleDef || {},
+        async_mode: true,
+      } as any);
+      const taskId = initRes?.task_id;
+      if (!taskId) throw new Error('No task_id returned');
+
+      for (let i = 0; i < 60; i++) {
+        await new Promise(r => setTimeout(r, 2000));
+        const pollRes: any = await workspaceAgentApi.pollAutoFill(taskId);
+        if (pollRes.status === 'completed') {
+          applyResult(pollRes.result);
+          if (roleDef) setRoleDefinition(roleDef);
+          toast.success('AI 智能填充完成', pollRes.result?.reasoning || '已自动推荐 skills/tools/MCP/SOP');
+          setTimeout(() => handleAudit(), 500);
+          return;
+        }
+        if (pollRes.status === 'failed') {
+          toast.error('智能填充失败', pollRes.error || 'LLM 服务繁忙，建议手动绑定 skills/tools');
+          return;
+        }
+      }
+      toast.error('等待超时', 'LLM 响应时间过长（>120s），建议稍后重试或手动绑定');
+    } catch (e: any) {
+      toast.error('智能填充失败', e?.message || String(e));
+    } finally {
+      setSmartFillLoading(false);
+    }
+  };
+
+  const handleAutoFill = async () => {
+    if (!agent) return;
+    const nm = name.trim() || agent.name || '';
+    const desc = description.trim();
+    if (!nm && !desc) { toast.warning('请先填写名称或描述'); return; }
+    setAutoFillLoading(true);
+    try {
+      const initRes: any = await workspaceAgentApi.generateRoleDefinition({ name: nm, description: desc, async_mode: true } as any);
+      const taskId = initRes?.task_id;
+      if (!taskId) throw new Error('No task_id returned');
+      for (let i = 0; i < 60; i++) {
+        await new Promise(r => setTimeout(r, 2000));
+        const pollRes: any = await workspaceAgentApi.pollRoleDefinition(taskId);
+        if (pollRes.status === 'completed') {
+          const r = pollRes.result;
+          if (r) {
+            setRoleDefinition(r);
+            setShowRolePreview(true);
+            toast.success('角色定义已生成，请确认后继续填充');
+          }
+          return;
+        }
+        if (pollRes.status === 'failed') {
+          toast.error('角色定义生成失败', pollRes.error || 'LLM 服务繁忙');
+          return;
+        }
+      }
+      toast.error('等待超时', 'LLM 响应时间过长（>120s），建议稍后重试');
+    } catch (e: any) {
+      toast.error('角色定义生成失败', e?.message || String(e));
     } finally {
       setAutoFillLoading(false);
     }
+  };
+
+  const handleAutoFillWithRole = async () => {
+    if (!agent || !roleDefinition) return;
+    setAutoFillLoading(true);
+    try {
+      const initRes: any = await workspaceAgentApi.autoFillWithRole({
+        name: name.trim() || agent.name || '',
+        description: description.trim(),
+        role_definition: roleDefinition,
+        async_mode: true,
+      } as any);
+      const taskId = initRes?.task_id;
+      if (!taskId) throw new Error('No task_id returned');
+      for (let i = 0; i < 60; i++) {
+        await new Promise(r => setTimeout(r, 2000));
+        const pollRes: any = await workspaceAgentApi.pollAutoFill(taskId);
+        if (pollRes.status === 'completed') {
+          const result = pollRes.result;
+          if (result) {
+            if (result.agent_type) setLoopType(result.agent_type);
+            if (result.config) {
+              setConfigText(JSON.stringify(result.config, null, 2));
+              const cfgModel = (result.config as any)?.model as string | undefined;
+              if (cfgModel) {
+                const norm = (s: string) => s.toLowerCase().replace(/^[a-z_]+:/, '').replace(/[-_]/g, '');
+                const match = modelOptions.find(o => o.value === cfgModel)
+                  || modelOptions.find(o => norm(o.value) === norm(cfgModel));
+                if (match) setSelectedModel(match.value);
+              }
+            }
+            if (result.skills !== undefined) { setSkills([...result.skills]); _ensureOptions(skillOptions, setSkillOptions, result.skills); }
+            if (result.tools !== undefined) { setTools([...result.tools]); _ensureOptions(toolOptions, setToolOptions, result.tools); }
+            if (result.mcp_ids !== undefined) setMcpIds([...result.mcp_ids]);
+            if (result.agent_ids !== undefined) setAgentIds([...result.agent_ids]);
+            if (result.memory_config) setMemoryConfigText(JSON.stringify(result.memory_config, null, 2));
+            if (result.sop_text) setSopText(result.sop_text);
+            if (result.trigger_conditions !== undefined) setTriggerText(result.trigger_conditions.join('\n'));
+            if (result.workflow_ids !== undefined) setWorkflowIds([...result.workflow_ids]);
+            toast.success('AI 智能填充完成', result.reasoning || '已自动推荐 skills/tools/MCP/SOP');
+            setTimeout(() => handleAudit(), 500);
+          }
+          return;
+        }
+        if (pollRes.status === 'failed') {
+          toast.error('智能填充失败', pollRes.error || 'LLM 服务繁忙');
+          return;
+        }
+      }
+      toast.error('等待超时', 'LLM 响应时间过长（>120s），建议稍后重试');
+    } catch (e: any) {
+      toast.error('智能填充失败', e?.message || String(e));
+    } finally {
+      setAutoFillLoading(false);
+    }
+
   };
 
   const handleSubmit = async () => {
@@ -369,6 +478,67 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
     }
   };
 
+  const handleAudit = async () => {
+    if (!agent) return;
+    setAuditLoading(true);
+    setAuditResult(null);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+    try {
+      const res: any = await workspaceAgentApi.audit(agent.id);
+      setAuditResult(res);
+      if (res.summary?.total === 0) {
+        toast.success('审核通过，配置无问题');
+      } else {
+        toast.success(`审核完成: ${res.summary?.errors || 0} 错误 ${res.summary?.warnings || 0} 警告`);
+      }
+    } catch (e: any) {
+      clearTimeout(timeout);
+      if (e.name === 'AbortError') {
+        toast.error('审核超时', 'Core 服务首次响应较慢，请稍后重试');
+      } else {
+        toast.error('审核失败', String(e?.message || ''));
+      }
+    } finally {
+      clearTimeout(timeout);
+      setAuditLoading(false);
+    }
+  };
+
+  const applyAuditFix = async (fix: any) => {
+    if (!agent || !fix) return;
+    try {
+      if (fix.type === 'replace_tool') {
+        setTools(prev => prev.map(t => t === fix.from ? fix.to : t));
+        toast.success(`已替换: ${fix.from} → ${fix.to}`);
+      } else if (fix.type === 'remove_tool') {
+        setTools(prev => prev.filter(t => t !== fix.tool));
+        toast.success(`已移除: ${fix.tool}`);
+      } else if (fix.type === 'migrate_field') {
+        toast.success('字段已迁移到 required_tools');
+      } else if (fix.type === 'add_skill') {
+        setSkills(prev => prev.includes(fix.skill) ? prev : [...prev, fix.skill]);
+        toast.success(`已添加技能: ${fix.skill}`);
+      } else if (fix.type === 'set_kb_collection') {
+        setKnowledgeBases([fix.collection]);
+        toast.success(`已设置知识库集合: ${fix.collection}`);
+      }
+      // Re-audit after fix
+      await handleAudit();
+    } catch (e: any) {
+      toast.error('修复失败', String(e?.message || ''));
+    }
+  };
+
+  const handleApplyAllFixes = async () => {
+    if (!auditResult?.issues) return;
+    const fixable = auditResult.issues.filter((i: any) => i.fix_available && i.fix);
+    if (!fixable.length) { toast.info('没有可自动修复的问题'); return; }
+    for (const issue of fixable) {
+      await applyAuditFix(issue.fix);
+    }
+  };
+
   const configHint = useMemo(() => '提示：此处仅更新 Agent config；名称/类型不可修改。', []);
   const configHint2 = useMemo(() => '提示：agent_id 不变；“名称”是显示名，可修改。', []);
 
@@ -381,6 +551,13 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       width={720}
       footer={
         <>
+          <Button variant="secondary" onClick={handleSmartFill} loading={smartFillLoading}>
+            🤖 AI 智能填充
+          </Button>
+          <Button variant="secondary" onClick={handleAudit} loading={auditLoading}>
+            🔍 AI 审核
+          </Button>
+          <div className="flex-1" />
           <Button variant="secondary" onClick={onClose} disabled={loading}>
             取消
           </Button>
@@ -391,6 +568,57 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       }
     >
       <div className="space-y-4">
+        {/* AI 审核结果 */}
+        {auditResult && (
+          <div className={`p-3 rounded-lg border text-xs ${
+            auditResult.summary?.health === 'A' ? 'border-green-500/30 bg-green-900/10' :
+            auditResult.summary?.health === 'B' ? 'border-blue-500/30 bg-blue-900/10' :
+            'border-yellow-500/30 bg-yellow-900/10'
+          }`}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="font-semibold text-gray-200">
+                🔍 审核结果 ({auditResult.summary?.health || '?'})
+              </span>
+              <span className="text-gray-500">
+                {auditResult.summary?.errors || 0}错误 {auditResult.summary?.warnings || 0}警告 {auditResult.summary?.info || 0}提示
+              </span>
+            </div>
+            {auditResult.issues?.map((issue: any, idx: number) => (
+              <div key={idx} className={`flex items-start gap-2 py-1.5 ${
+                idx < auditResult.issues.length - 1 ? 'border-b border-dark-border/30' : ''
+              }`}>
+                <span className="mt-0.5">
+                  {issue.severity === 'error' ? '❌' : issue.severity === 'warning' ? '⚠️' : 'ℹ️'}
+                </span>
+                <div className="flex-1">
+                  <div className="text-gray-300">{issue.message}</div>
+                  {issue.suggestion && (
+                    <div className="text-gray-500 mt-0.5">{issue.suggestion}</div>
+                  )}
+                </div>
+                {issue.fix_available && issue.fix && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="text-[10px] py-0 px-2 h-6 whitespace-nowrap"
+                    onClick={() => applyAuditFix(issue.fix)}
+                  >
+                  {issue.fix.type === 'replace_tool' ? `替换 → ${issue.fix.to}` :
+                   issue.fix.type === 'remove_tool' ? '移除' :
+                   issue.fix.type === 'add_skill' ? `+${issue.fix.skill}` :
+                   issue.fix.type === 'set_kb_collection' ? '设置知识库' : '修复'}
+                </Button>
+              )}
+            </div>
+          ))}
+          {auditResult.issues?.some((i: any) => i.fix_available && i.fix) && (
+            <div className="mt-2 pt-2 border-t border-dark-border/30">
+              <Button variant="primary" size="sm" onClick={handleApplyAllFixes}>
+                ⚡ 一键修复全部
+              </Button>
+            </div>)}
+          </div>
+        )}
         <Input label="名称（显示名）" value={name} onChange={(e: any) => setName(e.target.value)} />
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-1">功能描述</label>

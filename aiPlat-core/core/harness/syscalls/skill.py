@@ -659,7 +659,7 @@ async def sys_skill_call(
                 # Check for skill_chain: execute dependencies first
                 chain = _get_skill_chain(skill)
                 if chain:
-                    from core.apps.skills.registry import get_skill_registry
+                    from core.harness.integration import get_skill_registry
                     reg = get_skill_registry()
                     for dep_name in chain:
                         dep = reg.get(dep_name)

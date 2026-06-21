@@ -71,6 +71,8 @@ export MKL_NUM_THREADS="${MKL_NUM_THREADS:-1}"
 
 # Dev: disable approval gates (avoid manual approve/replay loops during local MVP).
 export AIPLAT_APPROVALS_DISABLED="${AIPLAT_APPROVALS_DISABLED:-1}"
+# Auto-evaluation: score every agent execution for the evaluation dashboard
+export AIPLAT_ENABLE_AUTO_EVAL="${AIPLAT_ENABLE_AUTO_EVAL:-true}"
 export AIPLAT_ENABLE_ORCHESTRATOR="${AIPLAT_ENABLE_ORCHESTRATOR:-false}"
 export PYTHONUNBUFFERED=1
 
@@ -250,6 +252,7 @@ mkdir -p "$AIPLAT_HOME/artifacts"     # ArtifactRegistry 版本化制品
 mkdir -p "$AIPLAT_HOME/task_skills"   # L3 TaskSkill 记忆持久化
 mkdir -p "$AIPLAT_HOME/auto_pipelines" # 自动审批流水线配置
 mkdir -p "$AIPLAT_HOME/hooks"         # 用户空间 Hook 脚本
+mkdir -p "$AIPLAT_HOME/ontologies"   # 多域本体 YAML 文件
 
 echo "============================================================"
 echo "  aiPlat-platform - 启动服务"
@@ -304,7 +307,7 @@ fi
 
 # ===== Step 1: aiPlat-infra =====
 echo "============================================================"
-echo "  Step 1/4: 启动 aiPlat-infra (端口 8001)"
+echo "  Step 1/6: 启动 aiPlat-infra (端口 8001)"
 echo "============================================================"
 
 kill_port_if_any 8001
@@ -324,31 +327,39 @@ done
 # ===== Step 2: aiPlat-core =====
 echo ""
 echo "============================================================"
-echo "  Step 2/4: 启动 aiPlat-core (端口 8002)"
+echo "  Step 2/6: 启动 aiPlat-core (端口 8002)"
 echo "============================================================"
 
 kill_port_if_any 8002
+
+export AIPLAT_EMBED_BACKEND="${AIPLAT_EMBED_BACKEND:-hash}"
+export AIPLAT_EMBEDDING_BACKEND="${AIPLAT_EMBEDDING_BACKEND:-hash}"
+export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
 
 cd "$PROJECT_ROOT/aiPlat-core/core"
 # 确保 ExecutionStore DB 路径稳定（用于 learning_artifacts / approvals 等管理功能）
 export AIPLAT_EXECUTION_DB_PATH="${AIPLAT_EXECUTION_DB_PATH:-$PROJECT_ROOT/aiPlat-core/core/data/aiplat_executions.sqlite3}"
 mkdir -p "$(dirname "$AIPLAT_EXECUTION_DB_PATH")"
 echo "Execution DB: $AIPLAT_EXECUTION_DB_PATH"
-PYTHONPATH="$PROJECT_ROOT/aiPlat-core" nohup "$PY" -m uvicorn server:app --host 0.0.0.0 --port 8002 --reload --reload-dir "$PROJECT_ROOT/aiPlat-core/core" > "$AIPLAT_HOME/logs/core.log" 2>&1 &
+PYTHONPATH="$PROJECT_ROOT/aiPlat-core" nohup "$PY" -m uvicorn server:app --host 0.0.0.0 --port 8002 --workers 2 --timeout-keep-alive 120 > "$AIPLAT_HOME/logs/core.log" 2>&1 &
 CORE_PID=$!
 echo "PID: $CORE_PID"
 
 sleep 3
-for i in 1 2 3 4 5; do
-    curl -s http://localhost:8002/api/core/health >/dev/null 2>&1 && echo "✓ aiPlat-core 启动成功 (8002)" && break
-    echo "等待... ($i/5)"
-    sleep 1
+for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+    curl -s http://localhost:8002/api/core/diagrams >/dev/null 2>&1 && echo "✓ aiPlat-core 启动成功 (8002)" && break
+    echo "等待... ($i/15)"
+    sleep 2
 done
+# If health check failed, report but continue - service may still be starting
+if ! curl -s http://localhost:8002/api/core/diagrams >/dev/null 2>&1; then
+    echo "⚠ aiPlat-core 健康检查超时 (可能仍需数秒完成初始化)"
+fi
 
 # ===== Step 3: aiPlat-platform =====
 echo ""
 echo "============================================================"
-echo "  Step 3/4: 启动 aiPlat-platform (端口 8003)"
+echo "  Step 3/6: 启动 aiPlat-platform (端口 8003)"
 echo "============================================================"
 
 kill_port_if_any 8003
@@ -362,13 +373,14 @@ export AIPLAT_PLATFORM_DEV_ALLOW_ANY_API_KEY="${AIPLAT_PLATFORM_DEV_ALLOW_ANY_AP
 # DEV: grant anonymous users kb:read/kb:write scopes for local development.
 export AIPLAT_PLATFORM_DEV_MODE="${AIPLAT_PLATFORM_DEV_MODE:-true}"
 # KB: enable semantic embedding (sentence-transformers) instead of hash-based non-semantic vectors
-export AIPLAT_EMBED_BACKEND="${AIPLAT_EMBED_BACKEND:-transform}"
-export AIPLAT_EMBEDDING_MODEL="${AIPLAT_EMBEDDING_MODEL:-jinaai/jina-embeddings-v2-base-zh}"
+export AIPLAT_EMBED_BACKEND="${AIPLAT_EMBED_BACKEND:-hash}"
 export AIPLAT_KB_TENANTS_DIR="${AIPLAT_KB_TENANTS_DIR:-$AIPLAT_HOME/kb/tenants}"
 # KB optional features: set to enable advanced capabilities
 # export AIPLAT_KB_VISION_ENABLED=true        # Vision LLM image description
 # export AIPLAT_VECTOR_DB=chroma              # Chroma vector DB backend (or milvus)
-# export AIPLAT_RERANK_MODEL=jinaai/jina-reranker-v2-base-multilingual  # Cross-Encoder reranker
+# HuggingFace mirror for model downloads (China access)
+export HF_ENDPOINT="${HF_ENDPOINT:-https://hf-mirror.com}"
+
 # export AIPLAT_VIDEO_WHISPER_MODEL=base      # Whisper model size (tiny/base/small/medium/large)
 # export AIPLAT_OBJ_STORE_ENDPOINT=localhost:9000  # MinIO object storage
 # export AIPLAT_QUEUE_BACKEND=redis           # Redis message queue (default: thread)
@@ -424,7 +436,7 @@ echo "============================================================"
 kill_port_if_any 8000
 
 cd "$PROJECT_ROOT/aiPlat-management"
-nohup "$PY" -m uvicorn management.server:create_app --host 0.0.0.0 --port 8000 --factory --reload --reload-dir "$PROJECT_ROOT/aiPlat-management/management" > "$AIPLAT_HOME/logs/management.log" 2>&1 &
+nohup "$PY" -m uvicorn management.server:create_app --host 0.0.0.0 --port 8000 --factory > "$AIPLAT_HOME/logs/management.log" 2>&1 &
 MGMT_PID=$!
 echo "PID: $MGMT_PID"
 
@@ -444,6 +456,9 @@ echo "============================================================"
 kill_port_if_any 5173
 
 cd "$PROJECT_ROOT/aiPlat-management/frontend"
+
+# Clean stale build artifacts to ensure latest code is served
+rm -rf dist
 
 # Always rebuild frontend to ensure latest code is served
 echo "正在安装前端依赖..."

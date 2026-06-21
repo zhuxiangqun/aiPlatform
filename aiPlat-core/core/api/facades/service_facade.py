@@ -10,7 +10,18 @@ def create_chat_service(model: Any = None) -> Any:
 
 def create_conversation_service(store: Any = None) -> Any:
     from core.services.conversations import ConversationService
-    return ConversationService(store) if store else ConversationService()
+    if store is not None:
+        return ConversationService(store)
+    import os
+    from core.services.execution_store import ExecutionStore, ExecutionStoreConfig
+    db_path = os.environ.get(
+        "AIPLAT_EXECUTION_DB_PATH",
+        os.path.expanduser("~/.aiplat/aiplat_executions.sqlite3"),
+    )
+    default_store = ExecutionStore(
+        ExecutionStoreConfig(db_path=db_path)
+    )
+    return ConversationService(default_store)
 
 
 def get_default_model() -> Any:
@@ -31,13 +42,21 @@ def llm_generate_stream(*args: Any, **kwargs: Any):
     return sys_llm_generate_stream(*args, **kwargs)
 
 
-def normalize_conversation_scope(scope: Any) -> Any:
-    """Normalize conversation scope values."""
+def normalize_conversation_scope(scope: Any, *, fallback: Any = None) -> Any:
+    """Normalize conversation scope values, with optional fallback."""
+    result = None
     if isinstance(scope, dict):
-        return scope
-    if isinstance(scope, str):
-        return {"name": scope}
-    return {"name": "default"}
+        result = scope
+    elif isinstance(scope, str):
+        result = {"name": scope}
+    if fallback and isinstance(fallback, dict):
+        if result:
+            # Merge fallback into result (result takes priority)
+            merged = dict(fallback)
+            merged.update(result)
+            return merged
+        return fallback
+    return result or {"name": "default"}
 
 
 def cancel_pipeline(run_id: str) -> Any:

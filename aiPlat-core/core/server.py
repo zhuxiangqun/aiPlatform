@@ -289,6 +289,7 @@ def _reload_workspace_managers() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from pathlib import Path as _Path  # explicit local import to avoid Python 3.13 scoping bug
     global _agent_discovery, _skill_discovery
     global _agent_manager, _skill_manager, _memory_manager
     global _knowledge_manager, _adapter_manager, _harness_manager
@@ -337,7 +338,7 @@ async def lifespan(app: FastAPI):
         dev_key = dev_key_raw if isinstance(dev_key_raw, str) and dev_key_raw else None
         if dev_key:
             signed_count = 0
-            engine_root = Path(__file__).resolve().parent / "engine"
+            engine_root = _Path(__file__).resolve().parent / "engine"
             for ent_type, mf_name in [("skills", "SKILL.manifest.json"), ("agents", "AGENT.manifest.json")]:
                 mf_dir = engine_root / ent_type
                 if not mf_dir.is_dir():
@@ -359,12 +360,10 @@ async def lifespan(app: FastAPI):
                             _json.dump(mf, f, indent=2)
                         signed_count += 1
                     except Exception:
-                        pass
-            if signed_count > 0:
-                log.info(f"Governance: auto-signed {signed_count} built-in engine entities")
+                        log.debug(f"Governance: failed to sign engine entity {ent_dir.name}", exc_info=True)
             # Also auto-sign workspace entities
             home = os.environ.get("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
-            ws_root = Path(home)
+            ws_root = _Path(home)
             for ent_type, mf_name in [("skills", "SKILL.manifest.json"), ("agents", "AGENT.manifest.json"),
                                        ("mcps", "MCP.manifest.json"), ("workflows", "WORKFLOW.manifest.json"),
                                        ("projects", "PROJECT.manifest.json"), ("prompt-apps", "TEMPLATE.manifest.json")]:
@@ -388,9 +387,7 @@ async def lifespan(app: FastAPI):
                             _json.dump(mf, f, indent=2)
                         signed_count += 1
                     except Exception:
-                        pass
-            if signed_count > 0:
-                log.info(f"Governance: auto-signed {signed_count} entities (engine + workspace)")
+                        log.debug(f"Governance: failed to sign workspace entity {ent_dir.name}", exc_info=True)
     except Exception as e:
         log.error(f"Governance: auto_init or auto-sign failed: {e}", exc_info=True)
     # Ensure ApprovalManager is store-backed (tests may swap db_path between runs)
@@ -560,7 +557,6 @@ async def lifespan(app: FastAPI):
     # Engine agents (AGENT.md): core/engine/agents
     try:
         from pathlib import Path
-        import os
         engine_agents = str(Path(__file__).resolve().parent / "engine" / "agents")
         agents_path = os.environ.get("AIPLAT_ENGINE_AGENTS_PATH") or engine_agents
     except Exception:
@@ -575,7 +571,6 @@ async def lifespan(app: FastAPI):
     # Engine skills (SKILL.md): core/engine/skills
     try:
         from pathlib import Path
-        import os
         engine_skills = str(Path(__file__).resolve().parent / "engine" / "skills")
         fixture_skills = str(Path(__file__).resolve().parent / "tests" / "fixtures" / "skills")
         skills_path_raw = os.environ.get("AIPLAT_ENGINE_SKILLS_PATH") or engine_skills
@@ -1305,25 +1300,25 @@ async def lifespan(app: FastAPI):
         pass
 
     # Cache warming: pre-build knowledge graphs on startup to avoid cold-start latency
-    try:
-        import asyncio as _aw
-        async def _warm_graphs():
-            _aw.create_task(_warm_code_graph())
-            _aw.create_task(_warm_cap_graph())
-        def _warm_code_graph():
-            from core.harness.knowledge.code_graph import build_graph, default_roots, repo_root
-            r = repo_root()
-            roots = [(r / d).resolve() for d in default_roots()]
-            build_graph(r, roots)
-        def _warm_cap_graph():
-            from core.harness.knowledge.capability_graph import build_capability_graph
-            build_capability_graph()
-        # Run in thread pool to avoid blocking startup
-        import asyncio
-        asyncio.create_task(asyncio.to_thread(_warm_code_graph))
-        asyncio.create_task(asyncio.to_thread(_warm_cap_graph))
-    except Exception:
-        pass
+    # ── Graph warmup disabled by default (saves ~100MB startup memory) ──
+    # Both code_graph and capability_graph are lazily loaded on first API request.
+    # Enable with AIPLAT_WARM_GRAPHS=true if startup latency is critical.
+    if os.environ.get("AIPLAT_WARM_GRAPHS", "").lower() in ("true", "1", "yes"):
+        try:
+            import asyncio as _aw
+            def _warm_code_graph():
+                from core.harness.knowledge.code_graph import build_graph, default_roots, repo_root
+                r = repo_root()
+                roots = [(r / d).resolve() for d in default_roots()]
+                build_graph(r, roots)
+            def _warm_cap_graph():
+                from core.harness.knowledge.capability_graph import build_capability_graph
+                build_capability_graph()
+            import asyncio
+            asyncio.create_task(asyncio.to_thread(_warm_code_graph))
+            asyncio.create_task(asyncio.to_thread(_warm_cap_graph))
+        except Exception:
+            pass
 
     # Auto-diagnostic scheduler: runs diagnostics periodically in background
     # Controlled by AIPLAT_ENABLE_AUTO_DIAG (default: true) and AIPLAT_AUTO_DIAG_INTERVAL_SECONDS (default: 300)
@@ -1365,7 +1360,14 @@ async def lifespan(app: FastAPI):
         await GraphSyncHandler.wire()
     except Exception:
         pass
-    
+
+    # Start Loop Scheduler (cron + webhook triggers)
+    try:
+        from core.harness.execution.event_loop import start_loop_scheduler
+        start_loop_scheduler(interval=60)
+    except Exception:
+        pass
+
     yield
 
     # Shutdown background services
@@ -1469,9 +1471,12 @@ from core.api.routers.kb_eval import router as kb_eval_router  # noqa: E402
 from core.api.routers.entropy import router as entropy_router  # noqa: E402
 from core.api.routers.overview import router as overview_router  # noqa: E402
 from core.api.routers.wiki import router as wiki_router  # noqa: E402
+from core.api.routers.models_route import router as models_router  # noqa: E402
+from core.api.routers.diagrams import router as diagrams_router  # noqa: E402
 from core.api.routers.capability import router as capability_router  # noqa: E402
 from core.api.routers.knowledge_graph import router as knowledge_graph_router  # noqa: E402
 from core.api.routers.observation import router as observation_router  # noqa: E402
+from core.api.routers.evaluation import router as evaluation_router  # noqa: E402
 from core.harness.utils.llm_env import get_llm_api_key, get_llm_base_url
 
 api_router.include_router(routing_observability_router)
@@ -1517,6 +1522,8 @@ api_router.include_router(catalog_router)
 api_router.include_router(code_intel_router)
 api_router.include_router(health_router)
 api_router.include_router(root_router)
+from core.api.routers.finetune import router as finetune_router  # noqa: E402
+api_router.include_router(finetune_router)
 api_router.include_router(variables_router)
 api_router.include_router(credentials_router)
 api_router.include_router(workflow_templates_router)
@@ -1524,9 +1531,12 @@ api_router.include_router(kb_eval_router)
 api_router.include_router(entropy_router)
 api_router.include_router(overview_router)
 api_router.include_router(wiki_router)
+api_router.include_router(models_router)
+api_router.include_router(diagrams_router)
 api_router.include_router(capability_router)
 api_router.include_router(knowledge_graph_router)
 api_router.include_router(observation_router)
+api_router.include_router(evaluation_router)
 
 
 def _runtime_env() -> str:
@@ -1880,16 +1890,22 @@ from core.harness.integration import get_harness  # noqa: E402
 from core.api.utils.run_contract import wrap_execution_result_as_run_summary  # noqa: E402
 
 @app.post("/api/core/gateway/execute")
-async def gateway_execute(request: Request, body: Dict[str, Any] = None):
+async def gateway_execute(http_request: Request, body: Dict[str, Any] = None):
     """Execute agent/skill/tool via HTTP — used by platform's conversations/kb modules."""
     if not body:
         raise HTTPException(status_code=400, detail="body_required")
+    # Read cross-service tracing ID from platform proxy headers
+    req_id = (
+        http_request.headers.get("X-AIPLAT-REQUEST-ID")
+        or http_request.headers.get("x-aiplat-request-id")
+    )
     exec_req = ExecutionRequest(
         kind=body.get("kind", "agent"),
         target_id=body.get("target_id", ""),
         payload=body.get("payload", {}),
         user_id=body.get("user_id", "system"),
         session_id=body.get("session_id", "default"),
+        request_id=req_id,
     )
     result = await get_harness().execute(exec_req)
     return wrap_execution_result_as_run_summary(result)

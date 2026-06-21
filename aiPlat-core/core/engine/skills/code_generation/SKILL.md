@@ -1,7 +1,8 @@
 ---
 name: code_generation
 display_name: 代码生成
-description: '根据需求描述生成代码（## FILE: 格式）。触发条件：用户要求写代码、生成项目、实现功能、修复Bug。跳过条件：纯文本生成(text_generation)、SQL查询(sql相关)、配置修改时由对应 Skill 处理。'
+description: '根据需求描述生成代码（## FILE: 格式）。触发条件：用户要求写代码、生成项目、实现功能、修复Bug。跳过条件：纯文本生成(text_generation)、SQL查询(sql相关)、配置修改时由对应
+  Skill 处理。'
 category: generation
 uses_file_output: true
 version: 1.0.0
@@ -54,7 +55,33 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 根据需求生成高质量可执行代码
+keywords:
+  objects:
+  - 代码
+  - 函数
+  - 类
+  - 模块
+  - API
+  - 脚本
+  - 测试
+  actions:
+  - 生成
+  - 编写
+  - 实现
+  - 创建
+  constraints:
+  - 语言
+  - 框架
+  - 代码规范
+trigger_conditions:
+- when: 用户要求生成代码
+  query: 写代码/实现/创建API/开发
+- when: 不应用场景
+  description: 跳过条件：用户仅询问概念、对比工具而非实际写代码时不触发。
+skip_when: 跳过条件：用户仅询问概念、对比工具而非实际写代码时不触发。
 ---
+
+
 
 # 代码生成（Engine）
 

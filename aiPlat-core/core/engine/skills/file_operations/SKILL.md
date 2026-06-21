@@ -51,9 +51,31 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 安全执行原子化文件读写编辑操作
-
 protected: true
+keywords:
+  objects:
+  - 文件
+  - 目录
+  - 代码文件
+  actions:
+  - 读取
+  - 写入
+  - 编辑
+  - 创建
+  - 删除
+  constraints:
+  - 文件路径
+  - 权限
+  - 备份
+trigger_conditions:
+- when: 用户要求文件操作
+  query: 读文件/写文件/编辑
+- when: 不应用场景
+  description: 跳过条件：路径涉及系统文件（/etc/、~/.ssh/）时不触发；建议人工确认。
+skip_when: 跳过条件：路径涉及系统文件（/etc/、~/.ssh/）时不触发；建议人工确认。
 ---
+
+
 
 # 文件操作（Engine）
 

@@ -1,6 +1,8 @@
 # aiPlat vs Hermes vs Claude Code vs OpenClaw：核心实现与使用方式对照（基于代码结构）
 
-> 范围：核心系统（≈Harness/“操作系统”）、Agent、Skill、MCP、Tool、提示词工程、上下文管理  
+> **v2.0 · 2026-06-16 更新**：新增 10 个 aiPlat 独有能力维度（§8），汇总表从 7 维扩展至 17 维。原始版本 2026-04-20。
+
+> 范围：核心系统（≈Harness/“操作系统”）、Agent、Skill、MCP、Tool、提示词工程、上下文管理、知识库、代码智能、诊断、治理、学习教练、Sandbox、图表、记忆、人设、Ponytail
 > 方法：以你当前 aiPlat 代码的“真实调用链/模块边界”为主轴，映射到三套开源标杆系统的对应机制，并给出“实现差异 + 使用差异 + 可吸收点”。
 
 ---
@@ -260,21 +262,162 @@ OpenClaw 的 compaction 在工程细节上非常“硬”：
 
 ---
 
-## 8. 汇总对照表（实现 vs 使用）
+## 8. aiPlat 独有能力维度（其他三系统无对应机制）
 
-| 维度 | aiPlat（你的系统） | Hermes | Claude Code | OpenClaw |
-|---|---|---|---|---|
-| 核心内核形态 | **syscalls + Gate + execution_context（像 OS ABI）** | 单体 Agent Loop（像 VM） | Tool Engine + Permission + Sandbox | Gateway + Pi Runner + Tool Policy/Exec Approvals |
-| Agent | IAgent + 可插拔 loop；Agent 作为平台资源 | AIAgent 主循环；会话即 agent | Main agent + Task subagents | session_key 驱动 run；subagent depth 收紧 |
-| Skill | 平台资产（workspace/engine）+ runtime 注入；可版本/回滚/灰度 | prompt/能力包；偏自进化 | SKILL.md + 插件生态 | prompt section + 安装/状态；偏 portable |
-| Tool | 类接口 + sys_tool_call；可审计（run/syscall） | 函数注册 + toolset | typed tools + 规则权限 | tool assembly + policy filter + guard |
-| MCP | MCPRuntime 注册为 `mcp.<server>.<tool>`；prod 安全默认 | MCP tools 注册进 registry | mcp-servers.json；MCPSearch 动态发现 | MCP 作为 tool sourcing；受 policy 过滤 |
-| 提示词工程 | PromptAssembler + 发布灰度 + learning patch（强治理） | cached prompt layers + ephemeral | 围绕工具/会话/权限+compaction | prompt modes + bootstrap 注入 + normalization |
-| 上下文管理 | contextvars（内核态）+ LoopState（执行态）+ run/syscall 事件化 | session DB + 压缩 + memory | token tracking + auto compaction（~98%） | compaction + transcript repair + guard |
+> 以下 10 个维度是 aiPlat 2026-04 至 2026-06 期间新增的能力，Hermes、Claude Code、OpenClaw 均不具备等价机制。这些能力使 aiPlat 从"Agent Runtime"升级为"可运营的 AI 平台"。
+
+### 8.1 知识库 / Wiki 本体系统
+
+**核心文件**：`core/harness/knowledge/wiki_engine.py`、`wiki_health_rules.py`、`knowledge_abox_builder.py`
+
+- **Wiki 页面管理**：30 页面 + 全文检索 + 双向链接 + 死链/孤立检测
+- **T-Box / A-Box 本体**：774 triples，15 条 Golden 回归，100 分本体健康评分
+- **自动原子化**：LLM 从长文/视频中提取 `KnowledgeAtom`，含 evidence_text / source_doc_id / confidence 溯源
+- **策展管线**：`POST /wiki/curate` 并行策展（asyncio.gather BATCH=5），LLM 裁剪输入到 4000 字符
+- **健康检查**：11 项自动检查（重复/死链/孤立/过短/本体一致性/语义矛盾），前端 `WikiHealthDashboard`
+- **视频入库**：`_load_elements_from_kb()` 从 kb_elements 表直读，绕过 dispatch 表限制
+- **跨模态**：`refersToImage/refersToTable/explains/belongsToSection` 关系抽取
+
+> 对比：Hermes 有 session-based conversation history；Claude Code 有 project-level context files。两者都没有结构化的知识本体系统。
+
+### 8.2 代码智能图谱（Cross-Language Code Graph）
+
+**核心文件**：`core/harness/syscalls/code_intel.py`、`graphs/code_graph.py`
+
+- **规模**：96,433 节点 + 99,000+ 边，覆盖 Python + TypeScript 全栈
+- **跨语言链路**：28 条跨栈边（前端 fetch → 后端路由 → handler）
+- **框架感知路由**：AST 解析 91 条 FastAPI `@router`→handler + React 路径→组件映射
+- **继承关系**：487 条继承边 + `sys_code_intel_subclasses` 工具
+- **领域视图**：13 个业务域标注，`SystemGraph` 五 Tab 前端展示
+- **4 个 syscall 工具**：`sys_code_intel_context`、`sys_code_intel_blast`、`sys_code_intel_callers`、`sys_code_intel_affected`
+- **导出**：JSON 提交导出 + 专用 tour API 端点
+
+> 对比：Claude Code 有 project-level 代码理解但无持久化图谱。Hermes/OpenClaw 无此概念。aiPlat 的图谱是**持久化的、可查询的、跨语言的平台资产**。
+
+### 8.3 统一诊断中心 + 架构守卫
+
+**核心文件**：`scripts/architecture_guard.sh`、`tests/constitution/`、`core/api/routers/diagnostics.py`
+
+- **架构守卫**：15 维检查矩阵（导入方向/职责归属/内核无关/基础设施独立/门面使用/接线完成/前端代理路由/子进程 Python 一致性/跨语言 API 契约/MCP 冒烟测试/模型解析集中化/提示词模板管理/Skill 执行真实性/接线完成度标记/Agent 边界）
+- **诊断检查**：断链检测 + 死代码扫描 + 路由验证 + 耦合指标 + 能力图谱入口重复扫描
+- **性能优化**：共享代码图谱（6→1 次调用）、`_DIAG_CACHE` 加 TTL、quick 模式跳过慢检查
+- **前端**：`/diagnostics` 统一面板 + per-item detail with links + 架构守卫 UI 一键运行
+- **CI 集成**：`.github/workflows/aiplat-contracts-guard.yml`
+
+> 对比：Claude Code 有 permission rules checker；OpenClaw 有 tool policy filter。两者都没有像 aiPlat 这样的**15 维全栈架构守卫 + 诊断闭环**。
+
+### 8.4 治理审批全闭环
+
+**核心文件**：`core/policy/`、`core/harness/gates/`、`core/harness/execution/assess_agent.py`
+
+- **PolicyGate 实时拦截**：`sys_file_write`/`sys_file_edit` 执行前检查目标路径架构边界（非 core 层写 core → DENY）
+- **字段级脱敏**：`field_level_security.py` 单元格级别 redaction
+- **Per-object RBAC**：`object_permission.py`，RBAC→Marking→ObjPerm 三层现算
+- **独立 AssessAgent**：只评分不修改 + 反借口表（7 条 Rationalizations 自动辩驳）
+- **异常处理增强**：LLMResult 结构化返回（truncated / finish_reason / error_type）
+- **安全闭环**：`_guard_messages()` 6 条注入检测正则 + 特殊 token 过滤 + safety_audit 日志
+
+> 对比：Claude Code 有 PermissionClassifier（工具级）；OpenClaw 有 tool policy filter（会话级）。aiPlat 的治理是**三层架构边界 + 字段级 + 实时拦截**，颗粒度远更细。
+
+### 8.5 AI 学习教练 (L1-L6)
+
+**核心文件**：`core/harness/knowledge/learning_coach.py`、`assessment_engine.py`
+
+- **学习域 T-Box**：8 个新类（LearningPath、Chapter、Exercise、Assessment 等）
+- **3 条内置路径**：19 章 + 26 道习题
+- **评估引擎**：MC 自动判分 + LLM 开放评估 + 三层降级（LLM→规则→待重评队列）
+- **双向写入**：mastery→A-Box（知识图谱反馈学习成果）
+- **知识盲区检测**：5 维检测（频率/难度/关联/时间/置信度）+ 注入 Agent prompt
+
+> 对比：Hermes 有 learning loop（agent 自进化）。aiPlat 的学习教练是**面向人类用户的、结构化的教学系统**，与 agent 自学习是完全不同的维度。
+
+### 8.6 Pipeline Sandbox + 部署闸门
+
+**核心文件**：`core/harness/execution/pipeline_sandbox.py`、`pipeline_engine.py`
+
+- **场景合成**：从已有 PipelineStageConfig 批量生成变体场景
+- **10 种突变**：参数扰动 / 顺序交换 / 阶段插入 / 阶段删除 / 超时缩限 / 资源限制 等
+- **批量验证**：sandbox 中并行跑全部变体，输出 pass/fail 矩阵
+- **部署闸门**：`/pipeline/ship` — assess → security → sandbox → perf → notes 五步审批
+- **失败聚类**：三维归因（verifier / causal / mechanism）+ 回放版本化（tbox_hash）
+
+> 对比：Claude Code 有 workflow testing；OpenClaw 有 subagent testing。aiPlat 的 sandbox 是**系统化的流水线压力测试 + 部署前审批闸门**。
+
+### 8.7 图表生成（Draw.io 内置）
+
+**核心文件**：`core/harness/syscalls/drawio_gen.py`
+
+- **零外部依赖**：LLM 直接输出 Draw.io XML，前端 `viewer.diagrams.net` 嵌入渲染
+- **本地存储**：图表落 `~/.aiplat/diagrams/`
+- **前端页面**：管理端 `Diagrams` 页面 + 导航入口
+
+> 对比：没有任何对比系统有内置图表生成。它们需要外部 MCP 或手动操作。
+
+### 8.8 跨会话 / 共享记忆
+
+**核心文件**：`core/harness/memory/cross_session.py`、`shared_memory.py`、`profile_builder.py`
+
+- **跨会话记忆**：自动读取最近 5 个 `SESSION_NOTES.md`，注入当前会话上下文
+- **共享记忆**：跨 Agent 实例 `collective_learnings` 池，SQLite 持久化
+- **L3 事实自动提取**：对话中检测"预算/名字/目标"声明 → 自动更新 User Profile
+- **Profile Builder**：Hermes 风格的 `run_agent.py:2423-2456` 设计原则映射
+
+> 对比：Hermes 有 session DB + memory flush；Claude Code 有 CLAUDE.md（永不压缩）。aiPlat 在此基础上加了**跨会话+共享记忆的层次**。
+
+### 8.9 Skill Chain + 人设系统
+
+**核心文件**：`core/apps/skills/`、`~/.aiplat/skills/`
+
+- **Skill Chain**：`skill_chain: [dep1, dep2]` 声明式依赖，Agent 自动解析
+- **3 个 Agent 人设**：security-auditor / test-engineer / web-perf-auditor，带完整 SOP 和工具集
+- **反借口表**：7 条 Rationalizations 自动辩驳（"这个太复杂了" → "复杂度不是借口"）
+- **渐进式暴露**：skill stubs ~50 tokens/skill，展开后完整注入
+- **后台策展**：`_bg_curator_scan` 每 6 小时扫描新 skills
+- **导入端点**：GET/POST/DELETE on `/skills/install-from-directory` + 前端 ImportBar "本地目录"模式
+
+> 对比：Claude Code 有 SKILL.md + 插件。aiPlat 多了**依赖链、人设系统、反借口表、自动策展**。
+
+### 8.10 Ponytail 模式（Lazy Senior Developer）
+
+**核心文件**：`~/.aiplat/skills/ponytail-lazy/`、环境变量 `PONYTAIL_MODE`
+
+- **6 阶决策阶梯**：off → lite → full → ultra，每阶增加更多自检和审慎
+- **纯 Prompt 工程**：SKILL.md 注入，不修改模型路由
+- **环境变量控制**：`PONYTAIL_MODE` (off/lite/full/ultra)，按任务类型切换
+- **行为验证通过**：off/full/ultra 三种模式行为差异符合预期
+
+> 对比：Claude Code 有 plan mode。aiPlat 的 Ponytail 更细粒度（4 级），且完全通过 prompt 工程实现，不需修改核心代码。
 
 ---
 
-## 9. “吸收点”建议（按你们平台定位）
+## 9. 汇总对照表（更新至 2026-06）
+
+| 维度 | aiPlat（你的系统） | Hermes | Claude Code | OpenClaw |
+|---|---|---|---|---|
+| **基础维度** | | | | |
+| 核心内核形态 | **syscalls + Gate + execution_context（像 OS ABI）** | 单体 Agent Loop（像 VM） | Tool Engine + Permission + Sandbox | Gateway + Pi Runner + Tool Policy/Exec Approvals |
+| Agent | IAgent + 可插拔 loop；Agent 作为平台资源 | AIAgent 主循环；会话即 agent | Main agent + Task subagents | session_key 驱动 run；subagent depth 收紧 |
+| Skill | 平台资产（workspace/engine）+ runtime 注入；可版本/回滚/灰度 + skill_chain + 人设 | prompt/能力包；偏自进化 | SKILL.md + 插件生态 | prompt section + 安装/状态；偏 portable |
+| Tool | 类接口 + sys_tool_call；可审计（run/syscall） | 函数注册 + toolset | typed tools + 规则权限 | tool assembly + policy filter + guard |
+| MCP | MCPRuntime 注册为 `mcp.<server>.<tool>`；prod 安全默认 + EventBus/SSE 测试 | MCP tools 注册进 registry | mcp-servers.json；MCPSearch 动态发现 | MCP 作为 tool sourcing；受 policy 过滤 |
+| 提示词工程 | PromptAssembler + 发布灰度 + learning patch + prompt_loader 模板化（强治理） | cached prompt layers + ephemeral | 围绕工具/会话/权限+compaction | prompt modes + bootstrap 注入 + normalization |
+| 上下文管理 | contextvars（内核态）+ LoopState（执行态）+ run/syscall 事件化 + 跨会话/共享记忆 | session DB + 压缩 + memory | token tracking + auto compaction（~98%） | compaction + transcript repair + guard |
+| **aiPlat 独有维度** | | | | |
+| 知识库/Wiki 本体 | ✅ T-Box/A-Box 本体 + 自动原子化 + 健康检查 + 策展 + 视频入库 + 跨模态 | ⸺ | ⸺ | ⸺ |
+| 代码智能图谱 | ✅ 96K 节点跨语言图谱 + 框架感知路由 + 继承图 + syscall 工具 | ⸺ | ⸺ | ⸺ |
+| 统一诊断中心 | ✅ 15 维架构守卫 + 断链/死代码/路由/耦合检测 + 前端面板 | ⸺ | ⸺ | ⸺ |
+| 治理审批全闭环 | ✅ PolicyGate 实时拦截 + 字段级脱敏 + per-object RBAC + AssessAgent | ⸺ | ⸺ | ⸺ |
+| AI 学习教练 | ✅ L1-L6 学习域 T-Box + 3 条路径 + 评估引擎 + mastery→A-Box | ⸺ | ⸺ | ⸺ |
+| Pipeline Sandbox | ✅ 场景合成 + 10 种突变 + 批量验证 + /pipeline/ship 部署闸门 | ⸺ | ⸺ | ⸺ |
+| 图表生成 | ✅ LLM→Draw.io XML + viewer.diagrams.net 前端渲染（零外部 MCP） | ⸺ | ⸺ | ⸺ |
+| 跨会话/共享记忆 | ✅ SESSION_NOTES + collective learnings + L3 事实自动提取 | ⸺ | ⸺ | ⸺ |
+| Skill 人设系统 | ✅ 3 个人设 + 反借口表 + skill_chain + 后台策展 + 导入端点 | ⸺ | ⸺ | ⸺ |
+| Ponytail 模式 | ✅ 6 阶决策阶梯 + Prompt 工程驱动 + 环境变量控制 | ⸺ | ⸺ | ⸺ |
+
+
+---
+
+## 10. 吸收点建议（按你们平台定位）
 
 1) **从 Claude Code 吸收：MCP 规模化与权限 UX**  
    - 类似 MCPSearch 的“按需注入 tool schemas”，避免你们 MCP server 多时 tool 描述膨胀。  

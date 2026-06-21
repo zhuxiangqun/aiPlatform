@@ -5,7 +5,7 @@ import {
   Activity, BarChart3, Bell, Bot, Box, Brain, ChevronDown, ChevronLeft,
   ChevronRight, Cpu, Database, FileText, FolderOpen, GitBranch, HardDrive, Key,
   LogOut, MessageSquare, Monitor, Network, Package, PenTool, Plug,
-  Rocket, Server, Settings, Shield, ShoppingBag, Sparkles, User, Users, Wrench,
+  Rocket, Server, Settings, Share2, Shield, ShoppingBag, Sparkles, User, Users, Wrench,
   type LucideIcon,
 } from 'lucide-react';
 import { NotificationBellButton, NotificationProvider, ToastProvider } from '../ui';
@@ -28,17 +28,20 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
   { key: '/releases', icon: Rocket, label: '版本管理' },
   { key: '/diagnostics', icon: Activity, label: '诊断中心' },
   { key: '/diagnostics/repairs', icon: Activity, label: '修复中心' },
+  { key: '/diagnostics/eval', icon: BarChart3, label: 'Agent 评估' },
   { key: '/system-graph', icon: Activity, label: '系统图谱' },
   { key: '/onboarding', icon: Settings, label: '初始化向导' },
   { divider: true },
   { group: 'infra', label: '基础设施层', items: [
     { key: '/infra/nodes', icon: Server, label: '节点管理' },
     { key: '/infra/models', icon: Cpu, label: '模型管理' },
+    { key: '/infra/finetune', icon: Wrench, label: '模型微调' },
     { key: '/infra/services', icon: Database, label: '服务管理' },
     { key: '/infra/scheduler', icon: HardDrive, label: '算力调度' },
     { key: '/infra/storage', icon: Database, label: '存储管理' },
     { key: '/infra/network', icon: Network, label: '网络管理' },
     { key: '/infra/monitoring', icon: Monitor, label: '监控告警' },
+    { key: '/infra/llm-stats', icon: Monitor, label: 'LLM 路由监控' },
   ]},
   { divider: true },
   { group: 'core', label: '核心能力层', items: [
@@ -71,6 +74,7 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
   { divider: true },
   { group: 'platform', label: '平台服务层', items: [
     { key: '/platform/kb', icon: Database, label: '知识库管理' },
+    { key: '/infra/ontology', icon: Share2, label: '本体管理' },
     { key: '/platform/gateway', icon: Network, label: 'API网关' },
     { key: '/platform/auth', icon: Shield, label: '认证鉴权' },
     { key: '/platform/tenant', icon: Users, label: '多租户' },
@@ -80,6 +84,7 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
     { key: '/app/channels', icon: MessageSquare, label: '渠道管理' },
     { key: '/app/sessions', icon: MessageSquare, label: '会话管理' },
     { key: '/app/builder', icon: FolderOpen, label: '应用工作台' },
+    { key: '/app/diagrams', icon: PenTool, label: '图表工作室' },
     { key: '/app/apps', icon: Rocket, label: 'Apps' },
   ]},
 ];

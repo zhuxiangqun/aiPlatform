@@ -29,6 +29,7 @@ class DiscoveredAgent:
     config_schema: Dict[str, Any] = field(default_factory=dict)
     examples: List[Dict[str, Any]] = field(default_factory=list)
     handler_path: Optional[str] = None
+    stages: List[Dict[str, Any]] = field(default_factory=list)  # v4.0: pipeline stage definitions
     
     def __post_init__(self):
         if not self.display_name:
@@ -102,6 +103,7 @@ class AGENTMD_PARSER:
                     'pipeline': data.get('pipeline', {}),
                 },
                 examples=data.get('examples', []),
+                stages=data.get('stages') or [],  # v4.0: pipeline stages
             )
         except yaml.YAMLError:
             return None

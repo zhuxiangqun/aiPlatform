@@ -298,10 +298,10 @@ class PostRetrievalGovernor:
         # ── ⑤ Conflict detection ──
         hints.governance_applied.append("conflict_detection")
         try:
-            from core.harness.knowledge.knowledge_abox_builder import build_abox
+            from core.harness.knowledge.knowledge_ontology import get_ontology
             titles = {r.get("title", "") for r in results if r.get("title")}
             if titles:
-                onto = build_abox(collection_id=collection_id)
+                onto = get_ontology()
                 for t in onto.triples:
                     if "contradicts" in str(t.predicate):
                         s = str(t.subject).split("#")[-1] if "#" in str(t.subject) else str(t.subject)

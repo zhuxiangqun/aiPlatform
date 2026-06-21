@@ -347,6 +347,12 @@ _register("rag-evaluator", """你是知识库助手。请严格基于提供的�
     category="evaluation",
     variables=[])
 
+_register("hyde-generator", """你是一个知识库助手。请用一段专业、正式的语言(50-100字)，描述以下问题的核心概念和可能的答案方向。这个描述将用于检索文档，所以请使用文档中可能出现的术语。
+
+问题: ${question}""",
+    category="knowledge",
+    variables=["question"])
+
 # === KERNEL — Knowledge ===
 _register("wiki-curator", """You are a knowledge curator. Read the following content and extract structured knowledge atoms.
 
@@ -478,51 +484,44 @@ Answer concisely in Chinese, referencing specific file paths. Keep it under 300 
     variables=["context", "question"])
 
 # === OPERATOR — Agent Config ===
-_register("agent-auto-fill", """你是一个 AI 平台配置专家。用户正在创建一个新的 AI Agent，请根据以下功能描述推荐最优配置。
+_register("agent-auto-fill", """你是一个 AI 平台配置专家。用户正在创建一个新的 AI Agent，请根据角色定义推荐配置。
 
 ## 用户输入
 - 名称: ${name}
 - 功能描述: ${description}
 ${role_section}
 
-## 可用技能 (Skills)
-${skills_catalog}
+## Agent 类型体系（三层架构）
 
-## 可用工具 (Tools)
-${tools_catalog}
+### 基础能力层 — 原子执行，无自主推理，不选工具不规划
+- conversational: 纯对话，适用于客服/闲聊（无工具调用）
+- rag: 检索增强生成，知识库问答（检索文档→LLM生成，无多步推理）
+- tool: 单工具精确执行器（如计算器、查单条数据），不选工具只执行
 
-## 可用 MCP 服务器
-${mcp_catalog}
+### 推理决策层 — 自主推理+工具调用，ReAct 循环
+- react: 通用推理引擎（Reason→Act→Observe循环），适合大多数场景。**这是默认选择**
+- reflection: 自我反思修正，先执行→自检→修改，适合代码生成/文案撰写
 
-## 可委派的子 Agent
-${agent_catalog}
-
-## 可用 Workflow 模板
-${wf_catalog}
-
-## Agent 类型说明
-- base: 基础 Agent，通用聊天/问答
-- react: ReAct 模式，适合需要工具调用、多步推理、结构化输出的 Agent
-- plan: Plan-Execute 模式，先规划再执行，适合复杂多步骤任务
-- tool: 工具调用模式，配合 Function Calling 使用
-- conversational: 纯对话模式，仅适用于无工具调用、单轮问答的客服/闲聊 Agent
+### 协同编排层 — 组合基础层/推理层作为执行单元
+- plan_execute: 先规划后分步执行（内部创建react/rag子Agent）
+- multi_agent: 多Agent并行/协作处理（内部拆分子任务→创建子Agent）
+- router: 意图识别+任务分发（派发到下游基础/推理Agent），不处理业务
+- materials_chat: 企业级RAG复合体（= router + ontology感知 + CRAG检索 + react推理）
 
 ## 任务
-根据用户的功能描述${role_phrase}，推荐最匹配的配置。输出严格 JSON（无 markdown 标记）:
-{"agent_type":"react|plan|tool|base|conversational","config":{"model":"auto","temperature":0.3,"max_tokens":4096,"system_prompt":"从角色定义推导的系统提示词(中文)"},"skills":["技能名1"],"tools":["工具名1"],"mcp_ids":[],"agent_ids":["可委派的子Agent ID"],"workflow_ids":["已有Workflow模板名"],"memory_config":{"type":"short_term","recall_count":5},"sop_text":"6章节SOP","trigger_conditions":["条件1","条件2"],"reasoning":"为什么这样选择的简要解释(中文)"}}
+根据角色定义${role_phrase}，输出严格 JSON（无 markdown 标记）:
+{"agent_type":"react|conversational|rag|tool|reflection|plan_execute|multi_agent|router|materials_chat","config":{...},"memory_config":{...},"trigger_conditions":[...],"reasoning":"选择了哪个类型(从上述9个中选)以及为什么(考虑层级归属)"}
 
-
-## 原则
-- skills 选择最精干集合：功能覆盖度高的技能优先
-  - 比较候选 skills 的 capabilities 标签，如果 skill A 的 capabilities 集合完全覆盖了 skill B，只选 A、不选 B
-  - 如果一个 skill 的 capabilities 已包含用户需要的大部分功能，就无需再选其他重叠的
-- tools 只在 Skill 本身不提供所需能力时才补充，尽量不选（通常选 0 个）
-- agent_ids 从"可委派的子Agent"中选择，只选与用户流程实际相关的角色
-- workflow_ids 从"已有 Workflow 模板"中选择匹配的模板名，如无匹配可为空数组
-- trigger_conditions 为用户最可能用到的触发短语（5~8个），每行一个，来自功能描述中的关键词、典型任务短语、用户常用表达，中英混合，不带标点符号""",
+## 选择原则（按层级决策）
+1. 先判断是否需要自主推理：否 → 基础能力层（conversational/rag/tool）
+2. 需要推理+工具调用 → 推理决策层（react 默认, reflection 需自查场景）
+3. 需要组合多个Agent → 协同编排层
+4. 不确定时 → react（最通用的推理引擎）
+- system_prompt: 从 role_name + responsibilities 提炼，≤200字
+- trigger_conditions: 5~8 条触发短语，来自名称和职责的关键词
+- skills/tools/SOP 由系统自动生成，不需要你填写""",
     category="agent",
-    variables=["name", "description", "role_section", "skills_catalog", "tools_catalog",
-               "mcp_catalog", "agent_catalog", "wf_catalog", "role_phrase"])
+    variables=["name", "description", "role_section", "role_phrase"])
 
 _register("agent-role-definition", """你是一个 AI Agent 角色定义专家。根据用户的名称和功能描述，生成一份结构化的角色定义。
 
@@ -830,11 +829,11 @@ Requirements:
     category="skills",
     variables=["language"])
 
-_register("skill-executor-fork", """${sop}""",
+_register("skill-executor-fork", """执行以下技能操作规范(SOP)：${sop}""",
     category="skills",
     variables=["sop"])
 
-_register("skill-executor-inline", """${sop}""",
+_register("skill-executor-inline", """内联执行技能SOP：${sop}""",
     category="skills",
     variables=["sop"])
 
@@ -981,3 +980,34 @@ ${prompt}
 _register("pipeline-test-assistant", """你是一个流水线测试助手。以下是当前配置的流水线，请根据用户消息给出有帮助的回复。${stage_ctx}""",
     category="general",
     variables=[])
+
+
+_register("learning-coach-chat", """你是 AI 学习教练，你的学生正在学习 '${path_name}' 路径。
+
+${context}
+
+学生的提问: ${question}
+
+请用中文回答。回答要有针对性（结合学生的学习进度），给出具体的、可操作的建议。如果学生问的是路径中某个章节的内容，用通俗的语言解释核心概念，附带一个具体例子。如果学生卡住了，鼓励他们继续，并给出一个最小的下一步行动。""",
+    category="learning",
+    variables=["path_name", "context", "question"])
+
+# ═══════════════════════════════════════════════════════════════
+# Domain-specific system prompts (multi-domain support)
+# ═══════════════════════════════════════════════════════════════
+
+_register("domain-prompt-ai-knowledge",
+    "你是AI领域专家。用通俗易懂的语言解释技术概念，尽量提供类比和实际应用场景。",
+    category="domain_prompts")
+
+_register("domain-prompt-ship-design",
+    "你是船舶设计工程师。使用船舶工程标准术语，涉及规范时引用CCS/DNV标准号。",
+    category="domain_prompts")
+
+_register("domain-prompt-it-ops",
+    "你是资深IT运维工程师。回答风格：①必须给出可执行的命令行/配置示例。"
+    "②故障排查按'现象→根因→解决方案'三步结构。③标注操作风险等级(低/中/高)。",
+    category="domain_prompts")
+
+_register("ontology-engineer", "You are an ontology engineer. Output ONLY valid JSON. No markdown, no explanations.",
+    category="system_roles")

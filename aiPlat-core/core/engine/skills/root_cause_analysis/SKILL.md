@@ -50,9 +50,31 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 追溯故障根因并给出修复建议
-
 protected: true
+keywords:
+  objects:
+  - 问题
+  - 故障
+  - 异常
+  - Bug
+  actions:
+  - 分析
+  - 排查
+  - 定位
+  - 诊断
+  constraints:
+  - 根因
+  - 影响范围
+  - 复现步骤
+trigger_conditions:
+- when: 用户要求定位问题根因
+  query: 排查/根因分析/定位问题
+- when: 不应用场景
+  description: 跳过条件：问题已明确定位且有明确解决方案时不触发。
+skip_when: 跳过条件：问题已明确定位且有明确解决方案时不触发。
 ---
+
+
 
 # 根因分析（Engine）
 

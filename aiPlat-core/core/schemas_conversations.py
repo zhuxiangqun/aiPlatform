@@ -24,6 +24,7 @@ class ConversationCreateRequest(BaseModel):
     title: Optional[str] = None
     scope: Optional[ConversationScope] = None
     profile: Optional[ConversationProfile] = None
+    agent_type: str = "materials_chat"
 
 
 class ConversationSummary(BaseModel):

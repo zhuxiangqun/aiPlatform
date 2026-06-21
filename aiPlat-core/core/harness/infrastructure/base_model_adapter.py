@@ -43,14 +43,13 @@ _MODEL_TYPE_MAP: Dict[str, str] = {
 def resolve_model_name(capability: str) -> str:
     """Resolve model name for a given capability.
     
-    Resolution chain: env var → infra ModelManager → capability default.
+    Resolution chain: infra ModelManager → env var → capability default.
     """
-    env_var = _MODEL_ENV_MAP.get(capability, "")
-    if env_var:
-        model = os.getenv(env_var, "").strip()
-        if model:
-            return model
-    # Try infra ModelManager
+    # Hash backend bypass: no model needed for embedding
+    if capability == "embedding" and os.getenv("AIPLAT_EMBED_BACKEND", "") == "hash":
+        return "hash_embed"
+
+    # Try infra ModelManager first (single source of truth for model selection)
     try:
         from infra.management.model.manager import ModelManager
         mgr = ModelManager()
@@ -60,6 +59,12 @@ def resolve_model_name(capability: str) -> str:
                 return m.name
     except Exception:
         pass
+
+    env_var = _MODEL_ENV_MAP.get(capability, "")
+    if env_var:
+        model = os.getenv(env_var, "").strip()
+        if model:
+            return model
     return _MODEL_DEFAULTS.get(capability, capability)
 
 

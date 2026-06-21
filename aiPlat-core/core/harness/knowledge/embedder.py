@@ -50,10 +50,16 @@ def cosine_similarity(a: List[float], b: List[float]) -> float:
 # Model resolution delegated to base_model_adapter.resolve_model_name("embedding")
 # which handles: env var → infra ModelManager → default.
 
+_semantic_model_cache: Any = None
+
 def _get_semantic_model() -> Any:
+    global _semantic_model_cache
+    if _semantic_model_cache is not None:
+        return _semantic_model_cache
     try:
         from core.harness.infrastructure.base_model_adapter import create_adapter
-        return create_adapter("embedding")
+        _semantic_model_cache = create_adapter("embedding")
+        return _semantic_model_cache
     except Exception:
         return None
 
@@ -137,7 +143,7 @@ class SemanticEmbedder:
                 from core.harness.infrastructure.base_model_adapter import resolve_model_name
                 model_name = resolve_model_name("embedding")
             except Exception:
-                model_name = "all-MiniLM-L6-v2"
+                model_name = "paraphrase-multilingual-MiniLM-L12-v2"
         self._backend = backend if backend != "hash" else "transform"
         self._model_name = model_name
     

@@ -29,6 +29,7 @@ def is_excluded_from_dead_code(nid: str) -> bool:
         '/core/harness/syscalls/', '/workspace_seeds/',
         '/kb/poc/', '/kb/intelligence/',
         '/infra/utils/', '/infra/management/model/',
+        '/harness/health/', '/knowledge/health_rules/',
     )
     if any(p in nid for p in _EXCLUDED_DIRS):
         return True
@@ -40,6 +41,7 @@ def is_excluded_from_dead_code(nid: str) -> bool:
         'core/schemas_tools.py', 'core/schemas.py',
         '/knowledge/reranker.py', 'infra/management/config.py',
         '/auth/rbac.py', 'management/run.py', 'management/capability_convergence.py',
+        '/health/collector.py', '/health/registry.py',
     )
     if any(nid.endswith(s) for s in _EXCLUDED_SUFFIXES):
         return True

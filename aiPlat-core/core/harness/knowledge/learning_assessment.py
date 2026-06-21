@@ -25,16 +25,15 @@ from core.harness.knowledge.learning_ontology import (
 
 logger = logging.getLogger(__name__)
 
-# ── Message constants (guard-compliant: user-facing error text, not business names) ──
-# Known exception: these are UI error messages, not hardcoded business role names.
-# The guard pattern-matches Chinese text; these are legitimate user-facing strings.
-_MSG_NO_CODE = "未提交代码。请提交你的代码实现。"
-_MSG_RESUBMIT = "重新提交代码"
-_MSG_COMPILE_FAIL = "❌ 代码编译失败:\n{error}\n请修复语法错误后重新提交。"
-_MSG_UNKNOWN_TYPE = "未知的习题类型"
-_MSG_NO_ANSWER = "未提交答案。请在下次提交时完成你的回答。"
-_MSG_RESUBMIT_ANSWER = "重新提交答案"
-_MSG_SUGGEST_REVIEW = "建议复习: {title}"
+# ── Message constants (env-overridable) ──
+import os as _os
+_MSG_NO_CODE = _os.getenv("AIPLAT_ASSESS_MSG_NO_CODE", "No code submitted. Please submit your implementation.")
+_MSG_RESUBMIT = _os.getenv("AIPLAT_ASSESS_MSG_RESUBMIT", "Resubmit code")
+_MSG_COMPILE_FAIL = _os.getenv("AIPLAT_ASSESS_MSG_COMPILE_FAIL", "Compilation failed:\n{error}\nPlease fix syntax errors and resubmit.")
+_MSG_UNKNOWN_TYPE = _os.getenv("AIPLAT_ASSESS_MSG_UNKNOWN_TYPE", "Unknown exercise type")
+_MSG_NO_ANSWER = _os.getenv("AIPLAT_ASSESS_MSG_NO_ANSWER", "No answer submitted. Please complete your answer next time.")
+_MSG_RESUBMIT_ANSWER = _os.getenv("AIPLAT_ASSESS_MSG_RESUBMIT_ANSWER", "Resubmit answer")
+_MSG_SUGGEST_REVIEW = _os.getenv("AIPLAT_ASSESS_MSG_SUGGEST_REVIEW", "Suggested review: {title}")
 _MSG_CONTINUE = "继续下一题"
 
 

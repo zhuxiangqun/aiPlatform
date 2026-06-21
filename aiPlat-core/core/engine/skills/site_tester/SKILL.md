@@ -1,7 +1,8 @@
 ---
 name: site_tester
 display_name: 全站自动化测试
-description: 自动遍历所有页面，发现可交互元素，执行全覆盖功能测试。支持多账号、弹窗递归、截图对比、视频录制。不经过LLM推理，确定性执行。 涉及站点相关操作。 主要进行测试。
+description: 自动遍历所有页面，发现可交互元素，执行全覆盖功能测试。支持多账号、弹窗递归、截图对比、视频录制。不经过LLM推理，确定性执行。 涉及站点相关操作。
+  主要进行测试。
 version: 1.0.0
 category: testing
 status: enabled
@@ -47,9 +48,29 @@ input_schema:
     type: string
     required: true
     description: 测试站点URL
-
 protected: true
+keywords:
+  objects:
+  - 网站
+  - 页面
+  - 功能
+  actions:
+  - 测试
+  - 验证
+  - 检查
+  constraints:
+  - URL
+  - 浏览器
+  - 流程
+trigger_conditions:
+- when: 用户要求测试网站
+  query: 测试网站/全站测试
+- when: 不应用场景
+  description: 跳过条件：目标网站不可达或不支持自动化测试时不触发。
+skip_when: 跳过条件：目标网站不可达或不支持自动化测试时不触发。
 ---
+
+
 
 # 全站自动化测试 (Site Tester)
 

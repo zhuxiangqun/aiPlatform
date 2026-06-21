@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Folder, File, ExternalLink, RefreshCw, Plus, Trash2, ChevronRight, ChevronDown, Play, Square, RotateCcw, Send, CheckSquare, Square as SquareIcon, AlertTriangle } from 'lucide-react';
+import { Folder, File, ExternalLink, RefreshCw, Plus, Trash2, ChevronRight, ChevronDown, Play, Square, RotateCcw, Send, CheckSquare, MinusSquare, Square as SquareIcon, AlertTriangle } from 'lucide-react';
 import { Button, Modal, Input, toast } from '../../../components/ui';
 
 interface VaultEntry {
@@ -162,6 +162,50 @@ const VaultBrowser: React.FC = () => {
     setSelectedFiles(prev => { const n = new Set(prev); if (n.has(path)) n.delete(path); else n.add(path); return n; });
   };
 
+  // Count selectable/selected files in a directory subtree
+  const dirStats = (children: VaultEntry[]): { total: number; selected: number } => {
+    let total = 0, selected = 0;
+    const walk = (items: VaultEntry[]) => {
+      for (const e of items) {
+        if (e.type === 'file' && e.status !== 'wikified') { total++; if (selectedFiles.has(e.path)) selected++; }
+        if (e.children) walk(e.children);
+      }
+    };
+    walk(children);
+    return { total, selected };
+  };
+
+  const toggleSelectDir = (entries: VaultEntry[]) => {
+    setSelectedFiles(prev => {
+      const n = new Set(prev);
+      const walk = (items: VaultEntry[]) => {
+        for (const e of items) {
+          if (e.type === 'file' && e.status !== 'wikified') n.add(e.path);
+          if (e.children) walk(e.children);
+        }
+      };
+      // Check if all non-wikified files already selected → deselect all
+      const allSelected = entries.every(e =>
+        e.type === 'directory' || e.status === 'wikified' || prev.has(e.path)
+      );
+      if (allSelected) {
+        for (const e of entries) {
+          if (e.type === 'file') n.delete(e.path);
+          const unWalk = (items: VaultEntry[]) => {
+            for (const c of items) {
+              if (c.type === 'file') n.delete(c.path);
+              if (c.children) unWalk(c.children);
+            }
+          };
+          if (e.children) unWalk(e.children);
+        }
+      } else {
+        walk(entries);
+      }
+      return n;
+    });
+  };
+
   const openInObsidian = (filePath: string) => {
     const vaultName = encodeURIComponent(selectedVault?.label || '');
     const fileName = encodeURIComponent(filePath.split('/').pop()?.replace('.md', '') || '');
@@ -203,10 +247,8 @@ const VaultBrowser: React.FC = () => {
           setWikiBacklinks(bd.pages || []);
         } catch { setWikiBacklinks([]); }
       }
-      // ⑥ Refresh tree to show updated wikified status
-      if (ok && selectedVault) {
-        fetchTree(selectedVault);
-      }
+      // Tree refresh deferred to batch handler to prevent flickering
+      return { ok, category, schemaValid };
       return { ok, category, schemaValid };
     } catch { return { ok: false }; }
   };
@@ -229,7 +271,7 @@ const VaultBrowser: React.FC = () => {
     const schemaSummary = ok > 0 ? ` · schema: ${schemaOk}/${ok}` : '';
     if (fail === 0) toast.success(`已发送 ${ok} 个文件到 Wiki${catSummary}${schemaSummary}`);
     else toast.warning(`发送完成：${ok} 成功${schemaSummary}, ${fail} 失败`);
-    if (ok > 0 && selectedVault) fetchTree(selectedVault);
+    if (ok > 0 && selectedVault) { fetchTree(selectedVault); setSelectedFiles(new Set()); }
   };
 
   const renderTree = (entries: VaultEntry[], depth: number = 0): React.ReactNode => {
@@ -246,10 +288,33 @@ const VaultBrowser: React.FC = () => {
           >
             {/* ② Checkbox for files */}
             {!isDir && (
-              <button onClick={(ev) => { ev.stopPropagation(); toggleSelectFile(e.path); }}
-                className={`p-0.5 rounded ${isSelected ? 'text-primary' : 'text-gray-600'}`} title="选择">
+              <button onClick={(ev) => {
+                ev.stopPropagation();
+                if (e.status !== 'wikified') toggleSelectFile(e.path);
+              }}
+                className={`p-0.5 rounded ${e.status === 'wikified' ? 'text-gray-700 cursor-not-allowed' : isSelected ? 'text-primary' : 'text-gray-600'}`}
+                title={e.status === 'wikified' ? '已转换，不可选' : '选择'}>
                 {isSelected ? <CheckSquare size={14} /> : <SquareIcon size={14} />}
               </button>
+            )}
+            {/* Directory checkbox — show ✅ if fully converted, else checkbox */}
+            {isDir && e.children && e.children.length > 0 && (
+              (() => {
+                const stats = dirStats(e.children);
+                const allFiles = (e.children || []).length;
+                if (stats.total === 0 && allFiles > 0) {
+                  return <span className="text-[11px] text-green-500/80 px-1" title="全部已转换">✅</span>;
+                }
+                const isAllSel = stats.total > 0 && stats.selected >= stats.total;
+                const isPartial = stats.selected > 0 && stats.selected < stats.total;
+                return (
+                  <button onClick={(ev) => { ev.stopPropagation(); toggleSelectDir(e.children!); }}
+                    className={`p-0.5 rounded ${isAllSel ? 'text-primary' : isPartial ? 'text-amber-400' : 'text-gray-600'} hover:text-primary`}
+                    title={`全选/取消目录 (${stats.selected}/${stats.total})`}>
+                    {isAllSel ? <CheckSquare size={14} /> : isPartial ? <MinusSquare size={14} /> : <SquareIcon size={14} />}
+                  </button>
+                );
+              })()
             )}
             {isDir ? (isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />) : (!isDir && <span className="w-3.5" />)}
             <span className="flex items-center gap-1 flex-1 truncate">

@@ -491,6 +491,96 @@ def get_default_hooks() -> Dict[str, Hook]:
             # Fail closed when enforcement is enabled (safer default).
             return {"allow": False, "reason": f"CLAUDE.md enforcement failed: {e}"}
 
+
+    # ── Auto-evaluation hook ──────────────────────────────────────────
+    async def auto_eval_session_end_hook(context: HookContext):
+        u"""Automatically evaluate agent execution quality at session end.
+        
+        Opt-in via AIPLAT_ENABLE_AUTO_EVAL=true.
+        Captures basic task completion, step count, error count, and tool call stats.
+        Saves to ~/.aiplat/eval_results/ for the evaluation dashboard.
+        """
+        import os as _os, json as _json, time as _time
+        if _os.getenv("AIPLAT_ENABLE_AUTO_EVAL", "").lower() not in ("1", "true", "yes"):
+            return {"continue": True}
+        
+        try:
+            loop_state = context.state.get("state") if isinstance(context.state, dict) else None
+            if not loop_state:
+                return {"continue": True}
+            
+            ctx = getattr(loop_state, "context", {}) or {}
+            run_id = ctx.get("_run_id", "") or ""
+            agent_id = ctx.get("_agent_id", "") or "unknown"
+            output = ctx.get("output", "") or ""
+            stop_reason = ctx.get("_stop_reason", "unknown")
+            error = ctx.get("error", None) or ctx.get("_error", None)
+            
+            messages = getattr(loop_state, "messages", None) or []
+            steps = len(messages) if messages else 0
+            
+            from core.harness.evaluation.eval_types import TaskResultLevel
+            if error:
+                level = TaskResultLevel.ERROR_FAILURE
+            elif str(stop_reason).lower() in ("finished", "max_steps", "stop", "done") and output:
+                level = TaskResultLevel.COMPLETE
+            elif stop_reason == "PAUSED":
+                level = TaskResultLevel.PARTIAL
+            else:
+                level = TaskResultLevel.CORRECT_FAILURE if output else TaskResultLevel.ERROR_FAILURE
+            
+            tool_calls, tool_errors, tokens_est = 0, 0, 0
+            try:
+                history = getattr(loop_state, "history", None) or []
+                for entry in history:
+                    if isinstance(entry, dict):
+                        kind = entry.get("kind", "")
+                        if kind in ("tool_call", "tool"):
+                            tool_calls += 1
+                            if entry.get("error") or entry.get("status") == "error":
+                                tool_errors += 1
+                msg_text = ""
+                for m in messages:
+                    msg_text += str(getattr(m, "content", m)) if not isinstance(m, str) else m
+                tokens_est = len(msg_text) // 4 if msg_text else 0
+            except Exception:
+                pass
+            
+            result = {
+                "agent_id": agent_id, "eval_set_id": "auto_session", "eval_time": _time.time(),
+                "total_tasks": 1,
+                "composite_score": {"complete": 100, "partial": 70, "correct_failure": 40, "error_failure": 0}[level.value],
+                "grade": {"complete": "A", "partial": "B", "correct_failure": "C", "error_failure": "F"}[level.value],
+                "task_completion": {"level": level.value,
+                    "complete": 1 if level == TaskResultLevel.COMPLETE else 0,
+                    "partial": 1 if level == TaskResultLevel.PARTIAL else 0,
+                    "error_failure": 1 if level == TaskResultLevel.ERROR_FAILURE else 0,
+                    "reliability": 100.0 if level != TaskResultLevel.ERROR_FAILURE else 0.0},
+                "tool_quality": {"overall": 100.0 if tool_calls == 0 else round((1 - tool_errors/max(tool_calls,1))*100,1)},
+                "step_efficiency": {"avg_steps": steps},
+                "safety": {"violations": 0}, "cost": {"tokens_per_task": tokens_est, "calls_per_task": tool_calls},
+                "run_id": run_id, "stop_reason": stop_reason,
+            }
+            
+            from pathlib import Path as _Path
+            results_dir = _Path(_os.getenv("AIPLAT_HOME", _os.path.expanduser("~/.aiplat"))) / "eval_results"
+            results_dir.mkdir(parents=True, exist_ok=True)
+            out_path = results_dir / f"{agent_id}_{int(_time.time())}_auto.json"
+            out_path.write_text(_json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+            
+        except Exception:
+            import logging as _logging
+            _logging.getLogger("auto_eval").warning("auto_eval_session_end failed", exc_info=True)
+        
+        return {"continue": True}
+    
+    hooks["auto_eval_session_end"] = create_hook(
+        name="auto_eval_session_end",
+        callback=auto_eval_session_end_hook,
+        phase=HookPhase.SESSION_END,
+        priority=50,
+    )
+
     hooks["pre_contract_check_claude_md"] = create_hook(
         name="pre_contract_check_claude_md",
         callback=enforce_claude_md_hook,

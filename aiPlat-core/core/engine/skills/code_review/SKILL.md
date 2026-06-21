@@ -1,7 +1,8 @@
 ---
 name: code_review
 display_name: 代码审查
-description: 审查代码质量并给出改进建议。触发条件：用户要求审查代码、review PR、检查代码质量。跳过条件：代码生成由 code_generation 处理。
+description: 审查代码质量并给出改进建议。触发条件：用户要求审查代码、review PR、检查代码质量。跳过条件：代码生成由 code_generation
+  处理。
 category: analysis
 version: 1.0.0
 status: enabled
@@ -55,7 +56,31 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 系统性审查代码质量并给出改进建议
+keywords:
+  objects:
+  - 代码
+  - PR
+  - diff
+  - 提交
+  actions:
+  - 审查
+  - review
+  - 检查
+  - 评估
+  constraints:
+  - 安全
+  - 性能
+  - 可读性
+  - 最佳实践
+trigger_conditions:
+- when: 用户要求审查代码
+  query: review/审查/代码质量
+- when: 不应用场景
+  description: 跳过条件：用户仅询问最佳实践而非审查具体代码时不触发。
+skip_when: 跳过条件：用户仅询问最佳实践而非审查具体代码时不触发。
 ---
+
+
 
 # 代码审查（Engine）
 

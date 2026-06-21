@@ -394,9 +394,10 @@ def _scan_agents_dir(agents_root: Path, *, node_prefix: str, nodes: Dict[str, Di
         node_id = f"{node_prefix}:{agent_id}" if node_prefix else f"agent:{agent_id}"
         nodes[node_id] = {
             "id": node_id,
-            "type": "agent",
+            "type": node_prefix if node_prefix else "agent",
             "label": fm.get("name", agent_id),
             "raw_id": agent_id,
+            "scope": "engine" if node_prefix == "agent" else "workspace",
             "agent_type": fm.get("agent_type", fm.get("type", "")),
             "status": fm.get("status", "unknown"),
             "category": fm.get("category", ""),
@@ -480,11 +481,16 @@ def _scan_skills_dir(skills_root: Path, *, node_prefix: str, nodes: Dict[str, Di
         is_nested = depth > 1
 
         node_id = f"{node_prefix}:{skill_id}" if node_prefix else f"skill:{skill_id}"
+        exec_type = fm.get("execution_type", "")
+        has_handler = (skill_dir / "handler.py").exists()
         nodes[node_id] = {
             "id": node_id,
-            "type": "skill",
+            "type": node_prefix if node_prefix else "skill",
             "label": fm.get("name", skill_id),
             "raw_id": skill_id,
+            "scope": "engine" if node_prefix == "skill" else "workspace",
+            "execution_type": exec_type,
+            "has_handler": has_handler,
             "category": fm.get("category", ""),
             "status": fm.get("status", "unknown"),
             "effects": fm.get("effects", []),
@@ -553,6 +559,13 @@ def _scan_skills(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):
     aiplat_home = _os.getenv("AIPLAT_HOME", _os.path.expanduser("~/.aiplat"))
     workspace_root = Path(aiplat_home) / "skills"
     _scan_skills_dir(workspace_root, node_prefix="workspace_skill", nodes=nodes, edges=edges)
+
+    # Mark workspace skills that are mirrors of engine skills
+    eng_labels = {n["label"]: nid for nid, n in nodes.items() if n.get("type") == "skill"}
+    for nid, n in nodes.items():
+        if n.get("type") == "workspace_skill" and n["label"] in eng_labels:
+            n["mirror_of"] = eng_labels[n["label"]]
+            n["is_mirror"] = True
 
 
 def _scan_tools(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):

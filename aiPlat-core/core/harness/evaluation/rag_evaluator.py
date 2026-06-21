@@ -100,16 +100,21 @@ def _get_or_create_local_embeddings() -> Any:
     if _embeddings_cache is not None:
         return _embeddings_cache
     try:
-        from langchain_huggingface import HuggingFaceEmbeddings
-        from ragas.embeddings import LangchainEmbeddingsWrapper
-        _model = HuggingFaceEmbeddings(
-            model_name="BAAI/bge-small-zh-v1.5",
-            model_kwargs={"device": "cpu"},
-            encode_kwargs={"normalize_embeddings": True},
-        )
-        _embeddings_cache = LangchainEmbeddingsWrapper(_model)
+        from core.harness.infrastructure.base_model_adapter import create_adapter
+        _adapter = create_adapter("embedding")
+        _embeddings_cache = _adapter
     except Exception:
-        _embeddings_cache = False
+        try:
+            from langchain_huggingface import HuggingFaceEmbeddings
+            from ragas.embeddings import LangchainEmbeddingsWrapper
+            _model = HuggingFaceEmbeddings(
+                model_name="BAAI/bge-small-zh-v1.5",
+                model_kwargs={"device": "cpu"},
+                encode_kwargs={"normalize_embeddings": True},
+            )
+            _embeddings_cache = LangchainEmbeddingsWrapper(_model)
+        except Exception:
+            _embeddings_cache = False
     return _embeddings_cache if _embeddings_cache is not False else None
 
 

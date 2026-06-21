@@ -52,9 +52,27 @@ input_schema:
   query:
     type: string
     required: true
-
 protected: true
+keywords:
+  objects:
+  - 多个文档
+  - 文档集合
+  actions:
+  - 对比
+  - 比较
+  - 综合查询
+  constraints:
+  - 文档范围
+  - 相关性
+trigger_conditions:
+- when: 用户要求跨文档查询
+  query: 对比/比较/多文档查询
+- when: 不应用场景
+  description: 跳过条件：用户仅查询单一文档时不触发。
+skip_when: 跳过条件：用户仅查询单一文档时不触发。
 ---
+
+
 你是一个多文档知识库查询助手。你的任务是根据用户的问题，从多个指定的知识库文档中检索相关内容，并生成综合性回答。
 
 ## 可用参数

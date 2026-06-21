@@ -1676,7 +1676,7 @@ async def sign_workspace_skill(skill_id: str, request: Dict[str, Any], http_requ
         manifest = {}
         if manifest_path.exists():
             try:
-                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                manifest = json.loads((await _asyncio.to_thread(lambda: manifest_path.read_text(encoding="utf-8"))))
             except Exception:
                 pass
         manifest["signature"] = signature
@@ -2184,7 +2184,7 @@ async def get_workspace_skill_markdown(skill_id: str, rt: RuntimeDep = None):
         if allowed_roots and not any(str(p).startswith(str(r) + "/") or str(p) == str(r) for r in allowed_roots):
             raise HTTPException(status_code=403, detail="SKILL.md path is outside workspace scope")
 
-        text = p.read_text(encoding="utf-8", errors="replace")
+        text = (await _asyncio.to_thread(lambda: p.read_text(encoding="utf-8", errors="replace")))
         if len(text) > 200_000:
             text = text[:200_000] + "\n\n[TRUNCATED]"
         return {"skill_id": skill_id, "path": str(p), "content": text}
@@ -2243,7 +2243,7 @@ async def update_workspace_skill_markdown(skill_id: str, request: Dict[str, Any]
         if allowed_roots and not any(str(p).startswith(str(r) + "/") or str(p) == str(r) for r in allowed_roots):
             raise HTTPException(status_code=403, detail="SKILL.md path is outside workspace scope")
 
-        raw = p.read_text(encoding="utf-8", errors="replace")
+        raw = (await _asyncio.to_thread(lambda: p.read_text(encoding="utf-8", errors="replace")))
         if mode == "replace_all":
             text = str(content)
         else:
@@ -2434,7 +2434,7 @@ async def list_skill_seeds(rt: RuntimeDep = None):
         if not skill_md.exists():
             continue
         try:
-            raw = skill_md.read_text(encoding="utf-8")
+            raw = (await _asyncio.to_thread(lambda: skill_md.read_text(encoding="utf-8")))
             fm = {}
             if raw.startswith("---"):
                 parts = raw.split("---", 2)
@@ -2538,7 +2538,7 @@ async def sign_all_workspace_skills(request: Dict[str, Any], http_request: Reque
             manifest = {}
             if manifest_path.exists():
                 try:
-                    manifest = _json.loads(manifest_path.read_text(encoding="utf-8"))
+                    manifest = _json.loads((await _asyncio.to_thread(lambda: manifest_path.read_text(encoding="utf-8"))))
                 except Exception:
                     pass
             manifest["signature"] = sig

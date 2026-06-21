@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, RotateCw, PlayCircle, PauseCircle, Trash2, Pencil, Zap, Clock, MessageSquare, ShieldCheck, Upload, Key } from 'lucide-react';
+import { Plus, RotateCw, PlayCircle, PauseCircle, Trash2, Pencil, Zap, Clock, MessageSquare, ShieldCheck, Upload, Key, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Table, Select, Button, Modal, toast } from '../../../components/ui';
+import { Table, Select, Button, Modal, toast, Input } from '../../../components/ui';
 import { useWorkspaceAgentStore } from '../../../stores';
 import { workspaceAgentApi, type Agent } from '../../../services';
 import AddAgentModal from '../../../components/workspace/AddAgentModal';
 import EditAgentModal from '../../../components/workspace/EditAgentModal';
-import ExecuteAgentModal from '../../../components/workspace/ExecuteAgentModal';
+import ExecuteAgentModal from '../../../components/ExecuteAgentModal';
 import AgentDetailModal from '../../../components/workspace/AgentDetailModal';
 import AgentVersionsModal from '../../../components/workspace/AgentVersionsModal';
 import AgentHistoryModal from '../../../components/workspace/AgentHistoryModal';
@@ -19,7 +19,6 @@ const WorkspaceAgents: React.FC = () => {
   const { agents, loading, fetchAgents, startAgent, stopAgent, deleteAgent } = useWorkspaceAgentStore();
   const [typeFilter, setTypeFilter] = useState<string | undefined>();
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
-  const [hideProtected, setHideProtected] = useState(true);
   const [seedsModalOpen, setSeedsModalOpen] = useState(false);
   const [seeds, setSeeds] = useState<any[]>([]);
   const [seedsLoading, setSeedsLoading] = useState(false);
@@ -50,6 +49,33 @@ const WorkspaceAgents: React.FC = () => {
   const handleChatOpen = (agent: Agent) => {
     setChatAgent(agent);
     setSelectedAgent(agent);
+  };
+
+  // ── Smart Agent Router ──
+  const [routeInput, setRouteInput] = useState('');
+  const [routeResult, setRouteResult] = useState<{ intent: string; confidence: number; target: string; has_data: boolean } | null>(null);
+  const [routeLoading, setRouteLoading] = useState(false);
+
+  const handleRoute = async () => {
+    if (!routeInput.trim()) return;
+    setRouteLoading(true);
+    setRouteResult(null);
+    try {
+      const res: any = await workspaceAgentApi.classify({ message: routeInput });
+      setRouteResult({ intent: res.intent, confidence: res.confidence, target: res.primary_route?.target || '', has_data: true });
+      // Auto-select matching agent
+      const match = agents.find(a => a.name === res.primary_route?.target || a.display_name === res.primary_route?.target);
+      if (match) {
+        setSelectedAgent(match);
+        setExecuteModalOpen(true);
+        setRouteInput('');
+        toast.success(`已匹配: ${match.name}`);
+      }
+    } catch {
+      toast.error('路由服务不可用');
+    } finally {
+      setRouteLoading(false);
+    }
   };
 
   const handleTestAll = async () => {
@@ -201,7 +227,6 @@ const WorkspaceAgents: React.FC = () => {
   const filteredAgents = agents.filter(a => {
     if (typeFilter && a.agent_type !== typeFilter) return false;
     if (statusFilter && a.status !== statusFilter) return false;
-    if (hideProtected && ((a as any)?.metadata?.protected === true || (a as any)?.protected === true)) return false;
     return true;
   });
 
@@ -351,7 +376,10 @@ const WorkspaceAgents: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-100 tracking-tight">应用库 Agent</h1>
-          <p className="text-sm text-gray-500 mt-1">来自 ~/.aiplat/agents（可编辑、可删除）</p>
+          <p className="text-sm text-gray-500 mt-1">
+            来自 ~/.aiplat/agents（可编辑、可删除）
+            <span className="text-gray-400 ml-2">· {agents.length} 个 agent</span>
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddModalOpen(true)}>创建</Button>
@@ -366,6 +394,29 @@ const WorkspaceAgents: React.FC = () => {
 
       <ImportBar assetType="agents" alsoScan={['skills', 'mcps']} onImported={() => fetchAgents({})} />
 
+      {/* ── Smart Agent Router ── */}
+      <div className="flex items-center gap-3 p-3 bg-dark-card border border-dark-border rounded-lg">
+        <Search className="w-4 h-4 text-gray-500 shrink-0" />
+        <input
+          type="text"
+          value={routeInput}
+          onChange={(e) => setRouteInput(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleRoute()}
+          placeholder="输入需求，自动匹配 Agent（如：设计一个订单系统架构 / 审查代码安全漏洞 / 我是 VIP 订单没收到）"
+          className="flex-1 bg-transparent text-sm text-gray-200 placeholder-gray-500 outline-none"
+        />
+        <Button onClick={handleRoute} loading={routeLoading} disabled={!routeInput.trim()}>
+          🤖 推荐 Agent
+        </Button>
+        {routeResult?.has_data && (
+          <span className={`text-xs px-2 py-0.5 rounded whitespace-nowrap ${
+            routeResult.confidence >= 0.8 ? 'bg-green-900/40 text-green-300' : 'bg-blue-900/40 text-blue-300'
+          }`}>
+            {routeResult.intent} ({Math.round(routeResult.confidence * 100)}%)
+          </span>
+        )}
+      </div>
+
       <div className="flex flex-wrap items-center gap-4">
         <div className="w-44">
           <Select value={typeFilter || ''} onChange={(v: string) => { setTypeFilter(v || undefined); fetchAgents({ agent_type: v || undefined, status: statusFilter }); }} options={typeOptions} />
@@ -373,10 +424,6 @@ const WorkspaceAgents: React.FC = () => {
         <div className="w-44">
           <Select value={statusFilter || ''} onChange={(v: string) => { setStatusFilter(v || undefined); fetchAgents({ agent_type: typeFilter, status: v || undefined }); }} options={statusOptions} />
         </div>
-        <label className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer select-none">
-          <input type="checkbox" checked={hideProtected} onChange={(e) => setHideProtected(e.target.checked)} className="w-3.5 h-3.5" />
-          隐藏受保护
-        </label>
       </div>
 
       <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">

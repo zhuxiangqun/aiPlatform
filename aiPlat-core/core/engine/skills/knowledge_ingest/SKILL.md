@@ -115,9 +115,30 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 将多模态文档结构化为知识库条目
-
 protected: true
+keywords:
+  objects:
+  - 文档
+  - 知识
+  - 内容
+  actions:
+  - 入库
+  - 导入
+  - 录入
+  - 采集
+  constraints:
+  - 格式
+  - 编码
+  - 大小
+trigger_conditions:
+- when: 用户要求导入知识
+  query: 入库/导入/采集文档
+- when: 不应用场景
+  description: 跳过条件：文档格式不支持或已有相同版本时不触发。
+skip_when: 跳过条件：文档格式不支持或已有相同版本时不触发。
 ---
+
+
 
 # 知识库入库（文档）
 

@@ -7,11 +7,27 @@ version: 1.0.0
 status: running
 protected: true
 category: engineering
-tags: [rag, retrieval, generation]
-skills: [knowledge_retrieval, summarization, information_search, doc_query, multi_doc_query]
-tools: [search, sysgraph_search, sysgraph_context]
+tags:
+- rag
+- retrieval
+- generation
+skills:
+- knowledge_retrieval
+- summarization
+- code-hygiene
+- information_search
+- doc_query
+- multi_doc_query
+tools:
+- search
+- sysgraph_search
+- sysgraph_context
 model: deepseek-reasoner
+config:
+  system_prompt: 你是 rag_agent，基于检索增强生成的问答 Agent。引擎内置（engine）：仅核心能力层默认可用。
+  model: deepseek-chat
 ---
+
 
 ## 交接协议 (Handoff)
 

@@ -4,6 +4,12 @@ display_name: 闲聊
 description: 处理日常闲聊和简单问答。触发条件：问候、闲聊、简单常识。跳过条件：涉及代码、数据、专业任务。涉及数据库相关操作。 主要进行审查。
 category: generation
 version: 1.0.0
+triggers:
+- 聊天
+- 对话
+- 问候
+- 沟通
+- 闲聊
 status: enabled
 protected: true
 execution_mode: prompt
@@ -52,7 +58,28 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 提供友好自然的日常对话服务
+keywords:
+  objects:
+  - 闲聊话题
+  - 日常对话
+  - 问候
+  actions:
+  - 聊天
+  - 对话
+  - 回应
+  constraints:
+  - 友好
+  - 简洁
+  - 自然
+trigger_conditions:
+- when: 用户发起闲聊或问候
+  query: 你好/天气/笑话
+- when: 不应用场景
+  description: 跳过条件：用户明确要求执行特定任务（非闲聊）时不触发。
+skip_when: 跳过条件：用户明确要求执行特定任务（非闲聊）时不触发。
 ---
+
+
 
 # 闲聊（Engine）
 

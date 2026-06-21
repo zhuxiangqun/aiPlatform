@@ -1,7 +1,8 @@
 ---
 name: text_generation
 display_name: 文本生成
-description: 根据提示生成各类文本内容。触发条件：用户要求生成文章、文案、摘要、邮件、对话回复等文本内容。跳过条件：涉及代码生成(code_generation)、数据分析(data_analysis)、翻译(translation)时由对应 Skill 处理。
+description: 根据提示生成各类文本内容。触发条件：用户要求生成文章、文案、摘要、邮件、对话回复等文本内容。跳过条件：涉及代码生成(code_generation)、数据分析(data_analysis)、翻译(translation)时由对应
+  Skill 处理。
 category: generation
 version: 1.0.0
 status: enabled
@@ -50,7 +51,32 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 根据要求生成高质量文本
+keywords:
+  objects:
+  - 文章
+  - 文案
+  - 邮件
+  - 报告
+  - 摘要
+  - 对话回复
+  actions:
+  - 生成
+  - 撰写
+  - 写
+  - 创作
+  constraints:
+  - 字数限制
+  - 格式要求
+  - 风格要求
+trigger_conditions:
+- when: 用户要求生成文本内容
+  query: 帮我写/生成/撰写
+- when: 不应用场景
+  description: 跳过条件：涉及代码生成(code_generation)、翻译(translation)时由对应Skill处理。
+skip_when: 跳过条件：涉及代码生成(code_generation)、翻译(translation)时由对应Skill处理。
 ---
+
+
 
 # 文本生成（Engine）
 

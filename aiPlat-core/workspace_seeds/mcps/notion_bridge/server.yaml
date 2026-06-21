@@ -1,0 +1,22 @@
+name: notion_bridge
+enabled: false
+transport: stdio
+command: python3
+args: ["notion_mcp.py"]
+url: null
+auth: null
+allowed_tools: []
+metadata:
+  description: "Notion 知识库桥接 — 通过 Agent 查询和更新 Notion 数据库。配置后可在对话中搜索 Notion 页面、读取数据库内容。"
+  template: "notion_bridge"
+  icon: "notion"
+  install_command: "pip install notion-client"
+  config:
+    NOTION_API_KEY:
+      label: "Notion API Key"
+      type: secret
+      required: true
+    NOTION_DATABASE_ID:
+      label: "Database ID"
+      type: string
+      required: true

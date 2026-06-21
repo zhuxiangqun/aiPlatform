@@ -28,10 +28,11 @@ class EmbeddingProvider:
             self._model_name = model_name
         else:
             try:
-                from core.harness.infrastructure.base_model_adapter import resolve_model_name
+                from core.harness.infrastructure.base_model_adapter import resolve_model_name, _MODEL_DEFAULTS
                 self._model_name = resolve_model_name("embedding")
             except Exception:
-                self._model_name = "all-MiniLM-L6-v2"
+                from core.harness.infrastructure.base_model_adapter import _MODEL_DEFAULTS
+                self._model_name = _MODEL_DEFAULTS.get("embedding", "paraphrase-multilingual-MiniLM-L12-v2")
         self._model: Any = None
         self._cache: Dict[str, List[float]] = {}
         self._cache_size = cache_size

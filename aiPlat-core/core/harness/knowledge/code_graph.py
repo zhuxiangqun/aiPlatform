@@ -24,6 +24,34 @@ _CACHE: Optional[Any] = None
 _CACHE_ROOTS: Optional[str] = None
 _CACHE_LOCK = None
 
+# Common method/function names that are unreliable for cross-language call matching.
+# These names appear in many unrelated files and cause false-positive cross-call edges.
+_COMMON_METHOD_NAMES: Set[str] = {
+    # Python built-in / dict methods
+    "items", "keys", "values", "get", "set", "pop", "update",
+    "clear", "copy", "fromkeys", "setdefault",
+    # SQL / DB methods
+    "execute", "executemany", "fetchone", "fetchall", "commit",
+    "rollback", "close", "connect", "cursor",
+    # Generic verbs (too common cross-domain)
+    "run", "stop", "start", "init", "__init__", "main",
+    "create", "delete", "list", "search", "find", "filter",
+    "read", "write", "open", "save", "load", "dump",
+    # HTTP methods (used by both Python HTTP clients and TS fetch)
+    "get", "post", "put", "patch", "delete", "head", "options",
+    # Async / threading
+    "ensure_future", "create_task", "gather", "wait", "sleep",
+    # Logging
+    "info", "debug", "warning", "error", "critical", "log", "exception",
+    # Serialization
+    "json", "dumps", "loads", "encode", "decode",
+    # Type conversion
+    "int", "str", "float", "bool", "list", "dict", "set", "tuple",
+    "len", "type", "isinstance", "hasattr", "getattr",
+    # Common property-like names
+    "name", "id", "path", "status", "config", "options",
+}
+
 
 @dataclass
 class ScanResult:
@@ -715,8 +743,9 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
 
                 # Save incrementally updated graph
             try:
-                from core.harness.knowledge.code_graph_persist import save_graph
+                from core.harness.knowledge.code_graph_persist import save_graph, clear_cross_edges_cache
                 save_graph(nodes, edges, _repo_root)
+                clear_cross_edges_cache()  # invalidate cross-call edges after file changes
             except Exception:
                 logging.getLogger("code_graph").debug("Graph persistence skipped", exc_info=True)
 
@@ -734,11 +763,19 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
                     fpath = _repo_root / nid
                     if fpath.exists():
                         n["_mtime"] = fpath.stat().st_mtime
-                # Rebuild cross-file call edges (not persisted in old cache)
-                edges = [e for e in edges if e.get("kind", "import") != "calls"]
-                loaded_files = [_repo_root / nid for nid in nodes if (_repo_root / nid).exists()]
-                _resolve_cross_call_edges(nodes, edges, loaded_files, _repo_root)
-                _link_frontend_to_backend(nodes, edges, loaded_files, loaded_files, _repo_root)
+                # Check if cross-call edges already cached in SQLite
+                from core.harness.knowledge.code_graph_persist import cross_edges_cached
+                if not cross_edges_cached():
+                    edges = [e for e in edges if e.get("kind", "import") != "calls"]
+                    loaded_files = [_repo_root / nid for nid in nodes if (_repo_root / nid).exists()]
+                    _resolve_cross_call_edges(nodes, edges, loaded_files, _repo_root)
+                    _link_frontend_to_backend(nodes, edges, loaded_files, loaded_files, _repo_root)
+                    try:
+                        from core.harness.knowledge.code_graph_persist import save_cross_edges, set_cross_edges_cached
+                        save_cross_edges(edges)
+                        set_cross_edges_cached()
+                    except Exception:
+                        pass
                 with _CACHE_LOCK:
                     _CACHE = {"nodes": nodes, "edges": edges, "issues": [], "_ts": _t.time()}
                     _CACHE_ROOTS = ";".join(str(r) for r in roots)
@@ -832,8 +869,12 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
         _CACHE = {"nodes": nodes, "edges": edges, "issues": issues, "_ts": _t.time()}
         _CACHE_ROOTS = roots_key
     try:
-        from core.harness.knowledge.code_graph_persist import save_graph
+        from core.harness.knowledge.code_graph_persist import (
+            save_graph, save_cross_edges, set_cross_edges_cached
+        )
         save_graph(nodes, edges, _repo_root)
+        save_cross_edges(edges)
+        set_cross_edges_cached()
     except Exception:
         pass
     return nodes, edges, issues
@@ -865,7 +906,7 @@ def build_symbol_graph(
     if roots is None:
         roots = [(_repo_root / r).resolve() for r in default_roots()]
     file_nodes, file_edges, _ = build_graph(_repo_root, roots)
-    return _build_symbol_graph(file_nodes, file_edges, _repo_root)
+    return convert_file_graph_to_symbols(file_nodes, file_edges, _repo_root)
 
 
 def count_cycles(nodes: Dict[str, Dict[str, Any]]) -> int:
@@ -1151,7 +1192,7 @@ def _build_contains_edges(
     _Walker().visit(tree)
 
 
-def _build_symbol_graph(
+def convert_file_graph_to_symbols(
     file_nodes: Dict[str, Any],
     file_edges: List[Dict[str, str]],
     repo_root: Path,
@@ -1424,14 +1465,35 @@ def _resolve_cross_call_edges(nodes, edges, files, repo_root):
         if f.suffix.lower() != ".py":
             continue
         rel_from = str(f.relative_to(repo_root))
+        # Determine source layer for cross-language validation
+        from_repo = rel_from.split("/")[0] if "/" in rel_from else ""
         try:
             calls = _extract_calls_ast(f)
             for func_name, line_no in calls[:30]:
+                # Skip common method names that produce false-positive cross-repo matches
+                if func_name in _COMMON_METHOD_NAMES:
+                    continue
+                # Skip short names (< 5 chars) — too likely to collide
+                if len(func_name) < 5:
+                    continue
                 target_files = fn_to_files.get(func_name, [])
                 for tf in target_files[:3]:
-                    if tf != rel_from and tf in nodes:
-                        edges.append({"from": rel_from, "to": tf, "kind": "calls",
-                                      "label": f"{func_name}()", "line": line_no,
-                                      "cross": True})
+                    if tf == rel_from or tf not in nodes:
+                        continue
+                    # Cross-language validation: only link if source and target
+                    # share a layer (same repo prefix) OR there's an import edge.
+                    to_repo = tf.split("/")[0] if "/" in tf else ""
+                    if from_repo != to_repo:
+                        # Cross-repo call — require import edge as corroboration
+                        has_import = any(
+                            e.get("from") == rel_from and e.get("to") == tf
+                            and e.get("kind") in ("import", "api")
+                            for e in edges
+                        )
+                        if not has_import:
+                            continue
+                    edges.append({"from": rel_from, "to": tf, "kind": "calls",
+                                  "label": f"{func_name}()", "line": line_no,
+                                  "cross": True})
         except Exception:
             pass

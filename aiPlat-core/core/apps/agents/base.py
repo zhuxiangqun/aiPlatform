@@ -65,21 +65,13 @@ class BaseAgent(IAgent):
         self._config = config
         self._status = AgentStatus.INITIALIZING
         
-        # Initialize model if not provided
-        if not self._model and config.metadata.get("model"):
-            from ...adapters.llm import create_adapter
+        # Initialize model via infra ModelManager (central resolution)
+        if not self._model and config.model:
             try:
-                from core.harness.utils.model_injection import _log_model_selection
-                _log_model_selection("agent_init", config.model, entry="create_adapter_legacy", source="AgentBase")
+                from core.harness.utils.model_injection import create_selected_adapter
+                self._model = create_selected_adapter(model_name=config.model)
             except Exception:
-                pass  # noqa: model-selection logging is best-effort, must not break agent init
-            provider = config.metadata.get("provider", "openai")
-            self._model = create_adapter(
-                provider=provider,
-                api_key=config.metadata.get("api_key"),
-                model=config.model,
-                base_url=config.metadata.get("base_url"),
-            )
+                pass
         self._status = AgentStatus.READY
 
 
@@ -377,6 +369,20 @@ def create_agent(
         RAGAgent = importlib.import_module(f"{__package__}.rag").RAGAgent
         return RAGAgent(config=config, **kwargs)
     elif resolved_type == "materials_chat":
+        # v4.0: AGENT.md stages-aware routing
+        # If stages[] are defined (in registry metadata), run via PipelineCompiler
+        # Otherwise fall back to hand-crafted Python class (backward compat)
+        try:
+            from .discovery import get_agent_registry
+            reg = get_agent_registry()
+            meta = reg.get_metadata("materials_chat")
+            if meta and meta.stages:
+                from .pipeline_compiler import PipelineCompiler
+                from .pipeline_agent import PipelineAgent
+                compiled = PipelineCompiler.compile(meta.stages)
+                return PipelineAgent(config=config, stages=compiled, **kwargs)
+        except Exception:
+            pass  # fall through to legacy path
         return MaterialsChatAgent(config=config, **kwargs)
     else:
         return BaseAgent(config=config, **kwargs)

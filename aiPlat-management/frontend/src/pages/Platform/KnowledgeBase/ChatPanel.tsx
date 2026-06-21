@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Button, Textarea, toast } from '../../../components/ui';
+import { PipelineTrace } from '../../../components/wiki/PipelineTrace';
 
 interface ChatPanelProps {
   onClose?: () => void;
@@ -13,6 +14,14 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ onClose, wikiTitles, label
   const [sending, setSending] = useState(false);
   const [streamingText, setStreamingText] = useState('');
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [reasoningPaths, setReasoningPaths] = useState<Record<number, any[]>>({});
+  const [expandedPath, setExpandedPath] = useState<number | null>(null);
+  const [retrievalTags, setRetrievalTags] = useState<Record<number, string>>({});
+  const [qualityTags, setQualityTags] = useState<Record<number, string>>({});
+  const [pipelineTraces, setPipelineTraces] = useState<Record<number, any[]>>({});
+  const [domainIds, setDomainIds] = useState<Record<number, string>>({});
+  const [domainNames, setDomainNames] = useState<Record<number, string>>({});
+  const [feedbacks, setFeedbacks] = useState<Record<number, 'like' | 'dislike'>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const titles = wikiTitles || [];
@@ -32,7 +41,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ onClose, wikiTitles, label
       const res = await fetch('/api/platform/conversations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scope, title: titles.length > 0 ? titles[0].slice(0, 30) : 'Wiki知识库' }),
+        body: JSON.stringify({ scope, title: titles.length > 0 ? titles[0].slice(0, 30) : 'Wiki知识库', agent_type: 'materials_chat' }),
       });
       const data = await res.json();
       setSessionId(data.session_id || data.id);
@@ -76,6 +85,25 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ onClose, wikiTitles, label
               if (data.done) {
                 fullAnswer = data.answer || fullAnswer || '(无回复内容)';
                 setStreamingText('');
+                const msgIdx = messages.length + (fullAnswer ? 1 : 0);
+                if (data.reasoning_path) {
+                  setReasoningPaths(prev => ({ ...prev, [msgIdx]: data.reasoning_path }));
+                }
+                // Detect retrieval path for status indicator
+                if (data.strategy || data.mode) {
+                  const tag = data.strategy || data.mode || '';
+                  setRetrievalTags(prev => ({ ...prev, [msgIdx]: tag }));
+                }
+                if (data.quality) {
+                  setQualityTags(prev => ({ ...prev, [msgIdx]: data.quality }));
+                }
+                if (data.pipeline_trace) {
+                  setPipelineTraces(prev => ({ ...prev, [msgIdx]: data.pipeline_trace }));
+                }
+                if (data.domain_id) {
+                  setDomainIds(prev => ({ ...prev, [msgIdx]: data.domain_id }));
+                  setDomainNames(prev => ({ ...prev, [msgIdx]: data.domain_name || data.domain_id }));
+                }
                 if (fullAnswer) setMessages(prev => [...prev, { role: 'assistant', content: fullAnswer }]);
               }
             } catch {}
@@ -117,7 +145,82 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ onClose, wikiTitles, label
             </div>
             <div className={`flex-1 min-w-0 rounded-2xl px-4 py-2.5 ${msg.role === 'assistant' ? 'bg-dark-bg border border-dark-border' : 'bg-primary/10 border border-primary/20'}`}>
               <div className="text-sm text-gray-100 whitespace-pre-wrap break-words leading-relaxed">{String(msg.content || '')}</div>
-            </div>
+              {msg.role === 'assistant' && (
+                <div className="flex items-center gap-2 mt-1.5">
+                  {retrievalTags[idx] && (
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                      retrievalTags[idx] === 'direct_retrieve' ? 'bg-blue-900/30 text-blue-300' :
+                      retrievalTags[idx] === 'hyde' ? 'bg-purple-900/30 text-purple-300' :
+                      'bg-gray-800 text-gray-400'
+                    }`}>
+                      🔍 {retrievalTags[idx]}
+                    </span>
+                  )}
+                  {qualityTags[idx] && qualityTags[idx] !== 'ok' && (
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                      qualityTags[idx] === 'low_evidence' ? 'bg-red-900/30 text-red-300' : 'bg-yellow-900/30 text-yellow-300'
+                    }`}>
+                      ⚠️ {qualityTags[idx]}
+                    </span>
+                  )}
+                  {domainNames[idx] && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-900/25 text-green-300 border border-green-800/40">
+                      📍 {domainNames[idx]}
+                    </span>
+                  )}
+                  {domainIds[idx] && !domainNames[idx] && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-900/25 text-green-300 border border-green-800/40">
+                      📍 {domainIds[idx]}
+                    </span>
+                  )}
+                  {!feedbacks[idx] && (
+                    <>
+                      <button className="text-[10px] px-1 rounded hover:bg-green-900/30"
+                        onClick={() => {
+                          setFeedbacks(f => ({...f, [idx]: 'like'}));
+                          fetch('/api/core/wiki/ontology/engine/feedback', {
+                            method: 'POST', headers: {'Content-Type':'application/json'},
+                            body: JSON.stringify({session_id: sessionId, query: msg.content?.slice(0,100), is_helpful: true, domain_id: domainIds[idx] || 'default'}),
+                          }).catch(()=>{});
+                        }}>👍</button>
+                      <button className="text-[10px] px-1 rounded hover:bg-red-900/30"
+                        onClick={() => {
+                          setFeedbacks(f => ({...f, [idx]: 'dislike'}));
+                          fetch('/api/core/wiki/ontology/engine/feedback', {
+                            method: 'POST', headers: {'Content-Type':'application/json'},
+                            body: JSON.stringify({session_id: sessionId, query: msg.content?.slice(0,100), is_helpful: false, domain_id: domainIds[idx] || 'default'}),
+                          }).catch(()=>{});
+                        }}>👎</button>
+                    </>
+                  )}
+                  {feedbacks[idx] && (
+                    <span className="text-[10px] text-gray-500">{feedbacks[idx] === 'like' ? '👍' : '👎'}</span>
+                  )}
+                  {reasoningPaths[idx]?.length > 0 && (
+                    <button
+                      className="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1"
+                      onClick={() => setExpandedPath(expandedPath === idx ? null : idx)}
+                    >
+                      📊 推理路径 ({reasoningPaths[idx].length}步)
+                      <span className="text-gray-500">{expandedPath === idx ? '▲' : '▼'}</span>
+                    </button>
+                  )}
+                </div>
+              )}
+              {msg.role === 'assistant' && reasoningPaths[idx]?.length > 0 && expandedPath === idx && (
+                    <div className="mt-1 space-y-0.5 pl-1">
+                      {reasoningPaths[idx].map((step: any, si: number) => (
+                        <div key={si} className="flex items-center gap-1 text-[10px]">
+                          <span className="text-gray-500 w-4">{step.step}.</span>
+                          <span className="text-gray-400 truncate max-w-[120px]">{step.from?.slice(0, 30)}</span>
+                          <span className="text-purple-500 mx-0.5">─[{step.via}]→</span>
+                          <span className="text-gray-300 truncate max-w-[120px]">{step.to?.slice(0, 30) || step.relation_label || '-'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <PipelineTrace trace={pipelineTraces[idx]} />
+                </div>
           </div>
         ))}
         {streamingText && (

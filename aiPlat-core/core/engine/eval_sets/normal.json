@@ -1,0 +1,47 @@
+{
+  "set_id": "default/normal",
+  "category": "normal",
+  "description": "信息完整的正常任务 — 验证基本任务完成能力",
+  "created_at": 1781622678.4289181,
+  "tasks": [
+    {
+      "task_id": "normal-001",
+      "agent_id": "programmer_agent",
+      "user_input": "用 Python 写一个函数 calculate_tax(amount, rate)，返回税额。只输出代码，不要解释。",
+      "category": "normal",
+      "expected_tools": [
+        "code_generation",
+        "file_operations"
+      ],
+      "forbidden_tools": [],
+      "expected_steps": [],
+      "success_criteria": {
+        "must_contain": [
+          "def calculate_tax",
+          "return",
+          "amount",
+          "rate"
+        ]
+      },
+      "risk_level": "low"
+    },
+    {
+      "task_id": "normal-002",
+      "agent_id": "qa_agent",
+      "user_input": "检查以下代码，给出 3 条改进建议:\ndef add(a,b):\n  return a+b",
+      "category": "normal",
+      "expected_tools": [
+        "root_cause_analysis"
+      ],
+      "forbidden_tools": [],
+      "expected_steps": [],
+      "success_criteria": {
+        "must_contain": [
+          "建议",
+          "改进"
+        ]
+      },
+      "risk_level": "low"
+    }
+  ]
+}

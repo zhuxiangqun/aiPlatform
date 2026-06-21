@@ -98,8 +98,8 @@ def _build_or_load_symbol_graph(repo_root: Path, force_rebuild: bool = False) ->
             if has_cache():
                 nodes = load_nodes()
                 edges = load_edges()
-                from core.harness.knowledge.code_graph import _build_symbol_graph
-                return _build_symbol_graph(nodes, edges, repo_root)
+                from core.harness.knowledge.code_graph import convert_file_graph_to_symbols
+                return convert_file_graph_to_symbols(nodes, edges, repo_root)
         except Exception:
             pass
 

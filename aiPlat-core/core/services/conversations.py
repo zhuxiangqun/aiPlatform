@@ -58,12 +58,13 @@ class ConversationService:
         scope: Optional[Dict[str, Any]],
         profile: Optional[Dict[str, Any]],
         session_id: Optional[str] = None,
+        agent_type: str = "materials_chat",
     ) -> Dict[str, Any]:
         normalized_scope = normalize_scope(scope)
         rec = await self.store.create_memory_session(
             tenant_id=tenant_id,
             user_id=user_id,
-            agent_type="materials_chat",
+            agent_type=agent_type,
             session_type="conversation",
             metadata=_metadata_with_scope({}, title=title or "资料对话", scope=normalized_scope, profile=profile or {}),
             session_id=session_id,
@@ -119,6 +120,7 @@ class ConversationService:
         title: Optional[str],
         scope: Dict[str, Any],
         profile: Optional[Dict[str, Any]] = None,
+        agent_type: str = "materials_chat",
     ) -> Dict[str, Any]:
         current = await self.get_conversation_session(session_id=session_id)
         current_scope = normalize_scope(current.get("scope") or {})
@@ -129,7 +131,7 @@ class ConversationService:
         await self.store.create_memory_session(
             tenant_id=tenant_id,
             user_id=user_id,
-            agent_type="materials_chat",
+            agent_type=agent_type,
             session_type="conversation",
             metadata=_metadata_with_scope(
                 {

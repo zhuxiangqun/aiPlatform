@@ -1,3 +1,8 @@
 {
-  "version": "1.0.0"
+  "name": "information_search",
+  "type": "engine_skill",
+  "version": "1.0.0",
+  "created_at": "2026-06-21T20:58:52",
+  "auto_generated": true,
+  "signature": "fGYznA9sBPz9yvhka12/F8pdgmGmbrFd96Sv1fU9HscY56Hwfw7XtJL5BOVSYUnm75/cWrUz7NVNClJvvNPFCQ=="
 }

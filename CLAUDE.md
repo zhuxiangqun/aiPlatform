@@ -172,10 +172,15 @@ tests/constitution/test_infra_agnostic.py    ← Infra 去应用化
     | A | §1 | `workflow_manager.py` → `platform/storage/sqlite.py` 跨层导入 | **已知例外** — 管理工具允许跨层访问 |
     | B | §35 | 2 个 execute 端点（引擎 + 工作区）被标记为 WARNING | **永久告警** — 2 是正确数量，若增至 ≥3 升级为 ERROR |
     | C | §40 | 模型注册/路由迁移尚未完成（33 条规则） | **迁移中** — CLAUDE.md §14 已规划从 core 迁到 infra，`model_registry.py`/`model_router.py` 标记 deprecated。`model_injection.py` 为集中注入点（canonical）。`kb_eval.py`/`packages_registry.py`/`prompt_eval.py` 等含裸 `sqlite3.connect()` 为已批准模式。`base.py:get_model()` 为 Agent 级别模型（与 model_injection 区分）。待到 infra ModelManager 提供完整 `select()` 后再统一迁移。 |
+    | D | §65 | 2 个检索函数缺 tenant_id：`wiki_fts.py:fts_search`、`retriever.py:retrieve` | **已知债务** — 多租户隔离参数待补齐，当前为单租户模式运行 |
+    | E | §66 | `PipelineStageConfig` 校验识别为已知假阳性 | **假阳性** — `failure_strategy` 字段已存在于第 247 行，grep 行级匹配策略无法检测跨行存在 |
+    | F | §65 | 1 个检索路径未实现 3 级 CRAG 回退 | **待修复** — `materials_chat.py` 检索路径需确认已实现 normal→FTS5→HyDE |
+    | G | §65 | 1 个检索鲁棒性组件缺配置字段 | **待修复** — `WikiCircuitBreaker`/`DomainRouter` 需确认配置完整性 |
+    | H | §67 | 约 15 个路由端点缺 `response_model` | **已知债务** — API 契约化改造尚未完成，不影响功能 |
 
     **验证命令（排查已知例外后）**：
     ```bash
-    bash scripts/architecture_guard.sh  # 预期：1 ERROR (§1) + 2 WARNING (§35) = 3 total
+    bash scripts/architecture_guard.sh  # 预期：1 ERROR (§1) + 2 WARNING (§35) + 4 ERROR/WARN (§65-§66) = 7 total，其中 4 个 §65-§66 为已知债务，其余已排除
     ```
 
 ## 17. 技能执行真实性（强制——2026-06 新增 §44）

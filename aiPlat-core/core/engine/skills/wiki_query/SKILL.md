@@ -1,7 +1,8 @@
 ---
 name: wiki_query
 display_name: Wiki 查询
-description: 在持久化 Wiki 中搜索知识，沿链接图展开，合成答案。支持输出 Markdown、Mermaid 图表、对比表格。与传统 RAG 不同——知识已由 LLM 编缉过，交叉链接已存在，查询精度远超向量检索。 主要进行查询。
+description: 在持久化 Wiki 中搜索知识，沿链接图展开，合成答案。支持输出 Markdown、Mermaid 图表、对比表格。与传统 RAG 不同——知识已由
+  LLM 编缉过，交叉链接已存在，查询精度远超向量检索。 主要进行查询。
 category: knowledge
 version: 1.0.0
 status: enabled
@@ -61,9 +62,27 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 搜索 Wiki 并合成答案
-
 protected: true
+keywords:
+  objects:
+  - Wiki页面
+  - 知识条目
+  actions:
+  - 查询
+  - 搜索
+  - 浏览
+  constraints:
+  - 分类
+  - 标签
+trigger_conditions:
+- when: 用户要求查询Wiki
+  query: 查Wiki/搜知识库
+- when: 不应用场景
+  description: 跳过条件：用户未指定搜索范围或不使用Wiki相关术语时不触发。
+skip_when: 跳过条件：用户未指定搜索范围或不使用Wiki相关术语时不触发。
 ---
+
+
 
 ## SOP
 

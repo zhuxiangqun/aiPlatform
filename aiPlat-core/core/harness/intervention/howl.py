@@ -186,18 +186,26 @@ class Howl:
 
         # 4. Model unavailable
         if model_status in ("unavailable", "unreachable", "error"):
-            hint = self._HINTS[StallReason.MODEL_UNAVAILABLE][InterventionStrategy.FALLBACK].format(
-                model_error=model_error,
-                fallback_model=fallback_model or "deepseek-chat",
-            )
-            if hint:
-                return InterventionResult(
-                    triggered=True,
-                    stall_reason=StallReason.MODEL_UNAVAILABLE,
-                    strategy=InterventionStrategy.FALLBACK,
-                    hint_message=hint,
-                    details={"model_status": model_status, "model_error": model_error},
+            fallback = fallback_model
+            if not fallback:
+                try:
+                    from core.harness.utils.model_injection import get_default_model
+                    fallback = get_default_model("default")
+                except Exception:
+                    fallback = None  # Cannot resolve — skip fallback hint
+            if fallback:
+                hint = self._HINTS[StallReason.MODEL_UNAVAILABLE][InterventionStrategy.FALLBACK].format(
+                    model_error=model_error,
+                    fallback_model=fallback,
                 )
+                if hint:
+                    return InterventionResult(
+                        triggered=True,
+                        stall_reason=StallReason.MODEL_UNAVAILABLE,
+                        strategy=InterventionStrategy.FALLBACK,
+                        hint_message=hint,
+                        details={"model_status": model_status, "model_error": model_error},
+                    )
 
         return InterventionResult(triggered=False)
 

@@ -1,7 +1,8 @@
 ---
 name: translation
 display_name: 多语言翻译
-description: 多语言翻译，保持术语一致与语气一致。触发条件：用户要求翻译、转换语言、中译英、英译中。跳过条件：纯代码生成或数据分析时由对应 Skill 处理。
+description: 多语言翻译，保持术语一致与语气一致。触发条件：用户要求翻译、转换语言、中译英、英译中。跳过条件：纯代码生成或数据分析时由对应 Skill
+  处理。
 category: transformation
 version: 1.0.0
 status: enabled
@@ -51,7 +52,29 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 在多语言间准确翻译保持术语一致
+keywords:
+  objects:
+  - 文本
+  - 文档
+  - 邮件
+  - 文章
+  actions:
+  - 翻译
+  - 英译中
+  - 中译英
+  constraints:
+  - 源语言
+  - 目标语言
+  - 专业术语
+trigger_conditions:
+- when: 用户要求翻译文本
+  query: 翻译/英译中/中译英
+- when: 不应用场景
+  description: 跳过条件：用户未指定源语言或目标语言时不触发。
+skip_when: 跳过条件：用户未指定源语言或目标语言时不触发。
 ---
+
+
 
 # 多语言翻译（Engine）
 

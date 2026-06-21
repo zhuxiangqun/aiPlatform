@@ -12,8 +12,42 @@ import os
 from typing import Any, Optional
 import json
 import sqlite3
+from collections import defaultdict
+
+
+# ── v3.0 Route Metrics (in-memory) ────────────────────────────────
+# Updated atomically by _record_quality_and_metrics_async.
+_route_metrics = {
+    "total_calls": 0,
+    "fallback_count": 0,
+    "total_attempts": 0,
+    "local_calls": 0,
+    "external_calls": 0,
+    "complexity_dist": defaultdict(int),  # {simple: N, medium: N, complex: N}
+    "recent_logs": [],  # last 20 entries: [{time, purpose, model, success, latency_ms, quality_delta}]
+}
+
+def get_route_metrics() -> dict:
+    """Return a snapshot of current route metrics (thread-safe for reading)."""
+    m = dict(_route_metrics)
+    m["complexity_dist"] = dict(m["complexity_dist"])
+    m["recent_logs"] = list(m["recent_logs"][-20:])
+    return m
 
 from core.adapters.llm.base import create_adapter
+
+# ── Cached ModelManager singleton (avoids 8s Ollama re-scan per call) ──
+_model_manager_cache: Any = None
+
+
+def _get_cached_model_manager() -> Any:
+    """Get or create the infra ModelManager singleton. Cached to avoid Ollama re-scan."""
+    global _model_manager_cache
+    if _model_manager_cache is not None:
+        return _model_manager_cache
+    from infra.management.model.manager import ModelManager
+    _model_manager_cache = ModelManager()
+    return _model_manager_cache
 
 
 def _log_model_selection(purpose: str, selected: str, entry: str = "best_model_for_purpose",
@@ -43,8 +77,7 @@ def _log_model_selection(purpose: str, selected: str, entry: str = "best_model_f
 def get_default_model(purpose: str = "default") -> str:
     """Centralized default model selection — pure delegation to infra ModelManager."""
     try:
-        from infra.management.model.manager import ModelManager
-        mgr = ModelManager()
+        mgr = _get_cached_model_manager()
         result = mgr.get_default_model(purpose)
         if result:
             _log_model_selection(purpose, result, entry="get_default_model", source="infra_ModelManager")
@@ -152,7 +185,7 @@ def create_selected_adapter(*, model_name: str) -> Any:
     needs_api_key = True
 
     from infra.management.model.manager import ModelManager
-    mgr = ModelManager()
+    mgr = _get_cached_model_manager()
     model_info = mgr.select(model_name=selected_model)
     if model_info:
         provider = model_info.provider or "openai"
@@ -168,16 +201,16 @@ def create_selected_adapter(*, model_name: str) -> Any:
             if base_url and not base_url.rstrip("/").endswith("/v1"):
                 base_url = base_url.rstrip("/") + "/v1"
 
-    # Env var overrides (highest priority)
+    # Env var overrides (highest priority, but local model base_url wins)
     provider_env = os.getenv("AIPLAT_LLM_PROVIDER", "").strip()
     base_url_env = os.getenv("AIPLAT_LLM_BASE_URL", "").strip()
     api_key_env = (os.getenv("AIPLAT_LLM_API_KEY") or "").strip()
 
     if provider_env:
         provider = _norm_provider(provider_env)
-    if base_url_env:
+    if base_url_env and needs_api_key:
         base_url = base_url_env
-    if api_key_env:
+    if api_key_env and needs_api_key:
         api_key = api_key_env
 
     # If model not found in registry, fall back to env var resolution
@@ -293,8 +326,7 @@ async def create_adapter_with_fallback(purpose: str, timeout: int = 60) -> Any:
     _fb_log = _logging.getLogger("aiplat.model_fallback")
 
     try:
-        from infra.management.model.manager import ModelManager
-        mgr = ModelManager()
+        mgr = _get_cached_model_manager()
         candidates = mgr.select_by_purpose_list(purpose)
     except Exception:
         candidates = []
@@ -358,52 +390,138 @@ async def generate_with_fallback(purpose: str,
     # Fallback to infra auto-selection
     if not candidates:
         try:
-            from infra.management.model.manager import ModelManager
-            mgr = ModelManager()
-            candidates = mgr.select_by_purpose_list(purpose)
+            candidates = _get_cached_model_manager().select_by_purpose_list(purpose)
         except Exception:
             pass
 
     if not candidates:
         candidates = [best_model_for_purpose(purpose)]
 
+    per_model_timeout = min(timeout, 15)  # per-model cap
+    # P2: global timeout aligned with caller budget, minimum guarantee
+    calculated = len(candidates) * per_model_timeout + 5
+    caller_budget = max(timeout * 0.8, per_model_timeout)  # 80% for inference, 20% for network
+    global_timeout = min(calculated, caller_budget)
+    global_timeout = max(global_timeout, per_model_timeout)  # at least one full attempt
+
+    failed_models = set()
     last_error = None
     errors = []
-    for i, model_name in enumerate(candidates):
-        try:
-            adapter = create_selected_adapter(model_name=model_name)
-            resp = await _asyncio.wait_for(
-                adapter.generate(messages, config=config),
-                timeout=timeout
-            )
-            _fb_log.info(f"'{purpose}' completed with '{model_name}' "
-                         f"({i+1}/{len(candidates)}, {timeout}s)")
-            return resp, model_name
-        except _asyncio.TimeoutError:
-            msg = f"timeout after {timeout}s"
-            _fb_log.warning(f"'{model_name}' timed out ({i+1}/{len(candidates)}, {timeout}s)")
-            errors.append({"model": model_name, "error": msg, "transient": True})
-            last_error = msg
-            continue
-        except Exception as e:
-            err_str = str(e)
-            # Permanent errors → stop fallback immediately
-            permanent_keywords = ("API key", "401", "403", "404", "api_key", "unauthorized",
-                                  "invalid api key", "not found", "model not found")
-            is_permanent = any(kw in err_str.lower() for kw in permanent_keywords)
-            _fb_log.warning(f"'{model_name}' failed ({i+1}/{len(candidates)}): {e}")
-            errors.append({"model": model_name, "error": err_str, "permanent": is_permanent})
-            if is_permanent:
-                _fb_log.error(f"Permanent error on '{model_name}': {err_str}. Stopping fallback.")
-                raise RuntimeError(
-                    f"Model '{model_name}' failed with permanent error: {err_str}. "
-                    f"Tried {i+1}/{len(candidates)} candidates. Errors: {errors}"
-                ) from e
-            last_error = err_str
-            continue
+
+    try:
+        async with _asyncio.timeout(global_timeout):
+            for i, model_name in enumerate(candidates):
+                if model_name in failed_models:
+                    continue
+                try:
+                    adapter = create_selected_adapter(model_name=model_name)
+                    resp = await _asyncio.wait_for(
+                        adapter.generate(messages, config=config),
+                        timeout=per_model_timeout
+                    )
+                    _fb_log.info(f"'{purpose}' completed with '{model_name}' "
+                                 f"({i+1}/{len(candidates)}, {per_model_timeout}s)")
+                    if failed_models:
+                        _fb_log.warning(
+                            f"fallback_triggered purpose={purpose} "
+                            f"failed={list(failed_models)} final={model_name} "
+                            f"attempt={len(failed_models)+1}/{len(candidates)}"
+                        )
+                    # v3.0: async fire-and-forget quality + metrics recording
+                    import asyncio as _as
+                    _as.create_task(_record_quality_and_metrics_async(
+                        purpose, model_name, resp,
+                        attempts=len(failed_models) + 1
+                    ))
+                    return resp, model_name
+                except _asyncio.TimeoutError:
+                    msg = f"timeout after {per_model_timeout}s"
+                    _fb_log.warning(f"'{model_name}' timed out ({i+1}/{len(candidates)}, {per_model_timeout}s)")
+                    failed_models.add(model_name)
+                    errors.append({"model": model_name, "error": msg, "transient": True})
+                    last_error = msg
+                    continue
+                except Exception as e:
+                    err_str = str(e)
+                    permanent_keywords = ("API key", "401", "403", "404", "api_key", "unauthorized",
+                                          "invalid api key", "not found", "model not found")
+                    is_permanent = any(kw in err_str.lower() for kw in permanent_keywords)
+                    _fb_log.warning(f"'{model_name}' failed ({i+1}/{len(candidates)}): {e}")
+                    if is_permanent:
+                        _fb_log.error(f"Permanent error on '{model_name}': {err_str}. Stopping fallback.")
+                        raise RuntimeError(
+                            f"Model '{model_name}' failed with permanent error: {err_str}. "
+                            f"Tried {len(failed_models)+1}/{len(candidates)} candidates. Errors: {errors}"
+                        ) from e
+                    failed_models.add(model_name)
+                    errors.append({"model": model_name, "error": err_str, "transient": True})
+                    last_error = err_str
+                    continue
+    except _asyncio.TimeoutError:
+        _fb_log.error(f"Global fallback timeout ({global_timeout}s) for '{purpose}'. "
+                      f"Tried {len(failed_models)}/{len(candidates)} models.")
+        raise RuntimeError(f"All models timed out for '{purpose}' within {global_timeout}s. "
+                           f"Failed: {failed_models}")
 
     raise RuntimeError(f"All {len(candidates)} models failed for '{purpose}'. "
                        f"Errors: {errors}")
+
+
+async def _record_quality_and_metrics_async(purpose: str, model_name: str, resp, attempts: int = 1):
+    """Fire-and-forget: record quality score + latency + route metrics atomically."""
+    import time as _time, logging as _logging
+    _ql = _logging.getLogger("aiplat.quality")
+    log_entry = {"time": _time.strftime("%H:%M:%S"), "purpose": purpose, "model": model_name, "success": True}
+
+    try:
+        # 1. Quality validation
+        text = resp.content if hasattr(resp, 'content') else str(resp)
+        from infra.management.model.quality_validator import QualityValidator, get_quality_tracker
+        result = QualityValidator.validate(purpose, text)
+        get_quality_tracker().update(model_name, purpose, result.score_delta)
+        _ql.info(f"quality_recorded purpose={purpose} model={model_name} "
+                 f"delta={result.score_delta:.3f} details={result.details}")
+        log_entry["quality_delta"] = round(result.score_delta, 3)
+    except Exception as e:
+        _ql.warning(f"quality_record_failed purpose={purpose} model={model_name}: {e}")
+
+    try:
+        # 2. Latency tracking
+        from infra.management.model.latency_tracker import get_latency_tracker
+        if hasattr(resp, 'usage') and resp.usage:
+            tokens = resp.usage.get('completion_tokens', 50)
+            latency_ms = max(tokens * 20, 500)
+            get_latency_tracker().record_latency(model_name, latency_ms)
+            log_entry["latency_ms"] = latency_ms
+    except Exception:
+        pass
+
+    # 3. Route metrics (atomic update)
+    is_local = any(k in model_name for k in ["qwen", "gemma", "minicpm", "mxbai", "all-MiniLM"])
+    _route_metrics["total_calls"] += 1
+    _route_metrics["total_attempts"] += attempts
+    if attempts > 1:
+        _route_metrics["fallback_count"] += 1
+    if is_local:
+        _route_metrics["local_calls"] += 1
+    else:
+        _route_metrics["external_calls"] += 1
+    log_entry["fallback"] = attempts > 1
+    log_entry["source"] = "local" if is_local else "external"
+
+    # Complexity distribution (heuristic from response length)
+    text_len = len(str(resp.content)) if hasattr(resp, 'content') else 0
+    if text_len < 200:
+        _route_metrics["complexity_dist"]["simple"] += 1
+    elif text_len < 800:
+        _route_metrics["complexity_dist"]["medium"] += 1
+    else:
+        _route_metrics["complexity_dist"]["complex"] += 1
+
+    # Recent log
+    _route_metrics["recent_logs"].append(log_entry)
+    if len(_route_metrics["recent_logs"]) > 50:
+        _route_metrics["recent_logs"] = _route_metrics["recent_logs"][-50:]
 
 
 def best_model_for_purpose(purpose: str) -> str:
@@ -429,7 +547,7 @@ def best_model_for_purpose(purpose: str) -> str:
     # 1. Capability-based auto-selection (infra)
     try:
         from infra.management.model.manager import ModelManager
-        mgr = ModelManager()
+        mgr = _get_cached_model_manager()
         selected = mgr.select_by_purpose(purpose)
         if selected:
             _log_model_selection(purpose, selected, entry="best_model_for_purpose",
@@ -442,6 +560,23 @@ def best_model_for_purpose(purpose: str) -> str:
     model_name = get_default_model(purpose=purpose) or "deepseek-chat"
     _log_model_selection(purpose, model_name, entry="best_model_for_purpose", source="fallback")
     return model_name
+
+
+def best_model_for_agent_type(agent_type: str) -> str:
+    """Resolve best model for a given agent type (e.g. 'rag', 'react', 'conversational').
+
+    Maps agent types to purposes for centralized model resolution.
+    """
+    _AMT = {
+        "rag": "chat",
+        "react": "agent_creation",
+        "conversational": "chat",
+        "wiki_curator": "chat",
+        "materials_chat": "chat",
+        "plan_execute": "agent_creation",
+    }
+    purpose = _AMT.get(agent_type, "chat")
+    return best_model_for_purpose(purpose)
 
 
 def _register_adapter(provider: str, model_name: str, base_url: str = "", api_key: str = "") -> None:

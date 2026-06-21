@@ -10,6 +10,7 @@ interface ChatMessage {
   steps?: number;
   model?: string;
   duration?: number;
+  eval?: { score: number; grade: string; total_tasks: number; has_data: boolean };
 }
 
 interface ChatPanelProps {
@@ -45,6 +46,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ agent, onClose }) => {
         steps: meta?.steps || 0,
         model: meta?.engine || '?',
         duration: res?.duration_ms || 0,
+        eval: res?.eval || undefined,
       };
       setMessages(prev => [...prev, assistantMsg]);
     } catch (e: any) {
@@ -132,6 +134,15 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ agent, onClose }) => {
                 {msg.steps !== undefined && msg.steps > 0 && (
                   <div className="flex items-center gap-2 mt-1 pt-1 border-t border-dark-border/50">
                     <span className="text-[10px] text-gray-500">{msg.steps}步 · {msg.model} · {msg.duration}ms</span>
+                    {msg.eval?.has_data && (
+                      <>
+                        <span className="text-gray-600">|</span>
+                        <span className={`text-[10px] font-semibold ${msg.eval.score >= 90 ? 'text-green-400' : msg.eval.score >= 75 ? 'text-blue-400' : msg.eval.score >= 60 ? 'text-yellow-400' : 'text-red-400'}`}>
+                          📊 {msg.eval.score} {msg.eval.grade}
+                        </span>
+                        <a href={`/diagnostics/eval?agent=${agent?.id || ''}`} className="text-[10px] text-blue-400 hover:underline">详情</a>
+                      </>
+                    )}
                   </div>
                 )}
               </div>

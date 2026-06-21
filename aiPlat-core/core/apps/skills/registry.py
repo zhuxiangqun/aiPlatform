@@ -251,12 +251,15 @@ class SkillRegistry:
                         if output_schema:
                             cfg.metadata["output_schema"] = output_schema
                         if effects:
+                            cfg.effects = effects
                             cfg.metadata["effects"] = effects
+                        cfg.metadata["filesystem"] = {"skill_md": skill_md}
                     self.register(skill)
                 else:
                     config = SkillConfig(
                         name=name,
                         description=description,
+                        effects=effects,
                     metadata={"category": category, "body": body, "version": version,
                               "uses_file_output": uses_file_output,
                               "execution_mode": execution_mode,
@@ -265,11 +268,11 @@ class SkillRegistry:
                               "permissions": permissions,
                               "input_schema": input_schema,
                               "output_schema": output_schema,
-                              "effects": effects,
                               "skill_chain": skill_chain,
                               "skip_conditions": skip_conditions,
                               "triggers": triggers,
-                              "layer_dirs": layer_dirs}
+                              "layer_dirs": layer_dirs,
+                              "filesystem": {"skill_md": skill_md}}
                     )
                     skill = _GenericSkill(config)
                     self.register(skill)

@@ -33,3 +33,22 @@ async def get_trace_by_execution(execution_id: str, rt: RuntimeDep = Depends(get
     trace["end_time"] = datetime.utcfromtimestamp(trace["end_time"]).isoformat() if trace.get("end_time") else None
     return trace
 
+
+@router.get("/executions/{execution_id}/status")
+async def get_execution_status(execution_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
+    """Get agent execution status (for frontend polling in stream mode)."""
+    store = _store(rt)
+    if not store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    record = await store.get_agent_execution(execution_id)
+    if not record:
+        raise HTTPException(status_code=404, detail=f"Execution {execution_id} not found")
+    return {
+        "execution_id": execution_id,
+        "status": record.get("status", "unknown"),
+        "end_time": record.get("end_time"),
+        "duration_ms": record.get("duration_ms"),
+        "output": record.get("output"),
+        "error": record.get("error"),
+    }
+

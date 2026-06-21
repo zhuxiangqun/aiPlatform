@@ -1,3 +1,8 @@
 {
-  "version": "1.0.0"
+  "name": "file_operations",
+  "type": "engine_skill",
+  "version": "1.0.0",
+  "created_at": "2026-06-21T20:58:52",
+  "auto_generated": true,
+  "signature": "4uAkpVRnWnsWPSLfywuij8nTH3ts8treUjjb1OtR+BRLwQyoCjYLTJRVcglgEssjLPSzqmwDVzGOlwyyQbMmDA=="
 }

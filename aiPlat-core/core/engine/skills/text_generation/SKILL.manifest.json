@@ -1,3 +1,8 @@
 {
-  "version": "1.0.0"
+  "name": "text_generation",
+  "type": "engine_skill",
+  "version": "1.0.0",
+  "created_at": "2026-06-21T20:58:52",
+  "auto_generated": true,
+  "signature": "pNllvEY/JgwUdBecRLB14xchQEzCihK8w+G1yie/U9PF7LWubvbOUtgwvB4gLX5clrDgNsOQF62OnvwweK/mCQ=="
 }

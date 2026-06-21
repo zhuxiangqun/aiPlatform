@@ -31,6 +31,10 @@ FRONTMATTER_FIELDS = {
     "contradictions": [], "source_articles": [], "last_updated": "",
     "summary": "", "version": "1", "stale_references": [], "images": [],
     "status": "draft", "marking": "public",
+    # K4: temporal validity
+    "effective_date": "", "expiry_date": "",
+    # K4: organizational ownership
+    "department": "", "owner": "",
 }
 
 def _wiki_root(collection_id: str = "default") -> Path:
@@ -175,6 +179,9 @@ FRONTMATTER_FIELDS = {
     "images": [],
     "last_updated": "",
     "summary": "",
+    # K4: temporal validity + org ownership
+    "effective_date": "", "expiry_date": "",
+    "department": "", "owner": "",
 }
 
 
@@ -237,8 +244,16 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
                version: str = "1", summary: str = "", status: str = "",
                marking: str = "", collection_id: str = "default") -> str:
     """Create or update a wiki page. Returns the file path."""
+    import re as _re
+
     _ensure_dirs(collection_id)
     root = _wiki_root(collection_id)
+
+    # ── Sanitize title: strip HTML comments and metadata artifacts ──
+    title = _re.sub(r'<!--.*?-->', '', title).strip()
+    title = _re.sub(r'[_\\s]+$', '', title).strip()
+    if not title:
+        title = "unnamed_page"
 
     # ── Schema validation against T-Box ──
     import os as _os
@@ -315,6 +330,13 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
             (existing.get("stale_references") or [])
         version = version or existing.get("version", "1")
         summary = summary or existing.get("summary", "")
+        # Auto-generate summary from body if still empty
+        if not summary and body:
+            import re as _re
+            clean = _re.sub(r'[#*`>\[\]!|~]', '', body[:500])
+            clean = _re.sub(r'https?://\S+', '', clean)
+            clean = _re.sub(r'\s+', ' ', clean).strip()
+            summary = clean[:200]
         # status: explicit pass takes priority; None = keep existing; default = draft
         if not status:
             status = existing.get("status") or "draft"
@@ -360,9 +382,33 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
         enriched_body = body + img_section
 
     content = "---\n" + "\n".join(fm_lines) + "\n---\n\n" + enriched_body
-    p = root / category / f"{name}.md"
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(content, encoding="utf-8")
+
+    # ── Acquire write lock for concurrent-safe disk writes ──
+    import sqlite3 as _sqlite3
+    _lock_db = str(root / ".wiki_write_lock.db")
+    _lock_conn = _sqlite3.connect(_lock_db, timeout=5.0)
+    _lock_conn.execute("CREATE TABLE IF NOT EXISTS lock (k TEXT PRIMARY KEY)")
+    try:
+        _lock_conn.execute("BEGIN IMMEDIATE")
+
+        p = root / category / f"{name}.md"
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(content, encoding="utf-8")
+
+        # ── Remove old file if category changed (prevent duplicates) ──
+        if existing:
+            old_cat = existing.get("category", "")
+            if old_cat and old_cat != category:
+                old_p = root / old_cat / f"{name}.md"
+                if old_p.exists() and old_p != p:
+                    old_p.unlink()
+
+        _lock_conn.commit()
+    except Exception:
+        _lock_conn.rollback()
+        raise
+    finally:
+        _lock_conn.close()
 
     # Update index
     _update_index(title, category, tags or [], related or [], collection_id=collection_id)
@@ -431,6 +477,7 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
         invalidate_abox_cache(collection_id)
         from core.harness.knowledge.knowledge_growth import take_growth_snapshot
         take_growth_snapshot(collection_id)
+        invalidate_graph_cache(collection_id)
     except Exception:
         pass
 
@@ -503,7 +550,90 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
     except Exception:
         pass
 
+    # ── Validate source_articles: prune stale kb: references ──
+    if source_articles:
+        try:
+            _reconcile_source_articles(title, source_articles, collection_id)
+        except Exception:
+            pass
+
     return str(p)
+
+
+def _reconcile_source_articles(title: str, sources: list, collection_id: str = "default") -> None:
+    """Validate source_articles against kb_elements; prune invalid kb: IDs.
+    
+    Only validates kb: prefixed references. URL/DOI/user-entered refs preserved as-is.
+    Handles kb:doc_123#section-4 anchor format by stripping #fragment before lookup.
+    """
+    import sqlite3
+    valid = []
+    changed = False
+    kb_ids = []
+    kb_refs = []
+    for src in (sources or []):
+        if str(src).startswith("kb:"):
+            raw = str(src)[3:]
+            doc_id = raw.split("#")[0]  # strip anchor
+            kb_ids.append(doc_id)
+            kb_refs.append(src)
+        else:
+            valid.append(src)  # URL/DOI/user-entered preserved
+
+    if not kb_ids:
+        return  # no kb refs to validate
+
+    # Batch-check against kb_elements table
+    try:
+        from pathlib import Path
+        import os as _os
+        kb_db = Path(_os.getenv("AIPLAT_HOME", Path.home() / ".aiplat")) / "kb" / "tenants" / collection_id / "kb.sqlite3"
+        if kb_db.exists():
+            conn = sqlite3.connect(str(kb_db))
+            placeholders = ",".join("?" * len(kb_ids))
+            rows = conn.execute(
+                f"SELECT doc_id FROM kb_documents WHERE doc_id IN ({placeholders})",
+                kb_ids,
+            ).fetchall()
+            existing = {r[0] for r in rows}
+            conn.close()
+            for src, doc_id in zip(kb_refs, kb_ids):
+                if doc_id in existing:
+                    valid.append(src)
+                else:
+                    _logger = logging.getLogger("wiki_engine")
+                    _logger.warning(f"Wiki '{title}': stale source_article '{src}' removed (doc not found)")
+                    changed = True
+        else:
+            return  # no KB database, cannot validate
+    except Exception:
+        return  # validation failure is non-blocking
+
+    if changed:
+        # Update page frontmatter with corrected source_articles
+        _update_page_source_articles(title, valid, collection_id)
+
+
+def _update_page_source_articles(title: str, sources: list, collection_id: str = "default") -> None:
+    """Update a page's source_articles field without rewriting the body."""
+    import re
+    existing = read_page(title, collection_id=collection_id)
+    if not existing:
+        return
+    # Rewrite with corrected frontmatter
+    write_page(
+        title=title,
+        body=existing.get("body", ""),
+        category=existing.get("category", "entities"),
+        tags=list(existing.get("tags", []) or []),
+        related=list(existing.get("related", []) or []),
+        source_articles=sources,
+        collection_id=collection_id,
+        version=existing.get("version"),
+        summary=existing.get("summary"),
+        status=existing.get("status"),
+        marking=existing.get("marking"),
+    )
 
 
 def _changelog_path(collection_id: str = "default") -> Path:
@@ -872,6 +1002,7 @@ def delete_page(title: str, collection_id: str = "default") -> bool:
         invalidate_abox_cache(collection_id)
         from core.harness.knowledge.knowledge_growth import take_growth_snapshot
         take_growth_snapshot(collection_id)
+        invalidate_graph_cache(collection_id)
     except Exception:
         pass
 
@@ -1178,12 +1309,24 @@ def _execute_contradict(prop, from_title, to_title) -> Dict[str, Any]:
 # ── Search ─────────────────────────────────────────────────────
 
 def search_pages(query: str = "", *, tags: List[str] = None, category: str = "",
-                  limit: int = 20, collection_id: str = "default") -> List[Dict[str, Any]]:
-    """Search wiki pages by title, tags, and body content."""
+                   limit: int = 20, collection_id: str = "default",
+                   department: str = "", effective_after: str = "",
+                   expiry_before: str = "") -> List[Dict[str, Any]]:
+    """Search wiki pages by title, tags, body, with K4 metadata filters.
+
+    K4 filters:
+      department: filter by owning department
+      effective_after: only pages effective on or after this date (ISO)
+      expiry_before: only pages expiring before this date (ISO)
+    """
     _ensure_dirs(collection_id)
     root = _wiki_root(collection_id)
     results: List[Dict[str, Any]] = []
     query_lower = query.lower() if query else ""
+
+    # K3: Synonym expansion — search with canonical terms too
+    from core.harness.knowledge.knowledge_ontology import expand_query_with_synonyms
+    query_variants = expand_query_with_synonyms(query) if query else [query]
 
     for cat_dir in [d for d in root.iterdir() if d.is_dir() and d.name != "__pycache__"]:
         if category and cat_dir.name != category:
@@ -1198,12 +1341,32 @@ def search_pages(query: str = "", *, tags: List[str] = None, category: str = "",
                 if not set(tags).intersection(set(page.get("tags", []))):
                     continue
 
-            # Filter by query
-            if query_lower:
-                title_match = query_lower in page["title"].lower()
-                body_match = query_lower in page.get("body", "").lower()[:2000]
-                tag_match = any(query_lower in t.lower() for t in page.get("tags", []))
-                if not (title_match or body_match or tag_match):
+            # Filter by query (with K3 synonym expansion)
+            if query_variants:
+                matched = False
+                for qv in query_variants:
+                    qv_lower = qv.lower()
+                    if (qv_lower in page["title"].lower()
+                        or qv_lower in page.get("body", "").lower()[:2000]
+                        or any(qv_lower in t.lower() for t in page.get("tags", []))):
+                        matched = True
+                        break
+                if not matched:
+                    continue
+
+            # K4: department filter
+            if department:
+                page_dept = str(page.get("department", "") or "").lower()
+                if department.lower() not in page_dept:
+                    continue
+            # K4: date range filter
+            if effective_after:
+                eff = str(page.get("effective_date", "") or "")
+                if eff and eff < effective_after:
+                    continue
+            if expiry_before:
+                exp = str(page.get("expiry_date", "") or "")
+                if exp and exp > expiry_before:
                     continue
 
             results.append({
@@ -1268,7 +1431,77 @@ def list_all_pages(*, collection_id: str = "default") -> List[Dict[str, Any]]:
 # ── Graph export (ECharts force-layout) ──────────────────────────
 
 def build_graph(*, category: str = "", keyword: str = "", source: str = "", max_nodes: int = 300, collection_id: str = "default") -> Dict[str, Any]:
-    u"""Build node/edge graph for ECharts force-layout visualization."""
+    u"""Build node/edge graph for ECharts force-layout visualization (cached)."""
+    cache_key = f"{category}|{keyword}|{source}|{max_nodes}|{collection_id}"
+    cached = _read_graph_cache(cache_key)
+    if cached:
+        return cached
+
+    result = _build_graph_raw(category=category, keyword=keyword, source=source,
+                               max_nodes=max_nodes, collection_id=collection_id)
+    _write_graph_cache(cache_key, result)
+    return result
+
+
+def invalidate_graph_cache(collection_id: str = "default") -> None:
+    u"""Invalidate all graph caches (call after write_page/delete_page)."""
+    db_path = _graph_cache_db()
+    if os.path.exists(db_path):
+        try:
+            import sqlite3
+            conn = sqlite3.connect(db_path)
+            conn.execute("DELETE FROM graph_cache")
+            conn.commit()
+            conn.close()
+        except Exception:
+            pass
+
+
+def _graph_cache_db() -> str:
+    root = _wiki_root("default").parent
+    return os.path.join(str(root), "graph_cache.db")
+
+
+def _read_graph_cache(cache_key: str) -> Optional[Dict[str, Any]]:
+    import sqlite3, json as _json, time as _time
+    db_path = _graph_cache_db()
+    if not os.path.exists(db_path):
+        return None
+    try:
+        conn = sqlite3.connect(db_path)
+        row = conn.execute(
+            "SELECT result_json, updated_at FROM graph_cache WHERE cache_key=?",
+            (cache_key,),
+        ).fetchone()
+        conn.close()
+        if row and _time.time() - row[1] < 120:
+            return _json.loads(row[0])
+    except Exception:
+        pass
+    return None
+
+
+def _write_graph_cache(cache_key: str, result: Dict[str, Any]) -> None:
+    import sqlite3, json as _json, time as _time
+    db_path = _graph_cache_db()
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    try:
+        conn = sqlite3.connect(db_path)
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS graph_cache (cache_key TEXT PRIMARY KEY, result_json TEXT, updated_at REAL)"
+        )
+        conn.execute(
+            "INSERT OR REPLACE INTO graph_cache (cache_key, result_json, updated_at) VALUES (?,?,?)",
+            (cache_key, _json.dumps(result, ensure_ascii=False), _time.time()),
+        )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
+
+def _build_graph_raw(*, category: str = "", keyword: str = "", source: str = "", max_nodes: int = 300, collection_id: str = "default") -> Dict[str, Any]:
+    u"""Internal: raw graph builder (no cache)."""
     _ensure_dirs(collection_id)
     root = _wiki_root(collection_id)
     all_pages: Dict[str, Dict[str, Any]] = {}
@@ -1465,7 +1698,9 @@ def detect_duplicate_pages(threshold: float = 0.90, collection_id: str = "defaul
     except Exception:
         pass
 
-    # ── L3: Structural duplicates (same category + shared >= 2 related pages) ──
+    # ── L3: Structural duplicates (same category + shared >= 5 related pages + content similarity gate) ──
+    # Build a title→index map for vector lookup (reuse L1 vecs)
+    title_index: Dict[str, int] = {all_pages[k]["title"]: k for k in range(len(all_pages))}
     for i in range(len(all_pages)):
         for j in range(i + 1, len(all_pages)):
             a, b = all_pages[i], all_pages[j]
@@ -1474,17 +1709,29 @@ def detect_duplicate_pages(threshold: float = 0.90, collection_id: str = "defaul
             related_a = a.get("related") or []
             related_b = b.get("related") or []
             shared = set(related_a) & set(related_b) & titles_set
-            l3_min_shared = max(2, int((1.0 - threshold) * 30))
-            if len(shared) >= l3_min_shared:
-                pair = tuple(sorted([a["title"], b["title"]]))
-                if pair not in seen_pairs:
-                    seen_pairs.add(pair)
-                    dupes.append({
-                        "page_a": a["title"], "page_b": b["title"],
-                        "similarity": round(len(shared) / max(len(set(related_a) | set(related_b)), 1), 3),
-                        "layer": "L3_structural",
-                        "suggestion": f"共享 {len(shared)} 个相关页面（{', '.join(list(shared)[:3])}），可能覆盖同一子领域",
-                    })
+            # Require at least 5 shared links OR 50% Jaccard overlap (whichever is stricter)
+            union_size = max(len(set(related_a) | set(related_b)), 1)
+            jaccard = len(shared) / union_size
+            if len(shared) < 5 or jaccard < 0.5:
+                continue
+            pair = tuple(sorted([a["title"], b["title"]]))
+            if pair in seen_pairs:
+                continue
+            # Cross-check with L1 content similarity (reuse pre-computed vectors)
+            try:
+                vi, vj = vecs[i], vecs[j]
+                if vi is not None and vj is not None:
+                    content_sim = cosine_similarity(vi, vj)
+                    if content_sim < 0.70:
+                        continue  # Structural overlap but content differs → not duplicate
+            except Exception:
+                pass
+            seen_pairs.add(pair)
+            dupes.append({
+                "page_a": a["title"], "page_b": b["title"],
+                "similarity": round(jaccard, 3), "layer": "L3_structural",
+                "suggestion": f"共享 {len(shared)} 个相关页面（{', '.join(list(shared)[:3])}），可能覆盖同一子领域",
+            })
 
     # ── L4: Evidence duplicates (same source + overlapping evidence) ──
     evidence_groups: Dict[str, List[Dict[str, Any]]] = {}
@@ -1545,10 +1792,10 @@ async def llm_curate_page(title: str, body: str, *, existing_titles: List[str] =
     # Build prompt for LLM — knowledge atom extraction
     existing_list = "\n".join(f"- {t}" for t in existing_titles[:80]) if existing_titles else "(none)"
     from core.harness.utils.prompt_loader import _async_prompt_resolve
-    prompt_content = f"""=== CONTENT (first 8000 chars) ===
+    prompt_content = f"""=== CONTENT (first 4000 chars) ===
 Title: {title}
 Source: {source_doc_id or 'unknown'}
-{body[:8000]}
+{body[:4000]}
 
 === EXISTING WIKI PAGES ===
 {existing_list}
@@ -2303,6 +2550,140 @@ def backfill_evidence_batch_sync(collection_id: str = "default",
         result["failures_file"] = fail_path
 
     return result
+
+
+def _sync_synthesis_pages(updated_title: str, *, collection_id: str = "default", domain_id: str = "ai-knowledge") -> int:
+    """When a source page is updated, find synthesis pages that reference it and create review entries.
+
+    Synthesis pages have frontmatter.source_instances listing their source entities.
+    Returns count of review entries created.
+    """
+    try:
+        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.harness.ontology_engine.engine import _persist_reviews
+        import json as _json
+        from pathlib import Path as _P
+        import os as _os
+
+        # Find all synthesis pages that list this title as a source
+        all_pages = search_pages("", category="synthesis", limit=500, collection_id=collection_id)
+        affected = []
+        for p in all_pages:
+            content = read_page(p["title"], category=p.get("category", "synthesis"), collection_id=collection_id)
+            if not content:
+                continue
+            source_instances = content.get("source_instances", [])
+            if updated_title in source_instances:
+                stype = content.get("synthesis_type", "synthesis")
+                affected.append({
+                    "from_instance": updated_title,
+                    "from_class": "WikiPage",
+                    "to_instance": p["title"],
+                    "to_class": stype,
+                    "reason": f"源实例已更新，合成{stype}结论需复审",
+                    "transition": "synthesis_version_sync",
+                })
+        if affected:
+            _persist_reviews(domain_id, affected)
+        return len(affected)
+    except Exception:
+        return 0
+
+
+def recommend_knowledge(
+    department: str = "",
+    recent_queries: list = None,
+    *,
+    domain_id: str = "ai-knowledge",
+    limit: int = 5,
+    collection_id: str = "default",
+) -> List[Dict[str, Any]]:
+    """L5 active knowledge recommendation engine.
+
+    Recommends knowledge based on:
+      a) Recently updated pages in the user's department
+      b) High-velocity entities (most state changes recently)
+      c) Knowledge gaps that match the user's context
+      d) Pending review items
+
+    Returns ranked list of recommendations with reason and priority.
+    """
+    recommendations = []
+
+    # a) Department-specific recent pages
+    if department:
+        recent_pages = search_pages("", department=department, limit=limit, collection_id=collection_id)
+        for p in recent_pages:
+            recommendations.append({
+                "title": p.get("title", ""),
+                "reason": f"部门 '{department}' 相关页面",
+                "priority": "medium",
+                "source": "department_match",
+            })
+
+    # b) High-velocity entities from state history
+    try:
+        from core.harness.ontology_engine.state_history import get_entity_window_stats
+        stats = get_entity_window_stats(domain_id, window_hours=24)
+        if stats.get("velocity", 0) > 0.5:
+            for chain in stats.get("top_chains", [])[:3]:
+                recommendations.append({
+                    "title": chain.get("entity_name", ""),
+                    "reason": f"最近活跃: {chain.get('transitions', 0)} 次状态变更",
+                    "priority": "high",
+                    "source": "high_velocity",
+                })
+    except Exception:
+        pass
+
+    # c) Knowledge gaps
+    if recent_queries:
+        try:
+            from core.harness.ontology_engine.knowledge_gap_detector import detect_knowledge_gaps
+            gaps = detect_knowledge_gaps(recent_queries, domain_id=domain_id, min_frequency=1, max_gaps=3)
+            for g in gaps.get("gaps", [])[:3]:
+                recommendations.append({
+                    "title": g.get("query", ""),
+                    "reason": f"知识缺口({g.get('gap_type', '')}): {g.get('suggestion', '')[:40]}",
+                    "priority": "high",
+                    "source": "knowledge_gap",
+                })
+        except Exception:
+            pass
+
+    # d) Pending reviews
+    try:
+        from core.harness.ontology_engine.engine import _persist_reviews
+        import json as _json
+        from pathlib import Path as _P
+        import os as _os
+        home = _P(_os.getenv("AIPLAT_HOME", _P("~").expanduser() / ".aiplat"))
+        reviews_file = home / "ontology_reviews" / f"{domain_id}.json"
+        if reviews_file.exists():
+            reviews = _json.loads(reviews_file.read_text())
+            pending = [r for r in reviews if r.get("status") == "pending"][:3]
+            for r in pending:
+                recommendations.append({
+                    "title": r.get("to_instance", ""),
+                    "reason": f"待复查: {r.get('reason', '')[:50]}",
+                    "priority": "high",
+                    "source": "pending_review",
+                })
+    except Exception:
+        pass
+
+    # Dedup by title and limit
+    seen = set()
+    deduped = []
+    for r in recommendations:
+        key = r["title"]
+        if key and key not in seen:
+            seen.add(key)
+            deduped.append(r)
+            if len(deduped) >= limit * 2:
+                break
+
+    return sorted(deduped, key=lambda r: 0 if r["priority"] == "high" else 1)[:limit]
 
 
 __all__ = [

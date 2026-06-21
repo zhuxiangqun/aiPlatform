@@ -72,6 +72,20 @@ class OntologyClass:
     """该类 Wiki 页面的 SOP 模板（含必填槽位占位符）"""
     extraction_prompt: str = ""
     """KB 文档抽取该类实例的 LLM 指令片段"""
+    fields: List[Dict[str, Any]] = field(default_factory=list)
+    """每字段的 type/enum/description 等元数据（来自 YAML fields 段）"""
+    description: str = ""
+    """该类的描述文本"""
+    states: Dict[str, Any] = field(default_factory=dict)
+    """状态机定义：{description, default, enum: [{name, label, description}, ...]}"""
+    transitions: List[Dict[str, Any]] = field(default_factory=list)
+    """状态转换规则：[{from, to, description, trigger: {type, ...}}, ...]"""
+    side_effects: List[Dict[str, Any]] = field(default_factory=list)
+    """状态转换联动：[{when, actions: [{type, ...}]}, ...]"""
+    synonyms: List[str] = field(default_factory=list)
+    """同义词列表，用于域路由器T1 label匹配扩展 (e.g. ["k8s", "kubernetes"])"""
+    confidence_threshold: float = 0.7
+    """本体映射置信度阈值，低于此值不启用 target_class 过滤 (domain router T2 使用)"""
 
 
 @dataclass
@@ -91,6 +105,7 @@ class OntologyObjectProperty:
     max_cardinality: Optional[int] = None
     min_cardinality: Optional[int] = None
     inverse_of: Optional[str] = None
+    inverse_label: str = ""  # human-readable inverse label
 
 
 @dataclass  
@@ -150,7 +165,9 @@ CLASSES: List[OntologyClass] = [
         required_fields=["title", "body"],
         optional_fields=["summary", "tags", "related", "source_articles",
                           "contradictions", "relationships"],
-        allowed_categories=["entities", "topics", "contradictions", "atoms"],
+         allowed_categories=["entities", "topics", "contradictions", "atoms",
+                              "ai-concepts", "ai-systems", "ai-techniques",
+                              "business-problems", "references", "synthesis"],
         equivalent_to=[f"rdfs:subClassOf {NS['skos']}Concept"]),
 
     OntologyClass(f"{AI}ConceptPage", "概念页",
@@ -580,6 +597,18 @@ def get_class_by_category(category: str) -> Optional[OntologyClass]:
     fewer categories (more specific).
     """
     candidates = [cls for cls in CLASSES if category in cls.allowed_categories]
+    
+    # Also search YAML domain classes (e.g., ai-knowledge, ship-design, it-ops)
+    if not candidates:
+        try:
+            from core.harness.knowledge.ontology_loader import load_all_domains
+            for dom in load_all_domains().values():
+                for cls in dom.classes:
+                    if category in (cls.allowed_categories or []):
+                        candidates.append(cls)
+        except Exception:
+            pass
+
     if not candidates:
         return None
     # Sort by specificity: more required_fields → fewer categories → deeper parent chain
@@ -733,7 +762,7 @@ def validate_page_against_schema(
                        "evidence_end", "evidence_text", "confidence",
                        "contradicts_atom_index", "supports_atom_index",
                        "lifecycle_state", "_generated_by", "quality_score",
-                       "field_level_permission"])
+                       "field_level_permission", "title", "marking", "status", "images"])
     known = set(cls.required_fields + cls.optional_fields) | base_known
     # Also inherit parent class fields
     parent = cls.parent
@@ -1265,13 +1294,16 @@ def add_suggestions_from_patterns(
         (s.get("description"), s.get("type"))
         for s in existing if s.get("status") in ("accepted", "rejected")
     }
+    # Also track ALL seen descriptions (to dedup within this generation)
+    all_descriptions = {(s.get("description"), s.get("type")) for s in existing}
     new_unique = []
     for s in new_suggestions:
         if s["id"] in existing_ids:
             continue
         desc_key = (s.get("description"), s.get("type"))
-        if desc_key in resolved_descriptions:
+        if desc_key in resolved_descriptions or desc_key in all_descriptions:
             continue
+        all_descriptions.add(desc_key)
         new_unique.append(s)
     merged = existing + new_unique
 
@@ -1333,6 +1365,9 @@ def check_key_discrimination(
             )
 
     return len(warnings) == 0, warnings
+
+
+def check_schema_readiness(collection_id: str = "default"):
     """Scan all wiki pages and report ERROR-mode schema compliance.
 
     Returns a readiness report showing which pages would be rejected
@@ -1391,3 +1426,80 @@ def check_key_discrimination(
         "failing_pages": failing[:20],  # first 20 failures
         "passing_pages": passing if len(passing) <= 20 else passing[:20],
     }
+
+
+# ══════════════════════════════════════════════════════════════
+# K3 Synonym Governance — SynonymMap (术语治理)
+# ══════════════════════════════════════════════════════════════
+
+_SYNONYM_MAP = None  # Optional[Dict[str, str]] — {synonym → canonical_term}
+
+
+def load_synonyms(path: str = "") -> Dict[str, str]:
+    """Load synonym groups from YAML. Returns {synonym → canonical_term}.
+
+    Loads from ~/.aiplat/synonyms.yaml by default.
+    Each group's first term is the canonical/preferred label.
+    """
+    global _SYNONYM_MAP
+    if _SYNONYM_MAP is not None:
+        return _SYNONYM_MAP
+
+    import os as _os
+    import yaml as _yaml
+    from pathlib import Path as _P
+
+    file_path = path or str(_P(_os.getenv("AIPLAT_HOME", _P("~").expanduser() / ".aiplat")) / "synonyms.yaml")
+    if not _P(file_path).exists():
+        _SYNONYM_MAP = {}
+        return {}
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        data = _yaml.safe_load(f)
+
+    _SYNONYM_MAP = {}
+    for group in (data or {}).get("groups", []):
+        terms = group.get("terms", [])
+        if len(terms) >= 2:
+            canonical = terms[0]
+            for syn in terms[1:]:
+                _SYNONYM_MAP[syn.lower()] = canonical
+            _SYNONYM_MAP[canonical.lower()] = canonical  # self-map
+
+    return _SYNONYM_MAP
+
+
+def expand_query_with_synonyms(query: str) -> List[str]:
+    """Expand a search query with synonym variants (bidirectional).
+
+    Both synonyms → canonical AND canonical → synonyms expansions.
+    Returns list of [original_query, expansions, ...] for OR-matching.
+    """
+    synonyms = load_synonyms()
+    if not synonyms:
+        return [query]
+
+    variants = [query]
+    # Build reverse map: canonical → [synonyms]
+    canonical_groups: dict = {}
+    for syn, canonical in synonyms.items():
+        canonical_groups.setdefault(canonical, []).append(syn)
+
+    # Check each word in query
+    words = query.split()
+    for word in words:
+        wl = word.lower()
+        # If this word is a canonical term, add queries with each synonym
+        if wl in canonical_groups:
+            for syn in canonical_groups[wl]:
+                variants.append(query.replace(word, syn[:20]))
+        # If this matches a synonym, add query with canonical
+        if wl in synonyms and synonyms[wl] != wl:
+            variants.append(query.replace(word, synonyms[wl][:20]))
+
+    return list(set(variants))  # dedup
+
+
+def reset_synonyms() -> None:
+    global _SYNONYM_MAP
+    _SYNONYM_MAP = None

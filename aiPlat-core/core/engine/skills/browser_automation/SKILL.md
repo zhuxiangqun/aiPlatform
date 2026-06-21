@@ -1,7 +1,8 @@
 ---
 name: browser_automation
 display_name: 浏览器自动化
-description: 【必须使用 browser 工具实际操作网页，禁止凭记忆回答】自动化网页交互：导航、点击、输入、滚动、截图、提取内容。涉及代码生成和接口审查。 涉及浏览器相关操作。 主要进行自动化。
+description: 【必须使用 browser 工具实际操作网页，禁止凭记忆回答】自动化网页交互：导航、点击、输入、滚动、截图、提取内容。涉及代码生成和接口审查。
+  涉及浏览器相关操作。 主要进行自动化。
 version: 1.1.0
 category: browser
 status: enabled
@@ -49,9 +50,29 @@ input_schema:
     type: string
     required: true
     description: 目标网页地址
-
 protected: true
+keywords:
+  objects:
+  - 网页
+  - 浏览器
+  - 页面
+  actions:
+  - 打开
+  - 访问
+  - 浏览
+  - 截图
+  constraints:
+  - 等待时间
+  - 选择器
+trigger_conditions:
+- when: 用户要求浏览器操作
+  query: 打开网页/访问/浏览
+- when: 不应用场景
+  description: 跳过条件：用户未提供具体URL或页面描述时不触发。
+skip_when: 跳过条件：用户未提供具体URL或页面描述时不触发。
 ---
+
+
 
 # Browser Automation
 

@@ -49,7 +49,28 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 多维度评测 Skill 执行质量
+keywords:
+  objects:
+  - Skill
+  - 执行结果
+  - 输出质量
+  actions:
+  - 评估
+  - 评分
+  - 检查
+  constraints:
+  - 准确性
+  - 完整性
+  - 时效性
+trigger_conditions:
+- when: 用户要求评估Skill质量
+  query: 评估质量/检查Skill输出
+- when: 不应用场景
+  description: 跳过条件：Skill未有足够执行次数（<10）进行统计时不触发。
+skip_when: 跳过条件：Skill未有足够执行次数（<10）进行统计时不触发。
 ---
+
+
 
 # 技能质量评测（Engine）
 

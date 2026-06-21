@@ -548,10 +548,10 @@ async def system_overview(refresh: bool = Query(False)) -> Dict[str, Any]:
             mm = rt.memory_manager
             stats = await mm.get_stats() if hasattr(mm, "get_stats") else {}
             core["memory"] = {
-                "working_tokens": stats.get("working_tokens", 0),
-                "episodic_count": stats.get("episodic_count", 0),
-                "semantic_count": stats.get("semantic_count", 0),
-                "compression_level": stats.get("compression_level", "none"),
+                "working_tokens": getattr(stats, "working_tokens", 0),
+                "episodic_count": getattr(stats, "episodic_count", 0),
+                "semantic_count": getattr(stats, "semantic_count", 0),
+                "compression_level": getattr(stats, "compression_level", "none"),
             }
         else:
             core["memory"] = {"working_tokens": 0, "episodic_count": 0, "semantic_count": 0, "note": "runtime not initialized"}

@@ -722,6 +722,7 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
     Pass category=code_intel to run only that check.
     Pass quick=true to skip slow external checks (LSP, security, e2e_smoke)."""
     import asyncio, json as _json, uuid as _uuid
+    _asyncio = asyncio
 
     global _DIAG_RUNNING
     if _DIAG_RUNNING:
@@ -834,8 +835,8 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
                          "auto_fix_total": sum(it["auto_fix_count"] for it in items)},
             }
             return result
-        except Exception:
-            return {"status": "unavailable", "score": 0}
+        except Exception as e:
+            return {"status": "unavailable", "score": 0, "error": str(e)[:200]}
 
     async def _check_skill_realness():
         """Check workspace skills for execution_type declarations and handler existence."""
@@ -854,7 +855,7 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
                 if not md.exists():
                     continue
                 try:
-                    raw = md.read_text(encoding="utf-8", errors="ignore")
+                    raw = (await _asyncio.to_thread(lambda: md.read_text(encoding="utf-8", errors="ignore")))
                     if not raw.startswith("---"):
                         continue
                     parts = raw.split("---", 2)
@@ -1003,7 +1004,7 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
             if mgmt_frontend_svc.is_dir():
                 for p in mgmt_frontend_svc.rglob("*.ts"):
                     try:
-                        text = p.read_text()
+                        text = (await _asyncio.to_thread(lambda: p.read_text()))
                         for m in mgmt_modules:
                             if m in text.lower() or m in p.name.lower():
                                 frontend_covered.add(m)
@@ -1078,6 +1079,7 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
                 "ManagementBase", "BaseLLMAdapter", "BasePydanticModel",
                 "DiagnosticCheck", "Enum", "str", "ABC",
                 "LintRule", "ArchRule", "InfraError",
+                "WikiRule", "CapRule", "BaseSkill", "BaseRule",
             }
 
             # Count subclasses per parent
@@ -1654,7 +1656,7 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
 
             if vite_config.exists():
                 import re, subprocess as _sp
-                content = vite_config.read_text(encoding="utf-8")
+                content = (await _asyncio.to_thread(lambda: vite_config.read_text(encoding="utf-8")))
                 proxy_entries = re.findall(
                     r"'([^']+)'\s*:\s*\{[^}]*?target:\s*'([^']+)'[^}]*\}",
                     content, re.DOTALL
@@ -1676,8 +1678,8 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
                 ts_file = repo_root / "aiPlat-management/frontend/src/pages/Workspace/MCP/MCP.tsx"
                 py_file = repo_root / "aiPlat-core/core/api/routers/mcp_admin.py"
                 if ts_file.exists() and py_file.exists():
-                    ts_body = ts_file.read_text(encoding="utf-8")
-                    py_body = py_file.read_text(encoding="utf-8")
+                    ts_body = (await _asyncio.to_thread(lambda: ts_file.read_text(encoding="utf-8")))
+                    py_body = (await _asyncio.to_thread(lambda: py_file.read_text(encoding="utf-8")))
                     if re.search(r'"args"\s*:\s*\{', ts_body) and not re.search(r'data\.get\("args"\)', py_body):
                         items.append({"check": "API 契约不匹配", "result": "❌",
                                       "detail": "前端传 'args', 后端读 'arguments' — mcp_admin.py"})

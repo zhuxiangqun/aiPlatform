@@ -687,22 +687,57 @@ const WorkspaceMCP: React.FC = () => {
               <div className="text-[10px] text-gray-600 mt-1">将 server.yaml + policy.yaml 放入 aiPlat-core/core/workspace_seeds/mcps/&lt;id&gt;/ 即可作为模板</div>
             </div>
           ) : (
-            seeds.map((s: any) => (
-              <div key={s.id} className="flex items-center justify-between p-3 rounded border border-dark-border bg-dark-bg">
-                <div className="min-w-0 flex-1">
-                  <div className="font-medium text-gray-200">{s.name}</div>
-                  <div className="text-xs text-gray-500 mt-0.5">{s.description || s.id}</div>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-dark-hover text-gray-400 mt-1 inline-block">
-                    {s.transport || 'sse'}
-                  </span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {seeds.map((s: any) => {
+              const icon = s.metadata?.icon || s.id;
+              const desc = s.metadata?.description || s.description || s.id;
+              const config = s.metadata?.config || {};
+              const installCmd = s.metadata?.install_command || '';
+              return (
+                <div key={s.id} className="flex flex-col p-3 rounded border border-dark-border bg-dark-bg hover:border-primary/30 transition-colors">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">{icon === 'notion' ? '📋' : icon === 'feishu' ? '🐦' : icon === 'github' ? '🐙' : '📦'}</span>
+                    <span className="font-medium text-gray-200 text-sm">{s.name}</span>
+                  </div>
+                  <div className="text-xs text-gray-500 mb-2 min-h-[32px]">{desc}</div>
+                  {Object.keys(config).length > 0 && (
+                    <div className="text-[10px] text-gray-600 mb-2 space-y-0.5">
+                      {Object.entries(config).map(([k, v]: [string, any]) => (
+                        <div key={k} className="flex items-center gap-1">
+                          <span className="text-gray-500">{v.label || k}</span>
+                          <span className={`px-1 rounded ${v.required ? 'bg-red-900/20 text-red-400' : 'bg-gray-800 text-gray-500'}`}>
+                            {v.required ? '必填' : '可选'}
+                          </span>
+                          {v.type === 'secret' && <span className="text-gray-600">🔒</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {installCmd && (
+                    <div className="text-[10px] text-gray-600 font-mono bg-dark-hover rounded px-1.5 py-0.5 mb-2 truncate">{installCmd}</div>
+                  )}
+                  <div className="flex gap-2 mt-auto pt-2 border-t border-dark-border/50">
+                    {s.installed ? (
+                      <span className="text-xs text-green-400">✅ 已安装</span>
+                    ) : (
+                      <Button variant="primary" size="sm" className="text-xs flex-1" onClick={() => installSeed(s.id)}>
+                        ▶ 一键安装
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="sm" className="text-xs" onClick={async () => {
+                      try {
+                        if (!s.installed) await installSeed(s.id);
+                        const r = await mcpApi.discoverTools(s.id);
+                        toast.success(`${s.name}: ${r.tools?.length || 0} 个工具可用`);
+                      } catch { toast.error(`${s.name}: 连接失败`); }
+                    }}>
+                      🔌 测试
+                    </Button>
+                  </div>
                 </div>
-                {s.installed ? (
-                  <span className="text-xs text-green-400 ml-3">已安装</span>
-                ) : (
-                  <Button variant="primary" size="sm" onClick={() => installSeed(s.id)}>安装</Button>
-                )}
-              </div>
-            ))
+              );
+            })}
+            </div>
           )}
         </div>
       </Modal>

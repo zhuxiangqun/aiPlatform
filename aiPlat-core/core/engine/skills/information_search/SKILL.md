@@ -1,7 +1,8 @@
 ---
 name: information_search
 display_name: 信息检索
-description: 从知识库和互联网中检索相关信息。触发条件：用户要求搜索、检索、查找资料。跳过条件：内部知识库查询由 knowledge_retrieval 处理。 涉及信息相关操作。 主要进行搜索。
+description: 从知识库和互联网中检索相关信息。触发条件：用户要求搜索、检索、查找资料。跳过条件：内部知识库查询由 knowledge_retrieval
+  处理。 涉及信息相关操作。 主要进行搜索。
 category: retrieval
 version: 1.0.0
 status: enabled
@@ -55,7 +56,30 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 从多数据源检索并融合信息
+keywords:
+  objects:
+  - 资料
+  - 信息
+  - 文档
+  - 论文
+  - 新闻
+  actions:
+  - 搜索
+  - 查找
+  - 检索
+  - 调研
+  constraints:
+  - 时效性
+  - 来源可靠性
+trigger_conditions:
+- when: 用户要求搜索信息
+  query: 搜索/查找/调研
+- when: 不应用场景
+  description: 跳过条件：用户已明确知道答案或仅需确认时不触发。
+skip_when: 跳过条件：用户已明确知道答案或仅需确认时不触发。
 ---
+
+
 
 # 信息检索（Engine）
 

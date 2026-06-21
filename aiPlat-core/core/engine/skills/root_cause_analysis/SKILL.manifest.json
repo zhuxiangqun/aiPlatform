@@ -1,3 +1,8 @@
 {
-  "version": "1.0.0"
+  "name": "root_cause_analysis",
+  "type": "engine_skill",
+  "version": "1.0.0",
+  "created_at": "2026-06-21T20:58:52",
+  "auto_generated": true,
+  "signature": "WuFc/crqk+rrfn0D6EmV6Wh5gEBL9QFQtTcZkhN+iZef+ORY6tV9h5b+ZzUBFtiozG5xeOB8koVvwqPCZX3kAg=="
 }

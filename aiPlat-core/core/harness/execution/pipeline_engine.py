@@ -332,7 +332,7 @@ class PipelineEngine:
                     import json as _json
                     schema = _json.loads(llm_output_schema) if isinstance(llm_output_schema, str) else llm_output_schema
                     kwargs['response_format'] = {"type": "json_schema", "json_schema": {"name": "output", "schema": schema}}
-                except Exception: pass
+                except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
             # Build messages — support multimodal vision when enabled
             vision_enabled = node_cfg.get('vision', False)
             image_url = node_cfg.get('image_url', '')
@@ -530,7 +530,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                         rerank_text = getattr(rerank_resp, 'content', '') or ''
                         if rerank_text:
                             output = f"[Re-ranked]\n{rerank_text[:3000]}"
-                    except Exception: pass
+                    except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
                 return str(output)[:5000] or "Knowledge node: no results"
             except Exception as e:
                 return f"Knowledge retrieval failed: {e}"
@@ -2796,7 +2796,7 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
                         trace = state.get("_graph_trace", [])
                         out_path = os.getenv("AIPLAT_OTEL_EXPORT_PATH", os.path.expanduser("~/.aiplat/traces/latest.json"))
                         export_otel_trace(trace, out_path)
-                    except Exception: pass
+                    except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
                 # Save execution state snapshot for history
                 try:
                     snapshot_dir = os.path.expanduser("~/.aiplat/traces/history")
@@ -2807,7 +2807,7 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
                             "output": str(state.get(s.output_artifact,""))[:1000]} for s in self._config.stages}}
                     snap_path = os.path.join(snapshot_dir, f"{state.get('session_id','unknown')}_{ts}.json")
                     with open(snap_path, 'w') as sf: json.dump(snap, sf, ensure_ascii=False, indent=2)
-                except Exception: pass
+                except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
                 break
             report = state.get(stage.output_artifact)
             if report and isinstance(report, dict) and report.get("recommendation") == "REJECTED":
@@ -2929,15 +2929,28 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
         previous_notes = ""
         try:
             import os as _os, glob as _glob
-            output_root = state.get("output_dir", "") or _os.path.expanduser(
+            output_root = _os.path.expanduser(
                 _os.path.join(_os.getenv("AIPLAT_HOME", "~/.aiplat"), "output")
             )
-            note_files = sorted(_glob.glob(_os.path.join(output_root, "*", "SESSION_NOTES.md")),
-                                key=_os.path.getmtime, reverse=True)
+            note_files = sorted(
+                _glob.glob(_os.path.join(output_root, "*", "SESSION_NOTES.md")),
+                key=_os.path.getmtime, reverse=True,
+            )
             if note_files:
-                with open(note_files[0], "r") as f:
-                    notes_text = f.read()[:1500]
-                previous_notes = f"\n## Previous Session Context\n{notes_text}\n"
+                summaries = []
+                for f in note_files[:5]:
+                    text = open(f).read()
+                    first_lines = "\n".join(text.split("\n")[:5])
+                    summaries.append(f"## {_os.path.basename(_os.path.dirname(f))}\n{first_lines}")
+                previous_notes = "\n## Recent Session Context\n" + "\n---\n".join(summaries) + "\n"
+        except Exception:
+            pass
+
+        # Plur: collective learnings shared across all agent instances
+        collective_context = ""
+        try:
+            from core.harness.memory.shared_memory import get_learnings_context
+            collective_context = get_learnings_context()
         except Exception:
             pass
 
@@ -2965,10 +2978,9 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
         # Progressive disclosure: skill stubs only (~50 tokens/skill)
         skill_stubs_context = ""
         try:
-            from core.apps.skills.registry import get_skill_registry, start_bg_curator
+            from core.harness.integration import get_skill_registry, _start_bg_curator
             reg = get_skill_registry()
-            # Start background curator if not already running
-            start_bg_curator()
+            _start_bg_curator()
             skill_stubs_context = "\n" + reg.get_all_stubs() + "\n"
             skill_stubs_context += (
                 "[SKILL RECOMMENDATION: When you identify that the current task matches "
@@ -3047,7 +3059,7 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
                     try:
                         with open(val['path'], 'r') as ff:
                             val['_content'] = ff.read()[:10000]
-                    except Exception: pass
+                    except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
                 # Save execution state snapshot for history
                 try:
                     snapshot_dir = os.path.expanduser("~/.aiplat/traces/history")
@@ -3058,7 +3070,7 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
                             "output": str(state.get(s.output_artifact,""))[:1000]} for s in self._config.stages}}
                     snap_path = os.path.join(snapshot_dir, f"{state.get('session_id','unknown')}_{ts}.json")
                     with open(snap_path, 'w') as sf: json.dump(snap, sf, ensure_ascii=False, indent=2)
-                except Exception: pass
+                except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
                 jinja_ctx[s.output_artifact or s.id] = val
         jinja_ctx.update({k: v for k, v in state.items() if not k.startswith('_') and k not in jinja_ctx})
         # Conversation state: cross-stage persistent memory
@@ -3082,6 +3094,7 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
         raw = f"""You are {stage.agent_name or stage.id}.
 {scene_context}
 {previous_notes}
+{collective_context}
 {gaps_context}
 {skill_stubs_context}
 {skill_corpus_context}
@@ -4028,6 +4041,22 @@ Output ONLY this JSON (no preamble): {{"diagnosis":"<1 sentence>","suggested_pro
         # Phase 3: generate human-readable SESSION_NOTES
         try:
             PipelineEngine._generate_session_notes(state, output_dir=state.get("output_dir", ""))
+        except Exception:
+            pass
+
+        # Plur: record collective learnings for cross-instance sharing
+        try:
+            from core.harness.memory.shared_memory import (
+                extract_learnings_from_state, record_learning,
+            )
+            sid = str(state.get("session_id", ""))
+            agent = str(state.get("_agent_id", getattr(state, "agent_id", "pipeline")))
+            learnings = extract_learnings_from_state(
+                state, source_agent=agent, source_session=sid,
+            )
+            for l in learnings:
+                record_learning(l.key, l.value, source_agent=l.source_agent,
+                                source_session=l.source_session, confidence=l.confidence)
         except Exception:
             pass
 

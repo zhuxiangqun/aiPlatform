@@ -573,6 +573,15 @@ async def auto_fill_workspace_agent(payload: dict):
         raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
 
 
+@router.get("/workspace/agents/seeds")
+async def list_workspace_agent_seeds():
+    try:
+        client = get_core_client()
+        return await client.list_workspace_agent_seeds()
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
+
+
 @router.get("/workspace/agents/{agent_id}")
 async def get_workspace_agent(agent_id: str):
     try:
@@ -1878,3 +1887,30 @@ async def delete_gateway_token(token_id: str):
         raise HTTPException(status_code=404, detail="Token not found")
     del _gateway_tokens[token_id]
     return {"status": "deleted", "token_id": token_id}
+
+
+# ══════════════════════════════════════════════════════════════
+# Diagrams Proxy — forward to core:8002
+# ══════════════════════════════════════════════════════════════
+
+import os as _os
+
+_CORE_BASE = _os.getenv("AIPLAT_CORE_ENDPOINT", "http://localhost:8002")
+
+
+@router.api_route("/diagrams{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
+async def proxy_diagrams(request: Request, path: str = ""):
+    u"""Proxy diagrams API to core server."""
+    async with httpx.AsyncClient(timeout=30) as client:
+        url = f"{_CORE_BASE}/diagrams{path}"
+        body = await request.body() if request.method in ("POST", "PUT") else None
+        headers = {k: v for k, v in request.headers.items()
+                   if k.lower() not in ("host", "content-length")}
+        resp = await client.request(
+            request.method, url, content=body, headers=headers,
+            params=dict(request.query_params),
+        )
+        from fastapi.responses import Response
+        return Response(content=resp.content, status_code=resp.status_code,
+                        headers=dict(resp.headers),
+                        media_type=resp.headers.get("content-type"))

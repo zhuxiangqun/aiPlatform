@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import os
 from typing import Any, Dict, List, Optional
+import logging
 from core.harness.utils.llm_env import get_llm_api_key, get_llm_base_url
 
 
@@ -828,7 +829,7 @@ async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "")
             if curated["title"] != old_title:
                 from core.harness.knowledge.wiki_engine import delete_page
                 try: delete_page(old_title)
-                except Exception: pass
+                except Exception: logging.debug(f"Failed to delete old page {old_title}", exc_info=True)
             # Create knowledge atom pages with evidence tracking
             from core.harness.knowledge.wiki_engine import write_atom
             for atom in curated.get("knowledge_atoms", [])[:6]:
@@ -1146,6 +1147,31 @@ def get_agent_registry_facade() -> Any:
 
 from core.apps.agents.discovery import AgentDiscovery, AgentLoader, AgentRegistry  # noqa: E402
 
+def _get_latest_eval_score(agent_id: str):
+    """Read the latest evaluation score for an agent from eval_results directory."""
+    import json as _json, os as _os, glob as _glob
+    from pathlib import Path as _Path
+    try:
+        results_dir = _Path(_os.getenv("AIPLAT_HOME", _os.path.expanduser("~/.aiplat"))) / "eval_results"
+        files = sorted(
+            [f for f in _glob.glob(str(results_dir / f"{agent_id}_*.json"))],
+            key=_os.path.getmtime, reverse=True,
+        )
+        for fp in files[:1]:
+            data = _json.loads(_Path(fp).read_text(encoding="utf-8"))
+            if data.get("agent_id") == agent_id:
+                return {"score": data.get("composite_score", 0), "grade": data.get("grade", ""),
+                        "total_tasks": data.get("total_tasks", 0), "has_data": True}
+    except Exception:
+        pass
+    return {"has_data": False}
+
+
+async def _get_latest_eval_score_async(agent_id: str):
+    import asyncio
+    return await asyncio.to_thread(_get_latest_eval_score, agent_id)
+
+
 
 async def run_workspace_agent(
     agent_info: Any, user_message: str, *, max_steps: int = 10,
@@ -1159,8 +1185,11 @@ async def run_workspace_agent(
     import asyncio as _asyncio, os as _os
 
     agent_id = str(getattr(agent_info, "id", "unknown"))
+    cfg = getattr(agent_info, "config", None)
+    system_prompt = cfg.get("system_prompt", "") if isinstance(cfg, dict) else ""
     import uuid as _uuid, os as _os_env, time as _time
     run_id = f"run-{_uuid.uuid4().hex[:12]}"
+    trace_id = f"trace-{_uuid.uuid4().hex[:12]}"
     session_id = session_id or run_id
 
     # Persist run to agent_executions via execution_store (unified path)
@@ -1174,15 +1203,16 @@ async def run_workspace_agent(
             "status": "running",
             "start_time": _now,
             "created_at": _now,
+            "trace_id": trace_id,
         })
         # Mark gate coverage (Phase 3 GateTracer)
         try:
             from core.harness.kernel.execution_context import mark_gate_passed
             mark_gate_passed("execution_store_persist")
         except Exception:
-            pass
+            logging.debug("execution_store_persist gate marker failed", exc_info=True)
     except Exception:
-        pass
+        logging.warning(f"Failed to persist agent execution record for {agent_id} run {run_id}", exc_info=True)
 
     # ── Emit run_start so ExecutionViewer + Runs page can discover this run ──
     try:
@@ -1191,31 +1221,34 @@ async def run_workspace_agent(
         await _es.append_run_event(
             run_id=run_id,
             event_type="run_start",
-            trace_id=None,
+            trace_id=trace_id,
             tenant_id=None,
             payload={"kind": "agent", "agent_id": agent_id, "status": "running", "session_id": session_id},
         )
     except Exception:
-        pass
+        logging.debug(f"Failed to emit run_start event for {agent_id} run {run_id}", exc_info=True)
 
     # ── Stream mode: return immediately, execute in background ──
     if stream:
         _asyncio.ensure_future(_execute_workspace_agent_background(
             agent_info=agent_info, agent_id=agent_id, run_id=run_id,
+            trace_id=trace_id,
             user_message=user_message, max_steps=max_steps, toolset=toolset,
             session_id=session_id,
         ))
-        return {"ok": True, "status": "running", "output": None, "run_id": run_id, "execution_id": run_id}
+        return {"ok": True, "status": "running", "output": None, "run_id": run_id, "execution_id": run_id,
+                "eval": await _get_latest_eval_score_async(agent_id)}
 
     return await _execute_workspace_agent_background(
         agent_info=agent_info, agent_id=agent_id, run_id=run_id,
+        trace_id=trace_id,
         user_message=user_message, max_steps=max_steps, toolset=toolset,
         session_id=session_id,
     )
 
 
 async def _execute_workspace_agent_background(
-    agent_info: Any, agent_id: str, run_id: str, *, user_message: str,
+    agent_info: Any, agent_id: str, run_id: str, *, trace_id: str = "", user_message: str,
     max_steps: int = 10, toolset: str = "", session_id: str = "",
 ) -> Dict[str, Any]:
     """Core execution logic used by both synchronous and stream paths."""
@@ -1238,9 +1271,28 @@ async def _execute_workspace_agent_background(
                 pass
 
     def _resolve_model():
-        from core.harness.utils.model_injection import create_selected_adapter
+        from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
+        
         cfg = getattr(agent_info, "config", None)
-        model_name = cfg.get("model") or best_model_for_purpose("chat")  # noqa: model-legacy if isinstance(cfg, dict) else "deepseek-chat"
+        model_name = cfg.get("model") if isinstance(cfg, dict) else ""
+        
+        # Always go through infra ModelManager for model resolution (single source of truth)
+        if not model_name or model_name == "auto":
+            model_name = best_model_for_purpose("chat")  # noqa: model-legacy
+        else:
+            # Explicit model: validate it exists in infra registry; if not, fall back to auto
+            try:
+                from infra.management.model.manager import ModelManager
+                mgr = ModelManager()
+                if not mgr.select(model_name=model_name):
+                    import logging as _logging
+                    _logging.getLogger("aiplat.core_facade").warning(
+                        f"Agent '{agent_id}' specified model '{model_name}' not found in infra registry; "
+                        f"falling back to best_model_for_purpose('chat')")
+                    model_name = best_model_for_purpose("chat")  # noqa: model-legacy
+            except Exception:
+                model_name = best_model_for_purpose("chat")  # noqa: model-legacy
+        
         try:
             return create_selected_adapter(model_name=model_name)
         except Exception:
@@ -1313,12 +1365,51 @@ async def _execute_workspace_agent_background(
         "session_id": session_id,
         "_run_id": run_id,
         "_agent_id": agent_id,
+        "_trace_id": trace_id,
         "_coding_policy_profile": "off",
         "_user_id": "system",
         "_enable_query_rewrite": True,
         "_sys_prompt": sys_prompt,
         "context": {"system_prompt": sys_prompt, "task": user_message},
     }
+
+    # ── Routing classification (ability-level, before ReAct loop) ──
+    try:
+        from core.harness.routing.classifier import classify
+        from core.schemas_routing import RoutingContext as _Rctx
+        _agent_skills = [s for s in (getattr(agent_info, "skills", None) or []) if s]
+        _agent_tools = [t for t in (getattr(agent_info, "tools", None) or []) if t]
+        _rctx = _Rctx(
+            user_message=user_message,
+            agent_id=agent_id,
+            agent_type=getattr(agent_info, "type", "") or "",
+            agent_name=getattr(agent_info, "name", "") or "",
+            agent_description=str((meta or {}).get("description", "")) if isinstance(meta, dict) else "",
+            available_skills=list(_agent_skills),
+            available_tools=list(_agent_tools),
+        )
+        _routing = classify(_rctx)
+        # Inject routing hints into state for LLM reasoning
+        state["_routing_intent"] = _routing.intent.value if _routing.intent else ""
+        state["_routing_confidence"] = _routing.confidence
+        state["_routing_entities"] = _routing.entities
+        state["_routing_suggested_skills"] = _routing.suggested_skill_ids
+        state["_routing_suggested_tools"] = _routing.suggested_tool_ids
+        # Augment task context with routing hints
+        if _routing.confidence >= 0.5 and _routing.intent.value != "unknown":
+            routing_hint = (
+                f"\n\n[路由建议] 检测到意图: {_routing.intent.value} (置信度 {_routing.confidence:.0%})"
+                f"\n建议技能: {', '.join(_routing.suggested_skill_ids[:5]) or '无'}"
+                f"\n建议工具: {', '.join(_routing.suggested_tool_ids[:5]) or '无'}"
+                f"{' 实体: ' + str(_routing.entities) if _routing.entities else ''}"
+            )
+            state["context"]["task"] = (state["context"]["task"] or "") + routing_hint
+        if _routing.should_clarify:
+            state["_should_clarify"] = True
+            state["_clarification_prompt"] = _routing.clarification_prompt
+    except Exception:
+        # Best-effort: routing must not break execution
+        pass
 
     # ── Inject workspace context (toolset + mcp_ids + agent_ids + workflow_ids) ──
     ws_token = None
@@ -1406,7 +1497,7 @@ async def _execute_workspace_agent_background(
             "name": "agent_start",
             "status": "running",
             "span_id": f"agent:{agent_id}:start",
-            "trace_id": f"trace-{_uuid.uuid4().hex[:12]}",
+            "trace_id": trace_id,
             "run_id": run_id,
             "start_time": t0_agent,
             "target_type": str(agent_id),
@@ -1457,7 +1548,7 @@ async def _execute_workspace_agent_background(
             "name": "agent_end",
             "status": "ok" if status == "completed" else "error",
             "span_id": f"agent:{agent_id}:end",
-            "trace_id": f"trace-{_uuid.uuid4().hex[:12]}",
+            "trace_id": trace_id,
             "run_id": run_id,
             "start_time": _time.time(),
             "duration_ms": _duration_ms,
@@ -1479,12 +1570,13 @@ async def _execute_workspace_agent_background(
             "error": error_msg or "",
             "end_time": _end,
             "duration_ms": _duration_ms,
+            "trace_id": trace_id,
         })
         # Emit run_end so SSE can detect completion
         await _es.append_run_event(
             run_id=run_id,
             event_type="run_end",
-            trace_id=None,
+            trace_id=trace_id,
             tenant_id=None,
             payload={"kind": "agent", "agent_id": agent_id, "status": status, "duration_ms": _duration_ms, "error": error_msg or ""},
         )
@@ -1506,7 +1598,7 @@ async def _execute_workspace_agent_background(
                 await store.append_run_event(
                     run_id=str(run_id),
                     event_type="gate_coverage_gap",
-                    trace_id=None,
+                    trace_id=trace_id,
                     tenant_id=None,
                     payload={
                         "missing_gates": sorted(missing),
@@ -1537,9 +1629,16 @@ async def _execute_workspace_agent_background(
         status = "failed"
     is_error = status != "completed"
     resp = {"ok": not is_error, "status": status if not is_error else "failed",
-            "output": result_text if not is_error else None, "error": error_msg if is_error else None, "run_id": run_id, "execution_id": run_id}
+            "output": result_text if not is_error else None, "error": error_msg if is_error else None, "run_id": run_id, "execution_id": run_id,
+            "duration_ms": _duration_ms, "trace_id": trace_id or ""}
     if tokens:
         resp["tokens"] = tokens
+    # Include step count and engine metadata for observability
+    resp["metadata"] = {
+        "steps": int(state.get("step_count", 0)) or 0,
+        "engine": "react",
+        "loop_type": "ReActLoop",
+    }
     return resp
 
 

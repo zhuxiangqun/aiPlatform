@@ -1,3 +1,8 @@
 {
-  "version": "1.0.0"
+  "name": "doc_query",
+  "type": "engine_skill",
+  "version": "1.0.0",
+  "created_at": "2026-06-21T20:58:52",
+  "auto_generated": true,
+  "signature": "KJD29Ztpx8us5J4TL/5mLkA37M4lG359fsoqzwqRrAi69FbGw614vVQG9yUlSgrPJcDKQqme0cF7kcK+MxaNAw=="
 }

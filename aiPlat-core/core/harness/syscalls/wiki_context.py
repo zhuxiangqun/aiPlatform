@@ -104,6 +104,59 @@ def sys_wiki_context(question: str, *, wiki_titles: List[str] = None,
     except Exception:
         pass
 
+    # Phase AligNet: three-tier abstraction retrieval (coarse/fine/boundary)
+    abstraction_results: List[Dict[str, Any]] = []
+    try:
+        from core.harness.knowledge.knowledge_ontology import get_ontology
+        onto = get_ontology()
+
+        # Tier 1 — Coarse: parentOf hierarchy matching
+        for r in results[:8]:
+            title = r.get("title", "")
+            if not title:
+                continue
+            entity_uri = f"{AI}{title}"
+            for t in onto.triples:
+                if t.subject == entity_uri and t.predicate == f"{AI}parentOf":
+                    parent = t.object.replace(AI, "")
+                    abstraction_results.append({
+                        "title": parent, "tier": "coarse",
+                        "relation": "parentOf", "summary": f"parent concept of {title}",
+                    })
+                if t.predicate == f"{AI}parentOf" and t.object == entity_uri:
+                    child = t.subject.replace(AI, "")
+                    abstraction_results.append({
+                        "title": child, "tier": "coarse",
+                        "relation": "childOf", "summary": f"child concept of {title}",
+                    })
+
+        # Tier 3 — Boundary: A8 key discrimination check
+        seen_titles = set()
+        from core.harness.knowledge.knowledge_ontology import check_key_discrimination
+        for r in results[:5]:
+            title = r.get("title", "")
+            if not title:
+                continue
+            ok, warnings = check_key_discrimination(title, str(r.get("summary", ""))[:100])
+            if not ok:
+                for w in warnings[:2]:
+                    similar = w.split("with existing '")[-1].split("'")[0] if "with existing" in w else ""
+                    if similar and similar not in seen_titles:
+                        seen_titles.add(similar)
+                        abstraction_results.append({
+                            "title": similar, "tier": "boundary",
+                            "relation": "near_duplicate",
+                            "summary": f"A8: key too similar to '{title}', consider merge",
+                        })
+    except Exception:
+        pass
+
+    # Merge abstraction results into related pages
+    existing_titles = {r.get("title", "") for r in results + related_pages}
+    for ar in abstraction_results[:10]:
+        if ar.get("title", "") and ar["title"] not in existing_titles:
+            related_pages.append(ar)
+
     # Phase 2: marking-aware filtering
     if filter_by_markings and actor_scopes:
         results = _filter_by_markings(results, actor_scopes, cids[0])

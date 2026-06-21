@@ -1,0 +1,22 @@
+name: github_bridge
+enabled: false
+transport: stdio
+command: python3
+args: ["github_mcp.py"]
+url: null
+auth: null
+allowed_tools: []
+metadata:
+  description: "GitHub 桥接 — 通过 Agent 查询 Issues、PR、代码仓库。配置后可让 AI 助手分析 GitHub 项目状态。"
+  template: "github_bridge"
+  icon: "github"
+  install_command: "pip install PyGithub"
+  config:
+    GITHUB_TOKEN:
+      label: "GitHub Token"
+      type: secret
+      required: true
+    GITHUB_REPO:
+      label: "Repository (owner/repo)"
+      type: string
+      required: true

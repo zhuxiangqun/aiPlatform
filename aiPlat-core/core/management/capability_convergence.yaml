@@ -34,6 +34,8 @@ capabilities:
         from: "harness/kernel/execution_context.py"
       - symbol: "upsert_agent_execution"
         from: "services/execution_store.py"
+      - symbol: "build_context"
+        from: "harness/memory/manager.py"
     known_paths:
       - "api/core_facade.py::run_workspace_agent"
       - "apps/agents/subagent/coordinator.py::execute_single"
@@ -80,6 +82,8 @@ capabilities:
         paths: ["core/"]
       - pattern: 'os\.getenv\s*\(\s*"LLM_MODEL"\s*\)'
         paths: ["core/"]
+      - pattern: 'from.*adapters\.llm.*import create_adapter'
+        paths: ["core/apps/agents/", "core/apps/skills/"]
     resolution_required: true  # no direct adapter creation outside model_injection.py
 
   # ── Database Access ──

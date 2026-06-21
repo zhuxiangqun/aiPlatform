@@ -1,3 +1,8 @@
 {
-  "version": "1.0.0"
+  "name": "wiki_lint",
+  "type": "engine_skill",
+  "version": "1.0.0",
+  "created_at": "2026-06-21T20:58:52",
+  "auto_generated": true,
+  "signature": "1ZUEVqHBrPIkHJ88YkaxckSOHm9DO8NfSZt3ceiQ1AyEGNa8eA9upopW3NZWKjePcrihYHnP6BMPS88DW73BBA=="
 }

@@ -197,29 +197,22 @@ class CodeGenerationSkill(BaseSkill):
     @staticmethod
     async def _resolve_code_gen_model() -> Any:
         import os
-        try:
-            from core.harness.infrastructure.model_router import get_model_router
-            router = get_model_router()
-            entry = await router.select(task_purpose="code_generation", task_complexity="high")
-            if entry and entry.provider:
-                api_key = os.getenv(entry.api_key_env, "") if entry.api_key_env else entry.api_key
-                from core.adapters.llm import create_adapter
-                try:
-                    from core.harness.utils.model_injection import _log_model_selection
-                    _log_model_selection("skill_fallback", entry.name, entry="create_adapter_legacy", source="SkillBase")
-                except Exception:
-                    pass  # noqa: model-selection logging is best-effort, must not break skill fallback
-                return create_adapter(
-                    provider=entry.provider,
-                    model=entry.name,
-                    api_key=api_key,
-                    base_url=entry.base_url or None,
-                )
-        except Exception:
-            pass
+        # Primary: central resolution via infra ModelManager
         try:
             from core.harness.utils.model_injection import create_selected_adapter, get_default_model
             return create_selected_adapter(model_name=get_default_model(purpose="code_gen") or best_model_for_purpose("chat"))  # noqa: model-legacy
+        except Exception:
+            pass
+        # Fallback: model_router for provider-aware selection
+        try:
+            from core.harness.infrastructure.model_router import get_model_router
+            from core.harness.utils.model_injection import create_selected_adapter
+            router = get_model_router()
+            entry = await router.select(task_purpose="code_generation", task_complexity="high")
+            if entry and entry.name:
+                return create_selected_adapter(model_name=entry.name)
+        except Exception:
+            pass
         except Exception:
             return None
 

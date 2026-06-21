@@ -198,7 +198,7 @@ class WikiPageRetriever(IRetriever):
             if cache_path.exists():
                 try:
                     cache_data = _cache_json.loads(cache_path.read_text(encoding="utf-8"))
-                    if _time.time() - cache_data.get("ts", 0) < 300:
+                    if _time.time() - cache_data.get("ts", 0) < 3600:
                         inf = cache_data.get("inference", {})
                         merged["transitive"].extend(inf.get("transitive", []))
                         merged["source_chain"].extend(inf.get("source_chain", []))
@@ -347,6 +347,25 @@ class WikiPageRetriever(IRetriever):
         if missing_indices:
             missing_texts = [(pages[i]["body"] or "")[:5000] for i in missing_indices]
             missing_pvecs = embed_texts_semantic(missing_texts)
+            # Persist computed vectors to cache for future retrievals
+            try:
+                from pathlib import Path
+                cid = self._collection_ids[0] if self._collection_ids else "default"
+                cache_path = Path.home() / ".aiplat" / "wiki" / "collections" / cid / "vectors.json"
+                cache_path.parent.mkdir(parents=True, exist_ok=True)
+                import json as _json
+                cache = {}
+                if cache_path.exists():
+                    try:
+                        cache = _json.loads(cache_path.read_text(encoding="utf-8"))
+                    except Exception:
+                        cache = {}
+                for j, pv in zip(missing_indices, missing_pvecs):
+                    if pv is not None:
+                        cache[pages[j]["title"]] = list(pv) if hasattr(pv, '__iter__') else pv
+                cache_path.write_text(_json.dumps(cache, ensure_ascii=False))
+            except Exception:
+                pass
         else:
             missing_pvecs = []
 
@@ -383,7 +402,12 @@ class WikiPageRetriever(IRetriever):
                 density = 0.3
 
             # Composite score: semantic + keyword + governance factors
-            sim = sim * 0.55 + fts_score * 0.15 + freshness * 0.10 + credibility * 0.10 + density * 0.10
+            cfg = _load_scoring_weights()
+            sim = (sim * cfg["semantic"]
+                   + fts_score * cfg["fts_keyword"]
+                   + freshness * cfg["freshness"]
+                   + credibility * cfg["credibility"]
+                   + density * cfg["density"])
 
             # ── Ontology: relation boost ──
             if self._relation_boost:
@@ -541,3 +565,33 @@ class WikiPageRetriever(IRetriever):
     async def add_batch(self, entries: List[KnowledgeEntry]) -> None:
         for e in entries:
             self._entries[e.id] = e
+
+
+_DEFAULT_SCORING = {
+    "semantic": 0.55,
+    "fts_keyword": 0.15,
+    "freshness": 0.10,
+    "credibility": 0.10,
+    "density": 0.10,
+}
+
+
+def _load_scoring_weights() -> dict:
+    """Load retrieval scoring weights from llm_profile.yaml. Falls back to defaults."""
+    try:
+        import yaml, os
+        from pathlib import Path
+        config_path = os.getenv("AIPLAT_LLM_CONFIG_PATH",
+            str(Path(__file__).resolve().parent.parent.parent.parent.parent /
+                "aiPlat-infra" / "config" / "infra" / "llm_profile.yaml"))
+        profile = yaml.safe_load(open(config_path)) or {}
+        cfg = profile.get("retrieval_scoring", {})
+        return {
+            "semantic": float(cfg.get("semantic", _DEFAULT_SCORING["semantic"])),
+            "fts_keyword": float(cfg.get("fts_keyword", _DEFAULT_SCORING["fts_keyword"])),
+            "freshness": float(cfg.get("freshness", _DEFAULT_SCORING["freshness"])),
+            "credibility": float(cfg.get("credibility", _DEFAULT_SCORING["credibility"])),
+            "density": float(cfg.get("density", _DEFAULT_SCORING["density"])),
+        }
+    except Exception:
+        return dict(_DEFAULT_SCORING)

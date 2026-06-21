@@ -122,3 +122,4 @@ export type { KBConversation, KBAnalysisBatch, KBAnalysisRun, KBCollection, KBCa
 
 export { packagesApi } from './coreApi';
 export { overviewApi } from './coreApi';
+export { finetuneApi } from './coreApi';

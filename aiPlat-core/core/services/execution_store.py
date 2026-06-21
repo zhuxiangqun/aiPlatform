@@ -9535,7 +9535,10 @@ _execution_store: Optional[ExecutionStore] = None
 def get_execution_store(db_path: Optional[str] = None) -> ExecutionStore:
     """Process-wide singleton."""
     global _execution_store
-    desired_path = db_path or os.environ.get("AIPLAT_EXECUTION_DB_PATH", "data/aiplat_executions.sqlite3")
+    desired_path = db_path or os.environ.get(
+        "AIPLAT_EXECUTION_DB_PATH",
+        os.path.join(os.path.expanduser("~"), ".aiplat", "aiplat_executions.sqlite3")
+    )
     # If caller/env changes db_path within the same process (common in tests),
     # re-create the singleton so it points at the correct database.
     if _execution_store is not None:

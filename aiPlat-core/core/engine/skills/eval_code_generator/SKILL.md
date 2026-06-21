@@ -1,7 +1,8 @@
 ---
 name: eval_code_generator
 display_name: 评估代码生成器
-description: 基于 Amazon Eval Agent 论文方法——通过结构化过程性指令 + 代码模板 + API 文档检索，为 Agent 自动生成评估代码。每个 Agent 不超过 5 个评分指标，产出 2 个文件。
+description: 基于 Amazon Eval Agent 论文方法——通过结构化过程性指令 + 代码模板 + API 文档检索，为 Agent 自动生成评估代码。每个
+  Agent 不超过 5 个评分指标，产出 2 个文件。
 category: evaluation
 version: 1.0.0
 status: enabled
@@ -60,9 +61,28 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 为 Agent 自动生成评估代码
-
 protected: true
+keywords:
+  objects:
+  - 评估代码
+  - eval脚本
+  - 测试代码
+  actions:
+  - 生成
+  - 编写
+  - 创建
+  constraints:
+  - 评估标准
+  - 测试框架
+trigger_conditions:
+- when: 用户要求生成评估代码
+  query: 生成eval/写评估脚本
+- when: 不应用场景
+  description: 跳过条件：评估标准未明确或不具备可执行测试框架时不触发。
+skip_when: 跳过条件：评估标准未明确或不具备可执行测试框架时不触发。
 ---
+
+
 
 ## SOP
 

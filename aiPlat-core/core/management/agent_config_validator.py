@@ -168,10 +168,13 @@ def validate_agent_file(md_path: Path) -> List[ConfigIssue]:
             message="No tools bound — agent cannot perform actions"
         ))
     if shell_flags >= 3:
-        issues.append(ConfigIssue(
-            agent=agent_name, file=file_path, severity="warn",
-            message="Shell agent detected: no system_prompt, no skills, no tools. Agent will behave as generic CLAUDE.md assistant."
-        ))
+        # Pipeline agents (with stages) don't need explicit skills/tools/system_prompt
+        has_stages = bool(fm.get("stages"))
+        if not has_stages:
+            issues.append(ConfigIssue(
+                agent=agent_name, file=file_path, severity="warn",
+                message="Shell agent detected: no system_prompt, no skills, no tools. Agent will behave as generic CLAUDE.md assistant."
+            ))
 
     return issues
 

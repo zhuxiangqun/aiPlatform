@@ -19,6 +19,8 @@ class InfraEmbeddingAdapter(BaseModelAdapter):
             return SentenceTransformer(name, local_files_only=True)
         except ImportError:
             return None
+        except Exception:
+            return None  # Network errors, huggingface unreachable
 
     def embed_sync(self, text: str) -> List[float]:
         model = self._get_model()

@@ -1,3 +1,8 @@
 {
-  "version": "1.0.0"
+  "name": "summarization",
+  "type": "engine_skill",
+  "version": "1.0.0",
+  "created_at": "2026-06-21T20:58:52",
+  "auto_generated": true,
+  "signature": "IGyTXYoymSy+viK8vSwGF/aH1qnzDhFRYGWSoLihV2BW4hNAukp3f5MAiuOCt0G/YBatooqzf/6758Bhn8ngAQ=="
 }

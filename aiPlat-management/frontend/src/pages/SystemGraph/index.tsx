@@ -89,7 +89,7 @@ const SystemGraph: React.FC = () => {
     finally { setLoading(false); }
   }, [tab, codeMode]);
 
-  useEffect(() => { setGraphData(null); if (tab !== 'code') fetchGraph(); }, [fetchGraph, tab]);
+  useEffect(() => { if (tab === 'code') { fetchGraph(lastCenter.current || 'core/server', 2); } else { setGraphData(null); fetchGraph(); } }, [fetchGraph, tab]);
 
   // ── Guided Tour ──
   const startTour = useCallback(async () => {
@@ -143,7 +143,7 @@ const SystemGraph: React.FC = () => {
   };
 
   return (
-    <div className={`flex flex-col bg-dark-bg ${fullscreen ? 'fixed inset-0 z-50' : 'h-screen'}`}>
+    <div className={`flex flex-col bg-dark-bg relative ${fullscreen ? 'fixed inset-0 z-50' : 'h-screen'}`}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-dark-border shrink-0">
         <div className="flex items-center gap-3">
@@ -210,13 +210,13 @@ const SystemGraph: React.FC = () => {
               {/* Symbol/File toggle */}
               <div className="flex gap-0.5 bg-dark-bg rounded-md p-0.5 border border-dark-border ml-2">
                 <button
-                  onClick={() => { setCodeMode('file'); setGraphData(null); }}
+                  onClick={() => setCodeMode('file')}
                   className={`px-2 py-0.5 rounded text-[10px] font-medium ${
                     codeMode === 'file' ? 'bg-primary/20 text-primary' : 'text-gray-500'
                   }`}
                 >文件</button>
                 <button
-                  onClick={() => { setCodeMode('symbol'); setGraphData(null); }}
+                  onClick={() => setCodeMode('symbol')}
                   className={`px-2 py-0.5 rounded text-[10px] font-medium ${
                     codeMode === 'symbol' ? 'bg-primary/20 text-primary' : 'text-gray-500'
                   }`}

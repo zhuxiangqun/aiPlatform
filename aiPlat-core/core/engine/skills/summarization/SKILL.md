@@ -50,7 +50,30 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 将长文本压缩为结构化摘要
+keywords:
+  objects:
+  - 文章
+  - 文档
+  - 报告
+  - 对话
+  - 长文本
+  actions:
+  - 总结
+  - 归纳
+  - 概括
+  - 摘要
+  constraints:
+  - 不超过500字
+  - 保留关键信息
+trigger_conditions:
+- when: 用户要求总结或归纳内容
+  query: 总结/归纳/概括
+- when: 不应用场景
+  description: 跳过条件：仅需要列出事实而不需要归纳时不触发。
+skip_when: 跳过条件：仅需要列出事实而不需要归纳时不触发。
 ---
+
+
 
 # 内容摘要（Engine）
 

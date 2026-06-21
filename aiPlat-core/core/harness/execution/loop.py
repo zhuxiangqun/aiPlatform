@@ -986,6 +986,8 @@ class ReActLoop(BaseLoop):
                 model_name=self._config.model_name)
             # Persist this interaction to MemoryManager for cross-turn memory
             await self._try_save_interaction(state, prompt, getattr(response, "content", str(response)))
+            # L3: Auto-extract user facts from conversation
+            await self._try_extract_user_facts(state, prompt)
             # Track token usage (best-effort) for compaction budgets.
             try:
                 usage = getattr(response, "usage", None)
@@ -1443,6 +1445,47 @@ class ReActLoop(BaseLoop):
         except Exception:
             pass
 
+    async def _try_extract_user_facts(self, state: LoopState, user_msg: str) -> None:
+        u"""L3: Auto-extract structured facts from user messages.
+
+        Detects patterns like "我的预算是X", "我叫Y" and updates LearnerProfile.
+        Mimics ChatGPT's "Memory updated" behavior.
+        """
+        import re, logging
+        try:
+            facts = {}
+            budget_match = re.search(r'预算[是为:：]\s*(\d+)\s*万?', user_msg)
+            if budget_match:
+                facts["budget"] = int(budget_match.group(1))
+
+            name_match = re.search(r'(?:我|本人)[叫是称呼为]\s*([\u4e00-\u9fa5a-zA-Z]{2,10})', user_msg)
+            if name_match:
+                facts["name"] = name_match.group(1)
+
+            goal_match = re.search(r'(?:目标|想|要)[是]?\s*(.{5,50})', user_msg)
+            if goal_match and len(goal_match.group(1)) > 3:
+                facts["goals"] = goal_match.group(1).strip()
+
+            if facts:
+                from core.harness.knowledge.learning_ontology import (
+                    load_learner_profile, save_learner_profile,
+                )
+                learner_id = state.context.get("_user_id", state.context.get("_agent_id", "user"))
+                profile = load_learner_profile(learner_id)
+                if profile:
+                    changed = False
+                    for k, v in facts.items():
+                        if hasattr(profile, k):
+                            setattr(profile, k, v)
+                            changed = True
+                    if changed:
+                        save_learner_profile(profile)
+                        logging.getLogger("harness.loop").info(
+                            "Memory updated: %s → %s", learner_id, str(facts),
+                        )
+        except Exception:
+            pass
+
     async def _try_inject_graph_context(self, state: LoopState) -> dict:
         u"""注入代码图 + Wiki 知识图上下文到 Agent 决策循环。
 
@@ -1590,7 +1633,7 @@ class ReActLoop(BaseLoop):
         - Keep recent turns verbatim
         - Best-effort; fail-open to no compaction
 
-        NOTE: 5-level ContextCompression (70%→80%→85%→90%→99%) is now the
+        NOTE: 5-level ContextCompression (85%→90%→93%→96%→99%) is now the
         primary compaction path. Legacy single-threshold compaction serves as
         fallback when the 5-level module is unavailable or raises.
         """
@@ -1972,7 +2015,8 @@ class ReActLoop(BaseLoop):
         self, state: LoopState, routing_decision_id: str,
         selected_kind: str, selected_name: str = "",
     ) -> list:
-        return []  # downgraded: verbose debug event, not needed in execution flow
+        if os.getenv("AIPLAT_ENABLE_ROUTING_OBSERVABILITY", "") not in ("1", "true", "yes"):
+            return []
         try:
             runtime = get_kernel_runtime()
             store = getattr(runtime, "execution_store", None) if runtime else None
@@ -2162,7 +2206,8 @@ class ReActLoop(BaseLoop):
         selected_kind: str, selected_name: str, candidates_top: list,
         result_status: str = "", result_error: str = "",
     ) -> None:
-        return  # downgraded: verbose debug event, not needed in execution flow
+        if os.getenv("AIPLAT_ENABLE_ROUTING_OBSERVABILITY", "") not in ("1", "true", "yes"):
+            return
         try:
             runtime = get_kernel_runtime()
             store = getattr(runtime, "execution_store", None) if runtime else None

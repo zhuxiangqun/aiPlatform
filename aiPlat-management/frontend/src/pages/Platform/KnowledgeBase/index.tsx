@@ -9,6 +9,7 @@ import { ChatPanel } from './ChatPanel';
 import WikiGraph from '../../../components/wiki/WikiGraph';
 import WikiListView from '../../../components/wiki/WikiListView';
 import WikiHealthDashboard from '../../../components/wiki/WikiHealthDashboard';
+import OntologyGraph from '../../../components/wiki/OntologyGraph';
 import VaultBrowser from './VaultBrowser';
 
 const WIKI_API = '/api/core/wiki';
@@ -37,12 +38,26 @@ const KnowledgeBasePage: React.FC = () => {
   const [wikiQuery, setWikiQuery] = useState('');
   const [wikiViewMode, setWikiViewMode] = useState<'graph' | 'list'>('graph');
   const [wikiCategory, setWikiCategory] = useState('');
+  const [wikiCategories, setWikiCategories] = useState<string[]>([]);
   const [wikiLoading] = useState(false);
+
+  // Read URL params for category/link from ontology page
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const tab = p.get('activeTab');
+    const cat = p.get('category');
+    if (tab) setActiveTab(tab);
+    if (cat) setWikiCategory(cat);
+  }, []);
   const [selectedPage, setSelectedPage] = useState<any>(null);
   const [wikiNewTitle, setWikiNewTitle] = useState('');
   const [wikiNewBody, setWikiNewBody] = useState('');
   const [wikiNewTags, setWikiNewTags] = useState('');
   const [wikiNewCategory, setWikiNewCategory] = useState('entities');
+  const [k4EffectiveDate, setK4EffectiveDate] = useState('');
+  const [k4ExpiryDate, setK4ExpiryDate] = useState('');
+  const [k4Department, setK4Department] = useState('');
+  const [k4Owner, setK4Owner] = useState('');
   const [convertResult, setConvertResult] = useState<any>(null);
   const [converting, setConverting] = useState(false);
   const [convertingSelected, setConvertingSelected] = useState(false);
@@ -66,6 +81,15 @@ const KnowledgeBasePage: React.FC = () => {
   const [allSchemas, setAllSchemas] = useState<any[]>([]);
   const [hasExtension, setHasExtension] = useState(false);
   const [extensionLabel, setExtensionLabel] = useState('');
+  const [extraFields, setExtraFields] = useState<Record<string, string>>({});  // ontology-driven dynamic fields
+  const [showOptionalFields, setShowOptionalFields] = useState(false);
+  // ── Ontology engine upload state ──
+  const [parseModalOpen, setParseModalOpen] = useState(false);
+  const [parseText, setParseText] = useState('');
+  const [parseFormat, setParseFormat] = useState('md');
+  const [parseDomain, setParseDomain] = useState('ai-knowledge');
+  const [parseResult, setParseResult] = useState<any>(null);
+  const [parseLoading, setParseLoading] = useState(false);
   const [ontoMetrics, setOntoMetrics] = useState<any>(null);
   const [ontoSuggestions, setOntoSuggestions] = useState<any[]>([]);
   const [ontoPanelOpen, setOntoPanelOpen] = useState(false);
@@ -75,6 +99,8 @@ const KnowledgeBasePage: React.FC = () => {
   const [patterns, setPatterns] = useState<any>(null);
   const [ontoClasses, setOntoClasses] = useState<any[]>([]);
   const [ontoTreeOpen, setOntoTreeOpen] = useState(false);
+  const [ontoGraphOpen, setOntoGraphOpen] = useState(false);
+  const [ontoGraphData, setOntoGraphData] = useState<any>(null);
   const [modelLog, setModelLog] = useState<any[]>([]);
   const [latencyData, setLatencyData] = useState<any>(null);
   const [evolutionHistory, setEvolutionHistory] = useState<any[]>([]);
@@ -217,7 +243,13 @@ const KnowledgeBasePage: React.FC = () => {
       let url = `${WIKI_API}/pages?limit=100&source=kb&collection=${wikiCollection}`;
       if (wikiQuery) url += `&query=${encodeURIComponent(wikiQuery)}`;
       if (wikiCategory) url += `&category=${encodeURIComponent(wikiCategory)}`;
-      const res = await fetch(url); setWikiPages((await res.json()).items || []); markFresh('wiki');
+      const res = await fetch(url); const items = (await res.json()).items || [];
+      setWikiPages(items); markFresh('wiki');
+      // Extract unique categories from all pages (for dropdown)
+      if (!wikiCategory) {
+        const cats = [...new Set(items.map((p: any) => p.category).filter(Boolean))].sort();
+        setWikiCategories(cats as string[]);
+      }
     } catch {} finally { void (wikiLoading); }
   };
   const readWikiPage = async (title: string) => {
@@ -233,13 +265,28 @@ const KnowledgeBasePage: React.FC = () => {
   };
   const handleWikiCreate = async () => {
     if (!wikiNewTitle.trim() || !wikiNewBody.trim()) return;
+    // Build enriched body with ontology fields + K4 metadata
+    let enrichedBody = wikiNewBody;
+    const yamlLines = [];
+    for (const [k, v] of Object.entries(extraFields).filter(([_, v]) => v.trim())) {
+      yamlLines.push(`${k}: ${v}`);
+    }
+    // K4 metadata
+    if (k4EffectiveDate) yamlLines.push(`effective_date: ${k4EffectiveDate}`);
+    if (k4ExpiryDate) yamlLines.push(`expiry_date: ${k4ExpiryDate}`);
+    if (k4Department) yamlLines.push(`department: ${k4Department}`);
+    if (k4Owner) yamlLines.push(`owner: ${k4Owner}`);
+    if (yamlLines.length > 0) {
+      enrichedBody = `---\n${yamlLines.join('\n')}\n---\n\n${wikiNewBody}`;
+    }
     try {
       const res = await fetch(`${WIKI_API}/pages?collection=${wikiCollection}`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: wikiNewTitle, body: wikiNewBody, category: wikiNewCategory, tags: wikiNewTags.split(',').map((s: string) => s.trim()).filter(Boolean), summary: wikiNewBody.slice(0, 200) }) });
+        body: JSON.stringify({ title: wikiNewTitle, body: enrichedBody, category: wikiNewCategory, tags: wikiNewTags.split(',').map((s: string) => s.trim()).filter(Boolean), summary: wikiNewBody.slice(0, 200) }) });
       const data = await res.json();
       const autoLinks = data?.auto_links || [];
       const msg = '页面已创建' + (autoLinks.length > 0 ? ` · 自动关联 ${autoLinks.length} 个页面` : '');
-      toast.success(msg); setWikiNewTitle(''); setWikiNewBody(''); setWikiNewTags(''); setNewPageOpen(false); fetchWikiPages();
+      toast.success(msg); setWikiNewTitle(''); setWikiNewBody(''); setWikiNewTags(''); setExtraFields({});
+      setK4EffectiveDate(''); setK4ExpiryDate(''); setK4Department(''); setK4Owner(''); setNewPageOpen(false); fetchWikiPages();
     } catch { toast.error('创建失败'); }
   };
   const handleWikiDelete = async (title: string) => {
@@ -571,8 +618,8 @@ const KnowledgeBasePage: React.FC = () => {
         <div className="flex items-center gap-3">
           <h1 className="text-lg font-semibold text-gray-100">知识库</h1>
           <div className="flex gap-1">
-            {(['documents', '编缉知识', '本体', '观测', 'Vault', '健康', '评估'] as const).map((label) => {
-              const k = label === '评估' ? 'eval' : label === '编缉知识' ? 'wiki' : label === '健康' ? 'health' : label === '本体' ? 'ontology' : label === '观测' ? 'observe' : label === 'Vault' ? 'vault' : 'documents';
+            {(['documents', '编缉知识', '本体观测', '观测', 'Vault', '健康', '评估'] as const).map((label) => {
+              const k = label === '评估' ? 'eval' : label === '编缉知识' ? 'wiki' : label === '健康' ? 'health' : label === '本体观测' ? 'ontology' : label === '观测' ? 'observe' : label === 'Vault' ? 'vault' : 'documents';
               return (
                 <button key={k} onClick={() => setActiveTab(k)}
                   className={`px-3 py-1 rounded text-sm transition-colors ${
@@ -823,18 +870,13 @@ const KnowledgeBasePage: React.FC = () => {
                 列表
               </button>
             </div>
-            {wikiViewMode === 'list' && (
-              <>
-                <Input placeholder="搜索..." value={wikiQuery} onChange={e => setWikiQuery(e.target.value)}
-                  className="w-40 h-7 text-xs" />
-                <select value={wikiCategory} onChange={e => setWikiCategory(e.target.value)}
-                  className="h-7 px-2 bg-dark-card border border-dark-border rounded text-xs text-gray-300">
-                  <option value="">全部分类</option>
-                  <option value="entities">实体</option>
-                  <option value="topics">主题</option>
-                </select>
-              </>
-            )}
+            <Input placeholder="搜索..." value={wikiQuery} onChange={e => setWikiQuery(e.target.value)}
+              className="w-40 h-7 text-xs" />
+            <select value={wikiCategory} onChange={e => setWikiCategory(e.target.value)}
+              className="h-7 px-2 bg-dark-card border border-dark-border rounded text-xs text-gray-300">
+              <option value="">全部分类</option>
+              {wikiCategories.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
             <div className="flex-1" />
             <select value={wikiCollection} onChange={e => { setWikiCollection(e.target.value); fetchWikiPages(); }}
               className="h-7 px-2 bg-dark-card border border-dark-border rounded text-xs text-gray-300">
@@ -849,6 +891,7 @@ const KnowledgeBasePage: React.FC = () => {
             </Button>
             <Button variant="ghost" size="sm" onClick={handleCurate} loading={curating} className="text-xs">策展</Button>
             <Button variant="ghost" size="sm" onClick={() => setNewPageOpen(true)} className="text-xs"><Plus className="w-3 h-3 mr-1" />新建</Button>
+            <Button variant="ghost" size="sm" onClick={() => { setParseText(''); setParseResult(null); setParseModalOpen(true); }} className="text-xs">🧬 解析</Button>
             <Button variant="primary" size="sm" onClick={() => handleConvertKb()} loading={converting} className="text-xs"><Database className="w-3 h-3 mr-1" />导入</Button>
             <Button variant="ghost" size="sm" onClick={handleAtomize} loading={atomizing} className="text-xs" title="原子化：将文档拆解为知识原子">⚛️ 原子化</Button>
             <Button variant="ghost" size="sm" onClick={handleWikiClear} className="text-xs text-red-400 hover:text-red-300"><Trash2 className="w-3 h-3 mr-1" />清空</Button>
@@ -860,6 +903,15 @@ const KnowledgeBasePage: React.FC = () => {
               </span>
             )}
           </div>
+
+          {/* Active category filter badge */}
+          {wikiCategory && (
+            <div className="flex items-center gap-2 mb-2 px-2 py-1 bg-blue-900/20 border border-blue-800/30 rounded text-xs">
+              <span className="text-blue-300">🔍 筛选: <b>{wikiCategory}</b></span>
+              <span className="text-gray-500">({wikiPages.length} 个实例)</span>
+              <button className="text-gray-400 hover:text-gray-200 ml-2" onClick={() => { setWikiCategory(''); fetchWikiPages(); }}>✕ 清除</button>
+            </div>
+          )}
 
           {/* Wiki content + optional chat panel */}
           <div className="flex-1 min-h-0 flex gap-3">
@@ -949,31 +1001,138 @@ const KnowledgeBasePage: React.FC = () => {
                 </div>
                 <div className="space-y-2">
                   <Input placeholder="标题" value={wikiNewTitle} onChange={e => setWikiNewTitle(e.target.value)} />
-                  <select value={wikiNewCategory} onChange={e => { setWikiNewCategory(e.target.value); setSchema(allSchemas.find((s: any) => s.categories?.includes(e.target.value))); }}
+                  <select value={wikiNewCategory} onChange={e => { setWikiNewCategory(e.target.value); const s = allSchemas.find((s: any) => s.categories?.includes(e.target.value)); setSchema(s || null); setExtraFields({}); }}
                     className="w-full h-8 px-2 bg-dark-bg border border-dark-border rounded text-xs text-gray-300">
                     <option value="entities">实体 (概念页)</option>
                     <option value="topics">主题 (专题页)</option>
+                    {allSchemas.filter((s: any) => s.categories?.length && !['entities','topics'].some(c => s.categories.includes(c))).map((s: any) =>
+                      s.categories?.map((c: string) => <option key={c} value={c}>{s.label} ({c})</option>)
+                    )}
                   </select>
+                  {/* ── Ontology-driven dynamic fields ── */}
                   {schema && (
-                    <div className="text-[10px] space-y-0.5">
-                      <span className="text-amber-400">*必填: </span>
-                      {schema.required_fields?.map((f: string) => (
-                        <span key={f} className="text-amber-400/70 mr-2">{f}</span>
+                    <div className="text-[10px] space-y-1.5 bg-dark-bg rounded border border-dark-border/30 p-2">
+                      {schema.required_fields?.filter((f: string) => !['title','body'].includes(f)).map((f: string) => (
+                        <div key={f} className="flex items-center gap-2">
+                          <span className="text-amber-400 w-16 flex-shrink-0">{f}</span>
+                          <input
+                            value={extraFields[f] || ''}
+                            onChange={e => setExtraFields(prev => ({ ...prev, [f]: e.target.value }))}
+                            className="flex-1 h-6 px-2 bg-dark-card border border-dark-border rounded text-xs text-gray-200"
+                            placeholder={f}
+                          />
+                        </div>
                       ))}
                       {schema.optional_fields?.length > 0 && (
-                        <><span className="text-gray-500 ml-1">可选: </span>
-                        {schema.optional_fields?.slice(0, 5).map((f: string) => (
-                          <span key={f} className="text-gray-500 mr-2">{f}</span>
-                        ))}</>
+                        <button className="text-gray-500 hover:text-gray-300 text-[10px]" onClick={() => setShowOptionalFields(!showOptionalFields)}>
+                          {showOptionalFields ? '收起' : '展开'}可选字段 ({schema.optional_fields.length})
+                        </button>
                       )}
+                      {showOptionalFields && schema.optional_fields?.map((f: string) => (
+                        <div key={f} className="flex items-center gap-2">
+                          <span className="text-gray-500 w-16 flex-shrink-0">{f}</span>
+                          <input
+                            value={extraFields[f] || ''}
+                            onChange={e => setExtraFields(prev => ({ ...prev, [f]: e.target.value }))}
+                            className="flex-1 h-6 px-2 bg-dark-card border border-dark-border rounded text-xs text-gray-200"
+                            placeholder={f}
+                          />
+                        </div>
+                      ))}
                     </div>
                   )}
+                  {/* ── K4 Metadata fields ── */}
+                  <div className="text-[10px] text-gray-500 mt-1">K4 元数据治理</div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <div className="flex items-center gap-1">
+                      <span className="text-gray-500 text-[10px] w-12">生效日</span>
+                      <input type="date" value={k4EffectiveDate} onChange={e => setK4EffectiveDate(e.target.value)}
+                        className="flex-1 h-6 px-1 bg-dark-bg border border-dark-border rounded text-[10px] text-gray-200" />
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-gray-500 text-[10px] w-12">失效日</span>
+                      <input type="date" value={k4ExpiryDate} onChange={e => setK4ExpiryDate(e.target.value)}
+                        className="flex-1 h-6 px-1 bg-dark-bg border border-dark-border rounded text-[10px] text-gray-200" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <input value={k4Department} onChange={e => setK4Department(e.target.value)}
+                      className="h-6 px-2 bg-dark-bg border border-dark-border rounded text-[10px] text-gray-200"
+                      placeholder="部门 (如 研发部)" />
+                    <input value={k4Owner} onChange={e => setK4Owner(e.target.value)}
+                      className="h-6 px-2 bg-dark-bg border border-dark-border rounded text-[10px] text-gray-200"
+                      placeholder="负责人" />
+                  </div>
                   <Input placeholder="标签 (逗号分隔)" value={wikiNewTags} onChange={e => setWikiNewTags(e.target.value)} />
                   <Textarea rows={5} placeholder="Markdown 正文" value={wikiNewBody} onChange={e => setWikiNewBody(e.target.value)} />
                   <div className="flex gap-2">
                     <Button variant="ghost" size="sm" onClick={() => setNewPageOpen(false)} className="flex-1 text-xs">取消</Button>
                     <Button variant="primary" size="sm" onClick={handleWikiCreate} className="flex-1 text-xs">创建页面</Button>
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Parse Modal ── */}
+          {parseModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setParseModalOpen(false)}>
+              <div className="bg-dark-card border border-dark-border rounded-lg p-4 w-full max-w-2xl max-h-[90vh] overflow-auto" onClick={e => e.stopPropagation()}>
+                <div className="text-sm font-medium text-gray-200 mb-3">🧬 本体引擎解析</div>
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <select value={parseFormat} onChange={e => setParseFormat(e.target.value)}
+                      className="h-8 px-2 bg-dark-bg border border-dark-border rounded text-xs text-gray-300">
+                      <option value="md">Markdown</option>
+                      <option value="txt">纯文本</option>
+                      <option value="html">HTML</option>
+                    </select>
+                    <select value={parseDomain} onChange={e => setParseDomain(e.target.value)}
+                      className="h-8 px-2 bg-dark-bg border border-dark-border rounded text-xs text-gray-300">
+                      <option value="ai-knowledge">AI知识本体</option>
+                      <option value="ship-design">船舶设计本体</option>
+                      <option value="default">默认本体</option>
+                    </select>
+                  </div>
+                  <Textarea rows={10} placeholder="粘贴文档内容 (Markdown / 纯文本 / HTML)"
+                    value={parseText} onChange={e => setParseText(e.target.value)} />
+                  <div className="flex gap-2">
+                    <Button variant="primary" size="sm" loading={parseLoading}
+                      onClick={async () => {
+                        if (!parseText.trim()) return toast.error('请粘贴文档内容');
+                        setParseLoading(true); setParseResult(null);
+                        try {
+                          const r = await (await import('../../../services/kbApi')).kbApi.ontologyEngineParse({ text: parseText, format: parseFormat, domain_id: parseDomain });
+                          setParseResult(r);
+                        } catch (e: any) { toast.error('解析失败', e?.message); }
+                        finally { setParseLoading(false); }
+                      }}>🔍 分析</Button>
+                    <Button variant="primary" size="sm" loading={parseLoading}
+                      onClick={async () => {
+                        if (!parseText.trim()) return toast.error('请粘贴文档内容');
+                        setParseLoading(true); setParseResult(null);
+                        try {
+                          const r = await (await import('../../../services/kbApi')).kbApi.ontologyEngineProcess({ text: parseText, domain_id: parseDomain, auto_write: true });
+                          setParseResult(r); toast.success(`已生成 ${r.written_pages?.length || 0} 个Wiki页面`);
+                        } catch (e: any) { toast.error('处理失败', e?.message); }
+                        finally { setParseLoading(false); }
+                      }}>🚀 解析并写入</Button>
+                    <Button variant="ghost" size="sm" onClick={() => setParseModalOpen(false)}>关闭</Button>
+                  </div>
+                  {parseResult && (
+                    <div className="bg-dark-bg rounded border border-dark-border/30 p-3 text-xs space-y-2 max-h-64 overflow-auto">
+                      {parseResult.classifications && <div>
+                        <div className="text-gray-400 mb-1">分类结果 ({parseResult.chunk_count}块)</div>
+                        {parseResult.classifications.map((c: any, i: number) => (
+                          <div key={i} className="flex items-center gap-2 py-0.5">
+                            <span className="text-gray-500 w-24 truncate">{c.heading || `块${i+1}`}</span>
+                            <span className={c.class === 'unknown' ? 'text-gray-600' : 'text-purple-400'}>→ {c.class}</span>
+                          </div>
+                        ))}
+                      </div>}
+                      {parseResult.written_pages && <div className="text-green-400">✅ 已写入 {parseResult.written_pages.length} 页</div>}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1301,7 +1460,8 @@ const KnowledgeBasePage: React.FC = () => {
       {activeTab === 'ontology' && (
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <h2 className="text-base font-medium text-gray-200">本体健康<span style={{fontSize:11,color:freshnessColor('onto'),marginLeft:8}}>● {freshnessAgo('onto')}</span></h2>
+            <h2 className="text-base font-medium text-gray-200">本体观测<span style={{fontSize:11,color:freshnessColor('onto'),marginLeft:8}}>● {freshnessAgo('onto')}</span></h2>
+            <a href="/infra/ontology" className="text-xs text-primary hover:underline">→ 本体管理</a>
             <Button variant="ghost" size="sm" onClick={handleForceRefresh} loading={refreshMetricsLoading} className="text-xs">刷新指标</Button>
             <Button variant="ghost" size="sm" onClick={generateOntoSuggestions} loading={ontoGenerating} className="text-xs">生成建议</Button>
             <Button variant="ghost" size="sm" onClick={handleBatchAtomize} loading={batchAtomizing} className="text-xs">批量原子化</Button>
@@ -1312,6 +1472,25 @@ const KnowledgeBasePage: React.FC = () => {
               toast.success(`FTS5 已重建: ${d.indexed} 页`);
             }} className="text-xs">FTS索引</Button>
             {ontoMetrics && <Button variant="ghost" size="sm" onClick={() => handleExportOwl('turtle')} className="text-xs">📥 导出OWL</Button>}
+            <Button variant="ghost" size="sm" onClick={async () => {
+              if (!ontoGraphData) {
+                try {
+                  // Merge built-in classes with domain classes
+                  const [builtinRes, domainRes] = await Promise.all([
+                    fetch(`${WIKI_API}/ontology/classes`),
+                    fetch(`${WIKI_API}/ontology/domains/default`).catch(() => null),
+                  ]);
+                  const builtin = await builtinRes.json();
+                  const domainData = domainRes ? await domainRes.json() : null;
+                  
+                  // Merge: built-in classes get 'inherits' edges from parent field
+                  const classes = [...(builtin.classes || []), ...(domainData?.classes || [])];
+                  const props = domainData?.object_properties || [];
+                  setOntoGraphData({ name: '本体模型', classes, object_properties: props });
+                } catch { toast.error('加载本体图谱失败'); }
+              }
+              setOntoGraphOpen(!ontoGraphOpen);
+            }} className="text-xs">{ontoGraphOpen ? '📋 指标' : '📊 图谱'}</Button>
           </div>
 
           {/* Metrics Dashboard */}
@@ -1453,6 +1632,21 @@ const KnowledgeBasePage: React.FC = () => {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ── Ontology Graph View ── */}
+          {ontoGraphOpen && ontoGraphData && (
+            <div className="bg-dark-card rounded-lg border border-dark-border overflow-hidden">
+              <div className="px-3 py-2 border-b border-dark-border text-xs font-medium text-gray-300 flex items-center justify-between">
+                <span>📊 本体图谱: {ontoGraphData.name || 'default'}</span>
+                <span className="text-gray-500">{ontoGraphData.classes?.length || 0} 类 · {ontoGraphData.object_properties?.length || 0} 关系</span>
+              </div>
+              <OntologyGraph
+                classes={ontoGraphData.classes || []}
+                objectProperties={ontoGraphData.object_properties || []}
+                name={ontoGraphData.name}
+              />
             </div>
           )}
 

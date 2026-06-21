@@ -7,10 +7,20 @@ version: 1.0.0
 status: ready
 protected: true
 category: engineering
-tags: [react, reasoning, action]
+tags:
+- react
+- reasoning
+- action
 phase: development
-required_tools: [sysgraph_search, sysgraph_context, sysgraph_callers, sysgraph_impact]
-required_skills: [data_analysis, file_operations]
+required_tools:
+- sysgraph_search
+- sysgraph_context
+- sysgraph_callers
+- sysgraph_impact
+required_skills:
+- data_analysis
+- file_operations
+- code-hygiene
 pipeline:
   output_artifact: react_output
   phase: development
@@ -18,7 +28,10 @@ pipeline:
   phase_description: 通用推理执行
 config:
   model: deepseek-reasoner
+  system_prompt: 你是 react_agent，通用 ReAct Agent。引擎内置（engine）：仅核心能力层默认可用；对外（workspace）需白名单/审批后方可调用。
 ---
+
+
 
 # ReAct助手（Engine）
 

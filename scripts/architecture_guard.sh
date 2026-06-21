@@ -19,6 +19,7 @@ cd "$WORKSPACE_ROOT"
 
 python3 scripts/architecture_guard.py "$@"
 python3 aiPlat-core/core/management/capability_convergence.py "$@" --force
+python3 scripts/guard_ast_behavior.py "$@"
 python3 scripts/guard_frontend.py
 
 # Cycle detection — check import graph for circular dependencies

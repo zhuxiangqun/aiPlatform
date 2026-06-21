@@ -1,269 +1,361 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, BarChart3, Trophy, TrendingUp, Zap, Brain, Activity } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, Trophy, TrendingUp, Zap, Shield, AlertTriangle, Brain, Target } from 'lucide-react';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import * as echarts from 'echarts/core';
-import { LineChart, BarChart } from 'echarts/charts';
+import { BarChart } from 'echarts/charts';
 import { TooltipComponent, GridComponent, LegendComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import { Card, CardContent, CardHeader } from '../../components/ui';
 
-echarts.use([LineChart, BarChart, TooltipComponent, GridComponent, LegendComponent, CanvasRenderer]);
+echarts.use([BarChart, TooltipComponent, GridComponent, LegendComponent, CanvasRenderer]);
 
-interface EvalSummary {
-  arena: { leaderboard: any[]; total_matches: number };
-  regression: { history: any[] };
-  ab_scores: { templates: number; items: any[] };
-  evolution: { generations: number; latest_fitness: number; trend: any[] };
-  observability: { token_efficiency_pct: number; llm_success_rate: number; avg_latency_ms: number; total_calls: number };
-  diagnostic_trend: { current_score: number; current_grade: string; score_trend: any[] };
-  stage_rewards: { total_stages: number; by_stage: Record<string, { recent: any[]; avg_reward: number }> };
+interface EvalAgent {
+  agent_id: string;
+  latest_score: number;
+  avg_score: number;
+  evals_count: number;
+  trend: 'up' | 'down' | 'stable';
 }
 
+interface EvalOverview {
+  total_evals: number;
+  eval_sets: number;
+  agents_evaluated: number;
+  agents: EvalAgent[];
+}
+
+interface AgentScore {
+  agent_id: string;
+  latest_score: number;
+  grade: string;
+  eval_time: number;
+  total_evals: number;
+  dimensions?: {
+    task_completion: { score?: number; complete?: number; total?: number; reliability?: number };
+    tool_quality: { overall?: number; selection_rate?: number; violations?: number };
+    step_efficiency: { avg_steps?: number; score?: number };
+    error_recovery: { rate?: number; total_failures?: number };
+    safety: { score?: number; violations?: number; bypass_attempts?: number };
+    cost: { tokens_per_task?: number; calls_per_task?: number };
+  };
+}
+
+interface EvalHistory {
+  agent_id: string;
+  history: { eval_time: number; composite_score: number; grade: string; eval_set_id: string; total_tasks: number }[];
+  count: number;
+}
+
+const GRADE_CLASS: Record<string, string> = {
+  A: 'text-green-400 bg-green-900/20',
+  B: 'text-blue-400 bg-blue-900/20',
+  C: 'text-yellow-400 bg-yellow-900/20',
+  D: 'text-orange-400 bg-orange-900/20',
+  F: 'text-red-400 bg-red-900/20',
+};
+
+const TREND_ICON: Record<string, string> = {
+  up: '↗️',
+  down: '↘️',
+  stable: '→',
+};
+
 const EvalDashboard: React.FC = () => {
-  const [data, setData] = useState<EvalSummary | null>(null);
+  const [overview, setOverview] = useState<EvalOverview | null>(null);
+  const [selectedAgent, setSelectedAgent] = useState<string>('');
+  const [agentScore, setAgentScore] = useState<AgentScore | null>(null);
+  const [agentHistory, setAgentHistory] = useState<EvalHistory | null>(null);
   const [loading, setLoading] = useState(true);
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    fetch('/api/core/diagnostics/eval/summary')
+    fetch('/api/core/evaluation/overview')
       .then(r => r.json())
-      .then(setData)
+      .then(data => {
+        setOverview(data);
+        const urlAgent = searchParams.get('agent');
+        if (urlAgent && data.agents?.some((a: any) => a.agent_id === urlAgent)) {
+          setSelectedAgent(urlAgent);
+        } else if (data.agents?.length > 0) {
+          setSelectedAgent(data.agents[0].agent_id);
+        }
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [searchParams]);
 
-  const scoreChart = useMemo(() => {
-    if (!data?.diagnostic_trend?.score_trend?.length) return null;
+  useEffect(() => {
+    if (!selectedAgent) return;
+    fetch(`/api/core/evaluation/agents/${selectedAgent}/score`)
+      .then(r => r.json())
+      .then(setAgentScore)
+      .catch(() => {});
+    fetch(`/api/core/evaluation/agents/${selectedAgent}/history?limit=20`)
+      .then(r => r.json())
+      .then(setAgentHistory)
+      .catch(() => {});
+  }, [selectedAgent]);
+
+  const scoreBar = useMemo(() => {
+    if (!overview?.agents?.length) return null;
+    const top = [...overview.agents].sort((a, b) => b.latest_score - a.latest_score).slice(0, 15);
+    return {
+      tooltip: { trigger: 'axis' as const, axisPointer: { type: 'shadow' as const } },
+      grid: { top: 10, right: 20, bottom: 20, left: 100 },
+      xAxis: { type: 'value' as const, max: 100, axisLabel: { fontSize: 9, color: '#8b949e' } },
+      yAxis: { type: 'category' as const, data: top.map(a => a.agent_id).reverse(),
+        axisLabel: { fontSize: 10, color: '#c9d1d9' }, inverse: true },
+      series: [{
+        name: '评分', type: 'bar', data: top.map(a => a.latest_score).reverse(),
+        itemStyle: { color: (p: any) => {
+          const v = p.value ?? 0;
+          return v >= 90 ? '#3fb950' : v >= 75 ? '#58a6ff' : v >= 60 ? '#d29922' : '#f85149';
+        }},
+        barWidth: 16,
+      }],
+    };
+  }, [overview]);
+
+  const trendChart = useMemo(() => {
+    if (!agentHistory?.history?.length) return null;
+    const h = [...agentHistory.history].reverse();
     return {
       tooltip: { trigger: 'axis' as const },
       grid: { top: 10, right: 10, bottom: 20, left: 40 },
-      xAxis: { type: 'category' as const, data: data.diagnostic_trend.score_trend.map((h: any) =>
-        h.started_at ? new Date(h.started_at).toLocaleDateString() : '').slice(-15),
+      xAxis: { type: 'category' as const, data: h.map((_, i) => `#${i + 1}`),
         axisLabel: { fontSize: 9, color: '#8b949e' } },
       yAxis: { type: 'value' as const, min: 0, max: 100, axisLabel: { fontSize: 9, color: '#8b949e' } },
       series: [{
-        name: '评分', type: 'line', data: data.diagnostic_trend.score_trend.map((h: any) => h.overall_score || 0),
-        smooth: true, lineStyle: { color: '#58a6ff', width: 2 }, itemStyle: { color: '#58a6ff' }, symbol: 'circle', symbolSize: 3,
+        name: '评分', type: 'line', data: h.map(e => e.composite_score || 0),
+        smooth: true, lineStyle: { color: '#58a6ff', width: 2 },
+        itemStyle: { color: '#58a6ff' }, symbol: 'circle', symbolSize: 4,
+        areaStyle: { color: 'rgba(88,166,255,0.1)' },
       }],
     };
-  }, [data]);
-
-  const fitnessChart = useMemo(() => {
-    if (!data?.evolution?.trend?.length) return null;
-    return {
-      tooltip: { trigger: 'axis' as const },
-      grid: { top: 10, right: 10, bottom: 20, left: 40 },
-      xAxis: { type: 'category' as const, data: data.evolution.trend.map((e: any) => `Gen ${e.id}`),
-        axisLabel: { fontSize: 9, color: '#8b949e' } },
-      yAxis: { type: 'value' as const, min: 0, max: 1, axisLabel: { fontSize: 9, color: '#8b949e' } },
-      series: [{
-        name: 'Fitness', type: 'line', data: data.evolution.trend.map((e: any) => e.fitness || 0),
-        smooth: true, lineStyle: { color: '#3fb950', width: 2 }, areaStyle: { color: 'rgba(63,185,80,0.1)' },
-        itemStyle: { color: '#3fb950' }, symbol: 'circle', symbolSize: 3,
-      }],
-    };
-  }, [data]);
+  }, [agentHistory]);
 
   if (loading) return <div className="p-6 text-gray-400">加载中...</div>;
 
   return (
     <div className="space-y-6 p-4">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-200">Eval Dashboard</h1>
-        <p className="text-sm text-gray-500 mt-1">统一评估指标：Arena 排名 · AB 评分 · 进化适应度 · Token 效率</p>
+        <h1 className="text-2xl font-semibold text-gray-200">Agent 运行评估</h1>
+        <p className="text-sm text-gray-500 mt-1">
+          六维实时评分 · 任务完成率 · 工具调用质量 · 步骤效率 · 错误恢复 · 安全边界 · 成本
+        </p>
       </div>
 
       <Link to="/diagnostics" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200 transition-colors">
         <ArrowLeft className="w-3 h-3" />返回诊断中心
       </Link>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Arena Leaderboard */}
+      {/* Stats Row */}
+      <div className="grid grid-cols-4 gap-4">
         <Card className="bg-dark-card border-dark-border">
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-green-400">{overview?.agents_evaluated ?? 0}</div>
+            <div className="text-xs text-gray-500 mt-1">已评估 Agent</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-dark-card border-dark-border">
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-blue-400">{overview?.total_evals ?? 0}</div>
+            <div className="text-xs text-gray-500 mt-1">评估记录</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-dark-card border-dark-border">
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-purple-400">{overview?.eval_sets ?? 0}</div>
+            <div className="text-xs text-gray-500 mt-1">评估集</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-dark-card border-dark-border">
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-yellow-400">
+              {overview?.agents?.length
+                ? Math.round(overview.agents.reduce((s, a) => s + a.latest_score, 0) / overview.agents.length)
+                : '—'}
+            </div>
+            <div className="text-xs text-gray-500 mt-1">平均分</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Agent Scoreboard */}
+        <Card className="bg-dark-card border-dark-border lg:col-span-1">
           <CardHeader>
             <div className="flex items-center gap-2 text-sm font-semibold text-gray-200">
               <Trophy className="w-4 h-4 text-yellow-400" />
-              Arena 排行榜 {data?.arena.total_matches ? `· ${data.arena.total_matches} 场` : ''}
+              Agent 评分榜
             </div>
           </CardHeader>
           <CardContent>
-            {(data?.arena?.leaderboard || []).length > 0 ? (
-              <div className="space-y-2 text-xs">
-                {(data.arena.leaderboard || []).slice(0, 5).map((p: any, i: number) => (
-                  <div key={p.name} className="flex justify-between items-center">
-                    <span className="text-gray-300">#{i + 1} {p.name}</span>
-                    <span className="text-gray-400">{p.rating} Elo · {p.matches} 场</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-gray-500">尚未运行 Arena。POST /diagnostics/arena/run 触发</p>
-            )}
-            {(data?.regression?.history || []).length > 0 && (
-              <div className="mt-3 pt-3 border-t border-dark-border/50 text-xs text-gray-400">
-                <div className="text-gray-500 mb-1">最近回归</div>
-                {data.regression.history.map((r: any, i: number) => (
-                  <div key={i} className={r.verdict === 'PASS' ? 'text-green-400' : r.verdict === 'REGRESSION' ? 'text-red-400' : 'text-yellow-400'}>
-                    #{i + 1} {r.verdict} (pass_rate={r.pass_rate}%, {r.total_tasks} tasks)
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Token Efficiency */}
-        <Card className="bg-dark-card border-dark-border">
-          <CardHeader>
-            <div className="flex items-center gap-2 text-sm font-semibold text-gray-200">
-              <Zap className="w-4 h-4 text-blue-400" />
-              Token 效率 (24h)
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="text-gray-500">LLM 调用</span>
-                <span className="text-gray-300">{data?.observability?.total_calls ?? '—'} 次</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">成功率</span>
-                <span className={data?.observability?.llm_success_rate === 100 ? 'text-green-400' : 'text-yellow-400'}>
-                  {data?.observability?.llm_success_rate ?? '—'}%
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">平均延迟</span>
-                <span className="text-gray-300">{data?.observability?.avg_latency_ms?.toFixed(0) ?? '—'}ms</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Token 效率</span>
-                <span className={(data?.observability?.token_efficiency_pct ?? 0) >= 30 ? 'text-green-400' : 'text-yellow-400'}>
-                  {data?.observability?.token_efficiency_pct ?? '—'}%
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Evolution Fitness */}
-        <Card className="bg-dark-card border-dark-border">
-          <CardHeader>
-            <div className="flex items-center gap-2 text-sm font-semibold text-gray-200">
-              <TrendingUp className="w-4 h-4 text-green-400" />
-              进化适应度 {data?.evolution ? `· ${data.evolution.generations} 代` : ''}
-            </div>
-          </CardHeader>
-          <CardContent>
-            {fitnessChart ? (
-              <ReactEChartsCore echarts={echarts} option={fitnessChart}
-                style={{ width: '100%', height: '160px' }} notMerge lazyUpdate />
-            ) : (
-              <p className="text-xs text-gray-500">尚未运行进化</p>
-            )}
-            {data?.evolution?.latest_fitness ? (
-              <div className="text-xs text-gray-400 mt-1">
-                最新适应度: <span className="text-green-400">{data.evolution.latest_fitness.toFixed(2)}</span>
-              </div>
-            ) : null}
-          </CardContent>
-        </Card>
-
-        {/* AB Scores */}
-        <Card className="bg-dark-card border-dark-border">
-          <CardHeader>
-            <div className="flex items-center gap-2 text-sm font-semibold text-gray-200">
-              <Brain className="w-4 h-4 text-purple-400" />
-              AB 评分 {data?.ab_scores ? `· ${data.ab_scores.templates} 模板` : ''}
-            </div>
-          </CardHeader>
-          <CardContent>
-            {(data?.ab_scores?.items || []).length > 0 ? (
-              <div className="space-y-2 text-xs">
-                {data.ab_scores.items.slice(0, 5).map((s: any) => (
-                  <div key={s.template_id + s.version} className="flex justify-between">
-                    <span className="text-gray-300">{s.template_id} v{s.version}</span>
-                    <span className={s.avg_score >= 75 ? 'text-green-400' : s.avg_score >= 50 ? 'text-yellow-400' : 'text-red-400'}>
-                      {s.avg_score} ({s.eval_count} 次)
+            {overview?.agents?.length ? (
+              <div className="space-y-1">
+                {[...overview.agents].sort((a, b) => b.latest_score - a.latest_score).map((a, i) => (
+                  <div
+                    key={a.agent_id}
+                    onClick={() => setSelectedAgent(a.agent_id)}
+                    className={`flex items-center justify-between px-2 py-1.5 rounded cursor-pointer text-xs transition-colors
+                      ${selectedAgent === a.agent_id ? 'bg-primary/10 border border-primary/30' : 'hover:bg-dark-hover'}`}
+                  >
+                    <span className="flex items-center gap-1.5 text-gray-300">
+                      <span className="text-gray-500 w-4">#{i + 1}</span>
+                      {a.agent_id}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className={a.latest_score >= 90 ? 'text-green-400' : a.latest_score >= 75 ? 'text-blue-400' : a.latest_score >= 60 ? 'text-yellow-400' : 'text-red-400'}>
+                        {a.latest_score}
+                      </span>
+                      <span>{TREND_ICON[a.trend] || ''}</span>
+                      <span className="text-gray-500">{a.evals_count}次</span>
                     </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-gray-500">暂无 AB 评分数据</p>
+              <p className="text-xs text-gray-500">
+                暂无评估数据。设置 <code className="text-blue-400">AIPLAT_ENABLE_AUTO_EVAL=true</code> 启用自动评估，或运行
+                <code className="text-blue-400 ml-1">bash scripts/eval.sh run default/normal --live</code>
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Score Bar Chart */}
+        <Card className="bg-dark-card border-dark-border lg:col-span-1">
+          <CardHeader>
+            <div className="flex items-center gap-2 text-sm font-semibold text-gray-200">
+              <Target className="w-4 h-4 text-green-400" />
+              评分分布
+            </div>
+          </CardHeader>
+          <CardContent>
+            {scoreBar ? (
+              <ReactEChartsCore echarts={echarts} option={scoreBar}
+                style={{ width: '100%', height: overview?.agents?.length ? Math.max(200, overview.agents.length * 20) : 200 }} notMerge lazyUpdate />
+            ) : (
+              <p className="text-xs text-gray-500">暂无数据</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Selected Agent Detail */}
+        <Card className="bg-dark-card border-dark-border lg:col-span-1">
+          <CardHeader>
+            <div className="flex items-center gap-2 text-sm font-semibold text-gray-200">
+              <Brain className="w-4 h-4 text-purple-400" />
+              {selectedAgent || '选择 Agent'}
+              {agentScore?.grade && (
+                <span className={`text-xs px-2 py-0.5 rounded ${GRADE_CLASS[agentScore.grade] || ''}`}>
+                  {agentScore.grade}
+                </span>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {agentScore?.latest_score !== undefined ? (
+              <div className="space-y-3">
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-500">最新评分</span>
+                  <span className={agentScore.latest_score >= 90 ? 'text-green-400' : agentScore.latest_score >= 75 ? 'text-blue-400' : agentScore.latest_score >= 60 ? 'text-yellow-400' : 'text-red-400'}>
+                    {agentScore.latest_score}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-500">评估次数</span>
+                  <span className="text-gray-300">{agentScore.total_evals}</span>
+                </div>
+                {trendChart ? (
+                  <ReactEChartsCore echarts={echarts} option={trendChart}
+                    style={{ width: '100%', height: '140px' }} notMerge lazyUpdate />
+                ) : (
+                  <p className="text-xs text-gray-500">至少 2 次评估才显示趋势</p>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-gray-500">
+                {selectedAgent ? '暂无评估数据' : '选择一个 Agent 查看详情'}
+              </p>
             )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Stage Rewards */}
-      {data?.stage_rewards && data.stage_rewards.total_stages > 0 && (
+      {/* Six-Dimension Detail for Selected Agent */}
+      {agentScore?.dimensions && (
         <Card className="bg-dark-card border-dark-border">
           <CardHeader>
             <div className="flex items-center gap-2 text-sm font-semibold text-gray-200">
-              <Activity className="w-4 h-4 text-amber-400" />
-              Stage 奖励明细 (细粒度归因)
+              <Target className="w-4 h-4 text-green-400" />
+              {selectedAgent} · 六维详情
+              <span className={`text-xs px-2 py-0.5 rounded ${GRADE_CLASS[agentScore.grade] || ''}`}>
+                {agentScore.grade}
+              </span>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="text-gray-500 border-b border-dark-border/50">
-                    <th className="text-left py-1">Stage</th>
-                    <th className="text-right py-1">Avg Reward</th>
-                    <th className="text-right py-1">Quality</th>
-                    <th className="text-right py-1">Token Eff</th>
-                    <th className="text-right py-1">Latency</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(data.stage_rewards.by_stage).map(([stageId, info]: [string, any]) => (
-                    <tr key={stageId} className="border-b border-dark-border/30">
-                      <td className="py-1 text-gray-300">{stageId}</td>
-                      <td className={`py-1 text-right font-medium ${info.avg_reward >= 80 ? 'text-green-400' : info.avg_reward >= 60 ? 'text-yellow-400' : 'text-red-400'}`}>
-                        {info.avg_reward}
-                      </td>
-                      <td className="py-1 text-right text-gray-400">
-                        {info.recent?.[0]?.dimensions?.output_quality ?? '—'}%
-                      </td>
-                      <td className="py-1 text-right text-gray-400">
-                        {info.recent?.[0]?.dimensions?.token_efficiency ?? '—'}%
-                      </td>
-                      <td className="py-1 text-right text-gray-400">
-                        {info.recent?.[0]?.dimensions?.latency_score ?? '—'}%
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-3 text-xs">
+              <div className="text-center p-2 rounded bg-dark-hover">
+                <div className="text-gray-500 mb-1">任务完成</div>
+                <div className={agentScore.dimensions.task_completion.score ? 'text-green-400 text-lg font-bold' : 'text-gray-500'}>
+                  {agentScore.dimensions.task_completion.score ?? '—'}
+                </div>
+                <div className="text-gray-500">
+                  {agentScore.dimensions.task_completion.complete ?? 0}/{agentScore.dimensions.task_completion.total ?? 0} tasks
+                </div>
+              </div>
+              <div className="text-center p-2 rounded bg-dark-hover">
+                <div className="text-gray-500 mb-1">工具质量</div>
+                <div className={agentScore.dimensions.tool_quality.overall != null ? 'text-blue-400 text-lg font-bold' : 'text-gray-500'}>
+                  {agentScore.dimensions.tool_quality.overall != null ? `${agentScore.dimensions.tool_quality.overall}%` : '—'}
+                </div>
+                <div className="text-gray-500">
+                  {agentScore.dimensions.tool_quality.violations != null ? `${agentScore.dimensions.tool_quality.violations} 违规` : ''}
+                </div>
+              </div>
+              <div className="text-center p-2 rounded bg-dark-hover">
+                <div className="text-gray-500 mb-1">步骤效率</div>
+                <div className={agentScore.dimensions.step_efficiency.score != null ? 'text-purple-400 text-lg font-bold' : 'text-gray-500'}>
+                  {agentScore.dimensions.step_efficiency.score != null ? `${agentScore.dimensions.step_efficiency.score}%` : '—'}
+                </div>
+                <div className="text-gray-500">
+                  {agentScore.dimensions.step_efficiency.avg_steps != null ? `${agentScore.dimensions.step_efficiency.avg_steps} 步` : ''}
+                </div>
+              </div>
+              <div className="text-center p-2 rounded bg-dark-hover">
+                <div className="text-gray-500 mb-1">错误恢复</div>
+                <div className={agentScore.dimensions.error_recovery.rate != null ? 'text-yellow-400 text-lg font-bold' : 'text-gray-500'}>
+                  {agentScore.dimensions.error_recovery.rate != null ? `${agentScore.dimensions.error_recovery.rate}%` : '—'}
+                </div>
+                <div className="text-gray-500">
+                  {agentScore.dimensions.error_recovery.total_failures != null ? `${agentScore.dimensions.error_recovery.total_failures} 失败` : ''}
+                </div>
+              </div>
+              <div className="text-center p-2 rounded bg-dark-hover">
+                <div className="text-gray-500 mb-1">安全边界</div>
+                <div className={agentScore.dimensions.safety.score != null ? 'text-red-400 text-lg font-bold' : 'text-gray-500'}>
+                  {agentScore.dimensions.safety.score != null ? `${agentScore.dimensions.safety.score}%` : '—'}
+                </div>
+                <div className="text-gray-500">
+                  {agentScore.dimensions.safety.violations != null ? `${agentScore.dimensions.safety.violations} 违规` : ''}
+                </div>
+              </div>
+              <div className="text-center p-2 rounded bg-dark-hover">
+                <div className="text-gray-500 mb-1">成本效率</div>
+                <div className={agentScore.dimensions.cost.calls_per_task != null ? 'text-orange-400 text-lg font-bold' : 'text-gray-500'}>
+                  {agentScore.dimensions.cost.calls_per_task != null ? `${agentScore.dimensions.cost.calls_per_task}` : '—'}
+                </div>
+                <div className="text-gray-500">
+                  {agentScore.dimensions.cost.tokens_per_task != null ? `${agentScore.dimensions.cost.tokens_per_task} tok` : ''}
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
       )}
-
-      {/* Diagnostic Score Trend */}
-      <Card className="bg-dark-card border-dark-border">
-        <CardHeader>
-          <div className="flex items-center gap-2 text-sm font-semibold text-gray-200">
-            <Activity className="w-4 h-4 text-orange-400" />
-            诊断评分趋势
-            {data?.diagnostic_trend && (
-              <span className={`text-xs px-2 py-0.5 rounded ${data.diagnostic_trend.current_score >= 85 ? 'bg-green-900/20 text-green-300' : 'bg-yellow-900/20 text-yellow-300'}`}>
-                {data.diagnostic_trend.current_score} {data.diagnostic_trend.current_grade}
-              </span>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          {scoreChart ? (
-            <ReactEChartsCore echarts={echarts} option={scoreChart}
-              style={{ width: '100%', height: '160px' }} notMerge lazyUpdate />
-          ) : (
-            <p className="text-xs text-gray-500">暂无诊断趋势数据</p>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 };

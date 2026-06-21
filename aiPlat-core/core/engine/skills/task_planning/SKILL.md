@@ -49,7 +49,30 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 根据目标制定执行计划
+keywords:
+  objects:
+  - 任务
+  - 计划
+  - 步骤
+  - 流程
+  actions:
+  - 规划
+  - 拆解
+  - 编排
+  - 分配
+  constraints:
+  - 优先级
+  - 依赖关系
+  - 资源
+trigger_conditions:
+- when: 用户要求任务规划
+  query: 规划/拆解任务/编排
+- when: 不应用场景
+  description: 跳过条件：任务过于简单（单步可完成）时不触发。
+skip_when: 跳过条件：任务过于简单（单步可完成）时不触发。
 ---
+
+
 
 # 任务规划（Engine）
 

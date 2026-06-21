@@ -263,7 +263,7 @@ class PipelineStageConfig(BaseModel):
     # Anthropic 5 patterns: chain | router | parallel | orchestrator | evaluator_optimizer
     pipeline_mode: str = "chain"          # "chain" | "router" | "parallel" | "orchestrator" | "evaluator_optimizer" | "agent"
     eval_model: str = ""  # dedicated evaluator model (empty = fallback to stage.model or AIPLAT_EVAL_MODEL)
-    routing_rules: List[dict] = Field(default_factory=list)  # declarative conditional routing
+    routing_rules: List[dict] = Field(default_factory=list)  # declarative conditional routing  # 4step-verified
     deviation_tolerance: float = 0.0  # [0.0, 10.0] Accept output when overall score >= this (0=disabled)
     failure_mode_constraints: List[Dict[str, Any]] = Field(default_factory=list)
     # [{failure_type, constraint_action, max_escalation}] — targeted recovery per failure type
@@ -306,6 +306,13 @@ class PipelineStageConfig(BaseModel):
     scene_id: str = ""
     # Planner-Generator-Evaluator separation: stage ID for structured planning
     planning_stage_id: str = ""
+    # ── v4.0: Declarative quality gates & routing for pipeline agents ──
+    quality_gate: Dict[str, Any] = Field(default_factory=dict)
+    """CRAG-style quality gate: {condition, fallback, final_fallback}"""
+    routing_rules: Dict[str, Any] = Field(default_factory=dict)
+    """Domain routing rules: {tiers, fallback_domain}"""
+    retry_policy: Dict[str, Any] = Field(default_factory=dict)
+    """Self-heal retry: {on, action, max_retries}"""
 
 
 class PipelineConfig(BaseModel):

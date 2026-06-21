@@ -5,6 +5,7 @@ Wiki API — persistent LLM-curated knowledge base endpoints.
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Query, Body
 from pydantic import BaseModel
+import logging
 
 router = APIRouter(prefix="/wiki", tags=["wiki"])
 
@@ -149,23 +150,27 @@ async def get_unprocessed_docs(tenant_id: str = "default", collection: str = "de
             if s.startswith("kb:"):
                 wiki_doc_ids.add(s.replace("kb:", ""))
     
-    # Find KB docs not in wiki
+    # Find KB docs not in wiki — also check wiki_status column
     conn = _sq.connect(kb_db)
     conn.row_factory = _sq.Row
     docs = conn.execute(
-        "SELECT doc_id, source_uri, kind, status FROM documents WHERE tenant_id=? AND status='ready'",
+        "SELECT doc_id, source_uri, kind, status, wiki_status FROM documents WHERE tenant_id=? AND status='ready'",
         (tenant_id,)
     ).fetchall()
-    
+
     unprocessed = []
     for d in docs:
-        if d["doc_id"] not in wiki_doc_ids:
-            unprocessed.append({
-                "doc_id": d["doc_id"],
-                "source_uri": d["source_uri"],
-                "kind": d["kind"],
-                "status": d["status"],
-            })
+        # Skip if already in wiki_pages OR wiki_status is 'wikified'
+        if d["doc_id"] in wiki_doc_ids:
+            continue
+        if str(d["wiki_status"] or "").strip() == "wikified":
+            continue
+        unprocessed.append({
+            "doc_id": d["doc_id"],
+            "source_uri": d["source_uri"],
+            "kind": d["kind"],
+            "status": d["status"],
+        })
     conn.close()
     return {"items": unprocessed, "total": len(unprocessed)}
 
@@ -352,7 +357,7 @@ async def run_self_harness_cycle():
     u"""Run the Self-Harness optimization cycle."""
     try:
         from core.harness.execution.failure_clusterer import load_clusters
-        from core.harness.execution.pipeline_engine import PipelineEngine
+        from core.api.core_facade import run_self_harness_cycle
         from core.harness.kernel.runtime import get_kernel_runtime
 
         runtime = get_kernel_runtime()
@@ -368,7 +373,7 @@ async def run_self_harness_cycle():
         if not run_states:
             return {"accepted": [], "rejected": [], "message": "No completed runs found for analysis"}
 
-        result = await PipelineEngine._run_self_harness_cycle(run_states)
+        result = await run_self_harness_cycle(run_states)
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Self-Harness failed: {e}")
@@ -630,6 +635,37 @@ async def create_wiki_page(body: WikiPageWrite, collection: str = "default"):
             update_page(body.title, related=list(set(body.related or [] + auto_links)), collection_id=collection)
     except Exception:
         pass
+    # ── Version sync: if page was updated (not new), mark related ontology instances for review ──
+    try:
+        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.harness.ontology_engine.engine import _persist_reviews
+        graph = GraphIndex.load("ai-knowledge")
+        node = graph.find_by_name(body.title)
+        if node and len(graph) > 0:
+            inverse_rels = graph.get_inverse_relations(node.entity_id)
+            if inverse_rels:
+                affected = []
+                for e in inverse_rels:
+                    src_node = graph.get_node(e.source_id)
+                    if src_node:
+                        affected.append({
+                            "from_instance": body.title,
+                            "from_class": "WikiPage",
+                            "to_instance": src_node.entity_name,
+                            "to_class": src_node.class_name,
+                            "reason": "源文档已更新，请审查关联的本体实例是否需要同步修订",
+                            "transition": "source_version_changed",
+                        })
+                if affected:
+                    _persist_reviews("ai-knowledge", affected)
+    except Exception:
+        pass
+    # ── Synthesis version sync: mark synthesis pages for review ──
+    try:
+        from core.harness.knowledge.wiki_engine import _sync_synthesis_pages
+        _sync_synthesis_pages(body.title, collection_id=collection)
+    except Exception:
+        pass
     return {"title": body.title, "path": path, "status": "created", "auto_links": auto_links}
 
 
@@ -755,6 +791,9 @@ async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection
 
             topic_keywords = {}  # Track shared keywords across documents for cross-linking
 
+            # Collect doc metadata for parallel curation batching
+            _curation_queue = []  # list of (doc_id, safe_title, body, tags, summary, collection, tenant_id, doc)
+
             for doc in docs:
                 doc_id = doc["doc_id"]
                 source_uri = str(doc["source_uri"] if "source_uri" in doc.keys() else doc_id)
@@ -765,21 +804,22 @@ async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection
                     meta = _json.loads(doc["meta_json"] or "{}")
                     if meta.get("title"):
                         title = str(meta["title"])[:120]
-                except Exception: pass
+                except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
                 # Try to parse a human-readable title from the URI
                 from core.harness.knowledge.wiki_engine import parse_title_from_uri
                 readable = parse_title_from_uri(source_uri)
                 if readable and len(readable) >= 3:
                     title = readable
 
-                # Skip if already converted
+                # Skip only if fully converted (both wiki_pages AND wikified status)
                 try:
                     meta = _json.loads(doc["meta_json"] or "{}")
                     wiki_pages = meta.get("wiki_pages", [])
-                    if wiki_pages:
+                    wiki_status = str(doc["wiki_status"] or "").strip()
+                    if wiki_pages and wiki_status == "wikified":
                         skipped += 1
                         continue
-                except Exception: pass
+                except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
 
                 # Read document elements (full text)
                 elements = conn.execute(
@@ -810,103 +850,79 @@ async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection
                         topic_keywords[kw] = []
                     topic_keywords[kw].append(title)
 
-                # Create wiki page
+                # Create wiki page (fast, no LLM)
                 safe_title = re.sub(r"[<>:\"/\\|?*]", "_", title)[:120]
                 write_page(safe_title, body, category="entities", tags=tags, summary=summary,
                           source_articles=[f"kb:{doc_id}"], collection_id=collection)
+                # Queue for parallel curation (deferred, batched LLM calls)
+                _curation_queue.append((doc_id, safe_title, body, tags, summary, collection, tenant_id, dict(doc)))
                 docs_converted += 1
 
-                # LLM curation: enhance with proper summary, entity extraction, auto-linking
-                try:
-                    from core.harness.knowledge.wiki_engine import llm_curate_page, list_all_pages as _lap
-                    existing = _lap()
-                    existing_titles = [p["title"] for p in existing] if existing else []
-                    curated = await llm_curate_page(safe_title, body, existing_titles=existing_titles, source_doc_id=doc_id)
-                    # Re-write with LLM-enhanced metadata
-                    old_title = safe_title
-                    write_page(curated["title"], body,
-                        category=curated.get("category", "entities"),
-                        tags=curated.get("tags", tags),
-                        related=curated.get("related", []),
-                        summary=curated.get("summary", summary),
-                        source_articles=[f"kb:{doc_id}"], collection_id=collection)
-                    # If LLM changed the title, delete the mechanically-created page
-                    if curated["title"] != old_title:
-                        from core.harness.knowledge.wiki_engine import delete_page as _delp
-                        try: _delp(old_title)
-                        except Exception: pass
-                    # Always delete the mechanical page if it still exists
-                    from core.harness.knowledge.wiki_engine import delete_page as _delp2
-                    try: _delp2(old_title)
-                    except Exception: pass
-                    # Create knowledge atom pages with evidence tracking
-                    for atom in curated.get("knowledge_atoms", [])[:8]:
-                        if not atom.get("title") or not atom.get("body"):
+            # ── Parallel curation: batch LLM calls via asyncio.gather ──
+            import asyncio as _asyncio
+            BATCH = 5
+            if _curation_queue:
+                from core.harness.knowledge.wiki_engine import llm_curate_page, list_all_pages as _lap
+                existing = _lap()
+                existing_titles = [p["title"] for p in existing] if existing else []
+                for i in range(0, len(_curation_queue), BATCH):
+                    batch = _curation_queue[i:i + BATCH]
+                    tasks = [
+                        llm_curate_page(title, body, existing_titles=existing_titles, source_doc_id=doc_id)
+                        for doc_id, title, body, *_ in batch
+                    ]
+                    try:
+                        results = await _asyncio.gather(*tasks, return_exceptions=True)
+                    except Exception:
+                        results = []
+                    for j, curated in enumerate(results):
+                        if isinstance(curated, Exception) or curated is None:
                             continue
-                        atom_title = re.sub(r"[<>:\"/\\|?*]", "_", str(atom["title"])[:80])
-                        if atom_title and atom_title != curated["title"]:
-                            from core.harness.knowledge.wiki_engine import write_atom
-                            write_atom({
-                                "title": atom_title,
-                                "body": str(atom.get("body", ""))[:20000],
-                                "source_doc_id": f"kb:{doc_id}",
-                                "evidence_text": atom.get("evidence_text", ""),
-                                "confidence": float(atom.get("confidence", 0.5)),
-                                "tags": list(atom.get("tags", []))[:5],
-                                "contradicts_atom_index": atom.get("contradicts_atom_index"),
-                                "supports_atom_index": atom.get("supports_atom_index"),
-                            }, collection_id=collection)
-                            entities_created += 1
-                    # After creating knowledge atoms, update main page's related
-                    # to include them (prevent orphan pages)
-                    if entities_created > 0 and curated.get("title"):
-                        main_page = read_page(curated["title"], collection_id=collection)
-                        if main_page:
-                            atom_titles = []
-                            for atom in curated.get("knowledge_atoms", [])[:8]:
-                                a_title = re.sub(r"[<>:\"/\\|?*]", "_", str(atom.get("title", ""))[:80])
-                                if a_title and a_title != curated["title"]:
-                                    atom_titles.append(a_title)
-                            if atom_titles:
-                                existing_related = set(main_page.get("related", []) or [])
-                                existing_related.update(atom_titles)
-                                write_page(curated["title"], main_page.get("body", "", collection_id=collection),
-                                    category=main_page.get("category", "entities"),
-                                    tags=main_page.get("tags", []),
-                                    related=list(existing_related)[:10],
-                                    summary=main_page.get("summary", ""))
-                    # Mark contradictions
-                    for con in curated.get("contradictions", [])[:3]:
-                        from core.harness.knowledge.wiki_engine import read_page as _rpx
-                        old_page = _rpx(con.get("b", ""))
-                        if old_page:
-                            old_contradictions = set(old_page.get("contradictions", []))
-                            old_contradictions.add(safe_title)
-                            write_page(con.get("b", "", collection_id=collection), old_page.get("body", ""),
-                                category=old_page.get("category", "entities"),
-                                tags=old_page.get("tags", []), related=old_page.get("related", []),
-                                contradictions=list(old_contradictions)[:10])
-                except Exception:
-                    pass  # LLM curation best-effort
-
-                # Write back to KB document: record linked wiki page
-                final_title = curated["title"] if curated.get("title") and curated["title"] != old_title else safe_title
-                try:
-                    meta = _json.loads(doc["meta_json"] or "{}")
-                    wiki_pages = meta.get("wiki_pages", [])
-                    # Remove old mechanical title if it differs from final
-                    if final_title != safe_title and safe_title in wiki_pages:
-                        wiki_pages.remove(safe_title)
-                    if final_title not in wiki_pages:
-                        wiki_pages.append(final_title)
-                        meta["wiki_pages"] = wiki_pages
-                        meta_json_str = _json.dumps(meta, ensure_ascii=False)
-                        conn.execute("UPDATE documents SET meta_json=?, wiki_status='wikified' WHERE doc_id=? AND tenant_id=?",
-                                    (meta_json_str, doc_id, tenant_id))
-                        conn.commit()
-                except Exception as e:
-                    writeback_errors += 1
-                    logger.warning(f"convert-from-kb: failed to write wiki_pages for doc {doc_id}: {e}")
+                        try:
+                            doc_id, safe_title, body_text, tags, summary, collection, tenant_id, raw_doc = batch[j]
+                            curated = curated or {}
+                            old_title = safe_title
+                            write_page(curated.get("title", old_title), body_text,
+                                category=curated.get("category", "entities"),
+                                tags=curated.get("tags", tags),
+                                related=curated.get("related", []),
+                                summary=curated.get("summary", summary),
+                                source_articles=[f"kb:{doc_id}"], collection_id=collection)
+                            if curated.get("title") != old_title:
+                                try: delete_page(old_title)
+                                except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
+                            for atom in curated.get("knowledge_atoms", [])[:6]:
+                                if not atom.get("title") or not atom.get("body"):
+                                    continue
+                                atom_title = re.sub(r"[<>:\"/\\|?*]", "_", str(atom["title"])[:80])
+                                if atom_title and atom_title != curated.get("title"):
+                                    try:
+                                        from core.harness.knowledge.wiki_engine import write_atom
+                                        write_atom({"title": atom_title, "body": str(atom.get("body",""))[:20000],
+                                            "source_doc_id": f"kb:{doc_id}",
+                                            "evidence_text": atom.get("evidence_text",""),
+                                            "confidence": float(atom.get("confidence",0.5)),
+                                            "tags": list(atom.get("tags",[]))[:5]}, collection_id=collection)
+                                        entities_created += 1
+                                    except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
+                            # Write back to KB
+                            final_title = curated.get("title", old_title)
+                            try:
+                                meta = _json.loads(raw_doc.get("meta_json") or "{}")
+                                wiki_pages = meta.get("wiki_pages", [])
+                                if final_title != safe_title and safe_title in wiki_pages:
+                                    wiki_pages.remove(safe_title)
+                                if final_title not in wiki_pages:
+                                    wiki_pages.append(final_title)
+                                    meta["wiki_pages"] = wiki_pages
+                                    conn.execute("UPDATE documents SET meta_json=?, wiki_status='wikified' WHERE doc_id=? AND tenant_id=?",
+                                                (_json.dumps(meta, ensure_ascii=False), doc_id, tenant_id))
+                                    conn.commit()
+                            except Exception as e:
+                                writeback_errors += 1
+                                logger.warning(f"writeback failed for {doc_id}: {e}")
+                        except Exception:
+                            pass
 
             # Cross-link pages that share keywords (validate against actual existing pages)
             valid_titles = set()
@@ -964,7 +980,7 @@ async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection
                                 already_converted = True
                                 break
                         if already_converted: continue
-                    except Exception: pass
+                    except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
 
                     title = os.path.splitext(fname)[0][:100]
                     title = re.sub(r"[<>:\"/\\|?*]", "_", title)
@@ -994,7 +1010,7 @@ async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection
                         c2 = _sq.connect(kb_db)
                         existing = c2.execute("SELECT 1 FROM documents WHERE doc_id LIKE ?", (f"%{fname[:20]}%",)).fetchone()
                         c2.close()
-                    except Exception: pass
+                    except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
                     if uploads_converted >= limit * 2:
                         break
         except Exception as e:
@@ -1018,88 +1034,90 @@ async def curate_wiki(collection: str = "default"):
 
     返回: {processed, links_added, titles_updated, errors[]}
     如果 LLM 不可用，降级到嵌入自动关联。
+
+    Phase: parallelized — batch llm_curate_page via asyncio.gather (BATCH=5).
     """
+    import asyncio as _asyncio
     from core.harness.knowledge.wiki_engine import search_pages, llm_curate_page, update_page, auto_link_page
     pages = search_pages(limit=500, collection_id=collection)
     report = {"processed": 0, "links_added": 0, "titles_updated": 0, "errors": []}
     all_titles = [p["title"] for p in pages]
-
-    # Track saved proposals to detect conflicts (same pair, different action)
     saved_pairs: Dict[frozenset, str] = {}
+    BATCH = 5
 
-    for p in pages:
-        try:
-            existing_titles = [t for t in all_titles if t != p["title"]]
-            result = await llm_curate_page(p["title"], p.get("body", ""),
-                                           existing_titles=existing_titles)
-            if result.get("error") or result.get("fallback"):
-                # LLM failed → try embedding auto-link as fallback
-                report["errors"].append({
-                    "page": p["title"],
-                    "error": result.get("error", "LLM unavailable"),
-                })
-                auto_rel = auto_link_page(p["title"], p.get("body", ""), existing_titles)
-                if auto_rel:
-                    update_page(p["title"], related=auto_rel)
-                    report["links_added"] += len(auto_rel)
-                    report["processed"] += 1
-                continue
+    # Phase 1: Parallel LLM curation calls
+    for i in range(0, len(pages), BATCH):
+        batch = pages[i:i + BATCH]
+        tasks = [
+            llm_curate_page(p["title"], p.get("body", ""),
+                            existing_titles=[t for t in all_titles if t != p["title"]])
+            for p in batch
+        ]
+        results = await _asyncio.gather(*tasks, return_exceptions=True)
 
-            update_page(p["title"],
-                        new_title=result.get("title"),
-                        category=result.get("category"),
-                        tags=result.get("tags"),
-                        summary=result.get("summary"),
-                        related=result.get("related", []))  # replace, not merge (LLM curates against current titles)
-            report["processed"] += 1
-            report["links_added"] += len(result.get("related", []))
-            if result.get("title") != p["title"]:
-                report["titles_updated"] += 1
-            # Generate proposals for merge / update / supplement
-            import time as _t
-            for mc in result.get("merge_candidates", [])[:3]:
-                if mc.get("target") and mc["target"] in existing_titles:
-                    from core.harness.knowledge.wiki_engine import save_proposal
-                    pair = frozenset([p["title"], mc["target"]])
-                    if pair in saved_pairs and saved_pairs[pair] != "merge":
-                        report["errors"].append({
-                            "page": p["title"],
-                            "error": f"conflicting proposal: merge→{mc['target']} vs existing {saved_pairs[pair]}",
-                        })
-                        continue
-                    save_proposal({
-                        "action": "merge",
-                        "from_title": p["title"],
-                        "to_title": mc["target"],
-                        "reason": str(mc.get("reason", "content overlap")),
-                        "source_doc": "",
-                        "status": "pending",
-                        "created_at": str(int(_t.time())),
-                    }, collection_id=collection)
-                    saved_pairs[pair] = "merge"
-            for con in result.get("contradictions", [])[:3]:
-                b_title = con.get("b", "") if isinstance(con, dict) else con
-                if b_title and b_title in existing_titles:
-                    from core.harness.knowledge.wiki_engine import save_proposal
-                    pair = frozenset([p["title"], b_title])
-                    if pair in saved_pairs and saved_pairs[pair] != "contradict":
-                        report["errors"].append({
-                            "page": p["title"],
-                            "error": f"conflicting proposal: contradict↔{b_title} vs existing {saved_pairs[pair]}",
-                        })
-                        continue
-                    save_proposal({
-                        "action": "contradict",
-                        "from_title": p["title"],
-                        "to_title": b_title,
-                        "reason": str(con.get("detail", "conflicting claims") if isinstance(con, dict) else "conflicting claims"),
-                        "source_doc": "",
-                        "status": "pending",
-                        "created_at": str(int(_t.time())),
-                    }, collection_id=collection)
-                    saved_pairs[pair] = "contradict"
-        except Exception as e:
-            report["errors"].append({"page": p["title"], "error": str(e)[:300]})
+        # Phase 2: Process results
+        for j, result in enumerate(results):
+            p = batch[j]
+            try:
+                if isinstance(result, Exception) or result is None:
+                    raise result or ValueError("null result")
+
+                existing_titles = [t for t in all_titles if t != p["title"]]
+                if result.get("error") or result.get("fallback"):
+                    report["errors"].append({
+                        "page": p["title"], "error": result.get("error", "LLM unavailable"),
+                    })
+                    auto_rel = auto_link_page(p["title"], p.get("body", ""), existing_titles)
+                    if auto_rel:
+                        update_page(p["title"], related=auto_rel)
+                        report["links_added"] += len(auto_rel)
+                        report["processed"] += 1
+                    continue
+
+                update_page(p["title"],
+                            new_title=result.get("title"),
+                            category=result.get("category"),
+                            tags=result.get("tags"),
+                            summary=result.get("summary"),
+                            related=result.get("related", []))
+                report["processed"] += 1
+                report["links_added"] += len(result.get("related", []))
+                if result.get("title") != p["title"]:
+                    report["titles_updated"] += 1
+
+                import time as _t
+                for mc in result.get("merge_candidates", [])[:3]:
+                    if mc.get("target") and mc["target"] in existing_titles:
+                        from core.harness.knowledge.wiki_engine import save_proposal
+                        pair = frozenset([p["title"], mc["target"]])
+                        if pair in saved_pairs and saved_pairs[pair] != "merge":
+                            continue
+                        save_proposal({
+                            "action": "merge", "from_title": p["title"],
+                            "to_title": mc["target"],
+                            "reason": str(mc.get("reason", "content overlap")),
+                            "source_doc": "", "status": "pending",
+                            "created_at": str(int(_t.time())),
+                        }, collection_id=collection)
+                        saved_pairs[pair] = "merge"
+                for con in result.get("contradictions", [])[:3]:
+                    b_title = con.get("b", "") if isinstance(con, dict) else con
+                    if b_title and b_title in existing_titles:
+                        from core.harness.knowledge.wiki_engine import save_proposal
+                        pair = frozenset([p["title"], b_title])
+                        if pair in saved_pairs and saved_pairs[pair] != "contradict":
+                            continue
+                        save_proposal({
+                            "action": "contradict", "from_title": p["title"],
+                            "to_title": b_title,
+                            "reason": str(con.get("detail", "conflicting claims") if isinstance(con, dict) else "conflicting claims"),
+                            "source_doc": "", "status": "pending",
+                            "created_at": str(int(_t.time())),
+                        }, collection_id=collection)
+                        saved_pairs[pair] = "contradict"
+
+            except Exception as e:
+                report["errors"].append({"page": p["title"], "error": str(e)[:300]})
 
     return report
 
@@ -1327,8 +1345,8 @@ async def delete_wiki_collection(collection_id: str):
 # ── Schema API ─────────────────────────────────────────────────
 
 @router.get("/schema")
-async def get_wiki_schema(collection: str = "default"):
-    """Return T-Box class schemas, with per-collection extensions applied."""
+async def get_wiki_schema(collection: str = "default", domain: str = ""):
+    """Return T-Box class schemas, with per-collection extensions + domain ontologies applied."""
     try:
         from core.harness.knowledge.knowledge_ontology import (
             get_classes_with_templates, get_extended_class,
@@ -1336,34 +1354,38 @@ async def get_wiki_schema(collection: str = "default"):
         )
         extension = load_collection_extension(collection)
         schemas = []
+        seen_categories = set()
+        
+        # 1) Built-in classes
         for cls in get_classes_with_templates():
-            # Apply collection extension if applicable
             cat = cls.allowed_categories[0] if cls.allowed_categories else ""
             display_cls = get_extended_class(cat, collection) or cls
-            props = []
-            for op in OBJECT_PROPERTIES:
-                if display_cls.uri in op.domain:
-                    props.append({
-                        "type": "relation",
-                        "label": op.label,
-                        "uri": op.uri,
-                        "range": [r.replace(AI, "") for r in op.range],
-                        "cardinality": {
-                            "min": op.min_cardinality or 0,
-                            "max": op.max_cardinality,
-                        },
-                        "is_transitive": op.is_transitive,
-                        "is_symmetric": op.is_symmetric,
-                    })
-            schemas.append({
-                "class_uri": display_cls.uri,
-                "label": display_cls.label,
-                "categories": display_cls.allowed_categories,
-                "required_fields": display_cls.required_fields,
-                "optional_fields": display_cls.optional_fields,
-                "template_markdown": display_cls.template_markdown,
-                "relations": props,
-            })
+            schemas.append(_class_to_schema(display_cls, OBJECT_PROPERTIES, AI))
+            for c in display_cls.allowed_categories:
+                seen_categories.add(c)
+        
+        # 2) Domain ontology classes (YAML-loaded)
+        from core.harness.knowledge.ontology_loader import load_all_domains
+        
+        for domain_id, dom in load_all_domains().items():
+            if domain and domain != domain_id:
+                continue
+            for cls in dom.classes:
+                cat = cls.allowed_categories[0] if cls.allowed_categories else cls.label.lower()
+                if cat in seen_categories:
+                    continue  # Skip if same category already exists from built-in
+                seen_categories.add(cat)
+                schemas.append({
+                    "class_uri": cls.uri,
+                    "label": cls.label,
+                    "categories": cls.allowed_categories,
+                    "required_fields": cls.required_fields,
+                    "optional_fields": cls.optional_fields,
+                    "template_markdown": cls.template_markdown,
+                    "relations": [],
+                    "domain": domain_id,
+                })
+        
         return {
             "schemas": schemas, "total": len(schemas),
             "collection": collection,
@@ -1372,6 +1394,30 @@ async def get_wiki_schema(collection: str = "default"):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to load schemas: {e}")
+
+
+def _class_to_schema(display_cls, OBJECT_PROPERTIES, AI) -> dict:
+    props = []
+    for op in OBJECT_PROPERTIES:
+        if display_cls.uri in op.domain:
+            props.append({
+                "type": "relation",
+                "label": op.label,
+                "uri": op.uri,
+                "range": [r.replace(AI, "") for r in op.range],
+                "cardinality": {"min": op.min_cardinality or 0, "max": op.max_cardinality},
+                "is_transitive": op.is_transitive,
+                "is_symmetric": op.is_symmetric,
+            })
+    return {
+        "class_uri": display_cls.uri,
+        "label": display_cls.label,
+        "categories": display_cls.allowed_categories,
+        "required_fields": display_cls.required_fields,
+        "optional_fields": display_cls.optional_fields,
+        "template_markdown": display_cls.template_markdown,
+        "relations": props,
+    }
 
 
 @router.get("/ontology/classes")
@@ -1395,7 +1441,2936 @@ async def list_ontology_classes():
         raise HTTPException(status_code=500, detail=f"Failed to list classes: {e}")
 
 
-# ── Inference Rules API ─────────────────────────────────────────
+# ── Domain Ontology API (YAML-based) ─────────────────────────────
+
+@router.get("/ontology/domains")
+async def list_ontology_domains():
+    """List available domain ontology files."""
+    from core.harness.knowledge.ontology_loader import list_domain_files, load_ontology_from_yaml
+    from core.harness.knowledge.domain_router import DomainRouter
+    from pathlib import Path as _Path
+    import os as _os
+
+    base_dir = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
+    router = DomainRouter()
+    domains = []
+    for domain_id in list_domain_files():
+        file_path = str(base_dir / f"{domain_id}.yaml")
+        try:
+            domain = load_ontology_from_yaml(file_path)
+            cfg = router.domain_config(domain.id)
+            domains.append({
+                "id": domain.id,
+                "name": domain.name,
+                "version": domain.version,
+                "description": domain.description,
+                "namespace": domain.namespace,
+                "class_count": len(domain.classes),
+                "property_count": len(domain.object_properties) + len(domain.data_properties),
+                "min_wiki_score": cfg.get("min_wiki_score", 0.25),
+                "expand_subclasses": cfg.get("expand_subclasses", True),
+                "min_cross_results": cfg.get("min_cross_results", 3),
+                "system_prompt_id": cfg.get("system_prompt_id", ""),
+                "collection_id": cfg.get("collection_id", domain.id),
+            })
+        except Exception:
+            pass
+    return {"domains": domains, "total": len(domains)}
+
+
+@router.get("/ontology/domains/{domain_id}")
+async def get_ontology_domain(domain_id: str):
+    """Get full domain ontology including classes + properties."""
+    from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+    from core.harness.knowledge.domain_router import DomainRouter
+    from pathlib import Path as _Path
+    import os as _os
+
+    base_dir = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
+    file_path = base_dir / f"{domain_id}.yaml"
+    if not file_path.exists():
+        raise HTTPException(404, f"Domain ontology '{domain_id}' not found")
+    try:
+        domain = load_ontology_from_yaml(str(file_path))
+        cfg = DomainRouter().domain_config(domain.id)
+        return {
+            "id": domain.id,
+            "name": domain.name,
+            "namespace": domain.namespace,
+            "description": domain.description,
+            "version": domain.version,
+            "min_wiki_score": cfg.get("min_wiki_score", 0.25),
+            "expand_subclasses": cfg.get("expand_subclasses", True),
+            "min_cross_results": cfg.get("min_cross_results", 3),
+            "system_prompt_id": cfg.get("system_prompt_id", ""),
+            "collection_id": cfg.get("collection_id", domain.id),
+            "classes": [{
+                "uri": c.uri, "label": c.label,
+                "parent": c.parent.replace(domain.namespace, "") if c.parent else None,
+                "required_fields": c.required_fields,
+                "optional_fields": c.optional_fields,
+                "categories": c.allowed_categories,
+                "description": c.description,
+                "fields": c.fields,
+                "states": getattr(c, "states", None) or None,
+                "transitions": getattr(c, "transitions", None) or [],
+                "side_effects": getattr(c, "side_effects", None) or [],
+                "synonyms": getattr(c, "synonyms", None) or [],
+            } for c in domain.classes],
+            "object_properties": [{
+                "uri": p.uri, "label": p.label,
+                "domain": [d.replace(domain.namespace, "") for d in (p.domain or [])],
+                "range": [r.replace(domain.namespace, "") for r in (p.range or [])],
+                "transitive": p.is_transitive, "symmetric": p.is_symmetric,
+                "description": getattr(p, "description", "") or "",
+            } for p in domain.object_properties],
+            "data_properties": [{
+                "uri": p.uri, "label": p.label,
+                "domain": [d.replace(domain.namespace, "") for d in (p.domain or [])],
+                "range": p.range,
+            } for p in domain.data_properties],
+        }
+    except Exception as e:
+        raise HTTPException(500, f"Failed to load domain '{domain_id}': {e}")
+
+
+@router.get("/ontology/domains/{domain_id}/validation-report")
+async def validate_ontology_domain(domain_id: str, collection: str = ""):
+    """Cross-check existing data (Wiki pages + Graph nodes) against current ontology schema.
+
+    Returns validation report with orphan pages, missing required fields,
+    orphan graph nodes, and state mismatches.
+    """
+    from core.harness.knowledge.ontology_validator import validate_domain, validate_report_to_dict
+    cid = collection or domain_id
+    report = validate_domain(domain_id, collection_id=cid)
+    return validate_report_to_dict(report)
+
+
+_verify_cache: dict = {}  # domain_id → (timestamp, result)
+
+
+@router.post("/ontology/domains/{domain_id}/verify")
+async def verify_ontology_domain(domain_id: str, collection: str = ""):
+    """Unified verification: classification coverage + graph stats + anomalies.
+    
+    Results cached for 60s to reduce filesystem scan load.
+    """
+    import time as _time
+    now = _time.time()
+    cached = _verify_cache.get(domain_id)
+    if cached and now - cached[0] < 60:
+        return cached[1]
+
+    from core.harness.knowledge.wiki_engine import search_pages, list_all_pages
+    from core.harness.ontology_engine.graph_index import GraphIndex
+    from core.harness.knowledge.domain_router import DomainRouter
+    from collections import Counter
+
+    router = DomainRouter()
+    cid = collection or router.resolve_collection(domain_id) or domain_id
+
+    # 1. Classification coverage
+    all_pages = list_all_pages(collection_id=cid)
+    cat_counts = Counter()
+    unclassified = 0
+    for p in all_pages:
+        cat = str(p.get("category") or "")
+        if cat in ("entities", "topics", ""):
+            unclassified += 1
+        else:
+            cat_counts[cat] += 1
+
+    # 2. Graph stats
+    graph_nodes = graph_edges = 0
+    try:
+        graph = GraphIndex.load(domain_id)
+        graph_nodes = len(graph._nodes)
+        graph_edges = sum(len(n.out_edges) for n in graph._nodes.values())
+    except Exception:
+        pass
+
+    # 3. Issues detection
+    issues = []
+    total = len(all_pages)
+
+    if unclassified > total * 0.5:
+        issues.append({"type": "unclassified_high", "severity": "warn",
+                       "detail": f"{unclassified}/{total} 页未分类，执行分类+构建"})
+    elif unclassified > 0:
+        issues.append({"type": "unclassified", "severity": "info",
+                       "detail": f"{unclassified}/{total} 页未分类"})
+
+    if graph_nodes < total * 0.1:
+        issues.append({"type": "few_nodes", "severity": "warn",
+                       "detail": f"图节点 {graph_nodes}，远少于 {total} 页"})
+
+    classified_by_cat = {c: n for c, n in cat_counts.items() if n > 0}
+    if len(classified_by_cat) >= 3 and graph_edges == 0:
+        issues.append({"type": "no_edges", "severity": "warn",
+                       "detail": "分类多但图中无边，运行构建实例"})
+
+    overall = "pass" if not any(i["severity"] == "warn" for i in issues) else "warn"
+
+    result = {
+        "overall": overall, "domain_id": domain_id,
+        "classification": {"total_pages": total, "classified": total - unclassified,
+                          "unclassified": unclassified, "by_category": dict(cat_counts.most_common(10))},
+        "graph": {"nodes": graph_nodes, "edges": graph_edges},
+        "issues": issues,
+    }
+    _verify_cache[domain_id] = (now, result)
+    return result
+
+
+@router.get("/ontology/domains/{domain_id}/scoring")
+async def get_scoring_config(domain_id: str):
+    """Get current retrieval scoring weights for a domain."""
+    try:
+        import yaml, os
+        from pathlib import Path as _Path
+        config_path = os.getenv("AIPLAT_LLM_CONFIG_PATH",
+            str(_Path(__file__).resolve().parent.parent.parent.parent.parent /
+                "aiPlat-infra" / "config" / "infra" / "llm_profile.yaml"))
+        profile = yaml.safe_load(open(config_path)) or {}
+        return profile.get("retrieval_scoring", {
+            "semantic": 0.55, "fts_keyword": 0.15,
+            "freshness": 0.10, "credibility": 0.10, "density": 0.10,
+        })
+    except Exception:
+        return {"semantic": 0.55, "fts_keyword": 0.15, "freshness": 0.10, "credibility": 0.10, "density": 0.10}
+
+
+@router.put("/ontology/domains/{domain_id}/scoring")
+async def update_scoring_config(domain_id: str, config: dict):
+    """Update retrieval scoring weights. Changes take effect immediately."""
+    import yaml, os
+    from pathlib import Path as _Path
+    config_path = os.getenv("AIPLAT_LLM_CONFIG_PATH",
+        str(_Path(__file__).resolve().parent.parent.parent.parent.parent /
+            "aiPlat-infra" / "config" / "infra" / "llm_profile.yaml"))
+    try:
+        profile = yaml.safe_load(open(config_path)) or {}
+    except Exception:
+        profile = {}
+    allowed = {"semantic", "fts_keyword", "freshness", "credibility", "density"}
+    scoring = {k: float(config.get(k, 0.10)) for k in allowed}
+    profile["retrieval_scoring"] = scoring
+    with open(config_path, "w") as f:
+        yaml.dump(profile, f, allow_unicode=True, default_flow_style=False)
+    # Clear verify cache so next verify reflects new weights
+    _verify_cache.pop(domain_id, None)
+    return {"status": "saved", "scoring": scoring, "cache_cleared": True}
+
+
+def _clean_summary(text: str, max_len: int = 200) -> str:
+    """Strip markdown images, HTML tags, and truncate for clean display."""
+    import re as _re
+    # Strip markdown images: ![alt](url)
+    text = _re.sub(r'!\[.*?\]\(.*?\)', '', text)
+    # Strip raw image URLs
+    text = _re.sub(r'https?://\S+\.(?:jpg|jpeg|png|gif|webp|gif)\S*', '', text)
+    # Strip HTML tags
+    text = _re.sub(r'<[^>]+>', '', text)
+    # Collapse whitespace
+    text = _re.sub(r'\s+', ' ', text).strip()
+    # Remove leading special chars
+    text = _re.sub(r'^[`\s]+', '', text)
+    return text[:max_len]
+
+
+@router.get("/ontology/domains/{domain_id}/instances")
+async def list_instances_by_class(domain_id: str, class_label: str = ""):
+    """List all ontology instances (Wiki pages) for a given class_label.
+
+    Maps class_label → domain YAML categories → searches Wiki pages by category.
+    Wiki pages ARE the ontology instances — no separate graph node store needed.
+    """
+    from core.harness.knowledge.wiki_engine import search_pages, read_page
+    from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+    from core.harness.knowledge.domain_router import DomainRouter
+    from pathlib import Path as _Path
+    import os as _os, re as _re
+
+    if not class_label:
+        return {"instances": [], "total": 0, "error": "class_label parameter required"}
+
+    # Resolve class_label → category names
+    onto_path = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies" / f"{domain_id}.yaml"
+    categories = []
+    if onto_path.exists():
+        domain = load_ontology_from_yaml(str(onto_path))
+        for cls in domain.classes:
+            if cls.label == class_label:
+                categories = cls.allowed_categories or []
+                break
+
+    if not categories:
+        # Fallback: use class_label itself as category
+        categories = [class_label]
+
+    router = DomainRouter()
+    cid = router.resolve_collection(domain_id) or domain_id
+
+    instances = []
+    for cat in categories:
+        pages = search_pages(category=cat, limit=200, collection_id=cid)
+        for p in pages:
+            summary = _clean_summary(p.get("summary", "") or "")
+            if not summary:
+                try:
+                    full = read_page(p.get("title", ""), category=cat, collection_id=cid)
+                    if full:
+                        body = str(full.get("body", "") or "")[:500]
+                        body = _re.sub(r'[#*`>\[\]!|~]', '', body)
+                        body = _re.sub(r'https?://\S+', '', body)
+                        body = _re.sub(r'\s+', ' ', body).strip()
+                        summary = body[:200]
+                except Exception:
+                    pass
+
+            instances.append({
+                "entity_name": p.get("title", ""),
+                "wiki_title": p.get("title", ""),
+                "class_name": class_label,
+                "category": cat,
+                "summary": _clean_summary(p.get("summary", "") or ""),
+                "tags": p.get("tags", []) or [],
+                "related": p.get("related", []) or [],
+                "state": p.get("frontmatter", {}).get("state", "") if isinstance(p.get("frontmatter"), dict) else "",
+                "last_updated": p.get("last_updated", ""),
+            })
+
+    return {"instances": instances, "total": len(instances), "class_label": class_label}
+
+
+
+
+@router.get("/ontology/class-by-category")
+async def get_ontology_class_by_category(category: str = "entities", collection: str = "default"):
+    """Return the OntologyClass matching a category name, with required/optional/template fields.
+    
+    Used by Wiki creation form to dynamically render fields.
+    Checks all loaded domain ontologies + built-in classes.
+    """
+    from core.harness.knowledge.ontology_loader import load_all_domains
+    from core.harness.knowledge.knowledge_ontology import CLASSES
+    from pathlib import Path as _Path
+    import os as _os
+
+    result = {"category": category, "found": False, "required_fields": [], "optional_fields": [],
+              "template_markdown": "", "class_label": category}
+
+    # 1) Check domain ontologies first
+    domains = load_all_domains()
+    for domain_id, domain in domains.items():
+        for cls in domain.classes:
+            if category in cls.allowed_categories:
+                result.update({
+                    "found": True,
+                    "domain": domain_id,
+                    "required_fields": cls.required_fields,
+                    "optional_fields": cls.optional_fields,
+                    "template_markdown": cls.template_markdown,
+                    "class_label": cls.label,
+                    "class_uri": cls.uri,
+                })
+                return result
+
+    # 2) Fall back to built-in CLASSES
+    for cls in CLASSES:
+        if category in (cls.allowed_categories or []):
+            result.update({
+                "found": True,
+                "domain": "built-in",
+                "required_fields": cls.required_fields,
+                "optional_fields": cls.optional_fields,
+                "template_markdown": cls.template_markdown,
+                "class_label": cls.label,
+                "class_uri": cls.uri,
+            })
+            return result
+
+    return result
+
+
+@router.post("/ontology/domains/{domain_id}/classify-all")
+async def classify_all_pages(domain_id: str, collection: str = "", limit: int = 5):
+    """Auto-classify unclassified wiki pages using LLM (reads body content), then auto-trigger build-instances.
+
+    Reads first 300 chars of each page body to improve classification accuracy.
+    After classification, auto-calls build-instances to populate the knowledge graph.
+    """
+    from core.harness.knowledge.wiki_engine import search_pages, read_page, write_page
+    from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+    from core.harness.knowledge.domain_router import DomainRouter
+    from core.harness.utils.model_injection import create_selected_adapter
+    from core.adapters.llm.base import LLMConfig
+    import re as _re, json as _json, os as _os, logging
+    from pathlib import Path as _Path
+
+    router = DomainRouter()
+    cid = collection or router.resolve_collection(domain_id) or domain_id
+
+    all_pages = search_pages(limit=200, collection_id=cid)
+    batch = [p for p in all_pages if p.get('category') in ('entities', 'topics', '')][:limit]
+    if not batch:
+        return {"status": "no_unclassified", "total_pages": len(all_pages)}
+
+    onto_path = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies" / f"{domain_id}.yaml"
+    all_classes = []
+    if onto_path.exists():
+        domain = load_ontology_from_yaml(str(onto_path))
+        for cls in domain.classes:
+            all_classes.append({"label": cls.label, "categories": cls.allowed_categories or []})
+
+    if not all_classes:
+        return {"status": "no_classes", "total_pages": len(batch)}
+
+    # Pre-read page bodies for better classification
+    page_bodies = {}
+    for p in batch[:5]:  # Limit to 15 per LLM call
+        try:
+            full = read_page(p["title"], collection_id=cid)
+            if full:
+                page_bodies[p["title"]] = str(full.get("body", "") or "")[:100]
+        except Exception:
+            pass
+
+    cat_names = ", ".join(c["categories"][0] for c in all_classes if c["categories"])
+    class_lines = "\n".join(
+        f"  - {c['label']}: category='{c['categories'][0] if c['categories'] else 'none'}'"
+        for c in all_classes
+    )
+    page_lines = "\n".join(
+        f"  - {p['title']}\n    excerpt: {page_bodies.get(p['title'], '')[:120]}"
+        for p in batch[:15]
+    )
+
+    prompt = (
+        f"Classify each page. Use ONLY: {cat_names}\n\n"
+        f"Pages:\n{page_lines}\n\n"
+        f"Output JSON array. Include the EXACT page title (copy-paste from above) and category:\n"
+        f'[{{"title":"copy the exact title from the list above","category":"one of {cat_names}"}}]'
+    )
+
+    try:
+        from core.harness.utils.model_injection import generate_with_fallback
+        data = {"suggestions": []}
+
+        for attempt in range(5):
+            resp, _ = await generate_with_fallback(
+                "ontology_gen",
+                [{"role": "system", "content": "Output ONLY valid JSON without markdown."},
+                 {"role": "user", "content": prompt}],
+                timeout=120, config=LLMConfig(model="", timeout=120, max_tokens=2048),
+            )
+            content = resp.content if hasattr(resp, 'content') else str(resp)
+            logging.getLogger("wiki").info(f"classify-all response: {content[:200]}")
+            clean = content.strip()
+            # Strip markdown code fences
+            if clean.startswith('```'):
+                clean = _re.sub(r'^```\w*\s*', '', clean)
+                clean = _re.sub(r'\s*```$', '', clean)
+            # Support both object {...} and array [{...}] responses
+            brace_start = clean.find('{')
+            bracket_start = clean.find('[')
+            start = bracket_start if bracket_start >= 0 and (brace_start < 0 or bracket_start < brace_start) else brace_start
+            if start >= 0:
+                dec = _json.JSONDecoder()
+                data, _ = dec.raw_decode(clean[start:])
+                if isinstance(data, list):
+                    data = {"suggestions": data}
+                elif isinstance(data, dict):
+                    if "suggestions" not in data and "pages" not in data and "title" in data:
+                        data = {"suggestions": [data]}
+                data_sug = data.get("suggestions") or data.get("pages") or []
+                if isinstance(data_sug, list) and len(data_sug) > 0:
+                    break
+    except Exception as e:
+        logging.getLogger("wiki").warning(f"classify-all LLM failed: {e}")
+        return {"status": "llm_failed", "total": len(batch), "error": str(e)}
+
+    suggestions = data.get("suggestions", []) or data.get("pages", [])
+    valid_cats = set()
+    for c in all_classes:
+        valid_cats.update(c.get("categories", []) or [])
+    applied, errors = [], []
+
+    # Normalize function for title matching
+    def _norm(t: str) -> str:
+        t = t.strip()
+        t = __import__('re').sub(r'[：:—\-–\s、，。；！？【】（）《》""'']+', '', t)
+        return __import__('unicodedata').normalize('NFKC', t)[:80]
+
+    # Build normalized title → page mapping for batch
+    page_by_norm = {}
+    for p in batch:
+        page_by_norm[_norm(p.get("title", ""))] = p
+
+    # Apply each suggestion
+    for si, s in enumerate(suggestions):
+        if isinstance(s, str):
+            continue  # skip malformed LLM output
+        s_title = s.get("title", "")
+        # Strip [category] prefix that LLM may copy from prompt
+        s_title = _re.sub(r'^\[[^\]]+\]\s*', '', s_title).strip()
+        s_cat = s.get("category", "")
+        # Fallback: if title missing, match by position in batch
+        if not s_title and si < len(batch):
+            s_title = batch[si].get("title", "")
+        if s_cat not in valid_cats:
+            continue  # skip hallucinated categories
+
+        # Find matching page by normalized title
+        nt = _norm(s_title)
+        page = page_by_norm.get(nt)
+        if not page:
+            # Try partial match
+            for pn, pp in page_by_norm.items():
+                if pn and nt and (pn in nt or nt in pn):
+                    page = pp; break
+        if not page:
+            continue
+
+        title = page.get("title", "")
+        if s_cat == page.get("category"):
+            continue
+
+        try:
+            full = read_page(title, collection_id=cid)
+            if not full: continue
+            write_page(title=title, body=full.get("body", ""),
+                       category=s_cat, collection_id=cid,
+                       tags=list(full.get("tags", []) or []))
+            applied.append({"title": title, "category": s_cat,
+                           "confidence": s.get("confidence", 0)})
+        except Exception as e:
+            errors.append(f"{title}: {e}")
+
+    return {
+        "status": "classified", "total_pages": len(batch),
+        "applied": len(applied), "errors": len(errors), "details": applied[:20],
+        "error_details": errors[:10],
+    }
+
+
+# ── Ontology Engine API ─────────────────────────────────────────
+
+@router.post("/ontology/engine/process")
+async def ontology_engine_process(req: dict, collection: str = "default"):
+    """本体引擎处理：单文档 → 本体实例。
+    
+    请求体: {"text": "...", "domain_id": "ai-knowledge", "doc_id": "kb:xxx"}
+    """
+    domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
+    text = req.get("text", "") if isinstance(req, dict) else ""
+    doc_id = req.get("doc_id", "") if isinstance(req, dict) else ""
+
+    if not text.strip():
+        raise HTTPException(400, "text is required")
+
+    from core.harness.ontology_engine.engine import load_engine
+    engine = load_engine(domain_id)
+    if engine is None:
+        raise HTTPException(404, f"Domain '{domain_id}' not found")
+
+    chunks = [{"id": "chunk-0", "text": text, "entities": []}]
+    result = await engine.process_chunks(chunks, doc_id=doc_id)
+    return result.to_dict()
+
+
+@router.post("/ontology/engine/process-and-write")
+async def ontology_engine_process_and_write(req: dict, collection: str = "default"):
+    """本体引擎 → 实例 → 自动写 Wiki 页面。
+    
+    请求体: {"text": "...", "domain_id": "ai-knowledge", "doc_id": "kb:xxx", "auto_write": true}
+    """
+    domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
+    text = req.get("text", "") if isinstance(req, dict) else ""
+    doc_id = req.get("doc_id", "") if isinstance(req, dict) else ""
+    auto_write = bool(req.get("auto_write", True)) if isinstance(req, dict) else True
+
+    from core.harness.ontology_engine.engine import load_engine
+    from core.harness.knowledge.wiki_engine import write_page
+
+    engine = load_engine(domain_id)
+    if engine is None:
+        raise HTTPException(404, f"Domain '{domain_id}' not found")
+
+    chunks = [{"id": "chunk-0", "text": text, "entities": []}]
+    result = await engine.process_chunks(chunks, doc_id=doc_id)
+
+    written = []
+    if auto_write and result.instances:
+        for inst in result.instances:
+            fm = inst.get("frontmatter", {})
+            title = fm.get("title", "")
+            if not title:
+                continue
+            try:
+                await write_page(
+                    title=title,
+                    body=fm.get("body", "") or str(fm.get("description", "") or ""),
+                    category=fm.get("category", "entities"),
+                    collection_id=collection,
+                    tags=list(fm.get("tags", []) or []),
+                    summary=str(fm.get("summary", "") or ""),
+                )
+                written.append(title)
+            except Exception:
+                pass
+
+    return {**result.to_dict(), "written_pages": written, "written_count": len(written)}
+
+
+@router.post("/ontology/domains/{domain_id}/cleanup-nodes")
+async def cleanup_cross_domain_nodes(domain_id: str):
+    """Remove graph nodes whose entity_name matches keywords from other domains.
+
+    Auto-detects cross-domain vocabulary from other domains' YAML labels and synonyms.
+    Config-driven — no hardcoded domain terms. Scales to any new domain.
+    """
+    from core.harness.ontology_engine.graph_index import GraphIndex
+    from core.harness.knowledge.ontology_loader import load_ontology_from_yaml, load_all_domains
+    from pathlib import Path as _Path
+    import os as _os
+
+    graph = GraphIndex.load(domain_id)
+
+    # Build current domain's vocabulary from labels + synonyms
+    domain_vocab = set()
+    onto_path = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies" / f"{domain_id}.yaml"
+    if onto_path.exists():
+        domain = load_ontology_from_yaml(str(onto_path))
+        for cls in domain.classes:
+            domain_vocab.add(cls.label)
+            for syn in (getattr(cls, "synonyms", []) or []):
+                domain_vocab.add(syn)
+
+    # Auto-build cross-domain keywords from OTHER domains' labels + synonyms
+    cross_keywords = set()
+    try:
+        for other_id, other_dom in load_all_domains().items():
+            if other_id == domain_id:
+                continue
+            for cls in other_dom.classes:
+                cross_keywords.add(cls.label)
+                for syn in (getattr(cls, "synonyms", []) or []):
+                    cross_keywords.add(syn)
+    except Exception:
+        pass
+
+    if not cross_keywords:
+        return {"status": "no_cross_keywords", "domain_id": domain_id}
+
+    removed = []
+    for node in list(graph._nodes.values()):
+        name = node.entity_name or ""
+        if any(kw in name for kw in cross_keywords) and not any(v in name for v in domain_vocab):
+            graph.remove_entity(node.entity_id)
+            removed.append({"entity_id": node.entity_id, "entity_name": name[:80], "class_name": node.class_name})
+
+    return {"status": "cleaned", "domain_id": domain_id, "removed": len(removed), "details": removed[:20]}
+
+
+@router.post("/ontology/domains/{domain_id}/backfill-summaries")
+async def backfill_summaries(domain_id: str, collection: str = "", limit: int = 200):
+    """Backfill empty summaries for all wiki pages in this domain's collection.
+
+    Calls write_page for each page with empty summary, which triggers
+    auto-summary generation from the page body.
+    """
+    from core.harness.knowledge.wiki_engine import read_page, write_page, list_all_pages
+    from core.harness.knowledge.domain_router import DomainRouter
+
+    router = DomainRouter()
+    cid = collection or router.resolve_collection(domain_id) or domain_id
+
+    pages = list_all_pages(collection_id=cid)
+    filled = 0
+    for page in pages[:limit]:
+        title = str(page.get("title") or "")
+        if not title:
+            continue
+        try:
+            page_cat = str(page.get("category") or "entities")
+            full = read_page(title, category=page_cat, collection_id=cid)
+            if not full:
+                continue
+            body = str(full.get("body", "") or "")
+            write_page(
+                title=title, body=body,
+                category=str(full.get("category", "entities")),
+                collection_id=cid, summary="",  # empty → auto-generate from body
+                tags=list(full.get("tags", []) or []),
+            )
+            filled += 1
+        except Exception:
+            pass
+
+    return {"status": "backfilled", "filled": filled, "total": min(len(pages), limit)}
+
+
+_build_semaphore = None  # lazy init to avoid import-time asyncio issues
+
+
+@router.post("/ontology/domains/{domain_id}/build-instances")
+async def build_instances_batch(domain_id: str, collection: str = "", limit: int = 50):
+    """Batch-run ontology engine on all Wiki pages in this domain's collection.
+    
+    Uses parallel processing (2 concurrent) — prevents OOM on 16GB machines.
+    """
+    from core.harness.ontology_engine.engine import load_engine
+    from core.harness.knowledge.wiki_engine import read_page, write_page, list_all_pages
+    from core.harness.knowledge.domain_router import DomainRouter
+    import asyncio
+
+    router = DomainRouter()
+    cid = collection or router.resolve_collection(domain_id) or domain_id
+
+    engine = load_engine(domain_id)
+    if engine is None:
+        raise HTTPException(404, f"Domain '{domain_id}' not found")
+
+    # ── Differential: skip already-built pages ──
+    import os as _os, json as _json
+    from pathlib import Path as _Path
+    built_path = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "graph" / f"{domain_id}_built.json"
+    built_pages = set()
+    if built_path.exists():
+        try:
+            built_pages = set(_json.loads(built_path.read_text(encoding="utf-8")))
+        except Exception:
+            pass
+
+    pages = list_all_pages(collection_id=cid)
+    if not pages:
+        return {"status": "no_pages", "domain_id": domain_id, "collection": cid}
+
+    # Filter to classified pages only, skip already-built
+    valid = []
+    new_sources = []
+    skipped = 0
+    for page in pages[:limit]:
+        cat = str(page.get("category") or "")
+        if cat in ("entities", "topics", ""):
+            continue
+        title = str(page.get("title") or "")
+        if title in built_pages:
+            skipped += 1
+            continue
+        full = read_page(title, category=str(page.get("category") or "entities"), collection_id=cid)
+        if full and len(str(full.get("body") or "")) >= 20:
+            valid.append({"title": title, "body": str(full.get("body") or "")[:8000]})
+            new_sources.append(title)
+
+    results = {"domain_id": domain_id, "collection": cid, "total_pages": len(pages),
+               "processed": 0, "instances_created": 0, "errors": 0, "details": []}
+
+    # Parallel batch processing: 10 concurrent pages
+    batch_size = 2  # was 10 — reduced to prevent OOM on M2 16GB
+    for i in range(0, len(valid), batch_size):
+        batch = valid[i:i + batch_size]
+        tasks = [_process_single_page(engine, page, cid) for page in batch]
+        batch_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        for j, br in enumerate(batch_results):
+            if isinstance(br, Exception):
+                results["errors"] += 1
+                results["details"].append({"title": batch[j]["title"], "error": str(br)})
+            else:
+                results["processed"] += 1
+                results["instances_created"] += br.get("instances", 0)
+                results["details"].append(br)
+                # Mark page as built
+                built_pages.add(new_sources[i + j])
+
+    # Persist differential tracking
+    results["skipped"] = skipped
+    if new_sources:
+        built_path.parent.mkdir(parents=True, exist_ok=True)
+        built_path.write_text(_json.dumps(sorted(built_pages), ensure_ascii=False), encoding="utf-8")
+
+    return results
+
+
+@router.post("/ontology/domains/{domain_id}/build-edges")
+async def build_cross_page_edges(domain_id: str):
+    """Build cross-page edges by linking graph nodes via wiki references + keyword overlap.
+    
+    Strategy:
+      1. Load graph nodes + wiki page cross-references (related, source_articles)
+      2. Match references to other graph nodes
+      3. Use YAML relation type definitions to determine edge type
+      4. Add edges to graph via add_relation()
+    """
+    from core.harness.ontology_engine.engine import get_graph
+    from core.harness.knowledge.wiki_engine import read_page, list_all_pages
+    from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+    from core.harness.knowledge.domain_router import DomainRouter
+    from pathlib import Path as _Path
+    import os as _os
+
+    graph = get_graph(domain_id)
+    if not graph or len(graph._nodes) < 2:
+        return {"edges_created": 0, "message": "Not enough nodes for cross-page edges"}
+
+    router = DomainRouter()
+    cid = router.resolve_collection(domain_id) or domain_id
+    nodes = list(graph._nodes.values())
+
+    # Load domain relation type definitions
+    onto_path = _Path(_os.getenv("AIPLAT_HOME", _Path.home() / ".aiplat")) / "ontologies" / f"{domain_id}.yaml"
+    domain = load_ontology_from_yaml(str(onto_path))
+    class_to_categories = {}
+    for cls in domain.classes:
+        class_to_categories[cls.label] = set(cls.allowed_categories or [])
+
+    # Build: entity_name → node + wiki page data
+    name_to_node = {}
+    name_to_page = {}
+    all_pages = list_all_pages(collection_id=cid)
+    page_by_title = {p.get("title", ""): p for p in all_pages}
+
+    for node in nodes:
+        name = node.entity_name or node.entity_id
+        name_to_node[name] = node
+        # Try to find matching wiki page
+        for title, page in page_by_title.items():
+            if name in title or title in name:
+                name_to_page[name] = page
+                break
+
+    # Reload pages for nodes that need cross-reference data
+    node_cross_refs = {}
+    for name, page in name_to_page.items():
+        full = read_page(page.get("title", ""), category=page.get("category", "entities"), collection_id=cid)
+        if full:
+            related = full.get("related", []) or []
+            sources = full.get("source_articles", []) or []
+            body = full.get("body", "")
+            # Extract wiki-style links from body [[title]]
+            import re
+            wiki_links = re.findall(r'\[\[([^\]]+)\]\]', str(body))
+            node_cross_refs[name] = {
+                "related": [str(r) for r in related],
+                "sources": [str(s) for s in sources],
+                "body": str(body)[:2000],
+                "wiki_links": wiki_links,
+            }
+
+    # Phase 1: Match via wiki references (related, source_articles, [[links]])
+    edges_added = 0
+    seen_pairs = set()
+    existing_edges = set()
+    for node in nodes:
+        nid = node.entity_id or node.entity_name
+        if nid not in graph._nodes:
+            continue
+        for edge in graph._nodes[nid].out_edges:
+            existing_edges.add((nid, edge.target_id))
+
+    for name, refs in node_cross_refs.items():
+        if name not in name_to_node:
+            continue
+        source_node = name_to_node[name]
+        source_id = source_node.entity_id or name
+        source_class = source_node.class_name or ""
+
+        # Collect all reference targets
+        ref_targets = []
+        ref_targets.extend(refs.get("related", []))
+        ref_targets.extend(refs.get("sources", []))
+        ref_targets.extend(refs.get("wiki_links", []))
+
+        for ref in ref_targets:
+            ref = str(ref).strip()
+            if not ref:
+                continue
+            # Match to node by name
+            for target_name, target_node in name_to_node.items():
+                if target_name == name:
+                    continue  # skip self
+                target_id = target_node.entity_id or target_name
+                target_class = target_node.class_name or ""
+                pair_key = (source_id, target_id)
+                if pair_key in seen_pairs:
+                    continue
+                if pair_key in existing_edges:
+                    continue
+                # Check if ref matches target
+                ref_low = ref.lower()
+                target_low = target_name.lower()
+                if ref_low not in target_low and target_low not in ref_low:
+                    continue
+                seen_pairs.add(pair_key)
+
+                # Determine relation type from YAML object_properties
+                rel_type = _match_relation_type(domain, source_class, target_class)
+                if rel_type:
+                    graph.add_relation(
+                        source_id=source_id,
+                        target_id=target_id,
+                        relation_name=rel_type,
+                        confidence=0.8,
+                    )
+                    edges_added += 1
+
+    # Phase 2: Entity name in body — primary cross-page linking strategy
+    for name_a, refs_a in node_cross_refs.items():
+        if name_a not in name_to_node:
+            continue
+        source_node = name_to_node[name_a]
+        source_id = source_node.entity_id or name_a
+        source_class = source_node.class_name or ""
+
+        for name_b, refs_b in node_cross_refs.items():
+            if name_b == name_a:
+                continue
+            pair_key = (source_id, name_b)
+            if pair_key in seen_pairs or pair_key in existing_edges:
+                continue
+            target_node = name_to_node.get(name_b)
+            if not target_node:
+                continue
+            target_id = target_node.entity_id or name_b
+            target_class = target_node.class_name or ""
+
+            body_a = refs_a.get("body", "")
+            body_b = refs_b.get("body", "")
+
+            # Check bidirectional keyword overlap
+            linked = False
+            # name_a appears in body_b?
+            if name_a and len(name_a) >= 3 and name_a.lower() in body_b.lower():
+                linked = True
+            # name_b appears in body_a?
+            elif name_b and len(name_b) >= 3 and name_b.lower() in body_a.lower():
+                linked = True
+            # Overlap in page names (one title contains the other)
+            elif name_a and name_b and (name_a.lower() in name_b.lower() or name_b.lower() in name_a.lower()):
+                linked = True
+
+            if not linked:
+                continue
+
+            # ── Semantic gate: keyword overlap ≥ 2 + cosine ≥ 0.7 ──
+            keywords_a = _extract_keywords_light(body_a) if body_a else set()
+            keywords_b = _extract_keywords_light(body_b) if body_b else set()
+            overlap = len(keywords_a & keywords_b)
+            if overlap < 2:
+                continue  # weak candidate, skip
+
+            # Read cached vectors from vectors.json (no recomputation)
+            vec_a = _get_cached_vector(name_a, collection_id=cid)
+            vec_b = _get_cached_vector(name_b, collection_id=cid)
+            if vec_a and vec_b:
+                sim = _cosine_similarity(vec_a, vec_b)
+                if sim < 0.7:
+                    continue  # semantically unrelated
+
+            seen_pairs.add(pair_key)
+
+            rel_type = _match_relation_type(domain, source_class, target_class)
+            if not rel_type:
+                rel_type = _match_relation_type(domain, target_class, source_class)
+                source_id, target_id = target_id, source_id  # swap for inverse
+
+            if rel_type:
+                graph.add_relation(
+                    source_id=source_id,
+                    target_id=target_id,
+                    relation_name=rel_type,
+                    confidence=0.6,
+                )
+                edges_added += 1
+
+    graph.save()
+    return {"edges_created": edges_added, "total_nodes": len(nodes),
+            "total_pairs_checked": len(seen_pairs)}
+
+
+def _extract_keywords_light(text: str) -> set:
+    """Extract Chinese bigrams + English words as keyword set."""
+    import re
+    tokens = set()
+    # Chinese: 2-gram sliding window
+    chinese = re.findall(r'[\u4e00-\u9fff]+', text)
+    for seg in chinese:
+        for i in range(len(seg) - 1):
+            tokens.add(seg[i:i+2])
+    # English: words ≥ 3 chars
+    eng = re.findall(r'[a-zA-Z]{3,}', text)
+    tokens.update(w.lower() for w in eng)
+    return tokens
+
+
+def _get_cached_vector(title: str, *, collection_id: str = "default") -> list:
+    """Read cached embedding vector from vectors.json. Returns None if not found."""
+    import json, os
+    from pathlib import Path
+    cache_path = Path(os.getenv("AIPLAT_HOME", Path.home() / ".aiplat")) / "wiki" / "collections" / collection_id / "vectors.json"
+    if not cache_path.exists():
+        return None
+    try:
+        cache = json.loads(cache_path.read_text(encoding="utf-8"))
+        return cache.get(title)
+    except Exception:
+        return None
+
+
+def _cosine_similarity(a: list, b: list) -> float:
+    """Compute cosine similarity between two float lists."""
+    import math
+    if not a or not b or len(a) != len(b):
+        return 0.0
+    dot = sum(x * y for x, y in zip(a, b))
+    na = math.sqrt(sum(x * x for x in a))
+    nb = math.sqrt(sum(y * y for y in b))
+    if na == 0 or nb == 0:
+        return 0.0
+    return dot / (na * nb)
+
+
+def _match_relation_type(domain, source_class: str, target_class: str) -> str:
+    """Find matching relation type from domain YAML object_properties.
+    
+    Resolves both Chinese labels and short IDs to match against full URI domain/range values.
+    """
+    # Build label→uri mapping
+    label_to_uri = {}
+    for cls in domain.classes:
+        uri = getattr(cls, 'uri', '') or ''
+        if uri:
+            label_to_uri[cls.label] = uri
+    
+    # Candidate URIs for source and target
+    source_uris = {source_class, label_to_uri.get(source_class, '')}
+    target_uris = {target_class, label_to_uri.get(target_class, '')}
+    
+    for prop in (domain.object_properties or []):
+        domains = set(prop.domain or [])
+        ranges = set(prop.range or [])
+        if source_uris & domains and target_uris & ranges:
+            return prop.label
+    # Try inverse
+    for prop in (domain.object_properties or []):
+        domains = set(prop.domain or [])
+        ranges = set(prop.range or [])
+        if target_uris & domains and source_uris & ranges:
+            return prop.inverse_of or prop.inverse_label or ""
+    return ""
+
+
+async def _process_single_page(engine, page: dict, cid: str) -> dict:
+    """Process one page through the engine pipeline. Runs in parallel with others."""
+    import asyncio
+    global _build_semaphore
+    if _build_semaphore is None:
+        _build_semaphore = asyncio.Semaphore(3)  # max 3 concurrent pages across all requests
+    from core.harness.knowledge.wiki_engine import write_page
+    async with _build_semaphore:
+        chunks = [{"id": f"wiki-{page['title']}", "text": page["body"][:8000], "entities": []}]
+        result = await engine.process_chunks(chunks, doc_id=f"wiki:{page['title']}")
+        inst_count = len(result.instances) if hasattr(result, "instances") else 0
+
+        if hasattr(result, "instances") and result.instances:
+            for inst in result.instances[:3]:
+                fm = inst.get("frontmatter", {})
+                ititle = fm.get("title", "") or inst.get("entity_name", "")
+                if ititle and ititle != page["title"]:
+                    try:
+                        await write_page(
+                            title=ititle, body=fm.get("body", "") or str(fm.get("description", "") or ""),
+                            category=fm.get("category", "entities"), collection_id=cid,
+                        )
+                    except Exception:
+                        pass
+
+        return {"title": page["title"], "instances": inst_count,
+                "relations": len(result.relations) if hasattr(result, "relations") else 0}
+
+
+@router.get("/ontology/engine/traces/{instance_title:path}")
+async def ontology_engine_trace(instance_title: str, doc_id: str = ""):
+    """查询实例溯源。需提供 instance_title 和可选的 doc_id。"""
+    import os as _os
+    from pathlib import Path as _Path
+    traces_dir = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontology_traces"
+    traces_dir.mkdir(parents=True, exist_ok=True)
+    safe = instance_title.replace("/", "_")[:120]
+    trace_file = traces_dir / f"{safe}.json"
+    if not trace_file.exists():
+        raise HTTPException(404, f"No trace found for '{instance_title}'")
+    return _json.loads(trace_file.read_text(encoding="utf-8"))
+
+
+@router.post("/ontology/engine/parse")
+async def ontology_engine_parse(req: dict):
+    """解析文档 → 结构化Chunk → 本体引擎处理。
+    
+    支持: 文本字符串 + 格式参数
+    
+    请求体: {"text":"...", "format":"md|txt|html", "domain_id":"ai-knowledge"}
+    """
+    text = req.get("text", "") if isinstance(req, dict) else ""
+    fmt = req.get("format", "txt") if isinstance(req, dict) else "txt"
+    domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
+
+    if not text.strip():
+        raise HTTPException(400, "text is required")
+
+    # Step 1: Parse document
+    from core.harness.ontology_engine.document_parser import DocumentParser
+    parser = DocumentParser()
+    parsed = parser.parse_text(text, format=fmt)
+
+    # Step 2: Classify chunks
+    from core.harness.ontology_engine.engine import load_engine
+    engine = load_engine(domain_id)
+    classifications = []
+    if engine:
+        from core.harness.ontology_engine.class_mapper import ClassMapper
+        mapper = ClassMapper(engine._domain)
+        for chunk in parsed.chunks:
+            cls = mapper.classify_text(chunk.text, threshold=0.5)
+            classifications.append({
+                "chunk_id": chunk.id,
+                "heading": " > ".join(chunk.heading_path) if chunk.heading_path else "",
+                "text_preview": chunk.text[:120],
+                "class": cls or "unknown",
+            })
+
+    return {
+        "title": parsed.title,
+        "format": parsed.format,
+        "chunk_count": len(parsed.chunks),
+        "classifications": classifications,
+        "chunks": [c.to_dict() for c in parsed.chunks[:10]],  # First 10 only
+        "warnings": parsed.parse_warnings,
+    }
+
+
+@router.post("/ontology/engine/parse-and-process")
+async def ontology_engine_parse_and_process(req: dict, collection: str = "default"):
+    """解析文档 → 结构化Chunk → 本体引擎 → 自动写Wiki页面。
+    
+    完整链路: 上传文档 → 解析 → 类映射 → 属性提取 → 写入
+    """
+    from core.harness.ontology_engine.document_parser import DocumentParser
+    from core.harness.ontology_engine.engine import load_engine
+
+    text = req.get("text", "") if isinstance(req, dict) else ""
+    fmt = req.get("format", "txt") if isinstance(req, dict) else "txt"
+    domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
+    auto_write = bool(req.get("auto_write", False)) if isinstance(req, dict) else False
+
+    if not text.strip():
+        raise HTTPException(400, "text is required")
+
+    # Parse
+    parser = DocumentParser()
+    parsed = parser.parse_text(text, format=fmt)
+
+    # Engine process
+    engine = load_engine(domain_id)
+    if engine is None:
+        raise HTTPException(404, f"Domain '{domain_id}' not found")
+
+    chunks = [c.to_dict() for c in parsed.chunks]
+    result = await engine.process_chunks(chunks, doc_id=f"upload:{parsed.title}")
+
+    # Write
+    written = []
+    if auto_write and result.instances:
+        from core.harness.knowledge.wiki_engine import write_page
+        for inst in result.instances:
+            fm = inst.get("frontmatter", {})
+            title = fm.get("title", "")
+            if not title:
+                continue
+            try:
+                await write_page(
+                    title=title, body=str(fm.get("description", "") or ""),
+                    category=fm.get("category", "entities"),
+                    collection_id=collection,
+                    tags=list(fm.get("tags", []) or []),
+                    summary=str(fm.get("summary", "") or ""),
+                )
+                written.append(title)
+            except Exception:
+                pass
+
+    return {
+        **result.to_dict(),
+        "parsed": {"title": parsed.title, "chunk_count": len(parsed.chunks), "warnings": parsed.parse_warnings},
+        "written_pages": written,
+    }
+
+
+@router.post("/ontology/engine/simulate-state")
+async def simulate_state_transitions(req: dict):
+    """模拟状态机：给定一批实例，返回状态转换链和受影响的实例。
+
+    请求体: {
+      "domain_id": "ai-knowledge",
+      "instances": [
+        {"class_name": "AI方法", "properties": {"name": "RAG", "maturity": "research"}, "chunk_id": "c0"},
+        {"class_name": "AI系统", "properties": {"name": "SysA"}, "chunk_id": "c0"}
+      ]
+    }
+    返回: { state_transitions, affected_instances, summary }
+    """
+    domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
+    raw_instances = req.get("instances", []) if isinstance(req, dict) else []
+
+    from core.harness.ontology_engine.engine import load_engine
+    from core.harness.ontology_engine.state_machine import EvalContext
+
+    engine = load_engine(domain_id)
+    if not engine:
+        raise HTTPException(404, f"Domain '{domain_id}' not found")
+
+    state_machine = getattr(engine, "_state_machine", None)
+    if not state_machine:
+        raise HTTPException(500, "State machine not initialized")
+
+    # Normalize instances
+    instances = []
+    for i, ri in enumerate(raw_instances):
+        instances.append({
+            "class_name": str(ri.get("class_name", "")),
+            "entity_text": str(ri.get("entity_text", "") or ri.get("properties", {}).get("name", f"inst-{i}")),
+            "properties": dict(ri.get("properties", {}) or {}),
+            "chunk_id": str(ri.get("chunk_id", f"sim-{i}")),
+        })
+
+    ctx = EvalContext(instances)
+    state_transitions = []
+    affected_instances = []
+
+    for inst in instances:
+        chain = state_machine.evaluate_chain(inst, ctx)
+        if chain:
+            for tres in chain:
+                entry = tres.to_dict()
+                entry["entity_text"] = inst["entity_text"]
+                state_transitions.append(entry)
+                # Collect affected: which other instances match side_effect targets
+                for effect in tres.side_effects:
+                    for action in effect.get("actions", []):
+                        if action.get("type") == "mark_related_for_review":
+                            rel = action.get("relation", "")
+                            target_class = state_machine._relation_to_target_class(rel)
+                            if target_class:
+                                for other in instances:
+                                    if other is not inst and other.get("class_name") == target_class:
+                                        affected_instances.append({
+                                            "from_instance": inst["entity_text"],
+                                            "from_class": inst["class_name"],
+                                            "to_instance": other["entity_text"],
+                                            "to_class": other["class_name"],
+                                            "reason": action.get("message", f"关联关系: {rel}"),
+                                            "transition": f"{tres.from_state} → {tres.to_state}",
+                                        })
+
+    return {
+        "state_transitions": state_transitions,
+        "affected_instances": affected_instances,
+        "summary": (
+            f"{len(instances)} 实例 → {len(state_transitions)} 次状态转换"
+            f"{', 影响 ' + str(len(affected_instances)) + ' 个关联实例' if affected_instances else ''}"
+        ),
+    }
+
+
+@router.post("/ontology/engine/simulate-scenarios")
+async def simulate_scenarios(req: dict):
+    """Multi-scenario simulation sandbox — compare different configurations side by side.
+
+    请求体: {
+      "domain_id": "ai-knowledge",
+      "instances": [...],   # 基础实例
+      "scenarios": [        # 多个场景对比
+        {"label": "基线(无干预)", "instances": [...]},
+        {"label": "方案A: 加强审查", "instances": [...]},
+        {"label": "方案B: 自动放行", "instances": [...]}
+      ]
+    }
+    返回: { domain_id, baseline: {...}, scenarios: [{label, ...}, ...], comparison: {...} }
+    """
+    domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
+    raw_instances = req.get("instances", []) if isinstance(req, dict) else []
+    raw_scenarios = req.get("scenarios", []) if isinstance(req, dict) else []
+
+    from core.harness.ontology_engine.engine import load_engine
+    from core.harness.ontology_engine.state_machine import EvalContext
+
+    engine = load_engine(domain_id)
+    if not engine:
+        raise HTTPException(404, f"Domain '{domain_id}' not found")
+
+    state_machine = getattr(engine, "_state_machine", None)
+    if not state_machine:
+        raise HTTPException(500, "State machine not initialized")
+
+    def _run_scenario(insts):
+        normalized = []
+        for i, ri in enumerate(insts):
+            normalized.append({
+                "class_name": str(ri.get("class_name", "")),
+                "entity_text": str(ri.get("entity_text", "") or f"inst-{i}"),
+                "properties": dict(ri.get("properties", {}) or {}),
+                "chunk_id": str(ri.get("chunk_id", f"sim-{i}")),
+            })
+        ctx = EvalContext(normalized)
+        trans = []
+        affected = []
+        for inst in normalized:
+            chain = state_machine.evaluate_chain(inst, ctx)
+            if chain:
+                for tres in chain:
+                    entry = tres.to_dict()
+                    entry["entity_text"] = inst["entity_text"]
+                    trans.append(entry)
+        return {
+            "instance_count": len(normalized),
+            "state_transitions": trans,
+            "transition_count": len(trans),
+            "final_states": {inst["entity_text"]: inst.get("properties", {}).get("state", "unknown")
+                             for inst in normalized if inst.get("properties", {}).get("state")},
+        }
+
+    # Run baseline
+    baseline = _run_scenario(raw_instances) if raw_instances else {"instance_count": 0, "transition_count": 0}
+
+    # Run each scenario
+    scenario_results = []
+    for sc in raw_scenarios:
+        label = sc.get("label", f"Scenario {len(scenario_results)+1}")
+        si = sc.get("instances", [])
+        result = _run_scenario(si) if si else {"instance_count": 0, "transition_count": 0}
+        result["label"] = label
+        scenario_results.append(result)
+
+    # Comparison
+    comparison = {
+        "baseline_transitions": baseline.get("transition_count", 0),
+        "scenario_transitions": [r.get("transition_count", 0) for r in scenario_results],
+        "scenario_labels": [r.get("label", "") for r in scenario_results],
+    }
+
+    return {
+        "domain_id": domain_id,
+        "baseline": baseline,
+        "scenarios": scenario_results,
+        "comparison": comparison,
+    }
+
+
+@router.get("/ontology/engine/reviews/{domain_id}")
+async def list_ontology_reviews(domain_id: str):
+    """Get pending review queue for a domain ontology."""
+    from pathlib import Path as _Path
+    import os as _os, json as _json
+
+    reviews_dir = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontology_reviews"
+    review_file = reviews_dir / f"{domain_id}.json"
+    if not review_file.exists():
+        return {"domain_id": domain_id, "reviews": [], "total": 0}
+    try:
+        reviews = _json.loads(review_file.read_text())
+    except Exception:
+        return {"domain_id": domain_id, "reviews": [], "total": 0}
+
+    return {
+        "domain_id": domain_id,
+        "reviews": reviews,
+        "total": len(reviews),
+        "pending": sum(1 for r in reviews if r.get("status") == "pending"),
+    }
+
+
+@router.post("/ontology/engine/reviews/{domain_id}/resolve")
+async def resolve_ontology_review(domain_id: str, req: dict):
+    """Mark a review as resolved."""
+    from pathlib import Path as _Path
+    import os as _os, json as _json
+
+    review_id = req.get("review_id", "") if isinstance(req, dict) else ""
+    if not review_id:
+        raise HTTPException(400, "review_id required")
+
+    reviews_dir = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontology_reviews"
+    review_file = reviews_dir / f"{domain_id}.json"
+    if not review_file.exists():
+        raise HTTPException(404, "No reviews for this domain")
+
+    reviews = _json.loads(review_file.read_text())
+    resolved = False
+    for r in reviews:
+        if r.get("id") == review_id:
+            r["status"] = "resolved"
+            resolved = True
+            break
+    if not resolved:
+        raise HTTPException(404, f"Review '{review_id}' not found")
+
+    review_file.write_text(_json.dumps(reviews, ensure_ascii=False, indent=2))
+    return {"review_id": review_id, "status": "resolved"}
+
+
+@router.get("/ontology/engine/cross-domain-stats")
+async def get_cross_domain_stats():
+    """Get aggregated stats across all domain graphs."""
+    from core.harness.ontology_engine.engine import get_sharded_graph
+    sharded = get_sharded_graph()
+    # Load all domains
+    for did in ["ai-knowledge", "default", "ship-design"]:
+        sharded.get_shard(did)
+    return {
+        "total": sharded.total_stats(),
+        "per_domain": sharded.stats_all(),
+    }
+
+
+@router.get("/ontology/engine/graph-stats/{domain_id}")
+async def get_graph_stats(domain_id: str):
+    """Get graph statistics: nodes, edges, inferred edges."""
+    from core.harness.ontology_engine.graph_index import GraphIndex
+    graph = GraphIndex.load(domain_id)
+    base = graph.stats()
+    inferred = sum(1 for n in graph._nodes.values() for e in n.out_edges if getattr(e, "inferred", False))
+    return {"domain_id": domain_id, "node_count": base["node_count"], "edge_count": base["edge_count"], "inferred_edges": inferred, "avg_degree": base["avg_degree"]}
+
+
+@router.post("/ontology/engine/resolve")
+@router.post("/ontology/engine/cross-source-resolve")
+async def cross_source_resolve(req: dict):
+    """P1: Cross-source entity aggregation. Link entities from different data sources.
+
+    请求体: {
+      "domain_id": "ai-knowledge",
+      "instances_a": [...],  // primary source
+      "instances_b": [...],  // secondary source to link against
+      "source_a": "wiki", "source_b": "erp"
+    }
+    """
+    domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
+    raw_a = req.get("instances_a", []) if isinstance(req, dict) else []
+    raw_b = req.get("instances_b", []) if isinstance(req, dict) else []
+    src_a = req.get("source_a", "") if isinstance(req, dict) else ""
+    src_b = req.get("source_b", "") if isinstance(req, dict) else ""
+
+    from core.harness.ontology_engine.entity_resolver import EntityResolver
+    from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+    from pathlib import Path as _Path
+    import os as _os
+
+    ont_path = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies" / f"{domain_id}.yaml"
+    domain = load_ontology_from_yaml(str(ont_path)) if ont_path.exists() else None
+    resolver = EntityResolver(domain)
+
+    def normalize(insts):
+        return [{
+            "class_name": str(x.get("class_name", "")),
+            "entity_text": str(x.get("entity_text", "") or x.get("properties", {}).get("name", f"e{i}")),
+            "properties": dict(x.get("properties", {}) or {}),
+            "chunk_id": str(x.get("chunk_id", src_a if i < len(raw_a) else src_b)),
+        } for i, x in enumerate(insts)]
+
+    result = resolver.cross_source_resolve(
+        normalize(raw_a), normalize(raw_b),
+        source_a=src_a, source_b=src_b,
+    )
+    return result.to_dict()
+
+
+@router.post("/ontology/engine/resolve")
+async def resolve_entities(req: dict):
+    """Run entity resolver on a list of instances.
+
+    请求体: {
+      "domain_id": "ai-knowledge",
+      "instances": [{"class_name":"AI方法","entity_text":"RAG","chunk_id":"c0"}, ...],
+      "doc_type": "md"
+    }
+    """
+    domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
+    raw_instances = req.get("instances", []) if isinstance(req, dict) else []
+    doc_type = req.get("doc_type", "") if isinstance(req, dict) else ""
+
+    from core.harness.ontology_engine.entity_resolver import EntityResolver
+    from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+    from pathlib import Path as _Path
+    import os as _os
+
+    ont_path = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies" / f"{domain_id}.yaml"
+    if not ont_path.exists():
+        raise HTTPException(404, f"Domain '{domain_id}' not found")
+
+    domain = load_ontology_from_yaml(str(ont_path))
+    resolver = EntityResolver(domain)
+    normalized = []
+    for i, ri in enumerate(raw_instances):
+        normalized.append({
+            "class_name": str(ri.get("class_name", "")),
+            "entity_text": str(ri.get("entity_text", "") or ri.get("properties", {}).get("name", f"e{i}")),
+            "chunk_id": str(ri.get("chunk_id", f"c{i}")),
+            "properties": dict(ri.get("properties", {}) or {}),
+        })
+    result = resolver.resolve(normalized, doc_type=doc_type)
+    return result.to_dict()
+
+
+@router.get("/ontology/engine/state-history/{domain_id}")
+async def get_state_history(domain_id: str, entity: str = "", limit: int = 200):
+    """Get state machine change history for a domain or specific entity."""
+    from core.harness.ontology_engine.state_history import get_domain_history, get_entity_history
+
+    if entity:
+        history = get_entity_history(domain_id, entity)
+        return {"domain_id": domain_id, "entity": entity, "history": history, "total": len(history)}
+    else:
+        history = get_domain_history(domain_id, limit)
+        return {"domain_id": domain_id, "history": history, "total": len(history)}
+
+
+@router.get("/ontology/engine/state-stats/{domain_id}")
+async def get_state_statistics(
+    domain_id: str,
+    entity: str = "",
+    window: str = "24h",
+    class_name: str = "",
+):
+    """Get time-series window statistics for state transitions.
+
+    参数:
+      entity:     filter by entity name (optional)
+      window:     time window, e.g. "1h", "6h", "24h", "7d"
+      class_name: filter by class (optional)
+
+    返回:
+      window_stats: sliding window metrics (velocity, distribution, chains)
+      transition_rate: bucketed transition rate over time
+      state_distribution: current state distribution across entities
+    """
+    from core.harness.ontology_engine.state_history import (
+        get_entity_window_stats, get_domain_transition_rate, get_state_distribution
+    )
+
+    # Parse window
+    w = window.lower()
+    if w.endswith("h"):
+        hours = float(w[:-1])
+    elif w.endswith("d"):
+        hours = float(w[:-1]) * 24
+    else:
+        hours = 24.0
+
+    window_stats = get_entity_window_stats(
+        domain_id, entity_name=entity, window_hours=hours, class_name=class_name,
+    )
+    rate = get_domain_transition_rate(domain_id, window_hours=hours, bucket_minutes=max(15, int(hours * 60 / 24)))
+    distrib = get_state_distribution(domain_id, class_name=class_name)
+
+    return {
+        "domain_id": domain_id,
+        "window": window,
+        "entity": entity or "(all)",
+        "window_stats": window_stats,
+        "transition_rate": rate,
+        "state_distribution": distrib,
+    }
+
+
+@router.post("/ontology/engine/traverse")
+async def graph_traverse(req: dict):
+    """Multi-hop graph traversal from a start entity.
+
+    请求体: {
+      "domain_id": "ai-knowledge",
+      "start_entity": "RAG",
+      "max_hops": 2,
+      "relation_types": ["implements", "applies"],
+      "direction": "both"
+    }
+    返回: { paths, terminal_entities, stats }
+    """
+    domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
+    start_entity = req.get("start_entity", "") if isinstance(req, dict) else ""
+    max_hops = int(req.get("max_hops", 2)) if isinstance(req, dict) else 2
+    relation_types = req.get("relation_types") if isinstance(req, dict) else None
+    direction = str(req.get("direction", "both")) if isinstance(req, dict) else "both"
+
+    if not start_entity:
+        raise HTTPException(400, "start_entity is required")
+
+    from core.harness.ontology_engine.graph_index import GraphIndex
+    from core.harness.ontology_engine.graph_traversal import traverse as _traverse
+
+    graph = GraphIndex.load(domain_id)
+    if len(graph) == 0:
+        raise HTTPException(404, f"Graph for domain '{domain_id}' is empty. Run engine first.")
+
+    result = _traverse(
+        start_entity=start_entity,
+        graph=graph,
+        max_hops=max_hops,
+        relation_filter=relation_types,
+        direction=direction,
+    )
+
+    return {
+        "domain_id": domain_id,
+        "start_entity": start_entity,
+        **result.to_dict(),
+    }
+
+
+@router.post("/ontology/engine/feedback")
+async def submit_feedback(req: dict):
+    """Submit user feedback on an answer.
+    
+    请求体: {"session_id":"...", "query":"...", "rating":4, "is_helpful":true, "domain_id":"default"}
+    """
+    from core.harness.ontology_engine.state_history import record_feedback
+    sid = req.get("session_id", "") if isinstance(req, dict) else ""
+    q = req.get("query", "") if isinstance(req, dict) else ""
+    rating = int(req.get("rating", 0)) if isinstance(req, dict) else 0
+    helpful = req.get("is_helpful") if isinstance(req, dict) else None
+    domain = req.get("domain_id", "default") if isinstance(req, dict) else "default"
+    record_feedback(session_id=sid, query_text=q, rating=rating, is_helpful=helpful, domain_id=domain)
+    return {"status": "recorded"}
+
+
+@router.get("/ontology/engine/feedback-stats/{domain_id}")
+async def get_feedback_statistics(domain_id: str):
+    from core.harness.ontology_engine.state_history import get_feedback_stats
+    return get_feedback_stats(domain_id)
+
+
+@router.get("/ontology/engine/recommend/{domain_id}")
+async def get_knowledge_recommendations(
+    domain_id: str,
+    department: str = "",
+    queries: str = "",
+    limit: int = 5,
+):
+    """L5 active knowledge recommendation.
+
+    Query: ?department=研发部&queries=RAG,知识检索&limit=5
+    Returns ranked recommendations with reasons.
+    """
+    from core.harness.knowledge.wiki_engine import recommend_knowledge
+    recent = [q.strip() for q in queries.split(",") if q.strip()] if queries else []
+    result = recommend_knowledge(
+        department=department, recent_queries=recent,
+        domain_id=domain_id, limit=limit,
+    )
+    return {"domain_id": domain_id, "recommendations": result, "total": len(result)}
+
+
+@router.post("/ontology/engine/parse-logic-form")
+async def parse_logic_form(req: dict):
+    """NL2LF: Parse natural language to structured Logic Form."""
+    from core.harness.knowledge.ontology_query_mapper import parse_to_logic_form
+    query = req.get("query", "") if isinstance(req, dict) else ""
+    if not query: raise HTTPException(400, "query required")
+    return parse_to_logic_form(query)
+
+
+@router.post("/ontology/engine/detect-gaps")
+async def detect_knowledge_gaps_endpoint(req: dict):
+    """Detect knowledge gaps from query patterns.
+
+    请求体: {
+      "domain_id": "ai-knowledge",
+      "queries": ["什么是RAG", "RAG怎么用", ...],
+      "min_frequency": 2
+    }
+    """
+    domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
+    queries = req.get("queries", []) if isinstance(req, dict) else []
+    min_freq = int(req.get("min_frequency", 2)) if isinstance(req, dict) else 2
+
+    from core.harness.ontology_engine.knowledge_gap_detector import detect_knowledge_gaps
+    result = detect_knowledge_gaps(queries, domain_id=domain_id, min_frequency=min_freq)
+    return {"domain_id": domain_id, **result}
+
+
+@router.post("/ontology/engine/process-from-datasource")
+async def process_from_datasource(req: dict):
+    """Palantir-style: process data from an external data source through the ontology engine.
+
+    请求体: {"source_id": "erp_db", "domain_id": "ai-knowledge"}
+    """
+    from core.harness.ontology_engine.data_source import DataSourceRegistry
+    from core.harness.ontology_engine.engine import load_engine
+
+    source_id = req.get("source_id", "") if isinstance(req, dict) else ""
+    domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
+
+    if not source_id:
+        raise HTTPException(400, "source_id required")
+
+    DataSourceRegistry.load_from_dir()
+    engine = load_engine(domain_id)
+    if not engine:
+        raise HTTPException(404, f"Domain '{domain_id}' not found")
+
+    result = await engine.process_from_datasource(source_id)
+    return {
+        "source_id": source_id,
+        "domain_id": domain_id,
+        "instances": len(result.instances),
+        "transitions": result.stats.get("state_transitions", 0),
+        "warnings": result.warnings[:5],
+        "errors": result.errors,
+    }
+
+
+@router.get("/ontology/datasources")
+async def list_datasources():
+    from core.harness.ontology_engine.data_source import DataSourceRegistry
+    DataSourceRegistry.load_from_dir()
+    return {"datasources": DataSourceRegistry.list_sources()}
+
+
+@router.post("/ontology/engine/synthesize")
+async def run_knowledge_synthesis(req: dict):
+    """Synthesize graph knowledge into Wiki pages.
+
+    请求体: {"domain_id": "ai-knowledge"}
+    返回: { pages_written, chains, fact_cards, conclusions }
+    """
+    domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
+    from core.harness.ontology_engine.graph_index import GraphIndex
+    from core.harness.ontology_engine.knowledge_synthesis import KnowledgeSynthesizer
+
+    graph = GraphIndex.load(domain_id)
+    if len(graph) == 0:
+        raise HTTPException(404, f"Graph for '{domain_id}' is empty")
+
+    synthesizer = KnowledgeSynthesizer(graph)
+    result = synthesizer.synthesize(domain_id=domain_id, write_to_wiki=True)
+    return {
+        "domain_id": domain_id,
+        **result.to_dict(),
+    }
+
+
+@router.post("/ontology/engine/snapshot/{domain_id}")
+async def create_graph_snapshot(domain_id: str, label: str = ""):
+    """Create a versioned snapshot of the current graph state."""
+    from core.harness.ontology_engine.graph_index import GraphIndex
+    graph = GraphIndex.load(domain_id)
+    if len(graph) == 0:
+        raise HTTPException(404, f"Graph for '{domain_id}' is empty")
+    result = graph.snapshot(label)
+    return {"domain_id": domain_id, **result}
+
+
+@router.get("/ontology/engine/snapshots/{domain_id}")
+async def list_graph_snapshots(domain_id: str):
+    from core.harness.ontology_engine.graph_index import GraphIndex
+    graph = GraphIndex.load(domain_id)
+    return {"domain_id": domain_id, "snapshots": graph.list_snapshots()}
+
+
+@router.post("/ontology/engine/snapshot/{domain_id}/restore")
+async def restore_graph_snapshot(domain_id: str, req: dict):
+    snapshot_id = int(req.get("snapshot_id", 0)) if isinstance(req, dict) else 0
+    if not snapshot_id:
+        raise HTTPException(400, "snapshot_id required")
+    from core.harness.ontology_engine.graph_index import GraphIndex
+    graph = GraphIndex.load(domain_id)
+    result = graph.restore_snapshot(snapshot_id)
+    return {"domain_id": domain_id, **result}
+
+
+@router.get("/ontology/sdk/{domain_id}")
+async def generate_ontology_sdk(domain_id: str, language: str = "python"):
+    """Generate a client SDK from the domain ontology YAML.
+
+    Produces dataclass definitions with fields, enums, state machines,
+    and API wrappers for all CRUD operations on the domain.
+
+    Query: ?language=python|typescript
+    """
+    from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+    from pathlib import Path as _Path
+    import os as _os
+
+    ont_path = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies" / f"{domain_id}.yaml"
+    if not ont_path.exists():
+        raise HTTPException(404, f"Domain '{domain_id}' not found")
+
+    domain = load_ontology_from_yaml(str(ont_path))
+
+    if language == "python":
+        lines = [f'"""Auto-generated SDK for {domain.name} domain — v{domain.version}."""', '',
+                 'from dataclasses import dataclass, field', 'from typing import List, Optional', '',
+                 f'# {domain.description}', f'# Generated from: {domain_id}.yaml', '']
+        for cls in domain.classes:
+            lines.append('@dataclass')
+            lines.append(f'class {cls.label}:')
+            lines.append(f'    """{cls.description}"""')
+            for rf in cls.required_fields:
+                lines.append(f'    {rf}: str  # required')
+            for of in cls.optional_fields:
+                lines.append(f'    {of}: Optional[str] = None')
+            lines.append(f'    tags: List[str] = field(default_factory=list)')
+            if getattr(cls, 'states', None):
+                states = getattr(cls, 'states', {})
+                def_state = states.get('default', 'unknown')
+                lines.append(f'    state: str = "{def_state}"')
+                enums = states.get('enum', [])
+                if enums:
+                    evals = [s['name'] for s in enums]
+                    lines.append(f'    # Valid states: {", ".join(evals)}')
+            lines.append('')
+
+        lines.append('# ── API Client ──')
+        lines.append(f'BASE = "http://localhost:8002/api/core/wiki/ontology"')
+        lines.append('')
+        lines.append('async def search_pages(query: str, limit: int = 10):')
+        lines.append('    import aiohttp')
+        lines.append(f'    async with aiohttp.ClientSession() as s:')
+        lines.append(f'        async with s.get(f"{{BASE}}/../pages?q={{query}}&limit={{limit}}") as r:')
+        lines.append(f'            return await r.json()')
+
+        return {"domain_id": domain_id, "language": language, "code": "\n".join(lines)}
+
+    elif language == "typescript":
+        ts = [f'// Auto-generated SDK for {domain.name} domain — v{domain.version}',
+              f'// {domain.description}', '']
+        for cls in domain.classes:
+            ts.append(f'export interface {cls.label} {{')
+            for rf in cls.required_fields:
+                ts.append(f'  {rf}: string;  // required')
+            for of in cls.optional_fields:
+                ts.append(f'  {of}?: string;')
+            ts.append(f'  tags: string[];')
+            if getattr(cls, 'states', None):
+                ts.append(f'  state: string;')
+            ts.append('}')
+            ts.append('')
+        return {"domain_id": domain_id, "language": language, "code": "\n".join(ts)}
+
+    raise HTTPException(400, f"Unsupported language: {language}. Use python or typescript")
+
+
+@router.post("/ontology/engine/infer")
+async def run_graph_inference(req: dict):
+    """Run inference rules on the domain graph to derive new edges.
+
+    请求体: {"domain_id": "ai-knowledge"}
+    返回: { inferred_edges, rule_hits, stats }
+    """
+    domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
+
+    from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+    from core.harness.ontology_engine.graph_index import GraphIndex
+    from core.harness.ontology_engine.graph_inference import GraphInference
+    from pathlib import Path as _Path
+    import os as _os
+
+    ont_path = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies" / f"{domain_id}.yaml"
+    if not ont_path.exists():
+        raise HTTPException(404, f"Domain '{domain_id}' not found")
+
+    domain = load_ontology_from_yaml(str(ont_path))
+    graph = GraphIndex.load(domain_id)
+    if len(graph) == 0:
+        raise HTTPException(404, f"Graph for '{domain_id}' is empty")
+
+    inferencer = GraphInference(domain, graph)
+    result = inferencer.infer()
+    applied = inferencer.apply_to_graph(result)
+    if applied:
+        graph.save()
+
+    return {
+        "domain_id": domain_id,
+        "applied": applied,
+        **result.to_dict(),
+    }
+
+
+from pydantic import BaseModel as _PydanticBaseModel, Field as _PydanticField
+
+class OntologyDomainCreate(_PydanticBaseModel):
+    id: str = _PydanticField(min_length=1, max_length=50, description="域标识 (如 ai-knowledge)")
+    name: str = _PydanticField(min_length=1, max_length=100, description="显示名 (如 AI知识)")
+    namespace: str = ""
+    description: str = ""
+    version: str = "1.0.0"
+
+class OntologyClassCreate(_PydanticBaseModel):
+    name: str
+    label: str
+    description: str = ""
+    required_fields: list = []
+    optional_fields: list = []
+    categories: list = []
+    parent: str = ""
+
+class OntologyPropertyCreate(_PydanticBaseModel):
+    name: str
+    label: str
+    domain: list = []
+    range: list = []
+    transitive: bool = False
+    symmetric: bool = False
+
+
+def _remove_from_registry(domain_id: str) -> None:
+    """Remove a domain from registry.json."""
+    from pathlib import Path as _Path
+    import os as _os, json
+    registry_path = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies" / "registry.json"
+    if not registry_path.exists():
+        return
+    with open(registry_path, "r", encoding="utf-8") as f:
+        reg = json.load(f)
+    reg.get("domains", {}).pop(domain_id, None)
+    with open(registry_path, "w", encoding="utf-8") as f:
+        json.dump(reg, f, ensure_ascii=False, indent=2)
+
+
+def _write_domain_yaml(domain_id: str, data: dict) -> None:
+    """Save domain ontology back to YAML file."""
+    import yaml as _yaml
+    from pathlib import Path as _Path
+    import os as _os
+    d = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
+    d.mkdir(parents=True, exist_ok=True)
+    file_path = d / f"{domain_id}.yaml"
+    # Preserve order with safe_dump
+    content = _yaml.dump(data, allow_unicode=True, default_flow_style=False, sort_keys=False)
+    file_path.write_text(f"# {data.get('name', domain_id)} 领域本体模型\n{content}", encoding="utf-8")
+
+
+# ── Ontology Domain Generation (LLM-assisted from Vault) ─────────
+
+@router.post("/ontology/domains/generate")
+async def generate_ontology_domain(
+    id: str = Body(...),
+    name: str = Body(...),
+    description: str = Body(""),
+    vault_path: str = Body(""),
+    vault_subdir: str = Body(""),
+    keywords: str = Body(""),
+    sample_limit: int = Body(30),
+):
+    """LLM-assisted 6-step ontology generation from Vault markdown files.
+
+    Steps: GatherContent → EntityScan → ConceptCluster → RelationExtract → RuleRefine → AssembleYAML.
+    Each step's output is cached to ~/.aiplat/ontology_gen/{domain_id}/ for debugging.
+    """
+    import json as _json, yaml as _yaml, re as _re, hashlib as _hashlib, asyncio
+    from pathlib import Path as _Path
+    import os as _os
+
+    domain_id = id.strip().lower().replace(" ", "-")
+    if not domain_id or not name.strip():
+        raise HTTPException(400, "id and name are required")
+
+    # ── Step 0: GatherContent ──────────────────────────────────────────
+    kw_list = _extract_keywords(keywords) if keywords else _extract_keywords(description)
+    samples = _gather_vault_files(
+        vault_path=vault_path, vault_subdir=vault_subdir,
+        keywords=kw_list, sample_limit=min(sample_limit, 50),
+    )
+    # Cache hashes
+    if domain_id:
+        _save_step(domain_id, "vault_hashes.json",
+                   {"files": {s["file"]: s["hash"] for s in samples},
+                    "scanned_at": __import__("time").time()})
+    if not samples:
+        raise HTTPException(400, "No relevant vault files found. Connect a vault with markdown files.")
+
+    content_text = _build_content_text(samples)
+
+    # ── Common: Few-shot example ───────────────────────────────────────
+    few_shot = _load_few_shot_yaml()
+
+    # ── Step 1: EntityScan ─────────────────────────────────────────────
+    entity_prompt = f"""TASK: Extract domain-specific ENTITY NAMES from documents. Do NOT describe or analyze the documents themselves.
+
+EXAMPLE: If the document is about RAG technology, extract: "RAG", "retrieval pipeline", etc.
+
+For each entity found, provide:
+- name: brief name of the entity
+- type: methods | systems | concepts | problems | references
+- excerpt: short quote from the document (≤30 chars)
+
+Domain: {description}
+
+Documents:
+{content_text[:4000]}
+
+OUTPUT ONLY valid JSON (no markdown, no text before/after):
+{{"entities":{{"methods":[{{"name":"RAG","excerpt":"RAG combines retrieval..."}}],"systems":[{{"name":"Harness","excerpt":"Harness is a system..."}}],"concepts":[],"problems":[],"references":[]}}}}"""
+
+    try:
+        entities_data = await asyncio.wait_for(
+            _llm_step(entity_prompt, domain_id, "step1_entities"), timeout=30
+        )
+    except Exception:
+        entities_data = {"entities": {}, "evidence": {}}
+    _save_step(domain_id, "step1_entities.json", entities_data)
+
+    # ── Step 2: ConceptCluster ─────────────────────────────────────────
+    entities_json = _json.dumps(entities_data.get("entities", {}), ensure_ascii=False, indent=2)
+    cluster_prompt = f"""TASK: Group these entities into 4-8 ontology classes.
+
+Entities found:
+{entities_json[:2000]}
+
+For each class, define: name (PascalCase), label (Chinese), description, required_fields (list), optional_fields (list), categories (kebab-case list).
+
+EXAMPLE format:
+{{"classes":[{{"name":"AITechnique","label":"AI方法","description":"AI techniques and algorithms","required_fields":["name","description"],"optional_fields":["tags"],"categories":["ai-techniques"]}}]}}
+
+OUTPUT ONLY valid JSON:"""
+
+    try:
+        classes_data = await asyncio.wait_for(
+            _llm_step(cluster_prompt, domain_id, "step2_classes"), timeout=30
+        )
+    except Exception:
+        classes_data = {"classes": []}
+    _save_step(domain_id, "step2_classes.json", classes_data)
+
+    # ── Step 3: RelationExtract ────────────────────────────────────────
+    classes_simple = _json.dumps([
+        {"name": c.get("name", ""), "label": c.get("label", "")}
+        for c in classes_data.get("classes", [])
+    ], ensure_ascii=False, indent=2)
+
+    relation_prompt = f"""TASK: Identify relations between these classes from the documents.
+
+Classes: {classes_simple[:1500]}
+
+Documents:
+{content_text[:2000]}
+
+For each relation: name (snake_case), label (Chinese), domain (source class names), range (target class names), type (forward|symmetric|transitive).
+
+EXAMPLE: {{"relations":[{{"name":"implements","label":"实现","domain":["AISystem"],"range":["AITechnique"],"type":"forward"}}]}}
+
+OUTPUT ONLY valid JSON:"""
+
+    try:
+        relations_data = await asyncio.wait_for(
+            _llm_step(relation_prompt, domain_id, "step3_relations"), timeout=30
+        )
+    except Exception:
+        relations_data = {"relations": []}
+    _save_step(domain_id, "step3_relations.json", relations_data)
+
+    # ── Step 4: RuleRefine ─────────────────────────────────────────────
+    state_classes = [c for c in classes_data.get("classes", [])
+                     if any(kw in str(c.get("label", "")) for kw in ["方法", "系统", "问题", "流程", "事件", "变更"])]
+    if state_classes:
+        state_class_names = _json.dumps([c.get("label") for c in state_classes], ensure_ascii=False)
+        rule_prompt = f"""TASK: Define state machines for these classes if there are lifecycle descriptions.
+
+Classes: {state_class_names}
+Documents: {content_text[:3000]}
+
+For each class with states: default state, states list (name+label), transitions list (from, to, trigger with type/relation/threshold/operator).
+
+EXAMPLE: {{"state_machines":[{{"class_label":"AI方法","default":"emerging","states":[{{"name":"emerging","label":"新兴"}}],"transitions":[{{"from":"emerging","to":"established","trigger":{{"type":"relation_count","relation":"implements","threshold":3,"operator":">="}},"description":"≥3 implementations"}}]}}]}}
+
+OUTPUT ONLY valid JSON:"""
+
+        try:
+            states_data = await asyncio.wait_for(
+                _llm_step(rule_prompt, domain_id, "step4_states"), timeout=30
+            )
+        except Exception:
+            states_data = {"state_machines": []}
+        _save_step(domain_id, "step4_states.json", states_data)
+    else:
+        states_data = {"state_machines": []}
+
+    # ── Step 5: AssembleYAML ───────────────────────────────────────────
+    yaml_str = _assemble_yaml(domain_id, name.strip(), description.strip(),
+                              classes_data, relations_data, states_data, entities_data)
+    _save_step(domain_id, "final.yaml", yaml_str)
+
+    # ── Return preview YAML (user should review before saving) ────────
+    return {
+        "status": "preview",
+        "domain_id": domain_id,
+        "yaml": yaml_str,
+        "stats": {
+            "files_scanned": len(samples),
+            "entities_found": sum(len(v) for v in entities_data.get("entities", {}).values()),
+            "classes_generated": len(classes_data.get("classes", [])),
+            "relations_found": len(relations_data.get("relations", [])),
+            "state_machines": len(states_data.get("state_machines", [])),
+        },
+    }
+
+
+@router.post("/ontology/domains/{domain_id}/evolve")
+async def evolve_ontology_domain(
+    domain_id: str,
+    vault_path: str = Body(""),
+    vault_subdir: str = Body(""),
+    keywords: str = Body(""),
+    sample_limit: int = Body(10),
+):
+    """Delta analysis: detect new vault files → suggest ontology changes.
+
+    Compares current vault file hashes against cached hashes from last generate run.
+    Returns suggestions for new classes, relations, and state machine changes.
+    """
+    import json as _json, asyncio, os as _os
+    from pathlib import Path as _Path
+
+    gen_dir = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontology_gen" / domain_id
+
+    # 1. Load cached hashes
+    cache_file = gen_dir / "vault_hashes.json"
+    cached = {}
+    if cache_file.exists():
+        try:
+            cached = _json.loads(cache_file.read_text()).get("files", {})
+        except Exception:
+            pass
+
+    # 2. Scan current vault
+    all_files = []
+    vp = vault_path or _discover_vault_path()
+    if not vp:
+        return {"suggestions": [], "message": "No vault found. Connect a vault first."}
+
+    for root, dirs, files in _os.walk(vp):
+        dirs[:] = [d for d in dirs if not d.startswith(".")]
+        for f in files:
+            if f.endswith(".md"):
+                all_files.append(_os.path.join(root, f))
+
+    # 3. Find new/modified files
+    new_files = []
+    for fp in all_files:
+        try:
+            content = _Path(fp).read_text(encoding="utf-8", errors="ignore")
+            h = _hash_content(content)
+            fname = _Path(fp).name
+            if fname not in cached or cached[fname] != h:
+                new_files.append({"file": fname, "path": fp, "content": content[:2000], "hash": h,
+                                  "is_new": fname not in cached})
+        except Exception:
+            pass
+
+    if not new_files:
+        return {"suggestions": [], "message": "No new or modified vault files found.",
+                "new_files_found": 0}
+
+    # 4. Load current ontology
+    onto_path = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies" / f"{domain_id}.yaml"
+    existing_classes = []
+    if onto_path.exists():
+        try:
+            from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+            domain = load_ontology_from_yaml(str(onto_path))
+            existing_classes = [{"label": c.label, "categories": c.allowed_categories} for c in domain.classes]
+        except Exception:
+            pass
+
+    # 5. Delta entity scan on new content only (with optional keyword filtering)
+    if keywords:
+        kw_list = _extract_keywords(keywords)
+        scored = []
+        for nf in new_files:
+            score = _filename_match_score(nf["file"].lower(), "", kw_list) + \
+                    _content_preview_score(nf["path"], kw_list)
+            scored.append((nf, score))
+        scored.sort(key=lambda x: -x[1])
+        delta_files = [f for f, _ in scored[:sample_limit]]
+    elif len(new_files) > sample_limit:
+        import random
+        delta_files = random.sample(new_files, sample_limit)
+    else:
+        delta_files = new_files
+
+    # Apply vault_subdir filter
+    if vault_subdir:
+        delta_files = [f for f in delta_files if vault_subdir.lower() in f.get("file", "").lower() or vault_subdir.lower() in f.get("path", "").lower()]
+        if not delta_files and new_files:
+            delta_files = random.sample(new_files, min(sample_limit, len(new_files))) if isinstance(new_files, list) else [new_files[0]]
+
+    content_text = _build_content_text(delta_files)
+
+    delta_prompt = f"""TASK: Compare new documents against existing ontology classes. 
+Find entities/systems/concepts that are NOT covered by existing classes.
+
+Existing classes: {_json.dumps(existing_classes, ensure_ascii=False)[:1500]}
+
+New documents:
+{content_text[:3000]}
+
+Suggest: 1) New classes needed, 2) New relations, 3) Changes to existing state machines.
+
+OUTPUT ONLY valid JSON:
+{{"new_classes":[{{"name":"...","label":"...","description":"...","required_fields":["name"],"categories":[]}}],"new_relations":[],"state_changes":[],"summary":"Brief summary of changes"}}"""
+
+    try:
+        result = await _llm_step(delta_prompt, domain_id, "evolve", max_retries=1)
+    except Exception:
+        result = {"new_classes": [], "new_relations": [], "state_changes": [], "summary": "LLM analysis failed"}
+
+    # 6. Update cache
+    _save_step(domain_id, "vault_hashes.json",
+               {"files": {s["file"]: s["hash"] for s in new_files},
+                "scanned_at": __import__("time").time()})
+
+    return {
+        "suggestions": result,
+        "new_files_found": len(new_files),
+        "existing_classes": [c["label"] for c in existing_classes],
+    }
+
+
+@router.post("/ontology/domains/{domain_id}/repair")
+async def repair_ontology_domain(
+    domain_id: str,
+    vault_path: str = Body(""),
+    vault_subdir: str = Body(""),
+    keywords: str = Body(""),
+    sample_limit: int = Body(20),
+):
+    """Audit existing ontology against full Vault content. Returns repair suggestions.
+
+    Checks: missing classes, missing fields, missing synonyms, weak relations,
+    weak state machines (states without transitions), and uncovered entities.
+    """
+    import json as _json, asyncio, os as _os
+    from pathlib import Path as _Path
+
+    # 1. Load current ontology
+    onto_path = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies" / f"{domain_id}.yaml"
+    if not onto_path.exists():
+        return {"repair_suggestions": {}, "error": f"Domain '{domain_id}' not found"}
+
+    from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+    domain = load_ontology_from_yaml(str(onto_path))
+
+    existing = {
+        "classes": [{
+            "name": c.uri.rsplit("/", 1)[-1].rsplit("#", 1)[-1], "label": c.label,
+            "required_fields": c.required_fields, "optional_fields": c.optional_fields,
+            "categories": c.allowed_categories, "synonyms": getattr(c, "synonyms", []) or [],
+            "has_states": bool(getattr(c, "states", {}).get("enum")),
+            "has_transitions": bool(getattr(c, "states", {}).get("transitions")),
+        } for c in domain.classes],
+        "relations": [{"name": getattr(r, "name", "") or str(r), "label": getattr(r, "label", ""),
+                       "domain": str(getattr(r, "domain", []))} for r in domain.object_properties],
+    }
+
+    # 2. Scan Vault
+    vp = vault_path or _discover_vault_path()
+    kw_list = _extract_keywords(keywords) if keywords else None
+    samp = _gather_vault_files(vault_path=vp, vault_subdir=vault_subdir, keywords=kw_list, sample_limit=sample_limit)
+    if not samp:
+        return {"repair_suggestions": {}, "error": "No vault files found"}
+
+    content_text = _build_content_text(samp)
+
+    # 3. LLM audit
+    repair_prompt = f"""TASK: Audit this ontology YAML against Vault documents. Find gaps.
+
+Existing ontology (summary):
+  Classes: {_json.dumps([{ "label": c["label"], "fields": c["required_fields"]+c["optional_fields"][:3], "synonyms": c["synonyms"][:3], "has_states": c["has_states"], "has_transitions": c["has_transitions"] } for c in existing["classes"]], ensure_ascii=False)[:2000]}
+  Relations: {len(existing["relations"])} total
+
+Vault documents:
+{content_text[:3000]}
+
+Report these issues:
+1. missing_classes: entities NOT covered by any existing class (with suggested name/label)
+2. missing_fields: common properties missing from class field definitions
+3. missing_synonyms: class labels that lack common search terms
+4. weak_relations: domain with < 3 classes but 0 relations → suggest new
+5. weak_state_machines: classes with states enum but no transitions
+
+OUTPUT ONLY valid JSON:
+{{"missing_classes":[{{"label":"...","suggested_name":"...","category":"..."}}],"missing_fields":[{{"class":"...","field":"...","reason":"..."}}],"missing_synonyms":[{{"class":"...","suggested":["..."]}}],"weak_relations":[{{"suggestion":"Add relation between X and Y"}}],"weak_state_machines":[{{"class":"...","issue":"..."}}],"summary":"..."}}"""
+
+    try:
+        result = await _llm_step(repair_prompt, domain_id, "repair", max_retries=1)
+    except Exception:
+        result = {"summary": "LLM audit failed", "missing_classes": [], "missing_fields": [],
+                  "missing_synonyms": [], "weak_relations": [], "weak_state_machines": []}
+
+    return {
+        "repair_suggestions": result,
+        "domain_id": domain_id,
+        "existing_classes": len(existing["classes"]),
+        "files_scanned": len(samp),
+    }
+
+
+# ── Helper functions for ontology generation ──────────────────────
+
+def _gather_vault_files(*, vault_path: str, vault_subdir: str = "", keywords: list = None, sample_limit: int = 30):
+    """Unified vault file gathering with optional subdir + keyword filtering."""
+    import os as _os
+    from pathlib import Path as _Path
+
+    if not vault_path:
+        vault_path = _discover_vault_path()
+    if not vault_path or not _Path(vault_path).is_dir():
+        return []
+
+    root = _Path(vault_path)
+    if vault_subdir:
+        root = root / vault_subdir.lstrip("/")
+    if not root.is_dir():
+        root = _Path(vault_path)
+
+    keywords = keywords or []
+    all_files = []
+    for d_root, dirs, files in _os.walk(str(root)):
+        dirs[:] = [d for d in dirs if not d.startswith(".")]
+        for f in files:
+            if f.endswith(".md") and not f.startswith("."):
+                all_files.append(_os.path.join(d_root, f))
+
+    if not all_files:
+        return []
+
+    if keywords:
+        scored = []
+        for fp in all_files:
+            fname = _os.path.basename(fp).lower()
+            dirname = _os.path.basename(_os.path.dirname(fp)).lower()
+            fname_score = _filename_match_score(fname, dirname, keywords)
+            content_score = _content_preview_score(fp, keywords)
+            total = 0.4 * fname_score + 0.6 * content_score
+            if total > 0 or len(all_files) <= sample_limit:
+                scored.append((fp, total))
+        scored.sort(key=lambda x: -x[1])
+        if not scored or scored[0][1] == 0:
+            scored = _sample_by_size(all_files, sample_limit)
+    else:
+        scored = _sample_by_size(all_files, sample_limit)
+
+    samples = []
+    for fp, _ in scored[:sample_limit]:
+        try:
+            content = _Path(fp).read_text(encoding="utf-8", errors="ignore")
+            samples.append({
+                "file": _Path(fp).name, "path": fp,
+                "content": content[:2000], "hash": _hash_content(content),
+            })
+        except Exception:
+            pass
+    return samples
+
+
+def _gather_vault_content(*, description: str, vault_path: str, domain_id: str = "", sample_limit: int = 30):
+    """Enhanced sampling: filename + content preview weighted scoring (backward compat)."""
+    keywords = _extract_keywords(description)
+    samples = _gather_vault_files(vault_path=vault_path, keywords=keywords, sample_limit=sample_limit)
+    if domain_id:
+        _save_step(domain_id, "vault_hashes.json",
+                   {"files": {s["file"]: s["hash"] for s in samples},
+                    "scanned_at": __import__("time").time()})
+    return samples
+
+
+def _discover_vault_path():
+    """Find first connected vault path from SQLite."""
+    try:
+        import sqlite3
+        from pathlib import Path as _Path
+        db = _Path.home() / ".aiplat" / "kb" / "tenants" / "default" / "kb.sqlite3"
+        if db.exists():
+            conn = sqlite3.connect(str(db))
+            row = conn.execute(
+                "SELECT vault_path FROM kb_vaults WHERE enabled=1 LIMIT 1"
+            ).fetchone()
+            conn.close()
+            if row:
+                return row[0]
+    except Exception:
+        pass
+    return ""
+
+
+def _extract_keywords(description: str):
+    """Extract Chinese + English keywords from domain description."""
+    import re as _re
+    words = _re.findall(r'[\u4e00-\u9fff]+|[a-zA-Z]+', description)
+    return [w.lower() for w in words if len(w) >= 2]
+
+
+def _filename_match_score(fname: str, dirname: str, keywords: list) -> float:
+    text = fname + " " + dirname
+    hits = sum(1 for kw in keywords if kw in text)
+    return hits / max(len(keywords), 1)
+
+
+def _content_preview_score(fp: str, keywords: list) -> float:
+    try:
+        with open(fp, "r", encoding="utf-8", errors="ignore") as f:
+            head = f.read(500)
+        text = head.lower()
+        hits = sum(1 for kw in keywords if kw in text)
+        return hits / max(len(keywords), 1)
+    except Exception:
+        return 0.0
+
+
+def _sample_by_size(all_files: list, limit: int):
+    """Fallback: sample largest files."""
+    sizes = []
+    for fp in all_files:
+        try:
+            sizes.append((fp, __import__("os").path.getsize(fp)))
+        except Exception:
+            sizes.append((fp, 0))
+    sizes.sort(key=lambda x: -x[1])
+    return [(fp, 1.0) for fp, _ in sizes[:limit]]
+
+
+def _hash_content(content: str):
+    import hashlib
+    return hashlib.md5(content.encode()).hexdigest()
+
+
+def _build_content_text(samples):
+    parts = []
+    for s in samples:
+        parts.append(f"# 文件: {s['file']}\n{s['content'][:1500]}\n")
+    return "\n---\n".join(parts)
+
+
+def _load_few_shot_yaml():
+    """Load an existing ontology YAML as few-shot example."""
+    from pathlib import Path as _Path
+    import os as _os
+    base = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
+    for fname in ["ai-knowledge.yaml", "it-ops.yaml"]:
+        p = base / fname
+        if p.exists():
+            text = p.read_text(encoding="utf-8")
+            return text[:4000]
+    return ""
+
+
+async def _llm_step(prompt: str, domain_id: str, step_name: str, max_retries: int = 3):
+    """LLM call with JSON parse + retry + fallback."""
+    import json as _json, re as _re
+    from core.harness.utils.model_injection import best_model_for_purpose, create_selected_adapter
+    from core.harness.utils.prompt_loader import _async_prompt_resolve
+    from core.adapters.llm.base import LLMConfig
+
+    model_name = best_model_for_purpose("ontology_gen")
+    model = create_selected_adapter(model_name=model_name)
+    system_content = await _async_prompt_resolve("ontology-engineer")
+
+    for attempt in range(max_retries):
+        try:
+            resp = await model.generate(
+                [{"role": "system", "content": system_content},
+                 {"role": "user", "content": prompt}],
+                config=LLMConfig(model=model_name, timeout=60, max_tokens=2048),
+            )
+            content = resp.content if hasattr(resp, 'content') else str(resp)
+            clean = content.strip()
+            # Strip markdown code fences
+            if clean.startswith("```"):
+                clean = _re.sub(r'^```\w*\n?', '', clean)
+                clean = _re.sub(r'\n?```$', '', clean)
+            # Find JSON boundaries: strip leading text before { and trailing text after }
+            brace_start = clean.find('{')
+            brace_end = clean.rfind('}')
+            if brace_start >= 0 and brace_end > brace_start:
+                clean = clean[brace_start:brace_end + 1]
+            match = _re.search(r'\{[\s\S]*\}', clean)
+            if match:
+                return _json.loads(match.group(0))
+            else:
+                raise _json.JSONDecodeError("No JSON found", clean, 0)
+        except Exception:
+            if attempt == max_retries - 1:
+                return _fallback_result(step_name)
+            prompt += "\n\n注意：必须输出严格 JSON，不要用 markdown 代码块包裹。"
+
+    return _fallback_result(step_name)
+
+
+def _fallback_result(step_name):
+    if "entities" in step_name:
+        return {"entities": {"methods": [], "systems": [], "concepts": [], "problems": [], "references": []}, "evidence": {}}
+    elif "classes" in step_name:
+        return {"classes": []}
+    elif "relations" in step_name:
+        return {"relations": []}
+    elif "states" in step_name:
+        return {"state_machines": []}
+    return {}
+
+
+def _save_step(domain_id: str, filename: str, data):
+    """Save step output to disk for debugging and caching."""
+    import json as _json, os as _os
+    from pathlib import Path as _Path
+    dir_path = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontology_gen" / domain_id
+    dir_path.mkdir(parents=True, exist_ok=True)
+    try:
+        if isinstance(data, str):
+            (dir_path / filename).write_text(data, encoding="utf-8")
+        else:
+            (dir_path / filename).write_text(_json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
+
+def _assemble_yaml(domain_id, name, description, classes_data, relations_data, states_data, entities_data):
+    """Programmatic YAML assembly with graceful degradation."""
+    import yaml as _yaml
+
+    yaml_dict = {
+        "name": name,
+        "namespace": f"http://aiplat.local/ontology/{domain_id}/",
+        "description": description,
+        "version": "1.0.0",
+        "classes": {},
+        "object_properties": [],
+    }
+
+    evidence = entities_data.get("evidence", {}) or {}
+
+    # Assemble classes
+    for cls in (classes_data.get("classes", []) or []):
+        cn = cls.get("name", "")
+        if not cn:
+            continue
+        synonyms = []
+        if isinstance(evidence, dict) and cn in evidence:
+            excerpts = evidence[cn].get("excerpts", []) or []
+            synonyms = [cn] + [e[:20] for e in excerpts[:3]]
+        else:
+            synonyms = [cls.get("label", cn)]
+
+        ctype = " ".join(cls.get("categories", []) or [])
+        label = cls.get("label", "")
+        if any(kw in label for kw in ["方法", "工具"]):
+            cth = 0.75
+        elif any(kw in label for kw in ["问题", "参考"]):
+            cth = 0.85
+        else:
+            cth = 0.80
+
+        yaml_dict["classes"][cn] = {
+            "label": label,
+            "description": cls.get("description", f"{label} 类"),
+            "required_fields": cls.get("required_fields", ["name", "description"]) or ["name", "description"],
+            "optional_fields": cls.get("optional_fields", []) or [],
+            "categories": cls.get("categories", []) or [],
+            "synonyms": synonyms,
+            "confidence_threshold": cth,
+        }
+
+    # Assemble relations
+    for rel in (relations_data.get("relations", []) or []):
+        yaml_dict["object_properties"].append({
+            "name": rel.get("name", ""),
+            "label": rel.get("label", ""),
+            "domain": rel.get("domain", []) or [],
+            "range": rel.get("range", []) or [],
+            "description": rel.get("description", ""),
+            "transitive": rel.get("type") == "transitive",
+            "symmetric": rel.get("type") == "symmetric",
+        })
+
+    # Attach state machines to classes
+    for sm in (states_data.get("state_machines", []) or []):
+        class_label = sm.get("class_label", "")
+        for cn, cd in yaml_dict["classes"].items():
+            if cd.get("label") == class_label:
+                cd["states"] = {
+                    "description": sm.get("description", ""),
+                    "default": sm.get("default", ""),
+                    "enum": sm.get("states", []) or [],
+                    "transitions": sm.get("transitions", []) or [],
+                }
+                break
+
+    return _yaml.dump(yaml_dict, allow_unicode=True, default_flow_style=False, sort_keys=False)
+
+
+@router.post("/ontology/domains")
+async def create_ontology_domain(req: OntologyDomainCreate):
+    """Create a new domain ontology (YAML file)."""
+    from pathlib import Path as _Path
+    import os as _os
+    d = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
+    file_path = d / f"{req.id}.yaml"
+    if file_path.exists():
+        raise HTTPException(409, f"Domain '{req.id}' already exists")
+    ns = req.namespace or f"http://aiplat.local/ontology/{req.id}/"
+    data = {
+        "name": req.name,
+        "namespace": ns,
+        "description": req.description,
+        "version": req.version,
+        "classes": {},
+        "object_properties": [],
+        "data_properties": [],
+    }
+    _write_domain_yaml(req.id, data)
+
+    # Hot-register in registry.json → DomainRouter auto-recognizes
+    from core.harness.knowledge.domain_router import DomainRouter
+    router = DomainRouter()
+    router.register_domain(req.id, {
+        "name": req.name,
+        "description": req.description or f"{req.name} 领域知识本体",
+        "ontology_file": f"{req.id}.yaml",
+        "collection_id": req.id,
+        "namespace": ns,
+        "min_wiki_score": 0.25,
+        "expand_subclasses": True,
+        "system_prompt_id": f"domain-prompt-{req.id}",
+        "min_cross_results": 3,
+    })
+
+    return {"status": "created", "id": req.id, "name": req.name}
+
+
+@router.put("/ontology/domains/{domain_id}")
+async def update_ontology_domain(domain_id: str, req: OntologyDomainCreate):
+    """Update domain metadata (name, description, version)."""
+    from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+    from pathlib import Path as _Path
+    import os as _os
+    d = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
+    file_path = d / f"{domain_id}.yaml"
+    if not file_path.exists():
+        raise HTTPException(404, f"Domain '{domain_id}' not found")
+    domain = load_ontology_from_yaml(str(file_path))
+    # Rebuild YAML preserving classes/properties
+    # Detect state/transition changes for auto-re-evaluation
+    old_states_snapshot = {}
+    for cls in domain.classes:
+        old_states_snapshot[cls.label] = str(getattr(cls, "states", {}) or {}) + \
+            str(getattr(cls, "transitions", []) or []) + \
+            str(getattr(cls, "side_effects", []) or [])
+
+    data = {
+        "name": req.name, "namespace": domain.namespace, "description": req.description,
+        "version": req.version,
+        "classes": {cls.uri.split("#")[-1]: {
+            "label": cls.label, "description": "",
+            "required_fields": cls.required_fields, "optional_fields": cls.optional_fields,
+            "categories": cls.allowed_categories, "parent": cls.parent.split("#")[-1] if cls.parent else None,
+        } for cls in domain.classes},
+        "object_properties": [{"name": p.uri.split("#")[-1], "label": p.label,
+            "domain": [d.split("#")[-1] for d in p.domain],
+            "range": [r.split("#")[-1] for r in p.range],
+            "transitive": p.is_transitive, "symmetric": p.is_symmetric,
+        } for p in domain.object_properties],
+        "data_properties": [{"name": p.uri.split("#")[-1], "label": p.label,
+            "domain": [d.split("#")[-1] for d in p.domain], "range": p.range,
+        } for p in domain.data_properties],
+    }
+    _write_domain_yaml(domain_id, data)
+
+    # Reload updated domain to detect state changes
+    new_domain = load_ontology_from_yaml(str(file_path))
+    new_states_snapshot = {}
+    for cls in new_domain.classes:
+        new_states_snapshot[cls.label] = str(getattr(cls, "states", {}) or {}) + \
+            str(getattr(cls, "transitions", []) or []) + \
+            str(getattr(cls, "side_effects", []) or [])
+
+    # Auto-re-evaluate state machines for classes with changed states/transitions
+    affected_labels = [lbl for lbl, snap in new_states_snapshot.items()
+                       if old_states_snapshot.get(lbl) != snap]
+    reeval_results = {}
+    if affected_labels:
+        try:
+            from core.harness.ontology_engine.graph_index import GraphIndex
+            from core.harness.ontology_engine.state_machine import StateMachine, EvalContext
+            from core.harness.ontology_engine.state_history import record_state_change
+
+            graph = GraphIndex.load(domain_id)
+            sm = StateMachine(new_domain)
+
+            for label in affected_labels:
+                nodes = [n for n in graph._nodes.values() if n.class_name == label]
+                if not nodes:
+                    continue
+
+                instances = [{"class_name": n.class_name, "entity_name": n.entity_name,
+                              "state": getattr(n, "state", None),
+                              "properties": {"state": getattr(n, "state", None)}} for n in nodes]
+                ctx = EvalContext(instances)
+
+                transitions = []
+                for inst in instances:
+                    chain = sm.evaluate_chain(inst, ctx)
+                    if chain:
+                        final = chain[-1].to_state
+                        inst["properties"]["state"] = final
+                        for node in nodes:
+                            if node.entity_name == inst["entity_name"]:
+                                node.state = final
+                        for tres in chain:
+                            record_state_change(
+                                domain_id=domain_id, entity_name=inst["entity_name"],
+                                class_name=label, from_state=tres.from_state,
+                                to_state=tres.to_state,
+                                trigger=tres.trigger_type, description=tres.description)
+                            transitions.append({
+                                "entity": inst["entity_name"],
+                                "from": tres.from_state, "to": tres.to_state,
+                                "trigger": tres.trigger_type,
+                            })
+
+                reeval_results[label] = {
+                    "entities": len(nodes),
+                    "transitions": len(transitions),
+                    "detail": transitions[:10],
+                }
+        except Exception as e:
+            reeval_results["error"] = str(e)
+
+    return {"status": "updated", "id": domain_id,
+            "state_reevaluations": reeval_results if reeval_results else None}
+
+
+@router.delete("/ontology/domains/{domain_id}")
+async def delete_ontology_domain(domain_id: str):
+    """Delete a domain ontology file + cascade cleanup."""
+    from pathlib import Path as _Path
+    import os as _os
+    d = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat"))
+    file_path = d / "ontologies" / f"{domain_id}.yaml"
+    if not file_path.exists():
+        raise HTTPException(404, f"Domain '{domain_id}' not found")
+    file_path.unlink()
+
+    # Remove from registry.json
+    _remove_from_registry(domain_id)
+
+    # Cascade cleanup: graph DB, wiki collection, review files
+    cleaned = []
+    import shutil
+    home = d
+    for path, label in [
+        (home / "graph" / f"{domain_id}.db", "graph_db"),
+        (home / "graph" / f"{domain_id}.json", "graph_json"),
+        (home / "wiki" / "collections" / domain_id, "wiki_collection"),
+        (home / "ontology_reviews" / f"{domain_id}.json", "review_file"),
+    ]:
+        if path.exists():
+            try:
+                if path.is_dir():
+                    shutil.rmtree(path)
+                else:
+                    path.unlink()
+                cleaned.append(label)
+            except Exception:
+                pass
+
+    return {"status": "deleted", "id": domain_id, "cleaned": cleaned}
+
+
+@router.post("/ontology/domains/{domain_id}/classes")
+async def add_ontology_class(domain_id: str, req: OntologyClassCreate):
+    """Add a class to a domain ontology."""
+    from pathlib import Path as _Path
+    import os as _os
+    d = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
+    file_path = d / f"{domain_id}.yaml"
+    if not file_path.exists():
+        raise HTTPException(404, f"Domain '{domain_id}' not found")
+    import yaml as _yaml
+    with open(file_path, "r", encoding="utf-8") as f:
+        raw = _yaml.safe_load(f)
+    classes = raw.get("classes", {}) or {}
+    if req.name in classes:
+        raise HTTPException(409, f"Class '{req.name}' already exists")
+    classes[req.name] = {
+        "label": req.label, "description": req.description or "",
+        "required_fields": req.required_fields, "optional_fields": req.optional_fields,
+        "categories": req.categories, "parent": req.parent or None,
+    }
+    raw["classes"] = classes
+    _write_domain_yaml(domain_id, raw)
+    return {"status": "added", "domain": domain_id, "class": req.name}
+
+
+@router.put("/ontology/domains/{domain_id}/classes/{class_name}")
+async def update_ontology_class(domain_id: str, class_name: str, req: OntologyClassCreate):
+    """Update an existing class in a domain ontology."""
+    from pathlib import Path as _Path
+    import os as _os
+    d = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
+    file_path = d / f"{domain_id}.yaml"
+    if not file_path.exists():
+        raise HTTPException(404, f"Domain '{domain_id}' not found")
+    import yaml as _yaml
+    with open(file_path, "r", encoding="utf-8") as f:
+        raw = _yaml.safe_load(f)
+    classes = raw.get("classes", {}) or {}
+    if class_name not in classes:
+        raise HTTPException(404, f"Class '{class_name}' not found in '{domain_id}'")
+    # Preserve existing fields not being updated (states, transitions, fields, etc.)
+    existing = classes[class_name]
+    existing["label"] = req.label
+    existing["description"] = req.description or existing.get("description", "")
+    existing["required_fields"] = req.required_fields
+    existing["optional_fields"] = req.optional_fields
+    existing["categories"] = req.categories
+    if req.parent:
+        existing["parent"] = req.parent
+    raw["classes"] = classes
+    _write_domain_yaml(domain_id, raw)
+    return {"status": "updated", "domain": domain_id, "class": class_name}
+
+
+@router.put("/ontology/domains/{domain_id}/properties/{prop_name}")
+async def update_ontology_property(domain_id: str, prop_name: str, req: OntologyPropertyCreate):
+    """Update an existing object property in a domain ontology."""
+    from pathlib import Path as _Path
+    import os as _os
+    d = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
+    file_path = d / f"{domain_id}.yaml"
+    if not file_path.exists():
+        raise HTTPException(404, f"Domain '{domain_id}' not found")
+    import yaml as _yaml
+    with open(file_path, "r", encoding="utf-8") as f:
+        raw = _yaml.safe_load(f)
+    props = raw.get("object_properties", []) or []
+    updated = False
+    for p in props:
+        if p.get("name") == prop_name:
+            p["name"] = req.name
+            p["label"] = req.label
+            p["domain"] = req.domain
+            p["range"] = req.range
+            p["transitive"] = req.transitive
+            p["symmetric"] = req.symmetric
+            updated = True
+            break
+    if not updated:
+        raise HTTPException(404, f"Property '{prop_name}' not found in '{domain_id}'")
+    raw["object_properties"] = props
+    _write_domain_yaml(domain_id, raw)
+    return {"status": "updated", "domain": domain_id, "property": prop_name}
+
+
+@router.delete("/ontology/domains/{domain_id}/classes/{class_name}")
+async def delete_ontology_class(domain_id: str, class_name: str, force: bool = False):
+    """Delete a class from a domain ontology. Use ?force=true for cascade cleanup."""
+    from pathlib import Path as _Path
+    import os as _os
+    d = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
+    file_path = d / f"{domain_id}.yaml"
+    if not file_path.exists():
+        raise HTTPException(404, f"Domain '{domain_id}' not found")
+    import yaml as _yaml
+    with open(file_path, "r", encoding="utf-8") as f:
+        raw = _yaml.safe_load(f)
+    classes = raw.get("classes", {}) or {}
+    if class_name not in classes:
+        raise HTTPException(404, f"Class '{class_name}' not found in '{domain_id}'")
+
+    # Detect affected data before deletion
+    class_label = str(classes[class_name].get("label", class_name))
+    class_categories = list(classes[class_name].get("categories", []) or [])
+
+    orphan_nodes = 0
+    orphan_pages = 0
+    try:
+        from core.harness.ontology_engine.graph_index import GraphIndex
+        g = GraphIndex.load(domain_id)
+        orphan_nodes = sum(1 for n in g._nodes.values() if n.class_name == class_label)
+    except Exception:
+        pass
+
+    if not force:
+        return {
+            "status": "confirm_required",
+            "class": class_name, "label": class_label,
+            "orphan_nodes": orphan_nodes,
+            "orphan_categories": class_categories,
+            "message": f"删除类 '{class_label}' 将影响 {orphan_nodes} 个图节点",
+            "hint": "添加 ?force=true 确认级联删除",
+        }
+
+    # Cascade: remove graph nodes
+    if orphan_nodes > 0:
+        try:
+            from core.harness.ontology_engine.graph_index import GraphIndex
+            g = GraphIndex.load(domain_id)
+            to_remove = [n.entity_id for n in g._nodes.values() if n.class_name == class_label]
+            for eid in to_remove:
+                g.remove_entity(eid)
+        except Exception:
+            pass
+
+    del classes[class_name]
+    raw["classes"] = classes
+    _write_domain_yaml(domain_id, raw)
+    return {"status": "deleted", "domain": domain_id, "class": class_name}
+
+
+@router.post("/ontology/domains/{domain_id}/properties")
+async def add_ontology_property(domain_id: str, req: OntologyPropertyCreate):
+    """Add an object property to a domain ontology."""
+    from pathlib import Path as _Path
+    import os as _os
+    d = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
+    file_path = d / f"{domain_id}.yaml"
+    if not file_path.exists():
+        raise HTTPException(404, f"Domain '{domain_id}' not found")
+    import yaml as _yaml
+    with open(file_path, "r", encoding="utf-8") as f:
+        raw = _yaml.safe_load(f)
+    props = raw.get("object_properties", []) or []
+    props.append({
+        "name": req.name, "label": req.label,
+        "domain": req.domain, "range": req.range,
+        "transitive": req.transitive, "symmetric": req.symmetric,
+    })
+    raw["object_properties"] = props
+    _write_domain_yaml(domain_id, raw)
+    return {"status": "added", "domain": domain_id, "property": req.name}
+
+
+@router.delete("/ontology/domains/{domain_id}/properties/{prop_name}")
+async def delete_ontology_property(domain_id: str, prop_name: str):
+    """Delete an object property from a domain ontology."""
+    from pathlib import Path as _Path
+    import os as _os
+    d = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
+    file_path = d / f"{domain_id}.yaml"
+    if not file_path.exists():
+        raise HTTPException(404, f"Domain '{domain_id}' not found")
+    import yaml as _yaml
+    with open(file_path, "r", encoding="utf-8") as f:
+        raw = _yaml.safe_load(f)
+    props = raw.get("object_properties", []) or []
+    before = len(props)
+    raw["object_properties"] = [p for p in props if p.get("name") != prop_name]
+    if len(raw["object_properties"]) == before:
+        raise HTTPException(404, f"Property '{prop_name}' not found in '{domain_id}'")
+    _write_domain_yaml(domain_id, raw)
+    return {"status": "deleted", "domain": domain_id, "property": prop_name}
 
 @router.get("/ontology/rules")
 async def list_inference_rules():
@@ -2515,15 +5490,9 @@ async def ask_learning_coach(
 
     try:
         from core.harness.syscalls.llm import sys_llm_generate
-        prompt = (
-            f"你是 AI 学习教练，你的学生正在学习 '{path_name}' 路径。\n\n"
-            f"{context}\n\n"
-            f"学生的提问: {question}\n\n"
-            f"请用中文回答。回答要有针对性（结合学生的学习进度），"
-            f"给出具体的、可操作的建议。如果学生问的是路径中某个章节的内容，"
-            f"用通俗的语言解释核心概念，附带一个具体例子。\n"
-            f"如果学生卡住了，鼓励他们继续，并给出一个最小的下一步行动。"
-        )
+        from core.harness.utils.prompt_loader import _sync_resolve
+        prompt = _sync_resolve("learning-coach-chat",
+            path_name=path_name, context=context, question=question)
         result = await sys_llm_generate(
             None, [{"role": "user", "content": prompt}],
             max_tokens=800,
@@ -2567,3 +5536,53 @@ async def get_learning_recommendation(learner_id: str):
         "blocked_recommendations": recommendations,
         "weakest_areas": sorted(profile.mastery_scores.items(), key=lambda x: x[1])[:3],
     }
+
+
+# ══════════════════════════════════════════════════════════════
+# Loop Trigger API (event-driven pipeline)
+# ══════════════════════════════════════════════════════════════
+
+class TriggerRegisterRequest(BaseModel):
+    trigger_id: str = ""
+    mode: str = "cron"              # cron | webhook | goal
+    scene_id: str = ""
+    cron_expression: str = ""       # "0 6 * * *"
+    webhook_pattern: str = ""       # "github_pr" | "jira_ticket" | "*"
+    params: Dict[str, Any] = {}
+
+
+@router.post("/loop/triggers")
+async def register_loop_trigger(req: TriggerRegisterRequest):
+    u"""Register a pipeline trigger (cron/webhook/goal)."""
+    from core.harness.execution.event_loop import register_trigger, Trigger
+    t = Trigger(
+        trigger_id=req.trigger_id or f"trigger_{int(__import__('time').time())}",
+        mode=req.mode, scene_id=req.scene_id, params=req.params,
+        cron_expression=req.cron_expression, webhook_pattern=req.webhook_pattern,
+    )
+    register_trigger(t)
+    return {"status": "ok", "trigger": t.to_dict()}
+
+
+@router.get("/loop/triggers")
+async def list_loop_triggers():
+    u"""List all registered pipeline triggers."""
+    from core.harness.execution.event_loop import load_triggers
+    triggers = load_triggers()
+    return {"triggers": [t.to_dict() for t in triggers], "total": len(triggers)}
+
+
+@router.delete("/loop/triggers/{trigger_id}")
+async def remove_loop_trigger(trigger_id: str):
+    u"""Remove a pipeline trigger."""
+    from core.harness.execution.event_loop import remove_trigger
+    ok = remove_trigger(trigger_id)
+    return {"status": "ok" if ok else "not_found"}
+
+
+@router.post("/loop/webhook")
+async def handle_webhook(source: str = Body(...), payload: Dict[str, Any] = Body(default={})):
+    u"""Handle incoming webhook — dispatches to matching triggers."""
+    from core.harness.execution.event_loop import dispatch_webhook
+    count = await dispatch_webhook(source, payload)
+    return {"triggered": count}

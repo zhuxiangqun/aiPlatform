@@ -40,7 +40,7 @@ class ApiClient {
       // ignore (SSR / privacy mode)
     }
 
-    const TIMEOUT_MS = 30_000;
+    const TIMEOUT_MS = 90_000;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 

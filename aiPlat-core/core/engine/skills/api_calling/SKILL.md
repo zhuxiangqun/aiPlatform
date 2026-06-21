@@ -1,7 +1,8 @@
 ---
 name: api_calling
 display_name: API调用
-description: 调用外部API接口获取数据。触发条件：需要调用第三方API、发送HTTP请求。跳过条件：内部数据查询或文件读写不使用。涉及代码生成和接口审查。 涉及API相关操作。 主要进行调用。
+description: 调用外部API接口获取数据。触发条件：需要调用第三方API、发送HTTP请求。跳过条件：内部数据查询或文件读写不使用。涉及代码生成和接口审查。
+  涉及API相关操作。 主要进行调用。
 category: execution
 version: 1.0.0
 status: enabled
@@ -58,7 +59,29 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 安全地调用外部 API 并返回结构化响应
+keywords:
+  objects:
+  - API
+  - 接口
+  - REST
+  - 端点
+  actions:
+  - 调用
+  - 请求
+  - 发送
+  constraints:
+  - 限流
+  - 认证
+  - 超时
+trigger_conditions:
+- when: 用户要求调用外部API
+  query: 调用API/请求接口
+- when: 不应用场景
+  description: 跳过条件：用户未提供API地址或认证信息时不触发。
+skip_when: 跳过条件：用户未提供API地址或认证信息时不触发。
 ---
+
+
 
 # API调用（Engine）
 

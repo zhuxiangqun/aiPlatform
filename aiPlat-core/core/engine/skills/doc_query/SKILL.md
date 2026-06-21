@@ -50,9 +50,30 @@ input_schema:
     type: string
     required: true
     description: 目标文档ID
-
 protected: true
+keywords:
+  objects:
+  - 文档
+  - PDF
+  - Word
+  - Markdown
+  actions:
+  - 查询
+  - 搜索
+  - 查找
+  - 提取
+  constraints:
+  - 文档格式
+  - 页码范围
+trigger_conditions:
+- when: 用户要求查询文档内容
+  query: 查找文档/搜索PDF
+- when: 不应用场景
+  description: 跳过条件：用户未指定文档或未提供足够上下文时不触发。
+skip_when: 跳过条件：用户未指定文档或未提供足够上下文时不触发。
 ---
+
+
 你是一个知识库文档查询助手。你的任务是根据用户的问题，从指定的知识库文档中检索相关内容，并生成准确、简洁的回答。
 
 ## 可用参数

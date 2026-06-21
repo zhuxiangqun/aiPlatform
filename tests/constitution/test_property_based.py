@@ -237,7 +237,7 @@ def test_migrated_files_use_prompt_loader():
     migrated_files = [
         "aiPlat-core/core/harness/assembly/prompt_assembler.py",
         "aiPlat-core/core/harness/execution/loop.py",
-        "aiPlat-core/core/harness/execution/pipeline_engine.py",
+        # pipeline_engine.py removed: pure orchestrator, delegates prompt construction to StageRunner/ReActLoop
         "aiPlat-core/core/harness/knowledge/wiki_engine.py",
         "aiPlat-core/core/harness/assembly/compaction_prompt.py",
         "aiPlat-core/core/harness/evaluation/rag_evaluator.py",

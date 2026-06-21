@@ -24,10 +24,16 @@ from typing import Any, Dict, List, Optional, Tuple
 def map_query_to_ontology(
     question: str,
     *,
+    domain_id: str = None,
     collection_id: str = "default",
     max_matches: int = 3,
 ) -> Dict[str, Any]:
     u"""Map a natural language question to T-Box classes and properties.
+
+    Args:
+        domain_id: ontology domain to search (e.g. "ai-knowledge", "it-ops").
+                   If None, resolved from collection_id via DomainRouter.
+        collection_id: wiki collection (backward compat, used if domain_id is None).
 
     Returns:
         {
@@ -38,9 +44,16 @@ def map_query_to_ontology(
             "confidence": 0.85,
         }
     """
+    import os
+
     from core.harness.knowledge.knowledge_ontology import (
         CLASSES, OBJECT_PROPERTIES, DATA_PROPERTIES, get_ontology,
     )
+
+    # ── Resolve domain_id ──
+    if domain_id is None:
+        from core.harness.knowledge.domain_router import DomainRouter
+        domain_id = DomainRouter().resolve(collection_id)
 
     onto = get_ontology()
     q_lower = question.lower()
@@ -49,19 +62,63 @@ def map_query_to_ontology(
     matched_properties: List[Dict[str, Any]] = []
     matched_concepts: List[Dict[str, Any]] = []
 
+    # ── Match T-Box classes (built-in + domain-specific) ──
+    all_classes = list(CLASSES)
+    adaptive_thresholds: Dict[str, float] = {}
+
+    onto_path = os.path.expanduser(f"~/.aiplat/ontologies/{domain_id}.yaml")
+    if os.path.exists(onto_path):
+        try:
+            from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+            domain = load_ontology_from_yaml(onto_path)
+            all_classes.extend(domain.classes)
+            for cls in domain.classes:
+                thresh = getattr(cls, 'confidence_threshold', None)
+                adaptive_thresholds[cls.label] = float(thresh) if thresh else 0.7
+        except Exception:
+            pass
+    else:
+        # Fallback: load all domains (backward compat)
+        try:
+            from core.harness.knowledge.ontology_loader import load_all_domains
+            for d_id, d in load_all_domains().items():
+                all_classes.extend(d.classes)
+        except Exception:
+            pass
+
     # ── Match T-Box classes ──
-    for cls in CLASSES:
+    for cls in all_classes:
         label_lower = cls.label.lower()
         # Check if any word from class label appears in question
         words = label_lower.split()
-        # Also check Chinese characters — match by character overlap
+        # Check Chinese characters — require ≥2 char overlap OR ≥50% label chars in question
         chinese_chars = [c for c in label_lower if '\u4e00' <= c <= '\u9fff']
-        chinese_match = any(c in q_lower for c in chinese_chars) if chinese_chars else False
+        chinese_match = False
+        if chinese_chars:
+            matching = [c for c in chinese_chars if c in q_lower]
+            chinese_match = len(matching) >= 2 or (len(matching) >= len(chinese_chars) * 0.5 and len(matching) >= 1)
         # Check full label presence
         label_match = label_lower in q_lower or any(w in q_lower for w in words if len(w) >= 2)
         
         if label_match or chinese_match:
-            score = 0.9 if label_match else 0.6
+            # Granular score based on character overlap percentage
+            char_overlap = 0.0
+            if chinese_chars:
+                matching = [c for c in chinese_chars if c in q_lower]
+                char_overlap = len(matching) / len(chinese_chars) if chinese_chars else 0
+            # Also check word-level overlap
+            word_matches = sum(1 for w in words if len(w) >= 2 and w in q_lower)
+            word_overlap = word_matches / len([w for w in words if len(w) >= 2]) if [w for w in words if len(w) >= 2] else 0
+
+            if label_match or (label_lower in q_lower):
+                score = 0.75 + min(0.20, char_overlap * 0.25)  # [0.75, 0.95]
+            elif chinese_match and char_overlap >= 0.8:
+                score = 0.60 + char_overlap * 0.25  # [0.78, 0.85]
+            elif chinese_match and word_overlap > 0:
+                score = 0.45 + max(char_overlap, word_overlap) * 0.35  # [0.45, 0.80]
+            else:
+                score = 0.30 + char_overlap * 0.35  # [0.30, 0.65]
+            score = min(0.95, max(0.15, round(score, 3)))
             matched_classes.append({
                 "uri": cls.uri,
                 "label": cls.label,
@@ -113,12 +170,21 @@ def map_query_to_ontology(
     )
     confidence = round(sum(all_scores) / max(1, len(all_scores)), 2)
 
+    # Determine best target class for retrieval filtering with adaptive threshold
+    target_class = ""
+    if matched_classes:
+        best = matched_classes[0]
+        class_threshold = adaptive_thresholds.get(best["label"], 0.7)
+        if best["score"] >= class_threshold:
+            target_class = best["uri"]
+
     return {
         "matched_classes": matched_classes[:max_matches],
         "matched_properties": matched_properties[:max_matches],
         "matched_concepts": matched_concepts[:max_matches],
         "rewritten_query": rewritten,
         "confidence": confidence,
+        "target_class": target_class,
     }
 
 
@@ -205,3 +271,120 @@ def enrich_query_for_retrieval(
     """
     result = map_query_to_ontology(question, collection_id=collection_id)
     return result.get("rewritten_query", question)
+
+
+def parse_to_logic_form(
+    question: str,
+    *,
+    domain_id: str = "ai-knowledge",
+) -> Dict[str, Any]:
+    """NL2LF: Parse natural language question to structured Logic Form.
+
+    Data Agent semantic layer: converts natural language questions
+    into structured query representations for downstream engines.
+
+    Returns: {intent, entities, target_class, metrics, filters, time_range, aggregation, confidence}
+    """
+    import re
+    r = {
+        "question": question, "intent": "fact_lookup",
+        "entities": [], "target_class": "", "metrics": [],
+        "filters": [], "time_range": "", "aggregation": "", "confidence": 0.0,
+    }
+    # Intent
+    if any(k in question for k in ["最高","最大","最多","最低","最小","最少"]):
+        r["intent"] = "comparative_ranking"
+        r["aggregation"] = "max" if any(k in question for k in ["最高","最大","最多"]) else "min"
+    elif any(k in question for k in ["为什么","原因","根因"]): r["intent"] = "root_cause"
+    elif any(k in question for k in ["趋势","变化","增长","下降"]): r["intent"] = "trend_analysis"
+    # Time
+    for pat, tr in [(r"上(个?)月","last_month"),(r"本(个?)月","this_month"),(r"上周","last_week")]:
+        if re.search(pat, question): r["time_range"] = tr; break
+    # Ontology mapping
+    m = map_query_to_ontology(question)
+    if m:
+        matched = m.get("matched_classes") or []
+        if matched:
+            r["target_class"] = matched[0].get("label","")
+            r["confidence"] = matched[0].get("score",0)
+            r["entities"] = [x.get("label","") for x in matched[:3]]
+    # Metrics
+    for kw, (nm, fm) in {"退货率":("return_rate","退货/总数"),"转化率":("conv_rate","成交/进店"),"客单价":("aov","金额/订单")}.items():
+        if kw in question: r["metrics"].append({"name":nm,"formula":fm})
+    # Region filter
+    for reg in ["华东","华南","华北","一线城市"]:
+        if reg in question: r["filters"].append({"field":"region","op":"=","value":reg})
+    return r
+
+
+# ══════════════════════════════════════════════════════════════
+# DMQR-RAG: 4 Adaptive Multi-Query Rewrite Strategies
+# ══════════════════════════════════════════════════════════════
+
+def rewrite_generic(query: str) -> str:
+    """Strategy 1: Clean noise, preserve all core info. Restore base intent."""
+    import re
+    q = re.sub(r'[？?！!。，,、\s]+$', '', query.strip())
+    q = re.sub(r'\s+', ' ', q)
+    return q
+
+def rewrite_keywords(query: str) -> str:
+    """Strategy 2: Extract core nouns and business topics, drop modifiers."""
+    import re
+    # Chinese: keep meaningful 2-4 char phrases
+    cn = re.findall(r'[\u4e00-\u9fff]{2,4}', query)
+    en = re.findall(r'[a-zA-Z]{2,}', query)
+    # Filter common question words
+    skip = {'是什么','为什么','如何','怎么','哪些','请问','能不能','可不可以','有没有','是否'}
+    keywords = [w for w in cn if w not in skip][:5] + en[:3]
+    return ' '.join(keywords) if keywords else query
+
+def rewrite_pseudo_answer(query: str) -> str:
+    """Strategy 3: Return empty — caller generates pseudo-answer via LLM."""
+    return ""  # Requires LLM, handled by caller
+
+def rewrite_core(query: str) -> str:
+    """Strategy 4: Strip redundant details, keep core intent (first 3-5 meaningful chars)."""
+    import re
+    cn = re.findall(r'[\u4e00-\u9fff]{2,4}', query)
+    en = re.findall(r'[a-zA-Z]{2,}', query)
+    skip = {'是什么','为什么','如何','怎么','哪些','请问','能不能','可不可以','有没有','是否','请问一下','我想知道','帮我看','有没有人','有没有什么'}
+    core = [w for w in cn if w not in skip][:3] + en[:2]
+    return ' '.join(core) if core else query[:60]
+
+
+def rewrite_multi_dmqr(
+    query: str,
+    *,
+    strategies: list = None,
+) -> List[str]:
+    """DMQR-RAG: Adaptive multi-query rewrite.
+
+    Applies all active strategies and returns deduplicated variants.
+    Default strategies: generic + keywords (no LLM), core (no LLM).
+    Pseudo-answer requires LLM and should be handled by caller.
+    """
+    active = strategies or ["generic", "keywords", "core"]
+    variants = [query]
+
+    strategy_map = {
+        "generic": rewrite_generic,
+        "keywords": rewrite_keywords,
+        "core": rewrite_core,
+    }
+
+    for s_name in active:
+        if s_name in strategy_map:
+            v = strategy_map[s_name](query)
+            if v and v != query:
+                variants.append(v)
+
+    return list(set(variants))
+
+
+def rewrite_with_llm_pseudo_answer(query: str) -> str:
+    """Generate a pseudo-answer using LLM for HyDE-like retrieval enrichment."""
+    return (
+        f"请用一段专业、正式的语言(50-100字)，描述以下问题的核心概念和可能的答案方向。"
+        f"这个描述将用于检索文档，所以请使用文档中可能出现的术语。\n\n问题: {query}"
+    )

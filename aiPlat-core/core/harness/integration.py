@@ -194,6 +194,15 @@ def get_evolution_engine():
     return _resolve_or_import("EvolutionEngine", "core.apps.skills.evolution.engine:get_evolution_engine")()
 
 
+def _start_bg_curator():
+    """Start background skill curator (DI-wrapped for harness use)."""
+    try:
+        from core.apps.skills.registry import start_bg_curator as _curator
+        _curator()
+    except Exception:
+        pass
+
+
 def get_mcp_runtime():
     """Resolve MCP runtime."""
     di = _ensure_di()
@@ -381,6 +390,18 @@ class HarnessIntegration:
         session_id = str(getattr(request, "session_id", None) or "")
         run_id = str(getattr(request, "run_id", None) or "") or new_prefixed_id("run")
         request.run_id = run_id
+        # Cross-service tracing: if the caller passed a request_id, remember the mapping
+        # so audit logs and the smoke test can trace executions across platform→core.
+        req_id = getattr(request, "request_id", None)
+        if req_id and store is not None:
+            try:
+                await store.remember_request_run_id(
+                    request_id=str(req_id),
+                    run_id=run_id,
+                    tenant_id=str(tenant_id) if tenant_id is not None else None,
+                )
+            except Exception:
+                pass
 
         lock_acquired = False
         if enable_queue and store is not None and session_id and request.kind in ("agent", "skill", "tool", "graph"):

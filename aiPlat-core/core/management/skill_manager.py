@@ -521,6 +521,9 @@ class SkillManager:
                 metadata=fm if isinstance(fm, dict) else {},
                 created_at=now, updated_at=now, created_by="system"
             )
+            # Inject filesystem path for linter SOP body access (not written back to SKILL.md)
+            if isinstance(self._skills[name].metadata, dict):
+                self._skills[name].metadata.setdefault("filesystem", {})["skill_md"] = skill_md
             self._stats[name] = SkillStats()
             self._executions[name] = []
             self._versions[name] = [SkillVersion(version="1.0.0", status="current", created_at=now, changes="初始版本")]
@@ -956,11 +959,14 @@ class SkillManager:
             # Normalize capabilities (from SKILL.md front matter) into registry metadata,
             # so runtime policy/doctor logic can consume it (e.g. "tool:webfetch").
             caps_in = []
+            effects_in = []
             try:
                 if isinstance(skill_info.metadata, dict):
                     caps_in = skill_info.metadata.get("capabilities") or []
+                    effects_in = skill_info.metadata.get("effects") or []
             except Exception:
                 caps_in = []
+                effects_in = []
             if isinstance(caps_in, str):
                 caps_in = [caps_in]
             if not isinstance(caps_in, list):
@@ -1018,6 +1024,9 @@ class SkillManager:
                                 # Optional: tools allowlist from SKILL.md
                                 if isinstance(fm, dict) and isinstance(fm.get("tools"), list):
                                     cfg.metadata["tools"] = list(fm.get("tools") or [])
+                            # Set effects on config for runtime validation
+                            if effects_in:
+                                cfg.effects = effects_in
                 except Exception:
                     pass
             else:
@@ -1036,6 +1045,7 @@ class SkillManager:
                     description=skill_info.description,
                     input_schema=skill_info.input_schema or {},
                     output_schema=skill_info.output_schema or {},
+                    effects=effects_in,
                     metadata={
                         "category": skill_info.type,
                         "version": skill_info.version,

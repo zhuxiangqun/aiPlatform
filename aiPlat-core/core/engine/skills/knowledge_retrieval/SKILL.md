@@ -1,7 +1,8 @@
 ---
 name: knowledge_retrieval
 display_name: 知识召回
-description: 从内部知识库召回相关片段。触发条件：用户问"查一下""有没有相关文档""知识库里有什么"。跳过条件：外部网络搜索由 information_search 处理。 涉及知识相关操作。 主要进行召回。
+description: 从内部知识库召回相关片段。触发条件：用户问"查一下""有没有相关文档""知识库里有什么"。跳过条件：外部网络搜索由 information_search
+  处理。 涉及知识相关操作。 主要进行召回。
 category: retrieval
 version: 1.0.0
 status: enabled
@@ -48,7 +49,29 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 从内部向量库召回相关文档片段
+keywords:
+  objects:
+  - 知识
+  - 文档
+  - 页面
+  - 条目
+  actions:
+  - 检索
+  - 召回
+  - 查询
+  - 搜索
+  constraints:
+  - 相关性
+  - 时效性
+trigger_conditions:
+- when: 用户要求检索知识库
+  query: 检索/知识库/召回
+- when: 不应用场景
+  description: 跳过条件：用户明确指定了外部数据源（非知识库）时不触发。
+skip_when: 跳过条件：用户明确指定了外部数据源（非知识库）时不触发。
 ---
+
+
 
 # 知识召回（Engine）
 

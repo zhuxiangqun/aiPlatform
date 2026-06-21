@@ -92,9 +92,11 @@ class KBPlannerAgent:
             return "\n\n---\n\n".join(r["text"] for r in results) if results else "[无匹配内容]"
         elif action in ("analyze", "summarize", "generate"):
             content = str(step.get("content", "\n".join(p.get("result", "") for p in prev[-3:])))
+            from core.harness.knowledge.doc_compressor import compress_retrieved_docs
+            content = compress_retrieved_docs(content, model_name=best_model_for_purpose("chat"))
             from core.harness.syscalls.llm import sys_llm_generate
             resp = await sys_llm_generate(
-                None, [{"role": "user", "content": f"请{action}以下内容：\n{content[:4000]}"}],
+                None, [{"role": "user", "content": f"请{action}以下内容：\n{content}"}],
                 model_name=best_model_for_purpose("chat"),  # noqa: model-legacy temperature=0.3, max_tokens=1000,
             )
             return getattr(resp, "content", "") or str(resp)
@@ -102,9 +104,11 @@ class KBPlannerAgent:
 
     async def _aggregate_results(self, task: str, plan: dict, results: list, tenant_id: str, doc_ids: list) -> str:
         from core.harness.syscalls.llm import sys_llm_generate
+        from core.harness.knowledge.doc_compressor import compress_retrieved_docs
         steps_text = "\n".join(f"Step: {r['step']}\nResult: {r['result'][:500]}" for r in results)
+        steps_text = compress_retrieved_docs(steps_text, model_name=best_model_for_purpose("chat"))
         resp = await sys_llm_generate(
-            None, [{"role": "user", "content": f"基于以下中间结果，完成原始任务。\n\n任务：{task}\n\n中间结果：\n{steps_text[:4000]}\n\n请给出最终答案："}],
+            None, [{"role": "user", "content": f"基于以下中间结果，完成原始任务。\n\n任务：{task}\n\n中间结果：\n{steps_text}\n\n请给出最终答案："}],
             model_name=best_model_for_purpose("chat"),  # noqa: model-legacy temperature=0.3, max_tokens=2000,
         )
         return getattr(resp, "content", "") or str(resp)

@@ -2,7 +2,7 @@
 Data Models for Management Module
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
 
@@ -270,6 +270,7 @@ class ModelStats:
     avg_latency_ms: float = 0.0
     last_request_at: datetime = None
     cost_total_usd: float = 0.0
+    quality_scores: Dict[str, float] = field(default_factory=dict)  # purpose → score (-1.0 ~ 1.0)
 
 
 @dataclass

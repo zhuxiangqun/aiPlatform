@@ -1,3 +1,8 @@
 {
-  "version": "1.0.0"
+  "name": "task_planning",
+  "type": "engine_skill",
+  "version": "1.0.0",
+  "created_at": "2026-06-21T20:58:52",
+  "auto_generated": true,
+  "signature": "Ps6NpswFCex/FoqrYLq6ChBaF902IvxBLNEaM/BtFlDbqlAZ6ESBF6uB8XI+Otstltowc1gpi67+Bz1la8SdCA=="
 }

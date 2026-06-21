@@ -53,6 +53,8 @@ language: zh-CN
 自检标准：
 > 一个资深后端工程师 review 时会不会说“太复杂/太重”？会就简化。
 
+具体规则：如果写完发现 200 行代码能缩到 50 行还没有丢失关键逻辑——重写它。
+
 ---
 
 ## 3) Surgical Changes：手术式改动（强制）
@@ -61,6 +63,8 @@ language: zh-CN
 - 如果发现旁边存在问题：**可以指出**，但不要顺手修（除非用户明确要求）
 - 你引入的无用代码必须清理（unused imports/vars/funcs）
 - 不要删除“原来就存在”的死代码（除非用户要求）
+
+溯源测试：diff 中的每一行修改都应该能直接追溯到用户的需求请求。
 
 ---
 
@@ -74,6 +78,8 @@ language: zh-CN
 - 语法/导入：`python -m py_compile <相关文件>`
 - 单测：`pytest -q <相关 tests 或全量>`
 - 静态检查（如果仓库已有）：遵循现有工具链
+
+强成功标准让你可以独立循环迭代完成任务；弱标准（“让它能用”）需要持续澄清，增加往返次数。
 
 ---
 
@@ -670,6 +676,29 @@ AGENT.md 瘦身到核心内容（<100 行）。超过 100 行时，拆分为：
 3. 新增引擎行为 → 能否用已有 PipelineStageConfig 字段表达？不能 → 新增字段
 4. 新增 prompt 文本 → 是否属于"角色 SOP"？是 → 移入 AGENT.md
 
+### v4.1: 业务角色/场景推断禁令（扩展 §5.29）
+
+core 层不得根据 agent/skill 的名称、描述或技能绑定**用关键词匹配来推断业务角色或能力类型**。包括但不限于：
+
+```
+❌ any(kw in _name for kw in ["客服","程序员","产品经理","架构",...])
+❌ any(kw in _name for kw in ["审查","代码生成","分析","生成",...])
+❌ actions = [...] or ["审查","排查","优化"]  (Skill Lint 默认中文动作)
+❌ business_scenario 注释: "售前","客服","交付","研发","制度"  (知识管理器的业务场景示例)
+❌ "{'agent_id':'程序员'}"  (帮助文本嵌入角色名)
+```
+
+替代做法：
+- 使用 AGENT.md / SKILL.md 已有的 `category`、`tags`、`description` 字段
+- 帮助文本用通用模板，不按角色定制
+- Skill Lint 默认值为空列表，由 SKILL.md 显式声明
+- 知识管理器 `business_scenario` 由用户输入，注释不使用业务示例
+
+自查命令:
+```bash
+grep -rn "any(kw in.*for kw in\|_name.*for kw in\|审查.*排查\|售前.*客服\|程序员.*产品经理" core/management/ --include="*.py"
+```
+
 ### 允许的唯一例外
 
 以下硬编码是"引擎通用配置"而非"业务知识"，允许：
@@ -960,6 +989,762 @@ _register("my-template-id", """提示词正文，使用 ${variable} 占位符。
 - 纯数据/JSON 字符串拼接（如 `f"技能名称: {name}"`）
 - 单行简短系统角色已注册为模板的继续用模板
 - 日志/错误消息字符串不在此范围
+
+### 5.36 本体引擎模块总览（2026-06 更新 — 15 个模块）
+
+`core/harness/ontology_engine/` 目录下的模块列表及其职责：
+
+| # | 文件 | 行数 | 职责 |
+|---|------|:---:|------|
+| 1 | `engine.py` | 536 | **主编排器** — 13步管线 (3Phase并行: Classify→Extract并行→Validate串行) |
+| 2 | `class_mapper.py` | 185 | 关键词倒排索引 → T-Box类映射 (零LLM) |
+| 3 | `property_extractor.py` | 148 | LLM属性提取 + table_context注入 |
+| 4 | `state_machine.py` | 403 | YAML驱动状态机 (3触发器 × 7联动) + compute_indicators |
+| 5 | `state_history.py` | 137 | SQLite状态变更审计表 |
+| 6 | `graph_index.py` | 710 | GraphIndex + HyperEdge + SQLite持久化 + GraphSnapshot |
+| 7 | `graph_traversal.py` | 400 | BFS遍历 (traverse + traverse_multi + ranked_terminals + cache) |
+| 8 | `graph_inference.py` | 174 | YAML推理规则 → 传递闭包推断边 |
+| 9 | `relation_mapper.py` | 172 | 实例间关系检测 (共现+LLM) |
+| 10 | `document_parser.py` | 500 | 5格式解析 (MD/HTML/TXT/PDF/DOCX) + StructuredTable + QAPair |
+| 11 | `entity_resolver.py` | 273 | 3层消歧 (strict/lazy双模式) |
+| 12 | `traversal_cache.py` | 101 | LRU遍历缓存 + 图突变失效 |
+| 13 | `knowledge_synthesis.py` | 194 | 推理链/事实卡/综合结论 → Wiki页面 |
+| **总** | | **~4,400** | |
+
+### 5.37 13步引擎管线（2026-06 最终形态）
+
+```
+Phase 1 (并行, 无LLM):  Classify → Table Context
+Phase 2 (并行, asyncio.gather): Extract(LLM) 
+Phase 3 (串行, 确定性): Validate → Dedup → Build → SourceTrace
+    → EntityResolve → Indicators → StateMachine → Reviews
+    → RelationDetect → GraphBuild → Inference → CaseNodes
+    → KnowledgeSynthesis → Traversal
+```
+
+**强制规则**: 所有行为分叉来自YAML配置（classes/transitions/inference_rules/weights），零硬编码业务逻辑。
+
+### 5.38 GraphIndex 数据模型
+
+| 类型 | 用途 |
+|------|------|
+| `GraphNode` | 实体节点 (entity_id, entity_name, class_name, out_edges[], in_edges[]) |
+| `GraphEdge` | 二元有向边 (source→target, relation_name, confidence, inferred, embedding) |
+| `HyperEdge` | SAG风格超边 (event_id, entity_ids[], context_description, embedding) — 1个event连接N个entity |
+
+**持久化**: SQLite主存 (`graph/{domain}.db`) + JSON回退兼容。
+
+### 5.39 K4 知识治理（2026-06）
+
+| 层 | 能力 | 实现 |
+|----|------|------|
+| K1 | 推理规则 | `inference_rules` YAML → `GraphInference` |
+| K2 | 状态机 | `states` + `transitions` YAML → `StateMachine` |
+| K3 | 同义词 | `~/.aiplat/synonyms.yaml` → `expand_query_with_synonyms()` → `search_pages()` |
+| K4 | 元数据 | `effective_date`/`expiry_date`/`department`/`owner` in FRONTMATTER_FIELDS + `search_pages()`过滤 |
+
+### 5.40 CRAG/HyDE 检索质量门
+
+`MaterialsChatAgent` 中的3级回退链:
+```
+Level 1: 本体优先检索 (target_class过滤)
+  ↓ <100字
+Level 2: FTS5关键词检索
+  ↓ <50字
+Level 3: HyDE假设答案检索 (LLM生成专业描述→重新检索)
+```
+
+检索路径标记在ChatPanel中显示为蓝色(`direct_retrieve`)/紫色(`hyde`)标签。
+
+### 5.41 性能基准体系
+
+| # | 指标 | 目标 | 检测 |
+|---|------|:---:|------|
+| 1 | 管道延迟 P95 | <60s | `benchmark_ontology.py` |
+| 2 | 图遍历 P95 | <500ms | `benchmark_traversal.py` |
+| 3 | 检索召回 Recall@10 | >85% | `eval_retrieval.py` |
+| 4 | 状态转换准确率 | >80% | `audit_reasoning_paths.py --auto` |
+| 5 | 置信度校准 ECE | <0.10 | `eval_calibration.py` |
+
+**CI模式**: `bash scripts/benchmark_all.sh --ci` → 5指标全量检测 + 基线对比 + 回归告警(>10%退化)。
+
+### 5.42 图快照与版本化
+
+`GraphIndex.snapshot(label)` → 保存当前图状态到 `graph_snapshots` SQLite表。支持 `list_snapshots()`, `restore_snapshot(id)`, `compare_snapshots(id_a, id_b)`。
+
+API: `POST /ontology/engine/snapshot/{domain}`, `GET /snapshots/{domain}`, `POST /snapshot/{domain}/restore`。
+
+### 5.43 API 端点更新（2026-06 — 131端点）
+
+新增端点:
+- `POST /ontology/engine/traverse` — 图遍历
+- `POST /ontology/engine/infer` — 图推理
+- `POST /ontology/engine/synthesize` — 知识合成
+- `POST /ontology/engine/simulate-state` — 状态机模拟
+- `GET /ontology/engine/graph-stats/{id}` — 图统计
+- `POST /ontology/engine/snapshot/{id}` — 图快照
+- `GET /ontology/engine/snapshots/{id}` — 快照列表
+- `POST /ontology/engine/snapshot/{id}/restore` — 快照回滚
+- `GET /ontology/engine/state-history/{id}` — 状态历史
+- `POST /ontology/engine/resolve` — 实体消歧
+- `GET /ontology/engine/reviews/{id}` — 复查队列
+
+### 5.44 检索质量门（CRAG/HyDE，强制）
+
+`MaterialsChatAgent` 必须实现 3 级回退链，禁止仅依赖单一检索路径：
+
+| 级别 | 条件 | 行为 |
+|:---:|------|------|
+| 1 | 正常检索 | 本体优先检索 (target_class 过滤 + 子类展开) |
+| 2 | 结果 < 100 字 | FTS5 关键词检索 |
+| 3 | 结果 < 50 字 | HyDE 假设答案检索 (LLM生成专业描述→重检) |
+
+**禁止**：跳过任意一级直接降级到 HyDE。**必须**：检索路径通过 `strategy`/`mode` 字段标记，前端以颜色标签显示。
+
+### 5.45 遍历缓存失效（强制）
+
+`GraphIndex` 的以下突变方法**必须**调用 `_invalidate_cache()`：
+- `add_entity()`、`add_relation()`、`add_hyperedge()`、`remove_entity()`、`remove_hyperedge()`
+
+**禁止**：修改图结构后不清除缓存。违者导致 Agent 查询返回过期结果。
+
+### 5.46 知识合成版本锁（强制）
+
+`KnowledgeSynthesizer` 生成的 Wiki 页面**必须**携带 frontmatter 字段：
+- `source_instances: [entity1, entity2, ...]` — 源实例列表
+- `synthesis_type: "reasoning_chain" | "fact_card" | "comprehensive_conclusion"` — 合成类型
+
+`wiki_engine.py` 的 `_sync_synthesis_pages()` 在源页面更新时自动反向查询合成页并注入复查队列。**禁止**：合成页缺少 `source_instances` 字段。
+
+### 5.47 图快照规范
+
+引擎完成图构建后（Step 6），**应当**调用 `graph.snapshot()` 创建版本化快照。重大图变更（推理/合成）前应创建带标签的快照。
+
+API: `POST /ontology/engine/snapshot/{domain}?label=v1`、`POST /snapshot/{domain}/restore`
+
+`GraphSnapshot` 表存储完整图状态 JSON，支持 `compare_snapshots(id_a, id_b)` 差异对比。
+
+### 5.48 Property Extraction 并行化（强制）
+
+`OntologyEngine.process_chunks()` 中 Step 3（Property Extraction）**必须**通过 `asyncio.gather()` 并行执行所有 LLM 调用。**禁止**串行遍历 chunks 逐个调用 LLM。
+
+### 5.49 实体消歧双模式
+
+`EntityResolver.resolve(mode=...)` 支持两种模式：
+
+| 模式 | 行为 | 适用场景 |
+|------|------|---------|
+| `strict` | 3层评分合并 (编辑距离 0.4 + 共现 0.3 + 上下文 0.3) | 需要激进去重的场景 |
+| `lazy` | 仅同源 + 精确归一化匹配合并 | SAG 风格保守入库 |
+
+**默认使用 `lazy` 模式**，避免过早合并导致信息丢失。查询时通过语义检索补回关联实体。
+
+### 5.50 SAG 对齐能力（2026-06）
+
+| 能力 | 实现 | 规范 |
+|------|------|------|
+| HyperEdge 超边 | `graph_index.py` HyperEdge 类 | 1 个 event 连接 N 个 entity，保留完整上下文 |
+| 懒消歧 | `EntityResolver.resolve(mode="lazy")` | 仅同源 + 精确匹配合并，查询时补回 |
+| 多实体局部图 | `traverse_multi()` + `ranked_terminals` | 仅激活查询相关子图，按路径覆盖排序 |
+| 结构化表格 | `StructuredTable` + `HyperEdge` | PDF 表格行 → 超边，保留行列关系 |
+
+### 5.51 域本体定义规范（Ontology Domain YAML）
+
+定义新域本体时**必须**遵守以下格式，文件位于 `~/.aiplat/ontologies/{domain_id}.yaml`：
+
+| 字段 | 必要性 | 说明 |
+|------|:---:|------|
+| `name` | 必填 | 域显示名 (如 "AI知识") |
+| `namespace` | 必填 | URI 命名空间 (如 `http://aiplat.local/ontology/ai-knowledge/`) |
+| `description` | 必填 | 域用途描述 |
+| `version` | 必填 | 语义化版本 (如 "2.0.0") |
+| `classes` | 必填 | 类定义 (dict: `ClassName: {label, description, required_fields, optional_fields, categories, fields[], states?, transitions?, side_effects?}`) |
+| `object_properties` | 必填 | 对象属性 (list: `{name, label, domain[], range[], inverse?, transitive?, symmetric?}`) |
+| `data_properties` | 可选 | 数据属性 |
+| `inference_rules` | 可选 | 推理规则 (list: `{name, premises[], conclusion{}}`) |
+
+**类定义强制规则**：
+- `required_fields` 至少包含 `name, description`
+- `fields[]` 中枚举字段必须包含 `values[]`
+- `states.enum[]` 必须包含 `name, label, description`
+- `transitions[].trigger` 必须显式声明 `type` (relation_count/property_condition/relation_exists)
+- `side_effects[].when` 格式必须为 `"to == 'state_name'"`
+
+**示例**：
+```yaml
+classes:
+  AITechnique:
+    label: AI方法
+    required_fields: [name, description, maturity]
+    optional_fields: [alternatives, paper_ref, tags]
+    categories: [ai-techniques]
+    fields:
+      - name: maturity
+        type: enum
+        values: [research, prototype, production, deprecated]
+    states:
+      default: emerging
+      enum:
+        - name: emerging
+          label: 新兴
+        - name: established
+          label: 成熟
+      transitions:
+        - from: emerging
+          to: established
+          trigger:
+            type: relation_count
+            relation: implemented_by
+            threshold: 3
+            operator: ">="
+```
+
+### 5.52 状态机定义规则（强制）
+
+状态转换规则**必须**满足：
+1. **触发条件唯一性**：同一 `from→to` 不能有多个转换规则
+2. **from 覆盖完整性**：`[state1, state2, ...]` 列表形式必须覆盖所有可能初始状态，不得遗漏
+3. **side_effects 显式声明**：每个 `action` 必须包含 `type` (add_tag/mark_related_for_review/inject_case_study)
+4. **默认状态**：每个有转换规则的类必须定义 `states.default`
+
+**验证命令**：
+```bash
+# 检查域 YAML 是否有状态机定义
+python3 -c "
+from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+d = load_ontology_from_yaml('~/.aiplat/ontologies/ai-knowledge.yaml')
+for c in d.classes:
+    s = getattr(c, 'states', {})
+    t = getattr(c, 'transitions', [])
+    print(f'{c.label}: states={len(s.get(\"enum\",[]))} transitions={len(t)}')
+"
+```
+
+### 5.53 推理规则定义规范
+
+`inference_rules` 必须在 YAML 域文件中声明，格式：
+
+```yaml
+inference_rules:
+  - name: unique_rule_name
+    description: 人类可读的描述
+    premises:
+      - relation: relation_name    # 第一个前提关系
+        direction: outgoing         # outgoing | incoming
+      - relation: relation_name    # 第二个前提关系
+        direction: outgoing
+    conclusion:
+      relation: inferred_relation_name
+      label: 推断关系标签
+      confidence: 0.8               # 置信度折扣因子
+```
+
+**规则**：
+- `premises` 至少 2 条，最多 4 条（避免过度推断）
+- `conclusion.confidence` 会乘以 `0.9^len(premises)` 得到最终置信度
+- 推断边自动标记 `inferred=True, rule_name={name}`，可通过 `remove_inferred_edges()` 清除
+
+### 5.54 跨域本体隔离（强制）
+
+不同域本体（ai-knowledge, ship-design, default）**禁止**：
+- 跨域 `object_properties` 引用
+- 跨域 `inference_rules` 依赖
+- 在 ClassMapper/StateMachine 中硬编码跨域类名
+
+每个域是独立的知识空间。跨域查询通过 `MaterialsChatAgent` 的多 collection 检索实现，而非本体层耦合。
+
+### 5.55 本体生命周期管理
+
+| 操作 | API | 注意事项 |
+|------|-----|---------|
+| 创建域 | `POST /ontology/domains` | 必须提供 id/name/namespace |
+| 更新域 | `PUT /ontology/domains/{id}` | 已有 GraphIndex 的域不建议修改类定义 |
+| 删除域 | `DELETE /ontology/domains/{id}` | 级联删除对应 GraphIndex 和 Wiki 集合 |
+| 添加类 | `POST /ontology/domains/{id}/classes` | 新类自动可用于 ClassMapper |
+| 添加关系 | `POST /ontology/domains/{id}/properties` | 新关系自动可用于 RelationMapper |
+| 重建本体 | `POST /ontology/rebuild` | 从 YAML 重新加载所有域，**不清除已有 Wiki 数据** |
+
+**版本迁移规则**：修改域 YAML 中的 `classes[].fields` 或 `states` 后，**必须**重新运行引擎管线以重新分类和提取现有文档。建议使用 `migrate-classify` API 批量重新分类。
+
+### 5.56 数据生命周期规范（强制）
+
+知识数据从进入系统到退出的完整路径，分为4个阶段，每阶段有明确的约束和验证点。
+
+#### 阶段1：进入 (Ingestion)
+
+| 步骤 | 操作 | 约束 |
+|------|------|------|
+| 1.1 | `DocumentParser` 解析 → `StructuredChunk[]` + `StructuredTable[]` | 表格结构保留，禁止展平为纯文本 |
+| 1.2 | `ClassMapper` → T-Box 类标签 | 零LLM，关键词倒排索引 |
+| 1.3 | `PropertyExtractor` → 结构化属性 (并行 asyncio.gather) | 必须通过 `required_fields` 校验 |
+| 1.4 | K3 同义词标注 → `expand_query_with_synonyms()` 预处理 | 同义词组来自 `synonyms.yaml` |
+| 1.5 | K4 元数据填充 → `effective_date`/`expiry_date`/`department`/`owner` | 前端创建表单强制暴露 |
+
+**验证点**：Schema Validation (Step 3) — missing fields → warning
+
+#### 阶段2：活跃 (Active)
+
+| 步骤 | 操作 | 约束 |
+|------|------|------|
+| 2.1 | `StateMachine.evaluate_chain()` → 状态转换 | 每次转换记录到 `state_changes.db` |
+| 2.2 | `GraphIndex.add_entity/relation/hyperedge()` → 图更新 | 突变后必须 `_invalidate_cache()` |
+| 2.3 | `KnowledgeSynthesizer.synthesize()` → 合成 Wiki 页 | 合成页必须携带 `source_instances` + `synthesis_type` |
+| 2.4 | 版本追踪 → `FRONTMATTER_FIELDS.version` 递增 | 每次更新创建 changelog 条目 |
+
+**验证点**：State Validation — `from→to` 必须在 YAML transitions 中定义
+
+#### 阶段3：失效 (Expiry)
+
+| 步骤 | 操作 | 约束 |
+|------|------|------|
+| 3.1 | `search_pages(expiry_before=...)` 过滤过期文档 | 过期文档不参与检索 |
+| 3.2 | `effective_date` 未来日期 → 标记为 "待生效" | 前端显示状态标签 |
+| 3.3 | `mark_related_for_review` → 复查队列 | 关联实体变更自动触发复查 |
+
+**验证点**：K4 日期过滤 — 过期文档不出现在检索结果中
+
+#### 阶段4：退出 (Retirement)
+
+| 步骤 | 操作 | 约束 |
+|------|------|------|
+| 4.1 | `graph.snapshot("pre-delete")` → 创建删除前快照 | 删除前必须保留可回滚状态 |
+| 4.2 | `GraphIndex.remove_entity()` → 清除图节点 | 自动清除关联边和超边 |
+| 4.3 | `_sync_synthesis_pages()` → 反向查询合成页 | 标记引用该实体的合成页为待复审 |
+| 4.4 | `_persist_reviews()` → 复查队列 | 删除操作本身生成审计复查条目 |
+
+**验证点**：快照存在 → `graph.list_snapshots()` 包含删除前快照
+
+#### 贯穿全生命周期的约束
+
+| 约束 | 覆盖阶段 | 来源章节 |
+|------|:---:|------|
+| 状态转换可追溯 | 2, 3, 4 | §5.37, §5.42 |
+| 图突变清除缓存 | 2, 4 | §5.45 |
+| 合成页版本锁 | 2, 4 | §5.46 |
+| 同义词索引标注 | 1, 3 | §5.39(K3) |
+| K4 元数据过滤 | 1, 3 | §5.39(K4) |
+| 推理路径溯源 | 2 | §5.8 |
+
+### 5.57 Action 写回 (call_webhook)
+
+状态机的 `side_effects` 支持 `call_webhook` 类型，在状态转换时自动向外部业务系统发送 HTTP POST 通知。
+
+**YAML 配置示例**：
+```yaml
+side_effects:
+  - when: "to == 'deprecated'"
+    actions:
+      - type: call_webhook
+        url: "https://hooks.example.com/state-change"
+```
+
+**行为**：
+- 引擎 `_fire_webhook(url, payload)` 经由 `aiohttp` 异步 POST
+- 载荷包含 `{event, domain_id, entity, class, from_state, to_state, trigger, timestamp}`
+- 最多重试1次，总超时5秒，失败不阻塞主流程
+- `ProcessResult.webhooks_fired` 记录已触发的 webhook
+
+### 5.58 场景推演沙箱 (simulate-scenarios)
+
+`POST /ontology/engine/simulate-scenarios` 支持多方案对比推演：
+
+```json
+{
+  "domain_id": "ai-knowledge",
+  "instances": [...],
+  "scenarios": [
+    {"label": "基线(无干预)", "instances": [...]},
+    {"label": "方案A: 加强审查", "instances": [...]}
+  ]
+}
+```
+
+**返回**：`{ baseline, scenarios: [{label, transition_count, final_states}], comparison }`
+
+### 5.59 Palantir 对齐能力总览（2026-06）
+
+| Palantir Ontology 能力 | aiPlat 实现 | 状态 |
+|----------------------|-----------|:---:|
+| 语义统一 (共享词汇) | YAML 域本体 20类+34关系 + K3同义词 | ✅ |
+| 逻辑一致性 (一处定义) | ClassMapper/StateMachine 全来自 YAML | ✅ |
+| Action 写回业务系统 | `call_webhook` side_effect + `_fire_webhook` | ✅ |
+| 场景推演沙箱 | `simulate-scenarios` 多方案对比 | ✅ |
+| SDK 生成 | `GET /ontology/sdk/{domain}?language=python\|typescript` | ✅ |
+| 动态本体 (实时响应) | StateMachine + state_history + 时序窗口 + 缓存失效 | ✅ |
+| 三层权限 | marking + permissions + field-permissions APIs | ✅ |
+| AI 上下文 | MaterialsChatAgent + ReasoningPath + CRAG/HyDE | ✅ |
+| 时序特征工程 | `get_entity_window_stats` + `get_transition_rate` | ✅ |
+
+### 5.60 外部数据源连接器（Palantir 对齐）
+
+`DataSource` 抽象层支持将外部结构化数据源（SQL/API/文件）映射为本体实例，无需移动数据。
+
+| 连接器 | 实现 | 依赖 |
+|--------|------|------|
+| SQL | `SQLDataSource` (PostgreSQL/MySQL/SQLite) | sqlalchemy (软) |
+| API | `APIDataSource` (REST) | urllib (内置) |
+| File | `FileDataSource` (CSV/JSON/Excel) | pandas (软) |
+
+**YAML 配置**: `~/.aiplat/datasources/{name}.yaml`
+
+**API**: `POST /ontology/engine/process-from-datasource`, `GET /ontology/datasources`
+
+**集成**: `DataSourceRegistry.load_from_dir()` → `engine.process_from_datasource(source_id)` → field_mapping → `process_chunks()` 标准管线。
+
+### 5.61 检索策略选择矩阵（强制）
+
+当 `MaterialsChatAgent` 执行检索时，**必须**按以下矩阵选择检索路径：
+
+| 条件 | 检索路径 | 优先级 |
+|------|---------|:---:|
+| 本体映射 confidence ≥ 0.8 | 本体优先检索 (WikiPageRetriever + target_class过滤) | 1 |
+| 查询包含已知实体名 | GraphIndex 遍历 + terminal entities 增强检索词 | 2 |
+| 前述路径结果 < 100字 | FTS5 关键词检索 (search_pages) | 3 |
+| 前述路径结果 < 50字 | HyDE 假设答案重检 | 4 |
+
+**禁止**：
+- 跳过本体映射直接走 FTS5（除非映射失败）
+- 在 body 中硬编码检索路径选择逻辑（应通过 `retrieval_policy` 配置）
+
+### 5.61 多路检索融合与去重（强制）
+
+多条检索路径的结果合并时，**必须**遵守以下去重规则：
+
+| 规则 | 说明 |
+|------|------|
+| **分数归一化** | 不同路径的 relevance 分数归一化到 [0,1]，Wiki 路径提权系数 1.1 (`AIPLAT_WIKI_BOOST`) |
+| **标题去重** | 同一 title 的多路结果保留最高分版本，标记来源路径 |
+| **顺序保留** | 本体优先路径的结果排在 FTS5 之前，HyDE 结果标注来源 |
+| **截断** | 合并后最多保留 top_k × 2 条，避免上下文溢出 |
+
+**验证**：`eval_retrieval.py` Recall@10 必须 ≥ 0.85。
+
+### 5.62 多租户数据隔离（强制）
+
+知识库数据必须按 `tenant_id` 实现严格隔离：
+
+| 层面 | 隔离方式 |
+|------|---------|
+| **Wiki 页面** | `collection_id` 路由 → 独立目录 `wiki/collections/{id}/` |
+| **GraphIndex** | `domain_id` 路由 → 独立 SQLite `graph/{domain}.db` |
+| **State History** | `domain_id` 列过滤 → 所有查询自动带 domain_id WHERE |
+| **Feedback** | `domain_id` 列过滤 |
+| **Reviews** | 独立 JSON 文件 `ontology_reviews/{domain}.json` |
+
+**强制规则**：
+- 所有检索 API **必须**接受 `tenant_id` 或 `collection_id` 参数
+- **禁止**跨租户数据查询（无特例）
+- 前端 UI 必须显式显示当前知识库/域标识
+
+### 5.63 检索安全规范
+
+| 防护层 | 规则 |
+|--------|------|
+| **Query Sanitization** | 输入前 1000 字符截断，移除 `<|im_start|>` `<|im_end|>` 等控制 token |
+| **Scope 强制** | 所有检索必须绑定 `collection_id` / `domain_id`，禁止无范围全库扫描 |
+| **Marking 过滤** | 检索结果必须过滤 `marking=private` 的页面（除非用户有对应权限） |
+| **结果脱敏** | 返回给 LLM 的 chunk 正文不超过 3000 字符，避免敏感信息批量泄露 |
+| **审计日志** | HyDE 生成的假设答案必须标记 `source=HyDE`，与真实文档来源区分 |
+
+### 5.64 检索鲁棒性四重强化（2026-06）
+
+#### 5.64.1 关联类宽容策略
+
+`MaterialsChatAgent` 本体映射命中 `target_class` 后，自动扩展邻接类（1跳 `related_to` 边）参与检索，避免过度裁剪：
+
+| 条件 | 行为 |
+|------|------|
+| ontology_class_uri 已设置 | 通过 GraphIndex 查找对应节点，获取最邻近 3 个邻接类 |
+| 邻接类存在且不同于 target_class | 追加到候选类列表，逐个执行检索后合并去重 |
+
+**文件**: `materials_chat.py:265-291`
+
+#### 5.64.2 min_wiki_score 计算明确化
+
+`sys_knowledge_retrieve` 中 `min_wiki_score` 的判定基于 `WikiPageRetriever` 内部的 FTS5+embedding 融合得分，而非单一检索器原始分：
+
+| 判定逻辑 | 说明 |
+|---------|------|
+| `qualified = [wr for wr in wiki_results if wr.get("score", 0) >= min_wiki_score]` | 使用 Wiki 内部融合后的归一化得分 |
+| `len(qualified) >= max(1, top_k // 2)` | 足量高质量 Wiki 结果 → 不使用 KB 补充 |
+
+**文件**: `retrieval.py:590-591`
+
+#### 5.64.3 置信度自适应阈值
+
+不同本体类使用不同置信度阈值，替代一刀切 0.6（原为 0.6，现为自适应）：
+
+| 类标签 | 阈值 | 原因 |
+|--------|:---:|------|
+| AI方法 / AI系统 | 0.7 | 高特异性，需要强匹配 |
+| AI概念 | 0.75 | 中等特异性 |
+| 业务问题 / 参考资料 | 0.85 | 宽泛类，需高置信度避免误匹配 |
+| Wiki 页面 / 知识原子 | 0.6-0.65 | 通用类，更宽松 |
+| 船舶项目 / 设备 | 0.65-0.75 | 领域特定 |
+
+**文件**: `ontology_query_mapper.py:49-55,157-160`
+
+#### 5.64.4 Circuit Breaker 熔断器（状态机）
+
+`WikiCircuitBreaker` 三态状态机，Wiki 检索连续失败时打开电路，自动降级 KB：
+
+| 状态 | 行为 |
+|------|------|
+| CLOSED (正常) | Wiki 请求正常通过 |
+| OPEN (熔断) | 跳过 Wiki，直接走 KB |
+| HALF_OPEN (探测) | 60s 后允许 1 次探测请求；成功→CLOSED，失败→OPEN |
+
+| 参数 | 默认值 |
+|------|:---:|
+| failure_threshold (连续失败次数) | 3 |
+| recovery_timeout (恢复超时) | 60s |
+
+**文件**: `retrieval.py:478-540,576-619`
+
+### 5.65 多域知识库架构（2026-06 新增）
+
+#### 5.65.1 3 层级联域路由器
+
+`DomainRouter.classify(query)` 自动判断查询归属领域，零硬编码关键词：
+
+| 层 | 机制 | 延迟 | 命中率 |
+|:---:|------|:---:|:---:|
+| T1 | 本体 YAML `classes[].label` + `categories` + `synonyms` 倒排索引 | <1ms | ~60% |
+| T2 | 加权域向量余弦相似 (InfraEmbeddingAdapter, 预计算) | ~50ms | ~30% |
+| T3 | qwen2.5-coder:7b 二分类 | ~300ms | ~10% |
+
+**新增域热加载**: `register_domain(id, config)` → `_built = False` → 下次 `classify()` 自动重建索引。
+
+**文件**: `core/harness/knowledge/domain_router.py`
+
+#### 5.65.2 本体映射域级隔离
+
+`map_query_to_ontology(query, domain_id=domain_id)` 仅加载该域的 YAML 本体，消除跨域类名污染。
+
+- 参数: `domain_id` (新增), `collection_id` (向后兼容)
+- 自适应阈值: 从 `classes[].confidence_threshold` 读取 (无则默认 0.7)
+- 向后兼容: `domain_id` 为 None 时通过 `DomainRouter.resolve(collection_id)` 解析
+
+**文件**: `ontology_query_mapper.py:24-95`
+
+#### 5.65.3 检索层域隔离
+
+| 检索路径 | 隔离机制 |
+|---------|---------|
+| Wiki | `collection_id` 路由 → `wiki/collections/{cid}/` 独立目录 |
+| KB | `json_extract(meta_json, '$.domain') = ?` SQL 预过滤 (向后兼容: 无 domain 标签的旧数据不过滤) |
+
+`sys_knowledge_retrieve(query, domain_id=...)` 统一入口。
+
+**文件**: `retrieval.py:39-47,533-550`, `sqlite_retriever.py:39-50,133-155`
+
+#### 5.65.4 图遍历域绝缘
+
+`ShardedGraphIndex.cross_domain_neighbors()` 增加 `primary_domain` + `allow_cross` 约束:
+
+| 参数 | 效果 |
+|------|------|
+| `primary_domain="it-ops", allow_cross=False` | 仅搜索 it-ops 域 |
+| `allow_cross=True` | 主域不足时降级到 `registry.json.fallback_domains` |
+
+`MaterialsChatAgent` 中降级阈值由 `registry.json.domains[id].min_cross_results` 控制。
+
+**文件**: `sharded_graph.py:27-51`, `materials_chat.py:225-260`
+
+#### 5.65.5 Domain Prompt 注入
+
+LLM 生成前根据 `domain_config.system_prompt_id` 动态注入域专属 system prompt:
+
+| 域 | 模板 ID | 风格 |
+|----|---------|------|
+| ai-knowledge | `domain-prompt-ai-knowledge` | 通俗解释 + 类比 + 应用场景 |
+| ship-design | `domain-prompt-ship-design` | 船舶标准术语 + CCS/DNV 规范 |
+| it-ops | `domain-prompt-it-ops` | 可执行命令 + 现象→根因→方案 + 风险标注 |
+
+**文件**: `prompt_loader.py`, `materials_chat.py:411-420,432-440,493-502`
+
+#### 5.65.6 新增域操作流程
+
+```
+1. 创建 ~/.aiplat/ontologies/{domain_id}.yaml  (T-Box 本体)
+2. 在 registry.json.domains 中注册配置
+3. (可选) 准备 Wiki/知识数据 → 该域 collection
+```
+无需重启，`DomainRouter.classify()` 自动识别新域。
+
+#### 5.65.7 已知依赖
+
+KB 检索 `json_extract(meta_json, '$.domain')` 过滤依赖平台层在文档入库时将 `domain_id` 写入 `meta_json.domain`。当前已有数据无此字段，通过 `OR ... IS NULL` 向后兼容。
+
+#### 5.65.8 Calling Chain (终态)
+
+```
+User Query → MaterialsChatAgent
+  ├─ analyze_question + DMQR rewrite  (不改)
+  ├─ DomainRouter.classify(query)      → domain_id
+  ├─ map_query_to_ontology(q, domain_id)  → target_class
+  ├─ ShardedGraphIndex.cross_domain_neighbors(primary_domain=domain_id)
+  ├─ sys_knowledge_retrieve(q, domain_id=domain_id)
+  │    ├─ Wiki: collection_id 路由
+  │    └─ KB: json_extract pre-filter
+  ├─ CRAG 3级退路 + RRF + Self-RAG  (不改)
+  └─ domain-prompt 注入 → LLM 生成
+```
+
+### 5.66 许可证合规（强制）
+
+禁止引入 copyleft 许可证（GPL/AGPL/SSPL 等）的依赖包。CI 通过 `pip-licenses` 自动扫描。
+
+**架构守卫**：`arch_guard_rules.yaml §22`
+
+### 5.67 密钥与密码安全（强制，安全红线）
+
+| ❌ 禁止 | ✅ 应做 |
+|--------|--------|
+| 代码中硬编码 API key / password / token | 环境变量驱动，通过 `os.getenv()` 读取 |
+| 配置文件包含明文密钥 | 使用 `secrets/` 模块加密存储 |
+| 日志中输出密钥值 | 日志脱敏：`secret[:4] + '***'` |
+
+**架构守卫**：`arch_guard_rules.yaml §24, §26`
+
+### 5.68 错误处理规范（强制）
+
+| ❌ 禁止 | ✅ 应做 |
+|--------|--------|
+| `except:` (bare except) | `except Exception:` 并记录日志 |
+| `except Exception: pass` 静默吞错 | 至少 `logging.debug(exc_info=True)` |
+| `datetime.now()` 无时区 | `datetime.now(timezone.utc)` |
+| 捕获 `BaseException`（含 KeyboardInterrupt） | `except Exception` |
+
+**架构守卫**：`arch_guard_rules.yaml §25, §30, §31`
+
+### 5.69 子进程规范（强制）
+
+| ❌ 禁止 | ✅ 应做 |
+|--------|--------|
+| `subprocess.run(["python3", ...])` | 使用 `sys.executable` 确保与当前进程一致 |
+| `subprocess.run(["pip", ...])` | 使用 `[sys.executable, "-m", "pip", ...]` |
+
+**验证命令**：
+```bash
+grep -rn 'subprocess.run(\["python3"' core/ --include="*.py"
+```
+
+**架构守卫**：`arch_guard_rules.yaml §42`
+
+### 5.70 执行真实性（强制）
+
+所有 Skill 必须可验证执行：
+
+| 规则 | 说明 |
+|------|------|
+| `execution_type` 必须在 SKILL.md frontmatter 显式声明 | `handler` / `prompt` / `python_class` |
+| `execution_type: handler` 必须有 `handler.py` | 无 → ERROR |
+| `execution_type: prompt` 但有 `handler.py` | WARNING（可能误配） |
+
+**禁止**：静默降级到 LLM 模拟执行、生产环境 mock 数据。
+
+**设置 `AIPLAT_EXECUTION_AUDIT=true` 后每次 `sys_skill_call` 记录审计事件。**
+
+**架构守卫**：`arch_guard_rules.yaml §44, §46`
+
+### 5.71 前端架构约束（强制）
+
+前端 UI 组件对 pipeline state 的判断逻辑不应依赖特定团队的 artifact key 名称：
+
+| ❌ 禁止 | ✅ 应做 |
+|--------|--------|
+| `key === 'test_report'` 特殊分支 | 检查值的结构特征（如 `'recommendation' in val`） |
+| `phase.includes('test_report')` 硬编码 | 检查 `_current_stage_idx` 引擎维护的执行指针 |
+| 按 artifact key 名称推断语义 | 按 artifact 值结构判断类型 |
+
+**架构守卫**：`arch_guard_rules.yaml §54`
+
+### 5.72 安装结构规范（强制）
+
+Skill / Agent / MCP / Workflow 的安装目录结构必须合规：
+
+| 实体 | 规范结构 | 检查 |
+|------|---------|------|
+| **Skill** | `{name}/SKILL.md` + 可选 `handler.py`, `scripts/`, `references/` | 无嵌套 SKILL.md |
+| **Agent** | `{name}/AGENT.md` | 深度 ≤ 2 |
+| **MCP** | `{name}/server.yaml` | 无嵌套 |
+| **Workflow** | `{name}/workflow.yaml` | 无嵌套 |
+
+**架构守卫**：`arch_guard_rules.yaml §61-64`
+
+### 5.73 管理端代理路由覆盖（强制）
+
+`vite.config.ts` 中的 proxy 目标端口必须在运行时可达。`guard_frontend.py §43` 自动检测。
+
+| 规则 | 说明 |
+|------|------|
+| proxy 目标端口无进程监听 | WARNING |
+| 缺少核心 API 的 proxy 规则 | ERROR |
+
+### 5.74 Skill Lint 规则文档
+
+以下 lint 规则在 `lint_rules.yaml` 中定义，开发时应了解：
+
+| 规则 ID | 含义 | 级别 |
+|---------|------|:---:|
+| `missing_name` | SKILL.md 缺少 name | error |
+| `unknown_category` | category 不在推荐枚举内 | warning |
+| `non_semver_version` | version 不是标准 semver | warning |
+| `weak_description` | description 过短 (<20 chars) | warning |
+| `long_description` | description 过长 (>500 chars) | warning |
+| `missing_input_schema` | 缺少 input_schema | error |
+| `missing_output_schema` | 缺少 output_schema | error |
+| `missing_markdown` | output_schema 无 markdown 字段 | error |
+| `missing_triggers` | 缺少 trigger_conditions | warning |
+| `overengineered_pipeline` | pipeline_mode 首选 chain/router/parallel | warning |
+
+### 5.75 设计原则自动化（SOLID）
+
+| 原则 | 检查方法 | 架构守卫 |
+|------|---------|:---:|
+| **单一职责 (SRP)** | 类/函数 > 200 行 + > 5 个 public 方法 → WARNING | §66 |
+| **开放封闭 (OCP)** | 新增 provider 需要改 factory + if/elif 分叉 → WARNING | §5.2.1 |
+| **依赖倒置 (DIP)** | infra / core / platform / app 严格方向 | §1, §52 |
+| **接口隔离 (ISP)** | 接口 > 10 个抽象方法 → WARNING | — |
+| **最小知识 (LoD)** | import 链深度 > 4 → WARNING | — |
+
+### 5.76 架构契约（来自 `docs/contracts/01`）
+
+| 契约 | 说明 | 架构守卫 |
+|------|------|:---:|
+| **依赖方向** | `app → platform → core → infra`，禁止反向 | §1 |
+| **契约优先** | 新增公共 API 必须有对应的 schema 定义 | §2 |
+| **扩展点** | 新增后端通过工厂+配置，不修改基类 | §5.2.1 |
+| **结构化错误** | API 错误必须包含 `code/message/details` | §25 |
+| **ADR 变更** | `core/harness/execution/` 改动必须有 ADR 记录 | — |
+
+### 5.77 上下文组装强制接入（强制）
+
+Agent 的 `execute()` 方法中调用 `sys_llm_generate` 前，必须经过 `MemoryManager.build_context()` 或等效的 5 级压缩体系。禁止 Agent 绕过上下文管理直接调用 LLM。
+
+**架构守卫**：`arch_guard_rules.yaml §57`
+
+### 5.78 编排模式选择原则（Anthropic Building Effective Agents）
+
+设计新的 Agent / Pipeline 时，按以下优先级选择执行模式：
+
+| 优先级 | 模式 | 适用场景 |
+|:---:|------|------|
+| 1 | **链式 (Chain)** | 步骤确定、A→B→C 顺序执行 |
+| 2 | **路由 (Router)** | 按输入分类分发到不同处理模块 |
+| 3 | **并行 (Parallel)** | 多个独立任务同时执行 |
+| 4 | **编排 (Orchestrator)** | 子任务类型已知但数量/顺序动态 |
+| 5 | **自主 Agent** | 子任务不可预知，需 LLM 自行决策 |
+
+**验证命令**：
+```bash
+# 检测是否使用了高成本模式
+grep -rn 'pipeline_mode.*orchestrator\|pipeline_mode.*agent' --include="*.yaml" --include="*.md"
+```
+
+**架构守卫**：`lint_rules.yaml: overengineered_pipeline`
+
 
 ---
 

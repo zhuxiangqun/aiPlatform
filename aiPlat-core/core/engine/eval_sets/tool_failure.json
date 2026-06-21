@@ -1,0 +1,25 @@
+{
+  "set_id": "default/tool_failure",
+  "category": "tool_failure",
+  "description": "工具失败场景 — 验证 Agent 错误恢复能力",
+  "created_at": 1781622678.428921,
+  "tasks": [
+    {
+      "task_id": "fail-001",
+      "agent_id": "programmer_agent",
+      "user_input": "读取 /nonexistent/config.yaml 并分析配置",
+      "category": "tool_failure",
+      "expected_tools": [],
+      "forbidden_tools": [],
+      "expected_steps": [],
+      "success_criteria": {
+        "must_contain": [
+          "不存在",
+          "无法",
+          "找不到"
+        ]
+      },
+      "risk_level": "low"
+    }
+  ]
+}

@@ -43,9 +43,11 @@ class SqliteEmbeddingRetriever(IRetriever):
         *,
         tenant_id: str = "default",
         collection_id: str = "default",
+        domain_id: str = None,
     ):
         self._tenant_id = tenant_id
         self._collection_id = collection_id
+        self._domain_id = domain_id
         if not db_path:
             root = os.path.expanduser(os.getenv("AIPLAT_KB_TENANTS_DIR", "~/.aiplat/kb/tenants"))
             db_path = os.path.join(root, tenant_id, "kb.sqlite3")
@@ -136,9 +138,19 @@ class SqliteEmbeddingRetriever(IRetriever):
             keyword_terms = [w for w in query_lower.split() if len(w) >= 2]
             conditions = "WHERE emb.tenant_id = ? AND emb.vector_json IS NOT NULL AND e.text IS NOT NULL AND length(e.text) > 0"
             params: list = [self._tenant_id]
+            keyword_clauses: list = []
+
+            # KB domain pre-filter: json_extract on meta_json.domain
+            if self._domain_id:
+                conditions += (
+                    " AND (json_extract(e.meta_json, '$.domain') = ?"
+                    "      OR json_extract(e.meta_json, '$.domain') IS NULL)"
+                )
+                params.append(self._domain_id)
+
             if keyword_terms:
-                like_clauses = " OR ".join(["e.text LIKE ?"] * len(keyword_terms))
-                conditions += f" AND ({like_clauses})"
+                keyword_clauses = ["e.text LIKE ?"] * len(keyword_terms)
+                conditions += f" AND ({' OR '.join(keyword_clauses)})"
                 params += [f"%{t}%" for t in keyword_terms]
             sql = f"""
                 SELECT e.element_id, e.doc_id, e.type, e.page_idx, e.text, e.meta_json, emb.vector_json
@@ -206,6 +218,7 @@ def create_sqlite_retriever(
     *,
     tenant_id: str = "default",
     collection_id: str = "default",
+    domain_id: str = None,
     retrieval_strategy: str = "hybrid",
     rerank_enabled: bool = True,
     rerank_method: str = "multi_factor",
@@ -217,7 +230,7 @@ def create_sqlite_retriever(
     from .retriever import KnowledgeRetriever
 
     return KnowledgeRetriever(
-        retriever=SqliteEmbeddingRetriever(db_path=db_path, tenant_id=tenant_id, collection_id=collection_id),
+        retriever=SqliteEmbeddingRetriever(db_path=db_path, tenant_id=tenant_id, collection_id=collection_id, domain_id=domain_id),
         retrieval_strategy=retrieval_strategy,
         rerank_enabled=rerank_enabled,
         rerank_method=rerank_method,

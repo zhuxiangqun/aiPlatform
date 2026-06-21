@@ -1,7 +1,8 @@
 ---
 name: wiki_lint
 display_name: Wiki 健康检查
-description: 定期对 Wiki 做健康检查——找出矛盾数据、孤儿页面、死链接、过期内容。LLM 会自动建议补充缺失信息和下一步研究方向。 涉及Wiki相关操作。 主要进行检查。
+description: 定期对 Wiki 做健康检查——找出矛盾数据、孤儿页面、死链接、过期内容。LLM 会自动建议补充缺失信息和下一步研究方向。 涉及Wiki相关操作。
+  主要进行检查。
 category: governance
 version: 1.0.0
 status: enabled
@@ -54,9 +55,28 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 检测 Wiki 的矛盾和死链接
-
 protected: true
+keywords:
+  objects:
+  - Wiki页面
+  - 知识条目
+  actions:
+  - 检查
+  - 校验
+  - 审查
+  constraints:
+  - 完整性
+  - 一致性
+  - 准确性
+trigger_conditions:
+- when: 用户要求检查Wiki质量
+  query: 检查Wiki/校验知识库
+- when: 不应用场景
+  description: 跳过条件：Wiki页面数量过少（<10）时不触发。
+skip_when: 跳过条件：Wiki页面数量过少（<10）时不触发。
 ---
+
+
 
 ## SOP
 

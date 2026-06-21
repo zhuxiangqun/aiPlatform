@@ -42,6 +42,7 @@ class CollectionInfo:
     total_size_mb: float
     created_at: datetime
     updated_at: datetime
+    business_scenario: str = ""  # user-defined business scenario label
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 

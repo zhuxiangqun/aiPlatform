@@ -48,9 +48,28 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 根据验收标准生成测试用例
-
 protected: true
+keywords:
+  objects:
+  - 测试用例
+  - 测试场景
+  - 测试数据
+  actions:
+  - 生成
+  - 编写
+  - 设计
+  constraints:
+  - 覆盖率
+  - 边界条件
+trigger_conditions:
+- when: 用户要求生成测试用例
+  query: 生成测试/写测试用例
+- when: 不应用场景
+  description: 跳过条件：代码模块过小或已有充分测试覆盖时不触发。
+skip_when: 跳过条件：代码模块过小或已有充分测试覆盖时不触发。
 ---
+
+
 
 # 测试用例生成（Engine）
 

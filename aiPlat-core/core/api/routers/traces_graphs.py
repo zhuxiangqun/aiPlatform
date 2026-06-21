@@ -354,15 +354,15 @@ async def step_run_stage(run_id: str, stage_id: str, request: dict, http_request
         raise HTTPException(status_code=404, detail="Run not found")
 
     try:
-        from core.harness.execution.pipeline_engine import PipelineEngine
+        from core.api.core_facade import create_pipeline_engine
 
         # Load the graph run state
         state = run_data.get("initial_state_json") or {}
         if isinstance(state, str):
             state = json.loads(state)
 
-        # Create engine and exec isolated stage
-        engine = PipelineEngine(
+        # Create engine via facade and exec isolated stage
+        engine = create_pipeline_engine(
             config=getattr(rt, "pipeline_config", None),
             execution_store=store,
         )

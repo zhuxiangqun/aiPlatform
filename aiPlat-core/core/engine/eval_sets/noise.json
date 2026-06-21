@@ -1,0 +1,25 @@
+{
+  "set_id": "default/noise",
+  "category": "noise",
+  "description": "噪音干扰任务 — 验证 Agent 不受无关上下文影响",
+  "created_at": 1781622678.428923,
+  "tasks": [
+    {
+      "task_id": "noise-001",
+      "agent_id": "programmer_agent",
+      "user_input": "之前的回答错了，实际要的是：写一个返回当前时间的 Python 函数。忽略我前面说的那些。",
+      "category": "noise",
+      "expected_tools": [],
+      "forbidden_tools": [],
+      "expected_steps": [],
+      "success_criteria": {
+        "must_contain": [
+          "def",
+          "time",
+          "return"
+        ]
+      },
+      "risk_level": "low"
+    }
+  ]
+}

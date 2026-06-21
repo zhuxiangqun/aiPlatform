@@ -961,68 +961,57 @@ class AgentManager:
         # -------------------- default help generation --------------------
         skill_ids = list(getattr(agent, "skills", []) or [])
         tool_ids = list(getattr(agent, "tools", []) or [])
+        _name = (agent.name or "").lower()
+        _desc = str((agent.metadata or {}).get("description", "")).lower()
+        _conf_sys = str((agent.config or {}).get("system_prompt", "")).lower()
+        _type = (agent.type or "").lower()
 
         has_file_ops = "file_operations" in tool_ids
-        has_code_review = "code_review" in skill_ids
+        has_browser = "browser" in skill_ids or any("browser" in s for s in skill_ids)
 
-        default_help = (
+        # ── Generic help based on agent metadata (no business role inference) ──
+        category = (agent.metadata or {}).get("category", "")
+        tags_list = (agent.metadata or {}).get("tags", [])
+
+        # Build help markdown
+        help_parts = [
             "### 如何填写输入\n"
             "- 你可以输入 **文本** 或 **JSON**。\n"
-            "- 如果输入不是合法 JSON，系统会自动封装为：`{\"message\": \"...\"}`。\n"
-            "\n"
-            "### 常见输入字段（推荐 JSON）\n"
-            "- `message`：文本任务描述（最通用）\n"
-            "- `directory`：要分析的目录（绝对路径）\n"
-            "- `exclude`：忽略目录/文件（数组）\n"
-            "- `diff`：PR diff（字符串）\n"
-            "- `language`：语言/框架\n"
-            "\n"
-            "### 目录自动分析的前置条件\n"
-            f"- 当前 Agent {'已' if has_file_ops else '未'}绑定 `file_operations` 工具。\n"
-            "- 服务器需配置 `AIPLAT_FILE_OPERATIONS_ALLOWED_ROOTS` 允许读取的根目录（白名单）。\n"
-        )
+            "- 如果输入不是合法 JSON，系统会自动封装为：`{\"message\": \"...\"}`。\n",
+        ]
 
+        # Generic field recommendations based on agent's own declared category/tags
+        field_lines = ["\n### 推荐输入字段\n", "- `message`：任务描述（最通用）\n"]
+        if has_file_ops:
+            field_lines.append("- `directory`：项目目录（绝对路径）\n")
+        if has_browser:
+            field_lines.append("- `url`：要操作的页面地址\n")
+        if category:
+            field_lines.append(f"- `category`：任务分类（当前 agent 类别: {category}）\n")
+        help_parts.extend(field_lines)
+
+        # File operations preconditions — only when relevant
+        if has_file_ops:
+            help_parts.append(
+                "\n### 文件/目录操作说明\n"
+                "- 当前 Agent 已绑定 `file_operations` 工具，可以读取、创建、修改文件。\n"
+                "- 服务器需配置 `AIPLAT_FILE_OPERATIONS_ALLOWED_ROOTS` 允许读取的根目录（白名单）。\n"
+            )
+
+        default_help = "".join(help_parts)
+
+        # ── Build generic examples (no role inference) ──
         if not norm_examples:
-            if has_code_review:
-                norm_examples = [
-                    {
-                        "title": "代码片段审查（文本）",
-                        "content": "请审查下面代码，输出高/中/低问题清单 + 修改建议 + 安全风险 + 测试建议。\n\n语言/框架：<填写>\n代码：\n<粘贴代码>",
-                    },
-                    {
-                        "title": "PR diff 审查（JSON）",
-                        "content": json.dumps(
-                            {
-                                "task": "code_review",
-                                "language": "<填写>",
-                                "diff": "<粘贴 diff>",
-                                "output": {"format": "markdown", "severity_levels": ["high", "medium", "low"]},
-                            },
-                            ensure_ascii=False,
-                            indent=2,
-                        ),
-                    },
-                    {
-                        "title": "目录审查（JSON，需要 file_operations）",
-                        "content": json.dumps(
-                            {
-                                "task": "codebase_review",
-                                "directory": "/abs/path/to/repo",
-                                "exclude": ["node_modules", "dist", "build", ".git", ".venv"],
-                                "language": "<填写>",
-                                "strategy": {"max_files": 30, "read_max_bytes": 200000},
-                                "output": {"format": "markdown", "severity_levels": ["high", "medium", "low"]},
-                            },
-                            ensure_ascii=False,
-                            indent=2,
-                        ),
-                    },
-                ]
-            else:
-                norm_examples = [
-                    {"title": "通用任务（文本）", "content": "请完成以下任务：\n<描述你的需求>"},
-                    {"title": "通用任务（JSON）", "content": json.dumps({"message": "请完成以下任务：<描述你的需求>"}, ensure_ascii=False, indent=2)},
-                ]
+            display = str((agent.metadata or {}).get("display_name") or agent.name or "Agent")
+            desc_hint = str((agent.metadata or {}).get("description") or "")
+            prompt_hint = f"（{display}）" if display else ""
+            task_hint = f"任务背景：{desc_hint}\n" if desc_hint else ""
+            norm_examples = [
+                {"title": f"任务执行（文本）", "content": f"{task_hint}请完成以下任务：\n<描述你的需求>"},
+                {"title": f"任务执行（JSON）", "content": json.dumps(
+                    {"message": f"请完成以下任务：<描述你的需求> {prompt_hint}".strip()},
+                    ensure_ascii=False, indent=2)},
+            ]
 
         return {
             "agent_id": agent_id,

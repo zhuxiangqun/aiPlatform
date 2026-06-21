@@ -1,0 +1,253 @@
+"""
+Event Loop — autonomous pipeline trigger system (Loop Engineering).
+
+Three trigger modes:
+  1. cron: scheduled tasks (daily dependency scan, weekly cleanup)
+  2. webhook: external event → pipeline (GitHub PR → review, Jira ticket → analyze)
+  3. goal: condition-based loop (continue until target met)
+
+Triggers are registered as JSON configs and checked by a background task.
+Matches incoming events to OntologyScene templates and auto-starts pipelines.
+
+Design from Gas Town / Stripe Minions: Loop is what gives Harness autonomous life.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json as _json
+import logging
+import os as _os
+import time as _time
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger(__name__)
+
+_TRIGGERS_PATH = _os.path.expanduser(
+    _os.path.join(_os.getenv("AIPLAT_HOME", "~/.aiplat"), "loop", "triggers.json")
+)
+_RUNNING: List[asyncio.Task] = []
+
+
+@dataclass
+class Trigger:
+    trigger_id: str
+    mode: str                         # "cron" | "webhook" | "goal"
+    scene_id: str                     # which OntologyScene to instantiate
+    params: Dict[str, Any] = field(default_factory=dict)
+
+    # cron mode
+    cron_expression: str = ""         # "0 6 * * *" (daily 6am)
+    last_run: float = 0.0
+
+    # webhook mode
+    webhook_pattern: str = ""         # "github_pr" | "jira_ticket" | "*"
+    allowed_sources: List[str] = field(default_factory=list)
+
+    # goal mode
+    goal_condition: str = ""          # "ci_all_green" | "error_rate_below_1pct"
+    max_iterations: int = 10
+
+    enabled: bool = True
+    created_at: str = ""
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "trigger_id": self.trigger_id,
+            "mode": self.mode,
+            "scene_id": self.scene_id,
+            "params": self.params,
+            "cron_expression": self.cron_expression,
+            "last_run": self.last_run,
+            "webhook_pattern": self.webhook_pattern,
+            "allowed_sources": self.allowed_sources,
+            "goal_condition": self.goal_condition,
+            "max_iterations": self.max_iterations,
+            "enabled": self.enabled,
+            "created_at": self.created_at,
+        }
+
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> "Trigger":
+        return cls(
+            trigger_id=d.get("trigger_id", ""),
+            mode=d.get("mode", "cron"),
+            scene_id=d.get("scene_id", ""),
+            params=d.get("params", {}),
+            cron_expression=d.get("cron_expression", ""),
+            last_run=d.get("last_run", 0.0),
+            webhook_pattern=d.get("webhook_pattern", ""),
+            allowed_sources=d.get("allowed_sources", []),
+            goal_condition=d.get("goal_condition", ""),
+            max_iterations=d.get("max_iterations", 10),
+            enabled=d.get("enabled", True),
+            created_at=d.get("created_at", ""),
+        )
+
+
+# ── Trigger Storage ──────────────────────────────────────────────
+
+def load_triggers() -> List[Trigger]:
+    if not _os.path.exists(_TRIGGERS_PATH):
+        return []
+    try:
+        data = _json.load(open(_TRIGGERS_PATH, "r", encoding="utf-8"))
+        return [Trigger.from_dict(t) for t in data.get("triggers", [])]
+    except Exception:
+        return []
+
+
+def save_triggers(triggers: List[Trigger]) -> None:
+    _os.makedirs(_os.path.dirname(_TRIGGERS_PATH), exist_ok=True)
+    with open(_TRIGGERS_PATH, "w", encoding="utf-8") as f:
+        _json.dump({
+            "version": 1,
+            "updated_at": _time.time(),
+            "triggers": [t.to_dict() for t in triggers],
+        }, f, indent=2, ensure_ascii=False)
+
+
+def register_trigger(trigger: Trigger) -> Trigger:
+    triggers = load_triggers()
+    for i, t in enumerate(triggers):
+        if t.trigger_id == trigger.trigger_id:
+            triggers[i] = trigger
+            save_triggers(triggers)
+            return trigger
+    trigger.created_at = datetime.now(timezone.utc).isoformat()
+    triggers.append(trigger)
+    save_triggers(triggers)
+    return trigger
+
+
+def remove_trigger(trigger_id: str) -> bool:
+    triggers = load_triggers()
+    before = len(triggers)
+    triggers = [t for t in triggers if t.trigger_id != trigger_id]
+    save_triggers(triggers)
+    return len(triggers) < before
+
+
+# ── Cron Scheduler ───────────────────────────────────────────────
+
+def _parse_cron(expr: str) -> Optional[int]:
+    u"""Parse cron expr to next run seconds. Minimal impl: "minute hour * * *"."""
+    try:
+        parts = expr.strip().split()
+        if len(parts) < 2:
+            return None
+        minute = int(parts[0])
+        hour = int(parts[1])
+        now = datetime.now()
+        target = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        if target <= now:
+            # Next occurrence is tomorrow
+            from datetime import timedelta
+            target += timedelta(days=1)
+        return (target - now).total_seconds()
+    except (ValueError, IndexError):
+        return None
+
+
+def _should_trigger_cron(trigger: Trigger) -> bool:
+    if not trigger.cron_expression:
+        return False
+    now = _time.time()
+    # Don't trigger more than once per cron window
+    if now - trigger.last_run < 300:  # 5 min cooldown
+        return False
+    delay = _parse_cron(trigger.cron_expression)
+    if delay is not None and delay < 60:  # within next minute
+        return True
+    return False
+
+
+# ── Background Loop ───────────────────────────────────────────────
+
+async def _start_pipeline_from_scene(scene_id: str, params: Dict[str, Any]) -> None:
+    u"""Instantiate a scene and start a pipeline run."""
+    try:
+        from core.harness.knowledge.scene_model import instantiate_scene, get_scene
+        scene = get_scene(scene_id)
+        if not scene:
+            logger.warning("Trigger for unknown scene: %s", scene_id)
+            return
+
+        config = instantiate_scene(scene_id, params=params)
+        if not config:
+            return
+
+        from core.harness.execution.pipeline_engine import PipelineEngine
+        engine = PipelineEngine(config=config)
+        # Fire and forget — don't block the scheduler
+        asyncio.create_task(engine.initialize(project_id=f"auto_{scene_id}_{int(_time.time())}",
+                                                requirement=f"Auto-triggered: {scene_id}"))
+        logger.info("Auto-triggered pipeline: scene=%s params=%s", scene_id, str(params)[:100])
+    except Exception as e:
+        logger.warning("Failed to auto-start pipeline for %s: %s", scene_id, str(e)[:200])
+
+
+async def _check_webhook_match(source: str, payload: Dict[str, Any], trigger: Trigger) -> bool:
+    u"""Check if a webhook event matches the trigger pattern."""
+    pattern = trigger.webhook_pattern
+    if pattern == "*" or pattern == source:
+        return True
+    if trigger.allowed_sources and source not in trigger.allowed_sources:
+        return False
+    return pattern == source
+
+
+async def dispatch_webhook(source: str, payload: Dict[str, Any]) -> int:
+    u"""Dispatch a webhook event to matching triggers. Returns count of triggered pipelines."""
+    triggers = load_triggers()
+    count = 0
+    for t in triggers:
+        if not t.enabled or t.mode != "webhook":
+            continue
+        if await _check_webhook_match(source, payload, t):
+            merged_params = {**t.params, **payload.get("params", {})}
+            await _start_pipeline_from_scene(t.scene_id, merged_params)
+            t.last_run = _time.time()
+            count += 1
+    if count > 0:
+        save_triggers(triggers)
+    return count
+
+
+async def run_loop_scheduler(interval: int = 60) -> None:
+    u"""Background loop: check triggers every N seconds.
+
+    Start with `asyncio.create_task(run_loop_scheduler())` in server startup.
+    """
+    logger.info("Loop scheduler started (interval=%ds)", interval)
+    while True:
+        try:
+            triggers = load_triggers()
+            for t in triggers:
+                if not t.enabled:
+                    continue
+                if t.mode == "cron" and _should_trigger_cron(t):
+                    await _start_pipeline_from_scene(t.scene_id, t.params)
+                    t.last_run = _time.time()
+
+                elif t.mode == "goal":
+                    # Goal triggers are checked but not auto-launched —
+                    # they require an external condition check to pass
+                    pass
+
+            save_triggers(triggers)
+        except Exception:
+            pass
+        await asyncio.sleep(interval)
+
+
+def start_loop_scheduler(interval: int = 60) -> None:
+    u"""Start the loop scheduler in the background. Safe to call multiple times."""
+    try:
+        loop = asyncio.get_running_loop()
+        task = loop.create_task(run_loop_scheduler(interval))
+        _RUNNING.append(task)
+    except RuntimeError:
+        pass

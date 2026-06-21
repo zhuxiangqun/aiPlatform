@@ -688,7 +688,8 @@ def _describe_layer(layer: str = "core", question_type: str = "capabilities") ->
                 modules[mod_key] = {"files": 0, "symbols_count": 0, "key_symbols": []}
             modules[mod_key]["files"] += 1
             modules[mod_key]["symbols_count"] += len(n.get("symbols", []))
-            for name, kind, line in n.get("symbols", [])[:2]:
+            for sym in n.get("symbols", [])[:2]:
+                name, kind = sym[0], sym[1]
                 if not name.startswith("_") and name not in modules[mod_key]["key_symbols"]:
                     modules[mod_key]["key_symbols"].append(name)
                     if len(modules[mod_key]["key_symbols"]) >= 3:
@@ -861,8 +862,18 @@ def get_layer_stats() -> Dict[str, Any]:
 # ── Codebase Stats ────────────────────────────────────────────────
 
 @router.get("/stats")
-def get_codebase_stats() -> Dict[str, Any]:
+async def get_codebase_stats() -> Dict[str, Any]:
     """Return global codebase statistics for the SystemOverview panel."""
+    import asyncio
+    try:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, _get_stats_sync)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+def _get_stats_sync() -> Dict[str, Any]:
+    """Synchronous stats computation — run in thread pool executor."""
     try:
         from core.harness.knowledge.code_graph import (
             build_graph, default_roots, repo_root, health_score, count_cycles, effective_cycles
@@ -874,8 +885,9 @@ def get_codebase_stats() -> Dict[str, Any]:
         import_edges = sum(1 for e in edges if e.get("kind", "import") == "import")
         cross_calls = sum(1 for e in edges if e.get("cross"))
         total_symbols = sum(len(n.get("symbols", [])) for n in nodes.values())
-        cycles = count_cycles(nodes)
-        health = health_score(nodes=nodes, edges=edges, issues=[], cycles_back_edges=effective_cycles(nodes))
+        cycles = effective_cycles(nodes)
+        arch_edges = [e for e in edges if e.get("kind", "import") != "calls"]
+        health = health_score(nodes=nodes, edges=arch_edges, issues=[], cycles_back_edges=effective_cycles(nodes))
 
         layers: Dict[str, Dict[str, int]] = {}
         for p, n in nodes.items():

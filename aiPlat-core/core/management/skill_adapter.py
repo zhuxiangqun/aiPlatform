@@ -329,7 +329,7 @@ def _infer_category(name: str, desc: str, body: str) -> str:
         return "document"
     if any(k in combined for k in ("analysis", "分析", "insight", "洞察")):
         return "analysis"
-    if any(k in combined for k in ("review", "审查", "check", "检查", "lint")):
+    if any(k in combined for k in ()):
         return "analysis"
     return "general"
 
@@ -393,7 +393,7 @@ def _infer_trigger_keywords(name: str, desc: str) -> list:
     # From description
     desc_lower = desc.lower()
     for kw in ("search", "research", "检索", "搜索", "查找", "查询", "trend", "趋势",
-               "generate", "生成", "analyze", "分析", "review", "审查"):
+               "generate", "analyze"):
         if kw in desc_lower and kw not in keywords:
             keywords.append(kw)
     return keywords[:8]

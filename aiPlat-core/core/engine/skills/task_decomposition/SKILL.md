@@ -1,7 +1,8 @@
 ---
 name: task_decomposition
 display_name: 任务分解
-description: 将复杂任务分解为子任务与依赖。触发条件：用户描述的任务过于复杂、多个步骤、有依赖关系。跳过条件：单步骤任务由 task_planning 处理。 涉及任务相关操作。 主要进行分解。
+description: 将复杂任务分解为子任务与依赖。触发条件：用户描述的任务过于复杂、多个步骤、有依赖关系。跳过条件：单步骤任务由 task_planning
+  处理。 涉及任务相关操作。 主要进行分解。
 category: analysis
 version: 1.0.0
 status: enabled
@@ -48,7 +49,27 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 将复杂任务拆分为可执行子任务
+keywords:
+  objects:
+  - 任务
+  - 需求
+  - 目标
+  actions:
+  - 拆解
+  - 分解
+  - 分析
+  constraints:
+  - 粒度
+  - 可行性
+trigger_conditions:
+- when: 用户要求拆解任务
+  query: 拆解/分解任务
+- when: 不应用场景
+  description: 跳过条件：任务已明确且无需拆解时不触发。
+skip_when: 跳过条件：任务已明确且无需拆解时不触发。
 ---
+
+
 
 # 任务分解（Engine）
 

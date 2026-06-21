@@ -15,6 +15,7 @@ from core.api.utils.run_contract import wrap_execution_result_as_run_summary
 from core.api.facades.runtime_facade import KernelRuntime, ExecutionRequest, get_kernel_runtime
 from core.api.facades.service_facade import create_conversation_service
 from core.api.facades.service_facade import normalize_conversation_scope
+from core.harness.utils.model_injection import best_model_for_purpose
 from core.schemas_conversations import (
     ConversationCreateRequest,
     ConversationQueryRequest,
@@ -93,6 +94,7 @@ async def create_conversation(request: ConversationCreateRequest, http_request: 
         title=request.title or "资料对话",
         scope=(request.scope.model_dump(exclude_none=True) if request.scope else {"collection_id": "default", "doc_ids": []}),
         profile=request.profile.model_dump(exclude_none=True) if request.profile else {"citation_required": True, "answer_style": "concise", "language": "zh-CN"},
+        agent_type=request.agent_type or "materials_chat",
     )
     return out
 
@@ -176,7 +178,12 @@ async def query_conversation(session_id: str, request: ConversationQueryRequest,
             _resp = await _client.post(
                 f"{core_url}/api/core/gateway/execute",
                 json=exec_body,
-                headers={"Content-Type": "application/json"},
+                headers={
+                    "Content-Type": "application/json",
+                    "X-AIPLAT-REQUEST-ID": http_request.headers.get("X-AIPLAT-REQUEST-ID", f"req-{session_id}"),
+                    "X-AIPLAT-TENANT-ID": str(tenant_id),
+                    "X-AIPLAT-ACTOR-ID": str(user_id),
+                },
             )
             core_result = _resp.json()
     except Exception as e:
@@ -215,23 +222,37 @@ async def query_conversation_stream(session_id: str, request: ConversationQueryR
     collection_id = str(scope_applied.get("collection_id") or "default")
     question = str(request.message or "").strip()
 
+    # Domain routing (multi-domain support)
+    domain_id = "default"
+    domain_name = ""
+    try:
+        from core.harness.knowledge.domain_router import DomainRouter
+        router = DomainRouter()
+        domain_id = router.classify(question)
+        domain_cfg = router.domain_config(domain_id)
+        domain_name = domain_cfg.get("name", domain_id)
+    except Exception:
+        pass
+
     await svc.append_conversation_user_message(
         tenant_id=tenant_id, session_id=session_id, user_id=user_id, content=question,
     )
 
-    # Retrieve content from Wiki knowledge pages (primary) or KB documents (fallback)
+    # Retrieve content via unified retrieval (Wiki-first + CRAG fallback + domain routing)
     doc_content = ""
-    is_wiki = bool(wiki_titles)
     try:
-        if is_wiki:
-            from core.api.core_facade import wiki_retrieve
-            results = wiki_retrieve(query=question, wiki_titles=wiki_titles if wiki_titles else None, top_k=8)
-        else:
-            from core.api.facades.kb_facade import kb_retrieve
-            results = kb_retrieve(query=question, doc_ids=doc_ids, collection_id=collection_id, tenant_id=tenant_id, top_k=5)
+        from core.harness.syscalls.retrieval import sys_knowledge_retrieve
+        retrieval_kwargs: dict = {
+            "query": question, "top_k": 8, "wiki_first": True,
+            "collection_id": collection_id, "tenant_id": tenant_id,
+            "domain_id": domain_id,
+        }
+        if wiki_titles:
+            retrieval_kwargs["wiki_titles"] = wiki_titles
+        results = sys_knowledge_retrieve(**retrieval_kwargs)
         if results:
             doc_content = "\n\n---\n\n".join(
-                f"[{r.get('title', '')}] {r.get('text', '')}" if r.get('title') else r.get('text', '')
+                f"[{r.get('title', '')}] {r.get('text', r.get('content', ''))}" 
                 for r in results
             )
     except ImportError:
@@ -246,17 +267,15 @@ async def query_conversation_stream(session_id: str, request: ConversationQueryR
             from core.api.core_facade import llm_generate_stream
             full_answer = []
             from core.harness.utils.prompt_loader import _sync_resolve
-            system_prompt = _sync_resolve("kb-qa",
-                scenario="wiki" if is_wiki else "document",
-                documents="", question="",
-            ).split("\n\n")[0]
+            system_prompt = _sync_resolve("kb-chat-system-role")
             async for chunk in llm_generate_stream(
                 None,
                 [
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"知识内容：\n{doc_content[:4000]}\n\n用户问题：{question}\n\n请回答："},
+                    {"role": "user", "content": f"知识内容：\n{doc_content[:8000]}\n\n用户问题：{question}\n\n请回答："},
                 ],
-                model_name=best_model_for_purpose("chat"), temperature=0.3, max_tokens=2000,
+                model_name=best_model_for_purpose("chat"), temperature=0.3,
+                max_tokens=_best_max_tokens(best_model_for_purpose("chat")),
             ):
                 if chunk:
                     full_answer.append(chunk)
@@ -275,8 +294,17 @@ async def query_conversation_stream(session_id: str, request: ConversationQueryR
                 )
             except Exception:
                 pass
-            yield f"data: {_json.dumps({'done': True, 'answer': answer})}\n\n"
+            yield f"data: {_json.dumps({'done': True, 'answer': answer, 'domain_id': domain_id, 'domain_name': domain_name})}\n\n"
         except Exception as e:
             yield f"data: {_json.dumps({'error': str(e), 'done': True})}\n\n"
 
     return StreamingResponse(_stream(), media_type="text/event-stream")
+
+
+def _best_max_tokens(model_name: str = "") -> int:
+    """Get optimal max_tokens based on model context window size."""
+    try:
+        from core.harness.knowledge.doc_compressor import get_model_max_completion
+        return get_model_max_completion(model_name)
+    except Exception:
+        return 2000

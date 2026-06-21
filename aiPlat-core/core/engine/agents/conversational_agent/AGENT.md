@@ -7,11 +7,23 @@ version: 1.0.0
 status: running
 protected: true
 category: engineering
-tags: [conversational, chat]
-skills: [chitchat, translation, text_generation]
-tools: [sysgraph_search, sysgraph_context]
+tags:
+- conversational
+- chat
+skills:
+- chitchat
+- translation
+- text_generation
+- code-hygiene
+tools:
+- sysgraph_search
+- sysgraph_context
 model: deepseek-chat
+config:
+  system_prompt: 你是 conversational_agent，基于对话模式的通用 Agent。引擎内置（engine）：仅核心能力层默认可用。
+  model: deepseek-chat
 ---
+
 
 ## 交接协议 (Handoff)
 

@@ -1,0 +1,22 @@
+name: feishu_bridge
+enabled: false
+transport: stdio
+command: python3
+args: ["feishu_mcp.py"]
+url: null
+auth: null
+allowed_tools: []
+metadata:
+  description: "飞书桥接 — 通过 Agent 收发飞书消息、操作飞书文档和表格。配置后可让 AI 助手在飞书中执行任务。"
+  template: "feishu_bridge"
+  icon: "feishu"
+  install_command: "pip install lark-oapi"
+  config:
+    FEISHU_APP_ID:
+      label: "App ID"
+      type: string
+      required: true
+    FEISHU_APP_SECRET:
+      label: "App Secret"
+      type: secret
+      required: true

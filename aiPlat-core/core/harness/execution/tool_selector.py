@@ -34,7 +34,7 @@ class ToolSelector:
         except Exception:
             try:
                 from sentence_transformers import SentenceTransformer
-                self._embedder = SentenceTransformer("all-MiniLM-L6-v2", local_files_only=True)
+                self._embedder = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2", local_files_only=True)
             except Exception:
                 self._use_embedding = False
                 self._embedder = False  # tried, failed

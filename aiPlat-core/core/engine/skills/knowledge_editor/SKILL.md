@@ -1,7 +1,8 @@
 ---
 name: knowledge_editor
 display_name: 知识编缉
-description: 阅读新文档，识别受影响的Wiki页面，编排更新。LLM持续编缉和维护知识库而非检索后丢弃。涉及代码生成和接口审查。 涉及Wiki相关操作。 主要进行编辑。
+description: 阅读新文档，识别受影响的Wiki页面，编排更新。LLM持续编缉和维护知识库而非检索后丢弃。涉及代码生成和接口审查。 涉及Wiki相关操作。
+  主要进行编辑。
 category: knowledge
 version: 1.0.0
 status: enabled
@@ -62,9 +63,30 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 持续编缉和维护 Wiki 知识库
-
 protected: true
+keywords:
+  objects:
+  - 知识条目
+  - Wiki页面
+  - 文档
+  actions:
+  - 编辑
+  - 更新
+  - 修改
+  - 维护
+  constraints:
+  - 格式
+  - 版本
+  - 一致性
+trigger_conditions:
+- when: 用户要求编辑知识
+  query: 编辑知识/更新Wiki
+- when: 不应用场景
+  description: 跳过条件：页面受保护或用户无编辑权限时不触发。
+skip_when: 跳过条件：页面受保护或用户无编辑权限时不触发。
 ---
+
+
 
 ## SOP
 

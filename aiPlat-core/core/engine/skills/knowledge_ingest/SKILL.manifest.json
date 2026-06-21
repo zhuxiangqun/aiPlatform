@@ -1,3 +1,8 @@
 {
-  "version": "1.0.0"
+  "name": "knowledge_ingest",
+  "type": "engine_skill",
+  "version": "1.0.0",
+  "created_at": "2026-06-21T20:58:52",
+  "auto_generated": true,
+  "signature": "pF5hPzVmx0IOuUjL+W1HWgEklE8GSihOzEZaabffQi+BSGutU4zWY2oi2YZzc7MWcyi0gJspTGntDIlBcC0WDg=="
 }

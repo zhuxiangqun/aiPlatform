@@ -132,13 +132,45 @@ export const workspaceAgentApi = {
     return apiClient.post<{ id: string; status: string; name: string }>('/core/workspace/agents', data);
   },
 
-  autoFill: async (data: { name: string; description: string }) => {
+  autoFill: async (data: { name: string; description: string; async_mode?: boolean }) => {
     return apiClient.post<{
       agent_type: string; config: Record<string, unknown>;
       skills: string[]; tools: string[]; mcp_ids: string[]; agent_ids: string[];
       memory_config: Record<string, unknown>; sop_text: string; reasoning: string;
       workflow_ids: string[]; trigger_conditions: string[];
+      task_id?: string; status?: string;
     }>('/core/workspace/agents/auto-fill', data);
+  },
+
+  pollAutoFill: async (taskId: string) => {
+    return apiClient.get<{
+      task_id: string; status: string;
+      result: any; error: string;
+    }>(`/core/workspace/agents/auto-fill/${taskId}`);
+  },
+
+  classify: async (data: { message: string; agent_id?: string }) => {
+    return apiClient.post<{
+      intent: string; confidence: number; confidence_level: string;
+      primary_route: { kind: string; target: string; score: number; reason: string };
+      suggested_routes: Array<{ kind: string; target: string; score: number; reason: string }>;
+      entities: Record<string, unknown>;
+      reason: string; should_clarify: boolean; clarification_prompt: string;
+      suggested_skill_ids: string[]; suggested_tool_ids: string[];
+    }>('/core/workspace/routing/classify', data);
+  },
+
+  audit: async (agentId: string) => {
+    return apiClient.post<{
+      agent_id: string;
+      issues: Array<{
+        severity: string; category: string; field: string;
+        current?: string; message: string; suggestion?: string;
+        fix_available?: boolean;
+        fix?: { type: string; from?: string; to?: string; tool?: string };
+      }>;
+      summary: { errors: number; warnings: number; info: number; total: number; health: string };
+    }>(`/core/workspace/agents/${encodeURIComponent(agentId)}/audit`);
   },
 
   importDetect: async (data: { url?: string; file_content?: string }) => {
@@ -150,20 +182,33 @@ export const workspaceAgentApi = {
     }>('/core/workspace/agents/import-detect', data);
   },
 
-  autoFillWithRole: async (data: { name: string; description: string; role_definition: Record<string, unknown> }) => {
+  autoFillWithRole: async (data: { name: string; description: string; role_definition: Record<string, unknown>; async_mode?: boolean }) => {
     return apiClient.post<{
       agent_type: string; config: Record<string, unknown>;
       skills: string[]; tools: string[]; mcp_ids: string[]; agent_ids: string[];
       memory_config: Record<string, unknown>; sop_text: string; reasoning: string;
       workflow_ids: string[]; trigger_conditions: string[];
+      task_id?: string; status?: string;
     }>('/core/workspace/agents/auto-fill', data);
   },
 
-  generateRoleDefinition: async (data: { name: string; description: string }) => {
+  generateRoleDefinition: async (data: { name: string; description: string; async_mode?: boolean }) => {
     return apiClient.post<{
       role_name: string; responsibilities: string[]; scenarios: string[];
       required_capabilities: string[]; workflow_hint: string; reasoning: string;
+      task_id?: string; status?: string;
     }>('/core/workspace/agents/generate-role-definition', data);
+  },
+
+  pollRoleDefinition: async (taskId: string) => {
+    return apiClient.get<{
+      task_id: string; status: string;
+      result: {
+        role_name: string; responsibilities: string[]; scenarios: string[];
+        required_capabilities: string[]; workflow_hint: string; reasoning: string;
+      };
+      error: string;
+    }>(`/core/workspace/agents/generate-role-definition/${taskId}`);
   },
 
   submitForReview: async (agentId: string) => {
@@ -2382,4 +2427,42 @@ export const overviewApi = {
   getDiagnosticsSummary: async () => {
     return apiClient.get<any>('/core/diagnostics/summary');
   },
+};
+
+// ── Fine-tuning API ───────────────────────────────────────────────────
+
+export const finetuneApi = {
+  // Datasets
+  listDatasets: async (params?: { limit?: number; offset?: number }) => {
+    const qs = params ? `?${new URLSearchParams(params as any).toString()}` : '';
+    return apiClient.get<{ datasets: any[]; total: number }>(`/core/finetune/datasets${qs}`);
+  },
+  createDataset: async (data: { name: string; description?: string }) => {
+    return apiClient.post<any>('/core/finetune/datasets', data);
+  },
+  getDataset: async (id: string) => apiClient.get<any>(`/core/finetune/datasets/${id}`),
+  updateDataset: async (id: string, data: { name?: string; description?: string }) => {
+    return apiClient.put<any>(`/core/finetune/datasets/${id}`, data);
+  },
+  deleteDataset: async (id: string) => apiClient.delete<any>(`/core/finetune/datasets/${id}`),
+  importDataset: async (id: string, content: string, fileName: string) => {
+    return apiClient.post<any>(`/core/finetune/datasets/${id}/import`, { content, file_name: fileName });
+  },
+  previewDataset: async (id: string, limit?: number) => {
+    return apiClient.get<any>(`/core/finetune/datasets/${id}/preview?limit=${limit || 20}`);
+  },
+
+  // Jobs
+  listJobs: async (params?: { limit?: number; offset?: number }) => {
+    const qs = params ? `?${new URLSearchParams(params as any).toString()}` : '';
+    return apiClient.get<{ jobs: any[]; total: number }>(`/core/finetune/jobs${qs}`);
+  },
+  createJob: async (data: { base_model: string; dataset_id: string; provider?: string; template?: string; custom_name?: string; hyperparams?: Record<string, unknown> }) => {
+    return apiClient.post<any>('/core/finetune/jobs', data);
+  },
+  getJob: async (id: string) => apiClient.get<any>(`/core/finetune/jobs/${id}`),
+  cancelJob: async (id: string) => apiClient.delete<any>(`/core/finetune/jobs/${id}`),
+
+  // Providers
+  listProviders: async () => apiClient.get<{ providers: any[] }>('/core/finetune/providers'),
 };

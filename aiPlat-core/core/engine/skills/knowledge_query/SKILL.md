@@ -83,9 +83,28 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 从结构化知识库返回带引用的精准答案
-
 protected: true
+keywords:
+  objects:
+  - 知识
+  - 文档
+  - 条目
+  actions:
+  - 查询
+  - 提问
+  - 检索
+  constraints:
+  - 知识库
+  - 范围
+trigger_conditions:
+- when: 用户要求查询知识
+  query: 查知识/问知识库
+- when: 不应用场景
+  description: 跳过条件：用户未指定知识库范围时不触发。
+skip_when: 跳过条件：用户未指定知识库范围时不触发。
 ---
+
+
 
 # 知识库查询
 

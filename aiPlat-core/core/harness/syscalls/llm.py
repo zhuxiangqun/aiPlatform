@@ -856,13 +856,13 @@ async def sys_llm_generate(
             # Apply per-call overrides to model adapter config
             if temperature is not None:
                 try: model._config.temperature = temperature
-                except Exception: pass
+                except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
             if max_tokens is not None:
                 try: model._config.max_tokens = max_tokens
-                except Exception: pass
+                except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
             if response_format is not None:
                 try: model._config.response_format = response_format
-                except Exception: pass
+                except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
             # Mark gate coverage (Phase 3 GateTracer)
             try:
                 from core.harness.kernel.execution_context import mark_gate_passed

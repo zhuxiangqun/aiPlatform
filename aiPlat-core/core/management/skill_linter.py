@@ -401,7 +401,7 @@ def propose_skill_fixes(*, skill: Any, lint: Dict[str, Any]) -> Dict[str, Any]:
     if {"triggers_too_few", "generic_description", "missing_negative_triggers", "missing_keywords", "missing_required_questions"} & codes:
         kw = meta.get("keywords") if isinstance(meta.get("keywords"), dict) else {}
         objects = _as_list((kw or {}).get("objects")) or ["代码", "SQL", "日志"]
-        actions = _as_list((kw or {}).get("actions")) or ["审查", "排查", "优化"]
+        actions = _as_list((kw or {}).get("actions")) or []
         constraints = _as_list((kw or {}).get("constraints")) or ["按项目", "最近7天"]
 
         gen_triggers: List[str] = []
@@ -409,7 +409,10 @@ def propose_skill_fixes(*, skill: Any, lint: Dict[str, Any]) -> Dict[str, Any]:
             for o in objects[:2]:
                 gen_triggers.append(f"帮我{a}{o}")
                 gen_triggers.append(f"{a}{o}并给出建议")
-        gen_triggers.extend([f"{objects[0]} {constraints[0]}", f"{actions[0]} {objects[0]} {constraints[1]}"])
+        if objects and constraints:
+            gen_triggers.append(f"{objects[0]} {constraints[0]}")
+        if actions and objects and len(constraints) >= 2:
+            gen_triggers.append(f"{actions[0]} {objects[0]} {constraints[1]}")
         dedup: List[str] = []
         for t in gen_triggers:
             if t and t not in dedup:
@@ -456,7 +459,7 @@ def propose_skill_fixes(*, skill: Any, lint: Dict[str, Any]) -> Dict[str, Any]:
                 {
                     "op": "upsert",
                     "path": ["description"],
-                    "value": f"当用户提到{objects[0]}/{objects[1] if len(objects)>1 else objects[0]}并希望{actions[0]}时触发；关键词覆盖：{objects[0]}/{actions[0]}/{constraints[0]}；输入需要：关键上下文/文件/范围；输出为：结构化建议+markdown；不适用于：OCR/部署。",
+                    "value": f"当用户提到{objects[0] if objects else '具体内容'}/{objects[1] if len(objects)>1 else (objects[0] if objects else '场景')}并希望{actions[0] if actions else '操作'}时触发；关键词覆盖：{objects[0] if objects else ''}/{actions[0] if actions else ''}/{constraints[0] if constraints else ''}；输入需要：关键上下文/文件/范围；输出为：结构化建议+markdown；不适用于：OCR/部署。",
                 }
             ],
             before="description: " + (desc[:80] + "..." if len(desc) > 80 else desc) + "\n",
@@ -473,7 +476,7 @@ def propose_skill_fixes(*, skill: Any, lint: Dict[str, Any]) -> Dict[str, Any]:
 
         # Add a small set of generic disambiguation constraints if missing
         add_constraints = []
-        for c in ["按租户", "按项目", "仅后端", "仅 SQL"]:
+        for c in []:
             if c not in constraints:
                 add_constraints.append(c)
             if len(add_constraints) >= 2:

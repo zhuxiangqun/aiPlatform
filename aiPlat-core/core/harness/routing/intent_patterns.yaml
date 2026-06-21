@@ -1,0 +1,84 @@
+# Intent classification patterns — drives the routing classifier.
+# All business-specific labels and agent role suggestions are configured here,
+# not hardcoded in Python per CLAUDE.md §5.29 v4.1.
+
+intent_patterns:
+  # ── Keyword pattern → intent + confidence ─────────────────
+  rule_table:
+    - [ "(?:设计|架构).*(?:系统|平台|方案|框架|数据库)", "ARCHITECTURE_DESIGN", 0.90]
+    - [ "(?:退款|退货|退钱|退了|退.*款)", "REFUND_REQUEST", 0.90]
+    - [ "(?:订单|物流|快递|发货|收货|没收到|到哪了)", "ORDER_QUERY", 0.88]
+    - [ "(?:投诉|差评|态度|举报|维权)", "COMPLAINT", 0.85]
+    - [ "(?:怎么用|如何使用|功能说明|产品介绍|规格参数)", "PRODUCT_INFO", 0.82]
+    - [ "(?:会员|VIP|积分|账号|注册|登录|密码)", "ACCOUNT_SERVICE", 0.80]
+    - [ "(?:审查|review|代码质量|code.?review|安全问题)", "CODE_REVIEW", 0.90]
+    - [ "(?:写.*代码|实现.*功能|create|implement|生成.*代码|写一个|帮我写|创建.*API|开发.*接口)", "CODE_GENERATION", 0.89]
+    - [ "(?:bug|修.*错|fix|修复|异常|报错|crash)", "BUG_FIX", 0.82]
+    - [ "(?:架构|设计.*系统|技术选型|方案设计|系统设计)", "ARCHITECTURE_DESIGN", 0.82]
+    - [ "(?:技术.*问|咨询|请教|怎么理解|最佳实践|对比.*框架|什么.*区别|什么.*不同|哪个更好|选哪个|怎么选|优缺点.*比较|比较.*优缺点)", "TECH_CONSULT", 0.82]
+    - [ "(?:打开|访问|浏览).*(?:http|www\\.)", "E2E_TEST", 0.88]
+    - [ "(?:测试用例|test.?case|生成.*测试|单元测试|测试.*功能|测试.*购物|测试.*流程|自动化.*测试)", "TEST_GENERATION", 0.85]
+    - [ "(?:E2E|端到端|全站.*测试|浏览器.*测试|page.*test|页面.*测试)", "E2E_TEST", 0.85]
+    - [ "(?:测试|验证).*(?:功能|流程|接口|API|页面|系统)", "E2E_TEST", 0.82]
+    - [ "(?:总结|归纳|概括|summary|summarize|整理.*要点)", "SUMMARY", 0.82]
+    - [ "(?:对比|比较|diff|compare|vs\\.|区别|优缺点)", "COMPARE", 0.80]
+    - [ "(?:证据|来源|引用|出处|原文|根据.*哪里)", "EVIDENCE_TRACE", 0.78]
+    - [ "(?:安全|漏洞|扫描|渗透|渗透测试)", "SECURITY_AUDIT", 0.88]
+    - [ "(?:论文|paper|arxiv|学术|research)", "RESEARCH", 0.85]
+    - [ "(?:部署|deploy|上线|发布|release|CICD|CI/CD)", "DEPLOYMENT", 0.85]
+    - [ "(?:k8s|kubernetes|docker|容器|微服务)", "DEPLOYMENT", 0.82]
+    - [ "(?:监控|告警|日志|metrics|prometheus|grafana)", "OBSERVABILITY", 0.82]
+    - [ "(?:数据库|database|SQL|schema|migration|优化.*查询)", "DATA_ENGINEERING", 0.82]
+    - [ "(?:性能|优化|慢|benchmark|profiling|负载)", "PERFORMANCE", 0.82]
+    - [ "(?:调研|资讯|行业.*报告|趋势|最新.*动态|news|头条)", "RESEARCH", 0.80]
+    - [ "(?:文档|编写.*文档|生成.*文档|说明文档|README)", "DOCUMENTATION", 0.80]
+    - [ "(?:招聘|面试|hire|JD|简历)", "RECRUITMENT", 0.78]
+    - [ "(?:翻译|translate|英译中|中译英|convert.*language)", "TRANSLATION", 0.68]
+    - [ "(?:闲聊|天气|笑话|兴趣|爱好|你好)", "CHITCHAT", 0.60]
+
+  # ── Suggested agent display names per intent category ─────
+  # Used for UI hints: "建议使用 {agent_name}"
+  suggested_agent_labels:
+    ORDER_QUERY: "订单查询 Agent"
+    REFUND_REQUEST: "退款处理 Agent"
+    COMPLAINT: "投诉处理 Agent"
+    PRODUCT_INFO: "产品咨询 Agent"
+    ACCOUNT_SERVICE: "账号服务 Agent"
+    CODE_REVIEW: "代码审核 Agent"
+    CODE_GENERATION: "代码生成 Agent"
+    BUG_FIX: "缺陷修复 Agent"
+    ARCHITECTURE_DESIGN: "架构设计 Agent"
+    TECH_CONSULT: "技术咨询 Agent"
+    E2E_TEST: "E2E 测试 Agent"
+    TEST_GENERATION: "测试生成 Agent"
+    SUMMARY: "内容总结 Agent"
+    COMPARE: "内容对比 Agent"
+    EVIDENCE_TRACE: "溯源自辨 Agent"
+    SECURITY_AUDIT: "安全审计 Agent"
+    RESEARCH: "调研搜索 Agent"
+    DEPLOYMENT: "部署运维 Agent"
+    OBSERVABILITY: "监控可观测 Agent"
+    MONITORING: "监控 Agent"
+    DATA_ENGINEERING: "数据工程 Agent"
+    PERFORMANCE: "性能优化 Agent"
+    DOCUMENTATION: "文档编写 Agent"
+    RECRUITMENT: "智能 HR Agent"
+    TRANSLATION: "翻译 Agent"
+    CHITCHAT: "对话助手"
+
+  # ── Agent tags for category-based matching ─────────────────
+  category_to_tags:
+    CODE_GENERATION: ["code", "programming", "developer"]
+    CODE_REVIEW: ["code", "review", "quality"]
+    BUG_FIX: ["code", "review", "debugging"]
+    E2E_TEST: ["testing", "browser", "e2e"]
+    TEST_GENERATION: ["testing", "automation"]
+    SECURITY_AUDIT: ["security", "audit"]
+    ARCHITECTURE_DESIGN: ["architecture", "design"]
+    DEPLOYMENT: ["devops", "deployment", "infrastructure"]
+
+  # ── Agent alternatives for fallback suggestions ─────────────
+  agent_alternatives:
+    CODE_REVIEW: ["安全审计 Agent", "缺陷修复 Agent"]
+    BUG_FIX: ["代码生成 Agent", "代码审核 Agent"]
+    ARCHITECTURE_DESIGN: ["技术咨询 Agent"]

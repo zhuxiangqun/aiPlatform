@@ -54,6 +54,8 @@ class AgentAutoFillRequest(BaseModel):
     name: str = ""
     description: str = ""
     role_definition: Optional[Dict[str, Any]] = None
+    async_mode: bool = False  # 异步模式：立即返回 task_id，后台执行
+    metadata: Optional[Dict[str, Any]] = None
 
 
 class RoleDefinitionResponse(BaseModel):
@@ -80,6 +82,10 @@ class AgentAutoFillResponse(BaseModel):
     workflow_ids: List[str] = Field(default_factory=list)
     trigger_conditions: List[str] = Field(default_factory=list)
     template_id: str = ""  # recommended prompt app template
+    stages: List[Dict[str, Any]] = Field(default_factory=list)  # v4.0 pipeline stages
+    # Async mode fields
+    task_id: Optional[str] = None
+    status: Optional[str] = None
 
 
 class AgentAutoFillBatchRequest(BaseModel):

@@ -12,8 +12,11 @@ Architecture:
 
 from __future__ import annotations
 
+import os
+import re
 from collections import defaultdict
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Set
 
 
@@ -113,12 +116,31 @@ class UnusedSkillCheck(CapRule):
         "translation", "wiki_lint", "wiki_query",
     }
 
+    # Workspace persona skills are injected via agent system prompt (not sys_skill_call)
+    # They won't appear in AGENT.md required_skills but ARE used at runtime.
+    _WORKSPACE_PERSONA = {
+        "ponytail-lazy", "security-auditor", "test-engineer", "web-perf-auditor",
+    }
+
+    # Workspace utility skills are available system-wide and don't need agent binding.
+    # They function as prompt-only templates (execution_type=prompt) called on-demand.
+    _WORKSPACE_UTILITY = {
+        "capability_scout", "code", "component_design", "data_model_design",
+        "http_request", "refactor_flat_to_layered", "summarize",
+        "tech_selection", "webhook_trigger",
+    }
+
+    # Engine system skills registered for global availability.
+    _ENGINE_SYSTEM = {
+        "code-hygiene",
+    }
+
     def check(self, ctx: CapContext) -> List[CapIssue]:
         issues = []
         for nid, n in ctx.nodes.items():
-            if n["type"] == "skill" and ctx.in_degree.get(nid, 0) == 0:
-                if n["label"] in self._ENGINE_INTERNAL:
-                    continue  # Used via engine sys_skill_call, not AGENT.md
+            if n["type"] in ("skill", "workspace_skill") and ctx.in_degree.get(nid, 0) == 0:
+                if n["label"] in self._ENGINE_INTERNAL or n["label"] in self._WORKSPACE_PERSONA or n["label"] in self._WORKSPACE_UTILITY or n["label"] in self._ENGINE_SYSTEM:
+                    continue  # Used via engine syscall or persona system prompt
                 issues.append(CapIssue(type=self.code, label=n["label"]))
         return issues
 
@@ -142,10 +164,19 @@ class OrphanAgentCheck(CapRule):
     issue_key = "orphan_agents"
     description = "Orphan agents (0 out-degree)"
 
+    # Persona agents are selected directly by users/routing, not via skill/workflow binding
+    _WORKSPACE_PERSONA = {
+        "test-engineer", "debugger", "documentation-writer",
+        "meta_agent", "performance-analyzer", "planning_agent",
+        "secure-reviewer", "materials_chat",
+    }
+
     def check(self, ctx: CapContext) -> List[CapIssue]:
         issues = []
         for nid, n in ctx.nodes.items():
-            if n["type"] == "agent" and ctx.out_degree.get(nid, 0) == 0:
+            if n["type"] in ("agent", "workspace_agent") and ctx.out_degree.get(nid, 0) == 0:
+                if n["label"] in self._WORKSPACE_PERSONA:
+                    continue  # Persona agent — selected directly, not via binding
                 issues.append(CapIssue(type=self.code, label=n["label"]))
         return issues
 
@@ -260,7 +291,7 @@ class HandlerMissingCheck(CapRule):
     def check(self, ctx: CapContext) -> List[CapIssue]:
         issues = []
         for nid, n in ctx.nodes.items():
-            if n.get("type") != "skill":
+            if n.get("type") not in ("skill", "workspace_skill"):
                 continue
             exec_type = n.get("execution_type", "")
             has_handler = n.get("has_handler", False)
@@ -328,6 +359,99 @@ class SyscallCoverageCheck(CapRule):
         return min(len(issues) * 2, 5)
 
 
+class RuntimeEvalCheck(CapRule):
+    """Check if agents have runtime evaluation data."""
+
+    code = "runtime_eval"
+    issue_key = "runtime_eval"
+    description = "Agent has no runtime evaluation data"
+
+    _EVAL_DIR = str(Path(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))) / "eval_results")
+
+    def __init__(self):
+        super().__init__()
+        Path(self._EVAL_DIR).mkdir(parents=True, exist_ok=True)
+
+    def check(self, ctx: CapContext) -> List[CapIssue]:
+        issues = []
+        for nid, n in ctx.nodes.items():
+            if n.get("type") not in ("agent", "workspace_agent"):
+                continue
+            agent_id = n["label"]
+            result_files = list(Path(self._EVAL_DIR).glob(f"{agent_id}_*.json"))
+            if not result_files:
+                issues.append(CapIssue(
+                    type=self.code,
+                    label=agent_id,
+                    detail="No runtime evaluation data",
+                ))
+        return issues
+
+    def penalty(self, ctx: CapContext, issues: List[CapIssue]) -> float:
+        total = ctx.by_type.get("agent", 0) + ctx.by_type.get("workspace_agent", 0)
+        if total == 0:
+            return 0
+        ratio = len(issues) / total
+        if ratio > 0.9:
+            return 5
+        elif ratio > 0.5:
+            return 2
+        return 0
+
+
+class CodeHygieneCheck(CapRule):
+    """Check if agent AGENT.md references code-hygiene skill (Karpathy principles).
+    
+    Tests for either:
+    1. 'code-hygiene' in required_skills → explicitly adopted
+    2. Keywords in SOP body → implicitly applied
+    """
+
+    code = "code_hygiene"
+    issue_key = "code_hygiene"
+    description = "Agent not using code-hygiene principles (Karpathy 4 rules)"
+
+    _HYGIENE_KW = re.compile(
+        r"think before cod|simplicity first|surgical|goal.driven|验收标准|目标驱动|code.hygiene",
+        re.IGNORECASE
+    )
+
+    def check(self, ctx: CapContext) -> List[CapIssue]:
+        issues = []
+        for nid, n in ctx.nodes.items():
+            if n.get("type") not in ("agent", "workspace_agent"):
+                continue
+            ag_path = n.get("path", "")
+            if not ag_path:
+                continue
+            md_file = Path(ag_path) / "AGENT.md"
+            if not md_file.exists():
+                continue
+            try:
+                text = md_file.read_text(encoding="utf-8", errors="ignore")
+                if self._HYGIENE_KW.search(text):
+                    continue  # Already has hygiene principles
+                issues.append(CapIssue(
+                    type=self.code,
+                    label=n["label"],
+                    detail="missing code-hygiene principles (add 'code-hygiene' to required_skills)",
+                ))
+            except Exception:
+                pass
+        return issues
+
+    def penalty(self, ctx: CapContext, issues: List[CapIssue]) -> float:
+        total = ctx.by_type.get("agent", 0) + ctx.by_type.get("workspace_agent", 0)
+        if total == 0:
+            return 0
+        ratio = len(issues) / total
+        if ratio > 0.8:
+            return 5
+        elif ratio > 0.4:
+            return 2
+        return 0
+
+
 # ============================================================
 # Registry
 # ============================================================
@@ -362,7 +486,14 @@ class CapHealthRegistry:
 
         by_type: Dict[str, int] = defaultdict(int)
         for n in nodes.values():
-            by_type[n["type"]] += 1
+            t = n["type"]
+            # Aggregate engine + workspace scopes for backward-compatible checks
+            by_type[t] += 1
+            # Also add merged counts for rules that check "skill" / "agent" generically
+            if t in ("workspace_agent",):
+                by_type["agent"] += 1
+            elif t in ("workspace_skill",):
+                by_type["skill"] += 1
 
         ctx = CapContext(
             nodes=nodes, edges=edges,
@@ -389,6 +520,11 @@ class CapHealthRegistry:
                         all_issues[rule.issue_key] = [
                             {"agent": i.extra["agent"], "target": i.extra["target"],
                              "target_type": i.extra["target_type"]}
+                            for i in issues
+                        ]
+                    elif rule.issue_key == "code_hygiene":
+                        all_issues[rule.issue_key] = [
+                            {"agent": i.label, "missing": i.detail}
                             for i in issues
                         ]
                     elif rule.issue_key == "entry_point_duplicates":

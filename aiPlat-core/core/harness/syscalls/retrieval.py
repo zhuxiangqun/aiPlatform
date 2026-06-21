@@ -41,6 +41,7 @@ def sys_kb_retrieve(
     doc_ids: List[str],
     *,
     collection_id: str = "default",
+    domain_id: str = None,
     tenant_id: str = "default",
     top_k: int = 8,
     actor_scopes: List[str] = None,
@@ -114,6 +115,7 @@ def sys_kb_retrieve(
         from core.harness.knowledge.sqlite_retriever import create_sqlite_retriever
         retriever = create_sqlite_retriever(
             db_path=db_path, tenant_id=tenant_id, collection_id=collection_id,
+            domain_id=domain_id,
             retrieval_strategy="hybrid", rerank_enabled=True,
             rerank_method="multi_factor", rerank_top_k=top_k * 2,
             quality_gate_enabled=True,
@@ -475,6 +477,69 @@ def _sync_wiki_retrieve(query: str, wiki_titles: List[str] = None,
     ]
 
 
+class WikiCircuitBreaker:
+    u"""Circuit breaker for Wiki retrieval — prevents cascading failures.
+
+    States: CLOSED (normal) → OPEN (after failures) → HALF_OPEN (probe) → CLOSED/OPEN
+    
+    Isolated per (domain_id, tenant_id) to prevent one tenant's failure from affecting others.
+    """
+    STATE_CLOSED = "closed"
+    STATE_OPEN = "open"
+    STATE_HALF_OPEN = "half_open"
+
+    def __init__(self, failure_threshold: int = 3, recovery_timeout: float = 60.0):
+        self.failure_threshold = failure_threshold
+        self.recovery_timeout = recovery_timeout
+        import threading
+        self._lock = threading.Lock()
+        self._breakers: dict = {}  # {(domain_id, tenant_id): {'state', 'failures', 'last_failure'}}
+
+    def _get(self, domain_id: str = "default", tenant_id: str = "default") -> dict:
+        key = f"{domain_id}:{tenant_id}"
+        with self._lock:
+            if key not in self._breakers:
+                self._breakers[key] = {
+                    "state": self.STATE_CLOSED,
+                    "failures": 0,
+                    "last_failure": 0.0,
+                }
+            return self._breakers[key]
+
+    def allow_request(self, domain_id: str = "default", tenant_id: str = "default") -> bool:
+        u"""Check if a wiki request should be attempted."""
+        import time
+        b = self._get(domain_id, tenant_id)
+        with self._lock:
+            if b["state"] == self.STATE_CLOSED:
+                return True
+            if b["state"] == self.STATE_OPEN:
+                if time.time() - b["last_failure"] >= self.recovery_timeout:
+                    b["state"] = self.STATE_HALF_OPEN
+                    return True
+                return False
+            return True  # HALF_OPEN
+
+    def record_success(self, domain_id: str = "default", tenant_id: str = "default"):
+        b = self._get(domain_id, tenant_id)
+        with self._lock:
+            b["failures"] = 0
+            b["state"] = self.STATE_CLOSED
+
+    def record_failure(self, domain_id: str = "default", tenant_id: str = "default"):
+        import time
+        b = self._get(domain_id, tenant_id)
+        with self._lock:
+            b["failures"] += 1
+            b["last_failure"] = time.time()
+            if b["failures"] >= self.failure_threshold:
+                b["state"] = self.STATE_OPEN
+
+
+# Global wiki circuit breaker — isolated per (domain, tenant)
+_wiki_circuit_breaker = WikiCircuitBreaker(failure_threshold=3, recovery_timeout=60.0)
+
+
 def sys_knowledge_retrieve(
     query: str,
     *,
@@ -483,6 +548,7 @@ def sys_knowledge_retrieve(
     tenant_id: str = "default",
     collection_id: str = "default",
     wiki_collection_ids: List[str] = None,
+    domain_id: str = None,
     top_k: int = 8,
     wiki_first: bool = True,
     min_wiki_score: float = 0.3,
@@ -523,30 +589,46 @@ def sys_knowledge_retrieve(
     # ── Wiki-first path ──
     if wiki_first:
         _tw = _time.time()
-        try:
-            wiki_results = sys_wiki_retrieve(
-                query, wiki_titles=wiki_titles, top_k=top_k, link_depth=1,
-                collection_ids=wiki_collection_ids,
-                class_uri=target_class, expand_subclasses=expand_subclasses,
-                inference_expand=inference_expand,
-            )
-            # Tag wiki results
-            for wr in wiki_results:
-                wr["source_type"] = "wiki"
-            # Keep only results with decent scores
-            qualified = [wr for wr in wiki_results if wr.get("score", 0) >= min_wiki_score]
-            if len(qualified) >= max(1, top_k // 2):
-                # Wiki had sufficient quality results — use them
-                _wiki_time = _time.time() - _tw
-                logging.getLogger("retrieval").debug(
-                    f"sys_knowledge_retrieve: total={_time.time()-_t0:.3f}s wiki={_wiki_time:.3f}s kb=0 (wiki-only)")
-                results = qualified
-                remaining = 0
-            else:
-                # Otherwise: keep qualified wiki results, supplement with KB
-                results = qualified
-                remaining = top_k - len(qualified)
-        except Exception:
+        wiki_attempted = False
+        if _wiki_circuit_breaker.allow_request(
+            domain_id=domain_id or "default", tenant_id=tenant_id or "default"):
+            wiki_attempted = True
+            try:
+                wiki_results = sys_wiki_retrieve(
+                    query, wiki_titles=wiki_titles, top_k=top_k, link_depth=1,
+                    collection_ids=wiki_collection_ids,
+                    class_uri=target_class, expand_subclasses=expand_subclasses,
+                    inference_expand=inference_expand,
+                )
+                # Circuit breaker: success resets to CLOSED
+                _wiki_circuit_breaker.record_success(
+                    domain_id=domain_id or "default", tenant_id=tenant_id or "default")
+                # Tag wiki results
+                for wr in wiki_results:
+                    wr["source_type"] = "wiki"
+                # Keep only results with decent scores
+                qualified = [wr for wr in wiki_results if wr.get("score", 0) >= min_wiki_score]
+                if len(qualified) >= max(1, top_k // 2):
+                    # Wiki had sufficient quality results — use them
+                    _wiki_time = _time.time() - _tw
+                    logging.getLogger("retrieval").debug(
+                        f"sys_knowledge_retrieve: total={_time.time()-_t0:.3f}s wiki={_wiki_time:.3f}s kb=0 (wiki-only)")
+                    results = qualified
+                    remaining = 0
+                else:
+                    # Otherwise: keep qualified wiki results, supplement with KB
+                    results = qualified
+                    remaining = top_k - len(qualified)
+            except Exception:
+                _wiki_circuit_breaker.record_failure(
+                    domain_id=domain_id or "default", tenant_id=tenant_id or "default")
+                logger = logging.getLogger("retrieval")
+                logger.warning("sys_knowledge_retrieve: wiki retrieval failed, FALLBACK to KB-only", exc_info=True)
+                remaining = top_k
+                results = []
+        else:
+            logger = logging.getLogger("retrieval")
+            logger.warning("sys_knowledge_retrieve: wiki circuit OPEN, skipping wiki → KB-only")
             remaining = top_k
             results = []
     else:
@@ -561,6 +643,7 @@ def sys_knowledge_retrieve(
             kb_results = sys_kb_retrieve(
                 query, doc_ids=doc_ids or [],
                 collection_id=collection_id,
+                domain_id=domain_id,
                 tenant_id=tenant_id,
                 top_k=remaining,
             )

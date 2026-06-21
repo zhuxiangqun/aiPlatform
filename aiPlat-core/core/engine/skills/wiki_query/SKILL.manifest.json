@@ -1,3 +1,8 @@
 {
-  "version": "1.0.0"
+  "name": "wiki_query",
+  "type": "engine_skill",
+  "version": "1.0.0",
+  "created_at": "2026-06-21T20:58:52",
+  "auto_generated": true,
+  "signature": "gHx8zdegrcYvLmNNSqClNwY+4inEFi7DpgDpx5h0FtDvhM+TxMVXrSAr573t4ZeBBNK92dyl+ZPBwlr4YeNGBA=="
 }

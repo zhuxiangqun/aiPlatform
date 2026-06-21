@@ -21,11 +21,14 @@ const SystemOverview = lazy(() => import('./pages/SystemOverview/SystemOverview'
 const Alerts = lazy(() => import('./pages/Alerts/Alerts'));
 const InfraNodes = lazy(() => import('./pages/Infra/Nodes/Nodes'));
 const InfraModels = lazy(() => import('./pages/Infra/Models/Models'));
+const InfraFineTune = lazy(() => import('./pages/Infra/FineTune/FineTune'));
+const InfraOntology = lazy(() => import('./pages/Infra/Ontology/OntologyManager'));
 const InfraServices = lazy(() => import('./pages/Infra/Services/Services'));
 const InfraScheduler = lazy(() => import('./pages/Infra/Scheduler/Scheduler'));
 const InfraStorage = lazy(() => import('./pages/Infra/Storage/Storage'));
 const InfraNetwork = lazy(() => import('./pages/Infra/Network/Network'));
 const InfraMonitoring = lazy(() => import('./pages/Infra/Monitoring/Monitoring'));
+const LlmRouteMonitor = lazy(() => import('./pages/Infra/LlmRouteMonitor'));
 const CoreAgents = lazy(() => import('./pages/Core/Agents/Agents'));
 const CoreSkills = lazy(() => import('./pages/Core/Skills/Skills'));
 const CoreSkillsRollouts = lazy(() => import('./pages/Core/Skills/Rollouts'));
@@ -68,6 +71,7 @@ const AppsPage = lazy(() => import('./pages/App/Builder/AppsPage'));
 const AppChatPage = lazy(() => import('./pages/App/Builder/AppChatPage'));
 const AppProjects = lazy(() => import('./pages/App/Builder/ProjectsPage'));
 const AppProjectDetail = lazy(() => import('./pages/App/Builder/ProjectDetailPage'));
+const AppDiagrams = lazy(() => import('./pages/App/DiagramStudio'));
 const DiagnosticsHome = lazy(() => import('./pages/Diagnostics/Diagnostics'));
 const DiagnosticsDoctor = lazy(() => import('./pages/Diagnostics/Doctor'));
 const DiagnosticsTraces = lazy(() => import('./pages/Diagnostics/Traces/Traces'));
@@ -117,11 +121,14 @@ const router = createBrowserRouter([
       { path: 'onboarding', element: withSuspense(Onboarding) },
       { path: 'infra/nodes', element: withSuspense(InfraNodes) },
       { path: 'infra/models', element: withSuspense(InfraModels) },
+      { path: 'infra/finetune', element: withSuspense(InfraFineTune) },
+      { path: 'infra/ontology', element: withSuspense(InfraOntology) },
       { path: 'infra/services', element: withSuspense(InfraServices) },
       { path: 'infra/scheduler', element: withSuspense(InfraScheduler) },
       { path: 'infra/storage', element: withSuspense(InfraStorage) },
       { path: 'infra/network', element: withSuspense(InfraNetwork) },
       { path: 'infra/monitoring', element: withSuspense(InfraMonitoring) },
+      { path: 'infra/llm-stats', element: withSuspense(LlmRouteMonitor) },
       { path: 'core/agents', element: withSuspense(CoreAgents) },
       { path: 'core/skills', element: withSuspense(CoreSkills) },
       { path: 'core/skills-rollouts', element: withSuspense(CoreSkillsRollouts) },
@@ -167,6 +174,7 @@ const router = createBrowserRouter([
       { path: 'app/builder', element: withSuspense(AppProjects) },
       { path: 'app/apps', element: withSuspense(AppsPage) },
       { path: 'app/apps/:id/chat', element: withSuspense(AppChatPage) },
+      { path: 'app/diagrams', element: withSuspense(AppDiagrams) },
       { path: 'diagnostics', element: withSuspense(DiagnosticsHome) },
       { path: 'diagnostics/doctor', element: withSuspense(DiagnosticsDoctor) },
       { path: 'diagnostics/traces', element: withSuspense(DiagnosticsTraces) },

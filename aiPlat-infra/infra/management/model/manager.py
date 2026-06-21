@@ -55,6 +55,9 @@ class ModelManager:
         self._storage = ExternalModelStorage(data_path)
         self._health_checker = HealthChecker()
         self._local_endpoints: List[str] = []
+        self._recent_failures: Dict[str, List[bool]] = {}  # model_name → [success/fail bools, last 20]
+        self._first_failure_at: Dict[str, float] = {}  # model_name → timestamp of first failure
+        self._failure_ttl = 300  # 5 minutes auto-recovery
         
         # 加载所有模型
         self._load_all_models()
@@ -152,6 +155,41 @@ class ModelManager:
         """获取单个模型"""
         return self._models.get(model_id)
 
+    def record_success(self, model_name: str):
+        """Passive health: record a successful call. Resets failure TTL on success."""
+        stats = self._recent_failures.setdefault(model_name, [])
+        stats.append(True)
+        if len(stats) > 20:
+            stats.pop(0)
+        self._first_failure_at.pop(model_name, None)  # reset TTL on success
+
+    def record_failure(self, model_name: str):
+        """Passive health: record a failed call. Sets first_failure_at on first failure."""
+        import time
+        stats = self._recent_failures.setdefault(model_name, [])
+        stats.append(False)
+        if len(stats) > 20:
+            stats.pop(0)
+        if model_name not in self._first_failure_at:
+            self._first_failure_at[model_name] = time.time()
+
+    def _failure_rate(self, model_name: str) -> float:
+        """Return failure rate (0-1) from last 20 calls.
+        
+        Auto-recovery: if 5 minutes have passed since first failure, reset and return 0.
+        """
+        import time
+        stats = self._recent_failures.get(model_name, [])
+        if not stats:
+            return 0.0
+        # TTL auto-recovery
+        first_at = self._first_failure_at.get(model_name)
+        if first_at and time.time() - first_at > self._failure_ttl:
+            self._recent_failures.pop(model_name, None)
+            self._first_failure_at.pop(model_name, None)
+            return 0.0
+        return sum(1 for s in stats if not s) / len(stats)
+
     def get_default_model(self, purpose: str = "default") -> str:
         """Resolve purpose to model name via env vars (unique resolution point).
 
@@ -166,6 +204,8 @@ class ModelManager:
             "code":        ("AIPLAT_CODE_GEN_MODEL",),
             "query_translation": ("AIPLAT_QUERY_MODEL",),
             "wiki_curation": ("AIPLAT_WIKI_CURATION_MODEL",),
+            "ontology_gen": (),
+            "reranker":    ("AIPLAT_RERANK_MODEL",),
             "eval_code":   ("AIPLAT_EVAL_MODEL",),
         }
         if purpose in purpose_env_map:
@@ -204,16 +244,22 @@ class ModelManager:
         profile = profiles.get(purpose, {"prefer": ["chat"], "avoid": []})
         fallback_model = profile_data.get("fallback", {}).get("ultimate_model", "deepseek-chat")
 
-        # Priority: explicit model_overrides in config
+        # Read explicit model_overrides (preferred model, not hard override)
         overrides = profile_data.get("model_overrides", {})
-        if purpose in overrides:
-            override_name = overrides[purpose]
-            if override_name:
-                for m in self._models.values():
-                    if m.name == override_name and m.enabled:
-                        return [m.name]
-                if override_name in self._models:
-                    return [override_name]
+        preferred = overrides.get(purpose) if purpose in overrides else None
+        if preferred:
+            # Verify model exists and is enabled
+            found = False
+            for m in self._models.values():
+                if m.name == preferred and m.enabled:
+                    found = True
+                    break
+            if not found:
+                import logging as _logging
+                _logging.getLogger("aiplat.model").warning(
+                    f"Preferred model '{preferred}' for '{purpose}' not found or disabled"
+                )
+                preferred = None
 
         # Filter chat models
         chat_models = [m for m in self._models.values()
@@ -254,13 +300,75 @@ class ModelManager:
             if "function_call" in caps:
                 score += 20
 
+            # ── Quality feedback (v3.0: dynamic, programmatic validation) ──
+            try:
+                from .quality_validator import get_quality_tracker
+                qs = get_quality_tracker().get(m.name, purpose)
+                score += int(qs * 80)  # -80 to +80
+            except Exception:
+                pass
+
+            # ── Concurrency capacity (from model tags or env) ──
+            max_cc = getattr(m, 'max_concurrency', 0) or 0
+            if max_cc >= 50:
+                score += 30
+            elif max_cc >= 10:
+                score += 15
+            elif max_cc > 0:
+                score += 5
+
+            # ── v3.0: Latency penalty (P95 > threshold) ──
+            try:
+                from .latency_tracker import get_latency_tracker
+                lt = get_latency_tracker()
+                p95 = lt.p95_latency_seconds(m.name)
+                if p95 > 10:
+                    score -= 40
+                elif p95 > 5:
+                    score -= 20
+            except Exception:
+                pass
+
+            # ── v3.0: Congestion penalty (rate limiting / overload) ──
+            try:
+                from .latency_tracker import get_latency_tracker
+                penalty = get_latency_tracker().congestion_penalty(m.name)
+                score -= int(penalty)
+            except Exception:
+                pass
+
+            # ── v3.0: Cost penalty (per 1k tokens) ──
+            model_costs = profile_data.get("model_cost", {})
+            cost_per_1k = model_costs.get(m.name, 0.0) if model_costs else 0.0
+            if cost_per_1k > 0.01:
+                score -= 10
+            elif cost_per_1k > 0.001:
+                score -= 5
+
             scored.append((score, m.name))
 
         if not scored:
             return [fallback_model] if fallback_model else []
 
         scored.sort(key=lambda x: (x[0], x[1] == fallback_model), reverse=True)
-        return [name for score, name in scored]
+        result = [name for score, name in scored]
+
+        # ── Passive health filter: skip models with >50% recent failure rate ──
+        healthy = [name for name in result if self._failure_rate(name) <= 0.5]
+        result = healthy if healthy else result  # keep at least 1
+
+        # ── Preferred model (model_overrides) → move to head ──
+        if preferred and preferred in result:
+            result.remove(preferred)
+            result.insert(0, preferred)
+        elif preferred and preferred not in result:
+            import logging
+            logging.getLogger("aiplat.model").warning(
+                f"Preferred model '{preferred}' for '{purpose}' not in scored list "
+                f"(may have wrong capabilities or is disabled). Falling back to auto-selection."
+            )
+
+        return result
 
     def select(self, model_name: str = "", purpose: str = "") -> Optional[ModelInfo]:
         """Select model by name or purpose. Returns full ModelInfo with provider/base_url/api_key_env.

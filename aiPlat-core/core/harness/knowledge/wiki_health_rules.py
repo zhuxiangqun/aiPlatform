@@ -178,7 +178,7 @@ class ThinContentCheck(WikiRule):
         issues = []
         for title, page in all_pages.items():
             body = page.get("body", "")
-            if len(body) < 100:
+            if len(body) < 20:
                 issues.append(WikiIssue(
                     check_type=self.code,
                     severity=self.severity,
