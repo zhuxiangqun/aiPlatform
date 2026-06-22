@@ -211,6 +211,19 @@ def _guard_messages(messages: List[Message]) -> tuple[List[Message], Dict[str, A
                 if pat.search(content):
                     stats["injection_alerts"] += 1
                     break  # one alert per message is enough
+            # PII 脱敏 (§69): mask sensitive data before sending to LLM
+            try:
+                from core.services.pii_detector import get_pii_detector
+                pii = get_pii_detector()
+                content, pii_mapping = pii.mask(content)
+                if pii_mapping:
+                    stats["pii_masked"] = stats.get("pii_masked", 0) + len(pii_mapping)
+                    # Store mapping for post-generation unmask
+                    if "pii_mappings" not in stats:
+                        stats["pii_mappings"] = {}
+                    stats["pii_mappings"].update(pii_mapping)
+            except Exception:
+                pass  # PII detector failure must not block LLM calls
 
         if out and out[-1].get("role") == role and role != "system":
             # merge adjacent user/user or assistant/assistant (fail-open)
@@ -869,7 +882,20 @@ async def sys_llm_generate(
                 mark_gate_passed("llm_generate_called")
             except Exception:
                 pass
-            return await model.generate(prepared)  # type: ignore[misc]
+            result = await model.generate(prepared)  # type: ignore[misc]
+            # PII unmask: restore original values if role permits
+            if message_guard_stats and message_guard_stats.get("pii_mappings"):
+                try:
+                    from core.services.pii_detector import get_pii_detector
+                    pii = get_pii_detector()
+                    content = getattr(result, 'content', '') or str(result)
+                    unmasked = pii.unmask(content, message_guard_stats["pii_mappings"],
+                                          role="admin")  # admin: has permission
+                    if hasattr(result, 'content'):
+                        result.content = unmasked
+                except Exception:
+                    pass
+            return result
 
         # Set ActiveTraceContext for downstream event emission
         from core.harness.kernel.execution_context import ActiveTraceContext, set_active_trace_context, reset_active_trace_context

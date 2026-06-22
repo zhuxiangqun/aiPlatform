@@ -1419,6 +1419,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── OpenTelemetry + Prometheus (Phase 0.2) ────────────────────────────
+# Lazy-load to avoid import overhead when disabled.
+_OTEL_ENABLED = os.getenv("AIPLAT_OTEL_ENABLED", "false").lower() in ("1", "true", "yes")
+_PROM_ENABLED = os.getenv("AIPLAT_PROMETHEUS_ENABLED", "true").lower() in ("1", "true", "yes")
+
+if _OTEL_ENABLED:
+    try:
+        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+        FastAPIInstrumentor.instrument_app(app)
+    except ImportError:
+        pass
+
+if _PROM_ENABLED:
+    try:
+        from prometheus_fastapi_instrumentator import Instrumentator
+        _instrumentator = Instrumentator(
+            should_group_status_codes=False,
+            should_ignore_untemplated=True,
+        )
+        _instrumentator.instrument(app).expose(app, endpoint="/metrics")
+    except ImportError:
+        pass
+
 api_router = APIRouter(prefix="/api/core")
 
 # Incremental router split: routing observability endpoints live in a dedicated module.

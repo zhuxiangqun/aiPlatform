@@ -1592,3 +1592,41 @@ if collisions:
       grep_exclude: ["PipelineStageConfig", "config\\.", "# noqa: engine-config-driven"]
     message: "引擎层硬编码业务阶段名 (design/development/testing等) — 应使用 PipelineStageConfig 字段驱动 (§5.5)"
 
+  # ═══ Section 69: Phase 0 — PII / Semantic Cache / Observability (2026-06) ═══
+
+  # 69.1: PII masking must be called in sys_llm_generate
+  - id: pii_detection_in_llm_syscall
+    section: "§69"
+    section_name: "PII 脱敏 — sys_llm_generate 入口必须接入 PIIDetector"
+    level: error
+    check:
+      type: grep_required
+      pattern: 'pii_detector\.mask\(|from.*pii_detector'
+      paths: ["aiPlat-core/core/harness/syscalls/llm.py"]
+      min_matches: 1
+    message: "sys_llm_generate 未接入 PIIDetector — 存在敏感数据泄露风险 (§69)"
+
+  # 69.2: Semantic cache wiring in MaterialsChatAgent
+  - id: semantic_cache_wired
+    section: "§69"
+    section_name: "语义缓存 — MaterialsChatAgent 必须接入 SemanticCache"
+    level: warning
+    check:
+      type: grep_required
+      pattern: 'semantic_cache\.(?:get|search|set)|from.*semantic_cache'
+      paths: ["aiPlat-core/core/apps/agents/materials_chat.py"]
+      min_matches: 1
+    message: "MaterialsChatAgent 未接入语义缓存 — 建议接入以降低 API 费用 35-50% (§69)"
+
+  # 69.3: OpenTelemetry instrumentation for all syscall entry points
+  - id: otel_span_in_syscalls
+    section: "§69"
+    section_name: "OpenTelemetry — syscall 入口必须产生 span"
+    level: warning
+    check:
+      type: grep_required
+      pattern: 'tracer\\.start_as_current_span|FastAPIInstrumentor|@instrument'
+      paths: ["aiPlat-core/core/server.py", "aiPlat-core/core/harness/syscalls/"]
+      min_matches: 1
+    message: "未检测到 OpenTelemetry 埋点 — 建议接入 OTel + Prometheus 以提升可观测性 (§69)"
+
