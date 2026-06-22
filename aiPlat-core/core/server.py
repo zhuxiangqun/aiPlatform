@@ -1912,6 +1912,30 @@ from core.harness.kernel.types import ExecutionRequest  # noqa: E402
 from core.harness.integration import get_harness  # noqa: E402
 from core.api.utils.run_contract import wrap_execution_result_as_run_summary  # noqa: E402
 
+# ── Health check endpoints ──────────────────────────────────────────────
+
+@app.get("/health")
+async def health_check():
+    """Simple liveness probe — returns 200 if the server is running."""
+    return {"status": "ok", "service": "aiPlat-core"}
+
+@app.get("/api/core/health")
+async def core_health_check():
+    """Core layer health with component status."""
+    try:
+        from core.harness.kernel.runtime import get_kernel_runtime
+        rt = get_kernel_runtime()
+        store_ok = getattr(rt, "execution_store", None) is not None
+    except Exception:
+        store_ok = False
+    return {
+        "status": "healthy",
+        "service": "aiPlat-core",
+        "components": {
+            "execution_store": "ok" if store_ok else "unavailable",
+        },
+    }
+
 @app.post("/api/core/gateway/execute")
 async def gateway_execute(http_request: Request, body: Dict[str, Any] = None):
     """Execute agent/skill/tool via HTTP — used by platform's conversations/kb modules."""
