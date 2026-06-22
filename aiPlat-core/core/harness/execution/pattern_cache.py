@@ -216,6 +216,18 @@ class PatternCache:
             for p in candidates[:top_k]
         ]
 
+    async def prune_low_success(self, min_success_rate: float = 0.5) -> Dict[str, Any]:
+        """淘汰成功率低于阈值的执行模式。Phase 5.5: EvolutionEngine 夜间调用。"""
+        removed = 0
+        for pid in list(self._patterns.keys()):
+            p = self._patterns[pid]
+            if p.hit_count >= 10:
+                rate = p.success_count / max(p.hit_count, 1)
+                if rate < min_success_rate:
+                    del self._patterns[pid]
+                    removed += 1
+        return {"removed": removed, "remaining": len(self._patterns)}
+
     def stats(self) -> Dict[str, Any]:
         active = sum(1 for p in self._patterns.values() if p.hit_count >= self._hit_threshold)
         return {

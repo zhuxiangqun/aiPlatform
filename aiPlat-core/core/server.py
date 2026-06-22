@@ -1368,6 +1368,24 @@ async def lifespan(app: FastAPI):
     except Exception:
         pass
 
+    # Start EvolutionEngine nightly cron (Phase 5.5)
+    try:
+        from core.harness.evolution_engine import get_evolution_engine
+        engine = get_evolution_engine()
+        _cron_hour = int(os.getenv("AIPLAT_EVOLUTION_CRON_HOUR", "3"))
+        async def _evolution_cron():
+            while True:
+                now = time.localtime()
+                if now.tm_hour == _cron_hour and now.tm_min == 0:
+                    try:
+                        await engine.nightly_evolution()
+                    except Exception:
+                        logging.getLogger("aiplat.evolution").error("nightly_evolution failed", exc_info=True)
+                await asyncio.sleep(60)
+        asyncio.create_task(_evolution_cron())
+    except Exception:
+        pass
+
     yield
 
     # Shutdown background services

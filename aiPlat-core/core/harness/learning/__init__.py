@@ -232,6 +232,23 @@ class AutoLearner:
             draft.description += f" [REJECTED: {reason}]"
         return True
 
+    async def process_pending(self, *, min_confidence: float = 0.9) -> Dict[str, Any]:
+        """处理待审核 Draft — 自动审批高置信度 (>threshold) 的 Draft。
+        
+        Phase 5.5: EvolutionEngine 夜间调用。
+        """
+        auto_approved = 0
+        total_pending = 0
+        for draft_name in list(self._storage.keys()):
+            draft = self._storage.get(draft_name)
+            if not draft or draft.status != "pending_review":
+                continue
+            total_pending += 1
+            if draft.confidence >= min_confidence and draft.simulation_pass_rate >= 0.8:
+                await self.approve(draft_name)
+                auto_approved += 1
+        return {"pending": total_pending, "auto_approved": auto_approved}
+
     def list_drafts(self, status: str = "") -> List[Dict[str, Any]]:
         """列出所有草稿。"""
         drafts = list(self._storage.values())

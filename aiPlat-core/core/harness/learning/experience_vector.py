@@ -200,6 +200,16 @@ class ExperienceVectorCache:
             },
         }
 
+    async def evict_expired(self, days: int = 30) -> Dict[str, Any]:
+        """清理过期经验 (> N 天前)。Phase 5.5: EvolutionEngine 夜间调用。"""
+        cutoff = time.time() - days * 86400
+        removed = 0
+        for eid in list(self._entries.keys()):
+            if self._entries[eid].created_at < cutoff:
+                del self._entries[eid]
+                removed += 1
+        return {"removed": removed, "remaining": len(self._entries)}
+
     # ── Internal ────────────────────────────────────────────────────────
 
     async def _embed(self, text: str) -> List[float]:
