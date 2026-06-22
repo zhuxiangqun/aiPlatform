@@ -1630,3 +1630,80 @@ if collisions:
       min_matches: 1
     message: "未检测到 OpenTelemetry 埋点 — 建议接入 OTel + Prometheus 以提升可观测性 (§69)"
 
+  # ═══ Section 70: Phase 1-3 Modules — 新能力接线守卫 (2026-06) ═══
+
+  # 70.1: ParallelExecutor FanOut must be used where serial loops exist
+  - id: fanout_parallel_required
+    section: "§70"
+    section_name: "FanOut 并行 — 多任务处理应使用 ParallelExecutor"
+    level: warning
+    check:
+      type: grep_forbidden
+      pattern: 'for.*in.*tasks.*:.*\n.*await.*execute'
+      paths: ["aiPlat-core/core/apps/agents/"]
+      exclude: ["__pycache__", "tests/", "parallel_executor.py"]
+      grep_exclude: ["ParallelExecutor", "asyncio.gather", "# noqa: serial-ok"]
+    message: "检测到串行多任务执行 — 建议改用 ParallelExecutor Map-Reduce 模式 (§5.83)"
+
+  # 70.2: Agent SDK must expose CoreFacade methods (not bypass)
+  - id: sdk_backend_exposure
+    section: "§70"
+    section_name: "Agent SDK — 必须通过 CoreFacade 调用后端"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: 'from core\.harness\.execution\.(?:engine|loop|pipeline_engine)'
+      paths: ["aiplat-sdk/"]
+      exclude: ["__pycache__", "tests/"]
+      grep_exclude: ["# noqa: sdk-corefacade-ok"]
+    message: "SDK 直接导入 Harness 内部模块 — 应通过 CoreFacade HTTP API 代理 (§5.82)"
+
+  # 70.3: Auto-Learner drafts must have audit trail
+  - id: autolearner_audit_trail
+    section: "§70"
+    section_name: "自学习 — SkillDraft 审批必须有 audit_log 记录"
+    level: warning
+    check:
+      type: grep_required
+      pattern: 'add_audit_log.*auto_learner\|add_audit_log.*self_learned'
+      paths: ["aiPlat-core/core/harness/learning/"]
+      min_matches: 1
+    message: "自学习审批缺少审计日志 — 建议记录 audit_log 以确保追责 (§5.84)"
+
+  # 70.4: Enterprise Gateway must have rate limiting
+  - id: gateway_rate_limiting
+    section: "§70"
+    section_name: "企业网关 — 必须配置 Rate Limiting"
+    level: warning
+    check:
+      type: grep_required
+      pattern: '_check_rate|_rate_limit|rate_per_minute'
+      paths: ["aiPlat-core/core/gateway/"]
+      min_matches: 1
+    message: "网关缺少 Rate Limiting — 建议添加以防止消息风暴 (§5.86)"
+
+  # 70.5: Hallucination check integrated in RAG pipeline
+  - id: hallucination_in_rag_pipeline
+    section: "§70"
+    section_name: "幻觉检测 — MaterialsChatAgent 应接入 HallucinationTracker"
+    level: warning
+    check:
+      type: grep_required
+      pattern: 'hallucination_tracker|HallucinationTracker'
+      paths: ["aiPlat-core/core/apps/agents/materials_chat.py"]
+      min_matches: 1
+    message: "MaterialsChatAgent 未接入 HallucinationTracker — 建议在答案生成后增加幻觉检测 (§5.87)"
+
+  # 70.6: Canary rollback guard for production skills
+  - id: canary_rollback_guard
+    section: "§70"
+    section_name: "灰度发布 — 生产 Skill 必须有 auto_rollback 配置"
+    level: warning
+    check:
+      type: grep_forbidden
+      pattern: 'rollout_percentage:\s*100'
+      paths: ["aiPlat-core/core/harness/deployment/"]
+      exclude: ["__pycache__", "tests/"]
+      grep_exclude: ["auto_rollback", "# noqa: manual-rollout"]
+    message: "全量发布 (100%) 未配置 auto_rollback — 建议添加自动回滚保障 (§5.88)"
+

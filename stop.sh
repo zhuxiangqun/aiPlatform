@@ -46,6 +46,9 @@ pkill -f "core/server.py" 2>/dev/null
 pkill -f "mineru-api" 2>/dev/null
 pkill -f "proxy_server.py" 2>/dev/null
 
+# ── Stop Enterprise Gateway ──
+kill_port_if_any 8005
+
 # ── 清理 PID 文件 ──
 AIPLAT_HOME="${AIPLAT_HOME:-$PWD/.aiplat}"
 rm -f "$AIPLAT_HOME/logs/pids.txt"

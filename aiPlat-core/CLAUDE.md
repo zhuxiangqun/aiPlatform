@@ -1745,6 +1745,138 @@ grep -rn 'pipeline_mode.*orchestrator\|pipeline_mode.*agent' --include="*.yaml" 
 
 **架构守卫**：`lint_rules.yaml: overengineered_pipeline`
 
+### 5.79 PII 自动脱敏（强制，安全红线 — Phase 0.1）
+
+所有进入 LLM 的用户输入必须经过 `PIIDetector.mask()` 脱敏。敏感数据（手机/身份证/邮箱/银行卡）自动替换为 `[PHONE_001]` 等标签。
+
+| 规则 | 说明 |
+|------|------|
+| **输入方向** | `_guard_messages()` 中自动调用 `PIIDetector.mask()` |
+| **输出方向** | 仅 `admin` / `data_owner` 角色可见原文，其他保持 `[MASKED]` |
+| **双引擎** | Presidio (可选) + 内置正则并行，取并集 |
+| **审计** | `action=pii_mask` / `action=pii_unmask` 写入 audit_log |
+
+**架构守卫**：`arch_guard_rules.yaml §69.1`
+
+### 5.80 可观测性标准（Phase 0.2）
+
+| 能力 | 实现 | 环境变量 |
+|------|------|---------|
+| **Prometheus /metrics** | `prometheus-fastapi-instrumentator` | `AIPLAT_PROMETHEUS_ENABLED=true` |
+| **OpenTelemetry 追踪** | `FastAPIInstrumentor` + 自定义 Span | `AIPLAT_OTEL_ENABLED=true` |
+| **Grafana 面板** | LLM QPS / latency P95 / error rate / Pipeline 阶段延迟 | 通过 Prometheus 抓取 |
+
+**架构守卫**：`arch_guard_rules.yaml §69.3`
+
+### 5.81 语义缓存（Phase 0.3）
+
+三层缓存系统降低 LLM API 费用 35-50%：
+
+| 层 | 机制 | TTFT |
+|:---:|------|:---:|
+| **L1 精确匹配** | Redis `md5(query+domain)` | <50ms |
+| **L2 语义相似** | embedding cosine ≥ 0.95 | <200ms |
+| **L3 穿透** | 正常 RAG Pipeline → 回写缓存 | 正常延迟 |
+
+**失效策略**：知识库更新 → 清空相关 domain 的 L1/L2 缓存。
+
+**集成点**：`materials_chat.py:execute()` 入口处 `semantic_cache.get()` → 命中直接返回。
+
+**架构守卫**：`arch_guard_rules.yaml §69.2`
+
+### 5.82 Agent SDK（Phase 1.1）
+
+独立 Python 包 `aiplat-sdk/`，3 行代码创建 Agent：
+
+```python
+from aiplat import Agent
+agent = Agent(model="qwen2.5-coder:7b")
+result = agent.execute("分析数据")
+```
+
+| 级别 | API | 说明 |
+|:---:|------|------|
+| **L1** | `aiplat.Agent` | 高级封装，对齐 Claude Code Agent SDK |
+| **L2** | `aiplat.Pipeline` | 自定义流水线编排 |
+| **L3** | `aiplat.harness.ReActLoop` | 直接控制 Harness 执行循环 |
+
+**安装**：`pip install -e aiplat-sdk/`
+
+### 5.83 Sub-Agent FanOut 并行（Phase 1.2）
+
+Map-Reduce 模式并发执行子任务：
+
+```python
+from core.apps.agents.parallel_executor import ParallelExecutor
+executor = ParallelExecutor(max_concurrency=5)
+results = await executor.map_reduce(["任务A", "任务B", "任务C"], agent_factory)
+```
+
+- 每个 SubAgent 独立 `asyncio.Task` + 独立 `run_id`
+- 异常隔离：单任务失败不影响其他 (`return_exceptions=True`)
+- Semaphore 最大并发控制
+
+### 5.84 增强自学习（Phase 2.1）
+
+"AI 草稿 + 人工确认" 模式——兼顾效率和安全：
+
+```
+Agent 失败 → AutoLearner.analyze_failure() → SkillDraft
+  → SkillSimulator Docker 沙盒预检 (pass ≥ 80%)
+  → 管理端待审核队列
+  → 管理员审批 → 注册到 SkillRegistry
+```
+
+**安全底线**：
+- 同一 Agent 连续 3 次低质量 → 自动暂停 24h
+- 自学习 Skill 标记 `source=self_learned` + `status=draft`
+- 审批通过前不可被 Agent 调用
+
+### 5.85 声明级溯源（Phase 2.2）
+
+`ProvenanceTracker` 实现 Claim-Level Citation：
+
+```python
+from core.harness.knowledge.provenance import get_provenance_tracker
+tracker = get_provenance_tracker()
+citations = tracker.extract_citations(answer, retrieved_context)
+```
+
+`ProvenanceScanner` 自动过期扫描：源文档更新 → 标记所有已生成答案为 "⚠️ 可能过期"。
+
+### 5.86 企业消息网关（Phase 2.3）
+
+仅支持 3 个企业渠道（坚守定位）：
+
+| 渠道 | 适配器 | 配置 |
+|------|------|------|
+| **飞书** | `FeishuAdapter` | `AIPLAT_FEISHU_WEBHOOK` |
+| **企业微信** | `WeComAdapter` | `AIPLAT_WECOM_WEBHOOK` |
+| **Slack** | `SlackAdapter` | `AIPLAT_SLACK_BOT_TOKEN` |
+
+不做 Signal/WhatsApp/Telegram。
+
+### 5.87 幻觉检测（Phase 3.1）
+
+`HallucinationTracker` 实现 Faithfulness + GraphIndex 验证：
+
+- **NLI 事实核查**：答案声明 × 检索证据 → entailment/contradiction/neutral
+- **Faithfulness 指标**：支持声明数 / 总声明数
+- **Hallucination Risk**：综合评分 [0,1] → ok / needs_review / low_evidence
+- **GraphIndex 加持**：实体对查图边验证（aiPlat 独有）
+
+### 5.88 灰度发布（Phase 3.2）
+
+`SkillRouter` 支持 3 种模式：
+
+| 模式 | 说明 |
+|------|------|
+| **Canary** | 按 `tenant_id` 或流量百分比分流到新版 |
+| **A-B Test** | 双版本对比（success率 + 延迟 + 推荐结论） |
+| **Shadow** | 新版静默运行，对比结果但不影响线上 |
+| **Auto-Rollback** | error_rate 或 latency_p95 超阈值 → 自动回退到稳定版 |
+
+
 
 ---
 

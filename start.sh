@@ -421,11 +421,38 @@ for i in 1 2 3 4 5; do
 done
 
 # Persist pids for stop.sh (best effort)
-PIDS="$CORE_PID $INFRA_PID $PLATFORM_PID $APP_PID"
+PIDS="$CORE_PID $INFRA_PID $PLATFORM_PID $APP_PID ${GATEWAY_PID:-}"
 if [ -n "${MINERU_API_PID:-}" ]; then
   PIDS="$PIDS $MINERU_API_PID"
 fi
 echo "$PIDS" > "$AIPLAT_HOME/logs/pids.txt"
+
+# ===== Step 4a: Enterprise Gateway =====
+echo ""
+echo "============================================================"
+echo "  Step 4a/6: 启动 Enterprise Gateway (飞书/企微/Slack)"
+echo "============================================================"
+
+kill_port_if_any 8005
+
+export AIPLAT_GATEWAY_ENABLED="${AIPLAT_GATEWAY_ENABLED:-false}"
+if [ "$AIPLAT_GATEWAY_ENABLED" = "true" ]; then
+    cd "$PROJECT_ROOT/aiPlat-core"
+    nohup "$PY" -c "
+from core.gateway import EnterpriseGateway, FeishuAdapter, WeComAdapter, SlackAdapter, get_enterprise_gateway
+import asyncio
+gw = get_enterprise_gateway()
+gw.register('feishu', FeishuAdapter(webhook_url=os.getenv('AIPLAT_FEISHU_WEBHOOK','')))
+gw.register('wecom', WeComAdapter(webhook_url=os.getenv('AIPLAT_WECOM_WEBHOOK','')))
+gw.register('slack', SlackAdapter(bot_token=os.getenv('AIPLAT_SLACK_BOT_TOKEN','')))
+asyncio.run(gw.start())
+" > "$AIPLAT_HOME/logs/gateway.log" 2>&1 &
+    GATEWAY_PID=$!
+    echo "PID: $GATEWAY_PID"
+    echo "✓ Enterprise Gateway started"
+else
+    echo "⊙ Enterprise Gateway 未启用 (AIPLAT_GATEWAY_ENABLED=$AIPLAT_GATEWAY_ENABLED)"
+fi
 
 # ===== Step 5: aiPlat-management =====
 echo ""
