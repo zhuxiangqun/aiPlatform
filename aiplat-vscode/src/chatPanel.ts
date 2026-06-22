@@ -54,6 +54,10 @@ export class ChatPanel {
                     case 'applyFix':
                         this.applyLastSuggestion();
                         break;
+                    case 'implicitFeedback':
+                        // Phase 4.2: Forward implicit feedback to server
+                        this._sendImplicitFeedback(message.type, message.runId);
+                        break;
                 }
             },
             null,
@@ -98,15 +102,33 @@ export class ChatPanel {
                     options: { stream: false, max_tokens: 2000 },
                 }),
             });
-
+            
             if (!response.ok) {
                 return `Error: HTTP ${response.status}`;
             }
-
+            
             const data = await response.json() as any;
             return data.answer || data.output?.answer || JSON.stringify(data);
         } catch (e: any) {
             return `Error: ${e.message || 'Connection failed'}`;
+        }
+    }
+
+    private async _sendImplicitFeedback(signalType: string, runId: string): Promise<void> {
+        /** Phase 4.2: Send implicit user feedback to backend */
+        if (!signalType || !runId) return;
+        try {
+            await fetch(`${this._baseUrl}/api/core/feedback/implicit`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    run_id: runId,
+                    signal_type: signalType,
+                    session_id: 'vscode',
+                }),
+            });
+        } catch {
+            // Silently ignore — feedback is best-effort
         }
     }
 
@@ -205,6 +227,21 @@ export class ChatPanel {
             const msg = event.data;
             if (msg.command === 'agentResponse') {
                 addMessage(msg.text, 'agent');
+                // Track run_id for implicit feedback
+                if (msg.runId) window._currentRunId = msg.runId;
+            }
+        });
+
+        // ── Implicit Feedback (Phase 4.2) ──
+        let _lastCopyTime = 0;
+        document.addEventListener('copy', () => {
+            const now = Date.now();
+            if (now - _lastCopyTime < 2000) return; // Debounce 2s
+            _lastCopyTime = now;
+            const selected = window.getSelection()?.toString() || '';
+            if (selected.length > 20) {
+                const signalType = selected.length > 100 ? 'copy_full' : 'select_text';
+                vscode.postMessage({ command: 'implicitFeedback', type: signalType, runId: window._currentRunId || '' });
             }
         });
     </script>
