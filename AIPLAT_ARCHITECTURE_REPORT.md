@@ -1781,20 +1781,64 @@ GraphIndex 加持 (aiPlat 独有):
 
 ---
 
-## 二十九、待补齐项（aiPlat vs 三者）
+## 二十九、能力差距矩阵（分类优先级）
 
-| 能力 | 来源 | 当前状态 | 建议 |
-|------|------|:---:|------|
-| **自学习循环** | Hermes | Task Skills 晶体化 (基础) | 增强 Agent 主动技能创建 |
-| **多频道消息网关** | Hermes/OpenClaw | ❌ 无 | 接入 Telegram/Slack |
-| **Sub-Agent 并行** | Claude Code | MultiAgent (消息通信) | 增强并行流水线 |
-| **Agent SDK** | Claude Code | ❌ 无 | 暴露底层工具给外部 |
-| **多 IDE 集成** | Claude Code | ❌ 无 (仅 Web UI) | VS Code / JetBrains 插件 |
-| **Voice/Talk** | OpenClaw | ❌ 无 | 语音交互模块 |
-| **Canvas 视觉工作区** | OpenClaw | ❌ 无 | Agent 驱动可视化 |
-| **终端后端多样性** | Hermes | 1 (本地) | Docker/SSH/Modal |
-| **桌面应用** | Claude/OpenClaw | ❌ 无 (仅 Web) | Electron 桌面端 |
-| **设备节点** | OpenClaw | ❌ 无 | iOS/Android 端 |
+> 本节不是"必做清单"，而是**差距分析**——标注每个缺口对 aiPlat 企业级中台定位的重要性。
+
+### P0 — 核心竞争力缺口（必须补齐以维持企业定位）
+
+| 能力 | 领先者 | 当前状态 | 差距影响 | 实施路径 |
+|------|:---:|------|------|------|
+| **Agent SDK** | Claude Code | ❌ 无 | 企业客户无法自定义 Agent 编排逻辑，只能通过 AGENT.md 配置文件驱动 | 暴露 Harness/StageRunner API 为外部可调用的 SDK |
+| **Sub-Agent 并行** | Claude Code | ⚠️ MultiAgent (消息通信) | 大数据量并行处理时串行阻塞，无法充分利用多核/多模型并行 | 增强 MultiAgent 并行模式，支持 FanOut 并发 + reduce 聚合 |
+| **多 IDE 集成** | Claude Code | ❌ 无 (仅 Web UI) | 开发者从 IDE 切换 Web 效率低，企业推行阻力大 | VS Code / JetBrains 插件 + LSP 集成 |
+| **终端后端多样性** | Hermes (6种) | 1 (本地) | 无法在安全隔离环境中执行高风险代码/测试 | Docker sandbox + SSH remote + Serverless 后端 |
+
+### P1 — 差异化优势扩展（补齐后建立护城河）
+
+| 能力 | 领先者 | 当前状态 | 差距影响 | 实施路径 |
+|------|:---:|------|------|------|
+| **自学习循环** | Hermes | ⚠️ Task Skills 晶体化 (仅 pass≥85%) | 工程师积累的调试/修复经验无法自动沉淀为可复用 Skill | 增强 Agent 主动观察→提炼→创建 Skill 的闭环 |
+| **桌面应用** | Claude/OpenClaw | ❌ 无 (仅 Web) | 离线操作、系统级集成（文件右键、快捷键）无支撑 | Electron/Tauri 桌面端 + tray 服务 |
+
+### P2 — 锦上添花（差异化但非刚需）
+
+| 能力 | 领先者 | 当前状态 | 差距影响 | 实施路径 |
+|------|:---:|------|------|------|
+| **多频道消息网关** | OpenClaw (20+) | ❌ 无 | 无法在 Slack/飞书等企业聊天工具中@Agent 触发任务 | 接入飞书/Slack webhook → Agent 响应 |
+| **Voice/Talk** | OpenClaw | ❌ 无 | 移动端或免提场景无法交互 | 集成 Whisper + TTS |
+| **Canvas 视觉工作区** | OpenClaw | ❌ 无 | 复杂数据分析无法通过 Agent 驱动可视化探索 | Agent → ECharts/Mermaid 渲染 |
+| **设备节点** | OpenClaw | ❌ 无 | 无法利用移动端传感器/Camera | iOS/Android 端对接 |
+
+### 不必补齐（与 aiPlat 定位冲突或不必要）
+
+| 能力 | 原因 |
+|------|------|
+| Claude Code 的 GitHub Actions 集成 | aiPlat 定位是中台而非 CI/CD 工具 |
+| OpenClaw 的 Signal/iMessage 等个人频道 | 定位是企业而非个人 |
+| Hermes 的 6 种终端后端全部 | 企业场景 Docker + SSH 两种足够 |
+
+### 建议实施路线图
+
+```
+Phase 1 (Q3 2026) — P0 补核心:
+  ✅ Agent SDK (Harness API 暴露)          4 weeks
+  ✅ Docker sandbox 终端后端                3 weeks  
+  ✅ Sub-Agent FanOut 并行模式              3 weeks
+
+Phase 2 (Q4 2026) — P0 补生态:
+  ✅ VS Code 插件 (inline diff + 对话)      6 weeks
+  ✅ JetBrains 插件                         4 weeks
+
+Phase 3 (Q1-Q2 2027) — P1 建护城河:
+  🔲 Hermes 式自学习循环增强                8 weeks
+  🔲 Tauri 桌面应用                         8 weeks
+
+Phase 4 (Q2-Q4 2027) — P2 锦上添花:
+  🔲 飞书/Slack webhook Gateway            4 weeks
+  🔲 Agent-driven Canvas                   6 weeks
+  🔲 Voice 交互 (Whisper + TTS)            4 weeks
+```
 
 ---
 
