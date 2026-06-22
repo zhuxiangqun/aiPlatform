@@ -1936,6 +1936,54 @@ Meta-Agent 每天分析 AutoLearner 审批历史，自动生成改进策略建�
 **环境变量**: `AIPLAT_META_AGENT_ENABLED=false` (默认关闭)
 **架构守卫**: `arch_guard_rules.yaml §71.4`
 
+### 5.93 经验向量缓存（Phase 5.1）
+
+将 PipelineTrace 执行轨迹 Embedding 后存入向量库，AutoLearner 通过语义相似度检索历史经验，
+生成更精准的 SkillDraft。
+
+| 操作 | API |
+|------|------|
+| 存储经验 | `await cache.store(run_id, summary, label="success")` |
+| 检索相似 | `await cache.search(error_description, top_k=3)` |
+| 增强 SkillDraft | `context = await cache.enrich_skill_draft(error)` |
+
+**预期收益**: 自学习精准度 +20%
+**模块**: `core/harness/learning/experience_vector.py`
+**架构守卫**: `arch_guard_rules.yaml §72.1`
+
+### 5.94 多阶段隐空间缓存（Phase 5.2）
+
+LatentStageCache 缓存 RAG Pipeline 各阶段的中间状态向量（查询改写、域路由、检索聚合），
+检索时用多级相似度组合匹配。
+
+```
+combined_score = α·query_sim + β·domain_sim + γ·retrieval_sim
+```
+
+| 配置 | 默认值 | 环境变量 |
+|------|:---:|------|
+| query 权重 α | 0.4 | `AIPLAT_LATENT_CACHE_ALPHA` |
+| domain 权重 β | 0.2 | `AIPLAT_LATENT_CACHE_BETA` |
+| retrieval 权重 γ | 0.4 | `AIPLAT_LATENT_CACHE_GAMMA` |
+
+**预期收益**: 缓存命中率 +15%
+**模块**: `core/harness/knowledge/semantic_cache.py:LatentStageCache`
+**架构守卫**: `arch_guard_rules.yaml §72.2`
+
+### 5.95 Embedding 通信桥（Phase 5.3）
+
+子 Agent 间通过 Embedding 向量传递"核心语义"，替代冗长的 Token 序列。
+
+```
+SubAgent_A → encode(长文本) → (向量+简短摘要)
+                                ↓
+SubAgent_B → decode(向量+摘要) → 注入 prompt 上下文
+```
+
+**预期收益**: Token -30~40%
+**模块**: `core/apps/agents/parallel_executor.py:EmbeddingBridge`
+**架构守卫**: `arch_guard_rules.yaml §72.3`
+
 
 
 ---
