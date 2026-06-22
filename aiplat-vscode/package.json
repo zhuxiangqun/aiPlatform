@@ -1,0 +1,94 @@
+{
+  "name": "aiplat-vscode",
+  "displayName": "aiPlat — Enterprise AI Agent",
+  "description": "Connect VS Code to aiPlat — Stream code context, get AI-powered fixes, and apply diffs inline.",
+  "version": "0.1.0",
+  "publisher": "aiplat",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Chat",
+    "Programming Languages",
+    "Machine Learning"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "aiplat.openChat",
+        "title": "aiPlat: Open Chat Panel"
+      },
+      {
+        "command": "aiplat.sendSelection",
+        "title": "aiPlat: Send Selection to Agent"
+      },
+      {
+        "command": "aiplat.applyFix",
+        "title": "aiPlat: Apply Suggested Fix"
+      },
+      {
+        "command": "aiplat.explainCode",
+        "title": "aiPlat: Explain Selected Code"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "aiplat.openChat",
+        "key": "ctrl+shift+a",
+        "mac": "cmd+shift+a"
+      },
+      {
+        "command": "aiplat.sendSelection",
+        "key": "ctrl+shift+e",
+        "mac": "cmd+shift+e"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "aiplat.sendSelection",
+          "group": "aiplat"
+        },
+        {
+          "command": "aiplat.explainCode",
+          "group": "aiplat"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "aiPlat",
+      "properties": {
+        "aiplat.url": {
+          "type": "string",
+          "default": "http://localhost:8002",
+          "description": "aiPlat Core API URL"
+        },
+        "aiplat.model": {
+          "type": "string",
+          "default": "qwen2.5-coder:7b",
+          "description": "Default LLM model"
+        },
+        "aiplat.autoApply": {
+          "type": "boolean",
+          "default": false,
+          "description": "Auto-apply suggested code fixes"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.4.0",
+    "eslint": "^8.56.0",
+    "@types/node": "^20.11.0"
+  }
+}
