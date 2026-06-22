@@ -25,7 +25,7 @@ import hashlib
 import json
 import os
 import time
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class SemanticCache:
@@ -236,6 +236,120 @@ class SemanticCache:
         if norm_a == 0 or norm_b == 0:
             return 0.0
         return dot / (norm_a * norm_b)
+
+
+# ── Phase 5.2: Latent Stage Cache ── 多阶段隐空间缓存 ───────────────────────
+
+class LatentStageCache:
+    """多阶段隐空间缓存 — 缓存 RAG Pipeline 中间状态的向量"足迹"。
+
+    不仅缓存最终答案，还缓存整个推理路径的中间状态向量:
+      - Stage 1: 查询改写后的 query_embedding
+      - Stage 2: 域路由后的 domain_vector
+      - Stage 3: 检索结果聚和的 retrieval_vector
+      - Stage N: 最终答案的 answer_embedding
+
+    检索时使用多级相似度组合: 
+      combined_score = α·query_sim + β·domain_sim + γ·retrieval_sim
+
+    环境变量:
+        AIPLAT_LATENT_CACHE_ENABLED: 是否启用 (默认: true)
+        AIPLAT_LATENT_CACHE_ALPHA: query 权重 (默认: 0.4)
+        AIPLAT_LATENT_CACHE_BETA: domain 权重 (默认: 0.2)
+        AIPLAT_LATENT_CACHE_GAMMA: retrieval 权重 (默认: 0.4)
+    """
+
+    def __init__(self):
+        self._enabled = os.getenv("AIPLAT_LATENT_CACHE_ENABLED", "true").lower() not in ("0", "false", "no")
+        self._alpha = float(os.getenv("AIPLAT_LATENT_CACHE_ALPHA", "0.4"))
+        self._beta = float(os.getenv("AIPLAT_LATENT_CACHE_BETA", "0.2"))
+        self._gamma = float(os.getenv("AIPLAT_LATENT_CACHE_GAMMA", "0.4"))
+        self._stages: Dict[str, Dict[str, Any]] = {}  # run_id → stage vectors
+        self._max_entries = 2000
+
+    async def store_stage(
+        self,
+        run_id: str,
+        stage_name: str,
+        vector: List[float],
+        metadata: Dict[str, Any] = None,
+    ):
+        """存储单个阶段的向量"""
+        if not self._enabled:
+            return
+        if run_id not in self._stages:
+            self._stages[run_id] = {}
+        self._stages[run_id][stage_name] = {
+            "vector": vector,
+            "metadata": metadata or {},
+            "ts": time.time(),
+        }
+        # Evict oldest
+        if len(self._stages) > self._max_entries:
+            oldest = sorted(self._stages.keys(), key=lambda r: self._stages[r].get("ts", 0))[0]
+            del self._stages[oldest]
+
+    async def match(
+        self,
+        query_vector: List[float],
+        domain_vector: List[float] = None,
+        top_k: int = 3,
+    ) -> List[Dict[str, Any]]:
+        """多级隐空间相似度匹配。
+
+        combined_score = α·query_sim + β·domain_sim + γ·retrieval_sim
+
+        Returns:
+            匹配结果列表 [{run_id, score, results, domain}]
+        """
+        if not self._enabled or not self._stages:
+            return []
+
+        scored = []
+        for run_id, stages in self._stages.items():
+            q_vec = stages.get("query_embedding", {}).get("vector", [])
+            d_vec = stages.get("domain_vector", {}).get("vector", [])
+            r_vec = stages.get("retrieval_vector", {}).get("vector", [])
+
+            query_sim = self._cosine(query_vector, q_vec) if q_vec else 0.0
+            domain_sim = self._cosine(domain_vector or [], d_vec) if d_vec else 0.0
+            retrieval_sim = self._cosine(query_vector, r_vec) if r_vec else 0.0  # reuse query_vec
+
+            combined = (
+                self._alpha * query_sim +
+                self._beta * domain_sim +
+                self._gamma * retrieval_sim
+            )
+
+            if combined > 0.5:  # minimum combined threshold
+                result = stages.get("result", {})
+                scored.append({
+                    "run_id": run_id,
+                    "score": round(combined, 3),
+                    "query_sim": round(query_sim, 3),
+                    "domain_sim": round(domain_sim, 3),
+                    "answer": result.get("answer", "")[:200] if isinstance(result, dict) else str(result)[:200],
+                })
+
+        scored.sort(key=lambda x: -x["score"])
+        return scored[:top_k]
+
+    def _cosine(self, a: List[float], b: List[float]) -> float:
+        if not a or not b or len(a) != len(b):
+            return 0.0
+        dot = sum(x * y for x, y in zip(a, b))
+        norm_a = sum(x * x for x in a) ** 0.5
+        norm_b = sum(x * x for x in b) ** 0.5
+        if norm_a == 0 or norm_b == 0:
+            return 0.0
+        return dot / (norm_a * norm_b)
+
+    def stats(self) -> Dict[str, Any]:
+        return {
+            "enabled": self._enabled,
+            "entries": len(self._stages),
+            "weights": {"alpha": self._alpha, "beta": self._beta, "gamma": self._gamma},
+        }
 
 
 # ── Global singleton ─────────────────────────────────────────────────────────
