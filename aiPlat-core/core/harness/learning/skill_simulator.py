@@ -244,11 +244,37 @@ async def quick_validate(draft: Any) -> Dict[str, Any]:
     else:
         warnings.append("No effects declared")
 
+    # Phase 6: CodeAuditor security scan
+    security_blocked = False
+    security_issues = []
+    try:
+        from core.harness.security.code_auditor import CodeAuditor
+        auditor = CodeAuditor()
+        sop_body = getattr(draft, "sop_body", "")
+        audit = auditor.audit(sop_body, skill_name=name)
+        if audit.high_count > 0:
+            security_blocked = True
+            security_issues = [
+                {"rule": i.rule_id, "severity": i.severity, "detail": i.line_snippet[:60], "suggestion": i.suggestion}
+                for i in audit.issues if i.severity == "high"
+            ]
+            for issue in audit.issues:
+                if issue.severity == "high":
+                    errors.append(f"SECURITY: {issue.rule_id} — {issue.line_snippet[:50]}")
+        if audit.medium_count > 0:
+            for issue in audit.issues:
+                if issue.severity == "medium":
+                    warnings.append(f"SECURITY: {issue.rule_id} — {issue.line_snippet[:50]}")
+    except Exception:
+        pass  # CodeAuditor unavailable → skip
+
     score = (checks - len(errors)) / max(checks, 1)
     return {
         "pass_rate": max(0.0, score),
         "errors": errors,
         "warnings": warnings,
         "total_checks": checks + len(warnings),
+        "security_blocked": security_blocked,
+        "security_issues": security_issues,
         "passed": checks,
     }

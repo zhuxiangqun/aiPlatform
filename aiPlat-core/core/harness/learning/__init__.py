@@ -245,6 +245,16 @@ class AutoLearner:
                 continue
             total_pending += 1
             if draft.confidence >= min_confidence and draft.simulation_pass_rate >= 0.8:
+                # Phase 6: 安全审计——高危漏洞阻断自动审批
+                try:
+                    from core.harness.security.code_auditor import CodeAuditor
+                    auditor = CodeAuditor()
+                    audit = auditor.audit(getattr(draft, "sop_body", ""), skill_name=draft_name)
+                    if audit.high_count > 0:
+                        _log.warning(f"AutoLearner: {draft_name} blocked by CodeAuditor ({audit.high_count} high issues)")
+                        continue  # 跳过，不自动审批
+                except Exception:
+                    pass  # CodeAuditor unavailable → fall through to auto-approve
                 await self.approve(draft_name)
                 auto_approved += 1
         return {"pending": total_pending, "auto_approved": auto_approved}
