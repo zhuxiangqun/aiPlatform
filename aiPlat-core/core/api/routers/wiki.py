@@ -666,6 +666,26 @@ async def create_wiki_page(body: WikiPageWrite, collection: str = "default"):
         _sync_synthesis_pages(body.title, collection_id=collection)
     except Exception:
         pass
+    # ── Provenance stale tracking: mark citations as stale if page version changed ──
+    try:
+        from core.harness.knowledge.wiki_engine import read_page
+        updated = read_page(body.title, collection_id=collection)
+        if updated:
+            new_version = str(updated.get("fm", {}).get("version", "1"))
+            from core.harness.knowledge.provenance import get_provenance_tracker, ProvenanceScanner
+            tracker = get_provenance_tracker()
+            scanner = ProvenanceScanner(tracker)
+            await scanner.on_source_updated(body.title, new_version)
+    except Exception:
+        pass
+    # ── SemanticCache invalidation: clear cache for this domain on wiki update ──
+    try:
+        from core.harness.knowledge.semantic_cache import get_semantic_cache
+        cache = get_semantic_cache()
+        if cache.enabled:
+            await cache.invalidate_domain(collection)
+    except Exception:
+        pass
     return {"title": body.title, "path": path, "status": "created", "auto_links": auto_links}
 
 
@@ -1175,16 +1195,6 @@ async def wiki_structured_query(q: str = ""):
         return structured_query(q)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Structured query failed: {e}")
-
-
-@router.get("/wiki/golden-queries/seed")
-async def seed_golden_queries():
-    """Create a default golden_queries.yaml template."""
-    try:
-        from core.harness.knowledge.wiki_structured_query import seed_golden_queries
-        return {"status": seed_golden_queries()}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed: {e}")
 
 
 @router.post("/ontology/rebuild")

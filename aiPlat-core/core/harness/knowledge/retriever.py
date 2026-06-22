@@ -272,6 +272,26 @@ class KnowledgeRetriever:
             except Exception:
                 pass
 
+        # Provenance stale filter — exclude results from known-stale sources
+        if results:
+            try:
+                from .provenance import get_provenance_tracker
+                tracker = get_provenance_tracker()
+                stale_ids = tracker.get_stale_source_ids()
+                if stale_ids:
+                    before = len(results)
+                    results = [
+                        r for r in results
+                        if str(getattr(r, 'source_page', '') or getattr(r.entry, 'title', '')) not in stale_ids
+                    ]
+                    if len(results) < before:
+                        import logging
+                        logging.getLogger("aiplat.retrieval").info(
+                            f"Provenance stale filter: {before - len(results)}/{before} results excluded"
+                        )
+            except Exception:
+                pass
+
         return results[:limit]
 
     async def search_by_type(

@@ -1386,6 +1386,26 @@ async def lifespan(app: FastAPI):
     except Exception:
         pass
 
+    # Start EnterpriseGateway (Phase 2.3)
+    try:
+        from core.gateway import get_enterprise_gateway, FeishuAdapter, WeComAdapter, SlackAdapter
+        gateway = get_enterprise_gateway()
+        feishu_webhook = os.getenv("AIPLAT_FEISHU_WEBHOOK", "").strip()
+        wecom_webhook = os.getenv("AIPLAT_WECOM_WEBHOOK", "").strip()
+        slack_token = os.getenv("AIPLAT_SLACK_BOT_TOKEN", "").strip()
+        if feishu_webhook:
+            gateway.register("feishu", FeishuAdapter(webhook_url=feishu_webhook))
+        if wecom_webhook:
+            gateway.register("wecom", WeComAdapter(webhook_url=wecom_webhook))
+        if slack_token:
+            gateway.register("slack", SlackAdapter(bot_token=slack_token))
+        if feishu_webhook or wecom_webhook or slack_token:
+            await gateway.start()
+            logging.getLogger("aiplat.gateway").info(
+                f"EnterpriseGateway started: {len(gateway._adapters)} channels")
+    except Exception:
+        pass
+
     yield
 
     # Shutdown background services

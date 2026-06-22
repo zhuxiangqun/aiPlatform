@@ -587,5 +587,39 @@ def get_default_hooks() -> Dict[str, Hook]:
         phase=HookPhase.PRE_CONTRACT_CHECK,
         priority=95,
     )
-    
+
+    # ── OnErrorReflector: consecutive tool_call failure → LLM reflection ──
+    async def on_error_reflector_hook(context: HookContext):
+        u"""Phase 4.1: If >=2 consecutive tool_call failures, inject reasoning hint."""
+        try:
+            ctx = context.state or {}
+            observations = ctx.get("_observations") or []
+            if len(observations) < 2:
+                return {"continue": True}
+
+            recent = observations[-3:]
+            error_count = sum(1 for o in recent if isinstance(o, str) and any(
+                kw in o.lower() for kw in ("error:", "failed", "exception", "tool_error", "traceback")))
+            if error_count < 2:
+                return {"continue": True}
+
+            from core.harness.infrastructure.hooks.on_error_reflector import create_on_error_reflector
+            reflector = create_on_error_reflector()
+            hint = await reflector.on_post_observe(context)
+            if hint and isinstance(hint, dict) and hint.get("reasoning_hint"):
+                ctx["_reflection_hint"] = str(hint["reasoning_hint"])
+                logging.getLogger("aiplat.hooks").info(
+                    f"OnErrorReflector: injected reasoning hint after {error_count} consecutive errors"
+                )
+        except Exception:
+            pass
+        return {"continue": True}
+
+    hooks["on_error_reflector"] = create_hook(
+        name="on_error_reflector",
+        callback=on_error_reflector_hook,
+        phase=HookPhase.POST_OBSERVE,
+        priority=45,
+    )
+
     return hooks

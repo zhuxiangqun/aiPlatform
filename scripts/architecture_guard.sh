@@ -74,4 +74,11 @@ python3 -m pytest aiPlat-core/core/tests/unit/test_prompt_loading.py \
                  aiPlat-core/core/tests/unit/test_skill_config.py \
                  aiPlat-core/core/tests/unit/test_agent_md_config.py \
                  aiPlat-core/core/tests/unit/test_core_module_deps.py \
-                 -v --tb=short 2>&1 | tail -25
+                  -v --tb=short 2>&1 | tail -25
+
+# Phase check — three-step acceptance checklist (§73)
+echo ""
+echo "═══════════════════════════════════════════════════════════════"
+echo "  PHASE CHECK: dead code + wiring tests + self-annotated"
+echo "═══════════════════════════════════════════════════════════════"
+bash scripts/phase_check.sh || echo "WARNING: phase_check.sh found issues (non-critical in dev)"

@@ -643,13 +643,42 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             for s in self._config.stages:
                 v = state.get(s.output_artifact)
                 if v: ctx_base[s.output_artifact] = v
-            for idx, item in enumerate(upstream_array):
-                ctx = {**ctx_base, 'loop': {'item': item, 'index': idx}}
+            if loop_mode == 'parallel':
                 try:
-                    rendered = self._render_jinja2(body_template, ctx)
-                    results.append(rendered.strip())
-                except Exception as e:
-                    results.append(f"Error at index {idx}: {e}")
+                    from core.apps.agents.parallel_executor import parallel_analyze, create_dummy_agent, EmbeddingBridge
+                    topics = [
+                        self._render_jinja2(body_template, {**ctx_base, 'loop': {'item': item, 'index': idx}}).strip()
+                        for idx, item in enumerate(upstream_array)
+                    ]
+                    map_result = await parallel_analyze(
+                        topics, create_dummy_agent, max_concurrency=max_concurrency)
+                    raw_results = [str(r.get("output", r)) if isinstance(r, dict) else str(r)
+                                   for r in map_result.get("results", [])]
+                    # EmbeddingBridge: compress results
+                    bridge = EmbeddingBridge(compression_ratio=0.5)
+                    compacted = []
+                    for r in raw_results:
+                        if isinstance(r, str) and len(r) > 1500:
+                            _vec, summary = await bridge.encode(r)
+                            compacted.append(f"[EmbeddingBridge:{summary}]")
+                        else:
+                            compacted.append(r)
+                    results = compacted
+                except Exception:
+                    for idx, item in enumerate(upstream_array):
+                        ctx = {**ctx_base, 'loop': {'item': item, 'index': idx}}
+                        try:
+                            results.append(self._render_jinja2(body_template, ctx).strip())
+                        except Exception as e:
+                            results.append(f"Error at index {idx}: {e}")
+            else:
+                for idx, item in enumerate(upstream_array):
+                    ctx = {**ctx_base, 'loop': {'item': item, 'index': idx}}
+                    try:
+                        rendered = self._render_jinja2(body_template, ctx)
+                        results.append(rendered.strip())
+                    except Exception as e:
+                        results.append(f"Error at index {idx}: {e}")
             return json.dumps({'results': results, 'count': len(results), 'mode': loop_mode}, ensure_ascii=False)
         
         if node_type == 'aggregator':
@@ -1060,16 +1089,23 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                     except Exception:
                         pass
 
-            # Execute all stages in this layer in parallel (with overall timeout)
-            layer_timeout = max(600 * len(layer), 3600)  # min 1h per layer
+            # Execute all stages in this layer in parallel with Semaphore control
+            layer_timeout = max(600 * len(layer), 3600)
             try:
+                from core.apps.agents.parallel_executor import ParallelExecutor
+                pool_size = max(1, min(len(layer), 5))
+                _executor = ParallelExecutor(max_concurrency=pool_size)
+                _sem = asyncio.Semaphore(pool_size)
+                async def _stage_with_sem(i):
+                    async with _sem:
+                        return await self._exec_single_stage(stages[i], i, state)
                 results = await asyncio.wait_for(
-                    asyncio.gather(
-                        *[self._exec_single_stage(stages[i], i, state) for i in layer],
-                        return_exceptions=True,
-                    ),
+                    asyncio.gather(*[_stage_with_sem(i) for i in layer], return_exceptions=True),
                     timeout=layer_timeout,
                 )
+                state.setdefault("_parallel_stats", []).append({
+                    "pool_size": pool_size, "layer_count": len(layer),
+                })
             except asyncio.TimeoutError:
                 state["error"] = f"layer_timeout ({layer_timeout}s)"
                 state["phase"] = BuilderSessionPhase.failed.value

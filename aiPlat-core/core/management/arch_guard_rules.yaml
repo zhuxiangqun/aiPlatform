@@ -1795,3 +1795,281 @@ if collisions:
       min_matches: 1
     message: "EmbeddingBridge 已实现 — 建议在 FanOut 流程中启用以节省 30-40% Token"
 
+  # ═══ Section 73: 接线完成度 — 0-caller 死代码检测 (2026-06) ═══
+
+  # 73.1: caller_verify.sh must exist and be executable
+  - id: caller_verify_script_present
+    section: "§73"
+    section_name: "接线验证 — caller_verify.sh 脚本存在"
+    level: error
+    check:
+      type: file_exists
+      path: "scripts/caller_verify.sh"
+    message: "caller_verify.sh 缺失 — 必须存在以自动化检测 0-caller 死代码"
+
+  # 73.2: ErrorReflector hook must have callers (prevents silent failure)
+  - id: error_reflector_wired
+    section: "§73"
+    section_name: "ErrorReflector — ReActLoop POST_OBSERVE hook 必须已接线"
+    level: warning
+    check:
+      type: grep_required
+      pattern: 'ErrorReflector\|on_error_reflector\|reflect_on_error'
+      paths: ["aiPlat-core/core/harness/execution/"]
+      min_matches: 1
+    message: "ErrorReflector 未接入 ReActLoop — 连续 tool_call 失败后无反思能力 (§4.1)"
+
+  # 73.3: HallucinationTracker must be wired to answer pipeline
+  - id: hallucination_tracker_wired
+    section: "§73"
+    section_name: "HallucinationTracker — 答案生成后必须执行幻觉检测"
+    level: warning
+    check:
+      type: grep_required
+      pattern: 'HallucinationTracker\|hallucination_tracker\|evaluate_faithfulness'
+      paths: ["aiPlat-core/core/apps/agents/"]
+      min_matches: 1
+    message: "HallucinationTracker 未接入 MaterialsChatAgent — 无 NLI 事实核查能力 (§3.1)"
+
+  # 73.4: ParallelExecutor must have callers outside its own file
+  - id: parallel_executor_wired
+    section: "§73"
+    section_name: "ParallelExecutor — FanOut 并行必须已接线到 PipelineEngine"
+    level: warning
+    check:
+      type: grep_required
+      pattern: 'ParallelExecutor\|parallel_executor'
+      paths: ["aiPlat-core/core/harness/execution/"]
+      min_matches: 1
+    message: "ParallelExecutor 未接入 PipelineEngine — FanOut 并行能力未生效 (§1.2)"
+
+  # 73.5: EnterpriseGateway must be wired to server startup
+  - id: enterprise_gateway_wired
+    section: "§73"
+    section_name: "企业消息网关 — 飞书/企微/Slack 必须已接线到 server.py"
+    level: warning
+    check:
+      type: grep_required
+      pattern: 'EnterpriseGateway\|FeishuAdapter\|WeComAdapter\|SlackAdapter\|gateway'
+      paths: ["aiPlat-core/core/server.py"]
+      min_matches: 1
+    message: "EnterpriseGateway 未接入 server.py startup — 企业消息能力未生效 (§2.3)"
+
+  # 73.6: ImplicitFeedback must be wired to chat API response path
+  - id: implicit_feedback_wired
+    section: "§73"
+    section_name: "隐式反馈 — chat API 返回后必须调用隐式反馈收集"
+    level: warning
+    check:
+      type: grep_required
+      pattern: 'ImplicitFeedbackCollector\|implicit_feedback\|process_behavior'
+      paths: ["aiPlat-core/core/api/"]
+      min_matches: 1
+    message: "ImplicitFeedbackCollector 未接入 chat API — 用户行为信号未收集 (§4.2)"
+
+  # 73.7: LoRAAutoTrigger must be wired to AutoLearner approve path
+  - id: auto_trigger_wired
+    section: "§73"
+    section_name: "LoRAAutoTrigger — AutoLearner.approve() 后必须检查微调阈值"
+    level: warning
+    check:
+      type: grep_required
+      pattern: 'get_auto_trigger\|LoRAAutoTrigger\|check_threshold'
+      paths: ["aiPlat-core/core/harness/learning/"]
+      min_matches: 1
+    message: "LoRAAutoTrigger 未接入 AutoLearner — 高质量 Skill 累计后不会自动触发微调 (§4.3)"
+
+  # 73.8: EvolutionEngine nightly cron must be wired to server
+  - id: evolution_nightly_cron
+    section: "§73"
+    section_name: "EvolutionEngine — 夜间 cron 必须已接入 server.py apscheduler"
+    level: warning
+    check:
+      type: grep_required
+      pattern: 'run_nightly\|EvolutionEngine.*cron\|evolution_cron'
+      paths: ["aiPlat-core/core/server.py"]
+      min_matches: 1
+    message: "EvolutionEngine.run_nightly() 未接入 server.py cron — 夜间进化流水线从未运行 (§5.4)"
+
+  # 73.9: ProvenanceScanner must be wired to wiki page update
+  - id: provenance_scanner_wired
+    section: "§73"
+    section_name: "ProvenanceScanner — Wiki 更新后必须调用 on_source_updated()"
+    level: error
+    check:
+      type: grep_required
+      pattern: 'ProvenanceScanner\|on_source_updated'
+      paths: ["aiPlat-core/core/api/routers/wiki.py"]
+      min_matches: 1
+    message: "ProvenanceScanner 未接入 Wiki 更新端点 — 旧版本文档不会被自动标记为 stale (§5.85)"
+
+  # 73.10: caller_verify.sh must run as part of architecture_guard.sh
+  - id: caller_verify_in_arch_guard
+    section: "§73"
+    section_name: "caller_verify.sh 已集成到 architecture_guard.sh"
+    level: error
+    check:
+      type: grep_required
+      pattern: 'caller_verify\.sh'
+      paths: ["scripts/architecture_guard.sh"]
+      min_matches: 1
+    message: "caller_verify.sh 未在 architecture_guard.sh 中执行 — 0-caller 检测不会在 CI 中运行"
+
+  # 73.11: method_verify.sh must exist and be integrated
+  - id: method_verify_in_phase_check
+    section: "§73"
+    section_name: "method_verify.sh 已集成到 phase_check.sh"
+    level: error
+    check:
+      type: grep_required
+      pattern: 'method_verify\.sh'
+      paths: ["scripts/phase_check.sh"]
+      min_matches: 1
+    message: "method_verify.sh 未在 phase_check.sh 中执行 — 方法级 caller 检测不会运行"
+
+  # 73.12: OnErrorReflector.on_post_observe must have callers
+  - id: error_reflector_method_wired
+    section: "§73"
+    section_name: "OnErrorReflector.on_post_observe — 必须被 hook_manager 调用"
+    level: error
+    check:
+      type: grep_required
+      pattern: 'OnErrorReflector.*on_post_observe\|on_post_observe.*reflector'
+      paths: ["aiPlat-core/core/harness/infrastructure/hooks/"]
+      min_matches: 1
+    message: "OnErrorReflector.on_post_observe() 未在 hooks 中调用 — 反思能力未激活"
+
+  # 73.13: HallucinationTracker.evaluate must have callers
+  - id: hallucination_tracker_method_wired
+    section: "§73"
+    section_name: "HallucinationTracker.evaluate — 必须被 MaterialsChatAgent 调用"
+    level: error
+    check:
+      type: grep_required
+      pattern: 'tracker\.evaluate\|hallucination_tracker.*evaluate'
+      paths: ["aiPlat-core/core/apps/agents/"]
+      min_matches: 1
+    message: "HallucinationTracker.evaluate() 未在 MaterialsChatAgent 中调用 — 幻觉检测未激活"
+
+  # 73.14: ParallelExecutor.parallel_analyze must have callers
+  - id: parallel_executor_method_wired
+    section: "§73"
+    section_name: "ParallelExecutor.parallel_analyze — 必须被 pipeline_engine 调用"
+    level: error
+    check:
+      type: grep_required
+      pattern: 'parallel_analyze'
+      paths: ["aiPlat-core/core/harness/execution/"]
+      min_matches: 1
+    message: "parallel_analyze() 未在 pipeline_engine 中调用 — FanOut 能力未激活"
+
+  # 73.15: SemanticCache.invalidate_domain must have callers
+  - id: semantic_cache_invalidate_wired
+    section: "§73"
+    section_name: "SemanticCache.invalidate_domain — wiki 更新时必须调用"
+    level: error
+    check:
+      type: grep_required
+      pattern: 'invalidate_domain\|cache.*invalidate'
+      paths: ["aiPlat-core/core/api/routers/wiki.py"]
+      min_matches: 1
+    message: "SemanticCache.invalidate_domain() 未在 wiki 更新端点调用 — 缓存不会自动失效"
+
+  # 73.16: integration tests must run as part of wiring suite
+  - id: wiring_integration_tests_present
+    section: "§73"
+    section_name: "接线集成测试 — tests/wiring/integration/ 必须存在"
+    level: warning
+    check:
+      type: grep_required
+      pattern: 'test_reflector\|test_parallel\|test_gateway'
+      paths: ["aiPlat-core/core/tests/wiring/integration/"]
+      min_matches: 1
+    message: "接线集成测试缺失 — 应至少包含 reflector/parallel/gateway 三个测试文件"
+
+  # ═══ Section 74: 全系统扫描补充规则 (2026-06 四维扫描) ═══
+
+  # 74.1: No duplicate route definitions (catches FastAPI startup crash)
+  - id: no_duplicate_routes
+    section: "§74"
+    section_name: "重复路由 — 禁止同一路由器上定义相同路径的多个端点"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: '@router\.(get|post|put|delete)\("/wiki/golden-queries/seed"\)'
+      paths: ["aiPlat-core/core/api/routers/wiki.py"]
+      max_matches: 1
+    message: "发现重复路由定义 — FastAPI 启动会崩溃。删除重复的端点定义。"
+
+  # 74.2: PatternCache.store must have production callers
+  - id: pattern_cache_store_wired
+    section: "§74"
+    section_name: "PatternCache.store — 必须在回答成功后存储执行模式"
+    level: error
+    check:
+      type: grep_required
+      pattern: 'pattern_cache.*store\|PatternCache.*store\|pcache\.store'
+      paths: ["aiPlat-core/core/apps/agents/"]
+      min_matches: 1
+    message: "PatternCache.store() 未在任何 Agent 中调用 — 执行模式从未写入 (§5.4 模式晶体化)"
+
+  # 74.3: SemanticCache.invalidate on KB reindex
+  - id: semantic_cache_invalidate_on_reindex
+    section: "§74"
+    section_name: "SemanticCache 失效 — KB reindex 时必须清缓存"
+    level: error
+    check:
+      type: grep_required
+      pattern: 'invalidate_domain'
+      paths: ["aiPlat-core/core/api/routers/knowledge.py"]
+      min_matches: 1
+    message: "KB reindex 不清除 SemanticCache — 可能返回过期缓存结果"
+
+  # 74.4: ProvenanceScanner must cover programmatic write_page paths
+  - id: provenance_scanner_in_write_page
+    section: "§74"
+    section_name: "ProvenanceScanner — write_page() 内部必须调用 on_source_updated"
+    level: error
+    check:
+      type: grep_required
+      pattern: 'ProvenanceScanner\|on_source_updated'
+      paths: ["aiPlat-core/core/harness/knowledge/wiki_engine.py"]
+      min_matches: 1
+    message: "write_page() 未调用 ProvenanceScanner — 程序化 Wiki 更新不触发 stale 标记"
+
+  # 74.5: No 'for o in str(o)' bug pattern anywhere
+  - id: no_str_iteration_bug
+    section: "§74"
+    section_name: "防迭代 bug — 禁止 for o in str(collection) 模式"
+    level: warning
+    check:
+      type: grep_forbidden
+      pattern: 'for\s+\w+\s+in\s+str\('
+      paths: ["aiPlat-core/core/"]
+      max_matches: 0
+    message: "发现 'for o in str(o)' 迭代 bug — 应改为 'for o in collection'"
+
+  # 74.6: method_verify.sh must be integrated into architecture_guard.sh
+  - id: method_verify_in_arch_guard
+    section: "§74"
+    section_name: "method_verify.sh — 必须集成到 architecture_guard.sh"
+    level: error
+    check:
+      type: grep_required
+      pattern: 'method_verify\|phase_check'
+      paths: ["scripts/architecture_guard.sh"]
+      min_matches: 1
+    message: "method_verify.sh 或 phase_check.sh 未集成到 architecture_guard.sh"
+
+  # 74.7: No known-debt TODO without tracking
+  - id: no_untracked_debt_todos
+    section: "§74"
+    section_name: "已知债务 — TODO: wire / 0 caller 必须标注 noqa: known-debt 和 Phase"
+    level: warning
+    check:
+      type: grep_forbidden
+      pattern: 'TODO.*wire\b|0 caller|待接线'
+      paths: ["aiPlat-core/core/harness/", "aiPlat-core/core/apps/", "aiPlat-core/core/services/", "aiPlat-core/core/gateway/"]
+      max_matches: 0
+    message: "发现未追踪的接线债务 — 标注为 'noqa: known-debt Phase X' 或立即修复"
+

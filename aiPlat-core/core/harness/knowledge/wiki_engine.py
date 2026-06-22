@@ -328,7 +328,12 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
         # stale_references: explicit pass = replace; None = keep existing
         stale_references = stale_references if stale_references is not None else \
             (existing.get("stale_references") or [])
-        version = version or existing.get("version", "1")
+        if version:
+            pass  # explicitly provided via argument
+        elif existing:
+            version = str(int(existing.get("version", "1")) + 1)
+        else:
+            version = "1"
         summary = summary or existing.get("summary", "")
         # Auto-generate summary from body if still empty
         if not summary and body:
@@ -556,6 +561,25 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
             _reconcile_source_articles(title, source_articles, collection_id)
         except Exception:
             pass
+
+    # ── Programmatic update hooks: provenance + cache ──
+    if existing:
+        try:
+            import asyncio as _asyncio
+            from core.harness.knowledge.provenance import get_provenance_tracker, ProvenanceScanner
+            tracker = get_provenance_tracker()
+            scanner = ProvenanceScanner(tracker)
+            _asyncio.run(scanner.on_source_updated(title, version))
+        except Exception:
+            pass
+    try:
+        from core.harness.knowledge.semantic_cache import get_semantic_cache
+        cache = get_semantic_cache()
+        if cache.enabled:
+            import asyncio as _asyncio
+            _asyncio.run(cache.invalidate_domain(collection_id))
+    except Exception:
+        pass
 
     return str(p)
 

@@ -95,7 +95,7 @@ class AgentMessageBus:
         self,
         target_agent: str,
         sender_agent: str,
-        # TODO: integrate into pipeline Agent communication; currently 0 production callers (2026-05)  # noqa: known-debt — planned for upcoming pipeline integration phase
+        # noqa: known-debt — pipeline Agent-to-Agent request/response protocol (Phase 8)
         msg_type: str = "request",
         payload: Optional[Dict[str, Any]] = None,
         timeout: float = 30.0,

@@ -374,6 +374,16 @@ async def execute_agent(agent_id: str, request: dict, http_request: Request, rt:
     result = await get_harness().execute(exec_req)
     resp = wrap_execution_result_as_run_summary(result)
 
+    # Inject run_id for frontend feedback tracking
+    run_id = resp.get("run_id", "")
+    if run_id:
+        try:
+            from core.services.implicit_feedback import get_implicit_feedback_collector
+            collector = get_implicit_feedback_collector()
+            await collector.record(run_id=run_id, signal_type="response_delivered", session_id=session_id)
+        except Exception:
+            pass
+
     # Cache paused requests in memory (minimal resume semantics).
     try:
         payload2 = result.payload or {}
@@ -399,6 +409,19 @@ async def execute_agent(agent_id: str, request: dict, http_request: Request, rt:
                     "created_at": datetime.now(timezone.utc).isoformat(),
                 }
                 _agent_executions[exec_id] = payload2
+            # EnterpriseGateway: notify on approval-required events
+            if payload2.get("status") == "approval_required":
+                try:
+                    from core.gateway import get_enterprise_gateway, GatewayMessage
+                    gw = get_enterprise_gateway()
+                    if gw._adapters:
+                        msg_text = f"Agent '{agent_id}' requires approval.\n"
+                        msg_text += f"Request: {str(request.get('message', request.get('task', '')))[:200]}\n"
+                        msg_text += f"Execution ID: {exec_id}\n"
+                        msg = GatewayMessage(channel="feishu", channel_chat_id="default", text=msg_text)
+                        await gw.handle_message(msg)
+                except Exception:
+                    pass
     except Exception:
         pass
 
@@ -406,7 +429,11 @@ async def execute_agent(agent_id: str, request: dict, http_request: Request, rt:
         await _audit_execute(rt, http_request=http_request, payload=payload, resource_type="agent", resource_id=str(agent_id), resp=resp)
     except Exception:
         pass
-    return JSONResponse(status_code=200 if resp.get("ok") else int(getattr(result, "http_status", 500) or 500), content=resp)
+    return JSONResponse(
+        status_code=200 if resp.get("ok") else int(getattr(result, "http_status", 500) or 500),
+        content=resp,
+        headers={"X-AIPLAT-RUN-ID": run_id} if run_id else None,
+    )
 
 
 @router.post("/agents/executions/{execution_id}/resume")
@@ -619,3 +646,63 @@ async def list_pending_approvals(request: Request):
     """兼容端点 — 返回空审批列表（新审批系统由 management 审批中心接管）"""
     _ = request
     return {"items": [], "total": 0}
+
+
+@router.post("/agents/feedback")
+async def submit_agent_feedback(body: dict, request: Request):
+    """Phase 4.2: Submit implicit feedback signal for a previous agent execution.
+
+    Accepts: {run_id, signal_type, session_id}
+    Signals: copy_full, select_text, re_query, repeat_query, abandon
+
+    Frontend sends this after user interaction with the answer.
+    """
+    run_id = str((body or {}).get("run_id", "")).strip()
+    signal_type = str((body or {}).get("signal_type", "")).strip()
+    session_id = str((body or {}).get("session_id", "")).strip()
+
+    if not run_id or not signal_type:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=422, detail="run_id and signal_type required")
+
+    valid_signals = {"copy_full", "select_text", "re_query", "repeat_query", "abandon"}
+    if signal_type not in valid_signals:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=422,
+                            detail=f"signal_type must be one of: {', '.join(sorted(valid_signals))}")
+
+    try:
+        from core.services.implicit_feedback import get_implicit_feedback_collector
+        collector = get_implicit_feedback_collector()
+        await collector.record(run_id=run_id, signal_type=signal_type, session_id=session_id)
+        return {"ok": True, "run_id": run_id, "signal_type": signal_type}
+    except Exception as e:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/agents/hallucination/dashboard")
+async def get_hallucination_dashboard(domain_id: str = "default"):
+    """Phase 3.1: Get hallucination tracking dashboard."""
+    try:
+        from core.harness.evaluation.hallucination_tracker import get_hallucination_tracker
+        tracker = get_hallucination_tracker()
+        return {
+            "dashboard": tracker.get_dashboard(domain_id=domain_id),
+            "recent_reports": tracker.get_recent_reports(limit=20),
+        }
+    except Exception as e:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/agents/feedback/stats")
+async def get_feedback_stats():
+    """Phase 4.2: Get implicit feedback statistics."""
+    try:
+        from core.services.implicit_feedback import get_implicit_feedback_collector
+        collector = get_implicit_feedback_collector()
+        return collector.get_stats()
+    except Exception as e:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail=str(e))

@@ -801,12 +801,54 @@ done
 
 任何 `❌` = 实施未完成，不得声称该阶段已完成。
 
+**9. 新建文件接线矩阵（强制——2026-06 新增）**
+
+以下矩阵界定哪些场景允许创建新文件：
+
+| 场景 | 允许？ | 条件 |
+|------|:---:|------|
+| 新建文件 + 同 commit 有生产 caller | ✅ | caller 必须是生产代码（非测试） |
+| 新建文件 + 同 commit 仅测试 caller | ❌ | 需补充生产 caller 后重新提交 |
+| 新建文件 + 同 commit 无 caller | ❌ | CI 直接拒绝（`caller_verify.sh` ERROR） |
+| 批量 3+ 文件无 caller 同时提交 | ❌ | CI 直接拒绝 + PR 不允许合入 |
+| 新建文件 + `# TODO: wire / 0 caller / 待接线` 标记 | ⚠️ 警告 | 允许但不计入 Phase 完成，feature flag 不遮掩 |
+
+**10. 接线断言测试（wiring test）—— 2026-06 新增**
+
+每个新建公共模块 **必须** 附带一个接线断言测试（`tests/wiring/` 下），该测试不是测模块功能，而是测模块 **是否被接入生产线**：
+
+- 验证：新模块的公共符号被至少 1 个非测试、非自身的生产代码文件 import/调用
+- 位置：`tests/wiring/test_<模块名>_wired.py`
+- 命名：`test_<符号名>_has_production_caller`
+- 当前已知 5 个模块 0 caller 的测试标记为 `@pytest.mark.xfail`，接线后移除
+
+**11. Phase 验收检查清单（2026-06 新增）**
+
+每个 Phase 完成后，**必须**跑以下 3 步（CI 硬性要求，不准跳过）：
+
+```bash
+# Step 1: 死代码检测
+bash scripts/caller_verify.sh
+
+# Step 2: 接线断言测试
+python -m pytest tests/wiring/ -v --tb=short
+
+# Step 3: 自标记死代码扫描
+grep -rn "TODO.*wire\|0 caller\|待接线\|FIXME.*wire" aiPlat-core/core/ --include='*.py' \
+  | grep -v __pycache__ | grep -v '.pyc' || true
+```
+
+三步全部 PASS / 无意外输出才算 Phase 完成。三步集成到 `scripts/phase_check.sh` 一键运行。
+
 ### 自查清单（审计时逐条检查）
 
 1. 新增的方法有没有至少 1 个非测试的生产调用者？
 2. 有没有用 `AIPLAT_ENABLE_*=false` 来遮掩未完成的功能？
 3. 如果有全局单例，是否在 platform/core 两个进程中都初始化了？
 4. 有没有重复实现已有基础设施的情况？
+5. 本轮新建文件是否全部通过 `caller_verify.sh`？（Rule 9）
+6. 是否创建了 `tests/wiring/` 下的接线断言测试？（Rule 10）
+7. `scripts/phase_check.sh` 是否全部 GREEN？（Rule 11）
 
 ### 典型案例（反面教材 + 当前状态）
 
@@ -818,6 +860,7 @@ done
 | `FeedbackLoops (3 modules)` | `harness.start()` 从未调用 | ✅ 已激活，drain wired |
 | `AgentMessageBus` | 只 send 不 receive | ✅ send wired, receive 故意不使用（bus 是通知层） |
 | `PipelineEngine._summarize_artifact` | 与 ContextAssembler 重复 | ✅ 已验证——`_summarize_artifact` 做 artifact 截断，`ContextAssembler` 做 token 压缩，功能不重复 |
+| Phase 0-4 6 模块 (2026-06) | 批量创建后遗忘接线：`on_error_reflector`/`hallucination_tracker`/`parallel_executor`/`gateway`/`implicit_feedback`/`semantic_cache` | ⚠️ 已发现，待 Phase 7 接线（见 `tests/wiring/` xfail 标记） |
 
 **设计文档依据**：
 - 根 `CLAUDE.md` §9

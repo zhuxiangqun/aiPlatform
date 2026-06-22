@@ -40,6 +40,7 @@ class ProvenanceTracker:
 
     def __init__(self):
         self._store: Dict[str, AnswerProvenance] = {}
+        self._stale_source_ids: set[str] = set()
 
     def extract_citations(self, answer: str, retrieved_context: List[Dict[str, Any]], *, domain_id: str = "default") -> List[Citation]:
         citations = []
@@ -72,6 +73,14 @@ class ProvenanceTracker:
     def get_stale_answers(self) -> List[AnswerProvenance]:
         return [p for p in self._store.values() if p.stale_count > 0]
 
+    def get_stale_source_ids(self) -> set[str]:
+        """Return the set of source page IDs known to have newer versions."""
+        return self._stale_source_ids
+
+    def is_source_stale(self, source_page_id: str) -> bool:
+        """Check if a given source page/document ID is known stale."""
+        return source_page_id in self._stale_source_ids
+
     def _similarity(self, a: str, b: str) -> float:
         ta = set(re.findall(r'[\u4e00-\u9fff]+|[a-zA-Z]+', a.lower()))
         tb = set(re.findall(r'[\u4e00-\u9fff]+|[a-zA-Z]+', b.lower()))
@@ -85,6 +94,7 @@ class ProvenanceScanner:
         self._tracker = tracker or ProvenanceTracker()
 
     async def on_source_updated(self, page_id: str, new_version: str):
+        self._tracker._stale_source_ids.add(page_id)
         count = 0
         for run_id, prov in list(self._tracker._store.items()):
             for c in prov.citations:

@@ -112,6 +112,14 @@ async def reindex_collection(collection_id: str, rt: RuntimeDep = Depends(get_ke
     if not success:
         raise HTTPException(status_code=404, detail=f"Collection {collection_id} not found")
     docs = await km.list_documents(collection_id)
+    # Invalidate semantic cache for this collection after reindex
+    try:
+        from core.harness.knowledge.semantic_cache import get_semantic_cache
+        cache = get_semantic_cache()
+        if cache.enabled:
+            await cache.invalidate_domain(collection_id)
+    except Exception:
+        pass
     return {"status": "reindexed", "documents_reindexed": len(docs)}
 
 

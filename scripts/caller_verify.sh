@@ -2,7 +2,8 @@
 # ============================================================================
 # caller_verify.sh — 接线完成度验证脚本
 #
-# 预扫描全仓符号引用，然后快速检测 0 调用者的死代码。
+# 扫描全仓关键模块的公共符号，检测 0 调用者的死代码。
+# 覆盖范围：harness 核心 + Phase 0-6 全部新增模块
 #
 # Usage: bash scripts/caller_verify.sh
 # ============================================================================
@@ -22,18 +23,40 @@ trap 'rm -rf "$TMPDIR"' EXIT
 _log() { echo -e "$@" >&2; }
 
 # ------------------------------------------------------------------
-# Step 1: Build symbol → caller_files index (one scan)
+# Build one-time inverted index: which symbols appear in which files
 # ------------------------------------------------------------------
-_log "  Building symbol index..."
-find "$WORKSPACE/aiPlat-core" "$WORKSPACE/aiPlat-platform" "$WORKSPACE/aiPlat-app" \
+_log "  Building symbol index (one-pass scan)..."
+ALL_FILES=$(find "$WORKSPACE/aiPlat-core" "$WORKSPACE/aiPlat-platform" "$WORKSPACE/aiPlat-app" \
     -name '*.py' -not -path '*/__pycache__/*' -not -path '*/tests/*' \
-    -not -name 'conftest.py' 2>/dev/null | head -500 > "$TMPDIR/all_files.txt"
+    -not -name 'conftest.py' 2>/dev/null)
 
-# Build a quick index: for each keyword, check which files mention it
-# Use a simple inverted-index approach with grep -lF (fast fixed-string search)
-build_index() {
-    local keyword="$1"
-    grep -lF "$keyword" $(cat "$TMPDIR/all_files.txt") 2>/dev/null | wc -l | tr -d ' '
+# Pre-index: for each file, extract all tokens and write file_path:token
+INDEX_FILE="$TMPDIR/symbol_index.txt"
+total=$(echo "$ALL_FILES" | wc -l | tr -d ' ')
+i=0
+while IFS= read -r f; do
+    [ -z "$f" ] && continue
+    # Extract words (identifiers) — cheap tokenization
+    tr -c 'A-Za-z0-9_' '\n' < "$f" | sort -u | while read -r token; do
+        [ ${#token} -ge 3 ] && echo "$token|$f"
+    done
+    i=$((i + 1))
+    [ $((i % 50)) -eq 0 ] && echo -ne "\r    indexed $i/$total files..." >&2
+done <<< "$ALL_FILES" > "$INDEX_FILE"
+echo -e "\r    indexed $total files done.      " >&2
+
+# Look up symbol in index: count distinct caller files (excluding self + tests)
+lookup_callers() {
+    local symbol="$1"
+    local self_basename="$2"
+    local hits
+    hits=$(grep "^$symbol|" "$INDEX_FILE" 2>/dev/null \
+        | cut -d'|' -f2 \
+        | grep -v "$self_basename" \
+        | grep -v '/tests/' \
+        | sort -u \
+        | wc -l | tr -d ' ')
+    [ "${hits:-0}" -gt 0 ]
 }
 
 # ------------------------------------------------------------------
@@ -56,30 +79,14 @@ else:
 " 2>/dev/null || true
 }
 
-# ------------------------------------------------------------------
-# Check if symbol has callers (quick grep in target dirs only)
-# ------------------------------------------------------------------
-has_callers() {
-    local symbol="$1"
-    local self_basename="$2"
-    # Search only in non-test Python files, exclude self file
-    local hits
-    hits=$(grep -rlF "$symbol" "$WORKSPACE/aiPlat-core" "$WORKSPACE/aiPlat-platform" "$WORKSPACE/aiPlat-app" \
-        --include='*.py' 2>/dev/null \
-        | grep -v __pycache__ \
-        | grep -v "$self_basename" \
-        | grep -v '/tests/' \
-        | grep -v 'conftest\.py' \
-        | wc -l | tr -d ' ')
-    [ "${hits:-0}" -gt 0 ]
-}
-
 # ===================================================================
 # Check: key harness files for dead public symbols
 # ===================================================================
 HARNESS_DIR="$WORKSPACE/aiPlat-core/core/harness"
+CORE_DIR="$WORKSPACE/aiPlat-core/core"
 
 PRIORITY_FILES=(
+    # ── Harness core infrastructure ──
     "infrastructure/infra_bridge.py"
     "execution/team_planner.py"
     "execution/conditional.py"
@@ -97,23 +104,61 @@ PRIORITY_FILES=(
     "document/parsers.py"
     "document/ocr.py"
     "document/transcriber.py"
+    # ── Phase 0: 紧急止血 ──
+    "CORE_SERVICES:pii_detector.py"
+    "knowledge/semantic_cache.py"
+    # ── Phase 1: 铸造利刃 ──
+    "CORE_APPS:apps/agents/parallel_executor.py"
+    # ── Phase 2: 自进化大脑 ──
+    "knowledge/provenance.py"
+    "learning/__init__.py"
+    "learning/skill_simulator.py"
+    "CORE_GATEWAY:gateway/__init__.py"
+    # ── Phase 3: 前沿能力 ──
+    "evaluation/hallucination_tracker.py"
+    "deployment/canary.py"
+    # ── Phase 4: 自进化闭环 ──
+    "infrastructure/hooks/on_error_reflector.py"
+    "CORE_SERVICES:implicit_feedback.py"
+    "training/auto_trigger.py"
+    "meta/__init__.py"
+    # ── Phase 5: 软隐空间 ──
+    "learning/experience_vector.py"
+    "execution/pattern_cache.py"
+    "evolution_engine.py"
+    # ── Phase 6: 安全审计 ──
+    "security/code_auditor.py"
 )
 
 echo ""
 echo "═══════════════════════════════════════════════════════════════"
 echo "  Caller Verification — Dead Code Detection"
+echo "  Coverage: ${#PRIORITY_FILES[@]} key modules"
 echo "═══════════════════════════════════════════════════════════════"
 echo ""
 
-for rel_path in "${PRIORITY_FILES[@]}"; do
-    f="$HARNESS_DIR/$rel_path"
+for entry in "${PRIORITY_FILES[@]}"; do
+    # Support prefix redirection: CORE_SERVICES:file.py → core/services/file.py
+    f=""
+    if [[ "$entry" == CORE_SERVICES:* ]]; then
+        f="$CORE_DIR/services/${entry#CORE_SERVICES:}"
+    elif [[ "$entry" == CORE_APPS:* ]]; then
+        f="$CORE_DIR/${entry#CORE_APPS:}"
+    elif [[ "$entry" == CORE_GATEWAY:* ]]; then
+        f="$CORE_DIR/${entry#CORE_GATEWAY:}"
+    elif [[ "$entry" == CORE_HARNESS:* ]]; then
+        f="$HARNESS_DIR/${entry#CORE_HARNESS:}"
+    else
+        f="$HARNESS_DIR/$entry"
+    fi
     [ -f "$f" ] || continue
     basename_f="$(basename "$f")"
 
     while IFS= read -r name; do
         [ -z "$name" ] && continue
-        if ! has_callers "$name" "$basename_f"; then
-            _log "  ${RED}→${NC} $rel_path: $name — ${RED}0 callers${NC}"
+        if ! lookup_callers "$name" "$basename_f"; then
+            rel="${entry#CORE_*:}"
+            _log "  ${RED}→${NC} $rel: $name — ${RED}0 callers${NC}"
             VIOLATIONS=$((VIOLATIONS + 1))
         fi
     done < <(extract_symbols "$f")

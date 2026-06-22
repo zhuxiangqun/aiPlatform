@@ -157,6 +157,26 @@ def sys_kb_retrieve(
     if actor_scopes is not None and results:
         results = _filter_by_security(results, actor_scopes, collection_id)
 
+    # Phase 6: Provenance stale filter — exclude results from stale (outdated) sources
+    if results:
+        try:
+            from core.harness.knowledge.provenance import get_provenance_tracker
+            tracker = get_provenance_tracker()
+            stale_ids = tracker.get_stale_source_ids()
+            if stale_ids:
+                before = len(results)
+                results = [
+                    r for r in results
+                    if str(r.get("doc_id") or r.get("source_page") or r.get("page") or "") not in stale_ids
+                ]
+                if len(results) < before:
+                    import logging
+                    logging.getLogger("aiplat.retrieval").info(
+                        f"Provenance stale filter: {before - len(results)}/{before} results excluded (stale sources)"
+                    )
+        except Exception:
+            pass
+
     return results
 
 

@@ -291,6 +291,32 @@ class MaterialsChatAgent(BaseAgent):
                 "via": "knowledge_retrieve",
             })
 
+            # ── Semantic cache check (L1+L2+L3) ──
+            try:
+                from core.harness.knowledge.semantic_cache import get_semantic_cache
+                cache = get_semantic_cache()
+                if cache.enabled:
+                    cached = await cache.get(enhanced_question, domain_id)
+                    if cached and cached.get("answer"):
+                        _trace("缓存命中", f"L{cached.get('level', '?')} cache",
+                               cache_level=cached.get("level", ""))
+                        return AgentResult(
+                            success=True,
+                            output={"answer": cached["answer"],
+                                    "citations": cached.get("citations", []), "items": [],
+                                    "scope_applied": scope, "strategy": "cache_hit",
+                                    "skills_used": [], "turn_summary": "",
+                                    "intent": intent, "mode": "cache", "analysis": analysis,
+                                    "retrieval_policy": retrieval_policy, "answer_strategy": answer_strategy,
+                                    "reasoning_path": reasoning_path,
+                                    "pipeline_trace": pipeline_trace,
+                                    "quality": "cached"},
+                            metadata={"intent": intent, "strategy": "cache_hit", "cache_level": cached.get("level", ""),
+                                       "doc_count": len(doc_ids)},
+                        )
+            except Exception:
+                pass
+
             # ── Retrieve document content (ontology-first, FTS5 fallback) ──
             retrieved_docs: str = ""
             citations: list = []
@@ -528,6 +554,48 @@ class MaterialsChatAgent(BaseAgent):
                                 pass
                         quality = _self_review(answer, citations, reasoning_path)
                         _trace("质量评估", f"Self-RAG: {quality}", quality=quality)
+
+                        # ── Phase 3.1: Hallucination check ──
+                        hallucination_risk = 0.0
+                        try:
+                            from core.harness.evaluation.hallucination_tracker import get_hallucination_tracker
+                            tracker = get_hallucination_tracker()
+                            report = await tracker.evaluate(
+                                question=question, answer=answer,
+                                retrieved_context=[
+                                    {"text": c.get("text", c.get("source", ""))}
+                                    for c in (citations or [])
+                                ],
+                                run_id=run_id, domain_id=domain_id,
+                            )
+                            hallucination_risk = report.hallucination_risk
+                            if hallucination_risk > 0.7:
+                                _trace("幻觉检测", f"risk={hallucination_risk:.2f}", risk=hallucination_risk)
+                        except Exception:
+                            pass
+
+                        # ── Phase 0.3: Semantic cache write ──
+                        try:
+                            from core.harness.knowledge.semantic_cache import get_semantic_cache
+                            cache = get_semantic_cache()
+                            if cache.enabled and answer:
+                                await cache.set(enhanced_question, domain_id, {
+                                    "answer": answer, "citations": citations,
+                                })
+                        except Exception:
+                            pass
+                        # PatternCache: store execution pattern for future optimization
+                        try:
+                            from core.harness.execution.pattern_cache import get_pattern_cache
+                            pcache = get_pattern_cache()
+                            exec_path = {
+                                "retrieval_strategy": str(retrieval_policy.get("route", "direct")),
+                                "intent": intent, "qual": quality,
+                            }
+                            await pcache.store(domain_id, enhanced_question, exec_path, success=bool(answer))
+                        except Exception:
+                            pass
+
                         return AgentResult(
                             success=True,
                             output={"answer": answer, "citations": citations, "items": [],
@@ -537,8 +605,9 @@ class MaterialsChatAgent(BaseAgent):
                                     "retrieval_policy": retrieval_policy, "answer_strategy": answer_strategy,
                                     "reasoning_path": reasoning_path,
                                     "pipeline_trace": pipeline_trace,
-                                    "quality": quality},
-                            metadata={"intent": intent, "strategy": "direct_retrieve", "doc_count": len(doc_ids)},
+                                    "quality": quality, "hallucination_risk": hallucination_risk},
+                            metadata={"intent": intent, "strategy": "direct_retrieve", "doc_count": len(doc_ids),
+                                       "hallucination_risk": hallucination_risk},
                         )
                 except Exception:
                     pass  # fall through to skill path

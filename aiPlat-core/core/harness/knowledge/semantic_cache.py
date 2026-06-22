@@ -52,6 +52,7 @@ class SemanticCache:
         self._l1_hits: int = 0
         self._l2_hits: int = 0
         self._misses: int = 0
+        self._latent: Any = LatentStageCache()
 
     @property
     def enabled(self) -> bool:
@@ -190,14 +191,24 @@ class SemanticCache:
     # ── Public API ────────────────────────────────────────────────────────
 
     async def get(self, query: str, domain_id: str = "default") -> Optional[Dict[str, Any]]:
-        """Try L1 → L2 → miss."""
+        """Try L1 → L2(Latent) → L3(Redis)."""
         if not self._enabled:
             return None
         # L1
         result = await self.get_l1(query, domain_id)
         if result:
             return result
-        # L2
+        # L2: LatentStageCache — in-memory multi-stage vector match (primary semantic layer)
+        try:
+            query_vec = await self._embed(query)
+            if query_vec and len(query_vec) > 0:
+                matches = await self._latent.match(query_vec, top_k=1)
+                if matches and matches[0].get("score", 0) >= 0.85:
+                    self._l2_hits += 1
+                    return matches[0].get("result") or matches[0]
+        except Exception:
+            pass
+        # L3: Redis semantic similarity (backup)
         result = await self.get_l2(query, domain_id)
         if result:
             return result
@@ -210,6 +221,16 @@ class SemanticCache:
             return
         await self.set_l1(query, domain_id, result)
         await self.set_l2(query, domain_id, result)
+        # Store in LatentStageCache for multi-stage matching
+        try:
+            query_vec = await self._embed(query)
+            if query_vec:
+                await self._latent.store_stage(
+                    self._cache_key(query, domain_id), "query", query_vec,
+                    metadata={"domain": domain_id, "result": result},
+                )
+        except Exception:
+            pass
 
     async def invalidate_domain(self, domain_id: str):
         """Invalidate all cache for a domain (e.g., after KB update)."""
