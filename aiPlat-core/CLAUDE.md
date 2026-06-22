@@ -1876,6 +1876,66 @@ citations = tracker.extract_citations(answer, retrieved_context)
 | **Shadow** | 新版静默运行，对比结果但不影响线上 |
 | **Auto-Rollback** | error_rate 或 latency_p95 超阈值 → 自动回退到稳定版 |
 
+### 5.89 执行中实时反思（Phase 4.1）
+
+Agent 在单次任务执行中，连续工具调用失败 2 次时，自动触发轻量级 LLM 反思，
+修正策略后继续执行，避免直接撞墙失败。
+
+| 配置 | 默认值 | 环境变量 |
+|------|:---:|------|
+| 启用开关 | true | `AIPLAT_REFLECTOR_ENABLED` |
+| 最大反思次数 | 2 | — |
+| 触发阈值 | 连续 2 次 tool_call error | — |
+
+**模块**: `core/harness/infrastructure/hooks/on_error_reflector.py`
+**架构守卫**: `arch_guard_rules.yaml §71.1`
+
+### 5.90 用户行为隐式反馈（Phase 4.2）
+
+从用户行为中提取隐式反馈信号，自动调整答案置信度和 Provenance 权重。
+
+| 行为 | 信号 | 效果 |
+|------|:---:|------|
+| 复制答案全文 | +0.3 | 标记正样本 + Provenance +0.1 |
+| 选中片段 | +0.15 | 部分正向 |
+| 追问 | -0.1 | 前次答案不完整 |
+| 重复问题 | -0.2 | 标记负样本 |
+| 30s 无操作 | -0.05 | 可能不满意 |
+
+聚合策略: 每 10 条信号批量处理一次。
+
+**模块**: `core/services/implicit_feedback.py` + 前端 `copy` 事件埋点
+**架构守卫**: `arch_guard_rules.yaml §71.2`
+
+### 5.91 LoRA 微调自动触发（Phase 4.3）
+
+监听 AutoLearner 审批通过的高质量 Skill（confidence ≥ 0.8），累计 ≥ 100 条时
+自动生成 ShareGPT 格式 SFT 数据集，推送管理端通知。
+
+| 配置 | 默认值 | 环境变量 |
+|------|:---:|------|
+| 触发阈值 | 100 | `AIPLAT_SFT_AUTO_TRIGGER_THRESHOLD` |
+| 最低质量 | 0.8 | `AIPLAT_SFT_MIN_QUALITY` |
+| 启用开关 | true | `AIPLAT_SFT_ENABLED` |
+
+**模块**: `core/harness/training/auto_trigger.py`
+**架构守卫**: `arch_guard_rules.yaml §71.3`
+
+### 5.92 元认知策略建议（Phase 4.4，远期探索）
+
+Meta-Agent 每天分析 AutoLearner 审批历史，自动生成改进策略建议。
+只读建议，不修改代码。默认关闭。
+
+检测模式:
+- **高频拒绝原因**: 识别 ≥30% 的 Draft 被拒原因 → 建议增预检规则
+- **用户质量差异**: 低通过率用户 → 建议检查配置或暂停权限
+- **停滞检测**: 7 天无新 Draft → 建议检查 AutoLearner
+- **覆盖缺口**: 技能生成集中在单一类别 → 建议丰富多样性
+
+**模块**: `core/harness/meta/__init__.py`
+**环境变量**: `AIPLAT_META_AGENT_ENABLED=false` (默认关闭)
+**架构守卫**: `arch_guard_rules.yaml §71.4`
+
 
 
 ---

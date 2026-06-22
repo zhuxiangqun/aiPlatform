@@ -1707,3 +1707,53 @@ if collisions:
       grep_exclude: ["auto_rollback", "# noqa: manual-rollout"]
     message: "全量发布 (100%) 未配置 auto_rollback — 建议添加自动回滚保障 (§5.88)"
 
+  # ═══ Section 71: Phase 4 Modules — 自进化闭环守卫 (2026-06) ═══
+
+  # 71.1: OnErrorReflector must be registered in PostObserve hook chain
+  - id: on_error_reflector_registered
+    section: "§71"
+    section_name: "实时反思 — PostObserve 必须注册 OnErrorReflector"
+    level: warning
+    check:
+      type: grep_required
+      pattern: 'OnErrorReflector\|on_error_reflector'
+      paths: ["aiPlat-core/core/harness/execution/loop.py", "aiPlat-core/core/harness/infrastructure/hooks/"]
+      min_matches: 1
+    message: "ReActLoop 未检测到 OnErrorReflector 注册 — 连续工具失败时将无自动反思能力 (§5.89)"
+
+  # 71.2: Implicit feedback endpoint must exist
+  - id: implicit_feedback_endpoint
+    section: "§71"
+    section_name: "隐式反馈 — 必须提供 POST /feedback/implicit 端点"
+    level: warning
+    check:
+      type: grep_required
+      pattern: 'feedback.*implicit\|implicit.*feedback'
+      paths: ["aiPlat-core/core/api/routers/", "aiPlat-core/core/services/implicit_feedback.py"]
+      min_matches: 1
+    message: "未检测到隐式反馈端点 — 用户行为信号将无法收集 (§5.90)"
+
+  # 71.3: LoRA AutoTrigger must hook into AutoLearner approve
+  - id: lora_trigger_hooked
+    section: "§71"
+    section_name: "微调触发 — AutoLearner.approve() 必须钩入 LoRAAutoTrigger"
+    level: warning
+    check:
+      type: grep_required
+      pattern: 'lora_auto_trigger\|LoRAAutoTrigger'
+      paths: ["aiPlat-core/core/harness/learning/"]
+      min_matches: 1
+    message: "AutoLearner 未钩入 LoRAAutoTrigger — 审批通过后将无法自动触发微调建议 (§5.91)"
+
+  # 71.4: Meta-Agent should exist for enterprise deployments
+  - id: meta_agent_module
+    section: "§71"
+    section_name: "元认知 — 企业部署应包含 MetaAgent 模块"
+    level: info
+    check:
+      type: grep_required
+      pattern: 'MetaAgent\|meta_agent\|meta_agent'
+      paths: ["aiPlat-core/core/harness/meta/"]
+      min_matches: 1
+    message: "未检测到 MetaAgent 模块 — 远景探索，默认关闭，企业部署建议启用 (§5.92)"
+
