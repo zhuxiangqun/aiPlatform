@@ -1,0 +1,639 @@
+# aiPlat 商业化演进终极作战手册
+
+> 基线：代码交叉验证 | 评分：73/100 | 目标：96/100  
+> 对标：Hermes Agent · Claude Code · OpenClaw  
+> 定位：**企业级 AI 决策中枢**（非聊天工具/非编码助手）
+
+---
+
+## 一、基线诊断（来自 `AIPLAT_ARCHITECTURE_REPORT.md` 代码交叉验证）
+
+| 维度 | 评分 | 关键发现 |
+|------|:---:|------|
+| **Harness 内核** | **A+** | 14 Hook + LangGraph checkpoint + PipelineAgent v4.0 + Syscall 强制边界 + 5 级压缩 |
+| **知识引擎** | **A+** | 本体 13 步管线 + GraphIndex+HyperEdge + CRAG/HyDE + Palantir 9 项对齐 |
+| **企业治理** | **A** | 68 节 arch_guard + Skill Lint 10 规则 + 三层多租户 + 诊断 24 类检查 |
+| **Agent 系统** | **B+** | 8+1 类型 + Engine/Workspace + AGENT.md 交接 5 字段；缺 Agent SDK / IDE 集成 |
+| **Skill 系统** | **A-** | effects 副作用声明 + 5 准入标准 + semver 回滚；缺自学习循环 |
+| **MCP / Tool** | **A** | 双向 MCP + deny-by-default 双门禁 + PolicyGate 架构保护；缺终端后端多样性 |
+| **产品体验** | **C** | 仅 Web UI；无 IDE 插件 / Agent SDK / 桌面应用 |
+| **自进化能力** | **D** | 仅硬阈值 Task Skills 晶体化 (pass≥85%)；无用户反馈闭环 |
+| **RAG 检索** | **B+** | CRAG 3 级回退 + HyDE + CircuitBreaker + 检索安全；缺 RRF 融合 / 语义缓存 |
+| **可观测性** | **B** | syscall trace_id/span_id + PipelineTrace + 诊断 24 类；缺 OTel / Prometheus |
+| **安全合规** | **C+** | `_guard_messages()` 注入防护 + 三层多租户 + RBAC；缺 PII 脱敏 / SOC2 |
+| **成本控制** | **B+** | 本地模型 Ollama + 零 LLM 分类 + 5 级压缩 + Token 预算；缺语义缓存 |
+| **综合评分** | **73/100** | **内核碾压 (A+)，外壳粗糙 (C/D)** |
+
+---
+
+## 二、执行路线图
+
+```
+2026 Q3              Q4                 2027 Q1           Q2
+Jul Aug Sep | Oct Nov Dec | Jan Feb Mar | Apr May Jun
+
+Phase 0: 紧急止血 (6w, 2后+1运)
+├─ 0.1 PII脱敏  ████
+├─ 0.2 OTel     ████
+└─ 0.3 语义缓存  ████
+
+Phase 1: 铸造利刃 (12w, 3后+1前)
+├─ 1.1 SDK      ████████
+├─ 1.2 FanOut   ████████
+└─ 1.3 VS Code  ████████
+
+Phase 2: 自进化 (10w, 4后+1产)
+├─ 2.1 自学习   ████████
+├─ 2.2 溯源     ████████
+└─ 2.3 企业网关  ████
+
+评分: 73 → 82 → 88 → 96
+```
+
+---
+
+### Phase 0：紧急止血 — 安全合规基线
+
+> **目标**: 通过企业 IT 安全/运维评审，拿到金融/政务采购入场券  
+> **周期**: 6 周（Q3 2026） | **人力**: 2 后端 + 1 运维 | **成本增量**: ~$700/月
+
+---
+
+#### 0.1 PII 自动脱敏（2 周）
+
+**实施位置**:
+- `core/services/pii_detector.py` — 新建
+- `core/harness/syscalls/llm.py` — `_guard_messages()` 扩展
+
+**技术方案**:
+
+```
+Presidio + 自建正则双跑（并行，取并集）:
+
+  输入 Prompt → ┌─ Presidio Analyzer (NER) ─┐
+                └─ 自建正则 (手机/身份证) ──┘
+                          ↓ 取并集 (宁可误标，不可漏标)
+  masked_text + mapping = pii_detector.mask(text)
+  存储 mapping → request_context (Redis/内存)
+  
+  LLM 返回后:
+  unmasked_text = pii_detector.unmask(response, mapping)
+    └─ unmask 前检查 Context.role (仅 admin/data_owner 可见原文)
+        普通用户 → 返回 [MASKED]
+```
+
+**RBAC 权限模型**:
+
+```python
+# pii_detector.py
+ALLOWED_UNMASK_ROLES = {"admin", "data_owner"}
+
+def unmask(text: str, mapping: dict, role: str) -> str:
+    """还原 PII。仅 admin 和 data_owner 可看原文。"""
+    if role not in ALLOWED_UNMASK_ROLES:
+        return text  # 保持 [MASKED]
+    return _apply_unmask(text, mapping)
+```
+
+**验收 KPI**:
+- [ ] 输入含手机号/身份证/邮箱 → 自动替换为 `[PHONE_001]` / `[ID_001]` / `[EMAIL_001]`
+- [ ] LLM 返回 → admin 可见原文，普通用户仅见 `[MASKED]`
+- [ ] 审计日志记录 `action=pii_mask` + `action=pii_unmask`
+- [ ] `arch_guard_rules.yaml §69` 新增 PII 检测规则
+- [ ] 安全扫描零 PII 泄露漏洞
+
+**降级方案**: 若 Presidio 中文支持不足 → 自建 NER + 正则为主（误标率 < 5% 可接受）
+
+---
+
+#### 0.2 OpenTelemetry + Prometheus（2 周）
+
+**实施位置**:
+- `core/server.py` — FastAPI middleware
+- `core/harness/syscalls/llm.py` — LLM 调用 instrumentation
+
+**技术方案**:
+
+```python
+# core/server.py
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+FastAPIInstrumentor.instrument_app(app)
+
+from prometheus_fastapi_instrumentator import Instrumentator
+Instrumentator().instrument(app).expose(app)  # /metrics
+
+# core/harness/syscalls/llm.py
+@tracer.start_as_current_span("sys_llm_generate")
+async def sys_llm_generate(model, messages, **kwargs):
+    span = trace.get_current_span()
+    span.set_attribute("model", model_name)
+    span.set_attribute("tokens", usage.total_tokens)
+```
+
+**暴露指标**:
+- `llm_calls_total{purpose, model}` — LLM 调用总数
+- `llm_latency_seconds{purpose}` — LLM 延迟分布 (P50/P95/P99)
+- `rag_retrieval_hits{domain}` — RAG 检索命中数
+- `pipeline_stage_duration{stage}` — Pipeline 各阶段延迟
+- `circuit_breaker_state{breaker}` — 熔断器状态 (0=CLOSED/1=OPEN/2=HALF_OPEN)
+- `memory_compression_level` — 当前压缩级别
+
+**验收 KPI**:
+- [ ] `/metrics` 端点可被 Prometheus 抓取
+- [ ] Grafana 面板上线: LLM QPS/latency P95/error rate
+- [ ] Jaeger 全链路 trace_id 可追溯
+- [ ] Pipeline 各阶段延迟分布可视化
+
+---
+
+#### 0.3 语义缓存（2 周）
+
+**实施位置**:
+- `core/harness/knowledge/semantic_cache.py` — 新建
+- `materials_chat.py` — `execute()` 入口
+
+**技术方案**:
+
+```
+三层缓存:
+  Layer 1 (L1): 精确匹配
+    key = md5(query + domain_id)
+    Redis GET → 命中 → 直接返回 (TTFT < 50ms)
+
+  Layer 2 (L2): 语义相似
+    embedding = embed(query)
+    Redis VECTOR_SIM → cosine ≥ 0.95 → 返回缓存结果 (TTFT < 200ms)
+
+  Layer 3 (L3): 无命中
+    → 走正常 RAG Pipeline → 结果写入 L1 + L2
+
+失效策略:
+  知识库更新 (wiki_engine.write_page / kb_ingest) →
+    → 清空相关 domain 的所有 L1/L2 缓存
+    → EventBus.publish("cache_invalidated", domain_id)
+```
+
+**集成点** (`materials_chat.py:execute()` 入口):
+
+```python
+async def execute(self, context):
+    cache_key = md5(query + domain_id)
+    
+    # L1: 精确匹配
+    cached = await redis.get(cache_key)
+    if cached:
+        return cached  # TTFT < 50ms
+    
+    # L2: 语义相似
+    cached = await semantic_cache.search(query_embedding, domain_id)
+    if cached:
+        return cached  # TTFT < 200ms
+    
+    # L3: 正常流程
+    result = await self._pipeline(...)
+    
+    # 写入缓存
+    await redis.setex(cache_key, ttl=3600, value=result)
+    await semantic_cache.store(query_embedding, result, domain_id)
+    
+    return result
+```
+
+**验收 KPI**:
+- [ ] 相同 query 2 次请求 → L1 命中, TTFT < 50ms
+- [ ] 语义相似 query (同义改写) → L2 命中, TTFT < 200ms
+- [ ] 知识库更新 → 相关域名缓存自动失效
+- [ ] API Token 消耗降低 35-50%
+
+---
+
+### Phase 1：铸造"开发者利刃"
+
+> **目标**: 从"精密重型实验室设备"升级为"开发者友好型工具"  
+> **周期**: 12 周（Q4 2026） | **人力**: 3 后端 + 1 前端 | **成本增量**: $0
+
+---
+
+#### 1.1 Agent SDK（4 周）
+
+**实施位置**: `aiplat-sdk/` — 新建独立 Python 包
+
+**API 设计**:
+
+```python
+from aiplat import Agent, Pipeline, Skill
+
+# ── Level 1: 高级封装 (对齐 Claude Code Agent SDK) ──
+
+# 3 行代码创建 + 执行 Agent
+agent = Agent(name="my-analyst", model="qwen2.5-coder:7b")
+agent.bind_skill("data_analysis")
+result = agent.execute("分析上周销售数据")
+
+# 流式模式
+async for chunk in agent.stream("生成 Q3 报告"):
+    print(chunk, end="")
+
+# ── Level 2: 中级流水线 ──
+
+pipeline = Pipeline()
+pipeline.add_stage("retrieve", skill="knowledge_retrieval")
+pipeline.add_stage("analyze", agent=agent)
+pipeline.add_stage("report", skill="text_generation")
+result = await pipeline.run(input_data)
+
+# ── Level 3: 低级 Harness 控制 ──
+
+from aiplat.harness import ReActLoop, StageConfig
+loop = ReActLoop(model="qwen2.5-coder:7b", max_steps=20)
+loop.on_hook("PreReasoning", my_callback)
+loop.run(task_description)
+```
+
+**暴露层次**:
+| Level | 封装 | 适用 |
+|:---:|------|------|
+| L1 | `aiplat.Agent` | 快速创建 Agent，对齐 Claude Code SDK |
+| L2 | `aiplat.Pipeline` | 自定义流水线编排 |
+| L3 | `aiplat.harness.ReActLoop` | 直接控制 Harness 执行循环 |
+
+**验收 KPI**:
+- [ ] `pip install aiplat-sdk` 可用
+- [ ] 3 行代码创建 + 执行 Agent
+- [ ] SDK 内 Agent 与 Web UI 共享同一 Session/run_id
+- [ ] 文档: API Reference + 5 个 QuickStart 示例
+- [ ] GitHub Star > 200
+
+---
+
+#### 1.2 Sub-Agent FanOut 并行（4 周）
+
+**实施位置**: `core/apps/agents/multi_agent.py` → 新增 `ParallelExecutor`
+
+**Map-Reduce 模式**:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Main Agent (协调者)                                     │
+│    task = "对比分析A/B/C三个方案"                          │
+│                                                          │
+│  Map Phase (并行, asyncio.gather):                        │
+│    SubAgent_A → analyze("方案A") ─┐                       │
+│    SubAgent_B → analyze("方案B") ─┤ 并行                  │
+│    SubAgent_C → analyze("方案C") ─┘                       │
+│         ↓                      ↓                         │
+│    [result_A, result_B, result_C]                         │
+│                                                          │
+│  Reduce Phase (聚合):                                     │
+│    LLM 对比 sub_results → final_answer                    │
+│    带上每个子任务的 reasoning_path + citations             │
+└─────────────────────────────────────────────────────────┘
+```
+
+**实现要点**:
+- 每个 SubAgent 在独立 `asyncio.Task` 中运行
+- 共享 `execution_store` 但独立 `run_id`
+- 子任务异常不影响其他 SubAgent (`return_exceptions=True`)
+- 聚合时带上每个子任务的 `reasoning_path`
+
+**验收 KPI**:
+- [ ] 3 子任务并行 → 总时间 ≈ max(单任务时间) + 聚合时间
+- [ ] 速度提升 3-5x (vs 当前串行)
+- [ ] 异常隔离: 1 个子任务失败不影响其他 (其他正常输出)
+- [ ] PipelineTrace 可视化每个 SubAgent 的 timeline
+
+---
+
+#### 1.3 VS Code 插件（4 周）
+
+**实施位置**: `aiplat-vscode/` — 新建
+
+**功能设计**:
+
+```
+SideBar WebView:
+  ├─ Chat Panel — SSE 流式对话
+  ├─ Code Apply — diff 预览 + 一键应用
+  ├─ File Context — 右键 → "Send to aiPlat"
+  └─ Quick Fix — 选中 error → "Ask aiPlat" 快捷键
+
+快捷键:
+  Cmd+Shift+A → 打开 aiPlat Panel
+  Cmd+Shift+E → 发送选中代码到 Agent
+```
+
+**技术方案**:
+- VS Code Extension API (TypeScript)
+- WebView 复用现有前端 ChatPanel 组件 (iframe 嵌入)
+- LSP 集成: 发送当前文件诊断信息给 Agent
+- **备胎计划**: 若插件审核被拒 → iframe 直接嵌入 Web UI（无需审核，确保 Phase 1 不延期）
+
+**验收 KPI**:
+- [ ] VS Code Marketplace 可安装
+- [ ] 选中代码 → Send to aiPlat → 流式返回修改建议
+- [ ] Apply 按钮一键应用 diff (inline 预览)
+- [ ] 支持本地 (localhost:8002) 和远程 (AIPLAT_URL env)
+- [ ] 内部开发者采用率 > 60%
+
+---
+
+### Phase 2：构建"自进化大脑"
+
+> **目标**: 从"工具"质变为"有生命力的决策中枢"  
+> **周期**: 10 周（Q1-Q2 2027） | **人力**: 4 后端 + 1 产品经理 | **成本增量**: ~$100/月
+
+---
+
+#### 2.1 增强型自学习循环（4 周）
+
+**实施位置**: `core/harness/learning/` — 新建
+
+**设计原则**:
+- ❌ 不照抄 Hermes 全量自学习（企业场景风险极高）
+- ✅ "AI 草稿 + 人工确认" 模式 — 兼顾效率和安全
+
+**流程**:
+
+```
+1. Agent 执行任务 → 失败
+2. Agent 分析 root_cause → 生成 SkillDraft.yaml
+   {
+     name: "fix-xxx-error",
+     trigger: "当遇到 {错误模式} 时",
+     sop: "1. 检查...\n2. 修复...\n3. 验证...",
+     confidence: 0.8,
+     source_run_id: "run-xxx",
+     status: "draft"
+   }
+
+3. SkillSimulator Docker 沙盒预检
+   ├─ 用历史 run_id 回放 Skill
+   ├─ 自动计算模拟通过率
+   └─ < 80% → 自动打回 (不进入审核队列)
+
+4. 预检通过 → 推送到管理端「待审核 Skill」队列
+
+5. 管理员审查 → 批准/拒绝/修改
+   批准 → 注册到 SkillRegistry (source=self_learned)
+   拒绝 → 记录拒绝原因, 反馈给 Agent
+
+6. 安全机制:
+   ├─ 同一 Agent 连续 3 个低质量 Draft → 暂停自学习 24h
+   ├─ 审批记录写入 audit_logs
+   └─ 自学习 Skill 不可覆盖 engine 内置 Skill
+```
+
+**验收 KPI**:
+- [ ] Agent 失败后自动生成 SkillDraft
+- [ ] SkillSimulator Docker 沙盒预检 (pass≥80% 才提交审核)
+- [ ] 管理端可见待审核列表 (按 confidence 排序)
+- [ ] 3 次低质量 → 自动关闭 24h + 管理员告警
+- [ ] 月均生成有效 SkillDraft > 50 个
+
+---
+
+#### 2.2 声明级溯源 Claim-Level Citation（4 周）
+
+**实施位置**:
+- `core/harness/knowledge/provenance.py` — 新建
+- `materials_chat.py` — Stage 6 生成后注入
+
+**数据结构**:
+
+```
+answer: "Python 3.13 Free-Threaded mode..."
+citations: [
+  {
+    "claim": "Free-Threaded 模式默认关闭",
+    "source": {
+      "type": "wiki",
+      "page": "Python3.13",
+      "section": "Free-Threaded CPython",
+      "offset": 342,
+      "text": "The free-threaded mode is experimental...",
+      "version": "2026-06-15T10:00:00Z"
+    },
+    "confidence": 0.92,
+    "status": "current"  // ← ProvenanceScanner 自动更新
+  }
+]
+```
+
+**ProvenanceScanner 自动过期**:
+
+```
+Wiki/KB 更新 (write_page) →
+  → EventBus.publish("source_updated", page_id, new_version)
+  → ProvenanceScanner 扫描所有历史 PipelineTrace
+  → 匹配到引用旧版本的 citation → 标记 status: "stale"
+  → 前端灰显 + 提示 "⚠️ 此答案基于旧版数据"
+```
+
+**实现流程**:
+1. 答案生成 → 按句号分句
+2. 每句 → 与检索上下文计算相似度 (embedding cosine)
+3. 匹配最高 → 记录 source offset + version
+4. 前端渲染: 点击 citation 跳转到源文档
+5. 源更新 → 自动标记过期
+
+**验收 KPI**:
+- [ ] 答案中每句话可点击查看原始出处 (Wiki offset 级精度)
+- [ ] PipelineTrace 中展示 citation 图谱
+- [ ] 源文档更新 → 相关 citation 自动标记 "⚠️ 可能过期"
+- [ ] 法务/合规部门认可溯源链完整性
+
+---
+
+#### 2.3 企业渠道网关（2 周）
+
+**实施位置**: `core/gateway/` — 新建
+
+**支持渠道**: 飞书 / 企业微信 / Slack（**仅这 3 个**）
+
+```
+架构:
+
+  ┌──────────┐    ┌──────────┐    ┌──────────┐
+  │ 飞书 App  │    │ 企微 Bot  │    │ Slack App│
+  └────┬─────┘    └────┬─────┘    └────┬─────┘
+       │               │               │
+       └───────────────┬───────────────┘
+                       │  Webhook
+              ┌────────▼────────┐
+              │  Gateway (新建)  │
+              │  消息解析/路由    │
+              │  session 管理    │
+              │  审批卡片渲染    │
+              └────────┬────────┘
+                       │
+              ┌────────▼────────┐
+              │  CoreFacade      │
+              │  run_workspace_  │
+              │  agent()         │
+              └─────────────────┘
+```
+
+**飞书 Adapter**:
+1. 创建飞书应用 → 订阅 `message.receive` 事件
+2. Webhook 接收消息 → 解析文本/图片
+3. 调用 `run_workspace_agent(session_id=chat_id)`
+4. SSE 流式输出 → 飞书消息卡片流式更新
+5. 审批卡片: ApprovalGate → 飞书卡片 (审批按钮交互)
+
+**企微 Adapter**: 同上，使用企业微信机器人 Webhook
+
+**Slack Adapter**: 使用 Slack Bolt SDK，订阅 `app_mention` 事件
+
+**安全**: 飞书/企微/Slack Bot 在群聊中仅响应 @提及，DM 仅响应已授权用户
+
+**验收 KPI**:
+- [ ] 飞书群 @aiPlat → Agent 流式回复
+- [ ] 多人对话视为独立 session (按 chat_id 隔离)
+- [ ] 审批卡片交互: 审批/拒绝按钮 + 回调 Gateway
+- [ ] 日活消息数 > 500 条
+- [ ] **不做** Signal / WhatsApp / Telegram / Discord（坚守企业定位）
+
+---
+
+## 三、风险矩阵与缓冲策略
+
+| 风险 | 概率 | 影响 | Phase | 缓解措施 |
+|------|:---:|:---:|:---:|------|
+| **Presidio 中文识别不准** | 中 | P0 阻塞 | 0 | 自建正则并行运行，取并集；误标率 < 5% 可接受 |
+| **OTel 引入性能开销** | 低 | 可观测精度 | 0 | 采样率控制 (0.1% 正常/1% 错误) + async 批量导出 |
+| **VS Code 插件审核被拒** | 高 | P1 延后 | 1 | **"备胎计划"**: iframe 直接嵌入现有 Web UI，无需审核 |
+| **自学习 Draft 质量太低** | 中 | 审核员疲劳 | 2 | ① SkillSimulator 沙盒预检 (<80% 自动打回) ② 3 次低质量 → 暂停 24h |
+| **企业 IM 合规审批延后** | 高 | P2 延后 | 2 | 提前启动飞书/企微应用审批流程（Phase 1 期间） |
+| **Gateway 消息风暴** | 低 | Core 过载 | 2 | 飞书/企微消息队列 + Rate Limiting (100 条/分钟/bot) |
+
+---
+
+## 四、评分演进与商业里程碑
+
+```
+当前: 73 (内核 A+, 产品 C, 自进化 D)
+
+  ┌─ Phase 0 完成 ─────────────────────────────────────┐
+  │                                                     │
+  │  82 分                                              │
+  │  企业安全合规基准线                                   │
+  │  → 可进入金融/政务采购名单                            │
+  │  → 通过安全扫描零漏洞                                 │
+  │  → API 费用降低 35-50%                               │
+  └─────────────────────────────────────────────────────┘
+                            ↓
+  ┌─ Phase 1 完成 ─────────────────────────────────────┐
+  │                                                     │
+  │  88 分                                              │
+  │  国内头部 AI 中台商业化水平                           │
+  │  → SDK GitHub Star > 200                            │
+  │  → 内部开发者采纳率 > 60%                             │
+  │  → 并行任务速度提升 3-5x                              │
+  └─────────────────────────────────────────────────────┘
+                            ↓
+  ┌─ Phase 2 完成 ─────────────────────────────────────┐
+  │                                                     │
+  │  96 分                                              │
+  │  具备与国际 Palantir AIP / Cohere 对标能力            │
+  │  → 月均生成有效 Skill > 50 个                         │
+  │  → 法务部门认可溯源链                                 │
+  │  → 日活企业消息 > 500 条                              │
+  └─────────────────────────────────────────────────────┘
+```
+
+---
+
+## 五、人力与成本总览
+
+| Phase | 周期 | 人力 | 服务器月增量 | 总成本 |
+|:---:|:---:|------|:---:|:---:|
+| **0** | 6 周 | 2 后端 + 1 运维 | ~$700 (Redis + OTel) | ~$1,050 |
+| **1** | 12 周 | 3 后端 + 1 前端 | $0 (复用 API) | 仅人力 |
+| **2** | 10 周 | 4 后端 + 1 产品经理 | ~$100 (向量存储) | ~$250 |
+| **总计** | 28 周 | 高峰 5 人 | ~$800/月 | ~$5,600/月全成本 |
+
+---
+
+## 六、一句话执行令
+
+> **先穿安全盔甲（PII/监控/缓存），再磨开发者刀锋（SDK/并行/插件），最后喂进化食粮（自学习/溯源/网关）。不偏离"企业级决策中枢"主航道。**
+
+---
+
+## 七、附录
+
+### A. 依赖清单 (requirements.txt 增量)
+
+```
+# Phase 0
+presidio-analyzer>=2.2         # PII 检测
+presidio-anonymizer>=2.2       # PII 脱敏/还原
+opentelemetry-api>=1.20        # OTel 核心
+opentelemetry-instrumentation-fastapi>=0.41  # FastAPI 自动埋点
+opentelemetry-exporter-otlp>=1.20            # OTLP 导出
+prometheus-fastapi-instrumentator>=7.0       # /metrics 端点
+redis>=5.0                     # 缓存 (L1/L2)
+redisvl>=0.2                   # Redis 向量搜索 (L2)
+gptcache>=0.1                  # 语义缓存框架 (可选)
+
+# Phase 1
+# (无新增依赖, SDK 复用现有 API)
+typescript>=5.4                # VS Code 插件
+
+# Phase 2
+docker>=7.0                    # SkillSimulator 沙盒
+slack-bolt>=1.18               # Slack 适配器
+# 飞书/企微: webhook 模式无需额外 SDK
+```
+
+### B. 架构守卫新规则
+
+```yaml
+# arch_guard_rules.yaml §69 (新增)
+
+# 69.1: PII 脱敏检测
+- id: pii_detection_required
+  section: "§69"
+  section_name: "PII 脱敏 — sys_llm_generate 入口必须调用 pii_detector.mask()"
+  level: error
+  check:
+    type: grep_required
+    pattern: 'pii_detector\.mask\('
+    paths: ["aiPlat-core/core/harness/syscalls/llm.py"]
+    min_matches: 1
+  message: "sys_llm_generate 入口未调用 PII 脱敏 — 存在敏感数据泄露风险"
+
+# 69.2: Semantic Cache 接入检测
+- id: semantic_cache_wired
+  section: "§69"
+  section_name: "语义缓存 — MaterialsChatAgent 必须接入 SemanticCache"
+  level: warning
+  check:
+    type: grep_required
+    pattern: 'semantic_cache\.(?:get|search|store)'
+    paths: ["aiPlat-core/core/apps/agents/materials_chat.py"]
+    min_matches: 1
+  message: "MaterialsChatAgent 未接入语义缓存 — 建议接入以降低 API 费用 35-50%"
+```
+
+### C. 相关文件路径索引
+
+| 文件 | Phase | 操作 |
+|------|:---:|------|
+| `core/services/pii_detector.py` | 0.1 | **新建** |
+| `core/harness/syscalls/llm.py` | 0.1 | 修改 `_guard_messages()` |
+| `core/server.py` | 0.2 | 添加 OTel + `/metrics` |
+| `core/harness/knowledge/semantic_cache.py` | 0.3 | **新建** |
+| `core/apps/agents/materials_chat.py` | 0.3 | 添加缓存入口 |
+| `aiplat-sdk/` | 1.1 | **新建** 独立包 |
+| `core/apps/agents/multi_agent.py` | 1.2 | 新增 `ParallelExecutor` |
+| `aiplat-vscode/` | 1.3 | **新建** 插件 |
+| `core/harness/learning/` | 2.1 | **新建** 自学习模块 |
+| `core/harness/learning/skill_simulator.py` | 2.1 | **新建** 沙盒验证 |
+| `core/harness/knowledge/provenance.py` | 2.2 | **新建** 溯源引擎 |
+| `core/gateway/` | 2.3 | **新建** 企业网关 |
+| `core/management/arch_guard_rules.yaml` | all | 新增 §69 |
+
+---
+
+*版本: 3.0-final | 日期: 2026-06-22 | 基于 AIPLAT_ARCHITECTURE_REPORT.md (28章, 1927行) + 代码交叉验证*
