@@ -628,9 +628,167 @@ Workspace: ~/.openclaw/workspace (文件持久化)
 
 ---
 
-## 九、知识库管理对比
+## 九、记忆能力对比（独立维度）
 
-### 9.1 aiPlat Knowledge (最强的维度)
+> 记忆能力与上下文管理不同：上下文管理关注"当前对话窗口的维护"，记忆能力关注"跨会话的知识积累、检索、演化"。
+
+### 9.1 aiPlat 记忆系统
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│           aiPlat Hermes 四层记忆架构                          │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Layer 4: Task Skills (External / 外挂记忆)                  │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │ ~/.aiplat/task_skills/*.json                            ││
+│  │ 流水线完成 → pass_rate≥85% → 自动晶体化为 Skill          ││
+│  │ 跨 Agent / 跨会话 / 跨进程复用                           ││
+│  │ 注册到 SkillRegistry → sys_skill_call 可直接调用         ││
+│  └─────────────────────────────────────────────────────────┘│
+│                          ↕                                   │
+│  Layer 3: Semantic (Cold / 冷记忆 / 长期)                    │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │ SQLite long_term_memories 表 + FTS5 全文索引             ││
+│  │ 持久化 / 自动过期清理 / 结构化查询                        ││
+│  │ MemoryManager.capture_to_semantic() — 用户偏好/项目约定  ││
+│  │ REST API: GET /memory/long-term?query=xxx               ││
+│  │ 容量: 无限（磁盘）                                        ││
+│  └─────────────────────────────────────────────────────────┘│
+│                          ↕                                   │
+│  Layer 2: Episodic (Warm / 温记忆 / 会话级)                  │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │ 规则摘要（非LLM），每5条消息生成摘要                       ││
+│  │ 当前会话的关键决策/错误记录/待解决问题                     ││
+│  │ MemoryManager.save_interaction() — 每次对话自动调用       ││
+│  │ 容量: 数千条摘要（内存 + 磁盘）                           ││
+│  └─────────────────────────────────────────────────────────┘│
+│                          ↕                                   │
+│  Layer 1: Working (Hot / 热记忆 / 当前)                      │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │ deque 滑动窗口，30K token                                ││
+│  │ 最近 N 条消息原文 + 当前任务状态 + 工具调用结果           ││
+│  │ MemoryManager.build_context() — Agent.execute 前注入     ││
+│  │ 容量: 30K token（模型上下文窗口内）                       ││
+│  └─────────────────────────────────────────────────────────┘│
+│                                                             │
+│  记忆生命周期:                                                │
+│    Working → [压缩] → Episodic → [捕获] → Semantic           │
+│    Pipeline完成 → [晶体化] → Task Skills                      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**记忆检索路径**：
+
+```
+Agent 启动 / execute()
+  │
+  ├─ loop._try_inject_memory_reminders()
+  │    └─ MemoryManager.get_reminders()
+  │         ├─ Layer 2 检索: 当前会话摘要
+  │         ├─ Layer 3 检索: long_term_memories (FTS5)
+  │         └─ System Reminders (user-role 注入)
+  │
+  ├─ MemoryManager.build_context()
+  │    ├─ Layer 1: Working memory (最近消息)
+  │    └─ Layer 2: Episodic 摘要
+  │
+  └─ loop._try_save_interaction()
+       └─ MemoryManager.save_interaction()
+            ├─ Layer 1 → Layer 2 压缩
+            └─ Layer 2 → Layer 3 捕获 (长期记忆)
+```
+
+**记忆的三种持久化方式**：
+
+| 类型 | 存储 | 检索方式 | 触发时机 |
+|------|------|---------|---------|
+| **会话记忆** | Working + Episodic | MemoryManager.get_reminders() | Agent 每轮循环自动 |
+| **长期记忆** | SQLite + FTS5 | FTS5 文本搜索 | API 查询 / Agent 主动搜索 |
+| **技能记忆** | JSON + SkillRegistry | sys_skill_call | pass_rate≥85% 自动写入 |
+
+### 9.2 Hermes 记忆系统
+
+```
+对话记忆:
+  FTS5 全文索引历史会话 → LLM 摘要化 → 跨会话回顾 (cross-session recall)
+
+用户建模:
+  Honcho dialectic user modeling (building a deepening model of who you are)
+  自动学习用户的偏好、习惯、工作风格
+
+技能记忆:
+  自学习技能创建 (复杂任务 → 自动生成 Skill)
+  skill 使用中自我改进
+
+Agent-curated memory:
+  周期性 nudges: Agent 主动提醒用户固化知识
+  用户确认后写入 MEMORY.md / USER.md
+
+持久化:
+  MEMORY.md (用户级) + USER.md (用户档案)
+  skills/ 目录 (技能知识)
+```
+
+**Hermes 记忆独有**: "periodic nudges" — Agent 主动提醒用户有未固化的知识。
+
+### 9.3 Claude Code 记忆系统
+
+```
+CLAUDE.md (永不压缩):
+  项目根目录常驻指令
+  编码标准 / 架构决策 / 首选库
+
+Auto Memory:
+  Claude 自动学习（构建命令 / 调试技巧 / 项目约定）
+  跨会话持久化（类似 Logseq 风格）
+
+Project Memory:
+  项目根目录的 .claude/ 目录
+  Session 文件（对话历史）
+
+无显式分层架构。
+依赖 LLM 本身的长上下文能力 + CLAUDE.md 注入。
+```
+
+### 9.4 OpenClaw 记忆系统
+
+```
+Session 模型:
+  每个联系人独立 session
+  Session 历史持久化
+
+Workspace 记忆:
+  AGENTS.md (指令), SOUL.md (人格), MEMORY.md (记忆)
+  ~/.openclaw/workspace/ 目录
+
+无分层架构，无自动学习，无技能晶体化。
+```
+
+### 记忆能力对比总表
+
+| 记忆能力 | aiPlat | Hermes | Claude Code | OpenClaw |
+|---------|--------|--------|-------------|----------|
+| **分层架构** | ✅ 4 层 (Hermes 规范) | 3 层 (对话+用户+技能) | 单层 (CLAUDE.md) | 单层 (AGENTS.md) |
+| **Working Memory** | ✅ deque 30K token + auto-inject | ✅ 对话上下文 | ✅ 对话上下文 | ✅ Session 上下文 |
+| **Episodic Memory** | ✅ 规则摘要(非LLM) + 自动保存 | LLM摘要 + FTS5搜索 | Auto memory (摘要) | Session 历史 |
+| **Semantic Memory** | ✅ SQLite FTS5 + REST API + 过期 | LLM摘要持久化 | 文件持久化 | 文件持久化 |
+| **Task Skills (L4)** | ✅ 晶体化 pass≥85% + Registry | ✅ 自学习 skill 创建 | ❌ | ❌ |
+| **自动学习** | ✅ Task Skills 晶体化 | ✅ 自学习循环 | ✅ Auto memory | ❌ |
+| **Periodic Nudges** | ❌ | ✅ 周期提醒 | ❌ | ❌ |
+| **跨会话检索** | ✅ FTS5 + long_term_memories | ✅ FTS5 + LLM 摘要 | 文件读取 | Session 读取 |
+| **用户建模** | ✅ profile/scope 配置 | ✅ Honcho 方言建模 | ❌ | ✅ profile 配置 |
+| **记忆压缩** | ✅ 5 级自动压缩 | /compact 手动 | /compact 手动 | /compact 手动 |
+| **记忆容量** | 无限 (磁盘) + 自动过期 | 文件系统 + FTS5 | 文件系统 | 文件系统 |
+| **记忆注入 Agent** | ✅ MemoryManager.build_context() | ✅ 对话注入 | ✅ CLAUDE.md 注入 | ✅ AGENTS.md 注入 |
+| **Memory API** | ✅ REST API (CRUD + 搜索) | ❌ | ❌ | ❌ |
+| **自动过期** | ✅ SQLite based | ❌ | ❌ | ❌ |
+
+---
+
+## 十、知识库管理对比
+
+### 10.1 aiPlat Knowledge (最强的维度)
 
 ```
 本体引擎 (15 模块, ~4,400 行):
@@ -664,7 +822,7 @@ Workspace: ~/.openclaw/workspace (文件持久化)
 Palantir 对齐: 9 项能力全部对齐
 ```
 
-### 9.2 Hermes Knowledge
+### 10.2 Hermes Knowledge
 
 ```
 FTS5 会话搜索:
@@ -678,7 +836,7 @@ FTS5 会话搜索:
 差异: 无本体/无图谱/无代码理解——知识是"对话历史"维度
 ```
 
-### 9.3 Claude Code Knowledge
+### 10.3 Claude Code Knowledge
 
 ```
 代码库理解:
@@ -693,7 +851,7 @@ CLAUDE.md 项目知识:
 差异: 无知识图谱——知识是"代码库+项目文档"维度
 ```
 
-### 9.4 OpenClaw Knowledge
+### 10.4 OpenClaw Knowledge
 
 ```
 Workspace 文件系统:
@@ -725,7 +883,7 @@ Workspace 文件系统:
 
 ---
 
-## 十、架构全景对照图
+## 十一、架构全景对照图
 
 ```
                        aiPlat 4-Layer Architecture
@@ -809,7 +967,7 @@ Workspace 文件系统:
 
 ---
 
-## 十一、综合评分矩阵
+## 十二、综合评分矩阵
 
 | 能力维度 (权重) | aiPlat | Hermes | Claude Code | OpenClaw |
 |:---|:---:|:---:|:---:|:---:|
@@ -829,7 +987,7 @@ Workspace 文件系统:
 
 ---
 
-## 十二、aiPlat 独有能力清单
+## 十三、aiPlat 独有能力清单
 
 以下 20 项是 aiPlat 独有或显著领先的能力：
 
@@ -856,7 +1014,7 @@ Workspace 文件系统:
 
 ---
 
-## 十三、待补齐项（aiPlat vs 三者）
+## 十四、待补齐项（aiPlat vs 三者）
 
 | 能力 | 来源 | 当前状态 | 建议 |
 |------|------|:---:|------|
