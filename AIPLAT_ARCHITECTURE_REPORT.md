@@ -1499,7 +1499,289 @@ Token 消耗分布 (以一次 RAG 问答为例):
 
 ---
 
-## 二十四、待补齐项（aiPlat vs 三者）
+## 二十五、AI 可观测性升维：幻觉追踪与事实核查（Hallucination & Grounding）
+
+> 核心问题：当 Agent 一本正经地胡说八道时，系统能不能自动发现？
+
+### 25.1 aiPlat 幻觉检测现状
+
+```
+已有检测机制:
+  ┌─────────────────────────────────────────────────────────┐
+  │ 质量评估层 (MaterialsChatAgent Stage 5: quality_assess)  │
+  │                                                         │
+  │  Self-RAG 自动评估:                                      │
+  │    • LLM 自评答案的证据充分性                              │
+  │    • 检测空响应 (error_patterns: "I cannot"等)             │
+  │    • 检测错误模式 (hits≥2 → penalty)                      │
+  │    • 低置信度 → 触发 HyDE 假设答案重检索                    │
+  │                                                         │
+  │  质量标签:                                                │
+  │    • 绿色无标记 = ok                                      │
+  │    • 黄色 = needs_review                                  │
+  │    • 红色 = low_evidence                                  │
+  │                                                         │
+  │  前端可视化:                                              │
+  │    • 答案下方质量标签 ⚠️                                    │
+  │    • PipelineTrace 时间线 (紫色 hyde = 回退)              │
+  └─────────────────────────────────────────────────────────┘
+
+已有但不完善的检测:
+  ⚠️ QualityValidator (programmatic):
+    • ontology_gen: JSON 格式 + suggestions 完整度检查
+    • chat: 错误模式匹配 (非语义级检查)
+    • ❌ 缺少 RAG 检索上下文 → 生成答案之间的语义一致性验证
+
+完全缺失:
+  ❌ 忠实度 (Faithfulness): 自动计算答案 vs 检索证据的事实一致性
+  ❌ 答案相关性 (Answer Relevancy): 答案 vs 原始问题的语义匹配度
+  ❌ 幻觉率仪表盘: 按 Agent/domain 维度统计幻觉风险趋势
+  ❌ NLI (Natural Language Inference): 声明级事实核查
+```
+
+### 25.2 升维方案
+
+```
+Factuality Pipeline (建议):
+  ┌──────────────────────────────────────────────────────────┐
+  │  Phase 1: 证据链提取                                       │
+  │   答案中的每个事实声明 → NLI 分解为 (claim, source_ctx)对    │
+  │                                                          │
+  │  Phase 2: 一致性校验                                       │
+  │   对每对 (claim, source_ctx):                               │
+  │     • Entailment (蕴含): claim 被 source 支持 → ✅         │
+  │     • Contradiction (矛盾): claim 与 source 冲突 → ❌      │
+  │     • Neutral (中立): claim 无法从 source 推断 → ⚠️       │
+  │                                                          │
+  │  Phase 3: 综合评分                                         │
+  │    hallucination_score = contradictions / total_claims     │
+  │    faithfulness_score = entailments / total_claims         │
+  │                                                          │
+  │  Phase 4: 反馈闭环                                         │
+  │    幻觉率 > 阈值 → 自动重检索 → 再生答案 → 再评估          │
+  │    连续 3 次高幻觉 → 标记为 "需要人工审查"                  │
+  └──────────────────────────────────────────────────────────┘
+
+GraphIndex 加持 (aiPlat 独有):
+  利用本体知识图谱验证事实声明:
+    claim: "A 导致 B"
+    graph: 查 A→B 是否有边 → 有: ✅ / 无但B还有C边: ⚠️ / A是未知实体: ❌
+```
+
+### 25.3 各方案对比
+
+| 幻觉检测能力 | aiPlat | Hermes | Claude Code | OpenClaw |
+|-------------|--------|--------|-------------|----------|
+| **Self-RAG 自评** | ✅ quality_assess stage | ❌ | ❌ | ❌ |
+| **Faithfulness 指标** | ❌ (待实现) | ❌ | ❌ | ❌ |
+| **NLI 事实核查** | ❌ (待实现) | ❌ | ❌ | ❌ |
+| **Graph 验证** | 🚧 (基础存在) | ❌ | ❌ | ❌ |
+| **质量标签 UI** | ✅ 三色标识 | ❌ | ❌ | ❌ |
+| **幻觉率仪表盘** | ❌ (待实现) | ❌ | ❌ | ❌ |
+| **自动回退重检** | ✅ HyDE 回退 | ❌ | ❌ | ❌ |
+
+**aiPlat 独有优势**: GraphIndex 可用于结构化的声明验证——这是其他三者完全不具备的能力基础。
+
+---
+
+## 二十六、数据血统与溯源（Data Lineage & Provenance）
+
+> 核心问题：Pipeline 输出一个结论，能精确追溯到"Wiki 第3段 + KB 第5个字段 + LLM 改写"吗？
+
+### 26.1 aiPlat 溯源现状
+
+```
+已有溯源能力:
+  ┌─────────────────────────────────────────────────────┐
+  │  Wiki 层面:                                          │
+  │    • FRONTMATTER_FIELDS.source_articles → 来源标注   │
+  │    • knowledge_synthesis: source_instances 字段      │
+  │    • wiki_health: thin_content / duplicate 检测      │
+  │                                                     │
+  │  检索层面:                                           │
+  │    • reasoning_path: 完整检索-评估-生成路径记录        │
+  │    • strategy/mode 标签: direct_retrieve / hyde     │
+  │    • domain_id / domain_name 透传                    │
+  │    • 前端: 蓝色/紫色检索策略标签                      │
+  │                                                     │
+  │  Pipeline 层面:                                      │
+  │    • pipeline_trace: 每个阶段的 输入/输出/延迟/元数据  │
+  │    • graph_trace: started/completed/skipped 事件     │
+  │    • state checkpoint: 中间状态快照                  │
+  └─────────────────────────────────────────────────────┘
+
+完全缺失:
+  ❌ 声明级溯源 (Claim-level citation): "这个数字来自 Wiki 第X行"
+  ❌ 数据集版本钉: "此答案基于 2026-06-20 版本的 AI知识库"
+  ❌ 溯源自辨标签: 答案被标记为 "基于旧数据" 的过期状态
+```
+
+### 26.2 升维方案
+
+```
+溯源链 (Provenance Chain) 设计:
+  ┌────────────────────────────────────────────────────────┐
+  │  Pipeline 产出                                        │
+  │    answer: "Python 3.13 引入了 GIL 改进..."            │
+  │    provenance: [                                      │
+  │      {                                                │
+  │        "claim": "Python 3.13 引入了 GIL 改进",          │
+  │        "sources": [                                   │
+  │          {"type": "wiki", "page": "Python3.13",       │
+  │           "offset": 342, "score": 0.92,              │
+  │           "version": "2026-06-15T10:00:00Z"},         │
+  │          {"type": "kb", "doc_id": "kb:python_updates",│
+  │           "chunk": 5, "score": 0.88},                 │
+  │        ],                                             │
+  │        "confidence": "high",                           │
+  │        "transformation": "direct_retrieve"             │
+  │      },                                               │
+  │      ...                                              │
+  │    ],                                                 │
+  │    "dataset_version": "2026-06-20",                   │
+  │    "generated_at": "2026-06-22T12:00:00Z"             │
+  └────────────────────────────────────────────────────────┘
+
+版本敏感度 (Version Sensitivity):
+  • 检索时记录 Wiki/KB 的快照版本
+  • 知识库更新 → 自动重检已有答案 → 标记 "可能过期"
+  • 前端: 过期答案显示 "⚠️ 基于旧版数据" 提醒
+```
+
+### 26.3 各方案对比
+
+| 溯源能力 | aiPlat | Hermes | Claude Code | OpenClaw |
+|---------|--------|--------|-------------|----------|
+| **来源标注 (source_articles)** | ✅ Wiki 层面 | ❌ | ❌ | ❌ |
+| **检索路径记录** | ✅ reasoning_path + mode | ❌ | ❌ | ❌ |
+| **Pipeline Trace** | ✅ 阶段级 I/O 追踪 | ❌ | ❌ | ❌ |
+| **Claim-level 溯源** | ❌ (待实现) | ❌ | ❌ | ❌ |
+| **数据集版本钉** | ❌ (待实现) | ❌ | ❌ | ❌ |
+| **过期检测** | ⚠️ (version字段存在) | ❌ | ❌ | ❌ |
+| **溯源可视化** | ✅ PipelineTrace + 来源标签 | ❌ | ❌ | ❌ |
+
+**总结**: aiPlat 在 Pipeline 级溯源上领先，但声明级溯源和版本钉是金融/医疗等受监管行业必需的顶级能力。
+
+---
+
+## 二十七、工作流/技能版本控制与灰度发布（Versioning & Gradual Rollout）
+
+> 核心问题：修改关键 Skill，能否只让 10% 流量先试试？
+
+### 27.1 aiPlat 版本控制现状
+
+```
+已有版本能力:
+  ┌─────────────────────────────────────────────────────┐
+  │  Skill 版本:                                         │
+  │    • semver 版本号 (SKILL.md frontmatter)            │
+  │    • SkillRegistry 版本记录                          │
+  │    • rollback_version() → 回滚到指定版本              │
+  │    • SkillVersion 数据表 (version/status/changes)    │
+  │                                                     │
+  │  Skill Lint + 质量检查:                               │
+  │    • 合约摘要变更检测 (contract digest)               │
+  │    • 自动修复 (auto-fix)                             │
+  │                                                     │
+  │  PipelineStageConfig:                                │
+  │    • failure_strategy: fail_pipeline / skip_stage     │
+  │    • retry_policy (on/max_retries)                   │
+  └─────────────────────────────────────────────────────┘
+
+完全缺失:
+  ❌ 灰度发布 (Canary): 按 tenant_id 或流量百分比分流
+  ❌ A/B 测试: 对比新旧版本效果
+  ❌ 影子模式 (Shadow): 新版静默运行并对比结果
+  ❌ 自动回滚: 错误率超阈值 → 自动切回旧版
+```
+
+### 27.2 升维方案
+
+```
+灰度发布 (Gradual Rollout) 设计:
+  ┌──────────────────────────────────────────────────────┐
+  │  SkillRouter (建议新增)                               │
+  │    request → 路由决策                                  │
+  │      ├─ tenant_id ∈ canary_tenants → v2.0 (新版)     │
+  │      ├─ user_id % 100 < 20     → v2.0 (20% 流量)     │
+  │      └─ otherwise              → v1.0 (稳定版)        │
+  │                                                      │
+  │  Rollout 策略:                                        │
+  │    {                                                  │
+  │      "skill": "code_generation",                     │
+  │      "version": "2.1.0",                             │
+  │      "rollout_percentage": 10,                        │
+  │      "canary_tenants": ["tenant_a"],                 │
+  │      "shadow_mode": false,                            │
+  │      "auto_rollback": {                               │
+  │        "metric": "error_rate",                        │
+  │        "threshold": 0.05,                             │
+  │        "window_minutes": 10                           │
+  │      }                                                │
+  │    }                                                  │
+  └──────────────────────────────────────────────────────┘
+
+影子模式 (Shadow Mode):
+  ┌──────────────────────────────────────────────────────┐
+  │  用户请求 → Skill v1.0 (线上) → 返回真实结果          │
+  │     │                                                │
+  │     └─ Skill v2.0 (影子) → 静默执行                   │
+  │            → 对比 v1.0 输出 vs v2.0 输出              │
+  │            → 记录差异到 evaluation store              │
+  │            → 质量评分 > v1.0 且 持续N次 → 建议全量    │
+  └──────────────────────────────────────────────────────┘
+```
+
+### 27.3 各方案对比
+
+| 版本控制能力 | aiPlat | Hermes | Claude Code | OpenClaw |
+|-------------|--------|--------|-------------|----------|
+| **Semver 版本** | ✅ SKILL.md | ❌ | ❌ | ❌ |
+| **版本回滚** | ✅ rollback_version() | ❌ | ❌ | ❌ |
+| **合约摘要变更检测** | ✅ contract digest | ❌ | ❌ | ❌ |
+| **灰度发布 (Canary)** | ❌ (待实现) | ❌ | ❌ | ❌ |
+| **A/B 测试** | ❌ (待实现) | ❌ | ❌ | ❌ |
+| **影子模式** | ❌ (待实现) | ❌ | ❌ | ❌ |
+| **自动回滚** | ❌ (待实现) | ❌ | ❌ | ❌ |
+| **自学习覆盖** | N/A | ✅ (全量) | N/A | N/A |
+
+**关键洞察**: 灰度发布是"企业级中台"与"个人工具"的分水岭。Hermes 的自学习是"全量覆盖"，无灰度概念。这是 aiPlat 可以构建的差异化能力。
+
+---
+
+## 二十八、最终定级与评级体系
+
+### 评价维度权重
+
+| 评价维度 | 权重 | 说明 |
+|---------|:---:|------|
+| **功能深度** | 30% | Harness/Agent/Skill/知识引擎的实现完整度 |
+| **NFR 就绪度** | 25% | 可观测/测试/安全/合规/成本 |
+| **前沿能力** | 20% | 幻觉检测/溯源/灰度/自学习 |
+| **开发生态** | 15% | 文档/工具/社区/IDE集成 |
+| **用户交互** | 10% | UI/流式/多平台/语音 |
+
+### S 级定级
+
+| 方案 | 功能深度 (30%) | NFR (25%) | 前沿 (20%) | 生态 (15%) | 交互 (10%) | 加权总分 |
+|------|:---:|:---:|:---:|:---:|:---:|:---:|
+| **aiPlat** | 4.5 | 4.0 | 3.0 | 2.0 | 3.0 | **3.60** |
+| Claude Code | 3.6 | 3.0 | 2.0 | 5.0 | 5.0 | **3.58** |
+| Hermes | 3.2 | 2.5 | 3.5 | 4.0 | 4.0 | **3.29** |
+| OpenClaw | 2.9 | 2.6 | 1.5 | 4.0 | 5.0 | **3.02** |
+
+**结论**: aiPlat 在功能深度和 NFR 上领先，Claude Code 在生态和交互上领先。两者在加权总分上几乎持平（3.60 vs 3.58），但定位完全不同——aiPlat 是"企业级中台"，Claude Code 是"开发者工具"。
+
+### 核心差异一句话总结
+
+- **aiPlat**: 唯一的企业级 AI 中台——如果你需要本体引擎、多租户、PipelineAgent、68 节架构守卫，这是唯一的选择。
+- **Claude Code**: 最强的编码 Agent——如果你需要 IDE 集成、Agent SDK、Git 工作流，这是最好的选择。
+- **Hermes**: 唯一的自学习 Agent——如果你想要 Agent 从经验中自动创建技能，这是唯一的选择。
+- **OpenClaw**: 最强的多频道助手——如果你需要在 20+ 个消息平台上运行个人助手，这是最好的选择。
+
+---
+
+## 二十九、待补齐项（aiPlat vs 三者）
 
 | 能力 | 来源 | 当前状态 | 建议 |
 |------|------|:---:|------|
