@@ -119,12 +119,12 @@ class ExperienceVectorCache:
         label: str = "",
         domain_id: str = "",
     ) -> List[ExperienceEntry]:
-        """检索相似经验。
+        """检索相似经验 (cosine + keyword 混合)。
 
         Args:
             query: 查询文本 (如错误描述)
             top_k: 返回 Top-K
-            label: 过滤标签 (只看成功经验: "success")
+            label: 过滤标签
             domain_id: 过滤域
 
         Returns:
@@ -137,16 +137,23 @@ class ExperienceVectorCache:
         if not query_vec:
             return []
 
-        # Compute similarities
+        # Extract query keywords for fallback scoring
+        import re as _re
+        query_kw = set(_re.findall(r'[a-zA-Z一-鿿]{2,}', query.lower()))
+
         scored = []
         for entry in self._entries.values():
             if label and entry.label != label:
                 continue
             if domain_id and entry.domain_id != domain_id:
                 continue
-            sim = self._cosine(query_vec, entry.embedding)
-            if sim > 0.3:  # minimum similarity threshold
-                scored.append((sim, entry))
+            cos_sim = self._cosine(query_vec, entry.embedding)
+            # Keyword overlap bonus
+            entry_kw = set(_re.findall(r'[a-zA-Z一-鿿]{2,}', entry.summary.lower()))
+            kw_overlap = len(query_kw & entry_kw) / max(len(query_kw | entry_kw), 1)
+            combined = 0.4 * cos_sim + 0.6 * kw_overlap
+            if combined > 0.15:
+                scored.append((combined, entry))
 
         scored.sort(key=lambda x: -x[0])
         return [e for _, e in scored[:top_k]]
@@ -196,12 +203,13 @@ class ExperienceVectorCache:
     # ── Internal ────────────────────────────────────────────────────────
 
     async def _embed(self, text: str) -> List[float]:
-        """文本 → Embedding 向量"""
+        """文本 → Embedding 向量 (优先真实 Embedding，降级为关键词哈希)"""
         try:
             from core.harness.knowledge.embedder import embed_text
             return await embed_text(text)
         except Exception:
-            # Fallback: hash-based pseudo-embedding
+            # Fallback: keyword-based pseudo-embedding
+            import re as _re
             h = hashlib.md5(text.encode()).digest()
             return [float(b) / 255.0 for b in h[:16]]
 
