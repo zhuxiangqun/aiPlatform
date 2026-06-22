@@ -332,7 +332,7 @@ def create_dummy_agent():
     """创建临时 Agent 用于 Embedding Bridge 测试"""
     import asyncio
     class _DummyAgent:
-        def execute(self, task):
+        def execute(self, task):  # noqa: agent-init-legacy
             return {"ok": True, "output": f"Result for: {task[:50]}"}
     return _DummyAgent()
 
