@@ -200,7 +200,7 @@ class AutoLearner:
         draft_path.write_text(draft.to_yaml(), encoding="utf-8")
         return draft.name
 
-    def approve(self, draft_name: str) -> bool:
+    async def approve(self, draft_name: str) -> bool:
         """审批通过 → 注册到 SkillRegistry。"""
         draft = self._storage.get(draft_name)
         if not draft:
@@ -212,6 +212,12 @@ class AutoLearner:
             approved_path = Path(os.path.expanduser("~/.aiplat/skills")) / draft_name
             approved_path.mkdir(parents=True, exist_ok=True)
             (approved_path / "SKILL.md").write_text(draft.to_yaml(), encoding="utf-8")
+            # Phase 4.3: Hook LoRA AutoTrigger
+            try:
+                from core.harness.training.auto_trigger import get_lora_auto_trigger
+                await get_lora_auto_trigger().on_skill_approved(draft)
+            except Exception:
+                pass
             return True
         except Exception:
             return False
