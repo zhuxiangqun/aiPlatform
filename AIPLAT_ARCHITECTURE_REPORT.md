@@ -144,7 +144,8 @@ Gateway 控制面 (Daemon 进程)
 | **LangGraph** | ✅ 集成 (编排+可视化) | ❌ 无 | ❌ 无 | ❌ 无 |
 | **架构守卫** | ✅ 实时 PolicyGate 拦截 | ❌ | ❌ | ❌ |
 | **Syscall 边界** | ✅ 强制 (不可绕过) | ❌ | ❌ | ❌ |
-| **自学习循环** | Task Skills 自动晶体化 | ✅ 核心功能 | Auto memory | - |
+| **🏆 aiPlat 优势** | Pipeline+ReAct+LangGraph三层架构、14 Hook拦截、Syscall强制边界、5级压缩 | | | |
+| **⚠️ aiPlat 劣势** | 无自学习循环(仅Task Skills晶体化)、架构复杂度高 | | | |
 
 ---
 
@@ -228,9 +229,10 @@ Agent 创新: Agent SDK 暴露底层工具和能力, 完全自定义
 | **引擎隔离** | Engine(内置) vs Workspace(用户) | 本地安装 vs 远程 | 本地 vs Desktop/Web | Sandbox 隔离 |
 | **模型切换** | infra ModelManager 集中解析 | hermes model 命令 | 配置切换 | 配置 + failover |
 | **自我改进** | Task Skills 晶体化 (pass≥85%) | 自学习技能创建 | Auto memory | - |
+| **🏆 aiPlat 优势** | 8+1类型体系、PipelineAgent YAML驱动、Engine/Workspace分离、5字段交接协议 | | | |
+| **⚠️ aiPlat 劣势** | 无Agent SDK、无IDE集成、Sub-Agent并行模式弱 | | | |
 
 ---
-
 ## 四、Skill 系统对比
 
 ### 4.1 aiPlat Skill
@@ -325,7 +327,8 @@ Skill→Agent 绑定: 通过 SkillRegistry
 | **版本管理** | ✅ semver + 回滚 | ❌ | ❌ | ❌ |
 | **禁止嵌套** | ✅ Skill NEST call Skill | ❌ | ❌ | ❌ |
 | **执行审计** | ✅ AIPLAT_EXECUTION_AUDIT | ❌ | ❌ | ❌ |
-| **Skill 数** | 30 engine + 21 workspace | 自学习 + 市场 | 用户自定义 | 用户 + 市场 |
+| **🏆 aiPlat 优势** | effects副作用声明、5项准入标准、Skill Lint自动检查+fix、semver版本回滚 | | | |
+| **⚠️ aiPlat 劣势** | 无自学习技能创建、无技能市场(agentskills.io) | | | |
 
 ---
 
@@ -384,7 +387,8 @@ Skill→Agent 绑定: 通过 SkillRegistry
 | **生命周期管理** | ✅ MCPRuntime (重连/健康检查) | 基础 | 基础 | 基础 |
 | **一键模板** | ✅ Notion/飞书/GitHub | - | - | - |
 | **归属** | 统一在 core/apps/mcp/ | 内置 | 内置 | 内置 |
-| **MCP Server** | ✅ 可暴露本地工具 | ❌ | ❌ | ❌ |
+| **🏆 aiPlat 优势** | 双向MCP(Client+Server)、PolicyGate权限统一、MCPRuntime生命周期管理 | | | |
+| **⚠️ aiPlat 劣势** | 无一键MCP模板市场(仅有Notion/飞书/GitHub种子) | | | |
 
 ---
 
@@ -470,7 +474,8 @@ Claude Code 独有: Task 工具 (spawn 子Agent)
 | **工具数** | 35 (可扩展) | 40+ (可扩展) | 7 核心 + MCP | 10+ (可扩展) |
 | **终端后端** | 1 (本地) | 6 种 (独有) | 1 | 1 + Sandbox |
 | **Tool/Syscall** | ✅ 强制边界 | ❌ | ❌ | ❌ |
-| **资源级权限** | ✅ READ/WRITE/EXECUTE | ❌ | ❌ | ❌ |
+| **🏆 aiPlat 优势** | deny-by-default双门禁、架构边界PolicyGate实时保护、资源级权限、审计日志 | | | |
+| **⚠️ aiPlat 劣势** | 无6种终端后端(Hermes独有)、Tool数(35)少于Hermes(40+) | | | |
 
 ---
 
@@ -547,7 +552,8 @@ TOOLS.md: 工具说明
 | **域识适配** | ✅ DomainRouter → prompt | ❌ | ❌ | ❌ |
 | **永不压缩注入** | ✅ CLAUDE.md 每次都重读 | Auto memory 持久 | Auto memory 持久 | 文件注入 |
 | **模板语法** | ${variable} | 纯 Markdown | 纯 Markdown | 纯 Markdown |
-| **运行时更新** | ✅ 管理端 DB 更新 | 文件编辑 | 文件编辑 | 文件编辑 |
+| **🏆 aiPlat 优势** | 65模板DB动态更新、硬编码检测§45、双通道(异步/同步)、域自适应prompt | | | |
+| **⚠️ aiPlat 劣势** | 无Personality系统(Hermes SOUL.md)、模板语法仅有\${var} | | | |
 
 ---
 
@@ -624,7 +630,8 @@ Workspace: ~/.openclaw/workspace (文件持久化)
 | **Nudges** | ❌ | ✅ 周期提醒 | ❌ | ❌ |
 | **CLAUDE.md 注入** | ✅ 永不压缩 | SOUL.md + CLAUDE.md | ✅ 永不压缩 | AGENTS.md |
 | **Transcript Guard** | ✅ role 归一化 | ❌ | ❌ | ❌ |
-| **Subagent 摘要** | ✅ 返回摘要非完整输出 | ❌ | ❌ | ❌ |
+| **🏆 aiPlat 优势** | 5级自动压缩(非手动)、priority标签、CLAUDE.md永不压缩、Transcript Guard | | | |
+| **⚠️ aiPlat 劣势** | 无Periodic Nudges(Hermes独有)、无Honcho方言用户建模 | | | |
 
 ---
 
@@ -782,7 +789,8 @@ Workspace 记忆:
 | **记忆容量** | 无限 (磁盘) + 自动过期 | 文件系统 + FTS5 | 文件系统 | 文件系统 |
 | **记忆注入 Agent** | ✅ MemoryManager.build_context() | ✅ 对话注入 | ✅ CLAUDE.md 注入 | ✅ AGENTS.md 注入 |
 | **Memory API** | ✅ REST API (CRUD + 搜索) | ❌ | ❌ | ❌ |
-| **自动过期** | ✅ SQLite based | ❌ | ❌ | ❌ |
+| **🏆 aiPlat 优势** | Hermes四层对齐、Task Skills晶体化、Memory REST API、SQLite自动过期 | | | |
+| **⚠️ aiPlat 劣势** | 无Periodic Nudges提醒、用户建模不如Honcho方言系统 | | | |
 
 ---
 
@@ -880,9 +888,10 @@ Workspace 文件系统:
 | **性能基准** | ✅ 5 指标 CI | ❌ | ❌ | ❌ |
 | **数据生命周期** | ✅ 4 阶段 (Ingestion→Retire) | ❌ | ❌ | ❌ |
 | **Palantir 对齐** | ✅ 9 项 | ❌ | ❌ | ❌ |
+| **🏆 aiPlat 优势** | 本体引擎13步管线、GraphIndex+HyperEdge、CRAG/HyDE 3级回退、Palantir 9项对齐 | | | |
+| **⚠️ aiPlat 劣势** | Pipeline带来额外Token开销(~3-5×)、无代码理解深度(弱于Claude Code) | | | |
 
 ---
-
 ## 十一、架构全景对照图
 
 ```
