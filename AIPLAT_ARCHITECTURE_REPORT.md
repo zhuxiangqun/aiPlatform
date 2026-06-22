@@ -1014,7 +1014,492 @@ Workspace 文件系统:
 
 ---
 
-## 十四、待补齐项（aiPlat vs 三者）
+## 十五、可观测性与运维（Observability & SRE）
+
+> 核心问题：生产环境宕机时，谁能最快定位问题？
+
+### 15.1 aiPlat 可观测性
+
+```
+telemetry 架构:
+  ┌─────────────────────────────────────────────────────┐
+  │              Observability Pipeline                  │
+  │                                                     │
+  │  sys_llm_generate ──┬── trace_id + span_id          │
+  │  sys_tool_call    ──┤── 写入 execution_store        │
+  │  sys_skill_call   ──┘── EventBus.publish()          │
+  │                                                     │
+  │  EventBus → 事件流                                   │
+  │    ├─ store_diag_event() → 诊断历史                   │
+  │    ├─ 诊断中心 24 类检查                               │
+  │    └─ system_overview 聚合面板                         │
+  └─────────────────────────────────────────────────────┘
+
+结构化指标:
+  模型路由: 请求数、成功率、延迟P95、fallback次数、token消耗
+  Agent 执行: 开始/完成/失败/暂停/恢复状态追踪
+  Pipeline: graph_trace (每个阶段的 started/completed/skipped/paused/failed)
+  上下文: compression 事件 (before/after token计数)
+
+面板:
+  诊断中心：24 类实时检查 + 历史趋势图
+  概览页：4 层架构健康状态 + LLM 调用 24h 汇总
+  Model Playground：多模型并发对比
+  Observability 页：LLM 调用 / 延迟 / Token / 错误率
+
+告警:
+  HeartbeatMonitor: 活跃<60s/空闲<5min/警告<10min/错误<15min/停滞≥15min
+  EventBus publish → 可扩展第三方告警 (future)
+  Pipeline 超时/失败 → event 记录 + reason 字段
+```
+
+### 15.2 各方案对比
+
+| 可观测性能力 | aiPlat | Hermes | Claude Code | OpenClaw |
+|-------------|--------|--------|-------------|----------|
+| **分布式追踪 (trace_id)** | ✅ syscall 层自动 | ❌ | ❌ | ❌ |
+| **Span 级追踪 (span_id)** | ✅ 每次调用 | ❌ | ❌ | ❌ |
+| **OpenTelemetry 集成** | ❌ (未集成) | ❌ | ❌ | ❌ |
+| **Prometheus 指标暴露** | ❌ (无 /metrics 端点) | ❌ | ❌ | ❌ |
+| **结构化日志 (JSON)** | ⚠️ (uvicorn 标准) | 标准输出 | 标准输出 | JSON 结构化 |
+| **日志聚合 (ELK/Loki)** | ❌ (未集成) | ❌ | ❌ | ❌ |
+| **诊断中心** | ✅ 24 类自动检查 | ❌ | ❌ | ❌ |
+| **系统概览面板** | ✅ 4 层架构实时 | 无 | 无 | 无 |
+| **LLM 调用监控** | ✅ 成功率/P95/fallback | ❌ | ❌ | ❌ |
+| **Model Playground** | ✅ 多模型并发对比 | ❌ | ❌ | ❌ |
+| **健康检查端点** | ✅ /health | ✅ /health | ✅ 内置 | ✅ /health |
+| **Agent 心跳监控** | ✅ HeartbeatMonitor | ❌ | ❌ | ❌ |
+| **Pipeline Trace** | ✅ graph_trace 事件 | ❌ | ❌ | ❌ |
+| **上下文压缩监控** | ✅ CONTEXT_SUMMARY 事件 | ❌ | ❌ | ❌ |
+| **架构守卫实时告警** | ✅ PolicyGate 拦截 | ❌ | ❌ | ❌ |
+| **SRE 熔断器** | ✅ WikiCircuitBreaker | ❌ | ❌ | ❌ |
+| **自动降级** | ✅ 3 级回退 + 熔断 | ❌ | ❌ | ❌ |
+
+**总结**: aiPlat 在应用层可观测性上显著领先（syscall 追踪、Pipeline Trace、HeartbeatMonitor），但缺少行业标准的 OpenTelemetry/Prometheus 集成，这是企业 IT 部门运维评审时的常见要求。
+
+---
+
+## 十六、测试生态与质量门禁（Testing & Quality Gates）
+
+> 核心问题：如何保证 Agent 修改代码后不破坏原有逻辑？
+
+### 16.1 aiPlat 测试体系
+
+```
+测试金字塔:
+  ┌─────────────────────┐
+  │   E2E Smoke         │  跨服务全链路冒烟 (tenant→agent→tool→audit)
+  ├─────────────────────┤
+  │   Constitution      │  架构契约测试 (test_kernel_agnostic / test_layer_boundaries)
+  ├─────────────────────┤
+  │   Integration       │  Agent/Skill/Tool 集成测试
+  ├─────────────────────┤
+  │   Unit              │  核心模块单元测试 (9 个 constitution tests)
+  └─────────────────────┘
+
+质量门禁:
+  architecture_guard.sh (68 节自动检查)
+    ├─ §1-§68: grep 级规则扫描 (秒级)
+    ├─ guard_ast_behavior.py: AST 级行为检查
+    ├─ guard_frontend.py: 前端代理路由检查
+    └─ capability_convergence.py: 能力收敛检测
+
+  constitution tests (pytest):
+    test_prompt_loading: 硬编码 prompt 检测
+    test_skill_config: execution_type / handler / effects 检查
+    test_agent_md_config: 行数 / 交接字段检查
+    test_core_module_deps: 禁止模块导入检查
+    test_retrieval_policy_boundary: 检索策略边界
+
+  诊断中心 Q&A:
+    Skill Lint: 自动化检查 + auto-fix
+    Wiki 健康: 13 条规则 (thin/dup/tag/summary/ontology)
+    合规审计: AGENT.md 壳检测 / MemoryManager / PolicyGate
+    架构守卫: 0 violations 检测
+
+RAG 检索评测:
+  benchmark_all.sh (5 指标 CI):
+    1. 管道延迟 P95 <60s
+    2. 图遍历 P95 <500ms
+    3. 检索召回 Recall@10 >85%
+    4. 状态转换准确率 >80%
+    5. 置信度校准 ECE <0.10
+```
+
+### 16.2 各方案对比
+
+| 测试能力 | aiPlat | Hermes | Claude Code | OpenClaw |
+|---------|--------|--------|-------------|----------|
+| **单元测试** | ✅ pytest (9 项) | ✅ pytest | ✅ vitest | ✅ vitest |
+| **集成测试** | ✅ Agent/Skill/Tool | 基础 | 基础 | 基础 |
+| **E2E 冒烟测试** | ✅ 全链路 (8 步) | ❌ | ❌ | ❌ |
+| **架构守卫** | ✅ 68 节 grep+AST+pytest | ❌ | ❌ | ❌ |
+| **Constitution Tests** | ✅ 架构契约自动验证 | ❌ | ❌ | ❌ |
+| **Skill Lint 自动检查** | ✅ 10+ 规则 + auto-fix | ❌ | ❌ | ❌ |
+| **RAG 检索评测** | ✅ 5 指标 CI benchmark | ❌ | ❌ | ❌ |
+| **回归测试套件** | ⚠️ (部分) | ⚠️ (部分) | ✅ (较完善) | ⚠️ (部分) |
+| **Mock 测试框架** | ✅ (monkeypatch) | ⚠️ | ✅ (内置) | ✅ (内置) |
+| **CI 集成** | ✅ architecture_guard.sh | ✅ GitHub Actions | ✅ GitHub Actions | ✅ GitHub Actions |
+| **测试覆盖率要求** | ❌ (未强制) | ❌ | ❌ | ❌ |
+
+**总结**: aiPlat 在架构级质量门禁上独一无二（68 节守卫 + constitution tests），但在回归测试覆盖率和 Mock 框架上不如 Claude Code 的生态成熟。
+
+---
+
+## 十七、数据隐私、合规与 PII 脱敏（Privacy & Compliance）
+
+> 核心问题：用户的 Prompt 或代码片段是否会被用于模型训练？敏感数据如何防止外泄？
+
+### 17.1 aiPlat 隐私架构
+
+```
+数据隔离层次:
+  ┌─────────────────────────────────────────┐
+  │  Layer 3: 模型输出层                     │
+  │  • 本地模型 (Ollama) → 数据不外发       │
+  │  • 外部 API (DeepSeek) → 取决于提供商    │
+  ├─────────────────────────────────────────┤
+  │  Layer 2: 检索安全层 (§5.63)             │
+  │  • 输入截断 (<1000 chars)               │
+  │  • 控制 token 移除 (<|im_start|>)        │
+  │  • Scope 强制 (collection_id)            │
+  │  • Marking 过滤 (private 页面)           │
+  │  • 结果脱敏 (<3000 chars)               │
+  ├─────────────────────────────────────────┤
+  │  Layer 1: 调用防护层                     │
+  │  • _guard_messages() 6 条注入检测        │
+  │  • 特殊 token 过滤                       │
+  │  • 覆盖防护指令注入 (system prompt 末尾)  │
+  │  • safety_audit 审计日志                 │
+  ├─────────────────────────────────────────┤
+  │  Layer 0: 基础设施层                     │
+  │  • 密钥环境变量 (禁止硬编码)              │
+  │  • arch_guard §24,§26 自动检测           │
+  │  • 架构边界 PolicyGate 拦截              │
+  └─────────────────────────────────────────┘
+
+多租户隔离 (§5.62):
+  数据层: tenant_id/domain_id/collection_id 三层隔离
+  检索层: Wiki collection_id 路由 + KB domain SQL 预过滤
+  图数据: 独立 SQLite graph/{domain}.db
+  状态: domain_id 列过滤
+
+PII 脱敏: ❌ 当前未实现自动 PII 检测与替换
+合规认证: ❌ 未对标 SOC2/ISO27001/GDPR
+```
+
+### 17.2 各方案对比
+
+| 隐私合规能力 | aiPlat | Hermes | Claude Code | OpenClaw |
+|-------------|--------|--------|-------------|----------|
+| **PII 自动脱敏** | ❌ (未实现) | ❌ | ✅ 企业版 | ❌ |
+| **本地模型 (数据不外发)** | ✅ Ollama 支持 | ✅ 支持 | ❌ (需 API) | ❌ (需 API) |
+| **输入安全清洗** | ✅ 截断+token+scope | ❌ | 基础 | 基础 |
+| **提示词注入防护** | ✅ _guard_messages() 6规则 | ❌ | ✅ 内置 | ❌ |
+| **多租户数据隔离** | ✅ 三层隔离 | ❌ | ❌ | ❌ |
+| **密钥管理** | ✅ 环境变量 + arch_guard | ✅ .env | ✅ 内置 | ✅ .env |
+| **数据驻留 (本地部署)** | ✅ 完全私有化 | ✅ 本地安装 | ❌ | ✅ 本地 Gateway |
+| **合规认证 (SOC2/ISO)** | ❌ (未对标) | ❌ | ✅ (企业版) | ❌ |
+| **审计追溯** | ✅ ToolAuditLog + 治理面板 | ❌ | ❌ | ❌ |
+| **DM 安全配对** | N/A | ✅ pairing 模式 | N/A | ✅ pairing 模式 |
+| **Sandbox 隔离** | ❌ (同进程) | ✅ Docker/SSH | ❌ | ✅ Docker/SSH/OpenShell |
+
+**总结**: aiPlat 在数据隔离、注入防护和本地部署上有优势，但缺少自动 PII 脱敏和合规认证。对于企业 IT 安全扫描，PII 脱敏是第一优先级补齐项。
+
+---
+
+## 十八、开发者体验与调试能力（DevEx & Debugging）
+
+> 核心问题：当 Agent 走错路时，开发者怎么打断并介入？
+
+### 18.1 aiPlat 调试能力
+
+```
+调试工具链:
+  ┌──────────────────────────────────────────────┐
+  │  Pipeline 可视化:                             │
+  │  • PipelineTrace.tsx (6 阶段时间线+延迟条)     │
+  │  • SSE pipeline_trace 事件流                  │
+  │  • LangGraph graph_trace 节点状态追踪         │
+  │                                              │
+  │  Agent 诊断:                                  │
+  │  • 诊断中心 → 一键诊断 24 类检查              │
+  │  • ExecutionViewer: run_id 维度摘要+事件       │
+  │  • Links: 任意 ID 联动查询                    │
+  │  • Runs: run 状态/事件/checkpoint              │
+  │  • Syscalls: syscall_events 检索              │
+  │  • Audit Logs: 关键操作审计日志               │
+  │                                              │
+  │  Prompt 调试:                                 │
+  │  • Context 诊断 (cache/search/注入可视化)      │
+  │  • prompt_loader DB 动态更新 (无需重启)        │
+  │  • Model Playground (同 Prompt 多模型对比)     │
+  │                                              │
+  │  Skill 调试:                                  │
+  │  • Skill Lint 实时检查 + auto-fix             │
+  │  • SKILL.md 直接编辑 (无需重启)               │
+  │                                              │
+  │  ReAct 过程可视化:                             │
+  │  • ⚠️ 依赖 LangSmith (外部工具)               │
+  │  • PipelineTrace 时间线组件 (自研)            │
+  └──────────────────────────────────────────────┘
+```
+
+### 18.2 各方案对比
+
+| 调试能力 | aiPlat | Hermes | Claude Code | OpenClaw |
+|---------|--------|--------|-------------|----------|
+| **ReAct 过程可视化** | ⚠️ PipelineTrace 组件 | 终端 TUI 流式 | ✅ CLI 高亮+inline | ❌ |
+| **断点调试 (Hook 暂停)** | ✅ 14 Hook 拦截点 | ❌ | ❌ | ❌ |
+| **HITL 干预** | ✅ PolicyGate + ApprovalGate | ✅ 命令审批 | ✅ 权限确认 | ✅ 审批 |
+| **Prompt 热重载** | ✅ DB 动态更新 | ❌ (需重启) | ❌ (文件读取) | ❌ |
+| **Skill 热重载** | ✅ 文件系统监听 | ✅ 文件系统 | ❌ | ✅ |
+| **Model Playground** | ✅ 多模型并发对比 | ❌ | ❌ | ❌ |
+| **ExecutionViewer** | ✅ run_id 全链路 | ❌ | ❌ | ❌ |
+| **Syscall 事件检索** | ✅ 按 run_id 查询 | ❌ | ❌ | ❌ |
+| **诊断一键检查** | ✅ 24 类自动 | `hermes doctor` | 内置 | `openclaw doctor` |
+| **变更控制台** | ✅ change_id/gates | ❌ | ❌ | ❌ |
+| **Policy Debug** | ✅ RBAC+Policy 评估 | ❌ | ❌ | ❌ |
+
+**总结**: aiPlat 在结构化调试工具上最全面（Hook 断点、ExecutionViewer、Syscall 检索），但 ReAct 过程可视化不如 Claude Code 的 CLI 直观。
+
+---
+
+## 十九、流式交互与实时性（Streaming & Latency）
+
+> 核心问题：用户打字时，能实时看到 Agent 思考过程吗？
+
+### 19.1 aiPlat 流式架构
+
+```
+流式输出路径:
+  用户请求 → API Router
+    │
+    ├─ 非流式: run_workspace_agent(stream=False)
+    │    → await ReActLoop → 完整结果 → JSONResponse
+    │
+    └─ 流式: run_workspace_agent(stream=True)
+         → 立即返回 {run_id, status:"running"}
+         → 后台 asyncio.Task 执行 ReActLoop
+         → SSE 流式推送 (via EventSourceResponse)
+         → 前端 ChatPanel 实时渲染
+
+流式链路延迟分析:
+  ┌────────────┐  ┌──────────┐  ┌───────────┐  ┌──────────┐
+  │ 问题理解   │→│ 域路由   │→│ 本体映射   │→│ 图遍历   │
+  │ DMQR重写   │ │ T1倒排   │ │ T-Box分类  │ │ BFS扩展  │
+  │ ~500ms     │ │ <1ms     │ │ ~50ms      │ │ ~100ms   │
+  └────────────┘  └──────────┘  └───────────┘  └──────────┘
+       │               │              │              │
+       └───────────────┴──────────────┴──────────────┘
+                           │
+  ┌────────────┐  ┌───────────┐  ┌───────────┐
+  │ 多路检索   │→│ 质量评估   │→│ 流式生成   │
+  │ Wiki+KB    │ │ Self-RAG   │ │ SSE Token  │  ← 用户开始看到输出
+  │ ~200ms     │ │ ~500ms     │ │ ~20s       │
+  └────────────┘  └───────────┘  └───────────┘
+
+首字延迟 (TTFT): 问题理解 + 域路由 + 本体 + 图遍历 + 检索 + 评估 + 首次Token
+                ≈ 500ms + 1ms + 50ms + 100ms + 200ms + 500ms + 首次LLM
+                ≈ 1.5s ~ 3s (取决于模型响应速度)
+
+Pipeline 阶段不阻塞 SSE:
+  - 检索阶段不产生 SSE 输出 (只影响 TTFT)
+  - 流式生成阶段 (answer_generate) → SSE Token 级推送
+  - 中间阶段通过 pipeline_trace 事件下发 (前端渲染时间线)
+```
+
+### 19.2 各方案对比
+
+| 流式能力 | aiPlat | Hermes | Claude Code | OpenClaw |
+|---------|--------|--------|-------------|----------|
+| **SSE 流式输出** | ✅ EventSourceResponse | ✅ 终端 TUI | ✅ CLI | ✅ Gateway |
+| **Token 级流式** | ✅ 逐个 Token | ✅ | ✅ | ✅ |
+| **首字延迟 (TTFT)** | ~1.5-3s (含 Pipeline) | ~0.5s (纯对话) | ~0.5s | ~0.5s |
+| **Pipeline Trace 可视化** | ✅ SSE pipeline_trace | ❌ | ❌ | ❌ |
+| **后台执行模式** | ✅ stream=True | Cron 后台 | 后台 Agent | Cron 后台 |
+| **并发对话** | ⚠️ 单 worker 阻塞 | ✅ 进程级 | ✅ | ✅ Gateway |
+| **中断恢复** | ✅ PolicyGate HITL | ✅ Ctrl+C | ✅ Ctrl+C | ✅ /stop |
+| **Voice/Talk 实时** | ❌ | ❌ | ❌ | ✅ VoiceWake+Talk |
+
+**总结**: aiPlat 的 SSI 流式输出完善，但 Pipeline 前段（域路由、检索）增加了 TTFT。Claude Code 和 Hermes 因无 Pipeline 开销，首字延迟更短。OpenClaw 在语音交互上独有优势。
+
+---
+
+## 二十、长期任务与异步持久化（Async & Durable Execution）
+
+> 核心问题：执行一个耗时 1 小时的深度研究任务，服务器重启后任务能恢复吗？
+
+### 20.1 aiPlat 持久化执行
+
+```
+Durable Execution 架构:
+  ┌─────────────────────────────────────────────────┐
+  │           PipelineEngine (持久化层)              │
+  │                                                 │
+  │  start()                                        │
+  │    ├─ _snapshot() → state["_checkpoints"]        │
+  │    ├─ 每个阶段开始: record graph_trace {started} │
+  │    ├─ 每个阶段完成: record graph_trace {completed}│
+  │    └─ 异常/中断:    record graph_trace {failed}  │
+  │                                                 │
+  │  resume(checkpoint)                              │
+  │    └─ 从 checkpoint 恢复 → 跳过已完成阶段        │
+  │                                                 │
+  │  持久化机制:                                     │
+  │    • SQLite checkpoint 表 (execution_store)      │
+  │    • 磁盘文件快照 (graph_snapshots)              │
+  │    • run_id 维度事件流 (append_run_event)         │
+  │    • LangGraph checkpoint (图状态)               │
+  └─────────────────────────────────────────────────┘
+
+执行状态机:
+  CREATED → RUNNING → PAUSED → RESUMED → COMPLETED
+                    → ERROR (可重试)
+                    → TIMEOUT (可恢复)
+
+恢复策略:
+  • 从 checkpoint 恢复: 跳过已完成阶段, 从失败点继续
+  • 从 state 恢复: 通过 output_artifact 回到已产出的中间结果
+  • 从 snapshot 恢复: 完整图状态 JSON 回滚
+
+异步任务:
+  • stream=True: 后台 asyncio.Task 执行
+  • autosmoke_enforce: 触发后台 smoke 验证
+  • 自动诊断: AIPLAT_AUTO_DIAG_INTERVAL 周期诊断
+  
+任务队列: ❌ 未引入 Celery/RabbitMQ
+```
+
+### 20.2 各方案对比
+
+| 持久化执行能力 | aiPlat | Hermes | Claude Code | OpenClaw |
+|---------------|--------|--------|-------------|----------|
+| **Durable Execution** | ✅ LangGraph checkpoint | ❌(丢失) | ❌(丢失) | ❌(丢失) |
+| **SQLite Checkpoint** | ✅ execution_store | ❌ | ❌ | ❌ |
+| **中断恢复** | ✅ resume(checkpoint) | ❌ | ❌ | ❌ |
+| **图快照回滚** | ✅ snapshot+restore | ❌ | ❌ | ❌ |
+| **后台异步执行** | ✅ stream=True | ✅ Cron 任务 | ✅ 后台 Agent | ✅ Cron 任务 |
+| **任务队列 (Celery/RabbitMQ)** | ❌ (未集成) | ❌ | ❌ | ❌ |
+| **调度器** | ✅ 自动诊断周期 | ✅ Cron 调度 | ✅ Routines/定时 | ✅ Cron |
+| **幂等性保证** | ✅ effects.idempotent 检查 | ❌ | ❌ | ❌ |
+| **失败重试** | ✅ 3次指数退避 | 无 | 无 | 无 |
+
+**总结**: aiPlat 在持久化执行上全面领先——LangGraph checkpoint + SQLite 快照 + 图回滚，是唯一支持"断电续跑"的方案。但缺少专业任务队列（Celery/RabbitMQ）来管理大规模异步任务。
+
+---
+
+## 二十一、成本经济学（Cost Economics）
+
+> 核心问题：跑同样的一个复杂任务，谁的 Token 消耗最少？
+
+### 21.1 aiPlat 成本架构
+
+```
+Token 消耗分布 (以一次 RAG 问答为例):
+  ┌─────────────────────────────────────────────┐
+  │  系统提示词 (System Prompt)                  │
+  │  • CLAUDE.md 注入        ~500 tokens        │
+  │  • 架构规则注入           ~200 tokens        │
+  │  • Domain Prompt 注入     ~100 tokens        │
+  │  • AGENT.md SOP          ~1500 tokens       │
+  │  小计: ~2300 tokens                          │
+  ├─────────────────────────────────────────────┤
+  │  Pipeline 阶段 LLM 调用                      │
+  │  • DMQR 查询改写          ~800 tokens        │
+  │  • 域路由 T3 (仅10%触发)   ~500 tokens       │
+  │  • 本体映射 (LEM extract)  ~2000 tokens      │
+  │  • HyDE 假设生成(仅回退)   ~1500 tokens      │
+  │  • Self-RAG 评估           ~600 tokens       │
+  │  小计: ~2400-3900 tokens                     │
+  ├─────────────────────────────────────────────┤
+  │  检索上下文 (Retrieved Context)              │
+  │  • Wiki/KB 检索结果     ~800-3000 tokens     │
+  │  • CRAG 回退额外开销     ~500 tokens         │
+  │  小计: ~800-3500 tokens                      │
+  ├─────────────────────────────────────────────┤
+  │  答案生成 (Answer Generation)                │
+  │  • 流式生成 Token       ~200-2000 tokens     │
+  │  小计: ~200-2000 tokens                      │
+  ├─────────────────────────────────────────────┤
+  │  TOTAL: ~5700-11700 tokens                   │
+  │  (不含 embedding/reranker 的 API 费用)       │
+  └─────────────────────────────────────────────┘
+
+缓存策略:
+  • Code Graph: SQLite 增量同步 (mtime+hash)
+  • 记忆: FTS5 + deque 滑动窗口 (避免重复 LLM 调用)
+  • Prompt: DB 缓存 + 同步/异步双通道
+  • System Prompt: CLAUDE.md 每次重读 (不压缩)
+  • ❌ 语义缓存 (Semantic Caching): 未实现
+
+降本措施:
+  • 本地模型 (Ollama): 0 API 费用
+  • Domain Router T1/T2: 零 LLM 消耗
+  • ClassMapper: 零 LLM 分类
+  • 上下文 5 级压缩: 减少重复计算
+  • 熔断器: 避免 retry loop 浪费
+```
+
+### 21.2 各方案对比
+
+| 成本能力 | aiPlat | Hermes | Claude Code | OpenClaw |
+|---------|--------|--------|-------------|----------|
+| **System Prompt 体积** | ~2300 tokens (含SOP+CLAUDE.md) | ~500 tokens | ~500 tokens | ~300 tokens |
+| **Pipeline LLM 额外开销** | ~2400-3900 tokens | 0 (无 Pipeline) | 0 | 0 |
+| **语义缓存 (降本)** | ❌ (未实现) | ❌ | ❌ | ❌ |
+| **本地模型支持** | ✅ Ollama (0 API 费) | ✅ 支持多 provider | ❌ | ❌ |
+| **零 LLM 分类** | ✅ ClassMapper + T1/T2 | ❌ | ❌ | ❌ |
+| **Token 预算控制** | ✅ 100K/60K 硬限制 | /compact 手动 | /compact 手动 | /compact 手动 |
+| **5 级自动压缩** | ✅ 自动触发 | /compact 手动 | /compact 手动 | /compact 手动 |
+| **Subagent 摘要** | ✅ 返回摘要(非完整输出) | ❌ | ❌ | ❌ |
+| **模型切换降本** | ✅ infra 自动选择 | ✅ 多 provider | ✅ 多 model | ✅ 多 provider |
+| **单次 RAG 对话估算 Token** | ~6000-12000 | ~1500-3000 (纯对话) | ~1000-2000 | ~1500-3000 |
+
+**总结**: aiPlat 提供了最强的成本控制能力（本地模型、零LLM分类、5级压缩、Token预算），但 Pipeline 本身带来了额外 Token 开销（同比 Hermes/Claude Code 多 3-5 倍）。对于简单对话场景，Hermes/Claude Code 成本更低；对于企业级知识检索场景，aiPlat 的 Pipeline 是必要投资。
+
+---
+
+## 二十二、缺失维度快速对比总表
+
+| 缺失维度 | aiPlat | Hermes | Claude Code | OpenClaw |
+|:---|:---:|:---:|:---:|:---:|
+| **OpenTelemetry 追踪** | ❌ (待集成) | ❌ | ❌ | ❌ |
+| **PII 自动脱敏** | ❌ (待实现) | ❌ | ✅ (企业版) | ❌ |
+| **持久化执行 (断点续跑)** | ✅ LangGraph | ❌ | ❌ | ❌ |
+| **语义缓存 (降本)** | ❌ (待实现) | ❌ | ❌ | ❌ |
+| **ReAct 过程可视化 UI** | ⚠️ PipelineTrace | ⚠️ CLI TUI | ✅ CLI 高亮 | ✅ Canvas |
+| **异步任务队列** | ❌ (未集成) | ❌ | ❌ | ❌ |
+| **端到端自动化评测** | ✅ benchmark CI | ❌ | ⚠️ (基础) | ❌ |
+| **Prometheus 指标** | ❌ (待集成) | ❌ | ❌ | ❌ |
+| **合规认证 SOC2/ISO** | ❌ (未对标) | ❌ | ✅ (企业版) | ❌ |
+| **Sandbox 隔离** | ❌ (同进程) | ✅ | ❌ | ✅ |
+| **Voice/Talk 实时** | ❌ | ❌ | ❌ | ✅ |
+| **多频道消息网关** | ❌ | ✅ 4+ | ✅ Slack | ✅ 20+ |
+| **首字延迟 (TTFT)** | ~1.5-3s | ~0.5s | ~0.5s | ~0.5s |
+| **Hook 断点调试** | ✅ 14 个 | ❌ | ❌ | ❌ |
+| **Skill/Agent 热重载** | ✅ DB+文件 | ✅ 文件 | ❌ | ✅ |
+
+**关键发现**: 所有四个方案在 **OpenTelemetry、语义缓存、异步任务队列、PII 脱敏、Prometheus 指标** 这 5 项上处于空白或极弱状态。这是 AI Agent 行业整体的基础设施缺口。
+
+---
+
+## 二十三、企业就绪度评分矩阵（NFR 加权）
+
+| NFR 维度 (企业权重) | aiPlat | Hermes | Claude Code | OpenClaw |
+|:---|:---:|:---:|:---:|:---:|
+| **可观测性 (15%)** | ⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐ | ⭐⭐ |
+| **测试生态 (15%)** | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐⭐ |
+| **隐私合规 (20%)** | ⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐ |
+| **开发者体验 (10%)** | ⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
+| **流式实时 (10%)** | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+| **持久化执行 (10%)** | ⭐⭐⭐⭐⭐ | ⭐ | ⭐ | ⭐ |
+| **成本控制 (20%)** | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ |
+| **NFR 加权总分** | **4.0/5** | **2.5/5** | **3.0/5** | **2.6/5** |
+
+---
+
+## 二十四、待补齐项（aiPlat vs 三者）
 
 | 能力 | 来源 | 当前状态 | 建议 |
 |------|------|:---:|------|
