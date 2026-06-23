@@ -330,6 +330,9 @@ echo "============================================================"
 echo "  Step 2/6: 启动 aiPlat-core (端口 8002)"
 echo "============================================================"
 
+# Clean stale Python bytecode to ensure latest code is loaded
+find "$PROJECT_ROOT/aiPlat-core" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+
 kill_port_if_any 8002
 
 export AIPLAT_EMBED_BACKEND="${AIPLAT_EMBED_BACKEND:-hash}"
@@ -361,6 +364,9 @@ echo ""
 echo "============================================================"
 echo "  Step 3/6: 启动 aiPlat-platform (端口 8003)"
 echo "============================================================"
+
+# Clean stale Python bytecode to ensure latest code is loaded
+find "$PROJECT_ROOT/aiPlat-platform" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
 
 kill_port_if_any 8003
 
