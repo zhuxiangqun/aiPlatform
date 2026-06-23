@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """
-Frontend Infrastructure Guard — §43 + §44
+Frontend Infrastructure Guard — §43 + §44 + §45 + §46
 
 §43: Vite proxy routing — verifies proxy targets are correct
 §44: Cross-language API contract — checks TS fetch fields vs Python endpoint params
+§45: Cross-language API path contract — frontend paths must match backend routes
+§46: Frontend import path hygiene — barrel file enforcement
 
 Usage:
     python3 scripts/guard_frontend.py
@@ -13,6 +15,7 @@ Output: text (same format as architecture_guard.sh), exit code 0=pass, 1=violati
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -192,8 +195,279 @@ def check_api_contract() -> list[dict]:
     return issues
 
 
+# ═══════════════════════════════════════════════════════════════
+# §45: Cross-Language API Path Contract
+# ═══════════════════════════════════════════════════════════════
+
+def _extract_frontend_paths() -> list[dict]:
+    entries = []
+    frontend_dirs = [
+        WORKSPACE_ROOT / "aiPlat-management" / "frontend" / "src",
+        WORKSPACE_ROOT / "aiPlat-app" / "src",
+    ]
+    for frontend_src in frontend_dirs:
+        if not frontend_src.exists():
+            continue
+        entries.extend(_extract_frontend_paths_from_dir(str(frontend_src)))
+    return entries
+
+
+def _extract_frontend_paths_from_dir(frontend_dir: str) -> list[dict]:
+    entries = []
+
+    api_patterns = [
+        # apiClient.get/post/put/delete('path', ...) — 2 groups: (method, path)
+        (re.compile(r"apiClient\s*\.\s*(get|post|put|delete|patch)\s*\(\s*['\"]([^'\"]+)['\"]"), "apiClient"),
+        # apiClient.get/post/put/delete(`path`, ...) — 2 groups: (method, path)
+        (re.compile(r"apiClient\s*\.\s*(get|post|put|delete|patch)\s*\(\s*`([^`]+)`"), "apiClient"),
+        # fetch('/path', ...) — 1 group: (path), check context for {method: 'POST'}
+        (re.compile(r"fetch\s*\(\s*['\"]((?:/[^'\"]+))['\"]"), "fetch"),
+    ]
+
+    for root, dirs, files in os.walk(frontend_dir):
+        dirs[:] = [d for d in dirs if d not in ("node_modules", "__pycache__", ".git")]
+        for fn in files:
+            if not fn.endswith((".ts", ".tsx")):
+                continue
+            fp = os.path.join(root, fn)
+            try:
+                content = open(fp, encoding="utf-8", errors="ignore").read()
+            except Exception:
+                continue
+            for pattern, pat_type in api_patterns:
+                for m in pattern.finditer(content):
+                    if pat_type == "apiClient":
+                        method, path = m.group(1).upper(), m.group(2)
+                    else:
+                        # fetch() — try to detect method from options
+                        path = m.group(1)
+                        end_pos = m.end()
+                        # Search up to 200 chars after the function call for {method: 'POST'}
+                        tail = content[end_pos:end_pos + 200]
+                        method_match = re.search(r"method\s*:\s*['\"]([^'\"]+)['\"]", tail)
+                        method = method_match.group(1).upper() if method_match else "GET"
+                    if not path.startswith("/") or "//" in path:
+                        continue
+                    normalized = re.sub(r'\$\{([^}]+)\}', r'{\1}', path)
+                    entries.append({
+                        "method": method,
+                        "path": normalized,
+                        "file": os.path.relpath(fp, str(WORKSPACE_ROOT)),
+                        "line": content[:m.start()].count("\n") + 1,
+                    })
+    return entries
+
+
+def _build_mount_prefixes() -> dict[str, str]:
+    """Build a mapping: router_file_basename → effective mount prefix.
+    
+    Scans server.py files for:
+      api_router = APIRouter(prefix="/api/core")
+      api_router.include_router(x_router)
+      from ... import router as x_router
+    """
+    prefix_map: dict[str, str] = {}
+    server_files = list(WORKSPACE_ROOT.glob("aiPlat-core/core/server.py"))
+    server_files += list(WORKSPACE_ROOT.glob("aiPlat-platform/*/server.py"))
+
+    for sf in server_files:
+        if not sf.exists():
+            continue
+        try:
+            content = sf.read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            continue
+
+        # Extract router definitions: xyz_router = APIRouter(prefix="...")
+        router_prefixes: dict[str, str] = {}
+        for m in re.finditer(r"(\w+)\s*=\s*APIRouter\s*\(\s*prefix\s*=\s*['\"]([^'\"]+)['\"]", content):
+            var_name, prefix = m.group(1), m.group(2)
+            router_prefixes[var_name] = prefix
+
+        # Extract include_router calls and map to import aliases
+        # Pattern: router_name.include_router(alias) or router_name.include_router(alias, prefix=...)
+        for m in re.finditer(r"(\w+)\.include_router\s*\(\s*(\w+)\s*(?:,\s*prefix\s*=\s*['\"]([^'\"]+)['\"])?\s*\)", content):
+            parent_var, child_var, extra_prefix = m.group(1), m.group(2), m.group(3)
+            effective_prefix = router_prefixes.get(parent_var, "")
+            if extra_prefix:
+                effective_prefix = effective_prefix + extra_prefix
+
+            if not effective_prefix:
+                continue
+
+            # Find the import: from path import router as child_var
+            for im in re.finditer(
+                rf"(?:from\s+(\S+)\s+import\s+router\s+as\s+{re.escape(child_var)}\b"
+                rf"|from\s+(\S+)\s+import\s+.*\b{re.escape(child_var)}\b"
+                rf"|import\s+(\S+)\s+as\s+{re.escape(child_var)}\b)",
+                content):
+                mod = im.group(1) or im.group(2) or im.group(3) or ""
+                if mod:
+                    import_name = mod.replace(".", "/") + ".py"
+                    break
+
+            if import_name:
+                basename = os.path.basename(import_name)
+                if basename not in prefix_map:
+                    prefix_map[basename] = effective_prefix
+                # Also try the full module path
+                prefix_map[import_name] = effective_prefix
+    return prefix_map
+
+
+def _extract_backend_routes() -> list[dict]:
+    entries = []
+    mount_prefixes = _build_mount_prefixes()
+    backend_dirs = [
+        WORKSPACE_ROOT / "aiPlat-platform",
+        WORKSPACE_ROOT / "aiPlat-core",
+        WORKSPACE_ROOT / "aiPlat-infra",
+        WORKSPACE_ROOT / "aiPlat-app",
+        WORKSPACE_ROOT / "aiPlat-management",
+    ]
+    route_patterns = [
+        (re.compile(r"@(?:app|router)\s*\.\s*(get|post|put|delete|patch)\s*\(\s*['\"]([^'\"]+)['\"]"), "method"),
+        (re.compile(r"@(?:app|router)\s*\.\s*route\s*\(\s*['\"]([^'\"]+)['\"]"), "flask_route"),
+    ]
+    for base_dir in backend_dirs:
+        if not base_dir.exists():
+            continue
+        for root, dirs, files in os.walk(str(base_dir)):
+            dirs[:] = [d for d in dirs if d not in ("__pycache__", ".git", "node_modules", "venv", ".venv")]
+            for fn in files:
+                if not fn.endswith(".py"):
+                    continue
+                fp = os.path.join(root, fn)
+                try:
+                    content = open(fp, encoding="utf-8", errors="ignore").read()
+                except Exception:
+                    continue
+                # Determine mount prefix for this file
+                mount_prefix = ""
+                router_self_prefix = ""
+                # Extract router's own prefix: router = APIRouter(prefix="/wiki")
+                self_prefix_match = re.search(r"APIRouter\s*\(\s*prefix\s*=\s*['\"]([^'\"]+)['\"]", content[:5000])
+                if self_prefix_match:
+                    router_self_prefix = self_prefix_match.group(1)
+                # Check mount prefix map
+                if fn in mount_prefixes:
+                    mount_prefix = mount_prefixes[fn]
+                elif "aiPlat-core" in str(fp) and fn not in ("server.py",):
+                    for candidate in [os.path.basename(fp)]:
+                        if candidate in mount_prefixes:
+                            mount_prefix = mount_prefixes[candidate]
+                            break
+                effective_prefix = mount_prefix + router_self_prefix
+
+                for pattern, pat_type in route_patterns:
+                    for m in pattern.finditer(content):
+                        if pat_type == "flask_route":
+                            method, path = "ALL", m.group(1)
+                        else:
+                            method, path = m.group(1).upper(), m.group(2)
+                        # Apply effective prefix for router-based routes (not top-level @app routes)
+                        is_top_level = bool(re.search(r"@app\.", content[:m.start()+10]))
+                        if effective_prefix and not is_top_level:
+                            path = effective_prefix + path
+                        entries.append({
+                            "method": method,
+                            "path": path,
+                            "file": os.path.relpath(fp, str(WORKSPACE_ROOT)),
+                            "line": content[:m.start()].count("\n") + 1,
+                        })
+    return entries
+
+
+def _normalize_path(path: str) -> str:
+    return path.rstrip("/").split("?")[0].lower()
+
+
+def _paths_match(fe_path: str, be_path: str) -> bool:
+    fe_norm = _normalize_path(fe_path)
+    be_norm = _normalize_path(be_path)
+    if fe_norm == be_norm:
+        return True
+    fe_segs = fe_norm.strip("/").split("/")
+    be_segs = be_norm.strip("/").split("/")
+    if len(fe_segs) != len(be_segs):
+        return False
+    for fs, bs in zip(fe_segs, be_segs):
+        is_param = lambda s: bool(re.match(r'^\{.+\}$', s) or re.match(r'^<.+>$', s) or s.startswith(':'))
+        if fs == bs:
+            continue
+        if is_param(fs) and is_param(bs):
+            continue
+        return False
+    return True
+
+
+def check_api_path_contract() -> list[dict]:
+    issues = []
+    fe_paths = _extract_frontend_paths()
+    be_routes = _extract_backend_routes()
+
+    if not fe_paths:
+        issues.append({"code": "path_contract_skip", "level": "pass",
+                        "msg": "No frontend API paths found — skipping"})
+        return issues
+    if not be_routes:
+        issues.append({"code": "path_contract_skip", "level": "warning",
+                        "msg": "No backend routes found — incomplete"})
+        return issues
+
+    seen = set()
+    fe_unique = []
+    for fe in fe_paths:
+        key = (fe["method"], _normalize_path(fe["path"]))
+        if key not in seen:
+            seen.add(key)
+            fe_unique.append(fe)
+
+    mismatches = []
+    for fe in fe_unique:
+        pl = fe["path"].lower()
+        if any(s in pl for s in ("/health", "/metrics", "/static", ".js", ".css", ".png", ".svg")):
+            continue
+
+        matched = False
+        for be in be_routes:
+            if _paths_match(fe["path"], be["path"]):
+                matched = True
+                break
+
+        if not matched:
+            for prefix in ("/api", "/api/platform", "/platform"):
+                if fe["path"].startswith(prefix + "/"):
+                    stripped = fe["path"][len(prefix):]
+                    for be in be_routes:
+                        if _paths_match(stripped, be["path"]):
+                            matched = True
+                            break
+                    if matched:
+                        break
+
+        if not matched:
+            mismatches.append(fe)
+
+    for mm in mismatches[:20]:
+        issues.append({
+            "code": "path_mismatch",
+            "level": "error",
+            "msg": f"{mm['method']} {mm['path']} — no matching backend route",
+            "files": [mm["file"]],
+        })
+
+    if not mismatches:
+        issues.append({"code": "path_contract_ok", "level": "pass",
+                        "msg": f"All {len(fe_unique)} frontend API paths matched to backend routes"})
+    else:
+        issues.append({"code": "path_contract_summary", "level": "info",
+                        "msg": f"Checked {len(fe_unique)} frontend paths vs {len(be_routes)} backend routes — {len(mismatches)} mismatches"})
+    return issues
+
+
 def check_ts_import_hygiene() -> list[dict]:
-    """§45: Check that frontend imports go through barrel files (services/index.ts, components/ui)."""
+    """§46: Check that frontend imports go through barrel files."""
     issues = []
     checks = [
         {
@@ -217,7 +491,7 @@ def check_ts_import_hygiene() -> list[dict]:
     for check in checks:
         try:
             result = subprocess.run(
-                ["grep", "-rn", "--include=*.tsx", "--include=*.ts", check["pattern"],
+                ["grep", "-rEn", "--include=*.tsx", "--include=*.ts", check["pattern"],
                  check["path"]],
                 capture_output=True, text=True, cwd=str(Path(__file__).resolve().parent.parent)
             )
@@ -248,7 +522,8 @@ def main():
     sections = [
         ("§43", "Frontend Proxy Routing", check_vite_proxy),
         ("§44", "Cross-Language API Contract", check_api_contract),
-        ("§45", "Frontend Import Path Hygiene", check_ts_import_hygiene),
+        ("§45", "Cross-Language API Path Contract", check_api_path_contract),
+        ("§46", "Frontend Import Path Hygiene", check_ts_import_hygiene),
     ]
 
     total_errors = 0

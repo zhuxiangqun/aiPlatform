@@ -13,7 +13,7 @@
 #   Frontend: add checks to guard_frontend.py
 # ============================================================================
 
-set -euo
+set -euo pipefail
 WORKSPACE_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$WORKSPACE_ROOT"
 
@@ -81,4 +81,4 @@ echo ""
 echo "═══════════════════════════════════════════════════════════════"
 echo "  PHASE CHECK: dead code + wiring tests + self-annotated"
 echo "═══════════════════════════════════════════════════════════════"
-bash scripts/phase_check.sh || echo "WARNING: phase_check.sh found issues (non-critical in dev)"
+bash scripts/phase_check.sh || exit 1

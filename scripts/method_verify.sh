@@ -98,8 +98,7 @@ if [ "$WARNINGS" -gt 0 ]; then
     echo -e "${YELLOW}═══ METHOD VERIFY: $WARNINGS unwired method(s) ═══${NC}"
     echo ""
     echo "  These methods have no external callers. Wire or add xfail."
-    # Non-fatal warning — some methods may be internal helpers
-    exit 0
+    exit 1
 else
     echo -e "${GREEN}═══ METHOD VERIFY PASSED — all key methods have callers ═══${NC}"
     exit 0

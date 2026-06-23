@@ -813,7 +813,31 @@ done
 | 批量 3+ 文件无 caller 同时提交 | ❌ | CI 直接拒绝 + PR 不允许合入 |
 | 新建文件 + `# TODO: wire / 0 caller / 待接线` 标记 | ⚠️ 警告 | 允许但不计入 Phase 完成，feature flag 不遮掩 |
 
-**10. 接线断言测试（wiring test）—— 2026-06 新增**
+**12. 工具开发强制规则 —— 2026-06 新增**
+
+所有守卫脚本、诊断程序、验证工具（`scripts/` 下的 `.sh`/`.py`）必须遵守以下规则：
+
+| # | 规则 | 说明 |
+|---|------|------|
+| 1 | **每个新工具的每个函数必须有自测试** | `def check_xxx()` → `tests/tool_correctness/test_xxx.py` 中必须覆盖。不允许上线不自测的工具。 |
+| 2 | **跨平台正则必须用 `-E` 标志** | `grep` 不指定 `-E` 时只用 BRE，macOS 上 `\s`、`\d` 等不生效。使用 `grep -rEn` 或显式 BRE 模式 `[[:space:]]+`。 |
+| 3 | **所有 `paths` 字段必须验证文件存在** | 添加到 `arch_guard_rules.yaml` 的规则必须先跑 `scripts/validate_rules_paths.py` 检查。 |
+| 4 | **脚本必须用 `set -euo pipefail` + 关键管道加 `|| true` guards** | 避免 `set -e` 导致的消息循环静默退出。 |
+| 5 | **新工具上线前必须交叉验证** | `caller_verify.sh` 的输出必须与 `test_wiring.py` 的结果一致。多个工具对同一问题的判断不能矛盾。 |
+| 6 | **工具变更必须更新基线快照** | 如果工具输出有意变更（如新增 rule），同步更新 `scripts/baselines/` 下的已知输出。 |
+| 7 | **测试文件中的空函数体（无 assert 或 raise）视为 bug** | `tests/tool_correctness/` 扫描器禁止仅有 docstring 的测试函数。 |
+
+**验证命令**：
+```bash
+# 规则 3：检查所有规则路径是否存在
+python3 scripts/validate_rules_paths.py
+
+# 规则 1 + 7：跑工具自测试
+python -m pytest tests/tool_correctness/ -v
+
+# 规则 5：交叉验证 caller_verify vs wiring tests
+python -m pytest tests/wiring/test_wiring.py -v && bash scripts/caller_verify.sh
+```
 
 每个新建公共模块 **必须** 附带一个接线断言测试（`tests/wiring/` 下），该测试不是测模块功能，而是测模块 **是否被接入生产线**：
 

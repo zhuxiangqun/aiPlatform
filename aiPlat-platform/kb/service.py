@@ -873,13 +873,17 @@ def _format_transcript_with_punctuation(segments: list) -> str:
     - Segments with timing gap > 0.6s get period + new paragraph
     - Segments with timing gap > 0.15s get period
     - Otherwise insert commas between segments (whisper VAD removes natural pauses)
-    - Every ~5 consecutive commas → replace with period for readability
+    - Every 8 consecutive commas → replace with period for readability
+    - Every 150 chars+3 segments or 300+ chars without a paragraph break → force break
+    - Total chars since last break ≥ 500 → force paragraph even if gap is small
     """
     if not segments:
         return ""
     lines: list = []
     prev_end = None
     consecutive_commas = 0
+    chars_since_break = 0
+    segments_since_break = 0
     for seg in segments:
         text = str(seg.get("text", "")).strip()
         if not text:
@@ -889,10 +893,15 @@ def _format_transcript_with_punctuation(segments: list) -> str:
 
         if prev_end is not None:
             gap = start_s - prev_end
-            if gap > 0.6:
-                lines.append("。\n\n")
+            force_break = (chars_since_break > 150 and segments_since_break >= 3) or chars_since_break >= 300
+            if gap > 0.6 or force_break:
+                if consecutive_commas > 0:
+                    lines[-1] = lines[-1].rstrip("，") + "。"
+                lines.append("\n\n")
                 consecutive_commas = 0
-                lines.append(text)  # no comma after period
+                chars_since_break = 0
+                segments_since_break = 0
+                lines.append(text)
                 prev_end = end_s
                 continue
             elif gap > 0.15:
@@ -905,6 +914,8 @@ def _format_transcript_with_punctuation(segments: list) -> str:
                 lines.append("，")
                 consecutive_commas += 1
         lines.append(text)
+        chars_since_break += len(text)
+        segments_since_break += 1
         prev_end = end_s
     if lines:
         lines.append("。")

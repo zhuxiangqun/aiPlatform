@@ -117,11 +117,11 @@ export const kbApi = {
   },
 
   reingestDocument: async (doc_id: string) => {
-    return apiClient.post<any>(`/platform/documents/${encodeURIComponent(doc_id)}/refresh`, { force: false });
+    return apiClient.post<any>(`/platform/kb/documents/${encodeURIComponent(doc_id)}/reingest`, { force: false });
   },
 
   refreshDocument: async (doc_id: string, force: boolean = false) => {
-    return apiClient.post<any>(`/platform/documents/${encodeURIComponent(doc_id)}/refresh`, { force });
+    return apiClient.post<any>(`/platform/kb/documents/${encodeURIComponent(doc_id)}/reingest`, { force });
   },
 
   listManagedDocuments: async (collection_id?: string, limit: number = 100, offset: number = 0) => {
@@ -167,7 +167,7 @@ export const kbApi = {
   },
 
   documentQuery: async (doc_id: string, question: string, top_k: number = 5) => {
-    return apiClient.post<any>('/platform/documents/query', { doc_id, collection_id: 'default', question, top_k });
+    return apiClient.post<any>('/platform/kb/query', { doc_id, collection_id: 'default', question, top_k });
   },
 
   collectionQuery: async (collection_id: string, question: string, top_k: number = 8) => {

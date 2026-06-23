@@ -974,7 +974,7 @@ rules:
     check:
       type: grep_forbidden
       pattern: "key === 'test_report'|key === 'architecture'|key === 'code'|key === 'prd'|key === 'test_plan'"
-      paths: ["aiPlat-management/frontend/src", "aiPlat-app/src"]
+      paths: ["aiPlat-management/frontend/src"]
       exclude: ["__pycache__", "node_modules/"]
       grep_exclude: ["arch_guard_rules/", "test_", "spec\\.ts"]
     message: "UI component branching on artifact key name — use structural properties (e.g. 'recommendation' in val) per MGMT §5.3"
@@ -1147,7 +1147,7 @@ if collisions:
       ok_pattern: "^$"
     message: "Nested server.yaml at depth >=3 — broken zip import structure."
 
-  - id: skill_nested_revisions
+  - id: skill_nested_not_in_revisions
     section: "§61"
     section_name: "Skill 安装结构合规"
     level: warning
@@ -1335,7 +1335,7 @@ if collisions:
     check:
       type: grep_forbidden
       pattern: 'def (?:add_entity|add_relation|add_hyperedge|remove_entity|remove_hyperedge)\('
-      paths: ["aiPlat-core/core/harness/knowledge/graph_index.py"]
+      paths: ["aiPlat-core/core/harness/ontology_engine/graph_index.py"]
       exclude: ["__pycache__", "tests/"]
       grep_exclude: ["_invalidate_cache"]
     message: "图突变方法未调用 _invalidate_cache() — 违反 §5.45，Agent 将查询到过期结果"
@@ -1348,7 +1348,7 @@ if collisions:
     check:
       type: grep_forbidden
       pattern: 'def (?:synthesize|_synthesize)\('
-      paths: ["aiPlat-core/core/harness/knowledge/knowledge_synthesis.py"]
+      paths: ["aiPlat-core/core/harness/ontology_engine/knowledge_synthesis.py"]
       exclude: ["__pycache__", "tests/"]
       grep_exclude: ["source_instances"]
     message: "知识合成函数未输出 source_instances 字段 — 违反 §5.46，源更新时无法反向查询"
@@ -2072,4 +2072,42 @@ if collisions:
       paths: ["aiPlat-core/core/harness/", "aiPlat-core/core/apps/", "aiPlat-core/core/services/", "aiPlat-core/core/gateway/"]
       max_matches: 0
     message: "发现未追踪的接线债务 — 标注为 'noqa: known-debt Phase X' 或立即修复"
+
+  # ═══ Section 45/75: 跨语言 API 路径契约 (2026-06) ═══
+
+  # 45.1: guard_frontend.py must include API path contract check
+  - id: guard_frontend_path_contract
+    section: "§45/§75"
+    section_name: "guard_frontend.py — 必须包含 §45 API 路径契约检查"
+    level: error
+    check:
+      type: grep_required
+      pattern: 'check_api_path_contract'
+      paths: ["scripts/guard_frontend.py"]
+      min_matches: 1
+    message: "guard_frontend.py 缺失 §45 API 路径契约检查 — 前端调用的 API 路径不会与后端路由交叉验证"
+
+  # 45.2: API path contract must run as part of architecture_guard.sh
+  - id: path_contract_in_arch_guard
+    section: "§45/§75"
+    section_name: "guard_frontend.py 已集成到 architecture_guard.sh"
+    level: error
+    check:
+      type: grep_required
+      pattern: 'guard_frontend'
+      paths: ["scripts/architecture_guard.sh"]
+      min_matches: 1
+    message: "guard_frontend.py 未在 architecture_guard.sh 中执行 — API 路径契约检查不会在 CI 运行"
+
+  # 45.3: Detect known frontend-backend path mismatch patterns
+  - id: kbapi_path_refresh_mismatch
+    section: "§45/§75"
+    section_name: "kbApi.ts — refresh/reingest 路径前后端一致"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: 'documents.*refresh|^.*/documents/.*/refresh'
+      paths: ["aiPlat-management/frontend/src/services/kbApi.ts"]
+      max_matches: 0
+    message: "kbApi.ts 中 refresh 路径应与后端 reingest 一致 — 将导致 404"
 

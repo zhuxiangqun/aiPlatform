@@ -129,10 +129,11 @@ if [ "$FAILURES" -eq 0 ]; then
 else
     echo -e "${RED}═══ PHASE CHECK FAILED: $FAILURES step(s) failed ═══${NC}"
     echo ""
-    echo "  Fix required before Phase completion:"
-    echo "    - Step 1 failed: run 'bash scripts/caller_verify.sh' to see dead symbols"
-    echo "    - Step 2 failed: run 'pytest tests/wiring/test_wiring.py test_methods_wired.py -v'"
-    echo "    - Step 3 failed: run 'pytest tests/wiring/integration/ -v'"
-    echo "    - Step 5 failed: run 'python -m py_compile' on the failing file"
+    echo "  Check the detailed output above for which step(s) failed:"
+    echo "    Step 1 (Dead Code):      bash scripts/caller_verify.sh"
+    echo "    Step 2 (Wiring Tests):   pytest tests/wiring/test_wiring.py test_methods_wired.py -v"
+    echo "    Step 2.5 (Methods):      bash scripts/method_verify.sh"
+    echo "    Step 3 (Integration):    pytest tests/wiring/integration/ -v"
+    echo "    Step 5 (Compile):        python -m py_compile"
     exit 1
 fi

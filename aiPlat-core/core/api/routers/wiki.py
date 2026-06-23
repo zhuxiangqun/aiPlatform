@@ -150,21 +150,29 @@ async def get_unprocessed_docs(tenant_id: str = "default", collection: str = "de
             if s.startswith("kb:"):
                 wiki_doc_ids.add(s.replace("kb:", ""))
     
-    # Find KB docs not in wiki — also check wiki_status column
+    # Find KB docs not in wiki — check both actual wiki references AND wikified status
     conn = _sq.connect(kb_db)
     conn.row_factory = _sq.Row
     docs = conn.execute(
-        "SELECT doc_id, source_uri, kind, status, wiki_status FROM documents WHERE tenant_id=? AND status='ready'",
+        "SELECT doc_id, source_uri, kind, status, wiki_status, meta_json FROM documents WHERE tenant_id=? AND status='ready'",
         (tenant_id,)
     ).fetchall()
 
     unprocessed = []
     for d in docs:
-        # Skip if already in wiki_pages OR wiki_status is 'wikified'
+        # Skip if this doc_id is already referenced by a real wiki page
         if d["doc_id"] in wiki_doc_ids:
             continue
-        if str(d["wiki_status"] or "").strip() == "wikified":
-            continue
+        # Skip only if BOTH wiki_pages exist AND wiki_status is 'wikified'
+        # (mirrors the bulk convert double-condition check at line ~839)
+        ws = str(d["wiki_status"] or "").strip()
+        if ws == "wikified":
+            try:
+                meta = _json.loads(d["meta_json"] or "{}")
+                if meta.get("wiki_pages"):
+                    continue  # fully converted: wiki pages exist and status is wikified
+            except Exception:
+                pass
         unprocessed.append({
             "doc_id": d["doc_id"],
             "source_uri": d["source_uri"],

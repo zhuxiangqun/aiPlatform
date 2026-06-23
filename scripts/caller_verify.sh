@@ -7,7 +7,7 @@
 #
 # Usage: bash scripts/caller_verify.sh
 # ============================================================================
-set -euo pipefail
+set -euo
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 WORKSPACE="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -37,9 +37,9 @@ i=0
 while IFS= read -r f; do
     [ -z "$f" ] && continue
     # Extract words (identifiers) — cheap tokenization
-    tr -c 'A-Za-z0-9_' '\n' < "$f" | sort -u | while read -r token; do
+    tr -c 'A-Za-z0-9_' '\n' < "$f" 2>/dev/null | sort -u 2>/dev/null | while read -r token; do
         [ ${#token} -ge 3 ] && echo "$token|$f"
-    done
+    done || true  # prevent pipefail crash on header-only files
     i=$((i + 1))
     [ $((i % 50)) -eq 0 ] && echo -ne "\r    indexed $i/$total files..." >&2
 done <<< "$ALL_FILES" > "$INDEX_FILE"

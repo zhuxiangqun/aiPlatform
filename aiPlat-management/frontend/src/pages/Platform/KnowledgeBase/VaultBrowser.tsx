@@ -184,11 +184,15 @@ const VaultBrowser: React.FC = () => {
           if (e.children) walk(e.children);
         }
       };
-      // Check if all non-wikified files already selected → deselect all
-      const allSelected = entries.every(e =>
-        e.type === 'directory' || e.status === 'wikified' || prev.has(e.path)
-      );
-      if (allSelected) {
+      // Recursive check: are ALL non-wikified files in the entire subtree selected?
+      const allFilesRecursive = (items: VaultEntry[]): boolean => {
+        for (const e of items) {
+          if (e.type === 'file' && e.status !== 'wikified' && !prev.has(e.path)) return false;
+          if (e.children && !allFilesRecursive(e.children)) return false;
+        }
+        return true;
+      };
+      if (allFilesRecursive(entries)) {
         for (const e of entries) {
           if (e.type === 'file') n.delete(e.path);
           const unWalk = (items: VaultEntry[]) => {
@@ -274,6 +278,15 @@ const VaultBrowser: React.FC = () => {
     if (ok > 0 && selectedVault) { fetchTree(selectedVault); setSelectedFiles(new Set()); }
   };
 
+  const countFilesOnly = (items: VaultEntry[]): number => {
+    let count = 0;
+    for (const e of items) {
+      if (e.type === 'file') count++;
+      if (e.children) count += countFilesOnly(e.children);
+    }
+    return count;
+  };
+
   const renderTree = (entries: VaultEntry[], depth: number = 0): React.ReactNode => {
     return entries.map((e) => {
       const isExpanded = expanded.has(e.path);
@@ -297,13 +310,16 @@ const VaultBrowser: React.FC = () => {
                 {isSelected ? <CheckSquare size={14} /> : <SquareIcon size={14} />}
               </button>
             )}
-            {/* Directory checkbox — show ✅ if fully converted, else checkbox */}
+            {/* Directory checkbox — show ✅ if all files fully converted, else interactive checkbox */}
             {isDir && e.children && e.children.length > 0 && (
               (() => {
                 const stats = dirStats(e.children);
-                const allFiles = (e.children || []).length;
-                if (stats.total === 0 && allFiles > 0) {
+                const fileCount = countFilesOnly(e.children);
+                if (fileCount > 0 && stats.total === 0) {
                   return <span className="text-[11px] text-green-500/80 px-1" title="全部已转换">✅</span>;
+                }
+                if (fileCount === 0) {
+                  return <span className="text-[10px] text-gray-600 px-1" title="无文件">—</span>;
                 }
                 const isAllSel = stats.total > 0 && stats.selected >= stats.total;
                 const isPartial = stats.selected > 0 && stats.selected < stats.total;

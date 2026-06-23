@@ -2428,7 +2428,7 @@ async def list_mcp_servers(request: Request, scope: str = "workspace", _auth: st
     identity = _resolve_identity(request)
     _require_scope(identity, "mcp:read")
     params = {"scope": scope} if scope else None
-    return await _core_request("GET", f"/api/core/mcp/{scope}/servers", identity=identity, params=params)
+    return await _core_request("GET", f"/api/core/{scope}/mcp/servers", identity=identity, params=params)
 
 
 @app.post("/api/v1/mcp/servers", response_model=Dict[str, Any])
@@ -2437,35 +2437,35 @@ async def register_mcp_server(request: Request):
     _require_scope(identity, "mcp:write")
     body = await request.json()
     scope = body.pop("scope", "workspace")
-    return await _core_request("POST", f"/api/core/mcp/{scope}/servers", identity=identity, json_body=body)
+    return await _core_request("POST", f"/api/core/{scope}/mcp/servers", identity=identity, json_body=body)
 
 
 @app.post("/api/v1/mcp/servers/{name}/enable", response_model=Dict[str, Any])
 async def enable_mcp_server(name: str, request: Request, scope: str = "workspace"):
     identity = _resolve_identity(request)
     _require_scope(identity, "mcp:write")
-    return await _core_request("POST", f"/api/core/mcp/{scope}/servers/{name}/enable", identity=identity)
+    return await _core_request("POST", f"/api/core/{scope}/mcp/servers/{name}/enable", identity=identity)
 
 
 @app.post("/api/v1/mcp/servers/{name}/disable", response_model=Dict[str, Any])
 async def disable_mcp_server(name: str, request: Request, scope: str = "workspace"):
     identity = _resolve_identity(request)
     _require_scope(identity, "mcp:write")
-    return await _core_request("POST", f"/api/core/mcp/{scope}/servers/{name}/disable", identity=identity)
+    return await _core_request("POST", f"/api/core/{scope}/mcp/servers/{name}/disable", identity=identity)
 
 
 @app.get("/api/v1/mcp/servers/{name}/tools", response_model=Dict[str, Any])
 async def list_mcp_server_tools(name: str, request: Request, scope: str = "workspace", _auth: str = Depends(require_auth)):
     identity = _resolve_identity(request)
     _require_scope(identity, "mcp:read")
-    return await _core_request("GET", f"/api/core/mcp/{scope}/servers/{name}/tools", identity=identity)
+    return await _core_request("GET", f"/api/core/{scope}/mcp/servers/{name}/tools", identity=identity)
 
 
 @app.get("/api/v1/mcp/servers/{name}/policy-check", response_model=Dict[str, Any])
 async def check_mcp_server_policy(name: str, request: Request, scope: str = "workspace"):
     identity = _resolve_identity(request)
     _require_scope(identity, "mcp:read")
-    return await _core_request("GET", f"/api/core/mcp/{scope}/servers/{name}/policy-check", identity=identity)
+    return await _core_request("GET", f"/api/core/{scope}/mcp/servers/{name}/policy-check", identity=identity)
 
 
 # ━━━ Plugins ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

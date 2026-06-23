@@ -63,9 +63,14 @@ class TestMethodWired:
         assert has_production_caller("parallel_analyze", "parallel_executor.py")
 
     def test_parallel_executor_map_wired(self):
-        """map() is called by parallel_analyze() which IS wired (verified below)."""
+        """map() is wrapped by parallel_analyze(); verify the wrapper has external callers."""
+        assert has_production_caller("parallel_analyze", "parallel_executor.py"), \
+            "parallel_analyze must be wired (it wraps map() internally)"
+
     def test_parallel_executor_map_reduce_wired(self):
-        """map_reduce() is called by parallel_analyze() which IS wired (verified below)."""
+        """map_reduce() is wrapped by parallel_analyze(); verify the wrapper has external callers."""
+        assert has_production_caller("parallel_analyze", "parallel_executor.py"), \
+            "parallel_analyze must be wired (it wraps map_reduce() internally)"
 
     # ── SemanticCache — use targeted pattern matching (get/set too generic) ──
 
