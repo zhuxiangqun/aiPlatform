@@ -151,7 +151,7 @@ const ImportBar: React.FC<ImportBarProps> = ({ onImported, assetType, alsoScan }
     if (!localPath.trim()) return;
     setInstalling(true);
     try {
-      const res = await fetch('/api/core/skills/install-from-directory', {
+      const res = await fetch('/api/core/wiki/skills/install-from-directory', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ search_path: localPath }),
       });

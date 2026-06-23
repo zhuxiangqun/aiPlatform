@@ -440,7 +440,7 @@ const KnowledgeBasePage: React.FC = () => {
   };
   const fetchModelLog = async () => {
     try {
-      const r = await fetch('/api/core/maintain/model-log');
+      const r = await fetch('/api/core/wiki/maintain/model-log');
       setModelLog((await r.json()).entries || []); markFresh('observe');
     } catch {}
   };
