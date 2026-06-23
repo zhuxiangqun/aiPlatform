@@ -153,9 +153,13 @@ export const DocumentGrid: React.FC<Props> = ({ documents, loading, total, selec
                     </div>
                     <div className="text-xs text-gray-500 truncate mt-0.5">{String(doc.source_uri || '')}</div>
                     <div className="flex items-center gap-1.5 mt-1.5">
-                      <Badge variant={doc.status === 'ready' ? 'success' : 'warning'} className="text-[10px] px-1.5 py-0">
-                        {doc.status === 'ready' ? '就绪' : doc.status}
-                      </Badge>
+                      {wikiDocIds?.has(doc.doc_id) ? (
+                        <Badge variant="success" className="text-[10px] px-1.5 py-0">已入库 · 已关联</Badge>
+                      ) : doc.status === 'ready' ? (
+                        <Badge variant="success" className="text-[10px] px-1.5 py-0">已入库</Badge>
+                      ) : (
+                        <Badge variant="warning" className="text-[10px] px-1.5 py-0">{doc.status}</Badge>
+                      )}
                       <span className="text-[10px] text-gray-500">{CAT_LABELS[contentCat] || contentCat}</span>
                       {(doc.element_count ?? 0) > 0 && <span className="text-[10px] text-gray-600">{doc.element_count} 元素</span>}
                     </div>
