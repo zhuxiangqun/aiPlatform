@@ -728,6 +728,7 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
     if _DIAG_RUNNING:
         return {"run_id": "skipped", "message": "另一个诊断正在运行中 — 请等当前诊断完成后再试", "overall_score": 0}
     _DIAG_RUNNING = True
+    try:
     started_at = time.time()
     run_id = f"diag-{_uuid.uuid4().hex[:12]}"
     categories: Dict[str, Any] = {}
@@ -1902,8 +1903,9 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
     except Exception:
         pass
     _publish("diagnostics_complete", overall_score=overall, overall_grade=grade)
-    _DIAG_RUNNING = False
     return result
+    finally:
+        _DIAG_RUNNING = False
 
 
 @router.post("/diagnostics/run-single")
