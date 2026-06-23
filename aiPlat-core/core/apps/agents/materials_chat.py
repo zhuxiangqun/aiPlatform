@@ -138,6 +138,53 @@ class MaterialsChatAgent(BaseAgent):
             enhanced_question = question
             turn_summaries = list((context_pack or {}).get("turn_summaries") or [])
 
+            # ── Trivial query bypass: skip full RAG pipeline for sub-ms responses ──
+            import re as _t_re
+            _t_check = question.strip().lower()
+            if any(p in _t_check for p in ("几点", "几点了", "现在时间", "今天日期", "星期几")):
+                from datetime import datetime as _dt
+                now = _dt.now()
+                weekdays = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"]
+                return AgentResult(success=True,
+                    output={"answer": f"现在是 {now.year}年{now.month}月{now.day}日 {now.hour:02d}:{now.minute:02d}:{now.second:02d}，{weekdays[now.weekday()]}",
+                            "citations": [], "items": [], "scope_applied": scope,
+                            "strategy": "trivial_bypass", "skills_used": [],
+                            "turn_summary": "time query", "intent": "trivial",
+                            "reasoning_path": [], "pipeline_trace": pipeline_trace,
+                            "quality": "trivial"},
+                    metadata={"intent": "trivial", "strategy": "trivial_bypass"})
+            if _t_check in ("你好", "hello", "hi", "hey", "在吗", "在不在"):
+                return AgentResult(success=True,
+                    output={"answer": "你好！我是知识库助手，有什么可以帮助你的？",
+                            "citations": [], "items": [], "scope_applied": scope,
+                            "strategy": "trivial_bypass", "skills_used": [],
+                            "turn_summary": "greeting", "intent": "trivial",
+                            "reasoning_path": [], "pipeline_trace": pipeline_trace,
+                            "quality": "trivial"},
+                    metadata={"intent": "trivial", "strategy": "trivial_bypass"})
+            if _t_check in ("谢谢", "多谢", "thank", "thanks", "thank you"):
+                return AgentResult(success=True,
+                    output={"answer": "不客气！如果还有其他问题，随时可以问我。",
+                            "citations": [], "items": [], "scope_applied": scope,
+                            "strategy": "trivial_bypass", "skills_used": [],
+                            "turn_summary": "thanks", "intent": "trivial",
+                            "reasoning_path": [], "pipeline_trace": pipeline_trace,
+                            "quality": "trivial"},
+                    metadata={"intent": "trivial", "strategy": "trivial_bypass"})
+            if _t_re.match(r'^[+\-]?\d+(\.\d+)?\s*[\+\-\*\/\^]\s*[+\-]?\d+(\.\d+)?$', question.strip()):
+                try:
+                    _result = eval(question.strip().replace("^", "**"))
+                    return AgentResult(success=True,
+                        output={"answer": f"{question.strip()} = {_result}",
+                                "citations": [], "items": [], "scope_applied": scope,
+                                "strategy": "trivial_bypass", "skills_used": [],
+                                "turn_summary": "math", "intent": "trivial",
+                                "reasoning_path": [], "pipeline_trace": pipeline_trace,
+                                "quality": "trivial"},
+                        metadata={"intent": "trivial", "strategy": "trivial_bypass"})
+                except Exception:
+                    pass  # fall through to normal pipeline
+
             # Lightweight complexity classifier (zero LLM, rule-based)
             # Categorize before analyze_question so ModelManager can use it for routing
             complexity = "fact_lookup"
