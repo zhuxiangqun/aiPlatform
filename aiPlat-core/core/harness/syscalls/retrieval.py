@@ -177,6 +177,12 @@ def sys_kb_retrieve(
         except Exception:
             pass
 
+    # Peak-End anchoring: most relevant chunk first, second-most last
+    # LLM attention decays in the middle 70% of the prompt — put
+    # secondary chunks there, keep top-2 at ends (§2.2 Lost in the Middle)
+    if len(results) >= 3:
+        results = [results[0]] + results[2:] + [results[1]]
+
     return results
 
 
