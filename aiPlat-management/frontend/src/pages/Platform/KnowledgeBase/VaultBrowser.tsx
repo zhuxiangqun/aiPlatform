@@ -316,7 +316,7 @@ const VaultBrowser: React.FC = () => {
                 const stats = dirStats(e.children);
                 const fileCount = countFilesOnly(e.children);
                 if (fileCount > 0 && stats.total === 0) {
-                  return <span className="text-[11px] text-green-500/80 px-1" title="全部已转换">✅</span>;
+                  return <span className="text-[10px] text-gray-500 px-1" title="全部已转换">✓ 全部</span>;
                 }
                 if (fileCount === 0) {
                   return <span className="text-[10px] text-gray-600 px-1" title="无文件">—</span>;
@@ -340,7 +340,7 @@ const VaultBrowser: React.FC = () => {
             {!isDir && (
               <div className="flex items-center gap-0.5">
                 {e.status === 'wikified' ? (
-                  <span className="text-[11px] text-green-500/80 px-1 rounded" title="已生成知识页面">✅</span>
+                  <span className="text-[10px] text-gray-500 px-1 rounded" title="已生成知识页面">已转换</span>
                 ) : e.status === 'failed' ? (
                   <span className="text-[11px] text-red-500/80 px-1 rounded" title="转换失败，可重试">❌</span>
                 ) : (
