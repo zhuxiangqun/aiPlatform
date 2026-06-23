@@ -234,7 +234,7 @@ rules:
       paths: ["aiPlat-core/core/harness/execution/langgraph"]
       exclude: ["__pycache__", "tests/", "compiled_graphs/react.py", "nodes/reason_node.py", "nodes/act_node.py", "nodes/observe_node.py"]
       grep_exclude: []
-    message: "LangGraph nodes call syscalls directly (must delegate to Harness) — known exceptions per CLAUDE.md §5.23: react node, reason_node, act_node, observe_node are ReAct graph parallel implementation, to be retired in Phase 9"
+    message: "LangGraph nodes call syscalls directly (must delegate to Harness) — known exceptions: react/plan-execute node implementations. Phase 9 DI migration completed per CLAUDE.md §5.23."
 
   # ═══ Section 6: Core No Platform Routes ═══
   - id: core_no_platform_routes

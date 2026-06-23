@@ -578,7 +578,7 @@ async def apply_gate_policy_change(change_id: str, request: dict, http_request: 
             next_actions = [
                 {"type": "open_ui", "label": "打开审批中心", "ui": links.get("approvals_ui"), "recommended": True},
                 {"type": "open_ui", "label": "打开变更详情", "ui": links.get("change_control_ui")},
-                {"type": "retry", "label": "重试应用", "api": {"method": "POST", "path": f"/api/core/governance/gate-policies/changes/{str(change_id)}/apply"}},
+                {"type": "retry", "label": "重试应用", "api": {"method": "POST", "path": f"/api/platform/governance/gate-policies/changes/{str(change_id)}/apply"}},
             ]
             raise HTTPException(
                 status_code=409,

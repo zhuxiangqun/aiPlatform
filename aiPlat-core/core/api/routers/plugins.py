@@ -125,6 +125,42 @@ async def set_plugin_enabled(plugin_id: str, request: dict, http_request: Reques
     return {"status": "ok", "plugin_id": plugin_id, "enabled": enabled}
 
 
+@router.post("/plugins/{plugin_id}/disable")
+async def set_plugin_disabled(plugin_id: str, request: dict, http_request: Request):
+    """Disable a plugin (delegates to set_enabled with enabled=False)."""
+    store = _store()
+    plugin_mgr = _plugin_mgr()
+    if not store or not plugin_mgr:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    deny = await rbac_guard(
+        http_request=http_request,
+        payload=request if isinstance(request, dict) else None,
+        action="disable",
+        resource_type="plugin",
+        resource_id=str(plugin_id),
+    )
+    if deny:
+        return deny
+    actor0 = actor_from_http(http_request, request if isinstance(request, dict) else None)
+    tid = actor0.get("tenant_id")
+    if not tid:
+        raise HTTPException(status_code=400, detail="tenant_id required")
+    ok = await plugin_mgr.set_enabled(tenant_id=str(tid), plugin_id=str(plugin_id), enabled=False)
+    if not ok:
+        raise HTTPException(status_code=404, detail="plugin_not_found")
+    try:
+        await store.add_audit_log(
+            action="plugin_disable", status="ok", tenant_id=str(tid),
+            actor_id=str(actor0.get("actor_id") or "system"),
+            actor_role=str(actor0.get("actor_role") or "") or None,
+            resource_type="plugin", resource_id=str(plugin_id),
+            detail={"enabled": False},
+        )
+    except Exception:
+        pass
+    return {"status": "ok", "plugin_id": plugin_id, "enabled": False}
+
+
 @router.get("/plugins/{plugin_id}/versions")
 async def list_plugin_versions(plugin_id: str, http_request: Request, limit: int = 50, offset: int = 0):
     plugin_mgr = _plugin_mgr()

@@ -367,7 +367,7 @@ async def apply_engine_skill_md_patch(change_id: str, http_request: Request, _au
         gate_policy_cfg = {}
 
     def _apply_api_path() -> str:
-        base = f"/api/core/change-control/changes/{str(change_id)}/apply-engine-skill-md-patch"
+        base = f"/api/platform/change-control/changes/{str(change_id)}/apply-engine-skill-md-patch"
         if gate_policy_id:
             return base + f"?gate_policy_id={str(gate_policy_id)}"
         return base
@@ -559,7 +559,7 @@ async def apply_engine_skill_md_patch(change_id: str, http_request: Request, _au
                         "type": "approve",
                         "label": "审批该请求",
                         "request_id": str(approval_request_id),
-                        "api": {"method": "POST", "path": f"/api/core/approvals/{str(approval_request_id)}/approve"},
+                        "api": {"method": "POST", "path": f"/api/platform/approvals/{str(approval_request_id)}/approve"},
                         "ui": links.get("approvals_ui"),
                         "recommended": True if recommended_type == "approve" else False,
                     }
@@ -571,7 +571,7 @@ async def apply_engine_skill_md_patch(change_id: str, http_request: Request, _au
                 {
                     "type": "autosmoke",
                     "label": "运行自动冒烟",
-                    "api": {"method": "POST", "path": f"/api/core/change-control/changes/{str(change_id)}/autosmoke"},
+                    "api": {"method": "POST", "path": f"/api/platform/change-control/changes/{str(change_id)}/autosmoke"},
                     "ui": links.get("change_control_ui"),
                     "recommended": True if recommended_type == "autosmoke" else False,
                 }

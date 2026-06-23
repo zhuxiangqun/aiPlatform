@@ -311,6 +311,20 @@ async def create_workspace_agent(request: AgentCreateRequest, http_request: Requ
         except Exception:
             pass
 
+        # Auto-grant execute permission to the creating user
+        try:
+            actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID", "system")
+            from core.apps.skills.registry import get_skill_registry
+            # Get PermissionManager via the runtime's permission subsystem
+            pm = getattr(rt, "permission_manager", None) if rt else None
+            if pm is None:
+                from core.harness.infrastructure.permissions import get_permission_manager
+                pm = get_permission_manager()
+            if pm and hasattr(pm, "grant_permission"):
+                pm.grant_permission(str(actor_id), str(agent.id), "execute", granted_by="auto_create")
+        except Exception:
+            pass
+
         return {"id": agent.id, "status": "created", "name": agent.name}
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))

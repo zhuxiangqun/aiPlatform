@@ -1455,6 +1455,22 @@ async def documents_ingest(request: Request):
     return {"job": job}
 
 
+@app.post("/platform/documents/ingest-directory")
+async def documents_ingest_directory(request: Request):
+    """Batch ingest documents from a directory (stub — not yet implemented)."""
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:write")
+    return {"status": "not_implemented", "message": "Directory batch ingest is planned for a future release"}
+
+
+@app.post("/platform/kb/watch")
+async def kb_watch_directory(request: Request):
+    """Watch a directory for auto-ingest (stub — not yet implemented)."""
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:write")
+    return {"status": "not_implemented", "message": "Directory watch is planned for a future release"}
+
+
 async def _auto_wiki_update(doc_id: str, file_path: str):
     u"""Background task: convert a newly ingested KB document into Wiki pages.
     
