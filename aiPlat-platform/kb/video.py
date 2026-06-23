@@ -235,6 +235,9 @@ def ingest_video_document(
         pass
 
     if elements_batch:
+        # Delete old elements before re-inserting (reingest safety)
+        db.conn.execute("DELETE FROM kb_elements WHERE doc_id=?", (doc_id,))
+        db.conn.execute("DELETE FROM kb_embeddings WHERE doc_id=?", (doc_id,))
         db.insert_elements_batch(elements=elements_batch)
     if embeddings_batch:
         db.insert_embeddings_batch(embeddings=embeddings_batch)
