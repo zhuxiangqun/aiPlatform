@@ -411,6 +411,12 @@ rules:
       exclude: ["__pycache__", "tests/"]
       grep_exclude: ["except Exception|except BaseException|except.*Error|except.*Warning|# noqa|# allowed"]
     message: "bare except: detected — use specific exception types"
+    auto_fix:
+      enabled: true
+      replacement: 'except Exception:'
+      pre_check_ast: false
+      shadow_mode_required: false
+      safety_level: low
 
   # ═══ Section 31: Code Quality datetime.now() ═══
   - id: code_quality_naive_datetime
@@ -743,6 +749,13 @@ rules:
       exclude: ["__pycache__", "tests/", "conftest.py"]
       grep_exclude: ["exec_drivers/docker\\.py", "exec_drivers/ssh\\.py", "capability_convergence\\.py", "arch_guard_rules/", "sys\\.executable", 'if.*command.*==.*"python3"', "scripts/architecture_guard\\.py"]
     message: "bare 'python3' in subprocess call — use sys.executable to ensure venv Python is used"
+    auto_fix:
+      enabled: true
+      replacement: 'subprocess.run([sys.executable'
+      import_fix: 'import sys'
+      pre_check_ast: true
+      shadow_mode_required: true
+      safety_level: low
 
   # ═══ Section 43: Business-Agnostic Prompt & Logic ═══
   # 43.1: No hardcoded platform names in core logic — use config or frontmatter

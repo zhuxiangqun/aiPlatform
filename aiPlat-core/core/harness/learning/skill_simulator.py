@@ -278,3 +278,57 @@ async def quick_validate(draft: Any) -> Dict[str, Any]:
         "security_issues": security_issues,
         "passed": checks,
     }
+
+
+def shadow_validate(original_code: str, fixed_code: str, test_input: str = "") -> dict:
+    """Run original and fixed code in sandbox, compare outputs.
+    
+    Returns: {'match': bool, 'original': str, 'fixed': str, 'detail': str}
+    
+    Strips timestamps/UUIDs from outputs before comparison to avoid
+    false negatives from dynamic content.
+    """
+    import re, subprocess, tempfile, uuid as _uuid
+    from pathlib import Path as _P
+
+    # Mask dynamic content patterns
+    def _mask_dynamic(text: str) -> str:
+        text = re.sub(r'\d{4}-\d{2}-\d{2}', '[DATE]', text)
+        text = re.sub(r'\d{2}:\d{2}:\d{2}', '[TIME]', text)
+        text = re.sub(r'[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}', '[UUID]', text)
+        return text
+
+    with tempfile.TemporaryDirectory() as td:
+        tmp = _P(td)
+        orig_file = tmp / "original.py"
+        fixed_file = tmp / "fixed.py"
+        orig_file.write_text(original_code)
+        fixed_file.write_text(fixed_code)
+
+        try:
+            r1 = subprocess.run(
+                ["python3", str(orig_file)], 
+                capture_output=True, text=True, timeout=10,
+                input=test_input)
+            orig_out = _mask_dynamic(r1.stdout + r1.stderr)
+            orig_code = r1.returncode
+        except Exception as e:
+            return {"match": False, "original": "", "fixed": "", "detail": f"original run failed: {e}"}
+
+        try:
+            r2 = subprocess.run(
+                ["python3", str(fixed_file)],
+                capture_output=True, text=True, timeout=10,
+                input=test_input)
+            fixed_out = _mask_dynamic(r2.stdout + r2.stderr)
+            fixed_code_r = r2.returncode
+        except Exception as e:
+            return {"match": False, "original": orig_out, "fixed": "", "detail": f"fixed run failed: {e}"}
+
+        match = (orig_out == fixed_out) and (orig_code == fixed_code_r)
+        return {
+            "match": match,
+            "original": orig_out[:500],
+            "fixed": fixed_out[:500],
+            "detail": "outputs match" if match else "outputs differ"
+        }

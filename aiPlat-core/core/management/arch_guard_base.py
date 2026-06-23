@@ -109,6 +109,66 @@ class ArchYAMLRule(ArchRule):
         self._check_def = rule_def.get("check", {})
         self._check_type = self._check_def.get("type", "")
         self._message = rule_def.get("message", "")
+        self._auto_fix = rule_def.get("auto_fix", {})
+
+    @property
+    def has_auto_fix(self) -> bool:
+        """Whether this rule supports automatic template-based repair."""
+        return bool(self._auto_fix.get("enabled"))
+
+    def apply_auto_fix(self, filepath: Path, line_number: int, line_content: str) -> Tuple[bool, str]:
+        """Attempt to auto-fix a violation at a specific line.
+
+        Returns (success: bool, detail: str).
+        """
+        if not self.has_auto_fix:
+            return False, "auto_fix not enabled"
+
+        safety_level = self._auto_fix.get("safety_level", "low")
+        pre_check_ast = self._auto_fix.get("pre_check_ast", False)
+        shadow_required = self._auto_fix.get("shadow_mode_required", False)
+
+        # Safety: pre_check_ast must pass before any fix
+        if pre_check_ast:
+            try:
+                from scripts.guard_ast_behavior import _is_in_safe_ast_context
+                if not _is_in_safe_ast_context(filepath, line_number):
+                    return False, f"pre_check_ast failed: line {line_number} not in safe context"
+            except Exception:
+                return False, "pre_check_ast unavailable"
+
+        # Safety: high/critical severity — block auto-fix
+        if self.level in ("critical", "error") and safety_level == "high":
+            return False, f"safety_level=high, level={self.level} requires human review"
+
+        # Apply replacement
+        replacement = self._auto_fix.get("replacement", "")
+        if not replacement:
+            return False, "no replacement pattern defined"
+
+        try:
+            content = filepath.read_text(encoding="utf-8", errors="ignore")
+            lines = content.splitlines()
+            if line_number < 1 or line_number > len(lines):
+                return False, f"line {line_number} out of range (file has {len(lines)} lines)"
+
+            target = lines[line_number - 1]
+            pattern = self._check_def.get("pattern", "")
+            new_line = re.sub(pattern, replacement, target)
+            if new_line == target:
+                return False, "pattern did not match line content"
+
+            lines[line_number - 1] = new_line
+
+            # Inject missing import if specified
+            import_line = self._auto_fix.get("import_fix", "")
+            if import_line and import_line not in content:
+                lines.insert(0, import_line)
+
+            filepath.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            return True, f"fixed {filepath.name}:{line_number}"
+        except Exception as e:
+            return False, str(e)
 
     def check(self, repo_root: Path) -> List[ArchIssue]:
         dispatcher = {

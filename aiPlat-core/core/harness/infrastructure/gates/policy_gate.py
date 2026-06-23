@@ -89,6 +89,39 @@ def _check_arch_boundary(filepath: str, tool_name: str) -> Optional[str]:
     return None  # allowed
 
 
+@__import__("functools").lru_cache(maxsize=1)
+def _get_protected_paths() -> set:
+    """Load protected paths (cached in memory, refreshed on restart)."""
+    protected = {"/**/auth/**", "/**/crypto/**", "/**/migration/**",
+                 "/**/billing/**", "/**/payment/**", "/**/security/**",
+                 "/**/secrets/**", "/**/.env*", "/**/credentials/**"}
+    try:
+        import yaml
+        rules_file = __import__("pathlib").Path(__file__).resolve().parent.parent.parent.parent.parent.parent.parent
+        rules_file = rules_file / "aiPlat-core" / "core" / "management" / "arch_guard_rules.yaml"
+        if rules_file.exists():
+            with open(rules_file) as f:
+                data = yaml.safe_load(f)
+            for rule in data.get("rules", []):
+                af = rule.get("auto_fix", {})
+                if af.get("enabled") and af.get("safety_level") == "high":
+                    for p in rule.get("check", {}).get("paths", []):
+                        protected.add(p)
+    except Exception:
+        pass
+    return protected
+
+
+def _check_protected_paths(filepath: str) -> str:
+    """Check if filepath matches any protected path pattern. Returns reason or ''."""
+    import fnmatch
+    path = str(filepath)
+    for pattern in _get_protected_paths():
+        if fnmatch.fnmatch(path, pattern) or pattern.strip("*") in path:
+            return f"'{path}' matches protected pattern '{pattern}'"
+    return ""
+
+
 class PolicyGate:
     def __init__(self) -> None:
         # Dev escape hatch: disable approvals entirely.
@@ -276,6 +309,13 @@ class PolicyGate:
                     return PolicyResult(
                         decision=PolicyDecision.DENY,
                         reason=arch_violation,
+                    )
+                # Protected paths check: deny writes to security-critical directories
+                protected_violation = _check_protected_paths(path)
+                if protected_violation:
+                    return PolicyResult(
+                        decision=PolicyDecision.DENY,
+                        reason=f"protected_path: {protected_violation}",
                     )
 
         # PR-07: unify policy decisions via policy_engine（同步版）

@@ -290,6 +290,56 @@ def scan_core_agents() -> Dict[str, List[Dict]]:
     return results
 
 
+def _is_in_safe_ast_context(filepath: Path, target_line: int) -> bool:
+    """Check if a given line is in a safe context for auto-fix.
+    
+    Safe = inside a function body, inside if __name__ == '__main__',
+    or inside try/except ImportError. Returns False if AST parse fails
+    (cannot determine context → block auto-fix for safety).
+    
+    Args:
+        filepath: Path to Python file
+        target_line: 1-indexed line number to check
+    """
+    try:
+        content = filepath.read_text(encoding="utf-8", errors="ignore")
+        tree = ast.parse(content)
+    except SyntaxError:
+        return False  # cannot parse → block auto-fix
+
+    target_in_safe_scope = False
+    
+    for node in ast.walk(tree):
+        # Check if target line is inside a function body
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if node.lineno <= target_line <= node.end_lineno:
+                target_in_safe_scope = True
+                break
+
+        # Check if target line is inside if __name__ == '__main__'
+        if isinstance(node, ast.If):
+            if (node.lineno <= target_line <= node.end_lineno and
+                isinstance(node.test, ast.Compare) and
+                isinstance(node.test.left, ast.Name) and
+                node.test.left.id == '__name__' and
+                any(isinstance(op, ast.Eq) for op in node.test.ops) and
+                any(isinstance(comp, ast.Constant) and comp.value == '__main__' 
+                    for comp in node.test.comparators)):
+                target_in_safe_scope = True
+                break
+
+        # Check if target line is inside try/except ImportError
+        if isinstance(node, ast.Try):
+            if node.lineno <= target_line <= node.end_lineno:
+                for handler in node.handlers:
+                    if (isinstance(handler.type, ast.Name) and 
+                        handler.type.id == 'ImportError'):
+                        target_in_safe_scope = True
+                        break
+
+    return target_in_safe_scope
+
+
 def main():
     results, pragma_warnings = scan_platform()
     agent_results = scan_core_agents()
