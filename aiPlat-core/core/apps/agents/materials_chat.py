@@ -137,6 +137,19 @@ class MaterialsChatAgent(BaseAgent):
 
             enhanced_question = question
             turn_summaries = list((context_pack or {}).get("turn_summaries") or [])
+
+            # Lightweight complexity classifier (zero LLM, rule-based)
+            # Categorize before analyze_question so ModelManager can use it for routing
+            complexity = "fact_lookup"
+            q_lower = question.lower()
+            if any(kw in q_lower for kw in ["对比", "区别", "总结", "分析", "综合", "比较", "归纳"]):
+                complexity = "multi_doc_synthesis"
+            elif any(kw in q_lower for kw in ["代码", "实现", "怎么写", "如何做", "示例", "example", "code"]):
+                complexity = "code_generation"
+            elif any(kw in q_lower for kw in ["评估", "评分", "打分", "评测", "review"]):
+                complexity = "evaluation"
+            vars0["_query_complexity"] = complexity
+
             analysis = await analyze_question(
                 question=question,
                 scope=scope,
@@ -478,6 +491,17 @@ class MaterialsChatAgent(BaseAgent):
                                 except Exception:
                                     pass
                         answer = "".join(answer_parts).strip()
+                        # Cost tracking (stream path)
+                        try:
+                            _model = best_model_for_purpose("chat")
+                            _in_tokens = len(retrieved_docs) // 4 + len(enhanced_question) // 4
+                            _complexity = vars0.get("_query_complexity", "unknown")
+                            logging.getLogger("aiplat.cost").info(
+                                f"[CostTrace] model={_model} complexity={_complexity} "
+                                f"input_tok_est={_in_tokens} stream=true max_tokens=2000"
+                            )
+                        except Exception:
+                            pass
                     else:
                         from core.harness.syscalls.llm import sys_llm_generate
                         sys_msgs = []
@@ -496,6 +520,17 @@ class MaterialsChatAgent(BaseAgent):
                         )
                         text = getattr(resp, 'content', '') or str(resp)
                         answer = text.strip() if text and len(text) > 5 else ""
+                        # Cost tracking: log model + estimated tokens for cost optimization
+                        try:
+                            _model = best_model_for_purpose("chat")
+                            _in_tokens = len(retrieved_docs) // 4 + len(enhanced_question) // 4
+                            _complexity = vars0.get("_query_complexity", "unknown")
+                            logging.getLogger("aiplat.cost").info(
+                                f"[CostTrace] model={_model} complexity={_complexity} "
+                                f"input_tok_est={_in_tokens} max_tokens=2000"
+                            )
+                        except Exception:
+                            pass
                         if convo is not None and answer:
                             try:
                                 await convo.append_conversation_assistant_message(

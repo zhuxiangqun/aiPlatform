@@ -25,3 +25,31 @@ purpose_profiles:
 
 fallback:
   ultimate_model: qwen2.5-coder:7b
+
+# ── Model capability profiles (P2: structured registration) ──
+# Used by ModelManager.select(purpose, complexity, input_tokens) for intelligent routing.
+model_capabilities:
+  qwen2.5-coder:7b:
+    context_window: 32768
+    effective_utilization: 0.75
+    input_token_budget: 20000
+    semantic_understanding: 4
+    reasoning_quality: 3
+    hallucination_rate: 0.06
+    strength_areas: ["fact_lookup", "code_generation"]
+    weakness_areas: ["multi_doc_synthesis", "long_form_summary"]
+    routing_rules:
+      min_complexity: 0
+      max_complexity: 2
+  deepseek-chat:
+    context_window: 65536
+    effective_utilization: 0.85
+    input_token_budget: 40000
+    semantic_understanding: 5
+    reasoning_quality: 5
+    hallucination_rate: 0.04
+    strength_areas: ["fact_lookup", "multi_doc_synthesis", "evaluation", "code_generation"]
+    weakness_areas: []
+    routing_rules:
+      min_complexity: 1
+      max_complexity: 4
