@@ -1,0 +1,549 @@
+# aiPlat 系统能力声明清单
+# 
+# 来源: AIPLAT_ARCHITECTURE_REPORT.md (31章) + AIPLAT_ROADMAP.md (Phase 0-6)
+# 
+# 每条能力声明由三个维度交叉验证:
+#   1. 模块可达性 — entry_point 出发 BFS 遍历 import 边，检查 provided_by 模块是否可达
+#   2. 方法级调用 — 每个 key_methods 是否有外部 production caller
+#   3. 依赖完整性 — 每个 depends_on 是否确实被引用
+#
+# 维护规则: 修改 CLAUDE.md §5.x 或 ROADMAP.md Phase 时，必须同步更新此文件
+
+capabilities:
+
+  # ═══════════════════════════════════════════════════════════════
+  # Harness 执行内核
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: pipeline_engine
+    domain: "执行内核"
+    declared_in: "ARCHITECTURE_REPORT §2.1"
+    name: "PipelineEngine — YAML驱动流水线编排"
+    description: "编译PipelineStageConfig为LangGraph流水线，委托StageRunner/ReActLoop执行，管理checkpoint/快照/恢复"
+    entry_points: ["aiPlat-core/core/harness/execution/pipeline_engine.py"]
+    provided_by:
+      - module: "aiPlat-core/core/harness/execution/pipeline_engine.py"
+        key_methods: ["start", "resume", "_compile_pipeline"]
+    depends_on:
+      - module: "aiPlat-core/core/harness/execution/langgraph/"
+        via: "LangGraph StateGraph构建"
+      - module: "aiPlat-core/core/harness/execution/loop.py"
+        via: "StageRunner→ReActLoop"
+
+  - id: langgraph_orchestration
+    domain: "执行内核"
+    declared_in: "ARCHITECTURE_REPORT §2.1"
+    name: "LangGraph PipelineGraph — 编排层(只编排不执行)"
+    description: "构建node→edge拓扑，产生graph_trace事件。显式与执行逻辑分离。"
+    entry_points: ["aiPlat-core/core/harness/execution/pipeline_engine.py"]
+    provided_by:
+      - module: "aiPlat-core/core/harness/execution/langgraph/core.py"
+        key_methods: ["CompiledGraph"]
+    depends_on:
+      - module: "aiPlat-core/core/harness/execution/langgraph/graphs/pipeline.py"
+        via: "PipelineGraph"
+
+  - id: react_loop_executor
+    domain: "执行内核"
+    declared_in: "ARCHITECTURE_REPORT §2.1"
+    name: "ReActLoop — Reason→Act→Observe执行循环"
+    description: "每阶段执行循环，14 Hook拦截点，Token预算100K/60K，5级压缩"
+    entry_points: ["aiPlat-core/core/harness/execution/loop.py"]
+    provided_by:
+      - module: "aiPlat-core/core/harness/execution/loop.py"
+        key_methods: ["run", "_reason", "_act", "_observe"]
+    depends_on:
+      - module: "aiPlat-core/core/harness/syscalls/llm.py"
+        via: "sys_llm_generate"
+      - module: "aiPlat-core/core/harness/infrastructure/hooks/"
+        via: "14生命周期Hook"
+
+  - id: syscall_boundary
+    domain: "执行内核"
+    declared_in: "ARCHITECTURE_REPORT §2.1"
+    name: "Syscall强制边界(LLM/Tool/Skill)"
+    description: "所有LLM调用/工具执行/技能调用必须经过syscall边界，不可绕过"
+    entry_points: ["aiPlat-core/core/harness/execution/loop.py"]
+    provided_by:
+      - module: "aiPlat-core/core/harness/syscalls/llm.py"
+        key_methods: ["sys_llm_generate"]
+      - module: "aiPlat-core/core/harness/syscalls/tool.py"
+        key_methods: ["sys_tool_call"]
+      - module: "aiPlat-core/core/harness/syscalls/skill.py"
+        key_methods: ["sys_skill_call"]
+    depends_on:
+      - module: "aiPlat-core/core/harness/infrastructure/policy_gate.py"
+        via: "PolicyGate拦截"
+
+  - id: hook_interception
+    domain: "执行内核"
+    declared_in: "ARCHITECTURE_REPORT §2.1"
+    name: "14-Point Hook拦截系统"
+    description: "PreLoop→...→PostObserve→Stop等14个拦截点，零Token成本，支持自定义Hook"
+    entry_points: ["aiPlat-core/core/harness/execution/loop.py"]
+    provided_by:
+      - module: "aiPlat-core/core/harness/infrastructure/hooks/hook_manager.py"
+        key_methods: ["register", "trigger"]
+      - module: "aiPlat-core/core/harness/infrastructure/hooks/on_error_reflector.py"
+        key_methods: ["on_post_observe"]
+
+  - id: token_compression
+    domain: "执行内核"
+    declared_in: "ARCHITECTURE_REPORT §2.1, §8.1"
+    name: "5级Token压缩+优先级标签"
+    description: "NORMAL(70%)→REPLACE(80%)→PRUNE(85%)→AGGRESSIVE(90%)→EMERGENCY(99%)。CLAUDE.md永不压缩。"
+    entry_points: ["aiPlat-core/core/harness/execution/loop.py"]
+    provided_by:
+      - module: "aiPlat-core/core/harness/memory/manager.py"
+        key_methods: ["build_context", "compact"]
+
+  - id: pipeline_parallel
+    domain: "执行内核"
+    declared_in: "ARCHITECTURE_REPORT §2.1, ROADMAP Phase 1.2"
+    name: "Sub-Agent FanOut Map-Reduce并行执行"
+    description: "asyncio.gather+Semaphore层内并行 + ParallelExecutor Map-Reduce语义"
+    entry_points: ["aiPlat-core/core/harness/execution/pipeline_engine.py"]
+    provided_by:
+      - module: "aiPlat-core/core/apps/agents/parallel_executor.py"
+        key_methods: ["map", "map_reduce", "parallel_analyze"]
+      - module: "aiPlat-core/core/apps/agents/parallel_executor.py"
+        key_methods: ["EmbeddingBridge"]
+
+  # ═══════════════════════════════════════════════════════════════
+  # Agent 系统
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: agent_type_system
+    domain: "Agent"
+    declared_in: "ARCHITECTURE_REPORT §3.1"
+    name: "Agent类型体系(8+1类型)"
+    description: "ReAct/PlanExecute/Conversational/ToolUsing/RAG/MultiAgent/Reflection/Planning + PipelineAgent v4.0。7实现类映射~49角色。"
+    entry_points: ["aiPlat-core/core/apps/agents/base.py"]
+    provided_by:
+      - module: "aiPlat-core/core/apps/agents/react.py"
+        key_methods: ["create_react_agent"]
+      - module: "aiPlat-core/core/apps/agents/conversational.py"
+        key_methods: ["create_conversational_agent"]
+      - module: "aiPlat-core/core/apps/agents/rag.py"
+        key_methods: ["create_rag_agent"]
+      - module: "aiPlat-core/core/apps/agents/materials_chat.py"
+        key_methods: ["create_materials_chat_agent"]
+      - module: "aiPlat-core/core/apps/agents/multi_agent.py"
+        key_methods: ["create_multi_agent"]
+
+  - id: agent_discovery
+    domain: "Agent"
+    declared_in: "ARCHITECTURE_REPORT §3.1"
+    name: "AGENT.md发现与编译"
+    description: "目录扫描→解析YAML frontmatter→验证5字段交接协议→注册AgentRegistry"
+    entry_points: ["aiPlat-core/core/apps/agents/discovery.py"]
+    provided_by:
+      - module: "aiPlat-core/core/apps/agents/discovery.py"
+        key_methods: ["discover"]
+
+  - id: agent_message_bus
+    domain: "Agent"
+    declared_in: "ARCHITECTURE_REPORT §3.1"
+    name: "Agent间消息通信(MessageBus)"
+    description: "TASK_ASSIGN/PROGRESS_UPDATE/RESULT/ERROR/CANCEL 5种消息类型"
+    entry_points: ["aiPlat-core/core/apps/agents/multi_agent.py"]
+    provided_by:
+      - module: "aiPlat-core/core/apps/agents/multi_agent.py"
+        key_methods: ["coordinate"]
+
+  # ═══════════════════════════════════════════════════════════════
+  # Skill 系统
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: skill_definition
+    domain: "Skill"
+    declared_in: "ARCHITECTURE_REPORT §4.1"
+    name: "SKILL.md定义系统"
+    description: "YAML frontmatter + SOP body，支持prompt/handler/python_class三种执行类型。30 engine + 21 workspace skills。"
+    entry_points: ["aiPlat-core/core/apps/skills/registry.py"]
+    provided_by:
+      - module: "aiPlat-core/core/apps/skills/registry.py"
+        key_methods: ["get", "register", "list_all"]
+      - module: "aiPlat-core/core/apps/skills/executor.py"
+        key_methods: ["execute"]
+
+  - id: skill_lint
+    domain: "Skill"
+    declared_in: "ARCHITECTURE_REPORT §4.1"
+    name: "Skill Lint自动化质量检查"
+    description: "10+自动SKILL.md验证规则，含auto-fix能力"
+    entry_points: ["aiPlat-core/core/management/lint_rules/"]
+    provided_by:
+      - module: "aiPlat-core/core/management/lint_rules/schema.py"
+        key_methods: ["lint"]
+
+  - id: skill_execution_audit
+    domain: "Skill"
+    declared_in: "ARCHITECTURE_REPORT §4.1, CLAUDE.md §17"
+    name: "Skill执行审计(AIPLAT_EXECUTION_AUDIT)"
+    description: "每次sys_skill_call记录skill_name/execution_type/actual_mode/success"
+    entry_points: ["aiPlat-core/core/harness/syscalls/skill.py"]
+    provided_by:
+      - module: "aiPlat-core/core/harness/syscalls/skill.py"
+        key_methods: ["sys_skill_call"]
+
+  # ═══════════════════════════════════════════════════════════════
+  # 知识引擎
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: ontology_engine
+    domain: "知识引擎"
+    declared_in: "ARCHITECTURE_REPORT §10.1"
+    name: "本体引擎—13步认知管线"
+    description: "15模块实现13步管线，3阶段并行。零LLM分类。YAML驱动推理+状态机。"
+    entry_points: ["aiPlat-core/core/harness/ontology_engine/engine.py"]
+    provided_by:
+      - module: "aiPlat-core/core/harness/ontology_engine/engine.py"
+        key_methods: ["process_chunks"]
+
+  - id: graph_index
+    domain: "知识引擎"
+    declared_in: "ARCHITECTURE_REPORT §10.1"
+    name: "GraphIndex+HyperEdge(SAG风格知识图谱)"
+    description: "节点/边/超边存储，BFS遍历，子图扩展，置信度自适应阈值"
+    entry_points: ["aiPlat-core/core/harness/ontology_engine/graph_index.py"]
+    provided_by:
+      - module: "aiPlat-core/core/harness/ontology_engine/graph_index.py"
+        key_methods: ["add_entity", "add_relation", "add_hyperedge", "traverse", "snapshot"]
+
+  - id: code_graph
+    domain: "知识引擎"
+    declared_in: "ARCHITECTURE_REPORT §10.1"
+    name: "代码图—AST依赖分析"
+    description: "AST import提取→跨文件依赖图→循环检测+健康评分+影响分析"
+    entry_points: ["aiPlat-core/core/harness/knowledge/code_graph.py"]
+    provided_by:
+      - module: "aiPlat-core/core/harness/knowledge/code_graph.py"
+        key_methods: ["build_graph", "count_cycles", "report_cycles"]
+
+  - id: capability_graph
+    domain: "知识引擎"
+    declared_in: "ARCHITECTURE_REPORT §10.1"
+    name: "能力图—Agent→Skill→Tool→MCP→Workflow"
+    description: "跨层依赖图，影响分析，能力发现"
+    entry_points: ["aiPlat-core/core/harness/knowledge/capability_graph.py"]
+    provided_by:
+      - module: "aiPlat-core/core/harness/knowledge/capability_graph.py"
+        key_methods: ["build_capability_graph"]
+
+  - id: domain_router
+    domain: "知识引擎"
+    declared_in: "ARCHITECTURE_REPORT §11.1"
+    name: "3层域路由器(倒排→向量→LLM级联)"
+    description: "T1(<1ms,60%)倒排索引→T2(~50ms,30%)向量余弦→T3(~300ms,10%)LLM二分类"
+    entry_points: ["aiPlat-core/core/harness/knowledge/domain_router.py"]
+    provided_by:
+      - module: "aiPlat-core/core/harness/knowledge/domain_router.py"
+        key_methods: ["classify", "resolve_collection"]
+
+  # ═══════════════════════════════════════════════════════════════
+  # RAG 检索
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: rag_pipeline
+    domain: "RAG检索"
+    declared_in: "ARCHITECTURE_REPORT §11.1"
+    name: "MaterialsChatAgent—6阶段认知RAG流水线"
+    description: "DMQR改写→域路由→本体映射→多路检索→CRAG回退→域提示注入+SSE流式输出"
+    entry_points: ["aiPlat-core/core/apps/agents/materials_chat.py"]
+    provided_by:
+      - module: "aiPlat-core/core/apps/agents/materials_chat.py"
+        key_methods: ["execute", "_execute_impl"]
+
+  - id: crag_fallback
+    domain: "RAG检索"
+    declared_in: "ARCHITECTURE_REPORT §11.1"
+    name: "CRAG 3级回退+HyDE假设答案"
+    description: "本体优先→FTS5全文→HyDE假设答案重检。4层鲁棒性强化。"
+    entry_points: ["aiPlat-core/core/apps/agents/materials_chat.py"]
+    provided_by:
+      - module: "aiPlat-core/core/harness/knowledge/retriever.py"
+        key_methods: ["retrieve"]
+
+  - id: semantic_cache
+    domain: "RAG检索"
+    declared_in: "ARCHITECTURE_REPORT §11.1, ROADMAP Phase 0.3"
+    name: "SemanticCache—L1+L2+L3三级缓存"
+    description: "L1精确匹配→L2语义相似→L3穿透回写。LatentStageCache多阶段向量足迹。"
+    entry_points: ["aiPlat-core/core/apps/agents/materials_chat.py"]
+    provided_by:
+      - module: "aiPlat-core/core/harness/knowledge/semantic_cache.py"
+        key_methods: ["get", "set", "invalidate_domain"]
+      - module: "aiPlat-core/core/harness/knowledge/semantic_cache.py"
+        key_methods: ["LatentStageCache"]
+
+  - id: retrieval_security
+    domain: "RAG检索"
+    declared_in: "ARCHITECTURE_REPORT §11.1"
+    name: "检索安全—5层防护"
+    description: "输入截断+控制token移除+scope强制+私有页面过滤+结果脱敏"
+    entry_points: ["aiPlat-core/core/apps/agents/materials_chat.py"]
+    provided_by:
+      - module: "aiPlat-core/core/harness/syscalls/retrieval.py"
+        key_methods: ["sys_knowledge_retrieve"]
+
+  - id: multi_tenant_isolation
+    domain: "RAG检索"
+    declared_in: "ARCHITECTURE_REPORT §10.1"
+    name: "多租户数据隔离"
+    description: "Wiki(collection_id路由)/GraphIndex(domain_id路由)/StateHistory(domain_id列过滤)"
+    entry_points: ["aiPlat-core/core/harness/knowledge/wiki_engine.py"]
+    provided_by:
+      - module: "aiPlat-core/core/harness/knowledge/wiki_engine.py"
+        key_methods: ["search_pages", "read_page", "write_page"]
+
+  # ═══════════════════════════════════════════════════════════════
+  # 可观测性
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: telemetry_tracing
+    domain: "可观测性"
+    declared_in: "ARCHITECTURE_REPORT §15.1"
+    name: "trace_id/span_id全链路追踪"
+    description: "每个syscall产生trace_id+span_id，写入execution_store+EventBus"
+    entry_points: ["aiPlat-core/core/harness/syscalls/llm.py"]
+    provided_by:
+      - module: "aiPlat-core/core/harness/syscalls/llm.py"
+        key_methods: ["sys_llm_generate"]
+      - module: "aiPlat-core/core/harness/syscalls/tool.py"
+        key_methods: ["sys_tool_call"]
+
+  - id: otel_prometheus
+    domain: "可观测性"
+    declared_in: "ROADMAP Phase 0.2"
+    name: "OpenTelemetry+Prometheus /metrics"
+    description: "FastAPIInstrumentor自动插桩，Prometheus /metrics端点"
+    entry_points: ["aiPlat-core/core/server.py"]
+    provided_by:
+      - module: "aiPlat-core/core/server.py"
+        key_methods: ["server"]
+
+  - id: diagnostics_center
+    domain: "可观测性"
+    declared_in: "ARCHITECTURE_REPORT §15.1"
+    name: "诊断中心—24类自动检查"
+    description: "skill lint/wiki健康/合规审计/架构守卫/agent检测等24类自动诊断"
+    entry_points: ["aiPlat-core/core/server.py"]
+    provided_by:
+      - module: "aiPlat-core/core/management/arch_guard_base.py"
+        key_methods: ["run_all"]
+
+  # ═══════════════════════════════════════════════════════════════
+  # 安全合规
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: pii_masking
+    domain: "安全合规"
+    phase: "Phase 0.1"
+    declared_in: "ROADMAP Phase 0.1, ARCHITECTURE_REPORT §17.1"
+    name: "PII自动脱敏"
+    description: "Presidio+自建正则双引擎，LLM输入自动脱敏，admin/data_owner可还原"
+    entry_points: ["aiPlat-core/core/harness/syscalls/llm.py"]
+    provided_by:
+      - module: "aiPlat-core/core/services/pii_detector.py"
+        key_methods: ["mask", "unmask", "get_pii_detector"]
+
+  - id: code_auditor
+    domain: "安全合规"
+    phase: "Phase 6"
+    declared_in: "ROADMAP Phase 6"
+    name: "CodeAuditor—5规则安全扫描"
+    description: "S1-SQL注入/S2-XSS/S3-密钥泄露/S4-路径遍历/S5-资源泄漏检测"
+    entry_points: ["aiPlat-core/core/harness/learning/__init__.py"]
+    provided_by:
+      - module: "aiPlat-core/core/harness/security/code_auditor.py"
+        key_methods: ["audit", "get_code_auditor"]
+
+  - id: prompt_injection_guard
+    domain: "安全合规"
+    declared_in: "ARCHITECTURE_REPORT §17.1"
+    name: "提示词注入防护(_guard_messages)"
+    description: "6条正则注入检测+特殊token过滤+覆盖防护指令+safety_audit日志"
+    entry_points: ["aiPlat-core/core/harness/syscalls/llm.py"]
+    provided_by:
+      - module: "aiPlat-core/core/harness/syscalls/llm.py"
+        key_methods: ["sys_llm_generate"]
+
+  # ═══════════════════════════════════════════════════════════════
+  # 自学习
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: auto_learner
+    domain: "自学习"
+    phase: "Phase 2.1"
+    declared_in: "ROADMAP Phase 2.1"
+    name: "AutoLearner—失败分析+Skill草稿+人工确认"
+    description: "Agent失败→AutoLearner.analyze_failure()→SkillDraft→沙盒预检→审批→注册"
+    entry_points: ["aiPlat-core/core/harness/learning/__init__.py"]
+    provided_by:
+      - module: "aiPlat-core/core/harness/learning/__init__.py"
+        key_methods: ["process_pending", "get_auto_learner"]
+      - module: "aiPlat-core/core/harness/learning/skill_simulator.py"
+        key_methods: ["validate", "quick_validate"]
+
+  - id: provenance_tracker
+    domain: "自学习"
+    phase: "Phase 2.2"
+    declared_in: "ROADMAP Phase 2.2"
+    name: "ProvenanceTracker—声明级溯源+过期扫描"
+    description: "Claim-Level Citation+源更新自动标记过期+ProvenanceScanner"
+    entry_points: ["aiPlat-core/core/api/routers/wiki.py"]
+    provided_by:
+      - module: "aiPlat-core/core/harness/knowledge/provenance.py"
+        key_methods: ["extract_citations", "get_provenance_tracker", "on_source_updated"]
+
+  - id: hallucination_tracker
+    domain: "自学习"
+    phase: "Phase 3.1"
+    declared_in: "ROADMAP Phase 3.1"
+    name: "HallucinationTracker—NLI事实核查+Faithfulness"
+    description: "NLI事实核查+Faithfulness指标+GraphIndex图验证+Hallucination Risk评分"
+    entry_points: ["aiPlat-core/core/apps/agents/materials_chat.py"]
+    provided_by:
+      - module: "aiPlat-core/core/harness/evaluation/hallucination_tracker.py"
+        key_methods: ["evaluate", "get_hallucination_tracker", "get_dashboard", "get_recent_reports"]
+
+  - id: implicit_feedback
+    domain: "自学习"
+    phase: "Phase 4.2"
+    declared_in: "ROADMAP Phase 4.2"
+    name: "ImplicitFeedback—用户行为隐式反馈"
+    description: "5种隐式信号(copy/re_query/abandon...)→Provenance调权+正/负样本标记"
+    entry_points: ["aiPlat-core/core/api/routers/agents.py"]
+    provided_by:
+      - module: "aiPlat-core/core/services/implicit_feedback.py"
+        key_methods: ["record", "get_implicit_feedback_collector", "get_stats"]
+
+  - id: lora_trigger
+    domain: "自学习"
+    phase: "Phase 4.3"
+    declared_in: "ROADMAP Phase 4.3"
+    name: "LoRA微调自动触发"
+    description: "累计≥100条高质量Skill→生成ShareGPT SFT数据集→推送管理端通知"
+    entry_points: ["aiPlat-core/core/harness/learning/__init__.py"]
+    provided_by:
+      - module: "aiPlat-core/core/harness/training/auto_trigger.py"
+        key_methods: ["get_lora_auto_trigger"]
+
+  - id: meta_agent
+    domain: "自学习"
+    phase: "Phase 4.4"
+    declared_in: "ROADMAP Phase 4.4"
+    name: "MetaAgent—元认知策略建议"
+    description: "4种检测器(rejection/user_quality/stagnation/coverage_gap)，只读建议，默认关闭"
+    entry_points: ["aiPlat-core/core/harness/meta/__init__.py"]
+    provided_by:
+      - module: "aiPlat-core/core/harness/meta/__init__.py"
+        key_methods: ["analyze", "get_meta_agent"]
+
+  # ═══════════════════════════════════════════════════════════════
+  # 企业能力
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: enterprise_gateway
+    domain: "企业能力"
+    phase: "Phase 2.3"
+    declared_in: "ROADMAP Phase 2.3"
+    name: "EnterpriseGateway—飞书/企微/Slack消息推送"
+    description: "三个适配器+Rate Limiting，审批事件触发推送通知"
+    entry_points: ["aiPlat-core/core/server.py"]
+    provided_by:
+      - module: "aiPlat-core/core/gateway/__init__.py"
+        key_methods: ["register", "start", "handle_message", "get_enterprise_gateway", "send_message"]
+
+  - id: canary_router
+    domain: "企业能力"
+    phase: "Phase 3.2"
+    declared_in: "ROADMAP Phase 3.2"
+    name: "SkillRouter—灰度发布(Canary/A-B/Shadow/Rollback)"
+    description: "Canary按tenant_id/流量百分比分流，A-B双版本对比，Shadow静默运行，Auto-Rollback"
+    entry_points: ["aiPlat-core/core/harness/deployment/canary.py"]
+    provided_by:
+      - module: "aiPlat-core/core/harness/deployment/canary.py"
+        key_methods: ["get_skill_router"]
+
+  - id: pattern_cache
+    domain: "企业能力"
+    phase: "Phase 5.4"
+    declared_in: "ROADMAP Phase 5.4"
+    name: "PatternCache—执行模式晶体化"
+    description: "MD5精确匹配+fuzzy同域/同类，hit≥3才生效，prune低成功率模式"
+    entry_points: ["aiPlat-core/core/harness/execution/pattern_cache.py"]
+    provided_by:
+      - module: "aiPlat-core/core/harness/execution/pattern_cache.py"
+        key_methods: ["store", "match", "get_pattern_cache"]
+
+  - id: evolution_engine
+    domain: "企业能力"
+    phase: "Phase 5.5"
+    declared_in: "ROADMAP Phase 5.5"
+    name: "EvolutionEngine—夜间进化总指挥"
+    description: "6步夜间流水线:AutoLearner→MetaAgent→PatternCache→SkillRouter→ExperienceCache→LoRA触发"
+    entry_points: ["aiPlat-core/core/server.py"]
+    provided_by:
+      - module: "aiPlat-core/core/harness/evolution_engine.py"
+        key_methods: ["nightly_evolution", "get_evolution_engine"]
+
+  - id: experience_vector
+    domain: "企业能力"
+    phase: "Phase 5.1"
+    declared_in: "ROADMAP Phase 5.1"
+    name: "ExperienceVectorCache—经验向量缓存"
+    description: "PipelineTrace→Embedding→向量库，语义相似度检索历史经验生成SkillDraft"
+    entry_points: ["aiPlat-core/core/harness/evolution_engine.py"]
+    provided_by:
+      - module: "aiPlat-core/core/harness/learning/experience_vector.py"
+        key_methods: ["get_experience_cache", "store", "search"]
+
+  # ═══════════════════════════════════════════════════════════════
+  # 工具/门户
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: arch_guard_system
+    domain: "工具/门户"
+    name: "架构守卫系统(165条规则)"
+    description: "声明式规则引擎，grep_forbidden/grep_required/file_exists/cmd_output 5种检查类型，CI自动执行"
+    entry_points: ["scripts/architecture_guard.py"]
+    provided_by:
+      - module: "aiPlat-core/core/management/arch_guard_base.py"
+        key_methods: ["get_arch_registry", "run_all"]
+      - module: "scripts/guard_frontend.py"
+        key_methods: ["check_vite_proxy", "check_api_path_contract"]
+
+  - id: caller_verification
+    domain: "工具/门户"
+    name: "接线完成度验证(caller_verify+method_verify+phase_check)"
+    description: "模块级/方法级caller检测+5步Phase验收清单，CI红灯阻止0-caller合入"
+    entry_points: ["scripts/phase_check.sh"]
+    provided_by:
+      - module: "scripts/caller_verify.sh"
+        key_methods: []
+      - module: "scripts/method_verify.sh"
+        key_methods: []
+      - module: "scripts/phase_check.sh"
+        key_methods: []
+
+  - id: tool_correctness
+    domain: "工具/门户"
+    name: "工具正确性自测试(120+测试)"
+    description: "27个守卫/诊断/图谱程序的自测试，每次CI验证工具逻辑正确性"
+    entry_points: ["aiPlat-core/core/tests/tool_correctness/"]
+    provided_by:
+      - module: "aiPlat-core/core/tests/tool_correctness/"
+        key_methods: []
+
+  - id: capability_verification
+    domain: "工具/门户"
+    name: "能力可执行性验证(本文档)"
+    description: "声明能力×代码图可达性×方法级调用的三维交叉验证"
+    entry_points: ["scripts/capability_verify.py"]
+    provided_by:
+      - module: "scripts/capability_verify.py"
+        key_methods: []
+      - module: "aiPlat-core/core/management/capability_manifest.yaml"
+        key_methods: []
