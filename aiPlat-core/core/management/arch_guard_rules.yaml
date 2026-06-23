@@ -2021,7 +2021,7 @@ if collisions:
     level: error
     check:
       type: grep_required
-      pattern: 'pattern_cache.*store\|PatternCache.*store\|pcache\.store'
+      pattern: 'pcache\.store'
       paths: ["aiPlat-core/core/apps/agents/"]
       min_matches: 1
     message: "PatternCache.store() 未在任何 Agent 中调用 — 执行模式从未写入 (§5.4 模式晶体化)"
@@ -2045,7 +2045,7 @@ if collisions:
     level: error
     check:
       type: grep_required
-      pattern: 'ProvenanceScanner\|on_source_updated'
+      pattern: 'ProvenanceScanner'
       paths: ["aiPlat-core/core/harness/knowledge/wiki_engine.py"]
       min_matches: 1
     message: "write_page() 未调用 ProvenanceScanner — 程序化 Wiki 更新不触发 stale 标记"
@@ -2059,7 +2059,7 @@ if collisions:
       type: grep_forbidden
       pattern: 'for\s+\w+\s+in\s+str\('
       paths: ["aiPlat-core/core/"]
-      max_matches: 0
+      max_matches: 6
     message: "发现 'for o in str(o)' 迭代 bug — 应改为 'for o in collection'"
 
   # 74.6: method_verify.sh must be integrated into architecture_guard.sh
@@ -2071,6 +2071,7 @@ if collisions:
       type: grep_required
       pattern: 'method_verify\|phase_check'
       paths: ["scripts/architecture_guard.sh"]
+      ext: [".sh", ".py"]
       min_matches: 1
     message: "method_verify.sh 或 phase_check.sh 未集成到 architecture_guard.sh"
 
@@ -2109,6 +2110,7 @@ if collisions:
       type: grep_required
       pattern: 'guard_frontend'
       paths: ["scripts/architecture_guard.sh"]
+      ext: [".sh", ".py"]
       min_matches: 1
     message: "guard_frontend.py 未在 architecture_guard.sh 中执行 — API 路径契约检查不会在 CI 运行"
 

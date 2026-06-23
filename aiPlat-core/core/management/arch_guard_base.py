@@ -253,11 +253,14 @@ class ArchYAMLRule(ArchRule):
         filename_pattern = self._check_def.get("filename_pattern")
         grep_exclude = self._check_def.get("grep_exclude", [])
         max_count = self._check_def.get("max_count", 500)
+        max_matches = self._check_def.get("max_matches")  # threshold: allow up to N matches
 
         results = _grep(repo_root, pattern, paths, exclude, ext,
                         filename_pattern=filename_pattern,
                         grep_exclude=grep_exclude,
                         max_count=max_count)
+        if max_matches is not None and len(results) <= max_matches:
+            return []  # within allowed threshold — not a violation
         if results:
             msg = self._message or f"forbidden pattern found: {pattern[:60]}"
             return [self._make_issue(msg, files=results, count=len(results))]
@@ -268,10 +271,11 @@ class ArchYAMLRule(ArchRule):
         paths = self._check_def.get("paths", [])
         exclude = self._check_def.get("exclude", ["__pycache__", "tests/"])
         ext = self._check_def.get("ext", [".py"])
+        min_matches = self._check_def.get("min_matches", 1)
 
-        results = _grep(repo_root, pattern, paths, exclude, ext, max_count=1)
-        if not results:
-            msg = self._message or f"required pattern not found: {pattern[:60]}"
+        results = _grep(repo_root, pattern, paths, exclude, ext, max_count=min_matches * 5)
+        if len(results) < min_matches:
+            msg = self._message or f"required pattern not found (need {min_matches}, got {len(results)}): {pattern[:60]}"
             return [self._make_issue(msg, count=1)]
         return []
 
