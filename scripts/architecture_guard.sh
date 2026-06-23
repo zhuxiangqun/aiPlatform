@@ -65,6 +65,14 @@ else:
         print(f'Note: {known_count} known-safe cycles are tracked in scripts/known_safe_cycles.txt')
 " 2>/dev/null || echo "SKIP: code_graph module unavailable (run diagnostics first)"
 
+# Tool correctness tests — verify guards, diagnostics, and graphs are correct
+echo ""
+echo "═══════════════════════════════════════════════════════════════"
+echo "  TOOL CORRECTNESS: guards + diagnostics + graphs self-tests"
+echo "═══════════════════════════════════════════════════════════════"
+python3 -m pytest aiPlat-core/core/tests/tool_correctness/ \
+                 -v --tb=short 2>&1 | tail -25
+
 # Constitution tests — Python-level semantic checks
 echo ""
 echo "═══════════════════════════════════════════════════════════════"
