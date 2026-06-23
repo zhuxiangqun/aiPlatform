@@ -149,7 +149,18 @@ export const DocumentGrid: React.FC<Props> = ({ documents, loading, total, selec
                   <span className="text-xl mt-0.5">{doc.kind === 'video' ? '🎬' : doc.kind === 'pdf' ? '📄' : '📋'}</span>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-gray-200 truncate">
-                      {String(doc.meta?.name || doc.meta?.title || doc.source_uri || doc.doc_id).split('/').pop()}
+                      {(() => {
+                        const raw = String(doc.meta?.name || doc.meta?.title || doc.source_uri || doc.doc_id).split('/').pop() || '';
+                        const clean = raw
+                          .replace(/^(preview_)?req_[A-Za-z0-9]+_\d{3,4}p_/i, '')
+                          .replace(/^(preview_)?req_[A-Za-z0-9]+_/i, '')
+                          .replace(/xtdowner\.com_/g, '')
+                          .replace(/\.(mp4|mkv|avi|mov|webm|m4v)$/i, '')
+                          .replace(/_/g, ' ')
+                          .trim();
+                        const shortId = (doc.doc_id || '').slice(0, 12);
+                        return clean ? `${clean}  [${shortId}]` : raw;
+                      })()}
                     </div>
                     <div className="text-xs text-gray-500 truncate mt-0.5">{String(doc.source_uri || '')}</div>
                     <div className="flex items-center gap-1.5 mt-1.5">
