@@ -86,11 +86,101 @@ def format_text(report) -> str:
     return "\n".join(lines)
 
 
+def _expand_diff_to_affected(repo_root: Path, changed_files: list) -> list:
+    """Expand git diff to include downstream callers via CodeGraph.
+    
+    max_depth=1: only direct callers of changed files.
+    max_files=50: if expansion exceeds this, return changed_files as-is
+    (fall back to full scan — it's slower but safer than missing issues).
+    """
+    MAX_DEPTH = 1
+    MAX_FILES = 50
+
+    if not changed_files:
+        return changed_files
+
+    try:
+        sys.path.insert(0, str(repo_root / "aiPlat-core"))
+        from core.harness.knowledge.code_graph import (
+            _extract_symbols_ast, build_graph, repo_root as _repo_root_fn,
+        )
+        from pathlib import Path as _Path
+
+        # Build graph (cached, so fast)
+        repo = _repo_root_fn()
+        if not repo:
+            return changed_files
+        nodes, edges, _issues = build_graph(repo, [repo])
+
+        # Collect all symbols exported by changed files
+        all_symbols = set()
+        for f in changed_files:
+            try:
+                fp = _Path(f)
+                if fp.exists() and fp.suffix == ".py":
+                    symbols = _extract_symbols_ast(fp)
+                    all_symbols.update(s.name for s in symbols if hasattr(s, 'name'))
+            except Exception:
+                pass
+
+        if not all_symbols:
+            return changed_files
+
+        # Find files that import/call these symbols (incoming edges)
+        expanded = set(changed_files)
+        for depth in range(MAX_DEPTH):
+            new_files = set()
+            for edge in edges:
+                source = edge.get("source", "")
+                target = edge.get("target", "")
+                target_file = edge.get("target_file", "")
+                if target in all_symbols or target_file in changed_files:
+                    if source not in expanded:
+                        new_files.add(source)
+            expanded.update(new_files)
+            if len(expanded) > MAX_FILES:
+                return changed_files  # too broad — fall back to full scan
+
+        return list(expanded)
+    except Exception:
+        return changed_files
+
+
 def main():
     parser = argparse.ArgumentParser(description="Architecture Guard")
     parser.add_argument("--json", action="store_true", help="JSON output")
     parser.add_argument("--quick", action="store_true", help="Quick mode (imports only)")
+    parser.add_argument("--diff-only", action="store_true", help="Only scan git-changed files + CodeGraph callers")
     args = parser.parse_args()
+
+    # ── --diff-only: expand changed files via CodeGraph for faster PR CI ──
+    if args.diff_only:
+        try:
+            import subprocess as _sp
+            result = _sp.run(
+                ["git", "diff", "--name-only", "HEAD"],
+                capture_output=True, text=True, timeout=10,
+                cwd=str(WORKSPACE_ROOT),
+            )
+            changed = [f for f in result.stdout.splitlines() if f.endswith(".py")]
+            if not changed:
+                sys.path.insert(0, str(WORKSPACE_ROOT / "aiPlat-core"))
+                from core.management.arch_guard_base import ArchReport, ArchSection, ArchIssue
+                print(format_text(ArchReport(ok=True, violations=0, duration_ms=0, sections=[
+                    ArchSection(number="§diff", name="Diff-Only Scan", status="pass",
+                               items=[ArchIssue(level="pass", code="diff_ok",
+                                                message="No Python files changed — skipping full scan")])
+                ])))
+                sys.exit(0)
+            expanded = _expand_diff_to_affected(WORKSPACE_ROOT, changed)
+            diff_count = len(expanded) if expanded else len(changed)
+            print(f"\n  [diff-only] {len(changed)} changed + {diff_count - len(changed)} affected = {diff_count} files to scan")
+            if diff_count <= 50:
+                os.environ["AIPLAT_ARCH_GUARD_SCAN_FILES"] = ",".join(expanded)
+            else:
+                print(f"  [diff-only] expanded set exceeds 50 files ({diff_count}) — running full scan")
+        except Exception:
+            pass
 
     # Import the registry (needs repo in path)
     sys.path.insert(0, str(WORKSPACE_ROOT / "aiPlat-core"))

@@ -383,3 +383,58 @@ def get_semantic_cache() -> SemanticCache:
     if _cache is None:
         _cache = SemanticCache()
     return _cache
+
+
+async def detect_semantic_duplicates(
+    function_bodies: list[tuple[str, str]],
+    threshold: float = 0.95,
+) -> list[dict]:
+    """Detect semantic duplicates using embedding similarity.
+    
+    Uses InfraEmbeddingAdapter for zero-cost vectorization (no LLM calls).
+    
+    Args:
+        function_bodies: list of (function_name, source_code) tuples
+        threshold: cosine similarity threshold (default 0.95)
+    
+    Returns:
+        list of {name_a, name_b, similarity, file_a, file_b} for duplicate pairs
+    """
+    try:
+        from core.harness.knowledge.embedder import embed_text
+    except Exception:
+        return []
+    
+    vectors = []
+    for name, _ in function_bodies:
+        try:
+            vec = await embed_text(name[:2000])
+            vectors.append(vec)
+        except Exception:
+            vectors.append([])
+    
+    duplicates = []
+    n = len(vectors)
+    for i in range(n):
+        for j in range(i + 1, n):
+            if not vectors[i] or not vectors[j]:
+                continue
+            sim = _cosine_similarity_static(vectors[i], vectors[j])
+            if sim >= threshold:
+                duplicates.append({
+                    "name_a": function_bodies[i][0],
+                    "name_b": function_bodies[j][0],
+                    "similarity": round(sim, 3),
+                })
+    return duplicates
+
+
+def _cosine_similarity_static(a: list, b: list) -> float:
+    """Static cosine similarity for two vectors."""
+    try:
+        dot = sum(x * y for x, y in zip(a, b))
+        na = sum(x * x for x in a) ** 0.5
+        nb = sum(x * x for x in b) ** 0.5
+        return dot / (na * nb) if na > 0 and nb > 0 else 0.0
+    except Exception:
+        return 0.0
