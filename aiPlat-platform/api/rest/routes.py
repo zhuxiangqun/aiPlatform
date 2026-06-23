@@ -1227,6 +1227,22 @@ async def kb_reingest_document(doc_id: str, request: Request):
         "context": {"tenant_id": identity.tenant_id, "actor_id": identity.actor_id, "request_id": identity.request_id},
         "mode": "inline",
     }
+
+    # Video documents: use local ingest pipeline (ffmpeg + Whisper) instead of knowledge_ingest skill
+    if str(kind or "").lower() == "video":
+        from kb.service import ingest_document
+        result = ingest_document(
+            tenant_id=identity.tenant_id,
+            collection_id=collection_id,
+            file_path=file_path,
+            kind="video",
+            ocr_lang=ocr_lang,
+            ocr_engine=ocr_engine,
+            dpi=dpi,
+            max_pages=max_pages,
+        )
+        return {"status": "reingested", "kind": "video", "result": result}
+
     core_resp = await _core_request("POST", f"/api/core/skills/knowledge_ingest/execute", identity=identity, json_body=payload)
     return core_resp
 
