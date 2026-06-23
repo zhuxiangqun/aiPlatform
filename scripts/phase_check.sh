@@ -119,12 +119,25 @@ else
 fi
 
 # ══════════════════════════════════════════════════════════════
+# Step 6: Capability Verification
+# ══════════════════════════════════════════════════════════════
+echo ""
+echo "━━━ Step 6/6: Capability Verification ━━━"
+echo ""
+if python3 "$WORKSPACE/scripts/capability_verify.py" 2>&1; then
+    echo -e "${GREEN}  PASS${NC} Step 6: All capabilities verified"
+else
+    echo -e "${RED}  FAIL${NC} Step 6: Capability verification issues (see above)"
+    FAILURES=$((FAILURES + 1))
+fi
+
+# ══════════════════════════════════════════════════════════════
 # Summary
 # ══════════════════════════════════════════════════════════════
 echo ""
 echo "═══════════════════════════════════════════════════════════════"
 if [ "$FAILURES" -eq 0 ]; then
-    echo -e "${GREEN}═══ PHASE CHECK PASSED — all 5 steps clear ═══${NC}"
+    echo -e "${GREEN}═══ PHASE CHECK PASSED — all 6 steps clear ═══${NC}"
     exit 0
 else
     echo -e "${RED}═══ PHASE CHECK FAILED: $FAILURES step(s) failed ═══${NC}"
