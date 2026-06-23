@@ -729,1181 +729,1181 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
         return {"run_id": "skipped", "message": "另一个诊断正在运行中 — 请等当前诊断完成后再试", "overall_score": 0}
     _DIAG_RUNNING = True
     try:
-    started_at = time.time()
-    run_id = f"diag-{_uuid.uuid4().hex[:12]}"
-    categories: Dict[str, Any] = {}
-    issues: List[Dict[str, Any]] = []
-
-    # ── Shared code graph: build once, reuse across all graph-dependent checks ──
-    global _SHARED_GRAPH
-    try:
-        _SHARED_GRAPH = _get_or_build_graph()
-    except Exception:
-        _SHARED_GRAPH = (None, None, None)
-
-    def _publish(event_type: str, **kwargs):
-        try:
-            from core.harness.observation.event_bus import EventBus
-            from core.api.routers.observation import store_diag_event
-            event = {"type": event_type, "ts": time.time(), **kwargs}
-            store_diag_event(run_id, event)
-            EventBus.publish(run_id, event)
-        except Exception:
-            pass
-
-    _publish("diagnostics_started", categories=[
-        "core_runtime","code_intel","capability","skill_lint","skill_realness",
-        "wiki_health","compliance","overview_issues","traces",
-        "graph_runs","context_metrics","e2e_smoke","symbol_health",
-        "doctor","lsp","security","arch_guard",
-        "frontend","mcp"
-    ])
-
-    async def _safe(cat_name: str, coro):
-        try:
-            _publish("check_started", category=cat_name)
-            categories[cat_name] = await coro
-            cat = categories[cat_name]
-            _publish("check_done", category=cat_name,
-                     status=cat.get("status", "pass") if isinstance(cat, dict) else "pass",
-                     score=cat.get("score", 0) if isinstance(cat, dict) else 0)
-        except Exception as e:
-            categories[cat_name] = {"status": "error", "error": str(e)[:300]}
-            _publish("check_failed", category=cat_name, error=str(e)[:200])
-
-    async def _check_core_runtime():
-        try:
-            from core.harness.kernel.runtime import get_kernel_runtime
-            rt = get_kernel_runtime()
-            store = getattr(rt, "execution_store", None) if rt else None
-            return {
-                "status": "available" if store else "unavailable",
-                "score": 100 if store else 0,
-                "details": {"execution_store": "ok" if store else "missing"},
-                "items": [{"check": "执行存储", "result": "✅" if store else "❌",
-                           "detail": "ExecutionStore 已初始化" if store else "未找到 ExecutionStore"}],
-            }
-        except Exception:
-            return {"status": "unavailable", "score": 0}
-
-    async def _check_skill_lint():
-        """Lint scan across all skills."""
-        try:
-            from core.management.skill_linter import lint_skill, propose_skill_fixes
-            from core.management.skill_manager import SkillManager
-            total_errors = 0
-            total_warnings = 0
-            items = []
-            for scope in ("engine", "workspace"):
-                sm = SkillManager(seed=(scope == "engine"), scope=scope)
-                skills = await sm.list_skills(limit=500, offset=0)
-                for s in skills:
-                    rep = lint_skill(s)
-                    # Publish progress for visible skills (best-effort)
-                    _publish("check_progress", category="skill_lint",
-                             skill=dict(id=getattr(s, "id", ""), name=getattr(s, "name", ""),
-                             scope=scope, errors=len(rep.get("errors", [])),
-                             warnings=len(rep.get("warnings", []))))
-                    errs = rep.get("errors", [])
-                    warns = rep.get("warnings", [])
-                    e = len(errs)
-                    w = len(warns)
-                    total_errors += e
-                    total_warnings += w
-                    if e > 0 or w > 0:
-                        fixes = propose_skill_fixes(skill=s, lint=rep)
-                        auto_fixes = [f for f in fixes.get("fixes", []) if f.get("auto_applicable")]
-                        items.append({
-                            "skill_id": getattr(s, "id", ""),
-                            "name": getattr(s, "name", ""),
-                            "scope": scope,
-                            "error_codes": [x.get("code") for x in errs],
-                            "warning_codes": [x.get("code") for x in warns[:4]],
-                            "warning_count": w,
-                            "auto_fix_ids": [f.get("fix_id") for f in auto_fixes],
-                            "auto_fix_count": len(auto_fixes),
-                        })
-            score = 100 if total_errors == 0 else max(0, 100 - total_errors * 5)
-            result = {
-                "status": "pass" if total_errors == 0 else "warn",
-                "score": score,
-                "signals": {"errors": total_errors, "warnings": total_warnings},
-                "items": [{"check": f"[{it['scope']}] {it['name']}",
-                           "result": "❌" if it['error_codes'] else "⚠️",
-                           "detail": f"errors: {', '.join(it['error_codes'][:3])} | warnings: {it['warning_count']}"}
-                          for it in items[:20]],
-                "_raw": {"items": items, "errors": total_errors, "warnings": total_warnings,
-                         "auto_fix_total": sum(it["auto_fix_count"] for it in items)},
-            }
-            return result
-        except Exception as e:
-            return {"status": "unavailable", "score": 0, "error": str(e)[:200]}
-
-    async def _check_skill_realness():
-        """Check workspace skills for execution_type declarations and handler existence."""
-        try:
-            from pathlib import Path as _P
-            aiplat_home = os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
-            skills_dir = _P(aiplat_home) / "skills"
-            issues = []
-            if not skills_dir.exists():
-                return {"status": "pass", "score": 100, "items": [], "details": {"total": 0}}
-            
-            for skill_dir in sorted(skills_dir.iterdir()):
-                if not skill_dir.is_dir() or skill_dir.name.startswith("."):
-                    continue
-                md = skill_dir / "SKILL.md"
-                if not md.exists():
-                    continue
-                try:
-                    raw = (await _asyncio.to_thread(lambda: md.read_text(encoding="utf-8", errors="ignore")))
-                    if not raw.startswith("---"):
-                        continue
-                    parts = raw.split("---", 2)
-                    if len(parts) < 3:
-                        continue
-                    import yaml as _yaml
-                    fm = _yaml.safe_load(parts[1]) or {}
-                    name = fm.get("name", skill_dir.name)
-                    exec_type = fm.get("execution_type", "")
-                    handler_exists = (skill_dir / "handler.py").exists()
-                    
-                    if not exec_type:
-                        issues.append(f"'{name}': 缺少 execution_type 声明（默认 prompt=LLM模拟）")
-                    elif exec_type == "handler" and not handler_exists:
-                        issues.append(f"'{name}': execution_type=handler 但 handler.py 不存在")
-                    elif exec_type == "prompt" and handler_exists:
-                        issues.append(f"'{name}': 有 handler.py 但 execution_type 声明为 prompt（误配？）")
-                except Exception:
-                    pass
-            
-            total = len(list(skills_dir.iterdir())) if skills_dir.exists() else 0
-            return {
-                "status": "warning" if issues else "pass",
-                "score": max(0, 100 - len(issues) * 5),
-                "details": {"total": total, "issues_count": len(issues)},
-                "items": [{"check": i, "result": "⚠️", "detail": i} for i in issues[:20]],
-            }
-        except Exception:
-            return {"status": "unavailable", "score": 0}
-
-    async def _check_code_intel():
-        try:
-            from core.harness.knowledge.code_graph import count_cycles, effective_cycles, health_score
-            nodes, edges, issues_list = _get_or_build_graph()
-            # Filter to structural edges only (exclude cross-file call edges)
-            arch_edges = [e for e in edges if e.get("kind", "import") != "calls"]
-            cycles = effective_cycles(nodes)
-            h = health_score(nodes=nodes, edges=arch_edges, issues=issues_list, cycles_back_edges=cycles)
-            items: List[Dict[str, Any]] = []
-            if cycles > 0:
-                items.append({"check": "循环依赖", "result": "❌" if cycles > 8 else "⚠️", "detail": f"{cycles} back-edges detected", "link": "/diagnostics/code-intel"})
-            if h["signals"]["avg_degree"] > 3:
-                items.append({"check": "高耦合", "result": "⚠️", "detail": f"avg_degree={h['signals']['avg_degree']}", "link": "/diagnostics/code-intel"})
-            # Count issue types
-            security_issues = [i for i in issues_list if i.get("type") in ("secret", "security")]
-            undefined_calls = [i for i in issues_list if i.get("type") == "undefined_call"]
-            if security_issues:
-                items.append({"check": "安全风险", "result": "⚠️", "detail": f"{len(security_issues)} issues (密钥/硬编码/eval)", "link": "/diagnostics/code-intel"})
-            if undefined_calls:
-                items.append({"check": "未定义函数调用", "result": "❌", "detail": f"{len(undefined_calls)} 处调用未定义的函数", "link": "/diagnostics/code-intel"})
-            elif len(issues_list) > 0:
-                items.append({"check": "代码风险", "result": "⚠️", "detail": f"{len(issues_list)} issues", "link": "/diagnostics/code-intel"})
-            return {
-                "status": "pass" if h["score"] >= 70 else "warn",
-                "score": h["score"],
-                "grade": h["grade"],
-                "signals": {
-                    "files": h["signals"]["files"],
-                    "edges": len(arch_edges),
-                    "cycles": cycles,
-                    "avg_degree": h["signals"]["avg_degree"],
-                    "issues": len(issues_list),
-                },
-                "items": items,
-            }
-        except Exception as e:
-            return {"status": "error", "score": 0, "error": str(e)[:200]}
-
-    async def _check_cross_lang_links():
-        """B1: Detect frontend API calls with no matching backend route."""
-        import re
-        try:
-            from core.harness.knowledge.code_graph import repo_root, default_roots, _extract_api_calls, _extract_backend_routes
-            repo = repo_root()
-            abs_roots = [(repo / r).resolve() for r in default_roots()]
-            nodes, edges, _ = _get_or_build_graph()
-
-            # Build backend route set
-            backend_routes = set()
-            for f in abs_roots:
-                if not f.exists() or not f.is_dir():
-                    continue
-                for p in f.rglob("*.py"):
-                    if (p.parent.name == "tests" or "__pycache__" in str(p)):
-                        continue
-                    for route in _extract_backend_routes(p):
-                        path = route[0] if isinstance(route, (list, tuple)) else str(route)
-                        if path and path.startswith('/'):
-                            backend_routes.add(path)
-
-            # Check frontend API calls (exclude diagnostic/internal endpoints)
-            _CROSS_INTERNAL = ('/diagnostics/', '/api/diagnostics/', '/kb-eval/', '/credentials/', '/variables/',
-                              '/infra/', '/platform/', '/api/infra/', '/api/platform/', '/dashboard/')
-            
-            # Normalize path parameter patterns for comparison: {var}, {var:type}, ${var} → {}
-            def _norm_path(p: str) -> str:
-                return re.sub(r'\{\w+[\w:]*\}|\$\{\w+\}', '{}', p)
-            
-            # Normalize backend routes for matching
-            backend_normalized = {_norm_path(p).replace('/api/', '/').replace('/core/', '/').rstrip('/') for p in backend_routes}
-            
-            broken = []
-            for f in abs_roots:
-                if not f.exists() or not f.is_dir():
-                    continue
-                for p in f.rglob("*.ts") if f.name == "aiPlat-management" else []:
-                    for ep in _extract_api_calls(p):
-                        ep_norm = _norm_path(ep.replace('/api/', '/').replace('/core/', '/').rstrip('/'))
-                        if ep_norm and not any(ep_norm.startswith(prefix) for prefix in _CROSS_INTERNAL):
-                            if ep_norm not in backend_normalized:
-                                broken.append({"file": str(p.relative_to(repo))[:80], "endpoint": ep})
-
-            items = []
-            if broken:
-                for b in broken[:5]:
-                    items.append({"check": "断链API调用", "result": "⚠️", "detail": f"{b['file']}: {b['endpoint']}"})
-            return {
-                "status": "warn" if broken else "pass",
-                "score": max(0, 100 - len(broken[:5]) * 5),
-                "items": items,
-                "signals": {"broken_calls": len(broken)},
-            }
-        except Exception as e:
-            return {"status": "error", "score": 0, "error": str(e)[:200]}
-
-    async def _check_route_coverage():
-        """B2: Verify management proxy modules have corresponding frontend API usage."""
-        try:
-            from core.harness.knowledge.code_graph import repo_root
-            from pathlib import Path as _P
-
-            repo = repo_root()
-            mgmt_api = _P(repo) / "aiPlat-management" / "management" / "api"
-            mgmt_frontend_svc = _P(repo) / "aiPlat-management" / "frontend" / "src" / "services"
-
-            # Management proxy modules (each proxies a backend layer)
-            mgmt_modules = set()
-            if mgmt_api.is_dir():
-                for p in mgmt_api.glob("*.py"):
-                    if not p.name.startswith("_") and p.name != "proxy.py":
-                        mgmt_modules.add(p.stem)
-
-            # For each frontend service file, check which mgmt modules it references
-            # by looking for the module name in its code (e.g., coreApi.ts → core)
-            frontend_covered = set()
-            if mgmt_frontend_svc.is_dir():
-                for p in mgmt_frontend_svc.rglob("*.ts"):
-                    try:
-                        text = (await _asyncio.to_thread(lambda: p.read_text()))
-                        for m in mgmt_modules:
-                            if m in text.lower() or m in p.name.lower():
-                                frontend_covered.add(m)
-                    except Exception:
-                        pass
-
-            dead_modules = sorted(mgmt_modules - frontend_covered)
-
-            items = []
-            if dead_modules:
-                for m in dead_modules:
-                    items.append({"check": "未使用代理", "result": "⚠️",
-                                  "detail": f"management/api/{m}.py 无对应前端调用"})
-            else:
-                items.append({"check": "路由覆盖", "result": "✅",
-                              "detail": f"{len(mgmt_modules)} 代理模块全部有前端调用"})
-
-            return {
-                "status": "warn" if len(dead_modules) > 2 else "pass",
-                "score": max(0, 100 - len(dead_modules) * 5),
-                "items": items,
-                "signals": {"mgmt_modules": len(mgmt_modules), "covered": len(frontend_covered),
-                            "dead_modules": len(dead_modules)},
-            }
-        except Exception as e:
-            return {"status": "pass", "score": 95, "signals": {"note": f"scan skipped: {str(e)[:80]}"}}
-
-    async def _check_domain_coupling():
-        """B3: Check for questionable cross-domain dependencies."""
-        try:
-            from core.api.routers.code_intel import _layer_bucket as code_layer
-            from core.harness.knowledge.code_graph import repo_root, default_roots
-            repo = repo_root()
-            abs_roots = [(repo / r).resolve() for r in default_roots()]
-            nodes, edges, _ = _get_or_build_graph()
-
-            # Check frontend directly importing core harness (bypassing platform)
-            suspicious = []
-            for edge in edges:
-                from_f = edge.get("from", "")
-                to_f = edge.get("to", "")
-                from_layer = code_layer(from_f)
-                to_layer = code_layer(to_f)
-                # app → core (should go through platform)
-                if from_layer == "app" and to_layer == "core" and "facade" not in to_f:
-                    suspicious.append(f"{from_f[:50]} → {to_f[:50]}")
-
-            items = []
-            for s in suspicious[:5]:
-                items.append({"check": "跨层依赖", "result": "⚠️", "detail": s})
-            return {
-                "status": "warn" if suspicious else "pass",
-                "score": max(0, 100 - len(suspicious[:5]) * 3),
-                "items": items,
-                "signals": {"suspicious_edges": len(suspicious)},
-            }
-        except Exception as e:
-            return {"status": "error", "score": 0, "error": str(e)[:200]}
-
-    async def _check_fragile_base():
-        """B4: Detect fragile base classes (too many subclasses or deep inheritance)."""
-        try:
-            from collections import Counter
-            from core.harness.knowledge.code_graph import repo_root, default_roots
-            repo = repo_root()
-            abs_roots = [(repo / r).resolve() for r in default_roots()]
-            nodes, edges, _ = _get_or_build_graph()
-
-            # Framework base classes that intentionally have many subclasses
-            _FRAMEWORK_BASES = {
-                "BaseAgent", "BaseTool", "Base", "BaseModel", "BaseModelAdapter",
-                "ManagementBase", "BaseLLMAdapter", "BasePydanticModel",
-                "DiagnosticCheck", "Enum", "str", "ABC",
-                "LintRule", "ArchRule", "InfraError",
-                "WikiRule", "CapRule", "BaseSkill", "BaseRule",
-            }
-
-            # Count subclasses per parent
-            parent_count = Counter()
-            for nid, nd in nodes.items():
-                for sym in nd.get("symbols", []):
-                    if isinstance(sym, (list, tuple)) and len(sym) >= 4 and sym[1] == "class":
-                        parent = sym[3]
-                        if parent and parent not in _FRAMEWORK_BASES:
-                            parent_count[parent] += 1
-
-            # Report parents with too many subclasses (>10)
-            fragile = [(p, c) for p, c in parent_count.items() if c > 10]
-            fragile.sort(key=lambda x: -x[1])
-
-            items = []
-            for parent, count in fragile[:5]:
-                items.append({"check": "脆弱基类", "result": "⚠️",
-                              "detail": f"{parent} has {count} subclasses"})
-            return {
-                "status": "warn" if fragile else "pass",
-                "score": max(0, 100 - len(fragile[:5]) * 5),
-                "items": items,
-                "signals": {"fragile_bases": len(fragile)},
-            }
-        except Exception as e:
-            return {"status": "error", "score": 0, "error": str(e)[:200]}
-
-    async def _check_capability():
-        try:
-            from core.harness.knowledge.capability_graph import build_capability_graph
-            from core.harness.knowledge.capability_health import capability_health_report
-            cg = build_capability_graph()
-            ch = capability_health_report(cg)
-            items: List[Dict[str, Any]] = []
-            unused = ch["issues"].get("unused_skills", [])
-            orphans = ch["issues"].get("orphan_agents", [])
-            unresolved = ch["issues"].get("unresolved_refs", [])
-            dupes = ch["issues"].get("entry_point_duplicates", [])
-            if unused:
-                items.append({"check": "未使用 Skill", "result": "⚠️", "detail": f"{len(unused)} unused: {', '.join(unused[:5])}", "link": "/diagnostics/capability-graph"})
-            if orphans:
-                items.append({"check": "孤立 Agent", "result": "⚠️", "detail": f"{len(orphans)} orphan: {', '.join(orphans[:5])}", "link": "/diagnostics/capability-graph"})
-            if unresolved:
-                # Group by target tool name for clarity
-                from collections import Counter
-                tool_counts = Counter(i.get("target", "?") for i in unresolved if isinstance(i, dict))
-                top_targets = ', '.join(f'{t}({c})' for t, c in tool_counts.most_common(5))
-                items.append({"check": "未解析引用", "result": "❌",
-                              "detail": f"{len(unresolved)} refs → {top_targets}", "link": "/diagnostics/capability-graph"})
-            if dupes:
-                detail_parts = [f"{d.get('capability','?')}: {len(d.get('files',[]))}" for d in dupes[:3] if isinstance(d, dict)]
-                items.append({"check": "入口重复", "result": "⚠️",
-                              "detail": f"{len(dupes)} duplicates: {'; '.join(detail_parts)}", "link": "/diagnostics/capability-graph"})
-            return {
-                "status": "pass" if ch["score"] >= 70 else "warn",
-                "score": ch["score"],
-                "grade": ch["grade"],
-                "signals": {
-                    "agents": ch["signals"]["agents"],
-                    "skills": ch["signals"]["skills"],
-                    "used_skills": ch["signals"]["used_skills"],
-                    "tools": ch["signals"]["tools"],
-                    "mcp_servers": ch["signals"]["mcp_servers"],
-                },
-                "items": items,
-                "_raw": {"issues": ch.get("issues", {}), "score": ch["score"], "grade": ch["grade"]},
-            }
-        except Exception as e:
-            return {"status": "error", "score": 0, "error": str(e)[:200]}
-
-    async def _check_wiki_health():
-        try:
-            from core.harness.knowledge.wiki_engine import wiki_health_report, build_graph
-            wh = wiki_health_report()
-            items: List[Dict[str, Any]] = []
-            if wh["stats"]["dead_links"] > 0:
-                items.append({"check": "死链", "result": "❌", "detail": f"{wh['stats']['dead_links']} dead links", "link": "/platform/kb"})
-            if wh["stats"]["orphan_pages"] > 0:
-                items.append({"check": "孤立页面", "result": "⚠️", "detail": f"{wh['stats']['orphan_pages']} orphan pages", "link": "/platform/kb"})
-            if wh["stats"]["contradictions"] > 0:
-                items.append({"check": "矛盾标记", "result": "⚠️", "detail": f"{wh['stats']['contradictions']} contradictions", "link": "/platform/kb"})
-            result = {
-                "status": "pass" if wh["health_score"] >= 70 else "warn",
-                "score": wh["health_score"],
-                "signals": {
-                    "pages": wh["total_pages"],
-                    "dead_links": wh["stats"]["dead_links"],
-                    "orphans": wh["stats"]["orphan_pages"],
-                    "contradictions": wh["stats"]["contradictions"],
-                },
-                "items": items,
-                "_raw": {"issues": wh.get("issues", []), "score": wh.get("health_score", 100)},
-            }
-            return result
-        except Exception as e:
-            return {"status": "error", "score": 0, "error": str(e)[:200]}
-
-    async def _check_arch_guard():
-        global _GUARD_CACHE, _GUARD_CACHE_TS
-        if _GUARD_CACHE is not None and time.time() - _GUARD_CACHE_TS < _SUB_CACHE_TTL:
-            return _GUARD_CACHE
-
-        from pathlib import Path as _P
-        try:
-            from core.management.arch_guard_base import get_arch_registry
-            repo_root = _P(__file__).resolve().parents[4]
-            report = get_arch_registry().run_all(repo_root)
-            violations = report.violations
-            score = max(0, 100 - violations)
-            # Extract raw sections for repair details
-            sections_raw = []
-            for s in report.sections:
-                if s.status != "fail" or not s.items:
-                    continue
-                for item in s.items[:3]:  # top 3 per section
-                    sections_raw.append({
-                        "section": s.number,
-                        "section_name": s.name,
-                        "message": item.message,
-                        "count": item.count,
-                        "sample_file": item.files[0] if item.files else "",
-                    })
-            result = {
-                "status": "pass" if violations == 0 else "warn" if violations <= 5 else "fail",
-                "score": score,
-                "violations": violations,
-                "items": [
-                    {"check": f"{s['section']} {s['section_name']}", "result": "❌",
-                     "detail": f"{s['message']}（{s['count']}处违规，例: {s.get('sample_file', '')}）"}
-                    for s in sections_raw
-                    for _ in range(max(s['count'], 1))
-                ] if sections_raw else [
-                    {"check": "架构守卫", "result": "❌" if violations > 0 else "✅",
-                     "detail": f"共检测到 {violations} 处违规"}
-                ],
-                "signals": {"violations": violations},
-                "_raw": {"sections": sections_raw, "violations": violations},
-            }
-            _GUARD_CACHE = result
-            _GUARD_CACHE_TS = time.time()
-            return result
-        except Exception as e:
-            _log.warning(f"Arch guard check failed: {e}")
-            return {"status": "error", "score": 0, "items": [{"check": "架构守卫", "result": "❌", "detail": f"运行失败: {str(e)[:100]}"}]}
-
-    async def _check_compliance():
-        import asyncio
-        from pathlib import Path as _P
-        from core.management.compliance_checks import get_checks
-
-        items: List[Dict[str, Any]] = []
-        score = 100
-
-        # Load runtime
-        try:
-            from core.harness.kernel.runtime import get_kernel_runtime
-            rt = get_kernel_runtime()
-        except Exception:
-            rt = None
-
-        repo_root = str(_P(__file__).resolve().parents[4])
-        checks = get_checks()
-
-        # Run all compliance checks in parallel
-        async def _run_one(check_def):
+            started_at = time.time()
+            run_id = f"diag-{_uuid.uuid4().hex[:12]}"
+            categories: Dict[str, Any] = {}
+            issues: List[Dict[str, Any]] = []
+        
+            # ── Shared code graph: build once, reuse across all graph-dependent checks ──
+            global _SHARED_GRAPH
             try:
-                result = await check_def["func"](rt, repo_root)
-                return result, check_def["penalty"]
+                _SHARED_GRAPH = _get_or_build_graph()
             except Exception:
-                return {"check": check_def["name"], "result": "❌", "detail": "Check failed"}, check_def["penalty"]
-
-        tasks = [_run_one(c) for c in checks]
-        results = await asyncio.gather(*tasks)
-
-        for result, penalty in results:
-            items.append(result)
-            if result.get("result") == "❌":
-                score -= penalty
-
-        # Arch guard gets heavier penalty
-        for item in items:
-            if item["check"] == "架构守卫" and item["result"] == "❌":
+                _SHARED_GRAPH = (None, None, None)
+        
+            def _publish(event_type: str, **kwargs):
                 try:
-                    v_str = item.get("detail", "0 violations")
-                    v = int(re.findall(r'\d+', v_str)[0]) if re.findall(r'\d+', v_str) else 0
-                    score -= min(v * 2 - 10, 20)  # extra penalty beyond base 10
+                    from core.harness.observation.event_bus import EventBus
+                    from core.api.routers.observation import store_diag_event
+                    event = {"type": event_type, "ts": time.time(), **kwargs}
+                    store_diag_event(run_id, event)
+                    EventBus.publish(run_id, event)
                 except Exception:
                     pass
-
-        # Extract shell agents by scanning AGENT.md files directly (accurate)
-        shell_agents = []
-        try:
-            from core.management.agent_config_validator import validate_agent_file
-            from pathlib import Path as _P
-
-            for scan_dir in (
-                _P(__file__).resolve().parents[2] / "engine" / "agents",
-                _P.home() / ".aiplat" / "agents",
-            ):
-                if not scan_dir.exists():
-                    continue
-                for md_path in sorted(scan_dir.rglob("AGENT.md")):
-                    # Skip builtin subagents (loaded via SubagentConfig, not workspace)
-                    if "/builtin/" in str(md_path):
-                        continue
-                    for issue in validate_agent_file(md_path):
-                        if "shell" in issue.message.lower():
-                            scope = "workspace" if ".aiplat" in str(md_path) else "engine"
-                            shell_agents.append(f"{scope}:{md_path.parent.name}")
-                            break
-        except Exception:
-            pass
-
-        return {
-            "status": "pass" if score >= 80 else "warn",
-            "score": max(0, score),
-            "items": items,
-            "_raw": {"shell_agents": shell_agents},
-        }
-
-    async def _check_overview_issues():
-        """Inject issues discovered by System Overview into diagnostics."""
-        items: List[Dict[str, Any]] = []
-        score = 100
-
-        try:
-            from core.api.routers.overview import system_overview
-            ov = await system_overview()
-
-            for layer_name in ("infra", "core", "platform", "app"):
-                layer = ov.get(layer_name, {})
-                for key, val in (layer or {}).items():
-                    if key == "status":
-                        continue
-                    if isinstance(val, dict):
-                        err = val.get("error", "")
-                        if err in ("unavailable", "unreachable"):
-                            items.append({"check": f"{layer_name}/{key}", "result": "❌", "detail": err})
-                            score -= 2
-                        elif not val and key not in ("by_type", "types"):
-                            # Empty dict → component unavailable (e.g. memory, syscalls, llm)
-                            items.append({"check": f"{layer_name}/{key}", "result": "⚠️", "detail": "uninitialized"})
-                            score -= 1
-                        elif isinstance(val.get("available"), (int, float)) and val.get("total", 1) == 0:
-                            items.append({"check": f"{layer_name}/{key}", "result": "⚠️", "detail": "0 registered"})
-                            score -= 1
-                        for sub_key, sub_val in val.items():
-                            if sub_key in ("error", "providers", "by_type", "types"):
-                                continue
-                            if isinstance(sub_val, dict):
-                                sub_err = sub_val.get("error", "")
-                                sub_status = sub_val.get("status", "")
-                                if sub_err in ("unavailable", "unreachable"):
-                                    items.append({"check": f"{layer_name}/{key}/{sub_key}", "result": "❌", "detail": sub_err})
-                                    score -= 1
-                                elif sub_status not in ("healthy", "up", ""):
-                                    items.append({"check": f"{layer_name}/{key}/{sub_key}", "result": "⚠️", "detail": f"status: {sub_status}"})
-                                    score -= 1
-        except Exception:
-            items.append({"check": "概览注入", "result": "⚠️", "detail": "System overview unavailable"})
-
-        return {
-            "status": "pass" if score >= 80 else "warn" if score >= 50 else "fail",
-            "score": max(0, score),
-            "items": items,
-            "_raw": {"items": items},
-        }
-
-    async def _check_traces():
-        """Check recent trace/span activity from syscall_events."""
-        try:
-            from core.harness.kernel.runtime import get_kernel_runtime
-            rt = get_kernel_runtime()
-            store = getattr(rt, "execution_store", None) if rt else None
-            if store:
-                import sqlite3
-                conn = sqlite3.connect(store._config.db_path)
+        
+            _publish("diagnostics_started", categories=[
+                "core_runtime","code_intel","capability","skill_lint","skill_realness",
+                "wiki_health","compliance","overview_issues","traces",
+                "graph_runs","context_metrics","e2e_smoke","symbol_health",
+                "doctor","lsp","security","arch_guard",
+                "frontend","mcp"
+            ])
+        
+            async def _safe(cat_name: str, coro):
                 try:
-                    trace_count = conn.execute(
-                        "SELECT COUNT(DISTINCT trace_id) FROM syscall_events WHERE created_at > unixepoch('now','-1 hour')"
-                    ).fetchone()[0]
-                finally:
-                    conn.close()
-                return {"status": "pass" if trace_count > 0 else "pass",
-                        "score": 80 if trace_count == 0 else min(100, 50 + trace_count * 10),
-                        "signals": {"recent_traces_1h": trace_count},
-                        "items": [{"check": "1小时内 Trace", "result": "✅" if trace_count > 0 else "—",
-                                    "detail": f"{trace_count} 条 trace 记录"}]}
-        except Exception:
-            return {"status": "unavailable", "score": 0}
-
-    async def _check_graph_runs():
-        """Check active graph execution runs."""
-        try:
-            from core.harness.kernel.runtime import get_kernel_runtime
-            rt = get_kernel_runtime()
-            store = getattr(rt, "execution_store", None) if rt else None
-            if store:
-                active = len(getattr(store, "_active", {}) or {})
-                return {"status": "pass", "score": 100,
-                        "signals": {"active_graph_runs": active},
-                        "items": [{"check": "活跃 Graph Run", "result": "✅",
-                                   "detail": f"{active} 个活跃执行"}]}
-        except Exception:
-            return {"status": "unavailable", "score": 0}
-
-    async def _check_context_metrics():
-        """Check context assembly metrics (cache hit rate, compaction rate)."""
-        try:
-            from core.harness.kernel.runtime import get_kernel_runtime
-            rt = get_kernel_runtime()
-            store = getattr(rt, "execution_store", None) if rt else None
-            if store:
-                import sqlite3
-                conn = sqlite3.connect(store._config.db_path)
+                    _publish("check_started", category=cat_name)
+                    categories[cat_name] = await coro
+                    cat = categories[cat_name]
+                    _publish("check_done", category=cat_name,
+                             status=cat.get("status", "pass") if isinstance(cat, dict) else "pass",
+                             score=cat.get("score", 0) if isinstance(cat, dict) else 0)
+                except Exception as e:
+                    categories[cat_name] = {"status": "error", "error": str(e)[:300]}
+                    _publish("check_failed", category=cat_name, error=str(e)[:200])
+        
+            async def _check_core_runtime():
                 try:
-                    total = conn.execute(
-                        "SELECT COUNT(*) FROM syscall_events WHERE kind='metric' AND name='context_assemble' AND created_at > unixepoch('now','-24 hours')"
-                    ).fetchone()[0]
-                finally:
-                    conn.close()
-                return {"status": "pass" if total >= 0 else "warn",
-                        "score": 80 if total == 0 else min(100, 50 + total * 5),
-                        "signals": {"context_events_24h": total},
-                        "items": [{"check": "24h 上下文事件", "result": "✅" if total > 0 else "—",
-                                    "detail": f"{total} 条事件"}]}
-        except Exception:
-            return {"status": "unavailable", "score": 0}
-
-    async def _check_e2e_smoke():
-        """Check last E2E smoke test result from global_settings."""
-        try:
-            from core.harness.kernel.runtime import get_kernel_runtime
-            rt = get_kernel_runtime()
-            store = getattr(rt, "execution_store", None) if rt else None
-            if store:
-                gs = await store.get_global_setting(key="last_smoke_result")
-                result = (gs.get("value") if isinstance(gs, dict) else {}) or {}
-                if result.get("ok"):
-                    return {"status": "pass", "score": 100,
-                            "signals": {"last_smoke": "completed"},
-                            "items": [{"check": "最近冒烟", "result": "✅",
-                                       "detail": "E2E 全链路通过"}]}
-                if result.get("timestamp"):
-                    return {"status": "warn", "score": 50,
-                            "signals": {"last_smoke": "failed"},
-                            "items": [{"check": "最近冒烟", "result": "⚠️",
-                                       "detail": "上次执行未通过"}]}
-        except Exception:
-            pass
-        return {"status": "unavailable", "signals": {"last_smoke": "no data"},
-                "items": [{"check": "冒烟测试", "result": "⚪",
-                           "detail": "尚未运行，点击 E2E Smoke 页面手动执行"}]}
-
-    async def _check_symbol_health():
-        """Scan code graph for symbol coverage and dead code candidates."""
-        try:
-            from core.harness.knowledge.code_graph import repo_root, default_roots
-            r = repo_root()
-            roots = [(r / d).resolve() for d in default_roots()]
-            nodes, edges, _ = _get_or_build_graph()
-
-            from core.harness.knowledge.symbol_health import is_excluded_from_dead_code, count_dead_code_candidates
-
-            total = len(nodes)
-            with_syms = sum(1 for n in nodes.values() if n.get('symbols'))
-            total_syms = sum(len(n.get('symbols', [])) for n in nodes.values())
-            dead, dead_files = count_dead_code_candidates(nodes)
-            coverage = with_syms / max(total, 1) * 100
-
-            score = 100
-            if dead > 100: score -= 15
-            elif dead > 50: score -= 8
-            elif dead > 20: score -= 3
-            if coverage < 60: score -= 10
-
-            # Collect dead code files for repairs (filtered by count_dead_code_candidates)
-            return {
-                "status": "pass" if dead < 20 else "warn" if dead < 50 else "fail",
-                "score": max(0, score),
-                "signals": {"total_symbols": total_syms, "files_with_symbols": with_syms,
-                            "dead_code_candidates": dead, "coverage_pct": round(coverage, 1)},
-                "items": [
-                    {"check": "符号总数", "result": "✅", "detail": f"{total_syms} 个 / {with_syms} 文件"},
-                    {"check": "疑似死代码", "result": "❌" if dead > 20 else "⚠️" if dead > 0 else "✅",
-                     "detail": f"{dead} 个候选"},
-                    {"check": "覆盖率", "result": "❌" if coverage < 60 else "⚠️" if coverage < 80 else "✅",
-                     "detail": f"{coverage:.1f}%"}
-                ],
-                "_raw": {"dead_code_files": dead_files},
-            }
-        except Exception:
-            return {"status": "unavailable", "score": 0}
-
-    async def _check_doctor():
-        """Run doctor report aggregation."""
-        try:
-            import sqlite3
-            from core.harness.kernel.runtime import get_kernel_runtime
-            rt = get_kernel_runtime()
-            store = getattr(rt, "execution_store", None) if rt else None
-            items: List[Dict[str, Any]] = []
-            if store:
-                conn = sqlite3.connect(store._config.db_path)
-                try:
-                    adapters = conn.execute("SELECT COUNT(*) FROM adapters WHERE status='active'").fetchone()[0]
-                    items.append({"check": "Active Adapters", "result": "✅" if adapters > 0 else "⚠️", "detail": f"{adapters} active"})
-                finally:
-                    conn.close()
-            score = 100 if items and all(i["result"] == "✅" for i in items) else 80
-            return {"status": "pass" if score >= 80 else "warn", "score": score,
-                    "signals": {"adapters_ok": len([i for i in items if i["result"] == "✅"])},
-                    "items": items}
-        except Exception:
-            return {"status": "unavailable", "score": 0}
-
-    async def _check_lsp():
-        """Run pyright type-checking on core Python files. Cached 120s."""
-        global _LSP_CACHE, _LSP_CACHE_TS
-        if _LSP_CACHE is not None and time.time() - _LSP_CACHE_TS < 120:
-            return _LSP_CACHE
-        try:
-            import subprocess, json
-            cwd = os.getcwd()
-            config = os.path.join(cwd, "aiPlat-core", "pyrightconfig.json")
-            cmd = ["npx", "pyright", "--outputjson"]
-            if os.path.exists(config):
-                cmd += ["--project", config]
-            else:
-                cmd += ["aiPlat-core/core/harness", "aiPlat-core/core/api", "aiPlat-core/core/apps"]
-            result = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=120, cwd=cwd
-            )
-            issues = []
-            if result.stdout.strip():
-                try:
-                    data = json.loads(result.stdout)
-                    diagnostics = data.get("generalDiagnostics", [])
-                    for d in diagnostics[:100]:
-                        rng = d.get("range", {}).get("start", {})
-                        issues.append({
-                            "file": d.get("file", ""),
-                            "line": rng.get("line", 0) + 1,
-                            "column": rng.get("character", 0),
-                            "message": d.get("message", "")[:200],
-                            "rule": d.get("rule", ""),
-                            "severity": "error" if d.get("severity") == "error" else "warn",
-                        })
-                except (json.JSONDecodeError, KeyError):
-                    issues.append({"file": "pyright", "line": 0, "message": "Could not parse output", "severity": "warn", "rule": ""})
-            elif "npx" in (result.stderr or "").lower() or "not found" in (result.stderr or ""):
-                _LSP_CACHE = {"status": "unavailable", "score": 100, "signals": {"note": "pyright not found (run: npm i -g pyright)"}}
-                _LSP_CACHE_TS = time.time()
-                return _LSP_CACHE
-            errors = [i for i in issues if i["severity"] == "error"]
-            warns = [i for i in issues if i["severity"] == "warn"]
-            score = 100 if len(issues) == 0 else max(0, 100 - len(errors) * 5 - len(warns) * 1)
-            result_dict = {
-                "status": "pass" if score >= 80 else "warn",
-                "score": score,
-                "signals": {"errors": len(errors), "warnings": len(warns)},
-                "items": [{"check": f"{i['file'].split('/')[-1] if '/' in i['file'] else i['file']}:{i['line']}",
-                           "result": "❌" if i['severity'] == 'error' else "⚠️",
-                           "detail": f"[{i['rule']}] {i['message'][:100]}"} for i in issues[:20]],
-                "_raw": {"issues": issues},
-            }
-            _LSP_CACHE = result_dict
-            _LSP_CACHE_TS = time.time()
-            return result_dict
-        except FileNotFoundError:
-            return {"status": "unavailable", "score": 100, "signals": {"note": "pyright not installed"}}
-        except Exception:
-            return {"status": "unavailable", "score": 0}
-
-    async def _check_security():
-        """Run bandit security scanner on core Python files. Cached 120s."""
-        global _SEC_CACHE, _SEC_CACHE_TS
-        if _SEC_CACHE is not None and time.time() - _SEC_CACHE_TS < 120:
-            return _SEC_CACHE
-        try:
-            import subprocess, json, os
-            core_dir = os.path.join(os.getcwd(), "aiPlat-core")
-            if not os.path.isdir(core_dir):
-                core_dir = os.getcwd()
-            result = subprocess.run(
-                [sys.executable, "-m", "bandit", "-r", "-f", "json", "-ll",
-                 "--exclude", "tests,__pycache__,.git", core_dir],
-                capture_output=True, text=True, timeout=60, cwd=os.getcwd()
-            )
-            issues = []
-            if result.stdout.strip():
-                try:
-                    data = json.loads(result.stdout)
-                    results_list = data.get("results", [])
-                    for issue in results_list[:30]:
-                        fname = issue.get("filename", "")
-                        issues.append({
-                            "file": str(fname).split("/")[-1] if fname else "?",
-                            "line": issue.get("line_number", 0),
-                            "message": str(issue.get("issue_text", ""))[:120],
-                            "severity": issue.get("issue_severity", "low"),
-                            "confidence": issue.get("issue_confidence", "low"),
-                        })
-                except (json.JSONDecodeError, AttributeError):
-                    issues.append({"file": "bandit", "line": 0, "message": "Parse error", "severity": "warn"})
-            elif "command not found" in result.stderr or "No module named bandit" in result.stderr:
-                _SEC_CACHE = {"status": "unavailable", "score": 100, "signals": {"note": "bandit not installed"}}
-                _SEC_CACHE_TS = time.time()
-                return _SEC_CACHE
-            score = 100 if len(issues) == 0 else max(0, 100 - len(issues) * 3)
-            result_dict = {
-                "status": "pass" if score >= 80 else "warn",
-                "score": score,
-                "signals": {"issues": len(issues)},
-                "items": [{"check": f"{i['file']}:{i['line']}", "result": "⚠️",
-                           "detail": f"[{i['severity']}] {i['message'][:100]}"} for i in issues[:15]],
-            }
-            _SEC_CACHE = result_dict
-            _SEC_CACHE_TS = time.time()
-            return result_dict
-        except FileNotFoundError:
-            return {"status": "unavailable", "score": 100, "signals": {"note": "bandit not installed"}}
-        except Exception:
-            return {"status": "unavailable", "score": 0}
-
-    async def _check_governance():
-        """
-        治理健康度检查 — delegates to shared overview._scan_governance().
-        """
-        try:
-            from core.api.routers.overview import _scan_governance
-            gov = await _scan_governance()
-        except Exception:
-            return {"status": "unavailable", "score": 0}
-
-        total_entities = gov["total"]
-        governed = gov["governed"]
-        unsigned_count = gov["unsigned"]
-        no_manifest_count = gov["no_manifest"]
-        has_trusted_keys = gov["has_trusted_keys"]
-        score = gov["score"]
-
-        status = "pass" if score >= 80 else ("warn" if score >= 50 else "fail")
-
-        items = []
-        if no_manifest_count:
-            items.append({"check": "无溯源码", "result": "❌", "detail": f"{no_manifest_count} 个实体缺少 manifest.json"})
-        if unsigned_count:
-            items.append({"check": "未签名", "result": "⚠️", "detail": f"{unsigned_count} 个有 manifest 但无签名"})
-        if not has_trusted_keys:
-            items.append({"check": "未配置可信公钥", "result": "⚠️", "detail": "trusted_skill_pubkeys 为空，无法验签"})
-        if not items:
-            items.append({"check": "治理", "result": "✅", "detail": f"所有 {total_entities} 个实体均已治理"})
-
-        return {
-            "status": status, "score": score,
-            "signals": {
-                "total": total_entities, "governed": governed,
-                "ungoverned": unsigned_count + no_manifest_count,
-                "no_manifest": no_manifest_count, "unsigned": unsigned_count,
-                "has_trusted_keys": has_trusted_keys,
-            },
-            "items": items,
-        }
-
-    async def _check_frontend():
-        """§43+§44: Frontend proxy routing + API contract consistency."""
-        from pathlib import Path as _P
-        try:
-            repo_root = _P(__file__).resolve().parents[4]
-            vite_config = repo_root / "aiPlat-management" / "frontend" / "vite.config.ts"
-            items = []
-
-            if vite_config.exists():
-                import re, subprocess as _sp
-                content = (await _asyncio.to_thread(lambda: vite_config.read_text(encoding="utf-8")))
-                proxy_entries = re.findall(
-                    r"'([^']+)'\s*:\s*\{[^}]*?target:\s*'([^']+)'[^}]*\}",
-                    content, re.DOTALL
-                )
-                # Check catch-all proxy
-                for pattern, target in proxy_entries:
-                    port_match = re.search(r':(\d+)$', target)
-                    if not port_match:
-                        continue
-                    port = port_match.group(1)
-                    if pattern == "/api/core" and port != "8002":
-                        items.append({"check": "Vite 代理错配", "result": "❌",
-                                      "detail": f"/api/core → port {port} (应为 8002)"})
-                    if pattern.startswith("/api/core/workspace/") and port == "8000":
-                        items.append({"check": "Workspace 代理错配", "result": "❌",
-                                      "detail": f"'{pattern}' → port 8000"})
-
-                # Cross-language contract: args vs arguments
-                ts_file = repo_root / "aiPlat-management/frontend/src/pages/Workspace/MCP/MCP.tsx"
-                py_file = repo_root / "aiPlat-core/core/api/routers/mcp_admin.py"
-                if ts_file.exists() and py_file.exists():
-                    ts_body = (await _asyncio.to_thread(lambda: ts_file.read_text(encoding="utf-8")))
-                    py_body = (await _asyncio.to_thread(lambda: py_file.read_text(encoding="utf-8")))
-                    if re.search(r'"args"\s*:\s*\{', ts_body) and not re.search(r'data\.get\("args"\)', py_body):
-                        items.append({"check": "API 契约不匹配", "result": "❌",
-                                      "detail": "前端传 'args', 后端读 'arguments' — mcp_admin.py"})
-
-            score = 100 if not items else max(0, 100 - len(items) * 20)
-            return {
-                "status": "pass" if not items else "warn" if len(items) <= 2 else "fail",
-                "score": score,
-                "items": items,
-                "_raw": {"items": items},
-            }
-        except Exception as e:
-            return {"status": "error", "score": 0, "error": str(e)[:200]}
-
-    async def _check_mcp():
-        """§45: MCP integration smoke test — probe MCP server connectivity."""
-        try:
-            import sys, json as _json
-            proc = await asyncio.create_subprocess_exec(
-                sys.executable, "-m", "core.apps.mcp.local_tools_server",
-                stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            try:
-                # initialize
-                init_req = _json.dumps({"jsonrpc": "2.0", "id": 0, "method": "initialize",
-                    "params": {"protocolVersion": "2024-11-05", "capabilities": {"tools": {}},
-                    "clientInfo": {"name": "diag-smoke", "version": "1.0.0"}}}) + "\n"
-                proc.stdin.write(init_req.encode("utf-8"))
-                await proc.stdin.drain()
-                line = await asyncio.wait_for(proc.stdout.readline(), timeout=8)
-                init_resp = _json.loads(line.decode("utf-8"))
-                if "error" in init_resp or "result" not in init_resp:
-                    raise Exception(f"MCP initialize failed: {init_resp}")
-
-                # list tools
-                list_req = _json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}) + "\n"
-                proc.stdin.write(list_req.encode("utf-8"))
-                await proc.stdin.drain()
-                line = await asyncio.wait_for(proc.stdout.readline(), timeout=8)
-                list_resp = _json.loads(line.decode("utf-8"))
-                tools = (list_resp.get("result") or {}).get("tools") or []
-                tool_names = [t.get("name", "") for t in tools]
-
-                # call test-1
-                call_req = _json.dumps({"jsonrpc": "2.0", "id": 2, "method": "tools/call",
-                    "params": {"name": "test-1", "arguments": {"num": 11}}}) + "\n"
-                proc.stdin.write(call_req.encode("utf-8"))
-                await proc.stdin.drain()
-                line = await asyncio.wait_for(proc.stdout.readline(), timeout=8)
-                call_resp = _json.loads(line.decode("utf-8"))
-
-                content = (call_resp.get("result") or {}).get("content", [])
-                text = content[0].get("text", "") if content else ""
-                result_val = _json.loads(text).get("result") if text else None
-                ok = result_val == 121
-
-                return {
-                    "status": "pass" if ok else "fail",
-                    "score": 100 if ok else 0,
-                    "signals": {
-                        "tools_count": len(tools),
-                        "tools": tool_names[:10],
-                        "test_result": result_val,
-                    },
-                    "items": [{"check": "MCP 连通性", "result": "✅" if ok else "❌",
-                               "detail": f"tools={len(tools)}, test-1(11)={'121' if ok else str(result_val)}"}],
-                    "_raw": {"tools": tool_names, "test_result": result_val},
-                }
-            finally:
-                try:
-                    proc.terminate()
-                    await asyncio.wait_for(proc.wait(), timeout=3)
-                except Exception:
-                    pass
-        except Exception as e:
-            return {"status": "error", "score": 0, "error": str(e)[:200],
-                    "items": [{"check": "MCP 连通性", "result": "❌",
-                               "detail": f"不可达: {str(e)[:200]}"}]}
-
-    # Build check list: all or single category
-    checks = [
-        ("core_runtime", _check_core_runtime()),
-        ("code_intel", _check_code_intel()),
-        ("cross_lang", _check_cross_lang_links()),
-        ("route_coverage", _check_route_coverage()),
-        ("domain_coupling", _check_domain_coupling()),
-        ("fragile_base", _check_fragile_base()),
-        ("capability", _check_capability()),
-        ("skill_lint", _check_skill_lint()),
-        ("skill_realness", _check_skill_realness()),
-        ("wiki_health", _check_wiki_health()),
-        ("compliance", _check_compliance()),
-        ("overview_issues", _check_overview_issues()),
-        ("traces", _check_traces()),
-        ("graph_runs", _check_graph_runs()),
-        ("context_metrics", _check_context_metrics()),
-        ("governance", _check_governance()),
-        ("frontend", _check_frontend()),
-    ]
-    # Slow checks — skipped in quick mode
-    if not quick:
-        checks.extend([
-            ("e2e_smoke", _check_e2e_smoke()),
-            ("symbol_health", _check_symbol_health()),
-            ("doctor", _check_doctor()),
-            ("lsp", _check_lsp()),
-            ("security", _check_security()),
-            ("arch_guard", _check_arch_guard()),
-            ("mcp", _check_mcp()),
-        ])
-    if category:
-        checks = [c for c in checks if c[0] == category]
-    await asyncio.gather(*(_safe(name, coro) for name, coro in checks))
-
-    # If arch_guard was not run standalone, extract from compliance as fallback
-    if "arch_guard" not in categories:
-        compliance_cat = categories.get("compliance", {})
-        if isinstance(compliance_cat, dict) and "items" in compliance_cat:
-            for item in compliance_cat.get("items", []):
-                if item.get("check") == "架构守卫" and "violations" in item.get("detail", ""):
-                    import re as _re
-                    v_match = _re.search(r'(\d+)', item.get("detail", "0"))
-                    violations = int(v_match.group(1)) if v_match else 0
-                    categories["arch_guard"] = {
-                        "status": "pass" if violations == 0 else "fail",
-                        "score": max(0, 100 - violations),
-                        "violations": violations,
-                        "items": [{"check": "架构守卫", "result": "❌" if violations > 0 else "✅",
-                                   "detail": f"{violations} 处违规"}],
+                    from core.harness.kernel.runtime import get_kernel_runtime
+                    rt = get_kernel_runtime()
+                    store = getattr(rt, "execution_store", None) if rt else None
+                    return {
+                        "status": "available" if store else "unavailable",
+                        "score": 100 if store else 0,
+                        "details": {"execution_store": "ok" if store else "missing"},
+                        "items": [{"check": "执行存储", "result": "✅" if store else "❌",
+                                   "detail": "ExecutionStore 已初始化" if store else "未找到 ExecutionStore"}],
                     }
-                    break
-
-    # Compute overall score
-    scores = [c.get("score", 0) for c in categories.values() if isinstance(c, dict)]
-    overall = round(sum(scores) / len(scores), 1) if scores else 0
-    if overall >= 90: grade = "A"
-    elif overall >= 75: grade = "B"
-    elif overall >= 60: grade = "C"
-    elif overall >= 40: grade = "D"
-    else: grade = "F"
-
-    # Collect top issues (exclude arch_guard from score-based list — use violations)
-    _labels = {
-        "core_runtime": "Core 运行时", "code_intel": "代码架构", "capability": "能力图谱",
-        "wiki_health": "Wiki健康", "arch_guard": "架构守卫", "compliance": "合规审计",
-        "traces": "链路追踪", "graph_runs": "图执行", "context_metrics": "上下文",
-        "e2e_smoke": "冒烟测试", "doctor": "Doctor", "overview_issues": "概览问题",
-        "symbol_health": "符号健康", "lsp": "LSP 诊断", "security": "安全扫描",
-        "cross_lang": "跨语言连接", "route_coverage": "路由覆盖",
-        "domain_coupling": "跨域耦合", "fragile_base": "脆弱基类",
-        "governance": "治理", "skill_lint": "Skill Lint",
-        "frontend": "前端守卫", "mcp": "MCP 连通性",
-    }
-    for cat_name, cat in categories.items():
-        if not isinstance(cat, dict):
-            continue
-        if cat_name == "arch_guard" and cat.get("violations", 0) > 0:
-            issues.append({"category": "arch_guard", "score": 0, "status": "fail",
-                           "label": f"架构守卫({cat['violations']}违规)"})
-        elif cat.get("status") not in ("pass", "unavailable") and cat.get("score", 100) < 100:
-            label = _labels.get(cat_name, cat_name)
-            issues.append({"category": cat_name, "score": cat.get("score", 0), "status": cat.get("status"),
-                           "label": f"{label}({cat.get('score', 0)})"})
-
-    duration_ms = int((time.time() - started_at) * 1000)
-
-    # ── Cache for repairs fast path ──────────────────────────────
-    # Extract _raw detail from each category for repair center
-    _details = {}
-    for cat_name, cat in categories.items():
-        if isinstance(cat, dict) and "_raw" in cat:
-            _details[cat_name] = cat.pop("_raw")
-            if cat_name == "skill_lint":
-                _details["skill_lint"]["auto_fix_total"] = _details["skill_lint"].get("auto_fix_total", 0)
-
-    # Also extract arch_guard _raw details for repair center
-    try:
-        ag_raw = await _check_arch_guard()
-        if isinstance(ag_raw, dict) and "_raw" in ag_raw:
-            _details["arch_guard"] = ag_raw["_raw"]
-    except Exception:
-        pass
-
-    result = {
-        "run_id": run_id,
-        "started_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(started_at)),
-        "duration_ms": duration_ms,
-        "overall_score": overall,
-        "overall_grade": grade,
-        "categories": categories,
-        "top_issues": sorted(issues, key=lambda x: x["score"])[:5],
-        "pass": sum(1 for c in categories.values() if isinstance(c, dict) and c.get("status") == "pass"),
-        "warn": sum(1 for c in categories.values() if isinstance(c, dict) and c.get("status") == "warn"),
-        "fail": sum(1 for c in categories.values() if isinstance(c, dict) and c.get("status") == "fail"),
-    }
-    if _details:
-        result["_details"] = _details
-
-    # Fire-and-forget: auto-fill shell agents detected during compliance check
-    try:
-        shell_agents = _details.get("compliance", {}).get("shell_agents", [])
-        if shell_agents:
-            names = [a.split(":", 1)[1] if ":" in a else a for a in shell_agents]
-            asyncio.create_task(_auto_fill_agents_async(names))
-    except Exception:
-        pass
-
-    # Append to diagnostic history for trend chart
-    _append_diag_history(result)
-
-    global _DIAG_CACHE, _DIAG_CACHE_TS
-    _DIAG_CACHE = result
-    _DIAG_CACHE_TS = time.time()
-    _save_diag_cache()
-    # Also invalidate overview cache so it stays consistent
-    try:
-        import core.api.routers.overview as _ov_mod
-        _ov_mod._OV_CACHE = None
-    except Exception:
-        pass
-    _publish("diagnostics_complete", overall_score=overall, overall_grade=grade)
-    return result
+                except Exception:
+                    return {"status": "unavailable", "score": 0}
+        
+            async def _check_skill_lint():
+                """Lint scan across all skills."""
+                try:
+                    from core.management.skill_linter import lint_skill, propose_skill_fixes
+                    from core.management.skill_manager import SkillManager
+                    total_errors = 0
+                    total_warnings = 0
+                    items = []
+                    for scope in ("engine", "workspace"):
+                        sm = SkillManager(seed=(scope == "engine"), scope=scope)
+                        skills = await sm.list_skills(limit=500, offset=0)
+                        for s in skills:
+                            rep = lint_skill(s)
+                            # Publish progress for visible skills (best-effort)
+                            _publish("check_progress", category="skill_lint",
+                                     skill=dict(id=getattr(s, "id", ""), name=getattr(s, "name", ""),
+                                     scope=scope, errors=len(rep.get("errors", [])),
+                                     warnings=len(rep.get("warnings", []))))
+                            errs = rep.get("errors", [])
+                            warns = rep.get("warnings", [])
+                            e = len(errs)
+                            w = len(warns)
+                            total_errors += e
+                            total_warnings += w
+                            if e > 0 or w > 0:
+                                fixes = propose_skill_fixes(skill=s, lint=rep)
+                                auto_fixes = [f for f in fixes.get("fixes", []) if f.get("auto_applicable")]
+                                items.append({
+                                    "skill_id": getattr(s, "id", ""),
+                                    "name": getattr(s, "name", ""),
+                                    "scope": scope,
+                                    "error_codes": [x.get("code") for x in errs],
+                                    "warning_codes": [x.get("code") for x in warns[:4]],
+                                    "warning_count": w,
+                                    "auto_fix_ids": [f.get("fix_id") for f in auto_fixes],
+                                    "auto_fix_count": len(auto_fixes),
+                                })
+                    score = 100 if total_errors == 0 else max(0, 100 - total_errors * 5)
+                    result = {
+                        "status": "pass" if total_errors == 0 else "warn",
+                        "score": score,
+                        "signals": {"errors": total_errors, "warnings": total_warnings},
+                        "items": [{"check": f"[{it['scope']}] {it['name']}",
+                                   "result": "❌" if it['error_codes'] else "⚠️",
+                                   "detail": f"errors: {', '.join(it['error_codes'][:3])} | warnings: {it['warning_count']}"}
+                                  for it in items[:20]],
+                        "_raw": {"items": items, "errors": total_errors, "warnings": total_warnings,
+                                 "auto_fix_total": sum(it["auto_fix_count"] for it in items)},
+                    }
+                    return result
+                except Exception as e:
+                    return {"status": "unavailable", "score": 0, "error": str(e)[:200]}
+        
+            async def _check_skill_realness():
+                """Check workspace skills for execution_type declarations and handler existence."""
+                try:
+                    from pathlib import Path as _P
+                    aiplat_home = os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
+                    skills_dir = _P(aiplat_home) / "skills"
+                    issues = []
+                    if not skills_dir.exists():
+                        return {"status": "pass", "score": 100, "items": [], "details": {"total": 0}}
+        
+                    for skill_dir in sorted(skills_dir.iterdir()):
+                        if not skill_dir.is_dir() or skill_dir.name.startswith("."):
+                            continue
+                        md = skill_dir / "SKILL.md"
+                        if not md.exists():
+                            continue
+                        try:
+                            raw = (await _asyncio.to_thread(lambda: md.read_text(encoding="utf-8", errors="ignore")))
+                            if not raw.startswith("---"):
+                                continue
+                            parts = raw.split("---", 2)
+                            if len(parts) < 3:
+                                continue
+                            import yaml as _yaml
+                            fm = _yaml.safe_load(parts[1]) or {}
+                            name = fm.get("name", skill_dir.name)
+                            exec_type = fm.get("execution_type", "")
+                            handler_exists = (skill_dir / "handler.py").exists()
+        
+                            if not exec_type:
+                                issues.append(f"'{name}': 缺少 execution_type 声明（默认 prompt=LLM模拟）")
+                            elif exec_type == "handler" and not handler_exists:
+                                issues.append(f"'{name}': execution_type=handler 但 handler.py 不存在")
+                            elif exec_type == "prompt" and handler_exists:
+                                issues.append(f"'{name}': 有 handler.py 但 execution_type 声明为 prompt（误配？）")
+                        except Exception:
+                            pass
+        
+                    total = len(list(skills_dir.iterdir())) if skills_dir.exists() else 0
+                    return {
+                        "status": "warning" if issues else "pass",
+                        "score": max(0, 100 - len(issues) * 5),
+                        "details": {"total": total, "issues_count": len(issues)},
+                        "items": [{"check": i, "result": "⚠️", "detail": i} for i in issues[:20]],
+                    }
+                except Exception:
+                    return {"status": "unavailable", "score": 0}
+        
+            async def _check_code_intel():
+                try:
+                    from core.harness.knowledge.code_graph import count_cycles, effective_cycles, health_score
+                    nodes, edges, issues_list = _get_or_build_graph()
+                    # Filter to structural edges only (exclude cross-file call edges)
+                    arch_edges = [e for e in edges if e.get("kind", "import") != "calls"]
+                    cycles = effective_cycles(nodes)
+                    h = health_score(nodes=nodes, edges=arch_edges, issues=issues_list, cycles_back_edges=cycles)
+                    items: List[Dict[str, Any]] = []
+                    if cycles > 0:
+                        items.append({"check": "循环依赖", "result": "❌" if cycles > 8 else "⚠️", "detail": f"{cycles} back-edges detected", "link": "/diagnostics/code-intel"})
+                    if h["signals"]["avg_degree"] > 3:
+                        items.append({"check": "高耦合", "result": "⚠️", "detail": f"avg_degree={h['signals']['avg_degree']}", "link": "/diagnostics/code-intel"})
+                    # Count issue types
+                    security_issues = [i for i in issues_list if i.get("type") in ("secret", "security")]
+                    undefined_calls = [i for i in issues_list if i.get("type") == "undefined_call"]
+                    if security_issues:
+                        items.append({"check": "安全风险", "result": "⚠️", "detail": f"{len(security_issues)} issues (密钥/硬编码/eval)", "link": "/diagnostics/code-intel"})
+                    if undefined_calls:
+                        items.append({"check": "未定义函数调用", "result": "❌", "detail": f"{len(undefined_calls)} 处调用未定义的函数", "link": "/diagnostics/code-intel"})
+                    elif len(issues_list) > 0:
+                        items.append({"check": "代码风险", "result": "⚠️", "detail": f"{len(issues_list)} issues", "link": "/diagnostics/code-intel"})
+                    return {
+                        "status": "pass" if h["score"] >= 70 else "warn",
+                        "score": h["score"],
+                        "grade": h["grade"],
+                        "signals": {
+                            "files": h["signals"]["files"],
+                            "edges": len(arch_edges),
+                            "cycles": cycles,
+                            "avg_degree": h["signals"]["avg_degree"],
+                            "issues": len(issues_list),
+                        },
+                        "items": items,
+                    }
+                except Exception as e:
+                    return {"status": "error", "score": 0, "error": str(e)[:200]}
+        
+            async def _check_cross_lang_links():
+                """B1: Detect frontend API calls with no matching backend route."""
+                import re
+                try:
+                    from core.harness.knowledge.code_graph import repo_root, default_roots, _extract_api_calls, _extract_backend_routes
+                    repo = repo_root()
+                    abs_roots = [(repo / r).resolve() for r in default_roots()]
+                    nodes, edges, _ = _get_or_build_graph()
+        
+                    # Build backend route set
+                    backend_routes = set()
+                    for f in abs_roots:
+                        if not f.exists() or not f.is_dir():
+                            continue
+                        for p in f.rglob("*.py"):
+                            if (p.parent.name == "tests" or "__pycache__" in str(p)):
+                                continue
+                            for route in _extract_backend_routes(p):
+                                path = route[0] if isinstance(route, (list, tuple)) else str(route)
+                                if path and path.startswith('/'):
+                                    backend_routes.add(path)
+        
+                    # Check frontend API calls (exclude diagnostic/internal endpoints)
+                    _CROSS_INTERNAL = ('/diagnostics/', '/api/diagnostics/', '/kb-eval/', '/credentials/', '/variables/',
+                                      '/infra/', '/platform/', '/api/infra/', '/api/platform/', '/dashboard/')
+        
+                    # Normalize path parameter patterns for comparison: {var}, {var:type}, ${var} → {}
+                    def _norm_path(p: str) -> str:
+                        return re.sub(r'\{\w+[\w:]*\}|\$\{\w+\}', '{}', p)
+        
+                    # Normalize backend routes for matching
+                    backend_normalized = {_norm_path(p).replace('/api/', '/').replace('/core/', '/').rstrip('/') for p in backend_routes}
+        
+                    broken = []
+                    for f in abs_roots:
+                        if not f.exists() or not f.is_dir():
+                            continue
+                        for p in f.rglob("*.ts") if f.name == "aiPlat-management" else []:
+                            for ep in _extract_api_calls(p):
+                                ep_norm = _norm_path(ep.replace('/api/', '/').replace('/core/', '/').rstrip('/'))
+                                if ep_norm and not any(ep_norm.startswith(prefix) for prefix in _CROSS_INTERNAL):
+                                    if ep_norm not in backend_normalized:
+                                        broken.append({"file": str(p.relative_to(repo))[:80], "endpoint": ep})
+        
+                    items = []
+                    if broken:
+                        for b in broken[:5]:
+                            items.append({"check": "断链API调用", "result": "⚠️", "detail": f"{b['file']}: {b['endpoint']}"})
+                    return {
+                        "status": "warn" if broken else "pass",
+                        "score": max(0, 100 - len(broken[:5]) * 5),
+                        "items": items,
+                        "signals": {"broken_calls": len(broken)},
+                    }
+                except Exception as e:
+                    return {"status": "error", "score": 0, "error": str(e)[:200]}
+        
+            async def _check_route_coverage():
+                """B2: Verify management proxy modules have corresponding frontend API usage."""
+                try:
+                    from core.harness.knowledge.code_graph import repo_root
+                    from pathlib import Path as _P
+        
+                    repo = repo_root()
+                    mgmt_api = _P(repo) / "aiPlat-management" / "management" / "api"
+                    mgmt_frontend_svc = _P(repo) / "aiPlat-management" / "frontend" / "src" / "services"
+        
+                    # Management proxy modules (each proxies a backend layer)
+                    mgmt_modules = set()
+                    if mgmt_api.is_dir():
+                        for p in mgmt_api.glob("*.py"):
+                            if not p.name.startswith("_") and p.name != "proxy.py":
+                                mgmt_modules.add(p.stem)
+        
+                    # For each frontend service file, check which mgmt modules it references
+                    # by looking for the module name in its code (e.g., coreApi.ts → core)
+                    frontend_covered = set()
+                    if mgmt_frontend_svc.is_dir():
+                        for p in mgmt_frontend_svc.rglob("*.ts"):
+                            try:
+                                text = (await _asyncio.to_thread(lambda: p.read_text()))
+                                for m in mgmt_modules:
+                                    if m in text.lower() or m in p.name.lower():
+                                        frontend_covered.add(m)
+                            except Exception:
+                                pass
+        
+                    dead_modules = sorted(mgmt_modules - frontend_covered)
+        
+                    items = []
+                    if dead_modules:
+                        for m in dead_modules:
+                            items.append({"check": "未使用代理", "result": "⚠️",
+                                          "detail": f"management/api/{m}.py 无对应前端调用"})
+                    else:
+                        items.append({"check": "路由覆盖", "result": "✅",
+                                      "detail": f"{len(mgmt_modules)} 代理模块全部有前端调用"})
+        
+                    return {
+                        "status": "warn" if len(dead_modules) > 2 else "pass",
+                        "score": max(0, 100 - len(dead_modules) * 5),
+                        "items": items,
+                        "signals": {"mgmt_modules": len(mgmt_modules), "covered": len(frontend_covered),
+                                    "dead_modules": len(dead_modules)},
+                    }
+                except Exception as e:
+                    return {"status": "pass", "score": 95, "signals": {"note": f"scan skipped: {str(e)[:80]}"}}
+        
+            async def _check_domain_coupling():
+                """B3: Check for questionable cross-domain dependencies."""
+                try:
+                    from core.api.routers.code_intel import _layer_bucket as code_layer
+                    from core.harness.knowledge.code_graph import repo_root, default_roots
+                    repo = repo_root()
+                    abs_roots = [(repo / r).resolve() for r in default_roots()]
+                    nodes, edges, _ = _get_or_build_graph()
+        
+                    # Check frontend directly importing core harness (bypassing platform)
+                    suspicious = []
+                    for edge in edges:
+                        from_f = edge.get("from", "")
+                        to_f = edge.get("to", "")
+                        from_layer = code_layer(from_f)
+                        to_layer = code_layer(to_f)
+                        # app → core (should go through platform)
+                        if from_layer == "app" and to_layer == "core" and "facade" not in to_f:
+                            suspicious.append(f"{from_f[:50]} → {to_f[:50]}")
+        
+                    items = []
+                    for s in suspicious[:5]:
+                        items.append({"check": "跨层依赖", "result": "⚠️", "detail": s})
+                    return {
+                        "status": "warn" if suspicious else "pass",
+                        "score": max(0, 100 - len(suspicious[:5]) * 3),
+                        "items": items,
+                        "signals": {"suspicious_edges": len(suspicious)},
+                    }
+                except Exception as e:
+                    return {"status": "error", "score": 0, "error": str(e)[:200]}
+        
+            async def _check_fragile_base():
+                """B4: Detect fragile base classes (too many subclasses or deep inheritance)."""
+                try:
+                    from collections import Counter
+                    from core.harness.knowledge.code_graph import repo_root, default_roots
+                    repo = repo_root()
+                    abs_roots = [(repo / r).resolve() for r in default_roots()]
+                    nodes, edges, _ = _get_or_build_graph()
+        
+                    # Framework base classes that intentionally have many subclasses
+                    _FRAMEWORK_BASES = {
+                        "BaseAgent", "BaseTool", "Base", "BaseModel", "BaseModelAdapter",
+                        "ManagementBase", "BaseLLMAdapter", "BasePydanticModel",
+                        "DiagnosticCheck", "Enum", "str", "ABC",
+                        "LintRule", "ArchRule", "InfraError",
+                        "WikiRule", "CapRule", "BaseSkill", "BaseRule",
+                    }
+        
+                    # Count subclasses per parent
+                    parent_count = Counter()
+                    for nid, nd in nodes.items():
+                        for sym in nd.get("symbols", []):
+                            if isinstance(sym, (list, tuple)) and len(sym) >= 4 and sym[1] == "class":
+                                parent = sym[3]
+                                if parent and parent not in _FRAMEWORK_BASES:
+                                    parent_count[parent] += 1
+        
+                    # Report parents with too many subclasses (>10)
+                    fragile = [(p, c) for p, c in parent_count.items() if c > 10]
+                    fragile.sort(key=lambda x: -x[1])
+        
+                    items = []
+                    for parent, count in fragile[:5]:
+                        items.append({"check": "脆弱基类", "result": "⚠️",
+                                      "detail": f"{parent} has {count} subclasses"})
+                    return {
+                        "status": "warn" if fragile else "pass",
+                        "score": max(0, 100 - len(fragile[:5]) * 5),
+                        "items": items,
+                        "signals": {"fragile_bases": len(fragile)},
+                    }
+                except Exception as e:
+                    return {"status": "error", "score": 0, "error": str(e)[:200]}
+        
+            async def _check_capability():
+                try:
+                    from core.harness.knowledge.capability_graph import build_capability_graph
+                    from core.harness.knowledge.capability_health import capability_health_report
+                    cg = build_capability_graph()
+                    ch = capability_health_report(cg)
+                    items: List[Dict[str, Any]] = []
+                    unused = ch["issues"].get("unused_skills", [])
+                    orphans = ch["issues"].get("orphan_agents", [])
+                    unresolved = ch["issues"].get("unresolved_refs", [])
+                    dupes = ch["issues"].get("entry_point_duplicates", [])
+                    if unused:
+                        items.append({"check": "未使用 Skill", "result": "⚠️", "detail": f"{len(unused)} unused: {', '.join(unused[:5])}", "link": "/diagnostics/capability-graph"})
+                    if orphans:
+                        items.append({"check": "孤立 Agent", "result": "⚠️", "detail": f"{len(orphans)} orphan: {', '.join(orphans[:5])}", "link": "/diagnostics/capability-graph"})
+                    if unresolved:
+                        # Group by target tool name for clarity
+                        from collections import Counter
+                        tool_counts = Counter(i.get("target", "?") for i in unresolved if isinstance(i, dict))
+                        top_targets = ', '.join(f'{t}({c})' for t, c in tool_counts.most_common(5))
+                        items.append({"check": "未解析引用", "result": "❌",
+                                      "detail": f"{len(unresolved)} refs → {top_targets}", "link": "/diagnostics/capability-graph"})
+                    if dupes:
+                        detail_parts = [f"{d.get('capability','?')}: {len(d.get('files',[]))}" for d in dupes[:3] if isinstance(d, dict)]
+                        items.append({"check": "入口重复", "result": "⚠️",
+                                      "detail": f"{len(dupes)} duplicates: {'; '.join(detail_parts)}", "link": "/diagnostics/capability-graph"})
+                    return {
+                        "status": "pass" if ch["score"] >= 70 else "warn",
+                        "score": ch["score"],
+                        "grade": ch["grade"],
+                        "signals": {
+                            "agents": ch["signals"]["agents"],
+                            "skills": ch["signals"]["skills"],
+                            "used_skills": ch["signals"]["used_skills"],
+                            "tools": ch["signals"]["tools"],
+                            "mcp_servers": ch["signals"]["mcp_servers"],
+                        },
+                        "items": items,
+                        "_raw": {"issues": ch.get("issues", {}), "score": ch["score"], "grade": ch["grade"]},
+                    }
+                except Exception as e:
+                    return {"status": "error", "score": 0, "error": str(e)[:200]}
+        
+            async def _check_wiki_health():
+                try:
+                    from core.harness.knowledge.wiki_engine import wiki_health_report, build_graph
+                    wh = wiki_health_report()
+                    items: List[Dict[str, Any]] = []
+                    if wh["stats"]["dead_links"] > 0:
+                        items.append({"check": "死链", "result": "❌", "detail": f"{wh['stats']['dead_links']} dead links", "link": "/platform/kb"})
+                    if wh["stats"]["orphan_pages"] > 0:
+                        items.append({"check": "孤立页面", "result": "⚠️", "detail": f"{wh['stats']['orphan_pages']} orphan pages", "link": "/platform/kb"})
+                    if wh["stats"]["contradictions"] > 0:
+                        items.append({"check": "矛盾标记", "result": "⚠️", "detail": f"{wh['stats']['contradictions']} contradictions", "link": "/platform/kb"})
+                    result = {
+                        "status": "pass" if wh["health_score"] >= 70 else "warn",
+                        "score": wh["health_score"],
+                        "signals": {
+                            "pages": wh["total_pages"],
+                            "dead_links": wh["stats"]["dead_links"],
+                            "orphans": wh["stats"]["orphan_pages"],
+                            "contradictions": wh["stats"]["contradictions"],
+                        },
+                        "items": items,
+                        "_raw": {"issues": wh.get("issues", []), "score": wh.get("health_score", 100)},
+                    }
+                    return result
+                except Exception as e:
+                    return {"status": "error", "score": 0, "error": str(e)[:200]}
+        
+            async def _check_arch_guard():
+                global _GUARD_CACHE, _GUARD_CACHE_TS
+                if _GUARD_CACHE is not None and time.time() - _GUARD_CACHE_TS < _SUB_CACHE_TTL:
+                    return _GUARD_CACHE
+        
+                from pathlib import Path as _P
+                try:
+                    from core.management.arch_guard_base import get_arch_registry
+                    repo_root = _P(__file__).resolve().parents[4]
+                    report = get_arch_registry().run_all(repo_root)
+                    violations = report.violations
+                    score = max(0, 100 - violations)
+                    # Extract raw sections for repair details
+                    sections_raw = []
+                    for s in report.sections:
+                        if s.status != "fail" or not s.items:
+                            continue
+                        for item in s.items[:3]:  # top 3 per section
+                            sections_raw.append({
+                                "section": s.number,
+                                "section_name": s.name,
+                                "message": item.message,
+                                "count": item.count,
+                                "sample_file": item.files[0] if item.files else "",
+                            })
+                    result = {
+                        "status": "pass" if violations == 0 else "warn" if violations <= 5 else "fail",
+                        "score": score,
+                        "violations": violations,
+                        "items": [
+                            {"check": f"{s['section']} {s['section_name']}", "result": "❌",
+                             "detail": f"{s['message']}（{s['count']}处违规，例: {s.get('sample_file', '')}）"}
+                            for s in sections_raw
+                            for _ in range(max(s['count'], 1))
+                        ] if sections_raw else [
+                            {"check": "架构守卫", "result": "❌" if violations > 0 else "✅",
+                             "detail": f"共检测到 {violations} 处违规"}
+                        ],
+                        "signals": {"violations": violations},
+                        "_raw": {"sections": sections_raw, "violations": violations},
+                    }
+                    _GUARD_CACHE = result
+                    _GUARD_CACHE_TS = time.time()
+                    return result
+                except Exception as e:
+                    _log.warning(f"Arch guard check failed: {e}")
+                    return {"status": "error", "score": 0, "items": [{"check": "架构守卫", "result": "❌", "detail": f"运行失败: {str(e)[:100]}"}]}
+        
+            async def _check_compliance():
+                import asyncio
+                from pathlib import Path as _P
+                from core.management.compliance_checks import get_checks
+        
+                items: List[Dict[str, Any]] = []
+                score = 100
+        
+                # Load runtime
+                try:
+                    from core.harness.kernel.runtime import get_kernel_runtime
+                    rt = get_kernel_runtime()
+                except Exception:
+                    rt = None
+        
+                repo_root = str(_P(__file__).resolve().parents[4])
+                checks = get_checks()
+        
+                # Run all compliance checks in parallel
+                async def _run_one(check_def):
+                    try:
+                        result = await check_def["func"](rt, repo_root)
+                        return result, check_def["penalty"]
+                    except Exception:
+                        return {"check": check_def["name"], "result": "❌", "detail": "Check failed"}, check_def["penalty"]
+        
+                tasks = [_run_one(c) for c in checks]
+                results = await asyncio.gather(*tasks)
+        
+                for result, penalty in results:
+                    items.append(result)
+                    if result.get("result") == "❌":
+                        score -= penalty
+        
+                # Arch guard gets heavier penalty
+                for item in items:
+                    if item["check"] == "架构守卫" and item["result"] == "❌":
+                        try:
+                            v_str = item.get("detail", "0 violations")
+                            v = int(re.findall(r'\d+', v_str)[0]) if re.findall(r'\d+', v_str) else 0
+                            score -= min(v * 2 - 10, 20)  # extra penalty beyond base 10
+                        except Exception:
+                            pass
+        
+                # Extract shell agents by scanning AGENT.md files directly (accurate)
+                shell_agents = []
+                try:
+                    from core.management.agent_config_validator import validate_agent_file
+                    from pathlib import Path as _P
+        
+                    for scan_dir in (
+                        _P(__file__).resolve().parents[2] / "engine" / "agents",
+                        _P.home() / ".aiplat" / "agents",
+                    ):
+                        if not scan_dir.exists():
+                            continue
+                        for md_path in sorted(scan_dir.rglob("AGENT.md")):
+                            # Skip builtin subagents (loaded via SubagentConfig, not workspace)
+                            if "/builtin/" in str(md_path):
+                                continue
+                            for issue in validate_agent_file(md_path):
+                                if "shell" in issue.message.lower():
+                                    scope = "workspace" if ".aiplat" in str(md_path) else "engine"
+                                    shell_agents.append(f"{scope}:{md_path.parent.name}")
+                                    break
+                except Exception:
+                    pass
+        
+                return {
+                    "status": "pass" if score >= 80 else "warn",
+                    "score": max(0, score),
+                    "items": items,
+                    "_raw": {"shell_agents": shell_agents},
+                }
+        
+            async def _check_overview_issues():
+                """Inject issues discovered by System Overview into diagnostics."""
+                items: List[Dict[str, Any]] = []
+                score = 100
+        
+                try:
+                    from core.api.routers.overview import system_overview
+                    ov = await system_overview()
+        
+                    for layer_name in ("infra", "core", "platform", "app"):
+                        layer = ov.get(layer_name, {})
+                        for key, val in (layer or {}).items():
+                            if key == "status":
+                                continue
+                            if isinstance(val, dict):
+                                err = val.get("error", "")
+                                if err in ("unavailable", "unreachable"):
+                                    items.append({"check": f"{layer_name}/{key}", "result": "❌", "detail": err})
+                                    score -= 2
+                                elif not val and key not in ("by_type", "types"):
+                                    # Empty dict → component unavailable (e.g. memory, syscalls, llm)
+                                    items.append({"check": f"{layer_name}/{key}", "result": "⚠️", "detail": "uninitialized"})
+                                    score -= 1
+                                elif isinstance(val.get("available"), (int, float)) and val.get("total", 1) == 0:
+                                    items.append({"check": f"{layer_name}/{key}", "result": "⚠️", "detail": "0 registered"})
+                                    score -= 1
+                                for sub_key, sub_val in val.items():
+                                    if sub_key in ("error", "providers", "by_type", "types"):
+                                        continue
+                                    if isinstance(sub_val, dict):
+                                        sub_err = sub_val.get("error", "")
+                                        sub_status = sub_val.get("status", "")
+                                        if sub_err in ("unavailable", "unreachable"):
+                                            items.append({"check": f"{layer_name}/{key}/{sub_key}", "result": "❌", "detail": sub_err})
+                                            score -= 1
+                                        elif sub_status not in ("healthy", "up", ""):
+                                            items.append({"check": f"{layer_name}/{key}/{sub_key}", "result": "⚠️", "detail": f"status: {sub_status}"})
+                                            score -= 1
+                except Exception:
+                    items.append({"check": "概览注入", "result": "⚠️", "detail": "System overview unavailable"})
+        
+                return {
+                    "status": "pass" if score >= 80 else "warn" if score >= 50 else "fail",
+                    "score": max(0, score),
+                    "items": items,
+                    "_raw": {"items": items},
+                }
+        
+            async def _check_traces():
+                """Check recent trace/span activity from syscall_events."""
+                try:
+                    from core.harness.kernel.runtime import get_kernel_runtime
+                    rt = get_kernel_runtime()
+                    store = getattr(rt, "execution_store", None) if rt else None
+                    if store:
+                        import sqlite3
+                        conn = sqlite3.connect(store._config.db_path)
+                        try:
+                            trace_count = conn.execute(
+                                "SELECT COUNT(DISTINCT trace_id) FROM syscall_events WHERE created_at > unixepoch('now','-1 hour')"
+                            ).fetchone()[0]
+                        finally:
+                            conn.close()
+                        return {"status": "pass" if trace_count > 0 else "pass",
+                                "score": 80 if trace_count == 0 else min(100, 50 + trace_count * 10),
+                                "signals": {"recent_traces_1h": trace_count},
+                                "items": [{"check": "1小时内 Trace", "result": "✅" if trace_count > 0 else "—",
+                                            "detail": f"{trace_count} 条 trace 记录"}]}
+                except Exception:
+                    return {"status": "unavailable", "score": 0}
+        
+            async def _check_graph_runs():
+                """Check active graph execution runs."""
+                try:
+                    from core.harness.kernel.runtime import get_kernel_runtime
+                    rt = get_kernel_runtime()
+                    store = getattr(rt, "execution_store", None) if rt else None
+                    if store:
+                        active = len(getattr(store, "_active", {}) or {})
+                        return {"status": "pass", "score": 100,
+                                "signals": {"active_graph_runs": active},
+                                "items": [{"check": "活跃 Graph Run", "result": "✅",
+                                           "detail": f"{active} 个活跃执行"}]}
+                except Exception:
+                    return {"status": "unavailable", "score": 0}
+        
+            async def _check_context_metrics():
+                """Check context assembly metrics (cache hit rate, compaction rate)."""
+                try:
+                    from core.harness.kernel.runtime import get_kernel_runtime
+                    rt = get_kernel_runtime()
+                    store = getattr(rt, "execution_store", None) if rt else None
+                    if store:
+                        import sqlite3
+                        conn = sqlite3.connect(store._config.db_path)
+                        try:
+                            total = conn.execute(
+                                "SELECT COUNT(*) FROM syscall_events WHERE kind='metric' AND name='context_assemble' AND created_at > unixepoch('now','-24 hours')"
+                            ).fetchone()[0]
+                        finally:
+                            conn.close()
+                        return {"status": "pass" if total >= 0 else "warn",
+                                "score": 80 if total == 0 else min(100, 50 + total * 5),
+                                "signals": {"context_events_24h": total},
+                                "items": [{"check": "24h 上下文事件", "result": "✅" if total > 0 else "—",
+                                            "detail": f"{total} 条事件"}]}
+                except Exception:
+                    return {"status": "unavailable", "score": 0}
+        
+            async def _check_e2e_smoke():
+                """Check last E2E smoke test result from global_settings."""
+                try:
+                    from core.harness.kernel.runtime import get_kernel_runtime
+                    rt = get_kernel_runtime()
+                    store = getattr(rt, "execution_store", None) if rt else None
+                    if store:
+                        gs = await store.get_global_setting(key="last_smoke_result")
+                        result = (gs.get("value") if isinstance(gs, dict) else {}) or {}
+                        if result.get("ok"):
+                            return {"status": "pass", "score": 100,
+                                    "signals": {"last_smoke": "completed"},
+                                    "items": [{"check": "最近冒烟", "result": "✅",
+                                               "detail": "E2E 全链路通过"}]}
+                        if result.get("timestamp"):
+                            return {"status": "warn", "score": 50,
+                                    "signals": {"last_smoke": "failed"},
+                                    "items": [{"check": "最近冒烟", "result": "⚠️",
+                                               "detail": "上次执行未通过"}]}
+                except Exception:
+                    pass
+                return {"status": "unavailable", "signals": {"last_smoke": "no data"},
+                        "items": [{"check": "冒烟测试", "result": "⚪",
+                                   "detail": "尚未运行，点击 E2E Smoke 页面手动执行"}]}
+        
+            async def _check_symbol_health():
+                """Scan code graph for symbol coverage and dead code candidates."""
+                try:
+                    from core.harness.knowledge.code_graph import repo_root, default_roots
+                    r = repo_root()
+                    roots = [(r / d).resolve() for d in default_roots()]
+                    nodes, edges, _ = _get_or_build_graph()
+        
+                    from core.harness.knowledge.symbol_health import is_excluded_from_dead_code, count_dead_code_candidates
+        
+                    total = len(nodes)
+                    with_syms = sum(1 for n in nodes.values() if n.get('symbols'))
+                    total_syms = sum(len(n.get('symbols', [])) for n in nodes.values())
+                    dead, dead_files = count_dead_code_candidates(nodes)
+                    coverage = with_syms / max(total, 1) * 100
+        
+                    score = 100
+                    if dead > 100: score -= 15
+                    elif dead > 50: score -= 8
+                    elif dead > 20: score -= 3
+                    if coverage < 60: score -= 10
+        
+                    # Collect dead code files for repairs (filtered by count_dead_code_candidates)
+                    return {
+                        "status": "pass" if dead < 20 else "warn" if dead < 50 else "fail",
+                        "score": max(0, score),
+                        "signals": {"total_symbols": total_syms, "files_with_symbols": with_syms,
+                                    "dead_code_candidates": dead, "coverage_pct": round(coverage, 1)},
+                        "items": [
+                            {"check": "符号总数", "result": "✅", "detail": f"{total_syms} 个 / {with_syms} 文件"},
+                            {"check": "疑似死代码", "result": "❌" if dead > 20 else "⚠️" if dead > 0 else "✅",
+                             "detail": f"{dead} 个候选"},
+                            {"check": "覆盖率", "result": "❌" if coverage < 60 else "⚠️" if coverage < 80 else "✅",
+                             "detail": f"{coverage:.1f}%"}
+                        ],
+                        "_raw": {"dead_code_files": dead_files},
+                    }
+                except Exception:
+                    return {"status": "unavailable", "score": 0}
+        
+            async def _check_doctor():
+                """Run doctor report aggregation."""
+                try:
+                    import sqlite3
+                    from core.harness.kernel.runtime import get_kernel_runtime
+                    rt = get_kernel_runtime()
+                    store = getattr(rt, "execution_store", None) if rt else None
+                    items: List[Dict[str, Any]] = []
+                    if store:
+                        conn = sqlite3.connect(store._config.db_path)
+                        try:
+                            adapters = conn.execute("SELECT COUNT(*) FROM adapters WHERE status='active'").fetchone()[0]
+                            items.append({"check": "Active Adapters", "result": "✅" if adapters > 0 else "⚠️", "detail": f"{adapters} active"})
+                        finally:
+                            conn.close()
+                    score = 100 if items and all(i["result"] == "✅" for i in items) else 80
+                    return {"status": "pass" if score >= 80 else "warn", "score": score,
+                            "signals": {"adapters_ok": len([i for i in items if i["result"] == "✅"])},
+                            "items": items}
+                except Exception:
+                    return {"status": "unavailable", "score": 0}
+        
+            async def _check_lsp():
+                """Run pyright type-checking on core Python files. Cached 120s."""
+                global _LSP_CACHE, _LSP_CACHE_TS
+                if _LSP_CACHE is not None and time.time() - _LSP_CACHE_TS < 120:
+                    return _LSP_CACHE
+                try:
+                    import subprocess, json
+                    cwd = os.getcwd()
+                    config = os.path.join(cwd, "aiPlat-core", "pyrightconfig.json")
+                    cmd = ["npx", "pyright", "--outputjson"]
+                    if os.path.exists(config):
+                        cmd += ["--project", config]
+                    else:
+                        cmd += ["aiPlat-core/core/harness", "aiPlat-core/core/api", "aiPlat-core/core/apps"]
+                    result = subprocess.run(
+                        cmd, capture_output=True, text=True, timeout=120, cwd=cwd
+                    )
+                    issues = []
+                    if result.stdout.strip():
+                        try:
+                            data = json.loads(result.stdout)
+                            diagnostics = data.get("generalDiagnostics", [])
+                            for d in diagnostics[:100]:
+                                rng = d.get("range", {}).get("start", {})
+                                issues.append({
+                                    "file": d.get("file", ""),
+                                    "line": rng.get("line", 0) + 1,
+                                    "column": rng.get("character", 0),
+                                    "message": d.get("message", "")[:200],
+                                    "rule": d.get("rule", ""),
+                                    "severity": "error" if d.get("severity") == "error" else "warn",
+                                })
+                        except (json.JSONDecodeError, KeyError):
+                            issues.append({"file": "pyright", "line": 0, "message": "Could not parse output", "severity": "warn", "rule": ""})
+                    elif "npx" in (result.stderr or "").lower() or "not found" in (result.stderr or ""):
+                        _LSP_CACHE = {"status": "unavailable", "score": 100, "signals": {"note": "pyright not found (run: npm i -g pyright)"}}
+                        _LSP_CACHE_TS = time.time()
+                        return _LSP_CACHE
+                    errors = [i for i in issues if i["severity"] == "error"]
+                    warns = [i for i in issues if i["severity"] == "warn"]
+                    score = 100 if len(issues) == 0 else max(0, 100 - len(errors) * 5 - len(warns) * 1)
+                    result_dict = {
+                        "status": "pass" if score >= 80 else "warn",
+                        "score": score,
+                        "signals": {"errors": len(errors), "warnings": len(warns)},
+                        "items": [{"check": f"{i['file'].split('/')[-1] if '/' in i['file'] else i['file']}:{i['line']}",
+                                   "result": "❌" if i['severity'] == 'error' else "⚠️",
+                                   "detail": f"[{i['rule']}] {i['message'][:100]}"} for i in issues[:20]],
+                        "_raw": {"issues": issues},
+                    }
+                    _LSP_CACHE = result_dict
+                    _LSP_CACHE_TS = time.time()
+                    return result_dict
+                except FileNotFoundError:
+                    return {"status": "unavailable", "score": 100, "signals": {"note": "pyright not installed"}}
+                except Exception:
+                    return {"status": "unavailable", "score": 0}
+        
+            async def _check_security():
+                """Run bandit security scanner on core Python files. Cached 120s."""
+                global _SEC_CACHE, _SEC_CACHE_TS
+                if _SEC_CACHE is not None and time.time() - _SEC_CACHE_TS < 120:
+                    return _SEC_CACHE
+                try:
+                    import subprocess, json, os
+                    core_dir = os.path.join(os.getcwd(), "aiPlat-core")
+                    if not os.path.isdir(core_dir):
+                        core_dir = os.getcwd()
+                    result = subprocess.run(
+                        [sys.executable, "-m", "bandit", "-r", "-f", "json", "-ll",
+                         "--exclude", "tests,__pycache__,.git", core_dir],
+                        capture_output=True, text=True, timeout=60, cwd=os.getcwd()
+                    )
+                    issues = []
+                    if result.stdout.strip():
+                        try:
+                            data = json.loads(result.stdout)
+                            results_list = data.get("results", [])
+                            for issue in results_list[:30]:
+                                fname = issue.get("filename", "")
+                                issues.append({
+                                    "file": str(fname).split("/")[-1] if fname else "?",
+                                    "line": issue.get("line_number", 0),
+                                    "message": str(issue.get("issue_text", ""))[:120],
+                                    "severity": issue.get("issue_severity", "low"),
+                                    "confidence": issue.get("issue_confidence", "low"),
+                                })
+                        except (json.JSONDecodeError, AttributeError):
+                            issues.append({"file": "bandit", "line": 0, "message": "Parse error", "severity": "warn"})
+                    elif "command not found" in result.stderr or "No module named bandit" in result.stderr:
+                        _SEC_CACHE = {"status": "unavailable", "score": 100, "signals": {"note": "bandit not installed"}}
+                        _SEC_CACHE_TS = time.time()
+                        return _SEC_CACHE
+                    score = 100 if len(issues) == 0 else max(0, 100 - len(issues) * 3)
+                    result_dict = {
+                        "status": "pass" if score >= 80 else "warn",
+                        "score": score,
+                        "signals": {"issues": len(issues)},
+                        "items": [{"check": f"{i['file']}:{i['line']}", "result": "⚠️",
+                                   "detail": f"[{i['severity']}] {i['message'][:100]}"} for i in issues[:15]],
+                    }
+                    _SEC_CACHE = result_dict
+                    _SEC_CACHE_TS = time.time()
+                    return result_dict
+                except FileNotFoundError:
+                    return {"status": "unavailable", "score": 100, "signals": {"note": "bandit not installed"}}
+                except Exception:
+                    return {"status": "unavailable", "score": 0}
+        
+            async def _check_governance():
+                """
+                治理健康度检查 — delegates to shared overview._scan_governance().
+                """
+                try:
+                    from core.api.routers.overview import _scan_governance
+                    gov = await _scan_governance()
+                except Exception:
+                    return {"status": "unavailable", "score": 0}
+        
+                total_entities = gov["total"]
+                governed = gov["governed"]
+                unsigned_count = gov["unsigned"]
+                no_manifest_count = gov["no_manifest"]
+                has_trusted_keys = gov["has_trusted_keys"]
+                score = gov["score"]
+        
+                status = "pass" if score >= 80 else ("warn" if score >= 50 else "fail")
+        
+                items = []
+                if no_manifest_count:
+                    items.append({"check": "无溯源码", "result": "❌", "detail": f"{no_manifest_count} 个实体缺少 manifest.json"})
+                if unsigned_count:
+                    items.append({"check": "未签名", "result": "⚠️", "detail": f"{unsigned_count} 个有 manifest 但无签名"})
+                if not has_trusted_keys:
+                    items.append({"check": "未配置可信公钥", "result": "⚠️", "detail": "trusted_skill_pubkeys 为空，无法验签"})
+                if not items:
+                    items.append({"check": "治理", "result": "✅", "detail": f"所有 {total_entities} 个实体均已治理"})
+        
+                return {
+                    "status": status, "score": score,
+                    "signals": {
+                        "total": total_entities, "governed": governed,
+                        "ungoverned": unsigned_count + no_manifest_count,
+                        "no_manifest": no_manifest_count, "unsigned": unsigned_count,
+                        "has_trusted_keys": has_trusted_keys,
+                    },
+                    "items": items,
+                }
+        
+            async def _check_frontend():
+                """§43+§44: Frontend proxy routing + API contract consistency."""
+                from pathlib import Path as _P
+                try:
+                    repo_root = _P(__file__).resolve().parents[4]
+                    vite_config = repo_root / "aiPlat-management" / "frontend" / "vite.config.ts"
+                    items = []
+        
+                    if vite_config.exists():
+                        import re, subprocess as _sp
+                        content = (await _asyncio.to_thread(lambda: vite_config.read_text(encoding="utf-8")))
+                        proxy_entries = re.findall(
+                            r"'([^']+)'\s*:\s*\{[^}]*?target:\s*'([^']+)'[^}]*\}",
+                            content, re.DOTALL
+                        )
+                        # Check catch-all proxy
+                        for pattern, target in proxy_entries:
+                            port_match = re.search(r':(\d+)$', target)
+                            if not port_match:
+                                continue
+                            port = port_match.group(1)
+                            if pattern == "/api/core" and port != "8002":
+                                items.append({"check": "Vite 代理错配", "result": "❌",
+                                              "detail": f"/api/core → port {port} (应为 8002)"})
+                            if pattern.startswith("/api/core/workspace/") and port == "8000":
+                                items.append({"check": "Workspace 代理错配", "result": "❌",
+                                              "detail": f"'{pattern}' → port 8000"})
+        
+                        # Cross-language contract: args vs arguments
+                        ts_file = repo_root / "aiPlat-management/frontend/src/pages/Workspace/MCP/MCP.tsx"
+                        py_file = repo_root / "aiPlat-core/core/api/routers/mcp_admin.py"
+                        if ts_file.exists() and py_file.exists():
+                            ts_body = (await _asyncio.to_thread(lambda: ts_file.read_text(encoding="utf-8")))
+                            py_body = (await _asyncio.to_thread(lambda: py_file.read_text(encoding="utf-8")))
+                            if re.search(r'"args"\s*:\s*\{', ts_body) and not re.search(r'data\.get\("args"\)', py_body):
+                                items.append({"check": "API 契约不匹配", "result": "❌",
+                                              "detail": "前端传 'args', 后端读 'arguments' — mcp_admin.py"})
+        
+                    score = 100 if not items else max(0, 100 - len(items) * 20)
+                    return {
+                        "status": "pass" if not items else "warn" if len(items) <= 2 else "fail",
+                        "score": score,
+                        "items": items,
+                        "_raw": {"items": items},
+                    }
+                except Exception as e:
+                    return {"status": "error", "score": 0, "error": str(e)[:200]}
+        
+            async def _check_mcp():
+                """§45: MCP integration smoke test — probe MCP server connectivity."""
+                try:
+                    import sys, json as _json
+                    proc = await asyncio.create_subprocess_exec(
+                        sys.executable, "-m", "core.apps.mcp.local_tools_server",
+                        stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE,
+                    )
+                    try:
+                        # initialize
+                        init_req = _json.dumps({"jsonrpc": "2.0", "id": 0, "method": "initialize",
+                            "params": {"protocolVersion": "2024-11-05", "capabilities": {"tools": {}},
+                            "clientInfo": {"name": "diag-smoke", "version": "1.0.0"}}}) + "\n"
+                        proc.stdin.write(init_req.encode("utf-8"))
+                        await proc.stdin.drain()
+                        line = await asyncio.wait_for(proc.stdout.readline(), timeout=8)
+                        init_resp = _json.loads(line.decode("utf-8"))
+                        if "error" in init_resp or "result" not in init_resp:
+                            raise Exception(f"MCP initialize failed: {init_resp}")
+        
+                        # list tools
+                        list_req = _json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}) + "\n"
+                        proc.stdin.write(list_req.encode("utf-8"))
+                        await proc.stdin.drain()
+                        line = await asyncio.wait_for(proc.stdout.readline(), timeout=8)
+                        list_resp = _json.loads(line.decode("utf-8"))
+                        tools = (list_resp.get("result") or {}).get("tools") or []
+                        tool_names = [t.get("name", "") for t in tools]
+        
+                        # call test-1
+                        call_req = _json.dumps({"jsonrpc": "2.0", "id": 2, "method": "tools/call",
+                            "params": {"name": "test-1", "arguments": {"num": 11}}}) + "\n"
+                        proc.stdin.write(call_req.encode("utf-8"))
+                        await proc.stdin.drain()
+                        line = await asyncio.wait_for(proc.stdout.readline(), timeout=8)
+                        call_resp = _json.loads(line.decode("utf-8"))
+        
+                        content = (call_resp.get("result") or {}).get("content", [])
+                        text = content[0].get("text", "") if content else ""
+                        result_val = _json.loads(text).get("result") if text else None
+                        ok = result_val == 121
+        
+                        return {
+                            "status": "pass" if ok else "fail",
+                            "score": 100 if ok else 0,
+                            "signals": {
+                                "tools_count": len(tools),
+                                "tools": tool_names[:10],
+                                "test_result": result_val,
+                            },
+                            "items": [{"check": "MCP 连通性", "result": "✅" if ok else "❌",
+                                       "detail": f"tools={len(tools)}, test-1(11)={'121' if ok else str(result_val)}"}],
+                            "_raw": {"tools": tool_names, "test_result": result_val},
+                        }
+                    finally:
+                        try:
+                            proc.terminate()
+                            await asyncio.wait_for(proc.wait(), timeout=3)
+                        except Exception:
+                            pass
+                except Exception as e:
+                    return {"status": "error", "score": 0, "error": str(e)[:200],
+                            "items": [{"check": "MCP 连通性", "result": "❌",
+                                       "detail": f"不可达: {str(e)[:200]}"}]}
+        
+            # Build check list: all or single category
+            checks = [
+                ("core_runtime", _check_core_runtime()),
+                ("code_intel", _check_code_intel()),
+                ("cross_lang", _check_cross_lang_links()),
+                ("route_coverage", _check_route_coverage()),
+                ("domain_coupling", _check_domain_coupling()),
+                ("fragile_base", _check_fragile_base()),
+                ("capability", _check_capability()),
+                ("skill_lint", _check_skill_lint()),
+                ("skill_realness", _check_skill_realness()),
+                ("wiki_health", _check_wiki_health()),
+                ("compliance", _check_compliance()),
+                ("overview_issues", _check_overview_issues()),
+                ("traces", _check_traces()),
+                ("graph_runs", _check_graph_runs()),
+                ("context_metrics", _check_context_metrics()),
+                ("governance", _check_governance()),
+                ("frontend", _check_frontend()),
+            ]
+            # Slow checks — skipped in quick mode
+            if not quick:
+                checks.extend([
+                    ("e2e_smoke", _check_e2e_smoke()),
+                    ("symbol_health", _check_symbol_health()),
+                    ("doctor", _check_doctor()),
+                    ("lsp", _check_lsp()),
+                    ("security", _check_security()),
+                    ("arch_guard", _check_arch_guard()),
+                    ("mcp", _check_mcp()),
+                ])
+            if category:
+                checks = [c for c in checks if c[0] == category]
+            await asyncio.gather(*(_safe(name, coro) for name, coro in checks))
+        
+            # If arch_guard was not run standalone, extract from compliance as fallback
+            if "arch_guard" not in categories:
+                compliance_cat = categories.get("compliance", {})
+                if isinstance(compliance_cat, dict) and "items" in compliance_cat:
+                    for item in compliance_cat.get("items", []):
+                        if item.get("check") == "架构守卫" and "violations" in item.get("detail", ""):
+                            import re as _re
+                            v_match = _re.search(r'(\d+)', item.get("detail", "0"))
+                            violations = int(v_match.group(1)) if v_match else 0
+                            categories["arch_guard"] = {
+                                "status": "pass" if violations == 0 else "fail",
+                                "score": max(0, 100 - violations),
+                                "violations": violations,
+                                "items": [{"check": "架构守卫", "result": "❌" if violations > 0 else "✅",
+                                           "detail": f"{violations} 处违规"}],
+                            }
+                            break
+        
+            # Compute overall score
+            scores = [c.get("score", 0) for c in categories.values() if isinstance(c, dict)]
+            overall = round(sum(scores) / len(scores), 1) if scores else 0
+            if overall >= 90: grade = "A"
+            elif overall >= 75: grade = "B"
+            elif overall >= 60: grade = "C"
+            elif overall >= 40: grade = "D"
+            else: grade = "F"
+        
+            # Collect top issues (exclude arch_guard from score-based list — use violations)
+            _labels = {
+                "core_runtime": "Core 运行时", "code_intel": "代码架构", "capability": "能力图谱",
+                "wiki_health": "Wiki健康", "arch_guard": "架构守卫", "compliance": "合规审计",
+                "traces": "链路追踪", "graph_runs": "图执行", "context_metrics": "上下文",
+                "e2e_smoke": "冒烟测试", "doctor": "Doctor", "overview_issues": "概览问题",
+                "symbol_health": "符号健康", "lsp": "LSP 诊断", "security": "安全扫描",
+                "cross_lang": "跨语言连接", "route_coverage": "路由覆盖",
+                "domain_coupling": "跨域耦合", "fragile_base": "脆弱基类",
+                "governance": "治理", "skill_lint": "Skill Lint",
+                "frontend": "前端守卫", "mcp": "MCP 连通性",
+            }
+            for cat_name, cat in categories.items():
+                if not isinstance(cat, dict):
+                    continue
+                if cat_name == "arch_guard" and cat.get("violations", 0) > 0:
+                    issues.append({"category": "arch_guard", "score": 0, "status": "fail",
+                                   "label": f"架构守卫({cat['violations']}违规)"})
+                elif cat.get("status") not in ("pass", "unavailable") and cat.get("score", 100) < 100:
+                    label = _labels.get(cat_name, cat_name)
+                    issues.append({"category": cat_name, "score": cat.get("score", 0), "status": cat.get("status"),
+                                   "label": f"{label}({cat.get('score', 0)})"})
+        
+            duration_ms = int((time.time() - started_at) * 1000)
+        
+            # ── Cache for repairs fast path ──────────────────────────────
+            # Extract _raw detail from each category for repair center
+            _details = {}
+            for cat_name, cat in categories.items():
+                if isinstance(cat, dict) and "_raw" in cat:
+                    _details[cat_name] = cat.pop("_raw")
+                    if cat_name == "skill_lint":
+                        _details["skill_lint"]["auto_fix_total"] = _details["skill_lint"].get("auto_fix_total", 0)
+        
+            # Also extract arch_guard _raw details for repair center
+            try:
+                ag_raw = await _check_arch_guard()
+                if isinstance(ag_raw, dict) and "_raw" in ag_raw:
+                    _details["arch_guard"] = ag_raw["_raw"]
+            except Exception:
+                pass
+        
+            result = {
+                "run_id": run_id,
+                "started_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(started_at)),
+                "duration_ms": duration_ms,
+                "overall_score": overall,
+                "overall_grade": grade,
+                "categories": categories,
+                "top_issues": sorted(issues, key=lambda x: x["score"])[:5],
+                "pass": sum(1 for c in categories.values() if isinstance(c, dict) and c.get("status") == "pass"),
+                "warn": sum(1 for c in categories.values() if isinstance(c, dict) and c.get("status") == "warn"),
+                "fail": sum(1 for c in categories.values() if isinstance(c, dict) and c.get("status") == "fail"),
+            }
+            if _details:
+                result["_details"] = _details
+        
+            # Fire-and-forget: auto-fill shell agents detected during compliance check
+            try:
+                shell_agents = _details.get("compliance", {}).get("shell_agents", [])
+                if shell_agents:
+                    names = [a.split(":", 1)[1] if ":" in a else a for a in shell_agents]
+                    asyncio.create_task(_auto_fill_agents_async(names))
+            except Exception:
+                pass
+        
+            # Append to diagnostic history for trend chart
+            _append_diag_history(result)
+        
+            global _DIAG_CACHE, _DIAG_CACHE_TS
+            _DIAG_CACHE = result
+            _DIAG_CACHE_TS = time.time()
+            _save_diag_cache()
+            # Also invalidate overview cache so it stays consistent
+            try:
+                import core.api.routers.overview as _ov_mod
+                _ov_mod._OV_CACHE = None
+            except Exception:
+                pass
+            _publish("diagnostics_complete", overall_score=overall, overall_grade=grade)
+            return result
     finally:
         _DIAG_RUNNING = False
 
