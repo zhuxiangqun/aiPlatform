@@ -826,6 +826,7 @@ done
 | 5 | **新工具上线前必须交叉验证** | `caller_verify.sh` 的输出必须与 `test_wiring.py` 的结果一致。多个工具对同一问题的判断不能矛盾。 |
 | 6 | **工具变更必须更新基线快照** | 如果工具输出有意变更（如新增 rule），同步更新 `scripts/baselines/` 下的已知输出。 |
 | 7 | **测试文件中的空函数体（无 assert 或 raise）视为 bug** | `tests/tool_correctness/` 扫描器禁止仅有 docstring 的测试函数。 |
+| 8 | **批量操作后必须跑全量验收（强制）** | 涉及批量 indent、sed 替换、全局重命名、≥10 文件修改、或修改 `diagnostics.py`/`architecture_guard.py`/`phase_check.sh` 等诊断核心文件时，commit 前必须跑：`bash scripts/phase_check.sh && python -m pytest tests/tool_correctness/`。局部修改（<5 文件、<20 行）可以只用 `py_compile` + wiring tests。违反本条直接导致诊断/守卫体系失灵（例：2026-06 `diagnostics.py` 批量缩进后 AST 解析失败→诊断中心显示 0 类检查）。 |
 
 **验证命令**：
 ```bash
