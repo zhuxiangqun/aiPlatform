@@ -51,6 +51,10 @@ input_schema:
     required: true
     description: 目标网页地址
 protected: true
+completion_criterion: |
+  1. 用户的问题已被直接完整回答
+  2. 回答长度与问题复杂度匹配（不冗长不敷衍）
+  3. 如需后续操作，已明确告知用户下一步做什么
 keywords:
   objects:
   - 网页

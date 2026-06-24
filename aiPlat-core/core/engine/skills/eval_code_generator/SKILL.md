@@ -62,6 +62,10 @@ metadata:
   - 不要猜测或编造不存在的数据
   sop_goal: 为 Agent 自动生成评估代码
 protected: true
+completion_criterion: |
+  1. 每个 acceptance_criteria 至少有一个可执行的验证步骤
+  2. 测试覆盖 happy path + 至少一个边界 case
+  3. red-capable command 已确认能稳定复现目标行为
 keywords:
   objects:
   - 评估代码

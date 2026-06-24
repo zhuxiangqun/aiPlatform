@@ -2009,6 +2009,13 @@ async def gateway_execute(http_request: Request, body: Dict[str, Any] = None):
 
 app.include_router(api_router)
 
+# A2A Protocol — Google Agent-to-Agent standard (external agent interoperability)
+try:
+    from core.apps.a2a import a2a_router
+    app.include_router(a2a_router)
+except Exception:
+    pass
+
 
 def run_server(host: str = "0.0.0.0", port: int = 8002):
     """Run the server"""

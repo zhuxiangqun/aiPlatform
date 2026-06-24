@@ -7,6 +7,10 @@ category: retrieval
 version: 1.0.0
 status: enabled
 protected: true
+completion_criterion: |
+  1. 用户的问题已被直接完整回答
+  2. 回答长度与问题复杂度匹配（不冗长不敷衍）
+  3. 如需后续操作，已明确告知用户下一步做什么
 execution_mode: prompt
 permissions:
 - web:search

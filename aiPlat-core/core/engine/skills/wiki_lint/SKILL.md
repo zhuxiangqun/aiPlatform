@@ -56,6 +56,10 @@ metadata:
   - 不要猜测或编造不存在的数据
   sop_goal: 检测 Wiki 的矛盾和死链接
 protected: true
+completion_criterion: |
+  1. 所有引用的数据/文档都有具体来源（page/section/line）
+  2. 信息不足时明确告知用户，绝不编造
+  3. 回答结构清晰，用户无需追问即可执行下一步
 keywords:
   objects:
   - Wiki页面

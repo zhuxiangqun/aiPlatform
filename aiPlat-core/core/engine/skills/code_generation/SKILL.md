@@ -8,6 +8,10 @@ uses_file_output: true
 version: 1.0.0
 status: enabled
 protected: true
+completion_criterion: |
+  1. 输出符合 ## FILE: 格式规范
+  2. 每个文件包含完整可运行代码
+  3. 所有依赖项已声明，所有外部引用已校验
 execution_mode: handler
 permissions:
 - llm:generate

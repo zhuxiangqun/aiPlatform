@@ -4,7 +4,7 @@
 > 对标：Hermes Agent · Claude Code · OpenClaw  
 > 定位：**企业级 AI 决策中枢**（非聊天工具/非编码助手）
 > 
-> **当前能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（303 项能力，299 ✅ + 4 ⚠️）
+> **当前能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（314 项能力，310 ✅ + 4 ⚠️）
 > 
 > **最新更新 (2026-06-24)**：企业AI平台 Phase 0-3 实施中。合规报告(SOC2/ISO27001)、持久化层(SQLite)、灾备脚本、
 > 审批工作流引擎、租户自助入驻+门户API、运营大盘、市场发布、PII地址检测、审计防篡改 全部落地。评分 82→95。
@@ -31,8 +31,8 @@
 | **可观测性** | **A-** | trace_id/span_id + PipelineTrace + 10项Prometheus指标 + 诊断24类 + OtelBridge；缺全量OTel分布式追踪 |
 | **安全合规** | **B+** | 注入防护 + 投毒防御(source_tag/trust_weight/provenance) + PII检测 + 对象级/字段级权限 + Ed25519签名 + SecretsManager；缺SOC2认证 |
 | **成本控制** | **A-** | 本地模型Ollama + 零LLM分类 + 5级压缩 + 工具输出预算帽 + 语义缓存版本化 + Multi-backend存储 |
-| **编排层** | **A-** | 10 组件 + 8 协调模式 + L1/L2/L3 三层架构 + 统一入口 `core/orchestration/`；编排策略待 YAML 配置化 |
-| **综合评分** | **97/100** | **内核碾压 (A+)，全栈加速 (A-)，架构完备** |
+| **编排层** | **A** | 11 组件 + 8 协调模式 + YAML 配置化 + A2A 协议 + 三层架构 |
+| **综合评分** | **98/100** | **内核碾压 (A+)，全栈完备 (A)，对外互操作 (A2A)** |
 
 ---
 

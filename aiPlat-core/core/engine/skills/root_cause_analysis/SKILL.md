@@ -51,6 +51,10 @@ metadata:
   - 不要猜测或编造不存在的数据
   sop_goal: 追溯故障根因并给出修复建议
 protected: true
+completion_criterion: |
+  1. 每个改动都有明确的验收标准（可验证的 pass/fail 条件）
+  2. 如存在相关测试，修改后所有测试通过或明确标注预期失败
+  3. 不产生新的已知 lint 问题
 keywords:
   objects:
   - 问题

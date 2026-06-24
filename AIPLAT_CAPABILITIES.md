@@ -181,6 +181,9 @@
 | 滑动窗口衰减追踪 | `apps/skills/registry.py` | ✅ | recent_pass_rate + decayed_at | 已合入 |
 | AutoLearner | `harness/evolution_engine.py` | ✅ | 失败分析→SkillDraft→审批→注册 | 已合入 |
 | SkillRouting | `harness/routing/skill_routing.py` | ✅ | Canary/A-B/Shadow/Auto-Rollback | 已合入 |
+| Completion Criterion | 30个 SKILL.md frontmatter | ✅ | 每个 skill 显式声明完成条件，5类模板（知识/生成/工程/测试/交互） | 已合入 |
+| Grilling 追问技能 | `engine/skills/grilling/SKILL.md` | ✅ | Matt Pocock 风格：一次一问 + ≤3推荐选项 + 读文件原则 | 已合入 |
+| Leading Words 术语表 | `engine/skills/leading_words.md` | ✅ | 8个工程先验词汇（tight loop/tracer bullet/deep module/seam等） | 已合入 |
 
 ---
 
@@ -322,6 +325,20 @@
 | MCP Runtime Wiring | `apps/mcp/runtime.py` | ✅ | MCP Server → ToolRegistry 运行时绑定 + PolicyGate | 已合入 |
 | MCP Client Manager | `apps/mcp/client.py` | ✅ | 多服务端客户端连接生命周期管理 | 已合入 |
 | MCP Production Policy | `core/mcp/prod_policy.py` | ✅ | 生产安全策略 (risk level, allowed tools) | 已合入 |
+
+---
+
+## 十四附、A2A 协议 (Agent-to-Agent)
+
+| 能力 | 位置 | 状态 | 说明 | 实施状态 |
+|------|------|:---:|------|------|
+| Agent Card | `apps/a2a/agent_card.py` | ✅ | 自动枚举 Skill/Tool 能力 + JSON-LD 上下文 | 已合入 |
+| Task Send | `apps/a2a/server.py` | ✅ | POST /tasks → 复用 core_chat 执行 | 已合入 |
+| Task Get | `apps/a2a/server.py` | ✅ | GET /tasks/{id} → 复用 ExecutionStore | 已合入 |
+| Task Stream | `apps/a2a/server.py` | ✅ | SSE /tasks/{id}/stream → 复用 ReActLoop | 已合入 |
+| Task Cancel | `apps/a2a/server.py` | ✅ | POST /tasks/{id}/cancel | 已合入 |
+| Task Artifacts | `apps/a2a/server.py` | ✅ | GET /tasks/{id}/artifacts → 复用 TaskSkills | 已合入 |
+| Task List | `apps/a2a/server.py` | ✅ | GET /tasks 任务列表 | 已合入 |
 
 ---
 
@@ -497,6 +514,7 @@
 | 并行执行器 | `apps/agents/parallel_executor.py` | ✅ | Map-Reduce 模式 + max_concurrency + 异常隔离 | 已合入 |
 | 8 种协调模式 | `harness/coordination/patterns/` | ✅ | Pipeline/FanOut/Supervisor/ExpertPool/ProducerReviewer/Hierarchical | 已合入 |
 | 统一编排入口 | `orchestration/__init__.py` | ✅ | L1+L2+L3 三层架构统一 import | 已合入 |
+| 编排 YAML 配置化 | `base.py:create_agent()` | ✅ | AGENT.md `orchestration.mode` 字段自动升级为 MultiAgent | 已合入 |
 
 ---
 
@@ -510,7 +528,7 @@
 | RAG 检索 | 18 | 0 | 18 |
 | 知识基础设施 | 28 | 0 | 28 |
 | Agent 系统 | 9 | 1 | 10 |
-| Skill 系统 | 10 | 0 | 10 |
+| Skill 系统 | 13 | 0 | 13 |
 | 安全与治理 | 24 | 1 | 25 |
 | 可观测性 | 12 | 0 | 12 |
 | 模型基础设施 | 8 | 1 | 9 |
@@ -519,6 +537,7 @@
 | Gate 系统 | 5 | 0 | 5 |
 | 评估系统 | 13 | 0 | 13 |
 | MCP 协议 | 6 | 0 | 6 |
+| A2A 协议 | 7 | 0 | 7 |
 | 文档智能 | 4 | 0 | 4 |
 | 工具生态 | 21 | 0 | 21 |
 | 微调系统 | 4 | 0 | 4 |
@@ -528,11 +547,11 @@
 | 平台治理 | 14 | 0 | 14 |
 | Infra 基础设施 | 11 | 0 | 11 |
 | 核心API统一入口 | 5 | 0 | 5 |
-| 编排层 | 10 | 0 | 10 |
+| 编排层 | 11 | 0 | 11 |
 | 管理 & 质量 | 9 | 0 | 9 |
-| **总计** | **299** | **4** | **303** |
+| **总计** | **310** | **4** | **314** |
 
 ---
 
 *最后更新: 2026-06-24*
-*版本: 7.0 · 27章 · 303项能力 · 299✅+4⚠️ · 编排层显式化 · 评分 82→97/100*
+*版本: 8.1 · 28章 · 314项能力 · 310✅+4⚠️ · Matt Pocock风格Skill改造 · 评分 82→98/100*

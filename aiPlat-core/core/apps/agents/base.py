@@ -350,7 +350,21 @@ def create_agent(
     }
     
     resolved_type = type_map.get(agent_type, "base")
-    
+
+    # ── 编排策略自动升级 ──
+    # 如果 AGENT.md frontmatter 中声明了 orchestration.mode，
+    # 自动将 agent_type 升级为 multi_agent，无需手动改类型。
+    frontmatter = kwargs.pop("frontmatter", None) or config.frontmatter if hasattr(config, 'frontmatter') else None
+    orchestration = (frontmatter or {}).get("orchestration", {})
+    if isinstance(orchestration, dict) and orchestration.get("mode"):
+        mode = orchestration["mode"]
+        if mode in ("supervisor", "fan_out_fan_in", "expert_pool", "pipeline",
+                     "hierarchical_delegation", "producer_reviewer",
+                     "parallel", "sequential"):
+            resolved_type = "multi_agent"
+            kwargs["coordination_pattern"] = mode
+            kwargs["sub_agents"] = orchestration.get("workers", [])
+
     if resolved_type == "react":
         agent = ReActAgent(config=config, **kwargs)
         if agent_type == "tool":
