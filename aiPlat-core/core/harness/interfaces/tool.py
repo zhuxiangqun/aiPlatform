@@ -38,6 +38,9 @@ class ToolResult:
     latency: float = 0.0
     metadata: Dict[str, Any] = field(default_factory=dict)
     priority: str = "medium"  # §5.21: context budget priority
+    # ── Structured retry info for Agent semantic-level decisions ──
+    retried: bool = False       # Was this tool call retried at the infrastructure level?
+    retry_count: int = 0        # How many times was it retried?
     # Browser Use compatible fields
     extracted_content: Optional[str] = None  # Structured extracted data for agent reasoning
     long_term_memory: Optional[str] = None   # Info to remember across steps

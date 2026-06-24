@@ -47,7 +47,12 @@ class ResilienceGate:
                 if not isinstance(e, tuple(retry_on)):
                     raise
                 if attempt >= retries:
-                    raise
+                    # Annotate error with retry count so Agent knows not to retry again
+                    retry_msg = f"[RETRIED:{retries}] {str(e)}"
+                    try:
+                        raise type(e)(retry_msg) from e
+                    except TypeError:
+                        raise RuntimeError(retry_msg) from e
                 # Exponential backoff with jitter (best-effort)
                 try:
                     delay = min(backoff_max_seconds, backoff_base_seconds * (2**attempt))
