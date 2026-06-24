@@ -138,7 +138,23 @@ SUM=$((TOTAL + PARTIAL))
 # Update the stats table total row
 sed -i '' "s/| \*\*总计\*\* | [0-9]* | [0-9]* | [0-9]* |/| **总计** | **$TOTAL** | **$PARTIAL** | **$SUM** |/" "$CAPS"
 
+# ── Step 4: Sync ROADMAP and CLAUDE counts ─────────────────
+
+ROADMAP="$WORKSPACE/AIPLAT_ROADMAP.md"
+CLAUDE="$WORKSPACE/CLAUDE.md"
+
+# Update ROADMAP capability count
+if [ -f "$ROADMAP" ]; then
+    sed -i '' "s/（[0-9]* 项能力，[0-9]* ✅ + [0-9]* ⚠️）/（${SUM} 项能力，${TOTAL} ✅ + ${PARTIAL} ⚠️）/g" "$ROADMAP"
+    sed -i '' "s/代码交叉验证，[0-9]* 项）/代码交叉验证，${SUM} 项）/g" "$ROADMAP"
+fi
+
+# Update CLAUDE capability count
+if [ -f "$CLAUDE" ]; then
+    sed -i '' "s/唯一真相源，[0-9]* 项能力/唯一真相源，${SUM} 项能力/g" "$CLAUDE"
+fi
+
 echo ""
 echo "═══════════════════════════════════════════════════════════════"
-echo "  Sync complete: $ADDED new entries, $SUM total capabilities"
+echo "  Sync complete: $ADDED new entries, $SUM total (CAPS+ROADMAP+CLAUDE)"
 echo "═══════════════════════════════════════════════════════════════"
