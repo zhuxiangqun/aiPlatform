@@ -138,6 +138,12 @@ jobs:
           AIPLAT_EVAL_DRY_RUN=true \
           pytest -q core/tests/eval/test_tool_selection.py -m eval --tb=short
 
+      - name: Skill quality regression (gold dataset)
+        working-directory: ./aiPlat-core
+        run: |
+          AIPLAT_EVAL_DRY_RUN=true \
+          pytest -q core/tests/eval/test_skill_quality.py -m eval --tb=short
+
       - name: Contracts acceptance tests
         working-directory: ./aiPlat-core
         run: |

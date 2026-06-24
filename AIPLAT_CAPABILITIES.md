@@ -281,6 +281,10 @@
 | On-Error Reflector | `infrastructure/hooks/on_error_reflector.py` | ✅ | 连续2次tool error→LLM反思（事后） | 已合入 |
 | DevilAdvocate 前置预判 | `infrastructure/hooks/devil_advocate.py` | ✅ | PRE_ACT Hook：执行前模拟失败场景，高风险工具注入警告（事前） | 已合入 |
 | 自迭代闭环 | `on_error_reflector → AutoLearner → SkillSimulator → Approval → test_case_generation` | ✅ | 6模块串联：失败→分析→Draft→预检→审批→测试，人只确认方向 | 已合入 |
+| Skill 质量离线基准 | `tests/eval/test_skill_quality.py` + `gold_skill_quality.json` | ✅ | 10任务×5领域×3条件 (No/Cured/Auto)，对标 SkillsBench | 已合入 |
+| CMM 观察层 | `memory/pattern_accumulator.py` | ✅ | 工具序列指纹 + 跨会话累积 + 频次≥3触发 | 已合入 |
+| MetaClaw 双轨综合 | `memory/pattern_accumulator.py:compare_success_failure()` | ✅ | 成功+失败轨迹比较 + 提取路径差异 | 已合入 |
+| 集体进化引擎 | `learning/skill_evolver.py` | ✅ | 跨租户模式扫描 + 匿名化 + tenant_threshold≥2 | 已合入 |
 | Agent SDK | `aiplat-sdk/` | ⚠️ | 基础可用，待IDE集成 | 合入中 |
 | VS Code 插件 | `aiplat-vscode/` | ⚠️ | 框架就绪，待功能完善 | 合入中 |
 
@@ -536,7 +540,7 @@
 | 可观测性 | 12 | 0 | 12 |
 | 模型基础设施 | 8 | 1 | 9 |
 | 部署与运维 | 10 | 0 | 10 |
-| 扩展与学习 | 9 | 2 | 11 |
+| 扩展与学习 | 14 | 2 | 16 |
 | Gate 系统 | 5 | 0 | 5 |
 | 评估系统 | 13 | 0 | 13 |
 | MCP 协议 | 6 | 0 | 6 |
@@ -557,4 +561,4 @@
 ---
 
 *最后更新: 2026-06-24*
-*版本: 8.4 · 28章 · 317项能力 · 313✅+4⚠️ · 自迭代闭环 · 评分 82→98/100*
+*版本: 9.0 · 28章 · 314项能力 · 309✅+5⚠️ · Skill自进化完整方案(P0+P1+P2) · 评分 82→98/100*

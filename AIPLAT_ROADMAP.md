@@ -4,7 +4,7 @@
 > 对标：Hermes Agent · Claude Code · OpenClaw  
 > 定位：**企业级 AI 决策中枢**（非聊天工具/非编码助手）
 > 
-> **当前能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（317 项能力，313 ✅ + 4 ⚠️）
+> **当前能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（314 项能力，309 ✅ + 4 ⚠️）
 > 
 > **最新更新 (2026-06-24)**：企业AI平台 Phase 0-3 实施中。合规报告(SOC2/ISO27001)、持久化层(SQLite)、灾备脚本、
 > 审批工作流引擎、租户自助入驻+门户API、运营大盘、市场发布、PII地址检测、审计防篡改 全部落地。评分 82→95。
