@@ -277,7 +277,8 @@
 | Feedback Loops | `feedback_loops/` | ✅ | local + prod + push 三通道 | 已合入 |
 | ImplicitFeedback | `services/implicit_feedback.py` | ✅ | 复制/选中/追问/重复 行为信号 | 已合入 |
 | Meta-Agent | `harness/meta/` | ⚠️ | 远瞻探索，默认关闭 | 合入中 |
-| On-Error Reflector | `infrastructure/hooks/on_error_reflector.py` | ✅ | 连续2次tool error→LLM反思 | 已合入 |
+| On-Error Reflector | `infrastructure/hooks/on_error_reflector.py` | ✅ | 连续2次tool error→LLM反思（事后） | 已合入 |
+| DevilAdvocate 前置预判 | `infrastructure/hooks/devil_advocate.py` | ✅ | PRE_ACT Hook：执行前模拟失败场景，高风险工具注入警告（事前） | 已合入 |
 | Agent SDK | `aiplat-sdk/` | ⚠️ | 基础可用，待IDE集成 | 合入中 |
 | VS Code 插件 | `aiplat-vscode/` | ⚠️ | 框架就绪，待功能完善 | 合入中 |
 
@@ -533,7 +534,7 @@
 | 可观测性 | 12 | 0 | 12 |
 | 模型基础设施 | 8 | 1 | 9 |
 | 部署与运维 | 10 | 0 | 10 |
-| 扩展与学习 | 7 | 2 | 9 |
+| 扩展与学习 | 8 | 2 | 10 |
 | Gate 系统 | 5 | 0 | 5 |
 | 评估系统 | 13 | 0 | 13 |
 | MCP 协议 | 6 | 0 | 6 |
@@ -549,9 +550,9 @@
 | 核心API统一入口 | 5 | 0 | 5 |
 | 编排层 | 11 | 0 | 11 |
 | 管理 & 质量 | 9 | 0 | 9 |
-| **总计** | **310** | **4** | **314** |
+| **总计** | **311** | **4** | **315** |
 
 ---
 
 *最后更新: 2026-06-24*
-*版本: 8.1 · 28章 · 314项能力 · 310✅+4⚠️ · Matt Pocock风格Skill改造 · 评分 82→98/100*
+*版本: 8.2 · 28章 · 315项能力 · 311✅+4⚠️ · DevilAdvocate前置预判 · 评分 82→98/100*

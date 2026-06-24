@@ -622,4 +622,45 @@ def get_default_hooks() -> Dict[str, Hook]:
         priority=45,
     )
 
+    # ── DevilAdvocate: pre-execution risk simulation ──
+    async def devil_advocate_hook(context: HookContext):
+        """Phase 8: Before high-risk tool execution, run failure simulation.
+
+        If the planned action matches a high-risk tool (file_write, code_exec,
+        database, shell_exec, browser), calls a lightweight LLM to analyze:
+          1. Most likely failure mode
+          2. Irreversible side effects
+          3. Safer alternative approach
+
+        Warning is injected into state.context["_devil_hint"] for the agent.
+        Never blocks — low-risk actions pass through immediately.
+        """
+        try:
+            ctx = context.state or {}
+            tool_name = str(ctx.get("tool_name", ctx.get("_current_tool", "")))
+            if not tool_name:
+                return {"continue": True}
+
+            from core.harness.infrastructure.hooks.devil_advocate import get_devil_advocate
+            da = get_devil_advocate()
+            if not da.enabled:
+                return {"continue": True}
+
+            hint = await da.on_pre_act(tool_name=tool_name, state=ctx)
+            if hint.get("warning"):
+                ctx["_devil_hint"] = hint["warning"]
+                ctx["_devil_mitigation"] = hint.get("mitigation", "")
+                ctx["_devil_risk_level"] = hint.get("risk_level", 0)
+                _log.info(f"DevilAdvocate: risk{wint.get('risk_level',0)} — {tool_name}")
+        except Exception:
+            pass
+        return {"continue": True}
+
+    hooks["devil_advocate"] = create_hook(
+        name="devil_advocate",
+        callback=devil_advocate_hook,
+        phase=HookPhase.PRE_ACT,
+        priority=20,
+    )
+
     return hooks
