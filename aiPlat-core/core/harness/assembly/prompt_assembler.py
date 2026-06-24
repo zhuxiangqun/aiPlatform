@@ -91,6 +91,31 @@ class MessageFormatter:
         except Exception:
             pass
 
+        # ── Architecture Contract Injection ──
+        # For code-generation skills, inject architecture constraints
+        # BEFORE code is written (not just checked in CI).
+        try:
+            skill_name = (meta.get("skill_name") or "").lower()
+            coding_skills = {
+                "code_generation", "code-hygiene", "code_review",
+                "code_generator", "code_generate", "generate_code",
+                "refactor", "fix_bug", "implement",
+            }
+            if skill_name in coding_skills or meta.get("inject_arch_contract"):
+                from core.harness.utils.prompt_loader import _sync_resolve
+                contract = _sync_resolve("coding-contract")
+                if isinstance(prompt, str):
+                    prompt = prompt + "\n" + contract
+                elif isinstance(prompt, list) and prompt:
+                    sys_idx = next((i for i, m in enumerate(prompt)
+                                    if m.get("role") == "system"), None)
+                    if sys_idx is not None:
+                        prompt[sys_idx]["content"] = str(prompt[sys_idx].get("content", "")) + "\n" + contract
+                    else:
+                        prompt.insert(0, {"role": "system", "content": contract})
+        except Exception:
+            pass  # Never block agent startup
+
         # Roadmap-1 (Phase 1): lightweight prompt stats (no behavior change).
         try:
             meta.setdefault("context_engine", "default_v1")

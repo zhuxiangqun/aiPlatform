@@ -203,6 +203,7 @@
 | 前端 API 契约检查 | `guard_frontend.py` | ✅ | TS fetch ↔ Python data.get 一致性 | 已合入 |
 | PII 检测脱敏 | `services/pii_detector.py` | ✅ | 手机/身份证/邮箱/银行卡/地址/IP，Presidio+正则双引擎 | 已合入 |
 | 合规报告 SOC2/ISO27001 | `management/compliance_checks.py` | ✅ | 12检查 + SOC2 CC/ISO27001 A映射 + 自动报告生成 | 已合入 |
+| 架构契约上下文注入 | `prompt_loader.py` → `prompt_assembler.py` | ✅ | coding-contract 模板在代码生成前注入 Agent system prompt（6条核心约束） | 已合入 |
 | 审计日志防篡改 | `governance/audit/logger.py` | ✅ | SHA-256 链式哈希 + verify_integrity() | 已合入 |
 | 对象级权限 | `policy/object_permission.py` | ✅ | 每实体/每动作/每角色细粒度控制，支持本体继承 | 已合入 |
 | 字段级安全 | `policy/field_level_security.py` | ✅ | 单元/字段级数据可见性，Palantir CBAC对齐 | 已合入 |
@@ -530,7 +531,7 @@
 | 知识基础设施 | 28 | 0 | 28 |
 | Agent 系统 | 9 | 1 | 10 |
 | Skill 系统 | 13 | 0 | 13 |
-| 安全与治理 | 24 | 1 | 25 |
+| 安全与治理 | 25 | 1 | 26 |
 | 可观测性 | 12 | 0 | 12 |
 | 模型基础设施 | 8 | 1 | 9 |
 | 部署与运维 | 10 | 0 | 10 |
@@ -550,9 +551,9 @@
 | 核心API统一入口 | 5 | 0 | 5 |
 | 编排层 | 11 | 0 | 11 |
 | 管理 & 质量 | 9 | 0 | 9 |
-| **总计** | **311** | **4** | **315** |
+| **总计** | **312** | **4** | **316** |
 
 ---
 
 *最后更新: 2026-06-24*
-*版本: 8.2 · 28章 · 315项能力 · 311✅+4⚠️ · DevilAdvocate前置预判 · 评分 82→98/100*
+*版本: 8.3 · 28章 · 316项能力 · 312✅+4⚠️ · 架构契约上下文注入 · 评分 82→98/100*

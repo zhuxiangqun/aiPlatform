@@ -237,6 +237,36 @@ Based on this observation, what should I do next?
     category="engine", cache_ttl=60,
     variables=["observation"])
 
+_register("coding-contract", """## Architecture Constraints (Mandatory)
+
+Before generating any code, ensure compliance with these 6 constraints.
+Violations will be caught by CI (arch_guard.sh) and block merge.
+
+1. **Interface Contracts**: Every public API must have explicit parameter types,
+   return types, and error codes. No implicit null handling or untyped inputs.
+
+2. **Transaction Boundaries**: Cross-module write operations must declare atomic scope.
+   Payment/write interfaces must annotate idempotency key. Consecutive failures >= 3
+   triggers full rollback.
+
+3. **Exception Specification**: Public interfaces throw business exceptions only.
+   Internal errors (stack traces, SQL errors) must be wrapped before reaching the boundary.
+
+4. **Timeout Configuration**: All external calls (HTTP, database, RPC) must set explicit
+   timeout values. Default: HTTP >= 3s, database >= 5s.
+
+5. **Layer Boundaries**: Strict dependency direction: app -> platform -> core -> infra.
+   No reverse imports, no cross-layer file writes, no manual sqlite3 connections outside infra.
+
+6. **Idempotency & Rollback**: Write operations must declare rollback_available.
+   If rollback is unavailable, the operation must be idempotent.
+   Check `effects.rollback_available` before generating any write logic.
+
+Current architecture rules: 165 (arch_guard_rules.yaml)
+CI enforcement: bash scripts/architecture_guard.sh""",
+    category="skills", cache_ttl=300,
+)
+
 _register("browser-assistant", """你是浏览器自动化助手。涉及网页/浏览器的任务，必须使用 browser 工具一步步操作。
 
 交互流程（必须严格遵守）：
