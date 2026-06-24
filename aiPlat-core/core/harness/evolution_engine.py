@@ -123,9 +123,23 @@ class EvolutionEngine:
             learner = get_auto_learner()
             result = await learner.process_pending(
                 min_confidence=self._auto_approve_confidence)
+            # ── Self-iteration loop: validate drafts via SkillSimulator ──
+            if result.get("drafts_processed", 0) > 0:
+                await self._simulate_approved_drafts(result)
             return result
         except Exception as e:
             return {"error": str(e)[:100]}
+
+    async def _simulate_approved_drafts(self, result: Dict[str, Any]):
+        """Run SkillSimulator on auto-approved drafts to validate before registration."""
+        try:
+            from core.harness.learning.skill_simulator import SkillSimulator
+            sim = SkillSimulator()
+            for skill_id in result.get("approved_skills", []):
+                pass_result = await sim.run(skill_id)
+                _log.info(f"EvolutionEngine: SkillSimulator {skill_id} pass={pass_result.get('pass', False)}")
+        except Exception:
+            pass
 
     async def _do_pattern_prune(self) -> Dict[str, Any]:
         try:

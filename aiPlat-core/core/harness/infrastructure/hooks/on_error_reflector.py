@@ -11,6 +11,7 @@ OnErrorReflector — 执行中实时反思 Hook (Phase 4.1)
 
 from __future__ import annotations
 
+import asyncio
 import os, logging
 from typing import Any, Dict, Optional
 
@@ -64,6 +65,9 @@ class OnErrorReflector:
                 hint = await self._generate_reflection(context)
                 if hint:
                     _log.info(f"OnErrorReflector: injected reflection hint ({self._reflect_count}/{self._max_reflect_retries})")
+                    # ── Self-iteration loop: trigger AutoLearner on persistent errors ──
+                    if self._reflect_count >= 2:
+                        asyncio.create_task(self._trigger_auto_learner(context))
                     return {"reasoning_hint": hint}
         else:
             self._consecutive_errors = 0  # Reset on success
@@ -102,6 +106,16 @@ class OnErrorReflector:
             return hint.strip() if hint.strip() else None
         except Exception:
             return None
+
+    async def _trigger_auto_learner(self, context: Any):
+        """Self-iteration loop: persistent errors → AutoLearner draft generation."""
+        try:
+            from core.harness.learning import get_auto_learner
+            learner = get_auto_learner()
+            _log.info("OnErrorReflector: triggering AutoLearner for self-iteration")
+            await learner.process_pending(min_confidence=0.6)
+        except Exception:
+            pass
 
 
 # ── Factory ─────────────────────────────────────────────────────────────

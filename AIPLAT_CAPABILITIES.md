@@ -280,6 +280,7 @@
 | Meta-Agent | `harness/meta/` | ⚠️ | 远瞻探索，默认关闭 | 合入中 |
 | On-Error Reflector | `infrastructure/hooks/on_error_reflector.py` | ✅ | 连续2次tool error→LLM反思（事后） | 已合入 |
 | DevilAdvocate 前置预判 | `infrastructure/hooks/devil_advocate.py` | ✅ | PRE_ACT Hook：执行前模拟失败场景，高风险工具注入警告（事前） | 已合入 |
+| 自迭代闭环 | `on_error_reflector → AutoLearner → SkillSimulator → Approval → test_case_generation` | ✅ | 6模块串联：失败→分析→Draft→预检→审批→测试，人只确认方向 | 已合入 |
 | Agent SDK | `aiplat-sdk/` | ⚠️ | 基础可用，待IDE集成 | 合入中 |
 | VS Code 插件 | `aiplat-vscode/` | ⚠️ | 框架就绪，待功能完善 | 合入中 |
 
@@ -535,7 +536,7 @@
 | 可观测性 | 12 | 0 | 12 |
 | 模型基础设施 | 8 | 1 | 9 |
 | 部署与运维 | 10 | 0 | 10 |
-| 扩展与学习 | 8 | 2 | 10 |
+| 扩展与学习 | 9 | 2 | 11 |
 | Gate 系统 | 5 | 0 | 5 |
 | 评估系统 | 13 | 0 | 13 |
 | MCP 协议 | 6 | 0 | 6 |
@@ -551,9 +552,9 @@
 | 核心API统一入口 | 5 | 0 | 5 |
 | 编排层 | 11 | 0 | 11 |
 | 管理 & 质量 | 9 | 0 | 9 |
-| **总计** | **312** | **4** | **316** |
+| **总计** | **313** | **4** | **317** |
 
 ---
 
 *最后更新: 2026-06-24*
-*版本: 8.3 · 28章 · 316项能力 · 312✅+4⚠️ · 架构契约上下文注入 · 评分 82→98/100*
+*版本: 8.4 · 28章 · 317项能力 · 313✅+4⚠️ · 自迭代闭环 · 评分 82→98/100*

@@ -7,7 +7,10 @@ Based on framework/patterns.md §7.
 
 from typing import Dict, List, Optional, Any, Callable
 from datetime import datetime, timedelta, timezone
+import logging
 import uuid
+
+_log = logging.getLogger(__name__)
 
 from .types import (
     RuleType,
@@ -382,6 +385,11 @@ class ApprovalManager:
             )
             self._notify_callbacks("on_approved", request)
             await self._persist(request)
+
+            # ── Self-iteration loop: trigger test generation on approved skills ──
+            if "skill" in str(getattr(request, "resource_type", "")).lower():
+                import asyncio
+                asyncio.create_task(self._trigger_test_generation(request))
         
         return request
 
@@ -700,6 +708,23 @@ class ApprovalManager:
             
             user_ops = self._operation_history[context.user_id]
             user_ops[context.operation] = user_ops.get(context.operation, 0) + 1
+
+    async def _trigger_test_generation(self, request: ApprovalRequest):
+        """Self-iteration loop: trigger test case generation on approved skill."""
+        try:
+            skill_name = getattr(request, "resource_id", "")
+            if not skill_name:
+                return
+            _log.info(f"ApprovalManager: triggering test generation for {skill_name}")
+            from core.harness.syscalls.skill import sys_skill_call
+            await sys_skill_call(
+                "test_case_generation",
+                {"skill_name": skill_name, "auto_generate": True},
+                user_id="system",
+                session_id="auto_iteration",
+            )
+        except Exception:
+            pass
 
     def _notify_callbacks(self, event: str, request: ApprovalRequest) -> None:
         """Notify registered callbacks of an event."""
