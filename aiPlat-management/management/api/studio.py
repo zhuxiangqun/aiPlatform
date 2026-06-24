@@ -13,7 +13,10 @@ from __future__ import annotations
 import os
 import shutil
 import tempfile
+import asyncio
+import time
 import zipfile
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 import httpx
@@ -21,6 +24,33 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import FileResponse
 
 router = APIRouter(prefix="/studio", tags=["studio"])
+
+
+def _adapt_session_response(data: dict) -> dict:
+    """将平台的 {reply, prd_ready, session_state} 格式适配为前端 {messages, prd, phase} 格式。"""
+    adapted = dict(data)
+
+    # reply → messages（前端期望 messages 数组）
+    if "reply" in adapted and "messages" not in adapted:
+        adapted["messages"] = [{"role": "pm", "content": adapted.pop("reply")}]
+
+    # session_state → prd / project_id
+    state = adapted.get("session_state") or {}
+    if isinstance(state, dict):
+        if "prd" in state and not adapted.get("prd"):
+            adapted["prd"] = state["prd"]
+        if "project_id" in state and not adapted.get("project_id"):
+            adapted["project_id"] = state["project_id"]
+
+    # prd_ready → phase
+    if adapted.get("prd_ready"):
+        adapted["phase"] = "prd_draft"
+
+    # phase normalization for session responses
+    if adapted.get("phase") in ("dialogue",):
+        adapted["phase"] = "clarifying"
+
+    return adapted
 
 
 def _core(request: Request):
@@ -40,7 +70,7 @@ async def create_session(request: Request, body: Dict[str, Any]):
     requirement = str(body.get("requirement", "") or body.get("message", "") or "")
     if not requirement:
         raise HTTPException(status_code=400, detail="requirement is required")
-    return await client.create_builder_session(requirement)
+    return _adapt_session_response(await client.create_builder_session(requirement))
 
 
 @router.post("/sessions/{session_id}/chat")
@@ -50,14 +80,14 @@ async def chat_session(session_id: str, request: Request, body: Dict[str, Any]):
     message = str(body.get("message", "") or "")
     if not message:
         raise HTTPException(status_code=400, detail="message is required")
-    return await client.builder_chat(session_id, message)
+    return _adapt_session_response(await client.builder_chat(session_id, message))
 
 
 @router.post("/sessions/{session_id}/confirm")
 async def confirm_session(session_id: str, request: Request):
     """确认 PRD，准备进入构建阶段。"""
     client = _core(request)
-    return await client.builder_confirm(session_id)
+    return _adapt_session_response(await client.builder_confirm(session_id))
 
 
 @router.post("/sessions/{session_id}/start")
@@ -71,7 +101,7 @@ async def start_pipeline(session_id: str, request: Request):
 async def get_session(session_id: str, request: Request):
     """获取会话状态。"""
     client = _core(request)
-    return await client.get_builder_session(session_id)
+    return _adapt_session_response(await client.get_builder_session(session_id))
 
 
 # ━━━ Projects ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -113,6 +143,28 @@ async def get_project_state(project_id: str, request: Request):
     """获取项目 Pipeline 执行状态。"""
     client = _core(request)
     return await client.get_project_state(project_id)
+
+
+@router.get("/projects/{project_id}/stream")
+async def project_stream(project_id: str, request: Request):
+    """SSE 实时推送 Pipeline 进度事件。"""
+    from sse_starlette.sse import EventSourceResponse
+    import json as _json
+
+    client = _core(request)
+
+    async def event_generator():
+        try:
+            async for event in client.stream_project_events(project_id):
+                yield {"event": event.get("type", "message"), "data": _json.dumps(event)}
+        except AttributeError:
+            while True:
+                import asyncio
+                state = await client.get_project_state(project_id)
+                yield {"event": "state", "data": _json.dumps(state)}
+                await asyncio.sleep(3)
+
+    return EventSourceResponse(event_generator())
 
 
 @router.post("/projects/{project_id}/chat")
@@ -255,8 +307,9 @@ async def download_deploy_package(project_id: str, request: Request):
 async def deploy_to_app(project_id: str, request: Request, body: Dict[str, Any] = {}):
     """部署项目到 aiPlat-app。
     1) 从 core 下载部署 zip
-    2) 解压 → 注入到 app 的部署目录
-    3) 返回部署状态
+    2) 解压 → 注入到 app 的部署目录（符号链接版本管理）
+    3) 异步健康检查 → 失败自动回滚
+    4) 返回部署状态 + health_check_pending
     """
     client = _core(request)
     url = await client.get_project_deploy_url(project_id)
@@ -270,8 +323,12 @@ async def deploy_to_app(project_id: str, request: Request, body: Dict[str, Any] 
         raise HTTPException(status_code=503, detail=f"Core unavailable: {str(e)}")
 
     app_deploy_dir = os.getenv("AIPLAT_APP_DEPLOY_DIR", os.path.expanduser("~/.aiplat/apps"))
-    project_dir = os.path.join(app_deploy_dir, project_id)
-    os.makedirs(project_dir, exist_ok=True)
+    project_base = Path(app_deploy_dir) / project_id
+    version_dir = project_base / f"v_{int(time.time())}"
+    current_link = project_base / "current"
+    previous_link = project_base / "previous"
+
+    os.makedirs(str(version_dir), exist_ok=True)
 
     tmp = tempfile.mktemp(suffix=".zip")
     try:
@@ -279,14 +336,118 @@ async def deploy_to_app(project_id: str, request: Request, body: Dict[str, Any] 
             f.write(resp.content)
         with zipfile.ZipFile(tmp, "r") as zf:
             for member in zf.namelist():
-                zf.extract(member, project_dir)
+                zf.extract(member, str(version_dir))
     finally:
         if os.path.exists(tmp):
             os.unlink(tmp)
 
+    # Version management: current → previous, new → current
+    if current_link.is_symlink() or current_link.exists():
+        if previous_link.is_symlink():
+            previous_link.unlink()
+        if current_link.is_symlink():
+            current_link.rename(previous_link)
+        elif current_link.exists():
+            shutil.move(str(current_link), str(previous_link))
+
+    os.symlink(str(version_dir), str(current_link))
+
+    app_url_root = os.getenv("AIPLAT_APP_BASE_URL", "http://localhost:8004")
+    app_url = f"{app_url_root}/{project_id}"
+
+    # Asynchronous health check
+    deploy_events: list[dict] = []
+    _deploy_events_by_project[project_id] = deploy_events
+    deploy_events.append({"type": "deploy_start", "version": version_dir.name, "timestamp": time.time()})
+
+    async def health_check_loop(max_wait=30):
+        deploy_events.append({"type": "health_check_start", "max_wait": max_wait})
+        for i in range(max_wait):
+            try:
+                async with httpx.AsyncClient(timeout=5.0) as hc:
+                    check_resp = await hc.get(f"{app_url}/health")
+                if check_resp.status_code == 200:
+                    deploy_events.append({"type": "deploy_healthy", "elapsed_s": i + 1, "timestamp": time.time()})
+                    return
+            except Exception:
+                if i < 3:
+                    deploy_events.append({"type": "health_poll", "attempt": i + 1, "timestamp": time.time()})
+            await asyncio.sleep(1)
+
+        # Timeout → auto rollback
+        deploy_events.append({"type": "health_timeout", "elapsed_s": max_wait, "timestamp": time.time()})
+        try:
+            _rollback(current_link, previous_link, project_base)
+            deploy_events.append({"type": "rollback_success", "timestamp": time.time()})
+        except Exception as e:
+            deploy_events.append({"type": "rollback_failed_critical", "error": str(e), "timestamp": time.time()})
+
+    asyncio.create_task(health_check_loop())
+
+    # Register deployed app in platform's apps table (management UI visibility)
+    platform_url = os.getenv("AIPLAT_PLATFORM_URL", "http://localhost:8003")
+    asyncio.create_task(_register_studio_app(platform_url, project_id, app_url))
+
     return {
         "ok": True,
         "project_id": project_id,
-        "deploy_dir": project_dir,
-        "app_url": os.getenv("AIPLAT_APP_BASE_URL", "http://localhost:8004"),
+        "deploy_dir": str(version_dir),
+        "app_url": app_url,
+        "health_check_pending": True,
     }
+
+
+# In-memory deploy event store (connected to SSE stream endpoint)
+_deploy_events_by_project: Dict[str, list] = {}
+
+
+async def _register_studio_app(platform_url: str, project_id: str, app_url: str):
+    """向平台注册 Studio 生成的应用，使其在管理界面可见。"""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as c:
+            await c.post(f"{platform_url}/platform/apps/register-from-studio", json={
+                "app_id": f"studio_{project_id}",
+                "name": project_id,
+                "project_id": project_id,
+                "app_url": app_url,
+            })
+    except Exception:
+        pass  # 注册失败不阻塞部署流程
+
+
+def _rollback(current_link: Path, previous_link: Path, project_base: Path):
+    """Rollback to previous stable version symlink."""
+    if previous_link.is_symlink() or previous_link.exists():
+        if current_link.is_symlink():
+            current_link.unlink()
+        os.symlink(str(previous_link.resolve()), str(current_link))
+        return
+    # No previous version → remove current
+    if current_link.is_symlink() or current_link.exists():
+        current_link.unlink()
+    # Remove version dirs
+    for d in sorted(project_base.glob("v_*"), reverse=True)[1:]:
+        shutil.rmtree(str(d), ignore_errors=True)
+
+
+@router.get("/projects/{project_id}/deploy-stream")
+async def project_deploy_stream(project_id: str, request: Request):
+    """SSE 实时推送部署健康检查进度和日志。"""
+    from sse_starlette.sse import EventSourceResponse
+    import json as _json
+
+    async def event_generator():
+        last_idx = 0
+        while True:
+            events = _deploy_events_by_project.get(project_id, [])
+            while last_idx < len(events):
+                evt = events[last_idx]
+                yield {"event": evt.get("type", "deploy"), "data": _json.dumps(evt)}
+                last_idx += 1
+            # Cleanup on terminal events
+            if events and events[-1].get("type") in ("deploy_healthy", "rollback_success", "rollback_failed_critical"):
+                _deploy_events_by_project.pop(project_id, None)
+                return
+            await asyncio.sleep(1)
+
+    return EventSourceResponse(event_generator())

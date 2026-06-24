@@ -51,6 +51,23 @@ async def create_app(req: Dict[str, Any], _auth: str = Depends(require_auth)):
         raise HTTPException(400, detail=str(e))
 
 
+# ── Studio Registration (server-to-server, no auth) ──
+
+@router.post("/register-from-studio")
+async def register_studio_app(req: Dict[str, Any]):
+    """Studio 部署完成后注册应用。由 management studio.py 内部调用。"""
+    try:
+        app = _svc.register_studio(
+            app_id=str(req.get("app_id") or ""),
+            name=str(req.get("name") or ""),
+            project_id=str(req.get("project_id") or ""),
+            app_url=str(req.get("app_url") or ""),
+        )
+        return app
+    except ValueError as e:
+        raise HTTPException(400, detail=str(e))
+
+
 # ── API mode ──
 
 @router.post("/{app_id}/run")

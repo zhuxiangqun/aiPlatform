@@ -207,6 +207,14 @@ export const projectApi = {
     );
   },
 
+  /** Regenerate a specific stage with human feedback. */
+  regenerateStage: async (projectId: string, stageId: string, feedback: string) => {
+    return apiClient.post<{ project_id: string; phase: string; state: Record<string, unknown> }>(
+      `/platform/builder/projects/${projectId}/regenerate`,
+      { stage_id: stageId, feedback }
+    );
+  },
+
   /** Run tests (E2E smoke + repo tests) on a completed project. */
   test: async (projectId: string) => {
     return apiClient.post<{ project_id: string; all_passed: boolean; e2e_smoke: Record<string, unknown>; repo_tests: Record<string, unknown> }>(

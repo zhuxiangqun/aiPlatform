@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 
 from core.utils.ids import new_prefixed_id
 from storage.sqlite import (
-    list_apps, get_app, create_app, delete_app,
+    list_apps, get_app, create_app, create_studio_app, delete_app,
     create_webhook_secret, get_webhook_secret,
     get_workflow, list_workflow_runs,
 )
@@ -36,6 +36,11 @@ class AppService:
             app["webhook_secret"] = secret
         return app
 
+    def register_studio(self, app_id: str, name: str, project_id: str, app_url: str = "") -> Dict[str, Any]:
+        """注册 Studio 生成的应用。不要求 workflow_id，写入 capability_type='studio'。"""
+        import time
+        return create_studio_app(app_id, name or project_id, project_id, app_url)
+
     async def list(self) -> List[Dict[str, Any]]:
         apps = list_apps()
         for a in apps:
@@ -44,6 +49,9 @@ class AppService:
                 a["workflow_name"] = wf.get("name", "") if wf else ""
             except Exception:
                 a["workflow_name"] = ""
+            # Extract app_url from description for Studio apps
+            if a.get("capability_type") == "studio" and "Studio 生成 · " in (a.get("description") or ""):
+                a["app_url"] = (a["description"] or "").replace("Studio 生成 · ", "")
         return apps
 
     async def get(self, app_id: str) -> Optional[Dict[str, Any]]:

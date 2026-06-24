@@ -1,10 +1,11 @@
 # aiPlat LLM Profile — model overrides & purpose profiles
-# gemma4:12b produces empty output (known issue on Apple Silicon),
-# so we override all purposes to use qwen2.5-coder:7b as the reliable default.
+# gemma4:12b produces empty output (known issue on Apple Silicon).
+# chat / agent_creation use conversational models; code_gen keeps coder.
+# To switch to cloud API: set DEEPSEEK_API_KEY and change overrides to deepseek-chat.
 
 model_overrides:
-  chat: qwen2.5-coder:7b
-  agent_creation: qwen2.5-coder:7b
+  chat: qwen2.5:3b
+  agent_creation: qwen2.5:3b
   code_gen: qwen2.5-coder:7b
   ontology_gen: qwen2.5-coder:7b
   embedding: mxbai-embed-large:latest
@@ -24,7 +25,7 @@ purpose_profiles:
     prefer_local: true
 
 fallback:
-  ultimate_model: qwen2.5-coder:7b
+  ultimate_model: minicpm-v:8b
 
 # ── Model capability profiles (P2: structured registration) ──
 # Used by ModelManager.select(purpose, complexity, input_tokens) for intelligent routing.

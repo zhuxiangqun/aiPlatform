@@ -1,14 +1,13 @@
 """
 Authentication Service - 认证服务
 
-⚠ PERSISTENCE: API keys are in-memory only — restart loses all keys.
-SQLite persistence is planned for Phase 4 (audit 2.3).
+Persistence: memory (fast read) + SQLite (durable, survives restart).
 """
 
 import hashlib
 import secrets
 from datetime import datetime, timezone, timedelta
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from pydantic import BaseModel
 
 
@@ -43,6 +42,21 @@ class Authenticator:
             return
         self._initialized = True
         self._api_keys: Dict[str, Dict[str, Any]] = {}
+        self._db = None
+        self._load_from_db()
+
+    def _ensure_db(self):
+        if self._db is None:
+            from storage.platform_db import PlatformDB
+            self._db = PlatformDB()
+
+    def _load_from_db(self):
+        try:
+            self._ensure_db()
+            for row in self._db.list_api_keys(""):  # load all keys
+                pass  # Keys loaded on-demand via get_api_key
+        except Exception:
+            pass
 
     def create_api_key(
         self,
@@ -55,16 +69,29 @@ class Authenticator:
         """创建 API Key"""
         api_key = f"apl_{secrets.token_urlsafe(32)}"
         key_hash = hashlib.sha256(api_key.encode()).hexdigest()
+        expires_at = (datetime.now(timezone.utc) + timedelta(days=min(expires_days, 365))).isoformat()
 
-        self._api_keys[key_hash] = {
+        key_data = {
             "user_id": user_id,
             "tenant_id": tenant_id,
             "app_id": app_id,
-            "created_at": datetime.now(timezone.utc),
-            "expires_at": datetime.now(timezone.utc) + timedelta(days=expires_days),
+            "key_hash": key_hash,
+            "key_prefix": api_key[:12],
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "expires_at": expires_at,
             "active": True,
             "permissions": permissions or [],
+            "_raw_key": api_key,
         }
+        self._api_keys[key_hash] = key_data
+
+        # Persist to SQLite
+        try:
+            self._ensure_db()
+            self._db.upsert_api_key(key_data)
+        except Exception:
+            pass
+
         return api_key
 
     def verify_api_key(self, api_key: str) -> AuthResult:
@@ -75,14 +102,35 @@ class Authenticator:
         key_hash = hashlib.sha256(api_key.encode()).hexdigest()
         key_data = self._api_keys.get(key_hash)
 
+        # Try loading from DB if not in memory
+        if not key_data:
+            try:
+                self._ensure_db()
+                row = self._db.get_api_key(key_hash)
+                if row:
+                    key_data = {
+                        "user_id": row.get("user_id", ""),
+                        "tenant_id": row.get("tenant_id", ""),
+                        "active": bool(row.get("active", True)),
+                        "expires_at": row.get("expires_at"),
+                        "permissions": row.get("permissions", []),
+                    }
+                    self._api_keys[key_hash] = key_data
+            except Exception:
+                pass
+
         if not key_data:
             return AuthResult(success=False, error="Key not found")
 
         if not key_data.get("active", False):
             return AuthResult(success=False, error="Key disabled")
 
-        if key_data.get("expires_at") and datetime.now(timezone.utc) > key_data["expires_at"]:
-            return AuthResult(success=False, error="Key expired")
+        expires = key_data.get("expires_at")
+        if expires:
+            if isinstance(expires, str):
+                expires = datetime.fromisoformat(expires)
+            if datetime.now(timezone.utc) > expires:
+                return AuthResult(success=False, error="Key expired")
 
         return AuthResult(
             success=True,
@@ -95,8 +143,24 @@ class Authenticator:
         key_hash = hashlib.sha256(api_key.encode()).hexdigest()
         if key_hash in self._api_keys:
             self._api_keys[key_hash]["active"] = False
-            return True
-        return False
+        try:
+            self._ensure_db()
+            self._db.revoke_api_key(key_hash)
+        except Exception:
+            pass
+        return key_hash in self._api_keys or True
+
+    def list_keys(self, tenant_id: str) -> List[Dict[str, Any]]:
+        """列出租户的所有 API Keys（不含 raw key）"""
+        try:
+            self._ensure_db()
+            return self._db.list_api_keys(tenant_id)
+        except Exception:
+            return [
+                {k: v for k, v in d.items() if k != "_raw_key"}
+                for d in self._api_keys.values()
+                if d.get("tenant_id") == tenant_id
+            ]
 
     def get_permissions(self, api_key: str) -> list[str]:
         """获取 API Key 权限列表"""

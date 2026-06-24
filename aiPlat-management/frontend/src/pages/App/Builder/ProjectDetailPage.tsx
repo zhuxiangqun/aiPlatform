@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CheckCircle, ArrowLeft, BarChart3, Play, Eye, Pencil, X, Rocket, TestTube, Clock } from 'lucide-react';
+import { CheckCircle, ArrowLeft, BarChart3, Play, Eye, Pencil, X, Rocket, TestTube, Clock, Sparkles, RefreshCw } from 'lucide-react';
 import { projectApi, type ProjectItem, type ProjectRun, type BuilderSession } from '../../../services';
 import { BuilderPipeline } from '../../../components/Builder/BuilderPipeline';
 import { ChatWidget } from '../../../components/ui/ChatWidget';
@@ -514,6 +514,85 @@ const ProjectDetailPage: React.FC = () => {
           ) : (
             <p className="text-xs text-gray-500">点击刷新加载健康报告</p>
           )}
+        </div>
+      )}
+
+      {/* ── Review panel ── */}
+      {session?.phase === Phase.done && project?.team_stages && (
+        <div className="space-y-3 mb-3">
+          <div className="p-4 rounded-lg border border-purple-500/30 bg-purple-500/5">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="text-sm font-semibold text-purple-300 flex items-center gap-2">
+                  <Eye className="w-4 h-4" />审阅 Pre-Release Review
+                </h3>
+                <p className="text-xs text-gray-400 mt-1">检查每个阶段的产出，确认无误后再部署</p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={async () => {
+                  if (!id) return;
+                  try {
+                    await projectApi.chat(id, '请检查所有阶段的产出，分析是否存在不一致或遗漏的问题，给出诊断报告。');
+                    toast.success('AI 诊断已提交，查看对话获取结果');
+                  } catch (e) { toastGateError(e, 'AI 诊断失败'); }
+                }} icon={<Sparkles className="w-3.5 h-3.5" />}>
+                  AI 诊断
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {project.team_stages.map((stage, idx) => {
+                const hasOutput = session && (session as Record<string, unknown>)[stage.output_artifact || ''];
+                const artifact = hasOutput ? (session as Record<string, unknown>)[stage.output_artifact || ''] as Record<string, unknown> : null;
+                const summary = artifact?.summary || artifact?.description || '';
+                const files = (artifact?.files as Array<{path: string}> | undefined);
+                const isDone = hasOutput != null;
+
+                return (
+                  <div key={stage.id || idx}
+                    className={`p-3 rounded border flex items-start justify-between gap-3 ${isDone ? 'border-green-500/30 bg-green-500/5' : 'border-dark-border bg-dark-hover/30'}`}>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${isDone ? 'bg-green-400' : 'bg-gray-600'}`} />
+                        <span className="text-xs font-medium text-gray-200">{stage.agent_name || stage.agent_id}</span>
+                        <span className="text-[10px] text-gray-500">({stage.phase})</span>
+                      </div>
+                      {isDone && summary && (
+                        <p className="text-[11px] text-gray-400 mt-1 line-clamp-2">{typeof summary === 'string' ? summary : JSON.stringify(summary).slice(0, 120)}</p>
+                      )}
+                      {isDone && files && files.length > 0 && (
+                        <p className="text-[10px] text-gray-500 mt-0.5">{files.length} 个文件生成</p>
+                      )}
+                    </div>
+                    <div className="flex gap-1 flex-shrink-0">
+                      {isDone && (
+                        <button
+                          onClick={() => {
+                            const feedback = window.prompt(
+                              `修改 ${stage.agent_name || stage.agent_id} 的产出，请输入你的反馈：\n\n` +
+                              `例："请增加 DELETE 接口"、"请用 apiClient 封装而不是直接写 fetch"、"字段名请用 camelCase"\n\n` +
+                              `当前产出摘要：${typeof summary === 'string' ? summary.slice(0, 200) : ''}`
+                            );
+                            if (feedback?.trim() && id && stage.id) {
+                              setPipelineLoading(true);
+                              projectApi.regenerateStage(id, stage.id, feedback.trim())
+                                .then(() => { toast.success('已提交修改，正在重新生成...'); refreshState(); })
+                                .catch((e: any) => toastGateError(e, '重新生成失败'))
+                                .finally(() => setPipelineLoading(false));
+                            }
+                          }}
+                          className="flex items-center gap-1 px-2 py-1 text-[10px] rounded bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 border border-purple-500/30 transition-colors"
+                        >
+                          <RefreshCw className="w-3 h-3" /> 修改
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
 

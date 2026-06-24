@@ -1044,10 +1044,21 @@ def kb_classify_document(elements: Any, kind: str) -> Any:
     return classify_document(elements, kind)
 
 
-def kb_transcribe_audio(audio_path: str, language: str = "auto") -> Any:
-    """Transcribe audio file to text segments."""
+def kb_transcribe_audio(audio_path: str, language: str = "auto", diagnostics: Any = None) -> Any:
+    """Transcribe audio file to text segments.
+
+    Args:
+        diagnostics: Optional dict, populated in-place with model_name, backend,
+                     segment_count, total_chars, last_end_ms.
+    """
     from core.harness.document.transcriber import transcribe_audio
-    return transcribe_audio(audio_path, language=language or None)
+    return transcribe_audio(audio_path, language=language or None, diagnostics=diagnostics)
+
+
+def kb_transcribe_audio_chunked(audio_path: str, language: str = "auto", chunk_seconds: int = 60) -> Any:
+    """Split audio into chunks, transcribe each, merge. Fallback for long audio."""
+    from core.harness.document.transcriber import transcribe_audio_chunked
+    return transcribe_audio_chunked(audio_path, language=language or None, chunk_seconds=chunk_seconds)
 
 
 def kb_embed_text(text: str, dim: int = 128) -> Any:

@@ -15,7 +15,7 @@ from management.request_context import get_forward_headers
 class CoreAPIClientConfig:
     """Configuration for Core API client."""
     base_url: str = ""
-    timeout: float = 30.0
+    timeout: float = 120.0
     transport: Optional[httpx.BaseTransport] = None
 
 

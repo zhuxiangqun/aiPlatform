@@ -100,6 +100,36 @@ class MemoryManager:
         )
         self._compression = ContextCompression()
         self._reminders = get_system_reminders() if self._config.enable_reminders else None
+        self._cleanup_task: Optional[asyncio.Task] = None
+        self._cleanup_interval = int(os.getenv("AIPLAT_MEMORY_CLEANUP_INTERVAL", str(86400)))
+
+    async def start_background_tasks(self) -> None:
+        """Start periodic background maintenance tasks."""
+        if self._cleanup_task is None:
+            self._cleanup_task = asyncio.create_task(self._cleanup_loop())
+
+    async def _cleanup_loop(self) -> None:
+        """Periodically soft-delete expired low-access semantic memories."""
+        while True:
+            try:
+                await asyncio.sleep(self._cleanup_interval)
+                count = await self.cleanup_semantic_expired()
+                if count:
+                    logger.debug(f"Semantic cleanup: soft-deleted {count} expired items")
+            except asyncio.CancelledError:
+                break
+            except Exception:
+                pass
+
+    async def shutdown(self) -> None:
+        """Gracefully stop background tasks."""
+        if self._cleanup_task:
+            self._cleanup_task.cancel()
+            try:
+                await self._cleanup_task
+            except asyncio.CancelledError:
+                pass
+            self._cleanup_task = None
     
     async def build_context(
         self,
@@ -141,6 +171,21 @@ class MemoryManager:
             messages.append({
                 "role": "system",
                 "content": f"## Session Summary\n{episodic_summary}"
+            })
+
+        # Add critical episodes (importance_score > 0.8) — never compressed
+        critical = self._episodic.get_critical_episodes(limit=5)
+        if critical:
+            lines = []
+            for ep in critical:
+                ts = ep.get("timestamp", "")[:19]
+                u = str(ep.get("user", ""))[:120]
+                a = str(ep.get("assistant", ""))[:120]
+                lines.append(f"[{ts}] User: {u}\n[{ts}] Assistant: {a}")
+            messages.append({
+                "role": "system",
+                "content": "## Critical Decisions (Preserved)\n" + "\n---\n".join(lines),
+                "meta": {"role": "system_arch"},
             })
 
         # Inject user profile from semantic memory (auto-extracted via ProfileBuilder)
@@ -223,35 +268,44 @@ class MemoryManager:
         assistant_message: str,
         tool_calls: Optional[List[Dict]] = None,
         stability: str = "medium",
+        is_critical: bool = False,
     ):
         """Save an interaction to memory.
 
         Args:
             stability: "high" (stable fact/decision → SQLite), "medium" (normal),
                        "low" (transient tool output → Working only, skip Episodic).
+            is_critical: If True, the interaction is preserved through all
+                         compression levels (e.g. HITL approvals, pipeline decisions).
         """
         # Save to working memory (all stability levels)
         self._working.add("user", user_message)
         self._working.add("assistant", assistant_message)
 
+        # Lazy-start background cleanup on first interaction
+        if self._cleanup_task is None:
+            await self.start_background_tasks()
+
         # Episodic: skip low-stability (transient tool output, debug traces)
         if stability != "low":
-            await self._episodic.add_interaction(user_message, assistant_message, tool_calls)
+            await self._episodic.add_interaction(
+                user_message, assistant_message, tool_calls,
+                is_critical=is_critical,
+            )
+            # Fire background importance scoring (never blocks main loop)
+            if self._episodic._scoring_enabled:
+                llm = self._get_llm_callable()
+                if llm:
+                    asyncio.create_task(self._episodic._score_interactions(llm))
 
         # Update episodic summary if needed
         if stability != "low" and await self._episodic.should_update():
-            llm_callable = None
-            if self._config.use_llm_summary:
-                async def _call_llm(prompt: str):
-                    from ..syscalls.llm import sys_llm_generate
-                    model = self._config.model if hasattr(self._config, 'model') and self._config.model else None
-                    if model is None:
-                        raise RuntimeError("No model available for episodic summary — set MemoryConfig.model")
-                    resp = await sys_llm_generate(model, prompt)
-                    return getattr(resp, "content", str(resp))
-                llm_callable = _call_llm
-            summary = await self._episodic.update_summary(llm_callable=llm_callable)
-            logger.info(f"Updated episodic summary: {summary.summary[:100]}")
+            llm_callable = self._get_llm_callable()
+            if self._config.use_llm_summary and llm_callable:
+                summary = await self._episodic.update_summary(llm_callable=llm_callable)
+                logger.info(f"Updated episodic summary: {summary.summary[:100]}")
+            else:
+                summary = await self._episodic.update_summary()
 
         # Bridge to SQLite: only high-stability (stable facts, decisions)
         if self._persist_callback and stability == "high":
@@ -307,10 +361,20 @@ class MemoryManager:
         self,
         key: str,
         content: str,
-        metadata: Optional[Dict] = None
+        metadata: Optional[Dict] = None,
+        expires_at: Optional[Any] = None,
     ):
-        """Capture important info to semantic memory"""
-        await self._semantic.store(key, content, metadata)
+        """Capture important info to semantic memory.
+
+        Args:
+            expires_at: Optional datetime for TTL-based expiration.
+                        stability="low" → 7 days, "medium" → 30 days, "high" → None (permanent).
+        """
+        await self._semantic.store(key, content, metadata, expires_at=expires_at)
+
+    async def cleanup_semantic_expired(self) -> int:
+        """Soft-delete expired low-access semantic memories. Returns count cleaned."""
+        return await self._semantic.cleanup_expired()
 
     async def save_task_skill(self, skill: TaskSkill) -> str:
         """Persist a L3 task skill to disk and index.
@@ -646,6 +710,22 @@ class MemoryManager:
             return len(enc.encode(text))
         except Exception:
             return max(1, int(len(text) / 3.5))
+
+    def _get_llm_callable(self):
+        """Get a reusable LLM callable for episodic summarization and scoring."""
+        if not self._config.use_llm_summary:
+            return None
+        try:
+            async def _call_llm(prompt: str):
+                from ..syscalls.llm import sys_llm_generate
+                model = self._config.model if hasattr(self._config, 'model') and self._config.model else None
+                if model is None:
+                    raise RuntimeError("No model available — set MemoryConfig.model")
+                resp = await sys_llm_generate(model, prompt)
+                return getattr(resp, "content", str(resp))
+            return _call_llm
+        except Exception:
+            return None
 
     def _count_consecutive_reads(self, context: List[Dict]) -> int:
         """Count consecutive read operations"""

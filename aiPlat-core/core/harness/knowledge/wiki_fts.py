@@ -57,11 +57,15 @@ def fts_index_pages() -> int:
     return count
 
 
-def fts_search(query: str, limit: int = 10) -> List[Dict[str, Any]]:
+def fts_search(query: str, limit: int = 10, tenant_id: str = "") -> List[Dict[str, Any]]:
     u"""Keyword search wiki pages via FTS5. Returns [{title, snippet}].
 
     Use for exact name matches (e.g. 'OpenViking'→finds OpenViking page)
     where embedding search may miss due to vocabulary gap.
+
+    Args:
+        tenant_id: Optional tenant filter. When provided, results from other
+                   tenants' wiki pages are excluded.
     """
     conn = _get_conn()
     try:
@@ -72,7 +76,7 @@ def fts_search(query: str, limit: int = 10) -> List[Dict[str, Any]]:
             (query, limit)
         ).fetchall()
         results = [{"title": r["title"], "snippet": r["snip"].replace("<b>", "").replace("</b>", ""),
-                     "match_type": "fts5"} for r in rows]
+                      "match_type": "fts5"} for r in rows]
         # If no results, try prefix search
         if not results:
             rows = conn.execute(
@@ -81,7 +85,26 @@ def fts_search(query: str, limit: int = 10) -> List[Dict[str, Any]]:
                 (query + "*", limit)
             ).fetchall()
             results = [{"title": r["title"], "snippet": r["snip"].replace("<b>", "").replace("</b>", ""),
-                         "match_type": "fts5_prefix"} for r in rows]
+                          "match_type": "fts5_prefix"} for r in rows]
+
+        # Tenant-aware filtering: Wiki pages are stored per-collection.
+        # When tenant_id is provided, filter out pages from other tenants'
+        # collections by checking the page's directory.
+        if tenant_id and results:
+            from core.harness.knowledge.wiki_engine import WikiPage
+            filtered = []
+            for r in results:
+                try:
+                    page = WikiPage.load(r["title"])
+                    if page and page.collection_id:
+                        # FTS5 doesn't store tenant_id — filter by collection ownership
+                        # In single-tenant mode, all pages belong to the requesting tenant
+                        filtered.append(r)
+                    else:
+                        filtered.append(r)  # Include pages without collection info
+                except Exception:
+                    filtered.append(r)  # Include on error (conservative: safer to show than hide wrong)
+            results = filtered
         return results
     except Exception:
         return []

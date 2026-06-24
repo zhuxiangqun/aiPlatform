@@ -1320,6 +1320,17 @@ async def lifespan(app: FastAPI):
         except Exception:
             pass
 
+    # Cross-graph ontology bridge: scan AGENT.md/SKILL.md for dependency triples
+    try:
+        async def _bootstrap_ontology_triples():
+            from core.harness.ontology_engine.triple_scanner import scan_and_populate
+            stats = await scan_and_populate()
+            if stats.get("total_triples", 0) > 0:
+                log.info(f"Ontology bridge: {stats['total_triples']} triples indexed")
+        asyncio.create_task(_bootstrap_ontology_triples())
+    except Exception:
+        pass
+
     # Auto-diagnostic scheduler: runs diagnostics periodically in background
     # Controlled by AIPLAT_ENABLE_AUTO_DIAG (default: true) and AIPLAT_AUTO_DIAG_INTERVAL_SECONDS (default: 300)
     global _diag_task

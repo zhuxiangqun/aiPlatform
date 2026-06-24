@@ -400,6 +400,7 @@ def sys_wiki_retrieve(
     top_k: int = 8,
     link_depth: int = 0,
     collection_ids: List[str] = None,
+    tenant_id: str = "",
     # ── Ontology-aware filtering ──
     class_uri: str = None,
     expand_subclasses: bool = False,
@@ -413,6 +414,7 @@ def sys_wiki_retrieve(
 
     Args:
         collection_ids: Wiki collections to search. Defaults to ["default"].
+        tenant_id: Optional tenant scoping for multi-tenant deployments.
         class_uri: Filter pages to those belonging to this T-Box class.
         expand_subclasses: Recursively include subclass pages.
         relation_filter: Only return pages related to target via relation_type.
@@ -585,120 +587,179 @@ def sys_knowledge_retrieve(
     # ── Security (Phase 6 fix) ──
     actor_scopes: List[str] = None,
 ) -> List[Dict[str, Any]]:
-    """Unified knowledge retrieval — Wiki first, KB vector as fallback.
+    """Unified knowledge retrieval — parallel Wiki + KB via RRF fusion.
 
-    When knowledge has been curated into Wiki pages, Wiki retrieval provides
-    higher-quality results (cross-linked, LLM-edited, with typed relationships).
-    For new/uncurated documents, falls back to KB vector search (traditional RAG).
+    Executes Wiki and KB queries in parallel, then fuses results using
+    Reciprocal Rank Fusion (RRF). GraphIndex high-confidence Early Exit
+    supported when available.
 
     Args:
-        wiki_first: If True (default), try Wiki first, fall back to KB.
+        wiki_first: If True (default), run Wiki + KB in parallel with RRF fusion.
                      If False, use KB directly (backward compat).
 
     Returns:
         List of {text, title, score, tags, summary, source, source_type}
         where source_type is "wiki" or "kb".
-
-    边界:
-      - 只读——不产生系统状态变化
-      - Wiki 和 KB 分数量纲不同（归一化处理，可通过 AIPLAT_WIKI_BOOST 调权）
-      - 传入 actor_scopes 时按 markings 安全过滤；不传时不过滤（向后兼容）
-    退路:
-      - Wiki 结果质量不足（< min_wiki_score）→ 自动补充 KB 结果
-      - 需要精确过滤 → 用 target_class / relation_filter 参数
     """
-    import time as _time, logging
+    import time as _time, logging, concurrent.futures
     _t0 = _time.time()
-    _wiki_time = _kb_time = 0.0
     results: List[Dict[str, Any]] = []
 
-    # ── Wiki-first path ──
-    if wiki_first:
-        _tw = _time.time()
-        wiki_attempted = False
-        if _wiki_circuit_breaker.allow_request(
-            domain_id=domain_id or "default", tenant_id=tenant_id or "default"):
-            wiki_attempted = True
-            try:
-                wiki_results = sys_wiki_retrieve(
-                    query, wiki_titles=wiki_titles, top_k=top_k, link_depth=1,
-                    collection_ids=wiki_collection_ids,
-                    class_uri=target_class, expand_subclasses=expand_subclasses,
-                    inference_expand=inference_expand,
-                )
-                # Circuit breaker: success resets to CLOSED
-                _wiki_circuit_breaker.record_success(
-                    domain_id=domain_id or "default", tenant_id=tenant_id or "default")
-                # Tag wiki results
-                for wr in wiki_results:
-                    wr["source_type"] = "wiki"
-                # Keep only results with decent scores
-                qualified = [wr for wr in wiki_results if wr.get("score", 0) >= min_wiki_score]
-                if len(qualified) >= max(1, top_k // 2):
-                    # Wiki had sufficient quality results — use them
-                    _wiki_time = _time.time() - _tw
-                    logging.getLogger("retrieval").debug(
-                        f"sys_knowledge_retrieve: total={_time.time()-_t0:.3f}s wiki={_wiki_time:.3f}s kb=0 (wiki-only)")
-                    results = qualified
-                    remaining = 0
-                else:
-                    # Otherwise: keep qualified wiki results, supplement with KB
-                    results = qualified
-                    remaining = top_k - len(qualified)
-            except Exception:
-                _wiki_circuit_breaker.record_failure(
-                    domain_id=domain_id or "default", tenant_id=tenant_id or "default")
-                logger = logging.getLogger("retrieval")
-                logger.warning("sys_knowledge_retrieve: wiki retrieval failed, FALLBACK to KB-only", exc_info=True)
-                remaining = top_k
-                results = []
-        else:
-            logger = logging.getLogger("retrieval")
-            logger.warning("sys_knowledge_retrieve: wiki circuit OPEN, skipping wiki → KB-only")
-            remaining = top_k
-            results = []
-    else:
-        remaining = top_k
-
-    _wiki_time = _time.time() - _tw
-    _tk = _time.time()
-
-    # ── KB vector fallback ──
-    if remaining > 0:
+    if not wiki_first:
+        # Backward-compat: KB-only path
         try:
-            kb_results = sys_kb_retrieve(
+            results = sys_kb_retrieve(
                 query, doc_ids=doc_ids or [],
-                collection_id=collection_id,
-                domain_id=domain_id,
-                tenant_id=tenant_id,
-                top_k=remaining,
+                collection_id=collection_id, domain_id=domain_id,
+                tenant_id=tenant_id, top_k=top_k,
             )
-            for kr in kb_results:
+            for kr in results:
                 kr["title"] = kr.get("title") or kr.get("doc_id", "KB Document")
                 kr["source_type"] = "kb"
                 kr["summary"] = kr.get("text", "")[:200]
                 kr["score"] = kr.get("score", 0.5)
-            results.extend(kb_results)
         except Exception:
             pass
+        _total = _time.time() - _t0
+        logging.getLogger("retrieval").debug(
+            f"sys_knowledge_retrieve: total={_total:.3f}s kb-only results={len(results)}")
+        return results
 
-    # ── Score normalization: Wiki & KB have different score scales ──
-    # Normalize each source independently (min-max with percentile cutoff),
-    # then apply Wiki 1.1x boost for LLM-curated content.
+    # ── Parallel Wiki + KB retrieval ──
+    wiki_results: List[Dict[str, Any]] = []
+    kb_results: List[Dict[str, Any]] = []
+
+    def _fetch_wiki():
+        if not _wiki_circuit_breaker.allow_request(
+            domain_id=domain_id or "default", tenant_id=tenant_id or "default"):
+            return []
+        try:
+            out = sys_wiki_retrieve(
+                query, wiki_titles=wiki_titles, top_k=max(top_k, 10), link_depth=1,
+                collection_ids=wiki_collection_ids,
+                tenant_id=tenant_id,
+                class_uri=target_class, expand_subclasses=expand_subclasses,
+                inference_expand=inference_expand,
+            )
+            _wiki_circuit_breaker.record_success(
+                domain_id=domain_id or "default", tenant_id=tenant_id or "default")
+            for wr in out:
+                wr["source_type"] = "wiki"
+            return out
+        except Exception:
+            _wiki_circuit_breaker.record_failure(
+                domain_id=domain_id or "default", tenant_id=tenant_id or "default")
+            logging.getLogger("retrieval").warning(
+                "sys_knowledge_retrieve: wiki retrieval failed", exc_info=True)
+            return []
+
+    def _fetch_kb():
+        try:
+            out = sys_kb_retrieve(
+                query, doc_ids=doc_ids or [],
+                collection_id=collection_id, domain_id=domain_id,
+                tenant_id=tenant_id, top_k=max(top_k, 10),
+            )
+            for kr in out:
+                kr["title"] = kr.get("title") or kr.get("doc_id", "KB Document")
+                kr["source_type"] = "kb"
+                kr["summary"] = kr.get("text", "")[:200]
+                kr["score"] = kr.get("score", 0.5)
+            return out
+        except Exception:
+            return []
+
+    # ── Execute Wiki + KB in parallel ──
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+        wiki_future = pool.submit(_fetch_wiki)
+        kb_future = pool.submit(_fetch_kb)
+        wiki_results = wiki_future.result(timeout=30)
+        kb_results = kb_future.result(timeout=30)
+
+    # ── GraphIndex Early Exit (when available) ──
+    graph_early_exit = False
+    try:
+        from core.harness.knowledge.graph_index import GraphIndex
+        gi = GraphIndex(domain_id=domain_id or "default")
+        if hasattr(gi, 'traverse') and gi._entities:
+            g_results = gi.traverse(query, max_depth=2, top_k=3)
+            if g_results and g_results[0].get("confidence", 0) > 0.92:
+                graph_early_exit = True
+                results = [{
+                    "text": str(g_results[0].get("description", g_results[0].get("name", ""))),
+                    "title": str(g_results[0].get("name", "Graph Entity")),
+                    "score": float(g_results[0].get("confidence", 0.95)),
+                    "source_type": "graph",
+                    "summary": str(g_results[0].get("description", ""))[:200],
+                    "tags": g_results[0].get("tags", []),
+                    "source": "graph_index",
+                }]
+    except Exception:
+        pass
+
+    if graph_early_exit:
+        _total = _time.time() - _t0
+        try:
+            from core.harness.memory.metrics import inc_early_exit
+            inc_early_exit("graph")
+        except Exception:
+            pass
+        logging.getLogger("retrieval").debug(
+            f"sys_knowledge_retrieve: total={_total:.3f}s graph-early-exit results={len(results)}")
+        return results
+
+    # ── RRF Fusion: merge Wiki + KB results ──
+    if wiki_results or kb_results:
+        try:
+            from core.harness.knowledge.hybrid_retriever import rrf_fusion
+
+            # Build ranked lists for RRF
+            wiki_ranked = [(i, wr) for i, wr in enumerate(wiki_results)]
+            kb_ranked = [(i, kr) for i, kr in enumerate(kb_results)]
+
+            # RRF with Wiki boost
+            rrf_k = 60
+            scores: Dict[int, float] = {}
+            items: Dict[int, Any] = {}
+            wiki_boost = float(os.getenv("AIPLAT_WIKI_BOOST", "1.1"))
+
+            for rank, (idx, item) in enumerate(wiki_ranked):
+                key = hash(f"wiki_{idx}")
+                scores[key] = scores.get(key, 0) + wiki_boost / (rrf_k + rank + 1)
+                items[key] = item
+            for rank, (idx, item) in enumerate(kb_ranked):
+                key = hash(f"kb_{idx}")
+                scores[key] = scores.get(key, 0) + 1.0 / (rrf_k + rank + 1)
+                items[key] = item
+
+            ranked = sorted(scores.keys(), key=lambda k: scores[k], reverse=True)
+            results = [items[k] for k in ranked[:top_k * 2]]
+
+            # Carry RRF score
+            for k in ranked[:len(results)]:
+                r = items[k]
+                r["rrf_score"] = scores[k]
+        except Exception:
+            # Fallback: simple concatenation
+            results = wiki_results + kb_results
+
+    # ── Score normalization ──
     wiki_items = [r for r in results if r.get("source_type") == "wiki"]
     kb_items = [r for r in results if r.get("source_type") == "kb"]
-
-    wiki_boost = float(os.getenv("AIPLAT_WIKI_BOOST", "1.1"))
-    _normalize_scores(wiki_items, boost=wiki_boost)
+    wiki_boost_norm = float(os.getenv("AIPLAT_WIKI_BOOST", "1.1"))
+    _normalize_scores(wiki_items, boost=wiki_boost_norm)
     _normalize_scores(kb_items, boost=1.0)
 
-    # ── Sort blended results by normalized score ──
-    results.sort(key=lambda x: x.get("normalized_score", x.get("score", 0)), reverse=True)
+    # ── Sort blended results ──
+    results.sort(key=lambda x: x.get("normalized_score", x.get("rrf_score", x.get("score", 0))), reverse=True)
     _total = _time.time() - _t0
-    _kb_time = _time.time() - _tk if remaining > 0 else 0
+    try:
+        from core.harness.memory.metrics import observe_rrf_latency
+        observe_rrf_latency(_total)
+    except Exception:
+        pass
     logging.getLogger("retrieval").debug(
-        f"sys_knowledge_retrieve: total={_total:.3f}s wiki={_wiki_time:.3f}s kb={_kb_time:.3f}s "
-        f"results={len(results)} wiki_first={wiki_first}")
+        f"sys_knowledge_retrieve: total={_total:.3f}s rrf-fused results={len(results)}")
 
     # ── Post-Retrieval Governance ──
     try:

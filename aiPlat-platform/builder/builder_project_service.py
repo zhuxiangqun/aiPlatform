@@ -263,6 +263,13 @@ class BuilderProjectService:
             "updated_at": now,
         }
         self._save_projects()
+
+        # Initialize chat session for PM dialogue
+        self._sessions[project_id] = {
+            "phase": BuilderSessionPhase.dialogue.value,
+            "messages": [],
+        }
+
         project_data = self._projects[project_id]
         team_name = ""
         if team_id := project_data.get("team_id"):
@@ -371,7 +378,7 @@ class BuilderProjectService:
         if not session or session.get("phase") != BuilderSessionPhase.dialogue.value:
             return {"reply": _AIPLAT_CHAT_NOT_IN_DIALOGUE, "prd_ready": False, "trace_id": "", "session_state": {}}
 
-        if not self._model:
+        if not self.model:
             return {"reply": _AIPLAT_CHAT_NO_MODEL, "prd_ready": False, "trace_id": "", "session_state": {}}
 
         session["messages"].append({"role": "user", "content": message})
@@ -915,6 +922,44 @@ class BuilderProjectService:
         state = await session.reject(dict(state), feedback)
         await self._save_state(project_id, state)
         return {"project_id": project_id, "phase": state.get("phase", "executing")}
+
+    async def regenerate_stage(self, project_id: str, stage_id: str, feedback: str) -> Dict[str, Any]:
+        """Rollback to stage with feedback, then restart from that point."""
+        session = self._pipeline_sessions.get(project_id)
+        if not session:
+            session = self._rebuild_session(project_id)
+            if not session:
+                raise ValueError("no session")
+        state = self._runs.get(project_id)
+        if not state:
+            state = self._load_pipeline_state(project_id)
+            if not state:
+                raise ValueError("no pipeline state")
+
+        # 1. Inject feedback
+        state = await session.reject(dict(state), feedback)
+
+        # 2. Rollback to target stage (clears it and downstream)
+        target_id = stage_id
+        for s in session.get_stages():
+            if s.output_artifact == stage_id or s.agent_id == stage_id or s.id == stage_id:
+                target_id = s.id
+                break
+        state = await session.rollback(dict(state), target_id)
+
+        # 3. Resume from rollback point
+        target_idx = 0
+        for i, s in enumerate(session.get_stages()):
+            if s.id == target_id:
+                target_idx = i
+                break
+        state = dict(state)
+        state["phase"] = "executing"
+        state["tokens_used"] = 0
+        state.pop("error", None)
+        state = await session.resume_from(target_idx, state)
+        await self._save_state(project_id, state)
+        return {"project_id": project_id, "phase": state.get("phase", "executing"), "state": state}
 
     async def rollback_stage(self, project_id: str, stage_id: str) -> Dict[str, Any]:
         session = self._pipeline_sessions.get(project_id)

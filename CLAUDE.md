@@ -8,6 +8,19 @@ language: zh-CN
 
 此文件是 **工作区兜底规约**，用于在系统执行链路中自动推断到 workspace root 时仍然能注入/强制基本规则。
 
+**能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（唯一真相源，303 项能力）
+
+**强制规则——代码变更必须同步文档**：
+
+| # | 代码变更类型 | 必须更新的文档 |
+|---|------------|--------------|
+| 1 | 新增公共类/函数/模块/端点 | `AIPLAT_CAPABILITIES.md` 对应子系统增加一行 |
+| 2 | 能力状态变化（⚠️→✅等） | `CAPABILITIES.md` 更新标记 + 评分统计 |
+| 3 | 评分维度改变 | `ROADMAP.md` 更新基线表 |
+| 4 | 已知债务新增/修复 | `CLAUDE.md` §16 更新 |
+| **违反后果**：`phase_check.sh` Step 7 → `verify_doc_sync.sh` → **退出码 1 阻断** |
+| **自动修复**：`git commit` 时 pre-commit hook 自动运行 `auto_sync_docs.sh`，新模块自动生成条目并 stage |
+
 如果你的任务明确针对某个仓库，请优先遵守对应仓库根目录的更细化规约：
 - 后端引擎：`aiPlat-core/CLAUDE.md`
 - 基础设施：`aiPlat-infra/CLAUDE.md`
@@ -172,10 +185,10 @@ tests/constitution/test_infra_agnostic.py    ← Infra 去应用化
     | A | §1 | `workflow_manager.py` → `platform/storage/sqlite.py` 跨层导入 | **已知例外** — 管理工具允许跨层访问 |
     | B | §35 | 2 个 execute 端点（引擎 + 工作区）被标记为 WARNING | **永久告警** — 2 是正确数量，若增至 ≥3 升级为 ERROR |
     | C | §40 | 模型注册/路由迁移尚未完成（33 条规则） | **迁移中** — CLAUDE.md §14 已规划从 core 迁到 infra，`model_registry.py`/`model_router.py` 标记 deprecated。`model_injection.py` 为集中注入点（canonical）。`kb_eval.py`/`packages_registry.py`/`prompt_eval.py` 等含裸 `sqlite3.connect()` 为已批准模式。`base.py:get_model()` 为 Agent 级别模型（与 model_injection 区分）。待到 infra ModelManager 提供完整 `select()` 后再统一迁移。 |
-    | D | §65 | 2 个检索函数缺 tenant_id：`wiki_fts.py:fts_search`、`retriever.py:retrieve` | **已知债务** — 多租户隔离参数待补齐，当前为单租户模式运行 |
-    | E | §66 | `PipelineStageConfig` 校验识别为已知假阳性 | **假阳性** — `failure_strategy` 字段已存在于第 247 行，grep 行级匹配策略无法检测跨行存在 |
-    | F | §65 | 1 个检索路径未实现 3 级 CRAG 回退 | **待修复** — `materials_chat.py` 检索路径需确认已实现 normal→FTS5→HyDE |
-    | G | §65 | 1 个检索鲁棒性组件缺配置字段 | **待修复** — `WikiCircuitBreaker`/`DomainRouter` 需确认配置完整性 |
+    | D | §65 | 4 个检索函数缺 tenant_id：`wiki_fts.py:fts_search`、`retriever.py:retrieve`、`retrieval.py:sys_wiki_retrieve`、`sys_wiki_context` | **修复中** — `fts_search` 已加 `tenant_id` 参数(2026-06-24)，`sys_wiki_retrieve` 已加 `tenant_id` 参数(2026-06-24)，`WikiPageRetriever` 通过 `collection_ids` 隔离 |
+    | E | §66 | `PipelineStageConfig` 校验识别为已知假阳性 | **假阳性** |
+    | F | §65 | CRAG 3 级回退 | **✅ 已实现** — `materials_chat.py:380-498`：Level1 本体优先→Level2 FTS5→Level3 HyDE，代码审计确认（2026-06-24） |
+    | G | §65 | WikiCircuitBreaker/DomainRouter 配置 | **✅ 已实现** — `retrieval.py:506-566` WikiCircuitBreaker 三态熔断器，`domain_router.py:26` DomainRouter 3层级联，均已接入（2026-06-24） |
     | H | §67 | 约 15 个路由端点缺 `response_model` | **已知债务** — API 契约化改造尚未完成，不影响功能 |
 
     **验证命令（排查已知例外后）**：

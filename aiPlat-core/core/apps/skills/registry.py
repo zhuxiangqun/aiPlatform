@@ -77,6 +77,20 @@ class SkillBindingStats:
     success_count: int = 0
     error_count: int = 0
     avg_latency: float = 0.0
+    # ── Decay tracking (方案五) ──
+    recent_results: Any = field(default_factory=lambda: __import__('collections').deque(maxlen=20))
+    decayed_at: Optional[float] = None   # timestamp when skill was auto-downgraded
+
+    @property
+    def recent_pass_rate(self) -> float:
+        if not self.recent_results:
+            return self.success_count / max(1, self.total_executions)
+        return sum(1 for r in self.recent_results if r) / max(1, len(self.recent_results))
+
+    @property
+    def is_decayed(self) -> bool:
+        """Skill has been auto-downgraded due to low success rate."""
+        return self.decayed_at is not None
 
 
 class SkillRegistry:
@@ -939,7 +953,7 @@ class SkillRegistry:
         return stats.bound_agents if stats else []
 
     def record_execution(self, name: str, success: bool, latency: float = 0.0) -> None:
-        """Record a skill execution"""
+        """Record a skill execution with sliding window for decay detection."""
         with self._lock:
             if name in self._binding_stats:
                 stats = self._binding_stats[name]
@@ -948,6 +962,21 @@ class SkillRegistry:
                     stats.success_count += 1
                 else:
                     stats.error_count += 1
+                # Sliding window: keep last 20 results for recent_pass_rate
+                if hasattr(stats.recent_results, 'append'):
+                    stats.recent_results.append(success)
+                    if stats.recent_pass_rate < 0.5:
+                        try:
+                            from core.harness.memory.metrics import inc_skill_downgraded
+                            inc_skill_downgraded(name)
+                        except Exception:
+                            pass
+                    if stats.recent_pass_rate < 0.2:
+                        try:
+                            from core.harness.memory.metrics import inc_skill_alert
+                            inc_skill_alert(name)
+                        except Exception:
+                            pass
                 if latency > 0:
                     prev_avg = stats.avg_latency
                     count = stats.success_count + stats.error_count
@@ -965,6 +994,11 @@ class SkillRegistry:
                 "category": self._get_category(skill),
                 "bound_agents": len(stats.bound_agents) if stats else 0,
                 "total_executions": stats.total_executions if stats else 0,
+                "success_count": stats.success_count if stats else 0,
+                "error_count": stats.error_count if stats else 0,
+                "recent_pass_rate": round(stats.recent_pass_rate, 3) if stats else 1.0,
+                "is_decayed": stats.is_decayed if stats else False,
+                "avg_latency": round(stats.avg_latency, 3) if stats else 0.0,
                 "success_count": stats.success_count if stats else 0,
                 "error_count": stats.error_count if stats else 0,
                 "avg_latency": stats.avg_latency if stats else 0.0,

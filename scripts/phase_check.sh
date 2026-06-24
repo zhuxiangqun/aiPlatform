@@ -132,12 +132,25 @@ else
 fi
 
 # ══════════════════════════════════════════════════════════════
+# Step 7: Document Sync Check
+# ══════════════════════════════════════════════════════════════
+echo ""
+echo "━━━ Step 7/7: Document Sync Check ━━━"
+echo ""
+if bash "$WORKSPACE/scripts/verify_doc_sync.sh" 2>&1; then
+    echo -e "${GREEN}  PASS${NC} Step 7: CAPABILITIES.md ↔ code in sync"
+else
+    echo -e "${RED}  FAIL${NC} Step 7: Document sync violations (see above)"
+    FAILURES=$((FAILURES + 1))
+fi
+
+# ══════════════════════════════════════════════════════════════
 # Summary
 # ══════════════════════════════════════════════════════════════
 echo ""
 echo "═══════════════════════════════════════════════════════════════"
 if [ "$FAILURES" -eq 0 ]; then
-    echo -e "${GREEN}═══ PHASE CHECK PASSED — all 6 steps clear ═══${NC}"
+    echo -e "${GREEN}═══ PHASE CHECK PASSED — all 7 steps clear ═══${NC}"
     exit 0
 else
     echo -e "${RED}═══ PHASE CHECK FAILED: $FAILURES step(s) failed ═══${NC}"
@@ -148,5 +161,6 @@ else
     echo "    Step 2.5 (Methods):      bash scripts/method_verify.sh"
     echo "    Step 3 (Integration):    pytest tests/wiring/integration/ -v"
     echo "    Step 5 (Compile):        python -m py_compile"
+    echo "    Step 7 (Doc Sync):       bash scripts/verify_doc_sync.sh"
     exit 1
 fi

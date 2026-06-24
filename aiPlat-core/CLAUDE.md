@@ -298,19 +298,23 @@ Harness 是 AI Runtime Kernel（"操作系统"），解决**"任务如何被执�
 
 | 规则 | 说明 |
 |------|------|
-| **四层架构** | Working（Hot, 当前上下文）+ Episodic（Warm, 会话摘要）+ Semantic（Cold, 长期知识）+ Task Skills（External, 可复用执行模式）。参照 Hermes Agent 四层记忆框架 |
-| **5 级压缩** | 70%监控 → 80%替换旧输出 → 85%裁剪 → 90%激进 → 99%完整摘要 |
+| **四层架构** | Working（Hot, 当前上下文）+ Episodic（Warm, 会话摘要 + 预评分）+ Semantic（Cold, 长期知识 + 动态续期）+ Task Skills（External, 可复用执行模式）。参照 Hermes Agent 四层记忆框架 |
+| **5 级压缩** | 70%监控 → 80%替换旧输出 → 85%裁剪 → 90%激进 → 99%完整摘要 + protected_roles 系统指令永不压缩 |
+| **工具输出预算帽（方案一）** | >2000字工具输出使用占位符 + `asyncio.create_task(后台LLM摘要)`，热路径零阻塞；超时3s降级为 `[TRUNCATED]`；幽灵占位符防御：finally块确保 scratchpad 必有内容 |
+| **语义记忆过期（方案二）** | `search()`命中自动续期 `expires_at`；清理条件：`expired AND access_count<3`；软删除 `is_deleted=1`，可恢复；强制 tenant+session 隔离 |
+| **投毒防御** | `MemoryEntry` 必含 `source_tag`/`trust_weight`/`provenance` 三字段；写前校验来源 |
+| **Episodic 预评分（方案三）** | 写入时后台 `_score_interactions()` 打分，压缩时零延迟读分；`>0.8` 分提升为 `critical_episode`永不压缩 |
 | **压缩必须可追溯** | Context Compaction MUST 产生 CONTEXT_SUMMARY，记录 before/after/preserved_ids |
 | **Transcript Guard** | MUST 归一化 role（防止 role 混乱导致模型行为异常） |
 | **System Reminder** | 事件驱动提醒，使用 `user-role` 而非 `system-role`（模型注意力更高） |
-| **自动过期** | 长期记忆支持自动过期清理 |
+| **自动过期** | 长期记忆支持自动过期清理；语义记忆支持动态续期 |
 
 **设计文档依据**：
-- `core/docs/memory/index.md` §四层架构
+- `core/docs/memory/index.md` §四层架构、§语义记忆过期、§投毒防御
 - `core/docs/harness/context.md` §5级压缩策略、§System Reminders
 - `core/docs/contracts/04-prompt-context-contract.md`
 
-> **当前实现状态**：`MemoryManager` 四层架构已实现并接入 Agent 执行循环（`loop.py:545` 调用 `build_context`、`loop.py:1111` 调用 `get_reminders`、`loop.py:1042` 保存交互）。5 级 ContextCompression 为主压缩路径。Layer 4 (Task Skills) 在流水线完成时自动晶体化——pass_rate ≥85% 的 hot skill 自动注册到 SkillRegistry。
+> **当前实现状态**：`MemoryManager` 四层架构已实现并接入 Agent 执行循环（`loop.py` 调用 `build_context`、`get_reminders`、`save_interaction`）。5 级 ContextCompression 为主压缩路径。工具输出预算帽在 `loop.py` + `compression.py` 中实现。语义记忆动态续期+软删除在 `semantic.py` 中实现。Episodic 预评分在 `episodic.py` + `manager.py` 中实现。Layer 4 (Task Skills) 在流水线完成时自动晶体化——pass_rate ≥85% 的 hot skill 自动注册到 SkillRegistry。Skill 衰减追踪在 `registry.py::SkillBindingStats.recent_results` 中实现。
 
 ### 5.13 Engine vs Workspace 分离（来自 `core/docs/index.md` §Engine vs Workspace）
 

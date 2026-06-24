@@ -395,7 +395,7 @@ def ingest_document(
 
         for i, el in enumerate(parsed):
             element_id = new_prefixed_id("el")
-            el_text = str(el.get("text") or "")[:20000]
+            el_text = _mask_pii(str(el.get("text") or "")[:20000])
             db.insert_element(
                 tenant_id=st.tenant_id,
                 element_id=element_id,
@@ -866,6 +866,15 @@ def load_doc_kinds(*, tenant_id: str, doc_ids: List[str]) -> List[str]:
         return []
 
 
+def _mask_pii(text: str) -> str:
+    """Mask PII in text before storing in KB. Safe fallback on import error."""
+    try:
+        from core.services.pii_detector import get_pii_detector
+        return get_pii_detector().mask(text)
+    except Exception:
+        return text
+
+
 def _format_transcript_with_punctuation(segments: list) -> str:
     """Build punctuated transcript out of whisper segments.
 
@@ -940,6 +949,7 @@ def preview_document(
     k = str(kind or "").lower()
     elements: List[Dict[str, Any]] = []
     parser = ""
+    diags: Dict[str, Any] = {}
 
     if k in ("word", "docx"):
         elements = kb_parse_document(file_path, "word")
@@ -960,7 +970,7 @@ def preview_document(
         elements = kb_parse_document(file_path, "markdown")
         parser = "markdown"
     elif k in ("txt", "text", "plain"):
-        text = Path(file_path).read_text(encoding="utf-8", errors="replace")
+        text = _mask_pii(Path(file_path).read_text(encoding="utf-8", errors="replace"))
         elements = [{"type": "paragraph", "text": text[:10000], "page": 1}]
         parser = "text"
     elif k in ("audio", "mp3", "wav", "m4a"):
@@ -982,9 +992,40 @@ def preview_document(
             subprocess.run(
                 ["ffmpeg", "-y", "-i", file_path, "-vn", "-acodec", "pcm_s16le",
                  "-ar", "16000", "-ac", "1", audio_path],
-                check=True, capture_output=True, timeout=120,
+                check=True, capture_output=True, timeout=600,
             )
-            segments = _transcribe_audio(audio_path, language="zh")
+
+            # Probe extracted audio duration for coverage diagnostics
+            audio_dur_ms = 0
+            try:
+                from core.harness.document.video import probe_duration_ms
+                audio_dur_ms = probe_duration_ms(audio_path)
+            except Exception:
+                pass
+
+            diags.clear()
+            segments = _transcribe_audio(audio_path, language="zh", diagnostics=diags)
+
+            # Coverage ratio: how much of the audio Whisper captured
+            if audio_dur_ms > 0 and diags.get("last_end_ms", 0) > 0:
+                diags["audio_duration_ms"] = audio_dur_ms
+                diags["coverage_ratio"] = round(min(diags["last_end_ms"] / audio_dur_ms, 1.0), 3)
+            else:
+                diags["audio_duration_ms"] = audio_dur_ms
+                diags["coverage_ratio"] = 1.0
+
+            # Chunked fallback when coverage is low (likely ffmpeg timeout or Whisper crash)
+            if diags.get("coverage_ratio", 1.0) < 0.5:
+                try:
+                    from core.api.facades.kb_facade import kb_transcribe_audio_chunked
+                    segments = kb_transcribe_audio_chunked(audio_path, language="zh")
+                    diags["fallback_used"] = "chunked"
+                    if audio_dur_ms > 0 and segments:
+                        diags["coverage_ratio"] = round(
+                            min(segments[-1]["end_ms"] / audio_dur_ms, 1.0), 3)
+                except Exception:
+                    diags["fallback_error"] = "chunked_transcription_failed"
+
             full_text = _format_transcript_with_punctuation(segments)
             if full_text:
                 elements = [{"type": "paragraph", "text": full_text[:80000], "page": 1}]
@@ -1081,7 +1122,7 @@ def preview_document(
     elements = enriched[:max_elements]
     classification = kb_classify_document(elements, kind) if elements else {}
 
-    return {
+    result: Dict[str, Any] = {
         "file_path": file_path,
         "kind": kind,
         "parser": parser,
@@ -1093,6 +1134,9 @@ def preview_document(
         "element_count": len(elements),
         "classification": classification,
     }
+    if diags:
+        result["diagnostics"] = diags
+    return result
 
 
 # ── Directory Watch / Auto-Sync ──

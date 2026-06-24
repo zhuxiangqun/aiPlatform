@@ -188,8 +188,8 @@ def create_app() -> FastAPI:
     # HTTP clients (configured by management.yaml)
     infra_ep = layers_config.get("infra", {}).get("endpoint", "http://localhost:8001")
     core_ep = layers_config.get("core", {}).get("endpoint", "http://localhost:8002")
-    app.state.infra_client = InfraAPIClient(InfraAPIClientConfig(base_url=infra_ep, timeout=30.0))
-    app.state.core_client = CoreAPIClient(CoreAPIClientConfig(base_url=core_ep, timeout=30.0))
+    app.state.infra_client = InfraAPIClient(InfraAPIClientConfig(base_url=infra_ep, timeout=120.0))
+    app.state.core_client = CoreAPIClient(CoreAPIClientConfig(base_url=core_ep, timeout=120.0))
     # Backward compatibility: keep module-level singletons aligned if present
     try:
         from management.api import core as _core_api

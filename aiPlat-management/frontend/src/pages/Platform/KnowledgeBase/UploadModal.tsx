@@ -231,6 +231,38 @@ export const UploadModal: React.FC<Props> = ({ open, onClose, onComplete }) => {
             ))}
           </div>
 
+          {preview?.diagnostics && (
+            <div className="flex flex-wrap gap-2 text-xs">
+              {preview.diagnostics.coverage_ratio != null && (
+                <span className={`px-2 py-0.5 rounded ${
+                  preview.diagnostics.coverage_ratio >= 0.85 ? 'bg-green-900/30 text-green-400' :
+                  preview.diagnostics.coverage_ratio >= 0.5 ? 'bg-yellow-900/30 text-yellow-400' :
+                  'bg-red-900/30 text-red-400'
+                }`}>
+                  覆盖率 {(preview.diagnostics.coverage_ratio * 100).toFixed(0)}%
+                </span>
+              )}
+              <span className="px-2 py-0.5 rounded bg-dark-hover text-gray-400">
+                模型 {preview.diagnostics.model_name || '?'}
+              </span>
+              {preview.diagnostics.fallback_used === 'chunked' && (
+                <span className="px-2 py-0.5 rounded bg-blue-900/30 text-blue-400">
+                  已触发分块回退
+                </span>
+              )}
+              {preview.diagnostics.fallback_error && (
+                <span className="px-2 py-0.5 rounded bg-red-900/30 text-red-400">
+                  回退失败
+                </span>
+              )}
+              {preview.diagnostics.coverage_ratio != null && preview.diagnostics.coverage_ratio < 0.85 && !preview.diagnostics.fallback_used && (
+                <span className="px-2 py-0.5 rounded bg-yellow-900/20 text-yellow-500">
+                  建议升级模型: export AIPLAT_VIDEO_WHISPER_MODEL=medium
+                </span>
+              )}
+            </div>
+          )}
+
           <div className="text-xs text-gray-500">
             {step === 'saving' ? '正在保存到知识库...' : '以下是解析出的核心内容，确认后点击"保存到知识库"'}
           </div>

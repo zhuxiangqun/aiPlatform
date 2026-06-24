@@ -110,7 +110,15 @@ def ingest_video_document(
 
         if progress_cb:
             progress_cb(0.35, "transcribe_audio", {})
-        segments = kb_transcribe_audio(audio_path, language=os.getenv("AIPLAT_VIDEO_TRANSCRIBE_LANG", "auto"))
+        transcribe_diags: Dict[str, Any] = {}
+        segments = kb_transcribe_audio(audio_path, language=os.getenv("AIPLAT_VIDEO_TRANSCRIBE_LANG", "auto"), diagnostics=transcribe_diags)
+        if progress_cb:
+            progress_cb(0.40, "transcribe_done", {
+                "transcribe_model": transcribe_diags.get("model_name", ""),
+                "transcribe_backend": transcribe_diags.get("backend", ""),
+                "transcribe_segments": transcribe_diags.get("segment_count", 0),
+                "transcribe_chars": transcribe_diags.get("total_chars", 0),
+            })
 
         if progress_cb:
             progress_cb(0.75, "extract_keyframes", {})
@@ -236,8 +244,9 @@ def ingest_video_document(
 
     if elements_batch:
         # Delete old elements before re-inserting (reingest safety)
-        db.conn.execute("DELETE FROM kb_elements WHERE doc_id=?", (doc_id,))
-        db.conn.execute("DELETE FROM kb_embeddings WHERE doc_id=?", (doc_id,))
+        with db.connect() as conn:
+            conn.execute("DELETE FROM kb_elements WHERE doc_id=?", (doc_id,))
+            conn.execute("DELETE FROM kb_embeddings WHERE doc_id=?", (doc_id,))
         db.insert_elements_batch(elements=elements_batch)
     if embeddings_batch:
         db.insert_embeddings_batch(embeddings=embeddings_batch)

@@ -202,10 +202,77 @@ class FileWriteBackAdapter(IWriteBackAdapter):
         return _os.path.exists(_os.path.dirname(path) or ".")
 
 
+class MQWriteBackAdapter(IWriteBackAdapter):
+    """Kafka / RabbitMQ 消息队列写回适配器。
+
+    环境变量:
+      AIPLAT_MQ_BACKEND: kafka | rabbitmq (默认: none → 降级为 LOG_ONLY)
+      AIPLAT_KAFKA_BOOTSTRAP_SERVERS: Kafka broker 地址
+      AIPLAT_RABBITMQ_URL: RabbitMQ 连接 URL
+    """
+
+    async def execute(self, config: WriteBackConfig, payload: Dict[str, Any]) -> Dict[str, Any]:
+        mq_type = _os.getenv("AIPLAT_MQ_BACKEND", "none")
+
+        if mq_type == "none":
+            _logging.getLogger("writeback").info(
+                f"MQ writeback skipped (AIPLAT_MQ_BACKEND=none): {payload.get('entity_uri', '')}")
+            return {"success": True, "mode": "log_only"}
+
+        try:
+            record = {
+                "entity_uri": config.entity_uri,
+                "action": config.action_summary,
+                "metadata": payload,
+                "timestamp": _datetime.now(_timezone.utc).isoformat(),
+            }
+            if mq_type == "kafka":
+                return await self._send_kafka(config.target_endpoint, record)
+            elif mq_type == "rabbitmq":
+                return await self._send_rabbitmq(config.target_endpoint, record)
+            else:
+                return {"success": False, "error": f"Unknown MQ backend: {mq_type}"}
+        except Exception as e:
+            _logging.getLogger("writeback").error(f"MQ writeback failed, logged only: {e}")
+            return {"success": True, "mode": "log_only_fallback", "error": str(e)[:200]}
+
+    async def _send_kafka(self, topic: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        try:
+            import _json
+            from aiokafka import AIOKafkaProducer
+            producer = AIOKafkaProducer(
+                bootstrap_servers=_os.getenv("AIPLAT_KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"))
+            await producer.start()
+            await producer.send_and_wait(topic, _json.dumps(payload, default=str).encode())
+            await producer.stop()
+            return {"success": True, "mode": "kafka", "topic": topic}
+        except ImportError:
+            return {"success": False, "error": "aiokafka not installed"}
+
+    async def _send_rabbitmq(self, routing_key: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        try:
+            import _json, aio_pika
+            url = _os.getenv("AIPLAT_RABBITMQ_URL", "amqp://localhost")
+            connection = await aio_pika.connect_robust(url)
+            async with connection:
+                channel = await connection.channel()
+                await channel.default_exchange.publish(
+                    aio_pika.Message(body=_json.dumps(payload, default=str).encode()),
+                    routing_key=routing_key,
+                )
+            return {"success": True, "mode": "rabbitmq", "routing_key": routing_key}
+        except ImportError:
+            return {"success": False, "error": "aio-pika not installed"}
+
+    async def health_check(self, config: WriteBackConfig) -> bool:
+        return _os.getenv("AIPLAT_MQ_BACKEND", "none") != "none"
+
+
 _ADAPTER_REGISTRY: Dict[WriteBackTarget, IWriteBackAdapter] = {
     WriteBackTarget.REST_WEBHOOK: WebhookWriteBackAdapter(),
     WriteBackTarget.SQL_DATABASE: SQLWriteBackAdapter(),
     WriteBackTarget.LOCAL_FILE: FileWriteBackAdapter(),
+    WriteBackTarget.MESSAGE_QUEUE: MQWriteBackAdapter(),
 }
 
 

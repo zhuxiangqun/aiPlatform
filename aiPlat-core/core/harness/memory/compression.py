@@ -2,12 +2,15 @@
 Context Compression
 
 Five-level context compression strategy with per-tool-type summaries and
-iterative summary preservation.
+iterative summary preservation. Includes async tool output summarization
+to prevent context window exhaustion during tool-heavy tasks.
 """
 
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
+import asyncio
+import os
 
 
 class CompressionLevel(Enum):
@@ -127,13 +130,27 @@ class ContextCompression:
             return f"[{name}] {snippet}"
         return f"[{name}] executed"
 
-    async def _replace_old_outputs(self, context: List[Dict]) -> List[Dict]:
-        """Replace old tool outputs with informed per-tool-type summaries."""
+    async def _replace_old_outputs(self, context: List[Dict], protected_roles: Optional[List[str]] = None) -> List[Dict]:
+        """Replace old tool outputs with informed per-tool-type summaries.
+
+        Args:
+            context: List of message dicts.
+            protected_roles: Roles that must never be compressed (e.g. ["system_arch"]).
+        """
+        protected = set(protected_roles or [])
         result = []
         tool_output_count = 0
 
         for msg in context:
-            if msg.get("role") == "tool":
+            role = msg.get("role", "")
+            meta_role = msg.get("meta", {}).get("role", "") if isinstance(msg.get("meta"), dict) else ""
+
+            # Never compress protected system-level messages (CLAUDE.md, Domain Prompt, etc.)
+            if role == "system" and (meta_role in protected or "system_arch" in protected):
+                result.append(msg)
+                continue
+
+            if role == "tool":
                 tool_output_count += 1
                 if tool_output_count <= 3 or tool_output_count % 2 == 0:
                     result.append(msg)
@@ -202,6 +219,85 @@ class ContextCompression:
         """Check if compression should be triggered"""
         level = self.get_level(state.usage_ratio)
         return level != CompressionLevel.NORMAL
+
+
+# ── Tool output budget: background summarization ───────────────────
+
+TOOL_OUTPUT_SUMMARY_THRESHOLD = 2000   # chars — trigger async summary above this
+TOOL_OUTPUT_SUMMARY_TIMEOUT = 3.0       # seconds — fallback to truncation
+
+
+async def _background_tool_summarize(
+    tool_call_id: str,
+    tool_name: str,
+    raw_output: str,
+    scratchpad: Dict[str, str],
+) -> None:
+    """Background task: generate LLM summary for large tool outputs.
+
+    Must ALWAYS write a final state to scratchpad — even on timeout or error.
+    This prevents "ghost placeholders" in the agent's context.
+    """
+    import time as _time
+    _t0 = _time.time()
+    try:
+        from core.harness.memory.metrics import inc_tool_truncated
+        inc_tool_truncated(tool_name)
+    except Exception:
+        pass
+    try:
+        summary = await asyncio.wait_for(
+            _llm_summarize_tool_output(tool_name, raw_output),
+            timeout=TOOL_OUTPUT_SUMMARY_TIMEOUT,
+        )
+        scratchpad[tool_call_id] = summary
+    except asyncio.TimeoutError:
+        scratchpad[tool_call_id] = (
+            f"[TIMEOUT] 工具摘要生成超时({TOOL_OUTPUT_SUMMARY_TIMEOUT}s)。"
+            f"原始数据({len(raw_output)}chars)前1000字: {raw_output[:1000]}"
+        )
+    except Exception as e:
+        scratchpad[tool_call_id] = (
+            f"[ERROR] 工具摘要生成失败: {e}。"
+            f"原始数据({len(raw_output)}chars)前1000字: {raw_output[:1000]}"
+        )
+    try:
+        from core.harness.memory.metrics import observe_tool_summary
+        observe_tool_summary(tool_name, _time.time() - _t0)
+    except Exception:
+        pass
+
+
+async def _llm_summarize_tool_output(tool_name: str, raw_output: str) -> str:
+    """Call LLM to generate structured summary of tool output."""
+    try:
+        from core.harness.infrastructure.infra_llm_adapter import InfraLLMAdapter
+        model_name = os.getenv("AIPLAT_DOC_LLM_MODEL",
+                               os.getenv("AIPLAT_LLM_MODEL", ""))
+        adapter = InfraLLMAdapter(model_name=model_name) if model_name else None
+        if adapter is None:
+            raise RuntimeError("no LLM model configured for tool summarization")
+
+        prompt = (
+            f"工具 [{tool_name}] 返回了以下输出。请生成一个简短的结构化摘要，"
+            f"保留关键数据（文件路径、错误码、返回值、关键数字），忽略冗余内容。\n\n"
+            f"输出({len(raw_output)}字符):\n{raw_output[:3000]}"
+        )
+        result = await adapter.chat_complete(
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.0,
+            max_tokens=500,
+        )
+        content = getattr(result, "content", str(result))
+        return f"[摘要] {content.strip()}" if content else raw_output[:1000]
+    except Exception:
+        raise
+
+
+__all__ = [
+    "CompressionLevel", "ContextState", "ContextCompression",
+    "TOOL_OUTPUT_SUMMARY_THRESHOLD", "_background_tool_summarize",
+]
 
 
 __all__ = ["ContextCompression", "CompressionLevel", "ContextState"]

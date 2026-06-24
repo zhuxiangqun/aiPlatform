@@ -117,8 +117,10 @@ export type { BuilderSession, PipelineStageConfig, AgentCatalogItem, TeamConfig 
 
 export type { GatewayRoute, AuthUser, TenantInfo, Channel, AppSession } from './platformAppApi';
 
+export { studioApi } from './studioApi';
 export { kbApi } from './kbApi';
 export type { KBConversation, KBAnalysisBatch, KBAnalysisRun, KBCollection, KBCategory, KBDocument, KBDocumentSource } from './kbApi';
+export type { StudioSession, StudioProject, PipelineState, DeployResult } from './studioApi';
 
 export { packagesApi } from './coreApi';
 export { overviewApi } from './coreApi';

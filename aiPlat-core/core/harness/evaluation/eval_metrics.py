@@ -8,6 +8,7 @@ Reads syscall_event and agent_history tables — read-only, never modifies.
 from __future__ import annotations
 
 import re
+from typing import Any, Dict, List, Optional
 from typing import Any, Dict, List, Optional, Tuple
 from collections import Counter
 
@@ -59,6 +60,22 @@ def _level_to_score(level: TaskResultLevel) -> float:
 
 
 # ── Metric Computation ──────────────────────────────────────────────────────
+
+def params_match(expected: Optional[Dict[str, Any]], actual: Optional[Dict[str, Any]]) -> bool:
+    """参数子集匹配：只要 actual 包含 expected 所有 key 且值相等，即通过。
+
+    允许 Agent 多传额外字段（如 timestamp），不产生误报。
+    用于离线工具选择评估中的参数正确性判断。
+    """
+    if not expected:
+        return True
+    if not actual:
+        return False
+    for key, value in expected.items():
+        if key not in actual or actual[key] != value:
+            return False
+    return True
+
 
 class EvalMetricsEngine:
     """Compute evaluation metrics from ExecutionStore trace data."""
@@ -126,10 +143,17 @@ class EvalMetricsEngine:
             elif not expected_set:
                 correct_sel += 1  # No expected list — assume correct
 
-            # Parameter validity
+            # Parameter validity (sub-set match: tolerate extra fields)
             error = payload.get("error") or call.get("error")
             if not error:
-                valid_param += 1
+                expected_params_for_call = None
+                if hasattr(call, 'get'):
+                    expected_params_for_call = call.get("expected_params")
+                valid = True
+                if expected_params_for_call:
+                    valid = params_match(expected_params_for_call, payload)
+                if valid:
+                    valid_param += 1
 
             # Timing: no hard timing check — assume correct if no error
             if not error:

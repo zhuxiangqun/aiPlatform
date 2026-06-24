@@ -86,8 +86,16 @@ class SemanticCache:
             self._enabled = False
 
     def _cache_key(self, query: str, domain_id: str) -> str:
-        raw = f"aiplat:cache:v1:{domain_id}:{query.strip().lower()}"
+        raw = f"aiplat:cache:v{self._get_version(domain_id)}:{domain_id}:{query.strip().lower()}"
         return hashlib.md5(raw.encode()).hexdigest()
+
+    def _version_key(self, domain_id: str) -> str:
+        return f"cache_version:{domain_id}"
+
+    def _get_version(self, domain_id: str) -> int:
+        if not hasattr(self, '_versions'):
+            self._versions: Dict[str, int] = {}
+        return self._versions.get(domain_id, 0)
 
     def _l1_key(self, query: str, domain_id: str) -> str:
         return f"l1:{self._cache_key(query, domain_id)}"
@@ -233,17 +241,55 @@ class SemanticCache:
             pass
 
     async def invalidate_domain(self, domain_id: str):
-        """Invalidate all cache for a domain (e.g., after KB update)."""
+        """Atomically invalidate all cache for a domain using version increment (O(1)).
+
+        Instead of scanning and deleting keys (O(N) blocking), this increments a
+        version counter. Old keys are left for Redis LRU to evict naturally.
+        Also proactively clears L1 exact-match keys (few in number, cheap to delete).
+        """
         await self._ensure_redis()
         if not self._enabled or self._redis is False:
             return
         try:
-            pattern = f"aiplat:cache:v1:{domain_id}:*"
-            keys = []
-            async for key in self._redis.scan_iter(match=pattern):
-                keys.append(key)
-            if keys:
-                await self._redis.delete(*keys)
+            vkey = self._version_key(domain_id)
+            new_version = await self._redis.incr(vkey)
+            try:
+                from core.harness.memory.metrics import inc_cache_version
+                inc_cache_version(domain_id)
+            except Exception:
+                pass
+            if not hasattr(self, '_versions'):
+                self._versions: Dict[str, int] = {}
+            self._versions[domain_id] = int(new_version)
+
+            # Proactively clear L1 exact-match keys (cheap, few in number)
+            l1_pattern = f"l1:*:{domain_id}:*"
+            try:
+                keys = []
+                async for key in self._redis.scan_iter(match=l1_pattern, count=50):
+                    keys.append(key)
+                    if len(keys) >= 100:
+                        break
+                if keys:
+                    await self._redis.delete(*keys)
+            except Exception:
+                pass
+
+            # Version window: keep only last 3 versions' L2 keys
+            try:
+                versions_key = f"cache_versions_list:{domain_id}"
+                await self._redis.lpush(versions_key, new_version)
+                await self._redis.ltrim(versions_key, 0, 2)
+                oldest = await self._redis.lindex(versions_key, -1)
+                if oldest and int(oldest) < int(new_version) - 2:
+                    old_pattern = f"l2:aiplat:cache:v{oldest.decode() if isinstance(oldest, bytes) else oldest}:*"
+                    try:
+                        async for key in self._redis.scan_iter(match=old_pattern, count=50):
+                            await self._redis.delete(key)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
         except Exception:
             pass
 

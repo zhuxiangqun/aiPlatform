@@ -378,6 +378,11 @@ echo "Platform DB: $AIPLAT_PLATFORM_DB_PATH"
 export AIPLAT_PLATFORM_DEV_ALLOW_ANY_API_KEY="${AIPLAT_PLATFORM_DEV_ALLOW_ANY_API_KEY:-1}"
 # DEV: grant anonymous users kb:read/kb:write scopes for local development.
 export AIPLAT_PLATFORM_DEV_MODE="${AIPLAT_PLATFORM_DEV_MODE:-true}"
+# OIDC / SSO: enterprise identity provider integration (Keycloak/Azure AD/Okta)
+export AIPLAT_OIDC_ENABLED="${AIPLAT_OIDC_ENABLED:-false}"
+# export AIPLAT_OIDC_DISCOVERY_URL=https://keycloak.example.com/realms/myorg
+# export AIPLAT_OIDC_CLIENT_ID=aiplat
+# export AIPLAT_OIDC_CLIENT_SECRET=xxx
 # KB: enable semantic embedding (sentence-transformers) instead of hash-based non-semantic vectors
 export AIPLAT_EMBED_BACKEND="${AIPLAT_EMBED_BACKEND:-hash}"
 export AIPLAT_KB_TENANTS_DIR="${AIPLAT_KB_TENANTS_DIR:-$AIPLAT_HOME/kb/tenants}"
@@ -387,7 +392,7 @@ export AIPLAT_KB_TENANTS_DIR="${AIPLAT_KB_TENANTS_DIR:-$AIPLAT_HOME/kb/tenants}"
 # HuggingFace mirror for model downloads (China access)
 export HF_ENDPOINT="${HF_ENDPOINT:-https://hf-mirror.com}"
 
-# export AIPLAT_VIDEO_WHISPER_MODEL=base      # Whisper model size (tiny/base/small/medium/large)
+export AIPLAT_VIDEO_WHISPER_MODEL="${AIPLAT_VIDEO_WHISPER_MODEL:-small}"
 # export AIPLAT_OBJ_STORE_ENDPOINT=localhost:9000  # MinIO object storage
 # export AIPLAT_QUEUE_BACKEND=redis           # Redis message queue (default: thread)
 # export AIPLAT_REDIS_URL=redis://localhost:6379/0

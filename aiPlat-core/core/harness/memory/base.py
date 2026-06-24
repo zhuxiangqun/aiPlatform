@@ -36,13 +36,17 @@ class MemoryEntry:
     importance: float = 0.5           # 重要性 0-1
     timestamp: float = field(default_factory=lambda: datetime.now(timezone.utc).timestamp())
     expires_at: Optional[float] = None
-    
+    # ── Memory poisoning defense fields ──
+    source_tag: str = ""              # 来源标签 (user/system/agent/auto_learned)
+    trust_weight: float = 1.0         # 信任加权 0-1 (1.0 = fully trusted)
+    provenance: str = ""              # 溯源路径 (pipeline_id / session_id / source_uri)
+
     def is_expired(self) -> bool:
         """检查是否过期"""
         if self.expires_at is None:
             return False
         return datetime.now(timezone.utc).timestamp() > self.expires_at
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""
         return {
@@ -52,7 +56,10 @@ class MemoryEntry:
             "metadata": self.metadata,
             "importance": self.importance,
             "timestamp": self.timestamp,
-            "expires_at": self.expires_at
+            "expires_at": self.expires_at,
+            "source_tag": self.source_tag,
+            "trust_weight": self.trust_weight,
+            "provenance": self.provenance,
         }
 
 

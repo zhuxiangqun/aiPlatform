@@ -1,6 +1,6 @@
 # aiPlat 系统质量全面诊断报告
 
-> 生成时间: 2026-06-23
+> 生成时间: 2026-06-23 | 增量更新: 2026-06-24 (记忆子系统 7 项硬化合入)
 > 诊断范围: 全仓库 (aiPlat-core + aiPlat-platform + aiPlat-management + aiPlat-infra)
 > 诊断方法: 结构完整性 + 接线完整性 + 工具正确性 + 能力可达性 + 路径契约 五维交叉验证
 
@@ -31,6 +31,7 @@
 | `EmbeddingBridge` | 5000 字符阈值触发 | → 移除阈值，始终压缩 |
 | `EnterpriseGateway` | 启动但从未触发推送 | → 审批暂停事件触发 `handle_message()` |
 | `SemanticCache.invalidate` | 仅 wiki HTTP 更新清缓存 | → `write_page()` 内部 + KB re-index 全覆盖 |
+| `SemanticCache.invalidate` | O(N) SCAN→DELETE 全量清除 | → INCR version O(1) 原子切换 + L1主动清 + 版本窗口 (2026-06-24) |
 | `ProvenanceScanner` | 仅 HTTP POST 端点触发 | → 嵌入 `write_page()` 覆盖 9 个程序化路径 |
 
 ### 1.3 方法级完整性

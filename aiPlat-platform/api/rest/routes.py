@@ -283,6 +283,27 @@ def _resolve_identity(request: Request) -> Identity:
             auth_type="jwt",
         )
 
+    # 2.5) OIDC Bearer token (Azure AD / Keycloak / Okta)
+    try:
+        from auth.identity_provider import get_oidc_provider
+        oidc = get_oidc_provider()
+        if oidc.enabled and isinstance(token, str) and token.count(".") >= 2:
+            claims = oidc.verify_token(token)
+            if claims:
+                ident = oidc.extract_identity(claims)
+                return Identity(
+                    request_id=request_id,
+                    tenant_id=str(ident["tenant_id"]),
+                    actor_id=str(ident["actor_id"]),
+                    scopes=list(ident["scopes"]),
+                    actor_role=str(ident.get("actor_role", "")),
+                    auth_type=str(ident.get("auth_type", "oidc")),
+                )
+    except ImportError:
+        pass  # python-jose not installed
+    except Exception:
+        pass  # OIDC not configured or token invalid
+
     # 3) default fallback
     scopes: List[str] = []
     if os.getenv("AIPLAT_PLATFORM_DEV_MODE", "false").lower() in ("1", "true", "yes", "y"):
@@ -2336,6 +2357,75 @@ async def delete_auth_user(user_id: str, _auth: str = Depends(require_admin)):
     return {"status": "ok"}
 
 
+# ── OIDC / SSO endpoints ──
+
+@app.get("/auth/oidc/login")
+async def oidc_login(request: Request, redirect_uri: str = ""):
+    """返回 IdP 授权页 URL。前端将用户重定向到该 URL。"""
+    from auth.identity_provider import get_oidc_provider
+    oidc = get_oidc_provider()
+    if not oidc.enabled:
+        raise HTTPException(status_code=501, detail="oidc_not_configured")
+    if not redirect_uri:
+        redirect_uri = str(request.base_url).rstrip("/") + "/auth/oidc/callback"
+    import secrets as _secrets
+    state = _secrets.token_urlsafe(16)
+    url = oidc.get_authorization_url(redirect_uri, state=state)
+    return {"authorization_url": url, "state": state}
+
+
+@app.post("/auth/oidc/callback")
+async def oidc_callback(request: Request):
+    """授权码回调：用 code 交换 id_token，返回 Identity。"""
+    body = await request.json()
+    code = str(body.get("code") or "")
+    redirect_uri = str(body.get("redirect_uri") or "")
+    if not code:
+        raise HTTPException(status_code=400, detail="code_required")
+
+    from auth.identity_provider import get_oidc_provider
+    oidc = get_oidc_provider()
+    if not oidc.enabled:
+        raise HTTPException(status_code=501, detail="oidc_not_configured")
+
+    id_token = await oidc.exchange_code(code, redirect_uri)
+    if not id_token:
+        raise HTTPException(status_code=401, detail="token_exchange_failed")
+
+    claims = await oidc.verify_token(id_token)
+    if not claims:
+        raise HTTPException(status_code=401, detail="token_verification_failed")
+
+    ident = oidc.extract_identity(claims)
+    return {"id_token": id_token, "identity": ident}
+
+
+@app.post("/auth/oidc/token")
+async def oidc_verify_token(request: Request):
+    """验证 id_token 并返回 Identity。用于前端已有 token 的场景。"""
+    body = await request.json()
+    id_token = str(body.get("id_token") or "")
+
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        id_token = auth_header[7:]
+
+    if not id_token:
+        raise HTTPException(status_code=400, detail="id_token_required")
+
+    from auth.identity_provider import get_oidc_provider
+    oidc = get_oidc_provider()
+    if not oidc.enabled:
+        raise HTTPException(status_code=501, detail="oidc_not_configured")
+
+    claims = await oidc.verify_token(id_token)
+    if not claims:
+        raise HTTPException(status_code=401, detail="invalid_token")
+
+    ident = oidc.extract_identity(claims)
+    return {"identity": ident, "valid": True}
+
+
 @app.get("/platform/tenants")
 async def list_tenants(status: Optional[str] = None, _auth: str = Depends(require_admin)):
     tenants = platform_store.list_tenants(status=status)
@@ -2390,6 +2480,306 @@ async def resume_tenant(tenant_id: str, _auth: str = Depends(require_admin)):
     t["status"] = "active"
     platform_store.upsert_tenant(t)
     return {"status": "ok"}
+
+
+# ── Tenant self-service registration (no admin required) ──
+
+@app.post("/platform/tenants/register")
+async def tenant_register(request: Request):
+    """租户自助注册。返回待验证状态。"""
+    body = await request.json()
+    email = str(body.get("email") or "").strip()
+    org_name = str(body.get("org_name") or email).strip()
+    if not email:
+        raise HTTPException(status_code=400, detail="email_required")
+
+    # Check for duplicate email
+    try:
+        from tenants.manager import tenant_manager
+        existing = tenant_manager.find_by_email(email)
+        if existing:
+            raise HTTPException(status_code=409, detail="email_already_registered")
+    except HTTPException:
+        raise
+    except Exception:
+        pass
+
+    import secrets as _secrets
+    tid = f"tenant_{_secrets.token_urlsafe(8)}"
+    token = _secrets.token_urlsafe(32)
+
+    # Create tenant in pending state via platform store
+    tenant_data = {
+        "id": tid,
+        "name": email,
+        "description": org_name,
+        "quota": {"gpu_limit": 0, "storage_limit_gb": 10, "max_agents": 3},
+        "status": "pending",
+        "user_count": 1,
+        "created_at": "",
+    }
+    platform_store.upsert_tenant(tenant_data)
+
+    # Store verification token
+    try:
+        from tenants.manager import tenant_manager
+        tenant_manager.set_verification_token(tid, token)
+    except Exception:
+        pass
+
+    return {
+        "tenant_id": tid,
+        "status": "pending",
+        "message": "验证邮件已发送（开发模式：直接使用下方 token）",
+        "verification_token": token,
+        "next_step": f"POST /platform/tenants/verify-email with {{tenant_id, token}}",
+    }
+
+
+@app.post("/platform/tenants/verify-email")
+async def tenant_verify_email(request: Request):
+    """验证邮箱 → 激活租户 → 返回初始 API Key。"""
+    body = await request.json()
+    tenant_id = str(body.get("tenant_id") or "")
+    token = str(body.get("token") or "")
+
+    try:
+        from tenants.manager import tenant_manager
+        if not tenant_manager.verify_token(tenant_id, token):
+            raise HTTPException(status_code=400, detail="invalid_token")
+        tenant_manager.activate_tenant(tenant_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"verification_failed: {e}")
+
+    # Create initial admin API Key
+    from auth.authenticator import authenticator
+    admin_user_id = f"admin_{tenant_id}"
+    api_key = authenticator.create_api_key(
+        user_id=admin_user_id,
+        tenant_id=tenant_id,
+        app_id="management",
+        expires_days=365,
+        permissions=["kb:read", "kb:write", "agent:execute"],
+    )
+
+    return {
+        "tenant_id": tenant_id,
+        "status": "active",
+        "api_key": api_key,
+        "quickstart": "/docs",
+    }
+
+
+# ── Tenant self-service portal APIs ──
+
+@app.get("/tenant/dashboard")
+async def tenant_dashboard(request: Request):
+    """租户首页概览。"""
+    identity = _resolve_identity(request)
+    tid = identity.tenant_id or "default"
+    return {
+        "tenant_id": tid,
+        "agent_count": 0,
+        "skill_count": 0,
+        "monthly_tokens": 0,
+        "api_calls_today": 0,
+    }
+
+
+@app.get("/tenant/api-keys")
+async def tenant_list_api_keys(request: Request):
+    """租户查看自己的 API Keys。"""
+    identity = _resolve_identity(request)
+    tid = identity.tenant_id or "default"
+    try:
+        from auth.authenticator import authenticator
+        keys = authenticator.list_keys(tid)
+        return {"api_keys": keys, "total": len(keys)}
+    except Exception:
+        return {"api_keys": [], "total": 0}
+
+
+@app.post("/tenant/api-keys")
+async def tenant_create_api_key(request: Request):
+    """租户创建 API Key。"""
+    identity = _resolve_identity(request)
+    body = await request.json()
+    tid = identity.tenant_id or "default"
+    expires_days = min(int(body.get("expires_days", 365)), 365)
+    perms = list(body.get("permissions", ["kb:read"]) or ["kb:read"])
+
+    from auth.authenticator import authenticator
+    api_key = authenticator.create_api_key(
+        user_id=identity.actor_id or f"user_{tid}",
+        tenant_id=tid,
+        app_id=body.get("app_id", "api"),
+        expires_days=expires_days,
+        permissions=perms,
+    )
+    return {"api_key": api_key, "expires_in_days": expires_days}
+
+
+@app.delete("/tenant/api-keys/{key_prefix}")
+async def tenant_revoke_api_key(key_prefix: str, request: Request):
+    """租户撤销自己的 API Key。"""
+    identity = _resolve_identity(request)
+    try:
+        from auth.authenticator import authenticator
+        authenticator.revoke_api_key(key_prefix)
+        return {"status": "ok"}
+    except Exception:
+        raise HTTPException(status_code=404, detail="key_not_found")
+
+
+@app.get("/tenant/usage")
+async def tenant_usage(request: Request):
+    """租户查看自己的用量。"""
+    identity = _resolve_identity(request)
+    tid = identity.tenant_id or "default"
+    try:
+        from governance.quota.quota_manager import quota_manager
+        usage = quota_manager.get_usage(tid)
+        if usage:
+            return {"tenant_id": tid, "usage": usage.model_dump() if hasattr(usage, 'model_dump') else str(usage)}
+    except Exception:
+        pass
+    return {"tenant_id": tid, "usage": {"agents": 0, "skills": 0, "api_keys": 0, "monthly_tokens": 0}}
+
+
+@app.get("/tenant/billing")
+async def tenant_billing(request: Request, year: int = None, month: int = None):
+    """租户查看自己的账单（按月分解）。"""
+    identity = _resolve_identity(request)
+    tid = identity.tenant_id or "default"
+    from datetime import datetime as _dt
+    now = _dt.now()
+    y = year or now.year
+    m = month or now.month
+
+    try:
+        from storage.platform_db import get_platform_db
+        db = get_platform_db()
+        breakdown = db.get_monthly_breakdown(tid, y, m)
+        total = sum(r.get("cost", 0) for r in breakdown)
+        return {
+            "tenant_id": tid,
+            "period": f"{y}-{m:02d}",
+            "breakdown": breakdown,
+            "total_cost_cents": total,
+        }
+    except Exception:
+        return {"tenant_id": tid, "period": f"{y}-{m:02d}", "breakdown": [], "total_cost_cents": 0}
+
+
+# ── Platform Ops: cross-tenant overview (platform_admin only) ──
+
+@app.get("/ops/overview")
+async def ops_overview(request: Request):
+    """平台运营全局视图。仅限 platform_admin 角色。"""
+    identity = _resolve_identity(request)
+    role = getattr(identity, "role", "") or ""
+    if role != "platform_admin" and identity.actor_role != "platform_admin":
+        raise HTTPException(status_code=403, detail="platform_admin_only")
+
+    try:
+        from tenants.manager import tenant_manager
+        from storage.platform_db import get_platform_db
+        db = get_platform_db()
+        tenants = db.list_tenants()
+        active = sum(1 for t in tenants if t.get("status") == "active")
+        pending = sum(1 for t in tenants if t.get("status") == "pending")
+        suspended = sum(1 for t in tenants if t.get("status") == "suspended")
+        from datetime import datetime as _dt
+        now = _dt.now()
+        total_tokens = db.get_total_monthly_tokens(now.year, now.month)
+
+        return {
+            "total_tenants": len(tenants),
+            "active_tenants": active,
+            "pending_tenants": pending,
+            "suspended_tenants": suspended,
+            "total_tokens_month": total_tokens,
+            "top_tenants": sorted(
+                [{"id": t["tenant_id"], "name": t.get("name", ""), "plan": t.get("plan", "free")}
+                 for t in tenants if t.get("status") == "active"],
+                key=lambda x: x["plan"],
+                reverse=True,
+            )[:10],
+        }
+    except Exception as e:
+        return {"error": str(e)[:200]}
+
+
+# ── Marketplace: publish with SkillSimulator integration ──
+
+@app.post("/marketplace/publish")
+async def marketplace_publish(request: Request):
+    """租户提交 Skill 到市场。自动预检 SkillSimulator。"""
+    identity = _resolve_identity(request)
+    body = await request.json()
+    skill_id = str(body.get("skill_id") or "")
+    if not skill_id:
+        raise HTTPException(status_code=400, detail="skill_id_required")
+
+    import uuid as _uuid
+    submission_id = f"sub_{_uuid.uuid4().hex[:12]}"
+
+    # Run SkillSimulator pre-check
+    test_result = None
+    try:
+        from core.harness.learning.skill_simulator import SkillSimulator
+        sim = SkillSimulator()
+        test_result = await sim.run(skill_id)
+    except Exception:
+        test_result = {"error": "simulation_unavailable"}
+
+    return {
+        "submission_id": submission_id,
+        "skill_id": skill_id,
+        "tenant_id": identity.tenant_id or "default",
+        "status": "pending_review",
+        "test_result": test_result,
+        "message": "已提交审核" if test_result and not test_result.get("error") else "已提交（预检不可用）",
+    }
+
+
+# ── Ontology Bridge: cross-graph impact analysis ──
+
+@app.get("/ontology/impact/{urn}")
+async def ontology_impact(urn: str, direction: str = "downstream", depth: int = 3):
+    """查询某个实体的跨域影响范围。
+
+    Args:
+        urn: 实体 URN，如 urn:aiplat:agent:rag_agent
+        direction: downstream（影响谁）/ upstream（被谁影响）
+        depth: 遍历深度（默认 3）
+    """
+    from core.harness.ontology_engine.triple_store import get_triple_store
+    store = get_triple_store()
+    if direction == "downstream":
+        results = store.get_downstream(urn, depth=depth)
+    else:
+        results = store.get_upstream(urn, depth=depth)
+    return {"urn": urn, "direction": direction, "depth": depth,
+            "results": results, "total": len(results)}
+
+
+@app.get("/ontology/triples/{predicate}")
+async def ontology_triples_by_predicate(predicate: str):
+    """按关系类型查询所有三元组。"""
+    from core.harness.ontology_engine.triple_store import get_triple_store
+    store = get_triple_store()
+    return {"predicate": predicate, "results": store.get_by_predicate(predicate)}
+
+
+@app.post("/ontology/scan")
+async def ontology_rescan(request: Request):
+    """手动触发全量跨域依赖扫描。"""
+    from core.harness.ontology_engine.triple_scanner import scan_and_populate
+    stats = await scan_and_populate()
+    return {"status": "scanned", "stats": stats}
 
 
 # ━━━ Builder Pipeline ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

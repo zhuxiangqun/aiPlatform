@@ -83,9 +83,10 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
   { group: 'app', label: '应用接入层', items: [
     { key: '/app/channels', icon: MessageSquare, label: '渠道管理' },
     { key: '/app/sessions', icon: MessageSquare, label: '会话管理' },
-    { key: '/app/builder', icon: FolderOpen, label: '应用工作台' },
+    { key: '/app/builder', icon: FolderOpen, label: '项目构建' },
     { key: '/app/diagrams', icon: PenTool, label: '图表工作室' },
-    { key: '/app/apps', icon: Rocket, label: 'Apps' },
+    { key: '/app/apps', icon: Rocket, label: '已部署应用' },
+  { key: '/studio', icon: Sparkles, label: 'App Studio' },
   ]},
 ];
 

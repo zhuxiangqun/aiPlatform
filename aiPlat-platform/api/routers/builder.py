@@ -208,9 +208,19 @@ async def run_project_tests(project_id: str, _auth: str = Depends(require_builde
     return await _get_svc().run_tests(project_id)
 
 
+@router.post("/projects/{project_id}/regenerate")
+async def regenerate_project_stage(project_id: str, req: Dict[str, Any], _auth: str = Depends(require_builder_access)):
+    """Regenerate a specific stage with human feedback, then resume pipeline."""
+    stage_id = str(req.get("stage_id") or "")
+    feedback = str(req.get("feedback") or "")
+    if not stage_id or not feedback:
+        raise HTTPException(400, detail="stage_id and feedback are required")
+    return await _get_svc().regenerate_stage(project_id, stage_id, feedback)
+
+
 @router.post("/projects/{project_id}/deploy-to-app")
-async def deploy_project_to_app(project_id: str, _auth: str = Depends(require_admin_access)):
-    """Deploy pipeline output to the app layer (requires admin approval)."""
+async def deploy_project_to_app(project_id: str, _auth: str = Depends(require_builder_access)):
+    """Deploy pipeline output to aiPlat-app (port 8004)."""
     # Verify project signature before deploy
     try:
         proj = _get_svc()._projects.get(project_id)

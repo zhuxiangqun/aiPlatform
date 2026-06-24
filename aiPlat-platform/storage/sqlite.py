@@ -566,8 +566,8 @@ def list_apps() -> list:
     init_db()
     conn = _connect()
     try:
-        rows = conn.execute("SELECT id, name, workflow_id, mode, description, created_at, updated_at FROM apps ORDER BY updated_at DESC").fetchall()
-        return [{"id": r["id"], "name": r["name"], "workflow_id": r["workflow_id"], "mode": r["mode"], "description": r["description"] or "", "created_at": r["created_at"], "updated_at": r["updated_at"]} for r in rows]
+        rows = conn.execute("SELECT id, name, workflow_id, mode, description, capability_type, capability_id, created_at, updated_at FROM apps ORDER BY updated_at DESC").fetchall()
+        return [{"id": r["id"], "name": r["name"], "workflow_id": r["workflow_id"], "mode": r["mode"], "description": r["description"] or "", "capability_type": r["capability_type"] or "", "capability_id": r["capability_id"] or "", "created_at": r["created_at"], "updated_at": r["updated_at"]} for r in rows]
     finally:
         conn.close()
 
@@ -578,7 +578,7 @@ def get_app(app_id: str) -> Optional[Dict[str, Any]]:
     try:
         row = conn.execute("SELECT * FROM apps WHERE id=?", (str(app_id),)).fetchone()
         if not row: return None
-        return {"id": row["id"], "name": row["name"], "workflow_id": row["workflow_id"], "mode": row["mode"], "description": row["description"] or "", "created_at": row["created_at"], "updated_at": row["updated_at"]}
+        return {"id": row["id"], "name": row["name"], "workflow_id": row["workflow_id"], "mode": row["mode"], "description": row["description"] or "", "capability_type": row["capability_type"] or "", "capability_id": row["capability_id"] or "", "created_at": row["created_at"], "updated_at": row["updated_at"]}
     finally:
         conn.close()
 
@@ -591,6 +591,23 @@ def create_app(app_id: str, name: str, workflow_id: str, mode: str = "chat", des
         conn.execute("INSERT INTO apps (id,name,workflow_id,mode,description,created_at,updated_at) VALUES (?,?,?,?,?,?,?)", (str(app_id), str(name), str(workflow_id), str(mode), str(description or ""), now, now))
         conn.commit()
         return {"id": app_id, "name": name, "workflow_id": workflow_id, "mode": mode, "description": description or "", "created_at": now, "updated_at": now}
+    finally:
+        conn.close()
+
+
+def create_studio_app(app_id: str, name: str, project_id: str, app_url: str = "") -> Dict[str, Any]:
+    """Register a Studio-generated app (不需要 workflow_id)。"""
+    init_db()
+    conn = _connect()
+    now = time.time()
+    try:
+        conn.execute(
+            """INSERT INTO apps (id, name, workflow_id, mode, description, capability_type, capability_id, created_at, updated_at)
+               VALUES (?, ?, '', 'studio', ?, 'studio', ?, ?, ?)""",
+            (str(app_id), str(name), f"Studio 生成 · {app_url}", str(project_id), now, now),
+        )
+        conn.commit()
+        return {"id": app_id, "name": name, "mode": "studio", "project_id": project_id, "app_url": app_url, "capability_type": "studio", "capability_id": project_id, "created_at": now, "updated_at": now}
     finally:
         conn.close()
 

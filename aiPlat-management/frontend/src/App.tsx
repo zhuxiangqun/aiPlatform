@@ -107,6 +107,7 @@ const RunComparison = lazy(() => import('./pages/Diagnostics/RunComparison'));
 const ModelPlayground = lazy(() => import('./pages/Diagnostics/ModelPlayground'));
 const SystemGraph = lazy(() => import('./pages/SystemGraph'));
 const Onboarding = lazy(() => import('./pages/Onboarding/Onboarding'));
+const StudioPage = lazy(() => import('./pages/Studio/StudioPage'));
 
 const router = createBrowserRouter([
   {
@@ -209,6 +210,7 @@ const router = createBrowserRouter([
       { path: 'diagnostics/run-comparison', element: withSuspense(RunComparison) },
       { path: 'diagnostics/model-playground', element: withSuspense(ModelPlayground) },
       { path: 'diagnostics/eval', element: withSuspense(DiagnosticsEvalDashboard) },
+      { path: 'studio', element: withSuspense(StudioPage) },
     ],
   },
 ]);

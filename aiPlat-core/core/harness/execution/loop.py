@@ -15,6 +15,8 @@ import re
 import uuid
 import logging
 
+from core.harness.memory.compression import _background_tool_summarize
+
 from ..interfaces.loop import (
     ILoop,
     LoopState,
@@ -2479,15 +2481,34 @@ class ReActLoop(BaseLoop):
                 await self._trigger_hook(HookPhase.POST_TOOL_USE, {"tool_name": tool_name, "result": result_output, "format": parsed.format})
                 await self._trigger_hook(HookPhase.POST_APPROVAL_CHECK, {"tool_name": tool_name, "allowed": True})
                 # Encode tool call as structured message in trajectory
-                tool_use_id = f"tu_{str(uuid.uuid4())[:8]}"
+                tool_use_id = uuid.uuid4().hex
                 msg_list = state.context.setdefault("messages", [])
                 msg_list.append({"role": "assistant", "content": json.dumps({
                     "type": "tool_use", "id": tool_use_id, "name": str(tool_name),
                     "input": str(tool_args)[:500] if tool_args else {},
                 }, ensure_ascii=False)})
+
+                raw_output = str(result_output)
+                if len(raw_output) <= 2000:
+                    display_output = raw_output
+                else:
+                    head = raw_output[:1000]
+                    tail = raw_output[-1000:] if len(raw_output) > 1000 else ""
+                    display_output = (
+                        f"[Tool Result: {tool_name} ({tool_use_id})\n"
+                        f"首1K: {head}\n"
+                        f"-- 内容过长({len(raw_output)}chars)，已截断 --\n"
+                        f"尾1K: {tail}\n"
+                        f"摘要生成中... 可用 sys_read_scratchpad({tool_use_id}) 获取完整智能摘要]"
+                    )
+                    scratchpad = state.context.setdefault("_scratchpad", {})
+                    asyncio.create_task(
+                        _background_tool_summarize(tool_use_id, str(tool_name), raw_output, scratchpad)
+                    )
+
                 msg_list.append({"role": "user", "content": json.dumps({
                     "type": "tool_result", "tool_use_id": tool_use_id, "name": str(tool_name),
-                    "success": ok, "output": str(result_output)[:1000],
+                    "success": ok, "output": display_output,
                 }, ensure_ascii=False)})
                 return str(result_output)
         # ---- MCP lazy-load: try on-demand discovery before giving up ----

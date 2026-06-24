@@ -39,6 +39,19 @@ class QuotaManager:
     def __init__(self):
         self._quotas: dict[str, Quota] = {}
         self._usage: dict[str, QuotaUsage] = {}
+        self._db = None
+        self._load_from_db()
+
+    def _ensure_db(self):
+        if self._db is None:
+            from storage.platform_db import PlatformDB
+            self._db = PlatformDB()
+
+    def _load_from_db(self):
+        try:
+            self._ensure_db()
+        except Exception:
+            pass
 
     def set_quota(
         self,
@@ -58,6 +71,18 @@ class QuotaManager:
             max_concurrent_runs=max_concurrent_runs,
             monthly_tokens=monthly_tokens,
         )
+        try:
+            self._ensure_db()
+            self._db.upsert_quota({
+                "tenant_id": tenant_id,
+                "max_agents": max_agents,
+                "max_skills": max_skills,
+                "max_api_keys": max_api_keys,
+                "max_concurrent_runs": max_concurrent_runs,
+                "monthly_tokens": monthly_tokens,
+            })
+        except Exception:
+            pass
 
     def get_quota(self, tenant_id: str) -> Optional[Quota]:
         """获取配额"""

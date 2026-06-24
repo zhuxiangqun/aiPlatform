@@ -547,3 +547,26 @@ capabilities:
         key_methods: []
       - module: "aiPlat-core/core/management/capability_manifest.yaml"
         key_methods: []
+
+  # ═══════════════════════════════════════════════════════════════
+  # App Studio — 一句话生成项目
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: app_studio
+    domain: "应用接入"
+    declared_in: "ROADMAP.md Phase 7"
+    name: "App Studio — 一句话生成项目"
+    description: "自然语言描述需求 → AI PM 对话澄清 → PRD → 自动组队 → Builder Pipeline → 部署"
+    entry_points: ["aiPlat-management/management/api/studio.py"]
+    provided_by:
+      - module: "aiPlat-management/management/api/studio.py"
+        key_methods: ["create_session", "start_pipeline", "deploy_to_app"]
+      - module: "aiPlat-management/frontend/src/pages/Studio/StudioPage.tsx"
+        key_methods: []
+      - module: "aiPlat-management/frontend/src/services/studioApi.ts"
+        key_methods: []
+    depends_on:
+      - module: "aiPlat-core/core/harness/execution/pipeline_engine.py"
+        via: "PipelineEngine → Builder Pipeline"
+      - module: "aiPlat-platform/builder/builder_project_service.py"
+        via: "Builder → session/project management"

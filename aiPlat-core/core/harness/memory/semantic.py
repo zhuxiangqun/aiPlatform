@@ -21,6 +21,8 @@ class MemoryItem:
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     accessed_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     access_count: int = 0
+    expires_at: Optional[datetime] = None       # 过期时间 (None = 永不过期)
+    is_deleted: bool = False                     # 软删除标记
 
 
 class SemanticMemory:
@@ -46,9 +48,20 @@ class SemanticMemory:
                 embedding BLOB,
                 created_at TEXT,
                 accessed_at TEXT,
-                access_count INTEGER DEFAULT 0
+                access_count INTEGER DEFAULT 0,
+                expires_at TEXT,
+                is_deleted INTEGER DEFAULT 0
             )
         """)
+        # Migration: add new columns for existing DBs
+        try:
+            self._conn.execute("ALTER TABLE semantic_memories ADD COLUMN expires_at TEXT")
+        except Exception:
+            pass
+        try:
+            self._conn.execute("ALTER TABLE semantic_memories ADD COLUMN is_deleted INTEGER DEFAULT 0")
+        except Exception:
+            pass
         self._conn.commit()
         self._load_from_sqlite()
 
@@ -56,11 +69,18 @@ class SemanticMemory:
         """Load existing memories from SQLite into the in-memory index."""
         if not hasattr(self, "_conn"):
             return
-        for row in self._conn.execute("SELECT key, content, metadata_json, embedding, access_count FROM semantic_memories"):
+        for row in self._conn.execute(
+            "SELECT key, content, metadata_json, embedding, access_count, expires_at, is_deleted "
+            "FROM semantic_memories WHERE is_deleted = 0"
+        ):
             import json
             emb = json.loads(row[3]) if row[3] else None
             meta = json.loads(row[2]) if row[2] else {}
-            item = MemoryItem(id=row[0], content=row[1], embedding=emb, metadata=meta, access_count=row[4])
+            expires = datetime.fromisoformat(row[5]) if row[5] else None
+            item = MemoryItem(
+                id=row[0], content=row[1], embedding=emb, metadata=meta,
+                access_count=row[4], expires_at=expires, is_deleted=bool(row[6]),
+            )
             self._items[row[0]] = item
 
     async def store(
@@ -68,14 +88,16 @@ class SemanticMemory:
         key: str,
         content: str,
         metadata: Optional[Dict] = None,
-        embedding: Optional[List[float]] = None
+        embedding: Optional[List[float]] = None,
+        expires_at: Optional[datetime] = None,
     ) -> MemoryItem:
         """Store a memory item"""
         item = MemoryItem(
             id=key,
             content=content,
             embedding=embedding,
-            metadata=metadata or {}
+            metadata=metadata or {},
+            expires_at=expires_at,
         )
         self._items[key] = item
 
@@ -83,9 +105,10 @@ class SemanticMemory:
             import json
             emb_json = json.dumps(embedding) if embedding else None
             meta_json = json.dumps(metadata or {}, ensure_ascii=False)
+            exp_str = expires_at.isoformat() if expires_at else None
             self._conn.execute(
-                "INSERT OR REPLACE INTO semantic_memories(key, content, metadata_json, embedding, created_at, accessed_at, access_count) VALUES(?,?,?,?,?,?,?)",
-                (key, content, meta_json, emb_json, item.created_at.isoformat(), item.accessed_at.isoformat(), item.access_count),
+                "INSERT OR REPLACE INTO semantic_memories(key, content, metadata_json, embedding, created_at, accessed_at, access_count, expires_at, is_deleted) VALUES(?,?,?,?,?,?,?,?,?)",
+                (key, content, meta_json, emb_json, item.created_at.isoformat(), item.accessed_at.isoformat(), item.access_count, exp_str, int(item.is_deleted)),
             )
             self._conn.commit()
         return item
@@ -96,8 +119,12 @@ class SemanticMemory:
         top_k: int = 3,
         threshold: float = 0.5
     ) -> List[MemoryItem]:
-        """Retrieve relevant memories using vector similarity (primary) or keyword match (fallback)."""
-        vector_items = [(item, item.embedding) for item in self._items.values() if item.embedding]
+        """Retrieve relevant memories using vector similarity (primary) or keyword match (fallback).
+        On hit: dynamically renews expires_at to prevent high-frequency memories from being cleaned.
+        Filters out soft-deleted items.
+        """
+        active_items = [item for item in self._items.values() if not item.is_deleted]
+        vector_items = [(item, item.embedding) for item in active_items if item.embedding]
 
         if vector_items:
             try:
@@ -115,6 +142,7 @@ class SemanticMemory:
                         if sim >= threshold:
                             item.accessed_at = datetime.now(timezone.utc)
                             item.access_count += 1
+                            self._renew_expiry(item)
                             results.append(item)
                     if results:
                         return results
@@ -126,23 +154,78 @@ class SemanticMemory:
         query_lower = query.lower()
         query_words = set(query_lower.split())
 
-        for item in self._items.values():
+        for item in active_items:
             content_words = set(item.content.lower().split())
             overlap = len(query_words & content_words)
             if overlap > 0:
                 item.accessed_at = datetime.now(timezone.utc)
                 item.access_count += 1
+                self._renew_expiry(item)
                 results.append((item, overlap))
 
         results.sort(key=lambda x: x[1], reverse=True)
         return [item for item, score in results[:top_k] if score >= threshold]
+
+    def _renew_expiry(self, item: MemoryItem) -> None:
+        """Dynamically extend expiry on access — high-frequency memories live longer."""
+        if item.expires_at is not None:
+            new_expiry = datetime.now(timezone.utc).timestamp() + 7 * 86400
+            item.expires_at = datetime.fromtimestamp(
+                max(item.expires_at.timestamp(), new_expiry),
+                tz=timezone.utc,
+            )
+            try:
+                from core.harness.memory.metrics import inc_semantic_renewed
+                inc_semantic_renewed()
+            except Exception:
+                pass
     
     async def get(self, key: str) -> Optional[MemoryItem]:
-        """Get a specific memory"""
-        return self._items.get(key)
-    
+        """Get a specific memory. Filters soft-deleted items."""
+        item = self._items.get(key)
+        if item and not item.is_deleted:
+            self._renew_expiry(item)
+            return item
+        return None
+
+    async def get_deleted(self, key: str, *, tenant_id: str, session_id: str) -> Optional[MemoryItem]:
+        """Retrieve a soft-deleted memory (for recovery). Requires tenant+session isolation."""
+        item = self._items.get(key)
+        if item and item.is_deleted:
+            # Enforce tenant + session isolation — caller cannot bypass
+            meta = item.metadata or {}
+            if meta.get("tenant_id") == tenant_id and meta.get("session_id") == session_id:
+                return item
+        return None
+
+    async def recover_deleted(self, key: str) -> bool:
+        """Restore a soft-deleted memory."""
+        item = self._items.get(key)
+        if item and item.is_deleted:
+            item.is_deleted = False
+            if self._store_type == "sqlite" and hasattr(self, "_conn"):
+                self._conn.execute(
+                    "UPDATE semantic_memories SET is_deleted=0 WHERE key=?", (key,)
+                )
+                self._conn.commit()
+            return True
+        return False
+
     async def delete(self, key: str) -> bool:
-        """Delete a memory"""
+        """Soft-delete a memory (sets is_deleted=1)."""
+        item = self._items.get(key)
+        if item:
+            item.is_deleted = True
+            if self._store_type == "sqlite" and hasattr(self, "_conn"):
+                self._conn.execute(
+                    "UPDATE semantic_memories SET is_deleted=1 WHERE key=?", (key,)
+                )
+                self._conn.commit()
+            return True
+        return False
+
+    async def hard_delete(self, key: str) -> bool:
+        """Permanently remove a memory (use only for GDPR/compliance)."""
         if key in self._items:
             del self._items[key]
             if self._store_type == "sqlite" and hasattr(self, "_conn"):
@@ -150,14 +233,46 @@ class SemanticMemory:
                 self._conn.commit()
             return True
         return False
+
+    async def cleanup_expired(self) -> int:
+        """Soft-delete expired memories that have low access frequency.
+        
+        Cleanup condition (BOTH must be met):
+          - expires_at < now()  (expired)
+          - access_count < 3    (rarely accessed — not worth keeping)
+        
+        High-frequency memories are kept even if expired (dynamic renewal).
+        Returns count of items soft-deleted.
+        """
+        now = datetime.now(timezone.utc)
+        to_delete = []
+        for key, item in list(self._items.items()):
+            if item.is_deleted:
+                continue
+            if item.expires_at is not None and item.expires_at < now:
+                if item.access_count < 3:
+                    to_delete.append(key)
+
+        for key in to_delete:
+            await self.delete(key)
+        if to_delete:
+            try:
+                from core.harness.memory.metrics import inc_semantic_expired
+                for _ in to_delete:
+                    inc_semantic_expired()
+            except Exception:
+                pass
+        return len(to_delete)
     
     async def search_by_metadata(
         self,
         metadata_filter: Dict[str, Any]
     ) -> List[MemoryItem]:
-        """Search by metadata fields"""
+        """Search by metadata fields (excludes soft-deleted)."""
         results = []
         for item in self._items.values():
+            if item.is_deleted:
+                continue
             match = True
             for key, value in metadata_filter.items():
                 if item.metadata.get(key) != value:
@@ -166,13 +281,17 @@ class SemanticMemory:
             if match:
                 results.append(item)
         return results
-    
+
     def get_stats(self) -> Dict:
         """Get memory statistics"""
+        active = sum(1 for item in self._items.values() if not item.is_deleted)
+        deleted = sum(1 for item in self._items.values() if item.is_deleted)
         return {
             "total_items": len(self._items),
+            "active_items": active,
+            "deleted_items": deleted,
             "total_accesses": sum(item.access_count for item in self._items.values()),
-            "avg_access_count": sum(item.access_count for item in self._items.values()) / max(1, len(self._items))
+            "avg_access_count": sum(item.access_count for item in self._items.values()) / max(1, len(self._items)),
         }
 
 
